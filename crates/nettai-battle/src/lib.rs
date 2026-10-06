@@ -24,7 +24,6 @@ pub mod hud;
 pub mod input;
 pub mod kinds;
 pub mod object;
-pub mod navicust;
 pub mod perspective;
 pub mod rng;
 pub mod rollback;

@@ -437,6 +437,14 @@ impl Battle {
         self.validation.take().unwrap_or_default()
     }
 
+    /// For tools: what module `module` of the content (by its name,
+    /// `exe6:rules/navicust/board`) returned as it loaded, as plain data, a
+    /// function in it left out; nothing is called (the editor reads the
+    /// NaviCust's boards so). None: no module of that name.
+    pub fn module_data(&self, module: &str) -> Option<Result<nettai_content_api::Data, String>> {
+        crate::behavior::module_data(self, module)
+    }
+
     /// The rules' `navi_intake(side, navi)`, each tick of the fight in the
     /// navi's intake. (Rules without the hook call nothing: EXE6's.)
     pub(crate) fn rules_navi_intake(&mut self, side: u8, navi: ObjectRef) {

@@ -7,7 +7,7 @@ use nettai_battle::Content;
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::FolderChip;
 use nettai_battle::setup::NaviStats;
-use nettai_content_api::{ChipHandle, EntryHandle, NaviHandle, StageHandle};
+use nettai_content_api::{ChipHandle, NaviHandle, StageHandle};
 use nettai_frontend::game::Game;
 use nettai_match::{Match, Side};
 use std::collections::HashMap;
@@ -20,21 +20,24 @@ pub enum Tab {
     Arena,
     Navi(usize),
     Folder(usize),
-    /// A list the game's rules take of a side (EXE6's Crosses, EXE5's
-    /// souls), by its place among the game's facts (`crate::editor::facts`).
+    /// A list of definitions the game's rules take of a side (a
+    /// checklist), by its place among the game's facts
+    /// (`crate::editor::facts`).
     List(usize, usize),
+    /// A pane of the editor's layout of the setup (`crate::editor::layout`),
+    /// by its place among them.
+    Pane(usize, usize),
     AutoBattle(usize),
-    Cards(usize),
-    NaviCust(usize),
     Stats(usize),
 }
 
 impl Tab {
     /// The tab by its name (`--tab`): `arena`, or `left-` or `right-` and
-    /// `navi`, `folder`, `auto-battle`, `patch-cards`, `navicust`, `stats`, or
-    /// the name of a list the content's game's rules take of a side
-    /// (`crosses`, `souls`).
-    pub fn from_name(content: &Content, name: &str) -> Option<Tab> {
+    /// `navi`, `folder`, `auto-battle`, `stats`, a pane's key among
+    /// `panes` (`navicust`, `patch-cards`, `sp-times`; `-` and `_` alike),
+    /// or the name of a list of definitions the rules take of a side
+    /// (EXE6's `crosses`, EXE5's `souls`).
+    pub fn from_name(content: &Content, panes: &[crate::editor::layout::Pane], name: &str) -> Option<Tab> {
         if name == "arena" {
             return Some(Tab::Arena);
         }
@@ -48,10 +51,13 @@ impl Tab {
             "navi" => Tab::Navi(side),
             "folder" => Tab::Folder(side),
             "auto-battle" => Tab::AutoBattle(side),
-            "patch-cards" => Tab::Cards(side),
-            "navicust" => Tab::NaviCust(side),
             "stats" => Tab::Stats(side),
-            list => Tab::List(side, crate::editor::facts::list_named(content, list)?),
+            other => {
+                match panes.iter().position(|p| p.key.replace('_', "-") == other.replace('_', "-")) {
+                    Some(i) => Tab::Pane(side, i),
+                    None => Tab::List(side, crate::editor::facts::list_named(content, other)?),
+                }
+            }
         })
     }
 }
@@ -85,11 +91,13 @@ pub enum Msg {
     /// asks [`Editor::to_play`]).
     Play,
     Lang(Lang),
-    // The arena.
+    // The rounds.
     /// A round's stage (0 the first round's; none: picked from the seed).
     Stage(usize, Choice<Option<StageHandle>>),
     Background(usize, Choice<Option<String>>),
-    LaterSame(bool),
+    /// A round after the last, its place left to the seed.
+    AddRound,
+    RemoveRound(usize),
     Seed(String),
     /// The match's game: a new match of it (the sides start over).
     Game(Choice<String>),
@@ -99,8 +107,6 @@ pub enum Msg {
     /// setup field's name.
     Fact(usize, String, crate::editor::facts::Edit),
     Level(usize, String),
-    /// An SP navi's deletion time (by its slot), as typed.
-    SpTime(usize, usize, String),
     /// The side from a save file (an EXE6 save's version, unlocks, navi code
     /// level and SP times; an EXE5 save's karma, souls and auto battle
     /// data), into a match of the save's game.
@@ -113,12 +119,8 @@ pub enum Msg {
     Regular(usize),
     Tag(usize),
     Search(String),
-    // The patch cards.
-    AddCard(usize, EntryHandle),
-    CardMove(usize, usize, bool),
-    CardRemove(usize, usize),
-    // The NaviCust.
-    NaviCust(usize, crate::editor::navicust::Edit),
+    /// A side's fact through a pane's view (the pane's path).
+    Pane(usize, String, crate::editor::panes::Edit),
     // EXE5's auto battle data.
     AutoBattle(usize, crate::editor::auto_battle::Edit),
     // --screenshot.
@@ -253,14 +255,22 @@ pub struct Editor {
     /// What is typed into number fields, by field (side, name), until it
     /// reads as a number.
     pub typed: HashMap<(usize, &'static str), String>,
-    /// What is typed into each side's SP deletion times (side, slot), until
-    /// it reads as a time.
-    pub sp_typed: HashMap<(usize, usize), String>,
+    /// What is typed into a pane's number fields (side, the view's path,
+    /// or a row's column's), until it reads.
+    pub pane_typed: HashMap<(usize, String), String>,
+    /// The panes of a side's setup, as the editor lays them out.
+    pub panes: Vec<crate::editor::layout::Pane>,
+    /// What the NaviCust's grid reads of the game (none: its data don't fit
+    /// the grid).
+    pub navicust: Option<crate::editor::navicust::Data>,
+    /// Each side's grids' own state, by their views' paths.
+    pub grids: [HashMap<String, crate::editor::navicust::GridState>; 2],
     /// What is typed into a side's facts' number fields (side, the fact's
     /// name), until it parses.
     pub fact_typed: HashMap<(usize, String), String>,
-    /// What is wrong with the match (none: it can be played).
-    pub problems: Vec<String>,
+    /// What is wrong with the match (none: it can be played), each with
+    /// where it is.
+    pub problems: Vec<nettai_match::check::Problem>,
     /// The stats each side's round starts with (after the NaviCust and the
     /// patch cards), or why the round doesn't start.
     pub round: Result<[NaviStats; 2], String>,
@@ -269,8 +279,6 @@ pub struct Editor {
     /// The game's library order, which the lists of chips, programs and
     /// cards keep.
     pub order: crate::editor::order::Order,
-    /// Each side's NaviCust pane's own state.
-    pub navicust: [crate::editor::navicust::State; 2],
     /// Each side's Auto battle pane's own state.
     pub auto_battle: [crate::editor::auto_battle::State; 2],
     pub status: String,
@@ -309,13 +317,15 @@ impl Editor {
             search: String::new(),
             games: crate::editor::load::games(options.content.as_deref(), &options.packs),
             typed: HashMap::new(),
-            sp_typed: HashMap::new(),
+            pane_typed: HashMap::new(),
+            panes: Vec::new(),
+            navicust: None,
+            grids: Default::default(),
             fact_typed: HashMap::new(),
             problems: Vec::new(),
             round: Err(String::new()),
             pool: Default::default(),
             order: Default::default(),
-            navicust: Default::default(),
             auto_battle: Default::default(),
             status: String::new(),
             frames: 0,
@@ -324,14 +334,15 @@ impl Editor {
             pictures,
             options,
         };
+        e.set_lang(e.options.lang);
+        e.load_order();
+        e.load_panes();
         if let Some(name) = e.options.tab.clone() {
-            match Tab::from_name(&e.content, &name) {
+            match Tab::from_name(&e.content, &e.panes, &name) {
                 Some(tab) => e.tab = tab,
                 None => e.status = format!("no pane {name:?} (--tab)"),
             }
         }
-        e.set_lang(e.options.lang);
-        e.load_order();
         e.refresh();
         e
     }
@@ -370,9 +381,17 @@ impl Editor {
         }
     }
 
-    /// Check the match again, and the stats its round starts with.
+    /// The game's rules' panes (a load's).
+    fn load_panes(&mut self) {
+        let game = self.content.game().to_string();
+        self.navicust = crate::editor::navicust::read(&self.content, &game);
+        self.panes = crate::editor::layout::layout(&self.content, self.navicust.as_ref());
+    }
+
+    /// Check the match again (each problem with where it is), and the
+    /// stats its round starts with.
     pub fn refresh(&mut self) {
-        self.problems = nettai_match::check_match(&self.content, &self.m);
+        self.problems = nettai_match::check::problems(&self.content, &self.m);
         match nettai_match::check::start(&self.content, &self.m) {
             Ok(mut b) => {
                 self.pool = [0u8, 1].map(|s| nettai_match::folders::pool(&self.content, self.m.game(), &mut b, s));
@@ -402,6 +421,7 @@ impl Editor {
             self.game = loaded.game;
             self.set_lang(self.lang);
             self.load_order();
+            self.load_panes();
         }
         Ok(self.content.clone())
     }
@@ -409,14 +429,14 @@ impl Editor {
     /// Forget what was typed and picked for the sides (they are new).
     fn forget_sides(&mut self) {
         self.typed.retain(|&(s, _), _| s > 1);
-        self.sp_typed.clear();
+        self.pane_typed.clear();
         self.fact_typed.clear();
         self.entry = [0, 0];
-        // (A list's pane is its game's.)
-        if matches!(self.tab, Tab::List(..)) {
+        // (A list's pane is its game's, and a declared one its rules'.)
+        if matches!(self.tab, Tab::List(..) | Tab::Pane(..)) {
             self.tab = Tab::Arena;
         }
-        self.navicust = Default::default();
+        self.grids = Default::default();
         self.auto_battle = Default::default();
     }
 
@@ -506,13 +526,17 @@ impl Editor {
                 self.m.rounds[i].background = c.value;
                 self.edited();
             }
-            Msg::LaterSame(same) => {
-                // (Otherwise the later rounds are picked from the seed.)
-                let later = if same { self.m.rounds[0].clone() } else { nettai_match::RoundSettings::default() };
-                for r in &mut self.m.rounds[1..] {
-                    *r = later.clone();
+            Msg::AddRound => {
+                if self.m.rounds.len() < nettai_match::MAX_ROUNDS {
+                    self.m.rounds.push(nettai_match::RoundSettings::default());
+                    self.edited();
                 }
-                self.edited();
+            }
+            Msg::RemoveRound(i) => {
+                if self.m.rounds.len() > 1 && i < self.m.rounds.len() {
+                    self.m.rounds.remove(i);
+                    self.edited();
+                }
             }
             Msg::Seed(t) => {
                 self.m.seed = t.trim().parse().ok();
@@ -573,21 +597,6 @@ impl Editor {
                 }
                 self.typed.insert((s, "level"), t);
             }
-            Msg::SpTime(s, entry, t) => {
-                let frames = if t.trim().is_empty() { Ok(0) } else { nettai_match::sp_times::parse(&t) };
-                let content = self.content.clone();
-                let facts = &mut self.m.sides[s].facts;
-                let mut times = facts.sp_times(&content);
-                if let (Ok(f), Some(time)) = (frames, times.get_mut(entry))
-                    && f != time.1
-                {
-                    time.1 = f;
-                    if facts.set_sp_times(&content, &times).is_ok() {
-                        self.edited();
-                    }
-                }
-                self.sp_typed.insert((s, entry), t);
-            }
             Msg::ImportSave(s) => {
                 // An EXE6 save, or an EXE5 one (a .sav, or a raw image as
                 // Tango's netplay templates hold): a match of its game.
@@ -605,7 +614,7 @@ impl Editor {
                                 self.forget_sides();
                             }
                             self.typed.retain(|&(x, _), _| x != s);
-                            self.sp_typed.retain(|&(x, _), _| x != s);
+                            self.pane_typed.retain(|(x, _), _| *x != s);
                             self.fact_typed.retain(|(x, _), _| *x != s);
                             self.edited();
                             let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
@@ -663,36 +672,8 @@ impl Editor {
                 }
             }
             Msg::Search(t) => self.search = t,
-            Msg::AddCard(s, card) => {
-                let mut cards = cards_of(&content, &self.m.sides[s]);
-                if !cards.contains(&card) {
-                    cards.push(card);
-                    if set_cards(&content, &mut self.m.sides[s], &cards) {
-                        self.edited();
-                    }
-                }
-            }
-            Msg::CardMove(s, i, up) => {
-                let mut cards = cards_of(&content, &self.m.sides[s]);
-                let j = if up { i.checked_sub(1) } else { (i + 1 < cards.len()).then_some(i + 1) };
-                if let Some(j) = j {
-                    cards.swap(i, j);
-                    if set_cards(&content, &mut self.m.sides[s], &cards) {
-                        self.edited();
-                    }
-                }
-            }
-            Msg::CardRemove(s, i) => {
-                let mut cards = cards_of(&content, &self.m.sides[s]);
-                if i < cards.len() {
-                    cards.remove(i);
-                    if set_cards(&content, &mut self.m.sides[s], &cards) {
-                        self.edited();
-                    }
-                }
-            }
-            Msg::NaviCust(s, edit) => {
-                if crate::editor::navicust::update(&content, &self.m.game, &mut self.m.sides[s], &mut self.navicust[s], edit) {
+            Msg::Pane(s, path, edit) => {
+                if crate::editor::panes::apply(self, s, &path, edit) {
                     self.edited();
                 }
             }
@@ -756,24 +737,3 @@ fn save_png(path: &std::path::Path, shot: &iced::window::Screenshot) -> Result<(
     w.write_image_data(&shot.rgba).map_err(|e| e.to_string())
 }
 
-/// The side's patch cards (its rules' `patch_cards`), in the list's order.
-pub fn cards_of(content: &nettai_battle::Content, side: &nettai_match::Side) -> Vec<EntryHandle> {
-    use nettai_match::facts::Stated;
-    let Some(Stated::List(items)) = side.facts.get(content, "patch_cards") else { return Vec::new() };
-    items
-        .iter()
-        .filter_map(|item| match item {
-            Stated::Def(_, Some(h)) => Some(EntryHandle(*h)),
-            _ => None,
-        })
-        .collect()
-}
-
-/// State the side's patch cards (its rules' `patch_cards`); whether they
-/// were written (the rules take such a list, and it holds them).
-pub fn set_cards(content: &nettai_battle::Content, side: &mut nettai_match::Side, cards: &[EntryHandle]) -> bool {
-    use nettai_battle::rules::Fact;
-    use nettai_content_api::{Registry, Value};
-    let list: Vec<Fact> = cards.iter().map(|&card| Fact::Value(Value::Def(Registry::Entry, card.0))).collect();
-    side.set_fact(content, "patch_cards", &list).is_ok()
-}

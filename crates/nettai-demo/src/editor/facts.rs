@@ -157,9 +157,11 @@ pub fn rows(e: &Editor, s: usize) -> Column<'_, Msg> {
     let side = e.side(s);
     let defaults = nettai_match::Facts::defaults(c);
     let mut col = Column::new().spacing(10);
+    let in_panes: Vec<&str> = e.panes.iter().flat_map(|p| p.fields.iter().map(|f| f.field.as_str())).collect();
     for f in facts::fields(c) {
-        // (The level has its own field, with the navi.)
-        if facts::role_of(c, f.name) == Some(PlayerFact::Level) {
+        // (The level has its own field, with the navi; a pane shows its
+        // own.)
+        if facts::role_of(c, f.name) == Some(PlayerFact::Level) || in_panes.contains(&f.name) {
             continue;
         }
         let Some(value) = side.facts.get(c, f.name) else { continue };
@@ -201,6 +203,9 @@ pub fn rows(e: &Editor, s: usize) -> Column<'_, Msg> {
             line = line.push(button(text("Default").size(13)).on_press(msg(Edit::Default)).style(button::secondary));
         }
         col = col.push(line);
+        for p in crate::editor::panes::said(e, s, f.name, None) {
+            col = col.push(text(p.to_string()).size(13).color(RED));
+        }
         if unstated {
             col = col.push(text(format!("No {} is chosen: a side states its own, and a round doesn't start without.", f.name)).size(13).color(RED));
         }
@@ -271,6 +276,9 @@ pub fn list(e: &Editor, s: usize, index: usize) -> Element<'_, Msg> {
         top = top.push(button(text("Its version's own").size(13)).on_press(msg(Edit::Own)).style(button::secondary));
     }
     let mut col = column![heading(format!("{}: {}", SIDES[s], title(f.name))), top].spacing(8);
+    for p in crate::editor::panes::said(e, s, f.name, None) {
+        col = col.push(text(p.to_string()).size(13).color(RED));
+    }
     for h in offered {
         let on = held.contains(&h);
         let key = nettai_match::ids::key_of(c, registry, h).unwrap_or_default();

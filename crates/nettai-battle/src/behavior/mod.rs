@@ -272,6 +272,12 @@ pub(crate) fn run_action(b: &mut Battle, action: ActionHandle, r: ObjectRef) {
     }
 }
 
+/// What module `module` returned as the content loaded, as plain data
+/// (`Battle::module_data`).
+pub(crate) fn module_data(b: &Battle, module: &str) -> Option<Result<nettai_content_api::Data, String>> {
+    loaded(b).host.module_data(module).map(|r| r.map_err(|e| format!("{module}.luau: {e}")))
+}
+
 /// Call the content function `f` for a hook.
 pub(crate) fn call_hook(b: &mut Battle, f: FnId, call: HookCall) -> Value {
     #[cfg(feature = "luau-profile")]

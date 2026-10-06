@@ -112,15 +112,9 @@ impl Side {
             self.facts.fact(content, "navicust_expansions").map(|f| f.value()),
             Some(nettai_content_api::FieldValue::OptionalU8(Some(_)))
         );
-        if has_navicust {
-            let (had, sizes) = (save.expansions(), crate::navicust_rules(content).boards.len());
-            if (had as usize) < sizes {
-                if let Err(e) = self.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Int(had as i64))]) {
-                    notes.push(format!("the save's navicust_expansions is left out: {e}"));
-                }
-            } else {
-                notes.push(format!("the save has {had} ExpMemry, but the NaviCust's board has {sizes} sizes: the side's board is kept"));
-            }
+        // (A board past the rules' is their `validate`'s to say.)
+        if has_navicust && let Err(e) = self.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Int(save.expansions() as i64))]) {
+            notes.push(format!("the save's navicust_expansions is left out: {e}"));
         }
         if crate::auto_battle::has(content) {
             let (data, more) = auto_battle(content, game, &save.auto_battle());
@@ -209,11 +203,13 @@ mod tests {
         assert_eq!(m.sides[1], crate::Match::empty(&content, "exe5").unwrap().sides[1]);
         let expansions = |s: &crate::Side| crate::testing::navicust_expansions(&content, s);
         assert_eq!((expansions(s), expansions(&m.sides[1])), (Some(1), Some(2)));
-        // More ExpMemry than the board has sizes: said, the board kept.
+        // More ExpMemry than the board has sizes: the side states it, and the
+        // rules' `validate` says it is past the boards.
         image[0x3DB0 + 0x61] = 3;
-        let notes = m.import_save(&content, 0, &image).unwrap();
-        assert!(notes.iter().any(|n| n.contains("3 ExpMemry")), "{notes:?}");
-        assert_eq!(crate::testing::navicust_expansions(&content, &m.sides[0]), Some(1));
+        m.import_save(&content, 0, &image).unwrap();
+        assert_eq!(crate::testing::navicust_expansions(&content, &m.sides[0]), Some(3));
+        let problems = crate::check_match(&content, &m);
+        assert!(problems.iter().any(|p| p.contains("a NaviCust with 3 expansions")), "{problems:?}");
         let e = m.import_save(&content, 0, b"not a save").unwrap_err();
         assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
     }

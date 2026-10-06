@@ -1,353 +1,414 @@
-//! The NaviCust pane: a side's programs on the 7x7 grid as the game draws
-//! them (the board of its expansions, its frame, the command line), each in
-//! its color and shape, turned and compressed. What they give the navi (the
-//! stats and the bugs) is the rules' compile, shown as the round starts it;
-//! what's wrong (off the board, over another) the checks'.
+//! The NaviCust's pane: the editor's own view of a game's NaviCust, chosen
+//! by its data's names and shape (`crate::editor::layout`), never by a
+//! game's name. It is a grid where the data fit what it reads, all of it as
+//! data (nothing of the content is called):
 //!
-//! The grid is edited with the mouse as Tango's NaviCust editor is: a
-//! program is *held* and follows the cursor as a ghost, lit where it would
-//! land and red where it doesn't fit. A color swatch in the list picks one
-//! up; pressing a placed program picks it up off the grid, by the cell
-//! pressed. A click on the grid (or letting go of a drag over it) puts it
-//! down where it fits; letting go of a drag off the grid, right-clicking or
-//! Delete takes it off; Escape puts a program picked off the grid back. The
-//! wheel or R turns the held program, C compresses it. Right-clicking a
-//! placed program turns it where it is.
+//! - the setup's `navicust_expansions` (the board's size, by its place
+//!   among the boards) and `navicust_programs`, a list of `{ program,
+//!   color, x, y, rotation, compressed }` (`program` an entry of a
+//!   collection, `color` an enum of color names);
+//! - each program's data: its `shape` (rows of `#` and `.`, centered),
+//!   `compressed` (likewise, where it compresses), `colors` (names) and
+//!   `plus` (a plus part's mark);
+//! - the game's module `rules/navicust/board`, as it loaded
+//!   (`Battle::module_data`): its `boards` (rows of `o` a cell, `f` its
+//!   frame, `.` none) and `COMMAND_LINE` (a row, from 0).
+//!
+//! The colors are the editor's own, by name. Where a game's data don't fit,
+//! the programs are a list like any other (the layout's generic view).
+//!
+//! The grid is edited with the mouse as Tango's NaviCust editor is: a piece
+//! is *held* and follows the cursor as a ghost, lit where it would land and
+//! red where it doesn't fit. A color swatch in the list picks one up;
+//! pressing a placed piece picks it up off the grid, by the cell pressed. A
+//! click on the grid (or letting go of a drag over it) puts it down where it
+//! fits; letting go of a drag off the grid, right-clicking or Delete takes
+//! it off; Escape puts a piece picked off the grid back. The wheel or R
+//! turns the held piece. Right-clicking a placed piece turns it where it
+//! is. A piece fits where its cells are on the board (`o`) or its frame
+//! (`f`), not all on the frame, and over no other. A piece the rules'
+//! `validate` says something of is outlined red, with what they say below.
 
-use crate::editor::app::{Choice, Editor, Msg};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
+use crate::editor::app::{Editor, Msg};
+use crate::editor::facts::title;
+use crate::editor::layout::{FieldPane, Grid, Pane, Pick, View, element, record_field};
+use crate::editor::panes::{Edit, name_of, offered, values};
+use crate::editor::view::{DIM, RED};
 use iced::keyboard;
 use iced::mouse;
 use iced::widget::canvas::{self, Frame, Geometry, Path, Stroke};
-use iced::widget::{Column, button, canvas as canvas_widget, column, container, mouse_area, pick_list, row, scrollable, space, text, text_input};
+use iced::widget::{Column, button, canvas as canvas_widget, checkbox, column, container, mouse_area, row, scrollable, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Point, Rectangle, Renderer, Size, Theme, Vector};
-use nettai_battle::Content;
-use nettai_battle::content::{Board, BoardCell, NaviCustRules};
-use nettai_battle::navicust::{SIZE, Shape, cells};
-use nettai_content_api::EntryHandle as NaviCustProgramHandle;
+use nettai_battle::content::Content;
+use nettai_content_api::{FieldType, Registry};
 use nettai_match::Side;
+use nettai_match::facts::Stated;
 
-// ---- The programs' data ----------------------------------------------------------------
-//
-// (Until the editor draws a side's facts by the views its rules declare, it
-// reads the programs' shapes and colors from their data, the game's root's
-// `navicust_programs`.)
+/// A shape: rows of cells, `true` a cell it covers, its center the middle
+/// cell.
+pub type Shape = Vec<Vec<bool>>;
 
-/// The game's collection of NaviCust programs (its root's key).
-pub const PROGRAMS: &str = "navicust_programs";
+/// The setup fields the grid edits, and the record's fields it reads.
+const SIZE_FIELD: &str = "navicust_expansions";
+const PROGRAMS_FIELD: &str = "navicust_programs";
 
-/// An entry's data (one of the game's collections').
-pub fn entry_data(c: &Content, h: NaviCustProgramHandle) -> &nettai_content_api::Data {
-    let key = &c.defs.entry(h).key;
-    c.defs.definitions.get(nettai_content_api::Registry::Entry, key).map(|d| &d.spec).unwrap_or(&nettai_content_api::Data::Nil)
-}
+/// The colors a program comes in, by name (the editor's own).
+const PALETTE: [(&str, u32); 6] =
+    [("white", 0xDEDEDE), ("pink", 0xF08CC8), ("yellow", 0xF0D840), ("red", 0xE85048), ("blue", 0x4C8CF0), ("green", 0x58C858)];
 
-/// A whole number of an entry's data, 0 without one.
-pub fn entry_int(c: &Content, h: NaviCustProgramHandle, field: &str) -> i64 {
-    entry_data(c, h).field(field).int().unwrap_or(0)
-}
-
-/// Program `h`'s colors (in its variants' order), as its data names them.
-pub fn program_colors(c: &Content, h: NaviCustProgramHandle) -> Vec<&str> {
-    match entry_data(c, h).field("colors") {
-        nettai_content_api::Data::List(l) => l.iter().filter_map(|x| x.str()).collect(),
-        _ => Vec::new(),
-    }
-}
-
-/// What the board draws of a program: its colors, whether it is a plus
-/// part, its shape and its compressed one.
-pub struct Program {
-    pub key: String,
-    pub colors: Vec<String>,
-    pub plus: bool,
-    pub shape: nettai_battle::navicust::Shape,
-    pub compressed: Option<nettai_battle::navicust::Shape>,
-}
-
-impl Program {
-    /// Its shape as placed: compressed or not, turned.
-    pub fn placed_shape(&self, compressed: bool, rotation: u8) -> nettai_battle::navicust::Shape {
-        let s = if compressed { self.compressed.as_ref().unwrap_or(&self.shape) } else { &self.shape };
-        nettai_battle::navicust::rotate(s, rotation)
-    }
-}
-
-/// Program `h`'s data, read.
-pub fn program_of(c: &Content, h: NaviCustProgramHandle) -> Program {
-    use nettai_content_api::Data;
-    let d = entry_data(c, h);
-    let colors = match d.field("colors") {
-        Data::List(l) => l.iter().filter_map(|x| x.str().map(str::to_string)).collect(),
-        _ => Vec::new(),
-    };
-    let shape = |f: &str| nettai_battle::navicust::read_shape(d.field(f)).ok();
-    Program {
-        key: c.defs.entry(h).key.clone(),
-        colors,
-        plus: *d.field("plus") == Data::Bool(true),
-        shape: shape("shape").unwrap_or_default(),
-        compressed: shape("compressed"),
-    }
-}
-
-/// A cell's size on the screen.
-const CELL: f32 = 46.0;
-
-/// What the pane keeps of its own: the program held (picked up to place),
-/// the one last placed (its colors and the like shown beside the grid),
-/// the list's search, and whether the stats-and-bugs block is shown in
-/// place of the grid.
+/// What the grid reads of a game's NaviCust: its boards, its command line,
+/// and its programs' shapes (by whether compressed), colors and plus marks.
 #[derive(Clone, Debug, Default)]
-pub struct State {
+pub struct Data {
+    pub boards: Vec<Vec<Vec<u8>>>,
+    pub command_line: Option<usize>,
+    pub shapes: HashMap<(u16, Vec<bool>), Shape>,
+    pub colors: HashMap<u16, Vec<String>>,
+    pub plus: HashSet<u16>,
+}
+
+/// Rows of a shape or a board, from data of strings, each of `cells` alone.
+fn rows(d: &nettai_content_api::Data, cells: &[u8]) -> Option<Vec<Vec<u8>>> {
+    let nettai_content_api::Data::List(items) = d else { return None };
+    let rows: Vec<Vec<u8>> = items.iter().map(|r| r.str().map(|s| s.bytes().collect())).collect::<Option<_>>()?;
+    let n = rows.first()?.len();
+    rows.iter().all(|r| r.len() == n && r.iter().all(|b| cells.contains(b))).then_some(rows)
+}
+
+/// A shape from its rows of `#` and `.`.
+fn shape(rows: &[Vec<u8>]) -> Shape {
+    rows.iter().map(|r| r.iter().map(|&b| b == b'#').collect()).collect()
+}
+
+/// What the grid reads of `game`'s NaviCust (its board module from a round
+/// of a random match of it, one that starts), or none where its data don't
+/// fit the grid.
+pub fn read(content: &Arc<Content>, game: &str) -> Option<Data> {
+    // The setup's fields.
+    let field = |name: &str| nettai_match::facts::field(content, name).map(|f| f.ty.clone());
+    let FieldType::Record(fields) = element(&field(PROGRAMS_FIELD)?).clone() else { return None };
+    let ty = |name: &str| fields.index_of(name).map(|i| fields.field(i).ty.clone());
+    let Some(FieldType::Ref(Registry::Entry, Some(collection))) = ty("program") else { return None };
+    let number = |name: &str| ty(name).is_some_and(|t| nettai_match::facts::range(&t).is_some());
+    if !(number("x") && number("y") && number("rotation") && matches!(ty("color"), Some(FieldType::Enum(_))) && ty("compressed") == Some(FieldType::Bool)) {
+        return None;
+    }
+    field(SIZE_FIELD)?;
+    // The board module.
+    let m = nettai_match::pick::live(content, game, 0, None).ok()?;
+    let module = nettai_match::check::start(content, &m).ok()?.module_data(&format!("{game}:rules/navicust/board"))?.ok()?;
+    let nettai_content_api::Data::List(boards) = module.field("boards") else { return None };
+    let boards: Vec<Vec<Vec<u8>>> = boards.iter().map(|b| rows(b, b"of.")).collect::<Option<_>>()?;
+    if boards.is_empty() {
+        return None;
+    }
+    let mut data = Data { boards, command_line: module.field("COMMAND_LINE").int().map(|r| r as usize), ..Data::default() };
+    // The programs.
+    for h in content.defs.entries_of(&collection) {
+        let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key)?;
+        let plain = rows(d.spec.field("shape"), b"#.")?;
+        let compressed = match d.spec.field("compressed") {
+            nettai_content_api::Data::Nil => plain.clone(),
+            c => rows(c, b"#.")?,
+        };
+        data.shapes.insert((h.0, vec![false]), shape(&plain));
+        data.shapes.insert((h.0, vec![true]), shape(&compressed));
+        let nettai_content_api::Data::List(colors) = d.spec.field("colors") else { return None };
+        data.colors.insert(h.0, colors.iter().map(|c| c.str().map(str::to_string)).collect::<Option<_>>()?);
+        if d.spec.field("plus") == &nettai_content_api::Data::Bool(true) {
+            data.plus.insert(h.0);
+        }
+    }
+    Some(data)
+}
+
+/// A board's size as it shows: its cells' columns by rows (`5x4`).
+fn size(board: &[Vec<u8>]) -> String {
+    let rows = board.iter().filter(|r| r.contains(&b'o')).count();
+    let columns = (0..board.first().map_or(0, Vec::len)).filter(|&x| board.iter().any(|r| r[x] == b'o')).count();
+    format!("{columns}x{rows}")
+}
+
+/// The NaviCust's pane: the board's size, a pick of the boards; the
+/// programs placed, a grid.
+pub fn pane(_content: &Content, data: &Data) -> Option<Pane> {
+    let choices = data.boards.iter().enumerate().map(|(i, b)| (i as i64, size(b))).collect();
+    let grid = Grid {
+        piece: "program".into(),
+        x: "x".into(),
+        y: "y".into(),
+        rotation: "rotation".into(),
+        color: "color".into(),
+        toggles: vec!["compressed".into()],
+        size: SIZE_FIELD.into(),
+    };
+    Some(Pane {
+        key: "navicust".into(),
+        title: "NaviCust".into(),
+        fields: vec![
+            FieldPane { field: SIZE_FIELD.into(), label: "Board".into(), view: View::Pick(Pick { choices }), path: SIZE_FIELD.into() },
+            FieldPane { field: PROGRAMS_FIELD.into(), label: "Programs".into(), view: View::Grid(grid), path: PROGRAMS_FIELD.into() },
+        ],
+    })
+}
+
+/// What a side's grid shows: the board of its size, and the programs'
+/// shapes, colors and marks.
+#[derive(Clone, Debug, Default)]
+pub struct Look {
+    pub board: Option<Vec<Vec<u8>>>,
+    pub shapes: HashMap<(u16, Vec<bool>), Shape>,
+    pub colors: HashMap<u16, Vec<String>>,
+    pub badges: HashMap<u16, String>,
+}
+
+/// The grid's look for side `side`.
+pub fn look(data: Option<&Data>, content: &Content, side: &Side, grid: &Grid) -> Look {
+    let Some(d) = data else { return Look::default() };
+    let size = match side.facts.get(content, &grid.size) {
+        Some(Stated::Optional(Some(n)) | Stated::Number(n)) => Some(n as usize),
+        _ => None,
+    };
+    Look {
+        board: size.and_then(|n| d.boards.get(n).cloned()),
+        shapes: d.shapes.clone(),
+        colors: d.colors.clone(),
+        badges: d.plus.iter().map(|&h| (h, "+".to_string())).collect(),
+    }
+}
+
+// ---- What a grid keeps, and its edits ------------------------------------------------
+
+#[derive(Clone, Debug)]
+pub enum GridEdit {
+    /// A piece picked up from the list, in one of its colors.
+    Hold(u16, u8),
+    /// The placed piece at this place in the list picked up by this cell.
+    PickUp(usize, i32, i32),
+    /// The held piece put down with its center on this cell.
+    Place(i32, i32),
+    PutBack,
+    RotateAt(usize),
+    /// The held piece, else the selected one: turned, a toggle set, its
+    /// color, moved a cell, taken off.
+    Rotate,
+    Toggle(usize, bool),
+    Color(u8),
+    Nudge(i32, i32),
+    Remove,
+}
+
+/// What a grid keeps of its own: the piece held, the one last placed, the
+/// list's search.
+#[derive(Clone, Debug, Default)]
+pub struct GridState {
     pub held: Option<Held>,
     pub selected: Option<usize>,
     pub search: String,
-    pub show_stats: bool,
 }
 
-/// A program picked up: what it is and how it is turned and compressed,
-/// the cell of it the cursor holds (as an offset from its center, so that
-/// cell stays under the cursor), and where it was on the grid if it was
-/// picked off it (its place in the list and the program as it was).
-#[derive(Clone, Copy, Debug)]
-pub struct Held {
-    pub program: NaviCustProgramHandle,
-    pub color: u8,
-    pub rotation: u8,
-    pub compressed: bool,
-    pub grab: (i32, i32),
-    pub origin: Option<(usize, PlacedProgram)>,
-}
-
+/// A piece picked up: which, its color's place in its colors, its turns,
+/// its toggles, the cell of it the cursor holds (from its center), and the
+/// record it was on the grid if it was picked off it (its place).
 #[derive(Clone, Debug)]
-pub enum Edit {
-    /// Show what the programs make of the stats (the round's) in place of
-    /// the grid, or the grid.
-    ShowStats(bool),
-    Expansions(u8),
-    /// A program picked up from the list, in one of its colors.
-    Hold(NaviCustProgramHandle, u8),
-    /// The placed program at this place in the list picked up by the cell
-    /// pressed.
-    PickUp(usize, u8, u8),
-    /// The held program put down with its center on this cell.
-    Place(u8, u8),
-    /// The held program put back where it was picked up from.
-    PutBack,
-    /// The placed program at this place in the list turned where it is.
-    RotateAt(usize),
-    /// The held program, else the last placed: turned, compressed,
-    /// recolored, moved a cell, taken off.
-    Rotate,
-    Compress(bool),
-    Color(u8),
-    Move(i8, i8),
-    Remove,
-    Search(String),
-}
-
-/// A program color's look (the NaviCust's, as Tango draws them).
-fn color(name: &str) -> Color {
-    let (r, g, b) = match name {
-        "white" => (0xDE, 0xDE, 0xDE),
-        "yellow" => (0xDE, 0xDE, 0x00),
-        "pink" => (0xDE, 0x8C, 0xC6),
-        "red" => (0xDE, 0x10, 0x00),
-        "blue" => (0x29, 0x84, 0xDE),
-        "green" => (0x18, 0xC6, 0x00),
-        "orange" => (0xDE, 0x7B, 0x00),
-        "purple" => (0x94, 0x00, 0xCE),
-        _ => (0x84, 0x84, 0x84),
-    };
-    Color::from_rgb8(r, g, b)
-}
-
-/// A program on the grid, as the pane edits it: an entry of the side's
-/// `navicust_programs` (its color by its place in the definition's
-/// `colors`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PlacedProgram {
-    pub program: NaviCustProgramHandle,
+pub struct Held {
+    pub piece: u16,
     pub color: u8,
-    pub x: u8,
-    pub y: u8,
     pub rotation: u8,
-    pub compressed: bool,
+    pub toggles: Vec<bool>,
+    pub grab: (i32, i32),
+    pub origin: Option<(usize, Stated)>,
 }
 
-/// The side's NaviCust (its rules' `navicust_expansions` and
-/// `navicust_programs`): its board's expansions and its programs; none
-/// where it states no board.
-pub fn navicust_of(content: &Content, side: &Side) -> Option<(u8, Vec<PlacedProgram>)> {
-    use nettai_content_api::{FieldValue, Registry};
-    use nettai_match::facts::Stated;
-    let expansions = match side.facts.fact(content, "navicust_expansions")?.value() {
-        FieldValue::OptionalU8(n) => n?,
-        _ => return None,
-    };
-    let Some(Stated::List(items)) = side.facts.get(content, "navicust_programs") else { return Some((expansions, Vec::new())) };
-    let parts = items
+// ---- The grid's edits -----------------------------------------------------------------
+
+/// A grid's piece placed: which, its center, its turns, its color (by
+/// name), its toggles; and its record as read, for the fields the view
+/// doesn't name.
+#[derive(Clone, Debug)]
+pub struct Placed {
+    pub piece: u16,
+    pub x: i32,
+    pub y: i32,
+    pub rotation: u8,
+    pub color: Option<String>,
+    pub toggles: Vec<bool>,
+    pub record: Stated,
+}
+
+/// The pieces a grid's list holds.
+pub fn placed(c: &Content, side: &Side, field: &str, grid: &Grid) -> Vec<Placed> {
+    let Some(Stated::List(items)) = side.facts.get(c, field) else { return Vec::new() };
+    items
         .iter()
         .filter_map(|item| {
             let Stated::Record(fields) = item else { return None };
-            let get = |name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v);
-            let program = match get("program")? {
-                Stated::Def(Registry::Entry, Some(h)) => NaviCustProgramHandle(*h),
-                _ => return None,
-            };
-            let number = |name: &str| match get(name) {
-                Some(Stated::Number(n)) => *n as u8,
+            let get = |n: &str| fields.iter().find(|(k, _)| k == n).map(|(_, v)| v);
+            let int = |n: &str| match get(n) {
+                Some(Stated::Number(v)) => *v,
                 _ => 0,
             };
-            let color = match get("color")? {
-                Stated::Variant(Some(name)) => program_of(content, program).colors.iter().position(|c| c == name).unwrap_or(0) as u8,
-                _ => 0,
+            let Some(Stated::Def(_, Some(piece))) = get(&grid.piece) else { return None };
+            Some(Placed {
+                piece: *piece,
+                x: int(&grid.x) as i32,
+                y: int(&grid.y) as i32,
+                rotation: int(&grid.rotation) as u8,
+                color: get(&grid.color).and_then(|v| if let Stated::Variant(n) = v { n.clone() } else { None }),
+                toggles: grid.toggles.iter().map(|t| matches!(get(t), Some(Stated::Flag(true)))).collect(),
+                record: item.clone(),
+            })
+        })
+        .collect()
+}
+
+/// A placed piece's record: its read record with the view's fields set.
+fn record_of(p: &Placed, grid: &Grid, registry: Registry) -> Stated {
+    let mut fields = match &p.record {
+        Stated::Record(f) => f.clone(),
+        _ => Vec::new(),
+    };
+    let mut set = |name: &str, v: Stated| match fields.iter_mut().find(|(k, _)| k == name) {
+        Some((_, x)) => *x = v,
+        None => fields.push((name.to_string(), v)),
+    };
+    set(&grid.piece, Stated::Def(registry, Some(p.piece)));
+    set(&grid.x, Stated::Number(p.x as i64));
+    set(&grid.y, Stated::Number(p.y as i64));
+    set(&grid.rotation, Stated::Number(p.rotation as i64));
+    set(&grid.color, Stated::Variant(p.color.clone()));
+    for (t, on) in grid.toggles.iter().zip(&p.toggles) {
+        set(t, Stated::Flag(*on));
+    }
+    Stated::Record(fields)
+}
+
+/// `shape` turned a quarter clockwise `rotation` times about its center.
+pub fn rotate(shape: &Shape, rotation: u8) -> Shape {
+    let n = shape.len();
+    if n == 0 {
+        return Vec::new();
+    }
+    let m = n - 1;
+    let mut out = vec![vec![false; n]; n];
+    for (y, row) in shape.iter().enumerate() {
+        for (x, &cell) in row.iter().enumerate().take(n) {
+            let (oy, ox) = match rotation & 3 {
+                0 => (y, x),
+                1 => (x, m - y),
+                2 => (m - y, m - x),
+                _ => (m - x, y),
             };
-            let compressed = matches!(get("compressed"), Some(Stated::Flag(true)));
-            Some(PlacedProgram { program, color, x: number("x"), y: number("y"), rotation: number("rotation"), compressed })
-        })
-        .collect();
-    Some((expansions, parts))
-}
-
-/// State the side's NaviCust: `parts` on the board of `expansions`.
-fn set(content: &Content, side: &mut Side, parts: Vec<PlacedProgram>, expansions: u8) {
-    use nettai_battle::rules::Fact;
-    use nettai_content_api::{Registry, Value};
-    let records: Vec<Fact> = parts
-        .iter()
-        .map(|p| {
-            let color = program_colors(content, p.program).get(p.color as usize).copied().unwrap_or("white");
-            Fact::Record(vec![
-                ("program", Fact::Value(Value::Def(Registry::Entry, p.program.0))),
-                ("color", Fact::Name(color)),
-                ("x", Fact::Value(Value::Int(p.x as i64))),
-                ("y", Fact::Value(Value::Int(p.y as i64))),
-                ("rotation", Fact::Value(Value::Int(p.rotation as i64))),
-                ("compressed", Fact::Value(Value::Bool(p.compressed))),
-            ])
-        })
-        .collect();
-    let mut facts = side.facts.clone();
-    let written = facts
-        .set(content, "navicust_programs", &records)
-        .and_then(|()| facts.set(content, "navicust_expansions", &[Fact::Value(Value::Int(expansions as i64))]));
-    if written.is_ok() {
-        side.facts = facts;
+            out[oy][ox] = cell;
+        }
     }
+    out
 }
 
-/// Start a grid of programs on a side that places none yet: the largest
-/// board.
-fn start_grid(content: &Content, side: &mut Side, largest: u8) {
-    set(content, side, Vec::new(), largest);
+/// The cells `shape` covers with its center on (x, y).
+pub fn cells(shape: &Shape, x: i32, y: i32) -> Vec<(i32, i32)> {
+    let c = (shape.len() / 2) as i32;
+    let mut out = Vec::new();
+    for (j, row) in shape.iter().enumerate() {
+        for (i, &on) in row.iter().enumerate() {
+            if on {
+                out.push((x - c + i as i32, y - c + j as i32));
+            }
+        }
+    }
+    out
 }
 
-/// Whether `shape` can go down with its center on (x, y): on the board
-/// (`NaviCustRules::fits`) and over no other program.
-fn fits(content: &Content, board: Option<&Board>, parts: &[PlacedProgram], shape: &Shape, x: i32, y: i32) -> bool {
-    let n = SIZE as i32;
-    if !(0..n).contains(&x) || !(0..n).contains(&y) {
+/// A piece's shape as placed: its toggles', turned.
+fn shape_of(answers: &Look, piece: u16, toggles: &[bool], rotation: u8) -> Shape {
+    answers.shapes.get(&(piece, toggles.to_vec())).map_or_else(Vec::new, |s| rotate(s, rotation))
+}
+
+/// Whether `shape` fits with its center on (x, y): its cells on the board
+/// or its margin, not all on the margin, and over none of `others`'.
+fn fits(answers: &Look, others: &[Placed], shape: &Shape, x: i32, y: i32) -> bool {
+    let Some(board) = &answers.board else { return false };
+    let cs = cells(shape, x, y);
+    let at = |(cx, cy): (i32, i32)| board.get(cy as usize).and_then(|r| r.get(cx as usize)).copied().filter(|_| cx >= 0 && cy >= 0);
+    if cs.is_empty() || cs.iter().any(|&c| !matches!(at(c), Some(b'o' | b'f'))) || cs.iter().all(|&c| at(c) == Some(b'f')) {
         return false;
     }
-    let Some(board) = board else { return false };
-    if !NaviCustRules::fits(board, shape, x as u8, y as u8) {
-        return false;
-    }
-    let taken: std::collections::HashSet<(i32, i32)> = parts
-        .iter()
-        .flat_map(|p| cells(&program_of(content, p.program).placed_shape(p.compressed, p.rotation), p.x, p.y).collect::<Vec<_>>())
-        .collect();
-    cells(shape, x as u8, y as u8).all(|c| !taken.contains(&c))
+    let taken: std::collections::HashSet<(i32, i32)> =
+        others.iter().flat_map(|p| cells(&shape_of(answers, p.piece, &p.toggles, p.rotation), p.x, p.y)).collect();
+    cs.iter().all(|c| !taken.contains(c))
 }
 
-/// Apply an edit to a side of a match of `game`; whether the match
-/// changed.
-pub fn update(content: &Content, _game: &str, side: &mut Side, state: &mut State, edit: Edit) -> bool {
-    let rules = nettai_match::navicust_rules(content).clone();
-    let largest = rules.boards.len().saturating_sub(1) as u8;
-    match edit {
-        Edit::ShowStats(on) => {
-            state.show_stats = on;
-            return false;
-        }
-        Edit::Search(t) => {
-            state.search = t;
-            return false;
-        }
-        Edit::Place(..) | Edit::Expansions(_) if navicust_of(content, side).is_none() => start_grid(content, side, largest),
-        _ => {}
-    }
-    let had = navicust_of(content, side);
-    let expansions = had.as_ref().map_or(largest, |n| n.0);
-    let mut parts: Vec<PlacedProgram> = had.map(|n| n.1).unwrap_or_default();
+#[allow(clippy::too_many_arguments)]
+pub fn grid_edit(c: &Content, side: &mut Side, field: &str, ty: &FieldType, grid: &Grid, answers: &Look, state: &mut GridState, edit: GridEdit) -> bool {
+    let Some(FieldType::Ref(registry, _)) = record_field(ty, &grid.piece).cloned() else { return false };
+    let mut parts = placed(c, side, field, grid);
     let mut changed = false;
+    let colors = |h: u16| answers.colors.get(&h).cloned().unwrap_or_default();
+    let blank = || Stated::Record(Vec::new());
     match edit {
-        Edit::Expansions(x) => {
-            set(content, side, parts, x);
-            return true;
-        }
-        Edit::Hold(program, color) => {
-            // The list's program held again is let go (as Tango's palette).
-            if state.held.is_some_and(|h| h.origin.is_none() && h.program == program && h.color == color) {
+        GridEdit::Hold(piece, color) => {
+            if state.held.as_ref().is_some_and(|h| h.origin.is_none() && h.piece == piece && h.color == color) {
                 state.held = None;
                 return false;
             }
-            // One picked off the grid goes back first.
-            if let Some((i, p)) = state.held.take().and_then(|h| h.origin) {
-                parts.insert(i.min(parts.len()), p);
-                changed = true;
+            if let Some((i, record)) = state.held.take().and_then(|h| h.origin) {
+                let back = placed_of(c, &record, grid);
+                if let Some(b) = back {
+                    parts.insert(i.min(parts.len()), b);
+                    changed = true;
+                }
             }
-            // Compressed as its copies in that color are (a save keeps one
-            // flag for them).
-            let compressed = parts.iter().find(|p| p.program == program && p.color == color).is_some_and(|p| p.compressed);
-            state.held = Some(Held { program, color, rotation: 0, compressed, grab: (0, 0), origin: None });
+            state.held = Some(Held { piece, color, rotation: 0, toggles: vec![false; grid.toggles.len()], grab: (0, 0), origin: None });
             if !changed {
                 return false;
             }
         }
-        Edit::PickUp(i, x, y) => {
+        GridEdit::PickUp(i, x, y) => {
             if i >= parts.len() {
                 return false;
             }
             let p = parts.remove(i);
+            let color = p.color.as_ref().and_then(|n| colors(p.piece).iter().position(|x| x == n)).unwrap_or(0) as u8;
             state.held = Some(Held {
-                program: p.program,
-                color: p.color,
+                piece: p.piece,
+                color,
                 rotation: p.rotation,
-                compressed: p.compressed,
-                grab: (x as i32 - p.x as i32, y as i32 - p.y as i32),
-                origin: Some((i, p)),
+                toggles: p.toggles.clone(),
+                grab: (x - p.x, y - p.y),
+                origin: Some((i, record_of(&p, grid, registry))),
             });
             state.selected = None;
         }
-        Edit::Place(x, y) => {
-            let Some(h) = state.held else { return false };
-            let shape = program_of(content, h.program).placed_shape(h.compressed, h.rotation);
-            if !fits(content, rules.board(expansions), &parts, &shape, x as i32, y as i32) {
+        GridEdit::Place(x, y) => {
+            let Some(h) = state.held.clone() else { return false };
+            let shape = shape_of(answers, h.piece, &h.toggles, h.rotation);
+            if !fits(answers, &parts, &shape, x, y) {
                 return false;
             }
-            for p in parts.iter_mut().filter(|p| p.program == h.program && p.color == h.color) {
-                p.compressed = h.compressed;
-            }
-            parts.push(PlacedProgram { program: h.program, color: h.color, x, y, rotation: h.rotation, compressed: h.compressed });
+            let record = h.origin.as_ref().map_or_else(blank, |(_, r)| r.clone());
+            let color = colors(h.piece).get(h.color as usize).cloned();
+            parts.push(Placed { piece: h.piece, x, y, rotation: h.rotation, color, toggles: h.toggles.clone(), record });
             state.selected = Some(parts.len() - 1);
             state.held = None;
         }
-        Edit::PutBack => {
+        GridEdit::PutBack => {
             let Some(h) = state.held.take() else { return false };
-            let Some((i, p)) = h.origin else { return false };
+            let Some((i, record)) = h.origin else { return false };
+            let Some(p) = placed_of(c, &record, grid) else { return false };
             parts.insert(i.min(parts.len()), p);
             state.selected = Some(i.min(parts.len() - 1));
         }
-        Edit::RotateAt(i) => {
+        GridEdit::RotateAt(i) => {
             let Some(p) = parts.get_mut(i) else { return false };
             p.rotation = (p.rotation + 1) % 4;
             state.selected = Some(i);
         }
-        Edit::Rotate => {
+        GridEdit::Rotate => {
             if let Some(h) = state.held.as_mut() {
-                // The held cell turns with the program (a quarter clockwise).
+                // (The held cell turns with the piece.)
                 h.rotation = (h.rotation + 1) % 4;
                 h.grab = (-h.grab.1, h.grab.0);
                 return false;
@@ -355,87 +416,110 @@ pub fn update(content: &Content, _game: &str, side: &mut Side, state: &mut State
             let Some(p) = state.selected.and_then(|i| parts.get_mut(i)) else { return false };
             p.rotation = (p.rotation + 1) % 4;
         }
-        Edit::Compress(on) => {
+        GridEdit::Toggle(k, on) => {
             if let Some(h) = state.held.as_mut() {
-                if program_of(content, h.program).compressed.is_some() {
-                    h.compressed = on;
-                    // Its shape is another: held by its center.
+                if let Some(t) = h.toggles.get_mut(k) {
+                    *t = on;
+                    // (Its shape is another: held by its center.)
                     h.grab = (0, 0);
                 }
                 return false;
             }
-            let Some(i) = state.selected.filter(|&i| i < parts.len()) else { return false };
-            // A save compresses every copy of a program in one color.
-            let (program, color) = (parts[i].program, parts[i].color);
-            for p in parts.iter_mut().filter(|p| p.program == program && p.color == color) {
-                p.compressed = on;
-            }
+            let Some(p) = state.selected.and_then(|i| parts.get_mut(i)) else { return false };
+            let Some(t) = p.toggles.get_mut(k) else { return false };
+            *t = on;
         }
-        Edit::Color(c) => {
+        GridEdit::Color(k) => {
             if let Some(h) = state.held.as_mut() {
-                h.color = c;
+                h.color = k;
                 return false;
             }
             let Some(p) = state.selected.and_then(|i| parts.get_mut(i)) else { return false };
-            p.color = c;
+            p.color = colors(p.piece).get(k as usize).cloned();
         }
-        Edit::Move(dx, dy) => {
+        GridEdit::Nudge(dx, dy) => {
+            let n = answers.board.as_ref().map_or(0, |b| b.len() as i32);
             let Some(p) = state.selected.and_then(|i| parts.get_mut(i)) else { return false };
-            p.x = (p.x as i8 + dx).clamp(0, SIZE as i8 - 1) as u8;
-            p.y = (p.y as i8 + dy).clamp(0, SIZE as i8 - 1) as u8;
+            p.x = (p.x + dx).clamp(0, (n - 1).max(0));
+            p.y = (p.y + dy).clamp(0, (n - 1).max(0));
         }
-        Edit::Remove => {
-            // The held program is taken off (it left the grid when picked up).
+        GridEdit::Remove => {
             if state.held.take().is_some() {
                 return false;
             }
             let Some(i) = state.selected.take().filter(|&i| i < parts.len()) else { return false };
             parts.remove(i);
         }
-        Edit::ShowStats(_) | Edit::Search(_) => unreachable!(),
     }
-    if navicust_of(content, side).is_none() {
-        return changed;
-    }
-    set(content, side, parts, expansions);
-    true
+    let list = Stated::List(parts.iter().map(|p| record_of(p, grid, registry)).collect());
+    side.set_fact(c, field, &values(&list)).is_ok()
 }
 
-/// A placed program as the grid draws it.
+/// A record read back as a placed piece.
+fn placed_of(c: &Content, record: &Stated, grid: &Grid) -> Option<Placed> {
+    let _ = c;
+    let Stated::Record(fields) = record else { return None };
+    let get = |n: &str| fields.iter().find(|(k, _)| k == n).map(|(_, v)| v);
+    let int = |n: &str| match get(n) {
+        Some(Stated::Number(v)) => *v,
+        _ => 0,
+    };
+    let Some(Stated::Def(_, Some(piece))) = get(&grid.piece) else { return None };
+    Some(Placed {
+        piece: *piece,
+        x: int(&grid.x) as i32,
+        y: int(&grid.y) as i32,
+        rotation: int(&grid.rotation) as u8,
+        color: get(&grid.color).and_then(|v| if let Stated::Variant(n) = v { n.clone() } else { None }),
+        toggles: grid.toggles.iter().map(|t| matches!(get(t), Some(Stated::Flag(true)))).collect(),
+        record: record.clone(),
+    })
+}
+
+// ---- The grid, drawn ------------------------------------------------------------------
+
+/// A cell's size on screen.
+const CELL: f32 = 44.0;
+
+/// A color by name: the palette's, else gray.
+fn color_of(name: Option<&str>) -> Color {
+    let rgb = name.and_then(|n| PALETTE.iter().find(|(k, _)| *k == n)).map_or(0x909090, |(_, c)| *c);
+    Color::from_rgb8((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
+}
+
+/// A placed piece as the grid draws it.
 struct Part {
     cells: Vec<(i32, i32)>,
     color: Color,
-    plus: bool,
+    badge: Option<String>,
     picked: bool,
+    /// The rules say something of it.
+    bad: bool,
 }
 
-/// The held program as the grid draws and puts it down.
+/// The held piece as the grid draws and puts it down.
 struct Ghost {
     shape: Shape,
     grab: (i32, i32),
     color: Color,
-    plus: bool,
-    compressible: bool,
-    compressed: bool,
+    badge: Option<String>,
 }
 
 /// The grid, drawn, with the mouse on it.
-struct Grid<'a> {
-    content: &'a Content,
-    board: Option<Board>,
-    command_line: u8,
-    placed: Vec<PlacedProgram>,
+struct Canvas {
+    board: Vec<Vec<u8>>,
+    rows_of_note: Vec<usize>,
+    answers: Look,
+    placed: Vec<Placed>,
     parts: Vec<Part>,
-    /// Which program covers each cell (the last placed on top, as the grid
-    /// keeps it).
-    occupied: [[Option<usize>; SIZE]; SIZE],
+    occupied: HashMap<(i32, i32), usize>,
     held: Option<Ghost>,
     side: usize,
+    path: String,
 }
 
-/// What the grid keeps between events: the cell under the cursor, the
-/// cell a press on the grid began on (a drag's start), and a trackpad's
-/// scrolling toward the next turn.
+/// What the grid keeps between events: the cell under the cursor, the cell
+/// a press began on, and a trackpad's scrolling toward the next turn.
 #[derive(Default)]
 struct Pointer {
     hovered: Option<(i32, i32)>,
@@ -443,36 +527,32 @@ struct Pointer {
     scrolled: f32,
 }
 
-/// A trackpad's scrolling that turns the held program once.
+/// A trackpad's scrolling that turns the held piece once.
 const SCROLL_PER_TURN: f32 = 40.0;
 
-impl Grid<'_> {
-    fn cell(p: Point) -> Option<(i32, i32)> {
+impl Canvas {
+    fn n(&self) -> i32 {
+        self.board.len() as i32
+    }
+
+    fn cell(&self, p: Point) -> Option<(i32, i32)> {
         let (x, y) = ((p.x / CELL).floor() as i32, (p.y / CELL).floor() as i32);
-        let n = SIZE as i32;
-        ((0..n).contains(&x) && (0..n).contains(&y)).then_some((x, y))
+        ((0..self.n()).contains(&x) && (0..self.n()).contains(&y)).then_some((x, y))
     }
 
-    fn at(&self, (x, y): (i32, i32)) -> Option<usize> {
-        self.occupied.get(y as usize)?.get(x as usize).copied().flatten()
-    }
-
-    /// Where the held program's center goes with the held cell on `cell`,
-    /// and whether it fits there.
     fn landing(&self, cell: (i32, i32)) -> Option<((i32, i32), bool)> {
         let g = self.held.as_ref()?;
         let (x, y) = (cell.0 - g.grab.0, cell.1 - g.grab.1);
-        Some(((x, y), fits(self.content, self.board.as_ref(), &self.placed, &g.shape, x, y)))
+        Some(((x, y), fits(&self.answers, &self.placed, &g.shape, x, y)))
     }
 
-    fn msg(&self, edit: Edit) -> canvas::Action<Msg> {
-        canvas::Action::publish(Msg::NaviCust(self.side, edit)).and_capture()
+    fn msg(&self, edit: GridEdit) -> canvas::Action<Msg> {
+        canvas::Action::publish(Msg::Pane(self.side, self.path.clone(), Edit::Grid(edit))).and_capture()
     }
 
-    /// The held program put down with the held cell on `cell`, if it fits.
     fn place(&self, cell: (i32, i32)) -> Option<canvas::Action<Msg>> {
         match self.landing(cell)? {
-            ((x, y), true) => Some(self.msg(Edit::Place(x as u8, y as u8))),
+            ((x, y), true) => Some(self.msg(GridEdit::Place(x, y))),
             _ => None,
         }
     }
@@ -482,70 +562,76 @@ fn cell_origin(x: i32, y: i32) -> Point {
     Point::new(x as f32 * CELL, y as f32 * CELL)
 }
 
-fn plus_mark(frame: &mut Frame, x: i32, y: i32, color: Color) {
-    let mid = cell_origin(x, y) + Vector::new(CELL / 2.0, CELL / 2.0);
-    let mark = Path::new(|p| {
-        p.move_to(mid + Vector::new(-8.0, 0.0));
-        p.line_to(mid + Vector::new(8.0, 0.0));
-        p.move_to(mid + Vector::new(0.0, -8.0));
-        p.line_to(mid + Vector::new(0.0, 8.0));
-    });
-    frame.stroke(&mark, Stroke::default().with_color(color).with_width(3.0));
-}
-
 fn outline(frame: &mut Frame, x: i32, y: i32, inset: f32, color: Color, width: f32) {
     let r = Path::rectangle(cell_origin(x, y) + Vector::new(inset, inset), Size::new(CELL - 2.0 * inset, CELL - 2.0 * inset));
     frame.stroke(&r, Stroke::default().with_color(color).with_width(width));
 }
 
-impl canvas::Program<Msg> for Grid<'_> {
+fn badge(frame: &mut Frame, x: i32, y: i32, mark: &str, color: Color) {
+    if mark == "+" {
+        let mid = cell_origin(x, y) + Vector::new(CELL / 2.0, CELL / 2.0);
+        let path = Path::new(|p| {
+            p.move_to(mid + Vector::new(-8.0, 0.0));
+            p.line_to(mid + Vector::new(8.0, 0.0));
+            p.move_to(mid + Vector::new(0.0, -8.0));
+            p.line_to(mid + Vector::new(0.0, 8.0));
+        });
+        frame.stroke(&path, Stroke::default().with_color(color).with_width(3.0));
+    } else {
+        frame.fill_text(canvas::Text {
+            content: mark.to_string(),
+            position: cell_origin(x, y) + Vector::new(CELL / 2.0 - 5.0, CELL / 2.0 - 9.0),
+            color,
+            size: 18.0.into(),
+            ..canvas::Text::default()
+        });
+    }
+}
+
+impl canvas::Program<Msg> for Canvas {
     type State = Pointer;
 
     fn draw(&self, pointer: &Pointer, renderer: &Renderer, _: &Theme, bounds: Rectangle, _: mouse::Cursor) -> Vec<Geometry> {
         let mut frame = Frame::new(renderer, bounds.size());
         frame.fill_rectangle(Point::ORIGIN, bounds.size(), Color::from_rgb8(0x20, 0x28, 0x38));
         let cell = Size::new(CELL - 2.0, CELL - 2.0);
-        for y in 0..SIZE as i32 {
-            for x in 0..SIZE as i32 {
-                let kind = self.board.map_or(BoardCell::Off, |b| b[y as usize][x as usize]);
+        for (y, row) in self.board.iter().enumerate() {
+            for (x, &kind) in row.iter().enumerate() {
                 let fill = match kind {
-                    BoardCell::Off => continue,
-                    BoardCell::Frame => Color::from_rgb8(0x38, 0x40, 0x58),
-                    BoardCell::On if y == self.command_line as i32 => Color::from_rgb8(0x50, 0x68, 0x90),
-                    BoardCell::On => Color::from_rgb8(0x5C, 0x60, 0x70),
+                    b'f' => Color::from_rgb8(0x38, 0x40, 0x58),
+                    b'o' if self.rows_of_note.contains(&y) => Color::from_rgb8(0x50, 0x68, 0x90),
+                    b'o' => Color::from_rgb8(0x5C, 0x60, 0x70),
+                    _ => continue,
                 };
-                frame.fill_rectangle(cell_origin(x, y) + Vector::new(1.0, 1.0), cell, fill);
+                frame.fill_rectangle(cell_origin(x as i32, y as i32) + Vector::new(1.0, 1.0), cell, fill);
             }
         }
-        // The program under the cursor, when nothing is held: outlined, as
-        // one to pick up.
-        let hovered = if self.held.is_none() { pointer.hovered.and_then(|c| self.at(c)) } else { None };
+        let hovered = if self.held.is_none() { pointer.hovered.and_then(|c| self.occupied.get(&c).copied()) } else { None };
         for (i, part) in self.parts.iter().enumerate() {
             for &(x, y) in &part.cells {
                 frame.fill_rectangle(cell_origin(x, y) + Vector::new(4.0, 4.0), Size::new(CELL - 8.0, CELL - 8.0), part.color);
-                if part.plus {
-                    plus_mark(&mut frame, x, y, Color::WHITE);
+                if let Some(b) = &part.badge {
+                    badge(&mut frame, x, y, b, Color::WHITE);
                 }
                 if part.picked || hovered == Some(i) {
                     outline(&mut frame, x, y, 2.0, Color::WHITE, if part.picked { 3.0 } else { 2.0 });
+                } else if part.bad {
+                    outline(&mut frame, x, y, 2.0, Color::from_rgb8(0xF0, 0x40, 0x40), 3.0);
                 }
             }
         }
-        // The held program where it would land: lit if it fits, red if not.
         if let (Some(g), Some(c)) = (&self.held, pointer.hovered)
             && let Some(((x, y), ok)) = self.landing(c)
         {
             let edge = if ok { Color::from_rgb8(0x60, 0xF0, 0x90) } else { Color::from_rgb8(0xF0, 0x40, 0x40) };
             let fill = Color { a: if ok { 0.8 } else { 0.45 }, ..g.color };
-            let (n, mid) = (SIZE as i32, (SIZE / 2) as i32);
-            // Its cells about a center that may be off the grid.
-            for (cx, cy) in cells(&g.shape, mid as u8, mid as u8).map(|(cx, cy)| (cx - mid + x, cy - mid + y)) {
-                if !(0..n).contains(&cx) || !(0..n).contains(&cy) {
+            for (cx, cy) in cells(&g.shape, x, y) {
+                if !(0..self.n()).contains(&cx) || !(0..self.n()).contains(&cy) {
                     continue;
                 }
                 frame.fill_rectangle(cell_origin(cx, cy) + Vector::new(6.0, 6.0), Size::new(CELL - 12.0, CELL - 12.0), fill);
-                if g.plus {
-                    plus_mark(&mut frame, cx, cy, Color { a: 0.8, ..Color::WHITE });
+                if let Some(b) = &g.badge {
+                    badge(&mut frame, cx, cy, b, Color { a: 0.8, ..Color::WHITE });
                 }
                 outline(&mut frame, cx, cy, 3.0, edge, 2.5);
             }
@@ -554,7 +640,7 @@ impl canvas::Program<Msg> for Grid<'_> {
     }
 
     fn update(&self, pointer: &mut Pointer, event: &iced::Event, bounds: Rectangle, cursor: mouse::Cursor) -> Option<canvas::Action<Msg>> {
-        let over = cursor.position_in(bounds).and_then(Self::cell);
+        let over = cursor.position_in(bounds).and_then(|p| self.cell(p));
         match event {
             iced::Event::Mouse(mouse::Event::CursorMoved { .. }) => {
                 if over != pointer.hovered {
@@ -571,38 +657,31 @@ impl canvas::Program<Msg> for Grid<'_> {
                 pointer.pressed = over;
                 let cell = over?;
                 if self.held.is_some() {
-                    // A click puts it down where it fits.
                     return self.place(cell).or(Some(canvas::Action::capture()));
                 }
-                let i = self.at(cell)?;
-                return Some(self.msg(Edit::PickUp(i, cell.0 as u8, cell.1 as u8)));
+                let i = *self.occupied.get(&cell)?;
+                return Some(self.msg(GridEdit::PickUp(i, cell.0, cell.1)));
             }
             iced::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let pressed = pointer.pressed.take();
                 self.held.as_ref()?;
                 return match over {
-                    // Let go over the grid after a drag (from another cell,
-                    // or from the list): put down where it fits, else still
-                    // held. Let go where it was pressed: a click, still held.
                     Some(cell) if pressed != Some(cell) => self.place(cell),
                     Some(_) => None,
-                    // Dragged off the grid: taken off.
-                    None if pressed.is_some() => Some(self.msg(Edit::Remove)),
+                    None if pressed.is_some() => Some(self.msg(GridEdit::Remove)),
                     None => None,
                 };
             }
             iced::Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) => {
                 let cell = over?;
                 if self.held.is_some() {
-                    return Some(self.msg(Edit::Remove));
+                    return Some(self.msg(GridEdit::Remove));
                 }
-                let i = self.at(cell)?;
-                return Some(self.msg(Edit::RotateAt(i)));
+                let i = *self.occupied.get(&cell)?;
+                return Some(self.msg(GridEdit::RotateAt(i)));
             }
             iced::Event::Mouse(mouse::Event::WheelScrolled { delta }) => {
                 if self.held.is_some() && over.is_some() {
-                    // A wheel's notch turns it once; a trackpad's scrolling
-                    // once a stretch.
                     let turn = match delta {
                         mouse::ScrollDelta::Lines { .. } => true,
                         mouse::ScrollDelta::Pixels { x, y } => {
@@ -614,16 +693,15 @@ impl canvas::Program<Msg> for Grid<'_> {
                         return Some(canvas::Action::capture());
                     }
                     pointer.scrolled = 0.0;
-                    return Some(self.msg(Edit::Rotate));
+                    return Some(self.msg(GridEdit::Rotate));
                 }
             }
             iced::Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => {
-                let g = self.held.as_ref()?;
+                self.held.as_ref()?;
                 let edit = match key.as_ref() {
-                    keyboard::Key::Character(c) if c.eq_ignore_ascii_case("r") => Edit::Rotate,
-                    keyboard::Key::Character(c) if c.eq_ignore_ascii_case("c") && g.compressible => Edit::Compress(!g.compressed),
-                    keyboard::Key::Named(keyboard::key::Named::Escape) => Edit::PutBack,
-                    keyboard::Key::Named(keyboard::key::Named::Delete | keyboard::key::Named::Backspace) => Edit::Remove,
+                    keyboard::Key::Character(c) if c.eq_ignore_ascii_case("r") => GridEdit::Rotate,
+                    keyboard::Key::Named(keyboard::key::Named::Escape) => GridEdit::PutBack,
+                    keyboard::Key::Named(keyboard::key::Named::Delete | keyboard::key::Named::Backspace) => GridEdit::Remove,
                     _ => return None,
                 };
                 return Some(self.msg(edit));
@@ -634,11 +712,10 @@ impl canvas::Program<Msg> for Grid<'_> {
     }
 
     fn mouse_interaction(&self, _: &Pointer, bounds: Rectangle, cursor: mouse::Cursor) -> mouse::Interaction {
-        let Some(cell) = cursor.position_in(bounds).and_then(Self::cell) else { return mouse::Interaction::default() };
+        let Some(cell) = cursor.position_in(bounds).and_then(|p| self.cell(p)) else { return mouse::Interaction::default() };
         if self.held.is_some() {
-            // Carrying a program (Tango's closed hand).
             mouse::Interaction::Grabbing
-        } else if self.at(cell).is_some() {
+        } else if self.occupied.contains_key(&cell) {
             mouse::Interaction::Grab
         } else {
             mouse::Interaction::default()
@@ -646,118 +723,106 @@ impl canvas::Program<Msg> for Grid<'_> {
     }
 }
 
-pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
+/// A grid's view: the board with its pieces, the held or selected piece's
+/// controls, and the pieces to pick up.
+pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, ty: &FieldType) -> Element<'a, Msg> {
     let c = &e.content;
-    let side = e.side(s);
-    let state = &e.navicust[s];
-    let tab = |label: &'static str, on: bool, stats: bool| {
-        let b = button(text(label).size(14)).on_press(Msg::NaviCust(s, Edit::ShowStats(stats)));
-        if on { b.style(button::primary) } else { b.style(button::secondary) }
-    };
-    let header = row![
-        text(format!("{}: NaviCust", crate::editor::view::SIDES[s])).size(20),
-        space().width(Length::Fill),
-        tab("Grid", !state.show_stats, false),
-        tab("Stats and bugs", state.show_stats, true),
-    ]
-    .spacing(6)
-    .align_y(Alignment::Center);
-    if state.show_stats {
-        let body: Element<Msg> = column![
-            text("The stats and bugs are the NaviCust's: the programs on the grid make them as the round is set up.").size(13),
-            crate::editor::view::round_stats(e, s),
-        ]
-        .spacing(8)
-        .into();
-        return column![header, body].spacing(8).into();
-    }
-    let rules = nettai_match::navicust_rules(c);
-    let largest = rules.boards.len().saturating_sub(1) as u8;
-    let had = navicust_of(c, side);
-    let expansions = had.as_ref().map_or(largest, |n| n.0);
-    let sizes: Vec<Choice<u8>> = (0..rules.boards.len() as u8)
-        .map(|x| {
-            let b = &rules.boards[x as usize];
-            let (w, h) = (b.iter().map(|r| r.iter().filter(|&&c| c == BoardCell::On).count()).max().unwrap_or(0), b.iter().filter(|r| r.contains(&BoardCell::On)).count());
-            Choice { label: format!("{w}x{h} ({x} expansions)"), value: x }
-        })
-        .collect();
-    let size = sizes.iter().find(|x| x.value == expansions).cloned();
-    let placed: Vec<PlacedProgram> = had.as_ref().map(|n| n.1.clone()).unwrap_or_default();
-    let mut occupied = [[None; SIZE]; SIZE];
+    // (A copy: it holds the view by reference.)
+    let msg = move |edit: GridEdit| Msg::Pane(s, f.path.clone(), Edit::Grid(edit));
+    let answers = look(e.navicust.as_ref(), c, e.side(s), grid);
+    // What the rules say of the programs (by their places) and of the board.
+    let said: Vec<&nettai_match::check::Problem> =
+        e.problems.iter().filter(|p| p.side == Some(s) && (p.field.as_deref() == Some(&f.field) || p.field.as_deref() == Some(&grid.size))).collect();
+    let state = e.grids[s].get(&f.path).cloned().unwrap_or_default();
+    let Some(FieldType::Ref(registry, of)) = record_field(ty, &grid.piece).cloned() else { return space().into() };
+    let placed = placed(c, e.side(s), &f.field, grid);
+    let mut occupied = HashMap::new();
     let parts: Vec<Part> = placed
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let def = program_of(c, p.program);
-            let cells: Vec<(i32, i32)> = cells(&def.placed_shape(p.compressed, p.rotation), p.x, p.y).collect();
-            for &(x, y) in &cells {
-                if let Some(o) = occupied.get_mut(y as usize).and_then(|r| r.get_mut(x as usize)) {
-                    *o = Some(i);
-                }
+            let cs = cells(&shape_of(&answers, p.piece, &p.toggles, p.rotation), p.x, p.y);
+            for &cell in &cs {
+                occupied.insert(cell, i);
             }
-            let name = def.colors.get(p.color as usize).cloned().unwrap_or_default();
-            Part { cells, color: color(&name), plus: def.plus, picked: state.held.is_none() && state.selected == Some(i) }
+            Part {
+                cells: cs,
+                color: color_of(p.color.as_deref()),
+                badge: answers.badges.get(&p.piece).cloned(),
+                picked: state.held.is_none() && state.selected == Some(i),
+                bad: said.iter().any(|x| x.field.as_deref() == Some(&f.field) && x.entry == Some(i)),
+            }
         })
         .collect();
-    let held = state.held.map(|h| {
-        let def = program_of(c, h.program);
-        Ghost {
-            shape: def.placed_shape(h.compressed, h.rotation),
-            grab: h.grab,
-            color: color(def.colors.get(h.color as usize).map_or("", |x| x.as_str())),
-            plus: def.plus,
-            compressible: def.compressed.is_some(),
-            compressed: h.compressed,
-        }
+    let colors_of = |h: u16| answers.colors.get(&h).cloned().unwrap_or_default();
+    let held = state.held.as_ref().map(|h| Ghost {
+        shape: shape_of(&answers, h.piece, &h.toggles, h.rotation),
+        grab: h.grab,
+        color: color_of(colors_of(h.piece).get(h.color as usize).map(String::as_str)),
+        badge: answers.badges.get(&h.piece).cloned(),
     });
-    let grid = canvas_widget(Grid { content: c, board: rules.board(expansions).copied(), command_line: rules.command_line, placed, parts, occupied, held, side: s })
-        .width(Length::Fixed(CELL * SIZE as f32))
-        .height(Length::Fixed(CELL * SIZE as f32));
-    let colors = |program: NaviCustProgramHandle, current: u8| {
-        program_of(c, program).colors.into_iter().enumerate().fold(row![].spacing(4), move |r, (k, name)| {
-            let b = button(text(name).size(12)).on_press(Msg::NaviCust(s, Edit::Color(k as u8)));
+    let n = answers.board.as_ref().map_or(0, |b| b.len());
+    let board = answers.board.clone().unwrap_or_default();
+    let canvas = Canvas {
+        board,
+        rows_of_note: e.navicust.as_ref().and_then(|d| d.command_line).into_iter().collect(),
+        answers: answers.clone(),
+        placed: placed.clone(),
+        parts,
+        occupied,
+        held,
+        side: s,
+        path: f.path.clone(),
+    };
+    let board_widget: Element<Msg> = if n == 0 {
+        text("No board: nothing is placed (see the field above).").size(13).into()
+    } else {
+        canvas_widget(canvas).width(Length::Fixed(CELL * n as f32)).height(Length::Fixed(CELL * n as f32)).into()
+    };
+    let notes: Vec<String> = e.navicust.as_ref().and_then(|d| d.command_line).map(|r| format!("Row {}: the command line", r + 1)).into_iter().collect();
+    let color_buttons = |piece: u16, current: u8| {
+        colors_of(piece).into_iter().enumerate().fold(row![].spacing(4), |r, (k, name)| {
+            let b = button(text(name).size(12)).on_press(msg(GridEdit::Color(k as u8)));
             r.push(if k == current as usize { b.style(button::primary) } else { b.style(button::secondary) })
         })
     };
-    let compress = |program: NaviCustProgramHandle, on: bool| -> Element<Msg> {
-        if program_of(c, program).compressed.is_some() {
-            iced::widget::checkbox(on).label("Compressed").on_toggle(move |b| Msg::NaviCust(s, Edit::Compress(b))).into()
-        } else {
-            space().into()
-        }
+    let toggles = |on: &[bool]| {
+        grid.toggles.iter().enumerate().fold(row![].spacing(10), |r, (k, t)| {
+            let state = on.get(k).copied().unwrap_or(false);
+            r.push(checkbox(state).label(title(t)).on_toggle(move |b| msg(GridEdit::Toggle(k, b))))
+        })
     };
-    // The held program, else the last placed one.
-    let picked: Element<Msg> = if let Some(h) = state.held {
-        let mut buttons = row![button("Turn").on_press(Msg::NaviCust(s, Edit::Rotate))].spacing(4);
+    let picked: Element<Msg> = if let Some(h) = &state.held {
+        let mut buttons = row![button("Turn").on_press(msg(GridEdit::Rotate))].spacing(4);
         if h.origin.is_some() {
-            buttons = buttons.push(button("Put back").on_press(Msg::NaviCust(s, Edit::PutBack)).style(button::secondary));
+            buttons = buttons.push(button("Put back").on_press(msg(GridEdit::PutBack)).style(button::secondary));
         }
-        buttons = buttons.push(button("Take off").on_press(Msg::NaviCust(s, Edit::Remove)).style(button::danger));
+        buttons = buttons.push(button("Take off").on_press(msg(GridEdit::Remove)).style(button::danger));
         column![
-            text(format!("Holding {}, turned {}", e.names.entry(c, h.program), h.rotation)).size(15),
-            colors(h.program, h.color),
-            row![buttons, compress(h.program, h.compressed)].spacing(12).align_y(Alignment::Center),
-            text("Click a cell (or let go of a drag over one) to put it down where it shows lit. The wheel or R turns it, C compresses it; right-click, Delete or a drag off the grid takes it off; Esc puts it back.")
+            text(format!("Holding {}, turned {}", name_of(e, registry, h.piece), h.rotation)).size(15),
+            color_buttons(h.piece, h.color),
+            row![buttons, toggles(&h.toggles)].spacing(12).align_y(Alignment::Center),
+            text("Click a cell (or let go of a drag over one) to put it down where it shows lit. The wheel or R turns it; right-click, Delete or a drag off the grid takes it off; Esc puts it back.")
                 .size(12),
         ]
         .spacing(6)
         .into()
-    } else if let Some(p) = state.selected.and_then(|i| placed_at(c, side, i)) {
+    } else if let Some(p) = state.selected.and_then(|i| placed.get(i)) {
+        let current = p.color.as_ref().and_then(|n| colors_of(p.piece).iter().position(|x| x == n)).unwrap_or(0) as u8;
         column![
-            text(format!("{} at ({}, {}), turned {}", e.names.entry(c, p.program), p.x, p.y, p.rotation)).size(15),
-            colors(p.program, p.color),
+            text(format!("{} at ({}, {}), turned {}", name_of(e, registry, p.piece), p.x, p.y, p.rotation)).size(15),
+            color_buttons(p.piece, current),
             row![
                 row![
-                    button("←").on_press(Msg::NaviCust(s, Edit::Move(-1, 0))),
-                    button("↑").on_press(Msg::NaviCust(s, Edit::Move(0, -1))),
-                    button("↓").on_press(Msg::NaviCust(s, Edit::Move(0, 1))),
-                    button("→").on_press(Msg::NaviCust(s, Edit::Move(1, 0))),
-                    button("Turn").on_press(Msg::NaviCust(s, Edit::Rotate)),
-                    button("Remove").on_press(Msg::NaviCust(s, Edit::Remove)).style(button::danger),
+                    button("←").on_press(msg(GridEdit::Nudge(-1, 0))),
+                    button("↑").on_press(msg(GridEdit::Nudge(0, -1))),
+                    button("↓").on_press(msg(GridEdit::Nudge(0, 1))),
+                    button("→").on_press(msg(GridEdit::Nudge(1, 0))),
+                    button("Turn").on_press(msg(GridEdit::Rotate)),
+                    button("Remove").on_press(msg(GridEdit::Remove)).style(button::danger),
                 ]
                 .spacing(4),
-                compress(p.program, p.compressed),
+                toggles(&p.toggles),
             ]
             .spacing(12)
             .align_y(Alignment::Center),
@@ -765,125 +830,142 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         .spacing(6)
         .into()
     } else {
-        text("Drag a color square from the list onto the grid (or click it, then a cell). Press a placed program to pick it up and drag it; right-click one to turn it.")
+        text("Drag a color square from the list onto the grid (or click it, then a cell). Press a placed piece to pick it up and drag it; right-click one to turn it.")
             .size(13)
             .into()
     };
-    // The programs to pick up, searched.
+    // The pieces to pick up, searched.
     let needle = state.search.to_lowercase();
-    // (The match's game's.)
-    let mut programs: Vec<(String, NaviCustProgramHandle)> = c
-        .defs
-        .entries_of(PROGRAMS)
-        .into_iter()
-        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.entry(h).key))
-        .map(|h| (e.names.entry(c, h), h))
-        .filter(|(name, _)| needle.is_empty() || name.to_lowercase().contains(&needle))
-        .collect();
-    e.order.entries(c, PROGRAMS, &mut programs);
-    let list = programs.into_iter().fold(Column::new().spacing(2), |col, (name, h)| {
-        let def = program_of(c, h);
-        let swatches = def.colors.iter().enumerate().fold(row![].spacing(3), |r, (k, cname)| {
-            let holding = state.held.is_some_and(|x| x.origin.is_none() && x.program == h && x.color == k as u8);
-            let shown = color(cname);
+    let pieces = offered(e, registry, of.as_deref());
+    let list = pieces.into_iter().fold(Column::new().spacing(2), |col, h| {
+        let name = name_of(e, registry, h);
+        if !(needle.is_empty() || name.to_lowercase().contains(&needle)) {
+            return col;
+        }
+        let swatches = colors_of(h).into_iter().enumerate().fold(row![].spacing(3), |r, (k, cname)| {
+            let holding = state.held.as_ref().is_some_and(|x| x.origin.is_none() && x.piece == h && x.color == k as u8);
+            let shown = color_of(Some(&cname));
             let swatch = container(space().width(Length::Fixed(18.0)).height(Length::Fixed(18.0))).style(move |_: &Theme| container::Style {
                 background: Some(shown.into()),
                 border: iced::Border { color: if holding { Color::BLACK } else { Color::TRANSPARENT }, width: 2.0, radius: 3.0.into() },
                 ..container::Style::default()
             });
-            r.push(mouse_area(swatch).on_press(Msg::NaviCust(s, Edit::Hold(h, k as u8))).interaction(mouse::Interaction::Grab))
+            r.push(mouse_area(swatch).on_press(msg(GridEdit::Hold(h, k as u8))).interaction(mouse::Interaction::Grab))
         });
+        let mark = answers.badges.get(&h).cloned().unwrap_or_default();
         col.push(
             row![
                 text(name).size(14).width(Length::Fill),
-                text(if def.plus { "plus" } else { "" }).size(12).color(Color::from_rgb(0.5, 0.5, 0.55)).width(Length::Fixed(34.0)),
-                container(swatches).width(Length::Fixed(80.0)),
+                text(mark).size(12).color(DIM).width(Length::Fixed(20.0)),
+                container(swatches).width(Length::Fixed(110.0)),
                 space().width(Length::Fixed(14.0)),
             ]
             .spacing(6)
             .align_y(Alignment::Center),
         )
     });
-    let note: Element<Msg> = match had {
-        None => text("No NaviCust: the stats are as the setup gives them.").size(12).into(),
-        Some(_) => text("The command line is the lit row.").size(12).into(),
-    };
-    let left = column![
-        row![text("Board").size(14), pick_list(sizes, size, move |x: Choice<u8>| Msg::NaviCust(s, Edit::Expansions(x.value)))].spacing(8).align_y(Alignment::Center),
-        grid,
-        note,
-        picked,
-        crate::editor::view::round_stats(e, s),
-    ]
-    .spacing(8)
-    .width(Length::Fixed(CELL * SIZE as f32 + 120.0));
+    let mut left = column![board_widget].spacing(8).width(Length::Fixed(CELL * n.max(7) as f32 + 120.0));
+    for note in notes {
+        left = left.push(text(note).size(12));
+    }
+    for p in &said {
+        let at = match p.entry {
+            Some(i) if p.field.as_deref() == Some(&f.field) => format!("Program {}: ", i + 1),
+            _ => String::new(),
+        };
+        left = left.push(text(format!("{at}{}", p.text)).size(13).color(RED));
+    }
+    left = left.push(picked);
+    left = left.push(crate::editor::view::round_stats(e, s));
+    let search_path = f.path.clone();
     let right = column![
-        text_input("search programs", &state.search).on_input(move |t| Msg::NaviCust(s, Edit::Search(t))),
+        text_input("search", &state.search).on_input(move |t| Msg::Pane(s, search_path.clone(), Edit::Search(t))),
         scrollable(list).height(Length::Fill),
     ]
     .spacing(6)
     .width(Length::Fill);
-    column![header, row![scrollable(left), right].spacing(16)].spacing(8).into()
-}
-
-fn placed_at(content: &Content, side: &Side, i: usize) -> Option<PlacedProgram> {
-    navicust_of(content, side)?.1.get(i).copied()
+    row![scrollable(left), right].spacing(16).height(Length::Fill).into()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// The pane's edits on EXE6's content: programs are held from the list
-    /// and put down
-    /// where they fit (not over another), picked up by a cell and put back
-    /// or down elsewhere, turned with the held cell, compressed by program
-    /// and color, taken off; and the match stays one the checks accept.
+    /// Both games' NaviCusts fit the grid: their boards from the board
+    /// module (three, the command line row 3), every program's shapes,
+    /// colors and plus mark from its data; the pane picks the board by its
+    /// size.
     #[test]
-    fn edits() {
+    fn both_games_navicusts_read() {
+        for (content, game) in [(nettai_match::testing::exe6_content(), "exe6"), (nettai_match::testing::exe5_content(), "exe5")] {
+            let data = read(&content, game).unwrap_or_else(|| panic!("{game}: the NaviCust's data don't fit the grid"));
+            assert_eq!((data.boards.len(), data.command_line), (3, Some(3)), "{game}");
+            let programs = content.defs.entries_of("navicust_programs").len();
+            assert_eq!((data.colors.len(), data.shapes.len()), (programs, 2 * programs), "{game}");
+            let p = pane(&content, &data).unwrap();
+            let View::Pick(pick) = &p.fields[0].view else { panic!("{game}: the board a pick") };
+            let sizes: Vec<&str> = pick.choices.iter().map(|(_, s)| s.as_str()).collect();
+            assert_eq!(sizes, ["4x4", "5x4", "5x5"], "{game}");
+        }
+        let six = nettai_match::testing::exe6_content();
+        let data = read(&six, "exe6").unwrap();
+        assert!(!data.plus.is_empty(), "EXE6's plus parts");
+        assert_eq!(data.boards[1][1], b"fooooof".to_vec());
+    }
+
+    /// A grid's edits on EXE6's NaviCust: pieces are held from the list and
+    /// put down where they fit (not over another), picked up by a cell and
+    /// put back, turned, recolored, taken off; and the match stays one the
+    /// checks accept.
+    #[test]
+    fn grid_edits() {
         let content = nettai_match::testing::exe6_content();
         let mut m = nettai_match::pick::live(&content, "exe6", 7, None).unwrap();
-        let mut state = State::default();
-        let game = m.game.clone();
+        nettai_match::testing::set_navicust(&content, &mut m.sides[0], &[], 2);
+        let data = read(&content, "exe6").unwrap();
+        let p = pane(&content, &data).unwrap();
+        let f = p.fields[1].clone();
+        let View::Grid(grid) = &f.view else { unreachable!() };
+        let ty = nettai_match::facts::field(&content, &f.field).unwrap().ty.clone();
+        let answers = look(Some(&data), &content, &m.sides[0], grid);
+        assert_eq!(answers.board.as_ref().map(Vec::len), Some(7));
+        let mut state = GridState::default();
+        let program = |name: &str| nettai_match::ids::entry(&content, "exe6", "navicust_programs", name).unwrap().0;
         let side = &mut m.sides[0];
-        let navicust = |side: &Side| navicust_of(&content, side).unwrap().1;
-        assert_eq!(navicust_of(&content, side).unwrap().0, 2);
-        let program = |name: &str| nettai_match::ids::entry(&content, "exe6", PROGRAMS, name).unwrap();
-        // Held from the list: nothing changes until it is put down.
-        assert!(!update(&content, &game, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
-        assert!(update(&content, &game, side, &mut state, Edit::Place(2, 3)));
-        assert!(state.held.is_none());
-        update(&content, &game, side, &mut state, Edit::Hold(program("hp-50"), 1));
-        // Not over SuprArmr.
-        assert!(!update(&content, &game, side, &mut state, Edit::Place(2, 3)));
-        assert!(update(&content, &game, side, &mut state, Edit::Place(4, 2)));
-        update(&content, &game, side, &mut state, Edit::Hold(program("hp-50"), 1));
-        assert!(update(&content, &game, side, &mut state, Edit::Place(5, 2)));
-        let n = navicust(side);
-        assert_eq!(n.len(), 3);
-        assert_eq!(state.selected, Some(2));
-        let problems = nettai_match::check_match(&content, &m);
-        assert!(problems.is_empty(), "{problems:?}");
-        let side = &mut m.sides[0];
-        // Compressing one HP+50 compresses the other (one program, one color).
-        update(&content, &game, side, &mut state, Edit::Compress(true));
-        let n = navicust(side);
-        assert!(n.iter().filter(|p| p.program == program("hp-50")).all(|p| p.compressed));
-        // Picked up by a cell it covers (off the grid while held), put back.
-        let first = n[0];
-        assert!(update(&content, &game, side, &mut state, Edit::PickUp(0, first.x, first.y)));
-        assert_eq!(navicust(side).len(), 2);
-        assert!(update(&content, &game, side, &mut state, Edit::PutBack));
-        assert_eq!(navicust(side).first(), Some(&first));
-        // Picked up, turned, put down a row lower; then taken off.
-        update(&content, &game, side, &mut state, Edit::PickUp(0, first.x, first.y));
-        update(&content, &game, side, &mut state, Edit::Rotate);
-        assert!(update(&content, &game, side, &mut state, Edit::Place(first.x, first.y + 1)));
-        let moved = *navicust(side).last().unwrap();
-        assert_eq!((moved.y, moved.rotation), (first.y + 1, 1));
-        update(&content, &game, side, &mut state, Edit::Remove);
-        assert_eq!(navicust(side).len(), 2);
-        let problems = nettai_match::check_match(&content, &m);
-        assert!(problems.is_empty(), "{problems:?}");
+        let edit = |side: &mut Side, state: &mut GridState, e: GridEdit| grid_edit(&content, side, &f.field, &ty, grid, &answers, state, e);
+        let count = |side: &Side| placed(&content, side, &f.field, grid).len();
+        assert!(!edit(side, &mut state, GridEdit::Hold(program("suprarmr"), 0)));
+        assert!(edit(side, &mut state, GridEdit::Place(2, 3)));
+        assert_eq!((count(side), state.held.is_none(), state.selected), (1, true, Some(0)));
+        edit(side, &mut state, GridEdit::Hold(program("hp-50"), 1));
+        assert!(!edit(side, &mut state, GridEdit::Place(2, 3)), "not over SuprArmr");
+        assert!(edit(side, &mut state, GridEdit::Place(4, 2)));
+        assert_eq!(count(side), 2);
+        // Picked up by a cell and put back as it was.
+        let first = placed(&content, side, &f.field, grid)[0].clone();
+        assert!(edit(side, &mut state, GridEdit::PickUp(0, 2, 3)));
+        assert_eq!(count(side), 1);
+        assert!(edit(side, &mut state, GridEdit::PutBack));
+        let back = placed(&content, side, &f.field, grid);
+        assert_eq!((back[0].piece, back[0].x, back[0].y), (first.piece, first.x, first.y));
+        // Turned, recolored and taken off, the selected one.
+        state.selected = Some(1);
+        assert!(edit(side, &mut state, GridEdit::Rotate));
+        assert_eq!(placed(&content, side, &f.field, grid)[1].rotation, 1);
+        assert!(edit(side, &mut state, GridEdit::Color(0)));
+        assert!(edit(side, &mut state, GridEdit::Remove));
+        assert_eq!(count(side), 1);
+        assert_eq!(nettai_match::check_match(&content, &m), Vec::<String>::new());
+    }
+
+    /// A shape turns about its center a quarter clockwise; four turns are
+    /// none.
+    #[test]
+    fn shapes_turn() {
+        let up: Shape = vec![vec![false, true, false], vec![false, true, false], vec![false, false, false]];
+        let right: Shape = vec![vec![false, false, false], vec![false, true, true], vec![false, false, false]];
+        assert_eq!(rotate(&up, 1), right);
+        assert_eq!(rotate(&up, 4), up);
+        assert_eq!(cells(&right, 5, 5), [(5, 5), (6, 5)]);
     }
 }
