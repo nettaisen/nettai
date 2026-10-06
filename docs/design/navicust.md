@@ -17,7 +17,7 @@ file gives each side its NaviCust (docs/frontend.md §6), and the editor (nettai
 | A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
 | The board: which cells a program may cover, its frame, the command line | the game's rules | rules/navicust/board.luau, which the compile and `validate` read, and the editor's grid reads as data |
 | The compile: placement into stats and bugs | the game's rules | EXE6's `navicust` part (`round_setup`) |
-| A program's name | the locales | `[navicust_programs]` in locales/<lang>.toml |
+| A program's name and description | the locales | `[navicust_programs]` in locales/<lang>.toml (`name`, `description`: the US ROMs' and the Japanese ROMs' archives, an entry a program number; the editor's grid shows them) |
 | A program's number (a save's part id is 4 × it + the color variant) | compat | content/exe6/compat/navicust.toml |
 
 So the engine knows nothing of a NaviCust since step c3b: the grid, a program's shape centered on its middle cell,

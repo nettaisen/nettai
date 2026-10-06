@@ -207,8 +207,9 @@ the SP navi deletion times a time each, as the games show one; the NaviCust a gr
 game draws it, with its frame and command line, edited with the mouse as Tango's is (drag a program's color swatch
 onto the grid, or press a placed program to pick it up and drag it; while held it shows where it would land, lit if
 it fits and red if not; the wheel or R turns it, right-click, Delete or a drag off the grid takes it off, Esc puts it
-back; right-clicking a placed program turns it; the selected program's color and compression beside it), with the
-stats it compiles to. The problems with the match show at the bottom as you edit, and each the rules tie to a fact
+back; right-clicking a placed program turns it; the selected program's color and compression beside it, and its
+description, as are the description of the program under the cursor and each one's in the list to place from), with
+the stats it compiles to. The problems with the match show at the bottom as you edit, and each the rules tie to a fact
 beside it too (a row of a list, a program on the grid, outlined red). Play plays the match in the window, from its seed (else the clock's), as `--match`
 does, and Esc comes back to the editor; it saves nothing. A new match
 (the program started with nothing to play, or New) is an empty one of the game the editor asks for: its stock rules,
