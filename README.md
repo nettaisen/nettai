@@ -82,7 +82,8 @@ Create a match file with the match editor below, then run the frontend:
     cargo run --release -p nettai-demo -- --match match.toml --headless 1-120 --out <dir>  # render frames to PNG
 
 In live play alone you are the left navi, and the right one is a stand-in that stands still. The match file sets
-the game, arena, each side's navi, folder, version, forms, patch cards and stats. Its optional `seed` sets the
+the game, arena, each side's navi, folder, version, forms, patch cards, NaviCust and what its save brings to the
+stats (the rules build the rest). Its optional `seed` sets the
 battle's RNG; without one, the seed comes from the clock. Each start prints it, and `--show-folders` prints the
 folders. The editor's Random button creates a random setup you can save and play. Keys: the arrows move, Z is A, X is B, A is L,
 S is R, Enter is START and Backspace is SELECT; Space pauses, `.` steps a frame while paused, `-` and `=` change
@@ -121,8 +122,10 @@ These checks need no ROM:
 ## The match editor
 
 A match file sets up a round of one game, EXE6 or EXE5: the game (which is its rules), the arena (stage and background),
-and each side's navi, folder, patch cards, NaviCust and stats, and what the game's rules take of a side besides
-(its facts: EXE6's version and Crosses, EXE5's karma and souls), each by its name in the game
+and each side's navi, folder, patch cards and NaviCust, and what the game's rules take of a side besides (its
+facts: EXE6's version and Crosses, EXE5's karma and souls, and what a save brings to the stats, the base HP and the
+Regular memory), each by its name in the game. A side states no stats: the game's rules build them as the round is
+set up
 (`cannon`, `megaman`; [docs/frontend.md](docs/frontend.md) §6). The editor makes and edits them, checking them
 against the content as you go, and plays them:
 
@@ -137,19 +140,19 @@ game's navi, chip, soul or patch card. Changing the game there makes a new match
 its rules (it has one ruleset), whose systems the pane lists. The panes show only what
 those rules have (patch cards with the patch-cards system, the NaviCust with the navicust system, and each fact
 the rules' systems declare of a side): the arena's stages and backgrounds (the game's); each side's navi
-(the game's), with the stats the round starts the navi with (a link navi's level fills in the stats
-its save gives at that level, as does switching to a link navi; an edited stat says what the level gives; MegaMan's
-optional navi code level); the SP navi deletion times; Import from save; the folder (the game's chips the rules
+(the game's), with the stats the round starts the navi with (what the rules build: a link navi's from its level, a
+team navi's HP from its story; MegaMan's optional navi code level); the SP navi deletion times; Import from save;
+the folder (the game's chips the rules
 allow, with their pictures from the game's pack, searchable; a code puts a chip in the selected entry; the Regular
 and tag chips; the copies and the Mega, Giga, Regular and tag limits live, as the game's folder rules count them:
-EXE6's folder editor's, or EXE5's, content/exe5/rules/folder); the lists the rules take of a side (EXE6's Cross
-list, EXE5's souls); the patch cards (the game's; MB used of 80);
+EXE6's folder editor's, or EXE5's, content/exe5/rules/folder); the lists the rules take of a side (EXE6's
+Crosses, EXE5's souls); the patch cards (the game's; MB used of 80);
 the NaviCust (the board as the game draws it, with its frame and command line, edited with the mouse as Tango's is:
 drag a program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it
 shows where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click,
 Delete or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
-compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat (its
-weapons, records and forms the game's). The problems with the match show at the bottom as you edit. Play saves the
+compiles to show beside it); every stat as the round starts it (shown, not edited). The problems with the match show
+at the bottom as you edit. Play saves the
 match and runs `nettai-demo --match` (the one beside the editor's program, or `--frontend PATH`). A new match
 (the editor started without a file, or New) is an empty one of the game the editor asks for: its stock rules, its
 first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, its facts the rules'
@@ -167,8 +170,8 @@ frontend's, and only what you give is passed on.
 own declarations, by each setup field's type, and the editor names none of them: a flag is a checkbox (EXE6's
 Beast out, EXE5's Soul unison), a number a field to type it in with the rules' default as its placeholder (EXE5's
 Karma, EXE6's Bug frags), an enum a list of the variants the rules name (EXE6's Version, nothing chosen until the
-side states one), a few flags a checkbox each (EXE6's Crosses: which of its version's five the side owns), all on
-the navi pane under "What the rules take"; a list of definitions has a pane of its own with a checkbox for each one
+side states one), all on the navi pane under "What the rules take" (EXE6's Hp, Reg up and Sun among them); a
+list of definitions has a pane of its own with a checkbox for each one
 it may hold (EXE6's Crosses: the side's navi's ten of both versions, five at most, kept in the window's
 order; EXE5's Souls: the twelve the rules' default lists, each with its face). Each has a Default button where the
 rules give it a default and it isn't that. What the rules require and assume nothing of (EXE6's version, and its

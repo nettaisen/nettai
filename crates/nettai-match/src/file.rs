@@ -24,6 +24,8 @@
 //! crosses = ["heatcross", "spoutcross"]   # name (crate::facts). EXE6's: version (gregar or falzar) and crosses (up
 //! beast_out = false                  # to five, of either version; [] none), which a side states (none is assumed);
 //! bug_frags = 9                      # beast_out (else unlocked), bug_frags (else 0)
+//! hp = 1000                          # what the save brings to the stats: the base HP (else 100), the Regular
+//! reg_up = 50                        # memory (else the fresh stats' 4), the sun (else none); the rules derive the rest
 //! folder = [                         # 30 [chip, code] pairs ([] an empty entry, while it's being made)
 //!     ["cannon", "A"],
 //!     ["cannon", "A"],
@@ -34,10 +36,6 @@
 //! [left.sp_times]                    # optional: SP navi deletion times, mm:ss.cc (else the fastest)
 //! "sp/heatman" = "00:12.34"
 //!
-//! [left.stats]                       # optional: over the navi's fresh stats, a link navi's at its level (crate::stats)
-//! hp = 1000
-//! regular_memory = 50
-//!
 //! [left.navicust]                    # optional: the NaviCust, which the rules compile
 //! expansions = 2                     # optional: the board's (else the largest)
 //! programs = [                       # in the list's order; x, y the center on the 7x7 grid
@@ -45,7 +43,7 @@
 //! ]
 //!
 //! # An EXE5 side's facts ([left] of game = "exe5"; a fact left out is its rules' default):
-//! level = 3                          # optional: a team navi's level, 0 to 6 (default 0): its HP is the story's at it
+//! level = 3                          # a team navi's level, 0 to 6: its damage rows' (its HP is the save's `hp`)
 //! karma = 100                        # the light/dark value (default 500, a fresh save's; dark under 470)
 //! souls = ["protosoul"]              # the souls it has, either version's (default: every soul)
 //! soul_unison = false                # no soul button (the save's event flag 0; default true)
@@ -66,7 +64,7 @@
 
 use crate::auto_battle::{self, ChipPlace, AutoBattle, Entry, Record};
 use crate::facts::Stated;
-use crate::{Arena, Facts, Folder, Match, Place, Side, ids, stats};
+use crate::{Arena, Facts, Folder, Match, Place, Side, ids};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::custom::FolderChip;
@@ -131,8 +129,6 @@ pub struct SideFile {
     pub tags: Option<[u8; 2]>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub sp_times: BTreeMap<String, String>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub stats: BTreeMap<String, toml::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -415,16 +411,10 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     let navi = navi?;
     // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
     let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
-    let version = facts.version(content).map(str::to_string);
-    let mut stats = Side::save_base(content, navi, version.as_deref(), navi_level);
-    for p in stats::apply(content, game, &s.stats, &mut stats) {
-        say(format!("stats: {p}"));
-    }
-    let stats = crate::starting(content, stats, version.as_deref());
     if problems.len() > start {
         return None;
     }
-    Some(Side { navi, stats, folder: folder?, cards, navi_level, sp_times, navicust, auto_battle, facts })
+    Some(Side { navi, folder: folder?, cards, navi_level, sp_times, navicust, auto_battle, facts })
 }
 
 /// A fact's value as a file states it, read by the field's type `ty`: a
@@ -640,7 +630,6 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
                 records: s.auto_battle.records.iter().map(record).collect(),
             }
         }),
-        stats: s.stats_block(content),
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n
@@ -831,8 +820,8 @@ mod tests {
         for line in ["game = \"exe6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.navicust]", "expansions = 2", "programs = []"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
-        // (MegaMan at his fresh stats: no stats block.)
-        assert!(!text.contains("[left.stats]") && !text.contains("[right.stats]"), "{text}");
+        // (No stats: a side states none.)
+        assert!(!text.contains("stats"), "{text}");
         // Every name is the game's own, written once with the game.
         assert!(!text.contains("exe6:") && !text.contains("ruleset"), "{text}");
         assert_eq!(game_of(&text).unwrap(), "exe6");
@@ -954,7 +943,7 @@ mod tests {
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         let six = exe6_content();
         let new = Match::empty(&six, "exe6").unwrap();
-        assert!(new.sides.iter().all(|s| s.version(&six).is_none() && s.stats.version == 0));
+        assert!(new.sides.iter().all(|s| s.version(&six).is_none()));
         let problems = crate::check_match(&six, &new);
         for side in ["left", "right"] {
             has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (gregar or falzar); none is assumed"));
@@ -993,14 +982,16 @@ mod tests {
         let mut none = new.clone();
         for s in &mut none.sides {
             s.set_fact(&six, "version", &[Fact::Name("falzar")]).unwrap();
-            s.stats.version = crate::version_byte(&six, s.version(&six));
         }
         let refused = crate::check::start(&six, &none).err().expect("no round without the Crosses");
         assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `crosses` (up to 5 forms, an empty list for none): none is assumed");
         for s in &mut none.sides {
             s.set_fact(&six, "crosses", &[]).unwrap();
         }
-        assert!(crate::check::start(&six, &none).is_ok());
+        // (The navi's version byte, NaviStats+0x20, is the version's place
+        // among those the rules declare: the battle's start sets it.)
+        let b = crate::check::start(&six, &none).unwrap();
+        assert_eq!((b.stats[0].version, b.stats[1].version), (1, 1));
         assert_eq!(write(&six, &none).matches("\ncrosses = []\n").count(), 2);
         // (And a side's own of its version, as a tool fills them in: the
         // version's five.)
@@ -1008,8 +999,6 @@ mod tests {
         let own: Vec<&str> = none.sides[0].facts.form_list(&six).iter().map(|&f| ids::local(&six.defs.form(f).key)).collect();
         assert_eq!(own, ["spoutcross", "tomahawkcross", "tengucross", "groundcross", "dustcross"]);
         assert!(!new.sides[0].clone().state_own_forms(&six), "no version yet: nothing to go by");
-        let byte = |v| crate::version_byte(&six, v);
-        assert_eq!((byte(Some("gregar")), byte(Some("falzar")), byte(None), byte(Some("azure"))), (0, 1, 0, 0));
         // EXE5.
         let five = crate::testing::exe5_content();
         assert!(crate::facts::versions(&five).is_empty());
@@ -1044,17 +1033,18 @@ mod tests {
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in exe6");
         has(bad("navi = \"megaman\"", "navi = \"exe6:megaman\""), "left: no navi \"exe6:megaman\" in exe6"); // (written in full)
-        // (A stats block, after the sides' tables.)
-        let stats = |block: &str| parse(&content, &format!("{good}\n[left.stats]\n{block}\n")).unwrap_err();
-        has(stats("hp = 100000"), "stats: hp takes a whole number");
-        has(stats("hp = 1000\natack = 1"), "no stat \"atack\"");
+        // (No stats block: a side states what the save brings to them as
+        // facts, and nothing else of them.)
+        let stats = parse(&content, &format!("{good}\n[left.stats]\nhp = 1000\n")).unwrap_err();
+        has(stats, "left: no field \"stats\"");
+        has(bad("navi = \"megaman\"", "navi = \"megaman\"\nhp = 100000"), "left: hp: 100000 is past a u16");
         // No key takes the emotion window's glitch: the rules make it. (A
         // key that is none of a side's own parts is a fact of its game's
         // rules, by its setup field's name, or it is refused with those the
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes crosses, version, beast_out, bug_frags)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes hp, reg_up, sun, crosses, version, beast_out, bug_frags)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
@@ -1090,15 +1080,20 @@ mod tests {
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
         m.sides[0].folder.regular = None;
         has(crate::check_match(&content, &m), "left: folder: 30 copies of");
-        // A Mega chip past the navi's Mega level (its stats set directly:
-        // no NaviCust).
+        // Mega chips past the navi's Mega level (MegaMan's fresh 5, with no
+        // NaviCust program that raises it): ten of the game's.
         let mut m = picked.clone();
-        m.sides[1].navicust = None;
-        m.sides[1].stats.mega_level = 0;
-        let megas = m.sides[1].folder.chips().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
-        if megas > 0 {
-            has(crate::check_match(&content, &m), "Mega chips, past the navi's 0");
+        let megas: Vec<_> = (0..content.defs.chips.len() as u16)
+            .map(nettai_content_api::ChipHandle)
+            .filter(|&c| content.chip(c).class == nettai_battle::content::ChipClass::Mega && !content.chip(c).codes.is_empty())
+            .filter(|&c| ids::in_game(&content, "exe6", &content.defs.chip(c).key))
+            .take(10)
+            .collect();
+        for (i, &c) in megas.iter().enumerate() {
+            m.sides[1].folder.chips[i] = Some(FolderChip::new(c, content.chip(c).codes[0]));
         }
+        m.sides[1].folder.regular = None;
+        has(crate::check_match(&content, &m), "Mega chips, past the navi's 5");
         // Patch cards past 80 MB; Crosses for a navi without any.
         let mut m = picked.clone();
         m.sides[0].cards = crate::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
@@ -1106,7 +1101,6 @@ mod tests {
         let mut m = picked.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version(&content));
         has(crate::check_match(&content, &m), "right: crosses: ProtoMan doesn't change form");
     }
 
@@ -1138,7 +1132,6 @@ mod tests {
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
         m.sides[1].navicust = None;
         m.sides[1].navi_level = Some(0);
-        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].version(&content), Some(0));
         m.sides[1].folder.regular = None;
         let text = write(&content, &m);
         for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
@@ -1171,7 +1164,6 @@ mod tests {
         m.sides[1].navi = protoman;
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
         m.sides[1].navi_level = None;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version(&content));
         let problems = crate::check_match(&content, &m);
         has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
         assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");

@@ -57,11 +57,9 @@ pub struct Held {
 
 #[derive(Clone, Debug)]
 pub enum Edit {
-    /// Show the stats-and-bugs block (the stats set directly) in place of
+    /// Show what the programs make of the stats (the round's) in place of
     /// the grid, or the grid.
     ShowStats(bool),
-    /// A grid of programs, or the stats set directly.
-    UseGrid(bool),
     Expansions(u8),
     /// A program picked up from the list, in one of its colors.
     Hold(NaviCustProgramHandle, u8),
@@ -104,15 +102,9 @@ fn set(side: &mut Side, parts: Vec<PlacedProgram>, expansions: u8) {
     side.navicust = NaviCust::new(&parts, expansions).ok().or(side.navicust);
 }
 
-/// Start a grid of programs on a side of a match of `game` whose stats
-/// were set directly: the stats keep only what a save keeps, and the board
-/// is the largest.
-fn start_grid(content: &Content, game: &str, side: &mut Side, largest: u8) {
-    let kept: std::collections::BTreeMap<String, toml::Value> =
-        side.stats_block(content).into_iter().filter(|(k, _)| nettai_match::stats::SAVE_FIELDS.contains(&k.as_str())).collect();
-    side.stats = Side::base_stats(content, side.navi, side.version(content));
-    nettai_match::stats::apply(content, game, &kept, &mut side.stats);
-    side.stats = nettai_match::starting(content, side.stats, side.version(content));
+/// Start a grid of programs on a side that places none yet: the largest
+/// board.
+fn start_grid(side: &mut Side, largest: u8) {
     side.navicust = Some(NaviCust::new(&[], largest).expect("an empty NaviCust"));
 }
 
@@ -136,7 +128,7 @@ fn fits(content: &Content, board: Option<&Board>, parts: &[PlacedProgram], shape
 
 /// Apply an edit to a side of a match on `arena`; whether the match
 /// changed.
-pub fn update(content: &Content, arena: &Arena, side: &mut Side, state: &mut State, edit: Edit) -> bool {
+pub fn update(content: &Content, _arena: &Arena, side: &mut Side, state: &mut State, edit: Edit) -> bool {
     let rules = nettai_match::navicust_rules(content).clone();
     let largest = rules.boards.len().saturating_sub(1) as u8;
     match edit {
@@ -144,21 +136,11 @@ pub fn update(content: &Content, arena: &Arena, side: &mut Side, state: &mut Sta
             state.show_stats = on;
             return false;
         }
-        Edit::UseGrid(on) => {
-            if on {
-                start_grid(content, &arena.game, side, largest);
-            } else {
-                side.navicust = None;
-            }
-            state.held = None;
-            state.selected = None;
-            return true;
-        }
         Edit::Search(t) => {
             state.search = t;
             return false;
         }
-        Edit::Place(..) | Edit::Expansions(_) if side.navicust.is_none() => start_grid(content, &arena.game, side, largest),
+        Edit::Place(..) | Edit::Expansions(_) if side.navicust.is_none() => start_grid(side, largest),
         _ => {}
     }
     let mut parts: Vec<PlacedProgram> = side.navicust.map(|n| n.iter().collect()).unwrap_or_default();
@@ -274,7 +256,7 @@ pub fn update(content: &Content, arena: &Arena, side: &mut Side, state: &mut Sta
             let Some(i) = state.selected.take().filter(|&i| i < parts.len()) else { return false };
             parts.remove(i);
         }
-        Edit::ShowStats(_) | Edit::UseGrid(_) | Edit::Search(_) => unreachable!(),
+        Edit::ShowStats(_) | Edit::Search(_) => unreachable!(),
     }
     if side.navicust.is_none() {
         return changed;
@@ -545,18 +527,12 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     .spacing(6)
     .align_y(Alignment::Center);
     if state.show_stats {
-        let body: Element<Msg> = match side.navicust {
-            None => crate::view::navicust_stats(e, s),
-            Some(_) => column![
-                text("The stats and bugs are the NaviCust's: the programs on the grid make them as the round is set up.").size(13),
-                button(text("Set the stats directly instead (takes the programs off)").size(13))
-                    .on_press(Msg::NaviCust(s, Edit::UseGrid(false)))
-                    .style(button::secondary),
-                crate::view::round_stats(e, s),
-            ]
-            .spacing(8)
-            .into(),
-        };
+        let body: Element<Msg> = column![
+            text("The stats and bugs are the NaviCust's: the programs on the grid make them as the round is set up.").size(13),
+            crate::view::round_stats(e, s),
+        ]
+        .spacing(8)
+        .into();
         return column![header, body].spacing(8).into();
     }
     let rules = nettai_match::navicust_rules(c);
@@ -689,9 +665,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         )
     });
     let note: Element<Msg> = match side.navicust {
-        None => text("No programs yet: the stats are set directly (Stats and bugs). Putting a program down starts a NaviCust; the stats then keep only what a save keeps.")
-            .size(12)
-            .into(),
+        None => text("No programs yet: the largest board, empty.").size(12).into(),
         Some(_) => text("The command line is the lit row.").size(12).into(),
     };
     let left = column![
@@ -720,8 +694,8 @@ fn placed_at(side: &Side, i: usize) -> Option<PlacedProgram> {
 mod tests {
     use super::*;
 
-    /// The pane's edits on EXE6's content: a grid takes the stats back to
-    /// what the save keeps; programs are held from the list and put down
+    /// The pane's edits on EXE6's content: programs are held from the list
+    /// and put down
     /// where they fit (not over another), picked up by a cell and put back
     /// or down elsewhere, turned with the held cell, compressed by program
     /// and color, taken off; and the match stays one the checks accept.
@@ -732,9 +706,7 @@ mod tests {
         let mut state = State::default();
         let arena = m.arena.clone();
         let side = &mut m.sides[0];
-        assert!(update(&content, &arena, side, &mut state, Edit::UseGrid(true)));
         assert_eq!(side.navicust.unwrap().expansions, 2);
-        assert!(side.stats_block(&content).keys().all(|k| nettai_match::stats::SAVE_FIELDS.contains(&k.as_str())));
         let program = |name: &str| nettai_match::ids::navicust_program(&content, "exe6", name).unwrap();
         // Held from the list: nothing changes until it is put down.
         assert!(!update(&content, &arena, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
@@ -771,8 +743,5 @@ mod tests {
         assert_eq!(side.navicust.unwrap().len(), 2);
         let problems = nettai_match::check_match(&content, &m);
         assert!(problems.is_empty(), "{problems:?}");
-        let side = &mut m.sides[0];
-        assert!(update(&content, &arena, side, &mut state, Edit::UseGrid(false)));
-        assert!(side.navicust.is_none());
     }
 }
