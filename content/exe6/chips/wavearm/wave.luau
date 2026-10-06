@@ -1,6 +1,7 @@
 --!strict
 -- A shock wave (the original's attack object #0x16, `sub_80C6B40`):
--- WaveArm's and PwrWave's, and the wave viruses send. It stands on its
+-- WaveArm's and PwrWave's (their variants their own, a row each of
+-- `byte_80C6B00`: `wave.variant { ... }`). It stands on its
 -- panel for its variant's ticks, sends the next wave on, and goes when its
 -- animation ends (or, for the quick variants, WaveArm's and PwrWave's, 4
 -- ticks after sending the next). It needs a solid panel under it, and
@@ -24,32 +25,12 @@ export type State = {
     turned: number,
 }
 
+-- A shock wave variant (a row of `byte_80C6B00`): its animation, its ticks
+-- on a panel, what it does to the panels it passes, and whether it is
+-- quick or steers.
 function wave.variant(v: Variant): Variant
     return new.record("shock-wave-variant", v)
 end
-
--- `byte_80C6B00`'s rows: the first twelve the viruses' (no chip has them),
--- then WaveArm1's to WaveArm3's and PwrWave's.
-local ROWS: { [number]: Variant } = {
-    [0x0] = wave.variant { anim = 0, ticks = 22 },
-    [0x1] = wave.variant { anim = 1, ticks = 16 },
-    [0x2] = wave.variant { anim = 1, ticks = 11 },
-    [0x3] = wave.variant { anim = 2, ticks = 6 },
-    [0x4] = wave.variant { anim = 1, ticks = 16, panel = "cracked" },
-    [0x5] = wave.variant { anim = 2, ticks = 6, panel = "poison" },
-    [0x6] = wave.variant { anim = 0, ticks = 24 },
-    [0x7] = wave.variant { anim = 1, ticks = 16 },
-    [0x8] = wave.variant { anim = 1, ticks = 11 },
-    [0x9] = wave.variant { anim = 2, ticks = 6 },
-    [0xA] = wave.variant { anim = 1, ticks = 16 },
-    [0xB] = wave.variant { anim = 2, ticks = 6 },
-    [0xC] = wave.variant { anim = 1, ticks = 6, quick = true, steers = true },
-    [0xD] = wave.variant { anim = 1, ticks = 6, quick = true, steers = true },
-    [0xE] = wave.variant { anim = 1, ticks = 6, quick = true, steers = true },
-    [0xF] = wave.variant { anim = 1, ticks = 6, quick = true },
-}
--- The chips' waves.
-wave.variants = { wavearm1 = ROWS[0xC], wavearm2 = ROWS[0xD], wavearm3 = ROWS[0xE], pwrwave = ROWS[0xF] }
 
 local SPRITE = asset.sprite("shock-wave")
 local SOUND = asset.sound("shock-wave")

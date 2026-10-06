@@ -18,7 +18,8 @@ local crakout: Chip = {
     flags = { "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
-    action = crack.action(0),
+    -- (0x080C7818's row 0: the panel ahead.)
+    action = crack.action({ { 0, 0 } }),
 }
 
 -- DublCrak (EXE5 chip 0x05c): action 0x1B, cracks on the panel ahead and the one behind it (chips/crakout/crack).
@@ -35,7 +36,8 @@ local dublcrak: Chip = {
     flags = { "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
-    action = crack.action(1),
+    -- (Row 1: the panel ahead and the one behind it.)
+    action = crack.action({ { 0, 0 }, { 1, 0 } }),
 }
 
 -- TripCrak (EXE5 chip 0x05d): action 0x1B, cracks on the column ahead (chips/crakout/crack).
@@ -52,7 +54,8 @@ local tripcrak: Chip = {
     flags = { "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
-    action = crack.action(2),
+    -- (Row 2: the column ahead.)
+    action = crack.action({ { 0, 0 }, { 0, -1 }, { 0, 1 } }),
 }
 
 return { crakout = crakout, dublcrak = dublcrak, tripcrak = tripcrak }

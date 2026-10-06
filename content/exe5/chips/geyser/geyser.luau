@@ -14,8 +14,6 @@ local trajectory = require("../../lib/trajectory")
 local geyser = {}
 
 export type State = {
-    -- Its kind (Param1: its sprite's row, 0x080CD990).
-    which: number,
     -- The panel it aims at (Param3 and Param4).
     target_x: number,
     target_y: number,
@@ -28,8 +26,8 @@ export type WaterState = {
     count: number,
 }
 
--- Its sprite by kind (0x080CD990: rows of category and index): kind 0, the bomb.
-local SPRITES: { [number]: SpriteAsset? } = { [0] = asset.sprite("bomb") }
+-- Its sprite (0x080CD990's row by its kind, Param1: the chip's kind 0, the bomb).
+local SPRITE = asset.sprite("bomb")
 local GEYSER = asset.sprite("geyser")
 local SPEED, GRAVITY = 0x2E666, -0x2800
 local HIT_MOD = 3
@@ -234,16 +232,12 @@ local function tick(me: Object)
     me.collision:present()
 end
 
--- 0x080CD9B4: its sprite by kind; aimed at the target panel at its speed; its collision, no region yet.
+-- 0x080CD9B4: its sprite; aimed at the target panel at its speed; its collision, no region yet.
 local function init(me: Object)
     local s = me.state :: State
     me.visible = true
     local sprite = me.sprite
-    local look = SPRITES[s.which]
-    if look == nil then
-        error(string.format("Geyser's kind %d reads past its sprites", s.which))
-    end
-    sprite:load(look)
+    sprite:load(SPRITE)
     sprite.shadow = "ground"
     me.anim, me.anim_loaded = 1, 0
     sprite:set_animation(1)
@@ -269,7 +263,7 @@ end
 geyser.kind = new.kind {
     id = "geyser/bomb",
     pool = "attack",
-    state = { which = "u8", target_x = "u8", target_y = "u8" },
+    state = { target_x = "u8", target_y = "u8" },
     -- 0x080CD992.
     update = function(me: Object)
         local l = me.lifecycle
@@ -288,8 +282,8 @@ geyser.kind = new.kind {
     end,
 }
 
--- 0x080CDC08: a thrower of kind `which` Geyser bombs at the panel three ahead of the user, aqua.
-function geyser.thrower(which: number): Thrower
+-- 0x080CDC08: a thrower of Geyser bombs at the panel three ahead of the user, aqua.
+function geyser.thrower(): Thrower
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
             local o = battle.spawn(geyser.kind, pos)
@@ -298,7 +292,6 @@ function geyser.thrower(which: number): Thrower
                 o.element = 2
                 o.alliance = user.alliance
                 local s = o.state :: State
-                s.which = which
                 s.target_x, s.target_y = user.panel_x + 3 * user.facing, user.panel_y
             end
             return o
