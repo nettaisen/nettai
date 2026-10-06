@@ -3,7 +3,7 @@
 -- @exelib/dimming/stand_in): drawn as the user (its animation 16), it raises its charger (an attachment: EXE5's row
 -- 0x1C, sprite 0C-43, on attach point 0x18) with a sound, takes in its user's NaviCust bugs (each it clears is a shot
 -- more, past the first; in the operation battle only three of them, three shots each) and the save's emotion
--- window glitch, and 41 ticks on fires: a heavy shot (objects/flying_shot's row 1) every 16 ticks from the panel ahead,
+-- window glitch, and 41 ticks on fires: a heavy shot (objects/flying_shot) every 16 ticks from the panel ahead,
 -- 20 pixels up, each with a sound and the camera shaken. 31 ticks after the last it gives the user back, and its
 -- controller (./controller) moves on.
 
@@ -11,6 +11,7 @@ local attachment = require("../../objects/attachment")
 local flying_shot = require("../../objects/flying_shot")
 local stand_in = require("@exelib/dimming/stand_in")
 local operation_battle = require("../../lib/operation_battle")
+local sparks = require("../../lib/sparks")
 
 export type State = {
     -- The controller waiting on it (@exelib/dimming/stand_in).
@@ -21,11 +22,12 @@ export type State = {
 
 local actor = {}
 
-local CHARGER = attachment.look { sprite = asset.sprite("bug-charger"), palette = 0, attach_point = 0x18 }
+local CHARGER_SPRITE = asset.sprite("bug-charger")
+local CHARGER = attachment.look { sprite = CHARGER_SPRITE, palette = 0, attach_point = 0x18 }
 local SOUND_RAISE = asset.sound("appear")
 local SOUND_SHOT = asset.sound("junk-shot")
--- The heavy shot's row in the flying shots' table.
-local SHOT_ROW = 1
+-- The heavy shot (the flying shot's row 1, 0x080C3BCC): in the charger's sprite.
+local SHOT = flying_shot.variant { hit_mod = 3, element = 0, spark = sparks.heavy, sprite = CHARGER_SPRITE, speed = 0xA_0000 }
 local AIM, BETWEEN, AFTER = 0x28, 0xF, 0x1E
 
 -- 0x080C3C6C: the bugs it takes in (each cleared), and so its shots: one, and in the operation battle three more
@@ -124,7 +126,7 @@ local function fire(me: Object)
     end
     me.timer = BETWEEN
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
-    local shot = flying_shot.launch(me, Vec3.new(x, y, 0x14_0000), SHOT_ROW, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
+    local shot = flying_shot.launch(me, Vec3.new(x, y, 0x14_0000), SHOT, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
     if shot then
         shot.run_while_dimmed = true
     end

@@ -1,17 +1,16 @@
 --!strict
 -- The flying shot (the original's attack object #0xB, `sub_80C60A8`):
--- TrnArrw's arrows, the Beast forms' slash waves, a thrown obstacle. It
--- flies forward at a steady speed (and falls, if it was launched to) until
--- it has passed its range in panel centers, and ends on the first thing it
--- hits or when it leaves the field. What differs between its uses is its
--- variant (`flying_shot.variant { ... }`, the original's `byte_80C6038`
--- rows): its collision, element, spark, look, speed, range and status.
+-- TrnArrw's arrows, the Falzar Beast forms' buster shots, a thrown
+-- obstacle. It flies forward at a steady speed (and falls, if it was
+-- launched to) until it has passed its range in panel centers, and ends on
+-- the first thing it hits or when it leaves the field. What differs
+-- between its uses is its variant (`flying_shot.variant { ... }`, one of
+-- the original's `byte_80C6038` rows, which each user defines where it
+-- fires it): its collision, element, spark, look, speed, range and status.
 -- It may wait some ticks before it sets off, and wear a palette.
 -- See docs/engine/objects-and-player.md §B8a.
 
 local element = require("@exelib/element")
-local collision = require("../rules/collision")
-local sparks = require("../lib/sparks")
 
 local flying_shot = {}
 
@@ -39,104 +38,11 @@ local PANEL_SPARK_Z = 0x10_0000
 -- unless the first bit is set too.
 local SPARKS, NO_SPARK = 0x3F800000, 1
 
--- A flying shot variant.
+-- A flying shot variant (a row of `byte_80C6038`, 16 bytes: its collision,
+-- hit modifier, element, spark, look, highlight, range, shadow, status and
+-- speed), which its user defines where it fires it.
 function flying_shot.variant(v: FlyingShotVariant): FlyingShotVariant
     return new.record("flying-shot-variant", v)
-end
-
-local ARROW_SPRITE = asset.sprite("bow")
-local SHOT_SPRITE = asset.sprite("beast-shot")
-local BLADE_SPRITE = asset.sprite("sword")
-local SHOT = { is = collision.attack, hits = collision.hits_navis }
-
--- The variants (the original's rows; `by_number` for the callers that
--- still name one by number).
-local ROWS: { [number]: FlyingShotVariant } = {
-    [0] = flying_shot.variant {
-        collision = { is = collision.thrown_piercing_break, hits = collision.hits_navis },
-        hit_mod = 3,
-        element = "null",
-        spark = sparks.plain,
-        sprite = BLADE_SPRITE,
-        speed = 0x5_0000,
-        range = 8,
-    },
-    [1] = flying_shot.variant {
-        collision = SHOT,
-        hit_mod = 3,
-        element = "null",
-        spark = sparks.heavy,
-        sprite = BLADE_SPRITE,
-        speed = 0xA_0000,
-        range = 8,
-    },
-    -- TrnArrw's arrow.
-    [2] = flying_shot.variant {
-        collision = SHOT,
-        hit_mod = 1,
-        element = "aqua",
-        spark = sparks.of_element(2),
-        sprite = ARROW_SPRITE,
-        anim = 3,
-        speed = 0x6_0000,
-        range = 8,
-        panel_spark = true,
-        launch_sound = asset.sound("twang"),
-    },
-    [3] = flying_shot.variant {
-        collision = SHOT,
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.charged,
-        sprite = SHOT_SPRITE,
-        speed = 0xC_0000,
-        range = 8,
-    },
-    [4] = flying_shot.variant {
-        collision = SHOT,
-        hit_mod = 1,
-        element = "null",
-        spark = sparks.charged,
-        sprite = SHOT_SPRITE,
-        speed = 0x8_0000,
-        range = 8,
-    },
-    [5] = flying_shot.variant {
-        collision = SHOT,
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.charged,
-        sprite = SHOT_SPRITE,
-        speed = 0xC_0000,
-        range = 2,
-        end_effect = new.effect { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 },
-    },
-    -- A thrown obstacle.
-    [6] = flying_shot.variant {
-        collision = { is = collision.breaking, hits = collision.hits_navis },
-        hit_mod = 3,
-        element = "null",
-        secondary = { "break" },
-        spark = sparks.breaking,
-        sprite = SHOT_SPRITE,
-        speed = 0xA_0000,
-        range = 8,
-        highlight = true,
-        obstacle = true,
-    },
-}
--- (The Falzar Beast forms' buster fires rows 3 and 5: the shot ahead, and
--- the volley's other two, which fly two panels and burst.)
-flying_shot.variants = { arrow = ROWS[2], thrown = ROWS[6], beast_shot = ROWS[3], beast_volley_shot = ROWS[5] }
-
--- The variant of row `n` (past the table the game reads on into the
--- routine's code: an error).
-function flying_shot.by_number(n: number): FlyingShotVariant
-    local r = ROWS[n]
-    if not r then
-        error(string.format("flying shot row %#x reads past byte_80C6038", n))
-    end
-    return r
 end
 
 -- Its end: not drawn, its hit region cleared (`object_clearCollisionRegion`);
@@ -342,18 +248,6 @@ function flying_shot.launch(owner: Object, pos: Vec3, shot: FlyingShot): Object?
         o.related1 = owner
     end
     return o
-end
-
--- The same with the original's four parameters (the row, the wait, the
--- fall, the palette), for the callers that still pass them.
-function flying_shot.spawn(owner: Object, pos: Vec3, params: { number }, damage: number): Object?
-    return flying_shot.launch(owner, pos, {
-        variant = flying_shot.by_number(params[1]),
-        wait = params[2],
-        falls = params[3] ~= 0,
-        palette = params[4],
-        damage = damage,
-    })
 end
 
 return flying_shot
