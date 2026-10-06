@@ -137,7 +137,7 @@ impl<G: Game> Observer<G> for CueFeed {
         }
     }
 
-    fn confirmed(&mut self, frame: u32, _settled: Option<&Battle>) {
+    fn confirmed(&mut self, frame: u32, _: [&G::Input; 2], _settled: Option<&Battle>) {
         self.tracker.confirmed(frame + 1);
         if self.unconfirmed.front().is_some_and(|&(f, _)| f == frame) {
             let (frame, cues) = self.unconfirmed.pop_front().unwrap();

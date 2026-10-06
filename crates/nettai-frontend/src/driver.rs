@@ -88,6 +88,19 @@ pub trait Driver {
     fn set_present_delay(&mut self, _ticks: u32) -> bool {
         false
     }
+    /// Record what it plays from now on as a replay (`crate::replay`), of
+    /// a driver that plays a match's set on buttons alone and hasn't
+    /// started (live play, netplay); false: it can't be (a trace's, a
+    /// replay's, one under way). A driver that gives each tick's inputs
+    /// (`next`) is recorded by the session from them; one that runs the
+    /// battle itself hands its ticks over as they settle
+    /// (`take_recorded`).
+    fn record(&mut self) -> bool {
+        false
+    }
+    /// The ticks that settled since the last call, for the recording, of a
+    /// driver that runs the battle itself and records (`record`).
+    fn take_recorded(&mut self, _out: &mut Vec<nettai_replay::Tick>) {}
 }
 
 /// How a netplay match's connection and rollback are doing
@@ -266,6 +279,10 @@ impl Driver for LivePlayer {
 
     fn position(&self) -> String {
         format!("live round {} tick {}", self.round, self.ticks)
+    }
+
+    fn record(&mut self) -> bool {
+        self.ticks == 0
     }
 }
 
