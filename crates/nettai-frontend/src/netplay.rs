@@ -8,9 +8,10 @@
 //! socket and no transport of its own. Before the match, the host's
 //! handshake (the program's is nettai-demo's `net`) checks that both run
 //! the same engine, play the same game (a match is of one) and the same
-//! content, and swaps what each player brings (an [`Offer`]: their navi,
-//! folder, version, Crosses and patch cards, each by its name in the game;
-//! the language is each player's own) and their halves of the seed. Both
+//! content, and swaps what each player brings (an [`Offer`]: their side,
+//! its facts as the game's rules take them, in nettai-match's binary
+//! against the content both play; the language is each player's own) and
+//! their halves of the seed. Both
 //! then agree the same round ([`agree`], [`netplay_setup`]): the host's
 //! arena (a match file's, else picked from the seed on the host's stage, if
 //! it names one), each player's side on their side (the host's is side 0,
@@ -36,8 +37,8 @@ use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::{Battle, BattleResult};
 use nettai_content_api::StageHandle;
-use nettai_match::file::{ArenaFile, SideFile};
-use nettai_match::{After, Arena, Match, Picks, Place, Set, Side, ids};
+use nettai_match::binary::Brings;
+use nettai_match::{After, Arena, Match, Picks, Place, Set, Side};
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
@@ -56,19 +57,6 @@ pub struct Offer {
     pub arena: Option<Arena>,
 }
 
-/// An offer as the handshake carries it: a match file's names, in the
-/// offer's game (`nettai_match::file`).
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct OfferFile {
-    game: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    stage: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    arena: Option<ArenaFile>,
-    side: SideFile,
-}
-
 impl Offer {
     /// An offer of `side` for a match of `game` (and the host's `stage`,
     /// if it names one).
@@ -83,46 +71,34 @@ impl Offer {
         Offer { game: m.arena.game.clone(), side, stage: None, arena: host.then_some(m.arena) }
     }
 
-    /// The offer as the handshake carries it: each thing by its name in
-    /// the offer's game.
+    /// The offer as the handshake carries it: nettai-match's binary
+    /// (`binary::offer_bytes`), against the content both players play,
+    /// which the handshake names beside it (the game and the content's
+    /// hash). An offer's arena is a checked match's: its backgrounds are
+    /// its game's pack's.
     pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
-        let place = |s: StageHandle| ids::local(&content.defs.stage(s).key).to_string();
-        let file = OfferFile {
-            game: self.game.clone(),
-            stage: self.stage.map(place),
-            arena: self.arena.as_ref().map(|a| nettai_match::file::arena_file(content, a)),
-            side: nettai_match::file::side_file(content, &self.side),
+        let brings = match (&self.arena, self.stage) {
+            (Some(a), _) => Brings::Arena(a.clone()),
+            (None, Some(s)) => Brings::Stage(s),
+            (None, None) => Brings::Nothing,
         };
-        toml::to_string(&file).expect("an offer serializes").into_bytes()
+        nettai_match::binary::offer_bytes(content, &brings, &self.side).expect("an offer's arena is a checked match's")
     }
 
-    /// An offer from the other side for a match of `game`, its names
-    /// resolved in the game and checked against `content` as a match file's
-    /// side is (`nettai_match::check_side`), its arena or stage a link
-    /// battle's.
+    /// An offer from the other side for a match of `game` on `content`
+    /// (the handshake refused another game or content before), read
+    /// and checked as a match file's side is (`nettai_match::check_side`),
+    /// its arena or stage a link battle's.
     pub fn from_bytes(content: &Arc<Content>, game: &str, bytes: &[u8]) -> Result<Offer, String> {
-        let undecoded = |e: String| format!("the other player's setup doesn't decode ({e})");
-        let text = std::str::from_utf8(bytes).map_err(|e| undecoded(e.to_string()))?;
-        let f: OfferFile = toml::from_str(text).map_err(|e| undecoded(e.to_string()))?;
-        if f.game != game {
-            return Err(format!("the other player's setup is of {}, this match {game}'s", f.game));
+        if content.game() != game {
+            return Err(format!("the content is {}'s, this match {game}'s", content.game()));
         }
-        let mut problems = Vec::new();
-        let side = nettai_match::file::resolve_side(content, game, &f.side, "side", &mut problems);
-        let stage = match f.stage.as_deref().map(|name| nettai_match::link_stage(content, game, name)) {
-            Some(Err(e)) => {
-                problems.push(e);
-                None
-            }
-            s => s.and_then(Result::ok),
+        let (brings, side) = nettai_match::binary::read_offer(content, bytes).map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
+        let (stage, arena) = match brings {
+            Brings::Nothing => (None, None),
+            Brings::Stage(s) => (Some(s), None),
+            Brings::Arena(a) => (None, Some(a)),
         };
-        let arena = f.arena.as_ref().and_then(|a| nettai_match::file::resolve_arena(content, game, a, &mut problems));
-        let Some(side) = side else {
-            return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
-        };
-        if !problems.is_empty() || f.arena.is_some() && arena.is_none() {
-            return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
-        }
         let offer = Offer { game: game.to_string(), side, stage, arena };
         offer.check(content)?;
         Ok(offer)
@@ -498,8 +474,9 @@ mod tests {
         offer_of(content, "exe6", seed)
     }
 
-    /// An offer goes over the wire as it is, every name the game's; one
-    /// the content can't play is refused with a reason.
+    /// An offer goes over the wire as it is, in binary; one the content
+    /// can't play is refused with a reason, and bytes that aren't one with
+    /// where they go wrong.
     #[test]
     fn offers_roundtrip_and_bad_ones_are_refused() {
         let content = exe6_test_content();
@@ -508,12 +485,11 @@ mod tests {
         let cards = nettai_match::testing::patch_cards(&content, "exe6", "canodumb,-shadow");
         o.side.set_fact(&content, "patch_cards", &cards).unwrap();
         let bytes = o.to_bytes(&content);
-        let text = String::from_utf8(bytes.clone()).unwrap();
-        assert!(text.starts_with("game = \"exe6\"") && !text.contains("exe6:"), "{text}");
         assert_eq!(Offer::from_bytes(&content, "exe6", &bytes).unwrap(), o);
         // A match file's arena goes too.
         let mut a = o.clone();
         a.arena = Some(nettai_match::pick::live(&content, "exe6", 9, None).unwrap().arena);
+        a.stage = None;
         assert_eq!(Offer::from_bytes(&content, "exe6", &a.to_bytes(&content)).unwrap(), a);
         let mut bad = o.clone();
         let mut folder = bad.side.folder(&content);
@@ -521,18 +497,22 @@ mod tests {
         folder.regular = None;
         bad.side.set_folder(&content, &folder).unwrap();
         assert!(Offer::from_bytes(&content, "exe6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
-        // A name the game hasn't: the ordinary unknown name.
-        let bad = text.replacen("navi = \"megaman\"", "navi = \"exe5:megaman\"", 1); // (written in full)
-        let e = Offer::from_bytes(&content, "exe6", bad.as_bytes()).unwrap_err();
-        assert!(e.contains("side: navi: no navi \"exe5:megaman\" in exe6"), "{e}"); // (written in full)
-        // Another game's offer, and bytes that aren't one.
-        assert!(Offer::from_bytes(&content, "exe5", &bytes).unwrap_err().contains("is of exe6, this match exe5's"));
-        assert!(Offer::from_bytes(&content, "exe6", &bytes[..10]).is_err());
+        // A stage that isn't a link battle's.
+        let mut stage = o.clone();
+        stage.stage = (0..content.defs.stages.len() as u16).map(StageHandle).find(|s| !nettai_match::link_battle_stages(&content, "exe6").contains(s));
+        assert!(stage.stage.is_some());
+        assert_eq!(Offer::from_bytes(&content, "exe6", &stage.to_bytes(&content)).unwrap_err(), "the other player's stage isn't a link battle stage");
+        // Another game's content, and bytes that aren't an offer.
+        assert_eq!(Offer::from_bytes(&content, "exe5", &bytes).unwrap_err(), "the content is exe6's, this match exe5's");
+        let e = Offer::from_bytes(&content, "exe6", &bytes[..10]).unwrap_err();
+        assert!(e.starts_with("the other player's setup doesn't decode (side: ") && e.ends_with("the bytes end inside it)"), "{e}");
+        let mut more = bytes.clone();
+        more.push(0);
+        assert_eq!(Offer::from_bytes(&content, "exe6", &more).unwrap_err(), "the other player's setup doesn't decode (1 bytes after its end)");
     }
 
     /// An EXE5 side's offer carries its facts (its karma, its souls); both
-    /// peers' rounds start from them alike. A fact past its field's type,
-    /// or one the offer's game's rules don't take, is refused.
+    /// peers' rounds start from them alike.
     #[test]
     fn offers_carry_karma_and_souls() {
         use nettai_battle::rules::Fact;
@@ -540,22 +520,13 @@ mod tests {
         let content = nettai_match::testing::exe5_content();
         let mut o = offer_of(&content, "exe5", 5);
         o.side.set_fact(&content, "karma", &[Fact::Value(Value::Int(100))]).unwrap();
-        let proto = ids::form(&content, "exe5", "protosoul").unwrap();
+        let proto = nettai_match::ids::form(&content, "exe5", "protosoul").unwrap();
         o.side.set_fact(&content, "souls", &[Fact::Value(Value::Def(Registry::Form, proto.0))]).unwrap();
         let back = Offer::from_bytes(&content, "exe5", &o.to_bytes(&content)).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, o);
         let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "exe5", 6)]).unwrap();
         let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "exe5", 6)]).unwrap();
         assert_eq!(format!("{:?}", one.first()), format!("{:?}", two.first()));
-        let stated = String::from_utf8(o.to_bytes(&content)).unwrap();
-        assert!(stated.contains("karma = 100\n"), "{stated}");
-        let bad = stated.replacen("karma = 100\n", "karma = 70000\n", 1);
-        assert!(Offer::from_bytes(&content, "exe5", bad.as_bytes()).unwrap_err().contains("karma: 70000 is past a u16"));
-        let six = exe6_test_content();
-        let plain = String::from_utf8(offer(&six, 6).to_bytes(&six)).unwrap();
-        let bad = plain.replacen("[side]\n", "[side]\nsouls = []\n", 1);
-        assert_ne!(bad, plain);
-        assert!(Offer::from_bytes(&six, "exe6", bad.as_bytes()).unwrap_err().contains("no field \"souls\" (a side of exe6 takes"));
         // Offers of two games make no match.
         let mut other = o.clone();
         other.game = "exe6".into();
