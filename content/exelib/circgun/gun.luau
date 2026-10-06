@@ -155,7 +155,7 @@ function gun.make_kind(id: string, look: CircGunLook, shot_kind: Kind): Kind
         end
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
         local ticks = s.variant.period * 4 + 0x14
-        shot.spawn_kind(shot_kind, me, ox, oy, me.element, damage, ticks, s.variant.look, s.fired)
+        shot.spawn_kind(shot_kind, me, ox, oy, me.element, damage, ticks, s.variant, s.fired)
         s.fired += 1
         if s.shots_left == 0 then
             me.visible = false
@@ -215,7 +215,7 @@ function gun.make_kind(id: string, look: CircGunLook, shot_kind: Kind): Kind
         me.visible = true
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         place(me)
-        sprite.palette = s.variant.look
+        sprite.palette = s.variant.palette
         me.vel = Vec3.new(-me.facing, 1, me.vel.z)
         me.timer2 = TIMEOUT
         s.shots_left = AIMING

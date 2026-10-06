@@ -17,19 +17,17 @@ export type SparklesLook = { id: string, sound: Sound }
 -- spawner's registers held; nothing draws them).
 export type Sparkles = {
     kind: Kind,
-    spawn: (over: Object, length: number, effect: Effect, silent: boolean) -> Object?,
+    spawn: (over: Object, ticks: number, effect: Effect, silent: boolean) -> Object?,
 }
 
 export type State = {
     -- How long it lasts (Param1, by `dword_80E19F0`), the effect it shows
     -- (Param2), and silent (Param3: no sound with it).
-    length: number,
+    ticks: number,
     effect: Effect,
     silent: boolean,
 }
 
--- Its lifetimes (`dword_80E19F0`), by its first parameter.
-local LENGTHS: { [number]: number } = { [0] = 0x20, [1] = 0x5A, [2] = 0x20, [3] = 0x00 }
 -- The effect shows when its timer's low four bits are all set (the routine
 -- means a mask of 3 for length 0, but its test reads stale flags), jittered
 -- by up to 15 pixels and 16 pixels up.
@@ -61,18 +59,14 @@ function sparkles.make(look: SparklesLook): Sparkles
     local kind = new.kind {
         id = look.id,
         pool = "effect",
-        state = { length = "u8", effect = "effect", silent = "bool" },
+        state = { ticks = "u8", effect = "effect", silent = "bool" },
         -- `sub_80E19BC`.
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
                 -- `sub_80E19DC`.
                 local s = me.state :: State
-                local t = LENGTHS[s.length]
-                if t == nil then
-                    error(string.format("sparkles length %d reads past dword_80E19F0", s.length))
-                end
-                me.timer = t
+                me.timer = s.ticks
                 me:set_lifecycle("update")
             elseif l == "update" then
                 if me.action ~= 0 then
@@ -88,11 +82,11 @@ function sparkles.make(look: SparklesLook): Sparkles
     }
 
     -- `sub_80E1A6A`.
-    local function spawn(over: Object, length: number, effect: Effect, silent: boolean): Object?
+    local function spawn(over: Object, ticks: number, effect: Effect, silent: boolean): Object?
         local o = battle.spawn(kind, Vec3.zero)
         if o then
             local s = o.state :: State
-            s.length, s.effect, s.silent = length, effect, silent
+            s.ticks, s.effect, s.silent = ticks, effect, silent
             o.related1 = over
         end
         return o

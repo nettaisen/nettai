@@ -3,6 +3,7 @@
 -- leaves four shots on the panels it passes (docs/engine/dimming-chip-effects.md
 -- §8).
 
+local collision = require("../rules/collision")
 local controller = require("@self/controller")
 
 local chip: Chip = {
@@ -17,7 +18,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    dimming = controller.hook(controller.variant { period = 2, shots = 4, look = 0 }),
+    dimming = controller.hook(controller.variant { period = 2, shots = 4, palette = 0, hit = collision.thrown }),
 }
 
 return { circgun = chip }

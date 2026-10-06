@@ -5,6 +5,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local circgun = require("@self/circgun")
+local collision = require("../rules/collision")
 
 local chip: Chip = {
     codes = { "A", "C", "F" },
@@ -18,7 +19,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    dimming = circgun.hook(circgun.variant { period = 2, shots = 4, look = 0 }),
+    dimming = circgun.hook(circgun.variant { period = 2, shots = 4, palette = 0, hit = collision.thrown }),
 }
 
 return { circgun = chip }
