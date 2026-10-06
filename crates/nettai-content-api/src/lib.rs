@@ -57,8 +57,8 @@ pub use host::{
 };
 pub use registry::{
     ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, IdentityHandle, KindHandle, NaviHandle,
-    NaviCustProgramHandle, PatchCardHandle, RULESET_KEY, RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle,
+    EntryHandle, RULESET_KEY, RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle, entry_key, entry_parts,
     valid_key,
 };
-pub use state::{Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, LIST_MARK, MAX_LIST, Place, Schema, StateArena, StateId, StateMut, StateRef, Value, is_code};
+pub use state::{Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, LIST_MARK, MAX_LIST, Place, Schema, StateArena, StateId, StateMut, StateRef, Value, is_code, is_collection_name};
 pub use types::{InPack, ObjectRef, PackId, PackSprite, PanelPos, Pool, SpriteId, Vec3};

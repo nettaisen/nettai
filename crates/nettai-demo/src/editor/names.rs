@@ -4,7 +4,7 @@
 
 use nettai_battle::Content;
 use nettai_battle::content::strings::Strings;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle};
+use nettai_content_api::{ChipHandle, EntryHandle, FormHandle, NaviHandle};
 
 /// The languages the editor offers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -74,11 +74,11 @@ impl Names {
         self.pick(content, &content.defs.navi(n).key, |s, k| s.navi(k).and_then(|c| c.name.clone()))
     }
 
-    pub fn navicust_program(&self, content: &Content, p: nettai_content_api::NaviCustProgramHandle) -> String {
-        self.pick(content, &content.defs.navicust_program(p).key, |s, k| s.navicust_program(k).and_then(|c| c.name.clone()))
-    }
-
-    pub fn patch_card(&self, content: &Content, c: PatchCardHandle) -> String {
-        self.pick(content, &content.defs.patch_card(c).key, |s, k| s.patch_card(k).and_then(|c| c.name.clone()))
+    /// An entry of one of the game's collections (a patch card, a NaviCust
+    /// program).
+    pub fn entry(&self, content: &Content, e: EntryHandle) -> String {
+        let d = content.defs.entry(e);
+        let collection = d.collection.clone();
+        self.pick(content, d.id(), move |s, k| s.entry(&collection, k).and_then(|c| c.name.clone()))
     }
 }

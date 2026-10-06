@@ -193,11 +193,20 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
             if let Some((registry, h)) = b.def(&v) {
                 if let FieldType::Ref(Registry::Record, Some(want)) = ty
                     && registry == Registry::Record
-                    && b.record_type(h) != Some(want.as_str())
+                    && b.record_type(registry, h) != Some(want.as_str())
                 {
                     return Err(mlua::Error::runtime(format!(
                         "{what}: expected a record:{want}, got a record:{}",
-                        b.record_type(h).unwrap_or("?")
+                        b.record_type(registry, h).unwrap_or("?")
+                    )));
+                }
+                if let FieldType::Ref(Registry::Entry, Some(want)) = ty
+                    && registry == Registry::Entry
+                    && b.record_type(registry, h) != Some(want.as_str())
+                {
+                    return Err(mlua::Error::runtime(format!(
+                        "{what}: expected an entry of {want}, got one of {}",
+                        b.record_type(registry, h).unwrap_or("?")
                     )));
                 }
                 return Ok(Value::Def(registry, h));
