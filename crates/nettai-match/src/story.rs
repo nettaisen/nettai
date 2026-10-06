@@ -43,10 +43,10 @@ mod tests {
         assert_eq!(super::max_level(&content, navi("megaman")), None);
     }
 
-    /// A match whose left side operates ProtoMan at level 3: its checks
-    /// pass, its file names the navi and the level and no HP, and its round
-    /// starts with the story's HP at the level; an HP of the side's own, a
-    /// level past his last, or none, is refused.
+    /// A match whose left side operates ProtoMan: he is at his story's last
+    /// level, as every side plays, its checks pass, its file names the navi
+    /// and no level or HP, and its round starts with the story's HP at the
+    /// level; a level set past his last, or none, is refused.
     #[test]
     fn a_match_with_a_team_navi() {
         let content = exe5_content();
@@ -54,28 +54,27 @@ mod tests {
         let mut m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.set_navi(&content, protoman).unwrap();
-        s.set_level(&content, Some(3)).unwrap();
+        assert_eq!(s.level(&content), Some(6), "his story's last");
         assert_eq!(crate::check::check_match(&content, &m), Vec::<String>::new());
         let text = crate::write(&content, &m);
-        assert!(text.contains("navi = \"protoman\"") && text.contains("level = 3") && !text.contains("hp ="), "{text}");
+        assert!(text.contains("navi = \"protoman\"") && !text.contains("level") && !text.contains("hp ="), "{text}");
         assert_eq!(crate::parse(&content, &text).unwrap(), m);
         let b = crate::check::start(&content, &m).unwrap();
         // (The HP the round starts with is the maximum: a link battle's
         // start, `init_hp`.)
-        assert_eq!((b.stats[0].max_base_hp, b.stats[0].max_hp), (400, 400));
-        // (His own chip's damage, StepSwrd's, is his row's at his level, 3:
-        // what EXE5's rules gave his side as the round was set up; the
-        // other side, MegaMan, has no level and none of it.)
+        assert_eq!((b.stats[0].max_base_hp, b.stats[0].max_hp), (800, 800));
+        assert_eq!(Some(b.stats[0].max_hp), super::hp_at(&content, protoman, 6));
+        // (At level 3, set as a recording's boundary would: his own chip's
+        // damage, StepSwrd's, is his row's at his level, what EXE5's rules
+        // gave his side as the round was set up; the other side, MegaMan,
+        // has no level and none of it.)
+        let mut three = m.clone();
+        three.sides[0].set_level(&content, Some(3)).unwrap();
+        let b = crate::check::start(&content, &three).unwrap();
         let stepswrd = crate::ids::chip(&content, "exe5", "stepswrd").unwrap();
         assert_eq!((b.given.damage(stepswrd, 0), b.given.damage(stepswrd, 1)), (Some(100), Some(0)));
         assert_eq!(b.stats[0].weapons.back_special_damage, 50);
         assert_eq!(Some(b.stats[0].max_hp), super::hp_at(&content, protoman, 3));
-        // An HP of the side's own has no effect, and is refused.
-        let mut own = m.clone();
-        own.sides[0].set_fact(&content, "hp", &[Fact::Value(Value::Int(250))]).unwrap();
-        let problems = crate::check::check_match(&content, &own);
-        assert!(problems.iter().any(|p| p.contains("hp: ProtoMan's HP is its level's")), "{problems:?}");
-        assert_eq!(crate::check::round_stats(&content, &own).unwrap()[0].max_hp, 400);
         m.sides[0].set_level(&content, Some(7)).unwrap();
         let problems = crate::check::check_match(&content, &m);
         assert!(problems.iter().any(|p| p.contains("level 7") && p.contains("0 to 6")), "{problems:?}");

@@ -105,11 +105,14 @@ local rules: Rules = {
         -- pattern records), which a navi in auto battle plays of them as their console sends it.
         auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
         auto_battle_records = schema.list(auto_battle.block.RECORD, auto_battle.block.RECORDS),
-        -- What the save brings to the navi's stats (./save): MegaMan's base HP, the Regular memory, and a team navi's
-        -- level (the story's progress).
-        hp = "u16",
-        reg_up = "u8",
-        level = "u8?",
+        -- What the save brings to the navi's stats (./save): MegaMan's base HP, the Regular memory, fighting in the
+        -- sun (+0x22), and a team navi's level (the story's progress). No player states them: every side plays at
+        -- the highest (`setup_defaults`; a team navi at its story's last level, which the tools state, MegaMan with
+        -- none). A recording's boundary states the save's own.
+        hp = schema.fixed("u16"),
+        reg_up = schema.fixed("u8"),
+        sun = schema.fixed("bool"),
+        level = schema.fixed("u8?"),
         -- MegaMan's light/dark value (NaviStats +0x44, ./light_dark).
         karma = "u16",
         -- The souls the save has (./souls; a match's side's `souls`, a recording's its version's), which the custom
@@ -122,8 +125,8 @@ local rules: Rules = {
         -- 0x0203E560), by its SP chip, in frames.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
     },
-    -- A setup that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the fresh
-    -- stats'), no level (MegaMan's); a fresh save's light/dark value (0x08010C00 writes 500: light for the chips, no
+    -- A setup that says nothing: what every save brings at its highest, the base HP 1000, the Regular memory 50 and
+    -- the sun, no level (MegaMan's); a fresh save's light/dark value (0x08010C00 writes 500: light for the chips, no
     -- holy panels cleared, the starting mood 0x80); a finished save's souls, every one of either version (by id: a
     -- form's module reads ./souls, so this names them rather than reads theirs), and Chaos Unison.
     setup_defaults = {
@@ -132,8 +135,9 @@ local rules: Rules = {
         navicust_expansions = #navicust_board.boards - 1,
         -- What the game's battle end writes of a player it has learned nothing of: no places, every record zeros.
         auto_battle_records = auto_battle.block.nothing_learned(),
-        hp = save.NEW_GAME_HP,
-        reg_up = fresh_stats.reg_up,
+        hp = save.MAX_HP,
+        reg_up = save.MAX_REG_UP,
+        sun = true,
         karma = 500,
         souls = {
             "colonelsoul",

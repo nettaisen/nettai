@@ -102,27 +102,29 @@ local rules: Rules = {
         beast_out = "bool",
         -- What the save brings to the navi's stats (./save): the base HP (HP Memories, +0x3E), the Regular memory
         -- (RegUps, +0x09), fighting in the sun (+0x22), and the level of the navi code it received (0 to 14, none
-        -- without one: event flag 0x163, `dword_203CFA0`).
-        hp = "u16",
-        reg_up = "u8",
-        sun = "bool",
-        level = "u8?",
+        -- without one: event flag 0x163, `dword_203CFA0`). No player states them: every side plays at the highest
+        -- (`setup_defaults`; a link navi at its navi code's last level, which the tools state, MegaMan with none).
+        -- A recording's boundary states the save's own.
+        hp = schema.fixed("u16"),
+        reg_up = schema.fixed("u8"),
+        sun = schema.fixed("bool"),
+        level = schema.fixed("u8?"),
         -- The save's bug frags (./dark_chips), which the init exchange shares.
         bug_frags = "u32",
         -- How long the save took to delete each SP navi (./sp_chips: the save's `byte_203EB00`), by its SP chip, in
         -- frames.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
     },
-    -- A setup that says nothing: Beast Out (a finished game's save); a new game's base HP, 100 (MegaMan's fresh
-    -- HP), and Regular memory (the fresh stats'); no sun; no navi code received (no level).
+    -- A setup that says nothing: Beast Out (a finished game's save); what every save brings at its highest: the
+    -- base HP 1000, the Regular memory 50, the sun; no navi code received (no level: MegaMan's).
     setup_defaults = {
         -- A NaviCust with no programs on the largest board (MegaMan's compiles one; a recording's boundary states
         -- none, its stats already the NaviCust's).
         navicust_expansions = #navicust_board.boards - 1,
         beast_out = true,
-        hp = save.NEW_GAME_HP,
-        reg_up = fresh_stats.reg_up,
-        sun = false,
+        hp = save.MAX_HP,
+        reg_up = save.MAX_REG_UP,
+        sun = true,
         -- Every SP navi deleted in no time (its chip's best damage), in the save's order.
         sp_times = {
             { chip = "heatman-sp", frames = 0 },

@@ -839,6 +839,7 @@ impl Round {
                 for (field, value) in [("hp", s.max_base_hp as i64), ("reg_up", s.reg_up as i64)] {
                     p.set_fact(content, field, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(value))])?;
                 }
+                p.set_fact(content, "sun", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Bool(s.raw[0x22] != 0))])?;
             }
         }
         // A team navi's stats are the rules' to build from its level (EXE5's
@@ -1014,7 +1015,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         super_armor: s.super_armor,
         version: 0,
         beast_out_counter: 0,
-        sun: false,
+        sun: r[0x22] != 0,
         chip_drops: r[0x26],
         encounters: r[0x28],
         navi,
@@ -1065,8 +1066,9 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// reset lays the navi's fresh stats (0x080111AA: the engine's
 /// `NaviStats::fresh`, what the game's rules and the navi's definition
 /// state) and keeps of the save's the mood, the base HP, the soul, the
-/// folder and its Regular chips, the Regular memory and the HP (and +0x21,
-/// +0x22 and the light/dark value, which the engine's stats don't hold). The
+/// folder and its Regular chips, the Regular memory, the sun (+0x22) and
+/// the HP (and +0x21 and the light/dark value, which the engine's stats
+/// don't hold). The
 /// navi's variant is the recording's: the console sets it as the battle
 /// starts, after the reload.
 pub fn reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNaviStats, String> {
@@ -1081,6 +1083,7 @@ pub fn reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNavi
         folder: recorded.folder,
         folder_reg: recorded.folder_reg,
         reg_up: recorded.reg_up,
+        sun: recorded.sun,
         navi_variant: recorded.navi_variant,
         ..fresh
     })
