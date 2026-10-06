@@ -15,7 +15,9 @@
 //! The players' inputs travel over a datagram channel that loses, reorders
 //! and duplicates (UDP, or WebRTC's unreliable data channel); rennet turns
 //! it into an ordered stream, each player's inputs delivered once, in
-//! order, with a lost datagram's inputs recovered from the next one.
+//! order, with a lost datagram's inputs recovered from the next one. The
+//! channel is the host's: this crate has no socket and no handshake (the
+//! program's are nettai-demo's `net`).
 //!
 //! This crate provides what getgud and rennet leave to the game:
 //!
@@ -35,8 +37,6 @@
 //! - [`link`]: one peer's end of the input exchange on rennet's streams;
 //! - [`peer`]: a peer of a match, session and link, and what a host does
 //!   each frame (clock sync, the stall guard, rounds);
-//! - [`transport`]: the [`transport::Datagram`] channel a peer sends over,
-//!   with UDP, and the handshake that starts a match;
 //! - [`network`]: a simulated datagram network (latency, jitter, loss,
 //!   duplication), seeded;
 //! - [`sim`]: two peers over the simulated network with clock sync,
@@ -56,7 +56,6 @@ pub mod protocol;
 pub mod rng;
 pub mod sim;
 pub mod standin;
-pub mod transport;
 pub mod wire;
 pub mod world;
 

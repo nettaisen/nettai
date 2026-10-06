@@ -94,11 +94,36 @@ fn net_line(n: &nettai_frontend::driver::NetStatus) -> String {
     )
 }
 
-/// Show what `player` plays, then each of `rest` in turn (a recording's
-/// later rounds): one that comes to its end moves on to the next; one the
-/// engine stopped stays. `audio` plays the player's sound; Tab shows the
-/// next of `languages`.
+/// The window, the screen's size times `opts.scale`.
+pub fn open(opts: &Options) -> Result<Window, String> {
+    let scale = opts.scale.max(1);
+    let options = WindowOptions { resize: true, ..WindowOptions::default() };
+    let mut window = Window::new("nettai-demo", WIDTH * scale, HEIGHT * scale, options).map_err(|e| e.to_string())?;
+    window.set_target_fps(120);
+    Ok(window)
+}
+
+/// Keep `window` open and responsive, blank and saying `waiting` in its
+/// title, polling `poll` each frame until it has something; none if the
+/// window is closed (or Esc) first.
+pub fn wait<T>(window: &mut Window, waiting: &str, mut poll: impl FnMut() -> Option<T>) -> Result<Option<T>, String> {
+    window.set_title(&format!("nettai-demo - {waiting}"));
+    let blank = vec![0u32; WIDTH * HEIGHT];
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        if let Some(done) = poll() {
+            return Ok(Some(done));
+        }
+        window.update_with_buffer(&blank, WIDTH, HEIGHT).map_err(|e| e.to_string())?;
+    }
+    Ok(None)
+}
+
+/// Show in `window` what `player` plays, then each of `rest` in turn (a
+/// recording's later rounds): one that comes to its end moves on to the
+/// next; one the engine stopped stays. `audio` plays the player's sound;
+/// Tab shows the next of `languages`.
 pub fn run(
+    mut window: Window,
     player: &mut Player,
     rest: Vec<Box<dyn Driver>>,
     audio: Option<&nettai_audio::Output>,
@@ -108,9 +133,6 @@ pub fn run(
     let mut rest = rest.into_iter();
     let scale = opts.scale.max(1);
     let (mut w, mut h) = (WIDTH * scale, HEIGHT * scale);
-    let options = WindowOptions { resize: true, ..WindowOptions::default() };
-    let mut window = Window::new("nettai-demo", w, h, options).map_err(|e| e.to_string())?;
-    window.set_target_fps(120);
     let mut buffer = vec![0u32; w * h];
     player.set_paused(opts.start_paused);
     let mut reported = (false, false);
