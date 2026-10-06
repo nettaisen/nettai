@@ -41,7 +41,6 @@ local function rack_anim(me: Object): number
 end
 
 windrack.action = define.action {
-    id = "windrack/action",
     state = windrack.STATE,
     update = function(me: Object, s: State)
         local step = me.step

@@ -25,7 +25,7 @@ return define.form {
     change = soul_change.action,
     revert = soul_revert.action,
     -- NapalmMan's image as MegaMan unites with him (rules/souls/image), with his cannon (0x0800EDBC's routine for the soul).
-    image = soul_image.wearing(asset.sprite("napalmman"), "soul-image/napalmman", body_overlays.napalmman),
+    image = soul_image.wearing(asset.sprite("napalmman"), body_overlays.napalmman),
     sprite = asset.sprite("napalmsoul"),
     element = "fire",
     buster_bonus = 0,
@@ -33,9 +33,9 @@ return define.form {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x27 (0x0800F520, empty: the charged chip is the chip with the bonus), the charge table's row 0x27.
-        a_charge = charged_chips.routine("napalmsoul/a-charge", { 120, 120, 120, 120, 120, 80 }),
+        a_charge = charged_chips.routine({ 120, 120, 120, 120, 120, 80 }),
         -- Routine 0x37 (0x0800FA7A): DarkMetr (chip 0xC3), the charge table's row 0x37.
-        chaos = chaos.weapon("napalmsoul/chaos", darkmetr, { 70, 90, 110, 130, 150, 40 }),
+        chaos = chaos.weapon(darkmetr, { 70, 90, 110, 130, 150, 40 }),
     },
     chip_bonus = { family = "fire", damage = 40, dimming_chips = true, uncharged = true },
     charged_chips = { { family = "fire", damaging = false, plain = true } },

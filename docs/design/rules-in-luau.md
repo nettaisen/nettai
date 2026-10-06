@@ -2875,3 +2875,27 @@ holistic thing per game" (§2.5).
   (`MAX_BLOCK_BYTES`) is gone (the user: "drop the block cap"). The binding reads every state, an object's, an
   action's or the rules', through the `Fields` trait (`State::with_state` in nettai-luau's bind.rs), the one seam
   between storage and Luau.
+
+### Ids only where something outside the content names a definition (2026-10-06, branch nettai-player)
+
+The user: "in fact only stuff that gets set in the match setup needs ids right? everywhere else ids are kind of
+pointless", then "drop ids where they aren't needed by the compat map or match setup" (content-model-v2.md §2.2).
+
+- **Kept their ids**: what a match's setup names, which `Registry::keyed` requires (chips, navis, forms, stages,
+  patch cards, NaviCust programs; match files, the locales and library.toml name them), and what a compat map keys
+  by (actions and kinds the traces compare by number, weapon routines, statuses' bytes, identities' NameIDs, the
+  records a setup's bytes name: SP slots, rock and projectile variants, barriers, lock-on modes). Kinds, weapons and
+  statuses no longer need one to load.
+- **Lost them** (no compat map or setup names them): EXE6's 89 collision types, its Beast rush action and its Cross
+  special record; EXE5's 80 collision types, 67 chip actions, 35 identities, 35 weapons (the souls' chaos, charged
+  and A-charge weapons, the auto battle buster) and 4 rock variants. The makers that took such an id take none
+  (`chaos.weapon`, `soul_image.wearing`, EXE5's chip action makers), or take it last and optional where a compat map
+  names some of what they make (`charged_chip.routine`, Meddy's `throw.action`, `tankcan.make_action`).
+- **What keys them**: their owner (`colonelsoul/weapons/chaos`), else what their module returns (the module's name,
+  or the definition's place in the table it returns: `rules/collision/attack`, `objects/rock/variants/cube`), else
+  `<module>#n`. The second is new: the loader walks each module's result after the owners. A key depends only on
+  the modules' text, so the same content interns to the same handles on every machine and run, as before; the
+  content hash covers the keys and both peers of a netbattle check it. gen-content finds EXE6's Cross special
+  record by its record type.
+- **Checked**: the setup dump of 57 match files is the previous step's but for EXE5's weapon handles, renumbered one
+  to one, the same definitions behind each; the recordings replayed for the rules steps match every frame.

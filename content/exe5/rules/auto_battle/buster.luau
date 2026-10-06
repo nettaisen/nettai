@@ -110,7 +110,6 @@ function buster.setup(navi: Object): Action
 end
 
 buster.weapon = define.weapon {
-    id = "auto-battle/buster",
     -- The charge table's row 0x3E (0x0801CCD8); Charge 5 reads on into row 0x3F's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 110 },
     setup = buster.setup,

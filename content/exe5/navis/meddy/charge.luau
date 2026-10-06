@@ -13,7 +13,7 @@ local HIT_PARAM = 0x94
 -- The damage rows' row 10, by her level.
 local DAMAGE: { number } = { 80, 80, 80, 80, 80, 80, 100 }
 
-charge.action = throw.action("meddy/charge/action", { variant = 0, line = 0, mode = 0 })
+charge.action = throw.action({ variant = 0, line = 0, mode = 0 }, "meddy/charge/action")
 
 -- 0x0800FAA2
 local function setup(navi: Object): Action

@@ -180,9 +180,8 @@ local function lower(me: Object, s: State)
 end
 
 -- A CusVolt's action.
-function cusvolt.action(id: string): Action
+function cusvolt.action(): Action
     return define.action {
-        id = id,
         state = { timer = "u16" },
         -- 0x080ED1A2.
         update = function(me: Object, s: State)

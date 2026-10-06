@@ -20,7 +20,6 @@ local REFLECT = guard.action {
     counter = { kind = "shot" },
 }
 local CHAOS_REFLECT = guard.action {
-    id = "protosoul/back/chaos-action",
     ticks = TICKS,
     look = guard.looks.chaos_reflect,
     counter = { kind = "shot" },
@@ -38,7 +37,6 @@ local function setup(navi: Object): Action
 end
 
 back.weapon = define.weapon {
-    id = "protosoul/back",
     -- The charge table's row 4 (0x0801CA94), by Charge 0 to 5: past 4 it reads on into row 5's first entry.
     charge_ticks = { 180, 180, 180, 180, 180, 30 },
     setup = setup,

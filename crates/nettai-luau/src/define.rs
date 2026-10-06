@@ -329,6 +329,7 @@ pub(crate) fn finish(
     collector: &RefCell<Collector>,
     assets: &AssetTables,
     games: &HashSet<String>,
+    modules: &BTreeMap<String, LuaValue>,
 ) -> Result<Defined, String> {
     let mut c = collector.borrow_mut();
     c.open = false;
@@ -411,6 +412,25 @@ pub(crate) fn finish(
     for i in owners {
         let key = keys[i].clone().expect("an owner has a key");
         walk(&made[i].table, &key, &made[i].module, &made, &index, &mut keys, &mut seen)?;
+    }
+    // Keys from what the modules return, for definitions with neither an id
+    // nor an owner: one a module returns is the module's name
+    // (`objects/boulder`, a folder's init by its folder), one the table it
+    // returns holds is its place there (`rules/collision/attack`), made
+    // while that module loaded.
+    for (path, value) in modules {
+        let LuaValue::Table(t) = value else { continue };
+        let base = module_key(path, games);
+        let mut seen = HashSet::new();
+        match index.get(&t.to_pointer()) {
+            Some(&j) => {
+                if keys[j].is_none() && made[j].module == *path {
+                    keys[j] = Some(base.clone());
+                    walk(t, &base, path, &made, &index, &mut keys, &mut seen)?;
+                }
+            }
+            None => walk(t, &base, path, &made, &index, &mut keys, &mut seen)?,
+        }
     }
     let keys: Vec<String> = keys
         .into_iter()
@@ -501,6 +521,13 @@ pub(crate) fn finish(
         crate::sandbox::deep_freeze(lua, &LuaValue::Table(t.clone())).map_err(|e| e.to_string())?;
     }
     Ok(Defined { definitions: Definitions { defs }, tables })
+}
+
+/// The key a module's own definitions take from it: its name
+/// ([`anonymous_base`]), a folder's init by its folder (`objects/boulder`).
+fn module_key(module: &str, games: &HashSet<String>) -> String {
+    let base = anonymous_base(module, games);
+    base.strip_suffix("/init").unwrap_or(base).to_string()
 }
 
 /// What an anonymous definition's key starts with: a game pack's module's

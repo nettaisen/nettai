@@ -6,12 +6,12 @@
 
 local charged_chip = {}
 
--- The routine `id`, charging for `ticks` (its row of the charge table, and Charge 5's reading on into the next).
-function charged_chip.routine(id: string, ticks: { number }): Weapon
+-- The routine charging for `ticks` (its row of the charge table, and Charge 5's reading on into the next).
+function charged_chip.routine(ticks: { number }, id: string?): Weapon
     return define.weapon { id = id, charge_ticks = ticks, charged_chip = "bonus" }
 end
 
 -- Routine 5 (ProtoSoul's): the charge table's row 5 (0x0801CA9E); Charge 5 reads on into row 6's first entry.
-charged_chip.weapon = charged_chip.routine("megaman/charged-chip", { 30, 30, 30, 30, 30, 40 })
+charged_chip.weapon = charged_chip.routine({ 30, 30, 30, 30, 30, 40 })
 
 return charged_chip
