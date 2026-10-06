@@ -9,7 +9,7 @@
 -- thrown at, highlighting it every other 4 ticks, and only cracks the panels.
 
 local collision = require("../../rules/collision")
-local panel_bursts = require("../../objects/panel-bursts")
+local panel_bursts = require("../../objects/panel_bursts")
 local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
 

@@ -16,7 +16,7 @@
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 

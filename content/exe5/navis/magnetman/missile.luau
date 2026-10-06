@@ -7,12 +7,12 @@
 -- panel of its column that holds an enemy navi's body, picked with a draw (only when the column has one). Turned,
 -- it flies up or down its column 2.4 pixels a tick (animation 1 up, 2 down). A body it hits ends it, and so do the
 -- field's edge, the battle's end and its HP running out (an explosion). It doesn't move while the battle is
--- dimmed. In the operation battle it marks the panel ahead each tick (lib/navi-chips/marker).
+-- dimmed. In the operation battle it marks the panel ahead each tick (lib/navi_chips/marker).
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local marker = require("../../lib/navi-chips/marker")
-local navi_chips = require("@exelib/navi-chips/navi")
+local marker = require("../../lib/navi_chips/marker")
+local navi_chips = require("@exelib/navi_chips/navi")
 local sparks = require("../../lib/sparks")
 
 local missile = {}

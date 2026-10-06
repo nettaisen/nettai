@@ -4,7 +4,7 @@
 -- the field's obstacles. A vortex appears at the navi; on the 10th tick
 -- every obstacle on the
 -- field is pulled in (the obstacle framework's `sub_80EFD74`: each flies to
--- the navi as an absorbed obstacle, objects/absorbed-obstacle, and joins
+-- the navi as an absorbed obstacle, objects/absorbed_obstacle, and joins
 -- its absorbed list while the navi is still in this action); 11 ticks
 -- later the navi idles. See docs/engine/field-objects.md §4.4.
 

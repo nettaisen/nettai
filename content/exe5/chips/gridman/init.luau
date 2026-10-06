@@ -23,7 +23,7 @@ local gridman = define.chip {
 }
 
 -- GridManSP (EXE5 chip 0x114): GridMan cuts in, dashes across the field and strikes the whole enemy area (../gridman/navi);
--- its damage by how fast its user deleted GridMan SP (rules/sp-chips: formula 19, its table's row 18).
+-- its damage by how fast its user deleted GridMan SP (rules/sp_chips: formula 19, its table's row 18).
 local gridman_sp = define.chip {
     id = "gridman-sp",
     codes = { "F" },

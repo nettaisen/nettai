@@ -9,7 +9,7 @@
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local panel_changer = require("../../objects/panel-changer")
+local panel_changer = require("../../objects/panel_changer")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
@@ -260,7 +260,7 @@ local RAGES: { [string]: { element: number, palette: number } } = {
 }
 local NONE = { element = 0, palette = 4 }
 local CLAW = attachment.look { sprite = asset.sprite("rage-claw"), palette = 0, attach_point = 0x16 }
--- (The flame and the claw MegaMan's B↓FireAm fires too: navis/megaman/weapons/fire-arm.)
+-- (The flame and the claw MegaMan's B↓FireAm fires too: navis/megaman/weapons/fire_arm.)
 elemrage.spawn_flame = spawn_flame
 elemrage.claw = CLAW
 local ROAR, RAGE_ROAR = asset.sound("roar"), asset.sound("rage-roar")

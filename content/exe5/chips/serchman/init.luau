@@ -24,7 +24,7 @@ local serchman = define.chip {
 }
 
 -- SerchMnSP (EXE5 chip 0x0e7): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
--- shots on the panel (../serchman/navi); its damage by how fast its user deleted SearchMan SP (rules/sp-chips:
+-- shots on the panel (../serchman/navi); its damage by how fast its user deleted SearchMan SP (rules/sp_chips:
 -- formula 4, its table's row 3).
 local serchmn_sp = define.chip {
     id = "serchmn-sp",

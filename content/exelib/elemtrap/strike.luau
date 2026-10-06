@@ -8,11 +8,11 @@
 -- with an effect that strikes every panel the enemy stands on in the
 -- element that sprang the trap (the damage plus the bonus; elec and wood
 -- hits carry a status too), sets off bursts over the whole field
--- (@exelib/panel-bursts, the game's kind), and waits 61 ticks. Each game
+-- (@exelib/panel_bursts, the game's kind), and waits 61 ticks. Each game
 -- makes its kind with `strike.make_kind(id, look)`.
 
 local dimming_chips = require("../dimming")
-local panel_bursts = require("../panel-bursts")
+local panel_bursts = require("../panel_bursts")
 local regions = require("../regions")
 
 export type State = {

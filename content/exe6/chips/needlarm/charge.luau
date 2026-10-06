@@ -1,13 +1,13 @@
 --!strict
 -- NeedlArm's charged shot (`needlarm/charge`): the weapon the chip makes
--- the navi's charged shot (lib/navi-boost/controller; the original's weapon
+-- the navi's charged shot (lib/navi_boost/controller; the original's weapon
 -- routine 0x24, `sub_8011ED0`). It is AquaNdl1's volley (chips/aquandl:
 -- the original's parameter bytes are 0, the first palette) for 40 Aqua.
 -- Sticky: a form's own charged shot doesn't replace it, and while the navi
 -- has it a Beast buster gives way to the plain one.
 
 local aquandl_chips = require("../aquandl")
-local charge = require("../../lib/navi-boost/charge")
+local charge = require("../../lib/navi_boost/charge")
 
 -- The attack's element byte: Aqua.
 local ELEMENT = 2

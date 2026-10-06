@@ -7,7 +7,7 @@
 -- he leaves, and the controller moves on. See docs/engine/chips.md
 -- §3.6.16.
 
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 local thunder = require("./thunder")

@@ -2,7 +2,7 @@
 -- DrkSword (EXE5 chip 0x0bc): a dark chip: a dark big slash over the two columns ahead, EXE6's slash
 -- (@exelib/swords/slash) with EXE5's parts (lib/swords). Its subtype's row (6) of EXE5's tables (0x080EBF8C, 0x080EBFC0)
 -- differs from EXE6's: the hit is EXE5's row 0x11 (EXE6's 7) and carries bug 0x14 with argument 2. Its use costs buster
--- blanks (rules/light-dark).
+-- blanks (rules/light_dark).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local collision = require("../rules/collision")

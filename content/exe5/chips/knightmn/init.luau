@@ -25,7 +25,7 @@ local knightmn = define.chip {
 }
 
 -- KnigtMnSP (EXE5 chip 0x0ff): KnightMan cuts in and swings his wrecking ball around himself, confusing what it hits
--- (../knightmn/navi); its damage by how fast its user deleted KnightMan SP (rules/sp-chips: formula 12, its table's row
+-- (../knightmn/navi); its damage by how fast its user deleted KnightMan SP (rules/sp_chips: formula 12, its table's row
 -- 11).
 local knigtmn_sp = define.chip {
     id = "knigtmn-sp",

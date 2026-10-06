@@ -1,11 +1,11 @@
 --!strict
 -- H-Burst (the original's action 0x34, `sub_80ED810`): the shared H-Burst
--- (@exelib/h-burst/action) with EXE6's spreader (attachment row 0x15), sound
+-- (@exelib/h_burst/action) with EXE6's spreader (attachment row 0x15), sound
 -- and shot (./burst).
 
 local attachment = require("../../objects/attachment")
 local burst = require("./burst")
-local common = require("@exelib/h-burst/action")
+local common = require("@exelib/h_burst/action")
 
 local action = {}
 

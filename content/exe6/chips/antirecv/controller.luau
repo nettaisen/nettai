@@ -5,8 +5,8 @@
 -- role (`kinds.anti_recovery`, rules/roles.luau).
 
 local common = require("@exelib/antirecv/controller")
-local panel_changer = require("../../objects/panel-changer")
-local rising_bubble = require("../../objects/rising-bubble")
+local panel_changer = require("../../objects/panel_changer")
+local rising_bubble = require("../../objects/rising_bubble")
 
 return common.make {
     id = "antirecv/controller",

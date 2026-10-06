@@ -24,7 +24,7 @@ local effects = require("../../lib/effects")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 
 local django = {}
 

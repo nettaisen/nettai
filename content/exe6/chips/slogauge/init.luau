@@ -1,8 +1,8 @@
 --!strict
 -- SloGauge: the custom gauge fills slowly for the rest of the round
--- (lib/gauge-speed/controller).
+-- (lib/gauge_speed/controller).
 
-local gauge_speed = require("../lib/gauge-speed/controller")
+local gauge_speed = require("../lib/gauge_speed/controller")
 
 return define.chip {
     id = "slogauge",

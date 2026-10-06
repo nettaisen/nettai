@@ -12,7 +12,7 @@
 
 local ball = require("../../chips/knightmn/ball")
 local chain = require("./chain")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local navi_level = require("../../lib/navi_level")
 
 local charge = {}

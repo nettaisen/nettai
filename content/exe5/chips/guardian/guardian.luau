@@ -15,7 +15,7 @@
 local collision = require("../../rules/collision")
 local controller = require("@exelib/guardian/controller")
 local effects = require("../../lib/effects")
-local rising_bubble = require("../../objects/rising-bubble")
+local rising_bubble = require("../../objects/rising_bubble")
 local statue = require("@exelib/guardian/statue")
 local strike = require("./strike")
 

@@ -448,7 +448,7 @@ proposal-worthy name for lack of a better one, are listed with their reason.
 
 | name | confidence | why it stays |
 |---|---|---|
-| `beast-claw-2` | high | 0x1c6: used by navis/megaman/weapons/beast-claw/init. |
+| `beast-claw-2` | high | 0x1c6: used by navis/megaman/weapons/beast_claw/init. |
 | `beep-64` | high | The disassembly's SOUND_BEEP_64: a menu sound the battle doesn't play; the number tells its variants apart. |
 | `beep-75` | high | The disassembly's SOUND_BEEP_75: a menu sound the battle doesn't play; the number tells its variants apart. |
 | `cur-move-80` | high | The disassembly's SOUND_CUR_MOVE_80: a menu sound the battle doesn't play; the number tells its variants apart. |

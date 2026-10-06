@@ -4,13 +4,13 @@
 -- The battle dims (battle flag 4 alone, once no dimming runs), MegaMan flashes white every other pair of ticks
 -- while he crouches (animation 12, 6 ticks) and fades (animation 1 and the fade sound, 25 ticks), and on the fade's
 -- seventeenth tick the Dark MegaMen across from him leave (rules/auto_battle) and a new one comes onto a solid,
--- empty panel of the other side's area (navis/dark-megaman, driven by EXE5's auto battle, his summoner's side's
+-- empty panel of the other side's area (navis/dark_megaman, driven by EXE5's auto battle, his summoner's side's
 -- system). Then MegaMan is back in his base form, as a soul's revert leaves him (./revert, but in place, with no
 -- flash or sound), his attack requests and his uninterruptibility are dropped, the battle undims and he idles.
 
 local base = require("../../navis/megaman/forms/base")
 local auto_battle = require("../auto_battle")
-local dark_megaman = require("../../navis/dark-megaman/identity")
+local dark_megaman = require("../../navis/dark_megaman/identity")
 local hooks = require("./hooks")
 local panels = require("../auto_battle/panels")
 

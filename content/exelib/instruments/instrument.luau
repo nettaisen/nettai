@@ -39,7 +39,7 @@ local EFFECT_PERIOD, TUNE_PERIOD = 3, 0x40
 local APPEAR, DESTROYED, REST, PLAY = 0, 2, 8, 9
 
 -- An instrument; with its own sprite, its absorbed look is that sprite's
--- (an "absorbed-look" record, as EXE6's objects/absorbed-obstacle makes).
+-- (an "absorbed-look" record, as EXE6's objects/absorbed_obstacle makes).
 function instrument.instrument(i: Instrument): Instrument
     if i.sprite then
         i.absorbed = define.record("absorbed-look", { sprite = i.sprite } :: AbsorbedLook)

@@ -13,7 +13,7 @@
 -- while the battle is dimmed; its bombs are the variant that waits while dimmed too; its propeller's sprite doesn't
 -- step while paused; and it reports to no controller: the navi watches for it to go.
 
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local bomb = require("./bomb")
 
 export type State = {

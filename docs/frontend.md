@@ -1138,7 +1138,7 @@ programs = [                               # in the save's order; x, y the cente
 **A side's facts.** What a side brings that its game's rules take is the
 game's own to say: each system of the game's ruleset declares a `setup`
 (content/exe6/rules/cross: `setup = { version = { "gregar", "falzar" },
-crosses = "bool[5]", cross_list = "form[5]" }`; content/exe5/rules/light-dark:
+crosses = "bool[5]", cross_list = "form[5]" }`; content/exe5/rules/light_dark:
 `setup = { karma = "u16" }`), and every field of every system's setup is a
 fact a side of that game may state, as a key of its table by the field's
 name. `nettai-match` names none of them (`nettai_match::facts`): a side
@@ -1282,7 +1282,7 @@ NaviCust, patch cards or souls: they are MegaMan's. EXE5's MegaMan takes no
 level.
 
 **The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
-the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp-chips.luau),
+the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp_chips.luau),
 each `mm:ss.cc`; a slot left out is the fastest. The game keeps frames and
 shows them as a time rounded down to the hundredth (`sub_8000D84`): a
 written time is the fewest frames that show as it, so a time the game shows
