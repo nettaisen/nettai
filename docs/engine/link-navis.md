@@ -148,8 +148,8 @@ in the internet, each block's HP is cut to its maximum.
 - **The level in the setup** (EXE6's save system's `level`, a `u8?`, which the engine reads by its role
   `PlayerFact::Level` into `Battle::navi_levels`): none is
   event 0x163 clear (0xFF in the battle), so EXE6's rules read the flag from it (the custom screen's seal). A link
-  navi always has one: a match file without `level` gives a link navi 0 and MegaMan none, and the checks refuse a
-  link navi without one and a level past 14.
+  navi always has one: a side of one states it (nothing fills one in; tools state 0 for a new side), MegaMan's is
+  none when left out, and the checks refuse a link navi without one and a level past 14.
 - **Not modeled**: the story's progress and the internet's HP are the reload's parameters but not a match's. §3 step 2 (MegaMan with event 0x163 clear)
   and step 5 for MegaMan (a cutscene's switch to him with a code of his received: base HP 0, which his NaviCust's
   reset keeps) have no counterpart.
