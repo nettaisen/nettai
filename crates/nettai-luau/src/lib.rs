@@ -550,7 +550,7 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
     let games: std::collections::HashSet<String> =
         pack.packs.values().filter(|p| p.kind == nettai_content_api::PackKind::Game).map(|p| p.id.clone()).collect();
-    let defined = define::finish(&lua, &collector, &assets, &games)
+    let defined = define::finish(&lua, &collector, &assets, &games, &modules)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);

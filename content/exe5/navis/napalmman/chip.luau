@@ -36,7 +36,6 @@ local MUZZLE_X, MUZZLE_Z = 0x8_0000, 0x38_0000
 local SOUND = asset.sound("cannon")
 
 local action = define.action {
-    id = "napalm/action",
     state = { timer = "u16", target_x = "u8", target_y = "u8" },
     -- 0x080F1098
     update = function(me: Object, s: State)

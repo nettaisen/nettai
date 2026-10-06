@@ -21,5 +21,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
-    action = throw.action("meddycap/action", { variant = 5, line = 0, mode = 1 }),
+    action = throw.action({ variant = 5, line = 0, mode = 1 }),
 }

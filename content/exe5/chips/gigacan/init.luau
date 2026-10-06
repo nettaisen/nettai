@@ -34,7 +34,6 @@ local gigacan1 = define.chip {
         { order = 36, code_run = { chip = recipe_cannon, count = 3 } },
     },
     action = shooter.action {
-        id = "gigacan1/action",
         arm = shooter.arms.cannon,
         shot = variants.gigacan,
         afterimages = true,
@@ -66,7 +65,6 @@ local gigacan2 = define.chip {
         { order = 37, code_run = { chip = recipe_hicannon, count = 3 } },
     },
     action = shooter.action {
-        id = "gigacan2/action",
         arm = shooter.arms.hicannon,
         shot = variants.gigacan,
         afterimages = true,
@@ -98,7 +96,6 @@ local gigacan3 = define.chip {
         { order = 38, code_run = { chip = recipe_m_cannon, count = 3 } },
     },
     action = shooter.action {
-        id = "gigacan3/action",
         arm = shooter.arms.m_cannon,
         shot = variants.gigacan,
         afterimages = true,

@@ -36,9 +36,8 @@ local function set_step(me: Object, step: number)
 end
 
 -- The action of a chip whose parameters are `hit_mod` (its boom's hit modifier) and `pierces` (it goes through).
-function action.make(id: string, hit_mod: number, pierces: boolean): Action
+function action.make(hit_mod: number, pierces: boolean): Action
     return define.action {
-        id = id,
         state = action.STATE,
         update = function(me: Object, s: State)
             local step = me.step
@@ -118,6 +117,6 @@ function action.make(id: string, hit_mod: number, pierces: boolean): Action
 end
 
 -- SonicBom's: hit modifier 3, not going through.
-action.action = action.make("sonicbom/action", 3, false)
+action.action = action.make(3, false)
 
 return action

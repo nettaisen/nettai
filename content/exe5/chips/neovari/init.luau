@@ -24,7 +24,6 @@ return define.chip {
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
     action = action.action {
-        id = "neovari/action",
         -- The sequences (0x080EDF24), facing right (flip 0) and mirrored, as joypad words with A held: 0x81 A+down,
         -- 0x11 A+right, 0x21 A+left, 0x41 A+up, 0x03 A+B.
         sequences = {

@@ -239,7 +239,6 @@ local function update(navi: Object, _: any)
 end
 
 rush.action = define.action {
-    id = "beast/rush",
     update = update,
 }
 

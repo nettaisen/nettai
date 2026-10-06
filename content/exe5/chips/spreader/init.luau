@@ -32,7 +32,6 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = spreader.action({
-        id = "spreader/action",
         gun = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
         z = 0x10_0000,
         bullet = bullet.variants.spreader,

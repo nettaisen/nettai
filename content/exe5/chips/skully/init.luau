@@ -19,7 +19,7 @@ local skully1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action("skully1/action", skully.skulls(0)),
+    action = skully.action(skully.skulls(0)),
 }
 
 -- Skully2 (EXE5 chip 0x046): skulls that hop toward the nearest enemy, confusing what they hit (EXE5's Skully,
@@ -37,7 +37,7 @@ local skully2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action("skully2/action", skully.skulls(1)),
+    action = skully.action(skully.skulls(1)),
 }
 
 -- Skully3 (EXE5 chip 0x047): skulls that hop toward the nearest enemy, confusing what they hit (EXE5's Skully,
@@ -55,7 +55,7 @@ local skully3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action("skully3/action", skully.skulls(2)),
+    action = skully.action(skully.skulls(2)),
 }
 
 return { skully1 = skully1, skully2 = skully2, skully3 = skully3 }
