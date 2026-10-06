@@ -32,6 +32,12 @@ return {
         stages.netbattle_9, stages.netbattle_10, stages.netbattle_11, stages.netbattle_12, stages.netbattle_87, stages.netbattle_88,
         stages.netbattle_89, stages.netbattle_90, stages.netbattle_91, stages.netbattle_92, stages.netbattle_93, stages.netbattle_94,
     },
+    -- How many of them, from the first, a set's first round picks among: the count the comm menu passes for the first
+    -- round goes by practice or not (0x08134F20: the practice row's 0, the battle row's 1, whatever the single or
+    -- triple battle), and a random match is a triple battle's practice (nettai-match's effects, 0x0813614C's 0x600):
+    -- 0x44, the first 68 (netbattle-1 to netbattle-66, 51 and 52 twice). The fold, from index 76, is past them; the
+    -- rounds after pick among all 96 (0x08009970's count 0x60).
+    first_round_stages = 68,
     -- The backgrounds a link battle picks one of at random with its settings (`table[PosRNG2() % 27]`, the table at
     -- 0x08129F6C: its backgrounds 0x00 to 0x1A, each once, in the table's order). A stage's own background (every
     -- record's is the same one) is what a match that names none shows.
