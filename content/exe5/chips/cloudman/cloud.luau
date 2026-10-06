@@ -113,7 +113,7 @@ local function init(me: Object)
     tick(me)
 end
 
-cloud.kind = define.kind {
+cloud.kind = new.kind {
     id = "cloudman/cloud",
     pool = "attack",
     -- 0x080DCA10.

@@ -44,7 +44,7 @@ export type State = {
 
 -- What Colonel is taken for: his actor record, and what he wears (his
 -- cape, `sub_8010FAC`).
-local COLONEL_IDENTITY = define.identity {
+local COLONEL_IDENTITY = new.identity {
     id = "colonel",
     class = "navi",
     version = 0,
@@ -75,15 +75,15 @@ local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("b
 -- and 0x37).
 local COLONEL_SWORD = attachment.look { sprite = asset.sprite("colonel-sword"), palette = 0 }
 local CROSS = {
-    define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
-    define.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
+    new.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
+    new.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
 }
 
 -- Colonel's charge: the glow while it builds (effect 0x4E) and the flash
 -- when it is full (0x4F), at his sprite's attach point 0 (`sub_8018810` by
 -- his NameID: his sprite's table row, whose point 0 is (0, 0)).
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = new.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
+local CHARGED = new.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
 local GLOW_X, GLOW_Z = 0, 0
 
 -- The afterimages ProtoMan leaves (`sub_80BDA7C`): their color shader and
@@ -669,7 +669,7 @@ local function destroy(me: Object)
     me:free()
 end
 
-twinldrs.kind = define.kind {
+twinldrs.kind = new.kind {
     id = "twinldrs/navi",
     pool = "actor",
     state = {

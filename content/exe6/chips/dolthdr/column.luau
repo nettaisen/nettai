@@ -41,7 +41,7 @@ export type Owner = { columns: { Object? } }
 local HEIGHT = 0x10_0000
 
 function thunder_column.variant(v: Variant): Variant
-    return define.record("thunder-column-variant", v)
+    return new.record("thunder-column-variant", v)
 end
 
 -- `byte_80D6914`'s rows: a plain hit (0, DolThdr's) and a pull (1,
@@ -119,7 +119,7 @@ local function init(me: Object)
     tick(me)
 end
 
-thunder_column.kind = define.kind {
+thunder_column.kind = new.kind {
     id = "dolthdr/thunder-column",
     pool = "attack",
     state = { owner = "object", link = "u8", variant = "record:thunder-column-variant" },

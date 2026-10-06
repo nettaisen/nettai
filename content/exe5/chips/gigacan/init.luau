@@ -2,10 +2,10 @@
 -- GigaCan1, GigaCan2 and GigaCan3: the gigacan series (each chip's own comment above its definition).
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
-local recipe_attck_10 = require("./attck-10")
+local recipe_attck_10 = require("./attck-10")["attck-10"]
 local recipe_cannon = require("./cannon").cannon
 local recipe_hicannon = require("./cannon").hicannon
-local recipe_m_cannon = require("./cannon").m_cannon
+local recipe_m_cannon = require("./cannon")["m-cannon"]
 local shooter = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
 
@@ -13,8 +13,7 @@ local variants = require("../objects/projectile/variants")
 -- cannon (@exelib/cannon, action 0x14 with subtype 4: the arm's row 0 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
 -- firing EXE5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
-local gigacan1 = define.chip {
-    id = "gigacan1",
+local gigacan1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -44,8 +43,7 @@ local gigacan1 = define.chip {
 -- cannon (@exelib/cannon, action 0x14 with subtype 5: the arm's row 1 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
 -- firing EXE5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
-local gigacan2 = define.chip {
-    id = "gigacan2",
+local gigacan2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -75,8 +73,7 @@ local gigacan2 = define.chip {
 -- cannon (@exelib/cannon, action 0x14 with subtype 6: the arm's row 2 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
 -- firing EXE5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
-local gigacan3 = define.chip {
-    id = "gigacan3",
+local gigacan3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

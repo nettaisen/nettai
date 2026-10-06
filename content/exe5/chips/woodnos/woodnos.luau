@@ -81,7 +81,7 @@ end
 
 -- 0x080DB148: at the far edge's column (6 facing right, 1 left) of its row, 40 pixels past it, on the ground, turned
 -- back; its look (sheet 10-21, no shadow); the sound.
-local GEYSER = define.kind {
+local GEYSER = new.kind {
     id = "woodnos/geyser",
     pool = "attack",
     -- 0x080DB124.
@@ -204,7 +204,7 @@ end
 -- 0x080DAFE8: the chip's damage kept for the geysers, its own 10; on its panel, its look (sheet 0c-54, with a
 -- shadow) and collision (an attack hitting navis, hit modifier 1), the spark of its element; rolling forward; the
 -- sound.
-local WAVE = define.kind {
+local WAVE = new.kind {
     id = "woodnos/wave",
     pool = "attack",
     state = { damage = "u32" },

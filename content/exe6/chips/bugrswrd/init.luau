@@ -7,8 +7,7 @@ local navi_boost = require("../lib/navi_boost/controller")
 
 -- (The record's extra flags 0x04 and 0x10 have no battle reader, and no
 -- name.)
-return define.chip {
-    id = "bugrswrd",
+local chip: Chip = {
     codes = { "V" },
     element = "null", family = "sword", class = "giga",
     rarity = 4, mb = 80, damage = 0, hit_param = 168, lockout = 0,
@@ -16,3 +15,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = navi_boost.bug(charge),
 }
+
+return { bugrswrd = chip }

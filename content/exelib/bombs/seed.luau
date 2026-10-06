@@ -21,7 +21,7 @@ local SPEED, RISE, GRAVITY = 0x2E666, 0x20666, -0x2800
 
 -- A seed variant.
 function seed.variant(v: SeedVariant): SeedVariant
-    return define.record("seed-variant", v)
+    return new.record("seed-variant", v)
 end
 
 -- Done: hidden, off its panels, and freed at the next update.
@@ -135,7 +135,7 @@ end
 
 -- A game's seed kind `id`, of `look`.
 function seed.make_kind(id: string, look: SeedLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { variant = "record:seed-variant" },

@@ -316,7 +316,7 @@ local function tick(me: Object)
     c:present()
 end
 
-swoop.kind = define.kind {
+swoop.kind = new.kind {
     id = "larkman/swoop",
     pool = "attack",
     state = {

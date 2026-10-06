@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "chargmax",
+local program: NaviCustProgram = {
     colors = { "white", "pink", "yellow" },
     plus = true,
     shape = {
@@ -28,3 +27,5 @@ return define.navicust_program {
     bug = "buster",
     effects = { programs.charge_max() },
 }
+
+return { chargmax = program }

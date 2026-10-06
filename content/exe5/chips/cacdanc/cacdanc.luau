@@ -31,7 +31,7 @@ local FALL_SOUND, BOUNCE_SOUND = asset.sound("drop"), asset.sound("cactus-hop")
 local START_Z, FALL_GRAVITY = 0xA0_0000, int.i32(0xFFFFC000)
 local BOUNCE_TICKS, BOUNCE_GRAVITY = 10, int.i32(0xFFFF0000)
 -- The puff it goes in (effect row 0x14).
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- The other side's navis (0x080DC860, 0x080E7F54) and the panels beside one (0x080DC868, 0x080E7F5C).
 local TARGETS = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 local SOLID = 0x10
@@ -183,7 +183,7 @@ export type CactusState = {
     palette: number,
 }
 
-cacdanc.cactus = define.kind {
+cacdanc.cactus = new.kind {
     id = "cacdanc/cactus",
     pool = "attack",
     state = { palette = "u8" },
@@ -208,7 +208,7 @@ cacdanc.cactus = define.kind {
 -- ---- The dancer -----------------------------------------------------------------------------------------------------
 
 -- Its identity: a field object nothing swallows, leaves as junk or throws (NameID 0xD2), with no look.
-local DANCER = define.identity {
+local DANCER = new.identity {
     class = "field_object",
     version = 0,
     ai_index = 1,
@@ -286,7 +286,7 @@ local function update(me: Object)
     end
 end
 
-cacdanc.dancer = define.kind {
+cacdanc.dancer = new.kind {
     id = "cacdanc/dancer",
     pool = "effect",
     state = { palette = "u8" },

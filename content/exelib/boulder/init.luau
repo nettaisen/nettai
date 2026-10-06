@@ -158,7 +158,7 @@ function boulder.make(look: Look): Kind
 
     -- The kind (its `place` spawns one).
     local kind: Kind
-    kind = define.kind {
+    kind = new.kind {
         id = look.id,
         pool = "attack",
         -- `sub_80D2290`.

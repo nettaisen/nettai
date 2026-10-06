@@ -65,7 +65,7 @@ function controller.make(look: Look): Controller
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "effect",
         state = { busy = "bool" },

@@ -122,7 +122,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = wind_up, [0xC] = attack, [0x10] = leave }
 
-blastman.kind = define.kind {
+blastman.kind = new.kind {
     id = "blastman/navi",
     pool = "actor",
     state = { controller = "object" },

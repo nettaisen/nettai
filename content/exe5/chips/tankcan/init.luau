@@ -6,8 +6,7 @@ local tankcan = require("@self/tankcan")
 
 -- TankCan1 (EXE5 chip 0x03f): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
 -- and cracks the last column and sets off three explosions there (chips/tankcan/tankcan: EXE6's with EXE5's look).
-local tankcan1 = define.chip {
-    id = "tankcan1",
+local tankcan1: Chip = {
     codes = { "A", "E", "P" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local tankcan1 = define.chip {
 
 -- TankCan2 (EXE5 chip 0x040): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
 -- and cracks the last column and sets off three explosions there (chips/tankcan/tankcan: EXE6's with EXE5's look).
-local tankcan2 = define.chip {
-    id = "tankcan2",
+local tankcan2: Chip = {
     codes = { "B", "T", "Y" },
     element = "null",
     family = "null",
@@ -42,8 +40,7 @@ local tankcan2 = define.chip {
 
 -- TankCan3 (EXE5 chip 0x041): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
 -- and cracks the last column and sets off three explosions there (chips/tankcan/tankcan: EXE6's with EXE5's look).
-local tankcan3 = define.chip {
-    id = "tankcan3",
+local tankcan3: Chip = {
     codes = { "F", "M", "R" },
     element = "null",
     family = "null",

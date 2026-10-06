@@ -190,7 +190,7 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { swing = "u8", big = "bool", spark = "spark", center_x = "i32", center_y = "i32", trail = "u32" },

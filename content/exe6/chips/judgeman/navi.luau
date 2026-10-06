@@ -242,7 +242,7 @@ end
 local ACTIONS =
     { [APPEAR] = appear, [STAND] = stand, [RAISE] = raise, [LASH] = lash, [BOOKS] = books, [WAIT_BOOKS] = wait_books, [LEAVE] = leave }
 
-judgeman.kind = define.kind {
+judgeman.kind = new.kind {
     id = "judgeman/navi",
     pool = "actor",
     state = {

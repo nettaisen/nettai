@@ -1961,7 +1961,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         };
         let collision = |key: &str| -> mlua::Result<CollisionHandle> {
             let h = def(key, Registry::Collision)?;
-            h.map(CollisionHandle).ok_or_else(|| mlua::Error::runtime(format!("battle.hitbox: `{key}` is a collision type (define.collision)")))
+            h.map(CollisionHandle).ok_or_else(|| mlua::Error::runtime(format!("battle.hitbox: `{key}` is a collision type (new.collision)")))
         };
         let s = HitboxSpec {
             panel: PanelPos { x: table_int(&spec, "panel_x")? as u8, y: table_int(&spec, "panel_y")? as u8 },

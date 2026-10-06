@@ -95,7 +95,7 @@ local function nest_tick(me: Object)
     end
 end
 
-snake.nest = define.kind {
+snake.nest = new.kind {
     id = "snake/nest",
     pool = "attack",
     state = { scan_x = "u8", scan_y = "u8", flags = "u32", holder = "object" },
@@ -167,7 +167,7 @@ local function effect(me: Object)
     end
 end
 
-snake.controller = define.kind {
+snake.controller = new.kind {
     id = "snake/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },

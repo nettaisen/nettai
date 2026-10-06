@@ -30,9 +30,9 @@ local HIT_MOD = 3
 -- Its region once landed, by kind (0x080CB7A0).
 local REGIONS = { [0] = regions.single, [1] = regions.single, [2] = regions.wide, [3] = regions.region_20 }
 -- Effects 0x14 (a puff), 0x11 (an impact) and 0 (an explosion).
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
-local IMPACT = define.effect { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local IMPACT = new.effect { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
 local SOUND_CRACK, SOUND_BOMB = asset.sound("panel-crack"), asset.sound("hit-bomb-1")
 
 -- 0x080CB6BC: fly to the target panel; land there.
@@ -108,7 +108,7 @@ local function tick(me: Object)
     me.collision:present()
 end
 
-cannball.kind = define.kind {
+cannball.kind = new.kind {
     id = "cannball/ball",
     pool = "attack",
     state = { which = "u8", target_x = "u8", target_y = "u8" },

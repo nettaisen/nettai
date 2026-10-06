@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- ToadMan (EXE5 chip 0x101): ToadMan cuts in and plays a chain of paralyzing notes toward the nearest enemy ahead
 -- (./navi).
-local toadman = define.chip {
-    id = "toadman",
+local toadman: Chip = {
     codes = { "T" },
     element = "elec",
     family = "elec",
@@ -27,8 +26,7 @@ local toadman = define.chip {
 -- ToadManSP (EXE5 chip 0x102): ToadMan cuts in and plays a chain of paralyzing notes toward the nearest enemy ahead
 -- (../toadman/navi); its damage by how fast its user deleted ToadMan SP (rules/sp_chips: formula 13, its table's row
 -- 12).
-local toadman_sp = define.chip {
-    id = "toadman-sp",
+local toadman_sp: Chip = {
     codes = { "T" },
     element = "elec",
     family = "elec",
@@ -47,8 +45,7 @@ local toadman_sp = define.chip {
 
 -- ToadManDS (EXE5 chip 0x103): ToadMan, dark, cuts in and plays a chain of paralyzing notes toward the nearest enemy
 -- ahead (../toadman/navi); its damage by its user's side's statistic 3 (formula 35, its table's row 12).
-local toadman_ds = define.chip {
-    id = "toadman-ds",
+local toadman_ds: Chip = {
     codes = { "T" },
     element = "elec",
     family = "elec",
@@ -65,4 +62,4 @@ local toadman_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { toadman = toadman, toadman_sp = toadman_sp, toadman_ds = toadman_ds }
+return { toadman = toadman, ["toadman-sp"] = toadman_sp, ["toadman-ds"] = toadman_ds }

@@ -8,8 +8,7 @@ local quake = require("@self/quake")
 -- Quake1 (EXE5 chip 0x023): a bomb lobbed three panels ahead that drops a weight there and, landing on solid ground,
 -- cracks the panel and hits around it (level 0): EXE5's throw (lib/bombs, action 0x12 subtype 11) and its Quake bomb
 -- (chips/quake/quake, attack object #0x51).
-local quake1 = define.chip {
-    id = "quake1",
+local quake1: Chip = {
     codes = { "A", "K", "P" },
     element = "null",
     family = "break",
@@ -27,8 +26,7 @@ local quake1 = define.chip {
 -- Quake2 (EXE5 chip 0x024): a bomb lobbed three panels ahead that drops a weight there and, landing on solid ground,
 -- cracks the panel and hits around it (level 1): EXE5's throw (lib/bombs, action 0x12 subtype 11) and its Quake bomb
 -- (chips/quake/quake, attack object #0x51).
-local quake2 = define.chip {
-    id = "quake2",
+local quake2: Chip = {
     codes = { "B", "L", "Y" },
     element = "null",
     family = "break",
@@ -46,8 +44,7 @@ local quake2 = define.chip {
 -- Quake3 (EXE5 chip 0x025): a bomb lobbed three panels ahead that drops a weight there and, landing on solid ground,
 -- cracks the panel and hits around it (level 2): EXE5's throw (lib/bombs, action 0x12 subtype 11) and its Quake bomb
 -- (chips/quake/quake, attack object #0x51).
-local quake3 = define.chip {
-    id = "quake3",
+local quake3: Chip = {
     codes = { "F", "H", "N" },
     element = "null",
     family = "break",

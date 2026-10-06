@@ -28,7 +28,7 @@ local function streak_tick(me: Object)
     end
 end
 
-local STREAK = define.kind {
+local STREAK = new.kind {
     id = "nrthwind/streak",
     pool = "effect",
     update = function(me: Object)
@@ -100,7 +100,7 @@ local function wind_tick(me: Object)
     c:present()
 end
 
-local WIND = define.kind {
+local WIND = new.kind {
     id = "nrthwind/wind",
     pool = "attack",
     state = { holder = "object" },
@@ -150,15 +150,14 @@ local function effect(me: Object)
     end
 end
 
-local CONTROLLER = define.kind {
+local CONTROLLER = new.kind {
     id = "nrthwind/controller",
     pool = "effect",
     state = { busy = "bool" },
     update = dimming_chips.phases { name = "NrthWind", effect = effect },
 }
 
-return define.chip {
-    id = "nrthwind",
+local chip: Chip = {
     codes = { "D", "Q", "V", "*" },
     element = "null",
     family = "wind",
@@ -175,3 +174,5 @@ return define.chip {
         return dimming_chips.spawn(CONTROLLER, user, spec)
     end,
 }
+
+return { nrthwind = chip }

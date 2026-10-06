@@ -44,7 +44,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "bugcurse/controller",
     pool = "effect",
     state = { waiting = "bool" },

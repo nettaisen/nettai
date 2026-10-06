@@ -161,7 +161,7 @@ local function update(me: Object)
     end
 end
 
-sword_wave.kind = define.kind {
+sword_wave.kind = new.kind {
     id = "slashcross/sword-wave",
     pool = "attack",
     state = { variant = "record:sword-wave-variant", started = "bool", reach = "u8", hidden = "bool" },
@@ -170,7 +170,7 @@ sword_wave.kind = define.kind {
 
 -- A wave's variant, as a record the wave keeps.
 function sword_wave.variant(v: SwordWaveVariant): SwordWaveVariant
-    return define.record("sword-wave-variant", v)
+    return new.record("sword-wave-variant", v)
 end
 
 -- `sub_80D8222`: a wave of `variant` and `owner`'s on (x, y) with the

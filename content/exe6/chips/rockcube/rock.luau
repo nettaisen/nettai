@@ -28,14 +28,14 @@ local SPRITE = asset.sprite("rock-cubes")
 
 -- What a rock is taken for: a rock cube, an ice block (field objects, with
 -- the looks something that takes their place shows).
-local ROCK = define.identity {
+local ROCK = new.identity {
     id = "rock",
     class = "field_object",
     version = 3,
     ai_index = 1,
     look = { sprite = SPRITE, anim = 1, palette = 0, shadow = true },
 }
-local ICE = define.identity {
+local ICE = new.identity {
     id = "ice-block",
     class = "field_object",
     version = 4,

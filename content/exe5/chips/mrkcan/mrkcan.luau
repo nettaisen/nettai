@@ -177,7 +177,7 @@ local function init(me: Object, s: SightState)
     me:set_lifecycle("update")
 end
 
-mrkcan.sight = define.kind {
+mrkcan.sight = new.kind {
     id = "mrkcan/sight",
     pool = "effect",
     state = {
@@ -332,7 +332,7 @@ function mrkcan.action(spec: { id: string, cannon: AttachmentLook }): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = spec.id,
         state = mrkcan.STATE,
         args = spec,

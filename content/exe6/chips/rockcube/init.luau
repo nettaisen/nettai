@@ -6,8 +6,7 @@
 local cube = require("@self/cube")
 local rock = require("@self/rock")
 
-local rockcube = define.chip {
-    id = "rockcube",
+local rockcube: Chip = {
     codes = { "*" },
     element = "null",
     family = "summon",
@@ -23,8 +22,7 @@ local rockcube = define.chip {
     dimming = cube.places { variant = rock.variants.cube },
 }
 
-local icecube = define.chip {
-    id = "icecube",
+local icecube: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "summon",

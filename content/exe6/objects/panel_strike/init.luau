@@ -114,7 +114,7 @@ local function tick(me: Object)
     c:present()
 end
 
-panel_strike.kind = define.kind {
+panel_strike.kind = new.kind {
     id = "panel-strike",
     pool = "attack",
     state = { cracks = "bool", warning = "u8", hit_mod = "u8", solid_only = "bool" },

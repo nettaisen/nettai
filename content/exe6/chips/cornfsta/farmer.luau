@@ -90,7 +90,7 @@ local function tick(me: Object)
     end
 end
 
-farmer.kind = define.kind {
+farmer.kind = new.kind {
     id = "cornfsta/farmer",
     pool = "actor",
     state = { controller = "object", held = "object", sowing = "bool" },

@@ -4,7 +4,7 @@
 -- record's damage, hit parameter, lockout and element) and the chip's use. An armed full B charge released in the
 -- chaos cycle's window fires it; the charge's time is its row's by the chaos level.
 
-local drksword = require("../../../../chips/drksword")
+local drksword = require("../../../../chips/drksword").drksword
 
 local chaos = {}
 
@@ -14,7 +14,7 @@ local function setup(navi: Object): Chip
     return drksword
 end
 
-chaos.weapon = define.weapon {
+chaos.weapon = new.weapon {
     -- The charge table's row 6 (0x0801CAA8), by the chaos level (at most 4); level 5 would read on into row 7's
     -- first entry.
     charge_ticks = { 40, 60, 90, 120, 150, 130 },

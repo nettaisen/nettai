@@ -18,7 +18,7 @@ local sword_wave = require("./sword_wave")
 local slashes = {}
 
 local function slash(s: ChargedSlash): ChargedSlash
-    return define.record("charged-slash", s)
+    return new.record("charged-slash", s)
 end
 
 local waves = sword_wave.waves

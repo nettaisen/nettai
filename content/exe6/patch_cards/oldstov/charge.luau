@@ -7,7 +7,7 @@
 local weapon = require("../../lib/weapon")
 local firebrn_chips = require("../../chips/firebrn")
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/oldstov/charge",
     -- The charge table's row 0x78, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

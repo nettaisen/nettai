@@ -55,7 +55,7 @@ local function make(id: string, gun_kind: Kind): { hook: (CircGunVariant) -> (us
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = id,
         pool = "effect",
         state = { variant = "record:circgun-variant", bonus = "u16", busy = "bool" },
@@ -81,7 +81,7 @@ end
 
 -- A gun's variant.
 local function variant(v: CircGunVariant): CircGunVariant
-    return define.record("circgun-variant", v)
+    return new.record("circgun-variant", v)
 end
 
 return { variant = variant, make = make }

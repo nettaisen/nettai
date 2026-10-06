@@ -155,7 +155,7 @@ end
 
 local ACTIONS = { [APPEAR] = appear, [STAND] = stand, [RAISE] = raise, [THUNDER] = call_thunder, [LEAVE] = leave }
 
-elecman.kind = define.kind {
+elecman.kind = new.kind {
     id = "elecman/navi",
     pool = "actor",
     state = { controller = "object" },

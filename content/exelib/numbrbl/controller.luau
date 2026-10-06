@@ -36,7 +36,7 @@ controller.UNDIM = UNDIM
 
 -- A controller kind `id` whose effect (its action 0xC) is `effect`.
 function controller.make(id: string, effect: (me: Object) -> ()): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { chip = "chip", bonus = "u16", balls = "u8", busy = "bool" },

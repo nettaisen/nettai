@@ -149,7 +149,7 @@ local function tick(me: Object)
     c:present()
 end
 
-laser.kind = define.kind {
+laser.kind = new.kind {
     id = "sensor/laser",
     pool = "attack",
     state = {

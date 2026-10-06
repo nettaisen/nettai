@@ -4,11 +4,12 @@
 local cards = require("../rules/patch_cards/cards")
 local variants = require("../objects/projectile/variants")
 
-return define.patch_card {
-    id = "starfish",
+local card: PatchCard = {
     mb = 15,
     effects = {
         cards.body("aqua"),
         cards.charge_shot_kind(variants.charged_bubbling),
     },
 }
+
+return { starfish = card }

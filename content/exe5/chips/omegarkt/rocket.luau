@@ -186,7 +186,7 @@ local function init(me: Object)
     tick(me)
 end
 
-rocket.kind = define.kind {
+rocket.kind = new.kind {
     id = "omegarkt/rocket",
     pool = "attack",
     state = { controller = "object" },

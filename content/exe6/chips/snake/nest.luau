@@ -71,7 +71,7 @@ local function tick(me: Object)
     end
 end
 
-nest.kind = define.kind {
+nest.kind = new.kind {
     id = "snake/nest",
     pool = "attack",
     state = { scan_x = "u8", scan_y = "u8", snakes = "u8", holder = "object" },

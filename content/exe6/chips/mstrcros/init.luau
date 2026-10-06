@@ -8,8 +8,7 @@ local elcpuls_chips = require("./elcpuls")
 local rskyhny_chips = require("./rskyhny")
 local navi = require("@self/navi")
 
-return define.chip {
-    id = "mstrcros",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -26,3 +25,5 @@ return define.chip {
     },
     navi = navi.summon,
 }
+
+return { mstrcros = chip }

@@ -7,8 +7,7 @@ local dragon = require("../lib/dragons/dragon")
 local lockon = require("../rules/lockon")
 local sparks = require("../lib/sparks")
 
-return define.chip {
-    id = "elecdrgn",
+local chip: Chip = {
     codes = { "A", "L", "V" },
     element = "elec", family = "elec", class = "standard",
     rarity = 2, mb = 40, damage = 150, hit_param = 30, lockout = 0,
@@ -27,3 +26,5 @@ return define.chip {
         },
     },
 }
+
+return { elecdrgn = chip }

@@ -36,7 +36,7 @@ return {
     },
     chips = {
         -- What a zeroed chip field reads: the test content's blank chip.
-        zeroed = test_chips.blank,
+        zeroed = test_chips["test/blank"],
     },
     -- The engine's test content's statuses, lock-on modes, effects, sparks,
     -- region and collision types, which this pack's content comes with.

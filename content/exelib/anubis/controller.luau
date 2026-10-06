@@ -36,7 +36,7 @@ function controller.make(spec: Spec): { hook: (variant: AnubisVariant) -> (user:
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { variant = "record:anubis-variant" },

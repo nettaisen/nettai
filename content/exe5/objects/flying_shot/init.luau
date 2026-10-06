@@ -209,7 +209,7 @@ local function init(me: Object)
     tick(me)
 end
 
-flying_shot.kind = define.kind {
+flying_shot.kind = new.kind {
     id = "flying-shot",
     pool = "attack",
     state = { row = "u8", range = "u8", highlight = "bool" },

@@ -5,8 +5,7 @@
 
 local controller = require("@self/controller")
 
-return define.chip {
-    id = "magnum",
+local chip: Chip = {
     codes = { "F", "L", "W" },
     element = "null",
     family = "cursor",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = controller.hook,
 }
+
+return { magnum = chip }

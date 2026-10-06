@@ -113,7 +113,7 @@ end
 
 -- A game's hand kind.
 function hand.make_kind(look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = { first = "bool" },

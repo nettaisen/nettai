@@ -155,7 +155,7 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
             let uses = format!("@{required}/");
             let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);
             for (name, text) in &c.scripts.modules {
-                let names = text.lines().any(|l| l.contains(&field) && !l.contains("define.collision"));
+                let names = text.lines().any(|l| l.contains(&field) && !l.contains("new.collision"));
                 if name.starts_with(&prefix) && text.contains(&uses) && names {
                     out.push((short.clone(), name.clone(), required.clone()));
                 }

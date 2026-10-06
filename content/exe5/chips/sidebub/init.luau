@@ -7,8 +7,7 @@ local sidebub = require("@self/sidebub")
 -- SideBub1 (EXE5 chip 0x0a0): the navi sends two bubbles to the column ahead, in the rows above and below its own,
 -- drifting forward and bouncing between the top and bottom rows; a popped bubble bursts into an aqua shot: EXE5's
 -- own (chips/sidebub/sidebub).
-local sidebub1 = define.chip {
-    id = "sidebub1",
+local sidebub1: Chip = {
     codes = { "D", "Q", "S" },
     element = "aqua",
     family = "aqua",
@@ -26,8 +25,7 @@ local sidebub1 = define.chip {
 -- SideBub2 (EXE5 chip 0x0a1): the navi sends two bubbles to the column ahead, in the rows above and below its own,
 -- drifting forward and bouncing between the top and bottom rows; a popped bubble bursts into an aqua shot: EXE5's
 -- own (chips/sidebub/sidebub).
-local sidebub2 = define.chip {
-    id = "sidebub2",
+local sidebub2: Chip = {
     codes = { "H", "L", "W" },
     element = "aqua",
     family = "aqua",
@@ -45,8 +43,7 @@ local sidebub2 = define.chip {
 -- SideBub3 (EXE5 chip 0x0a2): the navi sends two bubbles to the column ahead, in the rows above and below its own,
 -- drifting forward and bouncing between the top and bottom rows; a popped bubble bursts into an aqua shot: EXE5's
 -- own (chips/sidebub/sidebub).
-local sidebub3 = define.chip {
-    id = "sidebub3",
+local sidebub3: Chip = {
     codes = { "E", "N", "P" },
     element = "aqua",
     family = "aqua",

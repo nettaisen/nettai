@@ -8,8 +8,8 @@
 -- the navi has it a Beast buster gives way to the plain one.
 
 local charge = require("../../lib/navi_boost/charge")
-local drksword = require("../drksword")
-local sword = require("../sword")
+local drksword = require("../drksword").drksword
+local sword = require("../sword").sword
 
 -- The attack's element byte: Null, with the Sword bit.
 local ELEMENT = 0x80
@@ -25,7 +25,7 @@ local function setup(navi: Object): Action
     return sword.action
 end
 
-return define.weapon {
+return new.weapon {
     id = "bugrswrd/charge",
     charge_ticks = { 120, 120, 120, 120, 120, 200, 200, 200 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,

@@ -46,7 +46,7 @@ local function tick(me: Object)
     end
 end
 
-grid.kind = define.kind {
+grid.kind = new.kind {
     id = "gridman/grid",
     pool = "effect",
     state = { stays = "bool" },

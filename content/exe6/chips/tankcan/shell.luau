@@ -19,7 +19,7 @@ shell.kind = common.make_kind("tankcan/shell", {
     sound = asset.sound("cannon"),
     hit_sound = asset.sound("burst"),
     -- The edge blast: its effect (effect 0x60), a thrown hit.
-    blast = define.effect { sprite = asset.sprite("tank-blast"), anim = 0, palette = 0 },
+    blast = new.effect { sprite = asset.sprite("tank-blast"), anim = 0, palette = 0 },
     blast_is = collision.thrown,
     explosion = effects.explosion,
     burst = effects.shell_burst,

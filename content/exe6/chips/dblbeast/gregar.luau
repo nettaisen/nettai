@@ -11,7 +11,7 @@ local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local gregar_beast = require("../../navis/megaman/forms/gregar_beast")
+local gregar_beast = require("../../navis/megaman/forms/gregar_beast")["gregar-beast"]
 local parts = require("../../lib/swords/parts")
 
 local gregar = {}
@@ -34,7 +34,7 @@ local SLAM: DblBeastPattern = { { 0, -1, 0 }, { 1, 1, 0 } }
 
 -- The hits (`byte_80C202C`, `byte_80C2048`): the claw's, the bite's, and
 -- the slam's two, on the panel in front. (Hit 2's row is zeros, unused.)
-local BITE_SPARK = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
+local BITE_SPARK = new.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
 local HITS: { [string]: DblBeastHit } = {
     claw = { ahead = 1, region = regions.wide, spark = sparks.heavy, is = collision.attack, damage = 50 },
     bite = { ahead = 1, region = regions.long, spark = BITE_SPARK, is = collision.breaking, damage = 20 },
@@ -43,7 +43,7 @@ local HITS: { [string]: DblBeastHit } = {
 }
 -- The gun's shot (`sub_80C20B4`, 0x04050501): on the first panel down the
 -- row with an enemy body or a neutral object on it, 16 pixels up.
-local SHOT_SPARK = define.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
+local SHOT_SPARK = new.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
 local SHOT: DblBeastHit = { ahead = 0, region = regions.single, spark = SHOT_SPARK, is = collision.attack, damage = 5, z = 0x10_0000 }
 local SHOT_TARGET = { [0] = 0x05800000, [1] = 0x0A800000 }
 
@@ -51,8 +51,8 @@ local SHOT_TARGET = { [0] = 0x05800000, [1] = 0x0A800000 }
 local MOUTH = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 19 }
 -- The claw's swipe and the slam's two blows (effects 0x16, 0x3A, 0x39),
 -- 16 pixels up on the panel in front.
-local SLAM_FX = define.effect { sprite = asset.sprite("slash-man-effect"), anim = 1, palette = 0 }
-local SLAM_FX_2 = define.effect { sprite = asset.sprite("slash-man-effect"), anim = 0, palette = 0 }
+local SLAM_FX = new.effect { sprite = asset.sprite("slash-man-effect"), anim = 1, palette = 0 }
+local SLAM_FX_2 = new.effect { sprite = asset.sprite("slash-man-effect"), anim = 0, palette = 0 }
 
 local SOUND_CLAW = asset.sound("sword-swing")
 local SOUND_BITE = asset.sound("drilarm")
@@ -328,7 +328,7 @@ local function tick(me: Object)
     end
 end
 
-gregar.kind = define.kind {
+gregar.kind = new.kind {
     id = "dblbeast/gregar",
     pool = "actor",
     state = beast.STATE,

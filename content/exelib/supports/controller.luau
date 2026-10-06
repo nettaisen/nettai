@@ -119,7 +119,7 @@ function controller.make(look: SupportsLook): Kind
         end
     end
 
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "effect",
         state = { support = { "rush", "beat", "tango" }, out = "bool", eaten = "chip", telop_chip = "chip" },

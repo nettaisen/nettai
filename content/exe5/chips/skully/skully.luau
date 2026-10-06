@@ -112,7 +112,7 @@ local function init(me: Object)
     tick(me)
 end
 
-skully.kind = define.kind {
+skully.kind = new.kind {
     id = "skully/skull",
     pool = "attack",
     state = { skulls = "record:skulls", left = "u8" },
@@ -150,7 +150,7 @@ spawn = function(owner: Object, x: number, y: number, element: number, damage: n
 end
 
 function skully.skulls(palette: number): Skulls
-    return define.record("skulls", { palette = palette, count = 3, every = 0x0F })
+    return new.record("skulls", { palette = palette, count = 3, every = 0x0F })
 end
 
 export type ActionState = {
@@ -200,7 +200,7 @@ function skully.action(skulls: Skulls): Action
         me:exit_attack()
     end
 
-    return define.action {
+    return new.action {
         state = { timer = "u16" },
         args = skulls,
         update = function(me: Object, s: ActionState)

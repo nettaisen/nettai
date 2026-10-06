@@ -5,8 +5,7 @@
 local invisible = require("@self/controller")
 
 -- 360 ticks (the record's first two parameter bytes, 104 and 1).
-return define.chip {
-    id = "invisibl",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = invisible.hook(360),
 }
+
+return { invisibl = chip }

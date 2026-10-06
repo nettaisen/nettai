@@ -6,8 +6,7 @@
 local exe5_lance = require("@self/lance")
 local lance = require("@exelib/lance")
 
-return define.chip {
-    id = "lance",
+local chip: Chip = {
     codes = { "C", "L", "R", "*" },
     element = "wood",
     family = "wood",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     instant = lance.instant_of(exe5_lance.kind, 0),
 }
+
+return { lance = chip }

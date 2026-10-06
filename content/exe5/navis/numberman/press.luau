@@ -149,7 +149,7 @@ local function tick(me: Object)
     end
 end
 
-press.kind = define.kind {
+press.kind = new.kind {
     id = "numberman/press",
     pool = "attack",
     state = { variant = "u8" },

@@ -193,7 +193,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-summon.kind = define.kind {
+summon.kind = new.kind {
     id = "falzar/summon",
     pool = "actor",
     state = { leads = "bool", anims = "u8", controller = "object" },

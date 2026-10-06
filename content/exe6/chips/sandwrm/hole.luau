@@ -119,7 +119,7 @@ local function init(me: Object)
     tick(me)
 end
 
-hole.kind = define.kind {
+hole.kind = new.kind {
     id = "sandwrm/hole",
     pool = "actor",
     state = { worm = "object" },

@@ -6,11 +6,10 @@
 
 local csmopris = require("@self/csmopris")
 local recipe_astroid3 = require("./astroid").astroid3
-local recipe_cosmomn_ds = require("./cosmoman").cosmomn_ds
-local recipe_cosmomn_sp = require("./cosmoman").cosmomn_sp
+local recipe_cosmomn_ds = require("./cosmoman")["cosmomn-ds"]
+local recipe_cosmomn_sp = require("./cosmoman")["cosmomn-sp"]
 
-return define.chip {
-    id = "csmopris",
+local chip: Chip = {
     codes = {},
     element = "null",
     family = "program_advance",
@@ -31,3 +30,5 @@ return define.chip {
     },
     navi = csmopris.summon,
 }
+
+return { csmopris = chip }

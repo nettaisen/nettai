@@ -123,7 +123,7 @@ pub struct PanelCondition {
     pub forbid: u32,
 }
 
-/// A hit region content defines (`define.region`): panels around the
+/// A hit region content defines (`new.region`): panels around the
 /// anchor, or the whole field's panels that meet a condition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Region {

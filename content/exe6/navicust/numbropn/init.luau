@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "numbropn",
+local program: NaviCustProgram = {
     colors = { "pink" },
     shape = {
         ".......",
@@ -28,3 +27,5 @@ return define.navicust_program {
     exclusive = "custom-screen",
     effects = { programs.number_open() },
 }
+
+return { numbropn = program }

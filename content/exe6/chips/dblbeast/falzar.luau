@@ -11,7 +11,7 @@ local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local falzar_beast = require("../../navis/megaman/forms/falzar_beast")
+local falzar_beast = require("../../navis/megaman/forms/falzar_beast")["falzar-beast"]
 local parts = require("../../lib/swords/parts")
 
 local falzar = {}
@@ -36,7 +36,7 @@ local HITS: { [string]: DblBeastHit } = {
 -- The breath's maw (attachment row 0x21, the fan Tornado holds) and its
 -- gust two panels ahead (effect 0x59, 30 ticks).
 local MAW = attachment.look { sprite = asset.sprite("hand-fan"), palette = 0, attach_point = 9 }
-local GUST = define.effect { sprite = asset.sprite("tornado"), anim = 0, palette = 0 }
+local GUST = new.effect { sprite = asset.sprite("tornado"), anim = 0, palette = 0 }
 local GUST_TICKS = 0x1E
 
 local SOUND_BREATH = asset.sound("aqua-surge")
@@ -214,7 +214,7 @@ local function tick(me: Object)
     end
 end
 
-falzar.kind = define.kind {
+falzar.kind = new.kind {
     id = "dblbeast/falzar",
     pool = "actor",
     state = beast.STATE,

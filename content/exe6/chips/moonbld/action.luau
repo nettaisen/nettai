@@ -96,7 +96,7 @@ function action.action(spec: { id: string?, charged: ChargedSlash? }): Action
         end
     end
 
-    return define.action { id = spec.id, state = action.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = action.STATE, args = spec, update = update }
 end
 
 return action

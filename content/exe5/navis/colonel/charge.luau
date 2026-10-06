@@ -47,7 +47,7 @@ local ENEMY_BODY = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 -- The slash: AIAttackVars +3's row of 0x080F8AF4 (0x080F8A30 and 0x080F8B00 for the warning) and its effect (0x48
 -- on), row 0, the routine's: the target and the two panels diagonally behind it.
 local REGION = regions.vee
-local SLASH = define.effect { sprite = asset.sprite("screen-divide"), anim = 0, palette = 0 }
+local SLASH = new.effect { sprite = asset.sprite("screen-divide"), anim = 0, palette = 0 }
 -- His sword's animation (the attachment's spawn word: row 3, animation 7).
 local BLADE_ANIM = 7
 
@@ -150,7 +150,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "colonel/charge/action",
     state = { timer = "u16", count = "u16", target_x = "u8", target_y = "u8", wait = "u16", unwarned = "bool" },
     -- 0x080F89AE: the step, then the count.
@@ -181,7 +181,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "colonel/charge",
     -- The charge table's row 0x46 (0x0801CD28), by Charge 0 to 5: past 4 it reads on into row 0x47's first entry.
     charge_ticks = { 120, 115, 110, 105, 100, 160 },

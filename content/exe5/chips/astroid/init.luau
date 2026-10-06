@@ -6,8 +6,7 @@ local meteors = require("./meteors/meteors")
 
 -- Astroid1 (EXE5 chip 0x068): a shower of 6 Fire meteors, one every 20 ticks on one of the enemy navis' panels or
 -- beside it, each cracking its panel (chips/meteors: instant chip effect 17, its second parameter 6).
-local astroid1 = define.chip {
-    id = "astroid1",
+local astroid1: Chip = {
     codes = { "A", "Q", "T" },
     element = "fire",
     family = "fire",
@@ -24,8 +23,7 @@ local astroid1 = define.chip {
 
 -- Astroid2 (EXE5 chip 0x069): a shower of 8 Fire meteors, one every 20 ticks on one of the enemy navis' panels or
 -- beside it, each cracking its panel (chips/meteors: instant chip effect 17, its second parameter 8).
-local astroid2 = define.chip {
-    id = "astroid2",
+local astroid2: Chip = {
     codes = { "E", "M", "U" },
     element = "fire",
     family = "fire",
@@ -42,8 +40,7 @@ local astroid2 = define.chip {
 
 -- Astroid3 (EXE5 chip 0x06a): a shower of 10 Fire meteors, one every 20 ticks on one of the enemy navis' panels or
 -- beside it, each cracking its panel (chips/meteors: instant chip effect 17, its second parameter 10).
-local astroid3 = define.chip {
-    id = "astroid3",
+local astroid3: Chip = {
     codes = { "C", "P", "Y" },
     element = "fire",
     family = "fire",

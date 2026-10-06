@@ -43,7 +43,7 @@ local function tick(me: Object)
     end
 end
 
-mark.kind = define.kind {
+mark.kind = new.kind {
     id = "eraseman/mark",
     pool = "effect",
     state = { ticks = "u8" },

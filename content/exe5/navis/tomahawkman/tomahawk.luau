@@ -175,7 +175,7 @@ local function init(me: Object, s: State)
     me:set_lifecycle("update")
 end
 
-tomahawk.kind = define.kind {
+tomahawk.kind = new.kind {
     id = "tomahawkman/tomahawk",
     pool = "attack",
     state = { row = "u8", turns = "u8", across = "bool" },

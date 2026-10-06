@@ -32,7 +32,7 @@ local SPRITE = asset.sprite("napalm-bomb")
 local SOUND_LOB = asset.sound("cannon")
 local SOUND_LAND = asset.sound("target-move")
 -- The fire on a panel (the effect table's row 0x4B: sprite 10-19).
-local FIRE = define.effect { sprite = asset.sprite("napalm-fire"), anim = 0, palette = 0 }
+local FIRE = new.effect { sprite = asset.sprite("napalm-fire"), anim = 0, palette = 0 }
 -- Its flight's ticks, and its gravity by the variant (16.16 a tick).
 local FLIGHT = 0x2D
 local GRAVITY, LIGHT_GRAVITY = -0xA000, -0x4000
@@ -223,7 +223,7 @@ local function init(me: Object)
     tick(me)
 end
 
-bomb.kind = define.kind {
+bomb.kind = new.kind {
     id = "napalmmn/bomb",
     pool = "attack",
     state = {

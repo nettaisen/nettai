@@ -141,7 +141,7 @@ end
 
 local ACTIONS = { [0] = start, [4] = call, [8] = finish }
 
-caller.kind = define.kind {
+caller.kind = new.kind {
     id = "cosmoman/caller",
     pool = "effect",
     state = {

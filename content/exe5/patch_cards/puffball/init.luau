@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local guards = require("../navis/megaman/weapons/guards")
 
-return define.patch_card {
-    id = "puffball",
+local card: PatchCard = {
     mb = 16,
     effects = {
         cards.body("wood"),
@@ -13,3 +12,5 @@ return define.patch_card {
         cards.bug(cards.hp_drain(4)),
     },
 }
+
+return { puffball = card }

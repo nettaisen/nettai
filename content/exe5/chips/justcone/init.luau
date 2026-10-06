@@ -23,8 +23,7 @@ local STRIKE = common.make {
     effects = { explosion = effects.explosion, burst = effects.burst, puff = effects.puff },
 }
 
-return define.chip {
-    id = "justcone",
+local chip: Chip = {
     codes = { "J" },
     element = "null",
     family = "break",
@@ -39,3 +38,5 @@ return define.chip {
     megaman = "light",
     instant = STRIKE.instant,
 }
+
+return { justcone = chip }

@@ -30,7 +30,7 @@ export type State = {
 -- show meanwhile, how long, and the conditions by side. (`byte_80E272C`'s
 -- rows by kind: its sounds were the kind's, now the row's.)
 function panel_changer.change(c: PanelChange): PanelChange
-    return define.record("panel-change", c)
+    return new.record("panel-change", c)
 end
 
 -- `sub_80E2ACA`: a changer (of `kind`, a game's) of `change` on panel
@@ -157,7 +157,7 @@ end
 
 -- A game's changer kind, keyed `id`.
 function panel_changer.make_kind(id: string): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { change = "record:panel-change", list = "u8[18]", count = "u8", holder = "object" },

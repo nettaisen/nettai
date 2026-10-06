@@ -66,7 +66,7 @@ local function init(me: Object)
     tick(me)
 end
 
-lunge_slash.kind = define.kind {
+lunge_slash.kind = new.kind {
     id = "slashcross-beast/lunge-slash",
     pool = "attack",
     -- `sub_80DB8CC`.

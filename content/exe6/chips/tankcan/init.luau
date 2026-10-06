@@ -11,9 +11,8 @@ local tankcan = require("@self/action")
 -- parameters 0x100).
 local SHELL = { hit_mod = 0x4B, cracks = true, shift = 0 }
 
-return {
-    tankcan1 = define.chip {
-        id = "tankcan1",
+local chips: { [string]: Chip } = {
+    tankcan1 = {
         codes = { "A", "G", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 17, damage = 120, hit_param = 20, lockout = 0,
@@ -23,8 +22,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = tankcan.action { shell = SHELL },
     },
-    tankcan2 = define.chip {
-        id = "tankcan2",
+    tankcan2 = {
         codes = { "L", "S", "V" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 28, damage = 160, hit_param = 20, lockout = 0,
@@ -34,8 +32,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = tankcan.action { shell = SHELL },
     },
-    tankcan3 = define.chip {
-        id = "tankcan3",
+    tankcan3 = {
         codes = { "B", "M", "P" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 39, damage = 200, hit_param = 20, lockout = 0,
@@ -46,3 +43,5 @@ return {
         action = tankcan.action { shell = SHELL },
     },
 }
+
+return chips

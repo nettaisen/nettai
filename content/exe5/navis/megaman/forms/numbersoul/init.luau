@@ -11,7 +11,7 @@ local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged_shot")
-local darkplus = require("../../../chips/darkplus")
+local darkplus = require("../../../chips/darkplus").darkplus
 local hand = require("@self/hand")
 local layer = require("@self/layer")
 local soul_change = require("../../../rules/souls/change")
@@ -21,8 +21,7 @@ local soul_revert = require("../../../rules/souls/revert")
 -- His layer's row, and NumberMan's face's on his image.
 local ROW, NUMBERMAN_FACE = 1, 0
 
-return define.form {
-    id = "numbersoul",
+local form: FormDef = {
     soul = { family = "plus" },
     change = soul_change.action,
     revert = soul_revert.action,
@@ -70,7 +69,7 @@ return define.form {
     -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
     buster_arm = { anim = 9 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 9 of category 0).
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -79,3 +78,5 @@ return define.form {
         attach_points = attach_points,
     },
 }
+
+return { numbersoul = form }

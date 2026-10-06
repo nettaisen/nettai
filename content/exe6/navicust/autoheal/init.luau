@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "autoheal",
+local program: NaviCustProgram = {
     colors = { "pink" },
     shape = {
         ".......",
@@ -27,3 +26,5 @@ return define.navicust_program {
     bug = "panel",
     effects = { programs.outside("auto-heal") },
 }
+
+return { autoheal = program }

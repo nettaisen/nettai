@@ -14,7 +14,7 @@ striker.kind = common.make_kind {
     id = "bodygrd/striker",
     -- Its identity: a field object nothing swallows or leaves as junk,
     -- with no look.
-    identity = define.identity {
+    identity = new.identity {
         id = "bodygrd-striker",
         class = "field_object",
         version = 0,

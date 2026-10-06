@@ -15,9 +15,8 @@ local BEAM_IN_SUN: SunBeam = { sprite = beam.sprites.plain, palette = 2 }
 local WIDE_BEAM: SunBeam = { sprite = beam.sprites.wide, palette = 0 }
 local WIDE_BEAM_IN_SUN: SunBeam = { sprite = beam.sprites.wide, palette = 3 }
 
-return {
-    gundels1 = define.chip {
-        id = "gundels1",
+local chips: { [string]: Chip } = {
+    gundels1 = {
         codes = { "C", "M", "T", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 15, damage = 0, hit_param = 0, lockout = 0,
@@ -32,8 +31,7 @@ return {
             beam_in_sun = BEAM_IN_SUN,
         },
     },
-    gundels2 = define.chip {
-        id = "gundels2",
+    gundels2 = {
         codes = { "B", "E", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 0, hit_param = 0, lockout = 0,
@@ -48,8 +46,7 @@ return {
             beam_in_sun = BEAM_IN_SUN,
         },
     },
-    gundels3 = define.chip {
-        id = "gundels3",
+    gundels3 = {
         codes = { "N", "Q", "W" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 38, damage = 0, hit_param = 0, lockout = 0,
@@ -68,8 +65,7 @@ return {
     -- GunDelEX's record is the Japanese games' (the content's JP-content
     -- chips take theirs): a Standard chip with the library flag; the US
     -- games' is no folder chip, with no flags.
-    gundelex = define.chip {
-        id = "gundelex",
+    gundelex = {
         codes = { "G" },
         element = "null", family = "null", class = "standard",
         rarity = 4, mb = 80, damage = 0, hit_param = 0, lockout = 0,
@@ -86,3 +82,5 @@ return {
         },
     },
 }
+
+return chips

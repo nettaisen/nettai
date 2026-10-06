@@ -69,7 +69,7 @@ function blank_shot.make(look: { id: string, buster: Buster, click: Sound }): { 
         end
     end
 
-    local action = define.action { id = look.id, state = { timer = "u16" }, update = update }
+    local action = new.action { id = look.id, state = { timer = "u16" }, update = update }
 
     -- `sub_8011ADA`: nothing to fire.
     local function setup(navi: Object): Action

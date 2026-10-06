@@ -162,7 +162,7 @@ local function init(me: Object)
     tick(me)
 end
 
-head.kind = define.kind {
+head.kind = new.kind {
     id = "aurahed/head",
     pool = "attack",
     state = {

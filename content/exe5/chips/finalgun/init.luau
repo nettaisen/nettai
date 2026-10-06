@@ -7,8 +7,7 @@
 
 local side_special = require("@exelib/instant/side_special")
 
-return define.chip {
-    id = "finalgun",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -23,3 +22,5 @@ return define.chip {
     slot_in_limit = 1,
     instant = side_special.instant,
 }
+
+return { finalgun = chip }

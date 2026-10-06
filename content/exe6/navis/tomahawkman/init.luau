@@ -5,10 +5,9 @@ local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local a_charge = require("./megaman/weapons/charged_chip_bonus_1f")
 local charge = require("@self/charge")
-local tomahawkman = require("@self/chip")
+local tomahawkman = require("@self/chip").etomahwk
 
-return define.navi {
-    id = "tomahawkman",
+local navi: NaviDef = {
     sprite = asset.sprite("tomahawkman"),
     element = "wood",
     buster_bonus = 1,
@@ -59,7 +58,7 @@ return define.navi {
     charge_doubles = { element = "wood" },
     -- A hit's status doesn't take.
     traits = { "status_immune" },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -105,3 +104,5 @@ return define.navi {
         },
     },
 }
+
+return { tomahawkman = navi }

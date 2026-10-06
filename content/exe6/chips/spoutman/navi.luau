@@ -14,7 +14,7 @@
 -- Then he leaves, and the controller moves on. See docs/engine/chips.md
 -- §3.6.11.
 
-local spoutman_navi = require("../../navis/spoutman")
+local spoutman_navi = require("../../navis/spoutman").spoutman
 local panels = require("@exelib/panels")
 local ball = require("./ball")
 local geyser = require("./geyser")
@@ -50,7 +50,7 @@ local GEYSER_TICKS = 0x5A
 -- panel it lands on.
 local BALL: WaterBall = { while_dimmed = true, cracks = true }
 -- His throw's splash where he stands (effect 0x2A).
-local THROW = define.effect { sprite = asset.sprite("spout-man-effect"), anim = 0, palette = 0 }
+local THROW = new.effect { sprite = asset.sprite("spout-man-effect"), anim = 0, palette = 0 }
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -241,7 +241,7 @@ local ACTIONS = {
     [0x18] = leave,
 }
 
-spoutman.kind = define.kind {
+spoutman.kind = new.kind {
     id = "spoutman/navi",
     pool = "actor",
     state = { controller = "object", pillar = "object" },

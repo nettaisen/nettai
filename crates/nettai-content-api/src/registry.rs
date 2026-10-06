@@ -29,7 +29,7 @@ pub enum Registry {
     /// the original's NameID record. A navi's and a form's are nested in
     /// their definitions; a field object's is its kind's.
     Identity,
-    /// A game's rules, their one definition: `define.rules { ... }`
+    /// A game's rules, their one definition: its root's `rules`
     /// (rules-in-luau.md §2.5), its rules/init.luau. Their state of a side,
     /// a player's setup of them (a side's facts) and their hooks into the
     /// framework, plain functions that call the game's modules as their code
@@ -77,29 +77,7 @@ impl Registry {
         Registry::Schema,
     ];
 
-    /// The registries content defines with `define.<name>` (schemas come
-    /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 17] = [
-        Registry::Chip,
-        Registry::Navi,
-        Registry::Form,
-        Registry::Weapon,
-        Registry::Kind,
-        Registry::Action,
-        Registry::Stage,
-        Registry::Effect,
-        Registry::Spark,
-        Registry::Region,
-        Registry::Collision,
-        Registry::Status,
-        Registry::Identity,
-        Registry::Rules,
-        Registry::Record,
-        Registry::PatchCard,
-        Registry::NaviCustProgram,
-    ];
-
-    /// The registry's name: its definer's (`define.chip`), and how messages
+    /// The registry's name: its tag constructor's (`new.kind`), and how messages
     /// and the canonical tree name it.
     pub fn name(self) -> &'static str {
         match self {
@@ -127,21 +105,10 @@ impl Registry {
     pub fn from_name(name: &str) -> Option<Registry> {
         Registry::ALL.into_iter().find(|r| r.name() == name)
     }
-
-    /// Definitions of this registry are what a match's setup names (a
-    /// folder's chips, a side's navi and forms, the arena's stage, the patch
-    /// cards and NaviCust programs), so each needs an explicit `id`. Another
-    /// definition has one only where a compat map names it (an action's or a
-    /// kind's number); the rest are keyed by where they are made (their
-    /// owner, or what their module returns). (A game's rules are one
-    /// definition, with no name to give: [`RULESET_KEY`].)
-    pub fn keyed(self) -> bool {
-        matches!(self, Registry::Chip | Registry::Navi | Registry::Form | Registry::Stage | Registry::PatchCard | Registry::NaviCustProgram)
-    }
 }
 
 /// The key of a game's rules, its one [`Registry::Rules`] definition
-/// (`define.rules { ... }` takes no `id`).
+/// (the root's `rules`, which has no `id`).
 pub const RULESET_KEY: &str = "rules";
 
 impl fmt::Display for Registry {

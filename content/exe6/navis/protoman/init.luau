@@ -6,10 +6,9 @@ local buster = require("./megaman/weapons/buster")
 local a_charge = require("@self/a_charge")
 local back_special = require("@self/back_special")
 local charge = require("@self/charge")
-local protoman = require("@self/chip")
+local protoman = require("@self/chip")["stepswrd-protoman"]
 
-return define.navi {
-    id = "protoman",
+local navi: NaviDef = {
     sprite = asset.sprite("protoman"),
     element = "null",
     buster_bonus = 1,
@@ -57,7 +56,7 @@ return define.navi {
     -- The chips A charges (its family's damaging chips, from a navi level on), and those a charge doubles.
     charged_chips = { family = "sword", damaging = true, when = by_level.from(11) },
     charge_doubles = { family = "sword" },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -103,3 +102,5 @@ return define.navi {
         },
     },
 }
+
+return { protoman = navi }

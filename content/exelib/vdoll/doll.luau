@@ -341,7 +341,7 @@ function doll.make(look: DollLook): Doll
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = {

@@ -1,15 +1,14 @@
 --!strict
 -- ChargeCross Beast: one of MegaMan's forms.
 
-local chargeman = require("../../chargeman")
-local gregar_beast = require("./gregar_beast")
+local chargeman = require("../../chargeman").chargeman
+local gregar_beast = require("./gregar_beast")["gregar-beast"]
 local gregar_beast_buster = require("../weapons/gregar_beast_buster")
 local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local wave = require("@self/wave")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "chargecross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -44,7 +43,7 @@ return define.form {
     extra_chips = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 17, palette_add = 9 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -90,3 +89,5 @@ return define.form {
         },
     },
 }
+
+return { ["chargecross-beast"] = form }

@@ -110,7 +110,7 @@ function batcan.make(look: Look): BatCan
         tick(me)
     end
 
-    local shot = define.kind {
+    local shot = new.kind {
         id = look.shot_id,
         pool = "attack",
         state = { hit_mod = "u8" },
@@ -212,7 +212,7 @@ function batcan.make(look: Look): BatCan
             end
         end
 
-        return define.action {
+        return new.action {
             state = STATE,
             args = spec,
             -- `sub_80EC0E6`.

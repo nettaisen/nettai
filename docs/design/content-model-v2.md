@@ -16,9 +16,12 @@ and, in their "As built" notes, what was built. [content-pack.md](content-pack.m
 the last step of the migration (§12, step 13). The migration is complete: §14 says where it ended and what stays
 numbered on purpose.
 
-Words: a *definition* is a record made by one of the definers (`define.chip { ... }`); a *key* is a definition's
-name (`"minibomb"`); a *handle* is the dense number a key interns to when content loads; *compat* is the table of
-the original's numbers (§6). Routine names are the original's. "Dimming", "cut-in chip", "counter cut-in" and
+Words: a *definition* is a record of the content's: a table the game's root holds by id (a chip, `chips.minibomb`),
+its rules, or a table only code reaches marked by a tag constructor (`new.kind { ... }`); it was a record made by
+one of the definers (`define.chip { ... }`) until the define-less content (§2.2, As built 2026-10-06), and the
+sections below keep the definers' names where they record the design. A *key* is a definition's name
+(`"minibomb"`); a *handle* is the dense number a key interns to when content loads; *compat* is the table of the
+original's numbers (§6). Routine names are the original's. "Dimming", "cut-in chip", "counter cut-in" and
 "telop" are used as in the rest of the project.
 
 ## 0. Summary
@@ -92,30 +95,31 @@ the frame-exact behavior of everything already ported.
 Every definition belongs to one registry. The engine knows the registries and their Rust types; one registry
 (`record`) holds data only Luau reads.
 
-| Registry | Definer | Key | The Rust side reads | Compat maps it to |
+| Registry | Made by | Key | The Rust side reads | Compat maps it to |
 |---|---|---|---|---|
-| chip | `define.chip` | required `id` (a match's folder names it) | the record, its use (action or hook), traits | chip id; the action number and subtype it had |
-| navi | `define.navi` | required `id` (a match's side) | stats, identity, own chip, traits | navi number, NameID |
-| form | `define.form` | required `id` (a side's Crosses and souls) | stats, weapons, identity, traits | form number, NameID |
-| weapon | `define.weapon` | `id` where compat names it, else derived | charge times, traits, the `setup` slot | weapon routine numbers (aliases many-to-one) |
-| kind | `define.kind`, and the engine's own kinds | `id` where compat names it, else derived | pool, state schema, `update` and `place` slots | pool and index; `scratch_position`, `scratch_z_fraction` |
-| action | `define.action`, and the engine's own navi actions | `id` where compat names it, else derived | state schema, `update` slot, traits | action number (the player's CurAction in the traces) |
-| stage | `define.stage` | required `id` (a match's arena) | layout, actors, music, background, settings | battle settings index and actor-list address |
-| effect | `define.effect` | derived | sprite, animation, palette | (none) |
-| spark | `define.spark` | derived | sprite, animation, palette | (none) |
-| region | `define.region` | derived | panel offsets, or a whole-field condition | (none) |
-| collision | `define.collision` | derived (`rules/collision/attack`) | a collision type's flag words by side | (none: gen-content knows a type by its row) |
-| status | `define.status` | `id` where compat names it, else derived | requests, duration, timer | its byte, in rules.toml |
-| (lockon) | `define.record("lockon", ...)` since rules-in-luau.md S7c | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
-| record | `define.record(type, spec)` | `id` where compat names it, else derived | only its type name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
-| patch_card | `define.patch_card` | required `id` (a match's side) | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
-| navicust_program | `define.navicust_program` | required `id` (a match's NaviCust) | its colors and shapes | the program's number, in compat/navicust.toml |
+| chip | the root's `chips` | its id there (a match's folder names it) | the record, its use (action or hook), traits | chip id; the action number and subtype it had |
+| navi | the root's `navis` | its id there (a match's side) | stats, identity, own chip, traits | navi number, NameID |
+| form | the root's `forms` | its id there (a side's Crosses and souls) | stats, weapons, identity, traits | form number, NameID |
+| weapon | `new.weapon` | `id` where compat names it, else derived | charge times, traits, the `setup` slot | weapon routine numbers (aliases many-to-one) |
+| kind | `new.kind`, and the engine's own kinds | `id` where compat names it, else derived | pool, state schema, `update` and `place` slots | pool and index; `scratch_position`, `scratch_z_fraction` |
+| action | `new.action`, and the engine's own navi actions | `id` where compat names it, else derived | state schema, `update` slot, traits | action number (the player's CurAction in the traces) |
+| stage | the root's `stages` | its id there (a match's arena) | layout, actors, music, background, settings | battle settings index and actor-list address |
+| effect | `new.effect` | derived | sprite, animation, palette | (none) |
+| spark | `new.spark` | derived | sprite, animation, palette | (none) |
+| region | `new.region` | derived | panel offsets, or a whole-field condition | (none) |
+| collision | `new.collision` | derived (`rules/collision/attack`) | a collision type's flag words by side | (none: gen-content knows a type by its row) |
+| status | `new.status` | `id` where compat names it, else derived | requests, duration, timer | its byte, in rules.toml |
+| (lockon) | `new.record("lockon", ...)` | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
+| record | `new.record(type, spec)` | `id` where compat names it, else derived | only its type name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
+| patch_card | the root's `patch_cards` | its id there (a match's side) | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
+| navicust_program | the root's `navicust_programs` | its id there (a match's NaviCust) | its colors and shapes | the program's number, in compat/navicust.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
 
-A game's rules are one definition, its ruleset (`define.ruleset`, rules/init.luau), which holds its rule
-sections (§3.8) and its roles (§7.4) as plain tables: neither is a definition of its own. **Identities** (the NameID records, §3.2) are `define.identity`,
-nested in the navi or form they belong to and keyed by it (`heatcross/identity`) or a field object's own (with
-an `id`), which compat maps to NameIDs through navis.toml, forms.toml and rules.toml. One more registry is
+A game's rules are one definition, the root's `rules` (rules/init.luau), which holds its rule sections (§3.8) and
+its roles (§7.4) as plain tables: neither is a definition of its own. **Identities** (the NameID records, §3.2) are
+`new.identity`, nested in the navi or form they belong to and keyed by it (`heatcross/identity`) or a field
+object's own (with an `id` where compat names it), which compat maps to NameIDs through navis.toml, forms.toml and
+rules.toml. One more registry is
 internal: **state schemas**, one per distinct state table (§3.5), which
 the content state store is keyed by.
 
@@ -124,37 +128,71 @@ the content state store is keyed by.
 A key is a string unique within its registry, local to its game (the user: "no i don't want qualified ids since you
 can't cross between games anymore"): `minibomb`, `heatcross`, `megaman/buster`. The user, 2026-10-05: "in fact only
 stuff that gets set in the match setup needs ids right? everywhere else ids are kind of pointless", then "drop ids
-where they aren't needed by the compat map or match setup". So a definition states an `id` only where something
-outside the content names it:
+where they aren't needed by the compat map or match setup".
 
-- **What a match's setup names** has a required `id`: a chip (a folder), a navi, a form (Crosses, souls), a stage
-  (the arena), a patch card and a NaviCust program (`Registry::keyed`). Match files, the locales and library.toml name
-  these by it. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an owner
-  (`m-cannon`, `atk-10`, `heatcross-beast`). The generator (§9) makes chip keys from the in-game name (`M-Cannon` is
-  `m-cannon`, `GrndMan[EX]` is `grndman-ex`); where two records share a name or have none, it picks one from the
-  record's use and lists them in compat/curation.toml for review (§13).
-- **What a compat map names** keeps the `id` the map keys it by: an action or a kind the traces compare by number,
-  a weapon routine, a status's byte, an identity's NameID, the records a setup's bytes name (SP slots, rock and
-  projectile variants, barriers, lock-on modes). The map is the only reader; a definition it doesn't name has no id.
-- **Every other definition is keyed by where it is made**, with no `id`:
-  - nested in a definition made by the same module: `<owner key>/<field path>`. MiniBomb's action is
-    `minibomb/action`; the bomb variant it throws `minibomb/action/args/thrown`; a soul's chaos weapon
-    `colonelsoul/weapons/chaos`;
-  - else what its module returns: the module's name for a definition the module returns (`objects/boulder`, a
-    folder's init by its folder), or its place in the table the module returns (`rules/collision/attack`,
-    `objects/rock/variants/cube`);
-  - else `<module>#n`, its place among the definitions its module made (`chips/colonel/navi#3`: one held in a
-    local the module doesn't return).
+**As built: define-less content** (2026-10-06). The user: "i dunno if i like any of this define api. why don't you
+just return tables or whatever and then at the top level put everything in a table with ids? e.g. init.luau returns
+{ chips = {cannon, ...}, navicust_programs = {...}, rules = rules} etc. so there's no side effects"; then "does
+init.luau even need to hold what the compat maps name? i don't really like that because they're only used if
+they're referred to by what a match names, right?", "sure, have tag constructors", and "you should drop the ids from
+the chip/patch card/navicust program/etc definitions, they should be indicated by the top level table in init.luau".
 
-  Owner and module keys are stable under edits elsewhere and readable in messages and trace diffs; `#n` keys shift
-  when their module gains a definition. Nothing outside the content stores a derived key: a compat map that needs to
-  name a definition gives it an `id`, and a tool that finds one does so by what it is (gen-content finds EXE6's
-  Cross special record by its record type).
+- **A game's root.** Its top module, `<game>/init.luau`, returns a table of what a match names, by id, in sections
+  (`chips`, `navis`, `forms`, `stages`, `patch_cards`, `navicust_programs`), and its `rules`
+  (`nettai_content_api::packs::SECTIONS`); nothing else. Each section is a module that returns it: the init of the
+  folder named for it (chips/init.luau; for the forms, the folder holding them, navis/megaman/forms/init.luau),
+  which merges its modules' tables by their paths (`merge { ["chips/cannon"] = require("@self/cannon"), ... }`,
+  content/exelib/merge.luau: an id two modules give is an error naming both), or the one module that has them all
+  (stages.luau). tools/content/index.py writes the root and the section inits from the modules there.
+- **What a match names is a plain table, with no `id`.** A module makes its chips as typed locals (`local chip:
+  Chip = { ... }`) and returns them by key (`return { minibomb = chip }`, a series `return { cannon = cannon,
+  ["m-cannon"] = m_cannon }`); code that requires the module reads the chip by its key
+  (`require("../minibomb").minibomb`). Its key is its id in the root; the loader lets a script read it as
+  `chip.id` (a view through the table's metatable, not a field of its data: the table writes none, and one that
+  does is refused).
+- **What only code reaches says what it is** with a tag constructor: `new.kind { ... }`, `new.action`,
+  `new.weapon`, `new.effect`, `new.spark`, `new.region`, `new.collision`, `new.status`, `new.identity` and
+  `new.record(type, { ... })`. A tag sets the table's metatable and returns it: no registry, no key, no effect.
+  Tag constructors work only while content loads.
+- **What the game has is what the root reaches.** The loader walks from the root, breadth first, through tables
+  (their fields in key order, then their metatables) and through what functions capture (their upvalues, by the
+  names they capture them by): a tagged table it reaches is a definition, and one it doesn't is none, whatever
+  module made it. Loading has no side effect, so a module that runs and is reached by nothing makes nothing. The
+  definitions only a compat map named went (with their compat entries): see "Gone" below.
+- **Keys.** A root's definition: its id there; the rules: `rules`. A tagged table: its `id` where a compat map
+  names it (an action or a kind the traces compare by number, a weapon routine, a status's byte, an identity's
+  NameID, the records a setup's bytes name, lock-on modes); else, where a module's result holds it through plain
+  tables, the module's name and the fields (`rules/collision/attack`, `exelib:regions/area/0`: a shared table is
+  named where it is written, whatever reaches it first); else its path from the nearest definition that holds it,
+  by that definition's key (MiniBomb's action `minibomb/action`, the variant it throws
+  `minibomb/action/args/thrower/variant`; through a function, the name it captures the value by,
+  `bomb/update/EXPLOSION`). Paths are the shortest, then the first in key order. Nothing outside the content
+  stores a derived key: a compat map that needs to name a definition gives it an `id`, and a tool that finds one
+  does so by what it is (gen-content finds EXE6's Cross special record by its record type).
+- **A game held in memory** (a test's: `Scripts::add_game`, `testing::add_index`) gets a root made from its
+  modules' typed locals (`Scripts::init_for`), and its other modules are walked as they are
+  (`Scripts::held`), so what a test's game holds is its whatever reaches it.
+- **Gone** (nothing a match names reaches them, and only compat named them; the tests that named them went too):
+  EXE6's 82 statuses no chip, weapon or rule inflicts (the table's other entries and those the original reads past
+  a group's end); the buster's alias routines `megaman/buster-2e`, `-3f`, `-6f`, `-70`, `-79`, `-7e` and `-82` (no
+  navi or form of EXE6's has one; no recording's setup names one) and `patch-cards/b-reflect` (no card gives it);
+  the kinds `bomb-slash` (a bomb's lingering hit no chip throws) and `dimming/blinding-flash` (dimming chip
+  subtype 2, which no chip has), with the flash's collision type; the actions `recov/none` (the heal table's last
+  row, no chip's) and `tornado/back-spread` (Tornado's third form, no chip's); and the instant effect
+  lib/instant/repair (no chip, weapon or link navi names it). The rows of the original's tables that no chip has
+  (WaveArm's and WideSht's virus waves, Tornado's rows 5 and 7, AirHocky's and RflectR's unused rows, EXE5's
+  Tornado row 7, ProtoMan's guard look and the brittle and hard rocks) are still written in their modules and are
+  no definitions: nothing reaches them.
 - Kind keys follow a convention the checker warns about: a kind colocated with an owner is qualified by it
   (`eraseman/mark`, `grab/shot`); a kind in `objects/` or a family library is plain (`projectile`, `bomb`).
 - The engine's own kinds and navi actions have keys in the `engine/` namespace (`engine/hitbox`, `engine/effect`,
   `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the rules, not by content: of no game.
 - **Asset names** are the pack's own (`asset.sprite("bomb")`), local to the game as keys are.
+
+Before (2026-10-05): a definer registered each definition as its module ran; a definition with no `id` was keyed
+by its owner (a definition made inside another's definer call), else by what its module returned, else
+`<module>#n`, its place among its module's definitions; inits required modules for what they defined, and a module
+that defined what only compat named was required by its folder's init.
 
 ### 2.3 Handles and the intern order
 
@@ -166,8 +204,7 @@ same handles. Content with more than 65,535 definitions in one registry is refus
 Handles are what battle state holds (an object's kind, a hand's chips, a navi's form, a state field of type
 `chip`). They are valid only with the content that made them: the round's setup carries the content hash, and
 `Battle::new` refuses other content, as it does today. A key with no `id` is as fixed as one with an id: it depends only
-on the modules' text (where a definition is made, what its module returns, its place among its module's
-definitions), so the same content gives the same keys and the same handles on every machine and every run, and
+on the modules' text (what the root and the modules' results hold, and where), so the same content gives the same keys and the same handles on every machine and every run, and
 both peers of a netbattle, whose offers carry the content hash, intern alike. The digest covers handles; messages
 name a definition by its key, with its module.
 
@@ -176,16 +213,20 @@ setups written by name (`"minibomb"` with code `"B"`), and for tools.
 
 ### 2.4 Definition values in Luau
 
-A definer returns its spec table, frozen, with a per-registry metatable; nothing is added to the table. Scripts
+A tag constructor returns its spec table with a per-registry metatable, and the define phase freezes it; nothing is
+added to the table. (A root's definition gets its metatable when the walk is done, through which it reads its
+id.) Scripts
 read a definition's fields directly (a frozen table read costs about 24 ns, against 130 ns for a userdata field).
 Where the API expects a definition (`battle.spawn(kind, ...)`, a weapon's `setup` returning an action), the
 binding looks the table up by identity: the runtime keeps each definition table's registry and handle by its
 address (definitions are frozen and live as long as the VM, and the lookup is never iterated). At run time a
-script only ever sees definitions that exist; it cannot make one (definers fail outside the define phase).
+script only ever sees definitions that exist; it cannot make one (tag constructors fail outside the define phase).
 
 ## 3. The definition API
 
-The definers are fields of one global, `define`, and the asset resolvers of `asset`. Both work only while
+(As built: the definers below are the root's sections and the tag constructors, §2.2: `define.chip { id = "x",
+... }` is the table the root's `chips` holds as `x`, and `define.kind` is `new.kind`.) The definers are fields of
+one global, `define`, and the asset resolvers of `asset`. Both work only while
 content loads: a module's top level, and functions it calls while loading (builders). Everything is typed in
 core.d.luau; `nettai-content-check` type-checks it (§7.7). Specs below show the fields; `?` marks optional ones.
 
@@ -788,7 +829,9 @@ depends = ["exelib"]   # the support packs it requires from
 
 A game's top module, `<game>/init.luau` (`exe6:init`; the pack as a module, as a folder's init.luau is the folder,
 §4.1), requires the game's rules and its folders, and each folder's init.luau requires the folder's modules that
-define what the game has. They return nothing: a definition is made as its module loads.
+define what the game has. They return nothing: a definition is made as its module loads. (As built 2026-10-06: the
+top module returns the game's root and each section's init returns the section, merged from its modules' tables;
+what the root reaches is what the game has, §2.2.)
 
 ```luau
 -- exe6/init.luau
@@ -3324,7 +3367,11 @@ Numbers that remain for other reasons, and are not names of content:
   no definition); and the engine's own progress numbers (an object's state, action and phase, the navi
   framework's states), which the traces compare as the original numbers them.
 
-**Since:** a game being ported loads without its chips that have no use yet (§7.3, "Partial loading"), so
+**Since:** the content is define-less (§2.2, As built 2026-10-06): a game's top module returns its root, what a
+match names by id and its rules; what only code reaches is tagged (`new.kind { ... }`); what the root reaches is
+what the game has, and the definitions only compat named went.
+
+A game being ported loads without its chips that have no use yet (§7.3, "Partial loading"), so
 EXE5's content plays beside EXE6's while its port goes on. content/exe5 is laid out by §4.1's rules (its series
 files, its kinds with their owners).
 

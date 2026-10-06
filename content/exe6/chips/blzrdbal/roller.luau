@@ -10,8 +10,8 @@ local roller = {}
 
 roller.kind = common.make_kind {
     id = "blzrdbal/roller",
-    self_type = define.collision { side0 = 0xC0044080, side1 = 0xC0044080, row_offset = 0x2C0 },
-    target = define.collision {
+    self_type = new.collision { side0 = 0xC0044080, side1 = 0xC0044080, row_offset = 0x2C0 },
+    target = new.collision {
         side0 = 0x3F800000,
         side1 = 0x3F800000,
         row_offset = 0x248,

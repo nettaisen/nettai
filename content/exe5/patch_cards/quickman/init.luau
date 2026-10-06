@@ -3,8 +3,7 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "quickman",
+local card: PatchCard = {
     mb = 38,
     effects = {
         cards.gauge("fast"),
@@ -13,3 +12,5 @@ return define.patch_card {
         cards.bug(cards.hp_percent(-10)),
     },
 }
+
+return { quickman = card }

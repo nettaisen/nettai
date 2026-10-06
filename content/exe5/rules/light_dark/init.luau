@@ -35,8 +35,8 @@
 --   dark MegaMan (the value's tier, 0x0800DE5C, 2), code 0xFC the same on a value of 500 or more; else neither is
 --   anything (Django's hits bring both).
 
-local invalid = require("../chips/invalid")
-local megaman = require("../navis/megaman")
+local invalid = require("../chips/invalid").invalid
+local megaman = require("../navis/megaman").megaman
 local operation_battle = require("../lib/operation_battle")
 
 -- A navi's stats as the costs write them.
@@ -235,7 +235,7 @@ end
 
 -- 0x0802C934: the chip's cost, if it has one.
 local function cost(side: number, chip: Chip)
-    local f = COSTS[chip.id]
+    local f = COSTS[chip.id :: string]
     if not f then
         return
     end

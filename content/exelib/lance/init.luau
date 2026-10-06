@@ -115,7 +115,7 @@ function lance.make_kind(id: string, look: LanceLook): Kind
         tick(me)
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { palette = "u8" },

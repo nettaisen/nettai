@@ -35,9 +35,9 @@ local SOUND = asset.sound("ground-beast-dash")
 
 -- The dust where it burrows, and the puffs where it sinks and where it
 -- comes back up.
-local DUST = define.effect { sprite = asset.sprite("ground-drill-effect"), anim = 0, palette = 0 }
-local SINK_PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
-local RETURN_PUFF = define.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
+local DUST = new.effect { sprite = asset.sprite("ground-drill-effect"), anim = 0, palette = 0 }
+local SINK_PUFF = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local RETURN_PUFF = new.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
 
 -- Where the navi waits off the field (X, 16.16).
 local AWAY = 0xB4_0000
@@ -239,7 +239,7 @@ local function return_(me: Object, s: State)
     me:exit_attack()
 end
 
-ground_drill.action = define.action {
+ground_drill.action = new.action {
     id = "groundcross/drill/action",
     state = { timer = "u16" },
     -- `sub_80EEFDC`.
@@ -263,7 +263,7 @@ ground_drill.action = define.action {
     end,
 }
 
-ground_drill.weapon = define.weapon {
+ground_drill.weapon = new.weapon {
     id = "groundcross/drill",
     -- The charge table's row 0x19, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

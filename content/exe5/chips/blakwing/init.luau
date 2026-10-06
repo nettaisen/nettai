@@ -5,8 +5,7 @@
 
 local blakwing = require("@self/blakwing")
 
-return define.chip {
-    id = "blakwing",
+local chip: Chip = {
     codes = { "W" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     megaman = "dark",
     dimming = blakwing.hook,
 }
+
+return { blakwing = chip }

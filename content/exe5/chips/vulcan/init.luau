@@ -6,8 +6,7 @@ local bullet = require("../objects/bullet")
 local vulcan = require("@self/vulcan")
 
 -- Vulcan1 (EXE5 chip 0x00f): action 0x19, EXE6's vulcan with EXE5's gun and bullets (chips/vulcan/vulcan): 3 bullets.
-local vulcan1 = define.chip {
-    id = "vulcan1",
+local vulcan1: Chip = {
     codes = { "C", "D", "E", "*" },
     element = "null",
     family = "null",
@@ -23,8 +22,7 @@ local vulcan1 = define.chip {
 }
 
 -- Vulcan2 (EXE5 chip 0x010): action 0x19, EXE6's vulcan with EXE5's gun and bullets (chips/vulcan/vulcan): 5 bullets.
-local vulcan2 = define.chip {
-    id = "vulcan2",
+local vulcan2: Chip = {
     codes = { "A", "B", "C" },
     element = "null",
     family = "null",
@@ -40,8 +38,7 @@ local vulcan2 = define.chip {
 }
 
 -- Vulcan3 (EXE5 chip 0x011): action 0x19, EXE6's vulcan with EXE5's gun and bullets (chips/vulcan/vulcan): 7 bullets.
-local vulcan3 = define.chip {
-    id = "vulcan3",
+local vulcan3: Chip = {
     codes = { "L", "M", "N" },
     element = "null",
     family = "null",
@@ -58,8 +55,7 @@ local vulcan3 = define.chip {
 
 -- SuprVulc (EXE5 chip 0x0dc): action 0x19, EXE6's vulcan with EXE5's gun and bullets (chips/vulcan/vulcan): 12 bullets of
 -- row 0x10 (EXE6's SuprVulc's).
-local suprvulc = define.chip {
-    id = "suprvulc",
+local suprvulc: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",

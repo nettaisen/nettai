@@ -6,8 +6,7 @@
 local controller = require("@self/controller")
 local cornsht_chips = require("./cornsht")
 
-return define.chip {
-    id = "cornfsta",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "wood",
     family = "program_advance",
@@ -26,3 +25,5 @@ return define.chip {
     },
     dimming = controller.hook,
 }
+
+return { cornfsta = chip }

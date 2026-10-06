@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "chpshufl",
+local program: NaviCustProgram = {
     colors = { "green" },
     shape = {
         ".......",
@@ -28,3 +27,5 @@ return define.navicust_program {
     exclusive = "custom-screen",
     effects = { programs.chip_shuffle() },
 }
+
+return { chpshufl = program }

@@ -171,7 +171,7 @@ local function out(me: Object)
     me:destroy()
 end
 
-flame.kind = define.kind {
+flame.kind = new.kind {
     id = "flame",
     pool = "attack",
     state = {

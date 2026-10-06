@@ -5,8 +5,7 @@
 
 local controller = require("@self/controller")
 
-return define.chip {
-    id = "geddon",
+local chip: Chip = {
     codes = { "A", "L", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 47, damage = 0, hit_param = 0, lockout = 0,
@@ -14,3 +13,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = controller.hook("break"),
 }
+
+return { geddon = chip }

@@ -1,15 +1,14 @@
 --!strict
 -- SpoutCross Beast: one of MegaMan's forms.
 
-local spoutman = require("../../spoutman")
-local falzar_beast = require("./falzar_beast")
+local spoutman = require("../../spoutman").spoutman
+local falzar_beast = require("./falzar_beast")["falzar-beast"]
 local falzar_beast_buster = require("../weapons/falzar_beast_buster")
 local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local charge = require("@self/charge")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "spoutcross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
     -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
@@ -38,7 +37,7 @@ return define.form {
     special_volley = 18,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 18 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -86,3 +85,5 @@ return define.form {
         },
     },
 }
+
+return { ["spoutcross-beast"] = form }

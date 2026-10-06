@@ -226,7 +226,7 @@ function rush.make(look: RushLook): Rush
         me:update_sprite()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "actor",
         state = if look.spared then { eaten = "chip" } else nil,

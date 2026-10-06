@@ -8,8 +8,7 @@
 local navi_level = require("../../lib/navi_level")
 local throw = require("./throw")
 
-return define.chip {
-    id = "meddycap",
+local chip: Chip = {
     codes = { "M" },
     element = "null",
     family = "null",
@@ -23,3 +22,5 @@ return define.chip {
     slot_in_limit = 1,
     action = throw.action({ variant = 5, line = 0, mode = 1 }),
 }
+
+return { meddycap = chip }

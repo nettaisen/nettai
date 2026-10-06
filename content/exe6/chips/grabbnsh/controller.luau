@@ -10,6 +10,6 @@ local hand = require("./hand")
 return common.make {
     id = "grabbnsh/controller",
     hand = hand.kind,
-    returned = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 },
+    returned = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 },
     return_sound = asset.sound("err-select-91"),
 }

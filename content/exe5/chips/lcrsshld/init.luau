@@ -6,8 +6,7 @@
 
 local bugfix = require("../objects/bugfix")
 
-return define.chip {
-    id = "lcrsshld",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = bugfix.liberation("crsshld"),
 }
+
+return { lcrsshld = chip }

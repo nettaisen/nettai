@@ -5,9 +5,9 @@
 -- (`loc_80126EA`, lib/weapon's `chip`) and starts what its use starts.
 
 local weapon = require("../../lib/weapon")
-local z_saver = require("../../chips/z-saver")
+local z_saver = require("../../chips/z-saver")["z-saver"]
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/megaman-zero/charge",
     -- The charge table's row 0x6e, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

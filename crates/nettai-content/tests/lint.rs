@@ -15,12 +15,12 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     // A kind under objects/ that only one chip folder uses.
     c.scripts.modules.insert(
         module("objects/held/held"),
-        "return { kind = define.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
+        "return { kind = new.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
     );
     c.scripts.modules.insert(
         module("chips/holder/chip"),
         "local held = require('../../objects/held/held')\n\
-         return define.record('holder', { kind = held.kind })"
+         return new.record('holder', { kind = held.kind })"
             .into(),
     );
     // A role that names a definition, left out.
@@ -49,7 +49,7 @@ fn a_collision_type_defined_twice_is_an_error() {
         let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
         c.scripts.modules.insert(
             module(path),
-            format!("return define.collision {{ id = '{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
+            format!("return new.collision {{ id = '{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
         );
     }
     testing::add_index(&mut c.scripts, testing::ROOT);
@@ -180,11 +180,9 @@ fn a_game_loads_alone_under_its_names() {
 
 /// docs/design/content-model-v2.md §4.0: the order of a game's inits'
 /// requires is the order its modules load in, and nothing more. Each
-/// game's requires turned round (its top module's: its rules last; each
-/// folder's init's: its chips from the last to the first) define the same
+/// game's root fields and each section init's modules turned round (the
+/// lines that require, from the last to the first) define the same
 /// definitions under the same keys, in the same places: no handle moves.
-/// (An anonymous key counts its own module's definitions, whenever the
-/// module loads.)
 #[test]
 fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
     use nettai_content_api::packs;
@@ -192,20 +190,23 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         let mut c = read(&[game]);
         let mut turned = c.clone();
         c.define().unwrap_or_else(|e| panic!("content/{game}: {e}"));
-        // The game's indexes among what the load read: its top module, and
-        // each init that is nothing but requires. Turned round, they stand
-        // in for the folders' own.
+        // The game's top module and its section inits among what the load
+        // read. Turned round, they stand in for the game's own.
         let top = packs::top_module(game);
-        assert_eq!(packs::requires(&c.scripts.modules[&top])[0], "@self/rules", "{game}/init.luau");
-        let indexes: Vec<&String> = c.scripts.modules.iter().filter(|(m, s)| m.starts_with(game) && packs::is_index(s)).map(|(m, _)| m).collect();
-        assert!(indexes.len() >= 5 && indexes.contains(&&top), "{game}'s indexes: {indexes:?}");
+        assert!(packs::requires(&c.scripts.modules[&top]).contains(&"@self/rules".to_string()), "{game}/init.luau");
+        let inits: Vec<&String> =
+            c.scripts.modules.iter().filter(|(m, s)| m.starts_with(game) && (**m == top || s.contains("return merge {"))).map(|(m, _)| m).collect();
+        assert!(inits.len() >= 5, "{game}'s inits: {inits:?}");
         let mut count = 0;
-        for index in indexes {
-            let mut requires = packs::requires(&c.scripts.modules[index]);
-            count += requires.len();
-            requires.reverse();
-            let lines: Vec<String> = requires.iter().map(|r| format!("require(\"{r}\")\n")).collect();
-            turned.scripts.modules.insert(index.clone(), lines.concat());
+        for init in inits {
+            let mut lines: Vec<&str> = c.scripts.modules[init].lines().collect();
+            let at: Vec<usize> = (0..lines.len()).filter(|&i| lines[i].starts_with("    ") && lines[i].contains("= require(")).collect();
+            count += at.len();
+            let rows: Vec<&str> = at.iter().rev().map(|&i| lines[i]).collect();
+            for (&i, row) in at.iter().zip(rows) {
+                lines[i] = row;
+            }
+            turned.scripts.modules.insert(init.clone(), lines.join("\n") + "\n");
         }
         assert!(count > 300, "{game}'s inits: {count} requires");
         turned.define().unwrap_or_else(|e| panic!("content/{game}, turned round: {e}"));

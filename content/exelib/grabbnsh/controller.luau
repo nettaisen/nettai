@@ -117,7 +117,7 @@ end
 -- A game's controller: the chips' `dimming` hook (`sub_80E2D76`): the
 -- controller, of the user's side (its facing not copied).
 function controller.make(spec: Spec): { hook: (user: Object, chip: DimmingChipSpec) -> Object? }
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { bonus = "u16", strikes = "u32" },

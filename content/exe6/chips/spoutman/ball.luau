@@ -108,7 +108,7 @@ local function tick(me: Object)
     action(me)
 end
 
-ball.kind = define.kind {
+ball.kind = new.kind {
     id = "spoutman/ball",
     pool = "attack",
     state = { while_dimmed = "bool", cracks = "bool" },
