@@ -146,12 +146,6 @@ pub struct EffectsRules {
     pub retype: RetypeRule,
     /// How a damage word's flag bits decode (`sub_8019F44`).
     pub damage_word: DamageWordRule,
-    /// An obstacle's reaction has EXE5's step for ColonelSoul's army
-    /// (0x080CAB02 from its four reactions, docs/design/exe5-map.md §15.11:
-    /// `kinds::obstacle::Conversion`): one standing where an armed side can
-    /// use it turns into that side's soldier (the role
-    /// `kinds.converted_obstacle`).
-    pub obstacle_conversion: bool,
     /// What holds a screen palette flash (effect object #0x0A,
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,
@@ -465,13 +459,12 @@ pub enum HpLoss {
     /// The HP alone goes (EXE6's `object_subtractHP`), and a hit sounds
     /// before the HP left is looked at (`applyDamageToPlayer_801ba12`).
     HpAlone,
-    /// A player's loss also drains its side's gauge, and a last stand
-    /// holds a navi at 1 HP (EXE5's 0x0800C6E0, 0x080185A2): a player
-    /// MegaMan of emotion 5 (a dark MegaMan's) whom the loss brings to 0
-    /// holds at 1 HP, once a battle, and asks for the volley (0x0802C16C:
-    /// EXE5's action 0x30); and a hit shows (white, its sounds) only by
-    /// the register that check leaves at 0 HP (`kinds::player::LastStand`).
-    GaugeAndLastStand,
+    /// A player's loss also drains its side's gauge (EXE5's 0x0800C6E0), a
+    /// loss that brings a navi to 0 asks the side's rules (`hp_emptied`:
+    /// EXE5's last stand, 0x0802C16C), and a hit shows (white, its sounds)
+    /// only by their answer there (0x080185A2); one that doesn't goes
+    /// straight to the deletion's test, without the element-5 damage.
+    Gauge,
 }
 
 /// What a navi's status word (its collision data's flags 1) reads as while

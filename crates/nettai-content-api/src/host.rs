@@ -299,10 +299,27 @@ pub enum RulesHook {
     /// 0x400 on a light/dark value of 1000 or more). The first part that
     /// answers true decides.
     NaviBug,
+    /// `hp_emptied(side, navi)`: a loss of HP brought the side's navi (an
+    /// object with actor data) to 0, by a game whose HP loss asks
+    /// (`status.hp_loss = "gauge"`: EXE5's `object_subtractHP`,
+    /// 0x0800C6E0, which calls 0x0802C16C): the rules may hold it (EXE5's
+    /// last stand: its HP back to 1, and the volley asked for), and answer
+    /// true: the hit shows (white, its sounds: EXE5's
+    /// `applyDamageToPlayer`, 0x080185A2, by the register the check
+    /// leaves). None answering true: it doesn't.
+    HpEmptied,
+    /// `obstacle_reaction(side, obstacle)`: an obstacle's reaction (after
+    /// the damage and the crushing hits) leaves it standing, outside the
+    /// dimming and past its first action, while a side is armed
+    /// (`obstacle.arm_conversion`): the rules may turn it into something
+    /// else and break it (its HP and max HP to 0: EXE5's ColonelSoul army,
+    /// 0x080CAB02 from its four obstacle reactions). `side` is the
+    /// obstacle's. Its result is unused.
+    ObstacleReaction,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
     /// first part that answers decides; none answering, the framework's
-    /// rule (the custom level, NumbrOpn and the hand-shrink bug).
+    /// rule (the custom level and the hand-shrink bug).
     CustomHandSize,
     /// `custom.deal(side)`: the side's custom screen deals, before
     /// `custom.open`: the folder as the last screen left it (the chips used
@@ -402,6 +419,8 @@ impl RulesHook {
             RulesHook::StartingMood => "starting_mood",
             RulesHook::NaviPalette => "navi_palette",
             RulesHook::NaviBug => "navi_bug",
+            RulesHook::HpEmptied => "hp_emptied",
+            RulesHook::ObstacleReaction => "obstacle_reaction",
             RulesHook::CustomHandSize => "custom.hand_size",
             RulesHook::CustomDeal => "custom.deal",
             RulesHook::CustomOpen => "custom.open",
@@ -420,7 +439,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 38] = [
+    pub const ALL: [RulesHook; 40] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -444,6 +463,8 @@ impl RulesHook {
         RulesHook::StartingMood,
         RulesHook::NaviPalette,
         RulesHook::NaviBug,
+        RulesHook::HpEmptied,
+        RulesHook::ObstacleReaction,
         RulesHook::CustomHandSize,
         RulesHook::ButtonShown,
         RulesHook::ButtonState,

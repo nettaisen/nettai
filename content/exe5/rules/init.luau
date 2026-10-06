@@ -8,6 +8,7 @@
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
 local auto_battle = require("@self/auto_battle")
+local dark_survival = require("@self/emotion/dark_survival")
 local emotion = require("@self/emotion")
 local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
@@ -16,6 +17,7 @@ local navicust = require("@self/navicust")
 local navicust_board = require("@self/navicust/board")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
+local soldier = require("./objects/soldier")
 local souls = require("@self/souls")
 
 -- The auto battle AI's state (./auto_battle/ai.luau's `State`): a navi's it drives (Dark MegaMan's, AIData +0x80 on),
@@ -252,6 +254,10 @@ local rules: Rules = {
         navi_intake = light_dark.navi_intake,
         chip_cost = light_dark.chip_cost,
         chip_check = light_dark.chip_check,
+        -- A loss of HP to 0: a dark MegaMan's last stand (./emotion/dark_survival).
+        hp_emptied = dark_survival.hp_emptied,
+        -- An obstacle where ColonelSoul's army can use it turns into a soldier (objects/soldier).
+        obstacle_reaction = soldier.obstacle_reaction,
         -- Full Synchro on a counter, and the NaviCust's swing bug (./emotion).
         round_start = emotion.round_start,
         countered = emotion.countered,
