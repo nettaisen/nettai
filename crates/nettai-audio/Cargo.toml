@@ -21,9 +21,5 @@ nettai-battle = { workspace = true, features = ["test-content"] }
 nettai-content = { path = "../nettai-content" }
 
 [[example]]
-name = "trace_audio"
-required-features = ["playback"]
-
-[[example]]
 name = "play_song"
 required-features = ["playback"]
