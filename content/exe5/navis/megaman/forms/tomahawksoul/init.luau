@@ -33,7 +33,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x33 (0x0800FA52): DrkLance (chip 0xBF), the charge table's row 0x33.
-        chaos = chaos.weapon("tomahawksoul/chaos", drklance, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon(drklance, { 40, 60, 90, 120, 150, 40 }),
     },
     grass_doubles = { family = "wood" },
     reset = function(navi: Object)

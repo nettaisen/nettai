@@ -1701,7 +1701,7 @@ export type StateSchema = { [string]: string | { string } }
 -- state when spawned. `id` is qualified by its owner's folder when it lives
 -- in one ("minibomb/held").
 export type KindSpec = {
-    id: string,
+    id: string?,
     pool: Pool,
     state: StateSchema?,
     update: (me: Object) -> (),
@@ -1990,7 +1990,7 @@ export type Action = ActionSpec
 -- content's own language's words (en) time the chatbox: a description's
 -- lines, a message's characters per line.)
 export type WeaponSpec = {
-    id: string,
+    id: string?,
     -- Ticks to a full charge, by Charge stat 0 to 7 (past 4, what the
     -- original reads on into: the next routine's row).
     charge_ticks: { number },
@@ -2477,7 +2477,7 @@ export type StageDef = {
 -- target (the freezing statuses). `survives_counter`: a counter hit that
 -- lands it keeps it rather than paralyzing (the bubbling statuses).
 export type StatusDef = {
-    id: string,
+    id: string?,
     requests: number,
     duration: number,
     timer: string | { other: number },
@@ -2557,7 +2557,7 @@ export type CheckedFolder = {
 }
 
 export type LockonDef = {
-    id: string,
+    id: string?,
     rule: "stay" | "row" | "near",
     offsets: { { number } }?,
     same_row_offsets: { { number } }?,
@@ -2705,7 +2705,7 @@ export type Region = RegionSpec
 -- leaves in a register (the row's index times 8), which a damage word's
 -- bug code takes as its high byte. (`CollisionType`, since `Collision` is
 -- an object's registration.)
-export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_offset: number? }
+export type CollisionTypeSpec = { id: string?, side0: number, side1: number, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
 -- What the rules need from content by role (rules/roles.luau, once per

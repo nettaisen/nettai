@@ -91,7 +91,6 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "knightsoul/charge",
     -- The charge table's row 0x11 (0x0801CB16); Charge 5 reads on into row 0x12's first entry.
     charge_ticks = { 100, 95, 90, 85, 60, 80 },
     setup = setup,

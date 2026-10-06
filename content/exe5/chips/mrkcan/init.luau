@@ -19,7 +19,7 @@ local mrkcan1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = mrkcan.action { id = "mrkcan1/action", cannon = mrkcan.cannon(0) },
+    action = mrkcan.action { cannon = mrkcan.cannon(0) },
 }
 
 -- MrkCan2 (EXE5 chip 0x00d): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
@@ -37,7 +37,7 @@ local mrkcan2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = mrkcan.action { id = "mrkcan2/action", cannon = mrkcan.cannon(3) },
+    action = mrkcan.action { cannon = mrkcan.cannon(3) },
 }
 
 -- MrkCan3 (EXE5 chip 0x00e): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
@@ -55,7 +55,7 @@ local mrkcan3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = mrkcan.action { id = "mrkcan3/action", cannon = mrkcan.cannon(6) },
+    action = mrkcan.action { cannon = mrkcan.cannon(6) },
 }
 
 return { mrkcan1 = mrkcan1, mrkcan2 = mrkcan2, mrkcan3 = mrkcan3 }

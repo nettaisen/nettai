@@ -26,7 +26,6 @@ local SOUND_SWING = asset.sound("knight-swing")
 -- What he wears (0x0800EE7A: EXE5's body overlay row 1, its sprite 10-47, in front at every animation), stepping
 -- even while paused.
 local CHAIN = define.identity {
-    id = "knightman-navi",
     class = "navi",
     parts = { body = { sprite = asset.sprite("knightman-ball"), anims = 20 } },
 }

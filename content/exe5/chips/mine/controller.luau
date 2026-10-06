@@ -9,7 +9,6 @@ local land_mine = require("@exelib/mine/land_mine")
 local mine = land_mine.make_kind {
     id = "mine/land-mine",
     identity = define.identity {
-        id = "mine",
         class = "field_object",
         version = 1,
         ai_index = 1,

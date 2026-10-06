@@ -128,23 +128,15 @@ impl Registry {
         Registry::ALL.into_iter().find(|r| r.name() == name)
     }
 
-    /// Definitions of this registry are named from outside content
-    /// (setups, compat, tools), so each needs an explicit `id`. (A game's
-    /// rules are one definition, with no name to give: [`RULESET_KEY`].)
+    /// Definitions of this registry are what a match's setup names (a
+    /// folder's chips, a side's navi and forms, the arena's stage, the patch
+    /// cards and NaviCust programs), so each needs an explicit `id`. Another
+    /// definition has one only where a compat map names it (an action's or a
+    /// kind's number); the rest are keyed by where they are made (their
+    /// owner, or what their module returns). (A game's rules are one
+    /// definition, with no name to give: [`RULESET_KEY`].)
     pub fn keyed(self) -> bool {
-        matches!(
-            self,
-            Registry::Chip
-                | Registry::Navi
-                | Registry::Form
-                | Registry::Weapon
-                | Registry::Kind
-                | Registry::Stage
-                | Registry::Collision
-                | Registry::Status
-                | Registry::PatchCard
-                | Registry::NaviCustProgram
-        )
+        matches!(self, Registry::Chip | Registry::Navi | Registry::Form | Registry::Stage | Registry::PatchCard | Registry::NaviCustProgram)
     }
 }
 

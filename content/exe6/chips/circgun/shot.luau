@@ -29,7 +29,7 @@ shot.look = {
     flash = effects.flash,
     hits = {
         [0] = collision.thrown,
-        [1] = define.collision { id = "circgun/other-hit", side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
+        [1] = define.collision { side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
     },
 } :: CircGunLook
 

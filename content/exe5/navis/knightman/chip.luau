@@ -89,7 +89,6 @@ local function back(me: Object, s: State)
 end
 
 local action = define.action {
-    id = "kcrusher/action",
     state = { timer = "u16" },
     -- 0x080FBEB2
     update = function(me: Object, s: State)

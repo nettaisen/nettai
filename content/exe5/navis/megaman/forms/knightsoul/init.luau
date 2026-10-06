@@ -24,7 +24,7 @@ return define.form {
     change = soul_change.action,
     revert = soul_revert.action,
     -- KnightMan's image as MegaMan unites with him (rules/souls/image), with his ball and chain (0x0800EDBC's routine for the soul).
-    image = soul_image.wearing(asset.sprite("knightman"), "soul-image/knightman", body_overlays.knightman),
+    image = soul_image.wearing(asset.sprite("knightman"), body_overlays.knightman),
     sprite = asset.sprite("knightsoul"),
     element = "null",
     buster_bonus = 0,
@@ -32,9 +32,9 @@ return define.form {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x12 (the charged chip is the chip with the bonus), the charge table's row 0x12.
-        a_charge = charged_chips.routine("knightsoul/a-charge", { 80, 80, 80, 80, 80, 120 }),
+        a_charge = charged_chips.routine({ 80, 80, 80, 80, 80, 120 }),
         -- Routine 0x38 (0x0800FA84): DarkDril (chip 0xC4), the charge table's row 0x38.
-        chaos = chaos.weapon("knightsoul/chaos", darkdril, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon(darkdril, { 40, 60, 90, 120, 150, 40 }),
     },
     charged_chips = { { family = "break", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },

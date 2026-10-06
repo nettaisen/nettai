@@ -137,18 +137,20 @@ A module makes definitions while it loads; each registry has a definer:
 
 | Definer | What | What the engine runs or reads |
 |---|---|---|
-| `define.kind { id, pool, state?, update, place? }` | an object kind | `update(me)` each tick it runs; `place(spec)` when a stage names it |
+| `define.kind { id?, pool, state?, update, place? }` | an object kind | `update(me)` each tick it runs; `place(spec)` when a stage names it |
 | `define.action { id?, state?, update, traits? }` | a navi action | `update(me, s)` while the navi runs it |
 | `define.chip { id, ...record..., action \| dimming \| navi \| instant }` | a chip and its one use | the action as the navi's attack, or the hook from the ruleset's dimming, navi chip or instant chip action |
-| `define.weapon { id, name, charge_ticks, setup?, instant?, ... }` | what a button does | `setup(navi)` fills the attack and returns the action to start |
+| `define.weapon { id?, name, charge_ticks, setup?, instant?, ... }` | what a button does | `setup(navi)` fills the attack and returns the action to start |
 | `define.navi`, `define.form` | a navi, one of MegaMan's forms | their records: stats, weapons, sprite, identity |
 | `define.stage { id, layout, actors, ... }` | a stage | its panels and what it places |
 | `define.effect`, `define.spark`, `define.region`, `define.collision`, `define.status`, `define.lockon`, `define.identity` | what the engine's primitives are told by | their records, by handle |
 | `define.rules { state?, setup?, hooks?, custom?, ..., <sections>?, roles? }` | a game's rules, their one definition, written by hand (rules/init.luau; rules-in-luau.md §2.5): a side's state, a player's setup, hooks (plain functions that call the game's modules), custom-screen buttons and windows, its rule sections (plain tables no entity owns: elements, panels, the custom screen, ...) and its roles (what the rules need from content: the action a request starts, the kind it spawns, the chip a zeroed field reads, ...) | its hooks, each called for one side; its state per side and each player's setup; the game's typed tables and roles |
 | `define.record(type, table)` | data only content reads, with a handle | nothing: a state field or another definition holds it |
 
-A definition's key is its `id` (a chip's action derives one: `minibomb/action`); two of one key in a registry is
-an error. Keys are sorted byte-wise and a definition's handle is its place, so handles are the same on every
+A definition's key is its `id` where something outside the content names it (a match's setup: chips, navis, forms,
+stages, patch cards, NaviCust programs; a compat map), else derived from where it is made (its owner, `minibomb/action`;
+what its module returns, `rules/collision/attack`; else `<module>#n`: content-model-v2.md §2.2); two of one key in a
+registry is an error. Keys are sorted byte-wise and a definition's handle is its place, so handles are the same on every
 machine that loads the same content.
 
 The define phase reads everything back as the canonical tree (`Definitions`): fields as data, references to

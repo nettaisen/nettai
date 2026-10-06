@@ -18,7 +18,6 @@ local shadow = require("./shadow")
 local WAIT = 0
 
 local action = define.action {
-    id = "splitup/action",
     -- 0x080F998A
     update = function(me: Object)
         local x, y = aim.nearest_enemy(me)

@@ -53,7 +53,6 @@ end
 local KIND = black_bomb.make_kind("blkbomb/bomb", {
     destroyed = destroyed,
     identity = define.identity {
-        id = "blkbomb",
         class = "field_object",
         version = 2,
         ai_index = 1,

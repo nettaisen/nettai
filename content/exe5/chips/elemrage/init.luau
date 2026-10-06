@@ -18,5 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = elemrage.action("elemrage/action", 3, 30, 0),
+    action = elemrage.action(3, 30, 0),
 }
