@@ -272,7 +272,7 @@ pub fn list(e: &Editor, s: usize, index: usize) -> Element<'_, Msg> {
     if !held.is_empty() && !default_empty {
         top = top.push(button(text("None").size(13)).on_press(msg(Edit::Empty)).style(button::secondary));
     }
-    if facts::role_of(c, f.name) == Some(PlayerFact::CrossList) && side.version(c).is_some() {
+    if facts::role_of(c, f.name) == Some(PlayerFact::FormList) && side.version(c).is_some() {
         top = top.push(button(text("Its version's own").size(13)).on_press(msg(Edit::Own)).style(button::secondary));
     }
     let mut col = column![heading(format!("{}: {}", SIDES[s], title(f.name))), top].spacing(8);

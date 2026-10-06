@@ -179,7 +179,7 @@ export type NaviStateFlag =
     | "switched"
     | "volley"
     | "uninterruptible"
-    | "cross_breaking"
+    | "form_breaking"
     | "form_change_sprite_held"
     | "heat_trap"
     -- Gone from the field while its navi chip's navi acts.
@@ -444,7 +444,7 @@ declare class Object
     -- The wrapper's state starts over (`sub_801011A` sets it with the
     -- attack's links); the wrapper clears it once it has.
     wrapper_fresh: boolean
-    -- The controller's state starts over (a form's `berserk` effect); the
+    -- The controller's state starts over (a form's `controller_restart` effect); the
     -- controller clears it once it has.
     controller_fresh: boolean
     -- Its mood is held (held tired or exhausted): what another side's rules
@@ -734,9 +734,9 @@ declare class Object
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
     function form_change_target(self): FormDef?
-    -- EXE5's Soul Unison: the turns the soul asked for lasts, and whether it
-    -- is Chaos Unison.
-    function form_change_soul(self): (number, boolean)
+    -- The terms of the change its side asked for: its turns, and whether it is
+    -- the alternate (EXE5's Soul Unison: the soul's turns, and Chaos Unison).
+    function form_change_terms(self): (number, boolean)
     -- EXE5's soul change's first step: no longer moving, flinching,
     -- paralyzed or sliding (nor asked to slide).
     function stop_moving(self): ()
@@ -808,11 +808,11 @@ declare class Object
     function freeze_target_marker(self, on: boolean): ()
     -- `sub_800F2FC`: turn to face `target`'s column.
     function face_toward(self, target: Object): ()
-    -- `sub_80DBB64`: put a junk look (`obstacle.junk_look`) on the sprite:
+    -- `sub_80DBB64`: put a junk look (`obstacle.absorbed_look`) on the sprite:
     -- the sprite, a shadow if the look has one, its animation and palette,
     -- flipped by the object's side unless the look keeps its own; false
     -- when the look is the table's none.
-    function wear_junk_look(self, look: Identity): boolean
+    function wear_absorbed_look(self, look: Identity): boolean
     -- CrosOver's MegaMan (`sub_80BDBC8`): take the user's identity when the
     -- user is MegaMan (`megaman`) or one of his forms (true), else
     -- MegaMan's own: its sprite (a ground shadow, animation 0 loaded by the
@@ -1114,10 +1114,8 @@ declare battle: {
     link: () -> boolean,
     -- A battle against a ranked boss (battle effect 1).
     boss_rank: () -> boolean,
-    -- A battle whose dark chips fizzle (battle effect 0x100000: EXE5's dark chip rule).
-    no_dark_chips: () -> boolean,
-    -- A battle that holds EXE5's light/dark value at 500 (battle effect 0x20000, 0x08010EDC).
-    light_dark_held: () -> boolean,
+    -- The battle's effects (its settings' word), whose bits a game's rules read by their own names.
+    effects: () -> number,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
@@ -1236,7 +1234,7 @@ declare battle: {
     -- processing, the panel trail's level, the buster's blanks, the on-hit
     -- status, the custom damage, the emotion, the drains, the battle-start
     -- bug and the hand-shrink turn zeroed).
-    clear_navicust_bugs: (side: number) -> (),
+    clear_bugs: (side: number) -> (),
     -- `sub_801E658` (BugFix): the save's emotion window glitch is gone from
     -- every console's emotion window, which then flickers (and draws its
     -- console's RNG1) for NaviCust bugs only.
@@ -1584,9 +1582,9 @@ declare obstacle: {
     present: (o: Object) -> boolean,
     -- DustMan's take (`sub_80BC100`): what field object `o` would look like
     -- thrown back as junk: its identity, which its taker keeps in an
-    -- "identity" state field (`me:wear_junk_look`); nil for the objects
+    -- "identity" state field (`me:wear_absorbed_look`); nil for the objects
     -- DustMan leaves (`sub_800F486`: an identity with `scrap = false`).
-    junk_look: (o: Object) -> Identity?,
+    absorbed_look: (o: Object) -> Identity?,
     -- `sub_80DC3B2`'s test: a field object by its identity, but those
     -- `sub_800F486` excludes (`scrap = false`): what BlzrdBal's ball
     -- swallows.
@@ -1601,15 +1599,15 @@ declare obstacle: {
     -- `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
     -- soldiers' damage words (0x080CABF8): the sword soldier's and the gun
     -- soldier's. While it is armed, an obstacle of a game whose rules have
-    -- `effects.obstacle_soldiers`, standing on a panel of the side's enemy
+    -- `effects.obstacle_conversion`, standing on a panel of the side's enemy
     -- with one of the enemy's bodies on its row, turns into the side's
-    -- soldier (the role `kinds.obstacle_soldier`).
-    arm_soldiers: (side: number, sword: number, gun: number) -> (),
+    -- soldier (the role `kinds.converted_obstacle`).
+    arm_conversion: (side: number, melee: number, ranged: number) -> (),
     -- 0x080CAC30: disarm side `side`; its words stay.
-    disarm_soldiers: (side: number) -> (),
+    disarm_conversion: (side: number) -> (),
     -- Whether side `side` is armed, and its words (0x080CAC06,
     -- 0x080CAC12): what its soldiers strike with as they read them.
-    soldiers: (side: number) -> (boolean, number, number),
+    conversion: (side: number) -> (boolean, number, number),
 }
 
 -- Exact integer helpers.
@@ -1672,17 +1670,23 @@ declare asset: {
 -- elements are read and written each by its place (`s.drive.mode`,
 -- `s.folder[2].code`, `#s.folder`); a list grows by its next element
 -- (`s.folder[#s.folder + 1] = ...`).
-export type SchemaField = string | { string } | SchemaList | StateSchema
+export type SchemaField = string | { string } | SchemaList | SchemaRole | StateSchema
 export type StateSchema = { [string]: SchemaField }
 -- A list's declaration (`schema.list(T, n)`): up to `n` elements of `T`.
 export type SchemaList = { __list: boolean, of: SchemaField, max: number }
+-- A role's declaration (`schema.role(name, T)`): a field of type `T` the
+-- engine knows by the role `name` (a player's setup field it reads:
+-- "form_list", the forms a form list window offers).
+export type SchemaRole = { __role: boolean, role: string, of: SchemaField }
 
 -- What a state's or a setup's declaration takes beside type names, lists of
 -- variants and records: `schema.list(T, n)`, a list of up to `n` (1 to
 -- 65535) elements of type `T` (a type name, a list of variants, a record
--- or another list), and how many it holds.
+-- or another list), and how many it holds; `schema.role(name, T)`, a field
+-- of type `T` that the engine knows by the role `name`.
 declare schema: {
     list: (of: SchemaField, max: number) -> SchemaList,
+    role: (role: string, of: SchemaField) -> SchemaRole,
 }
 
 -- An object kind: one behavior; what differs between uses goes in its
@@ -1714,7 +1718,7 @@ export type Kind = KindSpec
 -- rules' state keeps `offer`, a form, `offer_chaos`, a bool, and `turns`,
 -- the turns left in the form it gave, which the emotion window counts);
 -- "chip_picture", its picture in the chip window is also the picture of the
--- chip the rules' role `beast_out` names.
+-- chip the rules' role `button_chip` names.
 export type ButtonView = "form_offer" | "chip_picture"
 -- What a frontend draws while a window is up (§4.8). A list of forms to
 -- choose from, in its four windows: "form_list_opening", "form_list",
@@ -1779,7 +1783,7 @@ export type WindowSpec = {
 -- here, so rules without one don't type-check), and every field of
 -- them that has no neutral value (one left out is a load error that names
 -- it). A section it may leave out is a feature the game
--- hasn't (`berserk`, `lockon`, `navicust`, `banners`) or a
+-- hasn't (`lockon`, `navicust`, `banners`) or a
 -- table that is empty without it.
 --
 -- A section is a table of its rules by name, which the engine reads by its
@@ -1952,7 +1956,6 @@ export type RulesSpec = {
     status: RuleSection,
     -- The sections a game may leave out.
     banners: any?,
-    berserk: any?,
     buster: any?,
     custom_screen: any?,
     elements: any?,
@@ -2244,7 +2247,7 @@ export type NaviDef = {
         giga_level: number,
         back_special_damage: number?,
     }?,
-    cross_hp: { number }?,
+    switch_hp: { number }?,
     -- What the save's reload gives it by its link navi level (EXE6's
     -- `reloadCurNaviBaseStats`): its base HP by the story's progress, and
     -- what each level adds over its fresh stats. Tools fill a side's stats
@@ -2306,7 +2309,7 @@ export type FormEffect =
     | "untouchable"
     | "target_marker"
     | "invulnerable"
-    | "berserk"
+    | "controller_restart"
 -- What the rules ask of particular forms:
 --   status_immune: a hit's status doesn't take (TomahawkCross);
 --   erases: its damaging Null chips delete what has a 4 in its HP
@@ -2389,7 +2392,7 @@ export type FormDef = {
     -- What its status reset gives the navi, and what a NaviCust change
     -- gives back (none: the reset's, without the target marker).
     status_reset: { FormEffect }?,
-    navicust_refresh: { FormEffect }?,
+    ability_refresh: { FormEffect }?,
     -- The height it floats at, in pixels.
     hover: number?,
     -- Its glow: the navi's color shader by the battle time, an entry a
@@ -2521,23 +2524,12 @@ export type Lockon = LockonDef
 -- What an object is taken for (§3.2): the original's NameID record. A
 -- navi's and a form's is nested in its definition (`identity =
 -- define.identity { ... }`); a field object's is its kind's.
---   megaman, link_navi, cross, beast, cross_beast, beast_over: a player's
---     navi (MegaMan in his base form, a link navi, MegaMan's forms);
+--   player: a player's navi (the navi that changes form in any form, a
+--     link navi);
 --   field_object: a rock, a statue, a mine;
---   virus, navi, gregar, falzar: what no netbattle object is (an object
---     with no identity is a virus).
-export type IdentityClass =
-    "megaman"
-    | "link_navi"
-    | "cross"
-    | "beast"
-    | "cross_beast"
-    | "beast_over"
-    | "field_object"
-    | "virus"
-    | "navi"
-    | "gregar"
-    | "falzar"
+--   virus, navi: what no netbattle object is (an object with no identity
+--     is a virus).
+export type IdentityClass = "player" | "field_object" | "virus" | "navi"
 export type IdentitySpec = {
     id: string?,
     class: IdentityClass,
@@ -2583,6 +2575,20 @@ export type IdentitySpec = {
     -- The anger tick passes over it (EXE5's actor records of AI index 23:
     -- ShadowMan's SplitUp shadow's, which no navi a player operates has).
     never_angers: boolean?,
+    -- One of the navi that changes form's own (its base form's or a form's):
+    -- a navi image wears its own look.
+    changes_form: boolean?,
+    -- A weakness hit breaks the form (where the rules' `form_break` breaks
+    -- marked forms: EXE6's Crosses, Beast Out and the Crosses in it).
+    breaks_on_weakness: boolean?,
+    -- A win over it is quiet: no music or banner, and the end fades to
+    -- white (the Cybeasts).
+    quiet_win: boolean?,
+    -- The NaviCust bug 0xF6 doesn't blind it (the Cybeasts).
+    bug_blind_immune: boolean?,
+    -- The animation in which the target marker over it isn't raised to its
+    -- attach point (Gregar's 0x4F).
+    marker_flat_anim: number?,
     -- The ice block that fits it (none: small).
     ice: ("small" | "medium" | "large")?,
     -- What it is as a navi no player controls (actor type navi, which a
@@ -2671,8 +2677,8 @@ export type RolesSpec = {
         turn: Action?,
         switch_knockout: Action?,
         volley: Action?,
-        dust_beast_scatter: Action?,
-        charge_tackle: Action?,
+        ungrounded: Action?,
+        glowless: Action?,
         wrapper: Action?,
         chaos_failure: Action?,
     }?,
@@ -2687,12 +2693,12 @@ export type RolesSpec = {
         mode9_attack: Kind?,
         mode9_actor: Kind?,
     }?,
-    -- The chips the rules name: what a zeroed chip field reads, the
-    -- custom screen's Beast Out chip and its invalid selection's, and the
-    -- chips the supports' telops name.
+    -- The chips the rules name: what a zeroed chip field reads, the chip a
+    -- custom-screen button's pick stands as in the hand (EXE6's BeastOut)
+    -- and its invalid selection's, and the chips the supports' telops name.
     chips: {
         zeroed: Chip?,
-        beast_out: Chip?,
+        button_chip: Chip?,
         invalid: Chip?,
         rush: Chip?,
         beat: Chip?,
@@ -2785,19 +2791,13 @@ export type RolesSpec = {
         custom_open: Sound?,
         custom_cursor: Sound?,
         custom_hide: Sound?,
-        custom_dark_hover: Sound?,
+        custom_shade: Sound?,
         custom_pick: Sound?,
         custom_ok: Sound?,
         custom_back: Sound?,
-        custom_cross_open: Sound?,
-        custom_cross_close: Sound?,
-        custom_cross_chosen: Sound?,
         custom_run_message: Sound?,
         custom_description: Sound?,
         custom_description_close: Sound?,
-        custom_beast_out_falzar: Sound?,
-        custom_beast_out_gregar: Sound?,
-        custom_beast_out_flash: Sound?,
         custom_cancel: Sound?,
         custom_redeal: Sound?,
         custom_redeal_shuffle: Sound?,
@@ -2908,9 +2908,8 @@ declare custom: {
     cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
     -- For the rules' buttons and windows: the slot under the cursor picked;
     -- a screen sound ("pick", "refused", "back", "cancel", "cursor",
-    -- "description", "beast_out_gregar", "beast_out_falzar",
-    -- "beast_out_flash", "cross_window_open", "cross_window_close",
-    -- "cross_chosen", "program_advance_part", "program_advance"); the last
+    -- "description", "program_advance_part", "program_advance"), and a sound
+    -- of the rules' own in the screen's order (`play_sound`); the last
     -- pick's column cell; one of the rules'
     -- windows opened (`ticks`: the ticks it has had already), and its ticks
     -- so far; this console's camera shake; the window's frame counter; the
@@ -2944,6 +2943,7 @@ declare custom: {
     -- not.
     pick: (side: number) -> (),
     play: (side: number, sound: string) -> (),
+    play_sound: (side: number, sound: Sound) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
     open_window: (side: number, window: string, ticks: number?) -> (),
     window_tick: (side: number) -> number,
@@ -2958,7 +2958,7 @@ declare custom: {
     update_availability: (side: number) -> (),
     draw_emblem: (side: number, x: number) -> (),
     -- `by`: the rules' button or window whose pick holds the form.
-    set_form: (side: number, by: string, form: FormDef?, turns: number?, chaos: boolean?) -> (),
+    set_form: (side: number, by: string, form: FormDef?, turns: number?, alternate: boolean?) -> (),
     last_pick: (side: number) -> { slot: number, chip: Chip, regular: boolean, navi_chip: boolean, attached: boolean }?,
     trade_last_pick: (side: number, button: string) -> boolean,
     attach_to_last_pick: (side: number, button: string, modifiers: number) -> boolean,
@@ -2984,9 +2984,9 @@ declare custom: {
     draw_window: (side: number) -> (),
     draw_regular: (side: number) -> (),
     draw_held: (side: number) -> (),
-    draw_cross_cursor: (side: number) -> (),
+    draw_form_list_cursor: (side: number) -> (),
     show_chip_window: (side: number) -> (),
-    set_cross_tab: (side: number, on: boolean) -> (),
+    set_form_list_tab: (side: number, on: boolean) -> (),
     -- R in the window up: the form's description (three lines without
     -- one), back to the window when it closes.
     describe: (side: number, form: FormDef?) -> (),

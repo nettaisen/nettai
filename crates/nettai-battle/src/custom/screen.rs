@@ -276,10 +276,11 @@ pub struct Screen {
     /// button's place, 0x100 past a window's).
     pub form: Option<nettai_content_api::FormHandle>,
     pub form_owner: Option<u16>,
-    /// The transform record's turns and Chaos flag beside the form (EXE5's
-    /// Soul Unison: +3 and +1), as the rules that set the form say.
+    /// The transform record's turns and alternate flag beside the form
+    /// (EXE5's Soul Unison: +3 and +1, Chaos Unison), as the rules that set
+    /// the form say.
     pub form_turns: u8,
-    pub form_chaos: bool,
+    pub form_alternate: bool,
     /// A button of the rules picked in the place of the chip given up for it
     /// (EXE5's soul button, 0x080233E0): B on it puts the chip back, and at
     /// OK the chip leaves the folder where the button stands.
@@ -393,7 +394,7 @@ impl Screen {
             form: None,
             form_owner: None,
             form_turns: 0,
-            form_chaos: false,
+            form_alternate: false,
             trade: None,
             hold: None,
             program_advance: None,
@@ -566,8 +567,8 @@ impl Screen {
     pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
         self.look.drawn = Default::default();
         let request = self.step(joy, view, folder, console, extras);
-        let on_dark = self.on_dark_chip(view, folder);
-        self.look.hover(on_dark);
+        let on_shading = self.on_shading_chip(view, folder);
+        self.look.hover(on_shading);
         self.hud.tick();
         if let Phase::ProgramAdvance { anim } = &mut self.phase {
             anim.fade = anim.fade.saturating_sub(1);
@@ -587,7 +588,7 @@ impl Screen {
 
     /// `sub_802A394`: choosing chips or reading a chip's description, the
     /// cursor rests on a dark chip (as it counts in a selection).
-    fn on_dark_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
+    fn on_shading_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
         matches!(self.phase, Phase::Choosing | Phase::Description { window: None, .. })
             && self.chip_in(self.cursor, folder).is_some_and(|c| is_dark(checked(c, view), view))
     }
@@ -985,14 +986,8 @@ impl Screen {
             "refused" => ScreenSound::Refused,
             "back" => ScreenSound::Back,
             "cancel" => ScreenSound::Cancel,
-            "beast_out_gregar" => ScreenSound::BeastOutGregar,
-            "beast_out_falzar" => ScreenSound::BeastOutFalzar,
-            "beast_out_flash" => ScreenSound::BeastOutFlash,
             "cursor" => ScreenSound::Cursor,
             "description" => ScreenSound::Description,
-            "cross_window_open" => ScreenSound::CrossWindowOpen,
-            "cross_window_close" => ScreenSound::CrossWindowClose,
-            "cross_chosen" => ScreenSound::CrossChosen,
             "program_advance_part" => ScreenSound::ProgramAdvancePart,
             "program_advance" => ScreenSound::ProgramAdvance,
             "redeal" => ScreenSound::Redeal,

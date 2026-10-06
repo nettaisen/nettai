@@ -109,10 +109,11 @@ local function lockon_mode(navi: Object): Lockon?
     return if beast ~= nil then beast.lockon else nil
 end
 
--- The afterimage's animation: 0xF, or 0 for the link navis.
+-- The afterimage's animation: 0xF, or 0 for the link navis (a player's identity that isn't the navi that changes
+-- form's).
 local function afterimage_anim(navi: Object): number
     local identity = navi.identity
-    return if identity ~= nil and identity.class == "link_navi" then 0 else 0xF
+    return if identity ~= nil and identity.class == "player" and not identity.changes_form then 0 else 0xF
 end
 
 -- `sub_80E33FA` with Param1 0xFF: a copy of the navi at `pos` for

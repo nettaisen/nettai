@@ -32,13 +32,14 @@ local form: FormDef = {
     -- Gregar Beast Over face, and shows Falzar Beast Over's.
     mugshot = asset.mugshot("gregar-beast-over"),
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "target_marker", "invulnerable", "berserk" },
+    status_reset = { "super_armor", "target_marker", "invulnerable", "controller_restart" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 23,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 23 },
     identity = new.identity {
-        class = "beast_over",
+        class = "player",
+        changes_form = true,
         version = 0,
         actor_type = "player",
         ai_index = 47,

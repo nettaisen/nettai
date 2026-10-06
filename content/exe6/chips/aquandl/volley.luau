@@ -34,14 +34,7 @@ local NEEDLES, INTERVAL = 3, 8
 -- with no identity is its NameID 0), then navis (0x100 to 0x1C3).
 local NAVIS: { [string]: boolean } = {
     navi = true,
-    gregar = true,
-    falzar = true,
-    megaman = true,
-    link_navi = true,
-    cross = true,
-    beast = true,
-    cross_beast = true,
-    beast_over = true,
+    player = true,
 }
 
 local function is_virus(o: Object): boolean

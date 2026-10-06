@@ -211,7 +211,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         ai_mut(b, r).attack.special_source = 1;
     }
     let mut e = if slot_in { slot_in_entry(b, r) } else { hand_entry(b, r, charge) };
-    if let Some(sub) = dark_substitute(b, r, e.chip) {
+    if let Some(sub) = rules_substitute(b, r, e.chip) {
         e = sub;
     }
     let content = b.content.clone();
@@ -251,7 +251,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
             b.set_panel_type(p.x, p.y, PanelType::Normal);
             b.sound(BONUS_SOUND);
         }
-        Some(Boost::Cross | Boost::NullDoubled) | None => {}
+        Some(Boost::Charged | Boost::NullDoubled) | None => {}
     }
     prime(b, r, cd);
     let mut damage = ai(b, r).attack.damage;
@@ -382,7 +382,7 @@ fn deals_damage(flags: ChipFlags) -> bool {
 /// (`chip_substitute`: EXE6's dark chips cost a bug frag, and with none
 /// left the player gets the chip's substitute, `off_8010D84`), through
 /// `sub_800EF02`, with its own damage and bonus and no modifiers.
-fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Option<HandEntry> {
+fn rules_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Option<HandEntry> {
     // (The empty hand's chip reads past the chip table, as for the record.)
     entry_record(&b.content, chip);
     let side = b.objects.get(r).alliance;
@@ -572,8 +572,9 @@ enum Boost {
     FullSynchro,
     /// Anger (spent by the use).
     Anger,
-    /// A Cross's element on a charged (or fully A-charged) chip.
-    Cross,
+    /// The navi's or its form's chips doubled when charged (or with the
+    /// A charge full: `charge_doubles`).
+    Charged,
     /// A form's Null chips (`doubles_null`: Beast Over's).
     NullDoubled,
     /// A primed form's (spent by the use: EXE5's GyroSoul).
@@ -597,7 +598,7 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16
         match emotion(b, b.objects.get(r).alliance) {
             Emotion::FullSynchro => Some(Boost::FullSynchro),
             Emotion::Angry => Some(Boost::Anger),
-            _ if cross_doubles(b, r, chip, charge) => Some(Boost::Cross),
+            _ if charge_doubles(b, r, chip, charge) => Some(Boost::Charged),
             _ if grass_doubles(b, r, cd) => Some(Boost::Grass),
             _ if null_doubles(b, r, chip) => Some(Boost::NullDoubled),
             _ => None,
@@ -611,7 +612,7 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16
 /// (Wood) and TomahawkCross's, SpoutMan's (Aqua) and SpoutCross's, and
 /// ProtoMan's Sword family, doubled when the chip is charged or the A
 /// charge is full: the navi's `charge_doubles`, else its form's.
-fn cross_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) -> bool {
+fn charge_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) -> bool {
     let cd = entry_record(&b.content, chip);
     let Some(rule) = navi_of(b, r).charge_doubles.or(form_of(b, r).charge_doubles) else {
         return false;
@@ -658,8 +659,8 @@ fn null_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
 fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, mixed: bool) {
     let s = *stats(b, r);
     let cd = entry_record(&b.content, chip);
-    let cross = form_of(b, r).chip_heals.is_some_and(|rule| chip_matches(rule, cd)) && !cd.flags.has(ChipFlags::DIMMING);
-    let heal = if cross { (s.max_base_hp as u32 + 0x13) / 0x14 } else { 0 };
+    let form_heals = form_of(b, r).chip_heals.is_some_and(|rule| chip_matches(rule, cd)) && !cd.flags.has(ChipFlags::DIMMING);
+    let heal = if form_heals { (s.max_base_hp as u32 + 0x13) / 0x14 } else { 0 };
     // EXE5's 0x0800FFF6: a heal mixed into the chip (the hand's modifier
     // 0x10: its pink capsule) is a tenth of the navi's maximum HP, rounded
     // up.

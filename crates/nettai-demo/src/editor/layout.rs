@@ -158,12 +158,14 @@ pub fn layout(
         if !matches!(f.ty, FieldType::List(..) | FieldType::Array(..)) || crate::editor::facts::is_list(&f) {
             continue;
         }
-        let list = if role == Some(PlayerFact::SpTimes) && times_fit(f.ty) {
+        // (A list of `{ <definition>, frames }`: times, as a person reads
+        // them; the SP navi deletion times, by the field's name.)
+        let list = if times_fit(f.ty) {
             List { fixed: true, total: None, columns: vec![("frames".into(), View::Number { time: true })] }
         } else {
             List { total: entries_total(content, f.ty, "mb"), ..List::default() }
         };
-        let title = if role == Some(PlayerFact::SpTimes) { "SP navi deletion times".to_string() } else { title(f.name) };
+        let title = if f.name == "sp_times" { "SP navi deletion times".to_string() } else { title(f.name) };
         out.push(Pane {
             key: f.name.to_string(),
             title: title.clone(),

@@ -7,7 +7,7 @@
 -- is alone, never marked as made while dimmed (its store of what it hits goes to a BIOS address). Its obstacles'
 -- reactions have the step for ColonelSoul's army (0x080CAB02 from 0x08018000, 0x08018168, 0x080182D4 and 0x08018404;
 -- exe5-map.md §15.11): an obstacle where an armed side can use it turns into its soldier (objects/soldier, the role
--- `kinds.obstacle_soldier`). Its screen palette flash (effect object 0x0A, 0x080E1030) holds through a pause whatever its
+-- `kinds.converted_obstacle`). Its screen palette flash (effect object 0x0A, 0x080E1030) holds through a pause whatever its
 -- mode, and through dimming only with no mode (both variants: EXE6's variant 1 tests the pause bit for dimming too).
 -- Its damage words' flag bits (0x080165EC, EXE6's `sub_8019F44`) are its own: 0x4000 paralyzes without a flinch,
 -- 0x2000 confuses, 0x1000 blinds, 0x800 gives bug code 0x18 (ColonelSoul's soldiers strike with 0x4000).
@@ -17,7 +17,7 @@ return {
     spark_steps_at_start = false,
     retype = "is_alone",
     damage_word = "statuses_and_bug",
-    obstacle_soldiers = true,
+    obstacle_conversion = true,
     palette_flash = "pause_holds",
     -- Presentation: its flash is a palette transform in slot 9 (0x080E104C), before the fade system's (slots 18 on), so
     -- a dimming darkens the white it put in the stage's palettes: a flash under a dimming is white a quarter down.

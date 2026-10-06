@@ -108,7 +108,7 @@ local HOOKS: Hooks = {
 
 -- `megaman`: the navi that changes form (it has forms, though this content
 -- defines none but the base form).
-local function navi(sprite: string, class: IdentityClass, ai_index: number, megaman: boolean, hooks: Hooks?): NaviDef
+local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: Hooks?): NaviDef
     return {
         tick = if hooks then hooks.tick else nil,
         idle = if hooks then hooks.idle else nil,
@@ -125,10 +125,11 @@ local function navi(sprite: string, class: IdentityClass, ai_index: number, mega
         weapons = WEAPONS,
         -- What a navi switch brings it with.
         fresh = { hp = 100, mega_level = 5, giga_level = 1 },
-        cross_hp = { 100, 150 },
-        forms = if megaman then { gregar = { crosses = {} }, falzar = { crosses = {} } } else nil,
+        switch_hp = { 100, 150 },
+        forms = if megaman then { gregar = { form_list = {} }, falzar = { form_list = {} } } else nil,
         identity = new.identity {
-            class = class,
+            class = "player",
+            changes_form = megaman,
             version = 0,
             actor_type = "player",
             ai_index = ai_index,
@@ -142,9 +143,9 @@ local function navi(sprite: string, class: IdentityClass, ai_index: number, mega
 end
 
 local navis: { [string]: NaviDef } = {
-    megaman = navi("test-megaman", "megaman", 0, true),
-    ["test/link-navi"] = navi("test-navi", "link_navi", 4, false),
-    ["test/hooked-navi"] = navi("test-navi", "link_navi", 5, false, HOOKS),
+    megaman = navi("test-megaman", 0, true),
+    ["test/link-navi"] = navi("test-navi", 4, false),
+    ["test/hooked-navi"] = navi("test-navi", 5, false, HOOKS),
 }
 
 return navis
