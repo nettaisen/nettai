@@ -182,7 +182,7 @@ impl Hash for Battle {
             turn_transforms,
             transform_seq,
             custom_reversion,
-            navi_levels,
+            given,
             objects,
             actors,
             collision,
@@ -222,7 +222,7 @@ impl Hash for Battle {
         turn_transforms.hash(h);
         transform_seq.hash(h);
         custom_reversion.hash(h);
-        navi_levels.hash(h);
+        given.hash(h);
         objects.hash(h);
         actors.hash(h);
         collision.hash(h);

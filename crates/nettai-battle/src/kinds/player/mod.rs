@@ -1379,17 +1379,14 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
     let s = stats(b, r);
     let (navi, form) = (content.navi(s.navi), content.form(s.form));
     if !b.paused {
-        if let Some(limits) = &navi.fire_charge {
-            // ChargeMan charges his Fire chips up to a limit by his level
-            // (none unset). (The game first compares the level with the
-            // word at the start of `byte_8021300`, MegaMan's row of zeros:
-            // never less.)
-            let level = b.navi_levels[b.objects.get(r).alliance as usize];
-            if level != 0xFF {
-                let limit = *limits.get(level as usize).unwrap_or_else(|| {
-                    panic!("navi level {level} reads past {}'s Fire charge limits (sub_80F0608)", content.defs.navi(s.navi).key)
-                });
-                charge_fire_chip(b, r, limit as u16);
+        if content.defs.navi(s.navi).given.fire_charge.is_some() {
+            // ChargeMan charges his Fire chips up to the limit the content
+            // gave his side for the round (`crate::given`: by his level,
+            // none without one). (The game first compares the level with
+            // the word at the start of `byte_8021300`, MegaMan's row of
+            // zeros: never less.)
+            if let Some(limit) = b.given.navis[b.objects.get(r).alliance as usize & 1].fire_charge {
+                charge_fire_chip(b, r, limit);
             }
         } else if navi.changes_form()
             && let Some(limit) = form.fire_charge

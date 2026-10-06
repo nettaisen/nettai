@@ -1,6 +1,7 @@
 --!strict
 -- groundman: a link navi.
 
+local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
 local groundman = require("@self/chip")
@@ -26,7 +27,7 @@ return define.navi {
     chip_bonus = {
         family = "break",
         dimming_chips = false,
-        by_level = { 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 },
+        damage = by_level.row({ 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 }),
     },
     -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
