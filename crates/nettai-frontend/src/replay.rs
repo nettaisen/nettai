@@ -260,28 +260,26 @@ pub fn play_out(content: &Arc<Content>, replay: &Replay) -> Result<Outcome, Stri
                 out.diverged = Some(format!("differs from the recording at {}: {}", d.position(), diffs.join("; ")));
             }
         }
-        // (Who won a round: the score the next round starts with, side 0's,
-        // against the one this round started with.)
+        // (Who won a round: the score it ended with, side 0's, against the
+        // one it started with; the set's last round too, whatever the set's
+        // result: one of an even number of rounds may end drawn on a round
+        // won.)
         let before = b.setup.score;
+        let winner = if b.round.wins > before.wins {
+            Some(0)
+        } else if b.round.losses > before.losses {
+            Some(1)
+        } else {
+            None
+        };
         match d.round_ended(&b) {
             None => {}
             Some(After::Round(next)) => {
-                let after = next.setup.score;
-                out.rounds.push(if after.wins > before.wins {
-                    Some(0)
-                } else if after.losses > before.losses {
-                    Some(1)
-                } else {
-                    None
-                });
+                out.rounds.push(winner);
                 b = *next;
             }
             Some(After::Over(result)) => {
-                out.rounds.push(match result {
-                    BattleResult::Won => Some(0),
-                    BattleResult::Lost => Some(1),
-                    _ => None,
-                });
+                out.rounds.push(winner);
                 out.result = Some(result);
                 break;
             }
@@ -326,6 +324,81 @@ mod tests {
     use super::*;
     use crate::driver::{LivePlayer, short_set};
     use crate::session::Session;
+
+    /// Sets of other numbers of rounds than the original's three, played
+    /// offline by both players (each round won by the side the case says:
+    /// it shoots, the other stands, both navis at 1 HP), end when they
+    /// should: best of five decided 3-0 after three rounds either way and
+    /// 3-2 after all five (both games); best of four drawn at 2-2 after
+    /// four; a set of one round after it. Each new round starts with the
+    /// score carried. Each set is recorded, every round's place kept, and
+    /// its replay plays back to the same end with the same round ends,
+    /// every digest and mark the recording's, and played out says who won
+    /// each round.
+    #[test]
+    fn a_set_of_n_rounds_ends_when_it_should() {
+        use BattleResult::{Drawn, Lost, Won};
+        let (six, five) = (nettai_match::testing::exe6_content(), nettai_match::testing::exe5_content());
+        let cases: [(&Arc<Content>, &str, usize, &[usize], BattleResult); 7] = [
+            (&six, "exe6", 5, &[0, 0, 0], Won),
+            (&six, "exe6", 5, &[1, 1, 1], Lost),
+            (&six, "exe6", 5, &[0, 1, 0, 1, 0], Won),
+            (&five, "exe5", 5, &[1, 0, 1, 0, 1], Lost),
+            (&six, "exe6", 5, &[1, 1, 0, 0, 0], Won),
+            (&six, "exe6", 4, &[0, 1, 1, 0], Drawn),
+            (&six, "exe6", 1, &[1], Lost),
+        ];
+        for (content, game, rounds, winners, result) in cases {
+            let case = format!("{game} best of {rounds}, won by {winners:?}");
+            let m = short_set::duel(content, game, 7, rounds);
+            let sink = Shared::default();
+            let live = LivePlayer::new(Set::of(content, &m, 7));
+            let mut s = Session::new(Box::new(short_set::Scripted { live, winners: winners.to_vec() }));
+            s.record(Recorder::new(Box::new(sink.clone()), content, &m, &Info::default()).unwrap()).unwrap();
+            let mut scores = Vec::new();
+            while s.step(0) {
+                assert!(s.ticks < 60_000, "{case}: the set doesn't end ({})", s.driver.position());
+                if s.new_round {
+                    let r = &s.battle.round;
+                    scores.push((r.round, r.wins, r.losses));
+                }
+            }
+            assert_eq!((s.result, s.stopped.as_deref()), (Some(result), Some(format!("the match is over: {}", crate::driver::result_text(result)).as_str())), "{case}");
+            // (The score each later round starts with: rounds played, the
+            // left's wins, its losses.)
+            let mut want = Vec::new();
+            let (mut wins, mut losses) = (0, 0);
+            for (n, &w) in winners[..winners.len() - 1].iter().enumerate() {
+                (wins, losses) = if w == 0 { (wins + 1, losses) } else { (wins, losses + 1) };
+                want.push((n as u8 + 1, wins, losses));
+            }
+            assert_eq!(scores, want, "{case}");
+            // The replay keeps every round's place, and plays back.
+            let replay = Replay::read(&sink.bytes()).unwrap();
+            assert_eq!((replay.end, replay.rounds().len(), replay.ticks.len() as u64), (End::Set, winners.len(), s.ticks), "{case}");
+            let kept = nettai_match::binary::read_match(content, &replay.match_bytes).unwrap();
+            assert_eq!(kept, m.stated(content, 7).unwrap(), "{case}");
+            assert_eq!(kept.rounds.len(), rounds, "{case}");
+            let out = play_out(content, &replay).unwrap();
+            let want = Outcome {
+                ticks: s.ticks,
+                rounds: winners.iter().map(|&w| Some(w as u8)).collect(),
+                result: Some(result),
+                end: End::Set,
+                diverged: None,
+                stopped: None,
+            };
+            assert_eq!(out, want, "{case}");
+            let mut p = Session::new(Box::new(ReplayPlayer::new(content, &replay, Some(0)).unwrap()));
+            let mut ends = Vec::new();
+            while p.step(0) {
+                if p.new_round {
+                    ends.push(p.ticks);
+                }
+            }
+            assert_eq!((p.diverged, p.result, p.ticks, ends.len()), (None, Some(result), s.ticks, winners.len() - 1), "{case}");
+        }
+    }
 
     /// A short set played live and recorded (the shooter wins it 2-0): the
     /// replay, and the session's ticks.

@@ -106,13 +106,14 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
   --screenshot PNG with the editor: write the window to PNG once it has drawn,
                    and quit
   --match FILE     play the match this file sets up (docs/frontend.md §6: its
-                   game, the arena, each side's navi, version,
+                   game, its rounds, each side's navi, version,
                    folder, Crosses, patch cards and stats, by name in the
                    game; the editor makes them); you are its left side.
                    Its seed sets the battle's RNG (else from the clock).
                    With --audit-content, select the game's content to audit.
                    With --host or --join the left side
-                   is what you bring, and the host's arena is the match's
+                   is what you bring, and the host's rounds are the match's
+                   (both files list as many rounds)
   --save-match FILE  write the match played with its seed (the file's setup,
                    or the one netplay agreed) to FILE as a match file,
                    to play again or edit
@@ -174,7 +175,7 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
                    navi, seen from your side. Both players need the same
                    engine, game and content (the handshake checks); each
                    brings their match file's left side; the host's file
-                   supplies the arena, and the battle's RNG comes from
+                   supplies the rounds, and the battle's RNG comes from
                    both players' randomly generated seed halves
   --present-delay N  netplay: show the battle N frames behind your newest
                    input (default 0: the newest, the other player's input
@@ -429,12 +430,13 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
 }
 
 /// Connect (host or join) and start the handshake that agrees the round;
-/// each player brings their match file's left side, and the host its
-/// arena. The window polls it each frame, saying the second half.
+/// each player brings their match file's rounds (the host's are played;
+/// both files list as many) and its left side. The window polls it each
+/// frame, saying the second half.
 fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> (NetHandshake<Udp>, String) {
     use nettai_demo::net::Role;
     use nettai_frontend::netplay::Offer;
-    let offer = Offer::of_match(m, args.host.is_some());
+    let offer = Offer::of_match(m);
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
     if let Some(port) = args.host {
         let udp = Udp::host(port).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));

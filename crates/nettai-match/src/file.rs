@@ -8,13 +8,14 @@
 //! game = "exe6"                       # the match's game: everything below is its
 //! seed = 42                          # optional: the setup's and battle's seed
 //!
-//! [arena]
-//! stage = "netbattle-43"
-//! background = "lans-hp"             # optional: else the stage's own
-//! later = [                          # optional: the set's later rounds (else the first's)
-//!     { stage = "netbattle-12", background = "undernet" },
-//!     { stage = "netbattle-7" },
-//! ]
+//! [[round]]                          # the set's rounds, one table each, in order: as many as it has
+//! stage = "netbattle-43"             # (1 to 99; three: the original's triple battle, best of three).
+//! background = "lans-hp"             # A part a round leaves out, or a round left empty, is picked
+//!                                    # from the seed (as the game picks a link battle's)
+//! [[round]]
+//! stage = "netbattle-12"
+//!
+//! [[round]]
 //!
 //! [left]                             # you, side 0; then [right]: the side's facts, what its game's rules take,
 //! navi = "megaman"                   # each under its setup field's name (crate::facts); one left out is the
@@ -58,7 +59,7 @@
 //! ```
 
 use crate::facts::Stated;
-use crate::{Arena, Facts, Match, Place, Side, ids};
+use crate::{Facts, Match, RoundSettings, Side, ids};
 use nettai_battle::content::{ChipCode, Content, PlayerFact};
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FieldType, Value};
@@ -70,25 +71,21 @@ pub struct MatchFile {
     pub game: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seed: Option<u32>,
-    pub arena: ArenaFile,
+    /// The rounds, a `[[round]]` table each (a file that lists none is
+    /// refused when it is resolved).
+    #[serde(default, rename = "round")]
+    pub rounds: Vec<RoundFile>,
     pub left: SideFile,
     pub right: SideFile,
 }
 
+/// A round as a file states it: each part left out is picked from the
+/// seed.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ArenaFile {
-    pub stage: String,
+pub struct RoundFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub background: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub later: Option<Vec<PlaceFile>>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct PlaceFile {
-    pub stage: String,
+    pub stage: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<String>,
 }
@@ -160,51 +157,47 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
     if !games.contains(&f.game) {
         return Err(vec![format!("no game {:?} (the content's are {})", f.game, games.join(", "))]);
     }
-    let arena = resolve_arena(content, &f.game, &f.arena, &mut problems);
-    let Some(arena) = arena else { return Err(problems) };
-    let left = resolve_side(content, &arena.game, &f.left, "left", &mut problems);
-    let right = resolve_side(content, &arena.game, &f.right, "right", &mut problems);
+    let rounds = resolve_rounds(content, &f.game, &f.rounds, &mut problems);
+    let Some(rounds) = rounds else { return Err(problems) };
+    let left = resolve_side(content, &f.game, &f.left, "left", &mut problems);
+    let right = resolve_side(content, &f.game, &f.right, "right", &mut problems);
     match (left, right) {
-        (Some(left), Some(right)) if problems.is_empty() => Ok(Match { seed: f.seed, arena, sides: [left, right] }),
+        (Some(left), Some(right)) if problems.is_empty() => Ok(Match { game: f.game.clone(), seed: f.seed, rounds, sides: [left, right] }),
         _ => Err(problems),
     }
 }
 
-fn resolve_place(content: &Content, game: &str, stage: &str, background: &Option<String>, at: &str, problems: &mut Vec<String>) -> Option<Place> {
-    let stage = match ids::stage(content, game, stage) {
-        Some(s) => Some(s),
-        None => {
-            problems.push(format!("{at}: {}", unknown("stage", stage, game, &[])));
-            None
-        }
+fn resolve_round(content: &Content, game: &str, r: &RoundFile, at: &str, problems: &mut Vec<String>) -> Option<RoundSettings> {
+    let stage = match &r.stage {
+        None => None,
+        Some(name) => match ids::stage(content, game, name) {
+            Some(s) => Some(s),
+            None => {
+                problems.push(format!("{at}: {}", unknown("stage", name, game, &[])));
+                return None;
+            }
+        },
     };
-    if let Some(b) = background
+    if let Some(b) = &r.background
         && crate::background(content, game, b).is_none()
     {
         problems.push(crate::no_background(at, game, b));
     }
-    Some(Place { stage: stage?, background: background.clone() })
+    Some(RoundSettings { stage, background: r.background.clone() })
 }
 
-/// A file's arena, of `game`.
-pub fn resolve_arena(content: &Content, game: &str, a: &ArenaFile, problems: &mut Vec<String>) -> Option<Arena> {
-    let first = resolve_place(content, game, &a.stage, &a.background, "arena", problems);
-    let later = match &a.later {
-        None => first.clone().map(|p| [p.clone(), p]),
-        Some(list) if list.len() == 2 => {
-            let l: Vec<Option<Place>> = list
-                .iter()
-                .enumerate()
-                .map(|(i, p)| resolve_place(content, game, &p.stage, &p.background, &format!("arena: later round {}", i + 2), problems))
-                .collect();
-            Some([l[0].clone()?, l[1].clone()?])
-        }
-        Some(list) => {
-            problems.push(format!("arena: later names {} places; a set's later rounds are two", list.len()));
-            None
-        }
-    };
-    Some(Arena { game: game.to_string(), first: first?, later: later? })
+/// What a file that lists no round is told.
+pub const NO_ROUNDS: &str = "no [[round]]: a match file lists one [[round]] per round of its set (one left empty is picked from the seed; three for the original's triple battle)";
+
+/// A file's rounds, of `game`.
+pub fn resolve_rounds(content: &Content, game: &str, rounds: &[RoundFile], problems: &mut Vec<String>) -> Option<Vec<RoundSettings>> {
+    if rounds.is_empty() {
+        problems.push(NO_ROUNDS.to_string());
+        return None;
+    }
+    let resolved: Vec<Option<RoundSettings>> =
+        rounds.iter().enumerate().map(|(i, r)| resolve_round(content, game, r, &format!("round {}", i + 1), problems)).collect();
+    resolved.into_iter().collect()
 }
 
 /// A file's side of a match of `game`, each name the game's.
@@ -359,21 +352,18 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     }
 }
 
-/// A match's arena as a file writes it (its places; the game is the
-/// file's own key).
-pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
-    let place = |p: &Place| PlaceFile { stage: ids::local(&content.defs.stage(p.stage).key).to_string(), background: p.background.clone() };
-    let first = place(&a.first);
-    let later = (a.later != [a.first.clone(), a.first.clone()]).then(|| a.later.iter().map(place).collect());
-    ArenaFile { stage: first.stage, background: first.background, later }
+/// A match's rounds as a file writes them (what each states).
+pub fn rounds_file(content: &Content, rounds: &[RoundSettings]) -> Vec<RoundFile> {
+    let round = |r: &RoundSettings| RoundFile { stage: r.stage.map(|s| ids::local(&content.defs.stage(s).key).to_string()), background: r.background.clone() };
+    rounds.iter().map(round).collect()
 }
 
 /// A match as a file.
 pub fn to_file(content: &Content, m: &Match) -> MatchFile {
     MatchFile {
-        game: m.arena.game.clone(),
+        game: m.game.clone(),
         seed: m.seed,
-        arena: arena_file(content, &m.arena),
+        rounds: rounds_file(content, &m.rounds),
         left: side_file(content, &m.sides[0]),
         right: side_file(content, &m.sides[1]),
     }
@@ -494,7 +484,7 @@ mod tests {
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
         let text = write(&content, &crate::pick::live(&content, "exe6", 3, None).unwrap());
-        for line in ["game = \"exe6\"", "[arena]", "[left]", "navi = \"megaman\"", "folder = [\n    { chip = \"", "\", code = \""] {
+        for line in ["game = \"exe6\"", "[[round]]\nstage = \"netbattle-", "[left]", "navi = \"megaman\"", "folder = [\n    { chip = \"", "\", code = \""] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
         // (No stats: a side states none.)
@@ -502,7 +492,39 @@ mod tests {
         // Every name is the game's own, written once with the game.
         assert!(!text.contains("exe6:") && !text.contains("rules"), "{text}");
         assert_eq!(game_of(&text).unwrap(), "exe6");
-        assert!(game_of("[arena]\nstage = \"x\"\n").is_err());
+        assert!(game_of("[[round]]\nstage = \"x\"\n").is_err());
+    }
+
+    /// A match file lists its rounds, a `[[round]]` table each, as many as
+    /// the set has: each part it states is that round's, each it leaves out
+    /// (or a round left empty) is picked from the seed, and a file that
+    /// lists none is refused. Five rounds, some stated, write and read back
+    /// and start the same round.
+    #[test]
+    fn a_match_file_lists_its_rounds() {
+        let content = exe6_content();
+        let live = crate::pick::live(&content, "exe6", 4, None).unwrap();
+        let text = write(&content, &live);
+        assert_eq!(text.matches("[[round]]").count(), 3, "{text}");
+        let start = text.find("[[round]]").unwrap();
+        let end = text.find("[left]").unwrap();
+        let rounds = "[[round]]\n\n[[round]]\nstage = \"netbattle-12\"\n\n[[round]]\nbackground = \"undernet\"\n\n[[round]]\n\n[[round]]\n\n";
+        let five = format!("{}{rounds}{}", &text[..start], &text[end..]);
+        let m = parse(&content, &five).unwrap_or_else(|e| panic!("{e:?}\n{five}"));
+        assert_eq!(m.rounds.len(), 5);
+        assert_eq!(m.rounds[1].stage, Some(crate::link_stage(&content, "exe6", "netbattle-12").unwrap()));
+        assert_eq!((m.rounds[2].stage, m.rounds[2].background.as_deref()), (None, Some("undernet")));
+        assert_eq!(m.rounds[0], RoundSettings::default());
+        assert_eq!(parse(&content, &write(&content, &m)).unwrap(), m);
+        let setup = m.round(&content, 4);
+        assert_eq!((setup.rounds(), setup.later_stages[0].stage), (5, m.rounds[1].stage.unwrap()));
+        assert_eq!(setup.later_stages[1].background, crate::background(&content, "exe6", "undernet").unwrap());
+        // (The first round, left empty, is the random match's of the seed.)
+        assert_eq!(setup.settings, live.round(&content, 4).settings);
+        let none = format!("{}{}", &text[..start], &text[end..]);
+        assert_eq!(parse(&content, &none).unwrap_err(), [NO_ROUNDS]);
+        let many = format!("{}{}{}", &text[..start], "[[round]]\n".repeat(crate::MAX_ROUNDS + 1), &text[end..]);
+        assert_eq!(parse(&content, &many).unwrap_err(), ["100 rounds: a match has 1 to 99"]);
     }
 
     /// A side's auto battle data (EXE5's facts) writes and reads back: its
@@ -686,7 +708,8 @@ mod tests {
             "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips, version)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
-        has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
+        has(bad(stage, "stage = \"moon\""), "round 1: no stage \"moon\" in exe6");
+        has(bad(stage, "stage = \"netbattle-43\"\nmoon = 1"), "unknown field `moon`");
         has(bad("game = \"exe6\"", "game = \"bn7\""), "no game \"bn7\"");
         // The version: one of the game's two, stated (none is assumed).
         let version = good.lines().find(|l| l.starts_with("version = ")).unwrap();

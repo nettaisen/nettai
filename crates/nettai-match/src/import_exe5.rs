@@ -9,7 +9,7 @@
 //! exe6-compat: a save's bytes and the original's numbers in them.)
 
 use crate::auto_battle::{ChipPlace, AutoBattle, Entry, RECORDS, Record};
-use crate::{Arena, Side, ids};
+use crate::{Side, ids};
 use exe5_compat::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, Save};
 use nettai_battle::content::Content;
 use nettai_battle::rules::Fact;
@@ -73,7 +73,7 @@ pub(crate) fn read(file: &[u8]) -> Result<Save, String> {
 impl Side {
     /// Take the karma, the souls, Soul Unison, the NaviCust board's
     /// expansions and the auto battle data from an EXE5 save, the side of
-    /// a match on `arena` (an EXE5 one): the souls its version's flags give
+    /// a match of `game` (an EXE5 one): the souls its version's flags give
     /// (the game's souls of those numbers) as the side's soul list, and its
     /// Soul Unison and Chaos Unison (event flags 0 and 0x236); the save's
     /// ExpMemry (key item 0x61's count) as the expansions of the side's
@@ -81,7 +81,7 @@ impl Side {
     /// is the match's check's to say); the save's auto battle data (its
     /// first block, [`auto_battle`]: what the game has learned of this
     /// player) as the side's. What is worth saying about it.
-    pub fn import_exe5_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Vec<String> {
+    pub fn import_exe5_save(&mut self, content: &Content, game: &str, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
         // (A fact the content's rules don't take is the save's alone: said,
         // and left out.)
@@ -99,13 +99,13 @@ impl Side {
         let mut souls = Vec::new();
         let mut missing = Vec::new();
         for n in save.souls() {
-            match compat.form(n).and_then(|k| crate::ids::form(content, &arena.game, k)) {
+            match compat.form(n).and_then(|k| crate::ids::form(content, game, k)) {
                 Some(f) => souls.push(Fact::Value(Value::Def(Registry::Form, f.0))),
                 None => missing.push(n),
             }
         }
         state(self, "souls", &souls);
-        notes.extend(missing.iter().map(|n| format!("the save has soul {n}, which {} hasn't", arena.game)));
+        notes.extend(missing.iter().map(|n| format!("the save has soul {n}, which {game} hasn't")));
         // The NaviCust's board, where the side has a NaviCust (its
         // `navicust_expansions` stated).
         let has_navicust = matches!(
@@ -117,7 +117,7 @@ impl Side {
             notes.push(format!("the save's navicust_expansions is left out: {e}"));
         }
         if crate::auto_battle::has(content) {
-            let (data, more) = auto_battle(content, &arena.game, &save.auto_battle());
+            let (data, more) = auto_battle(content, game, &save.auto_battle());
             if let Err(e) = data.write(content, self) {
                 notes.push(format!("the save's auto battle data is left out: {e}"));
             }
@@ -184,7 +184,7 @@ mod tests {
         let mut m = crate::Match::empty(&exe6_content(), "exe6").unwrap();
         m.seed = Some(9);
         let notes = m.import_save(&content, 0, &image).unwrap();
-        assert_eq!((m.arena.game.as_str(), m.seed), ("exe5", Some(9)));
+        assert_eq!((m.game.as_str(), m.seed), ("exe5", Some(9)));
         assert_eq!(notes[0], "an exe5 save: the match is now exe5's, both sides new");
         // On EXE6's content alone, an EXE5 save makes no match.
         let mut six = crate::Match::empty(&exe6_content(), "exe6").unwrap();
@@ -243,7 +243,7 @@ mod tests {
         assert_eq!(s.level(&content), Some(4));
         assert_eq!(s.facts.get(&content, "karma"), Some(crate::facts::Stated::Number(519)));
         assert!(notes.iter().any(|n| n.contains("level 4")), "{notes:?}");
-        assert_eq!(crate::check::check_side_alone(&content, &m.arena, s), Vec::<String>::new());
+        assert_eq!(crate::check::check_side_alone(&content, &m.game, s), Vec::<String>::new());
         let hp = |m: &crate::Match| {
             let mut m = m.clone();
             m.sides[1] = m.sides[0].clone();
