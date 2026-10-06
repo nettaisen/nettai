@@ -194,16 +194,15 @@ assume nothing of (EXE6's version) starts unchosen. EXE6's Crosses start as none
 own" on the pane states the version's own five, to edit from there.
 A game that declares another fact has its control here with no change to the editor.
 
-An EXE5 match's Auto battle pane (shown where the game's rules have auto
-battle: not for EXE6) is what a navi in auto battle plays from the side's save, the Dark MegaMan its failed Chaos Unison
+An EXE5 match's Auto battle pane (the editor's own view of the setup's `auto_battle_places` and
+`auto_battle_records`, laid out by the game's rules/auto_battle/block: not for EXE6) is what a navi in auto battle plays from the side's save, the Dark MegaMan its failed Chaos Unison
 brings and its own navi under DarkInvs, whole (docs/frontend.md §6): on the left the save's 42 places in the six lists
 the game writes them in, each a chip, a pattern's number, a 0 or empty; in the middle its eight pattern records, each
 where the navi stands from its target, its five chip places and its score; on the right the game's chips, searched
 (those the game writes in the selected place's list, or every chip), where "put" fills the selected place and moves on
-to the next as the folder pane does. An entry the game wouldn't write where it is has a quiet note, no error. "From the
-folder" fills it in as the game would have written it for a player who used each chip of the side's folder once; "From
+to the next as the folder pane does. An entry the game wouldn't write where it is has a quiet note, no error. "From
 a save…" takes it alone from an EXE5 save; "Nothing learned" is what the game writes of a player it has learned nothing
-of (a new match's), and "No data" a save that never finished a battle (the file then states none). A side's own fields
+of (a new or random match's), and "No data" a save that never finished a battle (the file then states none). A side's own fields
 show only when the rules and its navi take them: the navi
 code's level with a navi whose definition has `levels` (not EXE5's MegaMan), the SP times with rules that have SP
 navi slots (each named by the game's SP navi chip).
