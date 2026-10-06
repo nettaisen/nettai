@@ -493,10 +493,11 @@ impl Link {
         Ok(())
     }
 
-    /// A host in a room that is down: ask the joiner to dial again.
+    /// A host in a room that is down, with no new connection under way:
+    /// ask the joiner to dial again.
     fn ask(&mut self, now: Instant) {
         let Way::Room(room) = &mut self.way else { return };
-        if self.down.is_none() || self.open || !self.peer || self.asked.is_some_and(|t| now.duration_since(t) < ASK_AGAIN) {
+        if self.down.is_none() || self.pc.is_some() || !self.peer || self.asked.is_some_and(|t| now.duration_since(t) < ASK_AGAIN) {
             return;
         }
         room.send(Signal::Redial { generation: self.generation });
