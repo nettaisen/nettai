@@ -1141,8 +1141,9 @@ folder = [                                 # 30 entries, [chip, code] ([] empty:
 regular = 4                                # optional: the Regular chip's entry, counting from 0
 tags = [5, 6]                              # optional: the tag chips' entries
 
-[left.sp_times]                            # optional: how fast the save deleted each SP navi
-"sp/heatman" = "00:12.34"                  # mm:ss.cc, by the rules' slot (else the fastest, 00:00.00)
+[[left.sp_times]]                          # optional: how long the save took to delete each SP navi,
+chip = "heatman-sp"                        # by its SP chip, in frames (60 a second; else the rules'
+frames = 741                               # default: every SP navi in no time)
 
 [left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
 expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default), in EXE6 and EXE5
@@ -1331,13 +1332,17 @@ story is taken as done). A side states no HP of its own for one: the checks
 refuse a level past 6, and an `hp`. A team navi has no NaviCust, patch
 cards or souls: they are MegaMan's. EXE5's MegaMan takes no level.
 
-**The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
-the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp_chips.luau),
-each `mm:ss.cc`; a slot left out is the fastest. The game keeps frames and
-shows them as a time rounded down to the hundredth (`sub_8000D84`): a
-written time is the fewest frames that show as it, so a time the game shows
-reads back as itself. The SP navi chips' damage goes by them
-(`sub_8010AE4`).
+**The SP deletion times** (`[[left.sp_times]]`) are a fact of the match's
+rules like any other (`sp_times`, a list of `{ chip, frames }` records: the
+engine knows it as `PlayerFact::SpTimes`), an entry each SP navi chip, by
+the chip's name, the frames the save took to delete its navi. A side that
+states none has the rules' default, every SP chip of its game in no time;
+one that states some has those alone (a chip it leaves out: in no time). The
+editor shows each as the game does, `mm:ss.cc` rounded down to the
+hundredth (`sub_8000D84`), and a time typed there is the fewest frames that
+show as it. The SP navi chips' damage goes by them (rules/sp_chips.luau,
+`sub_8010AE4`). A fact that is a record is a table of its fields, and a list
+of records an array of tables, as above.
 
 **A save** (the editor's "Import from save…", `Match::import_save`, into a
 match of the save's game: a save of the other game makes a new match of its

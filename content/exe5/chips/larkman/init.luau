@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- LarkMan (EXE5 chip 0x110): LarkMan cuts in and sends his swoop round the field (./navi).
 local larkman: Chip = {
@@ -30,7 +31,8 @@ local larkman_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 77,
-    damage = { formula = "sp_navi", slot = "sp/larkman", by_time = { 270, 260, 250, 240, 230, 220, 210, 200, 190, 180, 170 }, operation_battle = 220 },
+    sp = { by_time = { 270, 260, 250, 240, 230, 220, 210, 200, 190, 180, 170 }, operation_battle = 220 },
+    damage = sp_chips.damage,
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

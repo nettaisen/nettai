@@ -5,6 +5,7 @@
 local attachment = require("../objects/attachment")
 local common = require("@exelib/protoman/navi")
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- ProtoMan (EXE5 chip 0x0ef): ProtoMan cuts in and slashes each enemy navi he can reach: the shared navi
 -- (@exelib/protoman/navi, EXE5's kind ./navi; EXE5's the same code but for his sprite, 08-01, EXE6's 08-0b) with EXE5's
@@ -57,7 +58,8 @@ local protomn_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 79,
-    damage = { formula = "sp_navi", slot = "sp/protoman", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, operation_battle = 220 },
+    sp = { by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, operation_battle = 220 },
+    damage = sp_chips.damage,
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

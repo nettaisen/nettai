@@ -167,13 +167,14 @@ pub enum HookCall {
     /// is unused.
     RoleEncased { obstacle: ObjectRef, ice: bool, class: Option<u8> },
     /// A definition's function of a side, which the round's setup asks
-    /// once for each side after its systems' `round_setup` (a chip's
+    /// once for each side after its rules' `round_setup` (a chip's
     /// `damage` that goes by the side, a navi's `chip_bonus.damage`,
     /// `charged_chips.when` and `fire_charge`: what the side's level gives,
-    /// as its game's rules read it): called with the side; its result is a
-    /// number, a flag or nil, which the battle keeps for the round
+    /// as its game's rules read it): called with the side, then the chip
+    /// whose damage it is (nil for a navi's); its result is a number, a
+    /// flag or nil, which the battle keeps for the round
     /// (`Battle::given`).
-    Given { side: u8 },
+    Given { side: u8, chip: Option<crate::ChipHandle> },
     /// A hook of the game's rules for side `side` (docs/design/
     /// rules-in-luau.md §4.1): while it runs, `rules.state()` is the rules'
     /// state of that side. It is called with the side, then the navi, the

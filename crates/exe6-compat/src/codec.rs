@@ -15,7 +15,7 @@ use nettai_battle::hand::ChipHand;
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{
-    BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
+    BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, Stage, Supports,
 };
 use nettai_battle::transform::TransformRequest;
 use nettai_content_api::{ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle, WeaponHandle};
@@ -595,9 +595,51 @@ pub fn later_stages(b: &[u8], ids: &Ids) -> [Stage; 2] {
     [Stage { stage: ids.stage(b[0]), background: ids.background(b[1]) }, Stage { stage: ids.stage(b[2]), background: ids.background(b[3]) }]
 }
 
-/// A player's SP navi deletion times (`byte_203EB00`, 0x28 bytes).
+/// A player's SP navi deletion times (`byte_203EB00`, 0x28 bytes): 20
+/// halfwords, by slot.
 pub fn sp_times(b: &[u8]) -> SpTimes {
-    SpTimes(std::array::from_fn(|i| u16::from_le_bytes([b[2 * i], b[2 * i + 1]])))
+    std::array::from_fn(|i| u16::from_le_bytes([b[2 * i], b[2 * i + 1]]))
+}
+
+/// A save's SP navi deletion times, by slot (`byte_203EB00`: the frames,
+/// 20 halfwords; compat's records.toml names the SP chip of each slot the
+/// game reads).
+pub type SpTimes = [u16; 20];
+
+impl Ids<'_> {
+    /// The SP times as the rules' setup takes them (their `sp_times`: a
+    /// `{ chip, frames }` each), the chip of each slot compat names, in the
+    /// slots' order: a save's or a recording's times as facts.
+    pub fn sp_times(&self, times: &SpTimes) -> Vec<(nettai_content_api::ChipHandle, u16)> {
+        let mut slots: Vec<(&String, &u8)> = self.compat.records.sp_slots.iter().collect();
+        slots.sort_by_key(|(_, n)| **n);
+        slots
+            .into_iter()
+            .map(|(key, &n)| {
+                let chip = self
+                    .content
+                    .defs
+                    .chip_by_key(self.key(key))
+                    .unwrap_or_else(|| panic!("records.toml's SP slot {n} is the chip {key:?}, which the content doesn't have"));
+                (chip, times[n as usize])
+            })
+            .collect()
+    }
+}
+
+/// Write `times` (chips and frames) as a player's setup fact `sp_times`.
+pub fn write_sp_times(
+    player: &mut nettai_battle::custom::PlayerSetup,
+    content: &Content,
+    times: &[(nettai_content_api::ChipHandle, u16)],
+) -> Result<bool, String> {
+    use nettai_battle::rules::Fact;
+    use nettai_content_api::{Registry, Value};
+    let records: Vec<Fact> = times
+        .iter()
+        .map(|&(c, f)| Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, c.0))), ("frames", Fact::Value(Value::Int(f as i64)))]))
+        .collect();
+    player.set_fact(content, "sp_times", &records)
 }
 
 #[cfg(test)]
