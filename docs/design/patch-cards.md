@@ -116,8 +116,8 @@ ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch
    from the fan translation of the Japanese games: the MMEXE6F and MMEXE6G IPS patches over the Japanese ROMs, read with the
    idealexe English charset (the user gave the patches as MMEXE6F.ips and MMEXE6G.ips, and the charset as a
    manifest.toml). The translation's eight-character spellings stay (Amonicul, KnigtMan), as the chip names do.
-   Two cards share "Puffy" there: センボン (22) is `puffy`, プクール (55) `puffball`. The Japanese names are the
-   ROMs' (ja.toml).
+   Two cards share "Puffy" there; the content calls センボン (22) Diodon (`diodon`) and プクール (55) Puffy (`puffy`).
+   The Japanese names are the ROMs' (ja.toml).
 2. **Applied by the simulation, from the setup** (§3), not by a setup builder outside it: the cards are part of
    the shared setup, and peers apply them alike.
 3. **An EXE6 system in the stock ruleset** applies them (the coordinator, after rules S0 landed); `round_setup` was

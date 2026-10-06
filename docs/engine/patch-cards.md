@@ -177,7 +177,7 @@ an instant effect. The content has each as a definition with the original's numb
 | Charged shots loading a chip (38 of them: M-Cannon, IceCube, GrasSeed, ...) | weapon routines from 0x35 to 0x91 (`loc_80126EA` with the chip; compat weapons.toml's `patch-cards/<card>/charge`) | patch_cards/\<card\>/charge.luau (lib/weapon's `chip`) |
 | ChrgS, the nine cards' marked charged shot (the program on every shot) | 0x8D, `sub_80125D0`, action 0x16 | lib/patch_cards/chrgs.luau |
 | The invisibility (Shadow, Momogra) | 0x71, `sub_8012464`, instant effect 2 | lib/patch_cards/invisible_charge.luau |
-| The bubble spread (Puffball) | 0x5F, action 0x25 | patch_cards/puffball/charge.luau |
+| The bubble spread (Puffy) | 0x5F, action 0x25 | patch_cards/puffy/charge.luau |
 | Count's rain (a dust storm over the opponent's middle) | 0x6D, `sub_801244A`, action 0x5E (`sub_80F020E`) | patch_cards/count/charge.luau |
 | Bass BX's nine-shot buster | 0x92, `sub_8012124`, action 0x5D | patch_cards/bassbx/charge.luau, lib/rapid_buster.luau |
 | The Bass Cross card's seeking whirlwind (AirSpin's action, variant 1) | 0x93, `sub_8012144`, action 0x38 | patch_cards/bass-cross-megaman/charge.luau |
@@ -240,7 +240,7 @@ in eight characters as the chip names are: Canodumb, Amonicul, KnigtMan, ... Cyb
 They are the content's own English names (as Count's and Django's chip names are), which gen-content checks are
 there.
 The verification workspace's tools/jp/patchcards.py reads them from a patched ROM in memory. Two cards share
-"Puffy" there: センボン (22) is `puffy`, プクール (55) `puffball`.
+"Puffy" there; the content calls センボン (22) Diodon (`diodon`) and プクール (55) Puffy (`puffy`).
 
 ## 6. Verification
 
@@ -289,7 +289,7 @@ read by map scripts only), BugStop's effect on the NaviCust's own bug compile (`
 
 ## Appendix A. The cards
 
-Number, the ROM's name, the translation's name, MB, effects (the effect ids' order on the card, which isn't the
+Number, the ROM's name, the content's English name, MB, effects (the effect ids' order on the card, which isn't the
 order they apply in). "(bug)" is the card's own marking.
 
 | # | Japanese | English | MB | Effects |
@@ -315,7 +315,7 @@ order they apply in). "(bug)" is the card's own marking.
 | 19 | ピカラー | Flashy | 11 | HP+5%; Elec body; Attack-1 (bug); custom damage 0 |
 | 20 | エレオーガ | Eleogre | 16 | HP+50; Elec body; emotion bug 0; status bug 0 |
 | 21 | ダルスト | OldStov | 12 | HP+130; Fire body; charge: FireBrn1; HP drain +1 (bug) |
-| 22 | センボン | Puffy | 11 | Aqua body; Rapid+4; buster blanks 0x0 |
+| 22 | センボン | Diodon | 11 | Aqua body; Rapid+4; buster blanks 0x0 |
 | 23 | ヒトデスタ | Starfish | 15 | Aqua body; charged shot: bubble |
 | 24 | グラサン | BigHat | 8 | no SuperArmor (bug); charge: FlshBom1 |
 | 25 | カカジー | ScarCrow | 14 | Elec body; charge: DolThdr1; ChipRecovery 30; buster blanks 0x42 (bug) |
