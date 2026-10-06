@@ -310,7 +310,7 @@ pub struct RuleNumbers {
     /// key (a navi's and a form's is in navis.toml and forms.toml).
     #[serde(default)]
     pub identities: BTreeMap<String, u16>,
-    /// The ruleset's roles (rules/roles.luau), by role name: the effect
+    /// The rules' roles (rules/roles.luau), by role name: the effect
     /// (`byte_80E0398`), hit spark (`byte_80E0804`), hit region
     /// (`PanelOffsetListsPointerTable`) and collision type
     /// (`byte_8019C7C`) number the original's routines name each by.
@@ -626,7 +626,7 @@ impl Compat {
     }
 
     /// What a navi runs when its CurAction is the original's `number`: one
-    /// of the framework's states, else the ruleset's own action or the
+    /// of the framework's states, else the rules' own action or the
     /// content action compat gives the number (the first by key, where
     /// several share it). None for a number nothing here has.
     pub fn navi_action_numbered(&self, content: &nettai_battle::Content, number: u8) -> Option<NaviAction> {
@@ -642,7 +642,7 @@ impl Compat {
     }
 
     /// The original's action number for object `r`'s CurAction: a navi's
-    /// NaviAction (the framework's states as themselves, the ruleset's
+    /// NaviAction (the framework's states as themselves, the rules'
     /// actions and content's by key), any other object's its own byte.
     pub fn navi_action(&self, b: &Battle, r: ObjectRef) -> Result<u8, String> {
         if b.objects.get(r).actor.is_none() {

@@ -25,8 +25,8 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     );
     // A role that names a definition, left out.
     let roles = c.scripts.module_mut(testing::ROOT, "test/rules/roles").expect("the test pack's roles");
-    assert!(roles.contains("    sparks = ruleset.sparks,\n"));
-    *roles = roles.replace("    sparks = ruleset.sparks,\n", "    sparks = { plain = ruleset.sparks.plain },\n");
+    assert!(roles.contains("    sparks = defined.sparks,\n"));
+    *roles = roles.replace("    sparks = defined.sparks,\n", "    sparks = { plain = defined.sparks.plain },\n");
     // (The test game's index loads every module of it: written again with the new ones.)
     testing::add_index(&mut c.scripts, testing::ROOT);
     c.define().unwrap();
@@ -239,7 +239,7 @@ fn a_load_reads_what_its_games_inits_reach() {
     }
 }
 
-/// docs/design/rules-in-luau.md R2: EXE5's ruleset and rule sections
+/// docs/design/rules-in-luau.md R2: EXE5's rules and rule sections
 /// (content/exe5/rules) are its game's, beside EXE6's: its pools (16 actors),
 /// its banners, its element tables. With them, the EXE5 chips the port has
 /// given uses (docs/design/exe5-map.md §15.6); one without a use yet isn't

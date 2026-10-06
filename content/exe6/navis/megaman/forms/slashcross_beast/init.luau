@@ -42,7 +42,7 @@ return define.form {
     -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
     -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
     traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time" },
-    -- Its charged sword runs inside the Beast Out rush (the beast part's, `sub_800FB54`).
+    -- Its charged sword runs inside the Beast Out rush (rules/beast's, `sub_800FB54`).
     charged_sword_rush = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 15, palette_add = 7 },

@@ -78,49 +78,9 @@ local scrap: ButtonSpec = {
 }
 
 return {
-    state = {
-        charge_cross_screens = "u8",
-        -- The Cross window's (window.luau).
-        crosses_used = "bool[5]",
-        offered = "u8[5]",
-        offered_count = "u8",
-        marked = "bool[5]",
-        window_cursor = "u8",
-        cross_chosen = "bool",
-        chosen = "u8",
-    },
-    -- What the player brings (nettai-match from a match's side, exe6-compat
-    -- from a save or a recording): the game's version, and the Crosses they
-    -- have (window.luau), up to five, of either version, in the window's
-    -- order. The version has no default: a side states it, or the round
-    -- doesn't start. A side that leaves out its Crosses has none. A save's
-    -- are those of its version's five it owns (by Cross number: Gregar's
-    -- event flags 0xE2-0xE6, Falzar's 0xE7-0xEB), which a boundary writes
-    -- as the list of them.
-    -- The versions come in the original's order (Gregar 0, Falzar 1: the
-    -- number a navi's stats carry, NaviStats+0x20), which tools go by: they
-    -- list and draw the versions in it, and number them by it.
-    setup = {
-        version = { "gregar", "falzar" },
-        crosses = "form[5]",
-    },
-    -- ChargeCross's extra chips (`extra_chips`, `sub_802A49C`) and DustCross's
-    -- scrap button (`scrap_button`, `sub_8027F10`), and theirs in Beast Out.
-    extends = {
-        form = { extra_chips = "bool", scrap_button = "bool" },
-    },
-    buttons = { scrap = scrap },
-    windows = {
-        cross_opening = window.opening,
-        cross_window = window.window,
-        cross_closing = window.closing,
-        cross_chosen = window.chosen,
-    },
-    custom = {
-        hand_size = hand_size,
-        open = window.open,
-        confirmed = window.confirmed,
-        keys = window.keys,
-        take_back = window.take_back,
-    },
+    hand_size = hand_size,
+    scrap = scrap,
+    -- The Cross window (window.luau): its four windows and its part of the
+    -- screen's routines.
+    window = window,
 }

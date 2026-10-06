@@ -10,10 +10,10 @@
 //!   facts its game's rules' (`crate::facts::check`: an enum the rules
 //!   require stated, each definition the game's and once in its list, the
 //!   engine's form list forms of the navi's own lists); patch cards only
-//!   with rules that have the patch cards part, each installed once, at
+//!   with rules that have rules/patch_cards, each installed once, at
 //!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (EXE6's menu
 //!   adds no card past 80 MB, `0x08141868`); a NaviCust only for MegaMan
-//!   under rules with the navicust part, on its board (`check_navicust`);
+//!   under rules with rules/navicust, on its board (`check_navicust`);
 //!   the folder by its own game's rules (the game's rules'
 //!   `folder_check`, `crate::folders`: EXE6's folder editor's), on the stats
 //!   the round set up (the NaviCust's and the patch cards' folder limits:
@@ -106,7 +106,7 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     // The patch cards.
     if !s.patch_cards.is_empty() {
         if !crate::has_patch_cards(content) {
-            out.push(format!("patch cards, but {game} has no patch cards part"));
+            out.push(format!("patch cards, but {game} has no rules/patch_cards"));
         }
         if s.patch_cards.len() > MAX_CARDS {
             out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.patch_cards.len()));
@@ -151,7 +151,7 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
 
 /// What is wrong with a side's NaviCust: it is MegaMan's (the navi that
 /// changes form: EXE6 compiles the PET's own navi's alone) under rules with
-/// the navicust part; each program in one of its colors, on the board of
+/// rules/navicust; each program in one of its colors, on the board of
 /// its expansions (EXE6's `sub_813BB00`: every cell it covers on the board or
 /// its frame, not all on the frame), over no other (`sub_813BB68`); copies
 /// of a program in one color all compressed or not (the save keeps it by
@@ -162,7 +162,7 @@ pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_bat
     let mut out = Vec::new();
     let defs = &content.defs;
     if !crate::has_navicust(content) {
-        out.push(format!("a NaviCust, but {} has no navicust part", arena.game));
+        out.push(format!("a NaviCust, but {} has no rules/navicust", arena.game));
     }
     if content.navi(s.navi).forms.is_none() {
         out.push(format!("a NaviCust, but {}'s stats aren't a NaviCust's (only MegaMan's compiles)", crate::names::navi(content, s.navi)));
@@ -303,7 +303,7 @@ mod tests {
     use super::*;
     use nettai_battle::navicust::{NaviCust, PlacedProgram};
 
-    /// A MegaMan with a NaviCust of EXE6's programs: the navicust part
+    /// A MegaMan with a NaviCust of EXE6's programs: rules/navicust
     /// compiles it into the stats the round starts with.
     fn compiled(parts: &[(&str, &str, u8, u8)]) -> (NaviStats, bool, Vec<String>) {
         compiled_at(parts, None)

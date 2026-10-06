@@ -178,7 +178,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     // EXE5's no-charge drive (0x080F03E4): the side's rules take the step
     // a navi with the no-charge state would take (DarkInvs: EXE5's
     // auto battle AI, 0x0802B4AC), and reset their drive's state for one
-    // without it (0x0802C03A); a part that answers has decided.
+    // without it (0x0802C03A); an answer has decided.
     if b.game_rules().intake.no_charge_drive && b.rules_controller_answer(side as u8, r).is_some() {
         return;
     }

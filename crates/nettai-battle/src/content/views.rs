@@ -75,7 +75,7 @@ pub enum ButtonView {
     /// Unison).
     FormOffer,
     /// Its picture in the chip window is a chip's too: the chip the
-    /// ruleset's role `beast_out` names shows it in place of art of its own
+    /// rules' role `beast_out` names shows it in place of art of its own
     /// (EXE6's Beast Out button and BeastOut chip).
     ChipPicture,
 }
@@ -119,7 +119,7 @@ pub enum PlayerFact {
     Level,
     /// The base HP their save holds for their navi (MegaMan's, which HP
     /// Memories raise; EXE5's team navis', the story's at their progress):
-    /// a game's save part writes it into the stats as the round is set
+    /// a game's rules/save writes it into the stats as the round is set
     /// up. A tool fills it in from what a navi's level gives (EXE5's
     /// `story`).
     BaseHp,

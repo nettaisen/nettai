@@ -1,8 +1,8 @@
 //! What a navi runs, its CurAction (docs/design/content-model-v2.md §7.2):
-//! one of the framework's states, one of the ruleset's own actions, or a
+//! one of the framework's states, one of the rules' own actions, or a
 //! content action, by handle. None has a number here: the framework's
 //! states are in the original's order (state-machine values the traces
-//! observe), and the ruleset's actions and content's have keys, by which
+//! observe), and the rules' actions and content's have keys, by which
 //! the validator numbers them (compat actions.toml).
 
 use nettai_content_api::ActionHandle;
@@ -23,7 +23,7 @@ pub enum NaviAction {
     Bubble,
     /// Waiting for input (`sub_80EA734`).
     Idle,
-    /// One of the ruleset's own actions.
+    /// One of the rules' own actions.
     Engine(EngineAction),
     /// An action content defines.
     Content(ActionHandle),
@@ -39,7 +39,7 @@ pub struct NaviWord {
     pub phase_init: u8,
 }
 
-/// The ruleset's own navi actions.
+/// The rules' own navi actions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EngineAction {
     /// A step (`movement`).

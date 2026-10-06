@@ -5,7 +5,7 @@
 -- controller of its `controlled` forms) and its exhaustion; and the Cross
 -- special (cross-special.luau, DarkInvs' takeover), whose controller shares
 -- the berserk's state, as the original's share their 0x10 bytes. Their
--- state is the part's. The turn-start sequencer is the framework's (EXE5 has it
+-- state is the rules' (rules/init.luau). The turn-start sequencer is the framework's (EXE5 has it
 -- too); it asks each side's rules at its check and when the turn starts.
 -- Beast Out on the custom screen (its button, its animations and the
 -- BeastOut chip's) is custom.luau.
@@ -54,148 +54,109 @@ local function changes_form(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
 end
 
-return {
-    state = {
-        check_delay = "u8",
-        rush_phase = "u8",
-        rush_started = "bool",
-        rush_home_x = "u8",
-        rush_home_y = "u8",
-        rush_chain = "bool",
-        rush_chain_block = "u8",
-        rush_countdown = "u16",
-        controller_step = "u8",
-        controller_moves = "u16",
-        controller_volley = "u16",
-        controller_started = "bool",
-        beast_out_used = "bool",
-    },
-    -- What the player's save brings (exe6-compat writes it, nettai-match
-    -- from a match's side): the game's version (its Beast) and Beast Out
-    -- unlocked (event flag 0xE0).
-    -- (The versions in the cross part's order, the original's.)
-    setup = {
-        version = { "gregar", "falzar" },
-        beast_out = "bool",
-    },
-    -- A setup that says nothing has Beast Out (a finished game's save).
-    setup_defaults = { beast_out = true },
-    -- A chip's Beast rush (`beast`): the lock-on mode it runs by (none: where
-    -- the navi stands), and `rush = false` for a chip with a mode that
-    -- doesn't rush (docs/design/rules-in-luau.md §7.5).
-    -- A Cross's form in Beast Out (`beast`), the Cross special's buster
-    -- volley in a form (`special_volley`, `sub_802D4F0`), and a form whose
-    -- charged sword runs inside the rush.
-    extends = {
-        chip = {
-            beast = { lockon = "record:lockon", rush = "bool" },
-        },
-        form = {
-            beast = "form",
-            special_volley = "u16",
-            charged_sword_rush = "bool",
-        },
-    },
-    actions = { rush.action, cross_special.action },
-    -- Beast Out on the custom screen (custom.luau).
-    buttons = { beast_out = custom_beast.button },
-    windows = { beast_out = custom_beast.window, beast_out_chip = custom_beast.chip_window },
-    custom = {
-        open = custom_beast.open,
-        confirmed = custom_beast.confirmed,
-        chip_picked = custom_beast.chip_picked,
-        chip_taken_back = custom_beast.chip_taken_back,
-    },
-    hooks = {
-        -- `sub_800FB54`: what runs inside the rush. In a Beast form (or
-        -- from the Cross special), a chip with the lock-on flag (its
-        -- `beast`, unless `rush = false`); of the forms' charged weapons,
-        -- the Beast forms' claw and SlashCross Beast's charged sword (the
-        -- form's `charged_sword_rush`).
-        chip_used = function(side: number, navi: Object, chip: Chip, weapon: Weapon?)
-            if weapon ~= nil then
-                local action = navi:navi_action()
-                if action == beast_claw.action or (action == slash_charge.action and sword_rush(side)) then
-                    navi.wrapped = 1
-                end
-                return
-            end
-            if navi.special_source ~= 0 or kind.beast(side) then
-                local beast = chip.beast
-                navi.wrapped = if beast ~= nil and beast.rush ~= false then 1 else 0
-            end
-        end,
-        -- `sub_802D322`: Beast Over's berserk decides a controlled navi's
-        -- idle.
-        controller = berserk.control,
-        -- `sub_802E4E4`, `sub_802D4C6`: the Cross special.
-        takeover_requested = cross_special.requested,
-        takeover = cross_special.takeover,
-        -- `sub_80158CC`: outside battle mode 1, reverting spends a Beast Out
-        -- and exhausts a Beast Over.
-        form_reverted = function(side: number, navi: Object)
-            if battle.mode() == 1 then
-                return
-            end
-            local form_kind = battle.navi(side).form.kind
-            if form_kind == "beast" or form_kind == "cross_beast" then
-                navi.tired = true
-            elseif form_kind == "beast_over" then
-                -- `sub_8014466`: exhausted, then the mood 0 that exhaustion
-                -- itself blocks.
-                navi.exhausted = true
-                battle.set_mood(side, 0)
-            end
-        end,
-        -- `sub_8009338`: the custom screen closed.
-        custom_closed = function(side: number)
-            local s = rules.state() :: State
-            s.check_delay = 1
-        end,
-        -- `sub_8015A16`: a mid-battle custom screen was asked for.
-        custom_requested = function(side: number)
-            if not changes_form(side) then
-                return
-            end
-            local s = rules.state() :: State
-            if s.check_delay ~= 0 and s.check_delay ~= 0xFF then
-                s.check_delay -= 1
-            end
-        end,
-        -- `sub_80159C6` + `sub_8015994`, once per turn start: the check
-        -- runs only while the delay is 0 (and sets it to 2), and a Beast Out
-        -- whose counter ran out asks to revert (request 0x40, handled while
-        -- paused). In battle mode 1 a Beast form always reverts.
-        turn_check = function(side: number)
-            local navi = battle.player(side) :: Object
-            local stats = battle.navi(side)
-            local revert: boolean
-            if battle.mode() == 1 then
-                revert = kind.beast(side)
-            else
-                local s = rules.state() :: State
-                if s.check_delay ~= 0 then
-                    return
-                end
-                s.check_delay = 2
-                if stats.beast_out_counter ~= 0 then
-                    return
-                end
-                navi.tired = true
-                revert = kind.beast(side)
-            end
-            if revert then
-                navi:set_request("revert_form", true)
-            end
-        end,
-        -- `sub_8015A38`: a turn in Beast Out uses up one of MegaMan's turns,
-        -- unless he started the battle in Beast Out.
-        turn_started = function(side: number)
-            local stats = battle.navi(side)
-            local started_beast = stats.starting_form.kind == "beast"
-            if changes_form(side) and not started_beast and kind.beast(side) and stats.beast_out_counter ~= 0 then
-                stats.beast_out_counter -= 1
-            end
-        end,
-    },
-}
+local beast = {}
+
+-- What the rules list of Beast Out's: the rush and the Cross special, their
+-- actions; Beast Out on the custom screen (custom.luau: its button, its
+-- windows and its part of the screen's routines).
+beast.rush_action = rush.action
+beast.cross_special_action = cross_special.action
+beast.custom = custom_beast
+
+-- `sub_800FB54`: what runs inside the rush. In a Beast form (or
+-- from the Cross special), a chip with the lock-on flag (its
+-- `beast`, unless `rush = false`); of the forms' charged weapons,
+-- the Beast forms' claw and SlashCross Beast's charged sword (the
+-- form's `charged_sword_rush`).
+function beast.chip_used(side: number, navi: Object, chip: Chip, weapon: Weapon?)
+    if weapon ~= nil then
+        local action = navi:navi_action()
+        if action == beast_claw.action or (action == slash_charge.action and sword_rush(side)) then
+            navi.wrapped = 1
+        end
+        return
+    end
+    if navi.special_source ~= 0 or kind.beast(side) then
+        local rush_of = chip.beast
+        navi.wrapped = if rush_of ~= nil and rush_of.rush ~= false then 1 else 0
+    end
+end
+
+-- `sub_802D322`: Beast Over's berserk decides a controlled navi's
+-- idle.
+beast.controller = berserk.control
+-- `sub_802E4E4`, `sub_802D4C6`: the Cross special.
+beast.takeover_requested = cross_special.requested
+beast.takeover = cross_special.takeover
+-- `sub_80158CC`: outside battle mode 1, reverting spends a Beast Out
+-- and exhausts a Beast Over.
+function beast.form_reverted(side: number, navi: Object)
+    if battle.mode() == 1 then
+        return
+    end
+    local form_kind = battle.navi(side).form.kind
+    if form_kind == "beast" or form_kind == "cross_beast" then
+        navi.tired = true
+    elseif form_kind == "beast_over" then
+        -- `sub_8014466`: exhausted, then the mood 0 that exhaustion
+        -- itself blocks.
+        navi.exhausted = true
+        battle.set_mood(side, 0)
+    end
+end
+
+-- `sub_8009338`: the custom screen closed.
+function beast.custom_closed(side: number)
+    local s = rules.state() :: State
+    s.check_delay = 1
+end
+
+-- `sub_8015A16`: a mid-battle custom screen was asked for.
+function beast.custom_requested(side: number)
+    if not changes_form(side) then
+        return
+    end
+    local s = rules.state() :: State
+    if s.check_delay ~= 0 and s.check_delay ~= 0xFF then
+        s.check_delay -= 1
+    end
+end
+
+-- `sub_80159C6` + `sub_8015994`, once per turn start: the check
+-- runs only while the delay is 0 (and sets it to 2), and a Beast Out
+-- whose counter ran out asks to revert (request 0x40, handled while
+-- paused). In battle mode 1 a Beast form always reverts.
+function beast.turn_check(side: number)
+    local navi = battle.player(side) :: Object
+    local stats = battle.navi(side)
+    local revert: boolean
+    if battle.mode() == 1 then
+        revert = kind.beast(side)
+    else
+        local s = rules.state() :: State
+        if s.check_delay ~= 0 then
+            return
+        end
+        s.check_delay = 2
+        if stats.beast_out_counter ~= 0 then
+            return
+        end
+        navi.tired = true
+        revert = kind.beast(side)
+    end
+    if revert then
+        navi:set_request("revert_form", true)
+    end
+end
+
+-- `sub_8015A38`: a turn in Beast Out uses up one of MegaMan's turns,
+-- unless he started the battle in Beast Out.
+function beast.turn_started(side: number)
+    local stats = battle.navi(side)
+    local started_beast = stats.starting_form.kind == "beast"
+    if changes_form(side) and not started_beast and kind.beast(side) and stats.beast_out_counter ~= 0 then
+        stats.beast_out_counter -= 1
+    end
+end
+
+return beast

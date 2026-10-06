@@ -1,4 +1,4 @@
-//! Healing (`sub_800E2FC`), the ruleset's service for recovery chips
+//! Healing (`sub_800E2FC`), the rules' service for recovery chips
 //! (action 0x20, the pack's `chips/09a-recov10`) and the heal some chip
 //! uses give: the HP go up to the maximum, with a sparkle and a sound. When
 //! the healer's opponent has AntiRecv armed (its defensive-chip record)

@@ -1,6 +1,6 @@
 --!strict
 -- NumberSoul's hand of ten chips on EXE5's custom screen (docs/design/exe5-map.md §15.8; 0x08025BE4, the screen's
--- hand size as it opens): what the soul adds to the screen (its form's `custom`, which the souls part gathers:
+-- hand size as it opens): what the soul adds to the screen (its form's `custom`, which rules/souls gathers:
 -- rules/souls/custom). MegaMan in NumberSoul is dealt ten chips, whatever his custom level, in battle modes 0 and 6.
 -- The soul is the one the emotion routine leaves in r1 (NaviStats +0x2C), which in battle mode 1 is the stats'
 -- address instead (0x080127C0): there, and for any other soul, the hand is the custom level's (NaviStats +0x0A: the

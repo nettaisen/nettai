@@ -202,7 +202,7 @@ pub struct NaviStats {
     pub hub_style: u8,
     /// EXE5's +0x32: the turns Soul Unison gives a soul beside its 3
     /// (signed: the NaviCust's SoulT+1, the patch cards' SoulTm+ and
-    /// SoulTm-), which EXE5's souls part reads at OK (0x08024FF6). No EXE6
+    /// SoulTm-), which EXE5's rules/souls reads at OK (0x08024FF6). No EXE6
     /// navi has it.
     pub soul_turn_bonus: i8,
     pub weapons: NaviWeapons,

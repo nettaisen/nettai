@@ -1,7 +1,7 @@
 --!strict
 -- Beat, as EXE5 and EXE6 share him (actor object #0x4C in both: EXE6's `sub_80C34E0`, EXE5's 0x080C24C8, the same code),
 -- of a game's `BeatLook` (`beat.make`): the NaviCust support that snatches a Mega or Giga chip: the opponent used one,
--- the ruleset turned the use back (EXE6's `sub_80106C0`, EXE5's 0x0800E418) and summoned him through the supports'
+-- the rules turned the use back (EXE6's `sub_80106C0`, EXE5's 0x0800E418) and summoned him through the supports'
 -- controller (./controller). He swoops in from 240 pixels behind the opponent's navi and 112 above it, bounces off
 -- it, takes the chip (the opponent's hand moves on) and, a little over a second later, flies off. Then the controller
 -- moves on. See docs/engine/chips.md §2.10.

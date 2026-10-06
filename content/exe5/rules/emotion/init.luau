@@ -78,23 +78,20 @@ local function swing(side: number, navi: Object)
     end
 end
 
-emotion.part = {
-    state = { swing_ticks = "u16[4]", swung = "u8[4]" },
-    hooks = {
-        -- The swing runs from the navi's tick, whose bug a curse may set at any time.
-        round_start = function(side: number)
-            local navi = battle.player(side)
-            if navi ~= nil then
-                navi.ticked = true
-            end
-        end,
-        countered = function(side: number, _victim: Object)
-            if battle.navi(side).form.base then
-                battle.set_mood(side, 0xFF)
-            end
-        end,
-        navi_tick = swing,
-    },
-}
+-- The swing runs from the navi's tick, whose bug a curse may set at any time.
+function emotion.round_start(side: number)
+    local navi = battle.player(side)
+    if navi ~= nil then
+        navi.ticked = true
+    end
+end
+
+function emotion.countered(side: number, _victim: Object)
+    if battle.navi(side).form.base then
+        battle.set_mood(side, 0xFF)
+    end
+end
+
+emotion.navi_tick = swing
 
 return emotion

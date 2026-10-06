@@ -29,7 +29,7 @@ export type State = {
     timer: number,
 }
 
--- The souls part's state (./init).
+-- the rules' state (./init).
 type Souls = { turns: number, chaos: boolean, arm_chip: Chip? }
 
 local FLASH_SOUND = asset.sound("log-in")
@@ -177,7 +177,7 @@ function change.update(me: Object, s: State)
     end
 end
 
--- The soul change, as the pause handler runs it: one of the souls part's actions (./init).
+-- The soul change, as the pause handler runs it: one of rules/souls's actions (./init).
 change.action = define.action {
     id = "souls/change",
     state = { timer = "u16" },
