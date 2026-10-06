@@ -25,9 +25,6 @@ local STANDS = 0x10
 local ENEMY: { [number]: number } = { [0] = 0x0500_0000, 0x0A00_0000 }
 -- Where the press's top left panel may be from the trap's (0x080DF378), in the order they are drawn from.
 local SQUARES = { { 0, 0 }, { 0, -1 }, { -1, 0 }, { -1, -1 } }
--- The press's variant: the trap's wait and speed.
-local PRESS_VARIANT = 4
-
 -- Its actions.
 local SHOWN, ARMED = 0x0, 0x4
 
@@ -75,7 +72,7 @@ local function armed(me: Object)
         end
         battle.play_sound(SOUND)
         local x, y = square(me)
-        press.spawn(me, x, y, me.element, PRESS_VARIANT, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
+        press.spawn(me, x, y, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
     end
     me.lifecycle = "destroy"
 end

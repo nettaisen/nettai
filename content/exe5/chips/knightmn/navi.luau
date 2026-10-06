@@ -34,7 +34,7 @@ local HEIGHT = 0xA0_0000
 local GRAVITY = -0x4000
 local RISE = 0x8_0000
 -- His swing (the chips' Param2 to Param4: 8 a tick, one turn, confusing).
-local SWING: { speed: number, turns: number, status: Status?, variant: number } = { speed = 8, turns = 1, status = statuses.confuse_480, variant = 0 }
+local SWING: KnightBallSwing = { speed = 8, turns = 1, status = statuses.confuse_480, look = ball.knightman }
 
 -- He goes: the controller moves on, his ball and chain come off.
 local function leave(me: Object)
