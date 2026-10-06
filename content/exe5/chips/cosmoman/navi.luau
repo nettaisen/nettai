@@ -79,7 +79,7 @@ local function take(me: Object, s: State): number
     local n = 0
     for _, o in field.all_objects() do
         if math.abs(me.panel_x - o.panel_x) <= 1 and math.abs(me.panel_y - o.panel_y) <= 1 then
-            local look = obstacle.junk_look(o)
+            local look = obstacle.absorbed_look(o)
             if look then
                 s.taken[n + 1] = look
                 n += 1

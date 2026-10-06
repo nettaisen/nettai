@@ -62,7 +62,8 @@ local navi: NaviDef = {
         },
     },
     identity = new.identity {
-        class = "megaman",
+        class = "player",
+        changes_form = true,
         version = 0,
         actor_type = "player",
         ai_index = 0,

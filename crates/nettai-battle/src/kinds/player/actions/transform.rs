@@ -207,15 +207,15 @@ fn calm_down(b: &mut Battle, r: ObjectRef) {
 
 // ---- A Cross breaking --------------------------------------------------------
 
-/// `sub_8015766`: a weakness hit breaks the Cross (from action dispatch,
-/// with `status::CROSS_BREAKING`): dimming falls while the navi drops to
+/// `sub_8015766`: a weakness hit breaks the form (from action dispatch,
+/// with `status::FORM_BREAKING`): dimming falls while the navi drops to
 /// base form (a Cross Beast to its Beast), then 30 ticks later it goes on.
 /// True while it runs. EXE5's (0x080122C8, `FormBreak::AnyForm`: a dark chip
 /// used in a soul) drops any form to the base form, and lacks animation 2
 /// and the overlay's refresh, the overlay's kept stepping, the collision
 /// region's removal and return, and the flags 0x80110000 and statuses
 /// 0x200800 it clears.
-pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> bool {
+pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool {
     let any_form = b.game_rules().form_break == crate::content::FormBreak::AnyForm;
     if !matches!(ai(b, r).attack.action, ActionVars::FormChange(_)) {
         ai_mut(b, r).attack.action = ActionVars::FormChange(Vars::default());
@@ -295,14 +295,14 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         return true;
     }
     if any_form {
-        ai_mut(b, r).status &= !status::CROSS_BREAKING;
+        ai_mut(b, r).status &= !status::FORM_BREAKING;
         b.clear_flags(battle_flags::DIMMED);
         let a = &mut ai_mut(b, r).attack;
         a.step = 0;
         a.step_init = 0;
         return false;
     }
-    ai_mut(b, r).status &= !(status::CROSS_BREAKING | status::HEAT_TRAP | status::TRAP_ARMED);
+    ai_mut(b, r).status &= !(status::FORM_BREAKING | status::HEAT_TRAP | status::TRAP_ARMED);
     if let Some(o) = b.objects.get(r).related[1] {
         form::normal_overlay_stepping(b, o);
     }

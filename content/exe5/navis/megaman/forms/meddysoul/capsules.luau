@@ -125,14 +125,14 @@ local window: SoulWindow = {
             -- 0x0802337A
             count += 1
             if count >= 8 then
-                custom.fade(side, "soul_flash", FADE_SPEED)
+                custom.fade(side, "flash", FADE_SPEED)
                 custom.play(side, "program_advance_part")
                 step, count = 12, 0
             end
         elseif step == 12 then
             -- 0x080233A8
             if not fading then
-                custom.fade(side, "soul_flash_back", FADE_SPEED)
+                custom.fade(side, "flash_back", FADE_SPEED)
                 step, count = 16, 0
             end
         elseif step == 16 then

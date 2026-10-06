@@ -46,12 +46,12 @@ pub enum ActionRole {
     /// EXE5's loss of HP raises it for a dark MegaMan's last stand
     /// (0x0802C16C), EXE5's action 0x30.
     Volley,
-    /// DustCross Beast's scatter (0x50), during which the rules doesn't
-    /// ground a MegaMan navi.
-    DustBeastScatter,
-    /// ChargeCross's tackle (0x56), during which an invulnerable navi
-    /// doesn't glow (`sub_8016860`).
-    ChargeTackle,
+    /// An action during which the navi that changes form isn't grounded
+    /// (EXE6's DustCross Beast's scatter, 0x50).
+    Ungrounded,
+    /// An action during which an invulnerable navi doesn't glow
+    /// (`sub_8016860`: EXE6's ChargeCross's tackle, 0x56).
+    Glowless,
     /// The wrapper an attack runs inside while its `wrapped` is 1
     /// (`sub_801B9E6`): EXE6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
     /// attack runs as it is.
@@ -73,8 +73,8 @@ impl ActionRole {
         ActionRole::Turn,
         ActionRole::SwitchKnockout,
         ActionRole::Volley,
-        ActionRole::DustBeastScatter,
-        ActionRole::ChargeTackle,
+        ActionRole::Ungrounded,
+        ActionRole::Glowless,
         ActionRole::Wrapper,
         ActionRole::ChaosFailure,
     ];
@@ -91,8 +91,8 @@ impl ActionRole {
             ActionRole::Turn => "turn",
             ActionRole::SwitchKnockout => "switch_knockout",
             ActionRole::Volley => "volley",
-            ActionRole::DustBeastScatter => "dust_beast_scatter",
-            ActionRole::ChargeTackle => "charge_tackle",
+            ActionRole::Ungrounded => "ungrounded",
+            ActionRole::Glowless => "glowless",
             ActionRole::Wrapper => "wrapper",
             ActionRole::ChaosFailure => "chaos_failure",
         }
@@ -124,10 +124,10 @@ pub enum KindRole {
     Mode9Actor,
     /// What an obstacle turns into where an armed side's ColonelSoul can
     /// use it (EXE5's attack object #0x30, 0x080CA834: the step
-    /// `effects.obstacle_soldiers` enables, `kinds::obstacle::Soldiers`).
+    /// `effects.obstacle_conversion` enables, `kinds::obstacle::Conversion`).
     /// The engine sets its state field `gun` (0 the sword's soldier, 1 the
     /// gun's: its Param1).
-    ObstacleSoldier,
+    ConvertedObstacle,
     /// The ripple over a body under the sea's surface (EXE5's effect object
     /// #0x3E, 0x080E4B64), which the navi's status tick keeps
     /// (0x0800DEB2): the engine gives it the body as its first related.
@@ -142,7 +142,7 @@ impl KindRole {
         KindRole::AntiRecovery,
         KindRole::Mode9Attack,
         KindRole::Mode9Actor,
-        KindRole::ObstacleSoldier,
+        KindRole::ConvertedObstacle,
         KindRole::DiveRipple,
     ];
 
@@ -155,7 +155,7 @@ impl KindRole {
             KindRole::Mode9Actor => "mode9_actor",
             KindRole::Support => "support",
             KindRole::AntiRecovery => "anti_recovery",
-            KindRole::ObstacleSoldier => "obstacle_soldier",
+            KindRole::ConvertedObstacle => "converted_obstacle",
             KindRole::DiveRipple => "dive_ripple",
         }
     }
@@ -387,35 +387,26 @@ definition_roles! {
         // The custom screen's (its player hears them).
         /// The custom screen's window starts sliding in.
         CustomOpen = "custom_open",
-        /// The custom screen's cursor moves (also in the Cross window).
+        /// The custom screen's cursor moves (also in a rules' window).
         CustomCursor = "custom_cursor",
         /// SELECT hides the custom screen's window, and a key brings it back.
         CustomHide = "custom_hide",
-        /// The custom screen's hover over a dark chip, every 64 ticks
-        /// (EXE5's; a game that plays none fills none).
-        CustomDarkHover = "custom_dark_hover",
-        /// A chip, Beast Out, the scrap or a Cross is picked.
+        /// The custom screen's hover over a dark chip, every 64 ticks while
+        /// it shades the screen (EXE5's; a game that plays none fills none).
+        CustomShade = "custom_shade",
+        /// A chip or a button's pick (EXE6's Beast Out, the scrap, a
+        /// Cross) is picked.
         CustomPick = "custom_pick",
         /// OK is pressed.
         CustomOk = "custom_ok",
         /// A pick is taken back.
         CustomBack = "custom_back",
-        /// The Cross window opens, and closes.
-        CustomCrossOpen = "custom_cross_open",
-        CustomCrossClose = "custom_cross_close",
-        /// A Cross is put on (when its white fade is over).
-        CustomCrossChosen = "custom_cross_chosen",
         /// L: the no-running message.
         CustomRunMessage = "custom_run_message",
         /// R: a description opens, and closes.
         CustomDescription = "custom_description",
         CustomDescriptionClose = "custom_description_close",
-        /// Beast Out chosen: its two sounds, the first the console's
-        /// version's.
-        CustomBeastOutFalzar = "custom_beast_out_falzar",
-        CustomBeastOutGregar = "custom_beast_out_gregar",
-        CustomBeastOutFlash = "custom_beast_out_flash",
-        /// A Beast Out or a Cross taken back.
+        /// A button's pick taken back (EXE6's Beast Out or Cross).
         CustomCancel = "custom_cancel",
         /// ChpShufl's re-deal pressed, and each of its shuffles.
         CustomRedeal = "custom_redeal",
@@ -546,9 +537,10 @@ pub enum ChipRole {
     /// (a hand's empty selection, the attack's cleared chip, a
     /// non-player's carried chip, a side's special chip never set).
     Zeroed,
-    /// The Beast Out chip the custom screen offers and recognizes
-    /// (`sub_802A00C`).
-    BeastOut,
+    /// The chip a custom-screen button's pick stands as in the hand (EXE6's
+    /// BeastOut, `sub_802A00C`): a frontend draws its picture as the
+    /// button's (`ButtonView::ChipPicture`).
+    ButtonChip,
     /// What an illegal pick counts as in a selection (`getChipID_802A54E`).
     Invalid,
     /// The chips the NaviCust supports' telops name (`sub_80E90FE`).
@@ -559,13 +551,13 @@ pub enum ChipRole {
 
 impl ChipRole {
     pub const ALL: [ChipRole; 6] =
-        [ChipRole::Zeroed, ChipRole::BeastOut, ChipRole::Invalid, ChipRole::Rush, ChipRole::Beat, ChipRole::Tango];
+        [ChipRole::Zeroed, ChipRole::ButtonChip, ChipRole::Invalid, ChipRole::Rush, ChipRole::Beat, ChipRole::Tango];
 
     /// Its name in `rules/roles.luau`'s `chips`.
     pub fn name(self) -> &'static str {
         match self {
             ChipRole::Zeroed => "zeroed",
-            ChipRole::BeastOut => "beast_out",
+            ChipRole::ButtonChip => "button_chip",
             ChipRole::Invalid => "invalid",
             ChipRole::Rush => "rush",
             ChipRole::Beat => "beat",
