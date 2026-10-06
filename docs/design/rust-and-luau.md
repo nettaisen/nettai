@@ -44,10 +44,8 @@ Where Rust still knows one game's thing. Each is scheduled or noted; none is to 
    deletion times became facts of the rules' setup in step c2, each game's `sp_times`; the navi, the folder, its
    Regular and tag chips, the patch cards and the NaviCust in step c3a; EXE5's auto battle data in step c4a. The
    dealt battle folder and the console's setup stay the engine's, as recordings give them.)
-3. **Engine routines that are one game's path**: the NaviCust's board types and shapes (navicust.rs, the `navicust`
-   rule section's `NaviCustRules`), which only the editor's NaviCust pane and two compat paths still read, and
-   nettai-match's `has_navicust` and `has_patch_cards` for the editor's panes (step c3b replaces those panes with
-   view kinds the rules declare; until then the editor reads the programs' and cards' data by field). The patch
+3. **Engine routines that are one game's path**: none of the NaviCust's since step c3b (its board, shapes and
+   section went: the board is the rules' data, which the editor's own grid reads with `Battle::module_data`). The patch
    cards and the NaviCust programs themselves are no engine registry since step c6c: entries of the game's own
    collections, its root's `patch_cards` and `navicust_programs` (content-model-v2.md §3.11); nettai-match's typed view of EXE5's auto battle data (auto_battle.rs: its lists,
    for the editor's pane, and the game's learning, `AutoBattle::learned`, whose tie-break waits on the user). The
@@ -59,5 +57,5 @@ Where Rust still knows one game's thing. Each is scheduled or noted; none is to 
    `PlayerFact::RegularChip` and `PlayerFact::TagChips` (the series' Regular chip, EXE6's tag chips), which the
    battle folder's deal reads (`BattleFolder::shuffled_with_tag_pair`, the custom screen's machinery). The navi and
    the folder (`PlayerFact::Navi`, `PlayerFact::Folder`) are the core's own.
-5. **Rule sections named for one game's feature**: `berserk` (Beast Over's), `navicust`, the emotion section's Full
+5. **Rule sections named for one game's feature**: `berserk` (Beast Over's), the emotion section's Full
    Synchro aura. (`sp_chips` is no section since step c2: each game's rules/sp_chips is its own module.) They are schemas a game fills, but their names are a feature's.

@@ -2704,29 +2704,16 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
     }
 }
 
-/// A tool's argument (`ContentHost::call_tool`) as a script value: a
-/// number, a flag, a definition's table, a code's letter.
-pub fn tool_arg(lua: &Lua, bound: &Bound, v: Value) -> mlua::Result<LuaValue> {
-    Ok(match v {
-        Value::Nil => LuaValue::Nil,
-        Value::Bool(b) => LuaValue::Boolean(b),
-        Value::Int(i) => LuaValue::Number(i as f64),
-        Value::Def(r, h) => LuaValue::Table(bound.def_value(r, h)?),
-        Value::Code(c) => LuaValue::String(lua.create_string([c])?),
-        other => return Err(mlua::Error::runtime(format!("a tool passes no {other:?}"))),
-    })
-}
-
-/// What a function answered a tool, as plain data: a flag, a whole number,
-/// a string, a definition (by its key), a list, a table by keys (in key
-/// order); nothing else.
-pub fn tool_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<nettai_content_api::Data> {
+/// A module's value as plain data (`ContentHost::module_data`): a flag, a
+/// whole number, a string, a definition (by its key), a list, a table by
+/// keys (in key order); a function left out.
+pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<nettai_content_api::Data> {
     use nettai_content_api::{Data, DataKey};
     if depth > 16 {
-        return Err(mlua::Error::runtime("an answer nested past 16 tables"));
+        return Err(mlua::Error::runtime("data nested past 16 tables"));
     }
     Ok(match v {
-        LuaValue::Nil => Data::Nil,
+        LuaValue::Nil | LuaValue::Function(_) => Data::Nil,
         LuaValue::Boolean(b) => Data::Bool(*b),
         LuaValue::Integer(i) => Data::Int(*i),
         LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 9.0e15 => Data::Int(*n as i64),
@@ -2740,24 +2727,26 @@ pub fn tool_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<nettai
             let mut entries = Vec::new();
             for pair in t.clone().pairs::<LuaValue, LuaValue>() {
                 let (k, x) = pair?;
+                if matches!(x, LuaValue::Function(_)) {
+                    continue;
+                }
                 let key = match &k {
                     LuaValue::String(s) => DataKey::Str(s.to_str()?.to_string()),
                     LuaValue::Integer(i) => DataKey::Int(*i),
                     LuaValue::Number(f) if f.fract() == 0.0 => DataKey::Int(*f as i64),
-                    other => return Err(mlua::Error::runtime(format!("an answer's table is keyed by names or numbers, not {}", other.type_name()))),
+                    other => return Err(mlua::Error::runtime(format!("a table keyed by names or numbers, not {}", other.type_name()))),
                 };
-                entries.push((key, tool_data(&x, bound, depth + 1)?));
+                entries.push((key, plain_data(&x, bound, depth + 1)?));
             }
+            entries.sort_by(|a, b| a.0.cmp(&b.0));
             // (A sequence, 1 to n, is a list.)
-            if entries.len() == n && entries.iter().all(|(k, _)| matches!(k, DataKey::Int(i) if (1..=n as i64).contains(i))) {
-                entries.sort_by(|a, b| a.0.cmp(&b.0));
+            if n > 0 && entries.len() == n && entries.iter().all(|(k, _)| matches!(k, DataKey::Int(i) if (1..=n as i64).contains(i))) {
                 Data::List(entries.into_iter().map(|(_, x)| x).collect())
             } else {
-                entries.sort_by(|a, b| a.0.cmp(&b.0));
                 Data::Map(entries)
             }
         }
-        other => return Err(mlua::Error::runtime(format!("a tool's answer holds no {}", other.type_name()))),
+        other => return Err(mlua::Error::runtime(format!("no data is a {}", other.type_name()))),
     })
 }
 

@@ -207,8 +207,8 @@ pub(crate) struct Bound {
     tables: HashMap<(Registry, u16), Table>,
     /// Records' types and entries' collections, by registry and handle.
     record_types: HashMap<(Registry, u16), String>,
-    /// Each definition's key, by registry and handle (a tool's answer names
-    /// a definition by it).
+    /// Each definition's key, by registry and handle (module data names a
+    /// definition by it).
     keys: HashMap<(Registry, u16), String>,
     assets: RefCell<define::AssetTables>,
 }
@@ -257,13 +257,16 @@ pub struct LuauContent {
     sources: Vec<FnSource>,
     budget: u32,
     collect_garbage: bool,
+    /// What each module returned as it loaded, by its name (a tool reads a
+    /// game's data from it: `ContentHost::module_data`).
+    modules: BTreeMap<String, LuaValue>,
 }
 
 impl LuauContent {
     /// Load a pack's modules (the define phase), check they define what
     /// `plan` was made from, and bind the functions `plan` names.
     pub fn load(pack: &Pack, plan: &BindPlan, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, _, _, assets) = open(pack, &plan.assets, options)?;
+        let (lua, defined, modules, _, assets) = open(pack, &plan.assets, options)?;
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -319,6 +322,7 @@ impl LuauContent {
             sources: plan.functions.clone(),
             budget: options.budget,
             collect_garbage: options.collect_garbage,
+            modules,
         })
     }
 
@@ -391,11 +395,9 @@ impl ContentHost for LuauContent {
         bind::hook_result(v, call, &self.bound).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))))
     }
 
-    fn call_tool(&self, api: &mut dyn CoreApi, f: FnId, side: u8, args: &[Value]) -> Result<nettai_content_api::Data, ContentError> {
-        let what = |e: mlua::Error| ContentError::new(format!("{}: {e}", self.describe(f)));
-        let args = args.iter().map(|&v| bind::tool_arg(&self.lua, &self.bound, v)).collect::<mlua::Result<Vec<_>>>().map_err(what)?;
-        let v: LuaValue = self.call(f, api, Some(bind::RulesCtx { side }), mlua::MultiValue::from_vec(args))?;
-        bind::tool_data(&v, &self.bound, 0).map_err(what)
+    fn module_data(&self, module: &str) -> Option<Result<nettai_content_api::Data, ContentError>> {
+        let v = self.modules.get(module)?;
+        Some(bind::plain_data(v, &self.bound, 0).map_err(|e| ContentError::new(e.to_string())))
     }
 }
 

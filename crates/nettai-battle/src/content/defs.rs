@@ -403,19 +403,9 @@ pub struct RulesDef {
     pub views: ViewFields,
     /// Its extensions of its game's definitions (`extends`).
     pub extends: Vec<Extension>,
-    /// The functions of its `panes` (what a tool shows of a side's setup,
-    /// pane by pane; the editor's), by their paths there
-    /// (`panes.2.fields.1.board`): the engine calls one only for a tool
-    /// (`Battle::call_pane`).
-    pub pane_functions: BTreeMap<String, FnId>,
 }
 
 impl RulesDef {
-    /// The function at `path` of its `panes`, if one is there.
-    pub fn pane_function(&self, path: &str) -> Option<FnId> {
-        self.pane_functions.get(path).copied()
-    }
-
     /// A player's setup block of them when the player gives none: their
     /// defaults (`setup_defaults`), the rest zero, an enum without a
     /// default unstated.
@@ -851,27 +841,6 @@ impl Functions {
         self.ids.insert(f.clone(), id);
         self.list.push(f);
         id
-    }
-}
-
-/// Every function of `d`'s data `data` (at `path` in it), registered, by
-/// its path (a list's items from 1, as in Luau).
-fn functions_under(d: &Definition, data: &Data, path: &str, functions: &mut Functions, out: &mut BTreeMap<String, FnId>) {
-    match data {
-        Data::Function => {
-            out.insert(path.to_string(), functions.id(FnSource::slot(d.registry, &d.key, path)));
-        }
-        Data::List(items) => {
-            for (i, x) in items.iter().enumerate() {
-                functions_under(d, x, &format!("{path}.{}", i + 1), functions, out);
-            }
-        }
-        Data::Map(entries) => {
-            for (k, x) in entries {
-                functions_under(d, x, &format!("{path}.{k}"), functions, out);
-            }
-        }
-        _ => {}
     }
 }
 
@@ -1786,8 +1755,8 @@ impl Defs {
         let mut windows: Vec<WindowDef> = Vec::new();
         if let Some(d) = rules_definition(&definitions) {
             let what = |e: &str| ContentError::new(format!("{}.luau: rules: {e}", d.module));
-            const FIELDS: [&str; 12] =
-                ["state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "roles", "panes"];
+            const FIELDS: [&str; 11] =
+                ["state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "roles"];
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
                     let nettai_content_api::DataKey::Str(f) = k else {
@@ -1954,9 +1923,6 @@ impl Defs {
                 }
                 _ => return Err(what("`windows` is a table of windows by name")),
             }
-            // Its panes' functions, by their paths (a tool's to call).
-            let mut pane_functions = BTreeMap::new();
-            functions_under(d, d.spec.field("panes"), "panes", &mut functions, &mut pane_functions);
             // Its extensions of definitions: by registry, each field's type.
             let mut extends = Vec::new();
             match d.spec.field("extends") {
@@ -2088,7 +2054,6 @@ impl Defs {
                 windows: own_windows,
                 views,
                 extends,
-                pane_functions,
             });
         }
         // The rules' extensions: the definitions that carry a field carry it

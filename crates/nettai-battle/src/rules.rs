@@ -426,16 +426,6 @@ impl Battle {
         self.folder_check.take().map(|c| c.problems).unwrap_or_default()
     }
 
-    /// For tools (the editor's panes of a side's setup): the game's rules'
-    /// function at `path` under their `panes` (`panes.2.fields.1.board`),
-    /// called for side `side` with `args` on this battle as it stands: its
-    /// answer as plain data. No part of the simulation. None: the rules
-    /// have no function there.
-    pub fn call_pane(&mut self, path: &str, side: u8, args: &[Value]) -> Option<Result<nettai_content_api::Data, String>> {
-        let f = self.content.defs.rules()?.pane_function(path)?;
-        Some(crate::behavior::call_tool(self, f, side & 1, args))
-    }
-
     /// What side `side`'s rules say is wrong with its setup (their
     /// `validate`): each problem, in their order; nothing when they find
     /// none, or have no `validate`. The rules read the setup and the stats
@@ -445,6 +435,14 @@ impl Battle {
         self.validation = Some(Vec::new());
         self.notify_side(side & 1, RulesHook::Validate);
         self.validation.take().unwrap_or_default()
+    }
+
+    /// For tools: what module `module` of the content (by its name,
+    /// `exe6:rules/navicust/board`) returned as it loaded, as plain data, a
+    /// function in it left out; nothing is called (the editor reads the
+    /// NaviCust's boards so). None: no module of that name.
+    pub fn module_data(&self, module: &str) -> Option<Result<nettai_content_api::Data, String>> {
+        crate::behavior::module_data(self, module)
     }
 
     /// The rules' `navi_intake(side, navi)`, each tick of the fight in the
