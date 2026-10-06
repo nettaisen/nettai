@@ -20,6 +20,7 @@ local airspin1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = action.action { whirlwind = top.sender(0, 2) },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 -- AirSpin2 (EXE5 chip 0x083): action 0x47, EXE6's AirSpin (@exelib/airspin/action): a whirlwind top
@@ -37,6 +38,7 @@ local airspin2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = action.action { whirlwind = top.sender(1, 3) },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 -- AirSpin3 (EXE5 chip 0x084): action 0x47, EXE6's AirSpin (@exelib/airspin/action): a whirlwind top
@@ -54,6 +56,7 @@ local airspin3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = action.action { whirlwind = top.sender(2, 4) },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 return { airspin1 = airspin1, airspin2 = airspin2, airspin3 = airspin3 }

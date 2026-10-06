@@ -19,6 +19,7 @@ local tornado_chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = tornado.single,
+    auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 
 -- Static (EXE5 chip 0x01b): action 0x22, EXE6's blow with EXE5's fan and tornado (chips/tornado/tornado): static tornadoes two
@@ -37,6 +38,7 @@ local static: Chip = {
     slot_in_limit = 3,
     megaman = "dark",
     action = tornado.static,
+    auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 
 return { tornado = tornado_chip, static = static }

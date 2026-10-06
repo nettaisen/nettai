@@ -41,6 +41,7 @@ local chip: Chip = {
         picks = { crosswrd, sprsonic, dbldream },
         sword = sword,
     },
+    auto_battle = { class = "sword_swing" },
 }
 
 return { neovari = chip }

@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = slasher.action,
+    auto_battle = { class = "when_enemy_in_area" },
 }
 
 return { slasher = chip }

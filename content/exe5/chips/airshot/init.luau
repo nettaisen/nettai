@@ -36,6 +36,7 @@ local chip: Chip = {
             arm_anims = navi_arms.air_shooter,
         }
     ),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { airshot = chip }

@@ -20,6 +20,7 @@ local voltz1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = voltz.instant(0, 20),
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 -- Voltz2 (EXE5 chip 0x04f): a sensor dropped three panels ahead that shocks the panels beside it, the shocks
@@ -38,6 +39,7 @@ local voltz2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = voltz.instant(1, 20),
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 -- Voltz3 (EXE5 chip 0x050): a sensor dropped three panels ahead that shocks the panels beside it, the shocks
@@ -56,6 +58,7 @@ local voltz3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = voltz.instant(2, 20),
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { voltz1 = voltz1, voltz2 = voltz2, voltz3 = voltz3 }

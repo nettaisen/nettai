@@ -20,6 +20,7 @@ local gridman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- GridManSP (EXE5 chip 0x114): GridMan cuts in, dashes across the field and strikes the whole enemy area (../gridman/navi);
@@ -39,6 +40,7 @@ local gridman_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- GridManDS (EXE5 chip 0x115): GridMan, dark, cuts in, dashes across the field and strikes the whole enemy area
@@ -57,6 +59,7 @@ local gridman_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "at_once" },
 }
 
 return { gridman = gridman, ["gridman-sp"] = gridman_sp, ["gridman-ds"] = gridman_ds }

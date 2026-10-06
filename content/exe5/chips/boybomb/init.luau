@@ -19,6 +19,7 @@ local boybomb1: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = bomb.hook,
+    auto_battle = { class = "at_once" },
 }
 
 -- BoyBomb2 (EXE5 chip 0x056): a bomb set on the panel ahead that blows up over the 3x3 around it after 60 ticks
@@ -36,6 +37,7 @@ local boybomb2: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = bomb.hook,
+    auto_battle = { class = "at_once" },
 }
 
 -- BoyBomb3 (EXE5 chip 0x057): a bomb set on the panel ahead that blows up over the 3x3 around it after 60 ticks
@@ -53,6 +55,7 @@ local boybomb3: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = bomb.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { boybomb1 = boybomb1, boybomb2 = boybomb2, boybomb3 = boybomb3 }

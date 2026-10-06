@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     action = tornado.back_spread,
+    auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 
 return { darktorn = chip }

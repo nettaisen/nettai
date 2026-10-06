@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
     dimming = guardian.controller.hook,
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { guardian = chip }

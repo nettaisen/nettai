@@ -19,6 +19,7 @@ local firehit1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = fist.instant,
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- FireHit2 (EXE5 chip 0x098): action 0x1A's effect 9, EXE6's FireHit (chips/firehit/fist: a fist on each row where
@@ -36,6 +37,7 @@ local firehit2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = fist.instant,
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- FireHit3 (EXE5 chip 0x099): action 0x1A's effect 9, EXE6's FireHit (chips/firehit/fist: a fist on each row where
@@ -53,6 +55,7 @@ local firehit3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = fist.instant,
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 return { firehit1 = firehit1, firehit2 = firehit2, firehit3 = firehit3 }
