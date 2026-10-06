@@ -47,7 +47,9 @@ Where Rust still knows one game's thing. Each is scheduled or noted; none is to 
 3. **Engine routines that are one game's path**: the NaviCust's board types and shapes (navicust.rs, the `navicust`
    rule section's `NaviCustRules`), which only the editor's NaviCust pane and two compat paths still read, and
    nettai-match's `has_navicust` and `has_patch_cards` for the editor's panes (step c3b replaces those panes with
-   view kinds the rules declare); nettai-match's typed view of EXE5's auto battle data (auto_battle.rs: its lists,
+   view kinds the rules declare; until then the editor reads the programs' and cards' data by field). The patch
+   cards and the NaviCust programs themselves are no engine registry since step c6c: entries of the game's own
+   collections, its root's `patch_cards` and `navicust_programs` (content-model-v2.md §3.11); nettai-match's typed view of EXE5's auto battle data (auto_battle.rs: its lists,
    for the editor's pane, and the game's learning, `AutoBattle::learned`, whose tie-break waits on the user). The
    engine's own auto battle code went in step c4a (EXE5's rules' auto_battle/block.luau sends and plays the data),
    and the checks of all of them are the rules' `validate` since step c3a.

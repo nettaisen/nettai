@@ -4,7 +4,7 @@
 # places (Mega #7-21, Giga #1-5). Written by the verification workspace's `gen-content library` from the ROMs;
 # its `check` compares it with them. Menus list in it (nettai_content::library); the battle reads none of it.
 
-navicust = [
+navicust_programs = [
     "suprarmr",
     "custom1",
     "custom2",

@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 use nettai_content_api::SpriteId;
 
 use nettai_content_api::{
-    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
+    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, EntryHandle, FnId, FnSource, FormHandle, KindHandle,
     NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, RulesHook,
     WeaponHandle,
 };
@@ -293,11 +293,15 @@ pub enum ExtensionType {
 }
 
 impl ExtensionType {
-    /// The type `v` declares (`at`: where, for errors).
-    fn read(v: &Data, at: &str) -> Result<ExtensionType, String> {
+    /// The type `v` declares (`at`: where, for errors), the game's
+    /// collections `collections` (an entry of one: its name).
+    fn read(v: &Data, at: &str, collections: &[&str]) -> Result<ExtensionType, String> {
         use nettai_content_api::FieldType;
         match v {
-            Data::Str(name) => FieldType::scalar(name).map(ExtensionType::Value).ok_or_else(|| format!("{at}: no type is named {name:?}")),
+            Data::Str(name) => FieldType::scalar(name)
+                .filter(|ty| unknown_collection(ty, collections).is_none())
+                .map(ExtensionType::Value)
+                .ok_or_else(|| format!("{at}: no type is named {name:?}")),
             Data::List(variants) if !variants.is_empty() => {
                 let names = variants
                     .iter()
@@ -306,7 +310,10 @@ impl ExtensionType {
                 Ok(ExtensionType::Value(FieldType::Enum(names)))
             }
             Data::Map(fields) => Ok(ExtensionType::Table(
-                fields.iter().map(|(k, v)| Ok((k.to_string(), ExtensionType::read(v, &format!("{at}.{k}"))?))).collect::<Result<_, String>>()?,
+                fields
+                    .iter()
+                    .map(|(k, v)| Ok((k.to_string(), ExtensionType::read(v, &format!("{at}.{k}"), collections)?)))
+                    .collect::<Result<_, String>>()?,
             )),
             _ => Err(format!("{at}: a type name, a list of variants or a table of fields")),
         }
@@ -466,82 +473,35 @@ pub struct RecordDef {
     pub record_type: String,
 }
 
-/// A patch card (the root's `patch_cards`; BN4's, EXE5's and EXE6's Modification
-/// Cards, docs/engine/patch-cards.md): what every game's card is. A game's
-/// rules give its effects their meaning (EXE6's rules/patch_cards applies a
-/// player's cards as the round is set up); the engine keeps the card's
-/// capacity cost and its effects' kinds, and the effects' own fields stay
-/// the definition's data, which the rules read. Its name is the locales'.
+/// An entry of one of the game's collections (`Registry::Entry`: a table its
+/// root holds by id under a key the core doesn't know, EXE6's `patch_cards`
+/// and `navicust_programs`): data only content reads. The engine keeps its
+/// key (`<collection>/<id>`) and its collection; a match names it by its id,
+/// the locales and the library order by its key there.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct PatchCardDef {
+pub struct EntryDef {
     pub key: String,
-    /// Its capacity cost (EXE6's MB): what the installed cards' limit counts.
-    pub mb: u8,
-    /// Its effects in the card's order.
-    pub effects: Vec<PatchCardEffect>,
+    pub collection: String,
 }
 
-/// An effect of a patch card: its kind (a game's rules say what it does)
-/// and whether the card shows it as a bug (a menu's red text; no game's
-/// application reads it).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct PatchCardEffect {
-    pub kind: String,
-    pub bug: bool,
-}
-
-/// A NaviCust program (the root's `navicust_programs`; BN4's, EXE5's and EXE6's
-/// Navi Customizer parts, docs/design/navicust.md): what every game's
-/// program is. The engine keeps what a NaviCust's board needs of it, its
-/// colors and shapes and whether it is a plus part; the rest (EXE6's: what it
-/// does, which bug it brings, which programs it excludes) is the
-/// definition's data, which the game's rules read. Its name is the
-/// locales'.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct NaviCustProgramDef {
-    pub key: String,
-    /// The colors it comes in (EXE6's `white`, `yellow`, `pink`, `red`,
-    /// `blue`, `green`), in its variants' order: a placed program's color
-    /// is an index into them.
-    pub colors: Vec<String>,
-    /// A plus part (EXE6: one that belongs off the command line).
-    pub plus: bool,
-    /// Its shape, centered on the grid's middle cell, and compressed (none:
-    /// it doesn't compress).
-    pub shape: crate::navicust::Shape,
-    pub compressed: Option<crate::navicust::Shape>,
-}
-
-impl NaviCustProgramDef {
-    /// Its shape as placed: compressed or not, turned.
-    pub fn placed_shape(&self, compressed: bool, rotation: u8) -> crate::navicust::Shape {
-        let s = if compressed { self.compressed.as_ref().unwrap_or(&self.shape) } else { &self.shape };
-        crate::navicust::rotate(s, rotation)
+impl EntryDef {
+    /// Its id in its collection (`canodumb`).
+    pub fn id(&self) -> &str {
+        nettai_content_api::entry_parts(&self.key).1
     }
 }
 
-/// A shape from a definition: seven rows of seven cells, `#` a cell it
-/// covers and `.` one it doesn't.
-fn read_shape(d: &Data) -> Result<crate::navicust::Shape, String> {
-    use crate::navicust::SIZE;
-    let Data::List(rows) = d else { return Err(format!("a shape is {SIZE} rows of {SIZE} cells (strings of `#` and `.`)")) };
-    if rows.len() != SIZE {
-        return Err(format!("a shape is {SIZE} rows, not {}", rows.len()));
+/// The collection a type (at any depth) holds an entry of that the game's
+/// root hasn't (`collections`): a type name that is neither one of the
+/// core's nor a collection's.
+fn unknown_collection(ty: &nettai_content_api::FieldType, collections: &[&str]) -> Option<String> {
+    use nettai_content_api::FieldType;
+    match ty {
+        FieldType::Ref(Registry::Entry, Some(c)) => (!collections.contains(&c.as_str())).then(|| c.clone()),
+        FieldType::Array(elem, _) | FieldType::List(elem, _) => unknown_collection(elem, collections),
+        FieldType::Record(fields) => fields.fields().iter().find_map(|f| unknown_collection(&f.ty, collections)),
+        _ => None,
     }
-    let mut shape = [[false; SIZE]; SIZE];
-    for (y, row) in rows.iter().enumerate() {
-        let Some(row) = row.str() else { return Err(format!("row {} is not a string", y + 1)) };
-        if row.len() != SIZE || !row.bytes().all(|b| b == b'#' || b == b'.') {
-            return Err(format!("row {} is not {SIZE} cells of `#` and `.`: {row:?}", y + 1));
-        }
-        for (x, b) in row.bytes().enumerate() {
-            shape[y][x] = b == b'#';
-        }
-    }
-    if !shape.iter().flatten().any(|&c| c) {
-        return Err("a shape covers no cell".into());
-    }
-    Ok(shape)
 }
 
 /// A content state layout.
@@ -580,10 +540,9 @@ pub struct Defs {
     /// The status effects, by handle.
     pub statuses: Vec<StatusDef>,
     pub records: Vec<RecordDef>,
-    /// The patch cards, by handle.
-    pub patch_cards: Vec<PatchCardDef>,
-    /// The NaviCust programs, by handle.
-    pub navicust_programs: Vec<NaviCustProgramDef>,
+    /// The entries of the game's collections, by handle (key order: a
+    /// collection's together).
+    pub entries: Vec<EntryDef>,
     /// One-shot effects' and hit sparks' looks (`new.effect`,
     /// `new.spark`), by handle.
     pub effects: Vec<super::EffectSprite>,
@@ -770,22 +729,31 @@ impl Defs {
         self.weapon_keys.get(key).copied()
     }
 
-    /// The patch card with this key.
-    pub fn patch_card_by_key(&self, key: &str) -> Option<nettai_content_api::PatchCardHandle> {
-        self.patch_cards.binary_search_by(|c| c.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::PatchCardHandle(i as u16))
+    /// The entry with this key (`patch_cards/canodumb`).
+    pub fn entry_by_key(&self, key: &str) -> Option<EntryHandle> {
+        self.entries.binary_search_by(|e| e.key.as_str().cmp(key)).ok().map(|i| EntryHandle(i as u16))
     }
 
-    pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &PatchCardDef {
-        &self.patch_cards[h.index()]
+    /// Entry `id` of collection `collection`.
+    pub fn entry_in(&self, collection: &str, id: &str) -> Option<EntryHandle> {
+        self.entry_by_key(&nettai_content_api::entry_key(collection, id))
     }
 
-    /// The NaviCust program with this key.
-    pub fn navicust_program_by_key(&self, key: &str) -> Option<nettai_content_api::NaviCustProgramHandle> {
-        self.navicust_programs.binary_search_by(|p| p.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::NaviCustProgramHandle(i as u16))
+    pub fn entry(&self, h: EntryHandle) -> &EntryDef {
+        &self.entries[h.index()]
     }
 
-    pub fn navicust_program(&self, h: nettai_content_api::NaviCustProgramHandle) -> &NaviCustProgramDef {
-        &self.navicust_programs[h.index()]
+    /// The entries of collection `collection`, in key order (none: the
+    /// game's root holds no such collection).
+    pub fn entries_of(&self, collection: &str) -> Vec<EntryHandle> {
+        (0..self.entries.len() as u16).map(EntryHandle).filter(|&h| self.entry(h).collection == collection).collect()
+    }
+
+    /// The game's collections, by name, in order.
+    pub fn collections(&self) -> Vec<&str> {
+        let mut out: Vec<&str> = self.entries.iter().map(|e| e.collection.as_str()).collect();
+        out.dedup();
+        out
     }
 
     /// A record's handle by key.
@@ -1198,9 +1166,23 @@ impl Defs {
         // Layouts: the definitions' and modules' state tables, and the
         // empty one.
         let mut schemas = vec![SchemaDef { key: NO_STATE.to_string(), schema: Schema::default() }];
+        // (The game's collections, which a field may hold an entry of.)
+        let collections: Vec<&str> = {
+            let mut c: Vec<&str> = definitions.of(Registry::Entry).iter().filter_map(|d| d.record_type.as_deref()).collect();
+            c.dedup();
+            c
+        };
         for d in definitions.of(Registry::Schema) {
             let schema = Schema::from_data(&d.spec)
                 .map_err(|e| ContentError::new(format!("{}.luau: state {}: {e}", d.module, d.key)))?;
+            for f in schema.fields() {
+                if let Some(c) = unknown_collection(&f.ty, &collections) {
+                    return Err(ContentError::new(format!(
+                        "{}.luau: state {}: `{}`: no type is named {c:?} (nor is it a collection of the game's root)",
+                        d.module, d.key, f.name
+                    )));
+                }
+            }
             schemas.push(SchemaDef { key: d.key.clone(), schema });
         }
         schemas.sort_by(|a, b| a.key.cmp(&b.key));
@@ -1955,7 +1937,7 @@ impl Defs {
                         let Data::Map(fields) = fields else { return Err(what(&format!("`extends.{name}` is a table of fields")) ) };
                         for (f, ty) in fields {
                             let field = f.to_string();
-                            let ty = ExtensionType::read(ty, &format!("extends.{name}.{field}")).map_err(|e| what(&e))?;
+                            let ty = ExtensionType::read(ty, &format!("extends.{name}.{field}"), &collections).map_err(|e| what(&e))?;
                             extends.push(Extension { registry, field, ty });
                         }
                     }
@@ -2139,55 +2121,12 @@ impl Defs {
             lockons.push(LockonDef { record: RecordHandle(i as u16), key: d.key.clone(), mode });
         }
 
-        // The patch cards: their capacity cost and their effects' kinds
-        // (what the effects do is a game's rules').
-        let mut patch_cards = Vec::new();
-        for d in definitions.of(Registry::PatchCard) {
-            let what = |e: &str| ContentError::new(format!("{}.luau: patch_card {}: {e}", d.module, d.key));
+        // The entries of the game's collections: data only content reads.
+        let mut entries = Vec::new();
+        for d in definitions.of(Registry::Entry) {
             no_display_text(d)?;
-            let mb = d.spec.field("mb").int().filter(|mb| (0..=0xFF).contains(mb)).ok_or_else(|| what("needs `mb` (0-255)"))?;
-            let Data::List(list) = d.spec.field("effects") else {
-                return Err(what("needs `effects`, a list of effects (a table each, with its `kind`)"));
-            };
-            let mut effects = Vec::with_capacity(list.len());
-            for (i, e) in list.iter().enumerate() {
-                let Data::Str(kind) = e.field("kind") else {
-                    return Err(what(&format!("effect {} has no `kind` (a string)", i + 1)));
-                };
-                let bug = match e.field("bug") {
-                    Data::Nil => false,
-                    Data::Bool(b) => *b,
-                    _ => return Err(what(&format!("effect {}'s `bug` is not a boolean", i + 1))),
-                };
-                effects.push(PatchCardEffect { kind: kind.clone(), bug });
-            }
-            patch_cards.push(PatchCardDef { key: d.key.clone(), mb: mb as u8, effects });
-        }
-
-        // The NaviCust programs: their colors and shapes (what they do is a
-        // game's rules').
-        let mut navicust_programs = Vec::new();
-        for d in definitions.of(Registry::NaviCustProgram) {
-            let what = |e: &str| ContentError::new(format!("{}.luau: navicust_program {}: {e}", d.module, d.key));
-            no_display_text(d)?;
-            let Data::List(list) = d.spec.field("colors") else {
-                return Err(what("needs `colors`, the colors it comes in (strings), in its variants' order"));
-            };
-            let colors: Vec<String> = list.iter().map(|c| c.str().map(str::to_string)).collect::<Option<_>>().ok_or_else(|| what("a color is a string"))?;
-            if colors.is_empty() || colors.len() > 0xFF {
-                return Err(what("comes in 1 to 255 colors"));
-            }
-            let plus = match d.spec.field("plus") {
-                Data::Nil => false,
-                Data::Bool(b) => *b,
-                _ => return Err(what("`plus` is a boolean")),
-            };
-            let shape = read_shape(d.spec.field("shape")).map_err(|e| what(&format!("shape: {e}")))?;
-            let compressed = match d.spec.field("compressed") {
-                Data::Nil => None,
-                c => Some(read_shape(c).map_err(|e| what(&format!("compressed: {e}")))?),
-            };
-            navicust_programs.push(NaviCustProgramDef { key: d.key.clone(), colors, plus, shape, compressed });
+            let collection = d.record_type.clone().expect("an entry's record type is its collection");
+            entries.push(EntryDef { key: d.key.clone(), collection });
         }
 
         // Each definition's handle.
@@ -2240,8 +2179,7 @@ impl Defs {
             identities,
             statuses,
             records,
-            patch_cards,
-            navicust_programs,
+            entries,
             effects,
             sparks,
             regions,
@@ -2285,6 +2223,10 @@ mod tests {
         // require, content/exelib.)
         crate::content::testing::add_shared(&mut c.scripts);
         crate::content::testing::add_index(&mut c.scripts, "exe6");
+        // (Its own top module, whose root holds its collections by their
+        // names: a held game's is made by folder.)
+        let top = nettai_content_api::packs::top_module("exe6");
+        c.scripts.modules.insert(top, std::fs::read_to_string(format!("{dir}/init.luau")).expect("content/exe6/init.luau"));
         c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));

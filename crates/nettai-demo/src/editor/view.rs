@@ -521,14 +521,14 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
     let cards = crate::editor::app::cards_of(c, side);
-    let mb: u32 = cards.iter().map(|&card| c.defs.patch_card(card).mb as u32).sum();
+    let mb: u32 = cards.iter().map(|&card| crate::editor::navicust::entry_int(c, card, "mb") as u32).sum();
     let mut installed = Column::new().spacing(2);
     for (i, &card) in cards.iter().enumerate() {
-        let d = c.defs.patch_card(card);
+        let mb = crate::editor::navicust::entry_int(c, card, "mb");
         installed = installed.push(
             row![
-                text(e.names.patch_card(c, card)).size(14).width(Length::Fill),
-                text(format!("{} MB", d.mb)).size(12).color(DIM),
+                text(e.names.entry(c, card)).size(14).width(Length::Fill),
+                text(format!("{mb} MB")).size(12).color(DIM),
                 button(text("↑").size(12)).on_press(Msg::CardMove(s, i, true)).style(button::text),
                 button(text("↓").size(12)).on_press(Msg::CardMove(s, i, false)).style(button::text),
                 button(text("remove").size(12)).on_press(Msg::CardRemove(s, i)).style(button::danger),
@@ -539,22 +539,29 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     }
     let needle = e.search.to_lowercase();
     // (The match's game's.)
-    let mut all: Vec<(String, nettai_content_api::PatchCardHandle)> = (0..c.defs.patch_cards.len() as u16)
-        .map(nettai_content_api::PatchCardHandle)
-        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.patch_card(h).key))
+    let mut all: Vec<(String, nettai_content_api::EntryHandle)> = c
+        .defs
+        .entries_of("patch_cards")
+        .into_iter()
+        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.entry(h).key))
         .filter(|h| !cards.contains(h))
-        .map(|h| (e.names.patch_card(c, h), h))
+        .map(|h| (e.names.entry(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
         .collect();
-    e.order.patch_cards(c, &mut all);
+    e.order.entries(c, "patch_cards", &mut all);
     let available = all.into_iter().fold(Column::new().spacing(1), |col, (name, h)| {
-        let d = c.defs.patch_card(h);
-        let bugs = d.effects.iter().filter(|x| x.bug).count();
+        let data = crate::editor::navicust::entry_data(c, h);
+        let effects: &[nettai_content_api::Data] = match data.field("effects") {
+            nettai_content_api::Data::List(l) => l,
+            _ => &[],
+        };
+        let bugs = effects.iter().filter(|x| *x.field("bug") == nettai_content_api::Data::Bool(true)).count();
+        let mb = crate::editor::navicust::entry_int(c, h, "mb");
         col.push(
             row![
                 button(text("add").size(12)).on_press(Msg::AddCard(s, h)).style(button::secondary),
                 text(name).size(14).width(Length::Fill),
-                text(format!("{} MB · {} effects{}", d.mb, d.effects.len(), if bugs > 0 { format!(", {bugs} bugs") } else { String::new() }))
+                text(format!("{mb} MB · {} effects{}", effects.len(), if bugs > 0 { format!(", {bugs} bugs") } else { String::new() }))
                     .size(12)
                     .color(DIM),
             ]

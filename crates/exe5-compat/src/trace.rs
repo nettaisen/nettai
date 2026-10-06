@@ -1101,14 +1101,17 @@ pub fn navicust<'c>(content: &'c Content, compat: &Compat, list: &[u8], compress
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
         let Some((key, color)) = compat.navicust_part(e[0])? else { continue };
-        let program = content.defs.navicust_program_by_key(key).ok_or_else(|| format!("the content has no NaviCust program {key}"))?;
+        let program = content.defs.entry_in("navicust_programs", key).ok_or_else(|| format!("the content has no NaviCust program {key}"))?;
         if e[2] > 4 || e[3] > 4 || e[4] > 3 {
             return Err(format!("NaviCust part {:#04x} at column {}, row {}, turned {}: off EXE5's 5x5 board", e[0], e[2], e[3], e[4]));
         }
-        let def = content.defs.navicust_program(program);
-        let color = def.colors.get(color as usize).ok_or_else(|| format!("NaviCust part {:#04x}: {key} has no color {color}", e[0]))?;
+        let colors = match content.defs.definitions.get(Registry::Entry, &content.defs.entry(program).key).map(|d| d.spec.field("colors")) {
+            Some(nettai_content_api::Data::List(colors)) => colors.iter().filter_map(|c| c.str()).collect(),
+            _ => Vec::new(),
+        };
+        let color = colors.get(color as usize).copied().ok_or_else(|| format!("NaviCust part {:#04x}: {key} has no color {color}", e[0]))?;
         parts.push(Fact::Record(vec![
-            ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, program.0))),
+            ("program", Fact::Value(Value::Def(Registry::Entry, program.0))),
             ("color", Fact::Name(color)),
             ("x", Fact::Value(Value::Int(e[2] as i64 + 1))),
             ("y", Fact::Value(Value::Int(e[3] as i64 + 1))),
@@ -1128,9 +1131,9 @@ pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, 
     let mut cards = Vec::new();
     for &(n, on) in list {
         let key = compat.patch_card(n, version)?;
-        let card = content.defs.patch_card_by_key(key).ok_or_else(|| format!("the content has no patch card {key}"))?;
+        let card = content.defs.entry_in("patch_cards", key).ok_or_else(|| format!("the content has no patch card {key}"))?;
         if on {
-            cards.push(Fact::Value(Value::Def(Registry::PatchCard, card.0)));
+            cards.push(Fact::Value(Value::Def(Registry::Entry, card.0)));
         }
     }
     Ok(cards)

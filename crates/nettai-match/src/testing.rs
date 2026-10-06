@@ -60,12 +60,32 @@ pub fn exe5_content() -> Arc<Content> {
 /// compressed or not.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlacedProgram {
-    pub program: nettai_content_api::NaviCustProgramHandle,
+    pub program: nettai_content_api::EntryHandle,
     pub color: u8,
     pub x: u8,
     pub y: u8,
     pub rotation: u8,
     pub compressed: bool,
+}
+
+/// NaviCust program `program`'s colors, in its variants' order (its data's
+/// `colors`).
+pub fn program_colors(content: &Content, program: nettai_content_api::EntryHandle) -> Vec<&str> {
+    use nettai_content_api::{Data, Registry};
+    match content.defs.definitions.get(Registry::Entry, &content.defs.entry(program).key).map(|d| d.spec.field("colors")) {
+        Some(Data::List(colors)) => colors.iter().filter_map(|c| c.str()).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// NaviCust program `program`'s shape as placed (its data's `shape`, or
+/// `compressed` where it has one), turned.
+pub fn program_shape(content: &Content, program: nettai_content_api::EntryHandle, compressed: bool, rotation: u8) -> nettai_battle::navicust::Shape {
+    use nettai_content_api::Registry;
+    let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(program).key).expect("the program's definition");
+    let field = if compressed && !d.spec.field("compressed").is_nil() { "compressed" } else { "shape" };
+    let shape = nettai_battle::navicust::read_shape(d.spec.field(field)).expect("a program's shape");
+    nettai_battle::navicust::rotate(&shape, rotation)
 }
 
 /// State `side`'s NaviCust (its rules' `navicust_expansions` and
@@ -76,9 +96,9 @@ pub fn set_navicust(content: &Content, side: &mut crate::Side, parts: &[PlacedPr
     let records: Vec<Fact> = parts
         .iter()
         .map(|p| {
-            let color = content.defs.navicust_program(p.program).colors[p.color as usize].as_str();
+            let color = program_colors(content, p.program)[p.color as usize];
             Fact::Record(vec![
-                ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, p.program.0))),
+                ("program", Fact::Value(Value::Def(Registry::Entry, p.program.0))),
                 ("color", Fact::Name(color)),
                 ("x", Fact::Value(Value::Int(p.x as i64))),
                 ("y", Fact::Value(Value::Int(p.y as i64))),
@@ -110,8 +130,8 @@ pub fn patch_cards(content: &Content, game: &str, list: &str) -> Vec<nettai_batt
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(|name| {
-            let card = crate::ids::patch_card(content, game, name).unwrap_or_else(|| panic!("no patch card {name:?} in {game}"));
-            Fact::Value(Value::Def(Registry::PatchCard, card.0))
+            let card = crate::ids::entry(content, game, "patch_cards", name).unwrap_or_else(|| panic!("no patch card {name:?} in {game}"));
+            Fact::Value(Value::Def(Registry::Entry, card.0))
         })
         .collect()
 }

@@ -248,13 +248,22 @@ fn one<'v>(content: &Content, game: &str, ty: &FieldType, v: &'v toml::Value) ->
             Some(Some(i)) => Fact::Value(Value::Int(i as i64)),
             _ => return Err(format!("no {v} ({})", names.join(" or "))),
         },
-        FieldType::Ref(registry, _) => Fact::Value(match v.as_str() {
+        FieldType::Ref(registry, of) => Fact::Value(match v.as_str() {
             Some("") => Value::Nil,
-            Some(name) => ids::handle_of(content, game, *registry, name).map(|h| Value::Def(*registry, h)).ok_or_else(|| {
-                let have: Vec<&str> = (0..=u16::MAX).map_while(|h| ids::key_of(content, *registry, h)).filter(|k| ids::in_game(content, game, k)).map(ids::local).collect();
-                unknown(&registry.to_string(), name, game, &have)
+            Some(name) => ids::handle_of(content, game, *registry, of.as_deref(), name).map(|h| Value::Def(*registry, h)).ok_or_else(|| {
+                let have: Vec<&str> = ids::all_of(content, *registry, of.as_deref())
+                    .into_iter()
+                    .filter(|&h| ids::key_of(content, *registry, h).is_some_and(|k| ids::in_game(content, game, k)))
+                    .filter_map(|h| ids::name_of(content, *registry, h))
+                    .collect();
+                // (An entry by its collection's name: "no patch_cards `x`".)
+                let what = match (registry, of) {
+                    (nettai_content_api::Registry::Entry, Some(c)) => c.clone(),
+                    _ => registry.to_string(),
+                };
+                unknown(&what, name, game, &have)
             })?,
-            None => return Err(format!("{v} is no {registry}'s name")),
+            None => return Err(format!("{v} is no {}'s name", ty)),
         }),
         FieldType::Code => Fact::Value(match v.as_str() {
             Some("") => Value::Nil,
@@ -307,7 +316,7 @@ fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
         Stated::Flag(b) => toml::Value::Boolean(*b),
         Stated::Number(n) => toml::Value::Integer(*n),
         Stated::Variant(name) => toml::Value::String(name.clone()?),
-        Stated::Def(registry, h) => toml::Value::String(ids::local(ids::key_of(content, *registry, (*h)?)?).to_string()),
+        Stated::Def(registry, h) => toml::Value::String(ids::name_of(content, *registry, (*h)?)?.to_string()),
         Stated::List(items) => {
             let last = items.iter().rposition(|v| !matches!(v, Stated::Def(_, None))).map_or(0, |i| i + 1);
             toml::Value::Array(items[..last].iter().map(|v| fact_toml(content, v).unwrap_or_else(|| toml::Value::String(String::new()))).collect())

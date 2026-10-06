@@ -74,14 +74,14 @@ local rules: Rules = {
         tag_chips = schema.list("u8", 2),
         -- The patch cards they have installed, in their list's order (./patch_cards): each applies (a save's card
         -- switched off is none of the side's: it does nothing in battle).
-        patch_cards = schema.list("patch_card", 32),
+        patch_cards = schema.list("patch_cards", 32),
         -- Their NaviCust (./navicust): how far its board has been expanded (none: no NaviCust, the stats as the
         -- setup gives them: a navi but MegaMan's, a recording's), and the programs placed on its 7x7 grid in its
         -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
         -- `rotation` quarters clockwise, compressed or not.
         navicust_expansions = "u8?",
         navicust_programs = schema.list({
-            program = "navicust_program",
+            program = "navicust_programs",
             color = { "white", "pink", "yellow", "red", "blue", "green" },
             x = "u8",
             y = "u8",
