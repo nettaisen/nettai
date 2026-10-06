@@ -19,11 +19,13 @@
 //!
 //! [left]                             # you, side 0; then [right]: the side's facts, what its game's rules take,
 //! navi = "megaman"                   # each under its setup field's name (crate::facts); one left out is the
-//! version = "falzar"                 # rules' default. The navi (which a side states), EXE6's version (gregar or
-//! crosses = ["heatcross", "spoutcross"]   # falzar, which a side states) and crosses (up to five, of either
-//! beast_out = false                  # version; [] none), beast_out (else unlocked), bug_frags (else 0). What the
-//! bug_frags = 9                      # save brings to the stats and the navi's level are every side's, the
-//!                                    # highest (fixed facts: no file states them); the rules derive the rest
+//! level = 7                          # rules' default. The navi (which a side states), the navi code's level (0-14;
+//! version = "falzar"                 # else the navi's last: a link navi's 14, MegaMan's none), EXE6's version
+//! crosses = ["heatcross", "spoutcross"]   # (gregar or falzar, which a side states) and crosses (up to five, of
+//! beast_out = false                  # either version; [] none), beast_out (else unlocked), bug_frags (else 0),
+//! bug_frags = 9                      # what the save brings to the stats: the base HP (else 1000), the Regular
+//! hp = 1000                          # memory (else 50), the sun (else true); the rules derive the rest
+//! reg_up = 50
 //! folder = [                         # a list of records, a table each, a line each (a field left out: false, none)
 //!     { chip = "cannon", code = "A" },   # up to 30 entries ({} an empty one, while it's being made)
 //!     { chip = "cannon", code = "A" },
@@ -40,6 +42,7 @@
 //! ]
 //!
 //! # An EXE5 side's facts ([left] of game = "exe5"; a fact left out is its rules' default):
+//! level = 3                          # a team navi's level, 0 to 6 (else 6): its damage rows' (its HP the story's)
 //! karma = 100                        # the light/dark value (default 500, a fresh save's; dark under 470)
 //! souls = ["protosoul"]              # the souls it has, either version's (default: every soul; none, no soul button)
 //! chaos_unison = false               # no Chaos Unison (the save's event flag 0x236; default true)
@@ -210,10 +213,6 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             say(crate::facts::no_field(content, key));
             continue;
         };
-        if crate::facts::is_fixed(content, key) {
-            say(format!("{key}: no player states it (every side plays at the highest); leave it out"));
-            continue;
-        }
         match fact_values(content, game, field.ty, value).and_then(|values| facts.set(content, key, &values)) {
             Ok(()) => {}
             Err(e) => say(format!("{key}: {e}")),
@@ -223,8 +222,10 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     if side.stated_navi(content).is_none() && problems.len() == start {
         problems.push(format!("{at}: no navi: a side states its own"));
     }
-    // (Its level, as every side plays: its navi's highest.)
+    // (A level it leaves out: its navi's highest.)
+    let level = content.defs.fact_name(PlayerFact::Level);
     if problems.len() == start
+        && level.is_some_and(|l| !s.facts.0.iter().any(|(key, _)| key == l))
         && let Err(e) = side.state_play_level(content)
     {
         problems.push(format!("{at}: level: {e}"));
@@ -720,18 +721,14 @@ mod tests {
         // facts, and nothing else of them.)
         let stats = parse(&content, &format!("{good}\n[left.stats]\nhp = 1000\n")).unwrap_err();
         has(stats, "left: no field \"stats\"");
-        // (What every side has alike: no file states it.)
-        for fixed in ["hp = 1000", "reg_up = 50", "sun = true", "level = 3"] {
-            let name = &fixed[..fixed.find(' ').unwrap()];
-            has(bad("navi = \"megaman\"", &format!("navi = \"megaman\"\n{fixed}")), &format!("left: {name}: no player states it"));
-        }
+        has(bad("navi = \"megaman\"", "navi = \"megaman\"\nhp = 100000"), "left: hp: 100000 is past a u16");
         // No key takes the emotion window's glitch: the rules make it. (A
         // key that is none of a side's own parts is a fact of its game's
         // rules, by its setup field's name, or it is refused with those the
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, folder, navi, navicust_expansions, navicust_programs, patch_cards, regular_chip, sp_times, tag_chips, version)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips, version)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "round 1: no stage \"moon\" in exe6");
@@ -806,14 +803,15 @@ mod tests {
         assert!(e[0].contains("unknown field `rules`"), "{e:?}");
     }
 
-    /// The SP deletion times and Beast Out locked write and read back; no
-    /// level is written (every side's is its navi's highest: a link navi's
-    /// last, MegaMan's none), and a file reads as it.
+    /// The SP deletion times, Beast Out locked and a level write and read
+    /// back; a file that leaves the level out reads as the navi's highest
+    /// (a link navi's 14, MegaMan's none).
     #[test]
     fn sp_times_beast_out_and_levels_write_and_read_back() {
         let content = exe6_content();
         let mut m = crate::pick::live(&content, "exe6", 2, None).unwrap();
         m.sides[0].set_fact(&content, "beast_out", &[Fact::Value(Value::Bool(false))]).unwrap();
+        m.sides[0].set_level(&content, Some(3)).unwrap();
         let chip = |k: &str| ids::chip(&content, "exe6", k).unwrap();
         let time = |c: &str, frames: i64| Fact::Record(vec![("chip", Fact::Value(Value::Def(nettai_content_api::Registry::Chip, chip(c).0))), ("frames", Fact::Value(Value::Int(frames)))]);
         m.sides[0].facts.set(&content, "sp_times", &[time("heatman-sp", 721), time("blastmn-sp", 1500)]).unwrap();
@@ -821,13 +819,20 @@ mod tests {
         m.sides[1].set_navi(&content, protoman).unwrap();
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
         { let mut f = m.sides[1].folder(&content); f.regular = None; m.sides[1].set_folder(&content, &f).unwrap(); }
-        assert_eq!((m.sides[0].level(&content), m.sides[1].level(&content)), (None, Some(14)), "MegaMan none, ProtoMan his last");
+        assert_eq!(m.sides[1].level(&content), Some(14), "ProtoMan's highest");
+        m.sides[1].set_level(&content, Some(5)).unwrap();
         let text = write(&content, &m);
-        for line in ["beast_out = false", "chip = \"heatman-sp\"", "frames = 721", "chip = \"blastmn-sp\"", "frames = 1500"] {
+        for line in ["beast_out = false", "level = 3", "chip = \"heatman-sp\"", "frames = 721", "chip = \"blastmn-sp\"", "frames = 1500"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
-        assert!(!text.contains("level"), "no level is written:\n{text}");
+        let right = &text[text.find("[right]").unwrap()..];
+        assert!(right.contains("level = 5"), "{right}");
         assert_eq!(parse(&content, &text).unwrap(), m, "{text}");
+        // No level: MegaMan's none, ProtoMan's his highest.
+        let no_level = text.replacen("level = 3\n", "", 1);
+        assert_eq!(parse(&content, &no_level).unwrap().sides[0].level(&content), None);
+        let no_level = format!("{}{}", &text[..text.find("[right]").unwrap()], right.replacen("level = 5\n", "", 1));
+        assert_eq!(parse(&content, &no_level).unwrap().sides[1].level(&content), Some(14));
         // Frames past a u16, a chip the game lacks, a field the record lacks.
         let bad = parse(&content, &text.replacen("frames = 721", "frames = 70000", 1)).unwrap_err();
         assert!(bad.iter().any(|p| p.contains("sp_times: 70000 is past a u16")), "{bad:?}");

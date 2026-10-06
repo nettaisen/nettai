@@ -1193,8 +1193,12 @@ navi = "megaman"                           # the navi (stated: a side states its
 version = "gregar"                         # EXE6's: version, gregar or falzar (stated: none is assumed), crosses, up
 crosses = ["heatcross", "spoutcross"]      # to five of either version (else none), beast_out, else unlocked (the
 beast_out = false                          # save's flag 0xE0), bug_frags, else 0
-bug_frags = 0                              # (what the save brings to the stats and the navi's level are every
-                                           # side's alike, the highest: no file states them; below)
+bug_frags = 0
+hp = 900                                   # what the save brings to the stats: MegaMan's base HP (else 1000), the
+reg_up = 45                                # Regular memory (else 50), the sun (else true): a save at its best; the
+sun = false                                # rules build the rest (below)
+level = 0                                  # the navi code's level, 0-14 (else the navi's last: a link navi's 14,
+                                           # MegaMan's none, no code received)
 regular_chip = 4                           # the Regular chip's entry, counting from 0 (else none)
 tag_chips = [5, 6]                         # the tag chips' entries (else none; EXE6's)
 navicust_expansions = 2                    # MegaMan's NaviCust's board, 0 (4x4) to 2 (5x5, the default)
@@ -1262,9 +1266,7 @@ descriptions and the editor without a line of Rust.
   five it picked).
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
   key the rules' setup doesn't declare ("left: no field \"karm\" (a side of
-  exe5 takes chaos_unison, karma, souls)"); a fixed fact, every side's alike
-  ("left: hp: no player states it (every side plays at the highest); leave
-  it out"); a value that isn't
+  exe5 takes chaos_unison, hp, karma, level, reg_up, souls)"); a value that isn't
   the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
   no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
   twice in a list, or an empty entry before one (a list is filled from
@@ -1319,10 +1321,10 @@ build the rest as the round is set up (`round_setup`), in the order their code s
 - **the save module** (content/exe6/rules/save, content/exe5/rules/save),
   first: what the save brings that nothing derives, its facts, `hp` (the
   base HP of the navi that compiles a NaviCust: MegaMan's, which HP
-  Memories raise), `reg_up` (the Regular memory) and `sun` (fighting in the
-  sun: MegaMan's alone, which the overworld writes, EXE6's `sub_80355EC`
-  and EXE5's 0x080358DC from `EnterMap`), and MegaMan's variant (+0x2B, his
-  base HP in hundreds); a link
+  Memories raise; default 1000), `reg_up` (the Regular memory; default 50)
+  and `sun` (default true: MegaMan's alone, which the overworld writes,
+  EXE6's `sub_80355EC` and EXE5's 0x080358DC from `EnterMap`), and
+  MegaMan's variant (+0x2B, his base HP in hundreds); a link
   navi's stats at its `level`, as the PET's reload gives them
   (docs/engine/link-navis.md: the base HP of the cleared game and the
   level's HP, buster levels, custom and Mega levels and abilities); an EXE5
@@ -1332,19 +1334,10 @@ build the rest as the round is set up (`round_setup`), in the order their code s
   code level's gains;
 - the patch cards.
 
-**Every side plays at the highest.** What the save brings (`hp`,
-`reg_up`, `sun`) and the navi's level are fixed facts (`schema.fixed`): no
-player states them, and a match file, the editor, the lobby and a save's
-import neither offer nor take them. Every side has the rules' defaults,
-1000 HP, 50 MB of Regular memory and the sun, and a navi with a level is at
-its last (a link navi's navi code's 14, an EXE5 team navi's story's 6:
-`nettai_match::play_level`, which `Side::set_navi` states; MegaMan has
-none, no navi code). A recording's boundary states the save's own, and a
-test may (`Side::set_fact`). nettai-match's binary carries them as the
-setup holds them (a replay states what its set was played with).
-
 The navi's version byte (+0x20) is the version the side states, which the
-battle's start sets. The editor's stats pane shows the stats a round starts with,
+battle's start sets. Another navi than the one that compiles a NaviCust
+takes its HP from its level, so the checks refuse a side of one that
+states `hp`. The editor's stats pane shows the stats a round starts with,
 and nothing of them is edited: a test that needs an odd stat pokes the
 built `RoundSetup`. (A recording's stats are its console's block:
 exe6-compat and exe5-compat state the save's facts from it, start the sides
@@ -1367,29 +1360,34 @@ rules read it (`exe6.navi_level`, its API module): the seal below, the
 reload, MegaMan's gains, and what a level gives a link navi in battle (its
 chip bonus, its charged chips, ChargeMan's Fire charge: rules/by_level.luau,
 the navi's functions of its side, which the round's setup asks once,
-`Battle::given`). Tools find the fact by its role (`PlayerFact::Level`). It
-is a fixed fact: every side's is its navi's highest, which `Side::set_navi`
-states (a link navi's 14; MegaMan **none**: no code received, 0xFF in the
-battle), and no file or tool states another; a recording's boundary states
-the save's. MegaMan with one was received from a navi code: his level's
-gains go over his NaviCust, and, as the game's event flag 0x163 does, his
-custom screen has no Beast Out button and his Cross window stays his even
-with a gauge for each player. The checks refuse a level past 14 and a link
-navi without one. A navi takes a level where its definition says what one
-gives it (`levels`: EXE6's MegaMan and link navis; `story`: EXE5's team
-navis); the checks refuse a level for any other (EXE5's MegaMan), and one
-past the navi's last.
+`Battle::given`). Tools find the fact by its role (`PlayerFact::Level`). A link navi exists only
+through its code, so it always has one: a side of one that states none
+has its navi's last, 14 (`nettai_match::play_level`, which
+`Side::set_navi` states, and the match file's reader for a side that
+leaves it out; an import states the save's). At 0 its stats are its
+reload's at level 0 and its chip bonus is level 0's.
+MegaMan without `level` has **none** (no code received, 0xFF in the
+battle); with one he was received from a navi code: his level's gains go
+over his NaviCust, and, as the game's event flag 0x163 does, his custom
+screen has no Beast Out button and his Cross window stays his even with a
+gauge for each player. The checks refuse a level past 14 and a link navi
+without one; a file is written with the level whenever the side has one.
+A navi takes a level where its definition says what one gives it
+(`levels`: EXE6's MegaMan and link navis; `story`: EXE5's team navis); the
+checks refuse a level for any other (EXE5's MegaMan), and one past the
+navi's last.
 
 **An EXE5 team navi's level** (`level`, 0 to 6, the rules' fact; docs/design/exe5-map.md
 §15.16) is the level its attacks' damage goes by: the count of the save's
 story flags, which the battle's init exchange sends. A side that operates
-one (`navi = "protoman"`: any of the twelve, of either version) is at its
-story's last, 6, as every side plays (a fixed fact: `Side::set_navi` states
-it), and its stats are the navi's fresh stats with the HP the story gives at
-that level (the navi's `story`, which EXE5's save module reads: a level
-below 6 is the story's progress, and at 6 the story is taken as done). The
-checks refuse a level past 6. A team navi has no NaviCust, patch cards or
-souls: they are MegaMan's. EXE5's MegaMan takes no level.
+one (`navi = "protoman"`: any of the twelve, of either version) always
+has a level (a side that states none has its story's last, 6), and its
+stats are the navi's fresh stats
+with the HP the story gives at that level (the navi's `story`, which EXE5's
+save module reads: a level below 6 is the story's progress, and at 6 the
+story is taken as done). A side states no HP of its own for one: the checks
+refuse a level past 6, and an `hp`. A team navi has no NaviCust, patch
+cards or souls: they are MegaMan's. EXE5's MegaMan takes no level.
 
 **The SP deletion times** (`sp_times`) are a fact of the match's
 rules like any other (`sp_times`, a list of `{ chip, frames }` records: the
@@ -1411,12 +1409,13 @@ Of EXE6, a .sav as an emulator keeps it or a raw image as Tango's netplay
 templates hold, read by `exe6_compat::save` (a Japanese image's region from
 the US's 0x414C sits 0x40 earlier): the navi it operates; its version,
 Beast Out and the Crosses it owns (its `crosses`: those of its version's
-five its flags own, in the Cross numbers' order); its equipped folder
+five its flags own, in the Cross numbers' order); the navi code's level (a
+link navi keeps the side's when the save has no code); its equipped folder
 with its Regular and tag chips (the operated navi's block's); MegaMan's
 NaviCust (its ExpMemry's board and its programs as placed, compressed by
 their event flags) and patch cards (those switched on; a link navi has
-neither); its BugFrags; and the SP times. (What it brings to the stats and
-its navi code's level aren't read: every side's are the highest.)
+neither); what it brings to the stats (`hp`, MegaMan's base HP; `reg_up`
+and `sun`, the operated navi's block's); its BugFrags; and the SP times.
 A test in the verification workspace imports Tango's four EXE6 and eight
 EXE5 raw saves (the match's checks accept each, and its round starts), and
 holds a side imported from a save the chip lab recorded on to the
@@ -1429,7 +1428,7 @@ and color name (one of the program's `colors`), and its board; without
 them, none on the largest board. The game's
 `navicust` part makes the stats it gives (the maximum HP, the abilities,
 levels, weapons and bugs) from the programs as the round is set up, over
-what the save brings (`hp`, `reg_up`, `sun`: every side's, the highest). The editor's NaviCust pane (its
+what the save brings (`hp`, `reg_up`, `sun`). The editor's NaviCust pane (its
 own grid, docs/design/navicust.md) places the programs on the board as the
 game does, and shows what they make.
 

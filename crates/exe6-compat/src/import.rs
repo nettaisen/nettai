@@ -16,34 +16,55 @@ pub fn read(file: &[u8]) -> Result<Save, String> {
     Save::read(file).or_else(|e| Save::from_image(file).map_err(|_| e))
 }
 
+/// What a NaviStats block holds of what the save brings to the stats (EXE6's
+/// rules/save): the base HP (HP Memories, +0x3E), the Regular memory
+/// (RegUps, +0x09), fighting in the sun (+0x22).
+const BASE_HP: usize = 0x3E;
+const REG_UP: usize = 0x09;
+const SUN: usize = 0x22;
+
 /// The side an EXE6 save gives, whole, of an EXE6 match: the navi it
 /// operates; its version (`version`), whether it has Beast Out
 /// (`beast_out`) and its Crosses (`crosses`: those of its version's
 /// five the save's flags own, in the Cross numbers' order, as the navi
-/// lists them; none for a navi that doesn't change form); its equipped
-/// folder with its Regular and tag chips; MegaMan's NaviCust (its board's
-/// expansions, `navicust_expansions`, and its programs as placed,
-/// `navicust_programs`) and patch cards (`patch_cards`: those switched on;
-/// a link navi has neither); its BugFrags (`bug_frags`); and its SP
-/// deletion times (`sp_times`). What it brings to the stats (the base HP,
-/// the Regular memory, the sun) and its navi code's level aren't read:
-/// every side plays at the highest (the rules' fixed facts; the side's
-/// level its navi's highest, `Side::set_navi`). A link navi's stats are the
-/// round's to build from its level. What is worth saying about it, or why
-/// the save can't be read.
+/// lists them; none for a navi that doesn't change form); its navi
+/// code's level; its equipped folder with its Regular and tag chips;
+/// MegaMan's NaviCust (its board's expansions, `navicust_expansions`,
+/// and its programs as placed, `navicust_programs`) and patch cards
+/// (`patch_cards`: those switched on; a link navi has neither); what it
+/// brings to the stats (`hp`, MegaMan's base HP; `reg_up` and `sun`, the
+/// operated navi's); its BugFrags (`bug_frags`); and its SP deletion
+/// times (`sp_times`). A link navi's stats are the round's to build from
+/// its level. What is worth saying about it, or why the save can't be
+/// read.
 pub fn import(content: &Content, side: &mut Side, save: &Save) -> Result<Vec<String>, String> {
     let compat = crate::Compat::exe6();
     let mut notes = Vec::new();
     // The navi it operates.
     let key = compat.navi_key(save.navi()).ok_or_else(|| format!("the save operates navi {:#x}, which EXE6 hasn't", save.navi()))?;
     let navi = ids::navi(content, "exe6", key).ok_or_else(|| format!("the save operates {key}, which the content hasn't"))?;
+    // (The side's level as it was, which a link navi without its code keeps:
+    // `set_navi` states the navi's highest.)
+    let before = side.level(content);
     side.set_navi(content, navi)?;
     let link_navi = !content.navi(navi).changes_form();
+    let level = save.navi_level()?;
     let unlocks = save.unlocks();
     side.set_fact(content, "version", &[Fact::Name(save.version().name())])?;
     side.set_fact(content, "beast_out", &[Fact::Value(Value::Bool(unlocks.beast_out))])?;
     let owned: Vec<Fact> = unlocks.owned_crosses(content, navi).iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
     side.set_fact(content, "crosses", &owned)?;
+    // The level is the save's operated navi's; a link navi always has
+    // one (it exists through its code).
+    match level {
+        None if link_navi => {
+            if before.is_some() {
+                side.set_level(content, before)?;
+            }
+            notes.push("the save operates a link navi without its navi code: the side keeps its level".into())
+        }
+        _ => side.set_level(content, level)?,
+    }
     // Its equipped folder, by the chips' numbers' names.
     let f = save.folder();
     let mut chips = [None; 30];
@@ -80,6 +101,15 @@ pub fn import(content: &Content, side: &mut Side, save: &Save) -> Result<Vec<Str
         }
         side.set_fact(content, "patch_cards", &cards)?;
     }
+    // What the save brings to the stats: MegaMan's base HP (a link
+    // navi's is its level's), the operated navi's Regular memory and sun.
+    let stats = save.navi_stats();
+    if !link_navi {
+        let hp = u16::from_le_bytes([stats[BASE_HP], stats[BASE_HP + 1]]);
+        side.set_fact(content, "hp", &[Fact::Value(Value::Int(hp as i64))])?;
+    }
+    side.set_fact(content, "reg_up", &[Fact::Value(Value::Int(stats[REG_UP] as i64))])?;
+    side.set_fact(content, "sun", &[Fact::Value(Value::Bool(stats[SUN] != 0))])?;
     side.set_fact(content, "bug_frags", &[Fact::Value(Value::Int(save.bug_frags() as i64))])?;
     // The SP times, by the chip compat names each slot the game reads by
     // (the save's halfwords past them, unused, left out).
@@ -105,11 +135,9 @@ mod tests {
     /// A Falzar save without Beast Out, owning TomahawkCross and
     /// GroundCross, MegaMan from his level-5 code, with a folder, a NaviCust
     /// of two programs (one compressed) on its 5x5 board, two patch cards
-    /// (the second switched off), 900 HP, 30 Regular memory, no sun,
-    /// BugFrags and SP times: a side of it is all of that but what every
-    /// side has alike (the save's HP, Regular memory, sun and level: the
-    /// highest, MegaMan without a level), the match's checks find nothing
-    /// wrong with it, and its round starts.
+    /// (the second switched off), 1000 HP, 50 Regular memory, the sun,
+    /// BugFrags and SP times: a side of it is all of that, the match's
+    /// checks find nothing wrong with it, and its round starts.
     #[test]
     fn a_save_gives_a_whole_side() {
         let content = exe6_content();
@@ -123,8 +151,8 @@ mod tests {
             chips.extend(ids.packed(c).to_le_bytes());
         }
         let mut stats = [0u8; 0x64];
-        stats[0x3E..0x40].copy_from_slice(&900u16.to_le_bytes());
-        (stats[0x09], stats[0x22], stats[0x2D], stats[0x2E]) = (30, 0, 0, folder.regular.unwrap_or(0xFF));
+        stats[0x3E..0x40].copy_from_slice(&1000u16.to_le_bytes());
+        (stats[0x09], stats[0x22], stats[0x2D], stats[0x2E]) = (50, 1, 0, folder.regular.unwrap_or(0xFF));
         (stats[0x56], stats[0x57]) = folder.tags.unwrap_or((0xFF, 0xFF));
         // The NaviCust: SuprArmr (white) with its center at (2, 3), HP+50
         // (its second color) at (4, 2), compressed.
@@ -162,7 +190,7 @@ mod tests {
         assert_eq!(notes, Vec::<String>::new());
         let s = &m.sides[0];
         assert_eq!(nettai_match::ids::local(&content.defs.navi(s.navi(&content)).key), "megaman");
-        assert_eq!((s.version(&content), s.level(&content)), (Some("falzar"), None));
+        assert_eq!((s.version(&content), s.level(&content)), (Some("falzar"), Some(5)));
         assert_eq!(s.facts.get(&content, "beast_out"), Some(Stated::Flag(false)));
         // (Falzar's second and fourth, by Cross number: the list holds them
         // from its front.)
@@ -188,7 +216,6 @@ mod tests {
         let cards = s.facts.get(&content, "patch_cards").unwrap().defs();
         assert_eq!(cards, [nettai_match::ids::entry(&content, "exe6", "patch_cards", "canodumb").unwrap().0]);
         for (field, want) in [("hp", Stated::Number(1000)), ("reg_up", Stated::Number(50)), ("sun", Stated::Flag(true)), ("bug_frags", Stated::Number(1234))] {
-            // (The first three every side's, the highest: the save's aren't read.)
             assert_eq!(s.facts.get(&content, field), Some(want), "{field}");
         }
         // (The SP times by the chips of the slots the game reads, in the
@@ -211,9 +238,9 @@ mod tests {
     }
 
     /// A save operating ProtoMan from his level-5 code: the side is
-    /// ProtoMan at his highest level (every side's: the save's isn't read),
-    /// with no Crosses, NaviCust or patch cards (they are MegaMan's); and
-    /// his stats follow the save's game.
+    /// ProtoMan at level 5, with no Crosses, NaviCust or patch cards (they
+    /// are MegaMan's); without a code, he keeps the side's level, and his
+    /// stats follow the save's game.
     #[test]
     fn a_save_operating_a_link_navi() {
         let content = exe6_content();
@@ -221,19 +248,21 @@ mod tests {
         let mut m = nettai_match::pick::live(&content, "exe6", 1, None).unwrap();
         let notes = import_file(&content, &mut m.sides[1], &file(GameVersion::Falzar, false, [true; 5], 11, Some(5), &[0; 20])).unwrap();
         let s = &m.sides[1];
-        assert_eq!((s.navi(&content), s.level(&content), s.version(&content)), (protoman, Some(14), Some("falzar")));
+        assert_eq!((s.navi(&content), s.level(&content), s.version(&content)), (protoman, Some(5), Some("falzar")));
         for field in ["crosses", "navicust_programs", "patch_cards"] {
             assert_eq!(s.facts.get(&content, field).map(|v| v.defs()), Some(Vec::new()), "{field}");
         }
-        assert!(s.facts.is_default(&content, "hp"), "every side's");
+        assert!(s.facts.is_default(&content, "hp"), "a link navi's HP is its level's");
         assert_eq!(notes, Vec::<String>::new());
+        let s = &mut m.sides[1];
+        s.set_level(&content, Some(7)).unwrap();
         let notes = import_file(&content, &mut m.sides[1], &file(GameVersion::Gregar, true, [true; 5], 11, None, &[0; 20])).unwrap();
         let s = &m.sides[1];
-        assert_eq!((s.level(&content), s.version(&content)), (Some(14), Some("gregar")));
+        assert_eq!((s.level(&content), s.version(&content)), (Some(7), Some("gregar")));
         // (His round's stats: his level's, of the save's game.)
         let b = nettai_match::check::start(&content, &m).unwrap();
-        assert_eq!((b.stats[1].version, b.stats[1].max_hp), (0, 1400));
-        assert_eq!(notes, Vec::<String>::new());
+        assert_eq!((b.stats[1].version, b.stats[1].max_hp), (0, 1230));
+        assert_eq!(notes, ["the save operates a link navi without its navi code: the side keeps its level"]);
         assert!(import_file(&content, &mut m.sides[1], b"not a save").is_err());
     }
 
