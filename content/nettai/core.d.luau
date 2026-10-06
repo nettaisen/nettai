@@ -808,7 +808,7 @@ declare extern type Object with
     function freeze_target_marker(self, on: boolean): ()
     -- `sub_800F2FC`: turn to face `target`'s column.
     function face_toward(self, target: Object): ()
-    -- `sub_80DBB64`: put a junk look (`obstacle.absorbed_look`) on the sprite:
+    -- `sub_80DBB64`: put an absorbed look (`obstacle.absorbed_look`) on the sprite:
     -- the sprite, a shadow if the look has one, its animation and palette,
     -- flipped by the object's side unless the look keeps its own; false
     -- when the look is the table's none.

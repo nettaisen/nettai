@@ -118,10 +118,9 @@ local rules: Rules = {
         karma = "u16",
         -- The souls the save has (./souls; a match's side's `souls`, a recording's its version's), which the custom
         -- screen's soul button may offer, as the save's soul flags (0x08024BF0's, one a soul; any souls of the game,
-        -- either version's); Soul Unison (event flag 0: the soul button) and Chaos Unison (event flag 0x236: a dark
-        -- chip's soul).
+        -- either version's): none, no soul button, as a save without Soul Unison (event flag 0) has; and Chaos Unison
+        -- (event flag 0x236: a dark chip's soul).
         souls = "form[16]",
-        soul_unison = "bool",
         chaos_unison = "bool",
         -- How long the save took to delete each SP navi (./sp_chips: the save's 0x02002670, a battle's copy
         -- 0x0203E560), by its SP chip, in frames.
@@ -130,7 +129,7 @@ local rules: Rules = {
     -- A setup that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the fresh
     -- stats'), no level (MegaMan's); a fresh save's light/dark value (0x08010C00 writes 500: light for the chips, no
     -- holy panels cleared, the starting mood 0x80); a finished save's souls, every one of either version (by id: a
-    -- form's module reads ./souls, so this names them rather than reads theirs), and both unisons.
+    -- form's module reads ./souls, so this names them rather than reads theirs), and Chaos Unison.
     setup_defaults = {
         -- A NaviCust with no programs on the largest board (MegaMan's compiles one; a recording's boundary states
         -- none, its stats already the NaviCust's).
@@ -154,7 +153,6 @@ local rules: Rules = {
             "toadsoul",
             "tomahawksoul",
         },
-        soul_unison = true,
         chaos_unison = true,
         -- Every SP navi deleted in no time (its chip's best damage), in the save's order.
         sp_times = {

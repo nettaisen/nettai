@@ -206,7 +206,7 @@ left out, with the frontend's warning), and Play plays on them: `--content` and 
 
 **A side's facts** (what its game's rules take of it: docs/frontend.md §6) get their controls from the rules'
 own declarations, by each setup field's type, and the editor names none of them: a flag is a checkbox (EXE6's
-Beast out, EXE5's Soul unison), a number a field to type it in with the rules' default as its placeholder (EXE5's
+Beast out, EXE5's Chaos unison), a number a field to type it in with the rules' default as its placeholder (EXE5's
 Karma, EXE6's Bug frags), an enum a list of the variants the rules name (EXE6's Version, nothing chosen until the
 side states one), all on the navi pane under "What the rules take" (EXE6's Hp, Reg up and Sun among them); a
 list of definitions has a pane of its own with a checkbox for each one

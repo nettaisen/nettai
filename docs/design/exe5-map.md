@@ -1519,7 +1519,8 @@ them.
     list to compat's numbers).
 - **The soul button** (the souls module's button `soul`, rules/souls/custom.luau: EXE5's layout's slot 11,
   0x08023C54, 0x08024B28, 0x08024972): shown for MegaMan with souls, outside battle flag 0x40, with the save's
-  Soul Unison (event flag 0, the setup's `soul_unison`), unless he is worried or dark (in a soul or angry he may);
+  Soul Unison (event flag 0; nettai's setup lists souls, none for a save without it), unless he is worried or dark
+  (in a soul or angry he may);
   lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { family }`),
   the save has the soul (the setup's `souls`, a list of forms: exe5-compat gives a recording's side its version's
   six) and it isn't given this round (the system's `souls_used`, a bit a soul by its place among the navi's souls,
