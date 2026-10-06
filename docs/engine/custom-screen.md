@@ -38,7 +38,7 @@ setup and both players' buttons (rollback netplay):
 | The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives); the fight resumes when both have arrived |
 | The folder shuffle at the round's init with the console's own RNG1 | `BattleFolder::shuffled` with the RNG it's given; `RoundSetup::players[p].folder` is the shuffled folder |
 | Each console's RNG1, which ChpShufl's re-deal draws from | `Battle::consoles[p]` (`crate::console`): each player's console RNG, seeded from `PlayerSetup::console` and advanced as that console's is (§8) |
-| Save data: owned Crosses, Beast Out unlocked, game version | EXE6's cross and beast systems' setup (`PlayerSetup::rules`; `exe6_compat::Unlocks` writes and reads them); event flag 0x163 is the setup's navi code level (`PlayerSetup::navi_level`) |
+| Save data: owned Crosses, Beast Out unlocked, game version | EXE6's cross and beast systems' setup (`PlayerSetup::rules`; `exe6_compat::Unlocks` writes and reads them); event flag 0x163 is the save system's navi code level (`level`, which EXE6's rules read: `exe6.navi_level`) |
 
 Nothing in the custom screen depends on which side is "local": which screen a frontend draws is presentation.
 `TickEvents` carries only `link_closed` (the end of the round).
