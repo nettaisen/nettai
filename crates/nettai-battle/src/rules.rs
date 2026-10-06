@@ -564,6 +564,12 @@ impl Battle {
         self.call_rules(side, RulesHook::NaviBug, Some(navi), None, None) == Some(Value::Bool(true))
     }
 
+    /// The rules' `hp_emptied(side, navi)`: whether they answered true (the
+    /// hit shows).
+    pub(crate) fn rules_hp_emptied(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::HpEmptied, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
     /// The rules' `hook`, if it answers a number.
     fn rules_ask(&mut self, side: u8, hook: RulesHook, navi: Option<ObjectRef>) -> Option<u8> {
         match self.call_rules(side, hook, navi, None, None)? {

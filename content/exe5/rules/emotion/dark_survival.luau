@@ -1,9 +1,8 @@
 --!strict
 -- EXE5's dark MegaMan's last stand: EXE5's action 0x30 (0x080EFE22), the roles' `volley`. A player MegaMan (AI index 0)
 -- of EXE5's emotion 5 (a mood of 0, a dark MegaMan's) whom a loss of HP brings to 0 holds at 1 HP, once a battle,
--- and asks for the request 0x40000000 (0x0802C16C, from object_subtractHP, 0x0800C6E0, and applyDamageToPlayer,
--- 0x080185A2: the status section's `hp_loss`). This is what the request starts. Its steps (0x080EFE34, on the
--- attack's step):
+-- and asks for the request 0x40000000 (0x0802C16C, from object_subtractHP, 0x0800C6E0: the rules' `hp_emptied`,
+-- `survival.hp_emptied` here). The action is what the request starts. Its steps (0x080EFE34, on the attack's step):
 --
 -- - 0 (0x080EFE48): the battle dims and the screen fades out; he shows white, no hit reaches him (untouchable), he
 --   stands on his future panel, a flash (effect 3) and a sound, his moves, his reactions and his attachments
@@ -176,5 +175,26 @@ local function update(me: Object, s: State)
 end
 
 survival.action = new.action { id = "dark-survival", state = { timer = "u16" }, update = update }
+
+-- 0x0802C16C (the rules' `hp_emptied`: object_subtractHP, 0x0800C6E0, at 0 HP): a player MegaMan (AIData +0, +1:
+-- actor type 2, AI index 0), not in the operation battle (NaviStats +0x2A clear, which its init reads, 0x0802D590),
+-- his side not stood yet (0x0800931C(side, 1)), of EXE5's emotion 5 (0x0801270C: a mood of 0, out of a soul and
+-- unangry, never in battle mode 1), holds at 1 HP and asks for the volley (0x0800C722, 0x0801860E). Whether what it
+-- leaves in r1 is non-zero, by which applyDamageToPlayer (0x080185A2) shows the hit: the actor type, the AI index,
+-- the NaviStats pointer, 1 (held), else the soul (NaviStats +0x2C: none in the base form).
+function survival.hp_emptied(side: number, navi: Object): boolean
+    if navi.actor_type ~= "player" then
+        return navi.actor_type ~= "virus"
+    end
+    if navi.ai_index ~= 0 or operation_battle() or battle.side_stat(side, STOOD) ~= 0 or battle.mode() == 1 then
+        return true
+    end
+    if battle.emotion(side) == "worn_out" then
+        navi.hp = 1
+        navi:set_request("volley", true)
+        return true
+    end
+    return not battle.navi(side).form.base
+end
 
 return survival

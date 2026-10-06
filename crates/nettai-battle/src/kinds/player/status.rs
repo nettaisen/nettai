@@ -290,8 +290,8 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
 /// keeps 1 HP), then the element-5 damage; at 0 HP request deletion
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
 fn apply_damage(b: &mut Battle, r: ObjectRef) {
-    if b.game_rules().intake.hp_loss == crate::content::HpLoss::GaugeAndLastStand {
-        return apply_damage_gauge_and_last_stand(b, r);
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Gauge {
+        return apply_damage_shown_by_hp(b, r);
     }
     let mut d = coll(b, r).acc.final_damage;
     let mut dead = false;
@@ -331,12 +331,14 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
 
 /// EXE5's `applyDamageToPlayer` (0x080185A2): EXE6's, but the hit shows
 /// (white, then its sounds) only when the loss leaves r1 non-zero (the HP
-/// left, or what the last stand's check leaves: `kinds::subtract_hp`), a
-/// hit that doesn't goes straight to the deletion's test (no element-5
-/// damage), and that test first tries the last stand (0x0802C16C). (Where
-/// a hit landed is learned for the auto-battling navis' auto battle data too, 0x0802C3E2:
-/// for the battles after, which nothing of a battle reads.)
-fn apply_damage_gauge_and_last_stand(b: &mut Battle, r: ObjectRef) {
+/// left, or at 0 the side's rules' answer, `hp_emptied`:
+/// `kinds::subtract_hp`), and a hit that doesn't goes straight to the
+/// deletion's test (no element-5 damage). (That test first tries the last
+/// stand again, 0x0802C16C, which finds what it found as the HP went: the
+/// navi falls. Where a hit landed is learned for the auto-battling navis'
+/// auto battle data too, 0x0802C3E2: for the battles after, which nothing
+/// of a battle reads.)
+fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
     let mut d = coll(b, r).acc.final_damage;
     let mut fell = false;
     if d != 0 {
@@ -364,9 +366,7 @@ fn apply_damage_gauge_and_last_stand(b: &mut Battle, r: ObjectRef) {
         fell = b.objects.get(r).hp == 0;
     }
     if fell {
-        if super::last_stand(b, r) == super::LastStand::Holds {
-            super::hold_last_stand(b, r);
-        } else if switch_protected(b, r) {
+        if switch_protected(b, r) {
             ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
         } else {
             set_flag2(b, r, 1);
