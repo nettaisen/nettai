@@ -48,7 +48,8 @@ pub struct NaviData {
     /// for the navi, the same chip, with the draw).
     #[serde(default)]
     pub own_chip_draws: bool,
-    /// A link navi's damage bonus on its family's chips.
+    /// A link navi's damage bonus on its family's chips (its amount a
+    /// function of the side: `NaviDef::given`).
     #[serde(default)]
     pub chip_bonus: Option<NaviChipBonus>,
     /// MegaMan's bonus on a family's damaging chips used standing on a
@@ -61,8 +62,8 @@ pub struct NaviData {
     #[serde(default)]
     pub run_message: RunMessage,
     /// The chips it charges with A (EXE6's link navis' from a navi level,
-    /// `sub_800F49E` and `byte_8021369`; EXE5's team navis', 0x0801090A's
-    /// tests by navi).
+    /// `sub_800F49E` and `byte_8021369`: `when`, a function of the side,
+    /// `NaviDef::given`; EXE5's team navis', 0x0801090A's tests by navi).
     #[serde(default)]
     pub charged_chips: Option<NaviChargedChips>,
     /// What a chip it charged gains (EXE5's team navis', 0x080103D0's tests
@@ -73,10 +74,6 @@ pub struct NaviData {
     /// The chips a charge doubles (`sub_8012AFA`).
     #[serde(default)]
     pub charge_doubles: Option<ChipMatch>,
-    /// Its A charge builds up the next Fire chip's damage, up to a limit
-    /// by its level (`sub_80F0608`, `byte_802136D`).
-    #[serde(default)]
-    pub fire_charge: Option<Vec<u8>>,
     #[serde(default)]
     pub traits: NaviTraits,
     /// What lifts its charge glow: while its animation is one of these the
@@ -244,7 +241,9 @@ pub struct FreshStats {
 }
 
 /// A link navi's damage bonus on the damaging chips of its family
-/// (`sub_800F09E`), by the navi's level (`byte_8021300`, 15 a navi).
+/// (`sub_800F09E`): how much, a function of its side (`damage`, which the
+/// round's setup asks: EXE6's by the navi's level, `byte_8021300`, 15 a
+/// navi).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviChipBonus {
@@ -252,18 +251,15 @@ pub struct NaviChipBonus {
     /// Dimming chips of the family count too.
     #[serde(default)]
     pub dimming_chips: bool,
-    pub by_level: Vec<u8>,
 }
 
-/// The chips a navi charges with A: a family's, but never its own chip.
+/// The chips a navi charges with A: a family's, but never its own chip;
+/// only where its `when`, a function of its side, says so (EXE6's from a
+/// navi level), else always.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviChargedChips {
     pub family: ChipFamily,
-    /// Only from this navi level on, and only with a level (none: whatever
-    /// its level, and with none).
-    #[serde(default)]
-    pub from_level: Option<u8>,
     /// Only its damaging chips that aren't dimming chips (false: any). A
     /// rule states it: there is no usual answer.
     pub damaging: bool,
@@ -805,12 +801,24 @@ pub(crate) fn read_navi(
     use serde_json::Value as Json;
     let err = |m: String| super::reader::err(d, m);
     // (`actions` are the content's own.)
+    // (Its functions of its side are `NaviDef::given`'s.)
+    let mut d = d.clone();
+    for (table, field) in [("chip_bonus", "damage"), ("charged_chips", "when")] {
+        if let nettai_content_api::Data::Map(entries) = &mut d.spec {
+            for (k, v) in entries.iter_mut() {
+                if k.to_string() == table {
+                    super::reader::strip(v, &[field]);
+                }
+            }
+        }
+    }
+    let d = &d;
     let mut o = super::reader::fields(
         d,
         r,
         &[
             "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "levels", "story", "forms", "tick",
-            "idle", "post_init",
+            "idle", "post_init", "fire_charge",
         ],
     )?;
     let banners = d.spec.field("banners");
@@ -934,8 +942,8 @@ pub(crate) fn read_story(d: &nettai_content_api::Definition) -> Result<Option<Na
         other => return Err(what(format!("`story` is {other:?}, not a table"))),
     };
     let max_level = match story.field("max_level") {
-        Data::Int(i) if (0..=crate::custom::MAX_NAVI_LEVEL as i64).contains(i) => *i as u8,
-        other => return Err(what(format!("story.max_level is {other:?}, not a level up to {}", crate::custom::MAX_NAVI_LEVEL))),
+        Data::Int(i) if (0..0xFF).contains(i) => *i as u8,
+        other => return Err(what(format!("story.max_level is {other:?}, not a level (0 to 254)"))),
     };
     let hp = match story.field("hp") {
         Data::List(items) => items
@@ -1083,15 +1091,16 @@ mod tests {
     #[test]
     fn a_navis_charged_chips_say_whether_they_must_be_damaging() {
         let read = |json: &str| serde_json::from_str::<NaviChargedChips>(json);
-        // EXE6's link navis: their family's damaging chips, from a level.
-        let exe6 = read(r#"{ "family": "wood", "from_level": 11, "damaging": true }"#).unwrap();
-        assert_eq!((exe6.from_level, exe6.damaging, exe6.plain), (Some(11), true, false));
+        // EXE6's link navis: their family's damaging chips (from a level:
+        // their `when`, a function of the side).
+        let exe6 = read(r#"{ "family": "wood", "damaging": true }"#).unwrap();
+        assert_eq!((exe6.damaging, exe6.plain), (true, false));
         // EXE5's team navis: any chip of the family that is neither a
         // dimming nor a dark chip, at any level.
         let exe5 = read(r#"{ "family": "wood", "damaging": false, "plain": true }"#).unwrap();
-        assert_eq!((exe5.from_level, exe5.damaging, exe5.plain), (None, false, true));
+        assert_eq!((exe5.damaging, exe5.plain), (false, true));
         // Left out, the rule doesn't load, and the error names the field.
-        let error = read(r#"{ "family": "wood", "from_level": 11 }"#).unwrap_err().to_string();
+        let error = read(r#"{ "family": "wood" }"#).unwrap_err().to_string();
         assert!(error.contains("missing field `damaging`"), "{error}");
     }
 

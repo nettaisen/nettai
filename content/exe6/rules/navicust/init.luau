@@ -40,6 +40,7 @@
 
 local board = require("@self/board")
 local compile = require("@exelib/navicust/compile")
+local exe6 = require("./api")
 local levels = require("./levels")
 local programs = require("@self/programs")
 
@@ -101,7 +102,7 @@ local function run(side: number)
     if not compile.run(side, EXE6) then
         return
     end
-    local level = battle.navi_level(side)
+    local level = exe6.navi_level(side)
     if level ~= nil then
         local stats = battle.navi(side)
         levels.add(stats, level)
