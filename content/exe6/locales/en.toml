@@ -510,7 +510,7 @@ language = "en"
 "volcano" = { name = "Volcano" }
 "walla" = { name = "Walla" }
 "wunote" = { name = "WuNote" }
-"yamatomn" = { name = "YamatoMn" }
+"japanman" = { name = "JapanMan" }
 
 [navicust-programs]
 "airshoes" = { name = "AirShoes" }
