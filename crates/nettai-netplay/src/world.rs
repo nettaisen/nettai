@@ -79,7 +79,7 @@ fn panic_message(panic: &(dyn Any + Send)) -> String {
 /// battle once `f + 1` ticks have run.
 ///
 /// The world calls all three as getgud drives it.
-pub trait Observer<G> {
+pub trait Observer<G: Game> {
     /// The world went back to the state after `frame` ticks: frames
     /// `frame` and later are about to be simulated again.
     fn rolled_back(&mut self, _frame: u32) {}
@@ -88,28 +88,29 @@ pub trait Observer<G> {
     /// rollback. `game` is the state after it.
     fn simulated(&mut self, _frame: u32, _game: &G) {}
 
-    /// Frame `frame` settled: confirmed, never simulated again. Frames
-    /// settle in order, each once, and the last [`simulated`] of a frame
-    /// before it settles was on its confirmed inputs. `settled` is the
-    /// state after it where getgud kept one: a frame whose speculation was
-    /// promoted, or the last frame of a re-simulation (`None` for the frames
-    /// re-simulated before that one).
+    /// Frame `frame` settled: confirmed, never simulated again, on
+    /// `inputs` (both players', by side). Frames settle in order, each
+    /// once, and the last [`simulated`] of a frame before it settles was on
+    /// its confirmed inputs. `settled` is the state after it where getgud
+    /// kept one: a frame whose speculation was promoted, or the last frame
+    /// of a re-simulation (`None` for the frames re-simulated before that
+    /// one).
     ///
     /// [`simulated`]: Observer::simulated
-    fn confirmed(&mut self, _frame: u32, _settled: Option<&Battle>) {}
+    fn confirmed(&mut self, _frame: u32, _inputs: [&G::Input; 2], _settled: Option<&Battle>) {}
 }
 
-impl<G> Observer<G> for () {}
+impl<G: Game> Observer<G> for () {}
 
-impl<G, O: Observer<G> + ?Sized> Observer<G> for &mut O {
+impl<G: Game, O: Observer<G> + ?Sized> Observer<G> for &mut O {
     fn rolled_back(&mut self, frame: u32) {
         (**self).rolled_back(frame);
     }
     fn simulated(&mut self, frame: u32, game: &G) {
         (**self).simulated(frame, game);
     }
-    fn confirmed(&mut self, frame: u32, settled: Option<&Battle>) {
-        (**self).confirmed(frame, settled);
+    fn confirmed(&mut self, frame: u32, inputs: [&G::Input; 2], settled: Option<&Battle>) {
+        (**self).confirmed(frame, inputs, settled);
     }
 }
 
@@ -245,7 +246,9 @@ impl<G: Game, O: Observer<G>> World for BattleWorld<G, O> {
     }
 
     fn settled(&mut self, row: &Confirmed<'_, Self>) {
-        self.observer.confirmed(row.tick, row.state.map(BattleState::battle));
+        let [remote] = &*row.remotes else { panic!("a battle has one remote player, not {}", row.remotes.len()) };
+        let inputs = if self.side == 0 { [&row.local, remote] } else { [remote, &row.local] };
+        self.observer.confirmed(row.tick, inputs, row.state.map(BattleState::battle));
     }
 }
 
@@ -265,14 +268,14 @@ mod tests {
     #[derive(Default)]
     struct Seen(Vec<String>);
 
-    impl<G> Observer<G> for Seen {
+    impl<G: Game> Observer<G> for Seen {
         fn rolled_back(&mut self, frame: u32) {
             self.0.push(format!("back to {frame}"));
         }
         fn simulated(&mut self, frame: u32, _: &G) {
             self.0.push(format!("frame {frame}"));
         }
-        fn confirmed(&mut self, frame: u32, settled: Option<&Battle>) {
+        fn confirmed(&mut self, frame: u32, _: [&G::Input; 2], settled: Option<&Battle>) {
             self.0.push(format!("settled {frame}{}", if settled.is_some() { " with its state" } else { "" }));
         }
     }
