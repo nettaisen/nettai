@@ -1,12 +1,10 @@
-//! A player's SP navi deletion times (`PlayerSetup::sp_times`, the save's
-//! `byte_203EB00`) as people read and write them: a time each, by the SP
-//! navi's slot name in the rules (`sp_slots`: `sp/heatman` ...), as
-//! `mm:ss.cc`. The game keeps frames and shows them as the BCD time
+//! A player's SP navi deletion times (the rules' fact the engine knows as
+//! `PlayerFact::SpTimes`, the save's `byte_203EB00`: [`crate::Facts::sp_times`])
+//! as people read and write them: a time each, by the SP navi chip whose
+//! damage goes by it, as `mm:ss.cc`. The game keeps frames and shows them as the BCD time
 //! `sub_8000D84` makes (hundredths of the frames past the second, rounded
 //! down); a written time is the fewest frames that show as at least it, so
 //! each time the game shows reads back as itself.
-
-use nettai_battle::setup::SpTimes;
 
 /// The time `frames` shows as, `mm:ss.cc`.
 pub fn format(frames: u16) -> String {
@@ -37,11 +35,6 @@ pub fn parse(text: &str) -> Result<u16, String> {
     // whose `frames * 100 / 60` is at least them.)
     let frames = minutes * 3600 + seconds * 60 + (hundredths * 60).div_ceil(100);
     u16::try_from(frames).map_err(|_| format!("{text:?}: a deletion time is at most {}", format(u16::MAX)))
-}
-
-/// A setup's times by slot name, the ones not the fastest (0 frames).
-pub fn named(slots: &[String], times: &SpTimes) -> Vec<(String, u16)> {
-    slots.iter().zip(times.0).filter(|&(_, f)| f != 0).map(|(s, f)| (s.clone(), f)).collect()
 }
 
 #[cfg(test)]

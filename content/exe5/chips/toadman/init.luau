@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- ToadMan (EXE5 chip 0x101): ToadMan cuts in and plays a chain of paralyzing notes toward the nearest enemy ahead
 -- (./navi).
@@ -33,7 +34,8 @@ local toadman_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 69,
-    damage = { formula = "sp_navi", slot = "sp/toadman", by_time = { 220, 210, 200, 190, 180, 170, 160, 150, 140, 130, 120 }, operation_battle = 140 },
+    sp = { by_time = { 220, 210, 200, 190, 180, 170, 160, 150, 140, 130, 120 }, operation_battle = 140 },
+    damage = sp_chips.damage,
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

@@ -153,7 +153,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         let mut player = PlayerSetup {
             folder,
             joypad_phase: 0,
-            sp_times: Default::default(),
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             rules: None,
             patch_cards: Default::default(),

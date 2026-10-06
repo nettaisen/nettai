@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- Meddy (EXE5 chip 0x0ec): Meddy cuts in and throws two capsules beside the enemy navi, bursting along their lines
 -- (./navi).
@@ -31,7 +32,8 @@ local meddy_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 63,
-    damage = { formula = "sp_navi", slot = "sp/meddy", by_time = { 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100 }, operation_battle = 120 },
+    sp = { by_time = { 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100 }, operation_battle = 120 },
+    damage = sp_chips.damage,
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

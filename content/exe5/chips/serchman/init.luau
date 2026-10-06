@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- SerchMan (EXE5 chip 0x0e6): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
 -- shots on the panel (./navi).
@@ -32,7 +33,8 @@ local serchmn_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 72,
-    damage = { formula = "sp_navi", slot = "sp/serchman", by_time = { 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25 }, operation_battle = 45 },
+    sp = { by_time = { 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25 }, operation_battle = 45 },
+    damage = sp_chips.damage,
     hit_param = 133,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
