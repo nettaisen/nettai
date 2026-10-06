@@ -104,8 +104,7 @@ fn sprites(
             let Some(data) = archive(source, p) else {
                 continue;
             };
-            if let Some(mut s) = sprite_sheet(&data, category, index) {
-                s.region = jp.then(|| crate::exe6::jp::REGION.to_string());
+            if let Some(s) = sprite_sheet(&data, category, index) {
                 out.push(s);
             }
         }
@@ -223,7 +222,6 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
                 palette,
                 scroll,
                 anims,
-                region: None,
             })
         })
         .collect()

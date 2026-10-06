@@ -179,6 +179,17 @@ pub struct Problems {
     /// The last frame's places where the frontend draws something else
     /// than the original on purpose (`Known`).
     pub known: Vec<Known>,
+    /// What the caller asks to have marked wherever a frame draws it
+    /// (`Mark`): `sprite:NAME` (an object drawn with that sprite),
+    /// `background:NAME` (the frame's background), `chip:KEY` (the chip's
+    /// picture in the custom screen's chip window) and `chip-window-at-close`
+    /// (the HUD's chip name while it shows from the custom screen's close,
+    /// before the navi's first decision). The frontend knows no console
+    /// that shows them otherwise: the verification's frame comparison asks
+    /// for what its table says a recording's console does.
+    pub marking: std::collections::BTreeSet<String>,
+    /// The last frame's places where something `marking` names is drawn.
+    pub marks: Vec<Mark>,
     /// Every distinct lookup made so far, each checked once.
     lookups: HashSet<Lookup>,
     /// What is drawn otherwise than the packs would, by design, and said,
@@ -197,7 +208,33 @@ pub struct Known {
     pub why: &'static str,
 }
 
+/// A place of a frame where something the caller named is drawn
+/// (`Problems::marking`): a rectangle, in the screen's coordinates (it may
+/// reach past the screen: a caller widening it gets what reaches back in),
+/// and the name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Mark {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+    pub what: String,
+}
+
 impl Problems {
+    /// Whether the caller asked for `what` to be marked where drawn.
+    pub fn wants(&self, what: &str) -> bool {
+        !self.marking.is_empty() && self.marking.contains(what)
+    }
+
+    /// Note where `what`, which the caller asked for, is drawn this frame
+    /// (`[x0, y0, x1, y1]`, the ends exclusive).
+    pub fn mark(&mut self, [x0, y0, x1, y1]: [i32; 4], what: String) {
+        if x0 < x1 && y0 < y1 {
+            self.marks.push(Mark { x: x0, y: y0, width: x1 - x0, height: y1 - y0, what });
+        }
+    }
+
     /// Note a place the frontend draws differently on purpose this frame.
     pub fn known(&mut self, x: i32, y: i32, width: i32, height: i32, why: &'static str) {
         self.known.push(Known { x, y, width, height, why });
@@ -256,7 +293,9 @@ impl Problems {
 
     /// Forget everything (a new run).
     pub fn clear(&mut self) {
-        *self = Problems::default();
+        // (What the caller asks to have marked stays.)
+        let marking = std::mem::take(&mut self.marking);
+        *self = Problems { marking, ..Problems::default() };
     }
 
     /// Forget which lookups were made, so each is checked again when it is

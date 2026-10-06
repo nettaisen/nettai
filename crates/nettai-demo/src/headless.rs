@@ -103,6 +103,7 @@ pub fn render_frames_with(
 ) -> std::io::Result<Vec<u32>> {
     std::fs::create_dir_all(out)?;
     let _ = std::fs::remove_file(out.join("known.tsv"));
+    let _ = std::fs::remove_file(out.join("marks.tsv"));
     let mut written = Vec::new();
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     let mut rest = rest.into_iter();
@@ -122,6 +123,15 @@ pub fn render_frames_with(
                     let mut file = std::fs::OpenOptions::new().create(true).append(true).open(out.join("known.tsv"))?;
                     for k in &player.renderer().problems.known {
                         writeln!(file, "{f}\t{}\t{}\t{}\t{}\t{}", k.x, k.y, k.width, k.height, k.why)?;
+                    }
+                }
+                // Where what the caller named is drawn (`marks.tsv`: frame,
+                // x, y, width, height, what: `--mark`).
+                if !player.renderer().problems.marks.is_empty() {
+                    use std::io::Write;
+                    let mut file = std::fs::OpenOptions::new().create(true).append(true).open(out.join("marks.tsv"))?;
+                    for m in &player.renderer().problems.marks {
+                        writeln!(file, "{f}\t{}\t{}\t{}\t{}\t{}", m.x, m.y, m.width, m.height, m.what)?;
                     }
                 }
                 if objects {
@@ -181,7 +191,6 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<
     let mut samples = Vec::new();
     for mut s in sessions {
         renderer.reset();
-        renderer.console_region = s.driver.console_region();
         renderer.console_version = s.driver.console_version();
         while s.step(0) {
             renderer.observe(&s.battle);

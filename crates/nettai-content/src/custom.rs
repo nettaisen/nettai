@@ -317,10 +317,6 @@ pub struct ChipArtDoc {
     pub chip: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<TileImage>,
-    /// The region whose ROMs the picture comes from, when not the pack's
-    /// own (`ChipArt::region`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
     /// The game version whose ROM the chip's picture and icon are from,
     /// for a chip only its own version's ROM draws (`ChipArt::version`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -434,7 +430,6 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             chip: a.key.clone(),
             image: (!a.picture.tiles.is_empty())
                 .then(|| image(&format!("chip-art/{}.png", a.key), &a.picture.tiles, PICTURE, &[a.picture.palette], 1, &none)),
-            region: a.region.clone(),
             version: a.version.clone(),
         })
         .collect();
@@ -566,7 +561,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             Some(i) => one(img(i, report)?),
             None => Picture::default(),
         };
-        chip_art.push(ChipArt { key: a.chip.clone(), picture, region: a.region.clone(), version: a.version.clone() });
+        chip_art.push(ChipArt { key: a.chip.clone(), picture, version: a.version.clone() });
     }
     let pictures = SlotPictures {
         ok: one(img(&doc.pictures.ok, report)?),
