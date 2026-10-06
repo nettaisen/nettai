@@ -1354,13 +1354,23 @@ of records an array of tables, as above.
 
 **A save** (the editor's "Import from save…", `Match::import_save`, into a
 match of the save's game: a save of the other game makes a new match of its
-game first) of EXE6, a .sav as an emulator keeps it, read by
-`exe6_compat::save`, gives a side its version, Beast Out and the Crosses it
-owns (its `crosses`: those of its version's five its flags own, in the
-Cross numbers' order), the navi code's level (a link navi keeps its own when the save has no
-code) and the SP times; its folder, NaviCust, patch cards and what it
-brings to the stats are not read yet. An EXE5 save gives a team navi side its
-level (its HP is the level's) and its block's karma.
+game first; `nettai_match::import::exe6` and `::exe5`) gives a whole side.
+Of EXE6, a .sav as an emulator keeps it or a raw image as Tango's netplay
+templates hold, read by `exe6_compat::save` (a Japanese image's region from
+the US's 0x414C sits 0x40 earlier): the navi it operates; its version,
+Beast Out and the Crosses it owns (its `crosses`: those of its version's
+five its flags own, in the Cross numbers' order); the navi code's level (a
+link navi keeps the side's when the save has no code); its equipped folder
+with its Regular and tag chips (the operated navi's block's); MegaMan's
+NaviCust (its ExpMemry's board and its programs as placed, compressed by
+their event flags) and patch cards (those switched on; a link navi has
+neither); what it brings to the stats (`hp`, MegaMan's base HP; `reg_up`
+and `sun`, the operated navi's block's); its BugFrags; and the SP times.
+A test in the verification workspace imports Tango's four EXE6 and eight
+EXE5 raw saves (the match's checks accept each, and its round starts), and
+holds a side imported from a save the chip lab recorded on to the
+recording's round: the stats it starts with, the folder's chips and the
+facts both state.
 
 **The NaviCust** (`navicust_expansions` and `navicust_programs`,
 docs/design/navicust.md) is the programs placed on MegaMan's grid, by name
@@ -1414,10 +1424,12 @@ whose rules take neither refuses one off. The netplay offer carries them.
 **An EXE5 save** (the editor's "Import from save…", `Match::import_save`,
 which reads a save that isn't EXE6's as EXE5's: a .sav, or a raw save image as
 Tango's netplay templates hold, read by `exe5_compat::save`) makes the match
-EXE5's and gives its karma, the souls its version's flags give (the forms
-compat names for those numbers), its Soul Unison and Chaos Unison, to a side
-with a NaviCust the board of its ExpMemry (`expansions`: the NaviCust's
-programs aren't the import's yet), and its auto battle data (the block at
+EXE5's and gives the navi it operates, its equipped folder with its Regular
+chip, MegaMan's NaviCust (the board of its ExpMemry and the programs as
+placed) and patch cards (those switched on; a team navi has neither), his
+base HP and the operated navi's Regular memory, its karma, the souls its
+version's flags give (the forms compat names for those numbers), its Soul
+Unison and Chaos Unison, and its auto battle data (the block at
 save +0x554C, place for place and record for record, chips by their
 numbers' names). What a match can't state of a block is left empty and
 said: a chip number the game has no chip for, and an entry for a pattern

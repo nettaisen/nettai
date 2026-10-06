@@ -190,8 +190,9 @@ fn stated_of(ty: &FieldType, v: FieldValue) -> Stated {
 }
 
 impl Facts {
-    /// A setup's block as facts (a test's, the binary's).
-    pub(crate) fn of_block(block: Block) -> Facts {
+    /// A setup's block as facts (a test's, the binary's, a recording's
+    /// setup a tool compares).
+    pub fn of_block(block: Block) -> Facts {
         Facts(Some(block))
     }
 

@@ -1,16 +1,20 @@
-//! A side from an EXE5 save file (exe5-compat's `save`): its karma (the
-//! light/dark value), the souls it has, its Soul Unison and Chaos Unison,
-//! how far its NaviCust's board is expanded (its ExpMemry), and its
-//! auto battle data (what a navi in auto battle plays from it: EXE5's
-//! rules' `auto_battle_places` and `auto_battle_records`); for a side that operates a team navi, the
-//! navi's level and HP. (Its folder, the NaviCust's programs and MegaMan's
-//! stats are a later import's.) `Match::import_save` comes here for a save
+//! A side from an EXE5 save file (exe5-compat's `save`), whole: the navi it
+//! operates, its equipped folder with its Regular chip, MegaMan's NaviCust
+//! (its board, by its ExpMemry, and its programs as placed) and patch cards
+//! (those switched on), what it brings to the stats (MegaMan's base HP, the
+//! Regular memory), its karma (the light/dark value), the souls it has, its
+//! Soul Unison and Chaos Unison, and its auto battle data (what a navi in
+//! auto battle plays from it: EXE5's rules' `auto_battle_places` and
+//! `auto_battle_records`); for a side that operates a team navi, the
+//! navi's level, whose HP the story gives. (A save keeps no SP deletion
+//! times: the side keeps its own.) `Match::import_save` comes here for a save
 //! that isn't EXE6's. (A boundary with exe5-compat, as `import::exe6` is
 //! with exe6-compat: a save's bytes and the original's numbers in them.)
 
-use crate::{Side, ids};
+use crate::{Folder, Side, ids};
 use exe5_compat::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, AutoBattlePattern, Save};
-use nettai_battle::content::Content;
+use nettai_battle::content::{ChipCode, Content};
+use nettai_battle::custom::FolderChip;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{Registry, Value};
 
@@ -127,11 +131,23 @@ impl Side {
     /// player) as the side's. What is worth saying about it.
     pub fn import_exe5_save(&mut self, content: &Content, game: &str, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
+        let compat = exe5_compat::Compat::exe5();
+        // The navi it operates.
+        match compat.navi_key(save.navi()).and_then(|k| crate::ids::navi(content, game, k)) {
+            Some(navi) => {
+                if let Err(e) = self.set_navi(content, navi) {
+                    notes.push(format!("the save's navi is left out: {e}"));
+                }
+            }
+            None => notes.push(format!("the save operates navi {}, which {game} hasn't: the side keeps its navi", save.navi())),
+        }
+        let megaman = content.navi(self.navi(content)).forms.is_some();
         // (A fact the content's rules don't take is the save's alone: said,
         // and left out.)
+        let mut left_out: Vec<String> = Vec::new();
         let mut state = |side: &mut Side, field: &str, values: &[Fact]| {
             if let Err(e) = side.set_fact(content, field, values) {
-                notes.push(format!("the save's {field} is left out: {e}"));
+                left_out.push(format!("the save's {field} is left out: {e}"));
             }
         };
         state(self, "karma", &[Fact::Value(Value::Int(save.light_dark() as i64))]);
@@ -139,7 +155,6 @@ impl Side {
         state(self, "chaos_unison", &[Fact::Value(Value::Bool(save.chaos_unison()))]);
         // (A save's souls are by the original's number: compat names each
         // number's form.)
-        let compat = exe5_compat::Compat::exe5();
         let mut souls = Vec::new();
         let mut missing = Vec::new();
         for n in save.souls() {
@@ -150,16 +165,50 @@ impl Side {
         }
         state(self, "souls", &souls);
         notes.extend(missing.iter().map(|n| format!("the save has soul {n}, which {game} hasn't")));
-        // The NaviCust's board, where the side has a NaviCust (its
-        // `navicust_expansions` stated).
-        let has_navicust = matches!(
-            self.facts.fact(content, "navicust_expansions").map(|f| f.value()),
-            Some(nettai_content_api::FieldValue::OptionalU8(Some(_)))
-        );
-        // (A board past the rules' is their `validate`'s to say.)
-        if has_navicust && let Err(e) = self.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Int(save.expansions() as i64))]) {
-            notes.push(format!("the save's navicust_expansions is left out: {e}"));
+        // Its equipped folder, by the chips' numbers' names.
+        let f = save.folder();
+        let mut chips = [None; 30];
+        let mut nameless: Vec<u16> = Vec::new();
+        for (slot, &v) in chips.iter_mut().zip(&f.chips).filter(|(_, v)| **v & 0x1FF != 0) {
+            match compat.chip_key(v & 0x1FF).and_then(|k| ids::chip(content, game, k)) {
+                Some(c) => *slot = Some(FolderChip::new(c, ChipCode((v >> 9) as u8))),
+                None => nameless.push(v & 0x1FF),
+            }
         }
+        if !nameless.is_empty() {
+            let numbers: Vec<String> = nameless.iter().map(|n| format!("{n:#05x}")).collect();
+            notes.push(format!("the save's folder holds chip numbers {game} has no chip for ({}): their entries are left empty", numbers.join(", ")));
+        }
+        if let Err(e) = self.set_folder(content, &Folder { chips, regular: f.regular, tags: None }) {
+            notes.push(format!("the save's folder is left out: {e}"));
+        }
+        // MegaMan's NaviCust (its board, the save's ExpMemry: one past the
+        // rules' is their `validate`'s to say) and patch cards; a team navi
+        // has neither.
+        if megaman {
+            state(self, "navicust_expansions", &[Fact::Value(Value::Int(save.expansions() as i64))]);
+            match exe5_compat::codec::navicust(content, compat, save.navicust_list(), |id| save.compressed(id)) {
+                Ok(programs) => state(self, "navicust_programs", &programs),
+                Err(e) => notes.push(format!("the save's NaviCust is left out: {e}")),
+            }
+            match exe5_compat::codec::patch_cards(content, compat, save.version(), &save.patch_cards()) {
+                Ok(cards) => state(self, "patch_cards", &cards),
+                Err(e) => notes.push(format!("the save's patch cards are left out: {e}")),
+            }
+        } else {
+            state(self, "navicust_programs", &[]);
+            state(self, "patch_cards", &[]);
+        }
+        // What the save brings to the stats: MegaMan's base HP (a team
+        // navi's is its story's), the operated navi's Regular memory.
+        if let Some(stats) = save.team_navi_stats(save.navi()) {
+            if megaman {
+                let hp = u16::from_le_bytes([stats[0x3E], stats[0x3F]]);
+                state(self, "hp", &[Fact::Value(Value::Int(hp as i64))]);
+            }
+            state(self, "reg_up", &[Fact::Value(Value::Int(stats[0x09] as i64))]);
+        }
+        notes.extend(left_out);
         if crate::facts::takes(content, "auto_battle_places") {
             notes.extend(state_auto_battle(content, game, &save.auto_battle(), self));
         }
@@ -172,8 +221,12 @@ impl Side {
     /// at (EXE5's rules/save), and, where the save's version has the navi,
     /// the light/dark value of the navi's own block.
     fn import_exe5_team_navi(&mut self, content: &Content, save: &Save) -> Vec<String> {
+        // (MegaMan takes no level.)
         if content.navi(self.navi(content)).story.is_none() {
-            return Vec::new();
+            return match self.set_level(content, None) {
+                Ok(()) => Vec::new(),
+                Err(e) => vec![format!("the side's level is left as it is: {e}")],
+            };
         }
         let name = crate::names::navi(content, self.navi(content));
         let level = save.navi_level();
@@ -254,11 +307,12 @@ mod tests {
         assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
     }
 
-    /// A Team ProtoMan save whose story is four flags along: a side that
-    /// operates ProtoMan takes its level (4), which his round's HP is the
-    /// story's at (450, whatever his block's says), and his own block's
+    /// A Team ProtoMan save operating ProtoMan, whose story is four flags
+    /// along: the side is ProtoMan at its level (4), which his round's HP is
+    /// the story's at (450, whatever his block's says), with his own block's
     /// light/dark value; from a Team Colonel save, which hasn't him, the
-    /// level alone.
+    /// level alone; and a save operating MegaMan gives a MegaMan side, who
+    /// takes no level.
     #[test]
     fn a_exe5_save_gives_a_team_navi_its_level() {
         let content = exe5_content();
@@ -273,13 +327,16 @@ mod tests {
         for (at, v) in [(0x3E, 470u16), (0x40, 123), (0x42, 470), (0x44, 519)] {
             image[block + at..block + at + 2].copy_from_slice(&v.to_le_bytes());
         }
+        // (The navi operated: ProtoMan, Team ProtoMan's first.)
+        image[0x2941] = 1;
         let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
         let mut m = crate::Match::empty(&content, "exe5").unwrap();
-        let s = &mut m.sides[0];
-        s.set_navi(&content, protoman).unwrap();
-        s.set_level(&content, Some(0)).unwrap();
         let notes = m.import_save(&content, 0, &image).unwrap();
         let s = &m.sides[0];
+        assert_eq!(s.navi(&content), protoman);
+        for field in ["navicust_programs", "patch_cards"] {
+            assert_eq!(s.facts.get(&content, field).map(|v| v.defs()), Some(Vec::new()), "{field}: MegaMan's");
+        }
         assert_eq!(s.level(&content), Some(4));
         assert_eq!(s.facts.get(&content, "karma"), Some(crate::facts::Stated::Number(519)));
         assert!(notes.iter().any(|n| n.contains("level 4")), "{notes:?}");
@@ -294,10 +351,11 @@ mod tests {
         let notes = m.import_save(&content, 0, &image).unwrap();
         assert_eq!((m.sides[0].level(&content), hp(&m)), (Some(4), 450));
         assert!(notes.iter().any(|n| n.contains("its version has no such navi")), "{notes:?}");
-        // A MegaMan side takes no level from the save.
-        assert_eq!(m.sides[1].level(&content), None);
-        m.import_save(&content, 1, &image).unwrap();
-        assert_eq!(m.sides[1].level(&content), None);
+        // A save operating MegaMan: a MegaMan side, who takes no level.
+        image[0x2941] = 0;
+        m.import_save(&content, 0, &image).unwrap();
+        assert_eq!(crate::ids::local(&content.defs.navi(m.sides[0].navi(&content)).key), "megaman");
+        assert_eq!(m.sides[0].level(&content), None);
     }
 
     /// The content names a soul by its form's id; the original's number for
