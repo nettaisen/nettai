@@ -71,8 +71,9 @@ pub struct EntryStrings {
 
 /// One language's strings, by definition key: the core's sections' (chips,
 /// navis, forms), and each of the game's collections' under its name
-/// (`[patch_cards]`), by id. (A table that is no collection of the content
-/// is the locales' check's to refuse.)
+/// (`[patch_cards]`), by id; and the game's text tables that no definition
+/// owns (`[text.<table>]`), by key. (A table that is no collection of the
+/// content is the locales' check's to refuse.)
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Strings {
     /// Its language (`en`, `ja`).
@@ -83,6 +84,13 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
+    /// The game's own text tables, by table, then key: text that no
+    /// definition owns, which tools show and nothing in a battle reads
+    /// (EXE6's and EXE5's `patch_card_effects`: each line a patch card's
+    /// menu shows, by its effect's kind and choice, its numbers by the
+    /// effect's fields, `{amount}`).
+    #[serde(default)]
+    pub text: BTreeMap<String, BTreeMap<String, String>>,
     /// The game's collections' entries', by collection, then id.
     #[serde(flatten)]
     pub collections: BTreeMap<String, BTreeMap<String, EntryStrings>>,
@@ -103,6 +111,9 @@ impl Strings {
         self.chips.extend(other.chips);
         self.navis.extend(other.navis);
         self.forms.extend(other.forms);
+        for (t, lines) in other.text {
+            self.text.entry(t).or_default().extend(lines);
+        }
         for (c, entries) in other.collections {
             self.collections.entry(c).or_default().extend(entries);
         }
@@ -123,6 +134,11 @@ impl Strings {
     /// Entry `id` of collection `collection`'s strings.
     pub fn entry(&self, collection: &str, id: &str) -> Option<&EntryStrings> {
         self.collections.get(collection)?.get(id)
+    }
+
+    /// Key `key` of the game's text table `table`.
+    pub fn text(&self, table: &str, key: &str) -> Option<&str> {
+        self.text.get(table)?.get(key).map(String::as_str)
     }
 }
 

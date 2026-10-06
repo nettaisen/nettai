@@ -4,7 +4,7 @@ The engine supports rollback netplay: each peer runs the whole battle, predicts 
 speculates ahead of the frames both players' inputs are known for, and when the real input arrives and differs,
 goes back to the last confirmed state and simulates again. The netcode core is getgud, Tango's rollback library;
 crates/nettai-netplay implements its `World` for the battle. The players' inputs travel on rennet, Tango's netplay
-transport, over UDP (or any datagram channel). This document describes the engine's side of that contract, how
+transport, over a WebRTC data channel (or any datagram channel). This document describes the engine's side of that contract, how
 getgud's model maps onto the engine, the protocol and the transport, the simulator that proves them, what the
 original's per-console ("local side") state means for it, how sound works under rollback, what it costs, the hazards
 found, and what the custom screen and scripting layers must guarantee to keep it working.
@@ -24,9 +24,11 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   a tick's buttons and event flags (one byte for A, B and the directions),
   and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
-- **Transport**: a `Datagram` trait (send, and take what arrived, never waiting); UDP for direct play
-  (`nettai-demo --match FILE --host PORT` / `--join ADDR:PORT`), a WebRTC data channel later. A handshake checks
-  the protocol, the engine and the content, swaps what each player brings and agrees the seed (§4.7).
+- **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc: native on the `rtc` crate,
+  the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker;
+  `nettai-demo --match FILE --room CODE`) or directly (`--host PORT` / `--join ADDR:PORT`); a dropped connection
+  is made again and the match goes on where it was. A handshake checks the protocol, the engine and the content,
+  swaps what each player brings and agrees the seed (§4.7, §4.8).
 - **Snapshots**: `Battle` is plain data, `Clone`, `Send` and `Sync` (checked at compile time); a snapshot
   (`save_state` / `load_state`) is a boxed copy, `Send` as getgud requires, and a whole session on a battle world
   is `Send`, so it can run on a network thread. About 22 KB (8.6 KB inline plus the
@@ -51,7 +53,8 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Results**: synthetic netbattles on the engine's test content (random button mashing, fixed hands) run to the KO
   without a single divergence at latencies of 0 to 10 frames with jitter and present delay, and with 10% to 25% of
   the datagrams lost (in bursts) and 5% to 10% duplicated, with thousands of rollbacks each; through an outage of
-  two seconds; across a set's rounds; and over real UDP on loopback, in two threads and in two processes. The golden
+  two seconds; across a set's rounds; and over WebRTC data channels on loopback, directly and through a signaling
+server's room, through a three-second outage the connection comes back from. The golden
   traces, replayed through two getgud sessions at latencies 0, 2, 5 and 10 (plus jitter), clean and lossy, match the
   trace on every confirmed frame, with the peers in agreement throughout (§5).
 - **Cost**: the worst case, a 10-frame rollback on every rendered frame, costs about 60-80 µs per frame in
@@ -457,19 +460,21 @@ the ack, one; the meta, one) and the window: one element a tick, a byte with A, 
 what the other peer hasn't acknowledged, so it grows with the round trip. Measured on the synthetic battles (§5.1),
 the mean frame per peer:
 
-| Network | Elements a frame | Bytes a frame | With the transport (1 + UDP/IPv4's 28) |
+| Network | Elements a frame | Bytes a frame | With the transport (1 + 94) |
 |---|---|---|---|
-| no latency | 2.0 | 6.1 | 35 |
-| 1 + 1 | 3.0 | 7.2 | 36 |
-| 2 + 1 | 5.0 | 9.4 | 38 |
-| 5 + 2 | 11.8 | 16.6 | 46 |
-| 10 + 3 | 22.4 | 28.0 | 57 |
-| 10% lost, no latency | 2.4 | 6.6 | 36 |
-| 10% lost, 2 + 2 | 6.1 | 10.5 | 40 |
-| 15% lost, 5 + 3 | 13.1 | 18.0 | 47 |
-| 25% lost, 10 + 4 | 24.1 | 30.0 | 59 |
+| no latency | 2.0 | 6.1 | 101 |
+| 1 + 1 | 3.0 | 7.2 | 102 |
+| 2 + 1 | 5.0 | 9.4 | 104 |
+| 5 + 2 | 11.8 | 16.6 | 112 |
+| 10 + 3 | 22.4 | 28.0 | 123 |
+| 10% lost, no latency | 2.4 | 6.6 | 102 |
+| 10% lost, 2 + 2 | 6.1 | 10.5 | 106 |
+| 15% lost, 5 + 3 | 13.1 | 18.0 | 113 |
+| 25% lost, 10 + 4 | 24.1 | 30.0 | 125 |
 
-At 60 frames a second each way, that is about 2 to 3.5 kB/s with the headers. The golden traces cost the same
+The transport is the kind byte (§4.7) and WebRTC's framing: SCTP's DATA chunk (16) and common header (12), DTLS's
+record with AES-GCM (37) and UDP/IPv4's 28 (and SCTP's padding to 4 bytes, up to 3 more). At 60 frames a second
+each way, that is about 6 to 7.5 kB/s with the headers, and SCTP's acknowledgments of the other side's frames. The golden traces cost the same
 (§5.3: 5.9 to 28 bytes a frame).
 
 **The horizon** (`protocol::HORIZON`, 240 elements: four seconds) is the widest gap the in-stream accepts: an element
@@ -498,23 +503,25 @@ that a player left (`Peer::leave`).
 
 The transport is the host's: nettai-netplay and nettai-frontend have no socket and no handshake. The frontend's
 `NetPlayer` plays on a `netplay::Channel` the host implements (send a frame to the other player, take the next one
-that came, neither ever waiting; nothing is assumed of delivery), and the match is agreed before it (`lobby::Lobby`
-over the host's datagrams, below). The program's transport is nettai-demo's `net`, below; a larger
-app brings its own (a signaling server and WebRTC, §4.8) and hands the library the agreed match and the frames.
+that came, neither ever waiting; nothing is assumed of delivery; and, if it can tell, how long it has been down
+while it is being made again, `down_for`, §4.8), and the match is agreed before it (`lobby::Lobby` over the host's
+datagrams, below). The program's transport is a WebRTC data channel, nettai-rtc's `Link` (§4.8), and nettai-demo's
+`net` runs the handshake over it.
 
-`net::Datagram` is all the program's handshake needs of a socket: send a datagram to the other peer, and take the
-next one that arrived, neither ever waiting. `net::Udp` is direct play: a host binds a UDP port on every IPv4
-interface and takes the first lobby datagram's sender as the other peer (connecting the socket to it, so that
-nothing else is read); a joiner connects to the host's address. The "port unreachable" a UDP socket reports for a
-datagram the other end didn't take (the host isn't up yet) is not an error.
+`net::Datagram` is all the program's handshake needs of a transport: send a datagram to the other peer, and take
+the next one that arrived, neither ever waiting; and this side's role, once it is known (directly at once; in a room
+when the signaling server lets the player in, so the handshake makes its lobby then, and gives up after the joiner's
+wait if the server can't be reached). A `Link` is one.
 
 Every datagram on the channel starts with a byte that says what it is (`lobby::Kind`): a protocol frame, a lobby
 message, a Hello, a Reveal, or a refusal. A frame needs that byte because a handshake message can come late or
-twice, into the match, and must not be read as a frame. (A WebRTC peer could keep the handshake on a reliable
-channel of its own and do without the byte.)
+twice, into the match, and must not be read as a frame. The lobby's messages share the frames' unreliable channel:
+the lobby says its part every 100 ms until it is answered, and a Hello or a Reveal that comes twice is answered
+again, so a reliable channel of their own would add nothing.
 
 **The lobby and the handshake** (nettai-frontend's `lobby::Lobby`, without IO: the host feeds it the datagrams
-that arrive and sends what it hands back; nettai-demo's `net::NetHandshake` runs it over UDP, polled each frame):
+that arrive and sends what it hands back; nettai-demo's `net::NetHandshake` runs it over the link, polled each
+frame):
 
 1. **Lobby.** Each peer says its proposal, the match's settings (the game and the rounds, each round's stage and
    background by name or left to the seed), and whether it is ready, when it changes and every 100 ms, with the
@@ -538,21 +545,85 @@ with the reason three times and stops; the other stops on reading it, so both sa
 the frames follow the Reveals, and a Hello or a Reveal that comes again, into the match, is answered with this
 peer's Reveal (its `Connection`, the player's channel, does).
 
-### 4.8 What WebRTC would need
+### 4.8 WebRTC: rooms, direct connect, reconnection
 
-Tango plays its matches over a WebRTC data channel opened unordered and without retransmits, set up through a
-signaling server (matchmaking by a link code). To plug in here:
+nettai-rtc carries the frames on a WebRTC data channel, as Tango does: one API on two backends, native (the `rtc`
+crate, webrtc-rs's sans-I/O WebRTC) and the browser's (`RTCPeerConnection` through web-sys, on wasm32). It depends
+on no engine crate. Two layers:
 
-- a `netplay::Channel` on such a channel: `send` posts a message on the channel; `recv` takes one from a queue
-  the channel's message callback fills (the channel's library is asynchronous; the peer and its session stay on the
-  frontend's thread, which polls the queue every frame);
-- the signaling: an offer and an answer (SDP) and ICE candidates exchanged through a server, before the channel
-  opens; the host and joiner roles follow who made the link code;
-- the lobby and the handshake (the library's `lobby::Lobby`, as it is, over the channel, or on a second, reliable
-  channel, without the kind byte on frames);
-- NAT traversal (STUN, and TURN when that fails) comes with WebRTC; UDP direct play needs a forwarded port instead.
+- `PeerConnection`: one connection and its data channel. It is told the other side's description and candidates
+  and hands over its own as events (`PeerEvent`: the description, each candidate as it is found, open, down), so
+  the browser's asynchronous offer and answer fit the same API; `send` and `recv` never wait.
+- `Link`: the channel a match is played on, which keeps a connection up: it meets the other player (in a room of
+  the signaling server, or directly at a host's port, natively), and when the connection drops makes another
+  (below). Its `send` and `recv` are a datagram channel's; while it is down, what is sent is dropped and nothing
+  comes.
 
-Nothing above the `Channel` changes: the protocol, the peer and the frontend's driver are the same.
+**The channel** is opened unordered and without retransmits, and negotiated out of band (stream 0 on both sides, no
+in-band announcement), so both sides make it alike and a lost datagram is the next one's to make up, never SCTP's to
+resend late. WebRTC's framing adds about 94 bytes to each frame (§4.6).
+
+**The native backend** runs on the caller's thread and never waits: each call pumps the connection (the datagrams
+that came, `rtc`'s timers when due, what it has to send, its events), and the frontend calls in every frame, often
+enough for ICE, DTLS and SCTP. `rtc` gathers nothing, so a connection binds a UDP socket on each of the machine's
+addresses (IPv4, and IPv6's global ones; the loopback address where there is no other) and offers each as a host
+candidate; on the socket the system routes to the STUN server it asks for its address as the Internet sees it (a
+server-reflexive candidate), and with a TURN server it allocates a relayed address (`rtc`'s TURN client, sans-I/O
+too: what is sent from the relayed address goes through it, with a permission for each remote candidate). A
+browser's candidates under an mDNS name (`.local`) are skipped; the browser still reaches the native side's host
+or server-reflexive candidates, and the native side learns the browser's address from its checks. What may block
+runs on threads of its own: the signaling WebSocket (tungstenite, rustls), and resolving the STUN and TURN names,
+once a link. (`rtc` 0.21 passes a negotiated channel's open on only with the next datagram that comes, up to two
+seconds later at the ICE keepalive; the backend hands it an empty one, which it drops, to drain it at once. ICE
+checks a pair for as long as a dial is given, not `rtc`'s 1.4 seconds, so a dial made during an outage connects as
+soon as the network is back.)
+
+**The signaling server** is `signaling/`, a Cloudflare Worker in TypeScript with a Durable Object a room, on the
+WebSocket hibernation API (an idle room costs nothing; `ping` is answered `pong` without waking it). TypeScript
+because the Durable Object WebSocket API is the Workers runtime's own, with no build step under `wrangler dev`;
+workers-rs would add a wasm build for a relay of about 150 lines. A client opens `/rooms/CODE?peer=ID` (CODE 1 to 64
+letters, digits, `_` and `-`; ID the client's own, random, the same on every reconnection). The room has two places:
+the first ID to come hosts (side 0, the left navi), the second joins; an ID that comes again gets its place back,
+which is how a reconnecting player keeps its side, and a third is refused. The server says `welcome` (the place, and
+whether the other is there), `peer` (the other came or went), `signal` (what the other sent) and `error`; a client
+says `signal` (relayed to the other, dropped if it isn't there) and `leave` (gives its place up). It reads none of
+the signals: the joiner's offer, the host's answer, the candidates, each of a connection's generation, and the
+host's call to dial again. A room is forgotten ten minutes after its last socket goes. The protocol is
+nettai-rtc's `signal` module; its `testing` feature has a server of its own speaking it, in process, for tests.
+The Worker is run locally (`npx wrangler dev`); deploying it is its owner's step (`npx wrangler deploy`).
+
+**Direct connect** (native only) exchanges nothing before ICE: each side makes up the other's description, every
+field of which is fixed but two. The ICE credentials are fixed (the joiner's username fragment is its nonce, drawn
+once a link, and the connection's generation); the joiner is told the host's address, its one remote candidate,
+and the host learns the joiner's from its first connectivity check (a peer-reflexive candidate). Neither side's own
+candidate is said to anyone, so each is a placeholder naming its socket, bound on every interface (`0.0.0.0:PORT`).
+The DTLS fingerprint is the one field a real exchange carries that can't be made up, and it isn't checked: direct
+connect authenticates nobody, as the raw UDP it replaced didn't (a room's connection checks the fingerprints its
+descriptions carry). It crosses a NAT as that did: on a LAN, or with the host's UDP port forwarded to it.
+
+**Reconnection.** The joiner dials (the offer, ICE's controlling side, the DTLS client) and the host answers, in a
+room and directly alike. A dropped connection isn't mended (no ICE restart): the joiner dials a new one, the next
+generation, which works the same on both backends and directly; what is said of an older generation is dropped. A
+drop is the connection's state (disconnected, failed or closed), its data channel closing, or silence: nothing from
+the other side for 3 seconds while it is open (the lobby sends every 100 ms, a match every frame). Then the joiner
+dials again at once, and again after 0.5, 1, 2, then every 3 seconds while dials don't open (each given 10
+seconds), and in a room also when the host says it lost the connection, or when the host is back in the room. The
+host waits for the next generation: its offer in the room (asking for it every 2 seconds while it has no new
+connection under way), or directly the joiner's checks, whose username fragment names a newer generation (the host
+reads its socket itself, and takes only the joiner whose nonce came first). After 30 seconds down the link gives
+up, and every call after errs: "the connection to the other player dropped (WHY) and didn't come back within 30
+seconds". The signaling WebSocket reconnects on its own, with the same ID; the connection doesn't need it while it
+is up.
+
+The match needs nothing of its own to carry on: while the channel is down both peers wait at the stall guard (30
+ticks of unconfirmed input, about half a second after the drop), still sending their windows, which are lost; the
+gap can't pass twice the stall guard, inside the horizon (§4.6); when it is back, the next datagrams carry what each
+side hasn't acknowledged, rollback corrects what was predicted, and clock sync levels the peers again. What the
+frontend does is not give up: `NetPlayer` ends a match after 10 seconds with nothing from the other player, but not
+while the channel says it is down (`Channel::down_for`), counting again from when it is back; giving up is the
+transport's. The players see the battle stop within half a second; the window's title says "the connection
+dropped: reconnecting (Ns)" (`NetStatus::reconnecting`), and stderr when it drops and when it is back; the battle
+goes on where it was, or the match ends after 30 seconds with the message above.
 
 ## 5. Results
 
@@ -614,12 +685,19 @@ clock sync (a peer that starts 6 or 20 frames ahead), the two negative tests bel
 An ignored test mashes with everything the test content has on both sides (cut-ins, giga cut-in chips, navi chips,
 bombs, swords, traps, grabs, 500 HP): no tick stops, settled or speculated (§7.1).
 
-**Over a channel, and over UDP**: the frontend's tests play two `NetPlayer`s on EXE6's content over a channel the
+**Over a channel, and over WebRTC**: the frontend's tests play two `NetPlayer`s on EXE6's content over a channel the
 test shuttles by hand, each frame arriving three frames after it was sent (the agreement from both offers, each
 player's own loadout, 900 ticks of mashing; and a set to its end, in both games), and their settled states agree.
-nettai-demo's `net` tests shake hands over UDP on localhost, both sides polled on one thread, and agree the match.
-Two frontends in their windows, one hosting and one joining on loopback, play with a 18 ms round trip; the joiner
-sees the battle from its side, with its own custom screen.
+Over WebRTC links in a room of the in-process signaling server, a short set (the host's navi shoots, the joiner's
+has 1 HP) is cut mid-round-one by three seconds of the joiner's network going: both see the channel down, a new
+connection comes back about 0.1 s after the network does, and the set goes on to its end, both replays the same but
+for who recorded, one playing back with no difference. nettai-rtc's tests open links on loopback (directly in about
+0.1 s, through a room in about 0.15 s), bring them back after outages of either side (one generation an outage),
+give up after the reconnection timeout, and refuse a third player in a room; the same tests pass against the
+Worker under `wrangler dev`, and in a browser (headless Chrome) two connections in a page, two links in a room, and
+a browser's link and a native one in the same room trade datagrams. nettai-demo's `net` tests shake hands directly
+and in a room on localhost, both sides polled on one thread, and agree the match. (Earlier, over plain UDP, two
+frontends in their windows on loopback played with an 18 ms round trip, the joiner seeing the battle from its side.)
 
 ### 5.2 How long before a divergence, and why
 
