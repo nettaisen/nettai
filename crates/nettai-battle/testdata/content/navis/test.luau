@@ -41,15 +41,23 @@ local landing = define.action {
 }
 
 -- What the navi with hooks wears: an object of the content's own kind, which
--- goes at its next update once it is taken down.
+-- goes at its next update once it is taken down. Its state is larger than
+-- the 64 bytes an object's once had at most: it counts its ticks, and marks
+-- the last of its 24 words with three times the count.
+type WornState = { ticks: number, marks: { number } }
 local worn = define.kind {
     id = "test/worn",
     pool = "actor",
+    state = { ticks = "u16", marks = "u32[24]" },
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
             me:set_lifecycle("update")
-        elseif l ~= "update" then
+        elseif l == "update" then
+            local s = me.state :: WornState
+            s.ticks += 1
+            s.marks[24] = s.ticks * 3
+        else
             me:free()
         end
     end,

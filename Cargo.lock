@@ -2380,9 +2380,11 @@ dependencies = [
 name = "nettai-demo"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "exe5-compat",
  "exe6-compat",
  "iced",
+ "iced_wgpu",
  "m4a",
  "nettai-assets",
  "nettai-audio",

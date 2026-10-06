@@ -944,12 +944,24 @@ impl State {
         f: impl FnOnce(&mut dyn nettai_content_api::Fields, &nettai_content_api::Schema, usize) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
         with(|api, bound| {
-            // (A setup is read through a copy: it can't be written.)
+            // (A setup is read through a copy: it can't be written. An
+            // object's or an action's state is a view of its block in an
+            // arena.)
             let mut setup;
+            let mut view;
             let s: &mut dyn nettai_content_api::Fields = match self.0 {
-                StateOf::Object(o) => api.state_mut(o).ok_or_else(|| api_error(ApiError::NoState(o)))?,
-                StateOf::Action(o) => api.action_state_mut(o).map_err(api_error)?,
-                StateOf::ActionAs(o, id) => api.attack_state_for(o, id).map_err(api_error)?,
+                StateOf::Object(o) => {
+                    view = api.state_mut(o).ok_or_else(|| api_error(ApiError::NoState(o)))?;
+                    &mut view
+                }
+                StateOf::Action(o) => {
+                    view = api.action_state_mut(o).map_err(api_error)?;
+                    &mut view
+                }
+                StateOf::ActionAs(o, id) => {
+                    view = api.attack_state_for(o, id).map_err(api_error)?;
+                    &mut view
+                }
                 StateOf::Rules(c) => api.rules_state_mut(c.side).map_err(api_error)?,
                 StateOf::Setup(_) if write => {
                     return Err(mlua::Error::runtime(format!(
