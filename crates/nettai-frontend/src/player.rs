@@ -264,10 +264,17 @@ impl Player {
     // ---- What a host may show ------------------------------------------------
 
     /// How the connection to the other player is doing, in a netplay match
-    /// (its ping, loss, delay and rollbacks); none for a battle without
-    /// one.
+    /// (its ping, loss, present delay and rollbacks); none for a battle
+    /// without one.
     pub fn net_status(&self) -> Option<NetStatus> {
         self.session.driver.net_status()
+    }
+
+    /// In a netplay match, show the frame `ticks` behind the player's
+    /// newest input from the next frame on (the present delay, the
+    /// player's own); false for a battle without one.
+    pub fn set_present_delay(&mut self, ticks: u32) -> bool {
+        self.session.driver.set_present_delay(ticks)
     }
 
     /// Where playback is, in a few words.

@@ -302,7 +302,7 @@ The inputs go between the peers on rennet (Tango's netplay transport, §4.6), ov
 | `World::recycle` | Not implemented: `Battle`'s `clone_from` is the derived one, which reuses no allocation, so pooling snapshots would save nothing |
 | `World::settled` | `Observer::confirmed(frame, state)`: each frame as it settles, with the settled state where getgud kept one |
 | `Session::world` | How the host reads the observer (the sound feed's actions, the simulator's counts) |
-| Present delay | `NetConfig::present_delay`, the input delay: a peer presents the frame that many ticks behind its newest local input, so that much of the lead needs no prediction |
+| Present delay | `NetConfig::present_delay`, the input delay: a peer presents the frame that many ticks behind its newest local input, so that much of the lead needs no prediction. The frontend's is the player's own (`NetOptions::present_delay`, default 0, never sent to the other peer), changed during a match with `Session::set_present_delay` (`Peer::set_present_delay`, kept for the rounds after) |
 | Settled state, `Advance::confirmed` | The confirmed state and rows, each with its tick, how it settled and its state where kept (§1.5): the digest checks, and the rows the simulator checks against what the players decided |
 | `Session::drain` | The end of the input (`max_frames` in the simulator): the last ticks settle without anything speculated past them |
 | Speculative tail, promote or roll back | The frames a peer speculates to present. A prefix whose predictions held is promoted without simulating it again; from the first wrong prediction, getgud loads the settled state and simulates the rest again. `last_misprediction_depth` is the number of frames it threw away |

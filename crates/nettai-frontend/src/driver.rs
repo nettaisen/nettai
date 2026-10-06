@@ -83,6 +83,12 @@ pub trait Driver {
     fn real_time(&self) -> bool {
         false
     }
+    /// Show the frame `ticks` behind the player's newest input, of a
+    /// driver that presents behind it (netplay's present delay); false
+    /// from one that doesn't.
+    fn set_present_delay(&mut self, _ticks: u32) -> bool {
+        false
+    }
 }
 
 /// How a netplay match's connection and rollback are doing
@@ -95,8 +101,9 @@ pub struct NetStatus {
     pub ping_ms: Option<f64>,
     /// The share of the other player's datagrams lost, 0 to 1.
     pub loss: f64,
-    /// The input delay, in ticks.
-    pub delay: u32,
+    /// How many ticks the frame shown is behind the player's newest input
+    /// (the present delay).
+    pub present_delay: u32,
     /// The last rollback's depth in ticks, the deepest so far, and how many
     /// there have been.
     pub last_rollback: u32,
