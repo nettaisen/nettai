@@ -112,8 +112,8 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
                    Its seed sets the battle's RNG (else from the clock).
                    With --audit-content, select the game's content to audit.
                    With --host or --join the left side
-                   is what you bring, and the host's rounds are the match's
-                   (both files list as many rounds)
+                   is what you bring, and both files must state the same
+                   game and rounds (else it stops, saying what differs)
   --save-match FILE  write the match played with its seed (the file's setup,
                    or the one netplay agreed) to FILE as a match file,
                    to play again or edit
@@ -429,14 +429,16 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
     eprintln!("wrote the match to {}", path.display());
 }
 
-/// Connect (host or join) and start the handshake that agrees the round;
-/// each player brings their match file's rounds (the host's are played;
-/// both files list as many) and its left side. The window polls it each
-/// frame, saying the second half.
+/// Connect (host or join) and start the handshake that agrees the match:
+/// each player proposes their match file's settings (its game and its
+/// rounds: both files must state the same, or it stops saying what
+/// differs) and brings its left side. The window polls it each frame,
+/// saying the second half.
 fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> (NetHandshake<Udp>, String) {
     use nettai_demo::net::Role;
-    use nettai_frontend::netplay::Offer;
-    let offer = Offer::of_match(m);
+    use nettai_frontend::lobby::Settings;
+    let settings = Settings::of_match(&m);
+    let [side, _] = m.sides;
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
     if let Some(port) = args.host {
         let udp = Udp::host(port).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));
@@ -444,12 +446,12 @@ fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match
             "netplay: hosting on UDP port {port}, waiting for a player (they run --match FILE --join <this machine's address>:{port}; \
              over the Internet, forward the port to this machine)"
         );
-        (NetHandshake::new(Role::Host, udp, content, offer, wait(300)), format!("waiting for a player on UDP port {port}"))
+        (NetHandshake::new(Role::Host, udp, content, settings, side, wait(300)), format!("waiting for a player on UDP port {port}"))
     } else {
         let addr = args.join.as_deref().unwrap();
         let udp = Udp::join(addr).unwrap_or_else(|e| fail(format!("can't reach {addr}: {e}")));
         eprintln!("netplay: joining {addr}");
-        (NetHandshake::new(Role::Join, udp, content, offer, wait(30)), format!("joining {addr}, waiting for the host"))
+        (NetHandshake::new(Role::Join, udp, content, settings, side, wait(30)), format!("joining {addr}, waiting for the host"))
     }
 }
 
@@ -476,20 +478,19 @@ fn recorder(content: &Arc<nettai_battle::Content>, m: &nettai_match::Match, side
 /// The agreed match's player, and its recording if one is asked for.
 fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agreed<Udp>) -> (Box<dyn Driver>, Option<nettai_frontend::replay::Recorder>) {
     use nettai_frontend::netplay::{NetOptions, NetPlayer};
-    let Agreed { conn, set, m, .. } = agreed;
+    let Agreed { conn, agreement } = agreed;
+    let nettai_frontend::lobby::Agreement { set, m, seed, side, .. } = agreement;
     let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
-    let side = conn.side();
     eprintln!(
-        "netplay: playing {peer}; you are the {} navi (the match's seed {}, present delay {})",
+        "netplay: playing {peer}; you are the {} navi (the match's seed {seed}, present delay {})",
         if side == 0 { "left" } else { "right" },
-        conn.seed(),
         net.present_delay
     );
-    eprintln!("{}", nettai_match::describe(content, &m, conn.seed(), net.show_folders, side));
+    eprintln!("{}", nettai_match::describe(content, &m, seed, net.show_folders, side));
     if let Some(path) = &net.save_match {
-        save_match(content, &m, conn.seed(), path);
+        save_match(content, &m, seed, path);
     }
-    let recording = net.record.as_deref().map(|path| recorder(content, &nettai_match::Match { seed: Some(conn.seed()), ..m.clone() }, side as u8, path));
+    let recording = net.record.as_deref().map(|path| recorder(content, &nettai_match::Match { seed: Some(seed), ..m.clone() }, side as u8, path));
     let options = NetOptions { present_delay: net.present_delay, ..NetOptions::default() };
     (Box::new(NetPlayer::new(conn, side, set, options)), recording)
 }

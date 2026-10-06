@@ -26,6 +26,10 @@ nettai-replay = { path = "../nettai-replay" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
+# The netplay handshake's commitment (`lobby`): SHA-256 of what a peer
+# reveals, so neither picks its half of the seed or its side after seeing
+# the other's.
+sha2 = "0.10"
 
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
