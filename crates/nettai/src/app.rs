@@ -113,6 +113,9 @@ pub struct App {
     pub volume: u32,
     /// The player's name (netplay, and the replays they record).
     pub name: String,
+    /// The window's texture the picture is written into (femtovg's
+    /// OpenGL); none: a new image each picture.
+    pub gl: Option<crate::gl::GlPicture>,
 }
 
 /// A seed from the clock.
@@ -164,6 +167,7 @@ impl App {
             text: TextMode::Font,
             volume: 8,
             name: String::new(),
+            gl: None,
         };
         app.sound.set_volume(app.volume);
         app.show_settings();
@@ -701,7 +705,7 @@ impl App {
         let ui = self.ui();
         // (The field keeps its text while it is typed in: a longer one is
         // cut when it's left.)
-        if self.name != name && !ui.global::<Input>().get_editing() {
+        if !ui.global::<Input>().get_editing() {
             ui.set_name(self.name.as_str().into());
         }
         let mut me = ui.get_lobby_me();
@@ -807,6 +811,9 @@ impl App {
         let factor = ui.window().scale_factor();
         let area = (ui.get_picture_area_width() * factor, ui.get_picture_area_height() * factor);
         let mut samples = Vec::new();
+        // (The battle's ticks this frame, while one runs: the menus' sound
+        // keeps its time.)
+        let mut ticks = None;
         match screen {
             Screen::Battle if self.battle.is_some() => {
                 if self.battle.as_ref().is_some_and(Battle::playing) {
@@ -828,12 +835,15 @@ impl App {
                 if b.autoplay {
                     buttons = demo_buttons(b.stage.player.battle(), b.stage.player.ticks() as u32);
                 }
-                b.stage.advance(now, buttons, &mut self.keys.pressed);
-                let fit = stage::fit(area.0, area.1, factor, self.sharp);
-                if let Some(image) = b.stage.picture(fit) {
-                    ui.set_picture(image);
-                    ui.set_scale(fit.scale as i32);
+                let ran = b.stage.advance(now, buttons, &mut self.keys.pressed);
+                if !b.paused || b.stage.player.real_time() {
+                    ticks = Some(ran);
                 }
+                let fit = stage::fit(area.0, area.1, factor, self.sharp);
+                if let stage::Shown::New(image) = b.stage.picture(fit, self.gl.as_mut()) {
+                    ui.set_picture(image);
+                }
+                ui.set_scale(fit.scale as i32);
                 std::mem::swap(&mut samples, &mut b.stage.samples);
                 b.stage.report(now);
                 self.follow_battle();
@@ -854,7 +864,10 @@ impl App {
                 self.keys.pressed.clear();
             }
         }
-        self.sound.frame(now, &mut samples);
+        self.sound.frame(now, ticks, &mut samples);
+        if let Some(s) = self.battle.as_mut().and_then(|b| b.stage.stats.as_mut()) {
+            s.audio_queued = s.audio_queued.max(self.sound.queued());
+        }
         if self.transition.is_some() {
             nav.clear();
         }
@@ -953,10 +966,10 @@ impl App {
         a.stage.samples.clear();
         // (The monitor: at most three times the frame.)
         let fit = stage::fit(area.0.min(240.0 * 3.0 * factor), area.1.min(160.0 * 3.0 * factor), factor, self.sharp);
-        if let Some(image) = a.stage.picture(fit) {
+        if let stage::Shown::New(image) = a.stage.picture(fit, self.gl.as_mut()) {
             ui.set_picture(image);
-            ui.set_scale(fit.scale as i32);
         }
+        ui.set_scale(fit.scale as i32);
     }
 }
 

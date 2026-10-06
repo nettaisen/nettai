@@ -54,6 +54,13 @@ pub struct Stats {
     pub present: Duration,
     pub worst_present: Duration,
     pub worst_gap: Duration,
+    /// The time between each two frames.
+    pub gaps: Vec<Duration>,
+    /// The ticks run, and the time running them took.
+    pub ticks: u32,
+    pub ticking: Times,
+    /// The most sound queued for the device, in seconds (its latency).
+    pub audio_queued: f64,
     /// From a key's event to the tick that saw it.
     pub key_to_tick: Times,
     /// From a key's event to the frame that drew its tick's picture
@@ -80,6 +87,16 @@ impl Times {
     pub fn mean(&self) -> Duration {
         self.total / self.count.max(1)
     }
+}
+
+/// What [`Stage::picture`] did.
+pub enum Shown {
+    /// Nothing changed.
+    Same,
+    /// The picture was written into the image shown.
+    Written,
+    /// A new image to show.
+    New(Image),
 }
 
 /// A battle being shown: the player, and its picture.
@@ -120,7 +137,14 @@ impl Stage {
     pub fn advance(&mut self, now: Instant, buttons: u16, pressed: &mut Vec<Instant>) -> u32 {
         let elapsed = self.last.map_or(Duration::ZERO, |last| now.saturating_duration_since(last));
         self.last = Some(now);
+        let started = Instant::now();
         let ran = self.player.advance(elapsed, buttons);
+        if let Some(s) = &mut self.stats {
+            s.ticks += ran;
+            if ran > 0 {
+                s.ticking.add(started.elapsed());
+            }
+        }
         if ran > 0 {
             self.stale = true;
             if let Some(s) = &mut self.stats {
@@ -134,6 +158,9 @@ impl Stage {
         if let Some(s) = &mut self.stats {
             s.frames += 1;
             s.worst_gap = s.worst_gap.max(elapsed);
+            if elapsed > Duration::ZERO {
+                s.gaps.push(elapsed);
+            }
         }
         self.player.take_samples(&mut self.samples);
         ran
@@ -145,26 +172,34 @@ impl Stage {
         self.last = None;
     }
 
-    /// The picture for `fit`, if it changed since the last: presented at
-    /// its density, as an image.
-    pub fn picture(&mut self, fit: Fit) -> Option<Image> {
+    /// The picture for `fit`, if it changed since the last, presented at
+    /// its density into the window's texture (`gl`: written in place), or
+    /// else into a new image. The image to show, when there is a new one
+    /// (with a texture, only when it is made anew); `Shown::Same` when the
+    /// picture didn't change.
+    pub fn picture(&mut self, fit: Fit, gl: Option<&mut crate::gl::GlPicture>) -> Shown {
         if self.fit != Some(fit) {
             self.fit = Some(fit);
             self.stale = true;
         }
         if !self.stale {
-            return None;
+            return Shown::Same;
         }
         self.stale = false;
         let started = Instant::now();
         let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
         self.buffer.resize(w * h, 0);
         self.player.present(&mut self.buffer, w, h);
-        let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
-        for (out, &px) in pixels.make_mut_slice().iter_mut().zip(&self.buffer) {
-            *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
-        }
-        let image = Image::from_rgb8(pixels);
+        let image = match gl {
+            Some(gl) => gl.write(&mut self.buffer, w as u32, h as u32),
+            None => {
+                let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
+                for (out, &px) in pixels.make_mut_slice().iter_mut().zip(&self.buffer) {
+                    *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
+                }
+                Some(Image::from_rgb8(pixels))
+            }
+        };
         self.drawing = Some((Instant::now(), self.seen.take()));
         if let Some(s) = &mut self.stats {
             let took = started.elapsed();
@@ -172,7 +207,17 @@ impl Stage {
             s.present += took;
             s.worst_present = s.worst_present.max(took);
         }
-        Some(image)
+        match image {
+            Some(image) => Shown::New(image),
+            None => Shown::Written,
+        }
+    }
+
+    /// Show the picture again from the start (the window's texture was
+    /// made anew for another picture).
+    pub fn refresh(&mut self) {
+        self.stale = true;
+        self.fit = None;
     }
 
     /// The frame was drawn (handed to the GPU): the picture presented for
@@ -196,11 +241,22 @@ impl Stage {
             return;
         }
         let fit = self.fit.unwrap_or(Fit { scale: 0, density: 0 });
+        let seconds = now.duration_since(since).as_secs_f64();
+        s.gaps.sort();
+        let at = |q: f64| s.gaps.get(((s.gaps.len() as f64 - 1.0) * q).round() as usize).copied().unwrap_or_default();
+        // (A frame that took half again the usual: a refresh missed.)
+        let missed = s.gaps.iter().filter(|g| g.as_secs_f64() > at(0.5).as_secs_f64() * 1.5).count();
         eprintln!(
-            "play stats: {} frames in {:.2?}, {} pictures presented ({}x{}, scale {} density {}): {:.2?} a picture (worst {:.2?}), longest between frames {:.2?}; \
-             drawn {:.2?} after presented (worst {:.2?}); {} keys: {:.2?} to the tick that saw it (worst {:.2?}), {:.2?} to that tick's picture drawn (worst {:.2?})",
-            s.frames,
-            now.duration_since(since),
+            "play stats: {:.1} frames/s (frame time p50 {:.2?} p95 {:.2?} p99 {:.2?} max {:.2?}, {missed} long), {:.2} ticks/s ({:.2?} a frame that ran them); \
+             {} pictures ({}x{}, scale {} density {}): {:.2?} each (worst {:.2?}), drawn {:.2?} after (worst {:.2?}); \
+             {} keys: {:.2?} to the tick (worst {:.2?}), {:.2?} to its picture drawn (worst {:.2?}); sound queued at most {:.0} ms",
+            s.frames as f64 / seconds,
+            at(0.5),
+            at(0.95),
+            at(0.99),
+            s.worst_gap,
+            s.ticks as f64 / seconds,
+            s.ticking.mean(),
             s.presented,
             WIDTH as u32 * fit.density,
             HEIGHT as u32 * fit.density,
@@ -208,7 +264,6 @@ impl Stage {
             fit.density,
             s.present / s.presented.max(1),
             s.worst_present,
-            s.worst_gap,
             s.presented_to_drawn.mean(),
             s.presented_to_drawn.worst,
             s.key_to_tick.count,
@@ -216,6 +271,7 @@ impl Stage {
             s.key_to_tick.worst,
             s.key_to_drawn.mean(),
             s.key_to_drawn.worst,
+            s.audio_queued * 1000.0,
         );
         *s = Stats { since: Some(now), ..Stats::default() };
     }
