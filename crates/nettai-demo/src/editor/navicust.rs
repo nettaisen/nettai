@@ -201,6 +201,9 @@ pub enum GridEdit {
     Color(u8),
     Nudge(i32, i32),
     Remove,
+    /// The placed piece under the cursor (its place in the list), or none:
+    /// what the view describes.
+    Hover(Option<usize>),
 }
 
 /// What a grid keeps of its own: the piece held, the one last placed, the
@@ -210,6 +213,8 @@ pub struct GridState {
     pub held: Option<Held>,
     pub selected: Option<usize>,
     pub search: String,
+    /// The placed piece under the cursor.
+    pub hovered: Option<usize>,
 }
 
 /// A piece picked up: which, its color's place in its colors, its turns,
@@ -346,6 +351,10 @@ fn fits(answers: &Look, others: &[Placed], shape: &Shape, x: i32, y: i32) -> boo
 #[allow(clippy::too_many_arguments)]
 pub fn grid_edit(c: &Content, side: &mut Side, field: &str, ty: &FieldType, grid: &Grid, answers: &Look, state: &mut GridState, edit: GridEdit) -> bool {
     let Some(FieldType::Ref(registry, _)) = record_field(ty, &grid.piece).cloned() else { return false };
+    if let GridEdit::Hover(i) = edit {
+        state.hovered = i;
+        return false;
+    }
     let mut parts = placed(c, side, field, grid);
     let mut changed = false;
     let colors = |h: u16| answers.colors.get(&h).cloned().unwrap_or_default();
@@ -452,7 +461,11 @@ pub fn grid_edit(c: &Content, side: &mut Side, field: &str, ty: &FieldType, grid
             let Some(i) = state.selected.take().filter(|&i| i < parts.len()) else { return false };
             parts.remove(i);
         }
+        GridEdit::Hover(_) => return false,
     }
+    // (The pieces' places change: what was under the cursor is no longer
+    // known.)
+    state.hovered = None;
     let list = Stated::List(parts.iter().map(|p| record_of(p, grid, registry)).collect());
     side.set_fact(c, field, &values(&list)).is_ok()
 }
@@ -552,6 +565,17 @@ impl Canvas {
         canvas::Action::publish(Msg::Pane(self.side, self.path.clone(), Edit::Grid(edit))).and_capture()
     }
 
+    /// The cursor's move from cell `from` to `to`: the piece under it, said
+    /// where it changed, else a redraw.
+    fn hover(&self, from: Option<(i32, i32)>, to: Option<(i32, i32)>) -> canvas::Action<Msg> {
+        let piece = |c: Option<(i32, i32)>| c.and_then(|c| self.occupied.get(&c).copied());
+        if piece(from) != piece(to) {
+            canvas::Action::publish(Msg::Pane(self.side, self.path.clone(), Edit::Grid(GridEdit::Hover(piece(to)))))
+        } else {
+            canvas::Action::request_redraw()
+        }
+    }
+
     fn place(&self, cell: (i32, i32)) -> Option<canvas::Action<Msg>> {
         match self.landing(cell)? {
             ((x, y), true) => Some(self.msg(GridEdit::Place(x, y))),
@@ -646,13 +670,13 @@ impl canvas::Program<Msg> for Canvas {
         match event {
             iced::Event::Mouse(mouse::Event::CursorMoved { .. }) => {
                 if over != pointer.hovered {
-                    pointer.hovered = over;
-                    return Some(canvas::Action::request_redraw());
+                    let from = std::mem::replace(&mut pointer.hovered, over);
+                    return Some(self.hover(from, over));
                 }
             }
             iced::Event::Mouse(mouse::Event::CursorLeft) => {
-                if pointer.hovered.take().is_some() {
-                    return Some(canvas::Action::request_redraw());
+                if let Some(from) = pointer.hovered.take() {
+                    return Some(self.hover(Some(from), None));
                 }
             }
             iced::Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
@@ -725,6 +749,22 @@ impl canvas::Program<Msg> for Canvas {
     }
 }
 
+/// A description's lines as one: a space where a break falls between two
+/// ASCII characters (`MegaBstr\nAttck +1`), none between others (the
+/// Japanese games' lines run on: `ロックバスターの\n攻撃力が1アップ!`).
+pub fn one_line(d: &str) -> String {
+    let chars: Vec<char> = d.chars().collect();
+    let mut out = String::new();
+    for (i, &c) in chars.iter().enumerate() {
+        if c != '\n' {
+            out.push(c);
+        } else if i > 0 && chars[i - 1].is_ascii() && chars.get(i + 1).is_some_and(|n| n.is_ascii()) {
+            out.push(' ');
+        }
+    }
+    out
+}
+
 /// A grid's view: the board with its pieces, the held or selected piece's
 /// controls, and the pieces to pick up.
 pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, ty: &FieldType) -> Element<'a, Msg> {
@@ -794,6 +834,14 @@ pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, 
             r.push(checkbox(state).label(title(t)).on_toggle(move |b| msg(GridEdit::Toggle(k, b))))
         })
     };
+    // (A program's description, as the game's box shows it.)
+    let description = |h: u16| (registry == Registry::Entry).then(|| e.names.entry_description(c, nettai_content_api::EntryHandle(h))).flatten();
+    let described = |h: u16| -> Element<Msg> {
+        match description(h) {
+            Some(d) => text(d).size(13).color(DIM).into(),
+            None => space().into(),
+        }
+    };
     let picked: Element<Msg> = if let Some(h) = &state.held {
         let mut buttons = row![button("Turn").on_press(msg(GridEdit::Rotate))].spacing(4);
         if h.origin.is_some() {
@@ -802,6 +850,7 @@ pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, 
         buttons = buttons.push(button("Take off").on_press(msg(GridEdit::Remove)).style(button::danger));
         column![
             text(format!("Holding {}, turned {}", name_of(e, registry, h.piece), h.rotation)).size(15),
+            described(h.piece),
             color_buttons(h.piece, h.color),
             row![buttons, toggles(&h.toggles)].spacing(12).align_y(Alignment::Center),
             text("Click a cell (or let go of a drag over one) to put it down where it shows lit. The wheel or R turns it; right-click, Delete or a drag off the grid takes it off; Esc puts it back.")
@@ -813,6 +862,7 @@ pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, 
         let current = p.color.as_ref().and_then(|n| colors_of(p.piece).iter().position(|x| x == n)).unwrap_or(0) as u8;
         column![
             text(format!("{} at ({}, {}), turned {}", name_of(e, registry, p.piece), p.x, p.y, p.rotation)).size(15),
+            described(p.piece),
             color_buttons(p.piece, current),
             row![
                 row![
@@ -836,6 +886,11 @@ pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, 
             .size(13)
             .into()
     };
+    // The piece under the cursor, where it isn't the one above.
+    let hovered: Element<Msg> = match state.hovered.filter(|&i| state.held.is_some() || state.selected != Some(i)).and_then(|i| placed.get(i)) {
+        Some(p) => column![text(name_of(e, registry, p.piece)).size(14), described(p.piece)].spacing(2).into(),
+        None => space().into(),
+    };
     // The pieces to pick up, searched.
     let needle = state.search.to_lowercase();
     let pieces = offered(e, registry, of.as_deref());
@@ -855,9 +910,14 @@ pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, 
             r.push(mouse_area(swatch).on_press(msg(GridEdit::Hold(h, k as u8))).interaction(mouse::Interaction::Grab))
         });
         let mark = answers.badges.get(&h).cloned().unwrap_or_default();
+        // (Its description on one line, under its name.)
+        let mut named = column![text(name).size(14)];
+        if let Some(d) = description(h) {
+            named = named.push(text(one_line(&d)).size(12).color(DIM));
+        }
         col.push(
             row![
-                text(name).size(14).width(Length::Fill),
+                named.width(Length::Fill),
                 text(mark).size(12).color(DIM).width(Length::Fixed(20.0)),
                 container(swatches).width(Length::Fixed(110.0)),
                 space().width(Length::Fixed(14.0)),
@@ -878,6 +938,7 @@ pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, 
         left = left.push(text(format!("{at}{}", p.text)).size(13).color(RED));
     }
     left = left.push(picked);
+    left = left.push(hovered);
     left = left.push(crate::editor::view::round_stats(e, s));
     let search_path = f.path.clone();
     let right = column![
@@ -962,7 +1023,34 @@ mod tests {
         assert!(edit(side, &mut state, GridEdit::Color(0)));
         assert!(edit(side, &mut state, GridEdit::Remove));
         assert_eq!(count(side), 1);
+        // The piece under the cursor: kept, no edit; an edit forgets it.
+        assert!(!edit(side, &mut state, GridEdit::Hover(Some(0))));
+        assert_eq!(state.hovered, Some(0));
+        state.selected = Some(0);
+        assert!(edit(side, &mut state, GridEdit::Rotate));
+        assert_eq!(state.hovered, None);
         assert_eq!(nettai_match::check_match(&content, &m), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_description_runs_on() {
+        assert_eq!(one_line("MegaBstr\nAttck +1"), "MegaBstr Attck +1");
+        assert_eq!(one_line("ロックバスターの\n攻撃力が1アップ!"), "ロックバスターの攻撃力が1アップ!");
+    }
+
+    /// Every program of both games has a description in both languages,
+    /// which the editor shows with its name.
+    #[test]
+    fn programs_have_descriptions() {
+        for (content, game) in [(nettai_match::testing::exe6_content(), "exe6"), (nettai_match::testing::exe5_content(), "exe5")] {
+            let names = crate::editor::names::Names::default();
+            let programs = nettai_match::ids::all_of(&content, Registry::Entry, Some("navicust_programs"));
+            assert!(!programs.is_empty(), "{game}");
+            for h in programs {
+                let d = names.entry_description(&content, nettai_content_api::EntryHandle(h));
+                assert!(d.is_some_and(|d| !d.is_empty()), "{game}: program {h} has no description");
+            }
+        }
     }
 
     /// A shape turns about its center a quarter clockwise; four turns are

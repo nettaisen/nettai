@@ -28,6 +28,9 @@
 //! [patch-cards]
 //! "canodumb" = { name = "..." }
 //!
+//! [navicust_programs]
+//! "airshoes" = { name = "AirShoes", description = "Move\novr hole" }
+//!
 //! [patch_card_effects]
 //! "hp_add" = "HP+{amount}"
 //! ```
@@ -176,6 +179,7 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
                         unknown.push(format!("{name}.{id}: no entry of {name} has this id"));
                     }
                     text(format!("{name}.{id}.name"), &e.name);
+                    text(format!("{name}.{id}.description"), &e.description);
                 }
             }
             Table::Text(lines) if declared => {
