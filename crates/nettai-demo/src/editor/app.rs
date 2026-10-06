@@ -1,7 +1,7 @@
 //! The editor's state and what each message does to it.
 
-use crate::names::{Lang, Names};
-use crate::pictures::Pictures;
+use crate::editor::names::{Lang, Names};
+use crate::editor::pictures::Pictures;
 use iced::Task;
 use nettai_battle::Content;
 use nettai_battle::content::ChipCode;
@@ -9,6 +9,7 @@ use nettai_battle::custom::FolderChip;
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::{ChipHandle, NaviHandle, PatchCardHandle, StageHandle};
+use nettai_frontend::game::Game;
 use nettai_match::{Match, Side};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -21,7 +22,7 @@ pub enum Tab {
     Navi(usize),
     Folder(usize),
     /// A list the game's rules take of a side (EXE6's Crosses, EXE5's
-    /// souls), by its place among the game's facts (`crate::facts`).
+    /// souls), by its place among the game's facts (`crate::editor::facts`).
     List(usize, usize),
     AutoBattle(usize),
     Cards(usize),
@@ -51,7 +52,7 @@ impl Tab {
             "patch-cards" => Tab::Cards(side),
             "navicust" => Tab::NaviCust(side),
             "stats" => Tab::Stats(side),
-            list => Tab::List(side, crate::facts::list_named(content, list)?),
+            list => Tab::List(side, crate::editor::facts::list_named(content, list)?),
         })
     }
 }
@@ -81,6 +82,8 @@ pub enum Msg {
     SaveAs,
     /// A random match (live play's draw) from this seed.
     Draw,
+    /// Play the match in the window (the window's: `crate::window`, which
+    /// asks [`Editor::to_play`]).
     Play,
     Lang(Lang),
     // The arena.
@@ -95,7 +98,7 @@ pub enum Msg {
     Navi(usize, Choice<NaviHandle>),
     /// One of a side's facts (what its game's rules take of it), by its
     /// setup field's name.
-    Fact(usize, String, crate::facts::Edit),
+    Fact(usize, String, crate::editor::facts::Edit),
     Level(usize, String),
     /// An SP navi's deletion time (by its slot), as typed.
     SpTime(usize, usize, String),
@@ -117,9 +120,9 @@ pub enum Msg {
     CardMove(usize, usize, bool),
     CardRemove(usize, usize),
     // The NaviCust.
-    NaviCust(usize, crate::navicust::Edit),
+    NaviCust(usize, crate::editor::navicust::Edit),
     // EXE5's auto battle data.
-    AutoBattle(usize, crate::auto_battle::Edit),
+    AutoBattle(usize, crate::editor::auto_battle::Edit),
     // --screenshot.
     Frame,
     Shot(iced::window::Screenshot),
@@ -128,21 +131,18 @@ pub enum Msg {
 /// How the editor was started.
 #[derive(Clone)]
 pub struct Options {
-    /// The content directory given (`--content`), which Play hands the
-    /// frontend too; else the repository's.
+    /// The content directory given (`--content`); else the repository's.
     pub content: Option<PathBuf>,
     /// The content directory loaded, and the game loaded (its strings
     /// tables).
     pub content_dir: PathBuf,
     pub games: Vec<String>,
     /// The packs given by directory (`--pack`), each in place of the found
-    /// one of its game, which Play hands the frontend too.
+    /// one of its game.
     pub packs: Vec<PathBuf>,
-    pub frontend: Option<PathBuf>,
+    /// The match file opened (`--edit`); none, a new match, whose game the
+    /// window asks.
     pub file: Option<PathBuf>,
-    /// The game of a new match, when the command line says it (`--game`):
-    /// else the window asks.
-    pub game: Option<String>,
     pub lang: Lang,
     /// The pane to start on, by its name (`--tab`, `Tab::from_name`: a
     /// game's lists are known once its content is loaded).
@@ -169,7 +169,7 @@ impl App {
     /// The window, on `editor` (a match opened or started on the command
     /// line), else on the choice of a game.
     pub fn new(options: Options, editor: Option<Editor>) -> App {
-        let games = crate::load::games(options.content.as_deref(), &options.packs);
+        let games = crate::editor::load::games(options.content.as_deref(), &options.packs);
         App { options, games, editor, status: String::new(), frames: 0 }
     }
 
@@ -182,11 +182,11 @@ impl App {
 
     /// A match of `game` to edit: `file`, or a new one.
     fn start(&mut self, game: &str, file: Option<PathBuf>) -> Result<(), String> {
-        let loaded = crate::load::load_game(self.options.content.as_deref(), &self.options.packs, game)?;
+        let loaded = crate::editor::load::load_game(self.options.content.as_deref(), &self.options.packs, game)?;
         let mut options = self.options.clone();
         options.file = file;
-        (options.content_dir, options.games) = (loaded.dir, vec![loaded.game]);
-        self.editor = Some(Editor::new(loaded.content, loaded.pictures, options));
+        (options.content_dir, options.games) = (loaded.game.dir.clone(), vec![loaded.game.name.clone()]);
+        self.editor = Some(Editor::new(loaded.game, loaded.pictures, options));
         Ok(())
     }
 
@@ -235,6 +235,9 @@ impl App {
 }
 
 pub struct Editor {
+    /// The game the match is of, loaded as the player loads it (Play plays
+    /// the match on it).
+    pub game: Game,
     pub content: Arc<Content>,
     pub pictures: Pictures,
     pub names: Names,
@@ -267,17 +270,18 @@ pub struct Editor {
     pub pool: [Vec<ChipHandle>; 2],
     /// The game's library order, which the lists of chips, programs and
     /// cards keep.
-    pub order: crate::order::Order,
+    pub order: crate::editor::order::Order,
     /// Each side's NaviCust pane's own state.
-    pub navicust: [crate::navicust::State; 2],
+    pub navicust: [crate::editor::navicust::State; 2],
     /// Each side's Auto battle pane's own state.
-    pub auto_battle: [crate::auto_battle::State; 2],
+    pub auto_battle: [crate::editor::auto_battle::State; 2],
     pub status: String,
     frames: u32,
 }
 
 impl Editor {
-    pub fn new(content: Arc<Content>, pictures: Pictures, options: Options) -> Editor {
+    pub fn new(game: Game, pictures: Pictures, options: Options) -> Editor {
+        let content = game.content.clone();
         // A new match is an empty one of the content's game (Random draws
         // one as live play does).
         let new = |content: &Arc<Content>| {
@@ -305,7 +309,7 @@ impl Editor {
             dirty: false,
             entry: [0, 0],
             search: String::new(),
-            games: crate::load::games(options.content.as_deref(), &options.packs),
+            games: crate::editor::load::games(options.content.as_deref(), &options.packs),
             typed: HashMap::new(),
             sp_typed: HashMap::new(),
             fact_typed: HashMap::new(),
@@ -317,6 +321,7 @@ impl Editor {
             auto_battle: Default::default(),
             status: String::new(),
             frames: 0,
+            game,
             content,
             pictures,
             options,
@@ -360,7 +365,7 @@ impl Editor {
 
     /// The game's library order (its pack's library.toml).
     fn load_order(&mut self) {
-        let (order, problem) = crate::order::Order::load(&self.options.content_dir, self.content.game());
+        let (order, problem) = crate::editor::order::Order::load(&self.options.content_dir, self.content.game());
         self.order = order;
         if let Some(p) = problem {
             self.status = format!("the lists are by key: {p}");
@@ -391,11 +396,12 @@ impl Editor {
 
     /// Have `game`'s content, loading it if the content loaded hasn't it.
     fn content_of(&mut self, game: &str) -> Result<Arc<Content>, String> {
-        if !crate::load::holds(&self.content, game) {
-            let loaded = crate::load::load_game(self.options.content.as_deref(), &self.options.packs, game)?;
-            self.content = loaded.content;
+        if !crate::editor::load::holds(&self.content, game) {
+            let loaded = crate::editor::load::load_game(self.options.content.as_deref(), &self.options.packs, game)?;
+            self.content = loaded.game.content.clone();
             self.pictures = loaded.pictures;
-            (self.options.content_dir, self.options.games) = (loaded.dir, vec![loaded.game]);
+            (self.options.content_dir, self.options.games) = (loaded.game.dir.clone(), vec![loaded.game.name.clone()]);
+            self.game = loaded.game;
             self.set_lang(self.lang);
             self.load_order();
         }
@@ -431,50 +437,19 @@ impl Editor {
         }
     }
 
-    /// The frontend's program: the option's, else beside the editor's.
-    fn frontend(&self) -> PathBuf {
-        if let Some(p) = &self.options.frontend {
-            return p.clone();
-        }
-        let exe = std::env::current_exe().ok().map(|e| e.with_file_name(format!("nettai-demo{}", std::env::consts::EXE_SUFFIX)));
-        exe.filter(|p| p.exists()).unwrap_or_else(|| PathBuf::from("nettai-demo"))
-    }
-
-    fn play(&mut self) {
+    /// The match to play and its game, if it can be played (else the
+    /// status says why): the window plays it (`crate::window`). Its seed is
+    /// the match's, else one from the clock.
+    pub fn to_play(&mut self) -> Option<(Game, Match, u32)> {
         if !self.problems.is_empty() {
             self.status = "the match can't be played yet: see the problems".into();
-            return;
+            return None;
         }
-        let path = match (&self.path, self.dirty) {
-            (Some(p), false) => p.clone(),
-            (Some(p), true) => {
-                let p = p.clone();
-                self.write_to(p.clone());
-                p
-            }
-            (None, _) => {
-                let p = std::env::temp_dir().join("nettai-demo-editor-match.toml");
-                if let Err(e) = std::fs::write(&p, nettai_match::write(&self.content, &self.m)) {
-                    self.status = format!("can't write {}: {e}", p.display());
-                    return;
-                }
-                p
-            }
-        };
-        let program = self.frontend();
-        let mut command = std::process::Command::new(&program);
-        command.arg("--match").arg(&path);
-        if let Some(root) = &self.options.content {
-            command.arg("--content").arg(root);
-        }
-        for pack in &self.options.packs {
-            command.arg("--pack").arg(pack);
-        }
-        let started = command.arg("--lang").arg(self.lang.code()).spawn();
-        self.status = match started {
-            Ok(_) => format!("playing {} with {}", path.display(), program.display()),
-            Err(e) => format!("can't start {} ({e}): give its path with --frontend", program.display()),
-        };
+        let seed = self.m.seed.unwrap_or_else(|| {
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
+        });
+        self.status = format!("playing (seed {seed}): Esc comes back here");
+        Some((self.game.clone(), self.m.clone(), seed))
     }
 
     pub fn update(&mut self, msg: Msg) -> Task<Msg> {
@@ -522,7 +497,8 @@ impl Editor {
                     self.edited();
                 }
             }
-            Msg::Play => self.play(),
+            // (The window plays it: `crate::window`.)
+            Msg::Play => {}
             Msg::Lang(l) => self.set_lang(l),
             Msg::Stage(i, c) => {
                 match i {
@@ -568,18 +544,18 @@ impl Editor {
                 }
             }
             Msg::Navi(s, c) => {
-                crate::levels::switch_navi(&content, &mut self.m.sides[s], c.value);
+                crate::editor::levels::switch_navi(&content, &mut self.m.sides[s], c.value);
                 self.typed.remove(&(s, "level"));
                 self.fact_typed.retain(|(x, _), _| *x != s);
                 self.edited();
             }
             Msg::Fact(s, name, edit) => {
                 let game = self.m.arena.game.clone();
-                let changed = crate::facts::apply(&content, &game, &mut self.m.sides[s], &name, &edit);
+                let changed = crate::editor::facts::apply(&content, &game, &mut self.m.sides[s], &name, &edit);
                 // (What is typed stays as typed until it is a number the
                 // fact takes; any other edit shows the fact's value.)
                 match edit {
-                    crate::facts::Edit::Number(typed) => {
+                    crate::editor::facts::Edit::Number(typed) => {
                         self.fact_typed.insert((s, name), typed);
                     }
                     _ => {
@@ -703,13 +679,13 @@ impl Editor {
                 self.edited();
             }
             Msg::NaviCust(s, edit) => {
-                if crate::navicust::update(&content, &self.m.arena, &mut self.m.sides[s], &mut self.navicust[s], edit) {
+                if crate::editor::navicust::update(&content, &self.m.arena, &mut self.m.sides[s], &mut self.navicust[s], edit) {
                     self.edited();
                 }
             }
             // The auto battle data of an EXE5 save alone (a .sav, or a raw
             // image): the side's other things stay.
-            Msg::AutoBattle(s, crate::auto_battle::Edit::FromSave) => {
+            Msg::AutoBattle(s, crate::editor::auto_battle::Edit::FromSave) => {
                 if let Some(path) = rfd::FileDialog::new().add_filter("EXE5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
                     match read.and_then(|bytes| nettai_match::auto_battle::of_save(&content, self.m.game(), &bytes)) {
@@ -725,7 +701,7 @@ impl Editor {
                 }
             }
             Msg::AutoBattle(s, edit) => {
-                if crate::auto_battle::update(&content, &mut self.m.sides[s], &mut self.auto_battle[s], edit) {
+                if crate::editor::auto_battle::update(&content, &mut self.m.sides[s], &mut self.auto_battle[s], edit) {
                     self.edited();
                 }
             }

@@ -3,7 +3,7 @@ name = "nettai-demo"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "The desktop program over nettai-frontend: a window and its keys, the command line, headless frames, the audits, the replay of the original's recordings, and the audio device"
+description = "The desktop program over nettai-frontend: the match editor and the battle played in its window (iced), the command line, headless frames, the audits, the replay of the original's recordings, and the audio device"
 
 [dependencies]
 # What plays the battles: the program is a host of this library.
@@ -24,7 +24,10 @@ nettai-match = { path = "../nettai-match" }
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
 # The window.
-minifb = "0.28"
+iced = { version = "0.14", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "x11", "wayland", "canvas", "image-without-codecs"] }
+rfd = "0.15"
+png = "0.17"
+toml = "0.8"
 # A recording's setup line, for the game it states.
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
