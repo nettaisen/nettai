@@ -17,7 +17,6 @@ return define.chip {
     hit_param = 130,
     lockout = 0,
     flags = { "dimming", "library" },
-    library = { number = 349, index = 30, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 11, sequence = { django_chips.django, django_chips.django2, django_chips.django3 } },

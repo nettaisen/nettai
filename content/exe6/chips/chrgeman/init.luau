@@ -17,7 +17,6 @@ local chrgeman = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 254, index = 15, sort = 53 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -35,7 +34,6 @@ local chrgemn_ex = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 255, index = 16, sort = 100 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -53,7 +51,6 @@ local chrgemn_sp = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 256, index = 17, sort = 101 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

@@ -21,7 +21,6 @@ local aurahed1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.yoyo },
-    library = { number = 48, index = 48, sort = 23 },
     slot_in_limit = 3,
     traits = { "aura_bonus" },
     action = action.action {
@@ -43,7 +42,6 @@ local aurahed2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.yoyo },
-    library = { number = 49, index = 49, sort = 24 },
     slot_in_limit = 3,
     traits = { "aura_bonus" },
     action = action.action {
@@ -65,7 +63,6 @@ local aurahed3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.yoyo },
-    library = { number = 50, index = 50, sort = 25 },
     slot_in_limit = 3,
     traits = { "aura_bonus" },
     action = action.action {
@@ -87,7 +84,6 @@ local streamhd = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 336, index = 17, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 40, code_run = { chip = aurahed1, count = 3 } },

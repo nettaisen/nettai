@@ -26,7 +26,6 @@ return define.chip {
     rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 20,
     flags = { "standard_library", "library" },
     extra_flags = { "free_slot_in" },
-    library = { number = 176, index = 176, sort = 214 },
     slot_in_limit = 1,
     instant = fill,
 }

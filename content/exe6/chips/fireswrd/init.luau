@@ -20,7 +20,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.widesht },
-    library = { number = 75, index = 75, sort = 209 },
     slot_in_limit = 3,
     traits = { "element_sword" },
     action = slash.action {

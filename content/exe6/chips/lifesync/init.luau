@@ -14,7 +14,6 @@ return define.chip {
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { "free_slot_in" },
     beast = { lockon = lockon.firebrn1 },
-    library = { number = 195, index = 195, sort = 254 },
     slot_in_limit = 3,
     dimming = controller.hook,
 }

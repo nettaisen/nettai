@@ -38,7 +38,6 @@ local chips = {
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 16, damage = 20, hit_param = 4, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 53, index = 53, sort = 442 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.firebrn1 },
@@ -53,7 +52,6 @@ local chips = {
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 4, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 54, index = 54, sort = 420 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.firebrn1 },

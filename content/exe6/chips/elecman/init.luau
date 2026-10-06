@@ -17,7 +17,6 @@ local elecman = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 245, index = 6, sort = 140 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -35,7 +34,6 @@ local elecman_ex = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 246, index = 7, sort = 141 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -53,7 +51,6 @@ local elecman_sp = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 247, index = 8, sort = 142 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

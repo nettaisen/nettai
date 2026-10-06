@@ -12,7 +12,6 @@ return define.chip {
     rarity = 2, mb = 36, damage = 20, hit_param = 0, lockout = 20,
     flags = { "standard_library", "library" },
     extra_flags = { "modifier" },
-    library = { number = 198, index = 198, sort = 321 },
     slot_in_limit = 1,
     modifier = "navi_plus",
     instant = plus.navi,

@@ -18,7 +18,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { "rush_cancels", "free_slot_in" },
-    library = { number = 179, index = 179, sort = 244 },
     slot_in_limit = 3,
     dimming = invisible.hook(360),
 }
