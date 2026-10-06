@@ -98,7 +98,7 @@ end
 
 -- A game's blade kind `id`, of `look`.
 function blade.make_kind(id: string, look: MoonBladeLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { plain = "bool" },

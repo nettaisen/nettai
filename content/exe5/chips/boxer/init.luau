@@ -13,8 +13,7 @@ local recipe_hotbody3 = require("./hotbody").hotbody3
 -- Boxer1 (EXE5 chip 0x146): the Program Advance of two HotBody1s and a FireHit1 (or three FireHit1s of one code): an
 -- unseen boxer punches FireHit's fists down the rows, nine in all (chips/boxer/boxer, instant effect 21; the fists' hit
 -- modifier 1, the record's +0x11).
-local boxer1 = define.chip {
-    id = "boxer1",
+local boxer1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -39,8 +38,7 @@ local boxer1 = define.chip {
 -- Boxer2 (EXE5 chip 0x147): the Program Advance of two HotBody2s and a FireHit2 (or three FireHit2s of one code): an
 -- unseen boxer punches FireHit's fists down the rows, nine in all (chips/boxer/boxer, instant effect 21; the fists' hit
 -- modifier 1, the record's +0x11).
-local boxer2 = define.chip {
-    id = "boxer2",
+local boxer2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -65,8 +63,7 @@ local boxer2 = define.chip {
 -- Boxer3 (EXE5 chip 0x148): the Program Advance of two HotBody3s and a FireHit3 (or three FireHit3s of one code): an
 -- unseen boxer punches FireHit's fists down the rows, nine in all (chips/boxer/boxer, instant effect 21; the fists' hit
 -- modifier 1, the record's +0x11).
-local boxer3 = define.chip {
-    id = "boxer3",
+local boxer3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",

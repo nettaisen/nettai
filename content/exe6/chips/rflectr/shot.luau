@@ -92,7 +92,7 @@ local function init(me: Object): boolean
     return true
 end
 
-shot.kind = define.kind {
+shot.kind = new.kind {
     id = "rflectr/shot",
     pool = "attack",
     -- `sub_80C9BC4`: the state, then the sprite.

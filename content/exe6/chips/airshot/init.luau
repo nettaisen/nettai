@@ -6,8 +6,7 @@ local airshot = require("../lib/airshot")
 local lockon = require("../rules/lockon")
 local variants = require("../objects/projectile/variants")
 
-return define.chip {
-    id = "airshot",
+local chip: Chip = {
     codes = { "*" },
     element = "null", family = "wind", class = "standard",
     rarity = 1, mb = 4, damage = 20, hit_param = 20, lockout = 0,
@@ -18,3 +17,5 @@ return define.chip {
     beast = { lockon = lockon.cannon },
     action = airshot.action { shooter = airshot.shooter, shot = variants.air },
 }
+
+return { airshot = chip }

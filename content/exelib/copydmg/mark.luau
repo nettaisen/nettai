@@ -174,7 +174,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
         me:set_lifecycle("update")
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         -- `sub_80C8FFC` (EXE5's 0x080C9A6C).

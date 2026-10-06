@@ -3,7 +3,7 @@
 //! each in one of its colors, turned and compressed or not, and how far
 //! the board has been expanded.
 //!
-//! The programs are definitions (`define.navicust_program`,
+//! The programs are definitions (the root's `navicust_programs`,
 //! `Content::navicust_program`): their colors and shapes, and what a game's
 //! rules read. A player's NaviCust is their setup's
 //! ([`crate::custom::PlayerSetup::navicust`]); what it gives the navi is a

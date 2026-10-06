@@ -3,8 +3,7 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "cosmoman",
+local card: PatchCard = {
     mb = 44,
     effects = {
         cards.mega_folder(1),
@@ -12,3 +11,5 @@ return define.patch_card {
         cards.bug(cards.hp_percent(-20)),
     },
 }
+
+return { cosmoman = card }

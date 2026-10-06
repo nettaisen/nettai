@@ -124,7 +124,7 @@ local function tick(me: Object)
     fly(me)
 end
 
-volcano_rock.kind = define.kind {
+volcano_rock.kind = new.kind {
     id = "chargeman/volcano-rock",
     pool = "attack",
     -- `sub_80D5D54`.

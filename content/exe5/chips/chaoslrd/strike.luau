@@ -38,8 +38,8 @@ local SOUND_THROW = asset.sound("windrack")
 local SOUND_BLAST = asset.sound("chaos-blast")
 -- The panel bursts' rows (0x080E3164) its Param1 + 5 names: the Bass AI's 5 (the effect table's row 0x6B), ChaosLrd's
 -- 6 (row 0x24); neither has a sound.
-local BURST_AI = define.effect { sprite = asset.sprite("napalm-fire"), anim = 0, palette = 1 }
-local BURST_LORD = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
+local BURST_AI = new.effect { sprite = asset.sprite("napalm-fire"), anim = 0, palette = 1 }
+local BURST_LORD = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
 -- The panels it breaks or cracks around its target (0x080162A4's list 15: the 3x3, x toward its facing).
 local AROUND: { { number } } = {
     { 0, 0 },
@@ -213,7 +213,7 @@ local function init(me: Object)
     tick(me)
 end
 
-strike.kind = define.kind {
+strike.kind = new.kind {
     id = "chaoslrd/strike",
     pool = "attack",
     state = { lord = "bool", target = "object", x = "u8", y = "u8" },

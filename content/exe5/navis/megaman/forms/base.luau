@@ -8,7 +8,7 @@ local buster = require("../weapons/buster")
 local charged_shot = require("../weapons/charged_shot")
 
 -- Hub Style's shade (the body overlay's row 5), as an identity wears it.
-local HUB = define.identity { class = "navi", parts = { body = body_overlays.hub } }
+local HUB = new.identity { class = "navi", parts = { body = body_overlays.hub } }
 
 -- 0x0800EE1C (the base form's put-on routine, 0x0800F038's row 0, and MegaMan's actor record's init hook, 0x0800ED90's
 -- row 11, as his init ends): in his base form (+0x2C 0, read again) in Hub Style, what he wore down and the shade on
@@ -22,8 +22,7 @@ local function put_on(navi: Object)
     navi:add_parts(HUB, 0)
 end
 
-return define.form {
-    id = "base",
+local form: FormDef = {
     base = true,
     sprite = asset.sprite("megaman"),
     element = "null",
@@ -50,3 +49,5 @@ return define.form {
     buster_arm = { anim = 0 },
     put_on = put_on,
 }
+
+return { base = form }

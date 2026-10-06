@@ -152,7 +152,7 @@ local function init(me: Object)
     tick(me)
 end
 
-needle.kind = define.kind {
+needle.kind = new.kind {
     id = "aquandl/needle",
     pool = "attack",
     state = { palette = "u8", cracks = "bool" },

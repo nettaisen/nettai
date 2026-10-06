@@ -39,7 +39,7 @@ local function count(s: State): boolean
     return t <= 0
 end
 
-local action = define.action {
+local action = new.action {
     state = { timer = "u16", flight = "object" },
     -- 0x080F0A74
     update = function(me: Object, s: State)
@@ -97,8 +97,7 @@ local action = define.action {
     end,
 }
 
-return define.chip {
-    id = "airforce",
+local chip: Chip = {
     codes = { "G" },
     element = "null",
     family = "null",
@@ -112,3 +111,5 @@ return define.chip {
     slot_in_limit = 1,
     action = action,
 }
+
+return { airforce = chip }

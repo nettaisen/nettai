@@ -29,7 +29,7 @@ local SPRITE = asset.sprite("phoenix")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_HEAL = asset.sound("heal")
 -- The healing's sparkle (the effect table's row 6).
-local HEALED = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
+local HEALED = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
 -- The targets' columns (0x080BFD80, 0x080BFD86): the middle, and beside it.
 local MIDDLE = { 0x13, 0x23, 0x33, 0x14, 0x24, 0x34 }
 local BESIDE = { 0x12, 0x22, 0x32, 0x15, 0x25, 0x35 }
@@ -241,7 +241,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-phoenix.kind = define.kind {
+phoenix.kind = new.kind {
     id = "phoenix/phoenix",
     pool = "actor",
     state = { controller = "object", targets = "u8[18]" },

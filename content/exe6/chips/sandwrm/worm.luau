@@ -240,7 +240,7 @@ local function tick(me: Object)
     me:highlight_collision_panels()
 end
 
-worm.kind = define.kind {
+worm.kind = new.kind {
     id = "sandwrm/worm",
     pool = "attack",
     state = {

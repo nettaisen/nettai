@@ -66,7 +66,7 @@ local function tick(me: Object)
     c:present()
 end
 
-strike.kind = define.kind {
+strike.kind = new.kind {
     id = "gyroman/strike",
     pool = "attack",
     state = { variant = "u8" },

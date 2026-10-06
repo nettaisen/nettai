@@ -112,7 +112,7 @@ local function init(me: Object)
     tick(me)
 end
 
-surge.kind = define.kind {
+surge.kind = new.kind {
     id = "spoutcross-beast/surge",
     pool = "attack",
     state = { ticks = "u8", beat = "u8" },

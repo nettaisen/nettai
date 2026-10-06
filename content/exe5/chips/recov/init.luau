@@ -7,8 +7,7 @@ local heal = require("@exelib/recov/heal")
 -- Recov10 (EXE5 chip 0x06b): the navi heals 10 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (30).
-local recov10 = define.chip {
-    id = "recov10",
+local recov10: Chip = {
     codes = { "A", "C", "L", "*" },
     element = "null",
     family = "recovery",
@@ -26,8 +25,7 @@ local recov10 = define.chip {
 -- Recov30 (EXE5 chip 0x06c): the navi heals 30 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (30).
-local recov30 = define.chip {
-    id = "recov30",
+local recov30: Chip = {
     codes = { "C", "H", "L", "*" },
     element = "null",
     family = "recovery",
@@ -45,8 +43,7 @@ local recov30 = define.chip {
 -- Recov50 (EXE5 chip 0x06d): the navi heals 50 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (40).
-local recov50 = define.chip {
-    id = "recov50",
+local recov50: Chip = {
     codes = { "B", "H", "O", "*" },
     element = "null",
     family = "recovery",
@@ -64,8 +61,7 @@ local recov50 = define.chip {
 -- Recov80 (EXE5 chip 0x06e): the navi heals 80 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (40).
-local recov80 = define.chip {
-    id = "recov80",
+local recov80: Chip = {
     codes = { "B", "K", "O", "*" },
     element = "null",
     family = "recovery",
@@ -83,8 +79,7 @@ local recov80 = define.chip {
 -- Recov120 (EXE5 chip 0x06f): the navi heals 120 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
-local recov120 = define.chip {
-    id = "recov120",
+local recov120: Chip = {
     codes = { "K" },
     element = "null",
     family = "recovery",
@@ -102,8 +97,7 @@ local recov120 = define.chip {
 -- Recov150 (EXE5 chip 0x070): the navi heals 150 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
-local recov150 = define.chip {
-    id = "recov150",
+local recov150: Chip = {
     codes = { "Q" },
     element = "null",
     family = "recovery",
@@ -121,8 +115,7 @@ local recov150 = define.chip {
 -- Recov200 (EXE5 chip 0x071): the navi heals 200 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
-local recov200 = define.chip {
-    id = "recov200",
+local recov200: Chip = {
     codes = { "I" },
     element = "null",
     family = "recovery",
@@ -140,8 +133,7 @@ local recov200 = define.chip {
 -- Recov300 (EXE5 chip 0x072): the navi heals 300 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
 -- the original's action 0x17, EXE6's 0x20; EXE5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
-local recov300 = define.chip {
-    id = "recov300",
+local recov300: Chip = {
     codes = { "Y" },
     element = "null",
     family = "recovery",

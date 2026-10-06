@@ -201,7 +201,7 @@ function bassanly.make(spec: Spec): { kind: Kind, summon: (user: Object, control
         me:free()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "actor",
         state = { controller = "object", held = "object" },

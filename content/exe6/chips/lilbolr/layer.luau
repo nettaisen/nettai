@@ -122,7 +122,7 @@ local function init(me: Object)
     tick(me)
 end
 
-layer.kind = define.kind {
+layer.kind = new.kind {
     id = "lilbolr/layer",
     pool = "actor",
     state = {

@@ -9,7 +9,7 @@ local chaos = {}
 
 -- The weapon loading dark chip `chip`, charging for `ticks` by the chaos level.
 function chaos.weapon(chip: Chip, ticks: { number }): Weapon
-    return define.weapon {
+    return new.weapon {
         charge_ticks = ticks,
         setup = function(navi: Object): Chip
             navi:load_chip_attack(chip)

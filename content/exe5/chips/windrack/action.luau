@@ -24,7 +24,7 @@ local ANIM_SWING = 5
 local SOUND = asset.sound("windrack")
 -- The rack (the attachment table's row 0x10), and the swirl around the navi (effect 0x27), 16 pixels up.
 local RACK = attachment.look { sprite = asset.sprite("wind-rack"), palette = 0 }
-local SWIRL = define.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
+local SWIRL = new.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
 local HEIGHT = 0x10_0000
 local SWING_TICKS, HIT_AT, RECOVER_TICKS = 0x15, 0x0C, 5
 local HIT_MOD, HIT_TICKS = 0x49, 0x0A
@@ -40,7 +40,7 @@ local function rack_anim(me: Object): number
     return if ai == 0x17 then 0 else ai
 end
 
-windrack.action = define.action {
+windrack.action = new.action {
     state = windrack.STATE,
     update = function(me: Object, s: State)
         local step = me.step

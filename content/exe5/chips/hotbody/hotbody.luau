@@ -104,7 +104,7 @@ local function init(me: Object)
     tick(me)
 end
 
-hotbody.flame = define.kind {
+hotbody.flame = new.kind {
     id = "hotbody/flame",
     pool = "attack",
     -- 0x080DA390: by its lifecycle, then a sprite step.
@@ -249,7 +249,7 @@ local function init_fire(me: Object)
     update(me)
 end
 
-hotbody.fire = define.kind {
+hotbody.fire = new.kind {
     id = "hotbody/fire",
     pool = "effect",
     state = { lit = "u32[5]", last = "u8[8]", count = "u32", navi = "object", rounds = "u8" },
@@ -335,7 +335,7 @@ function hotbody.action(rounds: number): Action
         end
     end
 
-    return define.action { state = { timer = "u16" }, args = { rounds = rounds }, update = update_action }
+    return new.action { state = { timer = "u16" }, args = { rounds = rounds }, update = update_action }
 end
 
 return hotbody

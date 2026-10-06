@@ -37,7 +37,7 @@ local TAKES = {
 local STOLEN_TICKS = 0x708
 local STAY_TICKS = 60
 -- Effect 0x14 (a puff), 16 pixels up.
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
 -- Its controller's list: it is gone.
 local function gone(me: Object)
@@ -137,7 +137,7 @@ local function tick(me: Object)
     me:update_sprite()
 end
 
-gel.kind = define.kind {
+gel.kind = new.kind {
     id = "metagel/gel",
     pool = "attack",
     state = { holder = "object", slot = "u8" },

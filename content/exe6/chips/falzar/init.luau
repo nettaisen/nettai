@@ -23,8 +23,7 @@ local ART_PALETTE = {
     0x40C1, 0x1B3E, 0x2659, 0x09B4, 0x76DD, 0x557B, 0x2039, 0x1805,
 }
 
-return define.chip {
-    id = "falzar",
+local chip: Chip = {
     art_palette = ART_PALETTE,
     codes = { "X" },
     element = "null",
@@ -40,3 +39,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = controller.hook,
 }
+
+return { falzar = chip }

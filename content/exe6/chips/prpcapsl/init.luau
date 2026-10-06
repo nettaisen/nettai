@@ -5,8 +5,7 @@
 
 local controller = require("./geddon/controller")
 
-return define.chip {
-    id = "prpcapsl",
+local chip: Chip = {
     element = "null", family = "summon", class = "special",
     rarity = 0, mb = 6, damage = 0, hit_param = 0, lockout = 0,
     slot_in_limit = 1,
@@ -14,3 +13,5 @@ return define.chip {
     traits = { "no_cut_in" },
     dimming = controller.hook("crack"),
 }
+
+return { prpcapsl = chip }

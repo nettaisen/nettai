@@ -50,13 +50,13 @@ local SWORD_ANIM = 0x1C
 -- ScreenDivide's X (region 0x29: the diagonals of a column of three
 -- panels, three columns deep), and its effect (0x38); CrossDiv's two
 -- effects (0x36, 0x37).
-local SCREEN_DIVIDE = define.region {
+local SCREEN_DIVIDE = new.region {
     panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } },
 }
-local DIVIDE = define.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
+local DIVIDE = new.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
 local CROSS = {
-    define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
-    define.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
+    new.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
+    new.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
 }
 
 -- His fade-in's starting gray.
@@ -340,7 +340,7 @@ local function finish(me: Object)
     me:free()
 end
 
-colonel.kind = define.kind {
+colonel.kind = new.kind {
     id = "colonel/navi",
     pool = "actor",
     state = {

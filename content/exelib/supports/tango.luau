@@ -175,7 +175,7 @@ function tango.make(look: TangoLook): SupportActor
         me:update_sprite()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "actor",
         state = { healing = "bool" },

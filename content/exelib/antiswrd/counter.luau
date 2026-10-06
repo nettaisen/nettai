@@ -132,7 +132,7 @@ end
 -- 0x13, a sword for the rest), its booms' kind, the sounds of its start and
 -- its swings, and its attachment kind (the blade's).
 function counter.action_with(spec: Spec): Action
-    return define.action {
+    return new.action {
         id = spec.id,
         state = STATE,
         -- `sub_80EEA3C`, by phase.

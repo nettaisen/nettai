@@ -53,7 +53,7 @@ local function init(me: Object)
     tick(me)
 end
 
-sun.kind = define.kind {
+sun.kind = new.kind {
     id = "django/sun",
     pool = "effect",
     state = { blessed = "bool", done = "bool" },

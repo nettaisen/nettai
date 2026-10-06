@@ -13,14 +13,13 @@
 -- panel, strikes from the air otherwise) and the charged tornado (0x28, ./charge); no B+Back. His own chip is
 -- Airforce G (./chip).
 
-local airforce = require("@self/chip")
+local airforce = require("@self/chip").airforce
 local body_overlays = require("../lib/body_overlays")
 local buster = require("@self/buster")
 local charge = require("@self/charge")
 local hover = require("@self/hover")
 
-return define.navi {
-    id = "gyroman",
+local navi: NaviDef = {
     sprite = asset.sprite("gyroman"),
     element = "null",
     buster_bonus = 1,
@@ -47,7 +46,7 @@ return define.navi {
     -- His tick rests while his Airforce runs (0x080F09EE).
     tick = hover.tick(airforce.action :: Action),
     idle = hover.idle,
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -90,3 +89,5 @@ return define.navi {
         },
     },
 }
+
+return { gyroman = navi }

@@ -163,7 +163,7 @@ local function cross_init(me: Object)
     cross_tick(me)
 end
 
-local CROSS = define.kind {
+local CROSS = new.kind {
     id = "crsshld/cross",
     pool = "attack",
     state = { palette = "u8" },
@@ -278,7 +278,7 @@ function guard.action(spec: Spec): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = spec.id,
         state = { timer = "u16" },
         args = spec,

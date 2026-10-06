@@ -184,7 +184,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = hitch, [8] = charge, [0xC] = leave, [0x10] = vanish }
 
-chrgeman.kind = define.kind {
+chrgeman.kind = new.kind {
     id = "chrgeman/navi",
     pool = "actor",
     state = { controller = "object", cars = "u32" },

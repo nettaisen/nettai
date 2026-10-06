@@ -9,14 +9,13 @@ local attachment = require("../objects/attachment")
 local controller = require("@self/controller")
 local throw = require("@exelib/yoyo/throw")
 local yoyo = require("./yoyo/yoyo")
-local recipe_varswrd = require("./varswrd")
-local recipe_yoyo = require("./yoyo")
+local recipe_varswrd = require("./varswrd").varswrd
+local recipe_yoyo = require("./yoyo").yoyo
 
 local LEADER = yoyo.spec { mode = 1, panels = 4, rounds = 5 }
 local FOLLOWER = yoyo.spec { mode = 2, panels = 4, rounds = 5 }
 
-return define.chip {
-    id = "greatyo",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -43,3 +42,5 @@ return define.chip {
         end,
     },
 }
+
+return { greatyo = chip }

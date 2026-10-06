@@ -18,7 +18,7 @@ local black_bomb = {}
 local SPRITE = asset.sprite("black-bomb")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     id = "blkbomb",
     class = "field_object",
     version = 2,
@@ -26,7 +26,7 @@ local IDENTITY = define.identity {
     look = { sprite = asset.sprite("black-bomb"), anim = 0, palette = 0, shadow = true },
 }
 -- Its hit spark (0x0A).
-local HIT_SPARK = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
+local HIT_SPARK = new.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")

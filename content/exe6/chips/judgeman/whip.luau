@@ -73,7 +73,7 @@ local function tick(me: Object)
     swing(me)
 end
 
-whip.kind = define.kind {
+whip.kind = new.kind {
     id = "judgeman/whip",
     pool = "effect",
     state = { follows_action = "bool", action = "action" },

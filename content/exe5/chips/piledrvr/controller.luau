@@ -108,7 +108,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "piledrvr/controller",
     pool = "effect",
     state = { first_busy = "bool", second_busy = "bool", bonus = "u16" },

@@ -6,11 +6,10 @@
 
 local navi = require("./larkman/navi")
 local recipe_katana1 = require("./katana").katana1
-local recipe_larkman_ds = require("./larkman").larkman_ds
-local recipe_larkman_sp = require("./larkman").larkman_sp
+local recipe_larkman_ds = require("./larkman")["larkman-ds"]
+local recipe_larkman_sp = require("./larkman")["larkman-sp"]
 
-return define.chip {
-    id = "wildbird",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -31,3 +30,5 @@ return define.chip {
     },
     navi = navi.summon_wild,
 }
+
+return { wildbird = chip }

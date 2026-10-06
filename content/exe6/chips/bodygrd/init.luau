@@ -6,12 +6,11 @@
 -- (lib/traps/controller); it sets no object of its own.
 
 local traps = require("../lib/traps/controller")
-local antidmg = require("./antidmg")
-local antinavi = require("./antinavi")
-local antiswrd = require("./antiswrd")
+local antidmg = require("./antidmg").antidmg
+local antinavi = require("./antinavi").antinavi
+local antiswrd = require("./antiswrd").antiswrd
 
-return define.chip {
-    id = "bodygrd",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -27,3 +26,5 @@ return define.chip {
     trap = "body_guard",
     dimming = traps.hook(),
 }
+
+return { bodygrd = chip }

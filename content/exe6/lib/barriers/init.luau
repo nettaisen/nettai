@@ -16,7 +16,7 @@ local barriers = {}
 
 -- A barrier.
 function barriers.barrier(b: Barrier): Barrier
-    return define.record("barrier", b)
+    return new.record("barrier", b)
 end
 
 local SPRITE, BUBBLE, AURA = asset.sprite("barrier"), asset.sprite("bubble"), asset.sprite("aura")

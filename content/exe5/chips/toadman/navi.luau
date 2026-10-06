@@ -162,7 +162,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-toadman.kind = define.kind {
+toadman.kind = new.kind {
     id = "toadman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },

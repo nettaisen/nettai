@@ -9,8 +9,7 @@ local ironshl_chips = require("./ironshl")
 -- Its shells' speed (`byte_80CA7A0`'s third), 16.16 a tick.
 local SPEED = 0x8_0000
 
-return define.chip {
-    id = "parashl",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -29,3 +28,5 @@ return define.chip {
     },
     action = throw.action { id = "parashl/action", shell = { palette = 0, speed = SPEED, bumps = 1, para = true } },
 }
+
+return { parashl = chip }

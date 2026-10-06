@@ -295,7 +295,7 @@ function bass.make(spec: Spec): Bass
         me:free()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "actor",
         state = { controller = "object", cooldowns = "u8[18]", columns = "u8[7]" },

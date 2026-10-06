@@ -5,8 +5,7 @@
 
 local snake = require("@self/snake")
 
-return define.chip {
-    id = "snake",
+local chip: Chip = {
     codes = { "C", "M", "Z" },
     element = "wood",
     family = "wood",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = snake.hook,
 }
+
+return { snake = chip }

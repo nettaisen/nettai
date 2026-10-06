@@ -74,14 +74,14 @@ function exe5.program_setup(navi: Object): Action
     return charged_shot.action
 end
 
-exe5.program = define.weapon {
+exe5.program = new.weapon {
     id = "megaman/program-charged-shot",
     -- The charge table's row 0x63, by Charge 0 to 5: past 4 it reads on into row 0x64's first entry.
     charge_ticks = { 100, 90, 80, 70, 60, 80 },
     setup = exe5.program_setup,
 }
 
-exe5.weapon = define.weapon {
+exe5.weapon = new.weapon {
     id = "megaman/charged-shot",
     -- The charge table's row 1 (0x0801CA6C, EXE6's values); Charge 5 reads on into row 2's first entry.
     charge_ticks = { 100, 90, 80, 70, 60, 180 },

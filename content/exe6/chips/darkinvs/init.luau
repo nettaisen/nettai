@@ -4,10 +4,9 @@
 -- lib/navi_boost/controller).
 
 local navi_boost = require("../lib/navi_boost/controller")
-local invisibl = require("./invisibl")
+local invisibl = require("./invisibl").invisibl
 
-return define.chip {
-    id = "darkinvs",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -23,3 +22,5 @@ return define.chip {
     dark_substitute = invisibl,
     dimming = navi_boost.dark,
 }
+
+return { darkinvs = chip }

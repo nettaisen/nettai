@@ -7,14 +7,13 @@
 
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
-local recipe_longblde = require("./longblde")
-local recipe_longswrd = require("./longswrd")
-local recipe_sword = require("./sword")
-local recipe_wideblde = require("./wideblde")
-local recipe_wideswrd = require("./wideswrd")
+local recipe_longblde = require("./longblde").longblde
+local recipe_longswrd = require("./longswrd").longswrd
+local recipe_sword = require("./sword").sword
+local recipe_wideblde = require("./wideblde").wideblde
+local recipe_wideswrd = require("./wideswrd").wideswrd
 
-return define.chip {
-    id = "lifesrd",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -41,3 +40,5 @@ return define.chip {
         sound = swords.big_swing,
     },
 }
+
+return { lifesrd = chip }

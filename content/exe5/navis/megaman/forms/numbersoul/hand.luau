@@ -23,6 +23,6 @@ local custom_screen: SoulCustom = {
     end,
 }
 
-hand.custom = define.record("soul-custom", custom_screen)
+hand.custom = new.record("soul-custom", custom_screen)
 
 return hand

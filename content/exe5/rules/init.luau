@@ -19,7 +19,7 @@ local souls = require("@self/souls")
 
 -- The auto battle AI's state (./auto_battle/ai.luau's `State`): a navi's it drives (Dark MegaMan's, AIData +0x80 on),
 -- and a side's own drive's under DarkInvs (AIData +0xF0 on), in the side's state.
-local AI = {
+local AI: StateSchema = {
     timed = "bool",
     lifetime = "u16",
     drive_ticks = "u16",
@@ -47,7 +47,7 @@ local AI = {
 }
 
 -- What a side keeps through a round.
-local state: { [string]: string | { string } } = {
+local state: StateSchema = {
     -- Soul Unison (./souls): AIData +0x0F, the soul's turns left (0xFF: none to count), and Chaos Unison; the turn's
     -- arm chip (the transform record's +6; none: its 0xFFFF).
     turns = "u8",
@@ -64,21 +64,14 @@ local state: { [string]: string | { string } } = {
     -- emotion last swung to) of each navi of the player's kind, by its slot on its side's list of alive actors.
     swing_ticks = "u16[4]",
     swung = "u8[4]",
+    -- The side's own drive under DarkInvs (./auto_battle): the AI's state, as a navi it drives keeps it.
+    drive = AI,
+    -- What the souls' additions to the custom screen keep of one screen: each soul's fields, in its folder
+    -- (navis/megaman/forms/<soul>), which ./souls/custom gathers.
+    screen = souls.custom.screen,
 }
--- The side's own drive under DarkInvs (./auto_battle): the AI's fields. (Until a state holds records, they are the
--- state's own.)
-for name, kind in AI do
-    state[name] = kind
-end
--- What each soul's addition to the custom screen keeps: each soul's own, in its folder (navis/megaman/forms/<soul>),
--- which ./souls/custom gathers.
-for _, fields in souls.custom.states do
-    for name, kind in fields do
-        state[name] = kind
-    end
-end
 
-return define.rules {
+local rules: Rules = {
     state = state,
     -- What a player brings (nettai-match from a match's side, exe5-compat from a recording): a side's facts.
     setup = {
@@ -214,3 +207,5 @@ return define.rules {
     sp_chips = require("@self/sp_chips"),
     status = require("@self/status").rules,
 }
+
+return rules

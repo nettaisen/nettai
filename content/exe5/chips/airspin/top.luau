@@ -22,7 +22,7 @@ local SPRITE = asset.sprite("air-spin")
 return common.make {
     id = "airspin/top",
     sprite = SPRITE,
-    identity = define.identity {
+    identity = new.identity {
         class = "field_object",
         version = 0,
         ai_index = 1,
@@ -32,7 +32,7 @@ return common.make {
     body = collision.own_body,
     hit_by = collision.hit_by_other_side,
     -- The spin's gust (the effect table's row 0x4F), and its palette offset.
-    gust = define.effect { sprite = asset.sprite("moon-blade"), anim = 0, palette = 0 },
+    gust = new.effect { sprite = asset.sprite("moon-blade"), anim = 0, palette = 0 },
     gust_palette = 2,
     gust_side = false,
     gust_self = collision.attack,

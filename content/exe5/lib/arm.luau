@@ -64,7 +64,7 @@ function arm.raise_for(navi: Object, which: Slot, while_dimmed: boolean, holder:
             if form.soul then
                 local raised = form.buster_arm
                 if raised == nil then
-                    error(string.format("%s names no buster arm (its `buster_arm`: 0x080EBABE takes the soul's animation)", form.id))
+                    error(string.format("%s names no buster arm (its `buster_arm`: 0x080EBABE takes the soul's animation)", form.id :: string))
                 end
                 anim = raised.anim
                 if chaos_charge(navi) ~= 0 then

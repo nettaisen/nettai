@@ -27,7 +27,7 @@
 --   chip can be tagged while the tag chips' MB leave room for it).
 
 local batcan_chips = require("../chips/batcan")
-local beastout = require("../chips/beastout")
+local beastout = require("../chips/beastout").beastout
 
 local SIZE = 30
 local DARK_CHIPS = 3
@@ -63,7 +63,7 @@ local function in_pack(c: Chip): boolean
 end
 
 local function name(c: Chip): string
-    return c.id
+    return c.id :: string
 end
 
 local function mb(c: Chip): number

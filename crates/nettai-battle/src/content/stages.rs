@@ -1,4 +1,4 @@
-//! Stages: where a round is fought (`define.stage`, docs/design/
+//! Stages: where a round is fought (the root's `stages`, docs/design/
 //! content-model-v2.md §3.7). A stage holds its own panel layout and what
 //! it places on the field when the round starts; nothing about it has a
 //! number.

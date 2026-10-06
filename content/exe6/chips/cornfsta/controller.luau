@@ -31,7 +31,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "cornfsta/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },

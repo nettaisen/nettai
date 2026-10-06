@@ -69,7 +69,7 @@ end
 
 -- A game's immobilizer kind (`id`) of `look`.
 function immobilizer.make_kind(id: string, look: ImmobilizerLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         -- `sub_80CC044`.

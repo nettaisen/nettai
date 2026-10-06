@@ -33,7 +33,7 @@ function controller.make(look: WindControllerLook): WindController
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "effect",
         state = { variant = "record:fan-variant" },

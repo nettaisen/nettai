@@ -79,7 +79,7 @@ function throw.action(spec: { id: string, shell: IronShell }): Action
         end
     end
 
-    return define.action { id = spec.id, state = throw.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = throw.STATE, args = spec, update = update }
 end
 
 return throw

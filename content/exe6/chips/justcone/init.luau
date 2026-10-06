@@ -4,8 +4,7 @@
 
 local strike = require("@self/strike")
 
-return define.chip {
-    id = "justcone",
+local chip: Chip = {
     codes = { "J" },
     element = "null", family = "break", class = "standard",
     rarity = 4, mb = 90, damage = 220, hit_param = 178, lockout = 20,
@@ -13,3 +12,5 @@ return define.chip {
     slot_in_limit = 1,
     instant = strike.instant,
 }
+
+return { justcone = chip }

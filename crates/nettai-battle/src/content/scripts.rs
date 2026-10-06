@@ -5,10 +5,11 @@
 //!
 //! Each pack has a manifest (`manifest.toml`: its name, its kind and the
 //! support packs it depends on), and a game pack a top module
-//! (`<game>/init.luau`) that requires what the game has. The define phase
-//! runs each game's top module, and each `require` finds and reads its
-//! module as it is reached (`packs::find`): from the modules held in
-//! memory, else from the packs' folders ([`Scripts::dirs`]). What the load
+//! (`<game>/init.luau`) that returns the game's root: what a match names,
+//! by id, and its rules. The define phase runs each game's top module, and
+//! each `require` finds and reads its module as it is reached
+//! (`packs::find`): from the modules held in memory, else from the packs'
+//! folders ([`Scripts::dirs`]); what the root reaches is what the game has. What the load
 //! read is the content's modules from then on: its hash covers them, and a
 //! runtime loads them again from memory, never from a folder. A module
 //! requires only its own pack's modules and those of the support packs its
@@ -42,6 +43,11 @@ pub struct Scripts {
     /// Their bytecode, as the define phase compiled it (a runtime then
     /// skips the compiler).
     pub compiled: CompiledModules,
+    /// The modules of games held in memory whose top module
+    /// [`Scripts::init_for`] made (a test's), by name: a load walks each
+    /// one's result as it is, besides the game's root, so what such a game
+    /// holds is its whatever reaches it.
+    pub held: Vec<String>,
 }
 
 impl Scripts {
@@ -79,6 +85,7 @@ impl Scripts {
         let depends = self.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
         if !modules.contains_key(packs::INIT) {
             let init = Scripts::init_for(&modules);
+            self.hold(game, modules.keys());
             modules.insert(packs::INIT.to_string(), init);
         }
         self.add_dir(game, modules);
@@ -123,13 +130,36 @@ impl Scripts {
         self.packs.insert(at, manifest);
     }
 
+    /// Game `game`'s modules `paths` (by path in its directory) are walked
+    /// as they are ([`Scripts::held`]), in place of those it had.
+    pub fn hold<'a>(&mut self, game: &str, paths: impl IntoIterator<Item = &'a String>) {
+        let prefix = format!("{game}{}", keys::SEPARATOR);
+        self.held.retain(|m| !m.starts_with(&prefix));
+        self.held.extend(paths.into_iter().filter(|p| p.as_str() != packs::INIT).map(|p| Scripts::name(game, p)));
+        self.held.sort();
+    }
+
     /// A top module (`init.luau`'s text) for a game whose modules are
-    /// `modules` (by path in its directory): it requires every one, so
-    /// every one loads, in path order, a folder by its name.
+    /// `modules` (by path in its directory): it returns the game's root,
+    /// each section ([`packs::SECTIONS`]) the tables of the modules that
+    /// give it ([`packs::sections_of`]) as one, in path order, a folder by
+    /// its name; and the rules, `rules` (or `rules/init`), where there are.
     pub fn init_for(modules: &BTreeMap<String, String>) -> String {
-        let lines: String =
-            modules.keys().filter(|p| p.as_str() != packs::INIT).map(|p| format!("require(\"@self/{}\")\n", keys::listed_as(p))).collect();
-        format!("{GENERATED}{lines}")
+        let mut body = String::new();
+        for (section, _) in packs::SECTIONS {
+            let parts: String = modules
+                .iter()
+                .filter(|(p, source)| p.as_str() != packs::INIT && packs::sections_of(source).contains(&section))
+                .map(|(p, _)| format!("        [\"{0}\"] = require(\"@self/{0}\"),\n", keys::listed_as(p)))
+                .collect();
+            if !parts.is_empty() {
+                body += &format!("    {section} = merge {{\n{parts}    }},\n");
+            }
+        }
+        if modules.contains_key(packs::RULES) || modules.contains_key(&format!("{}/{}", packs::RULES, packs::INIT)) {
+            body += &format!("    {0} = require(\"@self/{0}\"),\n", packs::RULES);
+        }
+        format!("{GENERATED}{MERGE}return {{\n{body}}}\n")
     }
 
     /// The module name of path `path` in content/'s directory `dir`.
@@ -177,7 +207,7 @@ impl Scripts {
     /// module, each module read as it is required, from memory or, one
     /// memory hasn't, from the packs' folders.
     pub fn pack_to_define(&self) -> nettai_luau::Pack {
-        let entries = self.packs.iter().filter_map(|p| p.entry()).collect::<Vec<_>>();
+        let entries = self.entries();
         if self.packs.is_empty() {
             // (A test's modules alone: every one, in name order.)
             return nettai_luau::Pack::new(self.modules.clone());
@@ -189,9 +219,22 @@ impl Scripts {
     /// from them: from each game's top module, from memory alone (what the
     /// define phase read: no folder is read again).
     pub fn pack(&self) -> nettai_luau::Pack {
-        let entries = self.packs.iter().filter_map(|p| p.entry()).collect::<Vec<_>>();
+        let entries = self.entries();
         let pack = nettai_luau::Pack::new(self.modules.clone()).with_packs(self.packs.iter().cloned()).with_compiled(self.compiled.0.clone());
         if self.packs.is_empty() { pack } else { pack.with_entries(entries) }
+    }
+
+    /// The modules a load starts from: each game's top module, then the
+    /// modules [`Scripts::held`] names of it, each walked as it is.
+    fn entries(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        for p in &self.packs {
+            let Some(top) = p.entry() else { continue };
+            let prefix = format!("{}{}", p.id, keys::SEPARATOR);
+            out.push(top);
+            out.extend(self.held.iter().filter(|m| m.starts_with(&prefix)).cloned());
+        }
+        out
     }
 
     /// Every module the content could load, by name: those in memory and
@@ -207,7 +250,24 @@ impl Scripts {
 }
 
 /// The first line of an init [`Scripts::init_for`] makes.
-pub const GENERATED: &str = "-- (Made for a game held in memory: it requires every module there is.)\n";
+pub const GENERATED: &str = "-- (Made for a game held in memory: its root holds every module's definitions.)\n";
+
+/// What an init [`Scripts::init_for`] makes merges a section's tables with
+/// (content/exelib/merge.luau's, which a game held in memory may lack).
+const MERGE: &str = "local function merge(parts: { [string]: { [string]: any } }): { [string]: any }
+    local out = {}
+    for module, part in parts do
+        for id, definition in part do
+            if out[id] ~= nil then
+                error(string.format(\"two modules give %s, %s.luau one of them\", tostring(id), module), 2)
+            end
+            out[id] = definition
+        end
+    end
+    return out
+end
+
+";
 
 /// The packs' folders the define phase reads modules from
 /// ([`Scripts::dirs`]): where the content came from on this machine, so
@@ -285,9 +345,9 @@ mod tests {
 
     const GAME: &[(&str, &str)] = &[
         ("rules/turns", "return { state = { n = 'u8' } }"),
-        ("rules/definition", "return define.rules { state = require('./turns').state }"),
-        ("cards", "return define.record('card', { power = 1 })"),
-        ("chips/cannon", "return define.record('chip-ish', { power = 3 })"),
+        ("rules/init", "return { state = require('@self/turns').state }"),
+        ("cards", "return new.record('card', { power = 1 })"),
+        ("chips/cannon", "return new.record('chip-ish', { power = 3 })"),
     ];
 
     /// docs/design/content-model-v2.md §4.0: content holds one game pack
@@ -297,8 +357,8 @@ mod tests {
     fn content_holds_one_game() {
         let mix: &[(&str, &str)] = &[
             ("rules/extra", "return { state = { e = 'u8' } }"),
-            ("rules/definition", "return define.rules { state = require('./extra').state }"),
-            ("cards", "return define.record('card', { power = 2 })"),
+            ("rules/init", "return { state = require('@self/extra').state }"),
+            ("cards", "return new.record('card', { power = 2 })"),
         ];
         let c = content(vec![folder("game", GAME)]).unwrap();
         let d = &c.defs;
@@ -315,22 +375,22 @@ mod tests {
         let mut c = stated();
         c.scripts.add_dir("game", GAME.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
         c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, ..Default::default() });
-        c.scripts.add_game("mix", [("rules/definition".to_string(), "return define.rules { state = require('@game/rules/turns').state }".to_string())].into());
+        c.scripts.add_game("mix", [("rules/init".to_string(), "return { state = require('@game/rules/turns').state }".to_string())].into());
         c.scripts.packs.retain(|p| p.id == "mix");
         let e = c.define().unwrap_err().message;
-        assert!(e.contains("mix/rules/definition.luau: require(\"@game/rules/turns\"): game is no pack") || e.contains("game is a game pack"), "{e}");
+        assert!(e.contains("mix/rules/init.luau: require(\"@game/rules/turns\"): game is no pack") || e.contains("game is a game pack"), "{e}");
     }
 
     #[test]
     fn what_the_namespace_refuses() {
-        let e = content(vec![folder("game", &[("rules/turns", "return define.collision { id = 'game:turns', side0 = 0, side1 = 0 }")])]).unwrap_err();
+        let e = content(vec![folder("game", &[("rules/turns", "return new.collision { id = 'game:turns', side0 = 0, side1 = 0 }")])]).unwrap_err();
         assert!(e.contains("\"game:turns\" is not a valid id"), "{e}");
         // A section is the rules' field by the engine's name.
-        let e = content(vec![folder("game", &[("rules/x", "return define.rules { Pools = { actor = 16 } }")])]).unwrap_err();
+        let e = content(vec![folder("game", &[("rules/init", "return { Pools = { actor = 16 } }")])]).unwrap_err();
         assert!(e.contains("`Pools` is no field of the rules"), "{e}");
-        let e = content(vec![folder("game", &[("rules/x", "return define.rules { pools = { actor = 0, attack = 32, effect = 32 } }")])]).unwrap_err();
-        assert!(e.contains("game/rules/x.luau: rules: pools: a pool holds 1 to"), "{e}");
-        let e = content(vec![folder("game", &[("rules/x", "return define.rules { pools = { actor = 'many', attack = 32, effect = 32 } }")])]).unwrap_err();
+        let e = content(vec![folder("game", &[("rules/init", "return { pools = { actor = 0, attack = 32, effect = 32 } }")])]).unwrap_err();
+        assert!(e.contains("game/rules/init.luau: rules: pools: a pool holds 1 to"), "{e}");
+        let e = content(vec![folder("game", &[("rules/init", "return { pools = { actor = 'many', attack = 32, effect = 32 } }")])]).unwrap_err();
         assert!(e.contains("rules: pools.actor: invalid type"), "{e}");
         let e = content(vec![folder("Game", GAME)]).unwrap_err();
         assert!(e.contains("not lowercase words"), "{e}");
@@ -462,7 +522,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         // The rules, without a section or a field of one, or with a
         // field's value another.
         let rules = |without: Option<&str>, field: Option<(&str, &str)>, other: Option<(&str, &str)>| -> String {
-            let mut out = format!("{HEAD}return define.rules {{\n");
+            let mut out = format!("{HEAD}return {{\n");
             for (name, body) in STATED {
                 if without == Some(*name) {
                     continue;
@@ -552,7 +612,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let with_weapon = |weapon: &str| -> Result<Content, String> {
             let mut c = Content::default();
             let text = rules(None, None, Some(("mood = 0x70,", &format!("mood = 0x70,\n        mode9_a = {weapon},"))));
-            let weapon = "define.weapon { id = 'shot', charge_ticks = { 0, 0, 0, 0, 0 }, setup = function(navi) return nil :: any end }";
+            let weapon = "new.weapon { id = 'shot', charge_ticks = { 0, 0, 0, 0, 0 }, setup = function(navi) return nil :: any end }";
             let text = format!("local shot = {weapon}\n{text}");
             c.scripts.add_game("game", [("rules/init".to_string(), text)].into());
             c.define().map_err(|e| e.message)?;
@@ -562,7 +622,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!(c.rules().fresh_stats.mode9_a, c.defs.weapon_by_key("shot"));
         assert!(c.rules().fresh_stats.mode9_a.is_some());
         let e = with_weapon("3").unwrap_err();
-        assert!(e.contains("game/rules/init.luau: rules: fresh_stats.mode9_a: a weapon (a `define.weapon`), not"), "{e}");
+        assert!(e.contains("game/rules/init.luau: rules: fresh_stats.mode9_a: a weapon (a `new.weapon`), not"), "{e}");
         // A rule is one of the engine's, by name.
         let e = game(rules(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
         assert!(e.contains("rules: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");
@@ -573,15 +633,15 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         // them.) Rust tables state them for a content that has those (the
         // test content's), and its rules' sections replace them.
         let mut none = Content::default();
-        none.scripts.add_game("game", [("cards".to_string(), "return define.record('card', {})".to_string())].into());
+        none.scripts.add_game("game", [("cards".to_string(), "return new.record('card', {})".to_string())].into());
         let e = none.define().unwrap_err().message;
         assert!(e.contains("game/init.luau: game pack game defines no rules"), "{e}");
         let mut loose = Content::default();
-        loose.scripts.add_dir("loose", [("cards".to_string(), "return define.record('card', {})".to_string())].into());
+        loose.scripts.add_dir("loose", [("cards".to_string(), "return new.record('card', {})".to_string())].into());
         loose.define().unwrap_or_else(|e| panic!("{}", e.message));
         assert!(loose.rules.is_none());
         let mut tables = stated();
-        let pools = "return define.rules { pools = { actor = 4, attack = 5, effect = 6 } }";
+        let pools = "return { pools = { actor = 4, attack = 5, effect = 6 } }";
         tables.scripts.add_game("game", [("rules/init".to_string(), pools.to_string())].into());
         tables.define().unwrap_or_else(|e| panic!("{}", e.message));
         assert_eq!(tables.rules().pools.slots(), [4, 5, 6]);
@@ -589,10 +649,10 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
     }
 
     /// The user: "there should only be one rules definition per game", then "collapse
-    /// systems into one rules definition". A game defines one, with no name
-    /// and no variants: a second, an `id`, and a field that is none of the
-    /// rules' (a `stock` flag, a variant's `base`, `add` and `remove`) are
-    /// refused.
+    /// systems into one rules definition". A game's root holds one, its
+    /// `rules`, with no name and no variants: a second root's, an `id`, and
+    /// a field that is none of the rules' (a `stock` flag, a variant's
+    /// `base`, `add` and `remove`) are refused.
     #[test]
     fn a_game_has_one_rules_definition() {
         let with = |more: &[(&str, &str)]| -> Result<Content, String> {
@@ -606,20 +666,20 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert!(d.rules().is_some());
         assert_eq!(d.definitions.of(nettai_content_api::Registry::Rules)[0].key, nettai_content_api::RULESET_KEY);
         // Content without one: its sides have no rules.
-        let none = content(vec![folder("game", &[("cards", "return define.record('card', {})")])]).unwrap();
+        let none = content(vec![folder("game", &[("cards", "return new.record('card', {})")])]).unwrap();
         assert!(none.defs.rules().is_none());
-        // A second.
-        let e = with(&[("rules/other", "return define.rules {}")]).unwrap_err();
-        assert!(e.contains("a game has one rules definition: game/rules/definition.luau defines one, and game/rules/other.luau another"), "{e}");
-        let bad = |source: &str| -> String { with(&[("rules/definition", source)]).unwrap_err() };
+        // A second root's.
+        let e = with(&[("rules/other", "return { rules = {} }")]).unwrap_err();
+        assert!(e.contains("a game has one rules definition"), "{e}");
+        let bad = |source: &str| -> String { with(&[("rules/init", source)]).unwrap_err() };
         let cases = [
-            ("return define.rules { id = 'stock' }", "define.rules takes no `id`: a game has one rules definition"),
-            ("return define.rules { stock = true }", "`stock` is no field of the rules"),
-            ("return define.rules { base = {} }", "`base` is no field of the rules"),
-            ("return define.rules { add = {} }", "`add` is no field of the rules"),
-            ("return define.rules { remove = {} }", "`remove` is no field of the rules"),
-            ("return define.rules { game = 'game' }", "`game` is no field of the rules"),
-            ("return define.rules { systems = {} }", "`systems` is no field of the rules"),
+            ("return { id = 'stock' }", "`id` is no field of the rules"),
+            ("return { stock = true }", "`stock` is no field of the rules"),
+            ("return { base = {} }", "`base` is no field of the rules"),
+            ("return { add = {} }", "`add` is no field of the rules"),
+            ("return { remove = {} }", "`remove` is no field of the rules"),
+            ("return { game = 'game' }", "`game` is no field of the rules"),
+            ("return { systems = {} }", "`systems` is no field of the rules"),
         ];
         for (source, want) in cases {
             let e = bad(source);
@@ -629,20 +689,25 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
 
     /// docs/design/content-model-v2.md §4.0: a load runs the game's top
     /// module, and each require finds and reads its module as it is
-    /// reached; what nothing requires never runs, so it defines nothing.
-    /// The order of the requires moves no key and no handle. A require of
-    /// no module, a cycle, a require the packs refuse and a game without a
-    /// top module are errors that say where they are written.
+    /// reached; what nothing requires never runs. What the game has is what
+    /// the root the top module returns reaches: a module that runs makes
+    /// nothing by running (no side effect). The order of the requires and
+    /// of the root's fields moves no key and no handle. A require of no
+    /// module, a cycle, a require the packs refuse and a game without a top
+    /// module are errors that say where they are written.
     #[test]
     fn a_load_reads_what_its_requires_reach() {
         let modules: BTreeMap<String, String> = [
             ("rules/turns", "return { state = { n = 'u8' } }"),
-            ("rules/init", "return define.rules { state = require('@self/turns').state }"),
-            ("chips/cannon", "return define.record('card', { power = 3 })"),
-            ("chips/sword/init", "return define.chip { id = 'sword', instant = function(u) end, parts = { define.record('part', {}), require('@self/edge') } }"),
-            ("chips/sword/edge", "return define.record('part', { long = true })"),
-            ("lib/pa", "return { chip = require('../chips/sword'), record = define.record('pa', {}) }"),
-            ("never", "error('a module no init reaches never loads')"),
+            ("rules/init", "return { state = require('@self/turns').state }"),
+            ("chips/cannon", "local cannon: Chip = { instant = function(u) end, part = new.record('part', {}) }\nreturn { cannon = cannon }"),
+            (
+                "chips/sword/init",
+                "local sword: Chip = { instant = function(u) end, parts = { new.record('part', {}), require('@self/edge') } }\nreturn { sword = sword }",
+            ),
+            ("chips/sword/edge", "return new.record('part', { long = true })"),
+            ("lib/pa", "return { chip = require('../chips/sword').sword, record = new.record('pa', {}) }"),
+            ("never", "error('a module nothing requires never loads')"),
         ]
         .into_iter()
         .map(|(p, s)| (p.to_string(), s.to_string()))
@@ -660,53 +725,57 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             c.define().map_err(|e| e.message)?;
             Ok(c)
         };
-        let c = with_inits(&[("init", "require('@self/rules')")]).unwrap();
+        let c = with_inits(&[("init", "return { rules = require('@self/rules') }")]).unwrap();
         assert!(c.defs.rules().is_some());
-        assert_eq!(c.defs.record("chips/cannon"), None, "unreached, unloaded");
-        // Each folder's init requires what the folder has; a module that
-        // defines what only an id names is required the same way.
-        let top = ("init", "require('@self/rules')\nrequire('@self/chips')\nrequire('@self/lib')");
-        let chips = ("chips/init", "require('@self/sword')\nrequire('@self/cannon')");
-        let lib = ("lib/init", "require('@self/pa')");
-        let c = with_inits(&[top, chips, lib]).unwrap();
-        assert!(c.defs.record("chips/cannon").is_some() && c.defs.chip_by_key("sword").is_some());
+        assert_eq!(c.defs.chip_by_key("cannon"), None, "unreached, unloaded");
+        // A section's init returns the section; what the root reaches is
+        // the game's, and a module that only runs makes nothing.
+        let top = ("init", "local _ = require('@self/lib/pa')\nreturn { rules = require('@self/rules'), chips = require('@self/chips') }");
+        let chips = ("chips/init", "local sword = require('@self/sword')\nlocal cannon = require('@self/cannon')\nreturn { sword = sword.sword, cannon = cannon.cannon }");
+        let c = with_inits(&[top, chips]).unwrap();
+        assert!(c.defs.chip_by_key("cannon").is_some() && c.defs.chip_by_key("sword").is_some());
+        assert!(c.defs.record("cannon/part").is_some() && c.defs.record("sword/parts/1").is_some());
+        // (A shared table is named by the module that writes it.)
+        assert!(c.defs.record("chips/sword/edge").is_some());
+        assert_eq!(c.defs.record("lib/pa/record"), None, "loaded, and reached by nothing");
         // The order of the requires is the load order, and nothing more: the
         // same definitions under the same keys, so the same handles.
         let turned = [
-            ("init", "require('@self/lib')\nrequire('@self/chips')\nrequire('@self/rules')"),
-            ("chips/init", "require('@self/cannon')\nrequire('@self/sword')"),
-            lib,
+            ("init", "return { chips = require('@self/chips'), rules = require('@self/rules') }"),
+            ("chips/init", "local cannon = require('@self/cannon')\nlocal sword = require('@self/sword')\nreturn { cannon = cannon.cannon, sword = sword.sword }"),
         ];
         let d = with_inits(&turned).unwrap();
         assert_eq!(c.defs.definitions, d.defs.definitions);
-        // A chip its folder's init leaves out still loads when something
-        // requires it (the Program Advance's module): the inits list for a
-        // reader, and tools/content/index.py writes them.
-        let reached = with_inits(&[top, ("chips/init", "require('@self/cannon')"), lib]).unwrap();
-        assert_eq!(reached.defs.definitions, c.defs.definitions);
         let refused = |inits: &[(&str, &str)], said: &str| {
             let e = with_inits(inits).expect_err(said);
             assert!(e.contains(said), "{said}: {e}");
         };
-        refused(&[("init", "require('@self/rules')\nrequire('@self/gone')")], "game/init.luau: require(\"@self/gone\"): no module game/gone.luau");
-        refused(&[("init", "require('./rules')")], "game/init.luau: require(\"./rules\") from game:init: leaves pack game");
+        refused(&[("init", "local _ = require('@self/gone')\nreturn { rules = require('@self/rules') }")], "game/init.luau: require(\"@self/gone\"): no module game/gone.luau");
+        refused(&[("init", "return { rules = require('./rules') }")], "game/init.luau: require(\"./rules\") from game:init: leaves pack game");
         refused(&[], "game/init.luau: game pack game has no top module");
+        refused(&[("init", "return { rules = require('@self/rules'), cards = {} }")], "game/init.luau: a game's root holds");
         // A cycle, by the files it goes through.
         refused(
-            &[("init", "require('@self/a')"), ("a", "return require('./b')"), ("b", "return require('./a')")],
+            &[("init", "return require('@self/a')"), ("a", "return require('./b')"), ("b", "return require('./a')")],
             "require cycle: game/init.luau -> game/a.luau -> game/b.luau -> game/a.luau",
         );
         // What the packs refuse: a support pack requires no game.
-        refused(&[("init", "require('@lib/x')")], "lib/x.luau: require(\"@game/rules\"): game is a game pack, which no other pack requires");
-        // A game held in memory gets a top module that loads every module.
+        refused(&[("init", "local _ = require('@lib/x')\nreturn {}")], "lib/x.luau: require(\"@game/rules\"): game is a game pack, which no other pack requires");
+        // A game held in memory gets a top module whose root holds every
+        // module's sections, and the load walks its other modules too.
         let mut held = modules.clone();
         held.remove("never");
         let init = Scripts::init_for(&held);
-        assert!(init.ends_with("require(\"@self/chips/cannon\")\nrequire(\"@self/chips/sword/edge\")\nrequire(\"@self/chips/sword\")\nrequire(\"@self/lib/pa\")\nrequire(\"@self/rules\")\nrequire(\"@self/rules/turns\")\n"), "{init}");
-        let mut c = stated();
-        c.scripts.add_game("game", held);
-        c.define().unwrap_or_else(|e| panic!("{}", e.message));
-        assert_eq!(c.defs.definitions, d.defs.definitions);
+        assert!(
+            init.contains("    chips = merge {\n        [\"chips/cannon\"] = require(\"@self/chips/cannon\"),\n        [\"chips/sword\"] = require(\"@self/chips/sword\"),\n    },\n")
+                && init.contains("    rules = require(\"@self/rules\"),\n"),
+            "{init}"
+        );
+        let mut h = stated();
+        h.scripts.add_game("game", held);
+        h.define().unwrap_or_else(|e| panic!("{}", e.message));
+        assert_eq!(h.defs.chips, c.defs.chips);
+        assert!(h.defs.record("lib/pa/record").is_some(), "a held module, walked");
     }
 
     /// The define phase reads a module where the packs' folders have it, as
@@ -722,11 +791,11 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, text).unwrap();
         };
-        write("game/init.luau", "require(\"@self/rules\")\nrequire(\"@self/chips\")\n");
-        write("game/rules/init.luau", "return define.rules { state = require(\"@self/turns\").state }\n");
+        write("game/init.luau", "return { rules = require(\"@self/rules\"), chips = require(\"@self/chips\") }\n");
+        write("game/rules/init.luau", "return { state = require(\"@self/turns\").state }\n");
         write("game/rules/turns.luau", "return { state = { n = \"u8\" } }\n");
-        write("game/chips/init.luau", "require(\"@self/sword\")\n");
-        write("game/chips/sword/init.luau", "return define.chip { id = \"sword\", instant = require(\"@lib/hit\") }\n");
+        write("game/chips/init.luau", "return { sword = require(\"@self/sword\").sword }\n");
+        write("game/chips/sword/init.luau", "return { sword = { instant = require(\"@lib/hit\") } }\n");
         write("game/chips/unread/init.luau", "error(\"nothing requires this\")\n");
         write("lib/hit.luau", "return function(u) end\n");
         write("lib/unread.luau", "error(\"nothing requires this\")\n");
@@ -759,20 +828,21 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let state = stand_in.defs.schema(stand_in.defs.rules().expect("the rules").state);
         assert!(state.index_of("r").is_some(), "memory before the folder");
         // A require of no module in a file says the file.
-        write("game/chips/init.luau", "require(\"@self/sword\")\nrequire(\"@self/gone\")\n");
+        write("game/chips/init.luau", "local _ = require(\"@self/gone\")\nreturn { sword = require(\"@self/sword\").sword }\n");
         let e = on_disk().define().unwrap_err().message;
         assert!(e.contains("game/chips/init.luau: require(\"@self/gone\"): no module game/chips/gone.luau"), "{e}");
         std::fs::remove_dir_all(&dir).ok();
         crate::behavior::Behaviors::load(&c, Default::default()).unwrap_or_else(|e| panic!("{}", e.message));
     }
 
-    /// A support pack defines nothing a game has.
+    /// A support pack defines nothing a game has: no table of the root's is
+    /// written in one.
     #[test]
     fn a_support_pack_defines_nothing_a_game_has() {
         let mut c = stated();
-        c.scripts.add_support("lib", [("x".to_string(), "return define.rules {}".to_string())].into());
-        c.scripts.add_game("game", [("chips/y".to_string(), "local _ = require('@lib/x')\nreturn define.record('y', {})".to_string())].into());
+        c.scripts.add_support("lib", [("x".to_string(), "return { power = 1 }".to_string())].into());
+        c.scripts.add_game("game", [("init".to_string(), "return { chips = { y = require('@lib/x') } }".to_string())].into());
         let e = c.define().unwrap_err().message;
-        assert!(e.contains("lib/x.luau: rules rules: support pack lib defines nothing a game has"), "{e}");
+        assert!(e.contains("lib/x.luau: chip y: support pack lib defines nothing a game has"), "{e}");
     }
 }

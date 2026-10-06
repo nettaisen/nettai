@@ -6,8 +6,7 @@ local woodnos = require("@self/woodnos")
 
 -- WoodNos1 (EXE5 chip 0x0b2): the navi sends a wooden wave along its row; past the field it raises geysers under the
 -- other side's navis: EXE5's own (chips/woodnos/woodnos).
-local woodnos1 = define.chip {
-    id = "woodnos1",
+local woodnos1: Chip = {
     codes = { "F", "R", "W" },
     element = "wood",
     family = "wood",
@@ -24,8 +23,7 @@ local woodnos1 = define.chip {
 
 -- WoodNos2 (EXE5 chip 0x0b3): the navi sends a wooden wave along its row; past the field it raises geysers under the
 -- other side's navis: EXE5's own (chips/woodnos/woodnos).
-local woodnos2 = define.chip {
-    id = "woodnos2",
+local woodnos2: Chip = {
     codes = { "J", "T", "Z" },
     element = "wood",
     family = "wood",
@@ -42,8 +40,7 @@ local woodnos2 = define.chip {
 
 -- WoodNos3 (EXE5 chip 0x0b4): the navi sends a wooden wave along its row; past the field it raises geysers under the
 -- other side's navis: EXE5's own (chips/woodnos/woodnos).
-local woodnos3 = define.chip {
-    id = "woodnos3",
+local woodnos3: Chip = {
     codes = { "I", "S", "V" },
     element = "wood",
     family = "wood",

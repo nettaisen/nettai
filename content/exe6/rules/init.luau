@@ -17,7 +17,7 @@ local navicust = require("@self/navicust")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
 
-return define.rules {
+local rules: Rules = {
     -- What a side keeps through a round.
     state = {
         -- Beast Out (./beast). The rush's (./beast/rush.luau).
@@ -201,3 +201,5 @@ return define.rules {
     sp_chips = require("@self/sp_chips"),
     status = require("@self/status").rules,
 }
+
+return rules

@@ -25,7 +25,7 @@ local SPRITE = asset.sprite("tomahawkman")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_SWING = asset.sound("tomahawk-man")
 -- The earth his tomahawk splashes (the effect table's row 0x45).
-local EARTH = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
+local EARTH = new.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 -- By the level (0x0800DA8A: navi 10's count, 2, by 0x0800DAE8's row): SP's 4, DS's 6.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
 local SOLID = 0x10
@@ -140,7 +140,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-tmhwkman.kind = define.kind {
+tmhwkman.kind = new.kind {
     id = "tmhwkman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },

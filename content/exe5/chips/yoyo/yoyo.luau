@@ -282,7 +282,7 @@ local function gone(me: Object)
     me:free()
 end
 
-yoyo.kind = define.kind {
+yoyo.kind = new.kind {
     id = "yoyo/yoyo",
     pool = "attack",
     state = {
@@ -307,7 +307,7 @@ yoyo.kind = define.kind {
 }
 
 function yoyo.spec(spec: Spec): Spec
-    return define.record("exe5-yoyo", spec)
+    return new.record("exe5-yoyo", spec)
 end
 
 -- 0x080D0346: a yoyo for `owner` on (x, y) at height `z`, with `element` and the damage word, flying as `spec`

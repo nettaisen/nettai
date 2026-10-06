@@ -5,8 +5,7 @@
 local action = require("@self/action")
 local lockon = require("../rules/lockon")
 
-return define.chip {
-    id = "windrack",
+local chip: Chip = {
     codes = { "F", "J", "R", "*" },
     element = "null", family = "wind", class = "standard",
     rarity = 2, mb = 19, damage = 140, hit_param = 30, lockout = 0,
@@ -16,3 +15,5 @@ return define.chip {
     beast = { lockon = lockon.widesht },
     action = action.action { rack = action.racks.wind_rack },
 }
+
+return { windrack = chip }

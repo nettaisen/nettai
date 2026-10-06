@@ -44,7 +44,7 @@ function strike.make(look: StrikeLook): Strike
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "effect",
         -- EXE6's `sub_80E680C`.

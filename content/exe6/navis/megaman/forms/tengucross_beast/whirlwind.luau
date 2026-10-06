@@ -148,7 +148,7 @@ local function init(me: Object)
     tick(me)
 end
 
-whirlwind.kind = define.kind {
+whirlwind.kind = new.kind {
     id = "tengucross-beast/whirlwind",
     pool = "attack",
     state = { at_once = "bool", ticks = "u8", anim = "u8", action = "action" },

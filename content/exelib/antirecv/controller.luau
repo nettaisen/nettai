@@ -87,7 +87,7 @@ function controller.make(spec: Spec): { kind: Kind }
     }
 
     -- `sub_80E3728` (states) and `sub_80E3748` (`off_80E375C`, by action).
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { busy = "bool" },

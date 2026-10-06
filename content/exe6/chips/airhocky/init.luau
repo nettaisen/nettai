@@ -6,8 +6,7 @@ local flick = require("@self/flick")
 local puck = require("@self/puck")
 local lockon = require("../rules/lockon")
 
-return define.chip {
-    id = "airhocky",
+local chip: Chip = {
     codes = { "L", "M", "N" },
     element = "null",
     family = "break",
@@ -22,3 +21,5 @@ return define.chip {
     slot_in_limit = 3,
     action = flick.action { id = "airhocky/action", puck = puck.variants.airhocky, down = true },
 }
+
+return { airhocky = chip }

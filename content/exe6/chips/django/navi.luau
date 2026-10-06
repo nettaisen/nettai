@@ -397,7 +397,7 @@ local ACTIONS: { [number]: (me: Object) -> () } = {
     [LEAVE] = leave,
 }
 
-django.kind = define.kind {
+django.kind = new.kind {
     id = "django/navi",
     pool = "actor",
     state = {

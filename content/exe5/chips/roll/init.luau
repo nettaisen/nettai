@@ -5,8 +5,7 @@
 local navi = require("@self/navi")
 
 -- Roll (EXE5 chip 0x0dd): Roll whips the enemy navi ahead and heals her user with a heart (./navi).
-local roll = define.chip {
-    id = "roll",
+local roll: Chip = {
     codes = { "R" },
     element = "null",
     family = "recovery",
@@ -26,8 +25,7 @@ local roll = define.chip {
 
 -- RollSP (EXE5 chip 0x0de): Roll (../roll/navi), turning her side's holy panels Normal as she comes; its damage by
 -- the holy panels of its user's side (formula 1, 0x0800E8B4).
-local roll_sp = define.chip {
-    id = "roll-sp",
+local roll_sp: Chip = {
     codes = { "R" },
     element = "null",
     family = "recovery",
@@ -47,8 +45,7 @@ local roll_sp = define.chip {
 
 -- RollDS (EXE5 chip 0x0df): Roll (../roll/navi) in her dark palette; its damage by its user's side's statistic 3
 -- (formula 23, its table's row 0).
-local roll_ds = define.chip {
-    id = "roll-ds",
+local roll_ds: Chip = {
     codes = { "R" },
     element = "null",
     family = "recovery",
@@ -66,4 +63,4 @@ local roll_ds = define.chip {
     navi = navi.summon { rounds = 1, palette = 1, level = 4, ribbon_palette = 1 },
 }
 
-return { roll = roll, roll_sp = roll_sp, roll_ds = roll_ds }
+return { roll = roll, ["roll-sp"] = roll_sp, ["roll-ds"] = roll_ds }

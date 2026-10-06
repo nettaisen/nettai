@@ -1,16 +1,17 @@
 //! Luau content for the nettai battle engine (docs/design/scripting.md,
 //! docs/design/content-model-v2.md).
 //!
-//! A content pack's scripts are Luau modules. Loading runs every module of
-//! the pack once (the *define phase*): modules make definitions with
-//! `define.<registry>(spec)` (a chip, an object kind, an action...) and
-//! return tables of their own. The engine plans what it will call from the
-//! definitions (`nettai_content_api::BindPlan`); the runtime binds those
-//! functions:
+//! A content pack's scripts are Luau modules. Loading runs a game's top
+//! module, and what it requires (the *define phase*): it returns the game's
+//! root, what a match names, by id, in its sections, and its rules. The
+//! loader walks from the root, through tables and what functions capture:
+//! what it reaches is what the game has. A table only code reaches says
+//! what it is by a tag constructor, `new.<registry>(spec)` (an object kind,
+//! an action...). The engine plans what it will call from the definitions
+//! (`nettai_content_api::BindPlan`); the runtime binds those functions:
 //!
 //! ```luau
-//! local bomb = define.kind {
-//!     id = "bomb",
+//! local bomb = new.kind {
 //!     pool = "attack",
 //!     state = { timer = "u16", slot = { "overlay", "related" } },
 //!     update = function(me) ... end,
@@ -24,8 +25,8 @@
 //! Loading enforces that: modules are checked for writes to globals and to
 //! module-level locals (`verify`), everything a module returns or captures
 //! and every definition is frozen (`sandbox::deep_freeze`), `require` and
-//! `define` work only while loading, and the standard library is cut down
-//! to what is deterministic (`sandbox`).
+//! `new` work only while loading, and the standard library is cut down to
+//! what is deterministic (`sandbox`).
 
 mod bind;
 pub mod coverage;
@@ -489,12 +490,12 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
             .map(|p| p.id.clone())
             .collect(),
     }));
-    let collector = Rc::new(RefCell::new(define::Collector::open()));
+    let tags = Rc::new(RefCell::new(define::Tags::open()));
     let module = {
         let loader = Rc::downgrade(&loader);
         Rc::new(move || loader.upgrade().and_then(|l| l.borrow().stack.last().cloned()))
     };
-    define::install(&lua, &collector, module.clone()).map_err(err)?;
+    define::install(&lua, &tags, module.clone()).map_err(err)?;
     let assets = Rc::new(RefCell::new(define::AssetTables::new(&lua, assets.clone()).map_err(err)?));
     define::install_assets(&lua, &assets, module).map_err(err)?;
     let require = {
@@ -534,15 +535,17 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     });
     // Each game's top module, and what it requires (in the order it
     // requires them, which no key depends on); a test's modules alone,
-    // every one in name order.
+    // every one in name order. What each returns is what the walk starts
+    // from: a game's root.
+    let mut results = Vec::with_capacity(pack.entries.len());
     for path in &pack.entries {
         BUDGET.with(|b| b.set(options.budget.saturating_mul(16)));
         let v = match nettai_content_api::packs::module(&*pack.modules, path) {
-            Some(module) => load_module(&lua, &loader, &module),
+            Some(module) => load_module(&lua, &loader, &module).map(|v| (module, v)),
             None => Err(mlua::Error::runtime(format!("no module {}.luau in the content", keys::module_path(path)))),
         };
         loader.borrow_mut().stack.clear();
-        v.map_err(err)?;
+        results.push(v.map_err(err)?);
     }
     let modules = std::mem::take(&mut loader.borrow_mut().loaded);
     let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
@@ -550,7 +553,7 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
     let games: std::collections::HashSet<String> =
         pack.packs.values().filter(|p| p.kind == nettai_content_api::PackKind::Game).map(|p| p.id.clone()).collect();
-    let defined = define::finish(&lua, &collector, &assets, &games, &modules)
+    let defined = define::finish(&lua, &tags, &assets, &games, &results, &modules)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);

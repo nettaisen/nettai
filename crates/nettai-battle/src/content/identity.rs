@@ -1,4 +1,4 @@
-//! Identities: what an object is taken for (`define.identity`, docs/design/
+//! Identities: what an object is taken for (`new.identity`, docs/design/
 //! content-model-v2.md §3.2). The original keys all of it by an object's
 //! NameID: the actor record (`byte_80182C4`), a navi sprite's attach
 //! points (`sub_8018810`), a field object's look (`byte_8021220`), and

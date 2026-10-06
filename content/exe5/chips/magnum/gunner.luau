@@ -35,8 +35,8 @@ local INTERVALS = { [0] = 7, [1] = 7, [2] = 5 }
 local SOUND_STEP, SOUND_SHOT, SOUND_BLAST = asset.sound("erase-man"), asset.sound("hockey-puck"), asset.sound("target-move")
 local SOUND_BREAK = asset.sound("panel-crack")
 -- The sight (effect 0x2C) and the explosion on each shot panel (effect 0).
-local SIGHT = define.effect { sprite = asset.sprite("sight"), anim = 0, palette = 0 }
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local SIGHT = new.effect { sprite = asset.sprite("sight"), anim = 0, palette = 0 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
 -- A column the sight stops on has a panel of the other side's (0x080B8F64, 0x080B9048: by side, require and forbid).
 local ENEMY_PANEL = {
     [0] = { require = 0x10020, forbid = 0x0 },
@@ -254,7 +254,7 @@ local function fire(me: Object, s: State)
     end
 end
 
-gunner.kind = define.kind {
+gunner.kind = new.kind {
     id = "magnum/gunner",
     pool = "actor",
     state = {

@@ -161,8 +161,7 @@ local PHASES: { [number]: (me: Object, s: State) -> () } = {
     [BACK] = back,
 }
 
-return define.chip {
-    id = "dripshwr",
+local chip: Chip = {
     codes = { "A" },
     element = "aqua",
     family = "aqua",
@@ -175,7 +174,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     -- `sub_80F15CE` (`off_80F15E0`).
-    action = define.action {
+    action = new.action {
         id = "dripshwr/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -183,3 +182,5 @@ return define.chip {
         end,
     },
 }
+
+return { dripshwr = chip }

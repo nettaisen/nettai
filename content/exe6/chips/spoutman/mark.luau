@@ -79,7 +79,7 @@ local function init(me: Object)
     tick(me)
 end
 
-mark.kind = define.kind {
+mark.kind = new.kind {
     id = "spoutman/mark",
     pool = "effect",
     state = { column = "bool", ticks = "u8", while_dimmed = "bool" },

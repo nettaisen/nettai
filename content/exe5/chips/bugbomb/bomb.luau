@@ -17,7 +17,7 @@ local operation_battle = require("../../lib/operation_battle")
 
 local bug_bomb = {}
 
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
 
 -- The bugs (0x080D5148): HP drain +2, custom-screen HP drain +2, emotion swings 1.
 local BUGS = {

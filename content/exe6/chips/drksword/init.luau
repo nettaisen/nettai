@@ -6,10 +6,9 @@ local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../rules/lockon")
-local sword = require("./sword")
+local sword = require("./sword").sword
 
-return define.chip {
-    id = "drksword",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "sword",
@@ -34,3 +33,5 @@ return define.chip {
         charged = slashes.dark,
     },
 }
+
+return { drksword = chip }

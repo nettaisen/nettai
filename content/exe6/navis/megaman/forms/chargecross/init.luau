@@ -1,17 +1,16 @@
 --!strict
 -- ChargeCross: one of MegaMan's forms.
 
-local base = require("./base")
+local base = require("./base").base
 local cross_overlay = require("./cross_overlay")
-local chargeman = require("../../chargeman")
-local chargecross_beast = require("./chargecross_beast")
+local chargeman = require("../../chargeman").chargeman
+local chargecross_beast = require("./chargecross_beast")["chargecross-beast"]
 local buster = require("../weapons/buster")
 local tackle = require("@self/tackle")
 local charged_chip_bonus_29 = require("../weapons/charged_chip_bonus_29")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "chargecross",
+local form: FormDef = {
     kind = "cross",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -40,7 +39,7 @@ return define.form {
     extra_chips = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 5 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross",
         version = 0,
         actor_type = "player",
@@ -88,3 +87,5 @@ return define.form {
         },
     },
 }
+
+return { chargecross = form }

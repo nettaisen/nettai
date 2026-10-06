@@ -11,15 +11,14 @@ local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged_shot")
-local darkcirc = require("../../../chips/darkcirc")
+local darkcirc = require("../../../chips/darkcirc").darkcirc
 local reveal = require("@self/reveal")
 local shuffle = require("@self/shuffle")
 local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
-return define.form {
-    id = "searchsoul",
+local form: FormDef = {
     soul = { family = "cursor" },
     change = soul_change.action,
     revert = soul_revert.action,
@@ -50,7 +49,7 @@ return define.form {
     -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
     buster_arm = { anim = 3 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 3 of category 0).
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -59,3 +58,5 @@ return define.form {
         attach_points = attach_points,
     },
 }
+
+return { searchsoul = form }

@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "megavirs",
+local program: NaviCustProgram = {
     colors = { "green" },
     shape = {
         ".......",
@@ -27,3 +26,5 @@ return define.navicust_program {
     bug = "encounter",
     effects = { programs.outside("mega-virus") },
 }
+
+return { megavirs = program }

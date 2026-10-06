@@ -33,7 +33,7 @@ local function tick(me: Object)
     end
 end
 
-coffin.kind = define.kind {
+coffin.kind = new.kind {
     id = "django/coffin",
     pool = "attack",
     state = { done = "bool" },

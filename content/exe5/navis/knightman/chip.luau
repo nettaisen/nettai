@@ -88,7 +88,7 @@ local function back(me: Object, s: State)
     me:exit_attack()
 end
 
-local action = define.action {
+local action = new.action {
     state = { timer = "u16" },
     -- 0x080FBEB2
     update = function(me: Object, s: State)
@@ -107,8 +107,7 @@ local action = define.action {
     end,
 }
 
-return define.chip {
-    id = "kcrusher",
+local chip: Chip = {
     codes = { "K" },
     element = "null",
     family = "break",
@@ -122,3 +121,5 @@ return define.chip {
     slot_in_limit = 1,
     action = action,
 }
+
+return { kcrusher = chip }

@@ -28,7 +28,7 @@ local HAND = 0x1C
 
 -- A pulse.
 function pulse.variant(v: ElecPulse): ElecPulse
-    return define.record("elec-pulse", v)
+    return new.record("elec-pulse", v)
 end
 
 -- Gone: its region cleared, and the objects linked to it told to end
@@ -105,7 +105,7 @@ local function init(me: Object)
     tick(me)
 end
 
-pulse.kind = define.kind {
+pulse.kind = new.kind {
     id = "elcpuls/pulse",
     pool = "attack",
     state = { linked = "object[3]", pulse = "record:elec-pulse" },

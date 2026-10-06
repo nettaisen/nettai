@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- BlizMan (EXE5 chip 0x107): BlizzardMan cuts in and rolls a snowball down his row, growing on the field objects it
 -- swallows (./navi).
-local blizman = define.chip {
-    id = "blizman",
+local blizman: Chip = {
     codes = { "B" },
     element = "aqua",
     family = "aqua",
@@ -26,8 +25,7 @@ local blizman = define.chip {
 -- BlizManSP (EXE5 chip 0x108): BlizzardMan cuts in and rolls a snowball down his row, growing on the field objects it
 -- swallows (../blizman/navi); its damage by how fast its user deleted BlizzardMan SP (rules/sp_chips: formula 15, its
 -- table's row 14).
-local blizman_sp = define.chip {
-    id = "blizman-sp",
+local blizman_sp: Chip = {
     codes = { "B" },
     element = "aqua",
     family = "aqua",
@@ -45,8 +43,7 @@ local blizman_sp = define.chip {
 
 -- BlizManDS (EXE5 chip 0x109): BlizzardMan, dark, cuts in and rolls a snowball down his row, growing on the field
 -- objects it swallows (../blizman/navi); its damage by its user's side's statistic 3 (formula 37, its table's row 14).
-local blizman_ds = define.chip {
-    id = "blizman-ds",
+local blizman_ds: Chip = {
     codes = { "B" },
     element = "aqua",
     family = "aqua",
@@ -62,4 +59,4 @@ local blizman_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { blizman = blizman, blizman_sp = blizman_sp, blizman_ds = blizman_ds }
+return { blizman = blizman, ["blizman-sp"] = blizman_sp, ["blizman-ds"] = blizman_ds }

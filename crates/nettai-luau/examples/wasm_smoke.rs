@@ -8,7 +8,7 @@ use nettai_luau::{Options, Pack, define, sandbox};
 pub extern "C" fn smoke_test() -> u32 {
     let pack = Pack::root("smoke", [(
         "effect".into(),
-        "return define.effect { anim = 0 }".into(),
+        "return new.effect { anim = 0 }".into(),
     )]);
     let (defs, compiled) = define(&pack, &AssetNames::default(), Options::default()).unwrap();
     assert_eq!(defs.of(Registry::Effect).len(), 1);

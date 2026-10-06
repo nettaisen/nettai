@@ -147,7 +147,7 @@ function falling_meteor.make_kind(id: string, look: MeteorLook): Kind
         me.lifecycle = "update"
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { row = "u8" },

@@ -9,38 +9,38 @@
 -- lockout, over the record's), and Ccann's charged shot (0x5F) takes TankCan1's shell's cracking away (its second
 -- parameter 0: the edge blast leaves the panels whole), the TankCans' action with that shell.
 
-local airhoc = require("../../../chips/airhoc")
-local blkbomb = require("../../../chips/blkbomb")
-local boomer = require("../../../chips/boomer")
-local cannball = require("../../../chips/cannball")
-local circgun = require("../../../chips/circgun")
+local airhoc = require("../../../chips/airhoc").airhoc
+local blkbomb = require("../../../chips/blkbomb").blkbomb
+local boomer = require("../../../chips/boomer").boomer
+local cannball = require("../../../chips/cannball").cannball
+local circgun = require("../../../chips/circgun").circgun
 local crakout_chips = require("../../../chips/crakout")
 local crsshld_chips = require("../../../chips/crsshld")
 local drilarm_chips = require("../../../chips/drilarm")
-local drksword = require("../../../chips/drksword")
+local drksword = require("../../../chips/drksword").drksword
 local guard_chips = require("../../../chips/guard")
 local katana_chips = require("../../../chips/katana")
-local longswrd = require("../../../chips/longswrd")
-local minibomb = require("../../../chips/minibomb")
+local longswrd = require("../../../chips/longswrd").longswrd
+local minibomb = require("../../../chips/minibomb").minibomb
 local moonbld_chips = require("../../../chips/moonbld")
-local poltrgst = require("../../../chips/poltrgst")
+local poltrgst = require("../../../chips/poltrgst").poltrgst
 local pulsar_chips = require("../../../chips/pulsar")
-local seaseed = require("../../../chips/seaseed")
-local sword = require("../../../chips/sword")
+local seaseed = require("../../../chips/seaseed").seaseed
+local sword = require("../../../chips/sword").sword
 local tankcan = require("../../../chips/tankcan/tankcan")
 local tankcan_chips = require("../../../chips/tankcan")
-local thunder = require("../../../chips/thunder")
+local thunder = require("../../../chips/thunder").thunder
 local tornado_chips = require("../../../chips/tornado")
-local wideblde = require("../../../chips/wideblde")
+local wideblde = require("../../../chips/wideblde").wideblde
 local widesht_chips = require("../../../chips/widesht")
-local wideswrd = require("../../../chips/wideswrd")
-local yoyo = require("../../../chips/yoyo")
+local wideswrd = require("../../../chips/wideswrd").wideswrd
+local yoyo = require("../../../chips/yoyo").yoyo
 
 local chips = {}
 
 -- The weapon `id` that loads `chip` (0x0800FE78) and starts its use, charging for `ticks` (its row).
 local function fires(id: string, chip: Chip, ticks: { number }): Weapon
-    return define.weapon {
+    return new.weapon {
         id = id,
         charge_ticks = ticks,
         setup = function(navi: Object): Chip
@@ -54,7 +54,7 @@ end
 -- guard: the routine names it, the chip's record does too).
 local GUARD_LOCKOUT = 40
 local function guards(id: string, chip: Chip, ticks: { number }): Weapon
-    return define.weapon {
+    return new.weapon {
         id = id,
         charge_ticks = ticks,
         setup = function(navi: Object): Chip
@@ -91,7 +91,7 @@ chips.widesht = fires("megaman/widesht1", widesht_chips.widesht1, { 120, 115, 11
 
 -- 0x5F, B↓Ccann: TankCan1, its shell not cracking (the parameter's second byte 0).
 local CCANN = tankcan.make_action({ hit_mod = 0x4B, cracks = false, shift = 0 }, "megaman/tankcan1/action")
-chips.tankcan = define.weapon {
+chips.tankcan = new.weapon {
     id = "megaman/tankcan1",
     charge_ticks = { 100, 95, 90, 85, 80, 180 },
     setup = function(navi: Object): Action

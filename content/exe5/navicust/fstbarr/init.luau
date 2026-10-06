@@ -4,8 +4,7 @@
 local programs = require("../rules/navicust/programs")
 local barriers = require("../lib/barriers")
 
-return define.navicust_program {
-    id = "fstbarr",
+local program: NaviCustProgram = {
     colors = { "red", "green", "blue", "white" },
     shape = {
         ".......",
@@ -28,3 +27,5 @@ return define.navicust_program {
     bug = "step",
     effects = { programs.first_barrier(barriers.barrier_10) },
 }
+
+return { fstbarr = program }

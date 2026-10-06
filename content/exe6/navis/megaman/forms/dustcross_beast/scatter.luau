@@ -176,7 +176,7 @@ local function land(me: Object, s: State)
     me:exit_attack()
 end
 
-scatter.action = define.action {
+scatter.action = new.action {
     id = "dustcross-beast/scatter/action",
     state = { timer = "u16", targets = "u8[6]" },
     -- `sub_80EF328`.
@@ -194,7 +194,7 @@ scatter.action = define.action {
     end,
 }
 
-scatter.weapon = define.weapon {
+scatter.weapon = new.weapon {
     id = "dustcross-beast/scatter",
     -- The charge table's row 0x1D, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

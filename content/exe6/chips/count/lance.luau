@@ -153,7 +153,7 @@ local function tick(me: Object)
     c:present()
 end
 
-lance.kind = define.kind {
+lance.kind = new.kind {
     id = "count/lance",
     pool = "attack",
     state = { while_dimmed = "bool", warn_ticks = "u8" },

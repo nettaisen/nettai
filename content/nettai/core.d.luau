@@ -1690,12 +1690,28 @@ declare asset: {
 }
 
 -- A state layout: each field's type, "bool", "u8", "u16", "u32", "i8",
--- "i16", "i32", "object", "vec3", an array ("u8[18]"), a list of variant
--- names, or a reference: "kind", "action", "effect", "spark", "region",
--- "collision", "chip", "weapon", "record", "record:<type>" (records of one
--- type), "sprite", "sound", "banner", "background", "mugshot". A reference
--- field holds a definition or an asset, or nil.
-export type StateSchema = { [string]: string | { string } }
+-- "i16", "i32", "object", "vec3", "code" (a chip code, "A" to "Z" or "*"),
+-- an array ("u8[18]"), a list of variant names, a reference ("kind",
+-- "action", "effect", "spark", "region", "collision", "chip", "weapon",
+-- "record", "record:<type>" (records of one type), "sprite", "sound",
+-- "banner", "background", "mugshot": a definition or an asset, or nil), a
+-- record (a table of fields of its own: `{ chip = "chip", code = "code" }`)
+-- or a list (`schema.list(T, n)`). A record's fields and a list's
+-- elements are read and written each by its place (`s.drive.mode`,
+-- `s.folder[2].code`, `#s.folder`); a list grows by its next element
+-- (`s.folder[#s.folder + 1] = ...`).
+export type SchemaField = string | { string } | SchemaList | StateSchema
+export type StateSchema = { [string]: SchemaField }
+-- A list's declaration (`schema.list(T, n)`): up to `n` elements of `T`.
+export type SchemaList = { __list: boolean, of: SchemaField, max: number }
+
+-- What a state's or a setup's declaration takes beside type names, lists of
+-- variants and records: `schema.list(T, n)`, a list of up to `n` (1 to
+-- 65535) elements of type `T` (a type name, a list of variants, a record
+-- or another list), and how many it holds.
+declare schema: {
+    list: (of: SchemaField, max: number) -> SchemaList,
+}
 
 -- An object kind: one behavior; what differs between uses goes in its
 -- state when spawned. `id` is qualified by its owner's folder when it lives
@@ -2050,7 +2066,9 @@ export type DamageFormula =
 export type DamageCount = { side_stat: number } | { own_panels: PanelType } | "turns_before"
 
 export type ChipSpec = {
-    id: string,
+    -- Its id, its key in the game's root (`chips.cannon`): the loader's to
+    -- read, never written in the table.
+    id: string?,
     -- The palette of its picture on the custom screen, 16 BGR555 colors,
     -- for a chip whose palette no ROM holds (the pack's picture is black
     -- without it). Presentation only.
@@ -2156,7 +2174,9 @@ export type MugshotFaces = {
 -- A navi (§3.2): MegaMan or a link navi. (`NaviDef`, since `Navi` is a
 -- side's stats.)
 export type NaviDef = {
-    id: string,
+    -- Its id, its key in the game's root (`chips.cannon`): the loader's to
+    -- read, never written in the table.
+    id: string?,
     -- The battle sprite (a navi that changes form draws its form's).
     sprite: SpriteAsset,
     element: ElementName,
@@ -2347,7 +2367,9 @@ export type FormTrait =
     | "mood_palette"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
-    id: string,
+    -- Its id, its key in the game's root (`chips.cannon`): the loader's to
+    -- read, never written in the table.
+    id: string?,
     sprite: SpriteAsset,
     element: ElementName,
     weakness: { string }?,
@@ -2461,7 +2483,9 @@ export type StageActor = {
 -- normal cracked ..."`), which columns are whose, its music outside link
 -- battles (none: no music starts), and what it places, in order.
 export type StageDef = {
-    id: string,
+    -- Its id, its key in the game's root (`chips.cannon`): the loader's to
+    -- read, never written in the table.
+    id: string?,
     layout: { string },
     panel_pattern: number,
     music: Sound?,
@@ -2505,7 +2529,9 @@ export type Status = StatusDef
 -- `PatchCardEffect`, which its cards' constructors make). Its name is the
 -- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
-    id: string,
+    -- Its id, its key in the game's root (`chips.cannon`): the loader's to
+    -- read, never written in the table.
+    id: string?,
     mb: number,
     effects: { any },
 }
@@ -2520,7 +2546,9 @@ export type PatchCard = PatchCardSpec
 -- (EXE6's: `bug`, `exclusive`, `anywhere`, `effects`, read by rules/navicust). Its name is
 -- the locales' (locales/<lang>.toml's `navicust-programs`).
 export type NaviCustProgramSpec = {
-    id: string,
+    -- Its id, its key in the game's root (`chips.cannon`): the loader's to
+    -- read, never written in the table.
+    id: string?,
     colors: { string },
     plus: boolean?,
     shape: { string },
@@ -2919,28 +2947,21 @@ export type RolesSpec = {
     }?,
 }
 
--- The definers: each records its spec (frozen) and returns it. They work
--- while content loads (a module's top level and what it calls).
-declare define: {
-    chip: (spec: ChipSpec) -> Chip,
-    navi: (spec: NaviDef) -> NaviDef,
-    form: (spec: FormDef) -> FormDef,
+-- The tag constructors (docs/design/content-model-v2.md §2.2): a table of
+-- what only code reaches says what it is, and is returned; no id, no
+-- registry, no effect. What a match names is a plain table in the game's
+-- root, keyed by id (its init.luau). Only while content loads.
+declare new: {
     weapon: (spec: WeaponSpec) -> Weapon,
     kind: (spec: KindSpec) -> Kind,
     action: (spec: ActionSpec) -> Action,
-    stage: (spec: StageDef) -> StageDef,
     effect: (spec: EffectSpec) -> Effect,
     spark: (spec: EffectSpec) -> Spark,
     region: (spec: RegionSpec) -> Region,
     collision: (spec: CollisionTypeSpec) -> CollisionType,
     status: (spec: StatusDef) -> StatusDef,
     identity: (spec: IdentitySpec) -> Identity,
-    patch_card: (spec: PatchCardSpec) -> PatchCard,
-    navicust_program: (spec: NaviCustProgramSpec) -> NaviCustProgram,
-    -- A game's rules, their one definition (docs/design/rules-in-luau.md
-    -- §2.2; also its rule sections and roles).
-    rules: (spec: RulesSpec) -> Rules,
-    -- Luau-only data with a handle and a type name, which a reference field
+    -- Luau-only data with a type name, which a reference field
     -- ("record:<type>") can hold.
     record: <T>(record_type: string, spec: T) -> T,
 }

@@ -61,7 +61,7 @@ function controller.make(spec: Spec): Controller
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { change = { "crack", "break", "poison" }, busy = "bool" },

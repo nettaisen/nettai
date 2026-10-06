@@ -21,9 +21,9 @@ type State = VariSwordState
 type Spec = VariSwordSpec
 
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
-local slashcross = require("../../navis/megaman/forms/slashcross")
-local slashcross_beast = require("../../navis/megaman/forms/slashcross_beast")
-local protoman = require("../../navis/protoman")
+local slashcross = require("../../navis/megaman/forms/slashcross").slashcross
+local slashcross_beast = require("../../navis/megaman/forms/slashcross_beast")["slashcross-beast"]
+local protoman = require("../../navis/protoman").protoman
 local kind = require("../../rules/forms/kind")
 
 local vari = {}
@@ -103,7 +103,7 @@ local function become(me: Object, spec: Spec, i: number)
     local chip = if i == 0 then spec.sword else spec.picks[i]
     local action = chip.action
     if action == nil then
-        error(string.format("the variable sword's pick %s has no action", chip.id))
+        error(string.format("the variable sword's pick %s has no action", chip.id :: string))
     end
     me.attack_chip = chip
     me:set_attack(action, 0)
@@ -184,7 +184,7 @@ function vari.action(spec: Spec): Action
         end
     end
 
-    return define.action { id = spec.id, state = vari.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = vari.STATE, args = spec, update = update }
 end
 
 return vari

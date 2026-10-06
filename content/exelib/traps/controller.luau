@@ -64,7 +64,7 @@ end
 
 -- A game's controller kind, keyed `id`.
 function traps.make_kind(id: string): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { chip = "chip", bonus = "u16", trap = "record:trap" },
@@ -75,7 +75,7 @@ end
 
 -- A trap's object, as a record a controller can keep.
 function traps.trap(t: Trap): Trap
-    return define.record("trap", t)
+    return new.record("trap", t)
 end
 
 -- A chip's `dimming` hook (`sub_80E353E`): the controller (of `kind`) for

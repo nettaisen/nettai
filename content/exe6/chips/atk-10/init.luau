@@ -5,8 +5,7 @@
 
 local plus = require("../lib/instant/plus")
 
-return define.chip {
-    id = "atk-10",
+local chip: Chip = {
     codes = { "*" },
     element = "null", family = "plus", class = "standard",
     rarity = 0, mb = 4, damage = 10, hit_param = 0, lockout = 20,
@@ -16,3 +15,5 @@ return define.chip {
     modifier = "attack_plus",
     instant = plus.attack,
 }
+
+return { ["atk-10"] = chip }

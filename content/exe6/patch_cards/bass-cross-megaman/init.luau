@@ -5,8 +5,7 @@ local cards = require("../rules/patch_cards/cards")
 local charge = require("@self/charge")
 local triple_buster = require("../lib/patch_cards/triple_buster")
 
-return define.patch_card {
-    id = "bass-cross-megaman",
+local card: PatchCard = {
     mb = 70,
     effects = {
         cards.hp_percent(20),
@@ -17,3 +16,5 @@ return define.patch_card {
         cards.bug(cards.mega_folder(-2)),
     },
 }
+
+return { ["bass-cross-megaman"] = card }

@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local chips = require("../navis/megaman/weapons/chips")
 
-return define.patch_card {
-    id = "zomon",
+local card: PatchCard = {
     mb = 20,
     effects = {
         cards.hp(60),
@@ -13,3 +12,5 @@ return define.patch_card {
         cards.bug(cards.buster_blanks(4, 2)),
     },
 }
+
+return { zomon = card }

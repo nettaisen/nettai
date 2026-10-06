@@ -75,7 +75,7 @@ local function update(me: Object)
     end
 end
 
-boxer.kind = define.kind {
+boxer.kind = new.kind {
     id = "boxer/boxer",
     pool = "effect",
     state = { punch = "u8", hit_mod = "u8" },

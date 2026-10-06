@@ -6,8 +6,7 @@ local hotbody = require("@self/hotbody")
 
 -- HotBody1 (EXE5 chip 0x09a): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
 -- apart (chips/hotbody/hotbody, action 0x58; the record's second parameter, 2).
-local hotbody1 = define.chip {
-    id = "hotbody1",
+local hotbody1: Chip = {
     codes = { "A", "F", "P" },
     element = "fire",
     family = "fire",
@@ -24,8 +23,7 @@ local hotbody1 = define.chip {
 
 -- HotBody2 (EXE5 chip 0x09b): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
 -- apart (chips/hotbody/hotbody, action 0x58; the record's second parameter, 2).
-local hotbody2 = define.chip {
-    id = "hotbody2",
+local hotbody2: Chip = {
     codes = { "C", "R", "W" },
     element = "fire",
     family = "fire",
@@ -42,8 +40,7 @@ local hotbody2 = define.chip {
 
 -- HotBody3 (EXE5 chip 0x09c): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
 -- apart (chips/hotbody/hotbody, action 0x58; the record's second parameter, 2).
-local hotbody3 = define.chip {
-    id = "hotbody3",
+local hotbody3: Chip = {
     codes = { "J", "M", "S" },
     element = "fire",
     family = "fire",

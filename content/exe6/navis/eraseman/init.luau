@@ -4,10 +4,9 @@
 local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local eraseman = require("@self/chip")
+local eraseman = require("@self/chip").edeletbm
 
-return define.navi {
-    id = "eraseman",
+local navi: NaviDef = {
     sprite = asset.sprite("eraseman"),
     element = "null",
     weakness = { "wind" },
@@ -60,7 +59,7 @@ return define.navi {
             { hp = 800, attack = 3, rapid = 2, charge = 3, custom_level = 1, mega_level = 2 },
         },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -106,3 +105,5 @@ return define.navi {
         },
     },
 }
+
+return { eraseman = navi }

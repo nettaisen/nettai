@@ -12,8 +12,7 @@ local statuses = require("../rules/status")
 -- nothing (`sub_80D4392`).
 local confuse = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing)
 
-return define.chip {
-    id = "discord",
+local chip: Chip = {
     codes = { "A", "G", "S", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,
@@ -21,7 +20,7 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 1.
     dimming = instruments.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             id = "discord",
             class = "field_object",
             version = 5,
@@ -35,3 +34,5 @@ return define.chip {
         effect = confuse,
     }),
 }
+
+return { discord = chip }

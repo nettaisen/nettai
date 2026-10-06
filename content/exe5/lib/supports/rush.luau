@@ -15,7 +15,7 @@ return common.make {
     appear_sound = asset.sound("place"),
     bite_sound = asset.sound("bite"),
     -- Digging in and out (EXE5's effect 0x14).
-    dust = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
+    dust = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
     is = collision.thrown_piercing_break,
     hits = collision.hits_navis,
     status = statuses.paralyze_150,

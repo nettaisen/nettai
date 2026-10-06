@@ -145,7 +145,7 @@ function burst.make_kind(id: string, look: HyperBurstShotLook): Kind
         me:set_lifecycle("update")
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { bursting = "bool", bursts = "u16" },

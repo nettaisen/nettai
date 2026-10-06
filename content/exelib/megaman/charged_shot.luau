@@ -111,7 +111,7 @@ end
 
 -- A game's charged shot, keyed `look.id`.
 function charged_shot.action(look: MegaManShotLook): Action
-    return define.action {
+    return new.action {
         id = look.id,
         state = { timer = "u16", projectile = "record:projectile-variant" },
         update = function(me: Object, s: State)

@@ -25,7 +25,7 @@ export type State = {
 }
 
 -- A meteor's: 45 ticks, lit 5 of every 10.
-marker.meteor = define.record("marker-look", { lifetime = 45, period = 10, lit = 5, shrink = 0 } :: MarkerLook)
+marker.meteor = new.record("marker-look", { lifetime = 45, period = 10, lit = 5, shrink = 0 } :: MarkerLook)
 
 -- `object_highlightPanelRegion`: the region's panels from (x, y), turned
 -- toward `side`'s front.
@@ -84,7 +84,7 @@ end
 
 -- A game's marker kind, keyed `id`.
 function marker.make_kind(id: string): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = {

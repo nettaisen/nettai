@@ -67,7 +67,7 @@ local function init(me: Object)
     follow(me)
 end
 
-overlay.kind = define.kind {
+overlay.kind = new.kind {
     id = "numbrman/face",
     pool = "actor",
     state = { hidden = "bool" },

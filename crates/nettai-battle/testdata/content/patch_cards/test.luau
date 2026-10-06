@@ -6,12 +6,11 @@ local cards = require("../rules/patch_cards/cards")
 local barriers = require("../lib/barriers")
 local variants = require("../objects/projectile/variants")
 
-local test = {}
+local cards_: { [string]: PatchCard } = {}
 
 -- Stats: HP up 10%, then 30 more (its kinds' order, not the card's);
 -- Attack +3; an Aqua body; a bug, the HP drain 2 levels up.
-test.stats = define.patch_card {
-    id = "test-stats",
+cards_["test-stats"] = {
     mb = 20,
     effects = {
         cards.hp(30),
@@ -24,8 +23,7 @@ test.stats = define.patch_card {
 
 -- Abilities and choices: SuperArmor; no FloatShoes; Barr200; the confusing
 -- charged shot; Rush; the fast gauge; ChpShufl.
-test.abilities = define.patch_card {
-    id = "test-abilities",
+cards_["test-abilities"] = {
     mb = 30,
     effects = {
         cards.super_armor(true),
@@ -39,10 +37,9 @@ test.abilities = define.patch_card {
 }
 
 -- A later card's write wins: Attack -1 from the first card's.
-test.later = define.patch_card {
-    id = "test-later",
+cards_["test-later"] = {
     mb = 5,
     effects = { cards.attack(-1), cards.giga_folder(-2) },
 }
 
-return test
+return cards_

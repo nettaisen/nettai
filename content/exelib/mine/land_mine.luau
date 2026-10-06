@@ -241,7 +241,7 @@ function land_mine.make_kind(look: Look): Kind
         end
     end
 
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = { targets = "u8[18]", count = "u32", index = "u32", hop_ticks = "u8" },

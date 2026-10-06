@@ -155,7 +155,7 @@ end
 
 -- A trap kind (`id`) of `look`.
 function trap.make_kind(id: string, look: ElemTrapLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { chip = "chip", bonus = "u16", armed = "bool", sprung_by = "u8" },
