@@ -2,7 +2,7 @@
 -- tenguman: a link navi.
 
 local buster = require("./megaman/weapons/buster")
-local tengu_wind = require("./megaman/weapons/tengu-wind")
+local tengu_wind = require("./megaman/weapons/tengu_wind")
 local charge = require("@self/charge")
 local tenguman = require("@self/chip")
 

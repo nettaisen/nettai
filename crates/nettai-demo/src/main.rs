@@ -19,16 +19,10 @@ struct Args {
     /// (docs/design/rules-in-luau.md §7.4).
     packs: Vec<PathBuf>,
     content: Option<PathBuf>,
-    /// The game played without a match file (a match file names its own).
-    game: Option<String>,
     mute: bool,
     /// The trace (several with --audit).
     traces: Vec<PathBuf>,
     round: usize,
-    play: bool,
-    seed: Option<u32>,
-    stage: Option<String>,
-    cards: [Option<String>; 2],
     /// Play this match file; write the match played to that one.
     match_file: Option<PathBuf>,
     save_match: Option<PathBuf>,
@@ -64,50 +58,37 @@ const MAX_DELAY: u32 = 15;
 
 const USAGE: &str = "\
 usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
-       nettai-demo [OPTIONS] --play          play live (you are the left navi)
        nettai-demo [OPTIONS] --match FILE    play a match file (you are its left side)
-       nettai-demo [OPTIONS] --play --host PORT        play another player over the
-       nettai-demo [OPTIONS] --play --join ADDR:PORT   network: host, or join the host
+       nettai-demo [OPTIONS] --match FILE --host PORT        play another player over the
+       nettai-demo [OPTIONS] --match FILE --join ADDR:PORT   network: host, or join the host
        nettai-demo [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
-       nettai-demo [OPTIONS] --audit-content
+       nettai-demo [OPTIONS] --match FILE --audit-content
        nettai-demo [OPTIONS] --audit TRACE.jsonl...
 
   You play one game, EXE6 or EXE5: a match file names its game and a trace
-  states its own, else --game says it (there is no default game: without
-  one the frontend lists those it found a pack of and stops). The battle
-  is that game's: its content folder and the
-  support folders it uses, drawn and heard from its pack (graphics and
-  sound, written from your ROMs by `exe6-extract content <falzar-us>
-  <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6`, EXE5's by
-  exe5-extract), found in the packs directory, $NETTAI_PACKS, else
-  data/content, each pack by the game it says.
-  --game GAME      the game played, exe6 or exe5: required without a match
-                   file or a trace (a match file's game is its own, and so
-                   is a trace's: one of another game than GAME is refused)
+  states its own. Live play's setup comes from the match file; use
+  nettai-demo-editor to create or randomize one. The battle is that game's:
+  its content folder and the support folders it uses, drawn and heard
+  from its pack (graphics and sound, written from any subset of your ROMs
+  by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`), found in the packs
+  directory, $NETTAI_PACKS, else
+  data, each pack by the game it says.
   --pack DIR       a pack's directory, in place of the found pack of its game
   --content DIR    the content directory (default: $NETTAI_CONTENT, else
                    this repository's content/)
   --mute           no sound (headless rendering never plays any)
   --round N        the trace round to start with (default 1; later rounds follow)
-  --seed N         live play's seed: the field, the folders, the Crosses
-                   offered and the battle's RNG are drawn from it (default:
-                   from the clock); each start prints it
-  --stage NAME     live play on this link battle stage (its name in the
-                   game, e.g. netbattle-43) instead of a random one
-  --cards NAMES    live play: your patch cards (the Japanese games'
-                   Modification Cards), their names comma-separated in the
-                   order they apply; -NAME installs one switched off (e.g.
-                   canodumb,-shadow)
-  --their-cards NAMES  the right navi's patch cards, likewise
   --match FILE     play the match this file sets up (docs/frontend.md §6: its
                    game, the arena, each side's navi, version,
                    folder, Crosses, patch cards and stats, by name in the
-                   game; nettai-demo-editor makes them), instead of a random one;
-                   you are its left side. With --host or --join the left side
+                   game; nettai-demo-editor makes them); you are its left side.
+                   Its seed sets the battle's RNG (else from the clock).
+                   With --audit-content, select the game's content to audit.
+                   With --host or --join the left side
                    is what you bring, and the host's arena is the match's
-  --save-match FILE  write the match played (live play's random pick, or the
-                   one netplay agreed) to FILE as a match file, to play again
-                   or edit
+  --save-match FILE  write the match played with its seed (the file's setup,
+                   or the one netplay agreed) to FILE as a match file,
+                   to play again or edit
   --show-folders   print both players' live folders
   --scale N        window scale (default 4)
   --paused         start paused
@@ -116,11 +97,11 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    in --out (default .), no window
   --objects        with --headless: list every rendered frame's objects (kind,
                    place, sprite, animation, look)
-  --keys K         with --headless --play: the buttons you hold, by tick (e.g.
+  --keys K         with --headless --match: the buttons you hold, by tick (e.g.
                    232-233:up,300:a+b; a b l r up down left right start
                    select)
-  --audit-content  make every lookup the drawing code and the audio make for
-                   everything the content defines (every chip's icon,
+  --audit-content  with --match FILE: make every lookup the drawing code
+                   and audio make for everything the content defines (every chip's icon,
                    picture and name, every navi's and form's face, every
                    asset the content names), in every language, and list
                    what the packs don't have; exits 1 if there was any
@@ -156,27 +137,21 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --join ADDR:PORT netplay: join the match hosted there; you are the right
                    navi, seen from your side. Both players need the same
                    engine, game and content (the handshake checks); each
-                   brings their own folder, version and Crosses (drawn from
-                   their --seed) and patch cards (--cards); the host's
-                   --stage picks the stage; the field and the battle's RNG
-                   come from both players' seeds
+                   brings their match file's left side; the host's file
+                   supplies the arena, and the battle's RNG comes from
+                   both players' randomly generated seed halves
   --delay N        netplay's input delay in frames (default 2): more delay,
                    fewer rollbacks
   --wait SECONDS   how long the host waits for a player, or the joiner for
                    the host (default 300 and 30)";
 
-fn parse() -> Result<Args, String> {
+fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     let mut a = Args {
         packs: Vec::new(),
         content: None,
-        game: None,
         mute: false,
         traces: Vec::new(),
         round: 1,
-        play: false,
-        seed: None,
-        stage: None,
-        cards: [None, None],
         match_file: None,
         save_match: None,
         show_folders: false,
@@ -201,21 +176,14 @@ fn parse() -> Result<Args, String> {
         delay: nettai_frontend::netplay::NetOptions::default().delay,
         wait: 0,
     };
-    let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
         let number = |v: String, name: &str| v.parse::<u64>().map_err(|_| format!("bad {name} {v:?}"));
         match arg.as_str() {
             "--pack" => a.packs.push(value("--pack")?.into()),
             "--content" => a.content = Some(value("--content")?.into()),
-            "--game" => a.game = Some(value("--game")?),
             "--mute" => a.mute = true,
             "--round" => a.round = number(value("--round")?, "--round")? as usize,
-            "--play" => a.play = true,
-            "--seed" => a.seed = Some(number(value("--seed")?, "--seed")? as u32),
-            "--stage" => a.stage = Some(value("--stage")?),
-            "--cards" => a.cards[0] = Some(value("--cards")?),
-            "--their-cards" => a.cards[1] = Some(value("--their-cards")?),
             "--match" => a.match_file = Some(value("--match")?.into()),
             "--save-match" => a.save_match = Some(value("--save-match")?.into()),
             "--show-folders" => a.show_folders = true,
@@ -244,16 +212,20 @@ fn parse() -> Result<Args, String> {
             s => a.traces.push(s.into()),
         }
     }
-    // A match file is played live.
-    a.play |= a.match_file.is_some();
+    if a.match_file.is_some() && !a.traces.is_empty() {
+        return Err("--match takes a match file, not a trace".into());
+    }
     if a.audit_content {
-        if !a.traces.is_empty() || a.play || a.audit || a.headless.is_some() {
+        if !a.traces.is_empty() || a.audit || a.headless.is_some() || a.host.is_some() || a.join.is_some() || a.save_match.is_some() {
             return Err("--audit-content audits the content alone (--audit runs traces)".into());
+        }
+        if a.match_file.is_none() {
+            return Err("--audit-content needs --match FILE to select the game".into());
         }
         return Ok(a);
     }
-    if a.traces.is_empty() && !a.play {
-        return Err("give a trace file, --play, --match FILE or --audit-content".into());
+    if a.traces.is_empty() && a.match_file.is_none() {
+        return Err("give a trace file or --match FILE".into());
     }
     if a.traces.len() > 1 && !a.audit {
         return Err("one trace at a time (several with --audit)".into());
@@ -261,33 +233,16 @@ fn parse() -> Result<Args, String> {
     if (a.draw || a.lookups.is_some() || a.jobs != 0) && !a.audit && !a.audit_content {
         return Err("--draw, --jobs and --lookups go with --audit".into());
     }
-    if a.audit && (a.play || a.headless.is_some()) {
+    if a.audit && (a.match_file.is_some() || a.headless.is_some()) {
         return Err("--audit runs traces, without a window".into());
     }
-    if a.match_file.is_some() {
-        if !a.traces.is_empty() {
-            return Err("--match plays a match file, not a trace".into());
-        }
-        if a.stage.is_some() || a.cards.iter().any(Option::is_some) {
-            return Err("the match file names the stage and the patch cards (edit it, or leave out --match)".into());
-        }
-        if a.game.is_some() {
-            return Err("the match file names its game (edit it, or leave out --match)".into());
-        }
-    }
-    if a.save_match.is_some() && !a.play {
+    if a.save_match.is_some() && a.match_file.is_none() {
         return Err("--save-match writes the match played live".into());
     }
     let netplay = a.host.is_some() || a.join.is_some();
     if netplay {
-        if !a.play || a.host.is_some() == a.join.is_some() {
-            return Err("netplay is --play with either --host PORT or --join ADDR:PORT".into());
-        }
-        if a.cards[1].is_some() {
-            return Err("in netplay the other player brings their own patch cards (--their-cards is for playing alone)".into());
-        }
-        if a.join.is_some() && a.stage.is_some() {
-            return Err("in netplay the host picks the stage".into());
+        if a.match_file.is_none() || a.host.is_some() == a.join.is_some() {
+            return Err("netplay is --match FILE with either --host PORT or --join ADDR:PORT".into());
         }
         if a.headless.is_some() || a.audit {
             return Err("netplay plays in a window".into());
@@ -317,7 +272,7 @@ fn load_failed(e: LoadError) -> ! {
     show(&e.report);
     fail(match &e.what {
         Failed::Packs => format!("{e} (--pack)"),
-        Failed::Content { .. } => format!("{e} (--content, --pack, --game)"),
+        Failed::Content { .. } => format!("{e} (--content, --pack)"),
         _ => e.to_string(),
     })
 }
@@ -374,30 +329,17 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
     eprintln!("wrote the match to {}", path.display());
 }
 
-/// A netplay match of `game`: connect (host or join), shake hands, and
-/// agree the round; each player brings their side, a match file's left
-/// side or one drawn from their own `seed` with their patch cards, and the
-/// host its arena or stage.
-fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed: u32, file: Option<nettai_match::Match>) -> Box<dyn Driver> {
+/// Connect (host or join), shake hands, and agree the round; each player
+/// brings their match file's left side, and the host its arena.
+fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> Box<dyn Driver> {
     use nettai_frontend::netplay::{NetOptions, NetPlayer, Offer, agree, hello};
-    use nettai_match::{Picks, Side, link_stage, patch_cards};
     use nettai_netplay::transport::{Connection, Role, Udp};
-    let offer = match file {
-        Some(m) => Offer::of_match(m, args.host.is_some()),
-        None => {
-            let mut side = Side::picked(content, game, &mut Picks::new(seed)).unwrap_or_else(|e| fail(e));
-            if let Some(list) = &args.cards[0] {
-                side.cards = patch_cards(content, game, list).unwrap_or_else(|e| fail(e));
-            }
-            let stage = args.stage.as_deref().map(|name| link_stage(content, game, name).unwrap_or_else(|e| fail(e)));
-            Offer::of_side(game, side, stage)
-        }
-    };
+    let offer = Offer::of_match(m, args.host.is_some());
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
     let conn = if let Some(port) = args.host {
         let udp = Udp::host(port).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));
         eprintln!(
-            "netplay: hosting on UDP port {port}, waiting for a player (they run --play --join <this machine's address>:{port}; \
+            "netplay: hosting on UDP port {port}, waiting for a player (they run --match FILE --join <this machine's address>:{port}; \
              over the Internet, forward the port to this machine)"
         );
         Connection::host(udp, hello(Role::Host, content, &offer), wait(300))
@@ -412,7 +354,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed:
     let (_, set, m) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
     let side = conn.side();
     eprintln!(
-        "netplay: playing {peer}; you are the {} navi (your setup's seed {seed}, the match's {}, input delay {})",
+        "netplay: playing {peer}; you are the {} navi (the match's seed {}, input delay {})",
         if side == 0 { "left" } else { "right" },
         conn.seed(),
         args.delay
@@ -535,24 +477,8 @@ fn audit_traces(args: &Args, content: &Arc<nettai_battle::Content>, setup: &head
     std::process::exit(if problems == 0 { 0 } else { 1 })
 }
 
-/// What the frontend says when nothing says the game (no match file, no
-/// trace, no `--game`): the games it found a pack of, each as the option
-/// that plays it.
-fn which_game(content: Option<&Path>, found: &Found) -> String {
-    let packs_dir = &found.dir;
-    let games: Vec<String> = match nettai_content::pack::games(content, &found.packs) {
-        Ok(games) => games.into_iter().filter(|g| g.pack.is_some()).map(|g| format!("--game {}", g.game)).collect(),
-        Err(_) => Vec::new(),
-    };
-    if games.is_empty() {
-        format!("say which game with --game: none has its pack in {} (extract one there, or give it with --pack)", packs_dir.display())
-    } else {
-        format!("say which game: {}", games.join(" or "))
-    }
-}
-
 fn main() {
-    let args = match parse() {
+    let args = match parse(std::env::args().skip(1)) {
         Ok(a) => a,
         Err(e) => {
             if !e.is_empty() {
@@ -566,22 +492,13 @@ fn main() {
     let t = Instant::now();
     let found = Found::find(&nettai_content::pack::packs_dir(), &args.packs).unwrap_or_else(|e| load_failed(e));
     show(&found.report);
-    // The game played: the match file's; a recording's own (the one its
-    // setup states, which --game, if given, must be); else --game's. There
-    // is no default game: with none said, the program says which it could
-    // play and stops.
+    // The game played is the match file's or the recording's own.
     let file_text = args.match_file.as_deref().map(match_text);
     let game = match (&file_text, args.traces.first()) {
         (Some(text), _) => nettai_match::file::game_of(text)
             .unwrap_or_else(|e| fail(format!("{} can't be played: {e}", args.match_file.as_ref().unwrap().display()))),
-        (None, Some(trace)) => {
-            let stated = nettai_demo::trace::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display())));
-            if let Some(given) = args.game.as_ref().filter(|g| **g != stated) {
-                fail(format!("{} is a recording of {stated}, not of {given} (--game)", trace.display()));
-            }
-            stated
-        }
-        (None, None) => args.game.clone().unwrap_or_else(|| fail(which_game(args.content.as_deref(), &found))),
+        (None, Some(trace)) => nettai_demo::trace::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display()))),
+        (None, None) => unreachable!("argument parsing requires a match file or a trace"),
     };
     // The game's content.
     let loaded = Game::load(&found, args.content.as_deref(), &game).unwrap_or_else(|e| load_failed(e));
@@ -620,31 +537,14 @@ fn main() {
     // What is played: live play's set or a netplay match, one driver; a
     // recording's rounds, a driver each, in turn.
     let mut drivers: Vec<Box<dyn Driver>> = Vec::new();
-    if args.play {
-        let file = args.match_file.as_deref().zip(file_text.as_deref()).map(|(path, text)| read_match(&content, path, text));
-        let seed = args.seed.or(file.as_ref().and_then(|m| m.seed)).unwrap_or_else(|| {
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
-        });
+    if let Some((path, text)) = args.match_file.as_deref().zip(file_text.as_deref()) {
+        let m = read_match(&content, path, text);
         if args.host.is_some() || args.join.is_some() {
-            drivers.push(netplay(&args, &content, &game, seed, file));
+            drivers.push(netplay(&args, &content, m));
         } else {
-            let m = match file {
-                Some(m) => m,
-                None => {
-                    let stage = args.stage.as_deref().map(|name| nettai_match::link_stage(&content, &game, name).unwrap_or_else(|e| fail(e)));
-                    let mut m = nettai_match::pick::live(&content, &game, seed, stage).unwrap_or_else(|e| fail(e));
-                    for (side, list) in args.cards.iter().enumerate() {
-                        if let Some(list) = list {
-                            m.sides[side].cards = nettai_match::patch_cards(&content, &game, list).unwrap_or_else(|e| fail(e));
-                        }
-                    }
-                    let problems = nettai_match::check_match(&content, &m);
-                    if !problems.is_empty() {
-                        fail(format!("the match can't be played:\n  {}", problems.join("\n  ")));
-                    }
-                    m
-                }
-            };
+            let seed = m.seed.unwrap_or_else(|| {
+                std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
+            });
             eprintln!("{}", nettai_match::describe(&content, &m, seed, args.show_folders, 0));
             if let Some(path) = &args.save_match {
                 save_match(&content, &m, seed, path);
@@ -699,5 +599,71 @@ fn main() {
     let mut languages = app::Languages::new(&loaded, &args.lang, graphics);
     if let Err(e) = app::run(&mut player, drivers, device.as_ref(), &mut languages, &opts) {
         fail(format!("window: {e}"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(values: &[&str]) -> Result<Args, String> {
+        parse(values.iter().map(|s| s.to_string()))
+    }
+
+    #[test]
+    fn match_settings_are_not_cli_options() {
+        for option in ["--game", "--seed", "--stage", "--cards", "--their-cards", "--play"] {
+            assert_eq!(args(&["--match", "match.toml", option]).err(), Some(format!("unknown option {option}")));
+        }
+    }
+
+    #[test]
+    fn a_match_supports_live_headless_and_netplay() {
+        let live = args(&["--match", "match.toml", "--save-match", "played.toml", "--show-folders"]).unwrap();
+        assert_eq!(live.match_file.as_deref(), Some(Path::new("match.toml")));
+        assert_eq!(live.save_match.as_deref(), Some(Path::new("played.toml")));
+        assert!(live.show_folders);
+        let headless = args(&["--match", "match.toml", "--headless", "1-120", "--keys", "100:a"]).unwrap();
+        assert_eq!(headless.headless.as_deref(), Some("1-120"));
+        assert_eq!(headless.keys.as_deref(), Some("100:a"));
+        assert_eq!(args(&["--match", "match.toml", "--host", "7777"]).unwrap().host, Some(7777));
+        assert_eq!(args(&["--match", "match.toml", "--join", "127.0.0.1:7777"]).unwrap().join.as_deref(), Some("127.0.0.1:7777"));
+        for options in [
+            vec!["--host", "7777"],
+            vec!["trace.jsonl", "--join", "127.0.0.1:7777"],
+            vec!["--match", "match.toml", "--host", "7777", "--join", "127.0.0.1:7777"],
+            vec!["--match", "match.toml", "--host", "7777", "--headless", "1"],
+            vec!["--match", "match.toml", "--host", "7777", "--delay", "16"],
+        ] {
+            assert!(args(&options).is_err(), "{options:?}");
+        }
+    }
+
+    #[test]
+    fn content_audits_use_a_match_to_select_the_game() {
+        assert!(args(&["--match", "match.toml", "--audit-content", "--lookups", "lookups.txt"]).unwrap().audit_content);
+        assert_eq!(args(&["--audit-content"]).err().as_deref(), Some("--audit-content needs --match FILE to select the game"));
+        for extra in [
+            vec!["trace.jsonl"],
+            vec!["--audit"],
+            vec!["--headless", "1"],
+            vec!["--host", "7777"],
+            vec!["--join", "127.0.0.1:7777"],
+            vec!["--save-match", "played.toml"],
+        ] {
+            let mut options = vec!["--match", "match.toml", "--audit-content"];
+            options.extend(extra);
+            assert!(args(&options).is_err(), "{options:?}");
+        }
+    }
+
+    #[test]
+    fn traces_are_played_and_audited_without_a_match() {
+        assert_eq!(args(&["trace.jsonl"]).unwrap().traces, vec![PathBuf::from("trace.jsonl")]);
+        assert!(args(&["--audit", "one.jsonl", "two.jsonl"]).unwrap().audit);
+        assert!(args(&["--match", "match.toml", "trace.jsonl"]).is_err());
+        assert!(args(&["--match", "match.toml", "--audit"]).is_err());
+        assert!(args(&["trace.jsonl", "--save-match", "match.toml"]).is_err());
+        assert!(args(&[]).is_err());
     }
 }

@@ -7,7 +7,7 @@
 -- timer's end asks for (rules/status's `no_charge_drive`).
 
 local dimming_chips = require("@exelib/dimming")
-local standin = require("./stand-in")
+local standin = require("./stand_in")
 
 export type State = {
     -- The stand-in is out (+0x0C, the flag it was given).

@@ -7,13 +7,13 @@
 -- 0, two a side; 1, one) and how it comes onto the field (the third, its
 -- entrance). RockCube and IceCube place one (./cube), and others use it
 -- too: an obstacle encased in ice becomes an ice block (the encasing's
--- replacement, objects/encased-bubble), and some stages place them when
+-- replacement, objects/encased_bubble), and some stages place them when
 -- the round starts (stages.luau: the actor lists' entry type 8, the
 -- kind's `place`, with the variant the stage names). See
 -- docs/engine/field-objects.md. The behavior is EXE5's too
 -- (@exelib/rock/rock), made here with EXE6's look.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle")
+local absorbed_obstacle = require("../../objects/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/rock")
 local debris = require("./debris")

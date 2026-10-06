@@ -22,7 +22,7 @@ type Spec = VariSwordSpec
 
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
 local slashcross = require("../../navis/megaman/forms/slashcross")
-local slashcross_beast = require("../../navis/megaman/forms/slashcross-beast")
+local slashcross_beast = require("../../navis/megaman/forms/slashcross_beast")
 local protoman = require("../../navis/protoman")
 local kind = require("../../rules/forms/kind")
 

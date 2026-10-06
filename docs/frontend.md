@@ -62,23 +62,21 @@ sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
 `docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
 names the content gives them. Extract it once:
 
-    cargo run -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6
+    cargo run -p nettai-extract -- exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
 
-(`data/content/` is gitignored.) **You play one game**, EXE6 or EXE5: a match
+ROMs can be in any order; any missing source is replaced with generated placeholders.
+The output directory must be new or empty. (`data/` is gitignored.) **You play one game**, EXE6 or EXE5: a match
 is of one game (§6), which a match file names (`game = "exe6"`) and a
-trace states (its setup line's `"game"`: one that states none, or another
-game than a `--game` given, is refused; nothing takes a recording for a
-game it doesn't name), else `--game GAME` says it. There is no default
-game: with no match file, no trace and no `--game`, the frontend lists the
-games it found a pack of ("say which game: --game exe5 or --game exe6") and
-stops. The battle is that
+trace states (its setup line's `"game"`: one that states none is refused;
+nothing takes a recording for a game it doesn't name). There is no default
+game: the frontend requires a match file or a trace. The battle is that
 game's content, drawn and heard from its pack: there is no mixing of games,
 no other game's chip, navi or field art. The frontend (and the editor)
 finds at start-up
 **every pack in the packs directory**, `$NETTAI_PACKS`, else
-`data/content`: each folder with a pack manifest, by the game the manifest
-says (`nettai_content::pack::find`); `exe5-extract content` writes EXE5's into
-`data/content/exe5` beside it. `--pack <dir>` names a pack elsewhere, in
+`data`: each folder with a pack manifest, by the game the manifest
+says (`nettai_content::pack::find`); `nettai-extract exe5` writes EXE5's into
+`data/exe5` beside it. `--pack <dir>` names a pack elsewhere, in
 place of the found one of its game, and can be given again for another
 game's. Two packs of one game in the directory are an error. A pack is of
 the format's one version (each file says it): an older one is refused, with
@@ -266,16 +264,15 @@ rules' `backgrounds`).
 ## 2. Running
 
     cargo run -p nettai-demo -- <trace.jsonl>              # watch a trace
-    cargo run -p nettai-demo -- --play --game exe6          # play live
-    cargo run -p nettai-demo -- --play --game exe6 --seed 42 --stage netbattle-43 --show-folders
     cargo run -p nettai-demo -- --match match.toml           # play a match file (§6)
-    cargo run -p nettai-demo -- --play --game exe6 --seed 42 --save-match match.toml   # keep the draw
+    cargo run -p nettai-demo -- --match match.toml --show-folders
+    cargo run -p nettai-demo -- --match match.toml --save-match played.toml   # keep the seed played
     cargo run -p nettai-demo -- <trace.jsonl> --headless 150,300,600 --out <dir>
-    cargo run -p nettai-demo -- --audit-content            # what is missing?
+    cargo run -p nettai-demo -- --match match.toml --audit-content   # what is missing?
     cargo run -p nettai-demo -- --audit <trace.jsonl>...   # and in these traces?
-    cargo run -p nettai-demo -- --play --game exe6 --pack <dir>        # a pack elsewhere
-    cargo run -p nettai-demo -- --play --game exe6 --host 7777         # netplay: host...
-    cargo run -p nettai-demo -- --play --game exe6 --join 192.0.2.10:7777   # ...and join
+    cargo run -p nettai-demo -- --match match.toml --pack <dir>        # a pack elsewhere
+    cargo run -p nettai-demo -- --match match.toml --host 7777         # netplay: host...
+    cargo run -p nettai-demo -- --match match.toml --join 192.0.2.10:7777   # ...and join
 
 Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
 the battle content (see above), `--mute` turns the sound off, `--round N`
@@ -289,20 +286,14 @@ last picture is written there as a PNG), `--text font|original` chooses
 how strings are drawn (default `font`; the frame comparison uses
 `original`), `--font <file>` puts another TrueType or OpenType font in the
 bundled one's place, `--lang en|ja` the language of the battle's words
-(default `en`; §3, "Languages"). For live play, `--seed N` gives the seed its
-setup and battle are drawn from (default: from the clock; each start
-prints it), `--game GAME` says the game (`exe6` or `exe5`: required), `--stage NAME`
-forces a link battle stage by its name in the game (`netbattle-1` to
-`netbattle-96`), `--show-folders` prints both folders,
-`--cards` and `--their-cards` install your and the right navi's patch cards
-(the Japanese games', docs/engine/patch-cards.md: names comma-separated in
-the order they apply, `-name` switched off, e.g. `canodumb,-shadow`),
-and with `--headless`, `--keys` holds buttons on given ticks (below).
-`--match FILE` plays a match file instead of a random pick (§6: you are its
-left side; it names the game, the stage and the patch cards, so `--game`,
-`--stage` and `--cards` don't go with it; `--seed` overrides its seed), and
-`--save-match FILE` writes the match played, live play's draw or the one
-netplay agreed, with its seed, as a match file.
+(default `en`; §3, "Languages"). `--match FILE` plays a match file (§6: you
+are its left side). The file sets the game, arena, both sides and the optional
+`seed` for the battle's RNG (default: from the clock; each start prints it).
+Edit those settings in the file or with nettai-demo-editor; its Random button
+creates a random setup. `--show-folders` prints both folders, and with
+`--headless`, `--keys` holds buttons on given ticks (below). `--save-match FILE`
+writes the match played, the file's setup or the one netplay agreed, with its
+seed, as a match file.
 
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
@@ -319,14 +310,10 @@ input ends or the engine hits something it doesn't implement yet. Then it
 stops, with the reason in the window's title and printed; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
-**Live play** (`--play --game GAME`): you are the left navi; the right one stands still. With `--game exe6` the round
-is a netbattle on EXE6's content between two MegaMen at their fresh stats
-(100 HP, as a new match's in the editor: `nettai_match::Side::fresh`) with
-no NaviCust programs (so roads carry them and holes stop them), set up at
-random from the seed (`nettai_match::pick::live`, which prints what it
-drew), unless a match file sets it up (`--match`, §6). (`--game exe5` draws a plain EXE5 match instead:
-EXE5's rules, a stage of its link battles, and on each side EXE5's
-MegaMan at his fresh stats with a folder its rules accept.)
+**Live play** (`--match FILE`): you are the left navi; the right one stands
+still. The match file sets up the battle (§6), including its game, arena,
+each side's navi, folder, forms, patch cards, NaviCust and stats. Use the
+editor to create, randomize or edit a match before playing it.
 
 Live play is a set, as a link battle is, best of three: when a round ends the
 next one starts, on the arena's next stage, with the score carried and each
@@ -378,7 +365,7 @@ hides). The right navi's screen picks its first chip and presses OK. As in
 the original's netbattles, the fight gets your buttons 4 ticks late (the
 link). F5 starts over with the same setup.
 
-**Netplay** (`--play --host PORT` or `--play --join ADDR:PORT`) plays another
+**Netplay** (`--match FILE --host PORT` or `--match FILE --join ADDR:PORT`) plays another
 player over the network, with rollback (docs/design/rollback.md §4; the
 frontend's side is `netplay`):
 
@@ -402,14 +389,12 @@ frontend's side is `netplay`):
   differs ("can't play: the other side plays other content (its hash ...,
   this one's ...)"). Each player then brings their own side of the match (an
   offer, by name in the game as a match file names things): a match file's
-  left side (`--match`), or a folder, a version and five Crosses drawn from
-  their own `--seed` (as live play picks a player's) with their patch cards
-  (`--cards`); the other player's is checked against the content as a match
+  left side (`--match`), including its folder, version, forms and patch cards;
+  the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
   rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The field
-  is the host's: its match file's arena, else drawn from both players'
-  halves of the seed (on the host's `--stage`, if it names one); the
-  battle's RNG comes from the halves of the seed. Both print what was
+  is the host's match file's arena; the battle's RNG comes from both players'
+  randomly generated halves of the seed. Both print what was
   agreed, and `--save-match` writes it.
 - **Playing**: the match is a best-of-three set; its rounds follow one
   another (the folders shuffled again by each console's RNG). Every frame the
@@ -485,7 +470,7 @@ functions:
   not counted. A language the content has strings in and its pack no
   lettering for is a problem (a console in it can't be shown): both games'
   packs have their Japanese. It audits the
-  match's one game (`--game`).
+  match file's one game (`--match FILE`); the match's sides aren't played or validated.
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
   default one a core), and makes the lookups their frames and sound cues
   make, without drawing: no stage, no composing, no sound synthesis
@@ -1100,8 +1085,8 @@ name is ("left: folder entry 3: no chip \"darkthnd\" in exe6"), whether
 another game has it or not. `--match FILE` plays one (you are its left
 side), `--save-match FILE` writes the match played, and nettai-demo-editor makes
 and edits them (README.md, "The match editor"). The crate `nettai-match`
-reads, checks and writes them, and builds the round (`Match::round`); live
-play's random pick is a match too (`nettai_match::pick::live`), so a random
+reads, checks and writes them, and builds the round (`Match::round`); the
+editor's random pick is a match too (`nettai_match::pick::live`), so a random
 setup written out and played again is the same battle (the frontend's test
 `a_saved_match_plays_the_same_battle` compares the digest every tick).
 
@@ -1153,7 +1138,7 @@ programs = [                               # in the save's order; x, y the cente
 **A side's facts.** What a side brings that its game's rules take is the
 game's own to say: each system of the game's ruleset declares a `setup`
 (content/exe6/rules/cross: `setup = { version = { "gregar", "falzar" },
-crosses = "form[5]" }`; content/exe5/rules/light-dark:
+crosses = "form[5]" }`; content/exe5/rules/light_dark:
 `setup = { karma = "u16" }`), and every field of every system's setup is a
 fact a side of that game may state, as a key of its table by the field's
 name. `nettai-match` names none of them (`nettai_match::facts`): a side
@@ -1304,7 +1289,7 @@ NaviCust, patch cards or souls: they are MegaMan's. EXE5's MegaMan takes no
 level.
 
 **The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
-the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp-chips.luau),
+the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp_chips.luau),
 each `mm:ss.cc`; a slot left out is the fastest. The game keeps frames and
 shows them as a time rounded down to the hundredth (`sub_8000D84`): a
 written time is the fewest frames that show as it, so a time the game shows
@@ -1537,7 +1522,7 @@ is said with where it is:
   none past 80 MB, `0x08141868`);
 - the round starts (`Battle::new` doesn't stop).
 
-**Netplay with a match file** (`--play --host PORT --match FILE` or
+**Netplay with a match file** (`--match FILE --host PORT` or
 `--join`): the file's left side is what you bring, wherever netplay puts
 you, and the host's file's arena is the match's (the joiner's is not
 sent). The battle's RNG still comes from both players' halves of the seed.

@@ -5,7 +5,7 @@
 -- as EXE6 would without the system it reads, when the side's ruleset (a
 -- variant) lacks it.
 
-local dark_chips = require("./dark-chips")
+local dark_chips = require("./dark_chips")
 local kind = require("./forms/kind")
 
 local exe6 = {}

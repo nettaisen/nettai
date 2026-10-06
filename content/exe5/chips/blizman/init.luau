@@ -24,7 +24,7 @@ local blizman = define.chip {
 }
 
 -- BlizManSP (EXE5 chip 0x108): BlizzardMan cuts in and rolls a snowball down his row, growing on the field objects it
--- swallows (../blizman/navi); its damage by how fast its user deleted BlizzardMan SP (rules/sp-chips: formula 15, its
+-- swallows (../blizman/navi); its damage by how fast its user deleted BlizzardMan SP (rules/sp_chips: formula 15, its
 -- table's row 14).
 local blizman_sp = define.chip {
     id = "blizman-sp",

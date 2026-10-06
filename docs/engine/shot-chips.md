@@ -277,7 +277,7 @@ Nine strikes on a target that sweeps up and down a column, a strike every nine t
   overlay slot; USING_ACTION; strikes `av[0xE]` = 9; the row step `av.u32[0x30]` = −1; the next phase.
 - **Fire** (`sub_80ECF8E`), on step_init:
   - 0 (entry, tick 2): the arm's animation = 1; `object_setAnimation(0xD)`; then as 2.
-  - 2: step_init = 1; timer 8; a panel strike (`sub_80C5F2C`, attack #9, the pack's objects/panel-strike, chips.md
+  - 2: step_init = 1; timer 8; a panel strike (`sub_80C5F2C`, attack #9, the pack's objects/panel_strike, chips.md
     §3.6.33) at the target with element `av[2]`, Z 0, the damage word, parameters `(av.u32[0xC] & 0xFFFF) |
     0x10000` (Param1 0: no crack; Param2 6: it strikes after 6 ticks; Param3 1: hit modifier 1); effect 0x2F (the
     reticle) at the target's center, Z 0, with Timer = `av[0xD]` (6: it lasts 6 ticks). Then as 1.
@@ -713,7 +713,7 @@ Content model v2 (docs/design/content-model-v2.md): each action is a builder its
 definition, each table row a variant record written out in Luau.
 
 - **Where.** The projectile and its variants: objects/projectile (the shot programs a navi's stats name are the
-  named records `shot/...`), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
+  named records `shot/...`), lib/projectile; the flying shot: objects/flying_shot; the bullet: objects/bullet (its rows, and the
   variants the Vulcans, the Spreaders, SpoutCross's charged shot, ColArmy and ColForce fire). The cannons:
   lib/cannon with chips/cannon and chips/gigacan; AirShot, BatCan, MachGun: chips/airshot, chips/batcan (with its
   shot), chips/machgun; the Vulcans, the Spreaders, the TankCans, CornSht, WideSht and SuprSpr: chips/vulcan,

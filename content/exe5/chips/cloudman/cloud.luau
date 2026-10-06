@@ -1,10 +1,10 @@
 --!strict
 -- CloudMan's cloud (EXE5's attack object #0xB3, 0x080DCA10; EXE5's own: EXE6's #0xB3 is DustMan's junk, on the same
 -- skeleton), on a panel behind an enemy: hidden for 80 ticks, it shows (a sound), waits 30, charges 60 (animation
--- 7, a sound), and strikes: a bolt (objects/flying-shot's row 0xB: elec, paralyzing) from 16 pixels ahead of it,
+-- 7, a sound), and strikes: a bolt (objects/flying_shot's row 0xB: elec, paralyzing) from 16 pixels ahead of it,
 -- 16 up, toward the enemy, running while dimmed; 91 ticks on it goes. The battle's end ends it at once.
 
-local flying_shot = require("../../objects/flying-shot")
+local flying_shot = require("../../objects/flying_shot")
 
 local cloud = {}
 

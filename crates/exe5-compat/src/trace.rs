@@ -578,7 +578,7 @@ impl Round {
     /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
     /// both players on EXE5's rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
-        // EXE5's light and dark system (content/exe5/rules/light-dark).
+        // EXE5's light and dark system (content/exe5/rules/light_dark).
         const LIGHT_DARK: &str = "light-dark";
         let needs = self.needs(content, compat)?;
         if !needs.is_empty() {

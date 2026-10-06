@@ -275,11 +275,11 @@ fn battle_content_of(
 
 // ---- Finding packs -------------------------------------------------------------
 
-/// Where the extractors write their packs (`data/content/exe6`,
-/// `data/content/exe5`), and where a frontend finds them.
-pub const PACKS: &str = "data/content";
+/// Where the extractors write their packs (`data/exe6`,
+/// `data/exe5`), and where a frontend finds them.
+pub const PACKS: &str = "data";
 
-/// The packs directory: `$NETTAI_PACKS`, else `data/content`.
+/// The packs directory: `$NETTAI_PACKS`, else `data`.
 pub fn packs_dir() -> PathBuf {
     std::env::var_os("NETTAI_PACKS").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(PACKS))
 }
@@ -325,12 +325,10 @@ pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Ve
     Some(found)
 }
 
-/// How to write the asset pack of `game` into `dir`, for a message: its
-/// extractor's `content` command. A game's extractor is the crate named for
-/// the game pack's id (`<id>-extract`); which ROMs it takes is the game's
-/// own, and the README lists them (no code here knows a game by name).
+/// How to write the asset pack of `game` into `dir`, for a frontend message.
+/// The shared extractor identifies any supplied ROMs by their headers.
 pub fn extract_command(game: &str, dir: &Path) -> String {
-    format!("cargo run --release -p {game}-extract -- content <its ROMs> {}", dir.join(game).display())
+    format!("cargo run --release -p nettai-extract -- {game} {} <ROM ...>", dir.join(game).display())
 }
 
 /// A game of the content a frontend can offer (docs/frontend.md §1): a

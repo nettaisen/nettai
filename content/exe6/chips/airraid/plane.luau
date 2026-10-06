@@ -3,7 +3,7 @@
 -- docs/engine/dimming-chips.md §7.2): one of its side's field objects (an
 -- obstacle) in front of its user with a propeller (propeller.luau). It
 -- takes off, then, with a jet flame under it, drops a bomb
--- every 10 ticks: a panel strike (objects/panel-strike) on one of the
+-- every 10 ticks: a panel strike (objects/panel_strike) on one of the
 -- other side's bodies ahead of it in turn, now and then on a panel next
 -- to it, or on the other side's back column with none ahead. It stays
 -- until its lifetime runs out. (Its jet flame is LilBoiler's layer kind,
@@ -12,11 +12,11 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle")
+local absorbed_obstacle = require("../../objects/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local layer = require("../lilbolr/layer")
-local panel_strike = require("../../objects/panel-strike")
+local panel_strike = require("../../objects/panel_strike")
 local panels = require("@exelib/panels")
 local propeller = require("./propeller")
 local regions = require("@exelib/regions")

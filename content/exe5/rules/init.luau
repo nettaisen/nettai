@@ -7,9 +7,9 @@
 local auto_battle = require("@self/auto_battle")
 local emotion = require("@self/emotion")
 local folder = require("@self/folder")
-local light_dark = require("@self/light-dark")
+local light_dark = require("@self/light_dark")
 local navicust = require("@self/navicust")
-local patch_cards = require("@self/patch-cards")
+local patch_cards = require("@self/patch_cards")
 local souls = require("@self/souls")
 
 return define.ruleset {
@@ -33,8 +33,8 @@ return define.ruleset {
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),
     buster = require("@self/buster"),
-    chip_use = require("@self/chip-use"),
-    custom_screen = require("@self/custom-screen"),
+    chip_use = require("@self/chip_use"),
+    custom_screen = require("@self/custom_screen"),
     effects = require("@self/effects"),
     elements = require("@self/elements"),
     flow = require("@self/flow"),
@@ -46,6 +46,6 @@ return define.ruleset {
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),
     roles = require("@self/roles"),
-    sp_chips = require("@self/sp-chips"),
+    sp_chips = require("@self/sp_chips"),
     status = require("@self/status").rules,
 }

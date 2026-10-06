@@ -7,7 +7,7 @@
 -- if it deals damage, up to 50 for each hand entry. The behavior is EXE5's
 -- too (@exelib/otenko/otenko), made here with EXE6's look.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle")
+local absorbed_obstacle = require("../../objects/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/otenko")
 local effects = require("../../lib/effects")

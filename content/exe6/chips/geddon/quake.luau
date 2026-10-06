@@ -9,7 +9,7 @@
 -- (@exelib/geddon/quake), made here with EXE6's look.
 
 local common = require("@exelib/geddon/quake")
-local rising_bubble = require("../../objects/rising-bubble")
+local rising_bubble = require("../../objects/rising_bubble")
 
 return common.make {
     id = "geddon/quake",

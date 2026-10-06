@@ -1,7 +1,7 @@
 --!strict
 -- DarkWide (EXE5 chip 0x0c0): a dark chip: WideSht's shot (@exelib/widesht) with EXE5's shooter and a wave of kind 9
 -- (chips/widesht: it goes through and trails), one wave (its subtype's count, 0x080ED008). Its use costs buster
--- blanks (rules/light-dark).
+-- blanks (rules/light_dark).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local wave = require("./widesht/variants")

@@ -25,7 +25,7 @@ local numbrman = define.chip {
 }
 
 -- NumbrMnSP (EXE5 chip 0x0f3): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it
--- bursts (../numbrman/navi); its damage by how fast its user deleted NumberMan SP (rules/sp-chips: formula 10, its
+-- bursts (../numbrman/navi); its damage by how fast its user deleted NumberMan SP (rules/sp_chips: formula 10, its
 -- table's row 9).
 local numbrmn_sp = define.chip {
     id = "numbrmn-sp",

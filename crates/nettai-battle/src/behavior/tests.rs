@@ -1363,7 +1363,7 @@ fn gc_timing_does_not_reach_the_battle() {
     assert_eq!(have, want);
 }
 
-/// EXE5's dark chips' writes (content/exe5/rules/light-dark): `sub_800AB2E`
+/// EXE5's dark chips' writes (content/exe5/rules/light_dark): `sub_800AB2E`
 /// sets a side's statistic (where `sub_800AB46` adds), the mood is
 /// writable, and battle effect 0x100000 reads as `no_dark_chips`.
 #[test]

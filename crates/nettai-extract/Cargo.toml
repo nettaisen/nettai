@@ -1,0 +1,17 @@
+[package]
+name = "nettai-extract"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Embeddable EXE5 and EXE6 asset extraction and command-line tool"
+
+[dependencies]
+m4a.workspace = true
+nettai-assets = { path = "../nettai-assets" }
+nettai-content = { path = "../nettai-content" }
+nettai-content-api = { path = "../nettai-content-api" }
+exe5-compat = { path = "../exe5-compat" }
+exe6-compat = { path = "../exe6-compat" }
+
+[dev-dependencies]
+tempfile = "3"

@@ -31,7 +31,7 @@ framework's gap are listed with it. Branches no scenario reaches are marked **[u
 | 0x23 | `sub_80ECA34` | 0xBE CopyDmg | attack #0x28 copy mark | chips/copydmg (chip, mark) |
 | 0x26 | `sub_80ECCB0` | 0x32 AirHocky, 0x155 PitHocky | attack #0x2E puck (and PitHocky's afterimages, effect #0x28) | chips/airhocky (puck, flick), chips/pithocky |
 | 0x27 | `sub_80ECD28` | 0x14..0x16 FireBrn, 0x143..0x145 WideBrn | attack #0x04 flame | lib/burner (burn, flame), chips/firebrn, chips/widebrn, HeatCross's charge |
-| 0x28 | `sub_80ECDFC` | 0x18..0x1A TrnArrw | attack #0xB flying shot (kind 2) | chips/trnarrw, objects/flying-shot (its arrow variant) |
+| 0x28 | `sub_80ECDFC` | 0x18..0x1A TrnArrw | attack #0xB flying shot (kind 2) | chips/trnarrw, objects/flying_shot (its arrow variant) |
 | 0x2C | `sub_80ED25C` | 0x7B..0x7D IronShl, 0x14D ParaShl | attack #0x34 iron shell | chips/ironshl (shell, throw), chips/parashl |
 | 0x2D | `sub_80ED2F8` | 0x1B..0x1D BblStar | attack #0x42 bubble star | chips/bblstar (chips, star) |
 | 0x2E | `sub_80ED374` | 0x33 DrilArm | attack #0x71 drill | chips/drilarm (chip, drill) |
@@ -323,7 +323,7 @@ As ported (content model v2; every routine branch by branch, each chip's record 
 | Chip | Action | Module | Kinds it spawns |
 |---|---|---|---|
 | HeatPres | `heatpres/action` | navis/heatman/chip.luau | chips/heatman/flame (`heatman/flame`, HeatMan's own) |
-| DElecSwd | `delecswd/action` | navis/elecman/chip.luau | objects/follow-effect (`follow-effect`: the glow, with DeltaRay's bursts) |
+| DElecSwd | `delecswd/action` | navis/elecman/chip.luau | objects/follow_effect (`follow-effect`: the glow, with DeltaRay's bursts) |
 | RSlash | `rslash/action` | navis/slashman/chip.luau | navis/slashman/riding_hit.luau (`slashman/riding-hit`) |
 | EDeletBm | `edeletbm/action` | navis/eraseman/chip.luau | chips/eraseman/beam (`eraseman/beam`, EraseMan's own) |
 | VolcChrg | `volcchrg/action` | navis/chargeman/chip.luau | navis/chargeman/volcano_rock.luau (`chargeman/volcano-rock`) |

@@ -14,7 +14,7 @@
 
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local charged_chips = require("./megaman/weapons/charged-chip")
+local charged_chips = require("./megaman/weapons/charged_chip")
 local t_swing = require("@self/chip")
 
 return define.navi {

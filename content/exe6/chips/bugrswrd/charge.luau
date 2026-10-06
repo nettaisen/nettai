@@ -1,13 +1,13 @@
 --!strict
 -- BugRSwrd's charged shot (`bugrswrd/charge`): the weapon the chip makes
--- the navi's charged shot (lib/navi-boost/controller; the original's weapon
+-- the navi's charged shot (lib/navi_boost/controller; the original's weapon
 -- routine 0x21, `sub_8011E40`). It is a sword's slash (the swords' action,
 -- lib/swords/slash): with a bug frag, which it spends, DrkSword's slash on
 -- the two columns ahead for 200; without one, Sword's on the panel ahead
 -- for 80. Sticky: a form's own charged shot doesn't replace it, and while
 -- the navi has it a Beast buster gives way to the plain one.
 
-local charge = require("../../lib/navi-boost/charge")
+local charge = require("../../lib/navi_boost/charge")
 local drksword = require("../drksword")
 local sword = require("../sword")
 

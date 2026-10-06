@@ -9,7 +9,7 @@
 -- (./tornado), then tells the controller it is done. They then sink (10)
 -- and go.
 
-local arrival = require("../../lib/beast-chips/arrival")
+local arrival = require("../../lib/beast_chips/arrival")
 local tornado = require("./tornado")
 
 local summon = {}

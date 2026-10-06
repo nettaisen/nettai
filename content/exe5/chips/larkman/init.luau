@@ -23,7 +23,7 @@ local larkman = define.chip {
 }
 
 -- LarkManSP (EXE5 chip 0x111): LarkMan cuts in and sends his swoop round the field (../larkman/navi); its damage by how
--- fast its user deleted LarkMan SP (rules/sp-chips: formula 18, its table's row 17).
+-- fast its user deleted LarkMan SP (rules/sp_chips: formula 18, its table's row 17).
 local larkman_sp = define.chip {
     id = "larkman-sp",
     codes = { "S" },

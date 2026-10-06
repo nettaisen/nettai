@@ -8,7 +8,7 @@
 -- Not reached: his other spawner (0x080BC0DA, which nothing calls), whose TomahawkMan keeps no controller waiting
 -- (his Param3 1).
 
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 

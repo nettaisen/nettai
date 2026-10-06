@@ -6,7 +6,7 @@
 -- splash of earth and a camera shake. Then he leaves, and the controller
 -- moves on. See docs/engine/chips.md §3.6.12.
 
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 

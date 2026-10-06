@@ -13,7 +13,7 @@
 
 local common = require("@exelib/roll/navi")
 local attachment = require("../../objects/attachment")
-local panel_changer = require("../../objects/panel-changer")
+local panel_changer = require("../../objects/panel_changer")
 local heart = require("./heart")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")

@@ -24,7 +24,7 @@ local magnetmn = define.chip {
 }
 
 -- MagntMnSP (EXE5 chip 0x0ea): MagnetMan cuts in and sends two magnets sliding along his row to meet at the first enemy
--- navi, immobilizing (../magnetmn/navi); its damage by how fast its user deleted MagnetMan SP (rules/sp-chips: formula
+-- navi, immobilizing (../magnetmn/navi); its damage by how fast its user deleted MagnetMan SP (rules/sp_chips: formula
 -- 6, its table's row 5).
 local magntmn_sp = define.chip {
     id = "magntmn-sp",

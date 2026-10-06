@@ -3,7 +3,7 @@
 -- a module and the modules that require it both name, declared once for
 -- the pack. (The engine's API is in content/nettai/core.d.luau.)
 
--- A flying shot's variant (objects/flying-shot, the original's
+-- A flying shot's variant (objects/flying_shot, the original's
 -- `byte_80C6038` rows): what it is and hits, its hit modifier, element and
 -- secondary elements, hit spark (nil: none), look and shadow, speed (16.16
 -- a tick, forward), range (panel centers it passes before it ends), the
@@ -30,7 +30,7 @@ export type FlyingShotVariant = {
     end_effect: Effect?,
 }
 
--- What a flying shot is launched with (objects/flying-shot): its variant,
+-- What a flying shot is launched with (objects/flying_shot): its variant,
 -- the ticks it waits before it sets off, whether it falls, its palette,
 -- the damage word, and a thrown obstacle's kind | animation << 4.
 export type FlyingShot = {
@@ -99,7 +99,7 @@ export type FlashBombVariant = {
 
 -- ---- The field objects (chips/rockcube/rock, objects/boulder) ---------------
 
--- What an element pillar is spawned with (objects/element-pillar; the
+-- What an element pillar is spawned with (objects/element_pillar; the
 -- original's four parameters): lightning (it paralyzes and cracks its
 -- panel) rather than flames; how long it stands; the ticks it is left once
 -- its owner's action is over; `back`: it stands 8 pixels ahead of its
@@ -393,7 +393,7 @@ export type FireBlast = {
     while_dimmed: boolean?,
 }
 
--- A panel strike (objects/panel-strike): whether its burst cracks an
+-- A panel strike (objects/panel_strike): whether its burst cracks an
 -- uncracked panel, the ticks its panel blinks first, its hit modifier, and
 -- whether it bursts only on a solid panel.
 export type PanelStrike = {

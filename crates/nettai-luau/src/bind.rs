@@ -161,7 +161,7 @@ fn exact(n: f64, what: &str) -> mlua::Result<i64> {
 fn int(v: &LuaValue, what: &str) -> mlua::Result<i64> {
     match v {
         LuaValue::Number(n) => exact(*n, what),
-        LuaValue::Integer(i) => Ok(*i),
+        LuaValue::Integer(i) => Ok(i64::from(*i)),
         v => Err(mlua::Error::runtime(format!("{what}: expected an integer, got {}", v.type_name()))),
     }
 }
@@ -1694,7 +1694,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let e = with(|api, _| Ok(api.auto_battle_entry(side, (i - 1) as usize)))?;
         match e {
             nettai_content_api::AutoBattleEntry::Chip(c) => bound(|b| chip_value(b, Some(c))),
-            nettai_content_api::AutoBattleEntry::Pattern(p) => Ok(LuaValue::Integer(p as i64 + 1)),
+            nettai_content_api::AutoBattleEntry::Pattern(p) => Ok(LuaValue::Integer(mlua::Integer::from(p) + 1)),
             nettai_content_api::AutoBattleEntry::Nothing => Ok(LuaValue::Boolean(false)),
             nettai_content_api::AutoBattleEntry::Empty => Ok(LuaValue::Nil),
         }
@@ -1716,7 +1716,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         }
         match with(|api, _| Ok(api.auto_battle_pattern_read(side, (i - 1) as usize, (k - 1) as usize)))? {
             nettai_content_api::AutoBattlePatternRead::Chip(c) => bound(|b| chip_value(b, Some(c))),
-            nettai_content_api::AutoBattlePatternRead::Number(n) => Ok(LuaValue::Integer(n as i64)),
+            nettai_content_api::AutoBattlePatternRead::Number(n) => Ok(LuaValue::Integer(mlua::Integer::from(n))),
             nettai_content_api::AutoBattlePatternRead::End => Ok(LuaValue::Nil),
         }
     });
@@ -2435,19 +2435,19 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
         HookCall::NaviLeft { controller } => vec![obj(controller)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
-            let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
+            let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(mlua::Integer::from(c)));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
         // The side, then the navi, the chip and the weapon, where the hook
         // has them (nil in between).
         // A custom screen's chip hooks: the side, then the chip.
         HookCall::System { side, hook: SystemHook::CustomChipPicked | SystemHook::CustomChipTakenBack, chip, .. } => vec![
-            LuaValue::Integer(side as i64),
+            LuaValue::Integer(mlua::Integer::from(side)),
             chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
         ],
         HookCall::System { side, navi, chip, weapon, .. } => {
             let mut v = vec![
-                LuaValue::Integer(side as i64),
+                LuaValue::Integer(mlua::Integer::from(side)),
                 navi.map_or(Ok(LuaValue::Nil), obj)?,
                 chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
                 weapon.map_or(Ok(LuaValue::Nil), |w| bound.def_value(Registry::Weapon, w.0).map(LuaValue::Table))?,
@@ -2546,14 +2546,14 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         // A mood or a palette.
         HookCall::System { hook: hook @ (SystemHook::StartingMood | SystemHook::NaviPalette), .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
-            LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(*n)),
+            LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("{} returns a byte or nil, not {v:?}", hook.name()))),
         },
         // A hand size.
         HookCall::System { hook: SystemHook::CustomHandSize, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
-            LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(*n)),
+            LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("custom.hand_size returns a count of chips, not {v:?}"))),
         },

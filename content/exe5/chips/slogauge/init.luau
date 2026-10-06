@@ -1,5 +1,5 @@
 --!strict
--- SloGauge (EXE5 chip 0x078): the other side's custom gauge fills slowly: EXE6's (@exelib/gauge-speed; EXE5's the
+-- SloGauge (EXE5 chip 0x078): the other side's custom gauge fills slowly: EXE6's (@exelib/gauge_speed; EXE5's the
 -- same code).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 

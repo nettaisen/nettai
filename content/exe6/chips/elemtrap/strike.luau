@@ -6,7 +6,7 @@
 local collision = require("../../rules/collision")
 local common = require("@exelib/elemtrap/strike")
 local effects = require("../../lib/effects")
-local panel_bursts = require("../../objects/panel-bursts")
+local panel_bursts = require("../../objects/panel_bursts")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 

@@ -12,7 +12,7 @@
 -- are ported as the code has them.)
 
 local collision = require("../../rules/collision")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 local operation_battle = require("../../lib/operation_battle")

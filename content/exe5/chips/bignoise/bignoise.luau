@@ -12,7 +12,7 @@
 -- columns at 4, three at 6, four at 8.)
 
 local collision = require("../../rules/collision")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 local statuses = require("../../rules/status")

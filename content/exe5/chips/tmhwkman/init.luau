@@ -24,7 +24,7 @@ local tmhwkman = define.chip {
 }
 
 -- TmhwkMnSP (EXE5 chip 0x0fc): TomahawkMan cuts in and brings his tomahawk down on the two columns ahead
--- (../tmhwkman/navi); its damage by how fast its user deleted TomahawkMan SP (rules/sp-chips: formula 11, its table's
+-- (../tmhwkman/navi); its damage by how fast its user deleted TomahawkMan SP (rules/sp_chips: formula 11, its table's
 -- row 10).
 local tmhwkmn_sp = define.chip {
     id = "tmhwkmn-sp",
