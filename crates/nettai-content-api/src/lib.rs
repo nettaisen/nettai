@@ -61,5 +61,5 @@ pub use registry::{
     NaviCustProgramHandle, PatchCardHandle, RULESET_KEY, RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle,
     valid_key,
 };
-pub use state::{Block, ContentState, FieldDef, FieldType, FieldValue, Fields, MAX_BYTES, Schema, StateId, Value};
+pub use state::{Block, FieldDef, FieldType, FieldValue, Fields, Schema, StateArena, StateId, StateMut, StateRef, Value};
 pub use types::{InPack, ObjectRef, PackId, PackSprite, PanelPos, Pool, SpriteId, Vec3};

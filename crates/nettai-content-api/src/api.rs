@@ -12,7 +12,7 @@
 use std::fmt;
 
 use crate::registry::{ChipHandle, Registry};
-use crate::state::{Block, ContentState, FieldType, StateId, TypeError, Value};
+use crate::state::{Block, FieldType, StateId, StateMut, TypeError, Value};
 use crate::types::{ObjectRef, PanelPos, SpriteId, Vec3};
 
 /// What a navi runs (`CoreApi::navi_action`).
@@ -1740,9 +1740,9 @@ pub trait CoreApi {
     /// Onto the destination panel of a move: the panel, the reservation,
     /// the coordinates and the collision.
     fn snap_to_future_panel(&mut self, o: ObjectRef);
-    /// The object's content state (None for kinds the engine implements).
-    fn state(&self, o: ObjectRef) -> Option<&ContentState>;
-    fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState>;
+    /// The object's content state (None for kinds the engine implements):
+    /// a freed object's is what it left, until its slot is taken again.
+    fn state_mut(&mut self, o: ObjectRef) -> Option<StateMut<'_>>;
     /// The game's rules' state of side `side` (docs/design/rules-in-luau.md
     /// §5): one block.
     fn rules_state_mut(&mut self, side: u8) -> ApiResult<&mut Block>;
@@ -1812,12 +1812,12 @@ pub trait CoreApi {
     fn key(&self, o: ObjectRef, pad: Pad, key: Key) -> ApiResult<bool>;
     /// The running content action's state, zeroed when an action of another
     /// layout last used it.
-    fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState>;
+    fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<StateMut<'_>>;
     /// The attack state as a state of layout `state` (zeroed unless an
     /// action of that layout last used it): how an action's update sees it,
     /// and how a weapon routine sets up the action it names before the
     /// action starts.
-    fn attack_state_for(&mut self, o: ObjectRef, state: StateId) -> ApiResult<&mut ContentState>;
+    fn attack_state_for(&mut self, o: ObjectRef, state: StateId) -> ApiResult<StateMut<'_>>;
     /// The state layout of a content action (a handle of the action
     /// registry).
     fn action_schema(&self, action: u16) -> ApiResult<StateId>;
