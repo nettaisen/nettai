@@ -34,7 +34,8 @@ local HIT_MOD = 3
 -- (`byte_80E74C4`, by the controller's side).
 local OCCUPIED = { [0] = 0x0020_0000, [1] = 0x0040_0000 }
 -- The sparkles over whoever is hit: 32 ticks of effect 0x24.
-local SPARKLES_LENGTH = 2
+-- (Its length, `dword_80E19F0`'s row 2, the curse's first parameter.)
+local SPARKLES_TICKS = 0x20
 local SPARKLE = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
 
 -- `sub_80E7486`: the combatant (one of either side's still in) whose
@@ -78,7 +79,7 @@ local function strike(me: Object, packed: number)
     end
     local o = occupant(x, y, me.alliance)
     if o then
-        sparkles.spawn(o, SPARKLES_LENGTH, SPARKLE, false)
+        sparkles.spawn(o, SPARKLES_TICKS, SPARKLE, false)
     end
 end
 
