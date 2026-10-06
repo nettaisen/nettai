@@ -47,7 +47,7 @@ local AI: StateSchema = {
 }
 
 -- What a side keeps through a round.
-local state: { [string]: string | { string } } = {
+local state: StateSchema = {
     -- Soul Unison (./souls): AIData +0x0F, the soul's turns left (0xFF: none to count), and Chaos Unison; the turn's
     -- arm chip (the transform record's +6; none: its 0xFFFF).
     turns = "u8",
@@ -64,19 +64,12 @@ local state: { [string]: string | { string } } = {
     -- emotion last swung to) of each navi of the player's kind, by its slot on its side's list of alive actors.
     swing_ticks = "u16[4]",
     swung = "u8[4]",
+    -- The side's own drive under DarkInvs (./auto_battle): the AI's state, as a navi it drives keeps it.
+    drive = AI,
+    -- What the souls' additions to the custom screen keep of one screen: each soul's fields, in its folder
+    -- (navis/megaman/forms/<soul>), which ./souls/custom gathers.
+    screen = souls.custom.screen,
 }
--- The side's own drive under DarkInvs (./auto_battle): the AI's fields. (Until a state holds records, they are the
--- state's own.)
-for name, kind in AI do
-    state[name] = kind
-end
--- What each soul's addition to the custom screen keeps: each soul's own, in its folder (navis/megaman/forms/<soul>),
--- which ./souls/custom gathers.
-for _, fields in souls.custom.states do
-    for name, kind in fields do
-        state[name] = kind
-    end
-end
 
 local rules: Rules = {
     state = state,

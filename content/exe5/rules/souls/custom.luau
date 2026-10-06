@@ -43,9 +43,9 @@ local FADE_SPEED = 32
 -- A Soul Unison's turns (+ the NaviCust's and the cards' bonus, at most 9; under 0, 1), a Chaos Unison's.
 local TURNS, MAX_TURNS, CHAOS_TURNS = 3, 9, 1
 
--- What the souls keep of a screen in the rules' state: each soul's `custom.state`, its fields by their declared
--- types (this module's end gathers them with the souls' buttons and windows).
-local states: { StateSchema } = {}
+-- What the souls keep of a screen, the rules' state's `screen` (a record): each soul's `custom.state`, its fields by
+-- their declared types (this module's end gathers them with the souls' buttons and windows).
+local screen: StateSchema = {}
 
 -- The whole numbers a state field may be declared as.
 local INTEGERS: { [string]: boolean } = { u8 = true, u16 = true, u32 = true, i8 = true, i16 = true, i32 = true }
@@ -53,7 +53,7 @@ local INTEGERS: { [string]: boolean } = { u8 = true, u16 = true, u32 = true, i8 
 -- What a fresh state holds in a field declared as `kind` (a state starts all zero, like the game's scratch): 0 for a
 -- number, false for a boolean, the first of a list of variants, and for anything else (a definition, an asset, an
 -- object) none.
-local function fresh(kind: string | { string }): any
+local function fresh(kind: SchemaField): any
     if type(kind) == "table" then
         return kind[1]
     elseif kind == "bool" then
@@ -66,24 +66,23 @@ local function fresh(kind: string | { string }): any
     return nil
 end
 
--- 0x08022CA2: the screen's record is zeroed as it opens. What every soul keeps of a screen (`states`) is back as a
+-- 0x08022CA2: the screen's record is zeroed as it opens. What every soul keeps of a screen (`screen`) is back as a
 -- fresh state has it, from the fields' own declarations, whatever soul the side's navi is in: a soul's fields don't
 -- outlast the screen they were set on.
 local function forget_screen(s: any)
-    for _, fields in states do
-        for name, kind in fields do
-            local element, count
-            if type(kind) == "string" then
-                element, count = string.match(kind, "^(.+)%[(%d+)%]$")
+    local kept = s.screen
+    for name, kind in screen do
+        local element, count
+        if type(kind) == "string" then
+            element, count = string.match(kind, "^(.+)%[(%d+)%]$")
+        end
+        if element ~= nil then
+            -- (An array: each of its elements.)
+            for i = 1, tonumber(count) :: number do
+                kept[name][i] = fresh(element)
             end
-            if element ~= nil then
-                -- (An array: each of its elements.)
-                for i = 1, tonumber(count) :: number do
-                    s[name][i] = fresh(element)
-                end
-            else
-                s[name] = fresh(kind)
-            end
+        else
+            kept[name] = fresh(kind)
         end
     end
 end
@@ -393,8 +392,8 @@ end
 -- Soul Unison's buttons and windows, by name (a button's is the key of its look in a pack), and the state fields
 -- they keep beside the soul button's (rules/init.luau declares those): the soul button, and what each soul adds to the screen,
 -- gathered from the souls of the navi that has them (MegaMan's `forms.souls`, each form's `custom`). A name is one of
--- Soul Unison's: two souls can't both add a button or a window of the same name. (`states`, above: `forget_screen` reads
--- it at each deal.)
+-- Soul Unison's: two souls can't both add a button, a window or a screen field of the same name. (`screen`, above:
+-- `forget_screen` reads it at each deal.)
 local buttons: { [string]: ButtonSpec } = { soul = custom_souls.button }
 local windows: { [string]: WindowSpec } = { soul_unison = custom_souls.window }
 for _, soul in megaman.forms.souls do
@@ -412,13 +411,16 @@ for _, soul in megaman.forms.souls do
             end
             windows[name] = window_of(window)
         end
-        if part.state ~= nil then
-            table.insert(states, part.state)
+        for name, kind in part.state or {} do
+            if screen[name] ~= nil then
+                error(string.format("%s's screen field `%s` is another's too: a field's name is one of rules/souls's", tostring(soul.id), name))
+            end
+            screen[name] = kind
         end
     end
 end
 custom_souls.buttons = buttons
 custom_souls.windows = windows
-custom_souls.states = states
+custom_souls.screen = screen
 
 return custom_souls
