@@ -713,7 +713,17 @@ impl Round {
             // The board is the recorded ExpMemry's (the one the save's
             // parts were placed on), or the game's largest when its rules
             // have fewer sizes than that.
-            let largest = content.rules().navicust.boards.len().saturating_sub(1) as u8;
+            let largest = match content.defs.rules().map(|r| r.setup_block()) {
+                // (The rules' largest: a new side's, their default.)
+                Some(b) => {
+                    let schema = content.defs.schema(content.defs.rules().expect("the rules").setup);
+                    match schema.index_of("navicust_expansions").map(|i| b.get(schema, i)) {
+                        Some(nettai_content_api::FieldValue::OptionalU8(Some(n))) => n,
+                        _ => 0,
+                    }
+                }
+                None => 0,
+            };
             let programs = navicust(content, compat, &list, |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0)?;
             Ok(Some((n.expansions.min(largest), programs)))
         };

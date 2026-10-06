@@ -722,62 +722,8 @@ pub struct Rules {
     /// limit, which a battle takes as the larger of its two players' games'
     /// (docs/design/rules-in-luau.md §2.3).
     pub pools: PoolSizes,
-    /// The NaviCust's board (rule section `navicust`; none: the game has no
-    /// NaviCust): what a setup's programs may cover. What they do is the
-    /// game's rules' (EXE6's rules/navicust).
-    pub navicust: NaviCustRules,
 }
 
-/// A cell of the NaviCust's grid, on a board.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum BoardCell {
-    /// No cell: no program can cover it.
-    #[default]
-    Off,
-    /// The frame around the board: a program may jut onto it (EXE6: and is
-    /// bugged).
-    Frame,
-    /// The board.
-    On,
-}
-
-/// The NaviCust's board: its 7x7 grid's cells by row, then column.
-pub type Board = [[BoardCell; crate::navicust::SIZE]; crate::navicust::SIZE];
-
-/// The NaviCust's boards, by how far it has been expanded (EXE6's and EXE5's:
-/// 4x4, 5x4 and 5x5, by key item 0x71 and EXE5's 0x61; EXE5's without a
-/// frame), and its command line (a row).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct NaviCustRules {
-    pub boards: Vec<Board>,
-    pub command_line: u8,
-}
-
-impl NaviCustRules {
-    /// The board of a NaviCust with `expansions`, if the game has one.
-    pub fn board(&self, expansions: u8) -> Option<&Board> {
-        self.boards.get(expansions as usize)
-    }
-
-    /// Whether a program of `shape` can be placed with its center at
-    /// `(x, y)` on `board` (EXE6's `sub_813BB00`): every cell it covers is a
-    /// cell of the board or its frame, and not all of them the frame.
-    pub fn fits(board: &Board, shape: &crate::navicust::Shape, x: u8, y: u8) -> bool {
-        let n = crate::navicust::SIZE as i32;
-        let mut on = false;
-        for (cx, cy) in crate::navicust::cells(shape, x, y) {
-            if !(0..n).contains(&cx) || !(0..n).contains(&cy) {
-                return false;
-            }
-            match board[cy as usize][cx as usize] {
-                BoardCell::Off => return false,
-                BoardCell::Frame => {}
-                BoardCell::On => on = true,
-            }
-        }
-        on
-    }
-}
 
 /// How many objects each pool holds (EXE6's are 32 each; EXE5's actor pool
 /// 16). At most `object::SLOTS`. Each game states its own.

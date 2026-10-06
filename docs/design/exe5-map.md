@@ -2311,7 +2311,7 @@ two share it: content/exelib/navicust/compile.luau, each game's navicust module 
 quirks (`NaviCustGame`). EXE6's compile is unchanged (trace-tests' navicust: Tango's four saves and the lab's 1274
 NaviCusts). EXE5's, content/exe5/rules/navicust:
 
-- **The board** (rules/navicust/board.luau, the section `navicust`): EXE5's 5x5 grid is the middle of the engine's
+- **The board** (rules/navicust/board.luau, which the compile reads and the editor's grid reads as data): EXE5's 5x5 grid is the middle of the engine's
   7x7, the command line EXE5's row 2 (the engine's 3), no frame, any cell of it a neighbor's. A part's 5x5 shapes (the
   part table's +8, +0xC) sit in the middle of the definition's 7x7. The board on the grid is the save's ExpMemry's
   (key item 0x61's count, a byte at the save image's 0x3DB0 + 0x61: the toolkit's +0x50, which 0x0803C120 reads):

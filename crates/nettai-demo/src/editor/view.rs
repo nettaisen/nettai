@@ -6,7 +6,7 @@
 
 use crate::editor::app::{App, Choice, Editor, Msg, Tab};
 use crate::editor::names::Lang;
-use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
+use iced::widget::{Column, Row, button, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_match::stats;
@@ -98,23 +98,19 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         tabs = tabs.push(text(*name).size(13).color(DIM));
         tabs = tabs.push(nav("  Navi", Tab::Navi(s), e.tab));
         tabs = tabs.push(nav("  Folder", Tab::Folder(s), e.tab));
-        // (The lists the game's rules take of a side, each a pane: EXE6's
-        // Crosses, where the navi has forms to list; EXE5's souls.)
+        // (The lists of definitions the game's rules take of a side, a
+        // checklist each: EXE6's Crosses, EXE5's souls.)
         for (index, title) in crate::editor::facts::lists(&e.content, e.m.game(), side) {
             tabs = tabs.push(nav_owned(format!("  {title}"), Tab::List(s, index), e.tab));
         }
-        // (Patch cards are the navi's that changes form: the cards change
-        // MegaMan's stats.)
-        let changes_form = e.content.navi(side.navi(&e.content)).forms.is_some();
+        // (The rest of its setup, as the editor lays it out: the NaviCust,
+        // the patch cards, the SP times.)
+        for (i, p) in e.panes.iter().enumerate() {
+            tabs = tabs.push(nav_owned(format!("  {}", p.title), Tab::Pane(s, i), e.tab));
+        }
         // (Where the game's rules have auto battle: EXE5's.)
         if nettai_match::auto_battle::has(&e.content) {
             tabs = tabs.push(nav("  Auto battle", Tab::AutoBattle(s), e.tab));
-        }
-        if changes_form && nettai_match::has_patch_cards(&e.content) {
-            tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
-        }
-        if nettai_match::has_navicust(&e.content) && changes_form {
-            tabs = tabs.push(nav("  NaviCust", Tab::NaviCust(s), e.tab));
         }
         tabs = tabs.push(nav("  Stats", Tab::Stats(s), e.tab));
     }
@@ -125,15 +121,14 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Folder(s) => folder(e, s),
         Tab::List(s, index) => crate::editor::facts::list(e, s, index),
         Tab::AutoBattle(s) => crate::editor::auto_battle::view(e, s),
-        Tab::Cards(s) => cards(e, s),
-        Tab::NaviCust(s) => crate::editor::navicust::view(e, s),
+        Tab::Pane(s, i) => crate::editor::panes::view(e, s, i),
         Tab::Stats(s) => stats_pane(e, s),
     };
 
     let problems: Element<Msg> = if e.problems.is_empty() {
         text("Ready to play.").color(GREEN).into()
     } else {
-        let list = e.problems.iter().fold(Column::new().spacing(2), |c, p| c.push(text(p.as_str()).size(13).color(RED)));
+        let list = e.problems.iter().fold(Column::new().spacing(2), |c, p| c.push(text(p.said()).size(13).color(RED)));
         scrollable(list).height(Length::Fixed(90.0)).into()
     };
     let footer = column![problems, text(e.status.as_str()).size(12).color(DIM)].spacing(4);
@@ -161,17 +156,21 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let mut backgrounds: Vec<Choice<Option<String>>> = vec![Choice { label: "from the seed".into(), value: None }];
     // (By the name a match writes: the game's.)
     backgrounds.extend(nettai_match::ids::backgrounds(c, game).into_iter().map(|b| Choice { label: b.to_string(), value: Some(b.to_string()) }));
-    let place = |i: usize, p: &nettai_match::RoundSettings| -> Element<Msg> {
+    // A round: its place, each part stated or left to the seed, and its
+    // button to take it out (a match has one round at least).
+    let n = m.rounds.len();
+    let round = |i: usize, p: &nettai_match::RoundSettings| -> Element<Msg> {
         let stage = stage_choice(p.stage);
         let bg = Choice { label: p.background.clone().unwrap_or("from the seed".into()), value: p.background.clone() };
+        let remove = button(text("Remove").size(13)).style(button::text).on_press_maybe((n > 1).then_some(Msg::RemoveRound(i)));
         column![
+            row![text(format!("Round {}", i + 1)).size(15), remove].spacing(12).align_y(Alignment::Center),
             field("Stage", pick_list(stages.clone(), Some(stage), move |s| Msg::Stage(i, s))),
             field("Background", pick_list(backgrounds.clone(), Some(bg), move |b| Msg::Background(i, b))),
         ]
         .spacing(6)
         .into()
     };
-    let same = m.rounds[1..].iter().all(|r| *r == m.rounds[0]);
     let seed = e.typed.get(&(2, "seed")).cloned().unwrap_or_else(|| m.seed.map(|s| s.to_string()).unwrap_or_default());
     let mut col = column![
         heading("Arena"),
@@ -182,14 +181,21 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     ]
     .spacing(10);
     col = col.push(rule::horizontal(1));
-    col = col.push(place(0, &m.rounds[0]));
-    col = col.push(checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame));
-    if !same {
-        for (i, p) in m.rounds.iter().enumerate().skip(1) {
-            col = col.push(text(format!("Round {}", i + 1)).size(14));
-            col = col.push(place(i, p));
-        }
+    col = col.push(text("Rounds").size(16));
+    col = col.push(
+        text(format!(
+            "A set of {n} round{}: it is decided once a side can no longer be caught, or after its last round. \
+             A part a round leaves is picked from the seed, as the game picks a link battle's.",
+            if n == 1 { "" } else { "s" }
+        ))
+        .size(13)
+        .color(DIM),
+    );
+    for (i, p) in m.rounds.iter().enumerate() {
+        col = col.push(round(i, p));
     }
+    col = col.push(button("Add a round").on_press_maybe((n < nettai_match::MAX_ROUNDS).then_some(Msg::AddRound)));
+    col = col.push(rule::horizontal(1));
     col = col.push(field("Seed", text_input("from the clock", &seed).on_input(Msg::Seed).width(Length::Fixed(160.0))));
     scrollable(col).into()
 }
@@ -245,36 +251,9 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         .size(13)
         .color(DIM),
     );
-    if nettai_match::Side::takes_sp_times(c) {
-        col = col.push(rule::horizontal(1));
-        col = col.push(sp_times(e, s));
-    }
     col = col.push(rule::horizontal(1));
     col = col.push(round_stats(e, s));
     scrollable(col).into()
-}
-
-/// The side's SP navi deletion times (`mm:ss.cc`; empty the fastest), each
-/// by the SP navi chip whose damage goes by it: the entries of the side's
-/// fact the engine knows as `PlayerFact::SpTimes` (the rules' default lists
-/// every SP chip of the game), in the library's order.
-fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
-    let c = &*e.content;
-    let side = e.side(s);
-    let times = side.facts.sp_times(c);
-    let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
-        .spacing(6);
-    let mut read: Vec<(usize, nettai_content_api::ChipHandle)> = times.iter().enumerate().map(|(i, &(chip, _))| (i, chip)).collect();
-    e.order.chips(c, &mut read);
-    for (i, chip) in read {
-        let label = e.names.chip(c, chip);
-        let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match times[i].1 {
-            0 => String::new(),
-            f => nettai_match::sp_times::format(f),
-        });
-        col = col.push(field(label, text_input("00:00.00", &shown).on_input(move |t| Msg::SpTime(s, i, t)).width(Length::Fixed(100.0))));
-    }
-    col.into()
 }
 
 /// What the round starts the navi with, once the rules have set it up.
@@ -513,77 +492,6 @@ pub(crate) fn class_letter(c: ChipClass) -> &'static str {
         ChipClass::Giga => "G",
         _ => "?",
     }
-}
-
-// ---- A side's patch cards ------------------------------------------------------------------
-
-fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
-    let c = &e.content;
-    let side = e.side(s);
-    let cards = crate::editor::app::cards_of(c, side);
-    let mb: u32 = cards.iter().map(|&card| crate::editor::navicust::entry_int(c, card, "mb") as u32).sum();
-    let mut installed = Column::new().spacing(2);
-    for (i, &card) in cards.iter().enumerate() {
-        let mb = crate::editor::navicust::entry_int(c, card, "mb");
-        installed = installed.push(
-            row![
-                text(e.names.entry(c, card)).size(14).width(Length::Fill),
-                text(format!("{mb} MB")).size(12).color(DIM),
-                button(text("↑").size(12)).on_press(Msg::CardMove(s, i, true)).style(button::text),
-                button(text("↓").size(12)).on_press(Msg::CardMove(s, i, false)).style(button::text),
-                button(text("remove").size(12)).on_press(Msg::CardRemove(s, i)).style(button::danger),
-            ]
-            .spacing(6)
-            .align_y(Alignment::Center),
-        );
-    }
-    let needle = e.search.to_lowercase();
-    // (The match's game's.)
-    let mut all: Vec<(String, nettai_content_api::EntryHandle)> = c
-        .defs
-        .entries_of("patch_cards")
-        .into_iter()
-        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.entry(h).key))
-        .filter(|h| !cards.contains(h))
-        .map(|h| (e.names.entry(c, h), h))
-        .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
-        .collect();
-    e.order.entries(c, "patch_cards", &mut all);
-    let available = all.into_iter().fold(Column::new().spacing(1), |col, (name, h)| {
-        let data = crate::editor::navicust::entry_data(c, h);
-        let effects: &[nettai_content_api::Data] = match data.field("effects") {
-            nettai_content_api::Data::List(l) => l,
-            _ => &[],
-        };
-        let bugs = effects.iter().filter(|x| *x.field("bug") == nettai_content_api::Data::Bool(true)).count();
-        let mb = crate::editor::navicust::entry_int(c, h, "mb");
-        col.push(
-            row![
-                button(text("add").size(12)).on_press(Msg::AddCard(s, h)).style(button::secondary),
-                text(name).size(14).width(Length::Fill),
-                text(format!("{mb} MB · {} effects{}", effects.len(), if bugs > 0 { format!(", {bugs} bugs") } else { String::new() }))
-                    .size(12)
-                    .color(DIM),
-            ]
-            .spacing(6)
-            .align_y(Alignment::Center),
-        )
-    });
-    // (Past the list's MB the rules say so, with the other problems.)
-    row![
-        column![
-            heading(format!("{}: patch cards", SIDES[s])),
-            text(format!("{mb} MB used; they apply in this order.")).size(14).color(DIM),
-            scrollable(installed).height(Length::Fill),
-        ]
-        .spacing(8)
-        .width(Length::FillPortion(1)),
-        column![text_input("search cards", &e.search).on_input(Msg::Search), scrollable(available).height(Length::Fill)]
-            .spacing(6)
-            .width(Length::FillPortion(1)),
-    ]
-    .spacing(12)
-    .into()
 }
 
 // ---- A side's stats --------------------------------------------------------------------------

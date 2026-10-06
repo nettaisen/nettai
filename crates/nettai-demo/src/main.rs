@@ -100,9 +100,9 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
   --edit FILE      open the editor on this match file (docs/frontend.md §6;
                    README.md, \"The match editor\")
   --tab NAME       with the editor: start on a pane: arena, or left- or right-
-                   and navi, folder, auto-battle, patch-cards, navicust, stats,
-                   or the name of a list the game's rules take of a side
-                   (exe6's crosses, exe5's souls)
+                   and navi, folder, auto-battle, stats, or a pane of the
+                   side's setup (navicust, patch-cards, sp-times; a list of
+                   definitions by its name: exe6's crosses, exe5's souls)
   --screenshot PNG with the editor: write the window to PNG once it has drawn,
                    and quit
   --match FILE     play the match this file sets up (docs/frontend.md §6: its

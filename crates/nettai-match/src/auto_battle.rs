@@ -236,6 +236,12 @@ pub fn has(content: &Content) -> bool {
     content.defs.rules().is_some_and(|r| r.navi_state.is_some())
 }
 
+/// Whether setup field `name` is one of the auto battle data's (a tool's
+/// auto battle pane shows them, not the setup's generic views).
+pub fn owns(content: &Content, name: &str) -> bool {
+    has(content) && matches!(name, "auto_battle_places" | "auto_battle_records")
+}
+
 impl AutoBattle {
     /// Whether it is a block nothing has written (the default: what a side
     /// that states no data has).

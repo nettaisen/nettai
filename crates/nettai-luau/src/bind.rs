@@ -2704,6 +2704,52 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
     }
 }
 
+/// A module's value as plain data (`ContentHost::module_data`): a flag, a
+/// whole number, a string, a definition (by its key), a list, a table by
+/// keys (in key order); a function left out.
+pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<nettai_content_api::Data> {
+    use nettai_content_api::{Data, DataKey};
+    if depth > 16 {
+        return Err(mlua::Error::runtime("data nested past 16 tables"));
+    }
+    Ok(match v {
+        LuaValue::Nil | LuaValue::Function(_) => Data::Nil,
+        LuaValue::Boolean(b) => Data::Bool(*b),
+        LuaValue::Integer(i) => Data::Int(*i),
+        LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 9.0e15 => Data::Int(*n as i64),
+        LuaValue::String(s) => Data::Str(s.to_str()?.to_string()),
+        LuaValue::Table(t) => {
+            if let Some((r, h)) = bound.def(v) {
+                let key = bound.key(r, h).ok_or_else(|| mlua::Error::runtime(format!("{r} {h} has no key")))?;
+                return Ok(Data::Ref(r, key.to_string()));
+            }
+            let n = t.raw_len();
+            let mut entries = Vec::new();
+            for pair in t.clone().pairs::<LuaValue, LuaValue>() {
+                let (k, x) = pair?;
+                if matches!(x, LuaValue::Function(_)) {
+                    continue;
+                }
+                let key = match &k {
+                    LuaValue::String(s) => DataKey::Str(s.to_str()?.to_string()),
+                    LuaValue::Integer(i) => DataKey::Int(*i),
+                    LuaValue::Number(f) if f.fract() == 0.0 => DataKey::Int(*f as i64),
+                    other => return Err(mlua::Error::runtime(format!("a table keyed by names or numbers, not {}", other.type_name()))),
+                };
+                entries.push((key, plain_data(&x, bound, depth + 1)?));
+            }
+            entries.sort_by(|a, b| a.0.cmp(&b.0));
+            // (A sequence, 1 to n, is a list.)
+            if n > 0 && entries.len() == n && entries.iter().all(|(k, _)| matches!(k, DataKey::Int(i) if (1..=n as i64).contains(i))) {
+                Data::List(entries.into_iter().map(|(_, x)| x).collect())
+            } else {
+                Data::Map(entries)
+            }
+        }
+        other => return Err(mlua::Error::runtime(format!("no data is a {}", other.type_name()))),
+    })
+}
+
 /// What the rules' `validate` answered: each problem a sentence or
 /// `{ text, field?, entry? }` (an entry from 1, a list's place in Luau),
 /// said to the battle as a setup problem.

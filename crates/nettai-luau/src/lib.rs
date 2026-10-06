@@ -207,6 +207,9 @@ pub(crate) struct Bound {
     tables: HashMap<(Registry, u16), Table>,
     /// Records' types and entries' collections, by registry and handle.
     record_types: HashMap<(Registry, u16), String>,
+    /// Each definition's key, by registry and handle (module data names a
+    /// definition by it).
+    keys: HashMap<(Registry, u16), String>,
     assets: RefCell<define::AssetTables>,
 }
 
@@ -234,6 +237,11 @@ impl Bound {
         self.assets.borrow().asset(v)
     }
 
+    /// Definition `h` of `registry`'s key.
+    pub fn key(&self, registry: Registry, h: u16) -> Option<&str> {
+        self.keys.get(&(registry, h)).map(String::as_str)
+    }
+
     /// Asset `h` of `kind` as a script value.
     pub fn asset_value(&self, lua: &Lua, kind: AssetKind, h: u16) -> mlua::Result<Table> {
         self.assets.borrow_mut().value(lua, kind, h)
@@ -249,13 +257,16 @@ pub struct LuauContent {
     sources: Vec<FnSource>,
     budget: u32,
     collect_garbage: bool,
+    /// What each module returned as it loaded, by its name (a tool reads a
+    /// game's data from it: `ContentHost::module_data`).
+    modules: BTreeMap<String, LuaValue>,
 }
 
 impl LuauContent {
     /// Load a pack's modules (the define phase), check they define what
     /// `plan` was made from, and bind the functions `plan` names.
     pub fn load(pack: &Pack, plan: &BindPlan, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, _, _, assets) = open(pack, &plan.assets, options)?;
+        let (lua, defined, modules, _, assets) = open(pack, &plan.assets, options)?;
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -269,9 +280,11 @@ impl LuauContent {
         let mut defs = HashMap::new();
         let mut tables = HashMap::new();
         let mut record_types = HashMap::new();
+        let mut keys = HashMap::new();
         for ((t, d), &h) in defined.tables.iter().zip(&defined.definitions.defs).zip(&plan.handles) {
             defs.insert(t.to_pointer() as usize, (d.registry, h));
             tables.insert((d.registry, h), t.clone());
+            keys.insert((d.registry, h), d.key.clone());
             if let Some(ty) = &d.record_type {
                 record_types.insert((d.registry, h), ty.clone());
             }
@@ -302,12 +315,14 @@ impl LuauContent {
                 defs,
                 tables,
                 record_types,
+                keys,
                 assets: RefCell::new(assets),
             },
             functions,
             sources: plan.functions.clone(),
             budget: options.budget,
             collect_garbage: options.collect_garbage,
+            modules,
         })
     }
 
@@ -378,6 +393,11 @@ impl ContentHost for LuauContent {
             return bind::setup_problems(v, api).map(|()| Value::Nil).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))));
         }
         bind::hook_result(v, call, &self.bound).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))))
+    }
+
+    fn module_data(&self, module: &str) -> Option<Result<nettai_content_api::Data, ContentError>> {
+        let v = self.modules.get(module)?;
+        Some(bind::plain_data(v, &self.bound, 0).map_err(|e| ContentError::new(e.to_string())))
     }
 }
 

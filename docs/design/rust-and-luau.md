@@ -246,7 +246,8 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   custom screen.
 - **N5. The NaviCust board** (`NaviCustRules`, rules.rs:751; the `navicust` section, sections.rs:584; navicust.rs, 93
   lines). Read by the editor and nettai-match (`has_navicust`, `navicust_rules`, lib.rs:143–157; import_exe5.rs:116).
-  *(b)* The game's rules/navicust/board.luau as a view the editor reads (step c3b). Editor-only.
+  *(b)* Done in step c3b: the section, `NaviCustRules` and navicust.rs are gone. The board is the game's
+  rules/navicust/board.luau, which the editor's own grid reads as data (`Battle::module_data`).
 - **N6. Feature-named API and functions**: `clear_navicust_bugs` (api.rs:2034), `refresh_navicust_state`,
   `low_hp_navicust_effect` (idle.rs:309, the series' Tango support). *(a)* `clear_afflictions` and the like.
 
@@ -294,16 +295,18 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   lines). *(b)* A game's save is its Luau's (the line above). Each compat crate keeps decoding the bytes; turning the
   save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only.
 - **T2. EXE5's auto battle view** (auto_battle.rs, about 500 lines without tests: its lists for the editor's pane,
-  `AutoBattle::learned`, and `of_folder` for random matches). *(b)* The editor's view kinds (step c3b) and EXE5's
-  rules; `learned`'s tie-break waits on the user. Tool-only.
+  `AutoBattle::learned`, and `of_folder` for random matches). *(b)* EXE5's rules, with the tie-break step: the
+  learner and the data's reading move into Luau. The editor's pane stays the editor's own (step c3b: the rules
+  declare no view). Tool-only.
 - **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
   link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
-- **T4. `has_navicust`, `has_patch_cards`, `navicust_rules`** (lib.rs:143–157), for the editor's panes. *(c)* Step
-  c3b replaces them with view kinds the rules declare.
+- **T4. `has_navicust`, `has_patch_cards`, `navicust_rules`** (lib.rs:143–157), for the editor's panes. *(c)* Done
+  in step c3b: gone. The editor lays out a side's setup from the setup schema itself, its richer views keyed by
+  field and data names (crates/nettai-demo's editor/layout.rs).
 - **T5. The remaining fact roles**: `PlayerFact::SpTimes` (only tools read it: `Facts::sp_times`, sp_times.rs, the
   editor's SP pane), and `RegularChip` and `TagChips` (the deal reads them: `BattleFolder::shuffled_with_tag_pair`).
-  *(a)* `RegularChip` and `TagChips` are the series' folder and stay roles. `SpTimes` becomes a view kind for its
-  tool.
+  *(a)* `RegularChip` and `TagChips` are the series' folder and stay roles. `SpTimes` is the role the editor's own
+  time view reads (step c3b).
 
 ### Across features
 
@@ -315,7 +318,7 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   `exe5_lose_hp` (player/mod.rs:477), chosen by `Reactions::FlashTimerFirst` and `HpLoss::GaugeAndLastStand`;
   `FormBreak::CrossOrBeast` (C2). *(a)* Name each by the variant's behavior. They run per tick and stay Rust; the
   last stand goes to E6.
-- **X3. Rule sections named for a feature**: `berserk` (B1), `lockon` (B2), `navicust` (N5), `chaos_cycle` (S1),
+- **X3. Rule sections named for a feature**: `berserk` (B1), `lockon` (B2), `navicust` (N5, gone in step c3b), `chaos_cycle` (S1),
   `effects.full_synchro_aura` (E3) and the `emotion` section's variants (E1). *(a)* What moves takes its section with
   it; what stays is renamed by role.
 - **X4. Content-named API**: the obstacles' soldiers (`obstacle_arm_soldiers` and its kin, api.rs:2154; the
