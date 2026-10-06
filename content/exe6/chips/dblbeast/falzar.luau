@@ -19,7 +19,7 @@ local falzar = {}
 local SPRITE = asset.sprite("falzar-beast")
 -- Its identity: Falzar Beast Out's (its parts and the attach points its
 -- attachments take).
-local IDENTITY = falzar_beast.identity
+local IDENTITY = assert(falzar_beast.identity)
 
 -- The attacks' patterns (`byte_80C25B8`, `byte_80C25C0`, `byte_80C25D0`).
 local BREATH: DblBeastPattern = { { 0, -2, 0 }, { 1, 2, 0 } }

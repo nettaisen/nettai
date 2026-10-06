@@ -17,11 +17,13 @@ local slash = {}
 slash.STATE = common.STATE
 
 -- CrosSwrd's second hit: a slash on the panel ahead alone.
-slash.CROSS_HIT = {
+local CROSS_HIT: SwordHit = {
     region = regions.single,
     collision = { is = collision.slash, hits = collision.hits_navis },
     hit_mod = 3,
 }
+
+slash.CROSS_HIT = CROSS_HIT
 
 -- EXE6's: the blade by its Beast forms' arms, and no step in a Beast form.
 local GAME: SlashGame = { blade_anim = parts.blade_anim, stays = kind.beast }

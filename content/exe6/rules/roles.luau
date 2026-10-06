@@ -31,7 +31,7 @@ local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 
-return {
+local roles: RolesSpec = {
     actions = {
         -- The charged shot a navi's request starts from idle without its
         -- weapon's setup (the original's action 0x16).
@@ -284,3 +284,5 @@ return {
         encased = encased_bubble.replace,
     },
 }
+
+return roles

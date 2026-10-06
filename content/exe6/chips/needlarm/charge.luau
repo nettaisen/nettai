@@ -16,7 +16,7 @@ local DAMAGE = 0x28
 -- `sub_8011ED0`.
 local function setup(navi: Object): Action
     charge.prepare(navi, ELEMENT, DAMAGE)
-    return aquandl_chips.aquandl1.action
+    return assert(aquandl_chips.aquandl1.action)
 end
 
 return new.weapon {

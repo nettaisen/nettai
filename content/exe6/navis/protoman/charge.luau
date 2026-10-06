@@ -24,7 +24,7 @@ local function setup(navi: Object): Action
     navi.charged = 0
     navi.attack_damage = weapon.charge_damage(navi, 0x3C, 0x14)
     navi.hit_param = HIT_PARAM
-    return wideswrd.action
+    return assert(wideswrd.action)
 end
 
 charge.weapon = new.weapon {

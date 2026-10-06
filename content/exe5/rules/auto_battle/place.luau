@@ -52,7 +52,7 @@ end
 
 -- What the AI reads of the chip's record (data.chips).
 local function record(chip: Chip)
-    local r = data.chips[chip.id]
+    local r = data.chips[assert(chip.id)]
     if r == nil then
         error(string.format("the navi in auto battle plays %s, which the AI's data (./data) doesn't list", chip.id :: string))
     end
