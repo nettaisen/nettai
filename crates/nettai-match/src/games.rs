@@ -394,7 +394,7 @@ fn karma_and_souls_write_and_read_back() {
     for (stated, said) in [
         ("karma = 70000", "left: karma: 70000 is past a u16 (0 to 65535)"),
         ("souls = [\"protosoul\", \"protosoul\"]", "left: souls: ProtSoul is there twice"),
-        ("soul_unison = \"no\"", "left: soul_unison: \"no\" is neither true nor false"),
+        ("chaos_unison = \"no\"", "left: chaos_unison: \"no\" is neither true nor false"),
     ] {
         let e = parse(&content, &exe5(&TANGO_EXE5, stated), &exe5(&TANGO_EXE5, "")).unwrap_err();
         assert!(e.contains(&said.to_string()), "{said:?} not in {e:?}");
@@ -404,8 +404,8 @@ fn karma_and_souls_write_and_read_back() {
 /// What a setup that says nothing has is the rules' own to state (their
 /// systems' `setup_defaults`), and a match writes none of it: EXE6's, Beast
 /// Out (its version and its Crosses have no default: a setup that says
-/// nothing states neither); EXE5's, every soul of either version, Soul
-/// Unison, Chaos Unison and a fresh save's karma.
+/// nothing states neither); EXE5's, every soul of either version, Chaos
+/// Unison and a fresh save's karma.
 #[test]
 fn a_setup_that_says_nothing_has_the_rules_defaults() {
     use nettai_battle::custom::PlayerSetup;
@@ -425,9 +425,7 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     let all: Vec<_> = EXE5_SOULS.iter().map(|n| FieldValue::Ref(Some((Registry::Form, crate::ids::form(&five, "exe5", n).unwrap().0)))).collect();
     assert_eq!(listed, all, "every soul the game has, in the forms' order");
     assert_eq!(all.len(), 12);
-    for flag in ["soul_unison", "chaos_unison"] {
-        assert_eq!(block.get(schema, schema.index_of(flag).unwrap()), FieldValue::Bool(true), "{flag}");
-    }
+    assert_eq!(block.get(schema, schema.index_of("chaos_unison").unwrap()), FieldValue::Bool(true));
     // A side that says nothing of them plays with exactly that.
     let plain = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let setup = plain.round(&five, 3);
@@ -470,8 +468,8 @@ fn a_dark_side_starts_dark() {
 
 /// The soul button (EXE5's rules/souls's) offers only a soul the side has:
 /// with every soul (ProtoSoul among them), a Sword picked offers ProtoSoul;
-/// with none, or with GyroSoul alone, the button is there but the sword's
-/// soul isn't offered. Without Soul Unison there is no button.
+/// with GyroSoul alone, the button is there but the sword's soul isn't
+/// offered. With no souls (a save without Soul Unison) there is no button.
 #[test]
 fn an_unowned_soul_cant_be_chosen() {
     use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
@@ -479,13 +477,12 @@ fn an_unowned_soul_cant_be_chosen() {
     // Swords alone, so the first chip dealt is one (no folder the rules
     // take: the round is played as set up).
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
-    let offered_with = |souls: Option<&[&str]>, soul_unison: bool| {
+    let offered = |souls: Option<&[&str]>| {
         let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
         { let mut f = m.sides[0].folder(&content); f.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30]; m.sides[0].set_folder(&content, &f).unwrap(); }
         if let Some(names) = souls {
             m.sides[0].set_fact(&content, "souls", &forms(&content, "exe5", names)).unwrap();
         }
-        m.sides[0].set_fact(&content, "soul_unison", &flag(soul_unison)).unwrap();
         let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
         let mut last = 0u16;
         for _ in 0..400 {
@@ -503,10 +500,8 @@ fn an_unowned_soul_cant_be_chosen() {
         }
         panic!("no chip picked");
     };
-    let offered = |souls| offered_with(souls, true);
     assert_eq!(offered(None), (true, true));
-    assert_eq!(offered_with(None, false), (false, false), "no Soul Unison, no button");
-    assert_eq!(offered(Some(&[])), (true, false));
+    assert_eq!(offered(Some(&[])), (false, false), "no souls, no button");
     assert_eq!(offered(Some(&["gyrosoul"])), (true, false));
     // ProtoSoul alone, or with Team Colonel's ColonelSoul: offered.
     assert_eq!(offered(Some(&["protosoul", "colonelsoul"])), (true, true));
@@ -680,8 +675,7 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
 
 /// A side's karma and souls go into its round's setup: the rules'
 /// setup holds the karma, the souls (which the
-/// soul button offers), Soul Unison and Chaos Unison (on unless the side
-/// says).
+/// soul button offers) and Chaos Unison (on unless the side says).
 #[test]
 fn karma_and_souls_reach_the_round() {
     let content = exe5_content();
@@ -698,7 +692,7 @@ fn karma_and_souls_reach_the_round() {
     use nettai_content_api::{FieldValue, Registry};
     assert_eq!(soul(0), Some(FieldValue::Ref(Some((Registry::Form, colonel.0)))));
     assert_eq!(soul(1), Some(FieldValue::Ref(None)));
-    assert_eq!((field("soul_unison"), field("chaos_unison")), (FieldValue::Bool(true), FieldValue::Bool(false)));
+    assert_eq!(field("chaos_unison"), FieldValue::Bool(false));
     // An EXE6 match's sides have no souls.
     let six_content = exe6_content();
     let six = crate::pick::live(&six_content, "exe6", 1, None).unwrap();

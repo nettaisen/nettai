@@ -2299,7 +2299,9 @@ The last custom-screen piece in Rust that was one game's: EXE5's soul button and
 - **Matches and netplay.** A side says `soul_unison` and `chaos_unison` (match-file keys written only when off;
   `facts::write` puts them into the souls system's setup; a ruleset without them refuses one off); the EXE5 save
   import fills them from the save's flags (and the souls from their flags whatever Soul Unison says). The offer
-  carries them and NaviStats' new byte goes on the wire: protocol version 7.
+  carries them and NaviStats' new byte goes on the wire: protocol version 7. (Since 2026-10-06 Soul Unison is the
+  souls': `soul_unison` is gone, the button is there when the side has souls, and a save without Soul Unison
+  imports none.)
 - **The frontend.** nettai-render draws the soul button as the system's button named `soul` (the pack's look, its
   details picture in Chaos Unison's palette by the offer, its two states' tiles), reading the offer and the
   window's step from the souls system's state by name (`SoulOffer::of`, as `CrossWindow::of` reads the cross

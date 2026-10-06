@@ -2,14 +2,13 @@
 //! operates, its equipped folder with its Regular chip, MegaMan's NaviCust
 //! (its board, by its ExpMemry, and its programs as placed) and patch cards
 //! (those switched on), what it brings to the stats (MegaMan's base HP, the
-//! Regular memory), its karma (the light/dark value), the souls it has, its
-//! Soul Unison and Chaos Unison, and its auto battle data (what a navi in
-//! auto battle plays from it: EXE5's rules' `auto_battle_places` and
-//! `auto_battle_records`); for a side that operates a team navi, the
-//! navi's level, whose HP the story gives; and its SP deletion times. The
-//! import is the compat boundary's: a save is the original's bytes, and a
-//! side its game's facts (nettai-demo's `save_import` picks the game's
-//! import).
+//! Regular memory), its karma (the light/dark value), the souls it has (none
+//! without Soul Unison), its Chaos Unison, and its auto battle data (what a
+//! navi in auto battle plays from it: EXE5's rules' `auto_battle_places` and
+//! `auto_battle_records`); for a side that operates a team navi, the navi's
+//! level, whose HP the story gives; and its SP deletion times. The import is
+//! the compat boundary's: a save is the original's bytes, and a side its
+//! game's facts (nettai-demo's `save_import` picks the game's import).
 
 use nettai_match::{Folder, Side, ids};
 use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, AutoBattlePattern, Save};
@@ -115,17 +114,17 @@ pub fn read(file: &[u8]) -> Result<Save, String> {
     Save::read(file).or_else(|e| Save::from_image(file).map_err(|_| e))
 }
 
-/// Take the karma, the souls, Soul Unison, the NaviCust board's
-/// expansions and the auto battle data from an EXE5 save, the side of
-/// a match of `game` (an EXE5 one): the souls its version's flags give
-/// (the game's souls of those numbers) as the side's soul list, and its
-/// Soul Unison and Chaos Unison (event flags 0 and 0x236); the save's
-/// ExpMemry (key item 0x61's count) as the expansions of the side's
-/// NaviCust, if it has one (its programs stay: one off a smaller board
-/// is the match's check's to say); the save's auto battle data (its
-/// first block, [`state_auto_battle`]: what the game has learned of this
-/// player) as the side's; the save's SP navi deletion times (`sp_times`,
-/// [`sp_times`]). What is worth saying about it.
+/// Take the karma, the souls, Chaos Unison, the NaviCust board's
+/// expansions and the auto battle data from an EXE5 save, the side of a
+/// match of `game` (an EXE5 one): the souls its version's flags give (the
+/// game's souls of those numbers) as the side's soul list, none if it hasn't
+/// Soul Unison (event flag 0: the soul button), and its Chaos Unison (event
+/// flag 0x236); the save's ExpMemry (key item 0x61's count) as the
+/// expansions of the side's NaviCust, if it has one (its programs stay: one
+/// off a smaller board is the match's check's to say); the save's auto
+/// battle data (its first block, [`state_auto_battle`]: what the game has
+/// learned of this player) as the side's; the save's SP navi deletion times
+/// (`sp_times`, [`sp_times`]). What is worth saying about it.
 pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Vec<String> {
     let mut notes = Vec::new();
     let compat = crate::Compat::exe5();
@@ -148,13 +147,13 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
         }
     };
     state(side, "karma", &[Fact::Value(Value::Int(save.light_dark() as i64))]);
-    state(side, "soul_unison", &[Fact::Value(Value::Bool(save.soul_unison()))]);
     state(side, "chaos_unison", &[Fact::Value(Value::Bool(save.chaos_unison()))]);
     // (A save's souls are by the original's number: compat names each
-    // number's form.)
+    // number's form. Without Soul Unison it has no soul button: no souls.)
     let mut souls = Vec::new();
     let mut missing = Vec::new();
-    for n in save.souls() {
+    let has = if save.soul_unison() { save.souls() } else { Vec::new() };
+    for n in has {
         match compat.form(n).and_then(|k| ids::form(content, game, k)) {
             Some(f) => souls.push(Fact::Value(Value::Def(Registry::Form, f.0))),
             None => missing.push(n),
@@ -283,8 +282,8 @@ mod tests {
 
     /// A Team ProtoMan save, dark, with every soul flag set and one
     /// ExpMemry: its karma, its version's souls EXE5 has (ProtoSoul among
-    /// them) and its NaviCust's board (5x4, where a new side's is the
-    /// largest).
+    /// them; none without Soul Unison) and its NaviCust's board (5x4, where
+    /// a new side's is the largest).
     #[test]
     fn a_exe5_save_gives_the_karma_and_souls() {
         let content = exe5_content();
@@ -314,6 +313,13 @@ mod tests {
         assert!(souls.contains(&"protosoul") && !souls.contains(&"colonelsoul"), "{souls:?}");
         // (Its six souls: those the game hasn't yet are said.)
         assert_eq!(notes.len() + souls.len(), 6, "{notes:?}");
+        // Without Soul Unison (event flag 0), its soul flags all the same:
+        // no souls.
+        let mut without = image.clone();
+        without[0x29F8] &= !0x80;
+        let mut m2 = nettai_match::Match::empty(&content, "exe5").unwrap();
+        import_file(&content, &mut m2, 0, &without).unwrap();
+        assert!(m2.sides[0].facts.get(&content, "souls").unwrap().defs().is_empty());
         assert_eq!(m.sides[1], nettai_match::Match::empty(&content, "exe5").unwrap().sides[1]);
         let expansions = |s: &nettai_match::Side| nettai_match::testing::navicust_expansions(&content, s);
         assert_eq!((expansions(s), expansions(&m.sides[1])), (Some(1), Some(2)));
