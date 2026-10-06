@@ -1,0 +1,267 @@
+// The title: the name, "press start", then the main menu, with a battle
+// playing itself on the monitor beside it.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, MenuItem, Hints, Hint } from "widgets.slint";
+
+export component Logo {
+    in property <length> size: Theme.display;
+    in property <bool> tagline: true;
+    min-width: max(word.preferred-width, tag.preferred-width);
+    height: root.size * (root.tagline ? 1.55 : 1.25);
+
+    // 対: the versus, the match. Behind the word, large and faint.
+    Text {
+        x: word.preferred-width * 0.72 - self.preferred-width * 0.5;
+        y: (word.preferred-height - self.preferred-height) / 2;
+        text: "対";
+        color: Theme.cyan.with-alpha(0.13);
+        font-size: root.size * 2;
+        font-weight: Theme.black;
+    }
+
+    // The word, with its shadow pushed down and right in magenta.
+    Text {
+        x: word.x + root.size * 0.045;
+        y: word.y + root.size * 0.045;
+        text: word.text;
+        color: Theme.magenta.with-alpha(0.85);
+        font-size: word.font-size;
+        font-weight: word.font-weight;
+        font-italic: true;
+        letter-spacing: word.letter-spacing;
+    }
+
+    word := Text {
+        x: 0;
+        y: 0;
+        text: "nettai";
+        color: white;
+        font-size: root.size;
+        font-weight: Theme.black;
+        font-italic: true;
+        letter-spacing: -root.size * 0.02;
+    }
+
+    tag := Label {
+        visible: root.tagline;
+        x: root.size * 0.06;
+        y: root.size * 1.2;
+        text: @tr("BATTLE NETWORK · ROLLBACK NETPLAY");
+        color: Theme.cyan;
+        font-size: max(11px, root.size * 0.11);
+        letter-spacing: max(2px, root.size * 0.04) * Theme.tracking;
+    }
+}
+
+export struct MenuEntry {
+    text: string,
+    caption: string,
+    enabled: bool,
+}
+
+export component TitleScreen {
+    // The menu is showing (after "press start").
+    in-out property <bool> started;
+    in-out property <int> cursor;
+    // The attract battle's picture, and its scale (physical pixels a frame
+    // pixel).
+    in property <image> picture;
+    in property <int> scale;
+    out property <length> monitor-width: monitor-area.width;
+    out property <length> monitor-height: monitor-area.height;
+    // Which game the monitor plays.
+    in property <string> monitor-game;
+    in property <string> version;
+    callback activate(int);
+    callback sound(UiSound);
+    property <bool> portrait: root.height > root.width;
+    property <[MenuEntry]> entries: [
+        { text: @tr("menu" => "PLAY"), caption: @tr("Fight the stand-in, offline"), enabled: true },
+        { text: @tr("menu" => "NETPLAY"), caption: @tr("Play another player with a room code"), enabled: true },
+        { text: @tr("menu" => "REPLAYS"), caption: @tr("Watch the sets you've recorded"), enabled: true },
+        { text: @tr("menu" => "SETTINGS"), caption: @tr("Language, sound and controls"), enabled: true },
+        { text: @tr("menu" => "QUIT"), caption: "", enabled: true },
+    ];
+
+    public function nav(a: NavAction) {
+        if !root.started {
+            if a == NavAction.confirm {
+                root.started = true;
+                root.sound(UiSound.pick);
+            }
+            return;
+        }
+        if a == NavAction.up {
+            root.cursor = mod(root.cursor + root.entries.length - 1, root.entries.length);
+            root.sound(UiSound.cursor);
+        } else if a == NavAction.down {
+            root.cursor = mod(root.cursor + 1, root.entries.length);
+            root.sound(UiSound.cursor);
+        } else if a == NavAction.confirm {
+            root.sound(UiSound.pick);
+            root.activate(root.cursor);
+        } else if a == NavAction.back {
+            root.sound(UiSound.back);
+            root.started = false;
+        }
+    }
+
+    // The logo: centered and large before start, then up and to the left.
+    logo := Logo {
+        size: root.started ? (Theme.compact ? 52px : 84px) : (Theme.compact ? 72px : 150px);
+        tagline: true;
+        x: root.started ? (root.portrait ? (root.width - self.min-width) / 2 : Theme.gutter + 12px) : (root.width - self.min-width) / 2;
+        y: root.started ? (root.portrait ? Theme.gutter + 10px : Theme.gutter + 28px) : root.height * 0.3;
+        animate x, y, size { duration: Theme.slow; easing: ease-out-expo; }
+    }
+
+    // Press start, blinking.
+    Text {
+        y: root.height * 0.3 + logo.height + 60px;
+        height: self.preferred-height;
+        text: @tr("PRESS START");
+        color: white;
+        font-size: Theme.compact ? 18px : 24px;
+        font-weight: Theme.black;
+        letter-spacing: 6px * Theme.tracking;
+        horizontal-alignment: center;
+        opacity: root.started ? 0 : (mod(animation-tick() / 1ms, 1400) < 900 ? 1 : 0.15);
+        animate opacity { duration: 180ms; }
+        TouchArea {
+            enabled: !root.started;
+            clicked => {
+                root.nav(NavAction.confirm);
+            }
+        }
+    }
+
+    // The menu.
+    menu := VerticalLayout {
+        x: root.started ? (root.portrait ? Theme.gutter : Theme.gutter) : -root.width * 0.5;
+        y: root.portrait ? root.height - self.preferred-height - 60px : Theme.gutter + 28px + logo.height + 30px;
+        width: root.portrait ? root.width - 2 * Theme.gutter : min(root.width * 0.42, 520px);
+        height: self.preferred-height;
+        spacing: 0px;
+        opacity: root.started ? 1 : 0;
+        animate x { duration: Theme.slow; easing: ease-out-expo; }
+        animate opacity { duration: Theme.settle; }
+        for e[i] in root.entries: MenuItem {
+            number: (i < 9 ? "0" : "") + (i + 1);
+            text: e.text;
+            caption: e.caption;
+            enabled: e.enabled;
+            focused: root.started && root.cursor == i;
+            activate => {
+                root.cursor = i;
+                root.sound(UiSound.pick);
+                root.activate(i);
+            }
+            hover => {
+                if root.cursor != i {
+                    root.cursor = i;
+                    root.sound(UiSound.cursor);
+                }
+            }
+        }
+        caption := Text {
+            height: 40px;
+            text: root.entries[root.cursor].caption;
+            color: Theme.text-dim;
+            font-size: Theme.body;
+            vertical-alignment: center;
+            x: 56px;
+            wrap: word-wrap;
+        }
+    }
+
+    // The monitor: a battle playing itself, beside the menu (above it on a
+    // phone held upright).
+    monitor-area := Rectangle {
+        x: root.portrait ? Theme.gutter : root.width * 0.48;
+        y: root.portrait ? logo.y + logo.height + 20px : root.height * 0.16;
+        width: root.portrait ? root.width - 2 * Theme.gutter : root.width * 0.52 - Theme.gutter - 16px;
+        height: root.portrait ? max(0px, menu.y - self.y - 30px) : root.height * 0.62;
+    }
+
+    monitor := Rectangle {
+        property <length> w: 240phx * root.scale;
+        property <length> h: 160phx * root.scale;
+        x: monitor-area.x + (monitor-area.width - self.w) / 2 + (root.started ? 0px : 80px);
+        y: monitor-area.y + (monitor-area.height - self.h) / 2;
+        width: self.w;
+        height: self.h;
+        opacity: root.started && root.scale > 0 ? 1 : 0;
+        animate opacity { duration: Theme.slow; }
+        animate x { duration: Theme.slow; easing: ease-out-expo; }
+
+        // Its frame: a slanted plate behind, a tag on it.
+        Slant {
+            x: -18px;
+            y: -18px;
+            width: parent.width + 36px;
+            height: parent.height + 36px;
+            lean: 30px;
+            color: @linear-gradient(135deg, Theme.raised 0%, Theme.panel 60%, Theme.deep 100%);
+            stroke: Theme.line-bright;
+            stroke-width: 1px;
+        }
+
+        Rectangle {
+            background: black;
+            drop-shadow-blur: 30px;
+            drop-shadow-color: Theme.cyan.with-alpha(0.25);
+        }
+
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.picture;
+            image-fit: fill;
+            image-rendering: pixelated;
+        }
+
+        // A sweep of light over the glass.
+        Rectangle {
+            background: @linear-gradient(120deg, white.with-alpha(0.06) 0%, transparent 40%, transparent 100%);
+        }
+
+        Rectangle {
+            x: -6px;
+            y: parent.height + 2px;
+            width: tag.preferred-width + 34px;
+            height: 26px;
+            Slant {
+                lean: 8px;
+                color: Theme.magenta;
+            }
+
+            tag := Text {
+                text: @tr("DEMO · {0}", root.monitor-game);
+                color: white;
+                font-size: 12px;
+                font-weight: Theme.black;
+                letter-spacing: 2px * Theme.tracking;
+            }
+        }
+    }
+
+    Hints {
+        x: Theme.gutter;
+        y: root.height - 48px;
+        visible: root.started && !root.portrait;
+        hints: [
+            { key: "↑↓", button: "✚", text: @tr("Choose") },
+            { key: "Enter", button: "A", text: @tr("Confirm") },
+            { key: "Esc", button: "B", text: @tr("Back") },
+        ];
+    }
+
+    Text {
+        x: root.width - self.width - Theme.gutter;
+        y: root.height - 36px;
+        text: root.version;
+        color: Theme.text-faint;
+        font-size: 12px;
+    }
+}

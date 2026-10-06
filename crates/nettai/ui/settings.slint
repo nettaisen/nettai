@@ -1,0 +1,190 @@
+// Settings: the language, the sound, how the battle is drawn, your name,
+// and the controls.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, Heading, Hints, Hint, OptionRow, Field, Glyph, Input } from "widgets.slint";
+
+export component SettingsScreen {
+    // The language's own name.
+    in property <string> language;
+    in property <int> volume;
+    in property <bool> menu-sounds;
+    // The battle's text: in the vector font, crisp, or the game's own.
+    in property <bool> crisp-text;
+    // The picture at the display's own density.
+    in property <bool> sharp;
+    in-out property <string> name;
+    in-out property <int> cursor;
+    property <int> rows: 6;
+
+    callback step(int, int);
+    callback set-name(string);
+    callback back();
+    callback sound(UiSound);
+
+    public function nav(a: NavAction) {
+        if a == NavAction.back {
+            if name-field.focused-input {
+                name-field.leave();
+                return;
+            }
+            root.sound(UiSound.back);
+            root.back();
+        } else if a == NavAction.up || a == NavAction.down {
+            root.cursor = mod(root.cursor + (a == NavAction.up ? root.rows - 1 : 1), root.rows);
+            root.sound(UiSound.cursor);
+            root.follow();
+        } else if a == NavAction.left || a == NavAction.right {
+            if root.cursor < 5 {
+                root.sound(UiSound.cursor);
+                root.step(root.cursor, a == NavAction.left ? -1 : 1);
+            }
+        } else if a == NavAction.confirm {
+            if root.cursor == 5 {
+                root.follow();
+            } else {
+                root.sound(UiSound.cursor);
+                root.step(root.cursor, 1);
+            }
+        }
+    }
+
+    function follow() {
+        if root.cursor == 5 {
+            name-field.edit();
+        } else {
+            name-field.leave();
+        }
+    }
+
+    function point(row: int) {
+        if root.cursor != row {
+            root.cursor = row;
+            root.sound(UiSound.cursor);
+            root.follow();
+        }
+    }
+
+    VerticalLayout {
+        padding-left: Theme.gutter;
+        padding-right: Theme.gutter;
+        padding-top: Theme.gutter * 0.6;
+        spacing: Theme.gap;
+
+        Heading {
+            text: @tr("heading" => "SETTINGS");
+            back => {
+                root.nav(NavAction.back);
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.gap * 2;
+            vertical-stretch: 1;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 10px;
+                for row[i] in [
+                    { text: @tr("LANGUAGE"), value: root.language, note: @tr("The menus, and the battle's names and words") },
+                    { text: @tr("VOLUME"), value: root.volume == 0 ? @tr("Off") : "" + root.volume, note: "" },
+                    { text: @tr("MENU SOUNDS"), value: root.menu-sounds ? @tr("On") : @tr("Off"), note: @tr("The game's own cursor sounds") },
+                    { text: @tr("BATTLE TEXT"), value: root.crisp-text ? @tr("Crisp") : @tr("Original"), note: root.crisp-text ? @tr("Names and messages drawn at the window's resolution") : @tr("The game's own lettering") },
+                    { text: @tr("PICTURE"), value: root.sharp ? @tr("Display's pixels") : @tr("Window's pixels"), note: @tr("Text sharper at the display's own density, at a cost") },
+                ]: OptionRow {
+                    text: row.text;
+                    value: row.value;
+                    note: row.note;
+                    focused: root.cursor == i;
+                    step(d) => {
+                        root.point(i);
+                        root.nav(d < 0 ? NavAction.left : NavAction.right);
+                    }
+                    activate => {
+                        root.point(i);
+                        root.nav(NavAction.confirm);
+                    }
+                    hover => {
+                        root.point(i);
+                    }
+                }
+                name-field := Field {
+                    text-label: @tr("YOUR NAME");
+                    placeholder: @tr("Type your name");
+                    text <=> root.name;
+                    focused: root.cursor == 5;
+                    edited(t) => {
+                        root.set-name(t);
+                    }
+                    hover => {
+                        root.point(5);
+                    }
+                    done => {
+                        name-field.leave();
+                    }
+                }
+
+                Rectangle {
+                    vertical-stretch: 1;
+                }
+            }
+
+            // The controls.
+            if !Theme.portrait: Rectangle {
+                horizontal-stretch: 0.9;
+                Slant {
+                    lean: 26px;
+                    color: Theme.panel.with-alpha(0.55);
+                    stroke: Theme.line;
+                    stroke-width: 1px;
+                }
+
+                VerticalLayout {
+                    padding: Theme.gap * 1.5;
+                    padding-left: 44px;
+                    padding-right: 44px;
+                    spacing: 9px;
+                    alignment: start;
+                    Label {
+                        text: @tr("CONTROLS");
+                    }
+
+                    for c in [
+                        { what: @tr("Move"), key: "← ↑ → ↓", button: "✚" },
+                        { what: @tr("A: chips, pick"), key: "Z", button: "A" },
+                        { what: @tr("B: buster (hold to charge), take back"), key: "X", button: "X" },
+                        { what: @tr("L and R"), key: "A / S", button: "LB / RB" },
+                        { what: @tr("START: to OK"), key: "Enter", button: "≡" },
+                        { what: @tr("SELECT"), key: "Backspace", button: "⧉" },
+                        { what: @tr("Pause"), key: "Esc", button: "⌂" },
+                        { what: @tr("Next language"), key: "Tab", button: "" },
+                    ]: HorizontalLayout {
+                        spacing: 14px;
+                        height: 26px;
+                        Text {
+                            text: c.what;
+                            color: Theme.text;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                            overflow: elide;
+                        }
+
+                        Glyph {
+                            key: c.key;
+                            button: c.button;
+                            y: (parent.height - self.height) / 2;
+                        }
+                    }
+                }
+            }
+        }
+
+        Hints {
+            visible: !Theme.portrait;
+            hints: [
+                { key: "↑↓", button: "✚", text: @tr("Choose") },
+                { key: "←→", button: "✚", text: @tr("Change") },
+                { key: "Esc", button: "B", text: @tr("Back") },
+            ];
+        }
+    }
+}
