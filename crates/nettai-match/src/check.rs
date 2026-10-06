@@ -4,32 +4,24 @@
 //!
 //! - **The arena**: the content's game, its link battle stages
 //!   (`crate::link_battle_stages`), and backgrounds its pack has.
-//! - **A side**: its navi, chips, patch cards and NaviCust programs
-//!   are the match's game's; its
-//!   auto battle data what the game can hold (`crate::auto_battle`); its
-//!   facts its game's rules' (`crate::facts::check`: an enum the rules
-//!   require stated, each definition the game's and once in its list, the
-//!   engine's form list forms of the navi's own lists); patch cards only
-//!   with rules that have rules/patch_cards, each installed once, at
-//!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (EXE6's menu
-//!   adds no card past 80 MB, `0x08141868`); a NaviCust only for MegaMan
-//!   under rules with rules/navicust, on its board (`check_navicust`);
-//!   the folder by its own game's rules (the game's rules'
-//!   `folder_check`, `crate::folders`: EXE6's folder editor's), on the stats
-//!   the round set up (the NaviCust's and the patch cards' folder limits:
-//!   the original's folder editor and its link battle check read the stats
-//!   the reload made).
+//! - **A side**: its navi stated and the match's game's; its auto battle
+//!   data what the game can hold (`crate::auto_battle`); its facts its game's
+//!   rules' (`crate::facts::check`: an enum the rules require stated, each
+//!   definition they name, at any depth, the game's, a definition once in its
+//!   list, the engine's form list forms of the navi's own lists).
+//! - **What its game's rules say of it** (their `validate`, `Battle::validate`),
+//!   once the round is set up (the stats its rules built: the NaviCust's and
+//!   the patch cards' folder limits, which the original's folder editor and
+//!   its link battle check read): EXE6's and EXE5's the navi's level, the
+//!   base HP, the patch cards, the NaviCust on its board, the folder by its
+//!   game's folder rules (content/exe6/rules, content/exe5/rules). This crate
+//!   knows none of those: it reports what the rules say.
 
-use crate::folders;
-use crate::{Arena, Match, Place, Side, ids};
+use crate::{Arena, Folder, Match, Place, Side, ids};
 use nettai_battle::Battle;
-use nettai_battle::content::{Content, PlayerFact};
-use nettai_battle::patch_cards::MAX_CARDS;
+use nettai_battle::content::Content;
 use nettai_battle::setup::NaviStats;
 use std::sync::Arc;
-
-/// The installed patch cards' MB together at most (EXE6's).
-pub const CARD_MB: u32 = 80;
 
 fn check_place(content: &Content, game: &str, p: &Place, at: &str, out: &mut Vec<String>) {
     if p.stage.index() >= content.defs.stages.len() || !ids::in_game(content, game, &content.defs.stage(p.stage).key) {
@@ -61,154 +53,32 @@ pub fn check_arena(content: &Content, a: &Arena) -> Vec<String> {
 }
 
 /// What is wrong with a side of a match on `arena` (a sound one:
-/// `check_arena`) that needs no battle to see.
+/// `check_arena`) that needs no battle to see: its navi, its auto battle
+/// data, its facts as its game's rules declare them.
 pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<String> {
     let mut out = Vec::new();
     let defs = &content.defs;
     let game = arena.game.as_str();
-    // Everything the side names is the game's.
-    let of_game = |key: &str| ids::in_game(content, game, key);
-    if s.navi.index() >= defs.navis.len() || !of_game(&defs.navi(s.navi).key) {
-        out.push(format!("a navi {game} hasn't"));
-        return out;
+    // (A side's facts of another game's rules say nothing of this game's.)
+    if !s.facts.fit(content) {
+        return crate::facts::check(content, arena, s);
     }
-    // The navi's level (the engine's level fact), up to its last: a navi
-    // code's (EXE6's `levels`: 0 to 14), which a link navi always states
-    // (it exists only through its code) and MegaMan may leave out (no code
-    // received); a navi with a story (EXE5's team navis): its own levels,
-    // which its damage rows are read at, always stated; a navi with neither
-    // takes none. Nothing fills in a level a side leaves out.
-    let name = crate::names::navi(content, s.navi);
-    let navi = content.navi(s.navi);
-    let story_last = navi.story.as_ref().map(|st| st.max_level);
-    let code_last = navi.levels.as_ref().map(|l| l.by_level.len().saturating_sub(1) as u8);
-    match (s.level(content), story_last, code_last) {
-        (Some(l), Some(last), _) if l > last => out.push(format!("level {l}: {name}'s level is 0 to {last}")),
-        (None, Some(last), _) => out.push(format!("{name} has no level (0 to {last})")),
-        (Some(l), None, Some(last)) if l > last => out.push(format!("level {l}: a navi code's level is 0 to {last}")),
-        (None, None, Some(last)) if !navi.changes_form() => {
-            out.push(format!("{name} has no level (0 to {last}): a link navi exists only through its navi code"))
+    match s.stated_navi(content) {
+        None => {
+            out.push("no navi: a side states its own".into());
+            return out;
         }
-        (Some(l), None, None) => out.push(format!("level {l}: {name} takes no level")),
-        _ => {}
+        Some(n) if n.index() >= defs.navis.len() || !ids::in_game(content, game, &defs.navi(n).key) => {
+            out.push(format!("a navi {game} hasn't"));
+            return out;
+        }
+        Some(_) => {}
     }
     // The auto battle data: what the game can hold of it, where the
     // game has auto battle.
     out.extend(s.auto_battle.check(content, game));
-    let foreign = |c: nettai_content_api::ChipHandle| c.index() >= defs.chips.len() || !of_game(&defs.chip(c).key);
     // The facts its game's rules take.
     out.extend(crate::facts::check(content, arena, s));
-    // The folder's chips, before its rules.
-    if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| foreign(c.id))) {
-        out.push(format!("folder entry {i}: a chip {game} hasn't"));
-        return out;
-    }
-    // The patch cards.
-    if !s.patch_cards.is_empty() {
-        if !crate::has_patch_cards(content) {
-            out.push(format!("patch cards, but {game} has no rules/patch_cards"));
-        }
-        if s.patch_cards.len() > MAX_CARDS {
-            out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.patch_cards.len()));
-        }
-        if s.patch_cards.iter().any(|c| c.card.index() >= defs.patch_cards.len() || !of_game(&defs.patch_card(c.card).key)) {
-            out.push(format!("a patch card {game} hasn't"));
-        } else {
-            for (i, c) in s.patch_cards.iter().enumerate() {
-                if s.patch_cards[..i].iter().any(|d| d.card == c.card) {
-                    out.push(format!("the patch card {} is installed twice", crate::names::patch_card(content, c.card)));
-                }
-            }
-            let mb: u32 = s.patch_cards.iter().map(|c| defs.patch_card(c.card).mb as u32).sum();
-            if mb > CARD_MB {
-                out.push(format!("the patch cards are {mb} MB, past {CARD_MB}"));
-            }
-        }
-    }
-    // The NaviCust.
-    if let Some(n) = &s.navicust {
-        out.extend(check_navicust(content, arena, s, n));
-    }
-    // The base HP the save brings (the engine's `PlayerFact::BaseHp`) is the
-    // navi's that compiles a NaviCust (MegaMan's); any other's HP is its
-    // level's (a link navi's reload, a team navi's story), so a side of one
-    // that states another than the rules' default states what has no
-    // effect.
-    let base_hp = PlayerFact::BaseHp.name();
-    if defs.fact_field(PlayerFact::BaseHp).is_some() && crate::empty_navicust(content, s.navi).is_none() && !s.facts.is_default(content, base_hp) {
-        out.push(format!(
-            "{base_hp}: {}'s HP is its level's; a side states the base HP of the navi that compiles a NaviCust",
-            crate::names::navi(content, s.navi)
-        ));
-    }
-    // The folder's chips are the content's (its rules wait for the round).
-    let in_folder = |i: u8| s.folder.has(i);
-    if !s.folder.regular.is_none_or(in_folder) || !s.folder.tags.is_none_or(|(a, b)| in_folder(a) && in_folder(b)) {
-        out.push("folder: the Regular or tag chips aren't chips of the folder".into());
-    }
-    out
-}
-
-/// What is wrong with a side's NaviCust: it is MegaMan's (the navi that
-/// changes form: EXE6 compiles the PET's own navi's alone) under rules with
-/// rules/navicust; each program in one of its colors, on the board of
-/// its expansions (EXE6's `sub_813BB00`: every cell it covers on the board or
-/// its frame, not all on the frame), over no other (`sub_813BB68`); copies
-/// of a program in one color all compressed or not (the save keeps it by
-/// program and color: event flag 0x2660 + the part id).
-pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_battle::navicust::NaviCust) -> Vec<String> {
-    use nettai_battle::content::NaviCustRules;
-    use nettai_battle::navicust::{SIZE, cells};
-    let mut out = Vec::new();
-    let defs = &content.defs;
-    if !crate::has_navicust(content) {
-        out.push(format!("a NaviCust, but {} has no rules/navicust", arena.game));
-    }
-    if content.navi(s.navi).forms.is_none() {
-        out.push(format!("a NaviCust, but {}'s stats aren't a NaviCust's (only MegaMan's compiles)", crate::names::navi(content, s.navi)));
-    }
-    let rules = crate::navicust_rules(content);
-    let Some(board) = rules.board(n.expansions) else {
-        out.push(format!("a NaviCust with {} expansions: the game's board has {} sizes", n.expansions, rules.boards.len()));
-        return out;
-    };
-    let mut grid = [[None; SIZE]; SIZE];
-    let mut compression: Vec<((u16, u8), bool)> = Vec::new();
-    for (i, p) in n.iter().enumerate() {
-        if p.program.index() >= defs.navicust_programs.len() || !ids::in_game(content, &arena.game, &defs.navicust_program(p.program).key) {
-            out.push(format!("navicust program {}: a program {} hasn't", i + 1, arena.game));
-            continue;
-        }
-        let def = defs.navicust_program(p.program);
-        let name = crate::names::navicust_program(content, p.program);
-        if p.color as usize >= def.colors.len() {
-            out.push(format!("navicust program {} ({name}): a color it doesn't come in", i + 1));
-        }
-        if p.rotation > 3 {
-            out.push(format!("navicust program {} ({name}): turned {} quarters (0 to 3)", i + 1, p.rotation));
-        }
-        let shape = def.placed_shape(p.compressed, p.rotation);
-        if !NaviCustRules::fits(board, &shape, p.x, p.y) {
-            out.push(format!("navicust program {} ({name}) at ({}, {}): off the board", i + 1, p.x, p.y));
-            continue;
-        }
-        for (x, y) in cells(&shape, p.x, p.y) {
-            let cell = &mut grid[y as usize][x as usize];
-            if let Some(j) = *cell {
-                out.push(format!("navicust program {} ({name}) is over program {j}", i + 1));
-                break;
-            }
-            *cell = Some(i + 1);
-        }
-        let key = (p.program.0, p.color);
-        match compression.iter().find(|(k, _)| *k == key) {
-            Some(&(_, c)) if c != p.compressed => {
-                out.push(format!("navicust program {} ({name}): compressed and not (a save compresses every copy of a program in one color)", i + 1))
-            }
-            Some(_) => {}
-            None => compression.push((key, p.compressed)),
-        }
-    }
     out
 }
 
@@ -218,15 +88,16 @@ pub fn start(content: &Arc<Content>, m: &Match) -> Result<Battle, String> {
     // A folder being made has empty entries, and a round is set up with
     // whole ones: here they hold a stand-in (the folder's first chip, else
     // the content's first with a code). Its rules see its own entries
-    // (`folder_problems`), and say it isn't whole.
+    // (`validate`), and say it isn't whole.
     let mut m = m.clone();
     for s in &mut m.sides {
-        if s.folder.saved().is_none() {
+        let folder = s.folder(content);
+        if folder.saved().is_none() {
             let any = (0..content.defs.chips.len() as u16)
                 .map(nettai_content_api::ChipHandle)
                 .find_map(|id| content.chip(id).codes.first().map(|&code| nettai_battle::custom::FolderChip::new(id, code)));
-            let filler = s.folder.chips().next().or(any).ok_or("the content has no chip with a code")?;
-            s.folder = s.folder.filled_with(filler).into();
+            let filler = folder.chips().next().or(any).ok_or("the content has no chip with a code")?;
+            s.set_folder(content, &Folder::from(folder.filled_with(filler)))?;
         }
     }
     let setup = m.round(content, m.seed.unwrap_or(0));
@@ -244,12 +115,15 @@ pub fn round_stats(content: &Arc<Content>, m: &Match) -> Result<[NaviStats; 2], 
     start(content, m).map(|b| b.stats)
 }
 
-/// What side `side`'s rules say of its folder in `b`, the round's battle.
-fn folder_problems(b: &mut Battle, side: usize, s: &Side) -> Vec<String> {
-    let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| folders::problems(b, side as u8, &s.folder)));
+/// What side `side`'s rules say is wrong with its setup in `b`, the
+/// round's battle (their `validate`): of the side's own setup, its folder as
+/// it stands (the round was set up with a whole one: `start`).
+fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<String> {
+    b.setup.players[side].rules = s.facts.block().cloned();
+    let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.validate(side as u8)));
     match checked {
-        Ok(problems) => problems.into_iter().map(|p| format!("folder: {}", p.text)).collect(),
-        Err(_) => vec!["folder: the rules stopped checking it".into()],
+        Ok(problems) => problems.into_iter().map(|p| p.text).collect(),
+        Err(_) => vec!["the rules stopped checking the side".into()],
     }
 }
 
@@ -268,7 +142,7 @@ pub fn check_side(content: &Arc<Content>, arena: &Arena, s: &Side) -> Vec<String
     }
     let m = Match { seed: None, arena: arena.clone(), sides: [s.clone(), s.clone()] };
     match start(content, &m) {
-        Ok(mut b) => out.extend(folder_problems(&mut b, 0, s)),
+        Ok(mut b) => out.extend(validated(&mut b, 0, s)),
         Err(e) => out.push(e),
     }
     out
@@ -290,7 +164,7 @@ pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
     match start(content, m) {
         Ok(mut b) => {
             for (side, (s, at)) in m.sides.iter().zip(sides).enumerate() {
-                out.extend(folder_problems(&mut b, side, s).into_iter().map(|p| format!("{at}: {p}")));
+                out.extend(validated(&mut b, side, s).into_iter().map(|p| format!("{at}: {p}")));
             }
         }
         Err(e) => out.push(e),
@@ -301,7 +175,7 @@ pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nettai_battle::navicust::{NaviCust, PlacedProgram};
+    use crate::testing::{PlacedProgram, set_navicust};
 
     /// A MegaMan with a NaviCust of EXE6's programs: rules/navicust
     /// compiles it into the stats the round starts with.
@@ -328,7 +202,7 @@ mod tests {
                 PlacedProgram { program, color, x, y, rotation: 0, compressed: false }
             })
             .collect();
-        s.navicust = Some(NaviCust::new(&placed, 2).unwrap());
+        set_navicust(&content, s, &placed, 2);
         let problems = check_match(&content, &m);
         let b = Battle::new(m.round(&content, 3), content.clone());
         (b.stats[0], b.consoles[0].emotion_window_glitch, problems)
@@ -371,13 +245,13 @@ mod tests {
         let content = crate::testing::exe5_content();
         assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
-        assert_eq!(crate::Match::empty(&content, "exe5").unwrap().sides[0].navicust.map(|n| n.expansions), Some(2));
+        assert_eq!(crate::testing::navicust_expansions(&content, &crate::Match::empty(&content, "exe5").unwrap().sides[0]), Some(2));
         let undersht = ids::navicust_program(&content, "exe5", "undersht").unwrap();
         // (UnderSht covers its center and the cell above it.)
         let with = |x: u8, y: u8, expansions: u8| {
             let mut m = m.clone();
             let part = PlacedProgram { program: undersht, color: 0, x, y, rotation: 0, compressed: false };
-            m.sides[0].navicust = Some(NaviCust::new(&[part], expansions).unwrap());
+            set_navicust(&content, &mut m.sides[0], &[part], expansions);
             m
         };
         let said = |x: u8, y: u8, expansions: u8| -> Vec<String> {
@@ -422,7 +296,7 @@ mod tests {
         let program = |name: &str| ids::navicust_program(&content, "exe5", name).unwrap();
         let problems = |parts: &[PlacedProgram], expansions: u8| -> Vec<String> {
             let mut m = m.clone();
-            m.sides[0].navicust = Some(NaviCust::new(parts, expansions).unwrap());
+            set_navicust(&content, &mut m.sides[0], parts, expansions);
             check_match(&content, &m).into_iter().filter(|p| p.contains("navicust") || p.contains("NaviCust")).collect()
         };
         let at = |program, x: u8, y: u8, rotation: u8, compressed: bool| PlacedProgram { program, color: 0, x, y, rotation, compressed };
@@ -479,8 +353,10 @@ mod tests {
         let content = crate::testing::exe6_content();
         let m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         let mut setup = m.round(&content, 3);
+        // (No NaviCust: the rules' `navicust_expansions` none.)
         for p in &mut setup.players {
-            p.navicust = None;
+            let none = nettai_battle::rules::Fact::Value(nettai_content_api::Value::Nil);
+            p.set_fact(&content, "navicust_expansions", &[none]).unwrap();
         }
         setup.navi_stats[0].support = None;
         let b = Battle::new(setup, content.clone());

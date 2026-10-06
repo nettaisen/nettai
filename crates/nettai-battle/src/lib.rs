@@ -25,7 +25,6 @@ pub mod input;
 pub mod kinds;
 pub mod object;
 pub mod navicust;
-pub mod patch_cards;
 pub mod perspective;
 pub mod rng;
 pub mod rollback;

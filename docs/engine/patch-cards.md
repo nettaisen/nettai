@@ -208,11 +208,11 @@ rule, EXE6's patch cards module (content/exe6/rules/patch_cards/init.luau, in co
   definition's data, which the game's rules read (EXE6's: rules/patch_cards/cards.luau's constructors,
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
   (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
-- **A player's installed cards** are their setup's (`PlayerSetup::patch_cards`: card handles in the list's order,
-  each switched on or off, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup exchange and
-  the digest cover as the rest of the setup. The EXE6 part reads them with `battle.patch_cards(side)`
-  (`{ card, enabled }` each). exe6-compat's `codec::patch_cards` makes them from a save's or trace's card list,
-  the frontend from each side's `patch_cards` in the match file.
+- **A player's installed cards** are a fact of their game's rules' setup (`patch_cards`: a list of
+  `{ card, on }` in the list's order, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup
+  exchange and the digest cover as the rest of the setup. The EXE6 part reads them with `rules.setup_of(side)`,
+  and its `validate` holds the list to no card twice and 80 MB. exe6-compat's `codec::patch_cards` makes them from
+  a save's or trace's card list, a match file states them under `patch_cards`.
 - **The application** is the part's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
   the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy

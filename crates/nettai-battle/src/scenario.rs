@@ -69,8 +69,6 @@ pub fn setup_on(content: &Content) -> RoundSetup {
         joypad_phase: 0,
         console: Default::default(),
         rules: None,
-        patch_cards: Default::default(),
-        navicust: None,
         auto_battle: Default::default(),
     };
     player.set_fact(content, "version", &[crate::rules::Fact::Name(testing::VERSION)]).expect("the test content's version");

@@ -78,6 +78,7 @@ pub enum Edit {
 
 /// Apply `edit` to the side's data: whether the match changed.
 pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit) -> bool {
+    let folder = side.folder(content);
     let d = &mut side.auto_battle;
     let set = |d: &mut AutoBattle, selected: Selected, place: Entry, chip: ChipPlace| match selected {
         Selected::Place(i) => d.places.get_mut(i).is_some_and(|p| std::mem::replace(p, place) != place),
@@ -116,7 +117,7 @@ pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit)
         },
         Edit::Record(r, record) => d.records.get_mut(r).is_some_and(|r| std::mem::replace(r, record) != record),
         Edit::FromFolder => {
-            *d = AutoBattle::of_folder(content, &side.folder);
+            *d = AutoBattle::of_folder(content, &folder);
             state.selected = Selected::Place(data::STANDARD.start);
             true
         }
@@ -527,7 +528,7 @@ mod tests {
         assert_eq!(state.selected, Selected::Place(data::PLACES - 1));
         assert_eq!(side.auto_battle.check(&content, "exe5"), Vec::<String>::new());
         // From the folder: what a random match states; no data: none.
-        let drawn = AutoBattle::of_folder(&content, &side.folder);
+        let drawn = AutoBattle::of_folder(&content, &side.folder(&content));
         assert!(edit(side, &mut state, Edit::FromFolder));
         assert_eq!((side.auto_battle, state.selected), (drawn, Selected::Place(data::STANDARD.start)));
         assert!(edit(side, &mut state, Edit::NoData) && side.auto_battle.is_blank());

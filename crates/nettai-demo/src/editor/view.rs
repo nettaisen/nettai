@@ -105,7 +105,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         }
         // (Patch cards are the navi's that changes form: the cards change
         // MegaMan's stats.)
-        let changes_form = e.content.navi(side.navi).forms.is_some();
+        let changes_form = e.content.navi(side.navi(&e.content)).forms.is_some();
         // (Where the game's rules have auto battle: EXE5's.)
         if nettai_match::auto_battle::has(&e.content) {
             tabs = tabs.push(nav("  Auto battle", Tab::AutoBattle(s), e.tab));
@@ -113,7 +113,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if changes_form && nettai_match::has_patch_cards(&e.content) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
-        if nettai_match::has_navicust(&e.content) && e.content.navi(side.navi).forms.is_some() {
+        if nettai_match::has_navicust(&e.content) && changes_form {
             tabs = tabs.push(nav("  NaviCust", Tab::NaviCust(s), e.tab));
         }
         tabs = tabs.push(nav("  Stats", Tab::Stats(s), e.tab));
@@ -200,26 +200,26 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let side = e.side(s);
     // (The match's game's navis.)
     let navis: Vec<Choice<_>> = nettai_match::navis(c, e.m.game()).into_iter().map(|n| Choice { label: e.names.navi(c, n), value: n }).collect();
-    let navi = Choice { label: e.names.navi(c, side.navi), value: side.navi };
+    let navi = Choice { label: e.names.navi(c, side.navi(c)), value: side.navi(c) };
     let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.level(c).map_or(String::new(), |l| l.to_string()));
     let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
     // (No navi code for EXE5's MegaMan.)
-    let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
+    let level_kind = side.takes_level(c).then(|| c.navi(side.navi(c)).forms.is_none());
     if level_kind == Some(true) {
         col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
-        if let Some(last) = nettai_match::story::max_level(c, side.navi) {
+        if let Some(last) = nettai_match::story::max_level(c, side.navi(c)) {
             col = col.push(
                 text(format!("0 to {last}: changing it fills in the HP the story gives at that level (the stats pane); at {last}, the story done."))
                     .size(13)
                     .color(DIM),
             );
-        } else if let Some(levels) = c.navi(side.navi).levels.as_ref().filter(|_| crate::editor::levels::has_levels(c, side)) {
+        } else if let Some(levels) = c.navi(side.navi(c)).levels.as_ref().filter(|_| crate::editor::levels::has_levels(c, side)) {
             let last = levels.by_level.len().saturating_sub(1);
             col = col.push(text(format!("0 to {last}: the round gives the navi the stats its save's reload gives at that level, the game cleared (the stats pane).")).size(13).color(DIM));
         }
     } else if level_kind == Some(false) {
         col = col.push(field("Navi code level", text_input("none", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
-        let last = c.navi(side.navi).levels.as_ref().map_or(0, |l| l.by_level.len().saturating_sub(1));
+        let last = c.navi(side.navi(c)).levels.as_ref().map_or(0, |l| l.by_level.len().saturating_sub(1));
         col = col.push(
             text(format!("Empty: no navi code (as usual). 0 to {last}: MegaMan received from a navi code, his level's gains over his NaviCust, no Beast Out button."))
                 .size(13)
@@ -347,11 +347,11 @@ fn yes(b: bool) -> &'static str {
 fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
-    let f = &side.folder;
+    let f = &side.folder(c);
     // The limits are the round's stats' (the rules check them).
     let stats = match &e.round {
         Ok(st) => st[s],
-        Err(_) => nettai_match::Side::fresh_stats(c, side.navi),
+        Err(_) => nettai_match::Side::fresh_stats(c, side.navi(c)),
     };
     // The folder's entries.
     let mut entries = Column::new().spacing(1);
@@ -519,14 +519,15 @@ pub(crate) fn class_letter(c: ChipClass) -> &'static str {
 fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
-    let mb: u32 = side.patch_cards.iter().map(|x| c.defs.patch_card(x.card).mb as u32).sum();
+    let cards = crate::editor::app::cards_of(c, side);
+    let mb: u32 = cards.iter().map(|&(card, _)| c.defs.patch_card(card).mb as u32).sum();
     let mut installed = Column::new().spacing(2);
-    for (i, card) in side.patch_cards.iter().enumerate() {
-        let d = c.defs.patch_card(card.card);
+    for (i, &(card, on)) in cards.iter().enumerate() {
+        let d = c.defs.patch_card(card);
         installed = installed.push(
             row![
-                checkbox(card.enabled).on_toggle(move |b| Msg::CardOn(s, i, b)),
-                text(e.names.patch_card(c, card.card)).size(14).width(Length::Fill),
+                checkbox(on).on_toggle(move |b| Msg::CardOn(s, i, b)),
+                text(e.names.patch_card(c, card)).size(14).width(Length::Fill),
                 text(format!("{} MB", d.mb)).size(12).color(DIM),
                 button(text("↑").size(12)).on_press(Msg::CardMove(s, i, true)).style(button::text),
                 button(text("↓").size(12)).on_press(Msg::CardMove(s, i, false)).style(button::text),
@@ -541,7 +542,7 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     let mut all: Vec<(String, nettai_content_api::PatchCardHandle)> = (0..c.defs.patch_cards.len() as u16)
         .map(nettai_content_api::PatchCardHandle)
         .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.patch_card(h).key))
-        .filter(|h| !side.patch_cards.iter().any(|x| x.card == *h))
+        .filter(|h| !cards.iter().any(|x| x.0 == *h))
         .map(|h| (e.names.patch_card(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
         .collect();
@@ -561,11 +562,11 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
             .align_y(Alignment::Center),
         )
     });
-    let over = mb > nettai_match::check::CARD_MB;
+    // (Past the list's MB the rules say so, with the other problems.)
     row![
         column![
             heading(format!("{}: patch cards", SIDES[s])),
-            text(format!("{mb} MB of {} used; they apply in this order.", nettai_match::check::CARD_MB)).size(14).color(if over { RED } else { DIM }),
+            text(format!("{mb} MB used; they apply in this order.")).size(14).color(DIM),
             scrollable(installed).height(Length::Fill),
         ]
         .spacing(8)

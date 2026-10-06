@@ -363,7 +363,7 @@ mod tests {
         assert_eq!(nettai_match::check::check_side_alone(&six, &m.arena, &m.sides[0]).iter().filter(|p| !p.contains("folder")).count(), 0);
         // A navi that doesn't change form is offered no form list.
         let side = &mut m.sides[0];
-        side.navi = nettai_match::ids::navi(&six, "exe6", "protoman").unwrap();
+        side.set_navi(&six, nettai_match::ids::navi(&six, "exe6", "protoman").unwrap()).unwrap();
         assert!(lists(&six, "exe6", side).is_empty());
 
         let five = exe5_content();

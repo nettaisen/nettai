@@ -13,6 +13,7 @@ local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
 local light_dark = require("@self/light_dark")
 local navicust = require("@self/navicust")
+local navicust_board = require("@self/navicust/board")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
 local souls = require("@self/souls")
@@ -75,6 +76,29 @@ local rules: Rules = {
     state = state,
     -- What a player brings (nettai-match from a match's side, exe5-compat from a recording): a side's facts.
     setup = {
+        -- The navi they play: the round's stats are its (`Battle::new` holds them to it). No default: a side states
+        -- it.
+        navi = "navi",
+        -- Their folder as the save keeps it, an entry with no chip empty (a folder being made); the Regular chip, an
+        -- entry of it (from 0), dealt first. (EXE5's folders have no tag chips.) A tool deals the round's battle folder
+        -- from them; ./folder checks them (`validate`).
+        folder = schema.list({ chip = "chip", code = "code" }, 30),
+        regular_chip = "u8?",
+        -- The patch cards they have installed, in their list's order, each on or off (./patch_cards).
+        patch_cards = schema.list({ card = "patch_card", on = "bool" }, 32),
+        -- Their NaviCust (./navicust): how far its board has been expanded (none: no NaviCust, the stats as the
+        -- setup gives them: a navi but MegaMan's, a recording's), and the programs placed on its 7x7 grid in its
+        -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
+        -- `rotation` quarters clockwise, compressed or not.
+        navicust_expansions = "u8?",
+        navicust_programs = schema.list({
+            program = "navicust_program",
+            color = { "white", "pink", "yellow", "red", "blue", "green" },
+            x = "u8",
+            y = "u8",
+            rotation = "u8",
+            compressed = "bool",
+        }, 49),
         -- What the save brings to the navi's stats (./save): MegaMan's base HP, the Regular memory, and a team navi's
         -- level (the story's progress).
         hp = "u16",
@@ -98,7 +122,10 @@ local rules: Rules = {
     -- holy panels cleared, the starting mood 0x80); a finished save's souls, every one of either version (by id: a
     -- form's module reads ./souls, so this names them rather than reads theirs), and both unisons.
     setup_defaults = {
-        hp = 100,
+        -- A NaviCust with no programs on the largest board (MegaMan's compiles one; a recording's boundary states
+        -- none, its stats already the NaviCust's).
+        navicust_expansions = #navicust_board.boards - 1,
+        hp = save.NEW_GAME_HP,
         reg_up = fresh_stats.reg_up,
         karma = 500,
         souls = {
@@ -215,6 +242,19 @@ local rules: Rules = {
         controller = auto_battle.controller,
         -- The folder's rules, which tools ask (the simulation never does).
         folder_check = folder.check,
+        -- What is wrong with a side's setup, which tools ask (the simulation never does): what the save brings, the
+        -- patch cards, the NaviCust, the folder.
+        validate = function(side: number): { SetupProblem }
+            local out: { SetupProblem } = {}
+            local function problem(text: string, field: string?, entry: number?)
+                table.insert(out, { text = text, field = field, entry = entry })
+            end
+            save.validate(side, problem)
+            patch_cards.validate(side, problem)
+            navicust.validate(side, problem)
+            folder.validate(side, problem)
+            return out
+        end,
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),

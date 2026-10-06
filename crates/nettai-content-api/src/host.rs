@@ -367,6 +367,12 @@ pub enum RulesHook {
     /// the folder is `battle.checked_folder()`, and each rule it breaks is
     /// `battle.folder_problem(rule, text)`. Its result is unused.
     FolderCheck,
+    /// `validate(side)`: a tool asks what is wrong with side `side`'s
+    /// setup (`Battle::validate`, not the simulation), once the round is
+    /// set up (the stats its rules built): a list of problems, each a
+    /// sentence or `{ text, field?, entry? }` (the setup field it is of, and
+    /// the entry of a list field, from 1). Nothing: none.
+    Validate,
 }
 
 impl RulesHook {
@@ -381,6 +387,7 @@ impl RulesHook {
             RulesHook::CustomRequested => "custom_requested",
             RulesHook::CustomClosed => "custom_closed",
             RulesHook::FolderCheck => "folder_check",
+            RulesHook::Validate => "validate",
             RulesHook::NaviIntake => "navi_intake",
             RulesHook::ChipCheck => "chip_check",
             RulesHook::ChipCost => "chip_cost",
@@ -413,7 +420,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 37] = [
+    pub const ALL: [RulesHook; 38] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -451,6 +458,7 @@ impl RulesHook {
         RulesHook::CustomChipTakenBack,
         RulesHook::CustomKeys,
         RulesHook::CustomTakeBack,
+        RulesHook::Validate,
     ];
 }
 

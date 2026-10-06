@@ -41,7 +41,8 @@ local function round_setup(side: number)
     local setup = rules.setup() :: Setup
     local story = stats.navi.story
     local level = setup.level
-    local compiles = battle.navicust(side) ~= nil
+    -- (The navi that changes form compiles a NaviCust, where the setup gives one: ../navicust.)
+    local compiles = rules.setup_of(side).navicust_expansions ~= nil and stats.navi.forms ~= nil
     local team_navi = story ~= nil and level ~= nil
     if not compiles and not team_navi then
         return
@@ -60,6 +61,38 @@ local function round_setup(side: number)
     end
 end
 
+-- The base HP a setup that says nothing has (a new game's: MegaMan's fresh HP).
+local NEW_GAME_HP = 100
+
+-- `validate`'s part: the navi's level and the base HP as what the save brings allows: a team navi's level, its
+-- story's (0 to its last), always stated; none for a navi without a story. The base HP is MegaMan's (the navi that
+-- compiles a NaviCust): a team navi's HP is its level's, so a side of one that states another than a new game's
+-- states what has no effect.
+local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+    local setup = rules.setup_of(side)
+    local navi: NaviDef? = setup.navi
+    if navi == nil then
+        return
+    end
+    local name = battle.name(navi)
+    local level: number? = setup.level
+    local story = navi.story
+    if level ~= nil then
+        if story == nil then
+            problem(string.format("level %d: %s takes no level", level, name), "level")
+        elseif level > story.max_level then
+            problem(string.format("level %d: %s's level is 0 to %d", level, name, story.max_level), "level")
+        end
+    elseif story ~= nil then
+        problem(string.format("%s has no level (0 to %d)", name, story.max_level), "level")
+    end
+    if navi.forms == nil and setup.hp ~= NEW_GAME_HP then
+        problem(string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name), "hp")
+    end
+end
+
 return {
     round_setup = round_setup,
+    validate = validate,
+    NEW_GAME_HP = NEW_GAME_HP,
 }

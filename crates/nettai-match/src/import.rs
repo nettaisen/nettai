@@ -74,11 +74,11 @@ impl Side {
         let unlocks = save.unlocks();
         self.set_fact(content, "version", &[Fact::Name(save.version().name())])?;
         self.set_fact(content, "beast_out", &[Fact::Value(Value::Bool(unlocks.beast_out))])?;
-        let owned: Vec<Fact> = unlocks.owned_crosses(content, self.navi).iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
+        let owned: Vec<Fact> = unlocks.owned_crosses(content, self.navi(content)).iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
         self.set_fact(content, "crosses", &owned)?;
         // The level is the save's operated navi's; a link navi always has
         // one (it exists through its code).
-        let link_navi = !content.navi(self.navi).changes_form();
+        let link_navi = !content.navi(self.navi(content)).changes_form();
         match level {
             None if link_navi => notes.push("the save received no navi code: the side's link navi keeps its level".into()),
             _ => self.set_level(content, level)?,
@@ -136,7 +136,7 @@ mod tests {
         m.import_save(&content, 0, &all).unwrap();
         let s = &m.sides[0];
         assert_eq!((s.version(&content), s.level(&content)), (Some("gregar"), None));
-        assert_eq!(s.facts.form_list(&content), content.navi(s.navi).forms.as_ref().unwrap().listed("gregar"));
+        assert_eq!(s.facts.form_list(&content), content.navi(s.navi(&content)).forms.as_ref().unwrap().listed("gregar"));
         assert!(s.facts.is_default(&content, "beast_out"));
         let none = file(GameVersion::Gregar, true, [false; 5], 0, None, &[0; 20]);
         m.import_save(&content, 0, &none).unwrap();
@@ -152,7 +152,7 @@ mod tests {
         let protoman = crate::ids::navi(&content, "exe6", "protoman").unwrap();
         let mut m = crate::pick::live(&content, "exe6", 1, None).unwrap();
         let s = &mut m.sides[1];
-        s.navi = protoman;
+        s.set_navi(&content, protoman).unwrap();
         s.set_fact(&content, "crosses", &[]).unwrap();
         s.set_level(&content, Some(7)).unwrap();
         let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &[0; 20])).unwrap();
