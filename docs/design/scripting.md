@@ -180,9 +180,15 @@ Each object kind and action declares its state as named, typed fields:
 state = { slot = slot.TYPE, look = "record:attachment-look", anim = "u8", offset_x = "i32", lift = "i8" }
 ```
 
-Field types are `bool`, `u8`...`i32`, `object`, `vec3`, an enum (a list of names), fixed arrays (`"u8[18]"`),
-and references: to a definition (`"kind"`, `"action"`, `"chip"`, `"effect"`, `"record:<type>"`, ...) or an
-asset (`"sprite"`, `"sound"`, ...). The engine stores a block of the schema's own size, its fields packed in
+Field types are `bool`, `u8`...`i32`, `object`, `vec3`, `code` (a chip code, `"A"` to `"Z"` or `"*"`), an enum
+(a list of names), fixed arrays (`"u8[18]"`), references: to a definition (`"kind"`, `"action"`, `"chip"`,
+`"effect"`, `"record:<type>"`, ...) or an asset (`"sprite"`, `"sound"`, ...), records (a table of fields of
+their own: `drive = { mode = "u8", target = "chip" }`) and bounded lists (`schema.list(T, n)`: up to `n`
+elements of `T`, and how many it holds). A record's fields and a list's elements are read and written each by
+its place (`s.drive.mode`, `s.picks[2].code`, `#s.picks`); a list grows by its next element (`s.picks[#s.picks
++ 1] = { chip = c, code = "A" }`), and a record, a list or an array takes a table whole (its fields left out,
+zero). The engine finds a field by its name wherever the state's records have it (`Schema::find`: the rules'
+views read MeddySoul's `screen.mix_step` so). The engine stores a block of the schema's own size, its fields packed in
 name order (the layout is private to the store; fields have names and types, never offsets), with no limit but
 what the types take. An object's block is its slot's in its pool's `StateArena` (`Objects::state`), an action's
 its actor's in the actors' (`Actors::action_state`); `kinds::Vars::Content` and `ActionVars::Content` hold the

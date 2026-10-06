@@ -741,10 +741,15 @@ pub(crate) fn finish(
     }
     let mut schema_order: Vec<usize> = (0..schemas.len()).collect();
     schema_order.sort_by(|&a, &b| schemas[a].0.cmp(&schemas[b].0));
+    // (A schema's records are its own, whole: a table another schema is too
+    // is a record of it, not a reference: the rules' state holds the AI's
+    // fields that are a driven navi's `navi_state`.)
+    let no_schemas = HashMap::new();
+    let inline = Refs { defs: &def_keys, schemas: &no_schemas, assets };
     for i in schema_order {
         let (key, module, t) = &schemas[i];
         let at = format!("schema {key}");
-        let spec = refs.data(&LuaValue::Table(t.clone()), &at, true, &mut Vec::new())?;
+        let spec = inline.data(&LuaValue::Table(t.clone()), &at, true, &mut Vec::new())?;
         defs.push(Definition { registry: Registry::Schema, key: key.clone(), module: module.clone(), record_type: None, spec });
         tables.push(t.clone());
     }

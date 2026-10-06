@@ -1690,12 +1690,28 @@ declare asset: {
 }
 
 -- A state layout: each field's type, "bool", "u8", "u16", "u32", "i8",
--- "i16", "i32", "object", "vec3", an array ("u8[18]"), a list of variant
--- names, or a reference: "kind", "action", "effect", "spark", "region",
--- "collision", "chip", "weapon", "record", "record:<type>" (records of one
--- type), "sprite", "sound", "banner", "background", "mugshot". A reference
--- field holds a definition or an asset, or nil.
-export type StateSchema = { [string]: string | { string } }
+-- "i16", "i32", "object", "vec3", "code" (a chip code, "A" to "Z" or "*"),
+-- an array ("u8[18]"), a list of variant names, a reference ("kind",
+-- "action", "effect", "spark", "region", "collision", "chip", "weapon",
+-- "record", "record:<type>" (records of one type), "sprite", "sound",
+-- "banner", "background", "mugshot": a definition or an asset, or nil), a
+-- record (a table of fields of its own: `{ chip = "chip", code = "code" }`)
+-- or a list (`schema.list(T, n)`). A record's fields and a list's
+-- elements are read and written each by its place (`s.drive.mode`,
+-- `s.folder[2].code`, `#s.folder`); a list grows by its next element
+-- (`s.folder[#s.folder + 1] = ...`).
+export type SchemaField = string | { string } | SchemaList | StateSchema
+export type StateSchema = { [string]: SchemaField }
+-- A list's declaration (`schema.list(T, n)`): up to `n` elements of `T`.
+export type SchemaList = { __list: boolean, of: SchemaField, max: number }
+
+-- What a state's or a setup's declaration takes beside type names, lists of
+-- variants and records: `schema.list(T, n)`, a list of up to `n` (1 to
+-- 65535) elements of type `T` (a type name, a list of variants, a record
+-- or another list), and how many it holds.
+declare schema: {
+    list: (of: SchemaField, max: number) -> SchemaList,
+}
 
 -- An object kind: one behavior; what differs between uses goes in its
 -- state when spawned. `id` is qualified by its owner's folder when it lives

@@ -2038,33 +2038,61 @@ impl Defs {
                             (other, ty) => return Err(format!("{other:?} is no value of a {ty:?} field")),
                         })
                     };
+                    // A value at a place: an array's or a list's elements
+                    // from the first (an array's rest stay zero; a list
+                    // holds what is given), a record's fields by name.
+                    fn write(
+                        block: &mut nettai_content_api::Block,
+                        place: nettai_content_api::Place,
+                        v: &Data,
+                        value_of: &dyn Fn(&Data, &nettai_content_api::FieldType) -> Result<nettai_content_api::Value, String>,
+                    ) -> Result<(), String> {
+                        use nettai_content_api::FieldType;
+                        match (v, place.ty()) {
+                            (Data::List(items), FieldType::Array(..) | FieldType::List(..)) => {
+                                let n = place.capacity().expect("an array or a list");
+                                if items.len() > n {
+                                    return Err(format!("{} values, and the field holds {n}", items.len()));
+                                }
+                                if let FieldType::List(..) = place.ty() {
+                                    block.set_len_at(place, items.len())?;
+                                }
+                                for (k, item) in items.iter().enumerate() {
+                                    write(block, place.elem(k).expect("within the field's room"), item, value_of).map_err(|e| format!("[{}]: {e}", k + 1))?;
+                                }
+                                Ok(())
+                            }
+                            (Data::Map(entries), FieldType::Record(fields)) => {
+                                for (k, v) in entries {
+                                    let name = k.to_string();
+                                    let at = place.field(&name).ok_or_else(|| format!("the record has no field `{name}` ({})", fields.fields().iter().map(|f| f.name.as_str()).collect::<Vec<_>>().join(", ")))?;
+                                    write(block, at, v, value_of).map_err(|e| format!(".{name}: {e}"))?;
+                                }
+                                Ok(())
+                            }
+                            (v, ty) if ty.is_scalar() => {
+                                let value = value_of(v, ty)?;
+                                block.set_at(place, value).map_err(|e| e.to_string())?;
+                                if block.get_at(place).load() != value {
+                                    return Err(format!("{value:?} doesn't fit the field"));
+                                }
+                                Ok(())
+                            }
+                            (other, ty) => Err(format!("{other:?} is no value of a {ty} field")),
+                        }
+                    }
                     for (k, v) in entries {
                         let name = k.to_string();
                         let at = |e: String| what(&format!("setup_defaults.{name}: {e}"));
                         let i = schema.index_of(&name).ok_or_else(|| at("the setup has no such field".into()))?;
-                        match (v, &schema.field(i).ty) {
-                            // An array's, a list: its elements from the
-                            // first (the rest stay zero, none).
-                            (Data::List(items), nettai_content_api::FieldType::Array(elem, n)) => {
-                                if items.len() > *n as usize {
-                                    return Err(at(format!("{} values, and the field holds {n}", items.len())));
-                                }
-                                for (place, item) in items.iter().enumerate() {
-                                    let value = value_of(item, elem).map_err(&at)?;
-                                    setup_default.set_elem(schema, i, place, value).map_err(&at)?;
-                                    if setup_default.get_elem(schema, i, place).map(|x| x.load()) != Some(value) {
-                                        return Err(at(format!("{value:?} doesn't fit the field's elements")));
-                                    }
-                                }
+                        write(&mut setup_default, schema.place(i), v, &value_of).map_err(|e| {
+                            // (An element's or a field's error names its place.)
+                            if e.starts_with('[') || e.starts_with('.') {
+                                what(&format!("setup_defaults.{name}{e}"))
+                            } else {
+                                at(e)
                             }
-                            (v, ty) => {
-                                let value = value_of(v, ty).map_err(&at)?;
-                                setup_default.set(schema, i, value).map_err(|e| at(e.to_string()))?;
-                                if setup_default.get(schema, i).load() != value {
-                                    return Err(at(format!("{value:?} doesn't fit the field")));
-                                }
-                            }
-                        }
+                        })?;
                     }
                 }
                 _ => return Err(what("`setup_defaults` is a table of the setup's fields")),
