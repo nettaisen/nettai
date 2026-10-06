@@ -292,8 +292,9 @@ The art (icon, image, palette) is `chips.py`'s list:
   exactly (bn6battle-verify's JP-console recordings of both chips).
 
 `exe6-extract` takes the eleven pictures from the JP ROMs (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3, DblBeast and
-Falzar from JP Falzar, Gregar from JP Gregar), each chip's own on either console: a JP Falzar console's Gregar
-chip shows Falzar's beast in the original, and a known difference in the frame comparison.
+Falzar from JP Falzar, Gregar from JP Gregar), each chip's own on every console. The pack keeps no mark of where
+they came from: a US console's placeholder, and Falzar's beast in a JP Falzar console's Gregar chip, are the
+verification's to know (§5).
 
 ### 4.5 Sprites
 
@@ -346,6 +347,15 @@ tables give their starts.
 None of these touches the simulation. A trace that compares memory would still see some of them, marked
 *(trace)* below.
 
+**nettai has one presentation**: where the releases differ, the Japanese games' (the user, 2026-10-06: "nettai
+should not have any region specific code", and of the chip window, "go with jp everywhere"). No part of nettai
+knows a console's region: its packs carry no region, and the renderer draws every console's screen the same. What
+a console of the other region shows otherwise (a US console's placeholders and its chip window's later start below;
+an EXE5 Japanese console's background 0x05) is the verification's to know: its frame comparison knows each
+recording's console, asks the frontend where it draws those things (nettai-demo's `--mark`, `marks.tsv`) and
+counts them as known differences (bn6battle-verify's tools/frontend-compare/consoles.tsv, by game, region and
+version). The compat crates, which read recordings, keep what they need of a console's ROM.
+
 **Visibility.** The US added these:
 
 - `sub_80169BE`: show unless dimmed; hide the other side's object from a blind viewer. The US calls it from 12
@@ -375,8 +385,8 @@ JP leaves these objects' header bit 0x02 alone *(trace: the object header's flag
   follows `sub_80B8BA0`).
 
 The content shows the JP look of all three on every console (the user's call: Otenko and Django as the Japanese
-games draw them). The pack has 0C-49 and 0C-0F from the JP ROMs (§4.5); on a US console the frame comparison
-counts what is drawn with them as a known difference (the frontend's `known.tsv`).
+games draw them). The pack has 0C-49 and 0C-0F from the JP ROMs (§4.5); on a US console's recording the frame
+comparison counts what is drawn with them as a known difference.
 
 **HUD.**
 
@@ -387,8 +397,9 @@ counts what is drawn with them as a known difference (the frontend's `known.tsv`
   (docs/design/text-rendering.md §10).
 - The custom screen's close (`sub_8026DC4`) also starts HUD task 0x40 in JP (`sub_801E012`): the next chip's name
   shows from the close, through the turn's banner, until the fight's first decision sets the window; the US games
-  show it from that decision. The engine's `Battle::chip_hud` is the US games'; the frontend draws the Japanese
-  window on a Japanese console's screen (nettai-render `HudState`).
+  show it from that decision. The engine's `Battle::chip_hud` is the decisions'; the frontend draws the Japanese
+  games' window on every console (EXE6's flow rule `chip_window_at_close`, nettai-render `HudState`), and a US
+  console's recording differs there, a known difference to the frame comparison.
 - The HUD's graphics list (between `sub_801EC90` and `sub_801FE00`) has one transfer fewer in JP.
 
 **Text.**

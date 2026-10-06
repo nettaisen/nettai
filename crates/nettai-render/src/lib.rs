@@ -29,4 +29,4 @@ pub mod strings;
 pub mod textlayer;
 pub mod vfont;
 
-pub use render::{Frame, Region, Renderer};
+pub use render::{Frame, Renderer};

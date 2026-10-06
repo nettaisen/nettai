@@ -48,8 +48,6 @@ fn sprite(category: u8, index: u8) -> SpriteSheet {
                 SpriteFrame { tileset: 1, palette_set: 0, parts: 2, duration: 250, flags: 0xC0 },
             ],
         ],
-        // (One marked as another region's, which the pack keeps.)
-        region: (index == 0x3A).then(|| "jp".into()),
     }
 }
 
@@ -89,8 +87,6 @@ fn bundle() -> Bundle {
                 repeat_from: None,
             },
         ],
-        // (Its picture is one region's ROMs': the mark goes round too.)
-        region: Some("us".into()),
     };
     let hud = Hud {
         tiles: tiles(6, 7),
@@ -293,9 +289,9 @@ fn custom() -> CustomScreen {
         gray_palette: palette(56),
         other_palette: palette(57),
         chip_art: vec![
-            ChipArt { key: "cannon".into(), picture: picture(60), region: None, version: None },
-            ChipArt { key: "cut".into(), picture: picture(59), region: Some("jp".into()), version: Some("gregar".into()) },
-            ChipArt { key: "no-picture".into(), picture: Picture::default(), region: None, version: None },
+            ChipArt { key: "cannon".into(), picture: picture(60), version: None },
+            ChipArt { key: "cut".into(), picture: picture(59), version: Some("gregar".into()) },
+            ChipArt { key: "no-picture".into(), picture: Picture::default(), version: None },
         ],
         pictures: SlotPictures { ok: picture(61), ok_picked: picture(62), other: picture(67) },
         codes: tiles(56, 70),

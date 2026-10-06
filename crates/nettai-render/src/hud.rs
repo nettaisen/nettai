@@ -158,24 +158,20 @@ fn roll(shown: u16, target: u16, extra: u16) -> u16 {
 }
 
 impl HudState {
-    /// Follow one tick of the battle, as the console of `region` ("us",
-    /// "jp") shows it.
-    pub fn tick(&mut self, b: &Battle, region: crate::render::Region) {
-        // A Japanese console's custom screen, as it closes, starts the chip
-        // window's HUD task too (`sub_8026DC4` calls `sub_801E012`: task
-        // 0x40, besides the icons' task the US games' starts): the next
+    /// Follow one tick of the battle.
+    pub fn tick(&mut self, b: &Battle) {
+        // The custom screen, as it closes, starts the chip window's HUD task
+        // too where its game's flow says so (`chip_window_at_close`: EXE6's
+        // as its Japanese games' do, `sub_8026DC4` calling `sub_801E012`,
+        // task 0x40, besides the icons' task; EXE5's, 0x080230CC): the next
         // chip's name shows with the icons through the turn's banner, where
-        // the US games' shows it from the navi's first decision in the
-        // fight (`Battle::chip_hud`). Presentation of the Japanese games'
-        // HUD code (docs/engine/jp-differences.md §5); once the fight runs
-        // its decisions set the window on either console. An EXE5 console's
-        // does it too (0x080230CC: its game's flow's `chip_window_at_close`).
-        // (The task starts as the screens' results are exchanged, on the
-        // tick the icons come back.)
+        // without it the name shows from the navi's first decision in the
+        // fight (`Battle::chip_hud`). Once the fight runs its decisions set
+        // the window either way. (The task starts as the screens' results
+        // are exchanged, on the tick the icons come back.)
         let fighting = b.round.mode == mode::FIGHTING;
         let icons = b.chip_hud_for(b.setup.local_side).icons;
-        let own_game = b.content.rules();
-        let at_close = region == crate::render::Region::Jp || own_game.flow.chip_window_at_close;
+        let at_close = b.content.rules().flow.chip_window_at_close;
         if at_close && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
             (self.early_window, self.early_fight_ticks) = (true, 0);
         }
@@ -522,7 +518,13 @@ pub fn draw<'a>(
         {
             let bonus = nettai_battle::kinds::player::next_chip_bonus(b, r);
             let doubled = nettai_battle::kinds::player::next_chip_doubles(b, r);
-            draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
+            let end = draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
+            // (Shown from the screen's close, before the navi's first
+            // decision, where the caller asks.)
+            const AT_CLOSE: &str = "chip-window-at-close";
+            if !b.chip_hud_for(local).window && problems.wants(AT_CLOSE) {
+                problems.mark([0, 18 * 8, end, 20 * 8], AT_CLOSE.to_string());
+            }
         }
     }
 
@@ -724,7 +726,7 @@ fn draw_chip_name(
     chip: ChipHandle,
     (bonus, doubled): (u16, bool),
     problems: &mut Problems,
-) {
+) -> i32 {
     let words = text.strings.chip_name(&b.content, chip);
     let name = name_glyphs(b, hud, words, chip, problems);
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, name.len(), pal, (0, 18 * 8), Align::Left);
@@ -737,7 +739,7 @@ fn draw_chip_name(
         x = w.ceil() as i32 + 1;
     }
     if !shows_damage(b, chip) {
-        return;
+        return x;
     }
     let i = hand.cursor as usize;
     let number = |layer: &mut Layer, v: u16, x: &mut i32| {
@@ -768,7 +770,9 @@ fn draw_chip_name(
                 put_px(layer, hud, pal, e, x + 8 * k as i32, (18 + half as i32) * 8);
             }
         }
+        x += 16;
     }
+    x
 }
 
 /// The pack's text lines (`Hud::texts`): "TIME UP!", then the seconds 1-10;
