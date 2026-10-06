@@ -555,7 +555,7 @@ What follows is the switch as proposed.
 The JP and US code differ, not the data a console sends. So nothing in NaviStats or the init exchange says which
 one ran. The region belongs in the setup:
 
-- **Engine:** `RoundSetup::region: Region` (`Us`, `Jp`), beside `local_side` and `link_delay`.
+- **Engine:** `RoundSetup::region: Region` (`Us`, `Jp`), beside `local_side`.
   - It is part of the shared setup: both peers run the same simulation, so it is one value per match, not per
     side.
   - Tango pairs the EXE6 family (JP) and the BN6 family (US) apart: its lobby requires the same netplay tag. So a

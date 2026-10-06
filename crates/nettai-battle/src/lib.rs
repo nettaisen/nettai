@@ -23,7 +23,6 @@ pub mod hand;
 pub mod hud;
 pub mod input;
 pub mod kinds;
-pub mod link;
 pub mod object;
 pub mod navicust;
 pub mod patch_cards;

@@ -85,7 +85,6 @@ pub fn setup_on(content: &Content) -> RoundSetup {
         later_stages: Default::default(),
         low_hp_music_latched: false,
         players: [player.clone(), player],
-        link_delay: 0,
     }
 }
 
