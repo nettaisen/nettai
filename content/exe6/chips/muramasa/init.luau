@@ -7,8 +7,7 @@ local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../rules/lockon")
 
-return define.chip {
-    id = "muramasa",
+local chip: Chip = {
     codes = { "M" },
     element = "null",
     family = "sword",
@@ -33,3 +32,5 @@ return define.chip {
         charged = slashes.muramasa,
     },
 }
+
+return { muramasa = chip }

@@ -162,7 +162,7 @@ end
 
 local ACTIONS = { [APPEAR] = appear, [TAKE] = suck, [WIND_UP] = wind_up, [THROW] = throw, [LEAVE] = leave }
 
-dustman.kind = define.kind {
+dustman.kind = new.kind {
     id = "dustman/navi",
     pool = "actor",
     state = { taken = "identity[8]", count = "u8", thrown = "u8", controller = "object" },

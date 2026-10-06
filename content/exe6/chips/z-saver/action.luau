@@ -26,9 +26,9 @@ return {
         is = collision.slash,
         hits = collision.hits_navis,
         effects = {
-            define.effect { sprite = SLASH_SPRITE, anim = 1, palette = 4 },
-            define.effect { sprite = SLASH_SPRITE, anim = 0, palette = 4 },
-            define.effect { sprite = SLASH_SPRITE, anim = 3, palette = 4 },
+            new.effect { sprite = SLASH_SPRITE, anim = 1, palette = 4 },
+            new.effect { sprite = SLASH_SPRITE, anim = 0, palette = 4 },
+            new.effect { sprite = SLASH_SPRITE, anim = 3, palette = 4 },
         },
         boom = function(owner: Object, x: number, y: number, element: number, damage: number, boom: SonicBoom): Object?
             return sonic_boom.throw(owner, x, y, element, damage, boom)

@@ -5,31 +5,31 @@
 -- LifeSrd, in the last two rows, strikes with VarSwrd's damage
 -- (`damage_of`).
 
-local airhocky = require("../chips/airhocky")
-local aquaswrd = require("../chips/aquaswrd")
-local bambswrd = require("../chips/bambswrd")
+local airhocky = require("../chips/airhocky").airhocky
+local aquaswrd = require("../chips/aquaswrd").aquaswrd
+local bambswrd = require("../chips/bambswrd").bambswrd
 local cannon_chips = require("../chips/cannon")
 local dolthdr_chips = require("../chips/dolthdr")
-local elecswrd = require("../chips/elecswrd")
+local elecswrd = require("../chips/elecswrd").elecswrd
 local energbom_chips = require("../chips/energbom")
 local firebrn_chips = require("../chips/firebrn")
-local fireswrd = require("../chips/fireswrd")
+local fireswrd = require("../chips/fireswrd").fireswrd
 local gundels_chips = require("../chips/gundels")
-local lifesrd = require("../chips/lifesrd")
-local longswrd = require("../chips/longswrd")
-local minibomb = require("../chips/minibomb")
-local moonbld = require("../chips/moonbld")
+local lifesrd = require("../chips/lifesrd").lifesrd
+local longswrd = require("../chips/longswrd").longswrd
+local minibomb = require("../chips/minibomb").minibomb
+local moonbld = require("../chips/moonbld").moonbld
 local rlnglog_chips = require("../chips/rlnglog")
 local tankcan_chips = require("../chips/tankcan")
 local tornado_chips = require("../chips/tornado")
 local trnarrw_chips = require("../chips/trnarrw")
-local varswrd = require("../chips/varswrd")
+local varswrd = require("../chips/varswrd").varswrd
 local vulcan_chips = require("../chips/vulcan")
-local wideswrd = require("../chips/wideswrd")
+local wideswrd = require("../chips/wideswrd").wideswrd
 
 -- (rules/beast's data, which its Cross special reads: a record of
 -- type "cross-special", not a rule section the engine reads.)
-return define.record("cross-special", {
+return new.record("cross-special", {
     rows = {
         { cannon_chips.cannon, minibomb, wideswrd },
         -- EnergBom.
@@ -37,7 +37,7 @@ return define.record("cross-special", {
         -- MegEnBom.
         { cannon_chips.hicannon, energbom_chips.megenbom, longswrd },
         { tankcan_chips.tankcan1, firebrn_chips.firebrn2, fireswrd },
-        { cannon_chips.m_cannon, trnarrw_chips.trnarrw2, aquaswrd },
+        { cannon_chips["m-cannon"], trnarrw_chips.trnarrw2, aquaswrd },
         { tankcan_chips.tankcan2, dolthdr_chips.dolthdr2, elecswrd },
         -- GunDelS2.
         { gundels_chips.gundels2, rlnglog_chips.rlnglog2, bambswrd },

@@ -5,8 +5,7 @@
 
 local zsaver = require("@self/action")
 
-return define.chip {
-    id = "z-saver",
+local chip: Chip = {
     codes = { "Z" },
     element = "null",
     family = "sword",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 1,
     action = zsaver.action,
 }
+
+return { ["z-saver"] = chip }

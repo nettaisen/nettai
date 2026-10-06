@@ -100,7 +100,7 @@ function striker.make_kind(look: BodyGuardStrikerLook): Kind
         strike(me)
     end
 
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "effect",
         -- `sub_80E8268`.

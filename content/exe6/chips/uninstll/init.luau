@@ -4,8 +4,7 @@
 
 local plus = require("../lib/instant/plus")
 
-return define.chip {
-    id = "uninstll",
+local chip: Chip = {
     codes = { "G", "L", "R" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     modifier = "uninstall",
     instant = plus.attack_with(plus.UNINSTALL),
 }
+
+return { uninstll = chip }

@@ -126,7 +126,7 @@ local function recover(me: Object, s: State)
     me:exit_attack()
 end
 
-drop_weapon.action = define.action {
+drop_weapon.action = new.action {
     id = "erasecross-beast/drop/action",
     state = { timer = "u16" },
     -- `sub_80EE840`.
@@ -144,7 +144,7 @@ drop_weapon.action = define.action {
     end,
 }
 
-drop_weapon.weapon = define.weapon {
+drop_weapon.weapon = new.weapon {
     id = "erasecross-beast/drop",
     -- The charge table's row 0x15, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

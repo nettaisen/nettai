@@ -43,14 +43,14 @@ local DIVE_FROM = { [0] = { 2, 0 }, { 5, 0 } }
 local DIVE_MARK = { [0] = { 4, 2 }, { 3, 2 } }
 -- The regions he highlights: the dash's (region 0x23: three rows of six
 -- from the mark) and the dive's (0x25: a band slanting across the mark).
-local DASH_REGION = define.region {
+local DASH_REGION = new.region {
     panels = {
         { 0, -1 }, { 1, -1 }, { 2, -1 }, { 3, -1 }, { 4, -1 }, { 5, -1 },
         { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 },
         { 0, 1 }, { 1, 1 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 5, 1 },
     },
 }
-local DIVE_REGION = define.region {
+local DIVE_REGION = new.region {
     panels = { { -2, -1 }, { -1, -1 }, { 0, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } },
 }
 
@@ -259,7 +259,7 @@ local function finish(me: Object)
     me:free()
 end
 
-tenguman.kind = define.kind {
+tenguman.kind = new.kind {
     id = "tenguman/navi",
     pool = "actor",
     state = { controller = "object" },

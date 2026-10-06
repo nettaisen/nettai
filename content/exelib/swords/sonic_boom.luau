@@ -115,7 +115,7 @@ end
 
 -- A sonic boom kind (`id`) of `look`.
 function sonic_boom.make_kind(id: string, look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { hit_mod = "u8", pierces = "bool" },

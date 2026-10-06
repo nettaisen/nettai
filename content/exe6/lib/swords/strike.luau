@@ -110,7 +110,7 @@ function strike.action(spec: StrikeSpec): Action
         end
     end
 
-    return define.action { state = strike.STATE, args = spec, update = update }
+    return new.action { state = strike.STATE, args = spec, update = update }
 end
 
 return strike

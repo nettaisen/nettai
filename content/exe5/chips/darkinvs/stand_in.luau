@@ -72,7 +72,7 @@ local function init(me: Object)
     tick(me)
 end
 
-standin.kind = define.kind {
+standin.kind = new.kind {
     id = "darkinvs/stand-in",
     pool = "actor",
     state = { controller = "object" },

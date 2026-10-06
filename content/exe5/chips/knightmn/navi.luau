@@ -25,7 +25,7 @@ local SOUND_LAND = asset.sound("land")
 local SOUND_SWING = asset.sound("knight-swing")
 -- What he wears (0x0800EE7A: EXE5's body overlay row 1, its sprite 10-47, in front at every animation), stepping
 -- even while paused.
-local CHAIN = define.identity {
+local CHAIN = new.identity {
     class = "navi",
     parts = { body = { sprite = asset.sprite("knightman-ball"), anims = 20 } },
 }
@@ -207,7 +207,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-knightman.kind = define.kind {
+knightman.kind = new.kind {
     id = "knightmn/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },

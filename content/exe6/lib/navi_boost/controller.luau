@@ -39,9 +39,9 @@ export type State = {
 local WAIT = 0x3C
 -- The effects around the navi (the original's effects 0x5A to 0x5C), and
 -- the sounds.
-local HUB_EFFECT = define.effect { sprite = asset.sprite("hub"), anim = 0, palette = 0 }
-local BUG_EFFECT = define.effect { sprite = asset.sprite("bug"), anim = 0, palette = 0 }
-local ARM_EFFECT = define.effect { sprite = asset.sprite("charge-glow-a"), anim = 3, palette = 1 }
+local HUB_EFFECT = new.effect { sprite = asset.sprite("hub"), anim = 0, palette = 0 }
+local BUG_EFFECT = new.effect { sprite = asset.sprite("bug"), anim = 0, palette = 0 }
+local ARM_EFFECT = new.effect { sprite = asset.sprite("charge-glow-a"), anim = 3, palette = 1 }
 local HUB_SOUND, BUG_SOUND, LOG_IN_SOUND = asset.sound("hub"), asset.sound("bug"), asset.sound("log-in")
 -- When the log-in sound plays, by timer.
 local HUB_LOG_IN_AT, ARM_LOG_IN_AT = 0x1C, 0x28
@@ -181,7 +181,7 @@ local function effect(me: Object)
     end
 end
 
-navi_boost.kind = define.kind {
+navi_boost.kind = new.kind {
     id = "navi-boost",
     pool = "effect",
     state = { change = { "hub", "bug", "arm", "dark" }, weapon = "weapon", palette = "u8" },

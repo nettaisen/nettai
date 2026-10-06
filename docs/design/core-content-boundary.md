@@ -97,8 +97,8 @@ nettai-frontend, nettai-demo, nettai-audio and m4a (presentation), nettai-netpla
 ### 2.2 Content reaches the engine
 
 Through the content API only (scripting.md §2): fields of objects, sprites, collisions and navis by name; the
-`battle` and `field` libraries; the ruleset's services (`dimming`, `navi_chip`, `obstacle`); the definers and
-asset resolvers while it loads. Everything it passes is a definition, an asset, a handle, a name or an integer.
+`battle` and `field` libraries; the ruleset's services (`dimming`, `navi_chip`, `obstacle`); the tag constructors
+(`new.*`) and asset resolvers while it loads. Everything it passes is a definition, an asset, a handle, a name or an integer.
 Nothing in the API names a particular chip or kind.
 
 ### 2.3 Identity and the traces

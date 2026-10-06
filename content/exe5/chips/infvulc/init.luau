@@ -12,8 +12,7 @@ local vulcan = require("./vulcan/vulcan")
 
 -- InfVulc1 (EXE5 chip 0x143): the Program Advance of three Vulcan1s with consecutive codes: action 0x19 with subtype
 -- 4, the Vulcans' action with the InfVulcs' gun firing 20 of their bullets (chips/vulcan/vulcan).
-local infvulc1 = define.chip {
-    id = "infvulc1",
+local infvulc1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -37,8 +36,7 @@ local infvulc1 = define.chip {
 
 -- InfVulc2 (EXE5 chip 0x144): the Program Advance of three Vulcan2s with consecutive codes: action 0x19 with subtype
 -- 5, the Vulcans' action with the InfVulcs' gun firing 24 of their bullets (chips/vulcan/vulcan).
-local infvulc2 = define.chip {
-    id = "infvulc2",
+local infvulc2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -62,8 +60,7 @@ local infvulc2 = define.chip {
 
 -- InfVulc3 (EXE5 chip 0x145): the Program Advance of three Vulcan3s with consecutive codes: action 0x19 with subtype
 -- 6, the Vulcans' action with the InfVulcs' gun firing 28 of their bullets (chips/vulcan/vulcan).
-local infvulc3 = define.chip {
-    id = "infvulc3",
+local infvulc3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

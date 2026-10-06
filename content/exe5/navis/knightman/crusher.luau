@@ -81,7 +81,7 @@ local function init(me: Object)
     tick(me)
 end
 
-crusher.kind = define.kind {
+crusher.kind = new.kind {
     id = "knightman/crusher",
     pool = "attack",
     state = { speed = "u8" },

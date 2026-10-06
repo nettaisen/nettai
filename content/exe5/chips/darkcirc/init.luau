@@ -7,8 +7,7 @@
 
 local circgun = require("./circgun/circgun")
 
-return define.chip {
-    id = "darkcirc",
+local chip: Chip = {
     codes = { "R" },
     element = "null",
     family = "cursor",
@@ -22,3 +21,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = circgun.hook(circgun.variant { period = 2, shots = 7, look = 1 }),
 }
+
+return { darkcirc = chip }

@@ -133,7 +133,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = gather, [8] = launch, [0xC] = wait, [0x10] = leave }
 
-cosmoman.kind = define.kind {
+cosmoman.kind = new.kind {
     id = "cosmoman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", taken = "identity[8]", count = "u8" },

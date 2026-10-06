@@ -5,8 +5,7 @@ local cards = require("../rules/patch_cards/cards")
 local b_sword = require("../lib/patch_cards/b_sword")
 local charge = require("@self/charge")
 
-return define.patch_card {
-    id = "megaman-zero",
+local card: PatchCard = {
     mb = 45,
     effects = {
         cards.b_button(b_sword),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.gauge("fast"),
     },
 }
+
+return { ["megaman-zero"] = card }

@@ -7,8 +7,7 @@ local strike = require("./wavearm/strike")
 local wave = require("./wavearm/wave")
 local wavearm_chips = require("./wavearm")
 
-local pwrwave1 = define.chip {
-    id = "pwrwave1",
+local pwrwave1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -24,8 +23,7 @@ local pwrwave1 = define.chip {
     action = strike.action { id = "pwrwave1/action", wave = wave.variants.pwrwave, three_rows = true },
 }
 
-local pwrwave2 = define.chip {
-    id = "pwrwave2",
+local pwrwave2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -41,8 +39,7 @@ local pwrwave2 = define.chip {
     action = strike.action { id = "pwrwave2/action", wave = wave.variants.pwrwave, three_rows = true },
 }
 
-local pwrwave3 = define.chip {
-    id = "pwrwave3",
+local pwrwave3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

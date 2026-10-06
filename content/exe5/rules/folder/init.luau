@@ -68,7 +68,7 @@ local function copies_allowed(c: Chip): number
 end
 
 local function name(c: Chip): string
-    return c.id
+    return c.id :: string
 end
 
 local function mb(c: Chip): number

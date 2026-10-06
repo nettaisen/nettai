@@ -247,7 +247,7 @@ local function tick(me: Object)
     c:present()
 end
 
-book.kind = define.kind {
+book.kind = new.kind {
     id = "judgeman/book",
     pool = "attack",
     state = { turn = "u8", axis = "u8", judge = "object", target_x = "u32", target_y = "u32" },

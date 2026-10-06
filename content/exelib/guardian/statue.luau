@@ -85,8 +85,8 @@ local SIDE0_HITS, SIDE1_HITS = 0xAA00_0000, 0x5500_0000
 -- The strike (`byte_80D4EB4`, by the side it strikes for): every panel with the other side's player navi, a burst
 -- on each, the camera shaking, and the statue in its striking animation. Its hit: hit modifier 3, no spark.
 local STRIKE_REGION: { [number]: Region } = {
-    [0] = define.region { field = { require = 0x0020_0000, forbid = 0 } },
-    [1] = define.region { field = { require = 0x0040_0000, forbid = 0 } },
+    [0] = new.region { field = { require = 0x0020_0000, forbid = 0 } },
+    [1] = new.region { field = { require = 0x0040_0000, forbid = 0 } },
 }
 local STRIKE_HIT_MOD = 3
 local STRIKE_ANIM = 1
@@ -370,7 +370,7 @@ function statue.make(look: Look): Statue
         return o
     end
 
-    kind = define.kind {
+    kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { staged = "bool", quiet = "bool", strike = "bool", attackers = "u32" },

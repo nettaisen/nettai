@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-local roll = define.chip {
-    id = "roll",
+local roll: Chip = {
     codes = { "R", "*" },
     element = "null",
     family = "null",
@@ -22,8 +21,7 @@ local roll = define.chip {
     navi = navi.summon { rounds = 1, palette = 0 },
 }
 
-local roll2 = define.chip {
-    id = "roll2",
+local roll2: Chip = {
     codes = { "R" },
     element = "null",
     family = "null",
@@ -40,8 +38,7 @@ local roll2 = define.chip {
     navi = navi.summon { rounds = 1, palette = 0 },
 }
 
-local roll3 = define.chip {
-    id = "roll3",
+local roll3: Chip = {
     codes = { "R" },
     element = "null",
     family = "null",

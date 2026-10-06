@@ -35,7 +35,7 @@ local function strafe(me: Object)
     end
 end
 
-buster.action = define.action {
+buster.action = new.action {
     id = "gyroman/buster/action",
     state = { timer = "u16" },
     -- 0x080F0CAC
@@ -72,7 +72,7 @@ local function setup(navi: Object): Action
     return buster.action
 end
 
-buster.weapon = define.weapon {
+buster.weapon = new.weapon {
     id = "gyroman/buster",
     -- The charge table's row 0x43 (0x0801CD0A), which a buster doesn't read.
     charge_ticks = { 60, 60, 60, 60, 60, 80 },

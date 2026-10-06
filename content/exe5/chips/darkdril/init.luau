@@ -6,8 +6,7 @@
 
 local drill = require("./drilarm/drill")
 
-return define.chip {
-    id = "darkdril",
+local chip: Chip = {
     codes = { "D" },
     element = "null",
     family = "break",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     action = drill.action(true),
 }
+
+return { darkdril = chip }

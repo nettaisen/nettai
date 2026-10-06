@@ -35,7 +35,7 @@ export type Spec = TornadoSpec
 
 -- A tornado variant.
 function tornado.variant(v: Variant): Variant
-    return define.record("tornado-variant", v)
+    return new.record("tornado-variant", v)
 end
 
 -- The damage bits that are flags, kept when the damage doubles.
@@ -150,7 +150,7 @@ end
 
 -- A tornado kind (`id`) of `look`.
 function tornado.make_kind(id: string, look: TornadoLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { variant = "record:tornado-variant", status = "status", rearm_step = "u32", rearm_ticks = "u32" },

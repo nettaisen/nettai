@@ -88,7 +88,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "dblbeast/controller",
     pool = "effect",
     state = { bonus = "u16", gregar_out = "bool", falzar_out = "bool" },

@@ -11,8 +11,7 @@ local statuses = require("../rules/status")
 -- Blinded (status 0x33: 4 ticks) over the whole field (`sub_80D43E8`).
 local hush = effects.hush(statuses.blind_4, collision.guard_breaking, collision.hits_navis)
 
-return define.chip {
-    id = "silence",
+local chip: Chip = {
     codes = { "B", "R", "W", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,
@@ -20,7 +19,7 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 3.
     dimming = instruments.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             id = "silence",
             class = "field_object",
             version = 1,
@@ -34,3 +33,5 @@ return define.chip {
         effect = hush,
     }),
 }
+
+return { silence = chip }

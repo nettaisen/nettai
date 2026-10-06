@@ -225,7 +225,7 @@ function visual.make(spec: Spec): Visual
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { barrier = "record:barrier", shown = "bool", pop_hit_mod = "u8" },

@@ -8,7 +8,7 @@
 -- both close in from either side and slash it, an X when both stand in
 -- place. See docs/engine/chips.md §3.6.31.
 
-local megaman = require("../../navis/megaman")
+local megaman = require("../../navis/megaman").megaman
 local attachment = require("../../objects/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
@@ -67,7 +67,7 @@ local DRAIN_ELEMENT, DRAIN_DAMAGE, DRAIN_TICKS = 5, 3, 0x78
 -- place too (effects 0x18 and 0x36).
 local SLASH = { effect = parts.effects.slash, region = regions.single }
 local CROSS_HALF = {
-    effect = define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
+    effect = new.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
     region = regions.falling,
 }
 
@@ -671,7 +671,7 @@ local function destroy(me: Object)
     me:free()
 end
 
-crosover.kind = define.kind {
+crosover.kind = new.kind {
     id = "crosover/navi",
     pool = "actor",
     state = {

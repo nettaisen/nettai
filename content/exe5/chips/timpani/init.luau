@@ -16,8 +16,7 @@ local SPRITE = exe5_instrument.sprite
 -- Held in place (status 0x43: 4 ticks) over the solid panels, and a camera shake.
 local EFFECT = effects.drum(statuses.immobilize_4, collision.guard_breaking, collision.hits_navis)
 
-return define.chip {
-    id = "timpani",
+local chip: Chip = {
     codes = { "A", "L", "V", "*" },
     element = "null",
     family = "summon",
@@ -31,7 +30,7 @@ return define.chip {
     slot_in_limit = 3,
     -- EXE5's row 2; its identity the actor record 0xDF (0x08014C94: version 0, AI index 0x21).
     dimming = exe5_instrument.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             class = "field_object",
             version = 0,
             ai_index = 0x21,
@@ -44,3 +43,5 @@ return define.chip {
         effect = EFFECT,
     }),
 }
+
+return { timpani = chip }

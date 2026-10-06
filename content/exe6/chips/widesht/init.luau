@@ -5,8 +5,7 @@
 local lockon = require("../rules/lockon")
 local shot = require("@self/action")
 
-return define.chip {
-    id = "widesht",
+local chip: Chip = {
     codes = { "P", "Q", "R" },
     element = "aqua",
     family = "aqua",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     action = shot.actions.widesht,
 }
+
+return { widesht = chip }

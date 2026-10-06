@@ -70,7 +70,7 @@ local function hold(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "spoutcross-beast/charge/action",
     state = { timer = "u16" },
     -- `sub_80EDE7E`.
@@ -86,7 +86,7 @@ charge.action = define.action {
     end,
 }
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "spoutcross-beast/charge",
     -- The charge table's row 8, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

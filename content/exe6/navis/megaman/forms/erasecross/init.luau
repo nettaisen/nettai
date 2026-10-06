@@ -1,16 +1,15 @@
 --!strict
 -- EraseCross: one of MegaMan's forms.
 
-local base = require("./base")
+local base = require("./base").base
 local cross_overlay = require("./cross_overlay")
-local eraseman = require("../../eraseman")
-local erasecross_beast = require("./erasecross_beast")
+local eraseman = require("../../eraseman").eraseman
+local erasecross_beast = require("./erasecross_beast")["erasecross-beast"]
 local buster = require("../weapons/buster")
 local charge = require("@self/charge")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "erasecross",
+local form: FormDef = {
     kind = "cross",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -36,7 +35,7 @@ return define.form {
     traits = { "erases" },
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 4 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross",
         version = 0,
         actor_type = "player",
@@ -84,3 +83,5 @@ return define.form {
         },
     },
 }
+
+return { erasecross = form }

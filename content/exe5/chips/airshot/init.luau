@@ -14,8 +14,7 @@ local variants = require("../objects/projectile/variants")
 -- EXE5's air shooter (its attachment row 8: EXE6's row 0x13's look, EXE5's sprite).
 local SHOOTER = attachment.look { sprite = asset.sprite("air-shooter"), palette = 0, attach_point = 10 }
 
-return define.chip {
-    id = "airshot",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -38,3 +37,5 @@ return define.chip {
         }
     ),
 }
+
+return { airshot = chip }

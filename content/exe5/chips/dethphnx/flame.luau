@@ -66,7 +66,7 @@ local function leap(me: Object)
     end
 end
 
-flame.kind = define.kind {
+flame.kind = new.kind {
     id = "dethphnx/flame",
     pool = "effect",
     state = { angle = "u16", step = "u16" },

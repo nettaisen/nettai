@@ -35,7 +35,7 @@ local protoman = {}
 
 -- A game's ProtoMan's look.
 function protoman.look(look: ProtoManLook): ProtoManLook
-    return define.record("protoman-look", look)
+    return new.record("protoman-look", look)
 end
 
 -- A game's ProtoMan: his kind, and the chips' navi hook of a look.
@@ -306,7 +306,7 @@ function protoman.make(spec: ProtoManKind): {
         me:free()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "actor",
         state = { gray = "u8", controller = "object", fresh = "u8", flip = "u8", look = "record:protoman-look" },

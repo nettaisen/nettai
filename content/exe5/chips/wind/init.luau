@@ -8,8 +8,7 @@ local fan = require("@self/fan")
 -- Wind (EXE5 chip 0x053): a dimming that places a fan in front of the user (./controller, the dimming handler's
 -- subtype 9) that blows a gust along the enemy's rows every 12 ticks for 24 seconds, pushing away from the enemy's
 -- front column (./fan, the record's first parameter 0).
-local wind = define.chip {
-    id = "wind",
+local wind: Chip = {
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -28,7 +27,7 @@ local wind = define.chip {
         pulls = false,
         wait = 1,
         hp = 40,
-        identity = define.identity {
+        identity = new.identity {
             class = "field_object",
             version = 3,
             ai_index = 0x21,
@@ -40,8 +39,7 @@ local wind = define.chip {
 -- Fan (EXE5 chip 0x054): a dimming that places a fan in front of the user (./controller, the dimming handler's
 -- subtype 9) that blows a gust along the enemy's rows every 12 ticks for 24 seconds, pulling from the far column
 -- (./fan, the record's first parameter 1).
-local fan_chip = define.chip {
-    id = "fan",
+local fan_chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -60,7 +58,7 @@ local fan_chip = define.chip {
         pulls = true,
         wait = 1,
         hp = 40,
-        identity = define.identity {
+        identity = new.identity {
             class = "field_object",
             version = 4,
             ai_index = 0x21,

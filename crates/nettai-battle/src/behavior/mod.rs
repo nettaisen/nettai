@@ -261,7 +261,7 @@ pub(crate) fn run_action(b: &mut Battle, action: ActionHandle, r: ObjectRef) {
     let l = loaded(b);
     let a = b.content.defs.action(action);
     let (f, state) = (a.update, a.schema);
-    // An action of the rules' (`define.rules { actions = ... }`) reaches
+    // An action of the rules' (its `actions`) reaches
     // their state of the navi's side, if the side plays by them.
     let side = b.objects.get(r).alliance;
     let rules = (b.content.defs.is_rules_action(action) && b.has_rules(side)).then_some(side);

@@ -74,7 +74,7 @@ function exe5.setup(navi: Object): Action
     return buster.shot
 end
 
-exe5.weapon = define.weapon {
+exe5.weapon = new.weapon {
     id = "megaman/buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
@@ -82,7 +82,7 @@ exe5.weapon = define.weapon {
 }
 
 -- 0x0800FE12: the patch cards' TriBustr (a B button), the buster's routine.
-exe5.tri_buster = define.weapon {
+exe5.tri_buster = new.weapon {
     id = "megaman/tri-buster",
     -- The charge table's row 0x65, by Charge 0 to 5: past 4 it reads on into row 0x66's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 120 },

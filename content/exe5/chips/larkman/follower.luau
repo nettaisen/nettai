@@ -57,7 +57,7 @@ local function tick(me: Object)
     c:present()
 end
 
-follower.kind = define.kind {
+follower.kind = new.kind {
     id = "larkman/follower",
     pool = "attack",
     -- 0x080DFB94.

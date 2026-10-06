@@ -12,7 +12,7 @@ export type State = {
 }
 
 -- The scope's mark (effect 0x68: sprite 10-23), 20 pixels up.
-local MARK = define.effect { sprite = asset.sprite("search-scope"), anim = 0, palette = 0 }
+local MARK = new.effect { sprite = asset.sprite("search-scope"), anim = 0, palette = 0 }
 local MARK_Z = 20 * 0x1_0000
 
 -- 0x080EAC18: the other side's hidden navis marked.
@@ -48,7 +48,7 @@ local function show(me: Object)
     me:set_lifecycle("destroy")
 end
 
-reveal.kind = define.kind {
+reveal.kind = new.kind {
     id = "searchsoul/reveal",
     pool = "effect",
     state = { marked = "object[4]" },

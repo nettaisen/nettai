@@ -7,8 +7,7 @@
 
 local statue = require("@self/statue")
 
-return define.chip {
-    id = "otenko",
+local chip: Chip = {
     codes = { "O" },
     element = "null",
     family = "summon",
@@ -23,3 +22,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = statue.hook,
 }
+
+return { otenko = chip }

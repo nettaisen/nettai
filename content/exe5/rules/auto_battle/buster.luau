@@ -100,7 +100,7 @@ local function update(me: Object, s: State)
     end
 end
 
-buster.action = define.action { id = "auto-battle/buster", state = { timer = "u16" }, update = update }
+buster.action = new.action { id = "auto-battle/buster", state = { timer = "u16" }, update = update }
 
 -- 0x0800FB06: Attack plus one, no counter byte.
 function buster.setup(navi: Object): Action
@@ -109,7 +109,7 @@ function buster.setup(navi: Object): Action
     return buster.action
 end
 
-buster.weapon = define.weapon {
+buster.weapon = new.weapon {
     -- The charge table's row 0x3E (0x0801CCD8); Charge 5 reads on into row 0x3F's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 110 },
     setup = buster.setup,

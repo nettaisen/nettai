@@ -7,8 +7,7 @@ local gundels = require("@self/gundels")
 -- GunDelS1 (EXE5 chip 0x020): a sun beam that drains the column two panels ahead while A is held, more in the sun, for
 -- at most 60 ticks: EXE5's GunDelSol (chips/gundels/gundels; EXE6's code but for holding A, its collision row and its firing
 -- ticks).
-local gundels1 = define.chip {
-    id = "gundels1",
+local gundels1: Chip = {
     codes = { "A", "S", "U", "*" },
     element = "null",
     family = "null",
@@ -32,8 +31,7 @@ local gundels1 = define.chip {
 -- GunDelS2 (EXE5 chip 0x021): a sun beam that drains the column two panels ahead while A is held, more in the sun, for
 -- at most 90 ticks: EXE5's GunDelSol (chips/gundels/gundels; EXE6's code but for holding A, its collision row and its firing
 -- ticks).
-local gundels2 = define.chip {
-    id = "gundels2",
+local gundels2: Chip = {
     codes = { "G", "U", "Y" },
     element = "null",
     family = "null",
@@ -57,8 +55,7 @@ local gundels2 = define.chip {
 -- GunDelS3 (EXE5 chip 0x022): a sun beam that drains the column two panels ahead while A is held, more in the sun, for
 -- at most 120 ticks: EXE5's GunDelSol (chips/gundels/gundels; EXE6's code but for holding A, its collision row and its firing
 -- ticks).
-local gundels3 = define.chip {
-    id = "gundels3",
+local gundels3: Chip = {
     codes = { "D", "M", "O" },
     element = "null",
     family = "null",
@@ -82,8 +79,7 @@ local gundels3 = define.chip {
 -- GunDelEX (EXE5 chip 0x0db): a wide sun beam that drains the column two panels ahead and the one past it while A is
 -- held, more in the sun, for at most 120 ticks: EXE5's GunDelSol (chips/gundels/gundels, action 0x2F with subtype 3: the
 -- gun's attachment row 0x16, palette 9; the firing ticks' fourth, 120; the wide beams).
-local gundelex = define.chip {
-    id = "gundelex",
+local gundelex: Chip = {
     codes = { "G" },
     element = "null",
     family = "null",

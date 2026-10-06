@@ -9,8 +9,7 @@ local statuses = require("../rules/status")
 -- Its hits' status: paralysis.
 local PARALYZE = statuses.paralyze_90
 
-return define.chip {
-    id = "thunder",
+local chip: Chip = {
     codes = { "B", "R", "S", "*" },
     element = "elec", family = "elec", class = "standard",
     rarity = 1, mb = 7, damage = 40, hit_param = 20, lockout = 0,
@@ -20,3 +19,5 @@ return define.chip {
     beast = { lockon = lockon.thunder },
     action = shoot.action { ball = { panels = 5, status = PARALYZE } },
 }
+
+return { thunder = chip }

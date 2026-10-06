@@ -6,16 +6,15 @@
 -- LifeSrd, and back, A+B, forward, A+B SonicBom. Letting go of A, or 48
 -- ticks, gives a Sword.
 
-local ftrsword = require("./ftrsword")
-local lifesrd = require("./lifesrd")
-local longswrd = require("./longswrd")
-local sonicbom = require("./sonicbom")
-local sword = require("./sword")
+local ftrsword = require("./ftrsword").ftrsword
+local lifesrd = require("./lifesrd").lifesrd
+local longswrd = require("./longswrd").longswrd
+local sonicbom = require("./sonicbom").sonicbom
+local sword = require("./sword").sword
 local vari = require("../lib/swords/vari")
-local wideswrd = require("./wideswrd")
+local wideswrd = require("./wideswrd").wideswrd
 
-return define.chip {
-    id = "varswrd",
+local chip: Chip = {
     codes = { "K", "V", "W" },
     element = "null",
     family = "sword",
@@ -60,3 +59,5 @@ return define.chip {
         no_charged = sonicbom,
     },
 }
+
+return { varswrd = chip }

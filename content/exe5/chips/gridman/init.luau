@@ -5,8 +5,7 @@
 local navi = require("@self/navi")
 
 -- GridMan (EXE5 chip 0x113): GridMan cuts in, dashes across the field and strikes the whole enemy area (./navi).
-local gridman = define.chip {
-    id = "gridman",
+local gridman: Chip = {
     codes = { "F" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local gridman = define.chip {
 
 -- GridManSP (EXE5 chip 0x114): GridMan cuts in, dashes across the field and strikes the whole enemy area (../gridman/navi);
 -- its damage by how fast its user deleted GridMan SP (rules/sp_chips: formula 19, its table's row 18).
-local gridman_sp = define.chip {
-    id = "gridman-sp",
+local gridman_sp: Chip = {
     codes = { "F" },
     element = "null",
     family = "null",
@@ -43,8 +41,7 @@ local gridman_sp = define.chip {
 
 -- GridManDS (EXE5 chip 0x115): GridMan, dark, cuts in, dashes across the field and strikes the whole enemy area
 -- (../gridman/navi); its damage by its user's side's statistic 3 (formula 41, its table's row 18).
-local gridman_ds = define.chip {
-    id = "gridman-ds",
+local gridman_ds: Chip = {
     codes = { "F" },
     element = "null",
     family = "null",
@@ -60,4 +57,4 @@ local gridman_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { gridman = gridman, gridman_sp = gridman_sp, gridman_ds = gridman_ds }
+return { gridman = gridman, ["gridman-sp"] = gridman_sp, ["gridman-ds"] = gridman_ds }

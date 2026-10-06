@@ -5,10 +5,9 @@
 
 local flick = require("./airhocky/flick")
 local puck = require("./airhocky/puck")
-local airhocky = require("./airhocky")
+local airhocky = require("./airhocky").airhocky
 
-return define.chip {
-    id = "pithocky",
+local chip: Chip = {
     codes = {},
     element = "null",
     family = "program_advance",
@@ -23,3 +22,5 @@ return define.chip {
     program_advances = { { order = 26, code_run = { chip = airhocky, count = 3 } } },
     action = flick.action { id = "pithocky/action", puck = puck.variants.pithocky, down = true },
 }
+
+return { pithocky = chip }

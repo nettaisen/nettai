@@ -14,22 +14,29 @@
 //! manifest depends on; a support pack depends only on support packs,
 //! without cycles ([`load_order`], [`check_require`]).
 //!
-//! What a game has is what its top module requires: `<game>/init.luau`
-//! ([`INIT`], the pack as a module, as a folder's init.luau is the folder).
-//! It returns nothing: it requires the game's rules and its folders, and
-//! each folder's init.luau requires the folder's modules that define the
-//! game's chips, navis, forms, stages, patch cards and NaviCust programs,
-//! and those that define what only an id names. A definition is made as
-//! its module loads:
+//! What a game has is what its top module returns, its root:
+//! `<game>/init.luau` ([`INIT`], the pack as a module, as a folder's
+//! init.luau is the folder). The root holds what a match names, by id, in
+//! its sections ([`SECTIONS`]), and the game's rules; each section is the
+//! module that returns it, a folder's init that merges the tables of the
+//! modules that define it. Loading has no side effect: the loader walks
+//! from the root, and what it reaches is what the game has.
 //!
 //! ```luau
 //! -- exe6/init.luau
-//! require("@self/rules")
-//! require("@self/chips")
-//! require("@self/navis")
+//! return {
+//!     chips = require("@self/chips"),
+//!     navis = require("@self/navis"),
+//!     rules = require("@self/rules"),
+//! }
 //! -- exe6/chips/init.luau
-//! require("@self/airshot")
-//! require("@self/cannon")
+//! return merge {
+//!     ["chips/airshot"] = require("@self/airshot"),
+//!     ["chips/cannon"] = require("@self/cannon"),
+//! }
+//! -- exe6/chips/cannon/init.luau
+//! local cannon: Chip = { ... }
+//! return { cannon = cannon, hicannon = hicannon, ["m-cannon"] = m_cannon }
 //! ```
 //!
 //! A load of a game runs its top module, and what that requires, in turn,
@@ -38,8 +45,8 @@
 //! module when it runs ([`find`], the one place that knows how), and reads
 //! it then from where the load's modules are ([`Modules`]: a content
 //! directory's packs, modules held in memory, or both). A module nothing
-//! requires never runs, so it defines nothing; the inits are tools/content/
-//! index.py's, written from the modules that are there.
+//! requires never runs; the section inits are tools/content/index.py's,
+//! written from the modules that are there ([`sections_of`]).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -245,25 +252,61 @@ pub fn find(modules: &dyn Modules, packs: &BTreeMap<String, PackManifest>, from:
     module(modules, &target).ok_or_else(|| format!("{file}.luau: require({written:?}): no module {}.luau", keys::module_path(&target)))
 }
 
-/// Whether module source `source` is an index: nothing but requires (and
-/// comments), as a game's top module and its folders' inits are.
-pub fn is_index(source: &str) -> bool {
-    let code: String = source.lines().map(|l| l.split("--").next().unwrap_or("")).collect::<Vec<_>>().join("\n");
-    let mut rest = code.as_str();
-    let mut found = false;
-    loop {
-        rest = rest.trim_start();
-        if rest.is_empty() {
-            return found;
+/// A game's root's sections, each with the type its definitions are
+/// written as in their modules (`local chip: Chip = { ... }`): what a match
+/// names, by id.
+pub const SECTIONS: [(&str, &str); 6] = [
+    ("chips", "Chip"),
+    ("navis", "NaviDef"),
+    ("forms", "FormDef"),
+    ("stages", "StageDef"),
+    ("patch_cards", "PatchCard"),
+    ("navicust_programs", "NaviCustProgram"),
+];
+
+/// The root's field that is the game's rules.
+pub const RULES: &str = "rules";
+
+/// The sections module source `source` gives definitions of: those a
+/// top-level local of its is written as (`local chip: Chip = {`, a series'
+/// `local chips: { [string]: Chip } = {`, or one declared to be one further
+/// on: `local numtrap: Chip`), in [`SECTIONS`] order. tools/content/index.py
+/// reads a game's modules the same way to write its section inits, and a
+/// game held in memory gets its root from it (a test's).
+pub fn sections_of(source: &str) -> Vec<&'static str> {
+    let mut found = Vec::new();
+    for line in source.lines() {
+        let Some(rest) = line.strip_prefix("local ") else { continue };
+        let Some((name, rest)) = rest.split_once(':') else { continue };
+        if name.trim().is_empty() || !name.trim().chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            continue;
         }
-        let Some(after) = rest.strip_prefix("require(") else { return false };
-        let after = after.trim_start();
-        let Some(quote) = after.chars().next().filter(|q| *q == '"' || *q == '\'') else { return false };
-        let Some(end) = after[1..].find(quote) else { return false };
-        let Some(close) = after[2 + end..].trim_start().strip_prefix(')') else { return false };
-        found = true;
-        rest = close;
+        let rest = rest.trim_start();
+        let (ty, rest) = match rest.strip_prefix('{') {
+            Some(map) => {
+                let Some(map) = map.trim_start().strip_prefix("[string]") else { continue };
+                let Some(map) = map.trim_start().strip_prefix(':') else { continue };
+                let map = map.trim_start();
+                let end = map.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).unwrap_or(map.len());
+                let Some(after) = map[end..].trim_start().strip_prefix('}') else { continue };
+                (&map[..end], after)
+            }
+            None => {
+                let end = rest.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).unwrap_or(rest.len());
+                (&rest[..end], &rest[end..])
+            }
+        };
+        let rest = rest.split("--").next().unwrap_or("").trim();
+        let made = rest.is_empty() || rest.strip_prefix('=').is_some_and(|r| r.trim_start().starts_with('{'));
+        if let Some(&(section, _)) = SECTIONS.iter().find(|(_, t)| *t == ty)
+            && made
+            && !found.contains(&section)
+        {
+            found.push(section);
+        }
     }
+    found.sort_by_key(|s| SECTIONS.iter().position(|(x, _)| x == s));
+    found
 }
 
 /// Read pack `id`'s manifest in content `dir` (content/<id>/manifest.toml),
@@ -495,15 +538,18 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// An index is nothing but requires, and its commented requires name
-    /// what the game doesn't load yet.
+    /// A module gives the sections whose type a top-level local of its is
+    /// written as; its requires are what it names, outside comments.
     #[test]
-    fn an_index_is_nothing_but_requires() {
-        let top = "--!strict\n-- The game.\nrequire(\"@self/rules\")\nrequire(\"@self/chips\")\n";
+    fn a_modules_sections_are_its_typed_locals() {
         let chips = "-- Chips.\nrequire(\"@self/cannon\")\n-- require(\"@self/later\")  -- no use yet\nrequire(\"@exelib/x/init\")\n";
         assert_eq!(requires(chips), ["@self/cannon", "@exelib/x/init"]);
-        assert!(is_index(top) && is_index(chips));
-        assert!(!is_index("local x = require(\"@self/x\")\n") && !is_index("return { require(\"@self/x\") }") && !is_index("-- nothing\n"));
+        let series = "local x = 1\nlocal chips: { [string]: Chip } = {\n}\nlocal base: FormDef = {}\nreturn chips\n";
+        assert_eq!(sections_of(series), ["chips", "forms"]);
+        assert_eq!(sections_of("local numtrap: Chip\nnumtrap = {}\n"), ["chips"]);
+        // Not a definition: a local of the type taken from elsewhere, or
+        // inside a function.
+        assert!(sections_of("local navi: NaviDef = protoman\n    local chip: Chip = {}\n").is_empty());
     }
 
     /// A game requires itself and the support packs it depends on; a

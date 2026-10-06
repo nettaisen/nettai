@@ -60,7 +60,7 @@ local function init(me: Object)
     tick(me)
 end
 
-glow.kind = define.kind {
+glow.kind = new.kind {
     id = "leadraid/glow",
     pool = "effect",
     state = { dx = "i32", dz = "i32" },

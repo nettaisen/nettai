@@ -5,8 +5,7 @@
 
 local cube = require("@self/cube")
 
-return define.chip {
-    id = "rockcube",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "summon",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = cube.hook,
 }
+
+return { rockcube = chip }

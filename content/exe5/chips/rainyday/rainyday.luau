@@ -23,8 +23,8 @@ local rainyday = {}
 local SPRITE = asset.sprite("rain-cloud")
 local Z = 0x3C_0000
 -- The rain under it (effect row 0x61: 0c-37, 20 pixels lower) and a turned panel's splash (row 0x29: 0c-13 animation 1).
-local RAIN = define.effect { sprite = asset.sprite("rain"), anim = 0, palette = 0 }
-local SPLASH = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 }
+local RAIN = new.effect { sprite = asset.sprite("rain"), anim = 0, palette = 0 }
+local SPLASH = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 }
 local SOUND = asset.sound("drip-shower")
 -- Its hit (`sub_80C53A6`'s word 0x04050201: its panel, the aqua spark, an attack that hits navis; hit modifier 3),
 -- 16 pixels up.
@@ -204,7 +204,7 @@ local function init(me: Object)
     update(me)
 end
 
-rainyday.cloud = define.kind {
+rainyday.cloud = new.kind {
     id = "rainyday/cloud",
     pool = "attack",
     state = { scan_x = "i32", scan_y = "i32", dir = "i32", rain = "object", controller = "object" },
@@ -279,7 +279,7 @@ local function effect(me: Object)
     end
 end
 
-rainyday.controller = define.kind {
+rainyday.controller = new.kind {
     id = "rainyday/controller",
     pool = "effect",
     state = { bonus = "u16", cloud = "object" },

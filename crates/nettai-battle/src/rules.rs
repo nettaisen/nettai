@@ -1,5 +1,5 @@
 //! The players' rules (docs/design/rules-in-luau.md): a game's rules are one
-//! definition written in Luau (`define.rules { ... }`), whose hooks call the
+//! definition written in Luau (the game's root's `rules`), whose hooks call the
 //! game's modules as their code says; the framework calls the
 //! rules' hooks at its points, and keeps their state of each side here, in
 //! the battle, where snapshots and the digest cover it.
@@ -250,15 +250,17 @@ impl Battle {
     /// ([`FormList`]); none: the rules have no such window.
     pub fn form_list(&self, side: u8) -> Option<FormList> {
         let (f, schema, state) = self.view_state(side, |v| v.form_list)?;
+        let get = |p| state.get_at(schema.place_of(p));
         let mut list = FormList {
-            count: byte(state.get(schema, f.count)),
-            cursor: byte(state.get(schema, f.cursor)),
-            chosen: flag(state.get(schema, f.chosen_set)).then(|| byte(state.get(schema, f.chosen))),
+            count: byte(get(f.count)),
+            cursor: byte(get(f.cursor)),
+            chosen: flag(get(f.chosen_set)).then(|| byte(get(f.chosen))),
             ..FormList::default()
         };
+        let (offered, marked) = (schema.place_of(f.offered), schema.place_of(f.marked));
         for k in 0..CROSSES {
-            list.offered[k] = state.get_elem(schema, f.offered, k).map_or(0, byte);
-            list.marked[k] = state.get_elem(schema, f.marked, k).is_some_and(flag);
+            list.offered[k] = offered.elem(k).map_or(0, |p| byte(state.get_at(p)));
+            list.marked[k] = marked.elem(k).is_some_and(|p| flag(state.get_at(p)));
         }
         Some(list)
     }
@@ -267,25 +269,26 @@ impl Battle {
     /// ([`Offer`]); none: the rules have no such button.
     pub fn offer(&self, side: u8) -> Option<Offer> {
         let (f, schema, state) = self.view_state(side, |v| v.offer)?;
-        let form = match state.get(schema, f.form) {
+        let form = match state.get_at(schema.place_of(f.form)) {
             FieldValue::Ref(Some((nettai_content_api::Registry::Form, h))) => Some(FormHandle(h)),
             _ => None,
         };
-        Some(Offer { form, alternate: flag(state.get(schema, f.alternate)) })
+        Some(Offer { form, alternate: flag(state.get_at(schema.place_of(f.alternate))) })
     }
 
     /// The turns left in the form side `side`'s button that offers a form
     /// gave (the rules' `turns`), which the emotion window counts.
     pub fn form_turns(&self, side: u8) -> Option<u8> {
         let (f, schema, state) = self.view_state(side, |v| v.offer)?;
-        Some(byte(state.get(schema, f.turns)))
+        Some(byte(state.get_at(schema.place_of(f.turns))))
     }
 
     /// Where the flight of the form on offer is (the window view
     /// `offer_flight`).
     pub fn offer_flight(&self, side: u8) -> Option<Flight> {
         let (f, schema, state) = self.view_state(side, |v| v.offer_flight)?;
-        Some(Flight { step: byte(state.get(schema, f.step)), count: byte(state.get(schema, f.count)) })
+        let get = |p| byte(state.get_at(schema.place_of(p)));
+        Some(Flight { step: get(f.step), count: get(f.count) })
     }
 
     /// Where the flight of a button's chip is (the window view
@@ -293,8 +296,9 @@ impl Battle {
     /// chip, counted from 1.
     pub fn chip_flight(&self, side: u8) -> Option<(u8, Flight)> {
         let (f, schema, state) = self.view_state(side, |v| v.chip_flight)?;
-        let flight = Flight { step: byte(state.get(schema, f.step)), count: byte(state.get(schema, f.count)) };
-        Some((byte(state.get(schema, f.button?)), flight))
+        let get = |p| byte(state.get_at(schema.place_of(p)));
+        let flight = Flight { step: get(f.step), count: get(f.count) };
+        Some((get(f.button?), flight))
     }
 
     /// Side `side`'s player's setup of the rules (as the round started with
@@ -688,11 +692,11 @@ mod tests {
         let e = refused("{ marks = { 1, 2, 3, 4 } }");
         assert!(e.ends_with("setup_defaults.marks: 4 values, and the field holds 3"), "{e}");
         let e = refused("{ owned = { 1 } }");
-        assert!(e.contains("setup_defaults.owned: "), "{e}");
+        assert!(e.contains("setup_defaults.owned[1]: expected bool"), "{e}");
         let e = refused("{ marks = { 300 } }");
-        assert!(e.contains("setup_defaults.marks: Int(300) doesn't fit the field's elements"), "{e}");
+        assert!(e.contains("setup_defaults.marks[1]: Int(300) doesn't fit the field"), "{e}");
         let e = refused("{ wears = { \"nothing\" } }");
-        assert!(e.ends_with("setup_defaults.wears: the content has no form \"nothing\""), "{e}");
+        assert!(e.ends_with("setup_defaults.wears[1]: the content has no form \"nothing\""), "{e}");
         let e = refused("{ bonus = { 1 } }");
         assert!(e.contains("setup_defaults.bonus: "), "{e}");
     }
@@ -735,7 +739,7 @@ mod tests {
             ("local save = require(\"@self/save\")\n", "local save = require(\"@self/save\")\nlocal test_chips = require(\"./chips/test\")\n"),
             (
                 "    hooks = {\n",
-                "    hooks = {\n        navi_intake = function(_side: number, navi: Object)\n            local s = rules.state() :: { intakes: number, x: number, y: number }\n            s.intakes += 1\n            s.x, s.y = navi.panel_x, navi.panel_y\n        end,\n        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?\n            return if chip == test_chips.bomb then test_chips.seed else nil\n        end,\n",
+                "    hooks = {\n        navi_intake = function(_side: number, navi: Object)\n            local s = rules.state() :: { intakes: number, x: number, y: number }\n            s.intakes += 1\n            s.x, s.y = navi.panel_x, navi.panel_y\n        end,\n        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?\n            return if chip == test_chips[\"test/bomb\"] then test_chips[\"test/seed\"] else nil\n        end,\n",
             ),
         ]);
         let mut b = started_on(scenario::setup_on(&content), content.clone());
@@ -754,6 +758,49 @@ mod tests {
         let mut stock = started(scenario::setup());
         let navi0 = stock.player(0).expect("side 0's navi");
         assert_eq!(stock.rules_chip_check(0, navi0, Some(bomb)), None);
+    }
+
+    /// Records, lists and chip codes in the rules' state (step c1): a
+    /// script reads and writes a record's fields and a list's elements by
+    /// their places (`s.drive.mode`, `s.picks[1].code`, `#s.picks`), grows a
+    /// list by its next element, and gives a record or a list a table
+    /// whole; the engine finds a field by its name in the records
+    /// (`Schema::find`).
+    #[test]
+    fn records_lists_and_codes_in_the_rules_state() {
+        let content = testing::with_rules(&[
+            (
+                "        -- The counter's.\n        starts = \"u8\",",
+                "        drive = { mode = \"u8\", target = \"chip\" },\n        picks = schema.list({ chip = \"chip\", code = \"code\" }, 3),\n        letters = schema.list(\"code\", 2),\n        -- The counter's.\n        starts = \"u8\",",
+            ),
+            ("local save = require(\"@self/save\")\n", "local save = require(\"@self/save\")\nlocal test_chips = require(\"./chips/test\")\n"),
+            (
+                "    hooks = {\n",
+                "    hooks = {\n        navi_intake = function(_side: number, _navi: Object)\n            local s = rules.state()\n            s.drive.mode += 2\n            s.drive.target = test_chips[\"test/bomb\"]\n            s.picks[#s.picks + 1] = { chip = test_chips[\"test/seed\"], code = \"B\" }\n            s.picks[1].code = \"*\"\n            s.letters = { \"A\", \"Z\" }\n        end,\n",
+            ),
+        ]);
+        let mut b = started_on(scenario::setup_on(&content), content.clone());
+        let navi = b.player(1).expect("side 1's navi");
+        b.rules_navi_intake(1, navi);
+        b.rules_navi_intake(1, navi);
+        let (schema, state) = b.rules_state(1).expect("the side's rules");
+        let place = |name: &str| schema.place_of(schema.find(name).unwrap().unwrap_or_else(|| panic!("no `{name}`")));
+        let (bomb, seed) = (testing::chip_in(&content, "test/bomb"), testing::chip_in(&content, "test/seed"));
+        let chip = |c: nettai_content_api::ChipHandle| FieldValue::Ref(Some((nettai_content_api::Registry::Chip, c.0)));
+        assert_eq!(state.get_at(place("mode")), FieldValue::U8(4), "a record's field, by its name in the records");
+        assert_eq!(state.get_at(place("drive").field("target").unwrap()), chip(bomb));
+        let picks = place("picks");
+        assert_eq!(state.len_at(picks), Some(2));
+        let pick = |k: usize, f: &str| state.get_at(picks.elem(k).unwrap().field(f).unwrap());
+        assert_eq!((pick(0, "chip"), pick(0, "code")), (chip(seed), FieldValue::Code(Some(b'*'))));
+        assert_eq!((pick(1, "chip"), pick(1, "code")), (chip(seed), FieldValue::Code(Some(b'B'))));
+        assert_eq!(pick(2, "chip"), FieldValue::Ref(None), "past the list's length, nothing");
+        let letters = place("letters");
+        assert_eq!(state.len_at(letters), Some(2));
+        assert_eq!(state.get_at(letters.elem(1).unwrap()), FieldValue::Code(Some(b'Z')));
+        // A list's elements' fields are no one field: each element's has a
+        // place of its own.
+        assert_eq!(schema.find("chip"), Ok(None));
     }
 
     #[test]

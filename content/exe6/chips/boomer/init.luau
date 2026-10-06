@@ -6,9 +6,8 @@
 
 local boomerang = require("@self/boomerang")
 
-return {
-    boomer = define.chip {
-        id = "boomer",
+local chips: { [string]: Chip } = {
+    boomer = {
         codes = { "J", "K", "T" },
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 16, damage = 100, hit_param = 10, lockout = 20,
@@ -16,8 +15,7 @@ return {
         slot_in_limit = 3,
         instant = boomerang.instant(boomerang.variant { speed = 0x8_0000, turn_speed = 314573, grass = true }),
     },
-    hiboomer = define.chip {
-        id = "hiboomer",
+    hiboomer = {
         codes = { "B", "L", "V" },
         element = "wood", family = "wood", class = "standard",
         rarity = 2, mb = 26, damage = 140, hit_param = 10, lockout = 20,
@@ -25,8 +23,7 @@ return {
         slot_in_limit = 3,
         instant = boomerang.instant(boomerang.variant { speed = 0x9_0000, turn_speed = 353894, grass = true }),
     },
-    m_boomer = define.chip {
-        id = "m-boomer",
+    ["m-boomer"] = {
         codes = { "I", "M", "W" },
         element = "wood", family = "wood", class = "standard",
         rarity = 3, mb = 36, damage = 170, hit_param = 10, lockout = 20,
@@ -35,3 +32,5 @@ return {
         instant = boomerang.instant(boomerang.variant { speed = 0xA_0000, turn_speed = 393216, grass = true }),
     },
 }
+
+return chips

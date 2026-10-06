@@ -5,10 +5,9 @@ local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local a_charge = require("./megaman/weapons/charged_chip_bonus_29")
 local charge = require("@self/charge")
-local chargeman = require("@self/chip")
+local chargeman = require("@self/chip").volcchrg
 
-return define.navi {
-    id = "chargeman",
+local navi: NaviDef = {
     sprite = asset.sprite("chargeman"),
     element = "fire",
     buster_bonus = 1,
@@ -59,7 +58,7 @@ return define.navi {
     -- Fire chip, by the navi's level.
     charged_chips = { family = "fire", damaging = true, when = by_level.from(3) },
     fire_charge = by_level.row({ 0, 0, 0, 30, 30, 30, 30, 30, 30, 50, 50, 50, 50, 50, 100 }),
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -105,3 +104,5 @@ return define.navi {
         },
     },
 }
+
+return { chargeman = navi }

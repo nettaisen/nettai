@@ -13,11 +13,10 @@
 -- flinches, so the clear has nothing to port.)
 
 local buster = require("./megaman/weapons/buster")
-local c_cannon = require("@self/chip")
+local c_cannon = require("@self/chip")["c-cannon"]
 local charge = require("@self/charge")
 
-return define.navi {
-    id = "colonel",
+local navi: NaviDef = {
     sprite = asset.sprite("colonel"),
     element = "null",
     buster_bonus = 1,
@@ -39,7 +38,7 @@ return define.navi {
     -- is that progress up to 6.
     story = { hp = { 200, 300, 350, 400, 450, 500, 600, 700, 800 }, max_level = 6 },
     palette_step = 2,
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -82,3 +81,5 @@ return define.navi {
         },
     },
 }
+
+return { colonel = navi }

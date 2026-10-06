@@ -36,7 +36,7 @@ local HIT_MOD = 3
 -- The splash's damage on solid ground (its damage word's hit parameter, damage 10).
 local SPLASH_DAMAGE = 10
 -- Effect 0x1F: a splash.
-local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
+local SPLASH = new.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
 local SOUND_ERUPT, SOUND_SPLASH = asset.sound("geyser"), asset.sound("spout-ball")
 -- The geyser's water: two ticks in; then a panel every three ticks.
 local WATER_AT, WATER_TICKS = 2, 3
@@ -74,7 +74,7 @@ end
 -- ---- The water ---------------------------------------------------------------------------------------------------
 
 -- 0x080CDC2C: the order on its first tick; a panel every three ticks; gone after the eighth.
-geyser.water = define.kind {
+geyser.water = new.kind {
     id = "geyser/water",
     pool = "attack",
     state = { order = "u8[8]", count = "u16" },
@@ -266,7 +266,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-geyser.kind = define.kind {
+geyser.kind = new.kind {
     id = "geyser/bomb",
     pool = "attack",
     state = { which = "u8", target_x = "u8", target_y = "u8" },

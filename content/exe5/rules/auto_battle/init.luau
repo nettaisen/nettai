@@ -66,7 +66,7 @@ local function leave(me: Object, s: LeaveState)
     end
 end
 
-auto_battle.leave = define.action {
+auto_battle.leave = new.action {
     id = "auto-battle/leave",
     state = { timer = "u16" },
     update = leave,
@@ -124,7 +124,7 @@ auto_battle.unplayable = place.unplayable()
 -- without, that state starts over (0x0802C03A) and its idle goes on.
 function auto_battle.controller(_side: number, navi: Object): ("nothing" | "chip" | "buster" | "moved")?
     if navi.actor_type == "player" then
-        local s = rules.state()
+        local s = rules.state().drive
         if navi:navi_state("no_charge") then
             -- A drive started since its last step (its timer above the one it stepped with): the state
             -- from the start, as the drive's start leaves it (0x0802C03A, then AIData +0xF0 set again).

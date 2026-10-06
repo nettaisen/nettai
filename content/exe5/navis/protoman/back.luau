@@ -30,7 +30,7 @@ local function setup(navi: Object): Action
     return REFLECT
 end
 
-back.weapon = define.weapon {
+back.weapon = new.weapon {
     id = "protoman/back",
     -- The charge table's row 0x0B (0x0801CADA): no charge.
     charge_ticks = { 0, 0, 0, 0, 0, 0 },

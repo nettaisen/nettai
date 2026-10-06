@@ -16,7 +16,7 @@ return common.make {
     throw_sound = asset.sound("minibomb-throw"),
     -- Her arrival sparkle (EXE5's effect 0x15); she leaves in a puff (effect 0x14: the rows of EXE5's 0x080DFC94 are
     -- EXE6's).
-    arrive = define.effect { sprite = PUFF, anim = 3, palette = 0 },
-    puff = define.effect { sprite = PUFF, anim = 2, palette = 0 },
+    arrive = new.effect { sprite = PUFF, anim = 3, palette = 0 },
+    puff = new.effect { sprite = PUFF, anim = 2, palette = 0 },
     heal = heal,
 }

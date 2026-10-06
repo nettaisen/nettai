@@ -71,7 +71,7 @@ function action.make(spec: CopyDamageSpec): Action
         end
     end
 
-    return define.action { id = spec.id, state = { timer = "u16" }, update = update }
+    return new.action { id = spec.id, state = { timer = "u16" }, update = update }
 end
 
 return action

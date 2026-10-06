@@ -55,7 +55,7 @@ local function liberation(me: Object)
     end
 end
 
-local LIBERATION = define.kind {
+local LIBERATION = new.kind {
     id = "liberation/controller",
     pool = "effect",
     state = { busy = "bool", ability = { "crsshld", "stepswd", "counter" } },

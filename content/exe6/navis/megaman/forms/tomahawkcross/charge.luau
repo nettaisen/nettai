@@ -27,7 +27,7 @@ local SOUND = asset.sound("tomahawk-man")
 -- The swing's hit: Wood, a slash at navis over two columns, no spark; the
 -- swipe effect.
 local WOOD, HIT_MOD = 4, 1
-local SWIPE = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
+local SWIPE = new.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 
 -- The swing's tick (of its count down from 21) the hit lands on.
 local HIT_TICK = 12
@@ -112,7 +112,7 @@ local function finish(me: Object, s: State)
     me:exit_attack()
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "tomahawkcross/charge/action",
     state = { timer = "u16" },
     -- `sub_80EEC70`.
@@ -130,7 +130,7 @@ charge.action = define.action {
     end,
 }
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "tomahawkcross/charge",
     -- The charge table's row 0x16, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

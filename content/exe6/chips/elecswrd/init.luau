@@ -8,8 +8,7 @@ local slashes = require("../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../rules/lockon")
 local statuses = require("../rules/status")
 
-return define.chip {
-    id = "elecswrd",
+local chip: Chip = {
     codes = { "E", "K", "N" },
     element = "elec",
     family = "elec",
@@ -33,3 +32,5 @@ return define.chip {
         charged = slashes.elec,
     },
 }
+
+return { elecswrd = chip }

@@ -22,7 +22,7 @@ local LEAVE_TICKS = 10
 
 local satelity: Chip
 
-local action = define.action {
+local action = new.action {
     state = { timer = "u16" },
     -- 0x080F0DFC
     update = function(me: Object, s: State)
@@ -52,8 +52,7 @@ local action = define.action {
     end,
 }
 
-satelity = define.chip {
-    id = "satelity",
+satelity = {
     codes = { "S" },
     element = "null",
     family = "cursor",
@@ -66,6 +65,6 @@ satelity = define.chip {
     flags = { "dimming", "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     action = action,
-}
+} :: Chip
 
-return satelity
+return { satelity = satelity }

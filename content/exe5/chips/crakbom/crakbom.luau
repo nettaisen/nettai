@@ -28,14 +28,14 @@ local SPRITE = asset.sprite("bomb")
 local ANIM = 7
 local FLIGHT_TICKS, GRAVITY = 35, -0x3000
 -- Effect 0x14: a puff of smoke.
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- Effects 0x50 to 0x53 (0x080C93E8, by the kind's low two bits): the burst in palettes 0 to 3.
 local BURST = asset.sprite("bomb-burst")
 local BURSTS = {
-    [0] = define.effect { sprite = BURST, anim = 0, palette = 0 },
-    [1] = define.effect { sprite = BURST, anim = 0, palette = 1 },
-    [2] = define.effect { sprite = BURST, anim = 0, palette = 2 },
-    [3] = define.effect { sprite = BURST, anim = 0, palette = 3 },
+    [0] = new.effect { sprite = BURST, anim = 0, palette = 0 },
+    [1] = new.effect { sprite = BURST, anim = 0, palette = 1 },
+    [2] = new.effect { sprite = BURST, anim = 0, palette = 2 },
+    [3] = new.effect { sprite = BURST, anim = 0, palette = 3 },
 }
 -- Its landing's sound (0x080C932C, by the kind's low two bits).
 local SOUNDS = {
@@ -155,7 +155,7 @@ local function tick(me: Object)
     end
 end
 
-crakbom.kind = define.kind {
+crakbom.kind = new.kind {
     id = "crakbom/bomb",
     pool = "attack",
     state = { which = "u8", ticks = "u8", target_x = "u8", target_y = "u8" },

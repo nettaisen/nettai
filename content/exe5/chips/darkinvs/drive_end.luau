@@ -102,7 +102,7 @@ local function image_init(me: Object)
     image_tick(me)
 end
 
-drive_end.image = define.kind {
+drive_end.image = new.kind {
     id = "darkinvs/image",
     pool = "actor",
     -- 0x080BA71C.
@@ -165,6 +165,6 @@ local function update(me: Object, s: State)
     me:exit_attack()
 end
 
-drive_end.action = define.action { id = "darkinvs/drive-end", state = { timer = "u16" }, update = update }
+drive_end.action = new.action { id = "darkinvs/drive-end", state = { timer = "u16" }, update = update }
 
 return drive_end

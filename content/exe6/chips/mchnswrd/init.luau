@@ -4,8 +4,7 @@
 local parts = require("../lib/swords/parts")
 local strike = require("../lib/swords/strike")
 
-return define.chip {
-    id = "mchnswrd",
+local chip: Chip = {
     codes = { "H", "L", "Q" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 37, damage = 200, hit_param = 30, lockout = 0,
@@ -13,3 +12,5 @@ return define.chip {
     slot_in_limit = 3,
     action = strike.action { blade = parts.blades.sword, finds = "paralyzed", effect_palette = 7 },
 }
+
+return { mchnswrd = chip }

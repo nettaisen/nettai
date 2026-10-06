@@ -6,12 +6,11 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local anubis = require("./anubis/anubis")
-local recipe_anubis = require("./anubis")
-local recipe_bugbomb = require("./bugbomb")
+local recipe_anubis = require("./anubis").anubis
+local recipe_bugbomb = require("./bugbomb").bugbomb
 local recipe_geddon3 = require("./geddon").geddon3
 
-return define.chip {
-    id = "poisphar",
+local chip: Chip = {
     codes = {},
     element = "null",
     family = "program_advance",
@@ -31,3 +30,5 @@ return define.chip {
     },
     dimming = anubis.controller.hook(anubis.variants.poisphar),
 }
+
+return { poisphar = chip }

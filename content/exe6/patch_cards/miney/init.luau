@@ -3,8 +3,7 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "miney",
+local card: PatchCard = {
     mb = 12,
     effects = {
         cards.bug(cards.air_shoes(false)),
@@ -12,3 +11,5 @@ return define.patch_card {
         cards.attack(3),
     },
 }
+
+return { miney = card }

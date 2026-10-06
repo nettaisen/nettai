@@ -7,8 +7,7 @@
 local bombs = require("../lib/bombs")
 local cannball = require("@self/cannball")
 
-return define.chip {
-    id = "cannball",
+local chip: Chip = {
     codes = { "C", "T", "Z", "*" },
     element = "null",
     family = "break",
@@ -22,3 +21,5 @@ return define.chip {
     slot_in_limit = 3,
     action = bombs.throw { held = cannball.held, thrower = cannball.thrower(0) },
 }
+
+return { cannball = chip }

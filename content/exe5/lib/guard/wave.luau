@@ -156,7 +156,7 @@ local function init(me: Object)
     me.lifecycle = "update"
 end
 
-wave.kind = define.kind {
+wave.kind = new.kind {
     id = "shock-wave",
     pool = "attack",
     state = { row = "u8" },

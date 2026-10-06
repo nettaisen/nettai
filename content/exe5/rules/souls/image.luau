@@ -13,13 +13,13 @@ local image = {}
 
 -- A soul's navi's image's look, for the soul's form's `image`.
 function image.look(look: SoulImage): SoulImage
-    return define.record("soul-image", look)
+    return new.record("soul-image", look)
 end
 
 -- The look of a navi that wears a body overlay's part (an identity of its own wears it): put on as the image comes, its
 -- sprite stepping even while paused, and taken off as it goes.
 function image.wearing(sprite: SpriteAsset, part: BodyPart): SoulImage
-    local worn = define.identity { class = "navi", parts = { body = part } }
+    local worn = new.identity { class = "navi", parts = { body = part } }
     return image.look {
         sprite = sprite,
         put_on = function(me: Object)
@@ -41,7 +41,7 @@ local function look_of(me: Object): SoulImage
     local soul = (me.state :: State).soul
     local look: SoulImage? = soul.image
     if look == nil then
-        error(string.format("%s names no image (its form's `image`: 0x080C03B4 loads the soul's navi's sprite)", soul.id))
+        error(string.format("%s names no image (its form's `image`: 0x080C03B4 loads the soul's navi's sprite)", soul.id :: string))
     end
     return look
 end
@@ -150,7 +150,7 @@ local function init(me: Object)
     tick(me)
 end
 
-image.kind = define.kind {
+image.kind = new.kind {
     id = "soul-image",
     pool = "actor",
     state = { soul = "form" },

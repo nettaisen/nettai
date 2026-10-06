@@ -19,7 +19,7 @@ local function setup(navi: Object): Action
     return falzar_beast_buster.setup(navi)
 end
 
-beast_throw_absorbed.weapon = define.weapon {
+beast_throw_absorbed.weapon = new.weapon {
     id = "dustcross-beast/throw-absorbed",
     -- The charge table's row 0x2C, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

@@ -6,8 +6,7 @@
 
 local force = require("@self/force")
 
-return define.chip {
-    id = "colforce",
+local chip: Chip = {
     codes = { "Q" },
     element = "null", family = "null", class = "giga",
     rarity = 4, mb = 90, damage = 30, hit_param = 138, lockout = 0,
@@ -15,3 +14,5 @@ return define.chip {
     slot_in_limit = 1,
     instant = force.instant,
 }
+
+return { colforce = chip }

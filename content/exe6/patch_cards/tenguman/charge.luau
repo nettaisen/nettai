@@ -5,9 +5,9 @@
 -- (`loc_80126EA`, lib/weapon's `chip`) and starts what its use starts.
 
 local weapon = require("../../lib/weapon")
-local windrack = require("../../chips/windrack")
+local windrack = require("../../chips/windrack").windrack
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/tenguman/charge",
     -- The charge table's row 0x69, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

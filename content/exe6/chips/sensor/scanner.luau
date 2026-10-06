@@ -122,7 +122,7 @@ local function tick(me: Object)
     move(me)
 end
 
-scanner.kind = define.kind {
+scanner.kind = new.kind {
     id = "sensor/scanner",
     pool = "attack",
     state = {

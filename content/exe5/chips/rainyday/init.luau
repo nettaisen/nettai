@@ -5,8 +5,7 @@
 
 local rainyday = require("@self/rainyday")
 
-return define.chip {
-    id = "rainyday",
+local chip: Chip = {
     codes = { "B", "G", "L" },
     element = "aqua",
     family = "aqua",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = rainyday.hook,
 }
+
+return { rainyday = chip }

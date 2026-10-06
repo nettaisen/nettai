@@ -8,8 +8,7 @@ local side_special = require("@exelib/instant/side_special")
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
 -- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
-local cannmode = define.chip {
-    id = "cannmode",
+local cannmode: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -29,8 +28,7 @@ local cannmode = define.chip {
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
 -- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
-local cannball_mode = define.chip {
-    id = "cannball-mode",
+local cannball_mode: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -50,8 +48,7 @@ local cannball_mode = define.chip {
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
 -- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
-local swrdmode = define.chip {
-    id = "swrdmode",
+local swrdmode: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -71,8 +68,7 @@ local swrdmode = define.chip {
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
 -- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
-local yoyomode = define.chip {
-    id = "yoyomode",
+local yoyomode: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -92,8 +88,7 @@ local yoyomode = define.chip {
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
 -- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
-local drilmode = define.chip {
-    id = "drilmode",
+local drilmode: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -110,7 +105,7 @@ local drilmode = define.chip {
 
 return {
     cannmode = cannmode,
-    cannball_mode = cannball_mode,
+    ["cannball-mode"] = cannball_mode,
     swrdmode = swrdmode,
     yoyomode = yoyomode,
     drilmode = drilmode,

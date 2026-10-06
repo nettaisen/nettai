@@ -7,8 +7,7 @@
 local statuses = require("../rules/status")
 local thunder = require("./thunder/ball")
 
-return define.chip {
-    id = "darkthnd",
+local chip: Chip = {
     codes = { "M" },
     element = "elec",
     family = "elec",
@@ -24,3 +23,5 @@ return define.chip {
         ball = { panels = 0x0C, status = statuses.paralyze_90, bug = 0x19 },
     },
 }
+
+return { darkthnd = chip }

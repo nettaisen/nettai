@@ -26,7 +26,7 @@ local VARIANT, AHEAD = 4, 0x14_0000
 -- The steps, on the attack's step.
 local AIM, FIRE, AFTER = 0x0, 0x4, 0x8
 
-charge.action = define.action {
+charge.action = new.action {
     id = "magnetman/charge/action",
     state = { timer = "u16" },
     -- 0x080F1158
@@ -79,7 +79,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "magnetman/charge",
     -- The charge table's row 0x26 (0x0801CBE8), by Charge 0 to 5: past 4 it reads on into row 0x27's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 120 },

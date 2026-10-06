@@ -33,13 +33,13 @@ local HIT_MOD, EARLY_HIT_MOD = 3, 1
 -- The variants (the original's rows of `byte_80D0914`, the wind-up,
 -- `byte_80D0950`, the swing, and `byte_80D0A54`, the speed, 16.16):
 -- SlashMan's own AI's, and the navi chip's.
-wave.plain = define.record("slashman-wave", {
+wave.plain = new.record("slashman-wave", {
     wind_up = 0x14,
     swing = 0xA,
     speed = 0x6_0000,
     hits_early = true,
 } :: SlashWave)
-wave.chip = define.record("slashman-wave", {
+wave.chip = new.record("slashman-wave", {
     wind_up = 0x28,
     swing = 0xF,
     speed = 0xC_0000,
@@ -236,7 +236,7 @@ local function tick(me: Object)
     c:present()
 end
 
-wave.kind = define.kind {
+wave.kind = new.kind {
     id = "slashman/wave",
     pool = "attack",
     state = { variant = "record:slashman-wave", steered = "bool" },

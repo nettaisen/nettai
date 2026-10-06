@@ -177,7 +177,7 @@ local function tick(me: Object)
     c:present()
 end
 
-thunder.kind = define.kind {
+thunder.kind = new.kind {
     id = "elecman/thunder",
     pool = "attack",
     state = { while_dimmed = "bool", spreads = "bool" },

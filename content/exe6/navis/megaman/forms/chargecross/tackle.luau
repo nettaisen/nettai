@@ -46,8 +46,8 @@ local HIT_Z, EFFECT_Z = 0x18_0000, 0x10_0000
 local SOUND = asset.sound("iron-shell")
 
 -- The puff where it stops, and the dust it lands in.
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
-local LANDING_DUST = define.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local LANDING_DUST = new.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
 
 -- `sub_8011F44`: 30 damage and 20 more per point of buster Attack (up to
 -- 5), Fire.
@@ -182,7 +182,7 @@ local function land(me: Object, s: State)
     me:exit_attack()
 end
 
-tackle.action = define.action {
+tackle.action = new.action {
     id = "chargecross/tackle/action",
     state = { timer = "u16" },
     -- `sub_80EFA56`.
@@ -200,7 +200,7 @@ tackle.action = define.action {
     end,
 }
 
-tackle.weapon = define.weapon {
+tackle.weapon = new.weapon {
     id = "chargecross/tackle",
     -- The charge table's row 0x27, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

@@ -7,8 +7,7 @@
 local bombs = require("../lib/bombs")
 local crakbom = require("./crakbom/crakbom")
 
-return define.chip {
-    id = "parabom",
+local chip: Chip = {
     codes = { "H", "N", "P" },
     element = "null",
     family = "null",
@@ -22,3 +21,5 @@ return define.chip {
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, held_anim = 6, thrower = crakbom.thrower(2) },
 }
+
+return { parabom = chip }

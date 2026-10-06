@@ -48,7 +48,7 @@ local function effect(me: Object)
     dimming_chips.done(me)
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "darkinvs/controller",
     pool = "effect",
     state = { busy = "bool" },

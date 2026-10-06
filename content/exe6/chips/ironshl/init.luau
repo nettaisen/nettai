@@ -9,8 +9,7 @@ local lockon = require("../rules/lockon")
 -- `byte_80CA7A0`: the shells' speeds, 16.16 a tick.
 local SPEEDS = { 0x6_0000, 0x7_0000, 0x8_0000 }
 
-local ironshl1 = define.chip {
-    id = "ironshl1",
+local ironshl1: Chip = {
     codes = { "J", "K", "L" },
     element = "null",
     family = "break",
@@ -26,8 +25,7 @@ local ironshl1 = define.chip {
     action = throw.action { id = "ironshl1/action", shell = { palette = 0, speed = SPEEDS[1], bumps = 1 } },
 }
 
-local ironshl2 = define.chip {
-    id = "ironshl2",
+local ironshl2: Chip = {
     codes = { "C", "D", "E" },
     element = "null",
     family = "break",
@@ -43,8 +41,7 @@ local ironshl2 = define.chip {
     action = throw.action { id = "ironshl2/action", shell = { palette = 1, speed = SPEEDS[2], bumps = 1 } },
 }
 
-local ironshl3 = define.chip {
-    id = "ironshl3",
+local ironshl3: Chip = {
     codes = { "L", "M", "N" },
     element = "null",
     family = "break",

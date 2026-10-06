@@ -163,7 +163,7 @@ export type Grab = {
 
 -- A game's controller.
 function grab.make(spec: Spec): Grab
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { bonus = "u16", whole_column = "bool" },

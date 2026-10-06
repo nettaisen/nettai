@@ -80,7 +80,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-axe.kind = define.kind {
+axe.kind = new.kind {
     id = "tomahawkman/axe",
     pool = "effect",
     state = { action = "action" },

@@ -68,7 +68,7 @@ local function sing(me: Object, s: State)
     end
 end
 
-local action = define.action {
+local action = new.action {
     state = { timer = "u16", target = "object", wait = "u16", sing = "u16" },
     -- 0x080FCA36
     update = function(me: Object, s: State)
@@ -83,8 +83,7 @@ local action = define.action {
     end,
 }
 
-return define.chip {
-    id = "s-melody",
+local chip: Chip = {
     codes = { "T" },
     element = "null",
     family = "elec",
@@ -105,3 +104,5 @@ return define.chip {
         s.sing = SING_TICKS
     end,
 }
+
+return { ["s-melody"] = chip }

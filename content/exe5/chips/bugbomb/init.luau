@@ -8,8 +8,7 @@ local bombs = require("../lib/bombs")
 local bug_bomb = require("@self/bomb")
 local common = require("@exelib/bugbomb/bomb")
 
-return define.chip {
-    id = "bugbomb",
+local chip: Chip = {
     codes = { "A", "R", "T", "*" },
     element = "null",
     family = "null",
@@ -23,3 +22,5 @@ return define.chip {
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, held_anim = 4, thrower = common.thrower(bug_bomb.kind) },
 }
+
+return { bugbomb = chip }

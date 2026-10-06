@@ -72,7 +72,7 @@ local function update(me: Object, s: State)
     end
 end
 
-meteors.action = define.action {
+meteors.action = new.action {
     id = "patch-cards/meteors",
     state = { timer = "u16", drops = "u8" },
     update = update,
@@ -81,7 +81,7 @@ meteors.action = define.action {
 -- A card's meteors weapon: `drops` meteors (`sub_8012326`, `loc_801232A`),
 -- with its charge row.
 function meteors.weapon(spec: { id: string, drops: number, charge_ticks: { number } }): Weapon
-    return define.weapon {
+    return new.weapon {
         id = spec.id,
         charge_ticks = spec.charge_ticks,
         setup = function(navi: Object): Action

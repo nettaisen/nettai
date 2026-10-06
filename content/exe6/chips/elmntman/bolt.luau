@@ -84,7 +84,7 @@ local function tick(me: Object)
     strike(me)
 end
 
-bolt.kind = define.kind {
+bolt.kind = new.kind {
     id = "elmntman/bolt",
     pool = "attack",
     -- `sub_80DC3F8`.

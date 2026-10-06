@@ -7,8 +7,7 @@
 local trap = require("@self/trap")
 local traps = require("../lib/traps/controller")
 
-return define.chip {
-    id = "elemtrap",
+local chip: Chip = {
     codes = { "G", "S", "U", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 42, damage = 240, hit_param = 158, lockout = 0,
@@ -16,3 +15,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = traps.hook(traps.trap { set = trap.set }),
 }
+
+return { elemtrap = chip }

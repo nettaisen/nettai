@@ -4,8 +4,7 @@
 local programs = require("../rules/navicust/programs")
 local shield = require("../navis/megaman/weapons/shield")
 
-return define.navicust_program {
-    id = "reflect",
+local program: NaviCustProgram = {
     colors = { "green" },
     shape = {
         ".......",
@@ -29,3 +28,5 @@ return define.navicust_program {
     exclusive = "guard",
     effects = { programs.back_special(shield.reflect) },
 }
+
+return { reflect = program }

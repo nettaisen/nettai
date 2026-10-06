@@ -76,7 +76,7 @@ local APPEAR, DESTROYED, STANDING = 0, 2, 8
 
 -- A rock's variant (a row of the game's table).
 function rock.variant(v: RockVariant): RockVariant
-    return define.record("rock-variant", v)
+    return new.record("rock-variant", v)
 end
 
 function rock.make(look: Look): Rock
@@ -252,7 +252,7 @@ function rock.make(look: Look): Rock
         return o
     end
 
-    kind = define.kind {
+    kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { variant = "record:rock-variant", entrance = { "rise", "instant", "fall", "placed" } },

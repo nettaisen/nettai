@@ -196,7 +196,7 @@ local function effect(me: Object)
     end
 end
 
-lifesync.controller = define.kind {
+lifesync.controller = new.kind {
     id = "lifesync/controller",
     pool = "effect",
     state = { target = "object", synced = "object[4]", marker = "object" },

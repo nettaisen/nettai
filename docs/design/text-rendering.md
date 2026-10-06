@@ -349,7 +349,7 @@ trade the original look for consistency in every frame, to fix a problem EXE6's 
 - **Which fonts a pack or content root offers, and for which role.** Two roles exist: names (the cell font) and
   dialogue. EXE6's pack offers its extracted fonts for both; another pack names font files. This is the
   frontend's data, never the engine's, like `compat/`: a `fonts` section of the pack's asset index and a small
-  table in the content root that maps roles to fonts. No `define.*` and no place in `Content`.
+  table in the content root that maps roles to fonts. No definition and no place in `Content`.
 - **Optionally a full name** beside the 8-character one (`full_name = "GunDelSol 3"`), for places with room: a
   library or folder screen, a lobby, option B. Nothing in a battle needs it today, so it should wait for a
   consumer.
@@ -538,7 +538,7 @@ Nothing from them is committed.
   font runs for about 460 glyphs, up to where the 8x16 font's data begins, in pixel values 0, 1 and 3; its first
   width table gives 8 for capitals, digits and the space, 6 for `I`, 6 to 8 for lowercase and 11 for kana and
   kanji.
-- **Coverage of the content** (§1.4): every `define.chip` in `content/exe6` spelled against `compat/text.toml`.
+- **Coverage of the content** (§1.4): every chip of `content/exe6` spelled against `compat/text.toml`.
 - **Pixel fonts shipped as outlines are exact at their native size.** Three fonts (a 16 px proportional one, its
   8 px cut, and an 8x8 arcade font) rasterized with `fontdue` 0.9.4 and `ab_glyph` 0.2.32 at their native sizes:
   every coverage value was 0 or 255, every advance a whole number of pixels (7, 5 and 8), and the two crates'

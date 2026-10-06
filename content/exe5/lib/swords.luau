@@ -45,22 +45,22 @@ swords.blade = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
 swords.slashes_navis = { is = collision.slash, hits = collision.hits_navis }
 swords.effects = {
     -- Sword's, over the panel ahead (effect 0x18).
-    slash = define.effect { sprite = SLASH, anim = 2, palette = 0 },
+    slash = new.effect { sprite = SLASH, anim = 2, palette = 0 },
     -- Over a column: WideSwrd's (0x16).
-    wide = define.effect { sprite = SLASH, anim = 0, palette = 0 },
+    wide = new.effect { sprite = SLASH, anim = 0, palette = 0 },
     -- Over two panels: LongSwrd's (0x17).
-    long = define.effect { sprite = SLASH, anim = 1, palette = 0 },
+    long = new.effect { sprite = SLASH, anim = 1, palette = 0 },
     -- WideBlde's (0x19) and LongBlde's (0x1A): WideSwrd's and LongSwrd's in another palette.
-    wide_blade = define.effect { sprite = SLASH, anim = 0, palette = 5 },
-    long_blade = define.effect { sprite = SLASH, anim = 1, palette = 5 },
+    wide_blade = new.effect { sprite = SLASH, anim = 0, palette = 5 },
+    long_blade = new.effect { sprite = SLASH, anim = 1, palette = 5 },
     -- CustSwrd's big slash over two columns (0x28).
-    custom = define.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 3 },
+    custom = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 3 },
     -- LifeSrd's big slash over two columns (0x1B).
-    big = define.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 0 },
+    big = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 0 },
     -- DrkSword's dark big slash (0x1C).
-    dark = define.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 2 },
+    dark = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 2 },
     -- Over three panels: FtrSword's (0x2E).
-    line = define.effect { sprite = SLASH, anim = 3, palette = 0 },
+    line = new.effect { sprite = SLASH, anim = 3, palette = 0 },
 }
 swords.swing = asset.sound("sword-swing")
 swords.big_swing = asset.sound("big-sword-swing")

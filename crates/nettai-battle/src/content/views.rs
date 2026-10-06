@@ -13,7 +13,7 @@
 //! view without a field, or with one of another type, is refused there.
 //! Nothing here is state of its own.
 
-use nettai_content_api::{FieldType, Registry, Schema};
+use nettai_content_api::{FieldPath, FieldType, Registry, Schema};
 
 /// What a frontend draws while a custom-screen window of the rules is up (the
 /// window's `view`; a window with none shows the screen as it is).
@@ -171,12 +171,12 @@ impl PlayerFact {
 /// (`cross_chosen`) and its place (`chosen`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FormListFields {
-    pub offered: usize,
-    pub count: usize,
-    pub marked: usize,
-    pub cursor: usize,
-    pub chosen_set: usize,
-    pub chosen: usize,
+    pub offered: FieldPath,
+    pub count: FieldPath,
+    pub marked: FieldPath,
+    pub cursor: FieldPath,
+    pub chosen_set: FieldPath,
+    pub chosen: FieldPath,
 }
 
 /// A form offer's fields in the rules' state (the button view
@@ -185,9 +185,9 @@ pub struct FormListFields {
 /// left in the form it gave (`turns`), which the emotion window counts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct OfferFields {
-    pub form: usize,
-    pub alternate: usize,
-    pub turns: usize,
+    pub form: FieldPath,
+    pub alternate: FieldPath,
+    pub turns: FieldPath,
 }
 
 /// A flight's fields in the rules' state: its step and its count in the
@@ -197,9 +197,9 @@ pub struct OfferFields {
 /// 1: `mix_capsule`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FlightFields {
-    pub step: usize,
-    pub count: usize,
-    pub button: Option<usize>,
+    pub step: FieldPath,
+    pub count: FieldPath,
+    pub button: Option<FieldPath>,
 }
 
 /// The state fields a frontend reads of the rules for their windows' and
@@ -254,14 +254,18 @@ impl ViewFields {
         buttons: impl Iterator<Item = (&'a str, ButtonView)>,
     ) -> Result<ViewFields, String> {
         let mut fields = ViewFields::default();
-        let find = |who: &str, view: &str, name: &str, want: Want| -> Result<usize, String> {
-            let Some(i) = state.index_of(name) else {
+        // (A field by its name, the state's own or one of its records': the
+        // one of the name there is.)
+        let find = |who: &str, view: &str, name: &str, want: Want| -> Result<FieldPath, String> {
+            let found = state.find(name).map_err(|e| format!("{who} has the view `{view}`, which shows the state field `{name}`: {e}"))?;
+            let Some(path) = found else {
                 return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` ({}): the rules' state has none", want.says()));
             };
-            if !want.fits(&state.field(i).ty) {
-                return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` as {}: it is {:?}", want.says(), state.field(i).ty));
+            let ty = state.place_of(path).ty();
+            if !want.fits(ty) {
+                return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` as {}: it is {ty:?}", want.says()));
             }
-            Ok(i)
+            Ok(path)
         };
         for (name, view) in windows {
             let who = format!("window `{name}`");

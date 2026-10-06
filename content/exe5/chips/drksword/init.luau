@@ -9,8 +9,7 @@ local collision = require("../rules/collision")
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
-return define.chip {
-    id = "drksword",
+local chip: Chip = {
     codes = { "Z" },
     element = "null",
     family = "sword",
@@ -36,3 +35,5 @@ return define.chip {
         sound = swords.big_swing,
     },
 }
+
+return { drksword = chip }

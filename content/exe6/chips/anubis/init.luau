@@ -6,8 +6,7 @@
 local controller = require("@self/controller")
 local statue = require("@self/statue")
 
-return define.chip {
-    id = "anubis",
+local chip: Chip = {
     codes = { "P" },
     element = "null",
     family = "summon",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = controller.hook(statue.anubis),
 }
+
+return { anubis = chip }

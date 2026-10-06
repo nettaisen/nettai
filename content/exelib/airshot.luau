@@ -87,7 +87,7 @@ function airshot.action(spec: AirShotSpec, look: Look): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = spec.id,
         state = STATE,
         -- `sub_80EC884`.

@@ -142,7 +142,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "jealousy/controller",
     pool = "effect",
     state = { left = "u32", bonus = "u16" },

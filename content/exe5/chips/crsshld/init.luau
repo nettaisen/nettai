@@ -6,8 +6,7 @@ local guard = require("../lib/guard")
 
 -- CrsShld1 (EXE5 chip 0x0a9): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
 -- cross along the row that strikes the first navi it meets: EXE5's guard (lib/guard, action 0x1F with subtype 5).
-local crsshld1 = define.chip {
-    id = "crsshld1",
+local crsshld1: Chip = {
     codes = { "B", "F", "V" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local crsshld1 = define.chip {
 
 -- CrsShld2 (EXE5 chip 0x0aa): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
 -- cross along the row that strikes the first navi it meets: EXE5's guard (lib/guard, action 0x1F with subtype 6).
-local crsshld2 = define.chip {
-    id = "crsshld2",
+local crsshld2: Chip = {
     codes = { "C", "M", "R" },
     element = "null",
     family = "null",
@@ -42,8 +40,7 @@ local crsshld2 = define.chip {
 
 -- CrsShld3 (EXE5 chip 0x0ab): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
 -- cross along the row that strikes the first navi it meets: EXE5's guard (lib/guard, action 0x1F with subtype 7).
-local crsshld3 = define.chip {
-    id = "crsshld3",
+local crsshld3: Chip = {
     codes = { "D", "O", "Z" },
     element = "null",
     family = "null",

@@ -78,7 +78,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-pull.kind = define.kind {
+pull.kind = new.kind {
     id = "magnetmn/pull",
     pool = "attack",
     state = { dir = "i8", variant = "u8" },

@@ -86,7 +86,7 @@ end
 local function become(me: Object, chip: Chip)
     local a = chip.action
     if a == nil then
-        error(string.format("VarSwrd's pick %s has no action", chip.id))
+        error(string.format("VarSwrd's pick %s has no action", chip.id :: string))
     end
     me.attack_chip = chip
     me:set_attack(a, 0)
@@ -165,7 +165,7 @@ function action.action(spec: Spec): Action
         end
     end
 
-    return define.action { id = spec.id, state = action.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = action.STATE, args = spec, update = update }
 end
 
 return action

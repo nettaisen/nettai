@@ -13,11 +13,12 @@ local PALETTE = 2
 -- name. It has no flags at all, not even `dimming`, though its use is a
 -- dimming: it can't cut in on the other side's dimming, and the Beast rush
 -- chains it.)
-return define.chip {
-    id = "puzzlarm",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 40, damage = 0, hit_param = 30, lockout = 20,
     slot_in_limit = 1,
     dimming = navi_boost.arm(charge.weapon, PALETTE),
 }
+
+return { puzzlarm = chip }

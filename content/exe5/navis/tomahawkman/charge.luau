@@ -53,7 +53,7 @@ local function stand(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "tomahawkman/charge/action",
     state = { timer = "u16", wait = "u16" },
     -- 0x080F1760
@@ -79,7 +79,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "tomahawkman/charge",
     -- The charge table's row 0x3C (0x0801CCC4), by Charge 0 to 5: past 4 it reads on into row 0x3D's first entry.
     charge_ticks = { 80, 75, 70, 65, 60, 130 },

@@ -13,8 +13,8 @@ export type State = {
 local SPRITE = asset.sprite("django-rubble")
 -- The puffs it starts with: effects 2 and 1 (the small puff's animations 1 and 0).
 local PUFFS = {
-    [false] = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
-    [true] = define.effect { sprite = asset.sprite("small-puff"), anim = 0, palette = 0 },
+    [false] = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
+    [true] = new.effect { sprite = asset.sprite("small-puff"), anim = 0, palette = 0 },
 }
 local GRAVITY = 0x8000
 
@@ -67,7 +67,7 @@ local function init(me: Object)
     tick(me)
 end
 
-rubble.kind = define.kind {
+rubble.kind = new.kind {
     id = "django/rubble",
     pool = "effect",
     state = { second = "bool" },

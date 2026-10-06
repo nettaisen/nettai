@@ -5,8 +5,7 @@
 
 local bugfix = require("../objects/bugfix")
 
-return define.chip {
-    id = "bugfix",
+local chip: Chip = {
     codes = { "H", "*" },
     element = "null",
     family = "null",
@@ -22,3 +21,5 @@ return define.chip {
     megaman = "light",
     dimming = bugfix.controller.spawn,
 }
+
+return { bugfix = chip }

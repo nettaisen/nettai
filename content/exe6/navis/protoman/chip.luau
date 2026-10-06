@@ -6,8 +6,7 @@ local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")
 local slash = require("../../lib/swords/slash")
 
-return define.chip {
-    id = "stepswrd-protoman",
+local chip: Chip = {
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -28,3 +27,5 @@ return define.chip {
         step = true,
     },
 }
+
+return { ["stepswrd-protoman"] = chip }

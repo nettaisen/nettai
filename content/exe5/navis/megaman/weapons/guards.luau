@@ -46,7 +46,7 @@ local function raise(navi: Object, damage: number)
 end
 
 -- 0x0800F8EA.
-guards.shield = define.weapon {
+guards.shield = new.weapon {
     id = "megaman/shield",
     -- The charge table's row 0x1F (0x0801CB02), by Charge 0 to 5: past 4 it reads on into row 0x20's first entry.
     charge_ticks = { 40, 40, 40, 40, 40, 40 },
@@ -57,7 +57,7 @@ guards.shield = define.weapon {
 }
 
 -- 0x0800FDAC: the patch cards' Shield (B-Shield, B↓Shield), the same code as the program's, its own charge row.
-guards.card_shield = define.weapon {
+guards.card_shield = new.weapon {
     id = "megaman/card-shield",
     -- The charge table's row 0x62, by Charge 0 to 5: past 4 it reads on into row 0x63's first entry.
     charge_ticks = { 40, 40, 40, 40, 40, 100 },
@@ -68,7 +68,7 @@ guards.card_shield = define.weapon {
 }
 
 -- 0x0800FD84.
-guards.reflect = define.weapon {
+guards.reflect = new.weapon {
     id = "megaman/reflect",
     -- The charge table's row 0x61, by Charge 0 to 5: past 4 it reads on into row 0x62's first entry.
     charge_ticks = { 40, 40, 40, 40, 40, 40 },

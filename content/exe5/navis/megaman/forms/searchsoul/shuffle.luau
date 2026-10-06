@@ -30,6 +30,6 @@ local custom_screen: SoulCustom = {
     },
 }
 
-shuffle.custom = define.record("soul-custom", custom_screen)
+shuffle.custom = new.record("soul-custom", custom_screen)
 
 return shuffle

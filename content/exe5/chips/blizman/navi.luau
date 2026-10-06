@@ -31,7 +31,7 @@ local THROW, DOWN = 0x40, 0x22
 local ROLLER = rollers.make_kind {
     id = "blizman/roller",
     self_type = collision.hitbox,
-    target = define.collision { side0 = 0x3F800000, side1 = 0x3F800000, row_offset = 0x248 },
+    target = new.collision { side0 = 0x3F800000, side1 = 0x3F800000, row_offset = 0x248 },
 }
 -- His snowball (EXE5's attack object #0xB2, 0x080DC880).
 local BALL = balls.make_kind {
@@ -126,7 +126,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-blizman.kind = define.kind {
+blizman.kind = new.kind {
     id = "blizman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },

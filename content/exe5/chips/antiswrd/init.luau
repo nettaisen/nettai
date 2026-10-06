@@ -5,8 +5,7 @@
 
 local traps = require("../lib/traps")
 
-return define.chip {
-    id = "antiswrd",
+local chip: Chip = {
     codes = { "D", "O", "R" },
     element = "null",
     family = "sword",
@@ -21,3 +20,5 @@ return define.chip {
     trap = "anti_sword",
     dimming = traps.hook(),
 }
+
+return { antiswrd = chip }

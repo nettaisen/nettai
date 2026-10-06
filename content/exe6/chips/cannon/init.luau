@@ -7,8 +7,7 @@ local shooter = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
 local lockon = require("../rules/lockon")
 
-local cannon = define.chip {
-    id = "cannon",
+local cannon: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local cannon = define.chip {
     action = shooter.action { id = "cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
 }
 
-local hicannon = define.chip {
-    id = "hicannon",
+local hicannon: Chip = {
     codes = { "L", "M", "N", "*" },
     element = "null",
     family = "null",
@@ -41,8 +39,7 @@ local hicannon = define.chip {
     action = shooter.action { id = "hicannon/action", arm = shooter.arms.hicannon, shot = variants.cannon },
 }
 
-local m_cannon = define.chip {
-    id = "m-cannon",
+local m_cannon: Chip = {
     codes = { "R", "S", "T", "*" },
     element = "null",
     family = "null",
@@ -58,4 +55,4 @@ local m_cannon = define.chip {
     action = shooter.action { id = "m-cannon/action", arm = shooter.arms.m_cannon, shot = variants.cannon },
 }
 
-return { cannon = cannon, hicannon = hicannon, m_cannon = m_cannon }
+return { cannon = cannon, hicannon = hicannon, ["m-cannon"] = m_cannon }

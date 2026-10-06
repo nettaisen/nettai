@@ -6,8 +6,7 @@
 
 local poltergeist = require("@self/poltergeist")
 
-return define.chip {
-    id = "poltrgst",
+local chip: Chip = {
     codes = { "P" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = poltergeist.hook(false),
 }
+
+return { poltrgst = chip }
