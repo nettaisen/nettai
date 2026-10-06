@@ -35,7 +35,8 @@ local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 
 -- His cape (0x080C38B6's word 0x10011308: a form overlay of his sprite, animations + 0x10, stepping while dimmed).
 local CAPE: FormOverlaySpec = { sprite = SPRITE, stepping = "while_dimmed", anim_offset = 0x10 }
 -- The navi chip controller calls his spawner (0x080C327E) through r3, which his position's Z takes; his init keeps
--- its fraction.
+-- its fraction, and his strike's is his.
+-- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
 local SPAWNER_ADDRESS = 0x080C327F
 -- What keeps him away (0x080C2FFC: an enemy navi's body, by side), and where it is looked for (0x080162A4's list 17:
 -- his column and the one ahead, around the middle row).
