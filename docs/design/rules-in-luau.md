@@ -2931,3 +2931,30 @@ level table in init.luau" (content-model-v2.md §2.2, As built).
   renumbered, the same key and module behind each) and its rules' state id, one fewer before it; the recordings
   (EXE6's 17 lab traces, 22,014 frames; EXE5's 13, 13,984 frames) match every frame; the content check, index.py,
   both generators (EXE5's gen_content.py and the auto battle's, gen-content and navicust/gen.py) pass.
+
+### Records, lists and chip codes in schemas (2026-10-06, branch nettai-player, step c1)
+
+A state's or a setup's declaration takes records, bounded lists and chip codes (scripting.md §2.3).
+
+- **Records**: a table of fields of their own (`drive = { mode = "u8", target = "chip" }`), stored in name order
+  as a schema's fields are. **Lists**: `schema.list(T, n)` (the `schema` global; `T` a type name, a list of
+  variants, a record or another list; `n` 1 to 65535), a count (a byte, two past 255) then room for `n`; a list
+  shortened zeroes what it drops, so its bytes are what its elements say. **`code`**: a chip code, a letter A to Z
+  or `*` (a byte, 0 for none).
+- **In Luau**, a record's fields and a list's elements are read and written by their places (`s.drive.mode`,
+  `s.picks[1].code`, `#s.picks`), as deep as the schema nests them; a list grows by its next element, and a
+  record, a list or an array takes a table whole (`assign` in nettai-luau's bind.rs). A setup's defaults state
+  them the same way (`setup_defaults`, recursively).
+- **In Rust**, a part of a block is a `Place` (a field's, a record's field's, an element's: `get_at`, `set_at`,
+  `len_at`, `set_len_at`, `clear_at` on every state store), and `Schema::find` finds a field by its name in the
+  records (a `FieldPath`), which the rules' views now use.
+- **EXE5's rules' state** is one literal: the side's own drive under DarkInvs is its `drive` record (the auto
+  battle AI's state, a driven navi's `navi_state` too), and what the souls keep of a screen is its `screen`
+  record, gathered from each soul's `custom.state` by rules/souls/custom (a field's name one soul's alone, as the
+  souls' buttons and windows are). The souls' parts read their fields there (`s.screen.arm_step`); the view of
+  MeddySoul's capsule mix finds `mix_step` in it.
+- A schema's records are its own: a table another schema is too (the AI's, EXE5's `navi_state`) is a record of
+  it, not a reference.
+- **Not yet**: a match's facts of these types (nettai-match's facts and match files, the editor), which (c2) adds
+  with the first such fact, the SP times.
+

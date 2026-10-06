@@ -11,13 +11,17 @@ local arm = require("./arm")
 
 local arm_change = {}
 
--- What Arm Change keeps in the rules' state, and the rules' field it fills.
-type State = {
+-- What Arm Change keeps of a screen (the rules' state's `screen`, rules/souls).
+type Screen = {
     -- Its sequence's step (0x080236B8's offsets 0 and 4) and timer (the screen's +0x40).
     arm_step: number,
     arm_timer: number,
-    -- the rules' own (rules/souls): the turn's arm chip (the transform record's +6; none: its 0xFFFF), which
-    -- each screen's open clears and the soul change copies into the navi's weapon chip.
+}
+-- The rules' state: the screen's record, and the rules' own field it fills (rules/souls): the turn's arm chip (the
+-- transform record's +6; none: its 0xFFFF), which each screen's open clears and the soul change copies into the
+-- navi's weapon chip.
+type State = {
+    screen: Screen,
     arm_chip: Chip?,
 }
 
@@ -56,7 +60,7 @@ local button: SoulButton = {
             return
         end
         custom.play(side, "pick")
-        local st = s :: State
+        local st = (s :: State).screen
         st.arm_step, st.arm_timer = 0, 0
         custom.open_window(side, "arm_change")
     end,
@@ -67,7 +71,7 @@ local button: SoulButton = {
 -- 20 down where its bit 1 is set), gone at the end; then the picking goes on.
 local window: SoulWindow = {
     update = function(side: number, s: any): boolean
-        local st = s :: State
+        local st = (s :: State).screen
         if st.arm_step == 0 then
             custom.hold_last_pick(side, "arm_change")
             st.arm_step, st.arm_timer = 4, BLINK
