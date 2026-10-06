@@ -15,8 +15,7 @@ local function giga(id: string, arm: AttachmentLook): Action
     return cannon.action { id = id, arm = arm, shot = variants.gigacan, afterimages = true }
 end
 
-local gigacan1 = define.chip {
-    id = "gigacan1",
+local gigacan1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -33,8 +32,7 @@ local gigacan1 = define.chip {
     action = giga("gigacan1/action", cannon.arms.cannon),
 }
 
-local gigacan2 = define.chip {
-    id = "gigacan2",
+local gigacan2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -51,8 +49,7 @@ local gigacan2 = define.chip {
     action = giga("gigacan2/action", cannon.arms.hicannon),
 }
 
-local gigacan3 = define.chip {
-    id = "gigacan3",
+local gigacan3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -65,7 +62,7 @@ local gigacan3 = define.chip {
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.cannon },
     slot_in_limit = 1,
-    program_advances = { { order = 15, code_run = { chip = cannon_chips.m_cannon, count = 3 } } },
+    program_advances = { { order = 15, code_run = { chip = cannon_chips["m-cannon"], count = 3 } } },
     action = giga("gigacan3/action", cannon.arms.m_cannon),
 }
 

@@ -6,8 +6,7 @@ local skully = require("@self/skully")
 
 -- Skully1 (EXE5 chip 0x045): skulls that hop toward the nearest enemy, confusing what they hit (EXE5's Skully,
 -- chips/skully/skully: action 0x55).
-local skully1 = define.chip {
-    id = "skully1",
+local skully1: Chip = {
     codes = { "C", "K", "S" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local skully1 = define.chip {
 
 -- Skully2 (EXE5 chip 0x046): skulls that hop toward the nearest enemy, confusing what they hit (EXE5's Skully,
 -- chips/skully/skully: action 0x55).
-local skully2 = define.chip {
-    id = "skully2",
+local skully2: Chip = {
     codes = { "A", "H", "V" },
     element = "null",
     family = "null",
@@ -42,8 +40,7 @@ local skully2 = define.chip {
 
 -- Skully3 (EXE5 chip 0x047): skulls that hop toward the nearest enemy, confusing what they hit (EXE5's Skully,
 -- chips/skully/skully: action 0x55).
-local skully3 = define.chip {
-    id = "skully3",
+local skully3: Chip = {
     codes = { "G", "N", "U" },
     element = "null",
     family = "null",

@@ -182,7 +182,7 @@ local function tick(me: Object)
     c:present()
 end
 
-drill.kind = define.kind {
+drill.kind = new.kind {
     id = "groundman/drill",
     pool = "attack",
     state = { side = "bool", wait = "u8", action = "action" },

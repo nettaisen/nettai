@@ -6,8 +6,7 @@ local cards = require("../rules/patch_cards/cards")
 local buster = require("../navis/megaman/weapons/buster")
 local hells_rolling = require("../navis/megaman/weapons/hells_rolling")
 
-return define.patch_card {
-    id = "bass-cross-megaman-colonel",
+local card: PatchCard = {
     mb = 70,
     effects = {
         cards.hp_percent(20),
@@ -19,3 +18,5 @@ return define.patch_card {
         cards.hub_style(2),
     },
 }
+
+return { ["bass-cross-megaman-colonel"] = card }

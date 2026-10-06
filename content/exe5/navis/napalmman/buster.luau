@@ -96,7 +96,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-buster.action = define.action {
+buster.action = new.action {
     id = "napalmman/buster/action",
     state = { timer = "u16" },
     -- 0x080F0F6C: its step; then a trap chip's catch takes over (the reactive defenses' check).
@@ -128,7 +128,7 @@ local function setup(navi: Object): Action
     return buster.action
 end
 
-buster.weapon = define.weapon {
+buster.weapon = new.weapon {
     id = "napalmman/buster",
     -- The charge table's row 0x44 (0x0801CD14), which a buster doesn't read.
     charge_ticks = { 80, 75, 70, 65, 60, 60 },

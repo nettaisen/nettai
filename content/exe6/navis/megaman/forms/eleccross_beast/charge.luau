@@ -80,7 +80,7 @@ local function strike(me: Object, s: State)
     end
 end
 
-elec_beast_charge.action = define.action {
+elec_beast_charge.action = new.action {
     id = "eleccross-beast/charge/action",
     state = { timer = "u16" },
     -- `sub_80EDF5C`.
@@ -96,7 +96,7 @@ elec_beast_charge.action = define.action {
     end,
 }
 
-elec_beast_charge.weapon = define.weapon {
+elec_beast_charge.weapon = new.weapon {
     id = "eleccross-beast/charge",
     -- The charge table's row 9, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

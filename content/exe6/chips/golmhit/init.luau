@@ -5,9 +5,8 @@
 
 local golem = require("@self/golem")
 
-return {
-    golmhit1 = define.chip {
-        id = "golmhit1",
+local chips: { [string]: Chip } = {
+    golmhit1 = {
         codes = { "I", "K", "Y" },
         element = "null", family = "break", class = "standard",
         rarity = 0, mb = 17, damage = 140, hit_param = 30, lockout = 20,
@@ -15,8 +14,7 @@ return {
         slot_in_limit = 3,
         instant = golem.instant { palette = 0 },
     },
-    golmhit2 = define.chip {
-        id = "golmhit2",
+    golmhit2 = {
         codes = { "D", "P", "U" },
         element = "null", family = "break", class = "standard",
         rarity = 1, mb = 27, damage = 190, hit_param = 30, lockout = 20,
@@ -24,8 +22,7 @@ return {
         slot_in_limit = 3,
         instant = golem.instant { palette = 1 },
     },
-    golmhit3 = define.chip {
-        id = "golmhit3",
+    golmhit3 = {
         codes = { "H", "M", "V" },
         element = "null", family = "break", class = "standard",
         rarity = 2, mb = 37, damage = 250, hit_param = 30, lockout = 20,
@@ -34,3 +31,5 @@ return {
         instant = golem.instant { palette = 2 },
     },
 }
+
+return chips

@@ -55,7 +55,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "gyrosoul/charge/action",
     state = { timer = "u16" },
     -- 0x080EE958
@@ -78,7 +78,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     -- The charge table's row 9 (0x0801CAC6); Charge 5 reads on into row 0xA's first entry.
     charge_ticks = { 80, 65, 60, 55, 50, 0 },
     setup = setup,

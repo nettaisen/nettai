@@ -142,7 +142,7 @@ local function init(me: Object)
     tick(me)
 end
 
-aura.kind = define.kind {
+aura.kind = new.kind {
     id = "chaoslrd/aura",
     pool = "effect",
     state = { anim = "u8", hold = "u16", blink = "u8" },

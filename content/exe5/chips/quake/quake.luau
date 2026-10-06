@@ -27,8 +27,8 @@ local PALETTES = { [0] = 0, [1] = 6, [2] = 12, [3] = 0 }
 -- Its hit's region by level (0x080D0060: regions 1, 4 and 9).
 local REGIONS = { [0] = regions.single, [1] = regions.wide, [2] = regions.plus }
 -- Effect 0 (the explosion) on each panel it hits; effect 0x12 (a puff) as it goes.
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
 local SOUND_LAND = asset.sound("land")
 -- What it is and hits: EXE5's rows 0x15 and 5, hit modifier 3.
 local HIT_MOD = 3
@@ -155,7 +155,7 @@ local function tick(me: Object)
     me.collision:present()
 end
 
-quake.kind = define.kind {
+quake.kind = new.kind {
     id = "quake/bomb",
     pool = "attack",
     state = { level = "u8" },

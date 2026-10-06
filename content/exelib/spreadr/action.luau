@@ -80,7 +80,7 @@ function spreader.action(spec: SpreaderSpec, look: SpreaderLook): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = spec.id,
         state = spreader.STATE,
         args = spec,

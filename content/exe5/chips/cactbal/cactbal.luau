@@ -183,7 +183,7 @@ local function init(me: Object)
     tick(me)
 end
 
-cactbal.ball = define.kind {
+cactbal.ball = new.kind {
     id = "cactbal/ball",
     pool = "attack",
     state = { hops = "u32", palette = "u8" },
@@ -266,7 +266,7 @@ function cactbal.action(palette: number): Action
         end
     end
 
-    return define.action {
+    return new.action {
         state = { timer = "u16" },
         args = { palette = palette },
         -- 0x080EF0F4.

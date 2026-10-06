@@ -31,7 +31,7 @@ local ENEMY_BODY = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 -- The slash: AIAttackVars +3's row of 0x080EED64 and its effect (0x48 on: sprite 10-1F), row 0, the routine's (the
 -- only one that starts the action): the target and the two panels diagonally behind it.
 local REGION = regions.vee
-local SLASH = define.effect { sprite = asset.sprite("screen-divide"), anim = 0, palette = 0 }
+local SLASH = new.effect { sprite = asset.sprite("screen-divide"), anim = 0, palette = 0 }
 -- The sword: attachment row 3 (the swords' blade), row 0x32 (the same in palette 6) while Chaos Unison's charge is
 -- armed (0x080EC082).
 local CHAOS_BLADE = attachment.look { sprite = asset.sprite("sword"), palette = 6 }
@@ -105,7 +105,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "colonelsoul/charge/action",
     state = { timer = "u16", target_x = "u8", target_y = "u8" },
     -- 0x080EECAA
@@ -130,7 +130,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     -- The charge table's row 0x14 (0x0801CB34); Charge 5 reads on into row 0x15's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 90 },
     setup = setup,

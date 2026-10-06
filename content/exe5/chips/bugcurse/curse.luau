@@ -121,7 +121,7 @@ local function init(me: Object)
     tick(me)
 end
 
-curse.kind = define.kind {
+curse.kind = new.kind {
     id = "bugcurse/curse",
     pool = "attack",
     state = { controller = "object" },

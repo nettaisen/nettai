@@ -10,13 +10,13 @@
 -- subtype 1 or 2 would pick the other strikes there). Nothing in the game
 -- sets the request.
 
-local assnswrd = require("../../chips/assnswrd")
-local elemswrd = require("../../chips/elemswrd")
-local mchnswrd = require("../../chips/mchnswrd")
+local assnswrd = require("../../chips/assnswrd").assnswrd
+local elemswrd = require("../../chips/elemswrd").elemswrd
+local mchnswrd = require("../../chips/mchnswrd").mchnswrd
 local strike = require("./strike")
 
 return {
-    action = define.action {
+    action = new.action {
         id = "stun-strike/action",
         state = strike.STATE,
         update = function(me: Object, s: any)

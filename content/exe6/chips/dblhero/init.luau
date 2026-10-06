@@ -5,12 +5,11 @@
 -- §17).
 
 local controller = require("@self/controller")
-local longblde = require("./longblde")
+local longblde = require("./longblde").longblde
 local protoman_chips = require("./protoman")
-local wideblde = require("./wideblde")
+local wideblde = require("./wideblde").wideblde
 
-return define.chip {
-    id = "dblhero",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -22,6 +21,8 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "library" },
     slot_in_limit = 1,
-    program_advances = { { order = 5, sequence = { wideblde, longblde, protoman_chips.protomn_sp } } },
+    program_advances = { { order = 5, sequence = { wideblde, longblde, protoman_chips["protomn-sp"] } } },
     dimming = controller.hook,
 }
+
+return { dblhero = chip }

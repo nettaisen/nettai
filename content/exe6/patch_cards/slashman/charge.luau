@@ -5,9 +5,9 @@
 -- (`loc_80126EA`, lib/weapon's `chip`) and starts what its use starts.
 
 local weapon = require("../../lib/weapon")
-local wideswrd = require("../../chips/wideswrd")
+local wideswrd = require("../../chips/wideswrd").wideswrd
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/slashman/charge",
     -- The charge table's row 0x7c, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

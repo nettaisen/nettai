@@ -73,7 +73,7 @@ local function tick(me: Object)
     me:update_sprite()
 end
 
-chip.kind = define.kind {
+chip.kind = new.kind {
     id = "falling-rock/chip",
     pool = "effect",
     state = { priority = "u8" },

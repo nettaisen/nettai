@@ -13,7 +13,7 @@ local boomerang = {}
 boomerang.variant = common.variant
 
 -- TomahawkCross Beast's tomahawk (the original's row 4).
-boomerang.tomahawk = define.record("boomerang-variant", {
+boomerang.tomahawk = new.record("boomerang-variant", {
     speed = 0x8_0000,
     turn_speed = 314573,
     grass = false,

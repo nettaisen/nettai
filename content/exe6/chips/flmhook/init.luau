@@ -6,8 +6,7 @@ local firehit_chips = require("./firehit")
 local hook = require("@self/hook")
 local sparks = require("../lib/sparks")
 
-local flmhook1 = define.chip {
-    id = "flmhook1",
+local flmhook1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -23,8 +22,7 @@ local flmhook1 = define.chip {
     instant = hook.instant { big = false, spark = sparks.fire },
 }
 
-local flmhook2 = define.chip {
-    id = "flmhook2",
+local flmhook2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -40,8 +38,7 @@ local flmhook2 = define.chip {
     instant = hook.instant { big = false, spark = sparks.fire },
 }
 
-local flmhook3 = define.chip {
-    id = "flmhook3",
+local flmhook3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",

@@ -132,7 +132,7 @@ function ball.make(look: NumberBallLook): NumberBall
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { wait = "u8" },

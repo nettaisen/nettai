@@ -5,8 +5,7 @@
 
 local gauge_speed = require("../lib/gauge_speed")
 
-return define.chip {
-    id = "slogauge",
+local chip: Chip = {
     codes = { "H", "Q", "W", "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = gauge_speed.slow,
 }
+
+return { slogauge = chip }

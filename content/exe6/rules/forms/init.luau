@@ -22,7 +22,7 @@ export type State = {
 }
 
 -- The change, as the pause handler runs it.
-forms.action = define.action {
+forms.action = new.action {
     id = "forms/change",
     state = { timer = "u16" },
     update = change.update,

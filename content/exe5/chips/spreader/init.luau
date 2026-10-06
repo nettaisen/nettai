@@ -18,8 +18,7 @@ local LOOK: SpreaderLook = {
     gun_anims = navi_arms.spreader,
 }
 
-return define.chip {
-    id = "spreader",
+local chip: Chip = {
     codes = { "C", "D", "E", "*" },
     element = "null",
     family = "null",
@@ -37,3 +36,5 @@ return define.chip {
         bullet = bullet.variants.spreader,
     }, LOOK),
 }
+
+return { spreader = chip }

@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local back_special = require("@self/back_special")
 
-return define.patch_card {
-    id = "metrid",
+local card: PatchCard = {
     mb = 15,
     effects = {
         cards.hp_percent(5),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.bug(cards.step_bug(1)),
     },
 }
+
+return { metrid = card }

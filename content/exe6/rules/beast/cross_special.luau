@@ -182,7 +182,7 @@ local function finish(me: Object, s: EndState)
     me:exit_attack()
 end
 
-cross_special.action = define.action {
+cross_special.action = new.action {
     id = "beast/cross-special-end",
     state = { timer = "u16" },
     update = function(me: Object, s: any)

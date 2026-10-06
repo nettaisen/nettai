@@ -79,7 +79,7 @@ local function init(me: Object)
     tick(me)
 end
 
-magnet.kind = define.kind {
+magnet.kind = new.kind {
     id = "magnetsoul/magnet",
     pool = "attack",
     state = { paralyzes = "bool", dx = "i32", dy = "i32" },

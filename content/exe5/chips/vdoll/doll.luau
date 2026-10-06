@@ -28,7 +28,7 @@ local SPRITE = asset.sprite("voodoo-doll")
 return common.make {
     id = "vdoll/doll",
     sprite = SPRITE,
-    identity = define.identity {
+    identity = new.identity {
         class = "field_object",
         version = 3,
         ai_index = 0x21,
@@ -46,7 +46,7 @@ return common.make {
     curse = curse,
     exe5_leaving = {
         -- Effect 0x24 (EXE5's table, 0x080DFC94): sheet 14-00 in palette 1.
-        flash = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 },
+        flash = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 },
         sound = asset.sound("trap-vanish"),
     },
 }

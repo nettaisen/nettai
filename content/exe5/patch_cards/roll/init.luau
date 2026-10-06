@@ -5,8 +5,7 @@ local cards = require("../rules/patch_cards/cards")
 local barriers = require("../lib/barriers")
 local variants = require("../objects/projectile/variants")
 
-return define.patch_card {
-    id = "roll",
+local card: PatchCard = {
     mb = 40,
     effects = {
         cards.charge_shot_kind(variants.chip_destruction),
@@ -15,3 +14,5 @@ return define.patch_card {
         cards.bug(cards.hp_percent(-5)),
     },
 }
+
+return { roll = card }

@@ -112,7 +112,7 @@ local function init(me: Object)
     tick(me)
 end
 
-beam.kind = define.kind {
+beam.kind = new.kind {
     id = "piledrvr/beam",
     pool = "attack",
     state = { distance = "u8", ticks = "u8" },

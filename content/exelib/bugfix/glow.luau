@@ -221,7 +221,7 @@ function glow.make(look: Look): Glow
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "actor",
         state = { variant = "u8", holder = "object" },

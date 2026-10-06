@@ -271,7 +271,7 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
     }
     // A kind in an owner's folder is keyed under its owner.
     if let Some(owner) = owner(path) {
-        for at in s.find("define.kind") {
+        for at in s.find("new.kind") {
             let rest = &s.code[at..];
             let Some(id) = rest.find("id").filter(|&i| i < rest.find('}').unwrap_or(rest.len())) else { continue };
             let after = &s.code[at + id + 2..];
@@ -321,7 +321,7 @@ mod tests {
             "local T = { 1, 2 }\nfor _, v in T do print(v) end\n",
             "local T = { 1, 2 }\nlocal U = { T, 3 }\n",
             "local T = { 1, 2 }\nlocal x = f(T[1], T.n)\n",
-            "local K = define.kind { id = 'k' }\nbattle.spawn(K, pos)\n",
+            "local K = new.kind { id = 'k' }\nbattle.spawn(K, pos)\n",
             "local T = { 1 }\nlocal function f(a, T)\nend\n",
             "local t = 3\nf(t)\n",
             "    local T = { 1 }\n    f(T)\n",
@@ -334,16 +334,16 @@ mod tests {
 
     #[test]
     fn lints_catch_placeholders_compat_modules_and_unqualified_kinds() {
-        let l = lints("chips/minibomb/init.luau", "local S = asset.sprite('sprite-0c-01')\nlocal K = define.kind { id = 'bomb', pool = 'attack' }\n");
+        let l = lints("chips/minibomb/init.luau", "local S = asset.sprite('sprite-0c-01')\nlocal K = new.kind { id = 'bomb', pool = 'attack' }\n");
         assert_eq!(l.len(), 2, "{l:?}");
         assert!(l[0].contains("placeholder") && l[1].contains("minibomb/"));
-        assert!(lints("chips/minibomb/init.luau", "local K = define.kind { id = 'minibomb/held', pool = 'effect' }").is_empty());
-        assert!(lints("lib/bombs/bomb.luau", "local K = define.kind { id = 'bomb', pool = 'attack' }").is_empty());
+        assert!(lints("chips/minibomb/init.luau", "local K = new.kind { id = 'minibomb/held', pool = 'effect' }").is_empty());
+        assert!(lints("lib/bombs/bomb.luau", "local K = new.kind { id = 'bomb', pool = 'attack' }").is_empty());
         // A navi's folder (without its index prefix), and a form's inside it.
-        let dash = "local K = define.kind { id = 'megaman/dash-hit', pool = 'attack' }";
+        let dash = "local K = new.kind { id = 'megaman/dash-hit', pool = 'attack' }";
         assert!(lints("navis/megaman/dash_hit.luau", dash).is_empty());
         assert!(lints("navis/megaman/dash_hit.luau", dash).is_empty());
-        let wave = "local K = define.kind { id = 'slashcross/sword-wave', pool = 'attack' }";
+        let wave = "local K = new.kind { id = 'slashcross/sword-wave', pool = 'attack' }";
         assert!(lints("navis/megaman/forms/slashcross/sword_wave.luau", wave).is_empty());
         assert_eq!(lints("navis/megaman/forms/heatcross/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("navis/megaman/sword_wave.luau", wave).len(), 1);
@@ -353,13 +353,13 @@ mod tests {
         assert!(l.len() == 1 && l[0].contains("`rules.state` is the rules' own"), "{l:?}");
         assert!(lints("rules/beast/init.luau", "local s = rules.state()\nlocal u = rules.setup()\n").is_empty());
         // A form's kinds keep the form's ID in a snake_case folder.
-        let surge = "local K = define.kind { id = 'spoutcross-beast/surge', pool = 'attack' }";
+        let surge = "local K = new.kind { id = 'spoutcross-beast/surge', pool = 'attack' }";
         assert!(lints("navis/megaman/forms/spoutcross_beast/surge.luau", surge).is_empty());
         assert_eq!(lints("navis/megaman/forms/tengucross_beast/surge.luau", surge).len(), 1);
-        let burst = "local K = define.kind { id = 'h-burst/burst', pool = 'attack' }";
+        let burst = "local K = new.kind { id = 'h-burst/burst', pool = 'attack' }";
         assert!(lints("chips/h-burst/burst.luau", burst).is_empty());
         assert_eq!(lints("chips/h_burst/burst.luau", burst).len(), 1);
-        let shared = "local K = define.kind { id = 'megaman/dash-hit', pool = 'attack' }";
+        let shared = "local K = new.kind { id = 'megaman/dash-hit', pool = 'attack' }";
         assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());
         assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());
         assert_eq!(lints("navis/heatman/dash_hit.luau", shared).len(), 1);

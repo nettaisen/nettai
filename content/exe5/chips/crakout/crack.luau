@@ -74,7 +74,7 @@ local function init(me: Object)
     tick(me)
 end
 
-crack.kind = define.kind {
+crack.kind = new.kind {
     id = "crakout/crack",
     pool = "attack",
     -- 0x080C7704.
@@ -151,7 +151,7 @@ function crack.action(pattern: number): Action
         end
     end
 
-    return define.action {
+    return new.action {
         state = { timer = "u16" },
         args = { pattern = pattern },
         -- 0x080EC79C.

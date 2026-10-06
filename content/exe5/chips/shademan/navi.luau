@@ -156,7 +156,7 @@ local function init(me: Object)
     act(me)
 end
 
-shademan.kind = define.kind {
+shademan.kind = new.kind {
     id = "shademan/navi",
     pool = "actor",
     state = {

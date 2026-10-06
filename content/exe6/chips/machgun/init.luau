@@ -37,7 +37,7 @@ local STRIKES, INTERVAL, START_ROW = 9, 8, 3
 local PANEL_STRIKE: PanelStrike = { warning = 6, hit_mod = 1 }
 -- The reticle (effect 0x2F) over the target, for 6 ticks (the chips'
 -- second parameter).
-local RETICLE = define.effect { sprite = asset.sprite("reticle"), anim = 0, palette = 0 }
+local RETICLE = new.effect { sprite = asset.sprite("reticle"), anim = 0, palette = 0 }
 local RETICLE_TICKS = 6
 -- The gun's animation as it fires.
 local GUN_FIRE = 1
@@ -124,7 +124,7 @@ end
 
 -- A chip's action (the three are alike; each chip has its own).
 local function mach_gun(): Action
-    return define.action {
+    return new.action {
         state = STATE,
         -- `sub_80ECF2E`.
         update = function(me: Object, s: State)
@@ -140,9 +140,8 @@ local function mach_gun(): Action
     }
 end
 
-return {
-    machgun1 = define.chip {
-        id = "machgun1",
+local chips: { [string]: Chip } = {
+    machgun1 = {
         codes = { "A", "R", "T", "*" },
         element = "null", family = "cursor", class = "standard",
         rarity = 0, mb = 12, damage = 30, hit_param = 30, lockout = 0,
@@ -150,8 +149,7 @@ return {
         slot_in_limit = 3,
         action = mach_gun(),
     },
-    machgun2 = define.chip {
-        id = "machgun2",
+    machgun2 = {
         codes = { "E", "G", "S" },
         element = "null", family = "cursor", class = "standard",
         rarity = 1, mb = 24, damage = 50, hit_param = 30, lockout = 0,
@@ -159,8 +157,7 @@ return {
         slot_in_limit = 3,
         action = mach_gun(),
     },
-    machgun3 = define.chip {
-        id = "machgun3",
+    machgun3 = {
         codes = { "B", "F", "M" },
         element = "null", family = "cursor", class = "standard",
         rarity = 2, mb = 36, damage = 70, hit_param = 30, lockout = 0,
@@ -169,3 +166,5 @@ return {
         action = mach_gun(),
     },
 }
+
+return chips

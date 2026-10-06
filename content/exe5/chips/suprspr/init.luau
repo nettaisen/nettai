@@ -2,11 +2,11 @@
 -- SuprSpr1, SuprSpr2 and SuprSpr3: the suprspr series (each chip's own comment above its definition).
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
-local recipe_wideblde = require("./wideblde")
+local recipe_wideblde = require("./wideblde").wideblde
 local recipe_widesht1 = require("./widesht").widesht1
 local recipe_widesht2 = require("./widesht").widesht2
 local recipe_widesht3 = require("./widesht").widesht3
-local recipe_wideswrd = require("./wideswrd")
+local recipe_wideswrd = require("./wideswrd").wideswrd
 local wave = require("./widesht/variants")
 local widesht = require("./widesht/wave")
 
@@ -14,8 +14,7 @@ local widesht = require("./widesht/wave")
 -- wide shooter and sends three waves over a column of three, 14 ticks apart, that go through what they hit, the last
 -- staggering harder: the shared WideSht's (@exelib/widesht, EXE5's action 0x25 with subtype 1) three waves, at the
 -- floor, of EXE5's wave kind 6 (chips/widesht: the record's parameters).
-local suprspr1 = define.chip {
-    id = "suprspr1",
+local suprspr1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",
@@ -41,8 +40,7 @@ local suprspr1 = define.chip {
 -- wide shooter and sends three waves over a column of three, 14 ticks apart, that go through what they hit, the last
 -- staggering harder: the shared WideSht's (@exelib/widesht, EXE5's action 0x25 with subtype 1) three waves, at the
 -- floor, of EXE5's wave kind 7 (chips/widesht: the record's parameters).
-local suprspr2 = define.chip {
-    id = "suprspr2",
+local suprspr2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",
@@ -68,8 +66,7 @@ local suprspr2 = define.chip {
 -- wide shooter and sends three waves over a column of three, 14 ticks apart, that go through what they hit, the last
 -- staggering harder: the shared WideSht's (@exelib/widesht, EXE5's action 0x25 with subtype 1) three waves, at the
 -- floor, of EXE5's wave kind 8 (chips/widesht: the record's parameters).
-local suprspr3 = define.chip {
-    id = "suprspr3",
+local suprspr3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",

@@ -5,8 +5,7 @@
 local navi = require("@self/navi")
 
 -- LarkMan (EXE5 chip 0x110): LarkMan cuts in and sends his swoop round the field (./navi).
-local larkman = define.chip {
-    id = "larkman",
+local larkman: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local larkman = define.chip {
 
 -- LarkManSP (EXE5 chip 0x111): LarkMan cuts in and sends his swoop round the field (../larkman/navi); its damage by how
 -- fast its user deleted LarkMan SP (rules/sp_chips: formula 18, its table's row 17).
-local larkman_sp = define.chip {
-    id = "larkman-sp",
+local larkman_sp: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -43,8 +41,7 @@ local larkman_sp = define.chip {
 
 -- LarkManDS (EXE5 chip 0x112): LarkMan, dark, cuts in and sends his swoop round the field (../larkman/navi); its damage
 -- by its user's side's statistic 3 (formula 40, its table's row 17).
-local larkman_ds = define.chip {
-    id = "larkman-ds",
+local larkman_ds: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -60,4 +57,4 @@ local larkman_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { larkman = larkman, larkman_sp = larkman_sp, larkman_ds = larkman_ds }
+return { larkman = larkman, ["larkman-sp"] = larkman_sp, ["larkman-ds"] = larkman_ds }

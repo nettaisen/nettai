@@ -6,12 +6,11 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local controller = require("@self/controller")
-local recipe_django_ds = require("./django").django_ds
-local recipe_django_sp = require("./django").django_sp
+local recipe_django_ds = require("./django")["django-ds"]
+local recipe_django_sp = require("./django")["django-sp"]
 local recipe_gundels3 = require("./gundels").gundels3
 
-return define.chip {
-    id = "piledrvr",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -32,3 +31,5 @@ return define.chip {
     },
     dimming = controller.hook,
 }
+
+return { piledrvr = chip }

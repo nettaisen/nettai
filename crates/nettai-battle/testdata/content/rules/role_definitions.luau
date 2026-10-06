@@ -6,11 +6,11 @@
 -- every sound, music and banner.
 
 local function effect(): Effect
-    return define.effect { sprite = asset.sprite("test-burst"), anim = 0, palette = 0 }
+    return new.effect { sprite = asset.sprite("test-burst"), anim = 0, palette = 0 }
 end
 
 local function spark(): Spark
-    return define.spark { sprite = asset.sprite("test-spark"), anim = 0, palette = 0 }
+    return new.spark { sprite = asset.sprite("test-spark"), anim = 0, palette = 0 }
 end
 
 -- A collision type's flag words: an attack, an object and a body of each
@@ -29,7 +29,7 @@ local REACHES_FLOATING = 0x0080
 -- A type whose flags `flags` gives for each side. `row` is the row the
 -- type has in EXE6's table: a bug code's high byte takes its offset.
 local function collision(id: string, row: number, flags: (side: number) -> number): CollisionType
-    return define.collision { id = "test/" .. id, side0 = flags(0), side1 = flags(1), row_offset = row * 8 }
+    return new.collision { id = "test/" .. id, side0 = flags(0), side1 = flags(1), row_offset = row * 8 }
 end
 
 local function body(side: number): number
@@ -65,7 +65,7 @@ return {
         panel_burn = spark(),
     },
     regions = {
-        anchor = define.region { panels = { { 0, 0 } } },
+        anchor = new.region { panels = { { 0, 0 } } },
     },
     collision = {
         navi = collision("navi", 0x01, body),

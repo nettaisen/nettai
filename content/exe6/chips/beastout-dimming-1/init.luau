@@ -6,8 +6,7 @@
 
 local controller = require("./geddon/controller")
 
-return define.chip {
-    id = "beastout-dimming-1",
+local chip: Chip = {
     element = "null", family = "special", class = "special",
     rarity = 0, mb = 99, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming" },
@@ -16,3 +15,5 @@ return define.chip {
     traits = { "no_cut_in" },
     dimming = controller.hook("crack"),
 }
+
+return { ["beastout-dimming-1"] = chip }

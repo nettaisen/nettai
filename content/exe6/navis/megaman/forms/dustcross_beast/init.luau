@@ -1,16 +1,15 @@
 --!strict
 -- DustCross Beast: one of MegaMan's forms.
 
-local dustman = require("../../dustman")
-local falzar_beast = require("./falzar_beast")
+local dustman = require("../../dustman").dustman
+local falzar_beast = require("./falzar_beast")["falzar-beast"]
 local throw_absorbed = require("@self/throw_absorbed")
 local absorb = require("../weapons/absorb")
 local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local scatter = require("@self/scatter")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "dustcross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -44,7 +43,7 @@ return define.form {
     scrap_button = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 22 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -92,3 +91,5 @@ return define.form {
         },
     },
 }
+
+return { ["dustcross-beast"] = form }

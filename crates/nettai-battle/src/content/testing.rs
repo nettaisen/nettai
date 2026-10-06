@@ -363,6 +363,7 @@ pub fn add_index(scripts: &mut Scripts, game: &str) {
     let own: std::collections::BTreeMap<String, String> =
         scripts.modules.iter().filter_map(|(name, source)| Some((name.strip_prefix(&prefix)?.to_string(), source.clone()))).collect();
     scripts.modules.insert(packs::top_module(game), Scripts::init_for(&own));
+    scripts.hold(game, own.keys());
     let depends = scripts.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
     scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
 }
@@ -1035,10 +1036,6 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/weapons/blank_shot/init", "navis/megaman/weapons/blank_shot/init"),
                 ("navis/megaman/weapons/charged_shot/init", "navis/megaman/weapons/charged_shot/init"),
                 ("navis/megaman/weapons/buster/init", "navis/megaman/weapons/buster/init"),
-                // Two of the buster's alias routines (its setup, their own
-                // charge rows).
-                ("navis/megaman/weapons/buster_2e/init", "navis/megaman/weapons/buster_2e/init"),
-                ("navis/megaman/weapons/buster_82/init", "navis/megaman/weapons/buster_82/init"),
                 ("navis/megaman/forms/heatcross/charge", "navis/megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element_pillar/init", "objects/element_pillar/init"),
@@ -1188,7 +1185,6 @@ pub fn scripts() -> Scripts {
                 // chips run.
                 ("lib/bombs/throw", "lib/bombs/throw"),
                 ("lib/bombs/bomb", "lib/bombs/bomb"),
-                ("lib/bombs/slash", "lib/bombs/slash"),
                 ("lib/bombs/seed", "lib/bombs/seed"),
                 ("chips/minibomb/init", "chips/minibomb/init"),
                 ("chips/bigbomb/init", "chips/bigbomb/init"),

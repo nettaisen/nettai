@@ -58,7 +58,7 @@ function debris.make_kind(id: string, sprite: SpriteAsset, dust: Effect): Kind
         fly(me)
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { palette = "u8" },

@@ -30,7 +30,7 @@ snake.kind = common.make_kind("snake/snake", {
     -- Its strike (`sub_80C53A6`, 0x04050501): an attack hitting navis with
     -- hit modifier 3.
     strike_element = 0,
-    strike_spark = define.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 },
+    strike_spark = new.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 },
     strike_hit_mod = 3,
     is = collision.attack,
     hits = collision.hits_navis,

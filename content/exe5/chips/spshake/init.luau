@@ -6,8 +6,7 @@ local spshake = require("@self/spshake")
 
 -- SpShake1 (EXE5 chip 0x018): an electric wave that snakes along the field from the panel ahead (EXE5's SpShake,
 -- chips/spshake/spshake: action 0x51).
-local spshake1 = define.chip {
-    id = "spshake1",
+local spshake1: Chip = {
     codes = { "G", "H", "I" },
     element = "elec",
     family = "elec",
@@ -24,8 +23,7 @@ local spshake1 = define.chip {
 
 -- SpShake2 (EXE5 chip 0x019): an electric wave that snakes along the field from the panel ahead (EXE5's SpShake,
 -- chips/spshake/spshake: action 0x51).
-local spshake2 = define.chip {
-    id = "spshake2",
+local spshake2: Chip = {
     codes = { "B", "C", "D" },
     element = "elec",
     family = "elec",
@@ -42,8 +40,7 @@ local spshake2 = define.chip {
 
 -- SpShake3 (EXE5 chip 0x01a): an electric wave that snakes along the field from the panel ahead (EXE5's SpShake,
 -- chips/spshake/spshake: action 0x51).
-local spshake3 = define.chip {
-    id = "spshake3",
+local spshake3: Chip = {
     codes = { "S", "T", "U" },
     element = "elec",
     family = "elec",

@@ -41,7 +41,7 @@ local function effect(me: Object)
     me.phase_init = 4
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "sumnblk/controller",
     pool = "effect",
     state = { variant = "u8", busy = "bool", bonus = "u16" },

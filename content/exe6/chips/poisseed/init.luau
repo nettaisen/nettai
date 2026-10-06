@@ -4,8 +4,7 @@
 local seed = require("../lib/bombs/seed")
 local throw = require("../lib/bombs/throw")
 
-return define.chip {
-    id = "poisseed",
+local chip: Chip = {
     codes = { "H", "N", "P", "*" },
     element = "null",
     family = "null",
@@ -30,3 +29,5 @@ return define.chip {
         }),
     },
 }
+
+return { poisseed = chip }

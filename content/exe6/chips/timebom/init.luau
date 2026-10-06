@@ -20,7 +20,7 @@ local BOMB = countdown.variant {
     appear_anim = 0,
     idle_anim = 1,
     hp = 50,
-    identity = define.identity {
+    identity = new.identity {
         id = "timebomb",
         class = "field_object",
         version = 5,
@@ -34,7 +34,7 @@ local BIG_BOMB = countdown.variant {
     appear_anim = 2,
     idle_anim = 3,
     hp = 200,
-    identity = define.identity {
+    identity = new.identity {
         id = "timebomb-big",
         class = "field_object",
         version = 0,
@@ -46,8 +46,7 @@ local BIG_BOMB = countdown.variant {
     strong_shake = true,
 }
 
-local timebom1 = define.chip {
-    id = "timebom1",
+local timebom1: Chip = {
     codes = { "F", "G", "H" },
     element = "null",
     family = "summon",
@@ -62,8 +61,7 @@ local timebom1 = define.chip {
     dimming = controller.hook(BOMB),
 }
 
-local timebom2 = define.chip {
-    id = "timebom2",
+local timebom2: Chip = {
     codes = { "C", "D", "E" },
     element = "null",
     family = "summon",
@@ -78,8 +76,7 @@ local timebom2 = define.chip {
     dimming = controller.hook(BOMB),
 }
 
-local timebom3 = define.chip {
-    id = "timebom3",
+local timebom3: Chip = {
     codes = { "L", "M", "N" },
     element = "null",
     family = "summon",
@@ -94,8 +91,7 @@ local timebom3 = define.chip {
     dimming = controller.hook(BOMB),
 }
 
-local timebom = define.chip {
-    id = "timebom",
+local timebom: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

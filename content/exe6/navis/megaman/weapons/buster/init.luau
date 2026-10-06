@@ -125,14 +125,13 @@ buster.shot = common.shot_action {
     throw = throw,
 }
 
-buster.weapon = define.weapon {
+buster.weapon = new.weapon {
     id = "megaman/buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = buster.setup,
     -- (`off_80117D4`'s other entries that are `sub_8011A26` read other
-    -- rows of the charge table, so they are weapons of their own with this
-    -- setup: navis/megaman/weapons/buster_2e and the rest.)
+    -- rows of the charge table: no navi or form of EXE6's has one.)
 }
 
 return buster

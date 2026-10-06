@@ -29,7 +29,7 @@ end
 
 -- A game's marker kind `id`, in `sprite` (its hit sparks).
 function marker.make_kind(id: string, sprite: SpriteAsset): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { ticks = "u8" },

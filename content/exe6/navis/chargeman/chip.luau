@@ -97,8 +97,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [ERUPT] = blow, [RECOVER] = recover }
 
-return define.chip {
-    id = "volcchrg",
+local chip: Chip = {
     codes = { "C" },
     element = "fire",
     family = "fire",
@@ -111,7 +110,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     -- `sub_80F1334` (`off_80F1348`).
-    action = define.action {
+    action = new.action {
         id = "volcchrg/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -119,3 +118,5 @@ return define.chip {
         end,
     },
 }
+
+return { volcchrg = chip }

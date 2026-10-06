@@ -4,10 +4,9 @@
 local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local heatman = require("@self/chip")
+local heatman = require("@self/chip").heatpres
 
-return define.navi {
-    id = "heatman",
+local navi: NaviDef = {
     sprite = asset.sprite("heatman"),
     element = "fire",
     buster_bonus = 1,
@@ -59,7 +58,7 @@ return define.navi {
             { hp = 1200, attack = 3, rapid = 2, charge = 2, custom_level = 1, mega_level = 1, float_shoes = true },
         },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -114,3 +113,5 @@ return define.navi {
         },
     },
 }
+
+return { heatman = navi }

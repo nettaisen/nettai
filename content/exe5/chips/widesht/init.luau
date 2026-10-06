@@ -9,8 +9,7 @@ local widesht = require("@self/wave")
 -- of three: the shared WideSht (@exelib/widesht, the original's action 0x30, EXE5's 0x25; the same code but for the
 -- shooter's attachment row, EXE5's 0x11 for EXE6's 0x23, and the wave's height and sprite) with EXE5's shooter (0c-2a,
 -- the same place), its wave at the floor (EXE6's at 16 pixels) and EXE5's wide wave (chips/widesht).
-local widesht1 = define.chip {
-    id = "widesht1",
+local widesht1: Chip = {
     codes = { "L", "M", "N" },
     element = "aqua",
     family = "aqua",
@@ -29,8 +28,7 @@ local widesht1 = define.chip {
 -- of three: the shared WideSht (@exelib/widesht, the original's action 0x30, EXE5's 0x25; the same code but for the
 -- shooter's attachment row, EXE5's 0x11 for EXE6's 0x23, and the wave's height and sprite) with EXE5's shooter (0c-2a,
 -- the same place), its wave at the floor (EXE6's at 16 pixels) and EXE5's wide wave of kind 4 (chips/widesht).
-local widesht2 = define.chip {
-    id = "widesht2",
+local widesht2: Chip = {
     codes = { "E", "F", "G" },
     element = "aqua",
     family = "aqua",
@@ -49,8 +47,7 @@ local widesht2 = define.chip {
 -- of three: the shared WideSht (@exelib/widesht, the original's action 0x30, EXE5's 0x25; the same code but for the
 -- shooter's attachment row, EXE5's 0x11 for EXE6's 0x23, and the wave's height and sprite) with EXE5's shooter (0c-2a,
 -- the same place), its wave at the floor (EXE6's at 16 pixels) and EXE5's wide wave of kind 5 (chips/widesht).
-local widesht3 = define.chip {
-    id = "widesht3",
+local widesht3: Chip = {
     codes = { "S", "T", "U" },
     element = "aqua",
     family = "aqua",

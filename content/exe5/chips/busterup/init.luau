@@ -26,8 +26,7 @@ local function raise(user: Object, _spec: InstantChipSpec)
     end
 end
 
-return define.chip {
-    id = "busterup",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "plus",
@@ -42,3 +41,5 @@ return define.chip {
     slot_in_limit = 1,
     instant = raise,
 }
+
+return { busterup = chip }

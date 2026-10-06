@@ -39,7 +39,7 @@ export type State = {
 }
 
 function puck.variant(v: Variant): Variant
-    return define.record("hockey-puck-variant", v)
+    return new.record("hockey-puck-variant", v)
 end
 
 -- The trail: every fourth tick, an afterimage of the puck for 8 ticks, tinted.
@@ -275,7 +275,7 @@ end
 
 -- A game's puck kind, `id`, of `look`.
 function puck.make_kind(id: string, look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = {

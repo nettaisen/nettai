@@ -4,12 +4,11 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local football = require("@self/football")
-local recipe_gridman_ds = require("./gridman").gridman_ds
-local recipe_gridman_sp = require("./gridman").gridman_sp
+local recipe_gridman_ds = require("./gridman")["gridman-ds"]
+local recipe_gridman_sp = require("./gridman")["gridman-sp"]
 local recipe_mrkcan2 = require("./mrkcan").mrkcan2
 
-return define.chip {
-    id = "football",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -30,3 +29,5 @@ return define.chip {
     },
     navi = football.summon,
 }
+
+return { football = chip }

@@ -15,8 +15,9 @@ local capsules = {}
 local yelcapsl, blkcapsl, whicapsl = capsules_chips.yelcapsl, capsules_chips.blkcapsl, capsules_chips.whicapsl
 local prpcapsl, pnkcapsl = capsules_chips.prpcapsl, capsules_chips.pnkcapsl
 
--- What the capsules keep in the rules' state (each screen starts with it fresh: rules/souls's deal).
-type State = {
+-- What the capsules keep of a screen, the rules' state's `screen` (each screen starts with it fresh: rules/souls's
+-- deal).
+type Screen = {
     -- The screen's two capsules (its +0x26 and +0x28; none out of MeddySoul: the screen's record is zeroed as it
     -- opens, 0x08022CA2).
     capsule_1: Chip?,
@@ -58,7 +59,7 @@ local OFFERED_LOW = {
 -- to 4 the first's place in the table and bits 17 to 20 the second's; the table by whether MegaMan's HP is under a
 -- quarter (his maximum shifted right twice).
 local function deal(side: number, s: any)
-    local st = s :: State
+    local st = (s :: { screen: Screen }).screen
     local navi = battle.player(side) :: Object
     local list = if navi.hp < bit32.rshift(navi.max_hp, 2) then OFFERED_LOW else OFFERED
     local r = battle.console_rng_positive(side)
@@ -80,7 +81,7 @@ local function button(index: number): SoulButton
         slot = SLOTS[index],
         -- The capsule in the slot: its chip, which the chip window shows and R describes.
         chip = function(_side: number, s: any): Chip?
-            local st = s :: State
+            local st = (s :: { screen: Screen }).screen
             return if index == 1 then st.capsule_1 else st.capsule_2
         end,
         state = state,
@@ -91,7 +92,7 @@ local function button(index: number): SoulButton
                 return
             end
             custom.play(side, "pick")
-            local st = s :: State
+            local st = (s :: { screen: Screen }).screen
             st.mix_capsule, st.mix_step, st.mix_count = index, 0, 0
             custom.open_window(side, "capsule")
         end,
@@ -108,7 +109,7 @@ local FADE_SPEED = 32
 local window: SoulWindow = {
     view = "chip_flight",
     update = function(side: number, s: any): boolean
-        local st = s :: State
+        local st = (s :: { screen: Screen }).screen
         local fading = custom.fading(side)
         local step, count = st.mix_step, st.mix_count
         if step == 0 then
@@ -144,9 +145,9 @@ local window: SoulWindow = {
             -- 0x080237B4
             if not fading then
                 local chip = (if st.mix_capsule == 1 then st.capsule_1 else st.capsule_2) :: Chip
-                local mix = MIXES[chip.id]
+                local mix = MIXES[chip.id :: string]
                 if mix == nil then
-                    error(string.format("%s is no capsule (0x08023824 has five entries)", chip.id))
+                    error(string.format("%s is no capsule (0x08023824 has five entries)", chip.id :: string))
                 end
                 custom.attach_to_last_pick(side, BUTTONS[st.mix_capsule], mix)
                 custom.update_availability(side)
@@ -187,6 +188,6 @@ local custom_screen: SoulCustom = {
     deal = deal,
 }
 
-capsules.custom = define.record("soul-custom", custom_screen)
+capsules.custom = new.record("soul-custom", custom_screen)
 
 return capsules

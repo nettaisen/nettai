@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "oilbody",
+local program: NaviCustProgram = {
     colors = { "red" },
     shape = {
         ".......",
@@ -28,3 +27,5 @@ return define.navicust_program {
     exclusive = "encounter-element",
     effects = { programs.outside("oil-body") },
 }
+
+return { oilbody = program }

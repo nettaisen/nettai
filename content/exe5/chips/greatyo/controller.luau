@@ -43,7 +43,7 @@ local function update(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "greatyo/controller",
     pool = "effect",
     state = { middle = "object", below = "object", above = "object", leader = "record:exe5-yoyo", follower = "record:exe5-yoyo" },

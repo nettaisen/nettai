@@ -212,7 +212,7 @@ local function init(me: Object)
     tick(me)
 end
 
-whirlpool.kind = define.kind {
+whirlpool.kind = new.kind {
     id = "aqwhirl/whirlpool",
     pool = "attack",
     state = { palette = "u8", speed = "u8", tx = "i32", ty = "i32" },

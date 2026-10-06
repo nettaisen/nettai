@@ -132,7 +132,7 @@ local function init(me: Object)
     tick(me)
 end
 
-wavepit.kind = define.kind {
+wavepit.kind = new.kind {
     id = "wavepit/wave",
     pool = "attack",
     state = { palette = "u8", anywhere = "bool" },

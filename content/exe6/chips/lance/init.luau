@@ -4,8 +4,7 @@
 
 local lance = require("@self/lance")
 
-return define.chip {
-    id = "lance",
+local chip: Chip = {
     codes = { "A", "R", "W", "*" },
     element = "wood", family = "wood", class = "standard",
     rarity = 3, mb = 42, damage = 150, hit_param = 30, lockout = 10,
@@ -13,3 +12,5 @@ return define.chip {
     slot_in_limit = 3,
     instant = lance.instant,
 }
+
+return { lance = chip }

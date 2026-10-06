@@ -18,8 +18,7 @@ local function cheer(me: Object)
     end
 end
 
-return define.chip {
-    id = "fanfare",
+local chip: Chip = {
     codes = { "F", "P", "Z", "*" },
     element = "null",
     family = "summon",
@@ -33,7 +32,7 @@ return define.chip {
     slot_in_limit = 3,
     -- EXE5's row 0; its identity the actor record 0xDD (0x08014C94: version 4, AI index 0x21).
     dimming = exe5_instrument.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             class = "field_object",
             version = 4,
             ai_index = 0x21,
@@ -46,3 +45,5 @@ return define.chip {
         effect = cheer,
     }),
 }
+
+return { fanfare = chip }

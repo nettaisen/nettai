@@ -53,7 +53,7 @@ end
 
 -- A game's controller.
 function invisible.make(spec: Spec): Invisible
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { ticks = "u16" },

@@ -23,7 +23,7 @@ local function count(side: number)
     s.bonus = (rules.setup() :: { bonus: number }).bonus * 2
 end
 
-return define.rules {
+local rules_: Rules = {
     state = {
         -- EXE6's Beast Out (its rush's, its controllers', its turn-start check's delay, its custom screen's).
         rush_phase = "u8",
@@ -140,3 +140,5 @@ return define.rules {
     sp_chips = require("@self/sp_chips"),
     status = require("@self/status_rules"),
 }
+
+return rules_

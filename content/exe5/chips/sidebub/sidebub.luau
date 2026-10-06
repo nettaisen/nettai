@@ -188,7 +188,7 @@ local function init(me: Object)
     tick(me)
 end
 
-sidebub.bubble = define.kind {
+sidebub.bubble = new.kind {
     id = "sidebub/bubble",
     pool = "attack",
     state = { way = "u8", travel = "u8", burst = "u8" },

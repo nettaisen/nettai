@@ -58,7 +58,7 @@ function sparkles.make(look: SparklesLook): Sparkles
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "effect",
         state = { length = "u8", effect = "effect", silent = "bool" },

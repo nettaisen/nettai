@@ -4,8 +4,7 @@
 
 local grab = require("../lib/grab/controller")
 
-return define.chip {
-    id = "areagrab",
+local chip: Chip = {
     codes = { "B", "F", "S", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 8, damage = 10, hit_param = 138, lockout = 0,
@@ -13,3 +12,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = grab.area,
 }
+
+return { areagrab = chip }

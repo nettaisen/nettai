@@ -31,7 +31,7 @@ local function vanish(user: Object, _spec: InstantChipSpec)
     battle.play_sound(INVISIBLE_SOUND)
 end
 
-instants.invisible = define.weapon {
+instants.invisible = new.weapon {
     id = "megaman/invisible",
     -- The charge table's row 0x47, by Charge 0 to 5: past 4 it reads on into row 0x48's first entry.
     charge_ticks = { 160, 155, 150, 145, 140, 80 },
@@ -44,7 +44,7 @@ local function vacuum(user: Object, _spec: InstantChipSpec)
     common_gust.blow_rows(gust.kind, user, VACUUM_SOUND)
 end
 
-instants.vacuum = define.weapon {
+instants.vacuum = new.weapon {
     id = "megaman/vacuum",
     -- The charge table's row 0x4C, by Charge 0 to 5: past 4 it reads on into row 0x4D's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 90 },

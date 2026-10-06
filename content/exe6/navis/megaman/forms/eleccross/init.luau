@@ -1,17 +1,16 @@
 --!strict
 -- ElecCross: one of MegaMan's forms.
 
-local base = require("./base")
+local base = require("./base").base
 local cross_overlay = require("./cross_overlay")
-local elecman = require("../../elecman")
-local eleccross_beast = require("./eleccross_beast")
+local elecman = require("../../elecman").elecman
+local eleccross_beast = require("./eleccross_beast")["eleccross-beast"]
 local buster = require("../weapons/buster")
 local charge = require("@self/charge")
 local a_charge = require("@self/a_charge")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "eleccross",
+local form: FormDef = {
     kind = "cross",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -39,7 +38,7 @@ return define.form {
     special_volley = 2,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 2 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross",
         version = 0,
         actor_type = "player",
@@ -87,3 +86,5 @@ return define.form {
         },
     },
 }
+
+return { eleccross = form }

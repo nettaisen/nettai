@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local chrgs = require("../lib/patch_cards/chrgs")
 
-return define.patch_card {
-    id = "pharoman",
+local card: PatchCard = {
     mb = 35,
     effects = {
         cards.hp_percent(5),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.giga_folder(1),
     },
 }
+
+return { pharoman = card }

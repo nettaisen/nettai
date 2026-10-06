@@ -136,7 +136,7 @@ local function blow(spec: Blow, look: TornadoBlowLook): Action
         end
     end
 
-    return define.action { id = spec.id, state = STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = STATE, args = spec, update = update }
 end
 
 local blows = {}

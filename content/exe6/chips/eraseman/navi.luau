@@ -227,7 +227,7 @@ end
 
 local ACTIONS = { [APPEAR] = appear, [STAND] = stand, [AIM] = aim, [RAISE] = raise, [SLASH] = slash, [LEAVE] = leave }
 
-eraseman.kind = define.kind {
+eraseman.kind = new.kind {
     id = "eraseman/navi",
     pool = "actor",
     state = { cycle = "u8", aim = "u8", controller = "object", aim_ticks = "u8" },

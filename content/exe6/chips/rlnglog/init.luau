@@ -9,9 +9,8 @@ local lockon = require("../rules/lockon")
 -- original's parameters 1, 60, 20, 1).
 local LOG: RollingLog = { big = true, stop_ticks = 60, hp = 20, thrown = true }
 
-return {
-    rlnglog1 = define.chip {
-        id = "rlnglog1",
+local chips: { [string]: Chip } = {
+    rlnglog1 = {
         codes = { "I", "K", "P" },
         element = "wood", family = "wood", class = "standard",
         rarity = 0, mb = 14, damage = 50, hit_param = 30, lockout = 0,
@@ -21,8 +20,7 @@ return {
         beast = { lockon = lockon.gundels1 },
         action = action.action { log = LOG },
     },
-    rlnglog2 = define.chip {
-        id = "rlnglog2",
+    rlnglog2 = {
         codes = { "E", "Q", "Z" },
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 26, damage = 70, hit_param = 30, lockout = 0,
@@ -32,8 +30,7 @@ return {
         beast = { lockon = lockon.gundels1 },
         action = action.action { log = LOG },
     },
-    rlnglog3 = define.chip {
-        id = "rlnglog3",
+    rlnglog3 = {
         codes = { "F", "N", "W" },
         element = "wood", family = "wood", class = "standard",
         rarity = 2, mb = 38, damage = 90, hit_param = 30, lockout = 0,
@@ -44,3 +41,5 @@ return {
         action = action.action { log = LOG },
     },
 }
+
+return chips

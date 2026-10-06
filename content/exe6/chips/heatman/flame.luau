@@ -122,7 +122,7 @@ local function tick(me: Object)
     c:present()
 end
 
-flame.kind = define.kind {
+flame.kind = new.kind {
     id = "heatman/flame",
     pool = "attack",
     state = { while_dimmed = "bool", ticks = "u8", is = "collision" },

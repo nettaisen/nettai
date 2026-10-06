@@ -4,8 +4,7 @@
 
 local hook = require("@self/hook")
 
-return define.chip {
-    id = "bighook",
+local chip: Chip = {
     codes = { "G" },
     element = "null",
     family = "break",
@@ -23,3 +22,5 @@ return define.chip {
     traits = { "user_stays" },
     navi = hook.summon,
 }
+
+return { bighook = chip }

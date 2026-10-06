@@ -39,7 +39,7 @@ local BUBBLE = spreader.action({
 local FIRE, AQUA = 1, 2
 
 -- 0x0800FC5A: 40 damage, hit parameter 10, Fire (the attack's other bytes as they were).
-spreads.heat = define.weapon {
+spreads.heat = new.weapon {
     id = "megaman/heat-shot",
     -- The charge table's row 0x4A, by Charge 0 to 5: past 4 it reads on into row 0x4B's first entry.
     charge_ticks = { 60, 55, 50, 45, 40, 80 },
@@ -52,7 +52,7 @@ spreads.heat = define.weapon {
 }
 
 -- 0x0800FCFE: 50 damage, hit parameter 10, Aqua.
-spreads.bubble = define.weapon {
+spreads.bubble = new.weapon {
     id = "megaman/bubble-shot",
     -- The charge table's row 0x56, by Charge 0 to 5: past 4 it reads on into row 0x57's first entry.
     charge_ticks = { 60, 55, 50, 45, 40, 50 },

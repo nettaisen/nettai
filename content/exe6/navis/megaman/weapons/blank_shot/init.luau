@@ -15,7 +15,7 @@ local made = common.make { id = "megaman/blank-shot/action", buster = buster, cl
 blank_shot.setup = made.setup
 blank_shot.action = made.action
 
-blank_shot.weapon = define.weapon {
+blank_shot.weapon = new.weapon {
     id = "megaman/blank-shot",
     -- The charge table's row 2; Charge 5 reads on into row 3's first
     -- entry, as the original's table does.

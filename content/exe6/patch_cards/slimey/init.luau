@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local charge = require("@self/charge")
 
-return define.patch_card {
-    id = "slimey",
+local card: PatchCard = {
     mb = 12,
     effects = {
         cards.hp(30),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.bug(cards.gauge("normal")),
     },
 }
+
+return { slimey = card }

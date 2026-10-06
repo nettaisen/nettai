@@ -35,7 +35,7 @@ local VARIANT = 1
 local MUZZLE_X, MUZZLE_Z = 0x8_0000, 0x38_0000
 local SOUND = asset.sound("cannon")
 
-local action = define.action {
+local action = new.action {
     state = { timer = "u16", target_x = "u8", target_y = "u8" },
     -- 0x080F1098
     update = function(me: Object, s: State)
@@ -89,8 +89,7 @@ local action = define.action {
     end,
 }
 
-return define.chip {
-    id = "napalm",
+local chip: Chip = {
     codes = { "N" },
     element = "null",
     family = "fire",
@@ -104,3 +103,5 @@ return define.chip {
     slot_in_limit = 1,
     action = action,
 }
+
+return { napalm = chip }

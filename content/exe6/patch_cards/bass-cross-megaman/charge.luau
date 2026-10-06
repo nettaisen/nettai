@@ -26,7 +26,7 @@ local function setup(navi: Object): Action
     return SPIN
 end
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/bass-cross-megaman/charge",
     -- The charge table's row 0x93, by Charge 0 to 7: past 4 it reads on
     -- into the bytes after the table (Charge stays below 5 with the cards).

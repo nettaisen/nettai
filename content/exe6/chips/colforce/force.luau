@@ -62,7 +62,7 @@ local function tick(me: Object)
     me:set_lifecycle("destroy")
 end
 
-force.kind = define.kind {
+force.kind = new.kind {
     id = "colforce/force",
     pool = "effect",
     -- `sub_80E9460`.

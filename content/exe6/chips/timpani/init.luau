@@ -13,8 +13,7 @@ local statuses = require("../rules/status")
 -- camera shake (`sub_80D43C0`).
 local drum = effects.drum(statuses.immobilize_4, collision.guard_breaking, collision.hits_navis)
 
-return define.chip {
-    id = "timpani",
+local chip: Chip = {
     codes = { "I", "O", "T", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,
@@ -22,7 +21,7 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 2.
     dimming = instruments.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             id = "timpani",
             class = "field_object",
             version = 0,
@@ -36,3 +35,5 @@ return define.chip {
         effect = drum,
     }),
 }
+
+return { timpani = chip }

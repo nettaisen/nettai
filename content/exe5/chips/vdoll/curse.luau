@@ -9,7 +9,7 @@
 -- there; 30 ticks later the dimming ends.
 
 local collision = require("../../rules/collision")
-local curse_chip = require("../curse")
+local curse_chip = require("../curse").curse
 local dimming_chips = require("@exelib/dimming")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
@@ -41,7 +41,7 @@ local OTHER_SIDE: { [number]: number } = { [0] = 0x0020_0000, [1] = 0x0040_0000 
 local OCCUPANT: { [number]: number } = { [0] = 0x0020_0000, [1] = 0x0000_2000 }
 -- The sparkles over whoever is hit: 32 ticks of effect 0x24 (EXE5's table, 0x080DFC94: sheet 14-00 in palette 1).
 local SPARKLES_LENGTH = 2
-local SPARKLE = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
+local SPARKLE = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
 
 -- 0x080E625E: one of the panels the other side's combatants stand on (bottom right first), at random; none, the aim
 -- stays.
@@ -156,7 +156,7 @@ local function effect(me: Object)
     end
 end
 
-curse.kind = define.kind {
+curse.kind = new.kind {
     id = "vdoll/curse",
     pool = "effect",
     state = { target_x = "u8", target_y = "u8" },

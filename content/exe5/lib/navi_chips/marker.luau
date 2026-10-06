@@ -27,7 +27,7 @@ local function tick(me: Object)
     end
 end
 
-marker.kind = define.kind {
+marker.kind = new.kind {
     id = "dice-marker",
     pool = "effect",
     state = { style = "u8" },

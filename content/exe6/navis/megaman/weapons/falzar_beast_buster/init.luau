@@ -103,7 +103,7 @@ end
 -- cycle on, the two behind it. (`sub_80C6248`: its spawner's word is the
 -- shot's height here, which only a thrown obstacle reads.)
 local function shoot_volley(me: Object, s: State, falls: boolean, z: number, damage: number)
-    local form = battle.navi(me.alliance).form.id
+    local form = battle.navi(me.alliance).form.id :: string
     local palette = PALETTES[form]
     if palette == nil then
         error(string.format("form %s reads outside sub_80EC710's palette table", form))
@@ -221,13 +221,13 @@ local function update(me: Object, s: State)
     me:check_reactive_abort()
 end
 
-falzar_beast_buster.action = define.action {
+falzar_beast_buster.action = new.action {
     id = "megaman/falzar-beast-buster/action",
     state = { timer = "u16", repeats = "u8", cycle = "u8" },
     update = update,
 }
 
-falzar_beast_buster.weapon = define.weapon {
+falzar_beast_buster.weapon = new.weapon {
     id = "megaman/falzar-beast-buster",
     -- The charge table's row 3, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

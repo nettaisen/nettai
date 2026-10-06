@@ -63,7 +63,7 @@ local function vulnerable(me: Object)
     me:clear_invulnerable()
 end
 
-slasher.action = define.action {
+slasher.action = new.action {
     state = slasher.STATE,
     update = function(me: Object, s: State)
         local step = me.step

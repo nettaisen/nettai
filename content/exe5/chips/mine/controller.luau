@@ -8,7 +8,7 @@ local land_mine = require("@exelib/mine/land_mine")
 
 local mine = land_mine.make_kind {
     id = "mine/land-mine",
-    identity = define.identity {
+    identity = new.identity {
         class = "field_object",
         version = 1,
         ai_index = 1,
@@ -19,7 +19,7 @@ local mine = land_mine.make_kind {
     },
     sprite = asset.sprite("land-mine"),
     hop_sound = asset.sound("hop"),
-    blast = define.effect { sprite = asset.sprite("blast"), anim = 0, palette = 0 },
+    blast = new.effect { sprite = asset.sprite("blast"), anim = 0, palette = 0 },
     blast_sound = asset.sound("hit-bomb-1"),
     self_type = collision.mine,
     target = collision.hits_both_sides,

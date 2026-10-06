@@ -5,8 +5,7 @@
 
 local plus = require("../lib/plus")
 
-return define.chip {
-    id = "attck-30",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "plus",
@@ -22,3 +21,5 @@ return define.chip {
     modifier = "attack_plus",
     instant = plus.attack,
 }
+
+return { ["attck-30"] = chip }

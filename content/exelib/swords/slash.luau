@@ -304,7 +304,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
         end
     end
 
-    return define.action { id = spec.id, state = slash.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = slash.STATE, args = spec, update = update }
 end
 
 return slash

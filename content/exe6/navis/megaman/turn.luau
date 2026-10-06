@@ -13,7 +13,7 @@ export type State = {
 
 local WAIT = 1
 
-turn.action = define.action {
+turn.action = new.action {
     id = "megaman/turn",
     state = { timer = "u16" },
     update = function(me: Object, s: State)

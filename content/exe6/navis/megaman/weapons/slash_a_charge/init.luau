@@ -32,7 +32,7 @@ local function setup(navi: Object): Action
     return slash_charge.of_action(navi, action)
 end
 
-slash_a_charge.weapon = define.weapon {
+slash_a_charge.weapon = new.weapon {
     id = "megaman/slash-a-charge",
     -- The charge table's row 0x11, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

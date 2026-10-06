@@ -24,8 +24,8 @@ local SPEED, EDGE = 0x8_0000, 150
 -- the field's obstacles). Each hook's hit: the panel alone, the elec spark (row 3), thrown, hitting navis, hit
 -- modifier 1 (0x080DAD98's 0x0A050301).
 type Hook = { dx: number, dy: number, effect: Effect }
-local VERTICAL = define.effect { sprite = SPRITE, anim = 1, palette = 0 }
-local HORIZONTAL = define.effect { sprite = SPRITE, anim = 2, palette = 0 }
+local VERTICAL = new.effect { sprite = SPRITE, anim = 1, palette = 0 }
+local HORIZONTAL = new.effect { sprite = SPRITE, anim = 2, palette = 0 }
 local HOOKS: { Hook } = {
     { dx = 0, dy = -1, effect = VERTICAL },
     { dx = 1, dy = 0, effect = HORIZONTAL },
@@ -171,7 +171,7 @@ local function init(me: Object)
     tick(me)
 end
 
-elcreel.reel = define.kind {
+elcreel.reel = new.kind {
     id = "elcreel/reel",
     pool = "attack",
     -- 0x080DABBC.
@@ -254,7 +254,7 @@ local function recover(me: Object, s: ActionState)
     end
 end
 
-elcreel.action = define.action {
+elcreel.action = new.action {
     state = { timer = "u16" },
     -- 0x080ECE4C.
     update = function(me: Object, s: ActionState)

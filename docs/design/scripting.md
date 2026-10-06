@@ -19,11 +19,13 @@ Max in release builds, on a machine shared with other work, so single runs vary 
 
 - **Luau is the only runtime**, through a narrow typed API (`CoreApi`), with stateless scripts over engine-owned
   state. There is no build feature for it and no Rust version of anything a script implements.
-- **Content is definitions.** A module makes them while it loads (`define.chip`, `define.kind`,
-  `define.action`, ...) and a definition holds its functions (a kind's `update`, a chip's use, a weapon's
-  `setup`). The engine loads the modules from the `Content` it runs on (`Content::scripts`); nothing is compiled
-  in, nothing in the engine names a module, a chip or a kind, and nothing is registered by number. The content
-  hash covers the scripts.
+- **Content is definitions.** A game's top module returns its root: what a match names, by id (its chips,
+  navis, forms, stages, patch cards and NaviCust programs, plain tables), and its rules. What the root reaches is
+  what the game has; a table only code reaches says what it is with a tag constructor (`new.kind`,
+  `new.action`, ...). A definition holds its functions (a kind's `update`, a chip's use, a weapon's `setup`). The
+  engine loads the modules from the `Content` it runs on (`Content::scripts`); nothing is compiled in, nothing in
+  the engine names a module, a chip or a kind, nothing is registered by number, and loading has no side effect.
+  The content hash covers the scripts.
 - **Definitions and assets cross the API, not numbers.** `battle.spawn(bomb.kind, pos)`,
   `me:set_attack(action, 2)`, `me:setup_collision(collision.thrown, collision.hits_navis, 0)`,
   `battle.play_sound(asset.sound("exe6:throw"))`. The engine keeps a handle for each.
@@ -84,8 +86,8 @@ Conventions:
   type on store: integers wrap to the width, as the game's `strb`/`strh`/`str` do; anything else of the wrong
   kind is an error.
 - **Definitions, not numbers.** A kind, an action, a chip, a weapon, an effect, a spark, a region, a collision
-  type, a status, a lock-on mode, an identity or a record crosses the API as its definition (the frozen table
-  `define.*` returned), and an asset as the value `asset.*` returned. The binding turns each into its handle.
+  type, a status, a lock-on mode, an identity or a record crosses the API as its definition (its frozen table),
+  and an asset as the value `asset.*` returned. The binding turns each into its handle.
 - **Names, not bits.** Status flags, status timers, navi requests and state bits, buttons, panel types,
   lifecycle states and shadows are names (`"using_action"`, `"paralyze"`, `"a"`, `"cracked"`, `"destroy"`); the
   engine's bit values and offsets stay in the engine. The original's numbers that are a routine's own
@@ -133,25 +135,29 @@ and documented in core.d.luau.
 
 ### 2.3 Definitions and dispatch
 
-A module makes definitions while it loads; each registry has a definer:
+A game's top module (content/<game>/init.luau) returns its root, and the loader walks from it, through tables and
+through what functions capture: what it reaches is what the game has (content-model-v2.md §2.2). Loading has no
+side effect: a module that runs and is reached by nothing makes nothing.
 
-| Definer | What | What the engine runs or reads |
+| Where | What | What the engine runs or reads |
 |---|---|---|
-| `define.kind { id?, pool, state?, update, place? }` | an object kind | `update(me)` each tick it runs; `place(spec)` when a stage names it |
-| `define.action { id?, state?, update, traits? }` | a navi action | `update(me, s)` while the navi runs it |
-| `define.chip { id, ...record..., action \| dimming \| navi \| instant }` | a chip and its one use | the action as the navi's attack, or the hook from the ruleset's dimming, navi chip or instant chip action |
-| `define.weapon { id?, name, charge_ticks, setup?, instant?, ... }` | what a button does | `setup(navi)` fills the attack and returns the action to start |
-| `define.navi`, `define.form` | a navi, one of MegaMan's forms | their records: stats, weapons, sprite, identity |
-| `define.stage { id, layout, actors, ... }` | a stage | its panels and what it places |
-| `define.effect`, `define.spark`, `define.region`, `define.collision`, `define.status`, `define.lockon`, `define.identity` | what the engine's primitives are told by | their records, by handle |
-| `define.rules { state?, setup?, hooks?, custom?, ..., <sections>?, roles? }` | a game's rules, their one definition, written by hand (rules/init.luau; rules-in-luau.md §2.5): a side's state, a player's setup, hooks (plain functions that call the game's modules), custom-screen buttons and windows, its rule sections (plain tables no entity owns: elements, panels, the custom screen, ...) and its roles (what the rules need from content: the action a request starts, the kind it spawns, the chip a zeroed field reads, ...) | its hooks, each called for one side; its state per side and each player's setup; the game's typed tables and roles |
-| `define.record(type, table)` | data only content reads, with a handle | nothing: a state field or another definition holds it |
+| the root's `chips`: `{ [id] = { ...record..., action \| dimming \| navi \| instant } }` | a chip and its one use | the action as the navi's attack, or the hook from the ruleset's dimming, navi chip or instant chip action |
+| the root's `navis`, `forms` | a navi, one of MegaMan's forms | their records: stats, weapons, sprite, identity |
+| the root's `stages`: `{ [id] = { layout, actors, ... } }` | a stage | its panels and what it places |
+| the root's `patch_cards`, `navicust_programs` | a patch card, a NaviCust program | their records |
+| the root's `rules`: `{ state?, setup?, hooks?, custom?, ..., <sections>?, roles? }` | a game's rules, their one definition, written by hand (rules/init.luau; rules-in-luau.md §2.5): a side's state, a player's setup, hooks (plain functions that call the game's modules), custom-screen buttons and windows, its rule sections (plain tables no entity owns: elements, panels, the custom screen, ...) and its roles (what the rules need from content: the action a request starts, the kind it spawns, the chip a zeroed field reads, ...) | its hooks, each called for one side; its state per side and each player's setup; the game's typed tables and roles |
+| `new.kind { id?, pool, state?, update, place? }` | an object kind | `update(me)` each tick it runs; `place(spec)` when a stage names it |
+| `new.action { id?, state?, update, traits? }` | a navi action | `update(me, s)` while the navi runs it |
+| `new.weapon { id?, charge_ticks, setup?, instant?, ... }` | what a button does | `setup(navi)` fills the attack and returns the action to start |
+| `new.effect`, `new.spark`, `new.region`, `new.collision`, `new.status`, `new.identity` | what the engine's primitives are told by | their records, by handle |
+| `new.record(type, table)` | data only content reads (a lock-on mode is `new.record("lockon", ...)`), with a handle | nothing: a state field or another definition holds it |
 
-A definition's key is its `id` where something outside the content names it (a match's setup: chips, navis, forms,
-stages, patch cards, NaviCust programs; a compat map), else derived from where it is made (its owner, `minibomb/action`;
-what its module returns, `rules/collision/attack`; else `<module>#n`: content-model-v2.md §2.2); two of one key in a
-registry is an error. Keys are sorted byte-wise and a definition's handle is its place, so handles are the same on every
-machine that loads the same content.
+The `new.*` tag constructors mark a table as what it is and return it: no registry, no key, no effect. A root's
+definition is keyed by its id there (`chips.minibomb`), and reads it as `chip.id` (the loader's view; the table
+holds none). A tagged table is keyed by its `id` where a compat map names it, else where a module's result holds
+it (`rules/collision/attack`), else by its path from the definition that holds it (`minibomb/action`); two of one
+key in a registry is an error. Keys are sorted byte-wise and a definition's handle is its place, so handles are the
+same on every machine that loads the same content.
 
 The define phase reads everything back as the canonical tree (`Definitions`): fields as data, references to
 other definitions by key, functions as slots (`kind bomb`'s `update`). The engine builds its registries from it
@@ -174,9 +180,15 @@ Each object kind and action declares its state as named, typed fields:
 state = { slot = slot.TYPE, look = "record:attachment-look", anim = "u8", offset_x = "i32", lift = "i8" }
 ```
 
-Field types are `bool`, `u8`...`i32`, `object`, `vec3`, an enum (a list of names), fixed arrays (`"u8[18]"`),
-and references: to a definition (`"kind"`, `"action"`, `"chip"`, `"effect"`, `"record:<type>"`, ...) or an
-asset (`"sprite"`, `"sound"`, ...). The engine stores a block of the schema's own size, its fields packed in
+Field types are `bool`, `u8`...`i32`, `object`, `vec3`, `code` (a chip code, `"A"` to `"Z"` or `"*"`), an enum
+(a list of names), fixed arrays (`"u8[18]"`), references: to a definition (`"kind"`, `"action"`, `"chip"`,
+`"effect"`, `"record:<type>"`, ...) or an asset (`"sprite"`, `"sound"`, ...), records (a table of fields of
+their own: `drive = { mode = "u8", target = "chip" }`) and bounded lists (`schema.list(T, n)`: up to `n`
+elements of `T`, and how many it holds). A record's fields and a list's elements are read and written each by
+its place (`s.drive.mode`, `s.picks[2].code`, `#s.picks`); a list grows by its next element (`s.picks[#s.picks
++ 1] = { chip = c, code = "A" }`), and a record, a list or an array takes a table whole (its fields left out,
+zero). The engine finds a field by its name wherever the state's records have it (`Schema::find`: the rules'
+views read MeddySoul's `screen.mix_step` so). The engine stores a block of the schema's own size, its fields packed in
 name order (the layout is private to the store; fields have names and types, never offsets), with no limit but
 what the types take. An object's block is its slot's in its pool's `StateArena` (`Objects::state`), an action's
 its actor's in the actors' (`Actors::action_state`); `kinds::Vars::Content` and `ActionVars::Content` hold the
@@ -256,7 +268,7 @@ The rule a modder learns is one line: use `//` or `int`, never `/`.
    functions capture is deep-frozen after it loads, and every definition is frozen when the define phase ends,
    so the write fails at run time with "attempt to modify a readonly table".
 
-`require` and the definers work only while modules load (paths relative to the requiring file), so dependencies
+`require` and the tag constructors work only while modules load (paths relative to the requiring file), so dependencies
 and the set of definitions are static. Between calls the VM holds only frozen code and data, and nothing in it
 can differ between machines or between a run and its rollback. The tests (`behavior::tests`) show each rule
 fires, and that the VM carries nothing: a battle moved to a fresh VM halfway continues identically; a second
@@ -350,7 +362,7 @@ three chips of the series, which compose the hook with their own arguments.
 ```luau
 -- chips/eraseman/navi.luau
 
-eraseman.kind = define.kind {
+eraseman.kind = new.kind {
     id = "eraseman/navi",
     pool = "actor",
     state = { cycle = "u8", aim = "u8", controller = "object", aim_ticks = "u8" },
@@ -397,8 +409,7 @@ end
 -- chips/eraseman/init.luau
 local navi = require("./navi")
 
-local eraseman = define.chip {
-    id = "eraseman",
+local eraseman: Chip = {
     codes = { "K", "*" },
     class = "mega",
     damage = 120,
@@ -407,6 +418,9 @@ local eraseman = define.chip {
     -- ...the rest of its record...
     navi = navi.summon { aim_ticks = 20 },
 }
+
+-- (ErasemnEX and ErasemnSP likewise.)
+return { eraseman = eraseman, ["erasemn-ex"] = erasemn_ex, ["erasemn-sp"] = erasemn_sp }
 ```
 
 The navi chip controller (the ruleset's, Rust) calls the chip's hook when the navi comes, and waits for

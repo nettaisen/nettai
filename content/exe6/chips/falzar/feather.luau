@@ -124,7 +124,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-feather.kind = define.kind {
+feather.kind = new.kind {
     id = "falzar/feather",
     pool = "attack",
     state = { while_dimmed = "bool" },

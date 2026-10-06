@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- Colonel (EXE5 chip 0x0f5): Colonel cuts in and divides the screen with a diagonal slash on the first enemy navi ahead
 -- (./navi).
-local colonel = define.chip {
-    id = "colonel",
+local colonel: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -27,8 +26,7 @@ local colonel = define.chip {
 -- ColonelSP (EXE5 chip 0x0f6): Colonel cuts in and divides the screen with a diagonal slash on the first enemy navi
 -- ahead (../colonel/navi); its damage by how fast its user deleted Colonel SP (rules/sp_chips: formula 8, its table's
 -- row 7).
-local colonel_sp = define.chip {
-    id = "colonel-sp",
+local colonel_sp: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -47,8 +45,7 @@ local colonel_sp = define.chip {
 
 -- ColonelDS (EXE5 chip 0x0f7): Colonel, dark, cuts in and divides the screen with a diagonal slash on the first enemy
 -- navi ahead (../colonel/navi); its damage by its user's side's statistic 3 (formula 30, its table's row 7).
-local colonel_ds = define.chip {
-    id = "colonel-ds",
+local colonel_ds: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -65,4 +62,4 @@ local colonel_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { colonel = colonel, colonel_sp = colonel_sp, colonel_ds = colonel_ds }
+return { colonel = colonel, ["colonel-sp"] = colonel_sp, ["colonel-ds"] = colonel_ds }

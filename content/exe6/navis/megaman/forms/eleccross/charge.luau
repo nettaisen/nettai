@@ -28,7 +28,7 @@ local function setup(navi: Object): Action
     return THUNDER
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "eleccross/charge",
     -- The charge table's row 0xB, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

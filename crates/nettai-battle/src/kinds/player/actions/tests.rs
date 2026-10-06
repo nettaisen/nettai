@@ -820,15 +820,6 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     assert_eq!(act(&b, p0), IDLE);
 }
 
-#[test]
-fn a_buster_alias_fires_the_buster() {
-    // Weapon routine 0x2E is the buster's.
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = testing::weapon("megaman/buster-2e")));
-    tick(&mut b, p0, p1, keys::B);
-    tick(&mut b, p0, p1, 0);
-    assert_eq!(runs(&b, p0), "megaman/buster/shot");
-}
-
 /// An absorbed obstacle's look the test content has (a record of
 /// objects/absorbed_obstacle's `look`: the rock's is the first).
 fn absorbed_look(b: &Battle) -> nettai_content_api::RecordHandle {
@@ -2378,14 +2369,9 @@ fn a_forced_charged_shot_starts_its_role() {
 
 #[test]
 fn weapon_definitions_carry_their_charge_times_and_traits() {
-    // The buster's alias routines read other charge rows in the original,
-    // so they are weapons of their own with its setup; the charged shot's
-    // charge times are its own, with Charge 5 read on into the next row.
+    // The charged shot's charge times are its own, with Charge 5 read on
+    // into the next row.
     let c = testing::content();
-    for key in ["megaman/buster-2e", "megaman/buster-82"] {
-        let alias = c.weapon_by_key(key);
-        assert!(c.weapon(alias).setup.is_some(), "{key} runs the buster's setup");
-    }
     let charged = c.weapon(c.weapon_by_key("megaman/charged-shot"));
     assert_eq!(&charged.charge_ticks[..6], &[100, 90, 80, 70, 60, 180]);
     // The traits the rules ask: a Beast buster fires while B is held

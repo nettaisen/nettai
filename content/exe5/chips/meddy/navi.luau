@@ -225,7 +225,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-meddy.kind = define.kind {
+meddy.kind = new.kind {
     id = "meddy/navi",
     pool = "actor",
     state = {

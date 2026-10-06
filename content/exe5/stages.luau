@@ -10,9 +10,8 @@ local boulder = require("./objects/boulder")
 local guardian = require("./chips/guardian/guardian")
 local rock = require("./objects/rock")
 
-return {
-    netbattle_1 = define.stage {
-        id = "netbattle-1",
+local stages: { [string]: StageDef } = {
+    ["netbattle-1"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -26,8 +25,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_2 = define.stage {
-        id = "netbattle-2",
+    ["netbattle-2"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -41,8 +39,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_3 = define.stage {
-        id = "netbattle-3",
+    ["netbattle-3"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -61,8 +58,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 5, y = 2 },
         },
     },
-    netbattle_4 = define.stage {
-        id = "netbattle-4",
+    ["netbattle-4"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -81,8 +77,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 2, y = 2 },
         },
     },
-    netbattle_5 = define.stage {
-        id = "netbattle-5",
+    ["netbattle-5"] = {
         layout = {
             "normal cracked cracked cracked cracked normal",
             "normal normal normal normal normal normal",
@@ -96,8 +91,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_6 = define.stage {
-        id = "netbattle-6",
+    ["netbattle-6"] = {
         layout = {
             "normal cracked cracked cracked cracked normal",
             "normal normal normal normal normal normal",
@@ -111,8 +105,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_7 = define.stage {
-        id = "netbattle-7",
+    ["netbattle-7"] = {
         layout = {
             "normal normal normal normal normal normal",
             "cracked cracked cracked cracked cracked cracked",
@@ -126,8 +119,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 1 }, { place = "navi", side = 1, x = 5, y = 1 } },
     },
-    netbattle_8 = define.stage {
-        id = "netbattle-8",
+    ["netbattle-8"] = {
         layout = {
             "normal normal normal normal normal normal",
             "cracked cracked cracked cracked cracked cracked",
@@ -141,8 +133,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 1 }, { place = "navi", side = 0, x = 2, y = 1 } },
     },
-    netbattle_9 = define.stage {
-        id = "netbattle-9",
+    ["netbattle-9"] = {
         layout = {
             "cracked cracked normal normal cracked cracked",
             "normal normal normal normal normal normal",
@@ -156,8 +147,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_10 = define.stage {
-        id = "netbattle-10",
+    ["netbattle-10"] = {
         layout = {
             "cracked cracked normal normal cracked cracked",
             "normal normal normal normal normal normal",
@@ -171,8 +161,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_11 = define.stage {
-        id = "netbattle-11",
+    ["netbattle-11"] = {
         layout = {
             "missing normal normal normal normal missing",
             "normal normal normal normal normal normal",
@@ -186,8 +175,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_12 = define.stage {
-        id = "netbattle-12",
+    ["netbattle-12"] = {
         layout = {
             "missing normal normal normal normal missing",
             "normal normal normal normal normal normal",
@@ -201,8 +189,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_13 = define.stage {
-        id = "netbattle-13",
+    ["netbattle-13"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal missing normal normal missing normal",
@@ -216,8 +203,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_14 = define.stage {
-        id = "netbattle-14",
+    ["netbattle-14"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal missing normal normal missing normal",
@@ -231,8 +217,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_15 = define.stage {
-        id = "netbattle-15",
+    ["netbattle-15"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -251,8 +236,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 4, y = 3 },
         },
     },
-    netbattle_16 = define.stage {
-        id = "netbattle-16",
+    ["netbattle-16"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -271,8 +255,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 3, y = 1 },
         },
     },
-    netbattle_17 = define.stage {
-        id = "netbattle-17",
+    ["netbattle-17"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -291,8 +274,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 4, y = 1 },
         },
     },
-    netbattle_18 = define.stage {
-        id = "netbattle-18",
+    ["netbattle-18"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -311,8 +293,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 3, y = 3 },
         },
     },
-    netbattle_19 = define.stage {
-        id = "netbattle-19",
+    ["netbattle-19"] = {
         layout = {
             "normal normal missing missing normal normal",
             "normal normal normal normal normal normal",
@@ -326,8 +307,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_20 = define.stage {
-        id = "netbattle-20",
+    ["netbattle-20"] = {
         layout = {
             "normal normal missing missing normal normal",
             "normal normal normal normal normal normal",
@@ -341,8 +321,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_21 = define.stage {
-        id = "netbattle-21",
+    ["netbattle-21"] = {
         layout = {
             "grass grass grass grass grass grass",
             "grass grass grass grass grass grass",
@@ -361,8 +340,7 @@ return {
             { place = boulder.kind, x = 5, y = 2 },
         },
     },
-    netbattle_22 = define.stage {
-        id = "netbattle-22",
+    ["netbattle-22"] = {
         layout = {
             "grass grass grass grass grass grass",
             "grass grass grass grass grass grass",
@@ -381,8 +359,7 @@ return {
             { place = boulder.kind, x = 2, y = 2 },
         },
     },
-    netbattle_23 = define.stage {
-        id = "netbattle-23",
+    ["netbattle-23"] = {
         layout = {
             "normal normal grass grass normal normal",
             "normal grass grass grass grass normal",
@@ -396,8 +373,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_24 = define.stage {
-        id = "netbattle-24",
+    ["netbattle-24"] = {
         layout = {
             "normal normal grass grass normal normal",
             "normal grass grass grass grass normal",
@@ -411,8 +387,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_25 = define.stage {
-        id = "netbattle-25",
+    ["netbattle-25"] = {
         layout = {
             "grass grass grass grass grass grass",
             "normal normal normal normal normal normal",
@@ -431,8 +406,7 @@ return {
             { place = boulder.kind, x = 5, y = 3 },
         },
     },
-    netbattle_26 = define.stage {
-        id = "netbattle-26",
+    ["netbattle-26"] = {
         layout = {
             "grass grass grass grass grass grass",
             "normal normal normal normal normal normal",
@@ -451,8 +425,7 @@ return {
             { place = boulder.kind, x = 2, y = 1 },
         },
     },
-    netbattle_27 = define.stage {
-        id = "netbattle-27",
+    ["netbattle-27"] = {
         layout = {
             "grass grass grass grass grass grass",
             "normal normal normal normal normal normal",
@@ -471,8 +444,7 @@ return {
             { place = boulder.kind, x = 5, y = 1 },
         },
     },
-    netbattle_28 = define.stage {
-        id = "netbattle-28",
+    ["netbattle-28"] = {
         layout = {
             "grass grass grass grass grass grass",
             "normal normal normal normal normal normal",
@@ -491,8 +463,7 @@ return {
             { place = boulder.kind, x = 2, y = 3 },
         },
     },
-    netbattle_29 = define.stage {
-        id = "netbattle-29",
+    ["netbattle-29"] = {
         layout = {
             "normal grass normal normal grass normal",
             "grass normal grass grass normal grass",
@@ -511,8 +482,7 @@ return {
             { place = boulder.kind, x = 4, y = 3 },
         },
     },
-    netbattle_30 = define.stage {
-        id = "netbattle-30",
+    ["netbattle-30"] = {
         layout = {
             "normal grass normal normal grass normal",
             "grass normal grass grass normal grass",
@@ -531,8 +501,7 @@ return {
             { place = boulder.kind, x = 3, y = 1 },
         },
     },
-    netbattle_31 = define.stage {
-        id = "netbattle-31",
+    ["netbattle-31"] = {
         layout = {
             "normal grass normal normal grass normal",
             "grass normal grass grass normal grass",
@@ -551,8 +520,7 @@ return {
             { place = boulder.kind, x = 4, y = 1 },
         },
     },
-    netbattle_32 = define.stage {
-        id = "netbattle-32",
+    ["netbattle-32"] = {
         layout = {
             "normal grass normal normal grass normal",
             "grass normal grass grass normal grass",
@@ -571,8 +539,7 @@ return {
             { place = boulder.kind, x = 3, y = 3 },
         },
     },
-    netbattle_33 = define.stage {
-        id = "netbattle-33",
+    ["netbattle-33"] = {
         layout = {
             "normal metal normal normal metal normal",
             "normal normal normal normal normal normal",
@@ -586,8 +553,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_34 = define.stage {
-        id = "netbattle-34",
+    ["netbattle-34"] = {
         layout = {
             "normal metal normal normal metal normal",
             "normal normal normal normal normal normal",
@@ -601,8 +567,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_35 = define.stage {
-        id = "netbattle-35",
+    ["netbattle-35"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal metal metal metal metal normal",
@@ -616,8 +581,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_36 = define.stage {
-        id = "netbattle-36",
+    ["netbattle-36"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal metal metal metal metal normal",
@@ -631,8 +595,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_37 = define.stage {
-        id = "netbattle-37",
+    ["netbattle-37"] = {
         layout = {
             "normal normal normal normal normal normal",
             "metal metal normal normal metal metal",
@@ -646,8 +609,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 1 }, { place = "navi", side = 1, x = 5, y = 1 } },
     },
-    netbattle_38 = define.stage {
-        id = "netbattle-38",
+    ["netbattle-38"] = {
         layout = {
             "normal normal normal normal normal normal",
             "metal metal normal normal metal metal",
@@ -661,8 +623,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 1 }, { place = "navi", side = 0, x = 2, y = 1 } },
     },
-    netbattle_39 = define.stage {
-        id = "netbattle-39",
+    ["netbattle-39"] = {
         layout = {
             "grass grass sea sea grass grass",
             "grass sea sea sea sea grass",
@@ -676,8 +637,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_40 = define.stage {
-        id = "netbattle-40",
+    ["netbattle-40"] = {
         layout = {
             "grass grass sea sea grass grass",
             "grass sea sea sea sea grass",
@@ -691,8 +651,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_41 = define.stage {
-        id = "netbattle-41",
+    ["netbattle-41"] = {
         layout = {
             "sea grass sea sea grass sea",
             "grass grass grass grass grass grass",
@@ -706,8 +665,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_42 = define.stage {
-        id = "netbattle-42",
+    ["netbattle-42"] = {
         layout = {
             "sea grass sea sea grass sea",
             "grass grass grass grass grass grass",
@@ -721,8 +679,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_43 = define.stage {
-        id = "netbattle-43",
+    ["netbattle-43"] = {
         layout = {
             "sea sea grass grass sea sea",
             "grass grass grass grass grass grass",
@@ -736,8 +693,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_44 = define.stage {
-        id = "netbattle-44",
+    ["netbattle-44"] = {
         layout = {
             "sea sea grass grass sea sea",
             "grass grass grass grass grass grass",
@@ -751,8 +707,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_45 = define.stage {
-        id = "netbattle-45",
+    ["netbattle-45"] = {
         layout = {
             "normal ice ice ice ice normal",
             "normal ice ice ice ice normal",
@@ -766,8 +721,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_46 = define.stage {
-        id = "netbattle-46",
+    ["netbattle-46"] = {
         layout = {
             "normal ice ice ice ice normal",
             "normal ice ice ice ice normal",
@@ -781,8 +735,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_47 = define.stage {
-        id = "netbattle-47",
+    ["netbattle-47"] = {
         layout = {
             "missing ice ice ice ice ice",
             "ice ice ice ice ice ice",
@@ -796,8 +749,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_48 = define.stage {
-        id = "netbattle-48",
+    ["netbattle-48"] = {
         layout = {
             "missing ice ice ice ice ice",
             "ice ice ice ice ice ice",
@@ -811,8 +763,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_49 = define.stage {
-        id = "netbattle-49",
+    ["netbattle-49"] = {
         layout = {
             "ice ice ice ice ice missing",
             "ice ice ice ice ice ice",
@@ -826,8 +777,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_50 = define.stage {
-        id = "netbattle-50",
+    ["netbattle-50"] = {
         layout = {
             "ice ice ice ice ice missing",
             "ice ice ice ice ice ice",
@@ -841,8 +791,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_51 = define.stage {
-        id = "netbattle-51",
+    ["netbattle-51"] = {
         layout = {
             "ice ice normal normal ice ice",
             "ice ice normal normal ice ice",
@@ -856,8 +805,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_52 = define.stage {
-        id = "netbattle-52",
+    ["netbattle-52"] = {
         layout = {
             "ice ice normal normal ice ice",
             "ice ice normal normal ice ice",
@@ -871,8 +819,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_53 = define.stage {
-        id = "netbattle-53",
+    ["netbattle-53"] = {
         layout = {
             "normal normal poison poison normal normal",
             "normal normal poison poison normal normal",
@@ -886,8 +833,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_54 = define.stage {
-        id = "netbattle-54",
+    ["netbattle-54"] = {
         layout = {
             "normal normal poison poison normal normal",
             "normal normal poison poison normal normal",
@@ -901,8 +847,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_55 = define.stage {
-        id = "netbattle-55",
+    ["netbattle-55"] = {
         layout = {
             "normal poison poison poison poison normal",
             "normal poison poison poison poison normal",
@@ -916,8 +861,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_56 = define.stage {
-        id = "netbattle-56",
+    ["netbattle-56"] = {
         layout = {
             "normal poison poison poison poison normal",
             "normal poison poison poison poison normal",
@@ -931,8 +875,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_57 = define.stage {
-        id = "netbattle-57",
+    ["netbattle-57"] = {
         layout = {
             "grass grass lava lava grass grass",
             "grass lava lava lava lava grass",
@@ -946,8 +889,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_58 = define.stage {
-        id = "netbattle-58",
+    ["netbattle-58"] = {
         layout = {
             "grass grass lava lava grass grass",
             "grass lava lava lava lava grass",
@@ -961,8 +903,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_59 = define.stage {
-        id = "netbattle-59",
+    ["netbattle-59"] = {
         layout = {
             "grass grass lava lava grass grass",
             "grass grass lava lava grass grass",
@@ -976,8 +917,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_60 = define.stage {
-        id = "netbattle-60",
+    ["netbattle-60"] = {
         layout = {
             "grass grass lava lava grass grass",
             "grass grass lava lava grass grass",
@@ -991,8 +931,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_61 = define.stage {
-        id = "netbattle-61",
+    ["netbattle-61"] = {
         layout = {
             "normal normal holy holy normal normal",
             "normal normal holy holy normal normal",
@@ -1006,8 +945,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_62 = define.stage {
-        id = "netbattle-62",
+    ["netbattle-62"] = {
         layout = {
             "normal normal holy holy normal normal",
             "normal normal holy holy normal normal",
@@ -1021,8 +959,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_63 = define.stage {
-        id = "netbattle-63",
+    ["netbattle-63"] = {
         layout = {
             "normal normal normal normal normal normal",
             "holy holy holy holy holy holy",
@@ -1036,8 +973,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_64 = define.stage {
-        id = "netbattle-64",
+    ["netbattle-64"] = {
         layout = {
             "normal normal normal normal normal normal",
             "holy holy holy holy holy holy",
@@ -1051,8 +987,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_65 = define.stage {
-        id = "netbattle-65",
+    ["netbattle-65"] = {
         layout = {
             "normal holy normal normal holy normal",
             "normal holy normal normal holy normal",
@@ -1066,8 +1001,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_66 = define.stage {
-        id = "netbattle-66",
+    ["netbattle-66"] = {
         layout = {
             "normal holy normal normal holy normal",
             "normal holy normal normal holy normal",
@@ -1081,8 +1015,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_67 = define.stage {
-        id = "netbattle-67",
+    ["netbattle-67"] = {
         layout = {
             "cracked cracked cracked cracked cracked cracked",
             "cracked cracked cracked cracked cracked cracked",
@@ -1096,8 +1029,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_68 = define.stage {
-        id = "netbattle-68",
+    ["netbattle-68"] = {
         layout = {
             "cracked cracked cracked cracked cracked cracked",
             "cracked cracked cracked cracked cracked cracked",
@@ -1111,8 +1043,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_69 = define.stage {
-        id = "netbattle-69",
+    ["netbattle-69"] = {
         layout = {
             "sea sea sea sea sea sea",
             "sea grass sea sea grass sea",
@@ -1126,8 +1057,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_70 = define.stage {
-        id = "netbattle-70",
+    ["netbattle-70"] = {
         layout = {
             "sea sea sea sea sea sea",
             "sea grass sea sea grass sea",
@@ -1141,8 +1071,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_71 = define.stage {
-        id = "netbattle-71",
+    ["netbattle-71"] = {
         layout = {
             "ice ice ice ice ice ice",
             "ice missing ice ice missing ice",
@@ -1156,8 +1085,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_72 = define.stage {
-        id = "netbattle-72",
+    ["netbattle-72"] = {
         layout = {
             "ice ice ice ice ice ice",
             "ice missing ice ice missing ice",
@@ -1171,8 +1099,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_73 = define.stage {
-        id = "netbattle-73",
+    ["netbattle-73"] = {
         layout = {
             "poison poison poison poison poison poison",
             "poison normal poison poison normal poison",
@@ -1186,8 +1113,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_74 = define.stage {
-        id = "netbattle-74",
+    ["netbattle-74"] = {
         layout = {
             "poison poison poison poison poison poison",
             "poison normal poison poison normal poison",
@@ -1201,8 +1127,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_75 = define.stage {
-        id = "netbattle-75",
+    ["netbattle-75"] = {
         layout = {
             "normal sea sea sea sea normal",
             "normal sea sea sea sea normal",
@@ -1216,8 +1141,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_76 = define.stage {
-        id = "netbattle-76",
+    ["netbattle-76"] = {
         layout = {
             "normal sea sea sea sea normal",
             "normal sea sea sea sea normal",
@@ -1231,8 +1155,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_77 = define.stage {
-        id = "netbattle-77",
+    ["netbattle-77"] = {
         layout = {
             "normal metal normal normal metal normal",
             "metal normal metal metal normal metal",
@@ -1246,8 +1169,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_78 = define.stage {
-        id = "netbattle-78",
+    ["netbattle-78"] = {
         layout = {
             "normal metal normal normal metal normal",
             "metal normal metal metal normal metal",
@@ -1261,8 +1183,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_79 = define.stage {
-        id = "netbattle-79",
+    ["netbattle-79"] = {
         layout = {
             "normal normal metal metal normal normal",
             "normal metal normal normal metal normal",
@@ -1276,8 +1197,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
     },
-    netbattle_80 = define.stage {
-        id = "netbattle-80",
+    ["netbattle-80"] = {
         layout = {
             "normal normal metal metal normal normal",
             "normal metal normal normal metal normal",
@@ -1291,8 +1211,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
-    netbattle_81 = define.stage {
-        id = "netbattle-81",
+    ["netbattle-81"] = {
         layout = {
             "ice ice normal normal ice ice",
             "ice ice normal normal ice ice",
@@ -1311,8 +1230,7 @@ return {
             { place = rock.kind, variant = rock.variants.ice, x = 5, y = 2 },
         },
     },
-    netbattle_82 = define.stage {
-        id = "netbattle-82",
+    ["netbattle-82"] = {
         layout = {
             "ice ice normal normal ice ice",
             "ice ice normal normal ice ice",
@@ -1331,8 +1249,7 @@ return {
             { place = rock.kind, variant = rock.variants.ice, x = 2, y = 2 },
         },
     },
-    netbattle_83 = define.stage {
-        id = "netbattle-83",
+    ["netbattle-83"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -1351,8 +1268,7 @@ return {
             { place = guardian.statue.kind, x = 5, y = 2 },
         },
     },
-    netbattle_84 = define.stage {
-        id = "netbattle-84",
+    ["netbattle-84"] = {
         layout = {
             "normal normal normal normal normal normal",
             "normal normal normal normal normal normal",
@@ -1371,8 +1287,7 @@ return {
             { place = guardian.statue.kind, x = 2, y = 2 },
         },
     },
-    netbattle_85 = define.stage {
-        id = "netbattle-85",
+    ["netbattle-85"] = {
         layout = {
             "missing missing missing missing missing missing",
             "normal normal normal normal normal normal",
@@ -1386,8 +1301,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_86 = define.stage {
-        id = "netbattle-86",
+    ["netbattle-86"] = {
         layout = {
             "missing missing missing missing missing missing",
             "normal normal normal normal normal normal",
@@ -1401,8 +1315,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_87 = define.stage {
-        id = "netbattle-87",
+    ["netbattle-87"] = {
         layout = {
             "missing normal normal normal normal missing",
             "missing normal normal normal normal missing",
@@ -1416,8 +1329,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
     },
-    netbattle_88 = define.stage {
-        id = "netbattle-88",
+    ["netbattle-88"] = {
         layout = {
             "missing normal normal normal normal missing",
             "missing normal normal normal normal missing",
@@ -1431,8 +1343,7 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
-    netbattle_89 = define.stage {
-        id = "netbattle-89",
+    ["netbattle-89"] = {
         layout = {
             "missing normal normal normal normal missing",
             "normal normal normal normal normal normal",
@@ -1451,8 +1362,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 4, y = 2 },
         },
     },
-    netbattle_90 = define.stage {
-        id = "netbattle-90",
+    ["netbattle-90"] = {
         layout = {
             "missing normal normal normal normal missing",
             "normal normal normal normal normal normal",
@@ -1471,8 +1381,7 @@ return {
             { place = rock.kind, variant = rock.variants.cube, x = 3, y = 2 },
         },
     },
-    netbattle_91 = define.stage {
-        id = "netbattle-91",
+    ["netbattle-91"] = {
         layout = {
             "grass grass grass grass grass grass",
             "grass grass grass grass grass grass",
@@ -1491,8 +1400,7 @@ return {
             { place = guardian.statue.kind, x = 6, y = 1 },
         },
     },
-    netbattle_92 = define.stage {
-        id = "netbattle-92",
+    ["netbattle-92"] = {
         layout = {
             "grass grass grass grass grass grass",
             "grass grass grass grass grass grass",
@@ -1511,8 +1419,7 @@ return {
             { place = guardian.statue.kind, x = 1, y = 1 },
         },
     },
-    netbattle_93 = define.stage {
-        id = "netbattle-93",
+    ["netbattle-93"] = {
         layout = {
             "grass grass grass grass grass grass",
             "poison poison poison poison poison poison",
@@ -1531,8 +1438,7 @@ return {
             { place = boulder.kind, x = 5, y = 1 },
         },
     },
-    netbattle_94 = define.stage {
-        id = "netbattle-94",
+    ["netbattle-94"] = {
         layout = {
             "grass grass grass grass grass grass",
             "poison poison poison poison poison poison",
@@ -1552,3 +1458,5 @@ return {
         },
     },
 }
+
+return stages

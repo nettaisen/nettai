@@ -5,7 +5,7 @@
 -- gives it the charge's damage and counter byte.
 
 local weapon = require("../../lib/weapon")
-local wideswrd = require("../../chips/wideswrd")
+local wideswrd = require("../../chips/wideswrd").wideswrd
 
 local charge = {}
 
@@ -27,7 +27,7 @@ local function setup(navi: Object): Action
     return wideswrd.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "protoman/charge",
     -- The charge table's row 0x32, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

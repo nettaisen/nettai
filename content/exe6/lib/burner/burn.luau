@@ -96,7 +96,7 @@ function burn.action(spec: BurnSpec): Action
         end
     end
 
-    return define.action { id = spec.id, state = burn.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = burn.STATE, args = spec, update = update }
 end
 
 return burn

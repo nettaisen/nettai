@@ -96,7 +96,7 @@ end
 
 -- A game's burst: its kind, and what a landed bomb leaves.
 function burst.make(look: Look): { kind: Kind, leave: (bomb: Object) -> () }
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         -- `sub_80C67F8`.

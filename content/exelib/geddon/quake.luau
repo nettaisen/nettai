@@ -117,7 +117,7 @@ function quake.make(look: Look): Quake
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "effect",
         state = { change = { "crack", "break", "poison" }, list = "u8[18]", count = "i32", holder = "object" },

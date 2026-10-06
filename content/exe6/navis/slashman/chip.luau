@@ -214,8 +214,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [CURL] = curl, [LAUNCH] = launch, [ROLL] = roll, [LAND] = land }
 
-return define.chip {
-    id = "rslash",
+local chip: Chip = {
     codes = { "S" },
     element = "null",
     family = "sword",
@@ -228,7 +227,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     -- `sub_80F0CB0` (`off_80F0CC4`).
-    action = define.action {
+    action = new.action {
         id = "rslash/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -236,3 +235,5 @@ return define.chip {
         end,
     },
 }
+
+return { rslash = chip }

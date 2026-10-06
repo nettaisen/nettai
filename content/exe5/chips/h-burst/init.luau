@@ -11,7 +11,7 @@ local attachment = require("../objects/attachment")
 local burst = require("@self/burst")
 local recipe_energbom = require("./energbom").energbom
 local recipe_megenbom = require("./energbom").megenbom
-local recipe_spreader = require("./spreader")
+local recipe_spreader = require("./spreader").spreader
 
 local LOOK: HyperBurstLook = {
     spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
@@ -20,8 +20,7 @@ local LOOK: HyperBurstLook = {
     burst = burst.kind,
 }
 
-return define.chip {
-    id = "h-burst",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -42,3 +41,5 @@ return define.chip {
     },
     action = action.action({ bursts = 8 }, LOOK),
 }
+
+return { ["h-burst"] = chip }

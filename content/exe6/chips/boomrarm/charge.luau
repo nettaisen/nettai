@@ -21,7 +21,7 @@ local function setup(navi: Object)
     return nil
 end
 
-return define.weapon {
+return new.weapon {
     id = "boomrarm/charge",
     charge_ticks = { 100, 100, 100, 100, 100, 90, 80, 70 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
