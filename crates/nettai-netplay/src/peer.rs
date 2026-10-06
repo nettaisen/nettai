@@ -49,7 +49,10 @@ pub const SKEW_PER_STALL: i32 = 60;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PeerConfig {
     /// Ticks the peer presents behind its newest local input (getgud's
-    /// present delay): input delay, which spares that much prediction.
+    /// present delay): the player's own, never sent to the other peer,
+    /// and changeable during a match ([`Peer::set_present_delay`]). More
+    /// spares that much prediction (fewer rollbacks shown) and shows the
+    /// player's input that much later; 0 shows the newest tick.
     pub present_delay: u32,
     /// The stall guard: a peer with this many local inputs that no remote
     /// input matches yet waits, unless remote input it has can be matched
@@ -318,6 +321,14 @@ where
             self.stats.max_rollback = self.stats.max_rollback.max(depth);
         }
         r
+    }
+
+    /// Present `ticks` behind the newest local input from the next frame on
+    /// (getgud's `Session::set_present_delay`), this round and the rounds
+    /// after.
+    pub fn set_present_delay(&mut self, ticks: u32) {
+        self.config.present_delay = ticks;
+        self.session.set_present_delay(ticks);
     }
 
     /// This peer's round is over (its settled state is): mark the stream and

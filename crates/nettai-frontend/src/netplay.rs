@@ -191,12 +191,17 @@ pub trait Channel {
     fn recv(&mut self) -> Result<Option<&[u8]>, String>;
 }
 
-/// How a netplay match plays.
+/// How a netplay match plays, as this player chose (none of it goes to the
+/// other player).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NetOptions {
-    /// Input delay: ticks the presented frame is behind the player's newest
-    /// input (getgud's present delay). More delay, fewer rollbacks.
-    pub delay: u32,
+    /// Ticks the frame shown is behind the player's newest input (getgud's
+    /// present delay; [`NetPlayer::set_present_delay`] changes it during
+    /// the match). 0 (the default) shows the newest tick, its prediction of
+    /// the other player's input corrected by rollback; more shows older,
+    /// more often confirmed ticks: fewer rollbacks seen, the player's own
+    /// input that much later. The sound is the shown tick's.
+    pub present_delay: u32,
     /// The stall guard: inputs ahead of the other player's before a frame
     /// waits for them.
     pub max_lead: u32,
@@ -206,7 +211,7 @@ pub struct NetOptions {
 
 impl Default for NetOptions {
     fn default() -> NetOptions {
-        NetOptions { delay: 2, max_lead: 30, timeout: Duration::from_secs(10) }
+        NetOptions { present_delay: 0, max_lead: 30, timeout: Duration::from_secs(10) }
     }
 }
 
@@ -286,7 +291,7 @@ impl<C: Channel> NetPlayer<C> {
     /// of `side` (the host's is 0): the set both players agreed on
     /// ([`agree`]).
     pub fn new(channel: C, side: usize, set: Set, options: NetOptions) -> NetPlayer<C> {
-        let config = PeerConfig::new(options.delay, options.max_lead);
+        let config = PeerConfig::new(options.present_delay, options.max_lead);
         let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Sound::new(side as u8));
         let start = Instant::now();
         NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None }
@@ -306,6 +311,13 @@ impl<C: Channel> NetPlayer<C> {
     pub fn settled(&self) -> (u32, u64) {
         let s = self.peer.session().settled_state();
         (s.tick(), s.battle().digest())
+    }
+
+    /// Show the frame `ticks` behind the player's newest input from the next
+    /// frame on ([`NetOptions::present_delay`]).
+    pub fn set_present_delay(&mut self, ticks: u32) {
+        self.options.present_delay = ticks;
+        self.peer.set_present_delay(ticks);
     }
 
     /// The set's result for this player, once it is over.
@@ -422,7 +434,7 @@ impl<C: Channel> Driver for NetPlayer<C> {
         Some(NetStatus {
             ping_ms: l.srtt.map(|r| r as f64),
             loss: l.loss() as f64,
-            delay: self.options.delay,
+            present_delay: self.options.present_delay,
             last_rollback: s.last_rollback,
             max_rollback: s.max_rollback,
             rollbacks: s.rollbacks,
@@ -435,6 +447,11 @@ impl<C: Channel> Driver for NetPlayer<C> {
     }
 
     fn real_time(&self) -> bool {
+        true
+    }
+
+    fn set_present_delay(&mut self, ticks: u32) -> bool {
+        NetPlayer::set_present_delay(self, ticks);
         true
     }
 }
@@ -716,11 +733,12 @@ mod tests {
     /// What one player of [`set_pair`] saw: the result, each new round's
     /// start (the settled tick count it came at, and the simulation's score:
     /// rounds played, side 0's wins and losses), the settled digests by
-    /// round and tick, the connection's figures at the end, and why it
-    /// stopped.
+    /// round and tick, the connection's figures at the end, the present
+    /// delay its session ended with, and why it stopped.
     #[derive(Default)]
     struct SetPlayed {
         result: Option<BattleResult>,
+        session_present_delay: u32,
         rounds: Vec<(usize, (u8, u8, u8))>,
         settled: Vec<(usize, u32, u64)>,
         status: NetStatus,
@@ -754,6 +772,12 @@ mod tests {
                 let Some((player, shown, out, after)) = &mut playing[side] else { continue };
                 assert!(frame < 40_000, "{game} side {side}: the set doesn't end ({})", player.position());
                 let keys = if side == 0 { short_set::shooter(shown, side, frame) } else { crate::driver::bot_buttons(shown, side, frame) };
+                // The host changes its present delay during the first
+                // round (the joiner keeps 0): its own, kept for the round
+                // after, and the settled states still agree.
+                if side == 0 && frame == 100 {
+                    assert!(Driver::set_present_delay(player, 3));
+                }
                 let stops = match player.run_frame(keys, shown).unwrap() {
                     Ok(ran) => {
                         if ran.new_round {
@@ -783,6 +807,7 @@ mod tests {
                 }
                 let (player, _, mut out, _) = playing[side].take().unwrap();
                 out.status = player.net_status().expect("a netplay driver has a connection");
+                out.session_present_delay = player.peer.session().present_delay();
                 let (s, _) = player.stats();
                 out.report = format!(
                     "{game} side {side}: {:?}, new rounds at {:?}, {} settled, rollbacks {} (deepest {}), waits {}; {}",
@@ -821,10 +846,13 @@ mod tests {
             for p in [&hosted, &joined] {
                 assert_eq!(p.rounds.iter().map(|r| r.1).collect::<Vec<_>>(), [(1, 1, 0)], "{game}");
             }
-            // (The connection's figures are values: the delay asked for,
-            // a round trip measured on loopback.)
+            // (The connection's figures are values: the present delay each
+            // player asked for, the host's changed during the match and kept
+            // into the second round's session; a round trip measured.)
+            assert_eq!(NetOptions::default().present_delay, 0);
+            assert_eq!((hosted.status.present_delay, hosted.session_present_delay), (3, 3), "{game}");
+            assert_eq!((joined.status.present_delay, joined.session_present_delay), (0, 0), "{game}");
             for p in [&hosted, &joined] {
-                assert_eq!(p.status.delay, NetOptions::default().delay, "{game}");
                 assert!(p.status.ping_ms.is_some() && (0.0..=1.0).contains(&p.status.loss), "{game}: {:?}", p.status);
             }
             assert_eq!(joined.left.as_deref(), Some("the match is over (you lost); the other player left"), "{game}");

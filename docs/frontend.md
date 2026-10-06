@@ -407,15 +407,18 @@ frontend's side is `netplay`):
 - **Playing**: the match is a best-of-three set; its rounds follow one
   another (the folders shuffled again by each console's RNG). Every frame the
   frontend sends your buttons and shows the frame its rollback session
-  presents: your input shows after the input delay (`--delay N`, default 2
-  frames), the other player's is predicted until it arrives, and the frame
-  is simulated again when a prediction was wrong. A cue played on a wrong
+  presents: by default the newest (`--present-delay N`, default 0: the
+  frame N ticks behind your newest input, so that fewer corrections show
+  and your own input shows that much later; `[` and `]` change it during
+  the match; it is yours alone, never sent, and the other player picks
+  theirs). The other player's input is predicted until it arrives, and the
+  frame is simulated again when a prediction was wrong. A cue played on a wrong
   prediction is stopped or taken back (rollback.md §3.2). There is no pause,
   speed change or restart (F5) in netplay.
 - **The window's title** shows the connection's figures (the library's
   `Player::net_status`, values the program words itself): `ping` (the round
   trip, in milliseconds), `loss` (the share of the other player's datagrams
-  that were lost), `delay` (the input delay), `rollback` (the last
+  that were lost), `present delay` (the present delay), `rollback` (the last
   rollback's depth, then the deepest and how many in all) and `waits`
   (frames held for clock sync or the stall guard).
 - **The end**: when the set is over the result shows in the title and
@@ -1699,13 +1702,15 @@ renderer, the font mode's text renderer and the battle's audio:
   ran out, the set is over, the other player left), `finished()`,
   `result()` (a set's, for the local player; a netplay match's as soon as
   it is over), `diverged()` (the first difference from a recording) and
-  `net_status()` (a netplay connection's figures: ping, loss, input delay,
+  `net_status()` (a netplay connection's figures: ping, loss, present delay,
   the last and deepest rollback and their count, frames waited).
   nettai-demo puts them in its window's title and prints a stop and a
   difference.
 - `set_paused`, `slower`, `faster` and `restart` are the controls; each
   returns false and does nothing while the battle runs in real time with
-  another player (`real_time()`: netplay).
+  another player (`real_time()`: netplay). `set_present_delay(ticks)` is
+  netplay's: the frame shown from the next frame on is that many ticks
+  behind the player's newest input (false outside netplay).
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
 - `play(driver)` goes on with another driver in the same picture and sound (a
