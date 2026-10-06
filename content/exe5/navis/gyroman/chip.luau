@@ -12,6 +12,7 @@
 -- solid, side and cracked bits), or 0 had another reserved the panel he stands on.
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local navi_level = require("../../lib/navi_level")
 local flight = require("../../chips/gyroman/navi")
 local regions = require("@exelib/regions")
 
@@ -105,7 +106,7 @@ return define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 50, 50, 50, 50, 70, 70, 70 } },
+    damage = navi_level.row({ 50, 50, 50, 50, 70, 70, 70 }),
     hit_param = 138,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },

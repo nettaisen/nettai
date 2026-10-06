@@ -12,6 +12,7 @@
 -- attack, and the wait (0x080F6068).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local navi_level = require("../../lib/navi_level")
 local bomb = require("../../chips/napalmmn/bomb")
 local panels = require("@exelib/panels")
 
@@ -97,7 +98,7 @@ return define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 100, 100, 100, 100, 100, 120, 120 } },
+    damage = navi_level.row({ 100, 100, 100, 100, 100, 120, 120 }),
     hit_param = 158,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },

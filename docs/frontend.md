@@ -1180,10 +1180,11 @@ match files, its descriptions and the editor without a line of Rust.
   form list, EXE6's `crosses`), a form that is none of the side's navi's
   own lists. What a value means is the rules' alone: no range is checked
   beyond the type's.
-- Three facts the engine knows by role (`PlayerFact`: the version, Beast
-  Out, the form list), and where a tool needs one it asks by the role: a
-  navi's version byte in its stats, the forms a random match's form list is
-  picked from.
+- Facts known by role (`PlayerFact`): the version, Beast Out and the form
+  list, which the battle and its frontend read; the level and MegaMan's base
+  HP, which tools read (the checks, the editor). Where a tool needs one it
+  asks by the role: a navi's version byte in its stats, the forms a random
+  match's form list is picked from, the level's range.
 
 EXE6's facts: `version` (required); `crosses` (none unless stated), up to five
 Crosses of either version for the Cross window, in its order (a save's
@@ -1276,10 +1277,12 @@ when the stats carry a NaviCust bug
 
 **The navi code's level** (`level`) is the level of the navi code the
 save received (docs/engine/link-navis.md), 0 to 14: a fact of EXE6's save
-system (`level = "u8?"`, a number or none), which the engine reads by its
-role (`PlayerFact::Level`: a link navi's chip bonus and charge limits, the
-chips whose damage goes by it) and EXE6's rules through `battle.navi_level`
-(the seal below, the reload, MegaMan's gains). A link navi exists only
+system (`level = "u8?"`, a number or none). The engine knows no level: EXE6's
+rules read it (`exe6.navi_level`, its API module): the seal below, the
+reload, MegaMan's gains, and what a level gives a link navi in battle (its
+chip bonus, its charged chips, ChargeMan's Fire charge: rules/by_level.luau,
+the navi's functions of its side, which the round's setup asks once,
+`Battle::given`). Tools find the fact by its role (`PlayerFact::Level`). A link navi exists only
 through its code, so it always has one, and a side of one states it:
 nothing fills one in ("right: ProtoMan has no level (0 to 14): a link navi
 exists only through its navi code"); tools state it (the editor 0 when the

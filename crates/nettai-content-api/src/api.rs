@@ -1445,11 +1445,6 @@ pub trait CoreApi {
     /// What the screen reads of its player that isn't a system's setup: the
     /// emotion it reads, and a random battle.
     fn custom_player(&self, side: u8) -> ApiResult<CustomPlayer>;
-    /// Side `side`'s navi's level (its setup's level fact: EXE6's navi
-    /// code's, 0 to 14; EXE5's team navi's story level), or none: what
-    /// EXE6's rules read of event flag 0x163, and a game's save system
-    /// builds a navi's stats by.
-    fn navi_level(&self, side: u8) -> Option<u8>;
     fn end_takeover(&mut self, side: u8);
     /// Its ticks left.
     fn takeover_ticks(&self, side: u8) -> u16;

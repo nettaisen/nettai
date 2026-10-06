@@ -3,8 +3,8 @@
 -- (HP Memories raise it, +0x3E), the Regular memory (RegUps, +0x09), fighting in the sun (+0x22), and the level of
 -- the navi code it received (`level`: 0 to 14, none without one: event flag 0x163, which the init exchange shares,
 -- `sub_800B144`, `dword_203CFA0`). A link navi exists only through its code, so it has a level; MegaMan has one when
--- he was received from a code. The engine reads the level by its role (a link navi's chip bonus, the chips whose
--- damage goes by it), and EXE6's rules through `battle.navi_level` (the custom screen's seal). The rest of a
+-- he was received from a code. The engine knows no level: EXE6's rules read it (exe6.navi_level: the custom screen's
+-- seal, the reload, what a level gives a link navi in battle, ../by_level). The rest of a
 -- round's stats are derived as the round is set up, from the navi's fresh stats (`fresh_stats`, its definition):
 -- this system first, then the NaviCust's compile (../navicust) and the patch cards (../patch_cards).
 --
@@ -23,13 +23,13 @@
 local fresh_stats = require("./fresh_stats")
 local levels = require("./levels")
 
-type Setup = { hp: number, reg_up: number, sun: boolean }
+type Setup = { hp: number, reg_up: number, sun: boolean, level: number? }
 
 local function round_setup(side: number)
     local stats = battle.navi(side)
     local setup = system.setup() :: Setup
     local navi = stats.navi
-    local level = battle.navi_level(side)
+    local level = setup.level
     local compiles = battle.navicust(side) ~= nil
     local link_navi = navi.forms == nil and navi.levels ~= nil and level ~= nil
     if not compiles and not link_navi then

@@ -434,11 +434,10 @@ pub struct Battle {
     pub transform_seq: TransformSequencer,
     /// What a mid-battle custom-screen request waits for first.
     pub custom_reversion: crate::transform::CustomReversion,
-    /// Per side: its navi's level (`dword_203CFA0`, from the save through
-    /// the init exchange; 0xFF none), the player's setup's level fact
-    /// (`PlayerFact::Level`, as the game's rules declare it), which picks a
-    /// link navi's chip bonus and the damage of the chips that go by it.
-    pub navi_levels: [u8; 2],
+    /// What the content gives each side for the round, asked as the round
+    /// is set up (`crate::given`): what a side's level gives it, as its
+    /// game's rules read the level (the engine knows none).
+    pub given: crate::given::Given,
     pub objects: Objects,
     pub actors: Actors,
     pub collision: Collision,
@@ -708,30 +707,6 @@ impl Battle {
         let objects = Objects::with_capacity(content.rules().pools.slots());
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
         let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
-        let navi_levels: [u8; 2] = std::array::from_fn(|side| {
-            // The level fact, where the game's rules declare one (none: no
-            // level, 0xFF).
-            let level = crate::rules::fact_in(&setup.players[side].rules, &content, PlayerFact::Level.name())
-                .filter(|_| content.defs.fact_field(PlayerFact::Level).is_some())
-                .and_then(|f| match f.value() {
-                    nettai_content_api::FieldValue::OptionalU8(l) => l,
-                    _ => None,
-                });
-            // A navi with a story (EXE5's team navis) has its side's
-            // level, up to its last: its attacks' damage is read at it.
-            // (Any other level reads its tables, which stop at their own
-            // last level.)
-            let navi = setup.navi_stats[side].navi;
-            if let Some(story) = &content.navi(navi).story {
-                assert!(
-                    level.is_some_and(|l| l <= story.max_level),
-                    "side {side} operates {}, whose level is 0 to {}: its setup states {level:?}",
-                    content.defs.navi(navi).key,
-                    story.max_level,
-                );
-            }
-            level.unwrap_or(0xFF)
-        });
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
@@ -767,7 +742,7 @@ impl Battle {
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
             custom_reversion: Default::default(),
-            navi_levels,
+            given: Default::default(),
             objects,
             actors: Actors::default(),
             collision: Collision::new(),
@@ -813,6 +788,9 @@ impl Battle {
         // stats after them.
         b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
         b.reserves = b.stats;
+        // Then what the content gives each side for the round (its navi's
+        // and the chips' functions of the side: what its level gives it).
+        b.given = crate::given::Given::ask(&mut b);
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
         b.field.refresh_all(&b.content.rules().panels, &b.collision);
