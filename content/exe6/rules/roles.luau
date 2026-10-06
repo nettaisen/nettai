@@ -1,5 +1,5 @@
 --!strict
--- What the ruleset starts and spawns by role (docs/design/content-model-v2.md
+-- What the rules start and spawns by role (docs/design/content-model-v2.md
 -- §7.4): each role names the definition that fills it.
 
 local absorbed_obstacle = require("../objects/absorbed_obstacle")

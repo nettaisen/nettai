@@ -11,12 +11,12 @@ local arm = require("./arm")
 
 local arm_change = {}
 
--- What Arm Change keeps in the souls part's state, and the part's field it fills.
+-- What Arm Change keeps in the rules' state, and the rules' field it fills.
 type State = {
     -- Its sequence's step (0x080236B8's offsets 0 and 4) and timer (the screen's +0x40).
     arm_step: number,
     arm_timer: number,
-    -- The souls part's own (rules/souls): the turn's arm chip (the transform record's +6; none: its 0xFFFF), which
+    -- the rules' own (rules/souls): the turn's arm chip (the transform record's +6; none: its 0xFFFF), which
     -- each screen's open clears and the soul change copies into the navi's weapon chip.
     arm_chip: Chip?,
 }

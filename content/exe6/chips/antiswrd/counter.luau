@@ -1,7 +1,7 @@
 --!strict
 -- AntiSwrd's counter (the original's navi action 0x48, `sub_80EEA3C`): the
 -- shared counter (@exelib/antiswrd/counter) with EXE6's sounds, sonic boom
--- and attachment. The ruleset starts it by role
+-- and attachment. The rules start it by role
 -- (`actions.anti_sword_counter`, rules/roles.luau).
 
 local attachment = require("../../objects/attachment")
@@ -25,7 +25,7 @@ function counter.action_with(id: string, blade: AttachmentLook, boom_kind: Kind?
     }
 end
 
--- What the ruleset starts: both of the counter's starters, a trap chip's
+-- What the rules start: both of the counter's starters, a trap chip's
 -- catch (`sub_801056A`) and the AntiDmg program's stance (`sub_80105F2`,
 -- with the variant its weapon zeroes), leave the attack's variant 0: a
 -- sword.

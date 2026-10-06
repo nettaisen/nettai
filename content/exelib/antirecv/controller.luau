@@ -2,7 +2,7 @@
 -- AntiRecv's counterattack, as EXE5 and EXE6 share it (EXE6's effect object
 -- #0x2C, `sub_80E3728`; EXE5's #0x2C): the dimming controller of a sprung
 -- AntiRecv. Each game makes its own (`controller.make`: its kind, its panel
--- changer's and bubble's, the change's sounds). The ruleset
+-- changer's and bubble's, the change's sounds). The rules
 -- spawns it (`sub_80E37D2`; the role `kinds.anti_recovery`,
 -- rules/roles.luau) in a heal's place when the healer's opponent has
 -- AntiRecv armed: a recovery chip's heal (`sub_800E2FC`, which also starts

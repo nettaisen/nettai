@@ -833,7 +833,7 @@ pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) {
 // ---- The transformation sequencer's checks -------------------------------------
 
 // (`sub_80159C6`, the turn-start check that a Beast Out whose counter ran
-// out reverts, is EXE6's beast part's `turn_check`: content/exe6/rules/
+// out reverts, is EXE6's rules/beast's `turn_check`: content/exe6/rules/
 // beast/init.luau.)
 
 /// `sub_80159A2`: a form reversion is pending or running.
@@ -1010,7 +1010,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
     let eff = b.setup.settings.effects;
     if eff & effects::LINK != 0 || eff & 0x1_0000 != 0 || stats(b, r).mood != 0xFF {
         // sub_8015C2C: the starting mood (the side's rules may say
-        // another: EXE5's light and dark part's, by the light/dark value,
+        // another: EXE5's rules/light_dark's, by the light/dark value,
         // 0x0801283A).
         let side = b.objects.get(r).alliance;
         let mood = b.rules_starting_mood(side).unwrap_or(0x80);
@@ -1026,7 +1026,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         let hook = b.roles().hook(crate::content::HookRole::FirstBarrier);
         crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
     }
-    // (EXE6's emotion part holds a navi whose Beast Out counter is spent
+    // (EXE6's rules/emotion holds a navi whose Beast Out counter is spent
     // tired from the round's start.)
     reset_navicust_state(b, r);
 }

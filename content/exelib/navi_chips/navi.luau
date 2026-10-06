@@ -3,7 +3,7 @@
 -- §3.6; EXE5's spawners and helpers are EXE6's code): how a chip places its
 -- navi, how he stands on his panel, the footing he needs, the timers of his
 -- actions, his leaving, and how his flying attacks tell they passed a
--- panel's center. The navi chip controller (the ruleset's) calls a chip's
+-- panel's center. The navi chip controller (the rules') calls a chip's
 -- `navi` hook, and the navi reports back with `navi_chips.leave`. Each game
 -- passes its navis' sprites.
 

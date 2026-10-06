@@ -1,7 +1,7 @@
 --!strict
 -- AntiRecv's counterattack (the original's effect object #0x2C,
 -- `sub_80E3728`): the shared counterattack (@exelib/antirecv/controller),
--- EXE6's kind with EXE6's panel changer and bubble. The ruleset spawns it by
+-- EXE6's kind with EXE6's panel changer and bubble. The rules spawn it by
 -- role (`kinds.anti_recovery`, rules/roles.luau).
 
 local common = require("@exelib/antirecv/controller")

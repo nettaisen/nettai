@@ -1,7 +1,7 @@
 //! Action 0x1C as a form's revert (`sub_8015614`, the same code in EXE5) and
 //! a Cross breaking (`sub_8015766`): the framework's. The change into a form
 //! (`sub_8014A38`, the original's action 0x1C too) is the action the form
-//! names (`FormData::change`): EXE6's five sequences are EXE6's forms part's,
+//! names (`FormData::change`): EXE6's five sequences are EXE6's rules/forms's,
 //! content/exe6/rules/forms (docs/design/rules-in-luau.md §3.1). See
 //! docs/engine/battle-flow.md §3.4.1 and objects-and-player.md §12.9-§12.10.
 

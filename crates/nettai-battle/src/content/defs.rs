@@ -146,7 +146,7 @@ pub struct ChipDef {
     pub links: ChipLinks,
 }
 
-/// What a chip's record names by key or name, resolved: the ruleset reads
+/// What a chip's record names by key or name, resolved: the rules read
 /// these.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ChipLinks {
@@ -277,7 +277,7 @@ pub struct CollisionTypeDef {
 
 /// The rules' extension of a registry's definitions
 /// (docs/design/rules-in-luau.md §7.5, S7): a field its game's definitions
-/// may carry for it (EXE6's dark chips part's `hp_bug` on a chip), of a
+/// may carry for it (EXE6's rules/dark_chips's `hp_bug` on a chip), of a
 /// type. The engine checks it as the content is defined and reads none of
 /// it: Luau reads it on the definition, tools through [`Defs::extension`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -364,12 +364,11 @@ impl ExtensionType {
     }
 }
 
-/// A game's rules (docs/design/rules-in-luau.md §2.2), its one definition of
+/// A game's rules (docs/design/rules-in-luau.md §2.5), its one definition of
 /// them (`define.rules { ... }`, its rules/init.luau): their state of a side,
-/// a player's setup of them (the side's facts), and their hooks, which call
-/// the game's parts (plain modules) in the order the rules choose. A game
-/// has one (the user: "collapse systems into one rules definition"), which
-/// every match of it plays by.
+/// a player's setup of them (the side's facts), and their hooks, plain
+/// functions that call the game's modules as their code says. A game has
+/// one, which every match of it plays by.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RulesDef {
     /// The layout of their state of a side, and of a player's setup.
@@ -477,7 +476,7 @@ pub struct RecordDef {
 
 /// A patch card (`define.patch_card`; BN4's, EXE5's and EXE6's Modification
 /// Cards, docs/engine/patch-cards.md): what every game's card is. A game's
-/// rules give its effects their meaning (EXE6's patch cards part applies a
+/// rules give its effects their meaning (EXE6's rules/patch_cards applies a
 /// player's cards as the round is set up); the engine keeps the card's
 /// capacity cost and its effects' kinds, and the effects' own fields stay
 /// the definition's data, which the rules read. Its name is the locales'.
@@ -601,7 +600,7 @@ pub struct Defs {
     pub regions: Vec<super::Region>,
     /// Collision types (`define.collision`), by handle.
     pub collisions: Vec<CollisionTypeDef>,
-    /// What the game needs from content by role (its ruleset's `roles`;
+    /// What the game needs from content by role (its rules' `roles`;
     /// none given, none filled).
     pub roles: Roles,
     /// The rules' custom-screen buttons and windows.
@@ -931,7 +930,7 @@ pub(crate) fn no_display_text(d: &Definition) -> Result<(), ContentError> {
 /// record's reader leaves to them. (Building the rules checks them.)
 fn extended_fields(definitions: &Definitions, registry: Registry) -> Vec<String> {
     let mut fields = Vec::new();
-    if let Some(r) = ruleset(definitions)
+    if let Some(r) = rules_definition(definitions)
         && let Data::Map(own) = r.spec.field("extends").field(registry.name())
     {
         fields.extend(own.iter().map(|(k, _)| k.to_string()));
@@ -996,7 +995,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         }
         other => return Err(what(format!("`damage` is {other}: a number below 1000, or a formula"))),
     }
-    // What the ruleset asks of this chip: its traits and the trap it is.
+    // What the rules ask of this chip: its traits and the trap it is.
     // (The rules' own fields, EXE6's dark chips' cost and substitute and its
     // Beast rush's lock-on, are its extension: SystemDef::extends.)
     for field in ["traits", "trap"] {
@@ -1012,14 +1011,14 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
 }
 
-/// The game's ruleset (`define.ruleset { ... }`, its rules/init.luau),
+/// The game's rules (`define.rules { ... }`, its rules/init.luau),
 /// which holds its rule sections and its roles; none for content without
 /// one. (A game has one: the define phase refuses two.)
-pub(crate) fn ruleset(definitions: &Definitions) -> Option<&Definition> {
-    definitions.of(Registry::Ruleset).first()
+pub(crate) fn rules_definition(definitions: &Definitions) -> Option<&Definition> {
+    definitions.of(Registry::Rules).first()
 }
 
-/// The ruleset's `roles = { actions = { ... }, kinds = { ... } }`
+/// The rules' `roles = { actions = { ... }, kinds = { ... } }`
 /// (content::roles; a plain table, rules/roles.luau): each role a
 /// definition.
 fn read_roles(
@@ -1032,7 +1031,7 @@ fn read_roles(
     statuses: &[StatusDef],
     functions: &mut Functions,
 ) -> Result<Roles, ContentError> {
-    let what = |e: String| ContentError::new(format!("{}.luau: ruleset: roles: {e}", d.module));
+    let what = |e: String| ContentError::new(format!("{}.luau: rules: roles: {e}", d.module));
     let groups: &[(nettai_content_api::DataKey, Data)] = match d.spec.field("roles") {
         Data::Nil => &[],
         Data::Map(groups) => groups,
@@ -1048,7 +1047,7 @@ fn read_roles(
                 "actions" => {
                     let names: Vec<&str> = ActionRole::ALL.iter().map(|r| r.name()).collect();
                     let role = ActionRole::named(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role actions.{name} (it has {})", names.join(", ")))
+                        what(format!("the rules have no role actions.{name} (it has {})", names.join(", ")))
                     })?;
                     let full = format!("actions.{name}");
                     let Data::Ref(Registry::Action, key) = v else {
@@ -1060,7 +1059,7 @@ fn read_roles(
                 "kinds" => {
                     let names: Vec<&str> = KindRole::ALL.iter().map(|r| r.name()).collect();
                     let role = KindRole::named(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role kinds.{name} (it has {})", names.join(", ")))
+                        what(format!("the rules have no role kinds.{name} (it has {})", names.join(", ")))
                     })?;
                     let full = format!("kinds.{name}");
                     let Data::Ref(Registry::Kind, key) = v else {
@@ -1072,17 +1071,17 @@ fn read_roles(
                 "hooks" => {
                     let names: Vec<&str> = HookRole::ALL.iter().map(|r| r.name()).collect();
                     let role = HookRole::named(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role hooks.{name} (it has {})", names.join(", ")))
+                        what(format!("the rules have no role hooks.{name} (it has {})", names.join(", ")))
                     })?;
                     if !matches!(v, Data::Function) {
                         return Err(what(format!("hooks.{name} is not a function")));
                     }
-                    roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Ruleset, &d.key, &format!("roles.hooks.{name}"))));
+                    roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Rules, &d.key, &format!("roles.hooks.{name}"))));
                 }
                 "chips" => {
                     let names: Vec<&str> = ChipRole::ALL.iter().map(|r| r.name()).collect();
                     let role = ChipRole::named(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role chips.{name} (it has {})", names.join(", ")))
+                        what(format!("the rules have no role chips.{name} (it has {})", names.join(", ")))
                     })?;
                     let full = format!("chips.{name}");
                     let Data::Ref(Registry::Chip, key) = v else {
@@ -1096,7 +1095,7 @@ fn read_roles(
                 "statuses" => {
                     let names: Vec<&str> = StatusRole::ALL.iter().map(|r| r.name()).collect();
                     let role = StatusRole::named(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role statuses.{name} (it has {})", names.join(", ")))
+                        what(format!("the rules have no role statuses.{name} (it has {})", names.join(", ")))
                     })?;
                     let Data::Ref(Registry::Status, key) = v else {
                         return Err(what(format!("statuses.{name} is not a status")));
@@ -1153,7 +1152,7 @@ fn read_roles(
                 }
                 _ => {
                     return Err(what(format!(
-                        "the ruleset has no role group `{group}` (it has actions, kinds, hooks, chips, lockon, statuses, effects, sparks, regions, collision, sounds, music, sprites, banners)"
+                        "the rules have no role group `{group}` (it has actions, kinds, hooks, chips, lockon, statuses, effects, sparks, regions, collision, sounds, music, sprites, banners)"
                     )));
                 }
             }
@@ -1170,7 +1169,7 @@ fn definition_role<R>(
     names: impl Iterator<Item = &'static str>,
 ) -> Result<R, String> {
     named(name).ok_or_else(|| {
-        format!("the ruleset has no role {group}.{name} (it has {})", names.collect::<Vec<_>>().join(", "))
+        format!("the rules have no role {group}.{name} (it has {})", names.collect::<Vec<_>>().join(", "))
     })
 }
 
@@ -1782,9 +1781,9 @@ impl Defs {
             collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
         }
 
-        // The roles: the game's, its ruleset's `roles` (docs/design/
+        // The roles: the game's, its rules' `roles` (docs/design/
         // content-model-v2.md §7.4).
-        let roles = match ruleset(&definitions) {
+        let roles = match rules_definition(&definitions) {
             Some(d) => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &statuses, &mut functions)?,
             None => Roles::default(),
         };
@@ -1798,7 +1797,7 @@ impl Defs {
         let mut unplayable_in_auto_battle: Option<(String, Vec<(String, String)>)> = None;
         let mut buttons: Vec<ButtonDef> = Vec::new();
         let mut windows: Vec<WindowDef> = Vec::new();
-        if let Some(d) = ruleset(&definitions) {
+        if let Some(d) = rules_definition(&definitions) {
             let what = |e: &str| ContentError::new(format!("{}.luau: rules: {e}", d.module));
             const FIELDS: [&str; 12] = [
                 "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends",
@@ -2097,7 +2096,7 @@ impl Defs {
         // of its type; and the rules' actions.
         let mut rules_actions = vec![false; actions.len()];
         if let Some(r) = &rules {
-            let module = ruleset(&definitions).map_or("", |d| d.module.as_str());
+            let module = rules_definition(&definitions).map_or("", |d| d.module.as_str());
             for (i, e) in r.extends.iter().enumerate() {
                 if r.extends[..i].iter().any(|x| x.registry == e.registry && x.field == e.field) {
                     return Err(ContentError::new(format!("{module}.luau: rules: they extend {} definitions with `{}` twice", e.registry, e.field)));
@@ -2129,7 +2128,7 @@ impl Defs {
             for (k, fact) in PlayerFact::ALL.iter().enumerate() {
                 let Some(i) = schema.index_of(fact.name()) else { continue };
                 if let Err(want) = fact.fits(&schema.field(i).ty) {
-                    let module = ruleset(&definitions).map_or("", |d| d.module.as_str());
+                    let module = rules_definition(&definitions).map_or("", |d| d.module.as_str());
                     return Err(ContentError::new(format!(
                         "{module}.luau: rules: their setup field `{}` is the fact a player brings by that name, {want}: it is {:?}",
                         fact.name(),

@@ -1,7 +1,7 @@
 # Patch cards (改造カード): the plan, and how it was built
 
 **Status: done (2026-10-02).** Patch cards are an engine definition kind with a typed player setup, and EXE6's
-patch cards part (content/exe6/rules/patch_cards/) applies them,
+patch cards module (content/exe6/rules/patch_cards/) applies them,
 all 117 cards are content (content/exe6/patch_cards/), and the chip lab's library/jp/cards/ (222 scenarios on Japanese
 consoles) matches on every frame. docs/engine/patch-cards.md is the reference: how the Japanese games do it, what
 the cards do, how nettai has it, and the cards (its appendix). This document keeps the plan's reasoning and the

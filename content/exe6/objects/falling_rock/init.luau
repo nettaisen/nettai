@@ -4,7 +4,7 @@
 -- and faster; its hit region opens once it is under 30 pixels. What it
 -- hits breaks it into two chips (chip.luau); landing it breaks on a solid
 -- panel, or drops into a hole with a puff. Spawned by `sub_80C7F20`: the
--- ruleset's GroundCross barrage (`sub_8012CB2`, the role
+-- rules' GroundCross barrage (`sub_8012CB2`, the role
 -- `kinds.falling_rock`), with the panel, element and damage word.
 -- ExtraVars[0] may point at a counter of rocks in flight; the barrage
 -- passes none. (The barrage's Param1, 3 to 1, nothing reads.)

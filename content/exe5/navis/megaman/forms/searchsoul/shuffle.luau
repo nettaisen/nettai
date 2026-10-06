@@ -1,6 +1,6 @@
 --!strict
 -- SearchSoul's Shuffle on EXE5's custom screen (docs/design/exe5-map.md §15.8): what the soul adds to the screen (its
--- form's `custom`, which the souls part gathers: rules/souls/custom). A button two cells wide on slots 8 and 9
+-- form's `custom`, which rules/souls gathers: rules/souls/custom). A button two cells wide on slots 8 and 9
 -- (0x08023CF8: the slots' types 4 and 5, its right neighbor the special slot, its left the eighth chip's), three
 -- times a screen (3 less the screen's shuffles so far, +0x16, which each screen's open zeroes). A on it (0x080249B0,
 -- with no sound of its own) deals the chips not picked again: the screen's state 0x28 (0x08023488), the framework's

@@ -1,4 +1,4 @@
-//! The custom screen (EXE6 ruleset): between turns each player deals chips
+//! The custom screen (EXE6 rules): between turns each player deals chips
 //! from their folder, picks some with their joypad (and maybe Beast Out or
 //! a Cross), and presses OK; the hand is built and sent over the link, and
 //! the fight resumes once both players' results are in.
@@ -34,7 +34,7 @@ use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 
 /// What a player brings to a round that only their own console knows in
 /// the original: the battle folder (shuffled at the round's init), what
-/// their save holds that the battle reads, and what their ruleset's
+/// their save holds that the battle reads, and what their rules'
 /// systems take (EXE6's: the game version and what the save unlocks on the
 /// custom screen, in its systems' setup blocks).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -57,11 +57,11 @@ pub struct PlayerSetup {
     /// `PlayerSetup::set_fact` writes one by name).
     pub rules: Option<nettai_content_api::Block>,
     /// The patch cards the player has installed (`crate::patch_cards`):
-    /// their ruleset's rules apply them (EXE6's patch cards part).
+    /// their rules' rules apply them (EXE6's rules/patch_cards).
     pub patch_cards: crate::patch_cards::PatchCards,
-    /// The player's NaviCust (`crate::navicust`), which their ruleset's
+    /// The player's NaviCust (`crate::navicust`), which their rules'
     /// rules compile into the navi's stats as the round is set up (EXE6's
-    /// navicust part); none: the stats are the setup's as they are (a
+    /// rules/navicust); none: the stats are the setup's as they are (a
     /// recording's, which the original's NaviCust has already made).
     pub navicust: Option<crate::navicust::NaviCust>,
     /// The player's auto battle data (EXE5's, `crate::auto_battle`),

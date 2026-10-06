@@ -115,9 +115,8 @@ local EXE5: NaviCustGame = {
 }
 
 return {
-    hooks = {
-        round_setup = function(side: number)
-            compile.run(side, EXE5)
-        end,
-    },
+    -- As the round is set up: the programs compiled into the navi's stats.
+    round_setup = function(side: number)
+        compile.run(side, EXE5)
+    end,
 }

@@ -2,7 +2,7 @@
 -- MegaMan's charged shot (`megaman/charged-shot`): the original's weapon
 -- routine 1 (`sub_8011A7E`), which sets up action 0x16 with (Attack + 1) *
 -- 10 damage (10 when worn out), and action 0x16 (`sub_80EBE00`), the shot.
--- The ruleset also starts the shot without the setup (the role
+-- The rules also start the shot without the setup (the role
 -- `forced_charged_shot`, rules/roles.luau). The NaviCust's charged-shot program
 -- changes the shot's kind on a lucky draw. See
 -- docs/engine/objects-and-player.md §B7.

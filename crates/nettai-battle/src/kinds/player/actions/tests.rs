@@ -1501,7 +1501,7 @@ fn act(b: &Battle, r: ObjectRef) -> NaviAction {
     super::super::navi_action(b, r)
 }
 
-/// The framework's idle state, and the ruleset's own actions the timelines
+/// The framework's idle state, and the rules' own actions the timelines
 /// name.
 const IDLE: NaviAction = NaviAction::Idle;
 const MOVE: NaviAction = NaviAction::Engine(EngineAction::Move);
@@ -1509,7 +1509,7 @@ const INSTANT_CHIP: NaviAction = NaviAction::Engine(EngineAction::InstantChip);
 const FORM_CHANGE: NaviAction = NaviAction::Engine(EngineAction::FormChange);
 
 /// What navi `r` runs, by key: a content action's, or one of the
-/// ruleset's own (`engine/instant-chip`).
+/// rules' own (`engine/instant-chip`).
 fn runs(b: &Battle, r: ObjectRef) -> String {
     match act(b, r) {
         NaviAction::Content(h) => nettai_content_api::keys::local(&b.content.defs.action(h).key).to_string(),
@@ -2350,7 +2350,7 @@ fn an_action_starts_the_next_by_definition() {
 }
 
 #[test]
-fn the_ruleset_starts_a_role_action() {
+fn the_rules_start_a_role_action() {
     // A caught hit starts AntiDmg's counter: the role content fills.
     let (mut b, p0, p1) = fight_on_test_pack();
     let role = b.roles().try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
@@ -2388,7 +2388,7 @@ fn weapon_definitions_carry_their_charge_times_and_traits() {
     }
     let charged = c.weapon(c.weapon_by_key("megaman/charged-shot"));
     assert_eq!(&charged.charge_ticks[..6], &[100, 90, 80, 70, 60, 180]);
-    // The traits the ruleset asks: a Beast buster fires while B is held
+    // The traits the rules ask: a Beast buster fires while B is held
     // and gives way to the plain buster; an arm chip's charged shot is
     // sticky; ElecCross's A-charge is its chip with a bonus.
     let buster = c.weapon_by_key("megaman/buster");

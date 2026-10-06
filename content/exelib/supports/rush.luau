@@ -1,7 +1,7 @@
 --!strict
 -- Rush, as EXE5 and EXE6 share him (actor object #0x4B in both: EXE6's `sub_80C3218`, EXE5's 0x080C2214, the same code
 -- but for his bite), of a game's `RushLook` (`rush.make`): the NaviCust support that stops a chip: the opponent used a
--- chip Rush cancels (its record's flag `rush_cancels`), the ruleset turned the use back (EXE6's `sub_8010740`, EXE5's
+-- chip Rush cancels (its record's flag `rush_cancels`), the rules turned the use back (EXE6's `sub_8010740`, EXE5's
 -- 0x0800E498) and summoned him through the supports' controller (./controller). He appears by his navi (or at his
 -- side's middle), barks for a second, digs in, pops up under the opponent's navi and eats the chip (the opponent's hand
 -- moves on, unless the chip is the game's spared one: EXE6's second WhiCapsl, which doesn't come from the hand), with a
@@ -13,7 +13,7 @@ local regions = require("../regions")
 export type State = {
     -- The chip he eats (the original's third and fourth parameters), if
     -- any: kept only by a game whose Rush spares a chip (EXE6's). EXE5's
-    -- ruleset hands him none (0x0800E498 passes 0, and its controller a
+    -- rules hand him none (0x0800E498 passes 0, and its controller a
     -- stale register), and his bite reads none.
     eaten: Chip?,
 }

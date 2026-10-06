@@ -78,9 +78,9 @@ const LINK_NAVIS: u8 = 12;
 /// HeatMan to ChargeMan: its version's); the others' are the Falzar ROM's.
 const GREGAR_NAVIS: std::ops::RangeInclusive<u8> = 1..=5;
 
-/// The names EXE6's content registers its buttons under (content/exe6/rules:
-/// the navicust part's `redeal`, the cross part's `scrap`, the beast
-/// part's `beast_out`), which the pack has their looks by.
+/// The names EXE6's rules give their buttons (content/exe6/rules/init.luau:
+/// ChpShufl's `redeal`, DustCross's `scrap`, Beast Out's `beast_out`),
+/// which the pack has their looks by.
 pub(crate) const REDEAL_BUTTON: &str = "redeal";
 pub(crate) const SCRAP_BUTTON: &str = "scrap";
 const BEAST_OUT_BUTTON: &str = "beast_out";

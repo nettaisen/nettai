@@ -4,7 +4,7 @@
 -- (`sub_80EF328`). The navi rises (its body's hit off, its panel kept
 -- reserved), picks up to six panels of the 3x3 block two panels ahead (the
 -- enemies' first, in random order), throws junk at them (./junk_shot)
--- every 11 ticks from high up, and lands. While it runs the ruleset
+-- every 11 ticks from high up, and lands. While it runs the rules
 -- doesn't ground the navi (the role `dust_beast_scatter`).
 
 local junk_shot = require("./junk_shot")

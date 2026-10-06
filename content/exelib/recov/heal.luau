@@ -1,7 +1,7 @@
 --!strict
 -- The recovery chips' action (the original's action 0x20, `sub_80EC844`):
 -- in the tick after the chip is used, heal the chip's HP (`byte_80EC870`'s
--- row, by the original's subtype) through the ruleset's heal, which an
+-- row, by the original's subtype) through the rules' heal, which an
 -- opponent's armed AntiRecv turns into damage (chips/antirecv/controller);
 -- count the recovery in the side's statistics, and back to idle.
 
