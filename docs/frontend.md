@@ -1523,8 +1523,9 @@ patterns' places).
 One kind of chip is refused in a place: a chip the original can't play in
 auto battle (a team navi's own chip, such as StepSwrd, and the chips
 past the library, FtrSword to PnkCapsl). The AI gets in place for a chip by
-the chip's positioning class, and theirs, 255, is past the game's table of
-classes: the original crashes there, and the engine raises. The game's own
+the chip's positioning class, and theirs, `unplayable` (the original's 255),
+is past the game's table of classes: the original crashes there, and the
+engine raises. The game's own
 writer never puts one among the 42 places (it counts library chips only),
 so only a block made by hand holds one, and the check says where: "place 29
 of the auto battle data (`mega`, entry 2) holds StepSwrd: the original

@@ -2,8 +2,9 @@
 -- EXE5's cannonball (attack object #0x35, 0x080CB5C8; EXE5's own, thrown by action 0x12's subtype 4, 0x080CB7D4):
 -- lobbed in a 50-tick arc at the panel three ahead, it can hit on its way (its region set once it lands); landing
 -- on a solid panel it hits it, breaks it (cracks it while something stands on it) with an impact and a crack's
--- sound; off solid ground it ends in a puff, and a hit ends it at once. Its kind (Param1) 2 is another's: a plain
--- attack that bursts over the column with explosions and the bomb's sound (no chip throws it).
+-- sound; off solid ground it ends in a puff, and a hit ends it at once. (Its kind, Param1, is CannBall's 0: the
+-- original's kind 2, a plain attack bursting over the column, no chip throws, and kinds 1 and 3 differ from 0 only
+-- in their region, 0x080CB7A0.)
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
@@ -13,27 +14,22 @@ local trajectory = require("../../lib/trajectory")
 local cannball = {}
 
 export type State = {
-    -- Its kind (Param1).
-    which: number,
     -- The panel it aims at (Param3 and Param4).
     target_x: number,
     target_y: number,
 }
 
--- 0x080CB5EC: the bomb's sprite in animation 1, palette 4 (kind 2: 0).
+-- 0x080CB5EC: the bomb's sprite in animation 1, palette 4.
 local SPRITE = asset.sprite("bomb")
 local FLIGHT_TICKS, GRAVITY = 50, -0x3000
 
 -- What the navi holds throwing one (the attachment table's row 0x1A): the bomb in palette 4.
 cannball.held = attachment.look { sprite = SPRITE, palette = 4 }
 local HIT_MOD = 3
--- Its region once landed, by kind (0x080CB7A0).
-local REGIONS = { [0] = regions.single, [1] = regions.single, [2] = regions.wide, [3] = regions.region_20 }
--- Effects 0x14 (a puff), 0x11 (an impact) and 0 (an explosion).
+-- Effects 0x14 (a puff) and 0x11 (an impact).
 local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 local IMPACT = new.effect { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
-local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
-local SOUND_CRACK, SOUND_BOMB = asset.sound("panel-crack"), asset.sound("hit-bomb-1")
+local SOUND_CRACK = asset.sound("panel-crack")
 
 -- 0x080CB6BC: fly to the target panel; land there.
 local function fly(me: Object, s: State)
@@ -62,19 +58,11 @@ local function fly(me: Object, s: State)
         me:set_lifecycle("destroy")
         return
     end
-    local region = REGIONS[s.which]
-    if region == nil then
-        error(string.format("the cannonball's kind %d reads past its regions", s.which))
-    end
-    me.collision:set_region(region)
-    if s.which == 2 then
-        battle.region_effects(x, y, regions.wide, me.alliance, EXPLOSION, 0)
-        battle.play_sound(SOUND_BOMB)
-    else
-        field.break_panel(x, y)
-        battle.effect(me.pos, IMPACT)
-        battle.play_sound(SOUND_CRACK)
-    end
+    -- (Its region once landed, 0x080CB7A0's by its kind: one panel.)
+    me.collision:set_region(regions.single)
+    field.break_panel(x, y)
+    battle.effect(me.pos, IMPACT)
+    battle.play_sound(SOUND_CRACK)
     me.action = 4
     me.phase, me.phase_init = 0, 0
 end
@@ -111,28 +99,25 @@ end
 cannball.kind = new.kind {
     id = "cannball/ball",
     pool = "attack",
-    state = { which = "u8", target_x = "u8", target_y = "u8" },
+    state = { target_x = "u8", target_y = "u8" },
     -- 0x080CB5C8.
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
             -- 0x080CB5EC.
-            local s = me.state :: State
             local sprite = me.sprite
             sprite:load(SPRITE)
             sprite.shadow = "ground"
             me.visible = true
             me.anim, me.anim_loaded = 1, 1
             sprite:set_animation(1)
-            if s.which ~= 2 then
-                sprite.palette = 4
-            end
+            sprite.palette = 4
             me:set_panel_from_coordinates()
             if not me:create_collision() then
                 me:free()
                 return
             end
-            me:setup_collision(if s.which == 2 then collision.attack else collision.thrown_break, collision.hits_navis, HIT_MOD)
+            me:setup_collision(collision.thrown_break, collision.hits_navis, HIT_MOD)
             me.collision:set_hit_effect(nil)
             me.collision:set_region(nil)
             me.collision:present()
@@ -148,8 +133,8 @@ cannball.kind = new.kind {
     end,
 }
 
--- 0x080CB7D4: a thrower of kind `which` cannonballs at the panel three ahead of the user.
-function cannball.thrower(which: number): Thrower
+-- 0x080CB7D4: a thrower of cannonballs at the panel three ahead of the user.
+function cannball.thrower(): Thrower
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
             local o = battle.spawn(cannball.kind, pos)
@@ -158,7 +143,6 @@ function cannball.thrower(which: number): Thrower
                 o.element = 0
                 o:set_damage_word(damage)
                 local s = o.state :: State
-                s.which = which
                 s.target_x, s.target_y = user.panel_x + 3 * user.facing, user.panel_y
             end
             return o
