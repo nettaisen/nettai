@@ -106,13 +106,12 @@ local rules: Rules = {
         auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
         auto_battle_records = schema.list(auto_battle.block.RECORD, auto_battle.block.RECORDS),
         -- What the save brings to the navi's stats (./save): MegaMan's base HP, the Regular memory, fighting in the
-        -- sun (+0x22), and a team navi's level (the story's progress). No player states them: every side plays at
-        -- the highest (`setup_defaults`; a team navi at its story's last level, which the tools state, MegaMan with
-        -- none). A recording's boundary states the save's own.
-        hp = schema.fixed("u16"),
-        reg_up = schema.fixed("u8"),
-        sun = schema.fixed("bool"),
-        level = schema.fixed("u8?"),
+        -- sun (+0x22), and a team navi's level (the story's progress). A side that states none has the highest
+        -- (`setup_defaults`; a team navi its story's last level, which the tools state, MegaMan none).
+        hp = "u16",
+        reg_up = "u8",
+        sun = "bool",
+        level = "u8?",
         -- MegaMan's light/dark value (NaviStats +0x44, ./light_dark).
         karma = "u16",
         -- The souls the save has (./souls; a match's side's `souls`, a recording's its version's), which the custom

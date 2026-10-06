@@ -156,16 +156,16 @@ mod tests {
         );
     }
 
-    /// A match file names a link navi, and neither its level nor stats: its
-    /// round's are its highest level's (every side's), with the Regular
-    /// memory every side has.
+    /// A match file names a link navi and its level, and no stats: its
+    /// round's are the level's, with the Regular memory a side that states
+    /// none has (50).
     #[test]
     fn a_match_file_gives_a_link_navi_its_levels_stats() {
         let content = exe6_content();
         let m = with_link_navi(&content, "heatman", 14);
         let text = crate::write(&content, &m);
         let right = &text[text.find("[right]").unwrap()..];
-        assert!(right.contains("navi = \"heatman\"") && !right.contains("level") && !right.contains("reg_up") && !text.contains("stats"), "{text}");
+        assert!(right.contains("level = 14") && !right.contains("reg_up") && !text.contains("stats"), "{text}");
         let back = crate::parse(&content, &text).unwrap();
         assert_eq!(back, m);
         let s = started(&content, &back);

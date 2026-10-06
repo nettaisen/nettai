@@ -20,10 +20,10 @@
 //! The games' own (EXE6's `version`, `crosses`, `beast_out`,
 //! `bug_frags`; EXE5's `karma`, `souls`, `chaos_unison`) are
 //! documented where they are declared: content/exe6/rules and
-//! content/exe5/rules. A fixed fact (`schema.fixed`: what the save brings
-//! to the stats, the navi's level) is every side's alike: no tool offers
-//! it ([`fields`] leaves it out) and no file states it, and a side's level
-//! is its navi's highest ([`crate::play_level`]).
+//! content/exe5/rules. What a save brings to the stats is at its highest
+//! where a side states nothing (the rules' defaults), and a side's level
+//! its navi's highest ([`crate::play_level`], which [`Side::set_navi`]
+//! states).
 
 use crate::{Folder, Side, ids};
 use nettai_battle::content::{ChipCode, Content, PlayerFact};
@@ -43,27 +43,16 @@ pub struct Field<'c> {
     pub ty: &'c FieldType,
 }
 
-/// The facts a side of the content's game states: each field of its
-/// rules' setup but the fixed ones ([`is_fixed`]), in its names' order (a
-/// schema sorts them).
+/// The facts a side of the content's game takes: each field of its rules'
+/// setup, in its names' order (a schema sorts them).
 pub fn fields(content: &Content) -> Vec<Field<'_>> {
     let Some(rules) = content.defs.rules() else { return Vec::new() };
-    content.defs.schema(rules.setup).fields().iter().filter(|f| !f.fixed).map(|f| Field { name: &f.name, ty: &f.ty }).collect()
+    content.defs.schema(rules.setup).fields().iter().map(|f| Field { name: &f.name, ty: &f.ty }).collect()
 }
 
-/// The fact named `name`, if the game's rules take it (a fixed one too:
-/// a recording's, a test's, which states one by name).
+/// The fact named `name`, if the game's rules take it.
 pub fn field<'c>(content: &'c Content, name: &str) -> Option<Field<'c>> {
-    let rules = content.defs.rules()?;
-    content.defs.schema(rules.setup).fields().iter().find(|f| f.name == name).map(|f| Field { name: &f.name, ty: &f.ty })
-}
-
-/// Whether fact `name` is fixed (`schema.fixed`): no player states it,
-/// every side plays with the rules' default (EXE6's and EXE5's save's facts
-/// at their highest; the level, a navi's highest: [`crate::play_level`]).
-/// A match file, the editor and a save's import don't state it.
-pub fn is_fixed(content: &Content, name: &str) -> bool {
-    content.defs.rules().is_some_and(|r| content.defs.schema(r.setup).fields().iter().any(|f| f.name == name && f.fixed))
+    fields(content).into_iter().find(|f| f.name == name)
 }
 
 /// Whether the game's rules' setup declares field `field` (a side takes
@@ -495,16 +484,16 @@ impl Side {
         self.stated_navi(content).expect("a side states its navi (the engine's navi fact)")
     }
 
-    /// State the side's navi, and its level as every side plays (its
-    /// highest: [`crate::play_level`], where the game's rules take a level).
-    /// An error where the game's rules take no navi fact.
+    /// State the side's navi, and its level at its highest
+    /// ([`crate::play_level`], where the game's rules take a level). An
+    /// error where the game's rules take no navi fact.
     pub fn set_navi(&mut self, content: &Content, navi: NaviHandle) -> Result<(), String> {
         self.set_fact(content, PlayerFact::Navi.name(), &[Fact::Value(Value::Def(Registry::Navi, navi.0))])?;
         self.state_play_level(content)
     }
 
-    /// State the side's level as every side plays (its navi's highest:
-    /// [`crate::play_level`]), where the game's rules take a level.
+    /// State the side's level at its navi's highest ([`crate::play_level`]),
+    /// where the game's rules take a level.
     pub fn state_play_level(&mut self, content: &Content) -> Result<(), String> {
         if content.defs.fact_name(PlayerFact::Level).is_none() {
             return Ok(());
