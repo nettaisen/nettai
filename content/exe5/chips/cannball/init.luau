@@ -19,7 +19,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = bombs.throw { held = cannball.held, thrower = cannball.thrower(0) },
+    action = bombs.throw { held = cannball.held, thrower = cannball.thrower() },
 }
 
 return { cannball = chip }

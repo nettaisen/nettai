@@ -1,7 +1,7 @@
 --!strict
 -- The panel searches EXE5's auto battle AI runs (./ai, ./place): where to step, where a chip reaches from. Most are
--- EXE6's routines (the same code in both games); the EXE5-only ones are named by their EXE5 address. A search that finds
--- nothing returns nil; one that finds several picks one with a battle RNG draw (`GetPositiveSignedRNG2`, modulo
+-- EXE6's routines (the same code in both games); the EXE5-only ones are named by their EXE5 address. A search that
+-- finds nothing returns nil; one that finds several picks one with a battle RNG draw (`GetPositiveSignedRNG2`, modulo
 -- how many), in the order the original lists them.
 
 local data = require("./data")
@@ -161,15 +161,23 @@ function panels.random_relative(x: number, y: number, require: number, forbid: n
     return px, py, #found
 end
 
--- `GetRandomRelativePanelFiltered` (EXE5's 0x08012C26): the same over the panel offset list `index` (data.offsets).
-function panels.random_offset(x: number, y: number, require: number, forbid: number, index: number, side: number): (number?, number?, number)
-    return panels.random_relative(x, y, require, forbid, data.offsets[index], side)
+-- `GetRandomRelativePanelFiltered` (EXE5's 0x08012C26): the same over the panel offset list `name` (data.offsets).
+function panels.random_offset(x: number, y: number, require: number, forbid: number, name: string, side: number): (number?, number?, number)
+    local list = data.offsets[name]
+    if list == nil then
+        error(string.format("no panel offset list %s in the AI's data", name))
+    end
+    return panels.random_relative(x, y, require, forbid, list, side)
 end
 
--- EXE5's 0x08012C38: the panels from which a chip of reach list `range` (data.ranges) reaches (x, y): the list
+-- EXE5's 0x08012C38: the panels from which a chip of reach list `range` (data.ranges, by name) reaches (x, y): the list
 -- turned the other side's way.
-function panels.reaching(x: number, y: number, require: number, forbid: number, range: number, side: number): (number?, number?, number)
-    return panels.random_relative(x, y, require, forbid, data.ranges[range], bit32.bxor(side, 1))
+function panels.reaching(x: number, y: number, require: number, forbid: number, range: string, side: number): (number?, number?, number)
+    local list = data.ranges[range]
+    if list == nil then
+        error(string.format("no reach list %s in the AI's data", range))
+    end
+    return panels.random_relative(x, y, require, forbid, list, bit32.bxor(side, 1))
 end
 
 -- `sub_8015D80`: of the panels `list` names from (x, y) (dx toward the navi's enemies), those meeting the
@@ -220,8 +228,8 @@ function panels.area_fronts(side: number, flip: number, require: number, forbid:
     return out
 end
 
--- The panels a side's front panel faces that a navi in auto battle won't step behind (0x080131A0: a body of the side's own,
--- or a neutral one).
+-- The panels a side's front panel faces that a navi in auto battle won't step behind (0x080131A0: a body of the side's
+-- own, or a neutral one).
 local OWN_BODIES: { number } = { 0x01800000, 0x02800000 }
 
 -- EXE5's 0x08013126: of the front panels of the navi's own area it may step onto (`sub_800D1F0`), those whose next

@@ -9,9 +9,9 @@ local capsule = require("../../chips/meddy/capsule")
 
 local throw = {}
 
--- The capsule's parameters: its variant (0 to 5: its palette, hit modifier and status), its line (0 its column, 1
--- its row) and its third (0: one of variant 1 and up hits half as hard; 2: it runs while dimmed).
-export type Spec = { variant: number, line: number, mode: number }
+-- The capsule's parameters: its variant (its palette, hit modifier and status), its line, and whether it runs while
+-- dimmed (its third, 2).
+export type Spec = { variant: CapsuleVariant, line: CapsuleLine, while_dimmed: boolean }
 
 export type State = {
     -- AIAttackVars +0x10: the step's ticks left.
@@ -59,7 +59,7 @@ function throw.action(spec: Spec, id: string?): Action
                         target_x = me.panel_x + REACH * me.facing,
                         target_y = me.panel_y,
                         damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra),
-                        mode = spec.mode,
+                        while_dimmed = spec.while_dimmed,
                     })
                     battle.play_sound(SOUND)
                     s.timer = THROW_TICKS

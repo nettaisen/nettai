@@ -28,8 +28,9 @@ export type State = {
     -- MegaMan's form the Cross is (Param1), or none: the leader.
     form: FormDef?,
     move: Move,
-    -- The sword's look (Param3), and the Cross's place in its wave (Param4).
-    look: number,
+    -- The sword's look (Param3: none, not a sword), and the Cross's place in
+    -- its wave (Param4).
+    sword: Sword?,
     place: number,
     -- The leader: the controller waiting for him (ExtraVars[0]), and which
     -- of his Crosses still act (his bytes +0x6C to +0x73).
@@ -57,53 +58,58 @@ local TENGUCROSS = require("../../navis/megaman/forms/tengucross").tengucross
 local GROUNDCROSS = require("../../navis/megaman/forms/groundcross").groundcross
 local DUSTCROSS = require("../../navis/megaman/forms/dustcross").dustcross
 
--- A wave's Cross: his form, move and sword look, which side of his
--- target he stands on (`beside`: 1 in front of it, 0 behind it), his
--- element.
-type Entry = { form: FormDef, move: Move, look: number, beside: number, element: number }
+-- A sword's look (`byte_80BEDC6`: attachments 3, 3, 0x19 to 0x1C): its
+-- blade; its hit's region (`byte_80BEDA8`: the plain sword's one panel,
+-- else a column); its slash (`byte_80BEDC0`: effect 0x18, else 0x16 in the
+-- look's color, the look's palette less one from look 2).
+type Sword = { blade: AttachmentLook, region: Region, slash: Effect, palette: number }
+
+local function sword_look(v: Sword): Sword
+    return new.record("mstrcros-sword", v)
+end
+
+-- The looks, `byte_80BEDC6`'s 0 to 5.
+local PLAIN = sword_look { blade = parts.blades.sword, region = regions.single, slash = parts.effects.slash, palette = 0 }
+local WIDE = sword_look { blade = parts.blades.sword, region = regions.wide, slash = parts.effects.wide, palette = 0 }
+local FIRE = sword_look { blade = parts.blades.fire, region = regions.wide, slash = parts.effects.wide, palette = 1 }
+local AQUA = sword_look { blade = parts.blades.aqua, region = regions.wide, slash = parts.effects.wide, palette = 2 }
+local ELEC = sword_look { blade = parts.blades.elec, region = regions.wide, slash = parts.effects.wide, palette = 3 }
+local BAMBOO = sword_look { blade = parts.blades.bamboo, region = regions.wide, slash = parts.effects.wide, palette = 4 }
+
+-- A wave's Cross: his form, move and sword (none: not a sword), which side
+-- of his target he stands on (`beside`: 1 in front of it, 0 behind it),
+-- his element.
+type Entry = { form: FormDef, move: Move, sword: Sword?, beside: number, element: number }
 
 -- The first wave (`byte_80BE91C`, `byte_80BE936`) and the finale
 -- (`byte_80BE9D8`, `byte_80BE9F3`), by the user's game.
 local FIRST_WAVE: { [string]: { Entry } } = {
     gregar = {
-        { form = CHARGECROSS, move = "sword", look = 0, beside = 1, element = 0 },
-        { form = HEATCROSS, move = "sword", look = 2, beside = 0, element = 1 },
-        { form = ELECCROSS, move = "sword", look = 4, beside = 1, element = 3 },
-        { form = SLASHCROSS, move = "sword", look = 1, beside = 0, element = 0 },
-        { form = ERASECROSS, move = "beam", look = 0, beside = 1, element = 0 },
+        { form = CHARGECROSS, move = "sword", sword = PLAIN, beside = 1, element = 0 },
+        { form = HEATCROSS, move = "sword", sword = FIRE, beside = 0, element = 1 },
+        { form = ELECCROSS, move = "sword", sword = ELEC, beside = 1, element = 3 },
+        { form = SLASHCROSS, move = "sword", sword = WIDE, beside = 0, element = 0 },
+        { form = ERASECROSS, move = "beam", beside = 1, element = 0 },
     },
     falzar = {
-        { form = DUSTCROSS, move = "sword", look = 0, beside = 1, element = 0 },
-        { form = SPOUTCROSS, move = "sword", look = 3, beside = 0, element = 2 },
-        { form = TOMAHAWKCROSS, move = "sword", look = 5, beside = 1, element = 4 },
-        { form = TENGUCROSS, move = "fan", look = 0, beside = 0, element = 0 },
-        { form = GROUNDCROSS, move = "drill", look = 0, beside = 1, element = 0 },
+        { form = DUSTCROSS, move = "sword", sword = PLAIN, beside = 1, element = 0 },
+        { form = SPOUTCROSS, move = "sword", sword = AQUA, beside = 0, element = 2 },
+        { form = TOMAHAWKCROSS, move = "sword", sword = BAMBOO, beside = 1, element = 4 },
+        { form = TENGUCROSS, move = "fan", beside = 0, element = 0 },
+        { form = GROUNDCROSS, move = "drill", beside = 1, element = 0 },
     },
 }
 local FINALE: { [string]: { Entry } } = {
     gregar = {
-        { form = CHARGECROSS, move = "charge", look = 0, beside = 1, element = 0 },
-        { form = HEATCROSS, move = "charge", look = 0, beside = 1, element = 1 },
-        { form = ELECCROSS, move = "charge", look = 0, beside = 1, element = 3 },
+        { form = CHARGECROSS, move = "charge", beside = 1, element = 0 },
+        { form = HEATCROSS, move = "charge", beside = 1, element = 1 },
+        { form = ELECCROSS, move = "charge", beside = 1, element = 3 },
     },
     falzar = {
-        { form = DUSTCROSS, move = "charge", look = 0, beside = 1, element = 0 },
-        { form = SPOUTCROSS, move = "charge", look = 0, beside = 1, element = 2 },
-        { form = TOMAHAWKCROSS, move = "charge", look = 0, beside = 1, element = 4 },
+        { form = DUSTCROSS, move = "charge", beside = 1, element = 0 },
+        { form = SPOUTCROSS, move = "charge", beside = 1, element = 2 },
+        { form = TOMAHAWKCROSS, move = "charge", beside = 1, element = 4 },
     },
-}
-
--- The sword's looks (`byte_80BEDC6`: attachments 3, 3, 0x19 to 0x1C): its
--- blade; its hit's region (`byte_80BEDA8`: the plain sword's one panel,
--- else a column); its slash (`byte_80BEDC0`: effect 0x18, else 0x16 in the
--- look's color, the look's palette less one from look 2).
-local SWORDS = {
-    [0] = { blade = parts.blades.sword, region = regions.single, slash = parts.effects.slash, palette = 0 },
-    [1] = { blade = parts.blades.sword, region = regions.wide, slash = parts.effects.wide, palette = 0 },
-    [2] = { blade = parts.blades.fire, region = regions.wide, slash = parts.effects.wide, palette = 1 },
-    [3] = { blade = parts.blades.aqua, region = regions.wide, slash = parts.effects.wide, palette = 2 },
-    [4] = { blade = parts.blades.elec, region = regions.wide, slash = parts.effects.wide, palette = 3 },
-    [5] = { blade = parts.blades.bamboo, region = regions.wide, slash = parts.effects.wide, palette = 4 },
 }
 
 -- GroundCross's drill arm (attachment 0x20) and TenguCross's fan (0x2A:
@@ -240,7 +246,7 @@ local function bring(me: Object, entry: Entry, i: number): Object?
     end
     o.run_while_dimmed = true
     local cs = o.state :: State
-    cs.form, cs.move, cs.look, cs.place = entry.form, entry.move, entry.look, i
+    cs.form, cs.move, cs.sword, cs.place = entry.form, entry.move, entry.sword, i
     cs.leader = me
     s.acting[i + 1] = true
     return o
@@ -488,9 +494,9 @@ local FINALE_PHASES: { [number]: (me: Object) -> () } = { [0] = finale_appear, [
 -- action's second phase, `sub_80BEDCC`, is never entered.)
 local function sword(me: Object)
     local s = me.state :: State
-    local look = SWORDS[s.look]
+    local look = s.sword
     if not look then
-        error(string.format("MstrCros's sword look %d reads past byte_80BEDC6", s.look))
+        error("a MstrCros Cross swings a sword without its look")
     end
     if me.phase_init == 0 then
         me.anim = 5
@@ -789,7 +795,7 @@ mstrcros.kind = new.kind {
     state = {
         form = "form",
         move = MOVE_TYPE,
-        look = "u8",
+        sword = "record:mstrcros-sword",
         place = "u8",
         controller = "object",
         acting = "bool[8]",

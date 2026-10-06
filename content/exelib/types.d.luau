@@ -1001,12 +1001,17 @@ export type RockSpec = {
 -- ---- The dimming chips (chips/wind, chips/guardian, ...) -------------------
 
 -- CircGun's gun (chips/circgun/gun; the original's chip parameters): the
--- ticks between its steps less one, its shots, and its look (the palette;
--- look 1's shots hit as another attacker with a bug).
+-- ticks between its steps less one, its shots, and its look: the palette
+-- (the look's number), what its shots hit as (`dword_80D690C` by the look:
+-- look 0 a thrown attack, look 1 another attacker's) and the bug they carry
+-- with its argument (`byte_80D68D8`: look 1's 0x54, 0x32; none: none).
 export type CircGunVariant = {
     period: number,
     shots: number,
-    look: number,
+    palette: number,
+    hit: CollisionType,
+    bug: number?,
+    bug_arg: number?,
 }
 
 -- An Anubis statue (chips/anubis/statue, `byte_80CF0C0`): its animation,
@@ -1230,13 +1235,11 @@ export type Geyser = {
 }
 
 -- How a game's gun and shots look and sound: their sprite, the sounds of a
--- step, a mark and a hit, the shots' hit by the look (`dword_80D690C`:
--- look 0 a thrown attack, look 1 another attacker's), and where the gun
--- and a shot sit (`on_floor`: EXE5's, on the panel's center at height 0).
+-- step, a mark and a hit, and where the gun and a shot sit (`on_floor`:
+-- EXE5's, on the panel's center at height 0).
 export type CircGunLook = {
     sprite: SpriteAsset,
     sounds: { step: Sound, mark: Sound, hit: Sound },
-    hits: { [number]: CollisionType },
     -- What the hit reaches, and the flash it shows.
     target: CollisionType,
     flash: Effect,
@@ -1290,11 +1293,10 @@ export type MeteorRow = {
     bug_arg: number?,
 }
 
--- How a game's meteor looks and sounds, its rows, and its spark by element.
+-- How a game's meteor looks and sounds, and its spark by element.
 export type MeteorLook = {
     sprite: SpriteAsset,
     sounds: { fall: Sound, land: Sound },
-    rows: { [number]: MeteorRow },
     spark: (element: number) -> Spark,
     -- Its landing's burst, and its panel marker's kind.
     burst: Effect,
@@ -1415,7 +1417,9 @@ export type SupportsLook = {
 -- with the kind's own fields. What an effect does is a game's rules' (EXE6's
 -- rules/patch_cards, rules/patch_cards), and its type is the game's (EXE6's
 -- `PatchCardEffect`, which its cards' constructors make). Its name is the
--- locales' (locales/<lang>.toml's `[patch_cards]`).
+-- locales' (locales/<lang>.toml's `[patch_cards]`), and so is each effect's
+-- line on its menu (`[text.patch_card_effects]`, by the effect's kind and its
+-- one choice's name).
 export type PatchCardSpec = {
     -- Its id, its key in its collection (`patch_cards.canodumb`): the
     -- loader's to read, never written in the table.

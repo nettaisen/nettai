@@ -25,14 +25,13 @@ export type State = {
 
 local strike = {}
 
--- Its looks (0x080D6A4C: sprite, animation, palette).
+-- Its looks as it grows (0x080D6A4C's rows 0 to 3: sprite, animation, palette): the charge glow, the orb, and two of
+-- Bass's animations.
 type Look = { sprite: SpriteAsset, anim: number, palette: number }
-local LOOKS: { [number]: Look } = {
-    [0] = { sprite = asset.sprite("charge-glow"), anim = 0, palette = 2 },
-    [1] = { sprite = asset.sprite("chaos-orb"), anim = 0, palette = 0 },
-    [2] = { sprite = asset.sprite("bass"), anim = 0x27, palette = 0 },
-    [3] = { sprite = asset.sprite("bass"), anim = 0x28, palette = 0 },
-}
+local GLOW: Look = { sprite = asset.sprite("charge-glow"), anim = 0, palette = 2 }
+local ORB: Look = { sprite = asset.sprite("chaos-orb"), anim = 0, palette = 0 }
+local GROWN: Look = { sprite = asset.sprite("bass"), anim = 0x27, palette = 0 }
+local FULL: Look = { sprite = asset.sprite("bass"), anim = 0x28, palette = 0 }
 local SOUND_GROW = asset.sound("point-rise")
 local SOUND_THROW = asset.sound("windrack")
 local SOUND_BLAST = asset.sound("chaos-blast")
@@ -63,9 +62,8 @@ local function whole_add(v: number, n: number): number
     return int.i32(bit32.bor(bit32.band(v, 0xFFFF), bit32.lshift(hi, 16)))
 end
 
--- 0x080D6A1C: look `n` (its sprite, no shadow, its animation as loaded, its palette).
-local function look(me: Object, n: number)
-    local l = LOOKS[n]
+-- 0x080D6A1C: look `l` (its sprite, no shadow, its animation as loaded, its palette).
+local function look(me: Object, l: Look)
     local sprite = me.sprite
     sprite:load(l.sprite)
     -- sprite_noShadow: the first part is drawn with the sprite.
@@ -88,20 +86,20 @@ local function highlight(me: Object)
     end
 end
 
--- Action 0 (0x080D686C): growing (ChaosLrd's: looks 1, 2 and 3 at 88, 80 and 75 left; the Bass AI's at 58, 50, 45),
+-- Action 0 (0x080D686C): growing (ChaosLrd's: the orb, Bass's two looks at 88, 80 and 75 left; the Bass AI's at 58, 50, 45),
 -- its target picked at 15 left; when its time runs out it is shown and thrown at its target's panel.
 local function grow(me: Object)
     local s = me.state :: State
     local t = me.timer
     if t == (if s.lord then 0x58 else 0x3A) then
-        look(me, 1)
+        look(me, ORB)
         me.pos = Vec3.new(me.pos.x, me.pos.y, whole_add(me.pos.z, 18))
     elseif t == (if s.lord then 0x50 else 0x32) then
-        look(me, 2)
+        look(me, GROWN)
         battle.play_sound(SOUND_GROW)
     else
         if t == (if s.lord then 0x4B else 0x2D) then
-            look(me, 3)
+            look(me, FULL)
             me.pos = Vec3.new(me.pos.x, me.pos.y, whole_add(me.pos.z, 12))
         end
         if t == 0x0F then
@@ -199,11 +197,11 @@ local function tick(me: Object)
     action(me)
 end
 
--- 0x080D67FC: look 0, shown, facing its way; ChaosLrd's grows 105 ticks, the Bass AI's 75; 46 pixels ahead of its
+-- 0x080D67FC: the glow, shown, facing its way; ChaosLrd's grows 105 ticks, the Bass AI's 75; 46 pixels ahead of its
 -- thrower, 50 up and 8 down the field; its first update.
 local function init(me: Object)
     local s = me.state :: State
-    look(me, 0)
+    look(me, GLOW)
     me.visible = true
     me.sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.timer = if s.lord then 0x69 else 0x4B

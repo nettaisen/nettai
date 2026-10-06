@@ -4,7 +4,7 @@
 //! line. See docs/frontend.md.
 
 use nettai_demo::trace::trace_rounds;
-use nettai_demo::net::{Agreed, NetHandshake, Udp};
+use nettai_demo::net::{Agreed, Link, NetHandshake, Waits};
 use nettai_demo::window::{self, Languages, Play, PlayOptions, Start, Waiting};
 use nettai_demo::{editor, headless};
 use nettai_frontend::driver::{Driver, LivePlayer};
@@ -56,9 +56,18 @@ struct Args {
     text: TextMode,
     font: Option<PathBuf>,
     lang: String,
-    /// Netplay: host on this UDP port, or join this host.
+    /// Netplay: meet in this room of the signaling server, or directly:
+    /// host on this UDP port, or join this host.
+    room: Option<String>,
+    signal: Option<String>,
     host: Option<u16>,
     join: Option<String>,
+    /// The STUN servers (none: the default; "none": no STUN), and a TURN
+    /// server with its credentials.
+    stun: Vec<String>,
+    turn: Option<String>,
+    turn_user: String,
+    turn_pass: String,
     present_delay: u32,
     wait: u64,
     /// Write a replay of the set played (live or netplay) to this file.
@@ -76,8 +85,9 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
        nettai-demo [OPTIONS] --edit FILE     edit a match file
        nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-demo [OPTIONS] --match FILE    play a match file (you are its left side)
-       nettai-demo [OPTIONS] --match FILE --host PORT        play another player over the
-       nettai-demo [OPTIONS] --match FILE --join ADDR:PORT   network: host, or join the host
+       nettai-demo [OPTIONS] --match FILE --room CODE        play another player over the
+       nettai-demo [OPTIONS] --match FILE --host PORT        network: meet in a room, or
+       nettai-demo [OPTIONS] --match FILE --join ADDR:PORT   host, or join the host
        nettai-demo [OPTIONS] --replay FILE   watch a replay (--record writes one)
        nettai-demo [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
        nettai-demo [OPTIONS] --match FILE --audit-content
@@ -111,7 +121,7 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
                    game; the editor makes them); you are its left side.
                    Its seed sets the battle's RNG (else from the clock).
                    With --audit-content, select the game's content to audit.
-                   With --host or --join the left side
+                   With --room, --host or --join the left side
                    is what you bring, and both files must state the same
                    game and rounds (else it stops, saying what differs)
   --save-match FILE  write the match played with its seed (the file's setup,
@@ -168,15 +178,34 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
   --quit-after N   close the window after N ticks (NETTAI_PLAY_STATS: print
                    what each frame costs to show; NETTAI_WINDOW_SHOT=PNG: the
                    last picture shown)
-  --host PORT      netplay: host a match on this UDP port (forward it on
-                   your router to play over the Internet) and wait for a
-                   player to join; you are the left navi
-  --join ADDR:PORT netplay: join the match hosted there; you are the right
-                   navi, seen from your side. Both players need the same
-                   engine, game and content (the handshake checks); each
-                   brings their match file's left side; the host's file
-                   supplies the rounds, and the battle's RNG comes from
-                   both players' randomly generated seed halves
+  --room CODE      netplay: meet the other player in this room of the
+                   signaling server (--signal), each giving the same code
+                   (1 to 64 letters, digits, _ and -); the first in hosts,
+                   the left navi. A WebRTC connection, through NATs (STUN,
+                   and TURN if given)
+  --signal URL     with --room: the signaling server (ws://, wss://;
+                   default: $NETTAI_SIGNAL); signaling/ is one, a Cloudflare
+                   Worker (`npx wrangler dev` runs it at ws://127.0.0.1:8787)
+  --stun URL       with --room: a STUN server (stun:HOST[:PORT]; again for
+                   more; default stun:stun.l.google.com:19302; none: no STUN)
+  --turn URL       with --room: a TURN server to relay through when no
+                   direct path is found (turn:HOST[:PORT]), with
+  --turn-user U    its credentials (Cloudflare's TURN service hands out
+  --turn-pass P    short-lived ones from its API: get a pair, give it here)
+  --host PORT      netplay, directly: host a match on this UDP port (forward
+                   it on your router to play over the Internet) and wait
+                   for a player to join; you are the left navi
+  --join ADDR:PORT netplay, directly: join the match hosted there; you are
+                   the right navi, seen from your side. Direct connect
+                   authenticates nobody (as plain UDP doesn't); a room's
+                   connection checks the certificates it was told of.
+                   Both players need the same engine, game and content
+                   (the handshake checks); each brings their match file's
+                   left side, both files stating the same rounds, and the
+                   battle's RNG comes from both players' randomly generated
+                   seed halves. A connection that drops is made again (the
+                   battle waits, then goes on); after 30 seconds the match
+                   ends
   --present-delay N  netplay: show the battle N frames behind your newest
                    input (default 0: the newest, the other player's input
                    predicted and corrected by rollback; more: fewer
@@ -184,8 +213,9 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
                    ] change it during the match; yours alone, the other
                    player chooses theirs
   --wait SECONDS   how long the host waits for a player, or the joiner for
-                   the host (default 300 and 30)
-  --record FILE    with --match (alone, --host or --join): write the set
+                   the host (default 300 and 30; in a room, by the role it
+                   gets)
+  --record FILE    with --match (alone or netplay): write the set
                    played to FILE as a replay (docs/frontend.md §8: the
                    match and every tick's buttons, both players'; netplay
                    writes each tick as it settles, so both players' replays
@@ -227,8 +257,14 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         text: TextMode::Font,
         font: None,
         lang: nettai_assets::BASE_LANGUAGE.into(),
+        room: None,
+        signal: None,
         host: None,
         join: None,
+        stun: Vec::new(),
+        turn: None,
+        turn_user: String::new(),
+        turn_pass: String::new(),
         present_delay: nettai_frontend::netplay::NetOptions::default().present_delay,
         wait: 0,
         record: None,
@@ -268,6 +304,12 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--lang" => a.lang = value("--lang")?,
             "--host" => a.host = Some(number(value("--host")?, "--host")?.try_into().map_err(|_| "bad --host port".to_string())?),
             "--join" => a.join = Some(value("--join")?),
+            "--room" => a.room = Some(value("--room")?),
+            "--signal" => a.signal = Some(value("--signal")?),
+            "--stun" => a.stun.push(value("--stun")?),
+            "--turn" => a.turn = Some(value("--turn")?),
+            "--turn-user" => a.turn_user = value("--turn-user")?,
+            "--turn-pass" => a.turn_pass = value("--turn-pass")?,
             "--present-delay" => a.present_delay = number(value("--present-delay")?, "--present-delay")? as u32,
             "--wait" => a.wait = number(value("--wait")?, "--wait")?,
             "--record" => a.record = Some(value("--record")?.into()),
@@ -291,18 +333,18 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         return Err("--side goes with --replay".into());
     }
     if a.record.is_some() && (a.match_file.is_none() || a.audit_content || a.edit.is_some()) {
-        return Err("--record writes the set a match file plays (--match, alone or with --host or --join)".into());
+        return Err("--record writes the set a match file plays (--match, alone or with --room, --host or --join)".into());
     }
     if a.replay.is_some() {
         if a.match_file.is_some() || !a.traces.is_empty() || a.edit.is_some() || a.audit || a.audit_content {
             return Err("--replay plays a replay alone (not with a match file, a trace, the editor or an audit)".into());
         }
-        if a.host.is_some() || a.join.is_some() || a.save_match.is_some() || a.keys.is_some() {
-            return Err("--replay plays what was recorded (no --host, --join, --save-match or --keys)".into());
+        if a.netplay() || a.save_match.is_some() || a.keys.is_some() {
+            return Err("--replay plays what was recorded (no --room, --host, --join, --save-match or --keys)".into());
         }
     }
     if a.audit_content {
-        if !a.traces.is_empty() || a.audit || a.headless.is_some() || a.host.is_some() || a.join.is_some() || a.save_match.is_some() {
+        if !a.traces.is_empty() || a.audit || a.headless.is_some() || a.netplay() || a.save_match.is_some() {
             return Err("--audit-content audits the content alone (--audit runs traces)".into());
         }
         if a.match_file.is_none() {
@@ -313,7 +355,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     // The editor: a match file to edit, or nothing else to do.
     let editing = a.edit.is_some() || (a.traces.is_empty() && a.match_file.is_none() && a.replay.is_none() && !a.audit);
     if editing {
-        if !a.traces.is_empty() || a.match_file.is_some() || a.audit || a.headless.is_some() || a.host.is_some() || a.join.is_some() {
+        if !a.traces.is_empty() || a.match_file.is_some() || a.audit || a.headless.is_some() || a.netplay() {
             return Err("--edit opens the editor alone (play its match from there, or with --match)".into());
         }
         if a.save_match.is_some() || a.quit_after.is_some() {
@@ -339,10 +381,20 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if a.save_match.is_some() && a.match_file.is_none() {
         return Err("--save-match writes the match played live".into());
     }
-    let netplay = a.host.is_some() || a.join.is_some();
-    if netplay {
-        if a.match_file.is_none() || a.host.is_some() == a.join.is_some() {
-            return Err("netplay is --match FILE with either --host PORT or --join ADDR:PORT".into());
+    let servers = !a.stun.is_empty() || a.turn.is_some() || !a.turn_user.is_empty() || !a.turn_pass.is_empty();
+    if (a.signal.is_some() || servers) && a.room.is_none() {
+        return Err("--signal, --stun and --turn go with --room (a direct connection uses none)".into());
+    }
+    if a.turn.is_none() && (!a.turn_user.is_empty() || !a.turn_pass.is_empty()) {
+        return Err("--turn-user and --turn-pass go with --turn".into());
+    }
+    if a.netplay() {
+        let ways = [a.room.is_some(), a.host.is_some(), a.join.is_some()].iter().filter(|w| **w).count();
+        if a.match_file.is_none() || ways != 1 {
+            return Err("netplay is --match FILE with one of --room CODE, --host PORT or --join ADDR:PORT".into());
+        }
+        if a.room.is_some() && a.signal.is_none() && std::env::var_os("NETTAI_SIGNAL").is_none() {
+            return Err("--room needs the signaling server: --signal URL, or $NETTAI_SIGNAL".into());
         }
         if a.headless.is_some() || a.audit {
             return Err("netplay plays in a window".into());
@@ -352,6 +404,25 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         }
     }
     Ok(a)
+}
+
+impl Args {
+    /// Whether it plays another player over the network.
+    fn netplay(&self) -> bool {
+        self.room.is_some() || self.host.is_some() || self.join.is_some()
+    }
+
+    /// The netplay connection's settings: the STUN and TURN servers.
+    fn rtc_config(&self) -> nettai_rtc::Config {
+        let mut config = nettai_rtc::Config::default();
+        if !self.stun.is_empty() {
+            config.ice_servers = self.stun.iter().filter(|s| *s != "none").map(|s| nettai_rtc::IceServer::new(s)).collect();
+        }
+        if let Some(turn) = &self.turn {
+            config.ice_servers.push(nettai_rtc::IceServer { urls: vec![turn.clone()], username: self.turn_user.clone(), credential: self.turn_pass.clone() });
+        }
+        config
+    }
 }
 
 fn fail(msg: impl std::fmt::Display) -> ! {
@@ -429,30 +500,37 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
     eprintln!("wrote the match to {}", path.display());
 }
 
-/// Connect (host or join) and start the handshake that agrees the match:
-/// each player proposes their match file's settings (its game and its
-/// rounds: both files must state the same, or it stops saying what
-/// differs) and brings its left side. The window polls it each frame,
-/// saying the second half.
-fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> (NetHandshake<Udp>, String) {
-    use nettai_demo::net::Role;
+/// Connect (in a room, or directly: host or join) and start the handshake
+/// that agrees the match: each player proposes their match file's settings
+/// (its game and its rounds: both files must state the same, or it stops
+/// saying what differs) and brings its left side. The window polls it each
+/// frame, saying the second half.
+fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> (NetHandshake<Link>, String) {
     use nettai_frontend::lobby::Settings;
     let settings = Settings::of_match(&m);
     let [side, _] = m.sides;
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
-    if let Some(port) = args.host {
-        let udp = Udp::host(port).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));
+    let waits = Waits { host: wait(300), join: wait(30) };
+    let config = args.rtc_config();
+    let (link, text) = if let Some(code) = &args.room {
+        let signal = args.signal.clone().or_else(|| std::env::var("NETTAI_SIGNAL").ok()).expect("checked");
+        let link = Link::room(&signal, code, config).unwrap_or_else(|e| fail(format!("can't meet in room {code}: {e}")));
+        eprintln!("netplay: in room {code} of {signal}, waiting for the other player (they run --match FILE --room {code})");
+        (link, format!("waiting in room {code}"))
+    } else if let Some(port) = args.host {
+        let link = Link::host(port, config).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));
         eprintln!(
             "netplay: hosting on UDP port {port}, waiting for a player (they run --match FILE --join <this machine's address>:{port}; \
              over the Internet, forward the port to this machine)"
         );
-        (NetHandshake::new(Role::Host, udp, content, settings, side, wait(300)), format!("waiting for a player on UDP port {port}"))
+        (link, format!("waiting for a player on UDP port {port}"))
     } else {
         let addr = args.join.as_deref().unwrap();
-        let udp = Udp::join(addr).unwrap_or_else(|e| fail(format!("can't reach {addr}: {e}")));
+        let link = Link::join(addr, config).unwrap_or_else(|e| fail(format!("can't reach {addr}: {e}")));
         eprintln!("netplay: joining {addr}");
-        (NetHandshake::new(Role::Join, udp, content, settings, side, wait(30)), format!("joining {addr}, waiting for the host"))
-    }
+        (link, format!("joining {addr}, waiting for the host"))
+    };
+    (NetHandshake::new(link, content, settings, side, waits), text)
 }
 
 /// What netplay needs once the match is agreed (from the command line).
@@ -476,11 +554,11 @@ fn recorder(content: &Arc<nettai_battle::Content>, m: &nettai_match::Match, side
 }
 
 /// The agreed match's player, and its recording if one is asked for.
-fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agreed<Udp>) -> (Box<dyn Driver>, Option<nettai_frontend::replay::Recorder>) {
+fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agreed<Link>) -> (Box<dyn Driver>, Option<nettai_frontend::replay::Recorder>) {
     use nettai_frontend::netplay::{NetOptions, NetPlayer};
     let Agreed { conn, agreement } = agreed;
     let nettai_frontend::lobby::Agreement { set, m, seed, side, .. } = agreement;
-    let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
+    let peer = conn.datagram().describe();
     eprintln!(
         "netplay: playing {peer}; you are the {} navi (the match's seed {seed}, present delay {})",
         if side == 0 { "left" } else { "right" },
@@ -742,7 +820,7 @@ fn main() {
         drivers.push(Box::new(player));
     } else if let Some((path, text)) = args.match_file.as_deref().zip(file_text.as_deref()) {
         let m = read_match(&content, path, text);
-        if args.host.is_some() || args.join.is_some() {
+        if args.netplay() {
             netplay = Some(handshake(&args, &content, m));
         } else {
             let seed = m.seed.unwrap_or_else(|| {
@@ -874,6 +952,33 @@ mod tests {
         }
     }
 
+    /// Netplay in a room: the signaling server, the STUN and TURN servers
+    /// (a room's alone: a direct connection has none).
+    #[test]
+    fn netplay_meets_in_a_room() {
+        let room = args(&["--match", "m.toml", "--room", "abc", "--signal", "ws://127.0.0.1:8787", "--stun", "stun:192.0.2.1", "--stun", "stun:192.0.2.2:3479"]).unwrap();
+        assert_eq!((room.room.as_deref(), room.signal.as_deref()), (Some("abc"), Some("ws://127.0.0.1:8787")));
+        let urls = |c: nettai_rtc::Config| c.ice_servers.into_iter().flat_map(|s| s.urls).collect::<Vec<_>>();
+        assert_eq!(urls(room.rtc_config()), ["stun:192.0.2.1", "stun:192.0.2.2:3479"]);
+        // (The public STUN server by default; none on request; TURN with
+        // its credentials.)
+        let plain = args(&["--match", "m.toml", "--room", "abc", "--signal", "wss://signal.example"]).unwrap();
+        assert_eq!(urls(plain.rtc_config()), [nettai_rtc::DEFAULT_STUN]);
+        let relayed = args(&["--match", "m.toml", "--room", "abc", "--signal", "wss://s", "--stun", "none", "--turn", "turn:192.0.2.3", "--turn-user", "u", "--turn-pass", "p"]).unwrap();
+        let config = relayed.rtc_config();
+        assert_eq!(config.ice_servers.len(), 1);
+        assert_eq!((config.ice_servers[0].urls[0].as_str(), config.ice_servers[0].username.as_str(), config.ice_servers[0].credential.as_str()), ("turn:192.0.2.3", "u", "p"));
+        for (options, why) in [
+            (vec!["--match", "m.toml", "--room", "abc", "--host", "7777"], "netplay is --match FILE with one of --room CODE, --host PORT or --join ADDR:PORT"),
+            (vec!["trace.jsonl", "--room", "abc", "--signal", "ws://s"], "netplay is --match FILE with one of --room CODE, --host PORT or --join ADDR:PORT"),
+            (vec!["--match", "m.toml", "--host", "7777", "--stun", "stun:192.0.2.1"], "--signal, --stun and --turn go with --room (a direct connection uses none)"),
+            (vec!["--match", "m.toml", "--join", "192.0.2.1:7777", "--signal", "ws://s"], "--signal, --stun and --turn go with --room (a direct connection uses none)"),
+            (vec!["--match", "m.toml", "--room", "abc", "--signal", "ws://s", "--turn-user", "u"], "--turn-user and --turn-pass go with --turn"),
+        ] {
+            assert_eq!(args(&options).err().as_deref(), Some(why), "{options:?}");
+        }
+    }
+
     /// A match played (alone or over the network) is recorded with
     /// `--record`; a replay is played alone, from either side's console.
     #[test]
@@ -885,12 +990,12 @@ mod tests {
         assert_eq!((replay.replay.as_deref(), replay.side), (Some(Path::new("set.ntrp")), Some(1)));
         assert!(args(&["--replay", "set.ntrp", "--headless", "1-60"]).is_ok());
         for (options, why) in [
-            (vec!["--record", "set.ntrp"], "--record writes the set a match file plays (--match, alone or with --host or --join)"),
-            (vec!["trace.jsonl", "--record", "set.ntrp"], "--record writes the set a match file plays (--match, alone or with --host or --join)"),
+            (vec!["--record", "set.ntrp"], "--record writes the set a match file plays (--match, alone or with --room, --host or --join)"),
+            (vec!["trace.jsonl", "--record", "set.ntrp"], "--record writes the set a match file plays (--match, alone or with --room, --host or --join)"),
             (vec!["--match", "m.toml", "--side", "left"], "--side goes with --replay"),
             (vec!["--replay", "set.ntrp", "--side", "up"], "bad --side \"up\" (left or right)"),
             (vec!["--replay", "set.ntrp", "--match", "m.toml"], "--replay plays a replay alone (not with a match file, a trace, the editor or an audit)"),
-            (vec!["--replay", "set.ntrp", "--host", "7777"], "--replay plays what was recorded (no --host, --join, --save-match or --keys)"),
+            (vec!["--replay", "set.ntrp", "--host", "7777"], "--replay plays what was recorded (no --room, --host, --join, --save-match or --keys)"),
         ] {
             assert_eq!(args(&options).err().as_deref(), Some(why), "{options:?}");
         }
