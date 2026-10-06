@@ -8,8 +8,8 @@ local card: PatchCard = {
     mb = 20,
     effects = {
         cards.hp(180),
-        cards.bug(cards.charged_shot(chrgs)),
         cards.mega_folder(1),
+        cards.bug(cards.charged_shot(chrgs)),
         cards.bug(cards.status_bug(1)),
     },
 }

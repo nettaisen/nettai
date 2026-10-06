@@ -7,8 +7,8 @@ local charge = require("@self/charge")
 local card: PatchCard = {
     mb = 60,
     effects = {
-        cards.charged_shot(charge),
         cards.mega_folder(1),
+        cards.charged_shot(charge),
         cards.bug(cards.status_bug(2)),
     },
 }

@@ -7,8 +7,8 @@ local card: PatchCard = {
     mb = 9,
     effects = {
         cards.body("fire"),
-        cards.auto_heal(true),
         cards.bug(cards.back_special(nil)),
+        cards.auto_heal(true),
     },
 }
 

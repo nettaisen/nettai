@@ -7,8 +7,8 @@ local card: PatchCard = {
     mb = 36,
     effects = {
         cards.hp(160),
-        cards.bug(cards.air_shoes(false)),
         cards.charge(4),
+        cards.bug(cards.air_shoes(false)),
         cards.hit_status("none"),
     },
 }

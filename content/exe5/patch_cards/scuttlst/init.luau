@@ -7,8 +7,8 @@ local barriers = require("../lib/barriers")
 local card: PatchCard = {
     mb = 20,
     effects = {
-        cards.first_barrier(barriers.barrier_100),
         cards.bug(cards.custom(-1)),
+        cards.first_barrier(barriers.barrier_100),
         cards.bug(cards.custom_damage(200)),
     },
 }
