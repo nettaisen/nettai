@@ -135,7 +135,6 @@ impl Player {
             random_battle: false,
             late_turns: false,
             now: self.tick,
-            link_delay: 4,
         }
     }
 
@@ -235,7 +234,8 @@ fn the_timeline_from_opening_to_sending() {
     p.press(keys::START);
     assert_eq!(p.screen().cursor, OK_SLOT);
     // OK: the status bit clears on the next tick, the hand goes out 11
-    // ticks after OK and arrives 50 + 4 ticks after that.
+    // ticks after OK and arrives 50 ticks after that (its 50 words, one a
+    // tick).
     let ok_tick = p.tick + 1;
     assert_eq!(p.step(keys::A), Some(Request::Confirm));
     assert!(p.side.in_custom);
@@ -244,7 +244,7 @@ fn the_timeline_from_opening_to_sending() {
     let waited = p.wait(20);
     assert_eq!(p.tick, ok_tick + 11, "sent after {waited}");
     let sent = p.side.sent.as_ref().unwrap();
-    assert_eq!(sent.arrives, ok_tick + 11 + 54);
+    assert_eq!(sent.arrives, ok_tick + 11 + 50);
     let hand = sent.result.hand.as_ref().unwrap();
     assert_eq!(hand.ids[..2], [Some(ChipHandle(SHOT)), None]);
     assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(1))));

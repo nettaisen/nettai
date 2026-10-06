@@ -85,7 +85,9 @@ impl Driver for TracePlayer {
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {
-        self.current().map(|f| trace::compare(b, f, self.compat)).unwrap_or_default()
+        // (As the replays compare: what the original's link made differ is
+        // the original's, `trace::compare_at`.)
+        self.current().map(|f| trace::compare_at(b, &self.round, &[f], 0, self.compat)).unwrap_or_default()
     }
 
     fn frame_range(&self) -> Option<(u32, u32)> {
@@ -228,7 +230,7 @@ impl Driver for Exe5TracePlayer {
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {
-        self.current().map(|f| exe5_compat::trace::compare(b, f, self.compat)).unwrap_or_default()
+        self.current().map(|f| exe5_compat::trace::compare_at(b, &self.round, &[f], 0, self.compat)).unwrap_or_default()
     }
 
     fn console_version(&self) -> Option<&'static str> {

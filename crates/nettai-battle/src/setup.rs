@@ -451,9 +451,6 @@ pub struct RoundSetup {
     /// Per side: the battle folder and what the save unlocks on the
     /// custom screen.
     pub players: [crate::custom::PlayerSetup; 2],
-    /// Ticks from a player's packet going out to its arriving (the link's
-    /// latency; `link::Link::RECORDED_DELAY` in the recorded sessions).
-    pub link_delay: u8,
 }
 
 /// How fast (in frames) a player deleted each SP navi (20 halfwords, by

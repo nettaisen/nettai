@@ -71,7 +71,7 @@ pub struct Setup {
     pub navi_stats_before_cards: Option<[Option<String>; 2]>,
     /// The link's delay in ticks, from a packet's sending to its arrival.
     /// Traces recorded without it are an emulated cable's,
-    /// `Link::RECORDED_DELAY`; matches recorded by Tango's first netplay
+    /// [`RECORDED_DELAY`]; matches recorded by Tango's first netplay
     /// engine, which ran each console alone and gave it both players'
     /// packets a tick after they were built, say 1.
     #[serde(default)]
@@ -285,10 +285,13 @@ use nettai_battle::custom::{Context, PlayerSetup, Request, Side};
 use nettai_battle::hand::ChipHand;
 use nettai_battle::input::PlayerTick;
 use nettai_battle::kinds::player::Emotion;
-use nettai_battle::link::Link;
 use nettai_battle::rng::Rng;
 use nettai_battle::setup::{NaviStats, RoundSetup, SetScore};
 use nettai_content_api::Value;
+
+/// The recorded sessions' link: an emulated cable, which delivered each
+/// console's packet 4 ticks after it went out.
+pub const RECORDED_DELAY: u8 = 4;
 
 /// A custom-screen exchange record from a trace.
 #[derive(Clone, Debug, Deserialize)]
@@ -399,7 +402,6 @@ impl Round {
             later_stages: codec::later_stages(&unhex(&self.setup.stages), &ids),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
             players,
-            link_delay: self.link_delay(),
         }
     }
 
@@ -454,7 +456,7 @@ impl Round {
 
     /// The link's delay in ticks (`Setup::link_delay`).
     pub fn link_delay(&self) -> u8 {
-        self.setup.link_delay.unwrap_or(Link::RECORDED_DELAY)
+        self.setup.link_delay.unwrap_or(RECORDED_DELAY)
     }
 
     /// The round's battle at its start on `content`, with the counters
@@ -561,18 +563,112 @@ impl Round {
         self.frames.iter().filter(|f| f.frame >= self.setup.frame).take_while(|f| f.state[0] == 4 || f.state[0] == 8)
     }
 
-    /// A player's buttons on a frame. The trace records the input the
-    /// link delivered, which the players pressed `link_delay` frames
-    /// earlier.
+    /// A player's buttons on a frame as the original's fight saw them:
+    /// what the link delivered, which the trace records (pressed
+    /// `link_delay` frames earlier). The engine has no link: its fight and
+    /// both custom screens read them, so its screens run `link_delay`
+    /// frames behind the original's, which read the joypad at once, and
+    /// their results arrive on the original's frame.
     pub fn joypad(&self, frame: u32, side: usize) -> u16 {
-        self.frame(frame + self.link_delay() as u32).map_or(0, |f| f.input[side][0] & 0x3FF)
+        self.frame(frame).map_or(0, |f| f.input[side][0] & 0x3FF)
+    }
+
+    /// The buttons the engine is fed for side `side` on the `i`th of
+    /// `frames`, so that it plays as the original did, with no link of its
+    /// own. The original's fight read the buttons the link delivered,
+    /// `link_delay` frames late (what the trace records, [`Round::joypad`]),
+    /// and its custom screen read the joypad at once; the engine's fight and
+    /// screens read the same buttons. So the engine is fed:
+    ///
+    /// - while the fight runs, what the original's fight saw;
+    /// - from a custom screen's opening to the side's OK, what the
+    ///   original's screen saw (the buttons `link_delay` frames on), so the
+    ///   screen plays as the original's;
+    /// - for `link_delay` frames from the OK, the buttons of the frame
+    ///   before it; then again what the fight sees. The OK reaches the
+    ///   engine's screen `link_delay` frames late, so its result goes out
+    ///   that much later and, its words over, arrives on the original's
+    ///   frame (the screen takes no buttons from its OK on, and the fight
+    ///   is paused until the results are in).
+    pub fn fed(&self, i: usize, frames: &[&Frame], side: usize) -> u16 {
+        let d = self.link_delay() as u32;
+        let frame = frames[i].frame;
+        let Some(opened) = self.screen_opened(frame) else { return self.joypad(frame, side) };
+        match self.screen_ok(opened, side) {
+            Some(ok) if frame >= ok + d => self.joypad(frame, side),
+            Some(ok) if frame >= ok => self.joypad((ok + d).saturating_sub(1), side),
+            _ => self.joypad(frame + d, side),
+        }
+    }
+
+    /// How many frames late the engine's custom screen of the recording
+    /// console's side is on the `i`th of `frames`: `link_delay` from its OK
+    /// until the fight resumes ([`Round::fed`]: its OK came that late), else
+    /// none. What the screen does then (its sounds) is the original's that
+    /// many frames earlier.
+    pub fn screen_late(&self, i: usize, frames: &[&Frame]) -> u32 {
+        let d = self.link_delay() as u32;
+        let frame = frames[i].frame;
+        match self.screen_opened(frame).and_then(|o| self.screen_ok(o, unhex(&self.setup.battle_state)[0x0D] as usize & 1)) {
+            Some(ok) if frame >= ok + d => d,
+            _ => 0,
+        }
+    }
+
+    /// The index of frame `number` in the round's frames.
+    fn index(&self, number: u32) -> Option<usize> {
+        let first = self.frames.first()?.frame;
+        let i = number.checked_sub(first)? as usize;
+        match self.frames.get(i) {
+            Some(f) if f.frame == number => Some(i),
+            _ => self.frames.iter().position(|f| f.frame == number),
+        }
+    }
+
+    /// The index of the frame the custom screen open on frame `number`
+    /// opened on (the first frame of the running battle's custom mode);
+    /// none while the fight runs.
+    fn screen_opened(&self, number: u32) -> Option<usize> {
+        let custom = |f: &Frame| f.state[0] == 4 && f.state[1] == 8;
+        let i = self.index(number)?;
+        if !custom(&self.frames[i]) {
+            return None;
+        }
+        let mut o = i;
+        while o > 0 && custom(&self.frames[o - 1]) {
+            o -= 1;
+        }
+        Some(o)
+    }
+
+    /// The frame side `side`'s custom screen bit, set as the screen opened on
+    /// the `opened`th of the round's frames opens, arrives at the recording
+    /// console (BattleState +0x14 + side, bit 2): `link_delay` frames after
+    /// the screen set it.
+    fn screen_bit_arrives(&self, opened: usize, side: usize) -> Option<u32> {
+        let screen = self.frames[opened..].iter().take_while(|g| g.state[0] == 4 && g.state[1] == 8);
+        screen.map(|g| (g.frame, received_bit(g, side))).find(|&(_, set)| set).map(|(frame, _)| frame)
+    }
+
+    /// The frame of side `side`'s OK on the custom screen opened on the
+    /// `opened`th of the round's frames, if the side pressed it: found from
+    /// the side's custom screen bit as the recording console received it
+    /// (BattleState +0x14 + side, bit 2). The screen clears its bit on the
+    /// tick after the OK, and the next tick's packet takes it over the
+    /// link, `link_delay` frames late: it arrives cleared `2 + link_delay`
+    /// frames after the OK.
+    fn screen_ok(&self, opened: usize, side: usize) -> Option<u32> {
+        let open = |g: &&Frame| received_bit(g, side);
+        let screen = self.frames[opened..].iter().take_while(|g| g.state[0] == 4 && g.state[1] == 8);
+        let cleared = screen.skip_while(|g| !open(g)).find(|g| !open(g))?;
+        cleared.frame.checked_sub(2 + self.link_delay() as u32)
     }
 
     /// Inputs and events for a frame: the players' buttons (both custom
     /// screens run from them, on the folders the setup records).
     pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
-        let input = std::array::from_fn(|p| PlayerTick { held: self.joypad(f.frame, p) });
+        let input = std::array::from_fn(|p| PlayerTick { held: self.fed(i, frames, p) });
         let mut events = TickEvents::default();
         // The link session closed on the tick the end state moved on.
         if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {
@@ -583,8 +679,45 @@ impl Round {
 }
 
 /// Differences between the engine and a trace frame. `compat` names the
-/// original's object slots for the engine's kinds.
+/// original's object slots for the engine's kinds. (A replay compares with
+/// [`compare_at`], which knows what the original's link made differ.)
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
+    compare_with(b, f, Known { banner: f, opening: [false; 2] }, compat)
+}
+
+/// What differs between the engine and a recording only as the original's
+/// link made it: the engine has none ([`Round::fed`]).
+struct Known<'a> {
+    /// The trace frame the banner is compared with: the frame's own, but
+    /// while the recording console's custom screen runs late
+    /// ([`Round::screen_late`]) the one that many frames earlier.
+    banner: &'a Frame,
+    /// Per side: the custom screen opened within the link's delay, so its
+    /// bit is the engine's at once and still on its way in the recording.
+    opening: [bool; 2],
+}
+
+/// [`compare`] on the `i`th of a round's `frames`, the engine having been fed
+/// [`Round::fed`]: what differs only as the original's link made it is
+/// compared as the original had it, and nothing else is let go. For
+/// `link_delay` frames from a custom screen's opening, the engine's custom
+/// screen bits are set at once where the recording console received them
+/// that much later; and while the recording console's screen runs late
+/// (from its OK until the fight resumes), the banner it shows is the
+/// recording's that many frames earlier.
+pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat: &Compat) -> Vec<String> {
+    let f = frames[i];
+    let delay = round.link_delay() as u32;
+    let late = round.screen_late(i, frames);
+    let banner = if late > 0 { round.frame(f.frame - late).unwrap_or(f) } else { f };
+    let opened = round.screen_opened(f.frame);
+    let opening = std::array::from_fn(|side| {
+        opened.and_then(|o| round.screen_bit_arrives(o, side)).is_some_and(|arrives| (arrives.saturating_sub(delay)..arrives).contains(&f.frame))
+    });
+    compare_with(b, f, Known { banner, opening }, compat)
+}
+
+fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
         if ours != theirs {
@@ -606,20 +739,24 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     }
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
     if bs.len() >= 0xF0 {
-        check("custom screens open (as received)", format!("{:?}", b.round.remote_status), format!("{:?}", [bs[0x14], bs[0x15]]));
+        // (On a screen's opening, the engine's bits are set and the
+        // recording console's still clear.)
+        let received = [bs[0x14], bs[0x15]];
+        let theirs: [u8; 2] = std::array::from_fn(|p| if known.opening[p] && received[p] & 4 == 0 { received[p] | 4 } else { received[p] });
+        check("custom screens open (as received)", format!("{:?}", b.round.remote_status), format!("{theirs:?}"));
     }
     // The banner: its task (bit 15 of the HUD's tasks) and, while it shows,
     // the number the traced console's record holds (its +1: the banner
     // `sub_801E792` started, 0 for a telop), which for a result's is the
     // console's own (`sub_80081A4`, `sub_800825A`).
-    let task = (f.hud_tasks >> 15) & 1 != 0;
+    let task = (known.banner.hud_tasks >> 15) & 1 != 0;
     check("banner", (b.banner.active as u8).to_string(), (task as u8).to_string());
     if let (Some(id), true) = (b.banner_for(r.local_side), task) {
         let ours = match b.telop_for(r.local_side) {
             Some(_) => Some(0),
             None => b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8),
         };
-        let theirs = unhex(&f.banner).get(1).copied();
+        let theirs = unhex(&known.banner.banner).get(1).copied();
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
         check("banner number", show(ours), show(theirs));
     }
@@ -839,7 +976,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
             let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
             return (i, Some((frames[i].frame, vec![format!("engine panicked: {}", msg.unwrap_or_default())])));
         }
-        let diffs = compare(&b, frames[i], compat);
+        let diffs = compare_at(&b, round, &frames, i, compat);
         if !diffs.is_empty() {
             return (i, Some((frames[i].frame, diffs)));
         }
@@ -934,11 +1071,10 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                 random_battle: false,
                 late_turns: false,
                 now: f.frame,
-                link_delay: round.link_delay(),
             }
         };
         for (p, side) in sides.iter_mut().enumerate() {
-            side.joypad.update(round.joypad(f.frame, p));
+            side.joypad.update(round.fed(i, &frames, p));
         }
         let custom = f.state[0] == 4 && f.state[1] == 8;
         let prev_init = i.checked_sub(1).map(|j| frames[j].state[3]);
@@ -1004,12 +1140,13 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                     }
                 }
             }
-            // The status bit's clearing reaches both consoles 1 + link_delay frames
-            // after it happens.
+            // The status bit's clearing reaches both consoles 1 + link_delay
+            // frames after it happens in the original: on the frame after the
+            // engine's, whose OK came link_delay frames late (`Round::fed`).
             let screen = frames[..=i].iter().filter(|g| g.frame > *opened);
             let set = |g: &&&Frame| unhex(&g.bs)[0x14 + p] & 4 != 0;
             let theirs_cleared = screen.skip_while(|g| !set(g)).find(|g| !set(g)).map(|g| g.frame);
-            let ours_cleared = cleared[p].map(|c| c + 1 + round.link_delay() as u32);
+            let ours_cleared = cleared[p].map(|c| c + 1);
             if ours_cleared != theirs_cleared {
                 d.push(format!("status bit arrives cleared: ours {ours_cleared:?} theirs {theirs_cleared:?}"));
             }
@@ -1092,4 +1229,10 @@ mod tests {
         assert_eq!(games.drop_z_offset(Game::JpGregar, "django/navi", drop(ours, 1), 9), 5616);
         assert_eq!(drop(ours, 10), drop(theirs, 10));
     }
+}
+
+/// Side `side`'s custom screen bit as the recording console received it on
+/// frame `g` (BattleState +0x14 + side, bit 2).
+fn received_bit(g: &Frame, side: usize) -> bool {
+    g.bs.get(2 * (0x14 + side)..2 * (0x15 + side)).and_then(|h| u8::from_str_radix(h, 16).ok()).is_some_and(|b| b & 4 != 0)
 }
