@@ -302,7 +302,7 @@ pub enum RulesHook {
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
     /// first part that answers decides; none answering, the framework's
-    /// rule (the custom level, NumbrOpn and the hand-shrink bug).
+    /// rule (the custom level and the hand-shrink bug).
     CustomHandSize,
     /// `custom.deal(side)`: the side's custom screen deals, before
     /// `custom.open`: the folder as the last screen left it (the chips used
