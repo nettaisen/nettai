@@ -32,6 +32,8 @@ nettai-rtc = { path = "../nettai-rtc" }
 # The room's code, copied for the other player (the desktop's clipboard).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 arboard = { version = "3", default-features = false }
+# The picture's texture, kept and written in place in the window's OpenGL.
+glow = "0.16"
 
 [build-dependencies]
 slint-build = "1.18"
