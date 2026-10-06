@@ -24,18 +24,16 @@ function navi_level.damage(navi: Object, row: { number }): number
 end
 
 -- A chip's damage by its side's level: `row`'s entry at it; 0 for a side without a level, which operates no team navi
--- and holds none of their chips (the custom screen reads every chip's damage, for the hand it may build).
+-- and holds none of their chips (the custom screen reads every chip's damage, for the hand it may build). A level past
+-- the row (which the rules' `validate` says no side has: ../rules/save) reads its last entry, so that a round is set up
+-- for every setup a tool asks about.
 function navi_level.row(row: { number }): (side: number) -> number
     return function(side: number): number
         local level = exe5.navi_level(side)
         if level == nil then
             return 0
         end
-        local damage = row[level + 1]
-        if damage == nil then
-            error(`a damage row of {#row} entries read at level {level}`)
-        end
-        return damage
+        return row[math.min(level, #row - 1) + 1]
     end
 end
 

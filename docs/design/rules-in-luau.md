@@ -2988,3 +2988,46 @@ The SP navi chips' damage is each game's Luau, and the deletion times a fact of 
   slots, and each compat slot against the chip whose formula number reads it.
 - **Checked**: the setup dump is the same but for where the times are (the rules block, not `PlayerSetup`); the
   SP chips' recordings of both games (EXE6's 175, EXE5's 82) and the step's usual ones match.
+
+### A side is its facts, and the rules validate it (2026-10-06, branch nettai-player, step c3a)
+
+Every part of a side is a fact of its game's rules' setup, and what is wrong with a side is the rules' to say.
+
+- **The facts** (each game's `setup`, under the approved names): `navi = "navi"` (required), `folder =
+  schema.list({ chip = "chip", code = "code" }, 30)`, `regular_chip = "u8?"`, EXE6's `tag_chips =
+  schema.list("u8", 2)`, `patch_cards = schema.list({ card = "patch_card", on = "bool" }, 32)`,
+  `navicust_expansions = "u8?"` (none: no NaviCust; the rules' default is the largest board, a recording's
+  boundary states none) and `navicust_programs = schema.list({ program, color, x, y, rotation, compressed }, 49)`,
+  the color an enum of the six names the programs use, held to the program's own `colors` by the rules.
+- **Roles** `PlayerFact::{Navi, Folder, RegularChip, TagChips}`. `Battle::new` holds the round's stats to the navi
+  a setup states. `Match::round` deals the battle folder from the folder facts as before; the engine still takes
+  the dealt `PlayerSetup::folder`, which recordings give dealt.
+- **Gone from Rust**: `PlayerSetup::{patch_cards, navicust}`, nettai-battle's patch_cards.rs and navicust.rs's
+  `NaviCust`/`PlacedProgram` (its shapes stay for the editor's pane until c3b), `battle.patch_cards`,
+  `battle.navicust` and their API; nettai-match's `Side::{navi, folder, patch_cards, navicust}` (a side is its
+  facts and its auto battle data, with `navi()`, `folder()` and their setters by role), `check_navicust`, the card,
+  level, base HP and Regular/tag checks, `empty_navicust`, `patch_cards()`, `CARD_MB`. The Luau reads them with
+  `rules.setup_of(side)`; a setup list iterates (`for i, x in list`, the binding's `__iter`).
+- **`validate(side)`**, a rules hook (`RulesHook::Validate`, `Battle::validate`): a list of problems, each a
+  sentence or `{ text, field?, entry? }` (entry from 1), which the binding hands the battle as `Problem`s.
+  nettai-match calls it once the round is set up (the side's own setup back in place of the stand-in folder the
+  round was set up with) and reports the texts; it keeps the generic checks (the navi stated, references of the
+  game at any depth, ranges, capacities, required enums). EXE6's and EXE5's `validate`: rules/save's level and
+  base HP, rules/patch_cards' (`@exelib/patch_cards/apply`'s `check`: once each, 80 MB), rules/navicust's
+  (`@exelib/navicust/compile`'s `check`: the board, the colors, the turns, the fit, the overlap, the
+  compression), rules/folder's (the folder rules on the side's own folder, and the Regular and tag chips chips of
+  it). `folder_check` stays for the folders a tool asks about (pools, random folders). `battle.name(def)` names a
+  definition for a message. The round's setup is total over well-typed setups: EXE5's `navi_level.row` reads a
+  level past its row as its last entry (validate says so).
+- **Match files**: every key a fact. A list of records is an array of inline tables, a line each, written after
+  the side's other values; a record's field holding nothing (false, none) is left out, and one a file leaves out
+  is zero. `regular` is `regular_chip`, `tags` `tag_chips`, `[left.navicust]` `navicust_expansions` and
+  `navicust_programs`, a folder entry `{ chip, code }` (`{}` empty), a card `{ card, on }` (`on` stated: left out,
+  off). The SP times are an inline array too. verify's tools/matches are converted.
+- **Compat**: exe6-compat's `codec::{patch_cards, navicust}` and exe5-compat's `trace::{patch_cards, navicust}`
+  make the facts; the traces state the navi, the cards, and the NaviCust or none.
+- **The editor** reads and writes the facts behind its panes as before (an adapter under the NaviCust pane, the
+  cards pane's list); step c3b replaces those panes with the view kinds.
+- **Checked**: the setup dump is the same but for where the parts are; verify's NaviCust tests (EXE6 1282 and
+  EXE5 225 NaviCusts, 0 differ; EXE5's off-board check through `validate`) and EXE5 folders pass; the usual
+  recordings match.

@@ -29,7 +29,8 @@ local function round_setup(side: number)
     local setup = rules.setup() :: Setup
     local navi = stats.navi
     local level = setup.level
-    local compiles = battle.navicust(side) ~= nil
+    -- (The navi that changes form compiles a NaviCust, where the setup gives one: ../navicust.)
+    local compiles = rules.setup_of(side).navicust_expansions ~= nil and navi.forms ~= nil
     local link_navi = navi.forms == nil and navi.levels ~= nil and level ~= nil
     if not compiles and not link_navi then
         return
@@ -44,6 +45,38 @@ local function round_setup(side: number)
     end
 end
 
+-- The base HP a setup that says nothing has (a new game's: MegaMan's fresh HP).
+local NEW_GAME_HP = 100
+
+-- `validate`'s part: the navi's level and the base HP as what the save brings allows: a navi code's level, 0 to its
+-- last (../levels), which a link navi always states (it exists only through its code) and MegaMan may leave out (no
+-- code received); none for a navi without levels. The base HP is MegaMan's (the navi that compiles a NaviCust): any
+-- other's HP is its level's, so a side of one that states another than a new game's states what has no effect.
+local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+    local setup = rules.setup_of(side)
+    local navi: NaviDef? = setup.navi
+    if navi == nil then
+        return
+    end
+    local name = battle.name(navi)
+    local level: number? = setup.level
+    local by_level = if navi.levels ~= nil then navi.levels.by_level else nil
+    if level ~= nil then
+        if by_level == nil then
+            problem(string.format("level %d: %s takes no level", level, name), "level")
+        elseif level > #by_level - 1 then
+            problem(string.format("level %d: a navi code's level is 0 to %d", level, #by_level - 1), "level")
+        end
+    elseif by_level ~= nil and navi.forms == nil then
+        problem(string.format("%s has no level (0 to %d): a link navi exists only through its navi code", name, #by_level - 1), "level")
+    end
+    if navi.forms == nil and setup.hp ~= NEW_GAME_HP then
+        problem(string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name), "hp")
+    end
+end
+
 return {
     round_setup = round_setup,
+    validate = validate,
+    NEW_GAME_HP = NEW_GAME_HP,
 }

@@ -1,18 +1,10 @@
-//! A player's NaviCust (BN4's, EXE5's and EXE6's Navi Customizer;
-//! docs/design/navicust.md): the programs they have placed on its grid,
-//! each in one of its colors, turned and compressed or not, and how far
-//! the board has been expanded.
-//!
-//! The programs are definitions (the root's `navicust_programs`,
-//! `Content::navicust_program`): their colors and shapes, and what a game's
-//! rules read. A player's NaviCust is their setup's
-//! ([`crate::custom::PlayerSetup::navicust`]); what it gives the navi is a
-//! game's rules' (EXE6's rules/navicust compiles it into the side's stats
-//! as the round is set up, `round_setup`). The board (which cells a
-//! program can cover, and the command line) is the game's rule section
-//! `navicust` ([`crate::content::NaviCustRules`]).
-
-use nettai_content_api::NaviCustProgramHandle;
+//! A NaviCust program's shape on the 7x7 grid (BN4's, EXE5's and EXE6's
+//! Navi Customizer; docs/design/navicust.md), turned: what the program
+//! definitions' shapes read as (`Content::navicust_program`), for the
+//! tools that draw and check a NaviCust. A player's NaviCust is their
+//! setup's facts (`navicust_expansions`, `navicust_programs`), which their
+//! game's rules compile into the navi's stats as the round is set up
+//! (@exelib/navicust/compile).
 
 /// The NaviCust's grid is this many cells a side, and so is a program's
 /// shape, centered on its middle cell.
@@ -21,67 +13,6 @@ pub const SIZE: usize = 7;
 /// A program's cells on a 7x7 grid, by row then column; its center is
 /// (3, 3).
 pub type Shape = [[bool; SIZE]; SIZE];
-
-/// How many programs a NaviCust holds: EXE6's list's room (0x31 parts).
-pub const MAX_PARTS: usize = 49;
-
-/// A program on the grid: which, in which of its colors (an index into its
-/// definition's `colors`), where its center is (a cell of the 7x7 grid),
-/// turned a quarter clockwise `rotation` times, compressed or not.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct PlacedProgram {
-    pub program: NaviCustProgramHandle,
-    pub color: u8,
-    pub x: u8,
-    pub y: u8,
-    pub rotation: u8,
-    pub compressed: bool,
-}
-
-/// A player's NaviCust: its programs in its list's order (the order a game's
-/// rules go through them), and the board's expansions (EXE6's and EXE5's:
-/// none, one or two; EXE6's key item 0x71, EXE5's 0x61).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NaviCust {
-    parts: [Option<PlacedProgram>; MAX_PARTS],
-    len: u8,
-    pub expansions: u8,
-}
-
-impl Default for NaviCust {
-    fn default() -> NaviCust {
-        NaviCust { parts: [None; MAX_PARTS], len: 0, expansions: 0 }
-    }
-}
-
-impl NaviCust {
-    /// `parts`, in order, on a board with `expansions`; an error past
-    /// [`MAX_PARTS`].
-    pub fn new(parts: &[PlacedProgram], expansions: u8) -> Result<NaviCust, String> {
-        if parts.len() > MAX_PARTS {
-            return Err(format!("{} NaviCust programs: a NaviCust holds {MAX_PARTS}", parts.len()));
-        }
-        let mut n = NaviCust { expansions, ..NaviCust::default() };
-        for (slot, &p) in n.parts.iter_mut().zip(parts) {
-            *slot = Some(p);
-        }
-        n.len = parts.len() as u8;
-        Ok(n)
-    }
-
-    pub fn len(&self) -> usize {
-        self.len as usize
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    /// The programs in the list's order.
-    pub fn iter(&self) -> impl Iterator<Item = PlacedProgram> + '_ {
-        self.parts.iter().take(self.len as usize).map(|p| p.expect("a program in the list"))
-    }
-}
 
 /// `shape` turned a quarter clockwise `rotation` times, as EXE6 turns a
 /// program (`sub_813B7A0`'s four copies: as it is, `sub_813B7FC` a quarter
@@ -134,8 +65,5 @@ mod tests {
         assert_eq!(rotate(&up, 4), up);
         let placed: Vec<_> = cells(&up, 1, 3).collect();
         assert_eq!(placed, vec![(1, 2), (1, 3)]);
-        let parts = [PlacedProgram { program: NaviCustProgramHandle(0), color: 0, x: 3, y: 3, rotation: 0, compressed: false }; 50];
-        assert!(NaviCust::new(&parts, 2).is_err());
-        assert_eq!(NaviCust::new(&parts[..3], 2).unwrap().iter().count(), 3);
     }
 }

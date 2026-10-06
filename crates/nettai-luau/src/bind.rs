@@ -1154,27 +1154,52 @@ impl StatePart {
     }
 }
 
+impl StatePart {
+    /// `this[key]`: a scalar's value, or the part a record's field or a
+    /// list's element is.
+    fn index(lua: &Lua, this: &StatePart, key: LuaValue) -> mlua::Result<LuaValue> {
+        let got = this.with_place(false, |s, place| {
+            let step = this.step(&key, s, place, false)?;
+            let at = match &step {
+                Step::Field(name) => place.field(name),
+                Step::Elem(k) => place.elem(*k),
+            }
+            .expect("a step into the part");
+            let ty = at.ty().clone();
+            Ok((step, ty.is_scalar().then(|| (s.get_at(at).load(), ty))))
+        })?;
+        match got {
+            (_, Some((v, ty))) => from_api(lua, v, &ty),
+            (step, None) => {
+                let mut path = this.path.clone();
+                path.push(step);
+                Ok(LuaValue::UserData(lua.create_userdata(StatePart { state: State(this.state.0), field: this.field.clone(), path })?))
+            }
+        }
+    }
+
+    /// How many elements the list or array this part is holds.
+    fn len(&self) -> mlua::Result<usize> {
+        self.with_place(false, |s, place| s.len_at(place).ok_or_else(|| mlua::Error::runtime(format!("{}: a record has no length", self.name(None)))))
+    }
+}
+
 impl UserData for StatePart {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_meta_method(MetaMethod::Index, |lua, this, key: LuaValue| {
-            let got = this.with_place(false, |s, place| {
-                let step = this.step(&key, s, place, false)?;
-                let at = match &step {
-                    Step::Field(name) => place.field(name),
-                    Step::Elem(k) => place.elem(*k),
+        methods.add_meta_method(MetaMethod::Index, |lua, this, key: LuaValue| StatePart::index(lua, this, key));
+        // `for i, x in list`: a list's or an array's elements from the
+        // first, as a table's.
+        methods.add_meta_method(MetaMethod::Iter, |lua, this, ()| {
+            this.len()?;
+            let next = lua.create_function(|lua, (part, i): (AnyUserData, i64)| {
+                let this = part.borrow::<StatePart>()?;
+                if i < 0 || i as usize >= this.len()? {
+                    return Ok((LuaValue::Nil, LuaValue::Nil));
                 }
-                .expect("a step into the part");
-                let ty = at.ty().clone();
-                Ok((step, ty.is_scalar().then(|| (s.get_at(at).load(), ty))))
+                Ok((LuaValue::Integer(i + 1), StatePart::index(lua, &this, LuaValue::Integer(i + 1))?))
             })?;
-            match got {
-                (_, Some((v, ty))) => from_api(lua, v, &ty),
-                (step, None) => {
-                    let mut path = this.path.clone();
-                    path.push(step);
-                    Ok(LuaValue::UserData(lua.create_userdata(StatePart { state: State(this.state.0), field: this.field.clone(), path })?))
-                }
-            }
+            let me = lua.create_userdata(StatePart { state: State(this.state.0), field: this.field.clone(), path: this.path.clone() })?;
+            Ok((next, me, 0i64))
         });
         methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (LuaValue, LuaValue)| {
             this.with_place(true, |s, place| {
@@ -1193,11 +1218,7 @@ impl UserData for StatePart {
                 assign(s, at, v, &name)
             })
         });
-        methods.add_meta_method(MetaMethod::Len, |_, this, ()| {
-            this.with_place(false, |s, place| {
-                s.len_at(place).map(|n| n as i64).ok_or_else(|| mlua::Error::runtime(format!("{}: a record has no length", this.name(None))))
-            })
-        });
+        methods.add_meta_method(MetaMethod::Len, |_, this, ()| this.len().map(|n| n as i64));
     }
 }
 
@@ -1768,44 +1789,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_emotion_window_glitch(side, on)))
     });
-    // A side's installed patch cards: { card = <the definition>, enabled }
-    // each, in their list's order.
-    lib_fn!(lua, t, "patch_cards", |lua, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        let cards = with(|api, _| Ok(api.patch_cards(side)))?;
-        let list = lua.create_table()?;
-        for (i, (h, enabled)) in cards.into_iter().enumerate() {
-            let entry = lua.create_table()?;
-            entry.raw_set("card", bound(|b| b.def_value(Registry::PatchCard, h))?)?;
-            entry.raw_set("enabled", enabled)?;
-            list.raw_set(i + 1, entry)?;
-        }
-        Ok(list)
-    });
-    // A side's NaviCust: { expansions, parts = { { program = <the
-    // definition>, color = <its name>, x, y, rotation, compressed } } }, or
-    // nil when the setup gives none.
-    lib_fn!(lua, t, "navicust", |lua, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        let Some((expansions, parts)) = with(|api, _| Ok(api.navicust(side)))? else { return Ok(LuaValue::Nil) };
-        let out = lua.create_table()?;
-        out.raw_set("expansions", expansions)?;
-        let list = lua.create_table()?;
-        for (i, p) in parts.into_iter().enumerate() {
-            let entry = lua.create_table()?;
-            let program = bound(|b| b.def_value(Registry::NaviCustProgram, p.program))?;
-            let color: LuaValue = program.get::<mlua::Table>("colors")?.get(p.color as usize + 1)?;
-            entry.raw_set("program", program)?;
-            entry.raw_set("color", color)?;
-            entry.raw_set("x", p.x)?;
-            entry.raw_set("y", p.y)?;
-            entry.raw_set("rotation", p.rotation)?;
-            entry.raw_set("compressed", p.compressed)?;
-            list.raw_set(i + 1, entry)?;
-        }
-        out.raw_set("parts", list)?;
-        Ok(LuaValue::Table(out))
-    });
     // The folder a tool asks the rules to check (`folder_check`): { side,
     // chips = { { chip = <the definition>, code = "A" } }, regular = n?,
     // tags = { a, b }?, complete } (entries counting from 1), or nil.
@@ -1833,6 +1816,12 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "folder_problem", |_, (rule, text): (String, String)| {
         with(|api, _| Ok(api.folder_problem(&rule, &text)))
+    });
+    // A definition's name in the content's own strings, else its key: for
+    // what the rules say to a tool (`validate`).
+    lib_fn!(lua, t, "name", |_, def: LuaValue| {
+        let (registry, h) = bound(|b| Ok(b.def(&def)))?.ok_or_else(|| mlua::Error::runtime("battle.name takes a definition"))?;
+        with(|api, _| Ok(api.def_name(registry, h)))
     });
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -2755,4 +2744,33 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         },
         HookCall::Rules { .. } => Ok(Value::Nil),
     }
+}
+
+/// What the rules' `validate` answered: each problem a sentence or
+/// `{ text, field?, entry? }` (an entry from 1, a list's place in Luau),
+/// said to the battle as a setup problem.
+pub fn setup_problems(v: LuaValue, api: &mut dyn CoreApi) -> mlua::Result<()> {
+    let list = match v {
+        LuaValue::Nil => return Ok(()),
+        LuaValue::Table(t) => t,
+        other => return Err(mlua::Error::runtime(format!("validate returns a list of problems, not {}", other.type_name()))),
+    };
+    for item in list.sequence_values::<LuaValue>() {
+        match item? {
+            LuaValue::String(text) => api.setup_problem(&text.to_str()?, None, None),
+            LuaValue::Table(p) => {
+                let text: String = p.get("text").map_err(|_| mlua::Error::runtime("a problem's `text` is its sentence"))?;
+                let field: Option<String> = p.get("field")?;
+                let entry: Option<i64> = p.get("entry")?;
+                let entry = match entry {
+                    Some(e) if e >= 1 => Some((e - 1) as u32),
+                    Some(e) => return Err(mlua::Error::runtime(format!("a problem's entry is a list's place, from 1, not {e}"))),
+                    None => None,
+                };
+                api.setup_problem(&text, field.as_deref(), entry);
+            }
+            other => return Err(mlua::Error::runtime(format!("a problem is a sentence or a table, not {}", other.type_name()))),
+        }
+    }
+    Ok(())
 }

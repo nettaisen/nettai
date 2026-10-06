@@ -111,6 +111,9 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         // (No Crosses: the empty list.)
         p.set_fact(content, "crosses", &[]).expect("the stand-in's players' Crosses");
         p.set_fact(content, "beast_out", &[Fact::Value(nettai_content_api::Value::Bool(false))]).expect("the stand-in's players' Beast Out");
+        // (No NaviCust: the stats are the stand-in's as they are, where
+        // the rules take one.)
+        p.set_fact(content, "navicust_expansions", &[Fact::Value(nettai_content_api::Value::Nil)]).expect("the stand-in's players' NaviCust");
         p
     };
     let [a, b] = folders;
@@ -138,8 +141,6 @@ fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
         joypad_phase: 0,
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
         rules: None,
-        patch_cards: Default::default(),
-        navicust: None,
         auto_battle: Default::default(),
     }
 }

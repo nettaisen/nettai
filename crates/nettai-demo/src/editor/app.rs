@@ -6,7 +6,6 @@ use iced::Task;
 use nettai_battle::Content;
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::FolderChip;
-use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::{ChipHandle, NaviHandle, PatchCardHandle, StageHandle};
 use nettai_frontend::game::Game;
@@ -569,7 +568,7 @@ impl Editor {
             Msg::Level(s, t) => {
                 // A level, or none (MegaMan without a navi code; a link navi
                 // always has one).
-                let link_navi = !content.navi(self.m.sides[s].navi).changes_form();
+                let link_navi = !content.navi(self.m.sides[s].navi(&content)).changes_form();
                 let level = match t.trim() {
                     "" if !link_navi => Some(None),
                     t => t.parse::<u8>().ok().map(Some),
@@ -626,14 +625,17 @@ impl Editor {
             Msg::Entry(s, i) => self.entry[s] = i,
             Msg::Put(s, chip, code) => {
                 let i = self.entry[s];
-                self.m.sides[s].folder.chips[i] = Some(FolderChip::new(chip, code));
+                let mut f = self.m.sides[s].folder(&content);
+                f.chips[i] = Some(FolderChip::new(chip, code));
+                if self.m.sides[s].set_folder(&content, &f).is_ok() {
+                    self.edited();
+                }
                 // On to the next entry, as one fills a folder.
-                self.entry[s] = (i + 1) % self.m.sides[s].folder.chips.len();
-                self.edited();
+                self.entry[s] = (i + 1) % f.chips.len();
             }
             Msg::ClearEntry(s) => {
                 let i = self.entry[s] as u8;
-                let f = &mut self.m.sides[s].folder;
+                let mut f = self.m.sides[s].folder(&content);
                 f.chips[i as usize] = None;
                 // It is no longer the Regular or a tag chip.
                 if f.regular == Some(i) {
@@ -642,48 +644,68 @@ impl Editor {
                 if f.tags.is_some_and(|(a, b)| a == i || b == i) {
                     f.tags = None;
                 }
-                self.edited();
+                if self.m.sides[s].set_folder(&content, &f).is_ok() {
+                    self.edited();
+                }
             }
             Msg::Regular(s) => {
                 let i = self.entry[s] as u8;
-                let f = &mut self.m.sides[s].folder;
+                let mut f = self.m.sides[s].folder(&content);
                 f.regular = if f.regular == Some(i) { None } else { Some(i) };
-                self.edited();
+                if self.m.sides[s].set_folder(&content, &f).is_ok() {
+                    self.edited();
+                }
             }
             Msg::Tag(s) => {
                 let i = self.entry[s] as u8;
-                let f = &mut self.m.sides[s].folder;
+                let mut f = self.m.sides[s].folder(&content);
                 f.tags = match f.tags {
                     Some((a, b)) if a == i || b == i => None,
                     // A tag chip waiting for its pair is tagged with itself.
                     Some((a, b)) if a == b => Some((a.min(i), a.max(i))),
                     _ => Some((i, i)),
                 };
-                self.edited();
+                if self.m.sides[s].set_folder(&content, &f).is_ok() {
+                    self.edited();
+                }
             }
             Msg::Search(t) => self.search = t,
             Msg::AddCard(s, card) => {
-                let cards = &mut self.m.sides[s].patch_cards;
-                if !cards.iter().any(|c| c.card == card) {
-                    cards.push(InstalledCard { card, enabled: true });
-                    self.edited();
+                let mut cards = cards_of(&content, &self.m.sides[s]);
+                if !cards.iter().any(|c| c.0 == card) {
+                    cards.push((card, true));
+                    if set_cards(&content, &mut self.m.sides[s], &cards) {
+                        self.edited();
+                    }
                 }
             }
             Msg::CardOn(s, i, on) => {
-                self.m.sides[s].patch_cards[i].enabled = on;
-                self.edited();
+                let mut cards = cards_of(&content, &self.m.sides[s]);
+                if let Some(c) = cards.get_mut(i) {
+                    c.1 = on;
+                    if set_cards(&content, &mut self.m.sides[s], &cards) {
+                        self.edited();
+                    }
+                }
             }
             Msg::CardMove(s, i, up) => {
-                let cards = &mut self.m.sides[s].patch_cards;
+                let mut cards = cards_of(&content, &self.m.sides[s]);
                 let j = if up { i.checked_sub(1) } else { (i + 1 < cards.len()).then_some(i + 1) };
                 if let Some(j) = j {
                     cards.swap(i, j);
-                    self.edited();
+                    if set_cards(&content, &mut self.m.sides[s], &cards) {
+                        self.edited();
+                    }
                 }
             }
             Msg::CardRemove(s, i) => {
-                self.m.sides[s].patch_cards.remove(i);
-                self.edited();
+                let mut cards = cards_of(&content, &self.m.sides[s]);
+                if i < cards.len() {
+                    cards.remove(i);
+                    if set_cards(&content, &mut self.m.sides[s], &cards) {
+                        self.edited();
+                    }
+                }
             }
             Msg::NaviCust(s, edit) => {
                 if crate::editor::navicust::update(&content, &self.m.arena, &mut self.m.sides[s], &mut self.navicust[s], edit) {
@@ -746,4 +768,35 @@ fn save_png(path: &std::path::Path, shot: &iced::window::Screenshot) -> Result<(
     enc.set_depth(png::BitDepth::Eight);
     let mut w = enc.write_header().map_err(|e| e.to_string())?;
     w.write_image_data(&shot.rgba).map_err(|e| e.to_string())
+}
+
+/// The side's patch cards (its rules' `patch_cards`), each card and whether
+/// it is on, in the list's order.
+pub fn cards_of(content: &nettai_battle::Content, side: &nettai_match::Side) -> Vec<(nettai_content_api::PatchCardHandle, bool)> {
+    use nettai_match::facts::Stated;
+    let Some(Stated::List(items)) = side.facts.get(content, "patch_cards") else { return Vec::new() };
+    items
+        .iter()
+        .filter_map(|item| {
+            let Stated::Record(fields) = item else { return None };
+            let card = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
+                ("card", Stated::Def(_, Some(h))) => Some(nettai_content_api::PatchCardHandle(*h)),
+                _ => None,
+            })?;
+            let on = fields.iter().any(|(n, v)| n == "on" && *v == Stated::Flag(true));
+            Some((card, on))
+        })
+        .collect()
+}
+
+/// State the side's patch cards (its rules' `patch_cards`); whether they
+/// were written (the rules take such a list, and it holds them).
+pub fn set_cards(content: &nettai_battle::Content, side: &mut nettai_match::Side, cards: &[(nettai_content_api::PatchCardHandle, bool)]) -> bool {
+    use nettai_battle::rules::Fact;
+    use nettai_content_api::{Registry, Value};
+    let records: Vec<Fact> = cards
+        .iter()
+        .map(|&(card, on)| Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))]))
+        .collect();
+    side.set_fact(content, "patch_cards", &records).is_ok()
 }
