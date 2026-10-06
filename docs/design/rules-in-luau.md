@@ -2683,7 +2683,9 @@ What the three crates had of the compat crates that was no boundary is gone:
 - **A side's EXE6 facts by name.** `nettai_match::facts::write` states a side's version, the Crosses it owns, Beast Out
   and its Cross list into the systems that take them (`write_version`), beside EXE5's karma and souls: no
   `Unlocks::write`. `CrossList` and `CROSSES` are nettai-match's own (`cross_list.rs`); a list's room is the rules'
-  `cross_list` field's.
+  `cross_list` field's. *(Since: a side holds its facts as the systems' setup blocks and nettai-match names none
+  of them, `nettai_match::Facts`; and EXE6's owned flags and Cross list are one field, `crosses`, the list of the
+  Crosses a side has, with no default: docs/frontend.md §6, docs/engine/custom-screen.md §4.1.)*
 - **The versions' order is the content's.** EXE6's cross and beast systems declare `version = { "gregar", "falzar" }`,
   the original's order (Gregar 0, Falzar 1), and tools go by it: a random side's version is picked among the declared
   names, a navi's Crosses come version by version in it (`NaviForms::by_version`), and the version's number in a
