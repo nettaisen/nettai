@@ -122,14 +122,30 @@ impl Side {
     }
 }
 
-/// Whether a side of `navi` must state a level: a navi that takes one
-/// (its definition says what a level gives it: `levels`, `story`) and
-/// doesn't change form (a link navi exists only through its navi code, an
-/// EXE5 team navi is at its story's progress). MegaMan's is optional (none:
-/// no navi code received). A tool that makes such a side states one (0).
+/// Whether a side of `navi` has a level: a navi that takes one (its
+/// definition says what a level gives it: `levels`, `story`) and doesn't
+/// change form (a link navi exists only through its navi code, an EXE5 team
+/// navi is at its story's progress). MegaMan has none (no navi code
+/// received).
 pub fn level_required(content: &Content, navi: NaviHandle) -> bool {
     let n = content.navi(navi);
     !n.changes_form() && (n.levels.is_some() || n.story.is_some())
+}
+
+/// The level a side of `navi` plays at: every side plays at the highest
+/// (the game's rules' fixed level fact, which no player states): a navi
+/// that has a level ([`level_required`]) at its last (a link navi's navi
+/// code's, a team navi's story's), any other at none.
+pub fn play_level(content: &Content, navi: NaviHandle) -> Option<u8> {
+    if !level_required(content, navi) {
+        return None;
+    }
+    let n = content.navi(navi);
+    match (&n.levels, &n.story) {
+        (Some(levels), _) => Some(levels.by_level.len().saturating_sub(1) as u8),
+        (None, Some(story)) => Some(story.max_level),
+        (None, None) => None,
+    }
 }
 
 
