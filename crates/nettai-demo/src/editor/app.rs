@@ -106,7 +106,6 @@ pub enum Msg {
     /// One of a side's facts (what its game's rules take of it), by its
     /// setup field's name.
     Fact(usize, String, crate::editor::facts::Edit),
-    Level(usize, String),
     /// The side from a save file (an EXE6 save's version, unlocks, navi code
     /// level and SP times; an EXE5 save's karma, souls and auto battle
     /// data), into a match of the save's game.
@@ -588,21 +587,6 @@ impl Editor {
                 if changed {
                     self.edited();
                 }
-            }
-            Msg::Level(s, t) => {
-                // A level, or none (MegaMan without a navi code; a link navi
-                // always has one).
-                let link_navi = !content.navi(self.m.sides[s].navi(&content)).changes_form();
-                let level = match t.trim() {
-                    "" if !link_navi => Some(None),
-                    t => t.parse::<u8>().ok().map(Some),
-                };
-                if let Some(v) = level
-                    && self.m.sides[s].set_level(&content, v).is_ok()
-                {
-                    self.edited();
-                }
-                self.typed.insert((s, "level"), t);
             }
             Msg::ImportSave(s) => {
                 // A save of the arena's game (a .sav, or a raw image as

@@ -208,30 +208,10 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     // (The match's game's navis.)
     let navis: Vec<Choice<_>> = nettai_match::navis(c, e.m.game()).into_iter().map(|n| Choice { label: e.names.navi(c, n), value: n }).collect();
     let navi = Choice { label: e.names.navi(c, side.navi(c)), value: side.navi(c) };
-    let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.level(c).map_or(String::new(), |l| l.to_string()));
     let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
-    // (No navi code for EXE5's MegaMan.)
-    let level_kind = side.takes_level(c).then(|| c.navi(side.navi(c)).forms.is_none());
-    if level_kind == Some(true) {
-        col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
-        if let Some(last) = nettai_match::story::max_level(c, side.navi(c)) {
-            col = col.push(
-                text(format!("0 to {last}: changing it fills in the HP the story gives at that level (the stats pane); at {last}, the story done."))
-                    .size(13)
-                    .color(DIM),
-            );
-        } else if let Some(levels) = c.navi(side.navi(c)).levels.as_ref().filter(|_| crate::editor::levels::has_levels(c, side)) {
-            let last = levels.by_level.len().saturating_sub(1);
-            col = col.push(text(format!("0 to {last}: the round gives the navi the stats its save's reload gives at that level, the game cleared (the stats pane).")).size(13).color(DIM));
-        }
-    } else if level_kind == Some(false) {
-        col = col.push(field("Navi code level", text_input("none", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
-        let last = c.navi(side.navi(c)).levels.as_ref().map_or(0, |l| l.by_level.len().saturating_sub(1));
-        col = col.push(
-            text(format!("Empty: no navi code (as usual). 0 to {last}: MegaMan received from a navi code, his level's gains over his NaviCust, no Beast Out button."))
-                .size(13)
-                .color(DIM),
-        );
+    // (Every side plays at the highest: a navi with a level at its last.)
+    if let Some(level) = side.level(c) {
+        col = col.push(text(format!("Level {level}: every side plays at its navi's highest (the stats pane).")).size(13).color(DIM));
     }
     // What the game's rules take of the side, each by its setup field's
     // type (`crate::editor::facts`): EXE6's version (nothing chosen for a new
@@ -244,10 +224,10 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(
         text(
             "A whole side, from an EXE6 or EXE5 .sav (or a raw save image): the navi it operates, its equipped folder with its \
-             Regular (and EXE6's tag) chips, MegaMan's NaviCust and patch cards (those switched on), the HP, Regular memory \
-             (and EXE6's sun and BugFrags) it brings; EXE6's version, Beast Out, the Crosses it owns, the navi code's level and \
-             the SP times; EXE5's karma, souls, unisons, a team navi's level and what a navi in auto battle plays from it. \
-             A save of another game than the match's makes a new match of its game.",
+             Regular (and EXE6's tag) chips, MegaMan's NaviCust and patch cards (those switched on), EXE6's BugFrags, \
+             version, Beast Out, the Crosses it owns and the SP times; EXE5's karma, souls, unisons and what a navi in auto \
+             battle plays from it. (The HP, the Regular memory, the sun and the level are every side's, the highest.) A save \
+             of another game than the match's makes a new match of its game.",
         )
         .size(13)
         .color(DIM),
