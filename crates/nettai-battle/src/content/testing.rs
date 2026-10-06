@@ -228,7 +228,6 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
         later_stages: Default::default(),
         low_hp_music_latched: false,
         players: [player(content), player(content)],
-        link_delay: 0,
     }
 }
 
