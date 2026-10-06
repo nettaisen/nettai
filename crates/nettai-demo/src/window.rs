@@ -7,18 +7,18 @@
 //! the window's. Netplay's handshake runs in the same loop (`crate::net`,
 //! polled each frame), so the window stays responsive while it waits.
 //!
-//! What the window shows of a battle is an image the player presents into
-//! when a tick ran (or the window or the language changed):
-//! `iced::widget::image::Handle::from_rgba` of the window's pixels. Each
-//! handle is new; the renderer keeps what the last frame drew and drops the
-//! rest, so memory stays flat. The renderer is iced's GPU one (its software
-//! one, the fallback, draws every pixel of a HiDPI window itself and keeps
-//! up with half the display's rate). `NETTAI_PLAY_STATS` prints the cost;
-//! docs/frontend.md §7 has the measurements.
+//! What the window shows of a battle is the picture the player presents
+//! into when a tick ran (or the window or the language changed), at the
+//! window's size ([`crate::picture`]): on iced's GPU renderer one texture,
+//! written in place with each new picture, so memory stays flat. (Its
+//! software renderer, the fallback, draws every pixel of a HiDPI window
+//! itself and keeps up with half the display's rate.) `NETTAI_PLAY_STATS`
+//! prints the cost; docs/frontend.md §7 has the measurements.
 
 use crate::editor;
 use crate::net::{Agreed, NetHandshake, Progress, Udp};
-use iced::widget::{container, image, text};
+use crate::picture::{self, Picture};
+use iced::widget::{container, text};
 use iced::{Color, Element, Length, Size, Subscription, Task, keyboard, window};
 use nettai_battle::input::keys;
 use nettai_frontend::driver::{Driver, LivePlayer, NetStatus};
@@ -27,6 +27,7 @@ use nettai_frontend::player::Player;
 use nettai_render::compose::{HEIGHT, WIDTH};
 use nettai_render::vfont::TextRenderer;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 pub const HELP: &str = "\
@@ -120,7 +121,8 @@ pub struct Play {
     /// The picture at the window's resolution (0x00RRGGBB), and its size.
     buffer: Vec<u32>,
     size: (usize, usize),
-    image: Option<image::Handle>,
+    /// The picture shown (the buffer's, as of the last present).
+    picture: Option<Arc<Picture>>,
     /// The picture is out of date: a tick ran, the window or the language
     /// changed (a display faster than the battle shows the last one again).
     stale: bool,
@@ -130,6 +132,10 @@ pub struct Play {
     quit_after: Option<u64>,
     title: String,
     stats: Option<Stats>,
+    /// When the keys pressed since the last tick came (`NETTAI_PLAY_STATS`).
+    pressed: Vec<Instant>,
+    /// When the first of those a tick since the last picture saw came.
+    seen: Option<Instant>,
 }
 
 impl Play {
@@ -144,13 +150,15 @@ impl Play {
             last: None,
             buffer: Vec::new(),
             size: (0, 0),
-            image: None,
+            picture: None,
             stale: true,
             reported: (false, false),
             samples: Vec::new(),
             quit_after: opts.quit_after,
             title: "nettai-demo".into(),
             stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()),
+            pressed: Vec::new(),
+            seen: None,
         }
     }
 
@@ -195,6 +203,8 @@ struct Stats {
     present: Duration,
     worst_present: Duration,
     worst_gap: Duration,
+    /// From a key's event to the tick that saw it.
+    key_to_tick: picture::Times,
 }
 
 enum Screen {
@@ -398,6 +408,9 @@ impl Demo {
         match event {
             keyboard::Event::KeyPressed { key, repeat, .. } => {
                 if let Some(b) = button(&key) {
+                    if !repeat && p.held & b == 0 && p.stats.is_some() {
+                        p.pressed.push(Instant::now());
+                    }
                     p.held |= b;
                     return Task::none();
                 }
@@ -480,6 +493,14 @@ impl Demo {
         p.last = Some(now);
         if p.player.advance(elapsed, p.held) > 0 {
             p.stale = true;
+            // (The keys pressed since the last tick: this one saw them.)
+            if let Some(s) = &mut p.stats {
+                for &at in &p.pressed {
+                    s.key_to_tick.add(now.saturating_duration_since(at));
+                }
+            }
+            p.seen = p.seen.or(p.pressed.first().copied());
+            p.pressed.clear();
         }
         if let Some(out) = &self.device {
             p.samples.clear();
@@ -510,11 +531,7 @@ impl Demo {
         }
         if p.stale {
             p.player.present(&mut p.buffer, w, h);
-            let mut rgba = Vec::with_capacity(w * h * 4);
-            for &px in &p.buffer {
-                rgba.extend_from_slice(&[(px >> 16) as u8, (px >> 8) as u8, px as u8, 0xFF]);
-            }
-            p.image = Some(image::Handle::from_rgba(w as u32, h as u32, rgba));
+            p.picture = Some(Arc::new(Picture::new(w, h, p.buffer.clone(), p.seen.take())));
             p.stale = false;
             if let Some(s) = &mut p.stats {
                 s.presented += 1;
@@ -528,14 +545,25 @@ impl Demo {
             s.worst_gap = s.worst_gap.max(elapsed);
             let since = *s.since.get_or_insert(now);
             if now.duration_since(since) >= Duration::from_secs(2) {
+                let (drawn, keys) = picture::take_shown();
                 eprintln!(
-                    "play stats: {} frames in {:.2?}, {} pictures presented ({w}x{h}): {:.2?} a picture (worst {:.2?}), longest between frames {:.2?}",
+                    "play stats: {} frames in {:.2?}, {} pictures presented ({w}x{h}): {:.2?} a picture (worst {:.2?}), longest between frames {:.2?}; \
+                     {} drawn, {:.2?} after they were presented (worst {:.2?}); {} keys pressed: {:.2?} to the tick that saw it (worst {:.2?}), \
+                     {:.2?} to that tick's picture drawn (worst {:.2?})",
                     s.frames,
                     now.duration_since(since),
                     s.presented,
                     s.present / s.presented.max(1),
                     s.worst_present,
-                    s.worst_gap
+                    s.worst_gap,
+                    drawn.count,
+                    drawn.mean(),
+                    drawn.worst,
+                    s.key_to_tick.count,
+                    s.key_to_tick.mean(),
+                    s.key_to_tick.worst,
+                    keys.mean(),
+                    keys.worst,
                 );
                 *s = Stats { since: Some(now), ..Stats::default() };
             }
@@ -564,13 +592,8 @@ impl Demo {
         match &self.screen {
             Screen::Editor => editor::view::window(&self.editor).map(Msg::Editor),
             Screen::Play(p) => {
-                let picture: Element<'_, Msg> = match &p.image {
-                    Some(h) => image(h.clone())
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .content_fit(iced::ContentFit::Fill)
-                        .filter_method(image::FilterMethod::Nearest)
-                        .into(),
+                let picture: Element<'_, Msg> = match &p.picture {
+                    Some(shown) => picture::view(shown),
                     None => text("").into(),
                 };
                 container(picture).width(Length::Fill).height(Length::Fill).style(|_| container::background(Color::BLACK)).into()
