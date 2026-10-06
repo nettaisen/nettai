@@ -202,11 +202,7 @@ impl FieldType {
             FieldType::Enum(_) => FieldValue::Enum(b[0]),
             FieldType::OptionalU8 => FieldValue::OptionalU8((b[0] != 0).then_some(b[1])),
             FieldType::Array(elem, _) => elem.decode(b),
-            // (A list nothing has stated reads as holding nothing:
-            // `LIST_UNSTATED` is no definition's.)
-            FieldType::Ref(r, _) => {
-                FieldValue::Ref(Some(u16::from_le_bytes([b[0], b[1]])).filter(|&v| v != LIST_UNSTATED).and_then(|v| v.checked_sub(1)).map(|h| (*r, h)))
-            }
+            FieldType::Ref(r, _) => FieldValue::Ref(u16::from_le_bytes([b[0], b[1]]).checked_sub(1).map(|h| (*r, h))),
             FieldType::Asset(k) => FieldValue::Asset(*k, u16::from_le_bytes([b[0], b[1]]).checked_sub(1)),
         }
     }
@@ -424,12 +420,6 @@ impl Schema {
 /// ([`ContentState::unstate`]): no variant's index.
 pub const ENUM_UNSTATED: u8 = 0xFF;
 
-/// What the first element of a list of definitions holds when nothing has
-/// stated the list ([`ContentState::unstate`]): no definition's stored
-/// value (a registry has fewer than 0xFFFE definitions), and not "none".
-/// A stated list never holds it.
-pub const LIST_UNSTATED: u16 = 0xFFFF;
-
 /// Which schema a [`ContentState`] follows (an index into the content's
 /// [`crate::Manifest`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -460,35 +450,23 @@ impl ContentState {
         schema.field(i).ty.decode(&self.bytes[schema.at(i)..])
     }
 
-    /// Leave field `i` stated by nobody, if it is an enum or a list of
-    /// definitions (an array of them): an enum holds no variant
-    /// ([`ENUM_UNSTATED`]) and a list is marked as no list at all
-    /// ([`LIST_UNSTATED`]; it reads as empty) until something states one.
-    /// For a player's setup, whose enums and lists of definitions have no
-    /// default (a choice among named things is none of the engine's to
-    /// make, and an empty list is a statement: no Crosses): a round doesn't
-    /// start with one unstated. Any other field is left as it is.
+    /// Leave field `i` stated by nobody, if it is an enum: it holds no
+    /// variant ([`ENUM_UNSTATED`]) until something states one. For a
+    /// player's setup, whose enums have no default (a choice among named
+    /// things is none of the engine's to make): a round doesn't start with
+    /// one unstated. Any other field is left as it is (a list left out is
+    /// empty).
     pub fn unstate(&mut self, schema: &Schema, i: usize) {
-        let at = schema.at(i);
-        match &schema.field(i).ty {
-            FieldType::Enum(_) => self.bytes[at] = ENUM_UNSTATED,
-            ty @ FieldType::Array(elem, _) if matches!(**elem, FieldType::Ref(..)) => {
-                self.bytes[at..at + ty.size()].fill(0);
-                self.bytes[at..at + 2].copy_from_slice(&LIST_UNSTATED.to_le_bytes());
-            }
-            _ => {}
+        if let FieldType::Enum(_) = &schema.field(i).ty {
+            self.bytes[schema.at(i)] = ENUM_UNSTATED;
         }
     }
 
-    /// Whether field `i` is stated: an enum holds one of its variants, a
-    /// list of definitions isn't marked unstated (true of any other field).
+    /// Whether field `i` is stated: an enum holds one of its variants (true
+    /// of any other field).
     pub fn stated(&self, schema: &Schema, i: usize) -> bool {
-        let at = schema.at(i);
         match (&schema.field(i).ty, self.get(schema, i)) {
             (FieldType::Enum(names), FieldValue::Enum(v)) => (v as usize) < names.len(),
-            (FieldType::Array(elem, _), _) if matches!(**elem, FieldType::Ref(..)) => {
-                u16::from_le_bytes([self.bytes[at], self.bytes[at + 1]]) != LIST_UNSTATED
-            }
             _ => true,
         }
     }
@@ -519,11 +497,6 @@ impl ContentState {
             return Err(format!("index {} is past the end of `{}` ({n} elements)", k + 1, schema.field(i).name));
         }
         let stored = elem.store(v).map_err(|e| e.to_string())?;
-        // (Writing an element states a list nothing had stated: it is then
-        // the list of what is written, the rest empty.)
-        if !self.stated(schema, i) {
-            self.bytes[schema.at(i)..schema.at(i) + 2].fill(0);
-        }
         elem.encode(stored, &mut self.bytes[schema.at(i) + k * elem.size()..]);
         Ok(())
     }
@@ -591,12 +564,10 @@ mod tests {
         assert!(st.set(&s, 5, Value::Int(1)).is_err(), "a whole array isn't one value");
     }
 
-    /// A list of definitions may be stated by nobody, as an enum may: it
-    /// reads as empty and isn't stated; writing an element (an empty one
-    /// too) states it, the rest empty; a stated list never holds the mark.
-    /// Other fields have no such state.
+    /// Only an enum may be stated by nobody: a list, a definition, a
+    /// number stay as they are (zero: an empty list, none).
     #[test]
-    fn a_list_of_definitions_may_be_unstated() {
+    fn only_an_enum_may_be_unstated() {
         let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
         let form = || FieldType::Ref(Registry::Form, None);
         let s = Schema::new(vec![
@@ -606,28 +577,14 @@ mod tests {
             f("which", FieldType::Enum(vec!["a".into(), "b".into()])),
         ])
         .unwrap();
-        let (flags, forms, one, which) = (s.index_of("flags").unwrap(), s.index_of("forms").unwrap(), s.index_of("one").unwrap(), s.index_of("which").unwrap());
+        let (forms, which) = (s.index_of("forms").unwrap(), s.index_of("which").unwrap());
         let mut st = ContentState::new(StateId(0));
         assert!((0..4).all(|i| st.stated(&s, i)), "zeroed: an empty list, the first variant");
         for i in 0..4 {
             st.unstate(&s, i);
         }
-        assert_eq!((st.stated(&s, flags), st.stated(&s, forms), st.stated(&s, one), st.stated(&s, which)), (true, false, true, false));
-        assert!((0..3).all(|k| st.get_elem(&s, forms, k) == Some(FieldValue::Ref(None))), "an unstated list reads as empty");
-        // An element written states the list, the others empty.
-        let mut written = st;
-        written.set_elem(&s, forms, 1, Value::Def(Registry::Form, 7)).unwrap();
-        assert!(written.stated(&s, forms));
-        let read: Vec<_> = (0..3).map(|k| written.get_elem(&s, forms, k).unwrap()).collect();
-        assert_eq!(read, [FieldValue::Ref(None), FieldValue::Ref(Some((Registry::Form, 7))), FieldValue::Ref(None)]);
-        // An empty first element states it too: the empty list.
-        let mut empty = st;
-        empty.set_elem(&s, forms, 0, Value::Nil).unwrap();
-        assert!(empty.stated(&s, forms) && (0..3).all(|k| empty.get_elem(&s, forms, k) == Some(FieldValue::Ref(None))));
-        assert_ne!(empty, st, "none is not nothing said");
-        // Unstated again: whatever it held is gone.
-        written.unstate(&s, forms);
-        assert_eq!(written, st);
+        assert!((0..4).all(|i| st.stated(&s, i) == (i != which)));
+        assert!((0..3).all(|k| st.get_elem(&s, forms, k) == Some(FieldValue::Ref(None))), "a list left out is empty");
     }
 
     #[test]

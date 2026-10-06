@@ -13,19 +13,15 @@ pub fn has_levels(content: &Content, side: &Side) -> bool {
     link_navis::has_levels(content, side.navi)
 }
 
-/// Switch the side to `navi` as the game does: a navi that takes its stats
-/// from a level keeps the side's (a link navi from no level, level 0: it
-/// exists through its navi code); MegaMan again has no navi code
+/// Switch the side to `navi` as the game does: a navi that must have a
+/// level keeps the side's (from no level, 0: a link navi exists through its
+/// navi code, a team navi at its story's progress); MegaMan again has no navi code
 /// (`sub_809CD60`). His NaviCust is his alone: another navi's side has
 /// none, and states no base HP (its HP is its level's), and MegaMan's
 /// comes back empty. The form list follows the navi (`state_own_forms`).
 pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) {
     side.navi = navi;
-    let level = if link_navis::has_levels(content, navi) {
-        side.level(content).or(nettai_match::default_navi_level(content, navi)).or(Some(0))
-    } else {
-        nettai_match::default_navi_level(content, navi)
-    };
+    let level = nettai_match::level_required(content, navi).then(|| side.level(content).unwrap_or(0));
     let _ = side.set_level(content, level);
     match nettai_match::empty_navicust(content, navi) {
         Some(empty) => {

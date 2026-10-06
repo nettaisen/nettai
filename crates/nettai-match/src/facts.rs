@@ -83,9 +83,6 @@ pub enum Stated {
     Def(Registry, Option<u16>),
     /// An array's elements.
     List(Vec<Stated>),
-    /// A list of definitions nothing has stated (not an empty one: that
-    /// is a list).
-    Unlisted,
     /// A number or none (a `u8?`: a navi code's level).
     Optional(Option<i64>),
     /// A value no match states (an object, a vector, an asset).
@@ -204,7 +201,6 @@ impl Facts {
         Some(match fact.ty() {
             ty if !fact.stated() => match ty {
                 FieldType::Enum(_) => Stated::Variant(None),
-                FieldType::Array(..) => Stated::Unlisted,
                 _ => Stated::Other,
             },
             FieldType::Array(elem, n) => Stated::List((0..*n as usize).filter_map(|k| fact.elem(k)).map(|v| stated_of(elem, v)).collect()),
@@ -292,16 +288,14 @@ pub fn form_list_capacity(content: &Content) -> usize {
 /// order.
 pub fn required(content: &Content) -> Vec<Field<'_>> {
     let defaults = Facts::defaults(content);
-    fields(content).into_iter().filter(|f| matches!(defaults.get(content, f.name), Some(Stated::Variant(None) | Stated::Unlisted))).collect()
+    fields(content).into_iter().filter(|f| defaults.get(content, f.name) == Some(Stated::Variant(None))).collect()
 }
 
 /// What a required fact may be stated as, for a message: an enum's
-/// variants ("gregar or falzar"), a list's room ("up to 5 forms, an empty
-/// list for none").
+/// variants ("gregar or falzar").
 pub fn may_be(field: &Field) -> String {
     match field.ty {
         FieldType::Enum(names) => names.join(" or "),
-        FieldType::Array(elem, n) => format!("up to {n} {elem}s, an empty list for none"),
         other => other.to_string(),
     }
 }
@@ -324,7 +318,7 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
         let Some(value) = side.facts.get(content, f.name) else { continue };
         let of_game = |registry: Registry, h: u16| ids::key_of(content, registry, h).is_some_and(|key| ids::in_game(content, game, key));
         match &value {
-            Stated::Variant(None) | Stated::Unlisted => {
+            Stated::Variant(None) => {
                 out.push(format!("no {}: a side of {game} states its own ({}); none is assumed", f.name, may_be(&f)));
             }
             Stated::Def(registry, Some(h)) if !of_game(*registry, *h) => out.push(format!("{}: a {registry} {game} hasn't", f.name)),
@@ -377,7 +371,6 @@ pub fn shown(content: &Content, value: &Stated) -> String {
         Stated::Variant(v) => v.clone().unwrap_or_else(|| "not stated".to_string()),
         Stated::Def(r, Some(h)) => ids::shown(content, *r, *h),
         Stated::Def(_, None) => "none".to_string(),
-        Stated::Unlisted => "not stated".to_string(),
         Stated::Optional(Some(n)) => n.to_string(),
         Stated::Optional(None) => "none".to_string(),
         Stated::List(items) => {
