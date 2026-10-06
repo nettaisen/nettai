@@ -245,6 +245,8 @@ Each with what it was and what it is now.
   (`glowless`).
 - **B9, C1.** The identity classes are `virus`, `field_object`, `navi` and `player`, and an identity's traits say
   the rest: `changes_form`, `breaks_on_weakness`, `quiet_win`, `bug_blind_immune` and `marker_flat_anim`.
+  Where content asked for the class `cross`, EXE6's attachment kind asks whether the identity is one of its navi's
+  Crosses' (its form lists'): the lift is that kind's own, as EXE5's is (exelib's attachment has no game's lift).
 - **C2.** The form break: `status::FORM_BREAKING`, `breaking_form`, `break_form`, `FormBreak::MarkedForms`
   (`marked_forms`: forms whose identity `breaks_on_weakness`) and `NaviState::FormBreaking` (`form_breaking`).
 - **C3.** The navi switch: `switching_navi` and `NaviState::{SwitchingNavi, SwitchKnockout, Switched}`.
