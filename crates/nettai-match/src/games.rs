@@ -382,7 +382,7 @@ fn karma_and_souls_write_and_read_back() {
     let bad = side("megaman", &EXE6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let six = exe6_content();
     let e = parse_in(&six, "exe6", &side("megaman", &EXE6, ""), &bad).unwrap_err();
-    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, folder, navi, navicust_expansions, navicust_programs, patch_cards, regular_chip, sp_times, tag_chips, version)";
+    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips, version)";
     for p in [format!("right: no field \"karma\" {takes}"), format!("right: no field \"souls\" {takes}")] {
         assert!(e.iter().any(|x| *x == p), "{p:?} not in {e:?}");
     }

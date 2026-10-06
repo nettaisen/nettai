@@ -1,16 +1,14 @@
 //! A side from an EXE5 save file (exe5-compat's `save`), whole: the navi it
 //! operates, its equipped folder with its Regular chip, MegaMan's NaviCust
 //! (its board, by its ExpMemry, and its programs as placed) and patch cards
-//! (those switched on), its karma (the light/dark value; a team navi's, its
-//! own block's), the souls it has (none without Soul Unison), its Chaos
-//! Unison, its auto battle data (what a navi in auto battle plays from it:
-//! EXE5's rules' `auto_battle_places` and `auto_battle_records`), and its SP
-//! deletion times. What it brings to the stats (MegaMan's base HP, the
-//! Regular memory, the sun) and a team navi's level aren't read: every side
-//! plays at the highest (the rules' fixed facts; a team navi at its story's
-//! last level, `Side::set_navi`). The import is the compat boundary's: a
-//! save is the original's bytes, and a side its game's facts (nettai-demo's
-//! `save_import` picks the game's import).
+//! (those switched on), what it brings to the stats (MegaMan's base HP and
+//! sun, the Regular memory), its karma (the light/dark value), the souls it has (none
+//! without Soul Unison), its Chaos Unison, and its auto battle data (what a
+//! navi in auto battle plays from it: EXE5's rules' `auto_battle_places` and
+//! `auto_battle_records`); for a side that operates a team navi, the navi's
+//! level, whose HP the story gives; and its SP deletion times. The import is
+//! the compat boundary's: a save is the original's bytes, and a side its
+//! game's facts (nettai-demo's `save_import` picks the game's import).
 
 use nettai_match::{Folder, Side, ids};
 use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, AutoBattlePattern, Save};
@@ -197,6 +195,17 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
         state(side, "navicust_programs", &[]);
         state(side, "patch_cards", &[]);
     }
+    // What the save brings to the stats: MegaMan's base HP (a team
+    // navi's is its story's), the operated navi's Regular memory.
+    if let Some(stats) = save.team_navi_stats(save.navi()) {
+        if megaman {
+            let hp = u16::from_le_bytes([stats[0x3E], stats[0x3F]]);
+            state(side, "hp", &[Fact::Value(Value::Int(hp as i64))]);
+            // (The sun, +0x22: MegaMan's, which the overworld writes.)
+            state(side, "sun", &[Fact::Value(Value::Bool(stats[0x22] != 0))]);
+        }
+        state(side, "reg_up", &[Fact::Value(Value::Int(stats[0x09] as i64))]);
+    }
     let (times, nameless) = sp_times(content, game, save);
     state(side, "sp_times", &times);
     notes.extend(nameless);
@@ -235,19 +244,27 @@ pub fn sp_times(content: &Content, game: &str, save: &Save) -> (Vec<Fact<'static
     (facts, notes)
 }
 
-/// A side that operates a team navi (a navi with a story) takes, where the
-/// save's version has the navi, the light/dark value of the navi's own
-/// block. (Its level is every side's, its story's last, which its HP is
-/// the story's at: EXE5's rules/save.)
+/// A side that operates a team navi (a navi with a story) takes the
+/// save's level (its story flags' count), which its HP is the story's
+/// at (EXE5's rules/save), and, where the save's version has the navi,
+/// the light/dark value of the navi's own block.
 fn team_navi(content: &Content, side: &mut Side, save: &Save) -> Vec<String> {
+    // (MegaMan takes no level.)
     if content.navi(side.navi(content)).story.is_none() {
-        return Vec::new();
+        return match side.set_level(content, None) {
+            Ok(()) => Vec::new(),
+            Err(e) => vec![format!("the side's level is left as it is: {e}")],
+        };
     }
     let name = nettai_match::names::navi(content, side.navi(content));
+    let level = save.navi_level();
+    if let Err(e) = side.set_level(content, Some(level)) {
+        return vec![format!("{}: the save's level {level} is left out: {e}", nettai_match::names::navi(content, side.navi(content)))];
+    }
     let compat = crate::Compat::exe5();
     let key = ids::local(&content.defs.navi(side.navi(content)).key);
     let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
-    let mut notes = Vec::new();
+    let mut notes = vec![format!("{name}: the save's level {level}")];
     match block.map(|b| crate::codec::navi_stats(&b)) {
         Some(Ok(b)) => {
             if let Err(e) = side.set_fact(content, "karma", &[Fact::Value(Value::Int(b.light_dark.0 as i64))]) {
@@ -320,11 +337,11 @@ mod tests {
     }
 
     /// A Team ProtoMan save operating ProtoMan, whose story is four flags
-    /// along: the side is ProtoMan at every side's level, his story's last
-    /// (the save's isn't read), which his round's HP is the story's at
-    /// (whatever his block's says), with his own block's light/dark value;
-    /// from a Team Colonel save, which hasn't him, no karma of his own; and
-    /// a save operating MegaMan gives a MegaMan side, who takes no level.
+    /// along: the side is ProtoMan at its level (4), which his round's HP is
+    /// the story's at (450, whatever his block's says), with his own block's
+    /// light/dark value; from a Team Colonel save, which hasn't him, the
+    /// level alone; and a save operating MegaMan gives a MegaMan side, who
+    /// takes no level.
     #[test]
     fn a_exe5_save_gives_a_team_navi_its_level() {
         let content = exe5_content();
@@ -349,21 +366,19 @@ mod tests {
         for field in ["navicust_programs", "patch_cards"] {
             assert_eq!(s.facts.get(&content, field).map(|v| v.defs()), Some(Vec::new()), "{field}: MegaMan's");
         }
-        let last = nettai_match::story::max_level(&content, protoman).unwrap();
-        let last_hp = nettai_match::story::hp_at(&content, protoman, last).unwrap();
-        assert_eq!(s.level(&content), Some(last));
+        assert_eq!(s.level(&content), Some(4));
         assert_eq!(s.facts.get(&content, "karma"), Some(nettai_match::facts::Stated::Number(519)));
-        assert_eq!(notes, Vec::<String>::new());
+        assert!(notes.iter().any(|n| n.contains("level 4")), "{notes:?}");
         assert_eq!(nettai_match::check::check_side_alone(&content, &m.game, s), Vec::<String>::new());
         let hp = |m: &nettai_match::Match| {
             let mut m = m.clone();
             m.sides[1] = m.sides[0].clone();
             nettai_match::check::round_stats(&content, &m).unwrap()[0].max_hp
         };
-        assert_eq!(hp(&m), last_hp, "the story's at its last level");
+        assert_eq!(hp(&m), 450, "the story's at level 4");
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
         let notes = import_file(&content, &mut m, 0, &image).unwrap();
-        assert_eq!((m.sides[0].level(&content), hp(&m)), (Some(last), last_hp));
+        assert_eq!((m.sides[0].level(&content), hp(&m)), (Some(4), 450));
         assert!(notes.iter().any(|n| n.contains("its version has no such navi")), "{notes:?}");
         // A save operating MegaMan: a MegaMan side, who takes no level.
         image[0x2941] = 0;

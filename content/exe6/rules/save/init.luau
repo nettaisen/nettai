@@ -46,14 +46,16 @@ local function round_setup(side: number)
     end
 end
 
--- What every side's save brings at its highest (the rules' `setup_defaults`: no player states these): the base HP
--- (HP Memories to their last) and the Regular memory (RegUps to theirs).
+-- What a save brings at its highest, which a setup that says nothing has (the rules' `setup_defaults`): the base
+-- HP (HP Memories to their last) and the Regular memory (RegUps to theirs).
 local MAX_HP = 1000
 local MAX_REG_UP = 50
 
--- `validate`'s part: the navi's level as what the save brings allows: a navi code's level, 0 to its last
--- (../levels), which a link navi always has (it exists only through its code: the tools state its last) and MegaMan
--- may leave out (no code received); none for a navi without levels.
+-- `validate`'s part: the navi's level and the base HP as what the save brings allows: a navi code's level, 0 to its
+-- last (../levels), which a link navi always states (it exists only through its code: the tools state its last
+-- when a side states none) and MegaMan may leave out (no code received); none for a navi without levels. The base HP
+-- is MegaMan's (the navi that compiles a NaviCust): any other's HP is its level's, so a side of one that states
+-- another than the default states what has no effect.
 local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
     local setup = rules.setup_of(side)
     local navi: NaviDef? = setup.navi
@@ -71,6 +73,9 @@ local function validate(side: number, problem: (text: string, field: string?, en
         end
     elseif by_level ~= nil and navi.forms == nil then
         problem(string.format("%s has no level (0 to %d): a link navi exists only through its navi code", name, #by_level - 1), "level")
+    end
+    if navi.forms == nil and setup.hp ~= MAX_HP then
+        problem(string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name), "hp")
     end
 end
 
