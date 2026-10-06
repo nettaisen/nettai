@@ -13,8 +13,8 @@
 --    for that one's bug (`sub_813BD24`); five colors on the grid, or more
 --    (`sub_813BEA8`); a program on the board's frame (`sub_813C584`).
 -- 2. The stats reset (`sub_8136C24`): the setup's are already the navi's
---    fresh stats with what the save keeps (nettai-match's `Side`), so no
---    work here.
+--    fresh stats with what the save keeps (../save wrote the base HP, the
+--    Regular memory and the sun), so no work here.
 -- 3. The programs' effects (`sub_813C684`): the programs on the command
 --    line, right to left, of a group the first only (`exclusive`); the plus
 --    parts off it, in the list's order; the plus parts on it, left to
@@ -40,6 +40,7 @@
 
 local board = require("@self/board")
 local compile = require("@exelib/navicust/compile")
+local levels = require("./levels")
 local programs = require("@self/programs")
 
 -- Each bug at its level, 1 to 3 (`byte_813CC18`'s routines).
@@ -94,42 +95,6 @@ local EXE6: NaviCustGame = {
     glitch = true,
 }
 
--- `sub_8121154` with `sub_8123208`: what level `level` adds to `stats` (the
--- navi's `levels.by_level`, as nettai-match's `link_navis::add_level`): its
--- HP to the maximum (not the base HP); the buster's Attack, Rapid and
--- Charge, to 4 at most, the Mega level, to 10, and the custom level, to 8
--- (each clamped even when the level adds nothing); SuperArmor, FloatShoes
--- and AirShoes; the B+Back special it names.
-local function add_level(stats: Navi, level: number)
-    local levels = stats.navi.levels
-    if levels == nil then
-        return
-    end
-    local g = levels.by_level[level + 1]
-    if g == nil then
-        return
-    end
-    stats.max_hp = (stats.max_hp + g.hp) % 0x10000
-    stats.attack = math.min(stats.attack + (g.attack or 0), 4)
-    stats.rapid = math.min(stats.rapid + (g.rapid or 0), 4)
-    stats.charge = math.min(stats.charge + (g.charge or 0), 4)
-    stats.mega_level = math.min(stats.mega_level + (g.mega_level or 0), 10)
-    stats.custom_level = math.min(stats.custom_level + (g.custom_level or 0), 8)
-    if g.air_shoes then
-        stats.air_shoes = true
-    end
-    if g.float_shoes then
-        stats.float_shoes = true
-    end
-    if g.super_armor then
-        stats.super_armor = true
-    end
-    local back_special: Weapon? = g.back_special
-    if back_special ~= nil then
-        stats.back_special_weapon = back_special
-    end
-end
-
 -- `round_setup`: `side`'s NaviCust compiled into its stats; MegaMan from a
 -- navi code then gets his level's gains, and the HP its maximum.
 local function run(side: number)
@@ -139,7 +104,7 @@ local function run(side: number)
     local level = battle.navi_level(side)
     if level ~= nil then
         local stats = battle.navi(side)
-        add_level(stats, level)
+        levels.add(stats, level)
         stats.hp = stats.max_hp
     end
 end

@@ -1,63 +1,39 @@
-//! A link navi's level in the editor: changing the level or switching to a
-//! link navi fills in the stats its save's reload gives it
-//! (nettai-match's `link_navis`, docs/engine/link-navis.md), what the save
-//! keeps carried over; an edited stat stays edited, and the stats pane shows
-//! where it differs from the level's. An EXE5 team navi's level likewise: its
-//! HP as the story leaves it at that level (nettai-match's `story`).
+//! A navi's level in the editor: a link navi's navi code level (EXE6), a
+//! team navi's story level (EXE5). The side states the level and the rules
+//! build the navi's stats from it as the round is set up (a link navi's
+//! reload, a team navi's story HP: content's save systems), which the stats
+//! pane shows.
 
 use nettai_battle::Content;
-use nettai_battle::setup::NaviStats;
 use nettai_content_api::NaviHandle;
-use nettai_match::{Side, link_navis, stats};
+use nettai_match::{Side, link_navis};
 
-/// Whether the side's navi takes its stats from its link navi level.
+/// Whether the side's navi takes its stats from its level.
 pub fn has_levels(content: &Content, side: &Side) -> bool {
     link_navis::has_levels(content, side.navi)
 }
 
-/// Switch the side to `navi` as the game does, if it is a link navi: its
-/// reload at the side's level over the side's stats. False (nothing done)
-/// for another navi.
-pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) -> bool {
-    // (A link navi exists through its navi code: from no level, level 0.)
-    let level = side.navi_level;
-    side.navi_level = level.or(Some(0));
-    let Some(stats) = side.reloaded_as(content, navi) else {
-        side.navi_level = level;
-        return false;
-    };
+/// Switch the side to `navi` as the game does: a navi that takes its stats
+/// from a level keeps the side's (a link navi from no level, level 0: it
+/// exists through its navi code); MegaMan again has no navi code
+/// (`sub_809CD60`). His NaviCust is his alone: another navi's side has
+/// none, and states no base HP (its HP is its level's), and MegaMan's
+/// comes back empty. The form list follows the navi (`state_own_forms`).
+pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) {
     side.navi = navi;
-    side.stats = stats;
-    // (Its form list, if the rules take one, is none: a link navi doesn't
-    // change form.)
+    side.navi_level = if link_navis::has_levels(content, navi) {
+        side.navi_level.or(nettai_match::default_navi_level(content, navi)).or(Some(0))
+    } else {
+        nettai_match::default_navi_level(content, navi)
+    };
+    match nettai_match::empty_navicust(content, navi) {
+        Some(empty) => {
+            side.navicust.get_or_insert(empty);
+        }
+        None => {
+            side.navicust = None;
+            side.facts.reset(content, nettai_battle::content::PlayerFact::BaseHp.name());
+        }
+    }
     side.state_own_forms(content);
-    // (Only the navi that changes form has a NaviCust: MegaMan's compiles.)
-    if content.navi(navi).forms.is_none() {
-        side.navicust = None;
-    }
-    true
-}
-
-/// The level changed: a link navi's stats are its reload's at the new
-/// level (nothing changes for a level past its table, which the checks
-/// refuse).
-pub fn level_changed(content: &Content, side: &mut Side) {
-    if let Some(stats) = side.reloaded(content) {
-        side.stats = stats;
-    }
-}
-
-/// What "reset" gives the side: the navi's stats as a save gives them (a
-/// link navi's at its level).
-pub fn reset(content: &Content, side: &Side) -> NaviStats {
-    Side::save_base(content, side.navi, side.version(content), side.navi_level)
-}
-
-/// For a link navi, what its level gives stat `f` where the side's differs
-/// (an edited stat), as the stats pane says it.
-pub fn differs(content: &Content, side: &Side, f: &stats::Field) -> Option<String> {
-    let derived = side.reloaded(content)?;
-    let level = (f.get)(&derived);
-    let at = side.navi_level.map_or("no level".to_string(), |l| format!("level {l}"));
-    (level != (f.get)(&side.stats)).then(|| format!("{at} gives {}", stats::to_toml(content, level)))
 }

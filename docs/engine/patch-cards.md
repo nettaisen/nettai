@@ -212,7 +212,7 @@ rule, EXE6's patch-cards system (content/exe6/rules/patch_cards/init.luau, in co
   each switched on or off, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup exchange and
   the digest cover as the rest of the setup. The EXE6 system reads them with `battle.patch_cards(side)`
   (`{ card, enabled }` each). exe6-compat's `codec::patch_cards` makes them from a save's or trace's card list,
-  the frontend from each side's `cards` in the match file.
+  the frontend from each side's `patch_cards` in the match file.
 - **The application** is the system's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
   the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy

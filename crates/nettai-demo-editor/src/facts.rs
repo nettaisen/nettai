@@ -149,8 +149,6 @@ pub fn apply(content: &Content, game: &str, side: &mut Side, name: &str, edit: &
     if followed {
         side.state_own_forms(content);
     }
-    // (The version in the navi's stats goes by the side's.)
-    side.stats.version = nettai_match::version_byte(content, side.version(content));
     side.facts != before
 }
 
@@ -315,20 +313,20 @@ mod tests {
         let six = exe6_content();
         let mut m = nettai_match::Match::empty(&six, "exe6").unwrap();
         let side = &mut m.sides[0];
-        assert_eq!(lists(&six, "exe6", side), [(0, "Crosses".to_string())]);
-        assert_eq!(list_named(&six, "crosses"), Some(0));
+        assert_eq!(lists(&six, "exe6", side), [(3, "Crosses".to_string())]);
+        assert_eq!(list_named(&six, "crosses"), Some(3));
         assert_eq!(list_named(&six, "version"), None, "an enum: a row, no pane");
         let field = facts::field(&six, "crosses").unwrap();
         let offered = facts::offered(&six, "exe6", side, &field).unwrap();
         assert_eq!(offered.len(), 10, "MegaMan's Crosses of both versions: Gregar's five, then Falzar's");
         let crosses = |side: &Side| side.facts.get(&six, "crosses").unwrap().defs();
         // A new side states neither its version nor its Crosses. Choosing
-        // the version (a variant by its name; the stats' byte goes with it)
-        // fills in that version's own five, and choosing the other swaps
-        // them while they are the version's own.
+        // the version (a variant by its name) fills in that version's own
+        // five, and choosing the other swaps them while they are the
+        // version's own.
         assert_eq!(side.facts.get(&six, "crosses"), Some(Stated::Unlisted));
         assert!(apply(&six, "exe6", side, "version", &Edit::Variant("falzar".into())));
-        assert_eq!((side.version(&six), side.stats.version), (Some("falzar"), 1));
+        assert_eq!(side.version(&six), Some("falzar"));
         assert_eq!(crosses(side), offered[5..]);
         assert!(apply(&six, "exe6", side, "version", &Edit::Variant("gregar".into())));
         assert_eq!(crosses(side), offered[..5]);

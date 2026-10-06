@@ -1,117 +1,22 @@
-//! A link navi's stats as its save gives them at its level: EXE6's reload
+//! A link navi's stats at its level: EXE6's reload
 //! (`reloadCurNaviBaseStats_8120df0`, with the HP as
 //! `reloadCurNaviStatBoosts_813c3ac` leaves it), which the PET runs when a
 //! navi code is received or the navi switched, before any battle. Its
-//! tables are the navi definitions' `levels` (content/exe6/navis/*/navi.luau);
+//! tables are the navi definitions' `levels` (content/exe6/navis/*/init.luau);
 //! docs/engine/link-navis.md has the routines and how the level is set.
 //!
-//! Tools fill a side's stats from it: a match file's stats block is what
-//! differs from the navi's stats at its level ([`Side::save_base`]), and
-//! the editor fills them in as the level or the navi changes. The
-//! simulation never runs it: a round's stats are the save's, which already
-//! carry the level's (a recording's do). That is also why it is not an EXE6
-//! system's hook: the rules framework calls its systems inside a battle,
-//! on a round's setup, whose stats a `round_setup` hook would raise a
-//! second time, while a match needs the stats before any battle exists.
+//! A side states its navi and its level, and no stats: EXE6's save system
+//! (content/exe6/rules/save, rules/levels) runs the reload on the navi's
+//! fresh stats as the round is set up, the game cleared and in the real
+//! world, so a round starts as the save's reload left the navi. The chip
+//! lab's link navi recordings replay that reload (exe6-compat starts each
+//! such side from its fresh stats). An EXE5 team navi's level is its
+//! story's progress, which its attacks' damage reads; its HP is the save's
+//! (`story` gives what the story leaves it at a level, which a tool fills
+//! in).
 
-use crate::Side;
 use nettai_battle::content::Content;
-use nettai_battle::setup::NaviStats;
 use nettai_content_api::NaviHandle;
-
-/// What the reload is told besides the navi: its link navi level (none:
-/// the save's link navi flag, event 0x163, clear), the story's progress
-/// (`sub_8121108`: the highest of event flags 0x400, 0x500, 0x600, 0x800,
-/// 0xA00, 0xC00 and 0xE00 set, 0 to 6), and whether the PET is in the real
-/// world (map groups below 0x80), where the HP is set to its maximum.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Reload {
-    pub level: Option<u8>,
-    pub progress: usize,
-    pub real_world: bool,
-}
-
-/// The story's progress a match assumes: the game cleared, every flag set
-/// (as the chip lab's saves and Tango's have it).
-pub const CLEARED: usize = 6;
-
-impl Reload {
-    /// As a match has it: at `level`, the game cleared, in the real world.
-    pub fn at(level: Option<u8>) -> Reload {
-        Reload { level, progress: CLEARED, real_world: true }
-    }
-}
-
-/// `reloadCurNaviBaseStats_8120df0` for `navi`, a navi that doesn't change
-/// form (a link navi), over `from` (the stats block the save had: the
-/// navi's own when its level changes, the other navi's when it is switched
-/// to), then the HP as `reloadCurNaviStatBoosts_813c3ac` leaves it:
-///
-/// 1. its fresh stats (`init_8013B4E`: [`NaviStats::fresh`]);
-/// 2. what the save keeps from `from` (`byte_81210C8`): the folder, its
-///    Regular and tag chips, the Regular memory and the HP; without a level,
-///    the custom, Mega and Giga levels too;
-/// 3. the base and maximum HP by the story's progress (`off_8120F44`);
-/// 4. with a level, its gains ([`add_level`]);
-/// 5. in the real world, the HP its maximum; else the HP kept, but not
-///    past it.
-///
-/// None for a navi without levels or fresh stats, for the navi that changes
-/// form (MegaMan: his stats are his NaviCust's, and a level of his adds to
-/// them after it, [`add_level`]; docs/engine/link-navis.md), and for a
-/// level or progress past the navi's tables.
-pub fn reloaded(content: &Content, navi: NaviHandle, from: &NaviStats, r: Reload) -> Option<NaviStats> {
-    let data = content.navi(navi);
-    if data.changes_form() {
-        return None;
-    }
-    let levels = data.levels.as_ref()?;
-    let base = *levels.base_hp.get(r.progress)?;
-    let mut s = NaviStats::fresh(navi, content)?;
-    // What the save keeps (the folder's third Regular and tag chips, +0x30
-    // and +0x5A, aren't modeled).
-    s.folder = from.folder;
-    s.folder_reg = from.folder_reg;
-    s.reg_up = from.reg_up;
-    s.folder_tags = from.folder_tags;
-    s.hp = from.hp;
-    if r.level.is_none() {
-        s.mega_level = from.mega_level;
-        s.giga_level = from.giga_level;
-        s.custom_level = from.custom_level;
-    }
-    s.max_hp = base;
-    s.max_base_hp = base;
-    if let Some(level) = r.level {
-        add_level(content, navi, level, &mut s)?;
-    }
-    s.hp = if r.real_world { s.max_hp } else { s.hp.min(s.max_hp) };
-    Some(s)
-}
-
-/// `sub_8121154` with `sub_8123208`: what level `level` adds to `stats`
-/// (the navi's `levels.by_level`): its HP to the maximum (not the base
-/// HP); the buster's Attack, Rapid and Charge, to 4 at most, the Mega
-/// level, to 10, and the custom level, to 8 (each clamped even when the
-/// level adds nothing); SuperArmor, FloatShoes and AirShoes; the B+Back
-/// special it names. None for a navi without levels or a level past them.
-pub fn add_level(content: &Content, navi: NaviHandle, level: u8, stats: &mut NaviStats) -> Option<()> {
-    let g = *content.navi(navi).levels.as_ref()?.by_level.get(level as usize)?;
-    let clamp = |v: u8, n: u8, most: u8| (v as u16 + n as u16).min(most as u16) as u8;
-    stats.max_hp = stats.max_hp.wrapping_add(g.hp);
-    stats.attack = clamp(stats.attack, g.attack, 4);
-    stats.rapid = clamp(stats.rapid, g.rapid, 4);
-    stats.charge = clamp(stats.charge, g.charge, 4);
-    stats.mega_level = clamp(stats.mega_level, g.mega_level, 10);
-    stats.custom_level = clamp(stats.custom_level, g.custom_level, 8);
-    stats.air_shoes |= g.air_shoes;
-    stats.float_shoes |= g.float_shoes;
-    stats.super_armor |= g.super_armor;
-    if let Some(w) = g.back_special {
-        stats.weapons.back_special = Some(w);
-    }
-    Some(())
-}
 
 /// Whether `navi` takes its stats from its level: a link navi's (it has
 /// levels and doesn't change form), or the story's (EXE5's team navis,
@@ -121,50 +26,30 @@ pub fn has_levels(content: &Content, navi: NaviHandle) -> bool {
     data.levels.is_some() && !data.changes_form() || data.story.is_some()
 }
 
-/// The stats `navi` has at `level` over `from`: a link navi's reload, or
-/// the story's (`story::at`). None for a navi neither gives stats.
-fn at_level(content: &Content, navi: NaviHandle, from: &NaviStats, level: Option<u8>) -> Option<NaviStats> {
-    reloaded(content, navi, from, Reload::at(level)).or_else(|| crate::story::at(content, navi, from, level))
-}
-
-impl Side {
-    /// `navi`'s stats as a save gives them, of `version` (none: a side
-    /// without one), as a battle starts them: a link navi's at `level` (its
-    /// reload over its fresh stats), a team navi's as the story leaves them
-    /// at `level`, else its fresh stats ([`Side::base_stats`]). What a match
-    /// file's stats block is written over.
-    pub fn save_base(content: &Content, navi: NaviHandle, version: Option<&str>, level: Option<u8>) -> NaviStats {
-        let fresh = Side::base_stats(content, navi, version);
-        match at_level(content, navi, &fresh, level) {
-            Some(s) => crate::starting(content, s, version),
-            None => fresh,
-        }
-    }
-
-    /// The side's stats as its save's reload gives them at its level, over
-    /// its own (what the save keeps carried), as a battle starts them: what
-    /// the editor fills in as the level changes, and what it shows an
-    /// edited stat against. None for a navi without levels.
-    pub fn reloaded(&self, content: &Content) -> Option<NaviStats> {
-        self.reloaded_as(content, self.navi)
-    }
-
-    /// The side's stats were it to switch to `navi` (a link navi, or a
-    /// navi with a story), at its level: the new navi's reload over the
-    /// side's stats (`from`: what the save keeps carries over, as the game's
-    /// switch carries it). None for a navi without levels.
-    pub fn reloaded_as(&self, content: &Content, navi: NaviHandle) -> Option<NaviStats> {
-        at_level(content, navi, &self.stats, self.navi_level).map(|s| crate::starting(content, s, self.version(content)))
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::testing::exe6_content;
+    use crate::{Match, ids};
+    use nettai_battle::Content;
+    use nettai_battle::rules::Fact;
+    use nettai_battle::setup::NaviStats;
+    use nettai_content_api::Value;
+    use std::sync::Arc;
 
-    fn navi(content: &Content, key: &str) -> NaviHandle {
-        content.defs.navi_by_key(key).unwrap()
+    /// A live EXE6 match whose right side operates `navi` (a link navi) at
+    /// `level`, its Crosses none and its folder's Regular chip none.
+    fn with_link_navi(content: &Arc<Content>, navi: &str, level: u8) -> Match {
+        let mut m = crate::pick::live(content, "exe6", 3, None).unwrap();
+        let s = &mut m.sides[1];
+        (s.navi, s.navi_level, s.navicust) = (ids::navi(content, "exe6", navi).unwrap(), Some(level), None);
+        s.set_fact(content, "crosses", &[]).unwrap();
+        s.folder.regular = None;
+        m
+    }
+
+    /// The right side's stats as the round starts them.
+    fn started(content: &Arc<Content>, m: &Match) -> NaviStats {
+        crate::check::round_stats(content, m).unwrap()[1]
     }
 
     /// Each link navi at level 14 with the game cleared is what Tango's
@@ -187,18 +72,16 @@ mod tests {
             ("protoman", 4, 3, 3, 7, 6, 1400, 800),
         ];
         for (key, attack, rapid, charge, custom, mega, max_hp, base_hp) in tango {
-            let n = navi(&content, key);
-            let s = Side::save_base(&content, n, Some("falzar"), Some(14));
+            let s = started(&content, &with_link_navi(&content, key, 14));
             assert_eq!(
                 (s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.giga_level, s.max_hp, s.hp, s.max_base_hp),
                 (attack, rapid, charge, custom, mega, 1, max_hp, max_hp, base_hp),
                 "{key}"
             );
         }
-        let tengu = Side::save_base(&content, navi(&content, "tenguman"), Some("falzar"), Some(14));
+        let tengu = started(&content, &with_link_navi(&content, "tenguman", 14));
         assert!(tengu.float_shoes && tengu.air_shoes);
-        let protoman = navi(&content, "protoman");
-        let back = |level| Side::save_base(&content, protoman, Some("falzar"), Some(level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
+        let back = |level| started(&content, &with_link_navi(&content, "protoman", level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
         assert_eq!(back(14).as_deref(), Some("protoman/back-special-2"), "the reflecting guard from level 10");
         assert_eq!(back(9).as_deref(), Some("protoman/back-special"), "the guard that only guards below");
     }
@@ -208,75 +91,67 @@ mod tests {
     #[test]
     fn protoman_at_level_5() {
         let content = exe6_content();
-        let s = Side::save_base(&content, navi(&content, "protoman"), Some("falzar"), Some(5));
+        let s = started(&content, &with_link_navi(&content, "protoman", 5));
         assert_eq!((s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.max_hp, s.max_base_hp), (1, 1, 1, 5, 5, 1150, 800));
     }
 
-    /// The reload keeps the save's folder fields and Regular memory, and
-    /// without a level the custom, Mega and Giga levels too; the story's
-    /// progress gives the base HP; in the internet the HP is kept, up to
-    /// the maximum.
+    /// The reload keeps what the save brings (the Regular memory and the
+    /// sun, which the side states) and is its level's over its fresh stats;
+    /// the base HP is the cleared game's; the base HP the side states is
+    /// MegaMan's alone.
     #[test]
     fn what_the_reload_keeps() {
         let content = exe6_content();
-        let heatman = navi(&content, "heatman");
-        let mut from = NaviStats::fresh(heatman, &content).unwrap();
-        (from.reg_up, from.folder, from.folder_reg, from.hp) = (50, 2, [3, 0xFF], 2500);
-        (from.custom_level, from.mega_level, from.giga_level, from.attack) = (7, 8, 3, 4);
-        let at = |from: &NaviStats, level, progress, real_world| reloaded(&content, heatman, from, Reload { level, progress, real_world }).unwrap();
-        let s = at(&from, Some(0), CLEARED, true);
-        assert_eq!((s.reg_up, s.folder, s.folder_reg), (50, 2, [3, 0xFF]));
-        assert_eq!((s.custom_level, s.mega_level, s.giga_level, s.attack), (5, 5, 1, 0), "the level's, over fresh");
-        assert_eq!((s.max_base_hp, s.max_hp, s.hp), (800, 900, 900));
-        let s = at(&from, None, 0, true);
-        assert_eq!((s.custom_level, s.mega_level, s.giga_level, s.attack), (7, 8, 3, 0), "no level: the save's");
-        assert_eq!((s.max_base_hp, s.max_hp, s.hp), (300, 300, 300));
-        let s = at(&from, Some(14), 3, false);
-        assert_eq!((s.max_base_hp, s.max_hp, s.hp), (400, 1600, 1600), "the internet: the save's HP, up to the maximum");
-        from.hp = 10;
-        assert_eq!(at(&from, Some(14), 3, false).hp, 10);
-        assert!(reloaded(&content, heatman, &from, Reload::at(Some(15))).is_none(), "past the levels");
-        assert!(reloaded(&content, navi(&content, "megaman"), &from, Reload::at(Some(3))).is_none(), "MegaMan's are his NaviCust's");
+        let mut m = with_link_navi(&content, "heatman", 0);
+        let s = &mut m.sides[1];
+        s.set_fact(&content, "reg_up", &[Fact::Value(Value::Int(50))]).unwrap();
+        s.set_fact(&content, "sun", &[Fact::Value(Value::Bool(true))]).unwrap();
+        s.set_fact(&content, "hp", &[Fact::Value(Value::Int(1234))]).unwrap();
+        let st = started(&content, &m);
+        let fresh = NaviStats::fresh(m.sides[1].navi, &content).unwrap();
+        assert_eq!((st.reg_up, st.sun), (50, true));
+        assert_eq!((st.custom_level, st.mega_level, st.giga_level), (fresh.custom_level, fresh.mega_level, fresh.giga_level));
+        assert_eq!((st.max_base_hp, st.max_hp, st.hp), (800, 900, 900));
     }
 
-    /// A level's gains clamp: the buster's levels at 4, the Mega level at
-    /// 10, the custom level at 8, even when the level adds nothing.
+    /// A level's gains clamp: MegaMan from a navi code at level 14 gets its
+    /// gains over his NaviCust (EXE6's navicust system), the buster's levels
+    /// at 4, the Mega level at 10, the custom level at 8.
     #[test]
     fn a_levels_gains_clamp() {
         let content = exe6_content();
-        let megaman = navi(&content, "megaman");
-        let mut s = NaviStats::fresh(megaman, &content).unwrap();
-        (s.attack, s.rapid, s.charge, s.mega_level, s.custom_level, s.max_hp) = (3, 9, 4, 9, 8, 1000);
-        add_level(&content, megaman, 14, &mut s).unwrap();
-        assert_eq!((s.attack, s.rapid, s.charge, s.mega_level, s.custom_level, s.max_hp), (4, 4, 4, 10, 8, 1300));
-        assert!(add_level(&content, megaman, 15, &mut s).is_none());
+        let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
+        m.sides[0].navi_level = Some(14);
+        let s = crate::check::round_stats(&content, &m).unwrap()[0];
+        let fresh = NaviStats::fresh(m.sides[0].navi, &content).unwrap();
+        let g = content.navi(m.sides[0].navi).levels.as_ref().unwrap().by_level[14];
+        let at = |v: u8, n: u8, most: u8| (v + n).min(most);
+        assert_eq!(
+            (s.attack, s.rapid, s.charge, s.mega_level, s.custom_level, s.max_hp),
+            (
+                at(fresh.attack, g.attack, 4),
+                at(fresh.rapid, g.rapid, 4),
+                at(fresh.charge, g.charge, 4),
+                at(fresh.mega_level, g.mega_level, 10),
+                at(fresh.custom_level, g.custom_level, 8),
+                100 + g.hp
+            )
+        );
     }
 
-    /// A match file names a link navi and its level: its stats are the
-    /// level's, so the file's stats block has only what the save keeps (the
-    /// Regular memory MegaMan had, carried over by the switch) and an edited
-    /// stat.
+    /// A match file names a link navi and its level, and no stats: its
+    /// round's are the level's, with the Regular memory the file states.
     #[test]
     fn a_match_file_gives_a_link_navi_its_levels_stats() {
         let content = exe6_content();
-        let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
-        let heatman = navi(&content, "heatman");
-        let s = &mut m.sides[1];
-        s.navi_level = Some(14);
-        // (MegaMan's Regular memory, which the switch carries over.)
-        s.stats.reg_up = 50;
-        s.stats = s.reloaded_as(&content, heatman).unwrap();
-        (s.navi, s.navicust) = (heatman, None);
-        s.set_fact(&content, "crosses", &[]).unwrap();
-        s.folder.regular = None;
+        let mut m = with_link_navi(&content, "heatman", 14);
+        m.sides[1].set_fact(&content, "reg_up", &[Fact::Value(Value::Int(50))]).unwrap();
         let text = crate::write(&content, &m);
-        assert!(text.contains("level = 14") && text.ends_with("[right.stats]\nregular_memory = 50\n"), "{text}");
+        let right = &text[text.find("[right]").unwrap()..];
+        assert!(right.contains("level = 14") && right.contains("reg_up = 50") && !text.contains("stats"), "{text}");
         let back = crate::parse(&content, &text).unwrap();
-        assert_eq!((back.sides[1].stats.max_hp, back.sides[1].stats.attack), (2000, 3));
         assert_eq!(back, m);
-        m.sides[1].stats.attack = 1;
-        let text = crate::write(&content, &m);
-        assert!(text.ends_with("[right.stats]\nattack = 1\nregular_memory = 50\n"), "{text}");
-        assert_eq!(crate::parse(&content, &text).unwrap(), m);
+        let s = started(&content, &back);
+        assert_eq!((s.max_hp, s.attack, s.reg_up), (2000, 3, 50));
     }
 }

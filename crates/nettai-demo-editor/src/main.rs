@@ -34,7 +34,7 @@ usage: nettai-demo-editor [OPTIONS] [MATCH.toml]
   --frontend PATH  the nettai-demo program Play runs (default: the one
                    beside this program, else nettai-demo on the PATH)
   --tab NAME       start on a pane: arena, or left- or right- and navi,
-                   folder, auto-battle, cards, navicust, stats, or the
+                   folder, auto-battle, patch-cards, navicust, stats, or the
                    name of a list the game's rules take of a side
                    (exe6's crosses, exe5's souls)
   --screenshot PNG write the window to PNG once it has drawn, and quit";

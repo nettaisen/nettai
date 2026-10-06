@@ -12,9 +12,14 @@ local emotion = require("@self/emotion")
 local forms = require("@self/forms")
 local navicust = require("@self/navicust")
 local patch_cards = require("@self/patch_cards")
+local save = require("@self/save")
 
 return define.ruleset {
     systems = {
+        -- What the save brings to the navi's stats (the base HP, the Regular
+        -- memory, the sun), and a link navi's stats at its level: first, as
+        -- the reload builds the stats the NaviCust's compile reads.
+        save,
         -- The Crosses on the custom screen: ChargeCross's chips and the
         -- hand size.
         cross,
