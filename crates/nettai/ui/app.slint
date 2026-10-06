@@ -73,7 +73,6 @@ export component AppWindow inherits Window {
     callback battle-restart();
     callback battle-quit();
     callback battle-rematch();
-    callback battle-language();
     callback battle-touch(int, bool);
 
     callback lobby-mode(int);
@@ -145,6 +144,8 @@ export component AppWindow inherits Window {
                 root.nav(NavAction.up);
             } else if event.text == Key.DownArrow || event.text == Key.Tab {
                 root.nav(NavAction.down);
+            } else if event.text == Key.Backtab {
+                root.nav(NavAction.up);
             } else if event.text == Key.Escape {
                 root.nav(NavAction.back);
             } else {
@@ -173,6 +174,12 @@ export component AppWindow inherits Window {
                 root.nav(NavAction.previous);
             } else if event.text == "s" || event.text == "S" || event.text == Key.PageDown {
                 root.nav(NavAction.next);
+            } else if event.text == Key.Tab {
+                // (The next item; Slint's own focus would move into a
+                // screen not shown.)
+                root.nav(NavAction.down);
+            } else if event.text == Key.Backtab {
+                root.nav(NavAction.up);
             } else {
                 return reject;
             }
@@ -312,9 +319,6 @@ export component AppWindow inherits Window {
             rematch => {
                 root.battle-rematch();
             }
-            next-language => {
-                root.battle-language();
-            }
             sound(s) => {
                 root.sound(s);
             }
@@ -361,7 +365,6 @@ export component AppWindow inherits Window {
     in property <int> battle-result <=> battle.result;
     in property <string> battle-stopped <=> battle.stopped;
     in property <string> battle-recorded <=> battle.recorded;
-    in property <string> battle-language-name <=> battle.language;
     in-out property <int> battle-cursor <=> battle.cursor;
     in-out property <bool> title-started <=> title.started;
     in-out property <int> title-cursor <=> title.cursor;

@@ -21,8 +21,8 @@ pub enum BattleKey {
     Button(u16),
     /// Esc: the pause.
     Pause,
-    /// Tab: the next language.
-    Language,
+    /// Tab: nothing in the battle (it would move the menus' focus).
+    Nothing,
     /// Space, `-`, `=`, `.`: a replay's pause, speed and step.
     PlayPause,
     Slower,
@@ -47,7 +47,7 @@ pub fn battle_key(code: KeyCode) -> Option<BattleKey> {
         KeyCode::Enter | KeyCode::NumpadEnter => Button(keys::START),
         KeyCode::Backspace | KeyCode::ShiftRight => Button(keys::SELECT),
         KeyCode::Escape => Pause,
-        KeyCode::Tab => Language,
+        KeyCode::Tab => Nothing,
         KeyCode::Space => PlayPause,
         KeyCode::Minus => Slower,
         KeyCode::Equal => Faster,

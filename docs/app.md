@@ -83,7 +83,7 @@ focus handling sees them. They are read by physical key (Z and X sit where they 
 timestamped as they arrive. While the battle has the keys, they don't reach the menus. The map is nettai-demo's:
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
-- Esc pauses, and Tab shows the next language;
+- Esc pauses (Tab does nothing in the battle: in the menus it is the next item, Shift+Tab the one before);
 - in a replay, Space pauses, `-` and `=` change the speed, and `.` steps a frame.
 
 **The gamepad** is read through gilrs and polled each frame:
@@ -139,7 +139,7 @@ The screens:
   both sides and the left navi fighting.
 - **Play.** No game is assumed: the player chooses one. The arenas are each round's field, played alone for 24
   ticks and drawn (`arenas.rs`).
-- **The battle.** The pause has resume, start over, language and quit. The result has the score, the replay
+- **The battle.** The pause has resume, start over and quit (the language is Settings' alone). The result has the score, the replay
   file it was recorded to, rematch and menu. A replay has its transport, and netplay its connection line and
   "reconnecting (N s)".
 - **The lobby.** §4.
