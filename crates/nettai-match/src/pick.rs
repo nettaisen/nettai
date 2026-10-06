@@ -139,7 +139,7 @@ impl Side {
         for (field, variant) in stated {
             side.set_fact(content, field, &[Fact::Name(variant)])?;
         }
-        side.folder = folder.into();
+        side.set_folder(content, &folder.into())?;
         let list: Vec<Fact> = forms.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
         side.set_fact(content, PlayerFact::CrossList.name(), &list)?;
         Ok(side)
@@ -193,14 +193,9 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
             facts.set(content, f.name, &[])?;
         }
     }
-    let mut side = Side {
-        navi,
-        folder: folder.into(),
-        patch_cards: Vec::new(),
-        navicust: None,
-        auto_battle: Default::default(),
-        facts,
-    };
+    let mut side = Side { auto_battle: Default::default(), facts };
+    side.set_navi(content, navi)?;
+    side.set_folder(content, &folder.into())?;
     // (Its form list, where the rules take one: its version's own; its
     // navi's level, where it must have one: 0.)
     side.state_own_forms(content);
@@ -211,12 +206,12 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
     if let Ok(mut b) = crate::check::start(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
     {
-        side.folder = folders::random_folder(content, game, &mut b, 0, picks).into();
+        side.set_folder(content, &folders::random_folder(content, game, &mut b, 0, picks).into())?;
     }
     // What a navi in auto battle plays from the side's save, where the game has
     // navis in auto battle: what the game would have learned from this folder.
     if crate::auto_battle::has(content) {
-        side.auto_battle = crate::AutoBattle::of_folder(content, &side.folder);
+        side.auto_battle = crate::AutoBattle::of_folder(content, &side.folder(content));
     }
     Ok(side)
 }
@@ -344,7 +339,8 @@ mod tests {
         let fresh = &crate::Match::empty(&content, "exe6").unwrap().sides[0];
         let started = crate::check::round_stats(&content, &m).unwrap();
         for (side, s) in m.sides.iter().zip(&started) {
-            assert_eq!((side.navi, side.navicust, side.level(&content)), (fresh.navi, fresh.navicust, fresh.level(&content)));
+            let navicust = |s: &Side| (crate::testing::navicust_expansions(&content, s), s.facts.get(&content, "navicust_programs"));
+            assert_eq!((side.navi(&content), navicust(side), side.level(&content)), (fresh.navi(&content), navicust(fresh), fresh.level(&content)));
             assert!(side.version(&content).is_some(), "a picked EXE6 side states its version");
             assert_eq!((s.max_base_hp, s.hp, s.max_hp), (100, 100, 100));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
@@ -361,7 +357,7 @@ mod tests {
             seen.insert(setup.settings.stage);
             let mut b = crate::check::start(&content, &m).unwrap();
             for side in 0..2 {
-                assert!(folders::problems(&mut b, side as u8, &m.sides[side].folder).is_empty());
+                assert!(folders::problems(&mut b, side as u8, &m.sides[side].folder(&content)).is_empty());
                 // (What the round's player brought, as the engine reads
                 // it back: the side's list and version.)
                 use nettai_battle::content::PlayerFact;
@@ -381,8 +377,13 @@ mod tests {
                 assert_eq!(Some(b.stats[side].version as usize), place);
                 // (A picked side states its version and its form list, and
                 // nothing else: the rest is its rules' defaults.)
-                let stated: Vec<&str> =
-                    crate::facts::fields(&content).iter().map(|f| f.name).filter(|n| !m.sides[side].facts.is_default(&content, n)).collect();
+                // (Besides its navi and its folder.)
+                let side_parts = ["navi", "folder", "regular_chip", "tag_chips"];
+                let stated: Vec<&str> = crate::facts::fields(&content)
+                    .iter()
+                    .map(|f| f.name)
+                    .filter(|n| !side_parts.contains(n) && !m.sides[side].facts.is_default(&content, n))
+                    .collect();
                 assert_eq!(stated, ["crosses", "version"]);
             }
             assert_eq!(live(&content, "exe6", seed, None).unwrap(), m);
@@ -414,7 +415,7 @@ mod tests {
         let content = crate::testing::exe6_content();
         let m = plain(&content, "exe6", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
-        assert_ne!(m.sides[0].folder.chips[0], m.sides[0].folder.chips[1], "a picked folder");
+        assert_ne!(m.sides[0].folder(&content).chips[0], m.sides[0].folder(&content).chips[1], "a picked folder");
         // (Its sides' versions picked: EXE6's rules take one.)
         assert!(m.sides.iter().all(|s| s.version(&content).is_some()));
         let content = crate::testing::exe5_content();
@@ -426,10 +427,15 @@ mod tests {
         assert!(m.sides.iter().all(|s| s.version(&content).is_none()));
         assert!(crate::check::round_stats(&content, &m).unwrap().iter().all(|s| s.version == 0));
         // (Nor anything else: EXE5's rules require no fact, and a random
-        // side's are their defaults.)
-        assert!(m.sides.iter().all(|s| s.facts == crate::Facts::defaults(&content)));
+        // side's are their defaults, but its navi and its folder.)
+        let defaults = crate::Facts::defaults(&content);
+        for s in &m.sides {
+            for f in crate::facts::fields(&content).into_iter().filter(|f| !["navi", "folder", "regular_chip", "tag_chips"].contains(&f.name)) {
+                assert_eq!(s.facts.get(&content, f.name), defaults.get(&content, f.name), "{}", f.name);
+            }
+        }
         assert!(!crate::write(&content, &m).contains("version"));
-        assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
+        assert!(m.sides.iter().flat_map(|s| s.folder(&content).chips().collect::<Vec<_>>()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
         // An EXE5 match states what a navi in auto battle plays: each side's
         // folder's chips, as the game would have learned them (a folder's
         // own chips alone, none in the first three places and no
@@ -440,10 +446,10 @@ mod tests {
             assert!(s.auto_battle.list(&LISTS[0]).iter().chain(s.auto_battle.list(&PATTERNS)).all(|e| *e == Entry::Empty));
             for e in s.auto_battle.places.iter().filter(|e| **e != Entry::Empty) {
                 let Entry::Chip(c) = e else { panic!("a picked side has chips alone: {e:?}") };
-                assert!(s.folder.chips().any(|f| f.id == *c));
+                assert!(s.folder(&content).chips().any(|f| f.id == *c));
             }
             assert_eq!(s.auto_battle.records, [Record::ZERO; 8]);
-            assert_eq!(s.auto_battle, crate::AutoBattle::of_folder(&content, &s.folder));
+            assert_eq!(s.auto_battle, crate::AutoBattle::of_folder(&content, &s.folder(&content)));
         }
         assert_ne!(m.sides[0].auto_battle, m.sides[1].auto_battle);
         let text = crate::write(&content, &m);

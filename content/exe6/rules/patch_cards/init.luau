@@ -55,7 +55,7 @@ end
 -- MegaMan's stats: with a link navi operated the original doesn't run the
 -- routine, and the flag is as the stats are.
 local function apply(side: number)
-    local installed = battle.patch_cards(side)
+    local installed: { InstalledCard } = rules.setup_of(side).patch_cards
     if #installed == 0 then
         return
     end
@@ -145,6 +145,17 @@ local function apply(side: number)
     battle.set_emotion_window_glitch(side, bugged(stats))
 end
 
+-- The most MB of cards a list holds.
+local LIST_MB = 80
+
+-- `validate`'s part: no card installed twice, and the cards' MB together at most the list's.
+local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+    apply_cards.check(rules.setup_of(side).patch_cards, LIST_MB, function(text: string, entry: number?)
+        problem(text, "patch_cards", entry)
+    end)
+end
+
 return {
     apply = apply,
+    validate = validate,
 }

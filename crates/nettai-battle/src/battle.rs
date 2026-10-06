@@ -486,6 +486,9 @@ pub struct Battle {
     /// A folder a tool is having checked (`Battle::check_folder`), and what
     /// it breaks: no part of the simulation.
     pub(crate) folder_check: Option<crate::rules::FolderCheck>,
+    /// The problems of the setup a tool asked the rules to validate, while
+    /// it is validated (`Battle::validate`).
+    pub(crate) validation: Option<Vec<crate::rules::Problem>>,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -760,8 +763,27 @@ impl Battle {
             sound: [Vec::new(), Vec::new()],
             outcome: None,
             folder_check: None,
+            validation: None,
             setup,
         };
+        // The navi the player states (the engine's navi fact) is the one the
+        // round's stats are of: a setup that says another is two setups.
+        for side in 0..2u8 {
+            let stated = b.fact(side, PlayerFact::Navi).and_then(|f| match f.value() {
+                nettai_content_api::FieldValue::Ref(Some((_, h))) => Some(h),
+                _ => None,
+            });
+            if let Some(h) = stated {
+                let navi = b.stats[side as usize].navi;
+                assert_eq!(
+                    h,
+                    navi.0,
+                    "side {side}'s setup states the navi {} but its stats are {}'s",
+                    b.content.defs.navi(nettai_content_api::NaviHandle(h)).key,
+                    b.content.defs.navi(navi).key
+                );
+            }
+        }
         // The navi's version byte (NaviStats+0x20) is the player's, which
         // the console sets as the battle starts: the place of the version
         // they state among those the rules declare (the engine's version

@@ -62,7 +62,7 @@ local function bug_count(stats: Navi): number
 end
 
 -- The cards' run (0x08137B00) over `stats`: the copy into them (0x081382B8's routines).
-local function run(stats: Navi, installed: { { card: PatchCard, enabled: boolean } })
+local function run(stats: Navi, installed: { InstalledCard })
     -- The block (0x08137B56): the working HP and the slots, seeded from the stats.
     local slot: { [string]: any } = {
         attack = stats.attack,
@@ -139,8 +139,9 @@ local function apply(side: number)
     if stats.navi.forms == nil then
         return
     end
-    local installed = battle.patch_cards(side)
-    if battle.navicust(side) == nil and #installed == 0 then
+    local setup = rules.setup_of(side)
+    local installed: { InstalledCard } = setup.patch_cards
+    if setup.navicust_expansions == nil and #installed == 0 then
         return
     end
     if #installed > 0 then
@@ -154,6 +155,17 @@ local function apply(side: number)
     stats.hp = stats.max_hp
 end
 
+-- The most MB of cards a list holds.
+local LIST_MB = 80
+
+-- `validate`'s part: no card installed twice, and the cards' MB together at most the list's.
+local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+    apply_cards.check(rules.setup_of(side).patch_cards, LIST_MB, function(text: string, entry: number?)
+        problem(text, "patch_cards", entry)
+    end)
+end
+
 return {
     apply = apply,
+    validate = validate,
 }

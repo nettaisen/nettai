@@ -54,3 +54,68 @@ pub fn exe5_content() -> Arc<Content> {
     static EXE5: OnceLock<Arc<Content>> = OnceLock::new();
     EXE5.get_or_init(|| Arc::new(defined(&["exe5"]).unwrap_or_else(|e| panic!("content/exe5: {e}")))).clone()
 }
+
+/// A program on a NaviCust, for a test: which, in which of its colors (its
+/// place in the definition's `colors`), its center, its quarter turns,
+/// compressed or not.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlacedProgram {
+    pub program: nettai_content_api::NaviCustProgramHandle,
+    pub color: u8,
+    pub x: u8,
+    pub y: u8,
+    pub rotation: u8,
+    pub compressed: bool,
+}
+
+/// State `side`'s NaviCust (its rules' `navicust_expansions` and
+/// `navicust_programs`): `parts` on the board of `expansions`.
+pub fn set_navicust(content: &Content, side: &mut crate::Side, parts: &[PlacedProgram], expansions: u8) {
+    use nettai_battle::rules::Fact;
+    use nettai_content_api::{Registry, Value};
+    let records: Vec<Fact> = parts
+        .iter()
+        .map(|p| {
+            let color = content.defs.navicust_program(p.program).colors[p.color as usize].as_str();
+            Fact::Record(vec![
+                ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, p.program.0))),
+                ("color", Fact::Name(color)),
+                ("x", Fact::Value(Value::Int(p.x as i64))),
+                ("y", Fact::Value(Value::Int(p.y as i64))),
+                ("rotation", Fact::Value(Value::Int(p.rotation as i64))),
+                ("compressed", Fact::Value(Value::Bool(p.compressed))),
+            ])
+        })
+        .collect();
+    side.set_fact(content, "navicust_programs", &records).unwrap();
+    side.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Int(expansions as i64))]).unwrap();
+}
+
+/// `side`'s NaviCust's expansions (its `navicust_expansions`); none: no
+/// NaviCust.
+pub fn navicust_expansions(content: &Content, side: &crate::Side) -> Option<u8> {
+    match side.facts.fact(content, "navicust_expansions")?.value() {
+        nettai_content_api::FieldValue::OptionalU8(n) => n,
+        _ => None,
+    }
+}
+
+/// Patch cards of `game` from a list of their names, comma-separated, in
+/// the order they apply (`canodumb,-shadow`: a name after `-` installed but
+/// switched off), as the rules' `patch_cards` take them.
+pub fn patch_cards(content: &Content, game: &str, list: &str) -> Vec<nettai_battle::rules::Fact<'static>> {
+    use nettai_battle::rules::Fact;
+    use nettai_content_api::{Registry, Value};
+    list.split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|item| {
+            let (name, on) = match item.strip_prefix('-') {
+                Some(name) => (name, false),
+                None => (item, true),
+            };
+            let card = crate::ids::patch_card(content, game, name).unwrap_or_else(|| panic!("no patch card {name:?} in {game}"));
+            Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))])
+        })
+        .collect()
+}

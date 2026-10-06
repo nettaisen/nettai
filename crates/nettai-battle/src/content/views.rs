@@ -102,6 +102,20 @@ impl ButtonView {
 /// rules' setup; a game whose rules don't declare it has none.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PlayerFact {
+    /// The navi they play (a definition): the round's stats are its
+    /// (`Battle::new` holds the stats' navi to it, where it is stated).
+    Navi,
+    /// Their folder, as their save keeps it: a list of `{ chip, code }`,
+    /// an entry with no chip empty (a folder being made). A tool deals the
+    /// round's battle folder from it (`Match::round`), and a recording
+    /// gives the battle folder dealt.
+    Folder,
+    /// Their Regular chip, an entry of the folder (from 0), dealt first;
+    /// none: no Regular chip.
+    RegularChip,
+    /// Their two tag chips, entries of the folder (from 0), dealt next to
+    /// each other (EXE6's); an empty list: none.
+    TagChips,
     /// The version of the game they play, one of the names its field lists
     /// (EXE6's "gregar" or "falzar": the version's own pictures).
     Version,
@@ -132,11 +146,26 @@ pub enum PlayerFact {
 
 impl PlayerFact {
     pub const ALL: &'static [PlayerFact] =
-        &[PlayerFact::Version, PlayerFact::BeastOut, PlayerFact::CrossList, PlayerFact::Level, PlayerFact::BaseHp, PlayerFact::SpTimes];
+        &[
+            PlayerFact::Navi,
+            PlayerFact::Folder,
+            PlayerFact::RegularChip,
+            PlayerFact::TagChips,
+            PlayerFact::Version,
+            PlayerFact::BeastOut,
+            PlayerFact::CrossList,
+            PlayerFact::Level,
+            PlayerFact::BaseHp,
+            PlayerFact::SpTimes,
+        ];
 
     /// The setup field's name.
     pub fn name(self) -> &'static str {
         match self {
+            PlayerFact::Navi => "navi",
+            PlayerFact::Folder => "folder",
+            PlayerFact::RegularChip => "regular_chip",
+            PlayerFact::TagChips => "tag_chips",
             PlayerFact::Version => "version",
             PlayerFact::BeastOut => "beast_out",
             PlayerFact::CrossList => "crosses",
@@ -149,20 +178,31 @@ impl PlayerFact {
     /// Whether a setup field of type `ty` holds the fact, and what it must
     /// be if not.
     pub(crate) fn fits(self, ty: &FieldType) -> Result<(), &'static str> {
+        let record_of = |ty: &FieldType, want: &[(&str, fn(&FieldType) -> bool)]| match ty {
+            FieldType::Record(fields) => {
+                fields.fields().len() == want.len() && want.iter().all(|(name, ok)| fields.index_of(name).is_some_and(|i| ok(&fields.field(i).ty)))
+            }
+            _ => false,
+        };
         let ok = match self {
+            PlayerFact::Navi => matches!(ty, FieldType::Ref(Registry::Navi, _)),
+            PlayerFact::Folder => match ty {
+                FieldType::List(elem, _) => {
+                    record_of(elem, &[("chip", |t| matches!(t, FieldType::Ref(Registry::Chip, _))), ("code", |t| matches!(t, FieldType::Code))])
+                }
+                _ => false,
+            },
+            PlayerFact::RegularChip => matches!(ty, FieldType::OptionalU8),
+            PlayerFact::TagChips => matches!(ty, FieldType::List(e, 2) if matches!(**e, FieldType::U8)),
             PlayerFact::Version => matches!(ty, FieldType::Enum(_)),
             PlayerFact::BeastOut => matches!(ty, FieldType::Bool),
             PlayerFact::CrossList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
             PlayerFact::Level => matches!(ty, FieldType::OptionalU8),
             PlayerFact::BaseHp => matches!(ty, FieldType::U16),
             PlayerFact::SpTimes => match ty {
-                FieldType::List(elem, _) => match &**elem {
-                    FieldType::Record(fields) => {
-                        let names: Vec<(&str, &FieldType)> = fields.fields().iter().map(|f| (f.name.as_str(), &f.ty)).collect();
-                        matches!(names[..], [("chip", FieldType::Ref(Registry::Chip, _)), ("frames", FieldType::U16)])
-                    }
-                    _ => false,
-                },
+                FieldType::List(elem, _) => {
+                    record_of(elem, &[("chip", |t| matches!(t, FieldType::Ref(Registry::Chip, _))), ("frames", |t| matches!(t, FieldType::U16))])
+                }
                 _ => false,
             },
         };
@@ -170,6 +210,10 @@ impl PlayerFact {
             return Ok(());
         }
         Err(match self {
+            PlayerFact::Navi => "a navi",
+            PlayerFact::Folder => "a list of { chip = \"chip\", code = \"code\" }",
+            PlayerFact::RegularChip => "a u8? (an entry of the folder, or none)",
+            PlayerFact::TagChips => "a list of two u8 (entries of the folder)",
             PlayerFact::Version => "a list of the versions' names",
             PlayerFact::BeastOut => "a bool",
             PlayerFact::CrossList => "an array of forms",

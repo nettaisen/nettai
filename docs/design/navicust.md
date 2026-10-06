@@ -25,11 +25,13 @@ centered on its middle cell, quarter turns as EXE6's four copies make them (`nav
 (board), `f` (frame) and `.` (no cell) cells. It also knows the one placement rule every NaviCust game shares,
 `NaviCustRules::fits` (EXE6's `sub_813BB00`: each covered cell is a board or frame cell, and not all of them are
 frame). It knows nothing of what a program does. The definition's other fields are the game's, which its rules
-read through `battle.navicust(side)`. A game without a NaviCust has no `navicust` section and no part to compile
-one.
+read with the side's setup (`rules.setup_of(side)`: since step c3 a player's NaviCust is two facts of the rules'
+setup, `navicust_expansions` and `navicust_programs`, a list of `{ program, color, x, y, rotation, compressed }`,
+the color one of the program's `colors` by name). A game without a NaviCust has no `navicust` section and no part
+to compile one.
 
-**None means none.** `PlayerSetup::navicust` is `None` when the setup's stats are already the NaviCust's: a
-recording's. The part then does nothing, so the golden traces and the lab are unchanged. `Some` means the stats
+**None means none.** `navicust_expansions` is none when the setup's stats are already the NaviCust's: a
+recording's (until step c3, `PlayerSetup::navicust` was `None`). The part then does nothing, so the golden traces and the lab are unchanged. `Some` means the stats
 are the navi's before the NaviCust: its fresh stats with what the save keeps, which is what the original's reset
 leaves (§3, step 3). A match states no stats: every side starts from its navi's fresh stats (nettai-match's
 `Side::fresh_stats`), the game's save module writes what the save keeps (its `hp`, `reg_up` and, in EXE6, `sun`),

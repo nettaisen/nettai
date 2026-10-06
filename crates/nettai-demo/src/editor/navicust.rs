@@ -22,7 +22,7 @@ use iced::widget::{Column, button, canvas as canvas_widget, column, container, m
 use iced::{Alignment, Color, Element, Length, Point, Rectangle, Renderer, Size, Theme, Vector};
 use nettai_battle::Content;
 use nettai_battle::content::{Board, BoardCell, NaviCustRules};
-use nettai_battle::navicust::{NaviCust, PlacedProgram, SIZE, Shape, cells};
+use nettai_battle::navicust::{SIZE, Shape, cells};
 use nettai_content_api::NaviCustProgramHandle;
 use nettai_match::{Arena, Side};
 
@@ -98,14 +98,85 @@ fn color(name: &str) -> Color {
     Color::from_rgb8(r, g, b)
 }
 
-fn set(side: &mut Side, parts: Vec<PlacedProgram>, expansions: u8) {
-    side.navicust = NaviCust::new(&parts, expansions).ok().or(side.navicust);
+/// A program on the grid, as the pane edits it: an entry of the side's
+/// `navicust_programs` (its color by its place in the definition's
+/// `colors`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlacedProgram {
+    pub program: NaviCustProgramHandle,
+    pub color: u8,
+    pub x: u8,
+    pub y: u8,
+    pub rotation: u8,
+    pub compressed: bool,
+}
+
+/// The side's NaviCust (its rules' `navicust_expansions` and
+/// `navicust_programs`): its board's expansions and its programs; none
+/// where it states no board.
+pub fn navicust_of(content: &Content, side: &Side) -> Option<(u8, Vec<PlacedProgram>)> {
+    use nettai_content_api::{FieldValue, Registry};
+    use nettai_match::facts::Stated;
+    let expansions = match side.facts.fact(content, "navicust_expansions")?.value() {
+        FieldValue::OptionalU8(n) => n?,
+        _ => return None,
+    };
+    let Some(Stated::List(items)) = side.facts.get(content, "navicust_programs") else { return Some((expansions, Vec::new())) };
+    let parts = items
+        .iter()
+        .filter_map(|item| {
+            let Stated::Record(fields) = item else { return None };
+            let get = |name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v);
+            let program = match get("program")? {
+                Stated::Def(Registry::NaviCustProgram, Some(h)) => NaviCustProgramHandle(*h),
+                _ => return None,
+            };
+            let number = |name: &str| match get(name) {
+                Some(Stated::Number(n)) => *n as u8,
+                _ => 0,
+            };
+            let color = match get("color")? {
+                Stated::Variant(Some(name)) => content.navicust_program(program).colors.iter().position(|c| c == name).unwrap_or(0) as u8,
+                _ => 0,
+            };
+            let compressed = matches!(get("compressed"), Some(Stated::Flag(true)));
+            Some(PlacedProgram { program, color, x: number("x"), y: number("y"), rotation: number("rotation"), compressed })
+        })
+        .collect();
+    Some((expansions, parts))
+}
+
+/// State the side's NaviCust: `parts` on the board of `expansions`.
+fn set(content: &Content, side: &mut Side, parts: Vec<PlacedProgram>, expansions: u8) {
+    use nettai_battle::rules::Fact;
+    use nettai_content_api::{Registry, Value};
+    let records: Vec<Fact> = parts
+        .iter()
+        .map(|p| {
+            let color = content.navicust_program(p.program).colors.get(p.color as usize).map_or("white", String::as_str);
+            Fact::Record(vec![
+                ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, p.program.0))),
+                ("color", Fact::Name(color)),
+                ("x", Fact::Value(Value::Int(p.x as i64))),
+                ("y", Fact::Value(Value::Int(p.y as i64))),
+                ("rotation", Fact::Value(Value::Int(p.rotation as i64))),
+                ("compressed", Fact::Value(Value::Bool(p.compressed))),
+            ])
+        })
+        .collect();
+    let mut facts = side.facts.clone();
+    let written = facts
+        .set(content, "navicust_programs", &records)
+        .and_then(|()| facts.set(content, "navicust_expansions", &[Fact::Value(Value::Int(expansions as i64))]));
+    if written.is_ok() {
+        side.facts = facts;
+    }
 }
 
 /// Start a grid of programs on a side that places none yet: the largest
 /// board.
-fn start_grid(side: &mut Side, largest: u8) {
-    side.navicust = Some(NaviCust::new(&[], largest).expect("an empty NaviCust"));
+fn start_grid(content: &Content, side: &mut Side, largest: u8) {
+    set(content, side, Vec::new(), largest);
 }
 
 /// Whether `shape` can go down with its center on (x, y): on the board
@@ -140,15 +211,16 @@ pub fn update(content: &Content, _arena: &Arena, side: &mut Side, state: &mut St
             state.search = t;
             return false;
         }
-        Edit::Place(..) | Edit::Expansions(_) if side.navicust.is_none() => start_grid(side, largest),
+        Edit::Place(..) | Edit::Expansions(_) if navicust_of(content, side).is_none() => start_grid(content, side, largest),
         _ => {}
     }
-    let mut parts: Vec<PlacedProgram> = side.navicust.map(|n| n.iter().collect()).unwrap_or_default();
-    let expansions = side.navicust.map_or(largest, |n| n.expansions);
+    let had = navicust_of(content, side);
+    let expansions = had.as_ref().map_or(largest, |n| n.0);
+    let mut parts: Vec<PlacedProgram> = had.map(|n| n.1).unwrap_or_default();
     let mut changed = false;
     match edit {
         Edit::Expansions(x) => {
-            set(side, parts, x);
+            set(content, side, parts, x);
             return true;
         }
         Edit::Hold(program, color) => {
@@ -258,10 +330,10 @@ pub fn update(content: &Content, _arena: &Arena, side: &mut Side, state: &mut St
         }
         Edit::ShowStats(_) | Edit::Search(_) => unreachable!(),
     }
-    if side.navicust.is_none() {
+    if navicust_of(content, side).is_none() {
         return changed;
     }
-    set(side, parts, expansions);
+    set(content, side, parts, expansions);
     true
 }
 
@@ -537,7 +609,8 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     }
     let rules = nettai_match::navicust_rules(c);
     let largest = rules.boards.len().saturating_sub(1) as u8;
-    let expansions = side.navicust.map_or(largest, |n| n.expansions);
+    let had = navicust_of(c, side);
+    let expansions = had.as_ref().map_or(largest, |n| n.0);
     let sizes: Vec<Choice<u8>> = (0..rules.boards.len() as u8)
         .map(|x| {
             let b = &rules.boards[x as usize];
@@ -546,7 +619,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         })
         .collect();
     let size = sizes.iter().find(|x| x.value == expansions).cloned();
-    let placed: Vec<PlacedProgram> = side.navicust.map(|n| n.iter().collect()).unwrap_or_default();
+    let placed: Vec<PlacedProgram> = had.as_ref().map(|n| n.1.clone()).unwrap_or_default();
     let mut occupied = [[None; SIZE]; SIZE];
     let parts: Vec<Part> = placed
         .iter()
@@ -606,7 +679,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         ]
         .spacing(6)
         .into()
-    } else if let Some(p) = state.selected.and_then(|i| placed_at(side, i)) {
+    } else if let Some(p) = state.selected.and_then(|i| placed_at(c, side, i)) {
         column![
             text(format!("{} at ({}, {}), turned {}", e.names.navicust_program(c, p.program), p.x, p.y, p.rotation)).size(15),
             colors(p.program, p.color),
@@ -664,8 +737,8 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
             .align_y(Alignment::Center),
         )
     });
-    let note: Element<Msg> = match side.navicust {
-        None => text("No programs yet: the largest board, empty.").size(12).into(),
+    let note: Element<Msg> = match had {
+        None => text("No NaviCust: the stats are as the setup gives them.").size(12).into(),
         Some(_) => text("The command line is the lit row.").size(12).into(),
     };
     let left = column![
@@ -686,8 +759,8 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     column![header, row![scrollable(left), right].spacing(16)].spacing(8).into()
 }
 
-fn placed_at(side: &Side, i: usize) -> Option<PlacedProgram> {
-    side.navicust?.iter().nth(i)
+fn placed_at(content: &Content, side: &Side, i: usize) -> Option<PlacedProgram> {
+    navicust_of(content, side)?.1.get(i).copied()
 }
 
 #[cfg(test)]
@@ -706,7 +779,8 @@ mod tests {
         let mut state = State::default();
         let arena = m.arena.clone();
         let side = &mut m.sides[0];
-        assert_eq!(side.navicust.unwrap().expansions, 2);
+        let navicust = |side: &Side| navicust_of(&content, side).unwrap().1;
+        assert_eq!(navicust_of(&content, side).unwrap().0, 2);
         let program = |name: &str| nettai_match::ids::navicust_program(&content, "exe6", name).unwrap();
         // Held from the list: nothing changes until it is put down.
         assert!(!update(&content, &arena, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
@@ -718,29 +792,30 @@ mod tests {
         assert!(update(&content, &arena, side, &mut state, Edit::Place(4, 2)));
         update(&content, &arena, side, &mut state, Edit::Hold(program("hp-50"), 1));
         assert!(update(&content, &arena, side, &mut state, Edit::Place(5, 2)));
-        let n = side.navicust.unwrap();
+        let n = navicust(side);
         assert_eq!(n.len(), 3);
         assert_eq!(state.selected, Some(2));
-        let problems = nettai_match::check::check_navicust(&content, &arena, side, &n);
+        let problems = nettai_match::check_match(&content, &m);
         assert!(problems.is_empty(), "{problems:?}");
+        let side = &mut m.sides[0];
         // Compressing one HP+50 compresses the other (one program, one color).
         update(&content, &arena, side, &mut state, Edit::Compress(true));
-        let n = side.navicust.unwrap();
+        let n = navicust(side);
         assert!(n.iter().filter(|p| p.program == program("hp-50")).all(|p| p.compressed));
         // Picked up by a cell it covers (off the grid while held), put back.
-        let first = n.iter().next().unwrap();
+        let first = n[0];
         assert!(update(&content, &arena, side, &mut state, Edit::PickUp(0, first.x, first.y)));
-        assert_eq!(side.navicust.unwrap().len(), 2);
+        assert_eq!(navicust(side).len(), 2);
         assert!(update(&content, &arena, side, &mut state, Edit::PutBack));
-        assert_eq!(side.navicust.unwrap().iter().next(), Some(first));
+        assert_eq!(navicust(side).first(), Some(&first));
         // Picked up, turned, put down a row lower; then taken off.
         update(&content, &arena, side, &mut state, Edit::PickUp(0, first.x, first.y));
         update(&content, &arena, side, &mut state, Edit::Rotate);
         assert!(update(&content, &arena, side, &mut state, Edit::Place(first.x, first.y + 1)));
-        let moved = side.navicust.unwrap().iter().last().unwrap();
+        let moved = *navicust(side).last().unwrap();
         assert_eq!((moved.y, moved.rotation), (first.y + 1, 1));
         update(&content, &arena, side, &mut state, Edit::Remove);
-        assert_eq!(side.navicust.unwrap().len(), 2);
+        assert_eq!(navicust(side).len(), 2);
         let problems = nettai_match::check_match(&content, &m);
         assert!(problems.is_empty(), "{problems:?}");
     }
