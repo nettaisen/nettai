@@ -1670,7 +1670,7 @@ declare asset: {
 -- elements are read and written each by its place (`s.drive.mode`,
 -- `s.folder[2].code`, `#s.folder`); a list grows by its next element
 -- (`s.folder[#s.folder + 1] = ...`).
-export type SchemaField = string | { string } | SchemaList | SchemaRole | StateSchema
+export type SchemaField = string | { string } | SchemaList | SchemaRole | SchemaFixed | StateSchema
 export type StateSchema = { [string]: SchemaField }
 -- A list's declaration (`schema.list(T, n)`): up to `n` elements of `T`.
 export type SchemaList = { __list: boolean, of: SchemaField, max: number }
@@ -1678,15 +1678,22 @@ export type SchemaList = { __list: boolean, of: SchemaField, max: number }
 -- engine knows by the role `name` (a player's setup field it reads:
 -- "form_list", the forms a form list window offers).
 export type SchemaRole = { __role: boolean, role: string, of: SchemaField }
+-- A fixed field's declaration (`schema.fixed(T)`): a player's setup field of
+-- type `T` that no player states: every side plays with its default (the
+-- save's facts at their highest); only a boundary that replays a recording
+-- states the recorded one. Tools neither offer nor take it.
+export type SchemaFixed = { __fixed: boolean, of: SchemaField }
 
 -- What a state's or a setup's declaration takes beside type names, lists of
 -- variants and records: `schema.list(T, n)`, a list of up to `n` (1 to
 -- 65535) elements of type `T` (a type name, a list of variants, a record
 -- or another list), and how many it holds; `schema.role(name, T)`, a field
--- of type `T` that the engine knows by the role `name`.
+-- of type `T` that the engine knows by the role `name`; `schema.fixed(T)`,
+-- a setup field of type `T` that no player states (its default for all).
 declare schema: {
     list: (of: SchemaField, max: number) -> SchemaList,
     role: (role: string, of: SchemaField) -> SchemaRole,
+    fixed: (of: SchemaField) -> SchemaFixed,
 }
 
 -- An object kind: one behavior; what differs between uses goes in its

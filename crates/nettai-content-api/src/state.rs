@@ -272,6 +272,13 @@ pub const LIST_MARK: &str = "__list";
 /// `name` (its `role`).
 pub const ROLE_MARK: &str = "__role";
 
+/// The key a fixed field's declaration (`schema.fixed(T)`) marks its table
+/// with: a player's setup field of type `T` (its `of`) that no player
+/// states. Every side plays with its default (EXE6's and EXE5's save's
+/// facts, at their highest); a boundary that replays a game's own
+/// recording states the one recorded.
+pub const FIXED_MARK: &str = "__fixed";
+
 impl FieldType {
     /// A field's type as data: a type name, a list of variant names (an
     /// enum), a table of fields (a record), or a list's declaration.
@@ -497,12 +504,15 @@ pub struct FieldDef {
     /// its role rather than its name, as EXE6's `crosses` is its form
     /// list).
     pub role: Option<String>,
+    /// No player states it (`schema.fixed(T)`, [`FIXED_MARK`]): every side
+    /// has its default; tools neither offer nor take it.
+    pub fixed: bool,
 }
 
 impl FieldDef {
-    /// A field with no role.
+    /// A field with no role, not fixed.
     pub fn new(name: impl Into<String>, ty: FieldType) -> FieldDef {
-        FieldDef { name: name.into(), ty, role: None }
+        FieldDef { name: name.into(), ty, role: None, fixed: false }
     }
 }
 
@@ -564,6 +574,10 @@ impl Schema {
             let Key::Str(name) = k else {
                 return Err(format!("state field names are strings, not {k}"));
             };
+            let (v, fixed) = match v {
+                Data::Map(_) if *v.field(FIXED_MARK) == Data::Bool(true) => (v.field("of"), true),
+                _ => (v, false),
+            };
             let (of, role) = match v {
                 Data::Map(_) if *v.field(ROLE_MARK) == Data::Bool(true) => {
                     let role = v.field("role").str().ok_or_else(|| format!("state field `{name}`: a role is a name"))?;
@@ -572,7 +586,7 @@ impl Schema {
                 _ => (v, None),
             };
             let ty = FieldType::from_data(of).map_err(|e| format!("state field `{name}`: {e}"))?;
-            fields.push(FieldDef { name: name.clone(), ty, role });
+            fields.push(FieldDef { name: name.clone(), ty, role, fixed });
         }
         fields.sort_by(|a, b| a.name.cmp(&b.name));
         Schema::new(fields)
