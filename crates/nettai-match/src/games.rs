@@ -1,6 +1,6 @@
 //! Matches of each game (docs/frontend.md §6), each on its game's content
 //! alone (`testing::exe5_content`, `exe6_content`): a match is of one game,
-//! its arena's, and names nothing of another's. EXE5's folder rules on
+//! its own, and names nothing of another's. EXE5's folder rules on
 //! EXE5's sides (its rules' rules/folder,
 //! content/exe5/rules/folder), an EXE5 match played a few hundred ticks,
 //! EXE5's karma and souls, and a name another game has but the match's
@@ -55,11 +55,12 @@ fn same_but_navi_and_folder(content: &Content, a: &crate::Facts, b: &crate::Fact
     }
 }
 
-/// A match file's text of `game`: its first link battle stage, and the
-/// sides `left` and `right` (each a side's table body).
+/// A match file's text of `game`: three rounds on its first link battle
+/// stage, and the sides `left` and `right` (each a side's table body).
 fn match_text(content: &Content, game: &str, left: &str, right: &str) -> String {
     let stage = crate::ids::local(&content.defs.stage(crate::link_battle_stages(content, game)[0]).key);
-    format!("game = \"{game}\"\n\n[arena]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{right}\n")
+    let round = format!("[[round]]\nstage = \"{stage}\"\n\n");
+    format!("game = \"{game}\"\n\n{}[left]\n{left}\n\n[right]\n{right}\n", round.repeat(3))
 }
 
 /// A side's table body: its navi, the folder's chips (each "name code"),

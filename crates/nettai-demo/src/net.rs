@@ -599,7 +599,7 @@ mod tests {
 
     fn offer(content: &Arc<Content>, seed: u32) -> Offer {
         let side = nettai_match::Side::picked(content, "exe6", &mut nettai_match::Picks::new(seed)).unwrap();
-        Offer::of_side("exe6", side, None)
+        Offer::of_side("exe6", vec![nettai_match::RoundSettings::default(); nettai_match::TRIPLE_BATTLE], side)
     }
 
     /// Both players' handshakes on UDP on this machine, polled in turn on
