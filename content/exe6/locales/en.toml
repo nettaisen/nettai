@@ -513,52 +513,52 @@ language = "en"
 "wunote" = { name = "WuNote" }
 
 [navicust_programs]
-"airshoes" = { name = "AirShoes" }
-"antidmg" = { name = "AntiDmg" }
-"attack-1" = { name = "Attack+1" }
-"attckmax" = { name = "AttckMAX" }
-"autoheal" = { name = "AutoHeal" }
-"battery" = { name = "Battery" }
-"beat" = { name = "Beat" }
-"bodypack" = { name = "BodyPack" }
-"bugstop" = { name = "BugStop" }
-"bustpack" = { name = "BustPack" }
-"charge-1" = { name = "Charge+1" }
-"chargmax" = { name = "ChargMAX" }
-"chpshufl" = { name = "ChpShufl" }
-"collect" = { name = "Collect" }
-"custom1" = { name = "Custom1" }
-"custom2" = { name = "Custom2" }
-"fish" = { name = "Fish" }
-"fldrpak1" = { name = "FldrPak1" }
-"fldrpak2" = { name = "FldrPak2" }
-"flotshoe" = { name = "FlotShoe" }
-"fstbarr" = { name = "FstBarr" }
-"gigfldr1" = { name = "GigFldr1" }
-"hp-100" = { name = "HP+100" }
-"hp-200" = { name = "HP+200" }
-"hp-300" = { name = "HP+300" }
-"hp-400" = { name = "HP+400" }
-"hp-50" = { name = "HP+50" }
-"hp-500" = { name = "HP+500" }
-"humor" = { name = "Humor" }
-"jungle" = { name = "Jungle" }
-"megfldr1" = { name = "MegFldr1" }
-"megfldr2" = { name = "MegFldr2" }
-"millions" = { name = "Millions" }
-"numbropn" = { name = "NumbrOpn" }
-"oilbody" = { name = "OilBody" }
-"poem" = { name = "Poem" }
-"reflect" = { name = "Reflect" }
-"rush" = { name = "Rush" }
-"shield" = { name = "Shield" }
-"sliprunr" = { name = "SlipRunr" }
-"sneakrun" = { name = "SneakRun" }
-"speed-1" = { name = "Speed+1" }
-"speedmax" = { name = "SpeedMAX" }
-"suprarmr" = { name = "SuprArmr" }
-"tango" = { name = "Tango" }
-"undersht" = { name = "UnderSht" }
+"airshoes" = { name = "AirShoes", description = "Move\novr hole" }
+"antidmg" = { name = "AntiDmg", description = "Ⓑ+Left=\nThrow a\nstar!" }
+"attack-1" = { name = "Attack+1", description = "MegaBstr\nAttck +1" }
+"attckmax" = { name = "AttckMAX", description = "MegaBstr\nAttckMAX" }
+"autoheal" = { name = "AutoHeal", description = "HP recv\nafter\nbattle" }
+"battery" = { name = "Battery", description = "Attracts\nElec\nViruses!" }
+"beat" = { name = "Beat", description = "VS only!\nSnatches\nMegaChps" }
+"bodypack" = { name = "BodyPack", description = "Armr,Sht\nFlot,Air\n4-pc set" }
+"bugstop" = { name = "BugStop", description = "Prevents\nbugs" }
+"bustpack" = { name = "BustPack", description = "Atk/Spd\n/Charge\n+3 each!" }
+"charge-1" = { name = "Charge+1", description = "MegaBstr\nCharge\n+1" }
+"chargmax" = { name = "ChargMAX", description = "MegaBstr\nCharge\nMAX!" }
+"chpshufl" = { name = "ChpShufl", description = "CustmScr\nShuffle\nchp once" }
+"collect" = { name = "Collect", description = "Get more\nchips\nfrm enmy" }
+"custom1" = { name = "Custom1", description = "Custom\nScreen\n+1 chip" }
+"custom2" = { name = "Custom2", description = "Custom\nScreen\n+2 chips" }
+"fish" = { name = "Fish", description = "Attracts\nAqua\nViruses!" }
+"fldrpak1" = { name = "FldrPak1", description = "A 2-pack\nCustom1&\nMegFldr1" }
+"fldrpak2" = { name = "FldrPak2", description = "A 2-pack\nCustom2&\nMegFldr2" }
+"flotshoe" = { name = "FlotShoe", description = "No effct\nfrom\npnl type" }
+"fstbarr" = { name = "FstBarr", description = "Start\nwith\nBarrier" }
+"gigfldr1" = { name = "GigFldr1", description = "GigaChip\n+1" }
+"hp-100" = { name = "HP+100", description = "Max HP\n+100!" }
+"hp-200" = { name = "HP+200", description = "Max HP\n+200!" }
+"hp-300" = { name = "HP+300", description = "Max HP\n+300!" }
+"hp-400" = { name = "HP+400", description = "Max HP\n+400!" }
+"hp-50" = { name = "HP+50", description = "Max HP\n+50!" }
+"hp-500" = { name = "HP+500", description = "Max HP\n+500!" }
+"humor" = { name = "Humor", description = "Install\nand try\nL Button" }
+"jungle" = { name = "Jungle", description = "Attracts\nWood\nViruses!" }
+"megfldr1" = { name = "MegFldr1", description = "MegaChip\n+1" }
+"megfldr2" = { name = "MegFldr2", description = "MegaChip\n+2" }
+"millions" = { name = "Millions", description = "Gn mstry\ndata =\nZennys" }
+"numbropn" = { name = "NumbrOpn", description = "CustmScr\nSlected\nChip=10" }
+"oilbody" = { name = "OilBody", description = "Attracts\nFire\nViruses!" }
+"poem" = { name = "Poem", description = "Press Ⓛ:\nRecite\nPoem" }
+"reflect" = { name = "Reflect", description = "Ⓑ+Left=\nReflect\nattacks!" }
+"rush" = { name = "Rush", description = "VS only!\nTracks\nenemies" }
+"shield" = { name = "Shield", description = "Ⓑ+Left=\nStrong\nshield!" }
+"sliprunr" = { name = "SlipRunr", description = "Ⓑ+Move:\nslide\nno stop" }
+"sneakrun" = { name = "SneakRun", description = "No weak\nenemies" }
+"speed-1" = { name = "Speed+1", description = "MegaBstr\nSpeed +1" }
+"speedmax" = { name = "SpeedMAX", description = "MegaBstr\nSpeedMAX" }
+"suprarmr" = { name = "SuprArmr", description = "Won't be\npushed!" }
+"tango" = { name = "Tango", description = "VS only!\nHeals\nlow HP" }
+"undersht" = { name = "UnderSht", description = "Keep 1HP\neven on\nhard hit" }
 
 # Each line a patch card's menu shows of an effect, by the effect's kind and its one choice's name (the
 # editor's key), `{amount}` its number: the fan translation's effect names (MMEXE6F.ips over the Japanese Falzar ROM). Written by bn6battle-verify's
