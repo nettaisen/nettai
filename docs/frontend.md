@@ -396,8 +396,11 @@ frontend's side is `netplay`):
   the animations' timing), and refuses a mismatch on both sides with what
   differs ("can't play: the other side plays other content (its hash ...,
   this one's ...)"). Each player then brings their own side of the match (an
-  offer, by name in the game as a match file names things): a match file's
-  left side (`--match`), including its folder, version, forms and patch cards;
+  offer, in nettai-match's binary against the content both play,
+  `nettai_match::binary`: the side's facts in the order of the game's rules'
+  setup, each definition by its handle, which the content hash pins): a
+  match file's left side (`--match`), its facts all (folder, version, forms,
+  patch cards...);
   the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
   rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The field

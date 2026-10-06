@@ -24,9 +24,6 @@ nettai-match = { path = "../nettai-match" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
-# A netplay offer: a match file's names, in TOML.
-serde = { version = "1", features = ["derive"] }
-toml = "0.8"
 
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
