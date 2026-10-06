@@ -7,7 +7,7 @@
 -- the lock-on marker's target, runs the chip's action there (`run_wrapped`)
 -- and warps back to its panel. An A press during the rush queues the next
 -- chip, which then warps and attacks in turn without going home first
--- (chips.md §2.11 and §4.6). Its state is the beast system's (the
+-- (chips.md §2.11 and §4.6). Its state is the beast part's (the
 -- original's attack variables +0x1E to +0x27, next to the chip action's
 -- own).
 
@@ -18,7 +18,7 @@ local lockon = require("../lockon")
 
 local rush = {}
 
--- The beast system's state fields the rush keeps (rules/beast/init.luau
+-- The beast part's state fields the rush keeps (rules/beast/init.luau
 -- declares them).
 type State = {
     -- The phase: hold the panel, warp, attack.
@@ -106,7 +106,7 @@ local function lockon_mode(navi: Object): Lockon?
     end
     -- (The empty hand's chip, the zeroed one, has no lock-on mode.)
     local chip = navi.attack_chip
-    -- (The beast system's extension of chips, EXE6's: types.d.luau.)
+    -- (The beast part's extension of chips, EXE6's: types.d.luau.)
     local beast = if chip ~= nil then ((chip :: any) :: Exe6ChipFields).beast else nil
     return if beast ~= nil then beast.lockon else nil
 end
@@ -219,7 +219,7 @@ end
 -- `sub_80EAD9C`: one tick of the rush, then the chain window: after it
 -- opens, an A press queues the next chip.
 local function update(navi: Object, _: any)
-    local s = system.state() :: State
+    local s = rules.state() :: State
     -- (`sub_801011A` cleared the rush with the attack's links: it starts
     -- over.)
     if navi.wrapper_fresh then

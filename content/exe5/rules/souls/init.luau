@@ -2,13 +2,13 @@
 -- EXE5's Soul Unison (docs/design/exe5-map.md §5, §15.8): MegaMan unites with a soul for some turns. The custom
 -- screen's soul button (./custom: it gives up the last chip picked for the soul of its family, a soul a form with a
 -- `soul` naming its `family`) asks for it in the turn's transform record; at the turn's start the sequencer runs the
--- soul's change (./change). The system keeps the side's soul turns (AIData +0x0F) and whether it is Chaos Unison,
+-- soul's change (./change). The part keeps the side's soul turns (AIData +0x0F) and whether it is Chaos Unison,
 -- counts the turns down as each later custom screen is asked for and asks for the revert when they run out.
 --
 -- A soul is a form, named by its id, and what is one soul's is in its folder (navis/megaman/forms/<soul>): its
 -- weapons, its navi's image at the change (its `image`) and what it adds to the custom screen (its `custom`: its
 -- buttons, windows and part of the screen's routines, which ./custom gathers from the forms). What is here is the
--- system's: the button and the soul's choice, the turns, the change, the revert, Chaos Unison's failure.
+-- part's: the button and the soul's choice, the turns, the change, the revert, Chaos Unison's failure.
 
 local change = require("@self/change")
 local custom_souls = require("@self/custom")
@@ -23,7 +23,7 @@ export type State = {
     chaos: boolean,
 }
 
--- The system's state: its own fields, the soul button's, and what each soul's addition to the custom screen keeps
+-- The part's state: its own fields, the soul button's, and what each soul's addition to the custom screen keeps
 -- (./custom's `states`).
 local state: { [string]: string | { string } } = {
     turns = "u8",
@@ -43,8 +43,7 @@ for _, fields in custom_souls.states do
     end
 end
 
-souls.system = define.system {
-    id = "souls",
+souls.part = {
     state = state,
     -- What the player's save brings: the souls it has (a match's side's `souls`, which nettai-match writes by this
     -- field's name; a recording's, its version's: exe5-compat), which the custom screen's soul button may offer, as the
@@ -103,7 +102,7 @@ souls.system = define.system {
         -- 0x0801246C, 0x0801243A: in a soul whose turns ran out, MegaMan asks to revert.
         turn_check = function(side: number)
             local navi = battle.player(side) :: Object
-            local s = system.state() :: State
+            local s = rules.state() :: State
             if battle.navi(side).form.soul ~= nil and s.turns == 0 then
                 navi:set_request("revert_form", true)
             end
@@ -113,7 +112,7 @@ souls.system = define.system {
         -- turns): MegaMan's soul turns count down (not below 0, and not 0xFF), unless the side's navi isn't
         -- MegaMan (NaviStats +0x29).
         custom_requested = function(side: number)
-            local s = system.state() :: State
+            local s = rules.state() :: State
             if battle.navi(side).navi.id == "megaman" and s.turns ~= 0xFF and s.turns ~= 0 then
                 s.turns -= 1
             end

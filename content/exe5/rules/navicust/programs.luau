@@ -2,7 +2,7 @@
 -- EXE5's NaviCust programs' effects (docs/design/exe5-map.md §15.13): a program is the engine's
 -- (`define.navicust_program`, content/exe5/navicust/), its effects the values the shared constructors make
 -- (@exelib/navicust/effects, EXE6's too), each the work of the original's handler for the program (the table at
--- 0x0813FB44); the navicust system (./system.luau) applies a player's programs to the navi's stats as the round is set
+-- 0x0813FB44); the navicust part (./init.luau) applies a player's programs to the navi's stats as the round is set
 -- up. What a program brings when it is bugged is its `bug` (one of `BUGS`), and which programs only one of on the
 -- command line works is its `exclusive`.
 
@@ -38,7 +38,7 @@ programs.hp = effects.hp
 
 -- The bugs, in the order the bugs' routine runs them (0x08140008, its table 0x08140054 by bug group and level): a
 -- program's `bug` names the one it brings, the colors' count brings `status` or `status-strong`. Each writes the navi's
--- stats by its level, 1 to 3 (./system.luau).
+-- stats by its level, 1 to 3 (./init.luau).
 programs.BUGS = {
     -- 1: steps go astray (+0x31 = 1).
     "step",

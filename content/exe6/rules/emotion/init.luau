@@ -63,7 +63,7 @@ local function navi_tick(side: number, navi: Object)
         navi.tired = false
         return
     end
-    local s = system.state() :: State
+    local s = rules.state() :: State
     s.swing_ticks = (s.swing_ticks + 1) % 0x10000
     if s.swing_ticks < 0x3C then
         return
@@ -89,8 +89,7 @@ local function navi_tick(side: number, navi: Object)
     end
 end
 
-emotion.system = define.system {
-    id = "emotion",
+emotion.part = {
     state = { swing_ticks = "u16", swung = "u8" },
     hooks = { round_start = round_start, countered = countered, navi_tick = navi_tick },
 }

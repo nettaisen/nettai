@@ -138,13 +138,13 @@ impl Battle {
 
     /// `sub_801486C`: a side asking for a navi switch gets it started; a
     /// side without a transformation has its rules check whether its form's
-    /// time ran out (EXE6's beast system: Beast Out, `sub_80159C6`).
+    /// time ran out (EXE6's beast part: Beast Out, `sub_80159C6`).
     fn sequencer_check(&mut self) {
         // EXE5's 0x08011DDC: each side's request for the turn is read first
-        // (its ColonelSoul's arm chip, 0x080124AE: the souls system's).
+        // (its ColonelSoul's arm chip, 0x080124AE: the souls part's).
         for side in 0..2u8 {
             if self.player(side).is_some() {
-                self.notify_side(side, nettai_content_api::SystemHook::TurnOpened);
+                self.notify_side(side, nettai_content_api::RulesHook::TurnOpened);
             }
         }
         let mut transforming = false;
@@ -156,12 +156,12 @@ impl Battle {
                 // form isn't looked at).
                 if let Some(p) = navi {
                     player::actions::navi_switch::request_change(self, p);
-                    self.notify_side(side, nettai_content_api::SystemHook::TurnCheck);
+                    self.notify_side(side, nettai_content_api::RulesHook::TurnCheck);
                 }
             } else if req.form.is_some() {
                 transforming = true;
             } else if navi.is_some() {
-                self.notify_side(side, nettai_content_api::SystemHook::TurnCheck);
+                self.notify_side(side, nettai_content_api::RulesHook::TurnCheck);
             }
         }
         self.transform_seq.state = if transforming {

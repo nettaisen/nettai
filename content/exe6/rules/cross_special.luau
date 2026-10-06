@@ -27,7 +27,7 @@ local varswrd = require("../chips/varswrd")
 local vulcan_chips = require("../chips/vulcan")
 local wideswrd = require("../chips/wideswrd")
 
--- (The beast system's data, which its Cross special reads: a record of
+-- (The beast part's data, which its Cross special reads: a record of
 -- type "cross-special", not a rule section the engine reads.)
 return define.record("cross-special", {
     id = "cross-special",

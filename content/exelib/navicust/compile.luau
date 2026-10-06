@@ -1,6 +1,6 @@
 --!strict
 -- The NaviCust compile EXE5's and EXE6's share (docs/design/navicust.md §3, §4): as the round is set up (a game's
--- navicust system's `round_setup`, before anything reads the stats and before the patch cards, which apply to what
+-- navicust part's `round_setup`, before anything reads the stats and before the patch cards, which apply to what
 -- the NaviCust made), a player's NaviCust (`battle.navicust`: the programs placed on its grid) is compiled into the
 -- navi's stats, as the original's reload does (EXE6's `reloadCurNaviStatBoosts`'s `sub_813C458`, EXE5's 0x0813FA10,
 -- the same routines), for MegaMan alone:

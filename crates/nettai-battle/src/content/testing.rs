@@ -166,25 +166,25 @@ pub fn content() -> Arc<Content> {
     shared().0.clone()
 }
 
-/// The content set with its ruleset listing `systems` instead (the Luau
-/// list's text, by rules/systems.luau's names: `"marker, counter"`),
-/// defined once per list: a game has one ruleset, so a test that plays by
-/// other systems plays another content. Its definitions are the content
-/// set's but the ruleset, so every handle is the same; a round's setup
+/// The content set with its rules made of `parts` instead (the Luau
+/// list's text, by rules/parts.luau's names: `"marker, counter"`),
+/// defined once per list: a game has one definition of its rules, so a test
+/// that plays by other parts plays another content. Its definitions are the
+/// content set's but the rules, so every handle is the same; a round's setup
 /// names it by its hash (`RoundSetup::content`).
-pub fn with_systems(systems: &str) -> Arc<Content> {
+pub fn with_parts(parts: &str) -> Arc<Content> {
     static MADE: std::sync::Mutex<Vec<(String, Arc<Content>)>> = std::sync::Mutex::new(Vec::new());
     let mut made = MADE.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some((_, c)) = made.iter().find(|(s, _)| s == systems) {
+    if let Some((_, c)) = made.iter().find(|(s, _)| s == parts) {
         return c.clone();
     }
     let mut c = make();
-    let module = c.scripts.module_mut(ROOT, "rules/systems").expect("the test content's rules");
-    let stock = "local SYSTEMS: { System } = { beast, counter, forms.system, emotion.system, dark_chips }";
-    assert!(module.contains(stock), "rules/systems.luau lists its systems as `{stock}`");
-    *module = module.replace(stock, &format!("local SYSTEMS: {{ System }} = {{ {systems} }}"));
+    let module = c.scripts.module_mut(ROOT, "rules/parts").expect("the test content's rules");
+    let stock = "local PARTS: { RulesPart } = { save, beast, counter, forms.part, emotion.part, dark_chips }";
+    assert!(module.contains(stock), "rules/parts.luau lists its parts as `{stock}`");
+    *module = module.replace(stock, &format!("local PARTS: {{ RulesPart }} = {{ {parts} }}"));
     let c = Arc::new(c.defined());
-    made.push((systems.to_string(), c.clone()));
+    made.push((parts.to_string(), c.clone()));
     c
 }
 
@@ -199,12 +199,12 @@ fn shared() -> &'static (Arc<Content>, crate::content::ContentHash) {
 }
 
 /// The version the test rounds' players are of: this content plays by
-/// EXE6's beast system, whose setup takes one, and a round states it (none
+/// EXE6's beast part, whose setup takes one, and a round states it (none
 /// is assumed: `SideRules::for_player`).
 pub const VERSION: &str = "falzar";
 
-/// A player who brings nothing but their version ([`VERSION`]), where a
-/// system of `content` takes one.
+/// A player who brings nothing but their version ([`VERSION`]), where the
+/// rules of `content` take one.
 pub fn player(content: &Content) -> crate::custom::PlayerSetup {
     let mut p = crate::custom::PlayerSetup::default();
     p.set_fact(content, "version", &[crate::rules::Fact::Name(VERSION)]).expect("the test content's version");
@@ -232,7 +232,7 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
 
 /// Play `setup` on `content`, another build of the test content (its own
 /// ruleset and handles): the round names it, and its players' setups are
-/// remade for its systems (a setup's blocks are its content's): of
+/// remade for its parts (a setup's blocks are its content's): of
 /// [`VERSION`], and nothing else.
 pub fn on(setup: &mut crate::setup::RoundSetup, content: &Content) {
     setup.content = content.hash();
@@ -1168,7 +1168,7 @@ pub fn scripts() -> Scripts {
                 ("lib/effects", "lib/effects"),
                 ("lib/sparks", "lib/sparks"),
                 ("rules/collision", "rules/collision"),
-                // EXE6's Beast Out turns, a system of the test rules.
+                // EXE6's Beast Out turns, a part of the test rules.
                 ("rules/beast/init", "rules/beast/init"),
                 ("rules/emotion/init", "rules/emotion/init"),
                 ("rules/beast/rush", "rules/beast/rush"),
@@ -1607,23 +1607,21 @@ fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame
     sprites
 }
 
-/// Side `side`'s bug frags in battle `b`: EXE6's dark-chips system's state
-/// (the test content's ruleset plays it).
+/// Side `side`'s bug frags in battle `b`: the rules' state (the test
+/// content's rules have EXE6's dark chips part).
 pub fn bug_frags(b: &crate::Battle, side: u8) -> u32 {
-    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's ruleset plays EXE6's dark-chips system");
+    let (schema, state) = b.rules_state(side).expect("the test content's rules");
     match state.get(schema, schema.index_of("bug_frags").expect("its bug frags")) {
         nettai_content_api::FieldValue::U32(n) => n,
         other => panic!("bug frags {other:?}"),
     }
 }
 
-/// Give side `side` `n` bug frags in battle `b` (the dark-chips system's
-/// state).
+/// Give side `side` `n` bug frags in battle `b` (the rules' state).
 pub fn set_bug_frags(b: &mut crate::Battle, side: u8, n: u32) {
-    let systems = b.content.defs.ruleset_systems();
-    let slot = systems.iter().position(|&h| b.content.defs.system(h).key == "dark-chips").expect("the dark-chips system");
-    let def = b.content.defs.system(systems[slot]);
-    let schema = b.content.defs.schema(def.state).clone();
+    let content = b.content.clone();
+    let schema = content.defs.schema(content.defs.rules().expect("the rules").state);
     let i = schema.index_of("bug_frags").expect("its bug frags");
-    b.rules[side as usize].states[slot].set(&schema, i, nettai_content_api::Value::Int(n as i64)).expect("a count of bug frags");
+    let state = b.rules[side as usize].state.as_mut().expect("the side's rules");
+    state.set(schema, i, nettai_content_api::Value::Int(n as i64)).expect("a count of bug frags");
 }

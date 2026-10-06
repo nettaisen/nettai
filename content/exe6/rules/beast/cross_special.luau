@@ -1,8 +1,8 @@
 --!strict
 -- EXE6's Cross special: DarkInvs' auto-battle in the chip gate battle.
 -- DarkInvs asks for a takeover of its user (the request "takeover"); idle
--- hands the request to the side's systems (`sub_802E4E4`), and the beast
--- system starts it: 0x1E0 ticks (`battle.take_over`), the navi
+-- hands the request to the side's rules (`sub_802E4E4`), and the beast
+-- part starts it: 0x1E0 ticks (`battle.take_over`), the navi
 -- invulnerable for good, the controllers' state cleared. While it runs, its
 -- controller (`sub_802D4C6`) moves next to an opponent and attacks with
 -- chips of its own (the record `cross-special`'s rows, `sub_802D5A8`),
@@ -18,8 +18,8 @@ local section = require("../cross_special")
 
 local cross_special = {}
 
--- The beast system's state fields the controllers share (rules/beast/
--- system.luau declares them; berserk.luau's).
+-- The beast part's state fields the controllers share (rules/beast/
+-- init.luau declares them; berserk.luau's).
 type State = {
     controller_step: number,
     controller_moves: number,
@@ -40,7 +40,7 @@ local SOUND_START = asset.sound("elmnt-man-2")
 
 -- `sub_802E4E4`'s start of it.
 function cross_special.requested(side: number, navi: Object)
-    local s = system.state() :: State
+    local s = rules.state() :: State
     battle.take_over(side, TICKS)
     navi:set_status_timer("invulnerable", 0xFFFF)
     navi:set_status("invulnerable", true)
@@ -193,7 +193,7 @@ cross_special.action = define.action {
 -- `sub_802D4C6`: one tick of the special's controller, from the idle
 -- action; when its ticks have run out, its end.
 function cross_special.takeover(side: number, navi: Object): ("nothing" | "own_chip" | "buster" | "moved")?
-    local s = system.state() :: State
+    local s = rules.state() :: State
     -- (`sub_802D310` cleared the shared state: it starts over.)
     if navi.controller_fresh then
         navi.controller_fresh = false

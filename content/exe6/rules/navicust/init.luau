@@ -25,14 +25,14 @@
 -- 5. The HP (`sub_803CE44`): the maximum again, and the HP the round starts
 --    with (in the real world, the maximum).
 --
--- A MegaMan received from a navi code (event flag 0x163, the save system's
+-- A MegaMan received from a navi code (event flag 0x163, the save part's
 -- `level`) then gets his level's gains over what his NaviCust made
 -- (`reloadCurNaviStatBoosts`: `sub_8121154` after `sub_813C458`;
 -- docs/engine/link-navis.md §4), and the HP its maximum again.
 --
 -- A program's color, shape and whether it is a plus part are the engine's
 -- (its definition's); its `bug`, its `exclusive` and its `effects` this
--- system's (./programs.luau). A program `anywhere` (no EXE6 program is one)
+-- part's (./programs.luau). A program `anywhere` (no EXE6 program is one)
 -- works on the command line or off it and is never bugged by where it is.
 -- The compile is the one EXE5's shares (@exelib/navicust/compile); EXE6's are
 -- its board (its frame, where a neighbor counts), its bugs and the emotion
@@ -133,8 +133,7 @@ local redeal: ButtonSpec = {
     end,
 }
 
-return define.system {
-    id = "navicust",
+return {
     buttons = { redeal = redeal },
     hooks = { round_setup = run },
 }

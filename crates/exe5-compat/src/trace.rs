@@ -588,8 +588,7 @@ impl Round {
     /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
     /// both players on EXE5's rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
-        // EXE5's light and dark system (content/exe5/rules/light_dark).
-        const LIGHT_DARK: &str = "light-dark";
+        // EXE5's light and dark part (content/exe5/rules/light_dark).
         let needs = self.needs(content, compat)?;
         if !needs.is_empty() {
             return Err(format!("content lacks {}", needs.join(", ")));
@@ -608,8 +607,8 @@ impl Round {
                 .ok_or_else(|| format!("EXE5's pack has no background {:#04x}", st[4]))?,
         );
         let settings = nettai_battle::BattleSettings { stage, background, effects: u32::from_le_bytes([st[8], st[9], st[10], st[11]]) };
-        if content.defs.ruleset().is_none() {
-            return Err("the content has no ruleset (EXE5's)".into());
+        if content.defs.rules().is_none() {
+            return Err("the content has no rules (EXE5's)".into());
         }
         let local = bs[0x0D] & 1;
         // A side whose setup carries its console's NaviCust (MegaMan's): the
@@ -637,7 +636,7 @@ impl Round {
             // (The console's counter before the round's first tick: one
             // less than on the setup's frame.)
             let frames = (self.setup.frame_counter as u32).wrapping_sub(1) & 0xFFFF;
-            // The side's level (EXE5's save system's `level`): a team navi's
+            // The side's level (EXE5's save part's `level`): a team navi's
             // attacks go by it. (Nothing reads MegaMan's side's: an older
             // recording, which has none, replays.)
             let level = match self.setup.navi_levels.map(|l| l[side as usize]) {
@@ -666,7 +665,7 @@ impl Round {
                     tag_pair: None,
                     frames,
                 },
-                rules: Vec::new(),
+                rules: None,
                 // (Without a recorded NaviCust, the stats are the battle's
                 // start's: nothing is compiled over them.)
                 patch_cards: cards_of(side as usize)?,
@@ -682,17 +681,17 @@ impl Round {
         });
         let [mut p0, mut p1] = players;
         // Each side's light and dark MegaMan: his save's value (NaviStats
-        // +0x44), EXE5's light and dark system's setup. (Hub Style, +0x4C,
+        // +0x44), EXE5's light and dark part's setup. (Hub Style, +0x4C,
         // is the stats': `navi_stats`.)
         for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
             if let Ok(p) = p {
-                p.set_rule(content, LIGHT_DARK, "karma", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
+                p.set_fact(content, "karma", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(stats.light_dark.0 as i64))])?;
             }
         }
         // Each side's souls: its version's six (Team ProtoMan's 1 to 6,
         // Team Colonel's 7 to 12: 0x08024BF0's flags, by the forms'
         // numbers, records.toml's), those the content has, into the souls
-        // system's setup.
+        // part's setup.
         for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
             if let Ok(p) = p {
                 let version = d.versions[side];
@@ -707,7 +706,7 @@ impl Round {
                 p.set_fact(content, "souls", &souls)?;
             }
         }
-        // What each save brings to its navi's stats (EXE5's save system's
+        // What each save brings to its navi's stats (EXE5's save part's
         // setup), from the recorded block: the rules write it into a side
         // whose stats they build (a compiled MegaMan, a team navi), which
         // then comes out as recorded.
@@ -720,7 +719,7 @@ impl Round {
             }
         }
         // A team navi's stats are the rules' to build from its level (EXE5's
-        // save system: its story's HP), from its fresh stats with what the
+        // save part: its story's HP), from its fresh stats with what the
         // save keeps, which the replay then compares with the recorded block.
         let stats = |side: usize| -> Result<EngineNaviStats, String> {
             let recorded = navi_stats(content, compat, &d.navi_stats[side])?;
@@ -952,9 +951,9 @@ pub fn reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNavi
 }
 
 /// The stats a team navi's are built from (a navi with a `story`: EXE5's
-/// save system sets its HP by its level), of `recorded`: its fresh stats
+/// save part sets its HP by its level), of `recorded`: its fresh stats
 /// (`NaviStats::fresh`) with what the save keeps (the folder, its Regular
-/// and tag chips; the Regular memory, the save system's to write) and the
+/// and tag chips; the Regular memory, the save part's to write) and the
 /// recording's own mood and variant (the battle's start's, as [`reset`]
 /// keeps them).
 pub fn team_navi_reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNaviStats, String> {
@@ -1210,10 +1209,11 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     d
 }
 
-/// Side `side`'s arm chip for the turn (EXE5's souls system's `arm_chip`:
-/// ColonelSoul's Arm Change, the transform record's +6), by EXE5's number.
+/// Side `side`'s arm chip for the turn (the rules' `arm_chip`, EXE5's souls
+/// part's: ColonelSoul's Arm Change, the transform record's +6), by EXE5's
+/// number.
 fn arm_chip_number(b: &Battle, compat: &Compat, side: u8) -> Option<u16> {
-    let (schema, state) = b.system_state(side, "souls")?;
+    let (schema, state) = b.rules_state(side)?;
     let nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Chip, h))) = state.get(schema, schema.index_of("arm_chip")?) else {
         return None;
     };

@@ -129,7 +129,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
 }
 
 /// The version the stand-in's players are of (the test content plays by
-/// EXE6's beast system, and EXE6's content by its own: each takes one).
+/// EXE6's beast part, and EXE6's content by its own: each takes one).
 pub const VERSION: &str = "falzar";
 
 /// A stand-in player's setup but for what the content's rules take.
@@ -139,7 +139,7 @@ fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
         joypad_phase: 0,
         sp_times: Default::default(),
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
-        rules: Vec::new(),
+        rules: None,
         patch_cards: Default::default(),
         navicust: None,
         auto_battle: Default::default(),
