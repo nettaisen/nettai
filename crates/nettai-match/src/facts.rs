@@ -128,11 +128,6 @@ impl Facts {
         &self.0
     }
 
-    /// Facts from a player's setup blocks (a save's, a recording's).
-    pub fn of_blocks(blocks: Vec<ContentState>) -> Facts {
-        Facts(blocks)
-    }
-
     /// Whether these are the content's game's: a block for each system of
     /// its ruleset, of that system's setup.
     pub fn fit(&self, content: &Content) -> bool {

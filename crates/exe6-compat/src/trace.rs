@@ -106,7 +106,7 @@ pub struct Setup {
 /// (`Setup::unlock_flags`): Beast Out (flag 0xE0), the version's five
 /// Crosses (`sub_8029EF8`'s table: Gregar's flags 0xE2-0xE6, Falzar's
 /// 0xE7-0xEB, by Cross number). (Flag 0x163, a navi code received, is the
-/// setup's `navi_level`: the recordings that have both agree.)
+/// save system's `level`: the recordings that have both agree.)
 fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
     let flag = |f: u16| {
         let byte = match f >> 3 {
