@@ -1,11 +1,14 @@
 //! Live play against another player over the network (docs/frontend.md):
-//! `--match FILE --host PORT` or `--match FILE --join ADDR:PORT`.
+//! `--match FILE` with `--room CODE`, `--host PORT` or `--join ADDR:PORT`.
 //!
 //! Each player's frontend runs the whole battle on nettai-netplay's
 //! [`Peer`]: a getgud rollback session whose inputs go to the other peer
 //! over rennet, in datagrams on a [`Channel`] the host provides (the
-//! program's UDP socket, or a WebRTC data channel): the library has no
-//! socket and no transport of its own. Before the match, the players'
+//! program's is a WebRTC data channel, nettai-rtc's link): the library has
+//! no socket and no transport of its own. A channel that drops and comes
+//! back ([`Channel::down_for`]) carries on the same match: both peers wait
+//! at the stall guard meanwhile, and rennet sends again what was lost.
+//! Before the match, the players'
 //! peers agree it in the lobby and the handshake (`crate::lobby`, over the
 //! host's datagrams: the program's is nettai-demo's `net`): both run the
 //! same engine and play the same content, agree the match's settings (its
@@ -55,8 +58,8 @@ pub fn netplay_setup(content: &Arc<Content>, seed: u32, settings: &crate::lobby:
 
 /// The channel a [`NetPlayer`] plays over, which the host provides: it
 /// carries the protocol's frames to the other player and theirs back (the
-/// program's is a UDP socket after its handshake; a WebRTC data channel
-/// opened unordered and without retransmits fits too). Nothing is assumed
+/// program's is a WebRTC data channel opened unordered and without
+/// retransmits, nettai-rtc's link, after its handshake). Nothing is assumed
 /// of delivery: frames may be lost, reordered or duplicated (rennet
 /// recovers). Neither call waits.
 pub trait Channel {
@@ -67,6 +70,17 @@ pub trait Channel {
     /// The next frame that has come from the other player, if one has. An
     /// error (the network's, or the other side refusing) ends the match.
     fn recv(&mut self) -> Result<Option<&[u8]>, String>;
+
+    /// While the channel is down and the host's transport is making it
+    /// again: how long it has been down. The match goes on where it was
+    /// when it is back (the frames lost meanwhile are sent again, and both
+    /// players waited at the stall guard); meanwhile nothing from the other
+    /// player doesn't end it ([`NetOptions::timeout`] counts from when it is
+    /// back): giving up is the transport's, an error. None (the default):
+    /// up, or a channel that doesn't say.
+    fn down_for(&self) -> Option<Duration> {
+        None
+    }
 }
 
 /// How a netplay match plays, as this player chose (none of it goes to the
@@ -83,7 +97,8 @@ pub struct NetOptions {
     /// The stall guard: inputs ahead of the other player's before a frame
     /// waits for them.
     pub max_lead: u32,
-    /// Nothing from the other side this long ends the match.
+    /// Nothing from the other side this long ends the match (but not while
+    /// the channel says it is down and being made again: [`Channel::down_for`]).
     pub timeout: Duration,
 }
 
@@ -302,6 +317,11 @@ impl<C: Channel> NetPlayer<C> {
                 None => "the other player left the match".into(),
             });
         }
+        // (The channel is being made again: its transport gives up, not
+        // this.)
+        if self.channel.down_for().is_some() {
+            self.last_frame = Instant::now();
+        }
         if self.last_frame.elapsed() > self.options.timeout {
             return Err(format!("nothing from the other player for {} seconds: the connection is lost", self.options.timeout.as_secs()));
         }
@@ -419,6 +439,7 @@ impl<C: Channel> Driver for NetPlayer<C> {
             max_rollback: s.max_rollback,
             rollbacks: s.rollbacks,
             waits: s.stalls + s.parked,
+            reconnecting: self.channel.down_for(),
         })
     }
 

@@ -2791,6 +2791,7 @@ dependencies = [
  "nettai-match",
  "nettai-netplay",
  "nettai-render",
+ "nettai-rtc",
  "png",
  "rfd",
  "serde",
