@@ -16,7 +16,6 @@ local diveman = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 260, index = 25, sort = 122 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -33,7 +32,6 @@ local diveman_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 261, index = 26, sort = 123 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -50,7 +48,6 @@ local diveman_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 262, index = 27, sort = 124 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

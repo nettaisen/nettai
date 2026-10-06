@@ -1,6 +1,9 @@
 # EXE5's object kinds: the original's pool and index (the traces compare them), and the positions the comparison
 # skips (register garbage the spawner leaves until the kind's init places it), and the statuses it skips
-# (`scratch_status`: no collision behind the object's +0x54): exe5-compat's comparison reads them.
+# (`scratch_status`: no collision behind the object's +0x54), and the kinds whose Z keeps their spawner's address as they
+# move (`z_moves_from_spawner`: on another ROM's console that Z is as far from the content's as the addresses are, by
+# games.toml) or fall from it (`z_falls_from_spawner`, the ticks: on another ROM's console they fall from that ROM's):
+# exe5-compat's comparison reads them.
 # Written by hand from the EXE5 recordings and code, as kinds come up in the replays: edit it when content is renamed
 # or added. A key without a root is EXE5's own (most made with content/exelib's shared code); `engine/...` the
 # engine's.
@@ -123,10 +126,10 @@
 "leadraid/protoman" = { pool = "actor", index = 0x20 }
 "leadraid/colonel" = { pool = "actor", index = 0x22, scratch_status = true }
 "leadraid/glow" = { pool = "effect", index = 0x85 }
-"chaoslrd/navi" = { pool = "actor", index = 0x51 }
+"chaoslrd/navi" = { pool = "actor", index = 0x51, z_moves_from_spawner = true }
 "chaoslrd/aura" = { pool = "effect", index = 0x47 }
 "chaoslrd/gather" = { pool = "effect", index = 0x4B }
-"chaoslrd/strike" = { pool = "attack", index = 0x82 }
+"chaoslrd/strike" = { pool = "attack", index = 0x82, z_falls_from_spawner = 15 }
 "darkinvs/controller" = { pool = "effect", index = 0x18, scratch_position = true }
 "darkinvs/stand-in" = { pool = "actor", index = 0x09 }
 "darkinvs/image" = { pool = "actor", index = 0x0A }

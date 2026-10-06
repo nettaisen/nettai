@@ -16,7 +16,6 @@ local tmhkman = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 230, index = 10, sort = 438 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -33,7 +32,6 @@ local tmhkman_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 231, index = 11, sort = 439 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -50,7 +48,6 @@ local tmhkman_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 232, index = 12, sort = 440 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

@@ -18,7 +18,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 17, damage = 120, hit_param = 20, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 12, index = 12, sort = 427 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
@@ -30,7 +29,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 28, damage = 160, hit_param = 20, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 13, index = 13, sort = 428 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
@@ -42,7 +40,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 39, damage = 200, hit_param = 20, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 14, index = 14, sort = 429 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },

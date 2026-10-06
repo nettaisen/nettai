@@ -17,7 +17,6 @@ return define.chip {
     lockout = 0,
     flags = { "library" },
     extra_flags = { "modifier" },
-    library = { number = 193, index = 193, sort = 448 },
     slot_in_limit = 1,
     modifier = "uninstall",
     instant = plus.attack_with(plus.UNINSTALL),

@@ -89,12 +89,12 @@ The one exception is the empty-hand read in `chip_800AEE8` (§2.5).
 | +0x0F | u8 | `beast_lockon` | Copied to `av[0x1D]`, but only in Beast Out forms or for a chip-gate chip. When set, dispatch goes through the Beast wrapper `sub_80EAD9C` (§2.11). nettai: EXE6's beast system's chip extension `beast` (its presence, unless `rush = false`), which its `chip_used` writes to the attack's `wrapped`. | `sub_800FB54` |
 | +0x10 | u32 | `params` | 4 action-specific bytes, copied to `av.u32[0xC]` and passed as r4 to spawners. Examples: Vulcan shot row 0x0C, AirShot 4, TankCan 0x100. | `sub_80126E4` |
 | +0x14 | u8 | `lockout` | Post-chip lockout in frames. Copied to `av[5]`, then to `ai[0x19]` at attack end (§2.8). Most chips 0. Seeds and Lance 10; FireHit, Boomer, GolmHit, BusterUp, Atk+10 and others 20; Recov and TimeBom 30; AirHocky 50. | `sub_80126E4` |
-| +0x15 | u8 | `lib_index` | Library sub-index. | menus only |
+| +0x15 | u8 | `lib_index` | The chip's place in its library list (1 on): the library screen (`sub_81258F8` on) lists Standard, Mega and Giga chips by class, Secret chips (+0x16 bit 0) of any class, each at this index. | the library screen; content/exe6/library.toml has the order |
 | +0x16 | u8 | `flags2` | See §1.3. | `sub_800EE98`, `sub_8010740` |
 | +0x17 | u8 | `lockon_mode` | Beast Out lock-on panel selector: `sub_80EAE28` passes it to `ho_8026554` (0x08026554), which indexes `jt_8026584`. nettai: the beast system's `beast.lockon` (a lock-on mode, rules/lockon.luau). | `sub_80EAE28` |
-| +0x18 | u16 | `sort_key` | Alphabetical sort. | menus only |
+| +0x18 | u16 | `sort_key` | Alphabetical sort. | menus only (not taken) |
 | +0x1A | u16 | `damage` | Base damage. **≥ 1000 is a formula index** `damage − 1000` into `off_80109DC` (§1.5). | `sub_80109A4` (0x080109A4) and its formulas |
-| +0x1C | u16 | `library_no` | Library number (Cannon 1, …). | menus only |
+| +0x1C | u16 | `library_no` | Library number (Cannon 1, …), one numbering across the categories, each version's own navi chips first (Mega 227-241). | not taken (the library order is the screen's lists: content/exe6/library.toml) |
 | +0x1E | u8 | `slotin_max` | Per-battle use limit through the Battle-Chip-Gate slot-in source (`sub_802E830`). **Unreachable in PvP**; see §2.6. | `sub_802E830` |
 | +0x1F | u8 | `dark_subst` | 0xFF, or 0..4 for dark chips 0x11E..0x122. An index into `off_8010D84` = {0x47 Sword, 0x1E Thunder, 0x9A Recov10, 0xB1 Invisibl, 0xC0 Atk+10}, used when the player has no bugfrag (`sub_8010D58`, §2.6.4). | `sub_80127C0` |
 | +0x20 / +0x24 / +0x28 | ptr | gfx | Icon, picture and palette. | UI only |

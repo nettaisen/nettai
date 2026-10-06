@@ -91,7 +91,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 4, damage = 60, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 88, index = 88, sort = 114 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.crakshot },
@@ -103,7 +102,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 8, damage = 60, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 89, index = 89, sort = 132 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.dublshot },
@@ -115,7 +113,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 12, damage = 100, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 90, index = 90, sort = 447 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.gundels1 },

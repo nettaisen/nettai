@@ -641,7 +641,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         .map(|h| (e.names.navicust_program(c, h), h))
         .filter(|(name, _)| needle.is_empty() || name.to_lowercase().contains(&needle))
         .collect();
-    programs.sort();
+    e.order.navicust_programs(c, &mut programs);
     let list = programs.into_iter().fold(Column::new().spacing(2), |col, (name, h)| {
         let def = c.navicust_program(h);
         let swatches = def.colors.iter().enumerate().fold(row![].spacing(3), |r, (k, cname)| {

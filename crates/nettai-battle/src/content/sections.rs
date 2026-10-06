@@ -221,6 +221,7 @@ struct LockonSection {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct LinkPickSection {
+    first_round_stages: usize,
     backgrounds: Vec<super::BackgroundId>,
 }
 
@@ -341,7 +342,7 @@ impl Stated {
             lockon: Some(r.lockon.clone()),
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
-            link_pick: Some(LinkPickSection { backgrounds: r.link_pick.backgrounds.clone() }),
+            link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages, backgrounds: r.link_pick.backgrounds.clone() }),
             effects: Some(r.effects),
             fresh_stats: Some(r.fresh_stats),
             sp_chips: Some(SpChipsSection { deletion_times: r.sp_deletion_times.clone(), slots: r.sp_slots.clone() }),
@@ -397,7 +398,7 @@ impl Stated {
             sp_deletion_times: sp_chips.deletion_times,
             sp_slots: sp_chips.slots,
             // (Its stages are `link`'s to resolve.)
-            link_pick: super::rules::LinkPick { stages: Vec::new(), backgrounds: link_pick.backgrounds },
+            link_pick: super::rules::LinkPick { stages: Vec::new(), first_round_stages: link_pick.first_round_stages, backgrounds: link_pick.backgrounds },
             sine: self.sine.unwrap_or_default(),
             push_vectors: reactions.push,
             push_reading: reactions.push_reading,
@@ -635,7 +636,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 // they have their handles; stated all the same. Both
                 // fields are asked for here: a section with one alone
                 // reads as an empty table once the stages are out.)
-                for field in ["stages", "backgrounds"] {
+                for field in ["stages", "first_round_stages", "backgrounds"] {
                     if matches!(spec.field(field), Data::Nil) {
                         return Err(e(format!("{at}: missing field `{field}`")));
                     }
@@ -703,6 +704,15 @@ pub fn link(content: &mut Content) -> Result<(), ContentError> {
                 );
             }
             if let Some(rules) = content.rules.as_mut() {
+                // The first round's are some of them, and one at least where
+                // there are any.
+                let first = rules.link_pick.first_round_stages;
+                if first > stages.len() || (first == 0) != stages.is_empty() {
+                    return Err(ContentError::new(format!(
+                        "{path}.luau: ruleset: link_pick.first_round_stages is {first}: how many of its {} stages, from the first, a set's first round picks among",
+                        stages.len()
+                    )));
+                }
                 rules.link_pick.stages = stages;
             }
         }

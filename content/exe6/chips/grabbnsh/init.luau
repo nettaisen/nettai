@@ -17,7 +17,6 @@ local grabbnsh = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
-    library = { number = 166, index = 166, sort = 220 },
     slot_in_limit = 1,
     dimming = controller.hook,
 }
@@ -34,7 +33,6 @@ local grabrvng = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
-    library = { number = 167, index = 167, sort = 221 },
     slot_in_limit = 1,
     dimming = controller.hook,
 }

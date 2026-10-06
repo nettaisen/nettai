@@ -12,7 +12,6 @@ return define.chip {
     element = "null", family = "null", class = "giga",
     rarity = 4, mb = 90, damage = 30, hit_param = 138, lockout = 0,
     flags = { "has_damage" },
-    library = { number = 304, index = 4, sort = 104 },
     slot_in_limit = 1,
     instant = force.instant,
 }

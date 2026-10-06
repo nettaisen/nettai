@@ -10,7 +10,6 @@ return define.chip {
     element = "aqua", family = "aqua", class = "standard",
     rarity = 1, mb = 31, damage = 10, hit_param = 10, lockout = 10,
     flags = { "standard_library", "library" },
-    library = { number = 68, index = 68, sort = 243 },
     slot_in_limit = 3,
     action = throw.action {
         held = seed.held(1),

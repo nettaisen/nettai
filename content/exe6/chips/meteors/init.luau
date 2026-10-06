@@ -17,7 +17,6 @@ return define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
-    library = { number = 111, index = 111, sort = 314 },
     slot_in_limit = 1,
     dimming = controller.hook,
 }

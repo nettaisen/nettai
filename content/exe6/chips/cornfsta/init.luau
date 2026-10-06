@@ -18,7 +18,6 @@ return define.chip {
     hit_param = 10,
     lockout = 20,
     flags = { "dimming", "has_damage", "library" },
-    library = { number = 332, index = 13, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 34, code_run = { chip = cornsht_chips.cornsht1, count = 3 } },

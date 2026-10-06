@@ -21,7 +21,6 @@ return define.chip {
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "mega",
     rarity = 4, mb = 80, damage = 0, hit_param = 10, lockout = 20,
-    library = { number = 0, index = 65, sort = 0 },
     slot_in_limit = 1,
     instant = sync,
 }

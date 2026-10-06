@@ -16,7 +16,6 @@ local grndman = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 236, index = 16, sort = 223 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -33,7 +32,6 @@ local grndman_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 237, index = 17, sort = 224 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -50,7 +48,6 @@ local grndman_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 238, index = 18, sort = 225 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

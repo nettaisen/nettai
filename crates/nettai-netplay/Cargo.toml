@@ -12,12 +12,5 @@ nettai-content-api = { path = "../nettai-content-api" }
 getgud.workspace = true
 rennet.workspace = true
 
-[features]
-# rollback_cost reports the calls into Luau per advance
-# (docs/design/rules-in-luau.md §6.5).
-luau-profile = ["nettai-battle/luau-profile"]
-
 [dev-dependencies]
 nettai-battle = { workspace = true, features = ["test-content"] }
-# rollback_cost loads the EXE6 content pack and replays a golden trace.
-nettai-content = { path = "../nettai-content" }

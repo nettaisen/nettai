@@ -17,7 +17,6 @@ local eraseman = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 251, index = 12, sort = 150 },
     slot_in_limit = 1,
     navi = navi.summon { aim_ticks = 20 },
 }
@@ -35,7 +34,6 @@ local erasemn_ex = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 252, index = 13, sort = 151 },
     slot_in_limit = 1,
     navi = navi.summon { aim_ticks = 16 },
 }
@@ -53,7 +51,6 @@ local erasemn_sp = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 253, index = 14, sort = 200 },
     slot_in_limit = 1,
     navi = navi.summon { aim_ticks = 12 },
 }

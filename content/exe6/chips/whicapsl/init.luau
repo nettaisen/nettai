@@ -12,7 +12,6 @@ return define.chip {
     rarity = 1, mb = 30, damage = 0, hit_param = 50, lockout = 20,
     flags = { "library" },
     extra_flags = { "modifier" },
-    library = { number = 192, index = 192, sort = 506 },
     slot_in_limit = 3,
     modifier = "paralyze",
     instant = plus.attack_with(plus.PARALYZE),

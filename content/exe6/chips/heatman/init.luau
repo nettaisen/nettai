@@ -17,7 +17,6 @@ local heatman = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 242, index = 3, sort = 236 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -35,7 +34,6 @@ local heatman_ex = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 243, index = 4, sort = 237 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -53,7 +51,6 @@ local heatman_sp = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 244, index = 5, sort = 238 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

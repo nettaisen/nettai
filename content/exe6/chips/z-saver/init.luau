@@ -15,7 +15,6 @@ return define.chip {
     damage = 100,
     hit_param = 148,
     lockout = 0,
-    library = { number = 381, index = 0, sort = 0 },
     slot_in_limit = 1,
     action = zsaver.action,
 }

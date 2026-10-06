@@ -16,7 +16,6 @@ local crcusman = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 263, index = 28, sort = 115 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -33,7 +32,6 @@ local crcusmn_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 264, index = 29, sort = 116 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -50,7 +48,6 @@ local crcusmn_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 265, index = 30, sort = 117 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

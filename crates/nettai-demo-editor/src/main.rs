@@ -8,6 +8,7 @@ mod levels;
 mod load;
 mod names;
 mod navicust;
+mod order;
 mod pictures;
 mod view;
 

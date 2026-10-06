@@ -1002,10 +1002,6 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
             o.insert(field.into(), v);
         }
     }
-    let library = spec.field("library");
-    for (field, from) in [("library_number", "number"), ("library_index", "index"), ("sort_key", "sort")] {
-        o.insert(field.into(), library.field(from).int().unwrap_or(0).into());
-    }
     o.insert("program_advance".into(), json("program_advances")?);
     if o["program_advance"].is_null() {
         o.insert("program_advance".into(), Json::Array(Vec::new()));

@@ -106,7 +106,7 @@ return {
         flow = require("./flow"),
         fresh_stats = require("./fresh_stats"),
         -- (Its own: no stage and no background, so no random pick.)
-        link_pick = { stages = {}, backgrounds = {} },
+        link_pick = { stages = {}, first_round_stages = 0, backgrounds = {} },
         lockon = require("./lockon").rules,
         math = require("./math"),
         panels = require("./panels"),

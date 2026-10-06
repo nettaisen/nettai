@@ -18,7 +18,6 @@ local cornsht1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 36, index = 36, sort = 111 },
     slot_in_limit = 3,
     action = cornsht.actions.cornsht1,
 }
@@ -36,7 +35,6 @@ local cornsht2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 37, index = 37, sort = 112 },
     slot_in_limit = 3,
     action = cornsht.actions.cornsht2,
 }
@@ -54,7 +52,6 @@ local cornsht3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 38, index = 38, sort = 113 },
     slot_in_limit = 3,
     action = cornsht.actions.cornsht3,
 }

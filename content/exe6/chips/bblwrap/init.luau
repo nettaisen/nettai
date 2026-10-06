@@ -11,7 +11,6 @@ return define.chip {
     element = "null", family = "aqua", class = "standard",
     rarity = 2, mb = 58, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming", "standard_library", "library" },
-    library = { number = 183, index = 183, sort = 35 },
     slot_in_limit = 1,
     dimming = barrier_chips.hook(barriers.bubble),
 }
