@@ -4048,6 +4048,7 @@ dependencies = [
 name = "nettai"
 version = "0.1.0"
 dependencies = [
+ "arboard",
  "chrono",
  "gilrs",
  "nettai-audio",
@@ -4057,6 +4058,7 @@ dependencies = [
  "nettai-frontend",
  "nettai-match",
  "nettai-render",
+ "nettai-rtc",
  "png 0.17.16",
  "slint",
  "slint-build",

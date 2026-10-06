@@ -306,24 +306,28 @@ export component BattleScreen {
         y: root.portrait ? Theme.gap : 4px;
         width: root.width - 2 * Theme.gap;
         height: 24px;
+        spacing: 12px;
         Text {
             text: root.left-side.navi;
             color: Theme.cyan;
             font-weight: Theme.black;
             font-size: 14px;
             overflow: elide;
+            horizontal-stretch: 1;
         }
 
+        // (Netplay's connection, between the navis.)
         Text {
-            text: @tr("versus" => "VS");
+            text: root.kind == BattleKind.netplay ? root.net-line : @tr("versus" => "VS");
             color: Theme.text-dim;
-            font-weight: Theme.black;
+            font-weight: root.kind == BattleKind.netplay ? Theme.regular : Theme.black;
             font-size: 12px;
             horizontal-alignment: center;
-            width: 40px;
+            vertical-alignment: center;
         }
 
         Text {
+            horizontal-stretch: 1;
             text: root.right-side.navi;
             color: Theme.magenta;
             font-weight: Theme.black;
@@ -333,11 +337,13 @@ export component BattleScreen {
         }
     }
 
-    // Netplay's connection, top right; its link down, across the top.
-    if root.kind == BattleKind.netplay: Text {
+    // Netplay's connection, top right (between the navis without the
+    // banners); its link down, across the top.
+    property <string> net-line: (root.connection.ping < 0 ? @tr("ping —") : @tr("ping {0}", Format.ms(root.connection.ping))) + "   " + @tr("delay {0}", root.connection.delay) + "   " + @tr("rollback {0} (max {1})", root.connection.rollback, root.connection.max-rollback);
+    if root.kind == BattleKind.netplay && root.wide: Text {
         x: root.width - self.width - Theme.gap;
         y: 6px;
-        text: (root.connection.ping < 0 ? @tr("ping —") : @tr("ping {0}", Format.ms(root.connection.ping))) + "   " + @tr("delay {0}", root.connection.delay) + "   " + @tr("rollback {0} (max {1})", root.connection.rollback, root.connection.max-rollback);
+        text: root.net-line;
         color: Theme.text-dim;
         font-size: 12px;
     }

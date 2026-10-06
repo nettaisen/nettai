@@ -2,7 +2,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: nettai VERSION\n"
-"POT-Creation-Date: 2026-10-06 20:56+0000\n"
+"POT-Creation-Date: 2026-10-06 21:35+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -36,130 +36,134 @@ msgctxt "player"
 msgid "P1"
 msgstr ""
 
-#: ui/battle.slint:318 ui/lobby.slint:369 ui/replays.slint:108
-#: ui/battle.slint:318 ui/lobby.slint:369 ui/replays.slint:108 ui/widgets.slint:629
+#: ui/battle.slint:321 ui/lobby.slint:375 ui/replays.slint:108
+#: ui/battle.slint:321 ui/lobby.slint:375 ui/replays.slint:108 ui/widgets.slint:630
 msgctxt "versus"
 msgid "VS"
 msgstr ""
 
-#: ui/battle.slint:340
+#. banners); its link down, across the top.
+#: ui/battle.slint:342
 msgid "ping —"
 msgstr ""
 
-#: ui/battle.slint:340 ui/lobby.slint:401
+#. banners); its link down, across the top.
+#: ui/battle.slint:342 ui/lobby.slint:407
 msgid "ping {0}"
 msgstr ""
 
-#: ui/battle.slint:340
+#. banners); its link down, across the top.
+#: ui/battle.slint:342
 msgid "delay {0}"
 msgstr ""
 
-#: ui/battle.slint:340
+#. banners); its link down, across the top.
+#: ui/battle.slint:342
 msgid "rollback {0} (max {1})"
 msgstr ""
 
-#: ui/battle.slint:354
+#: ui/battle.slint:360
 msgid "Reconnecting… {0}"
 msgstr ""
 
-#: ui/battle.slint:354
+#: ui/battle.slint:360
 msgctxt "seconds"
 msgid "{n} s"
 msgid_plural "{n} s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/battle.slint:369
+#: ui/battle.slint:375
 msgid "REPLAY"
 msgstr ""
 
-#: ui/battle.slint:375
+#: ui/battle.slint:381
 msgid "Round {0}"
 msgstr ""
 
-#: ui/battle.slint:412 ui/replays.slint:345
+#: ui/battle.slint:418 ui/replays.slint:345
 msgctxt "side"
 msgid "Left console"
 msgstr ""
 
-#: ui/battle.slint:412 ui/replays.slint:345
+#: ui/battle.slint:418 ui/replays.slint:345
 msgctxt "side"
 msgid "Right console"
 msgstr ""
 
-#: ui/battle.slint:538
+#: ui/battle.slint:544
 msgid "STOPPED"
 msgstr ""
 
-#: ui/battle.slint:538
+#: ui/battle.slint:544
 msgctxt "result"
 msgid "YOU WIN"
 msgstr ""
 
-#: ui/battle.slint:538
+#: ui/battle.slint:544
 msgctxt "result"
 msgid "YOU LOSE"
 msgstr ""
 
-#: ui/battle.slint:538
+#: ui/battle.slint:544
 msgctxt "result"
 msgid "DRAW"
 msgstr ""
 
-#: ui/battle.slint:560
+#: ui/battle.slint:566
 msgid "Recorded to {0}"
 msgstr ""
 
-#: ui/battle.slint:566
+#: ui/battle.slint:572
 msgid "WATCH AGAIN"
 msgstr ""
 
-#: ui/battle.slint:566
+#: ui/battle.slint:572
 msgid "REMATCH"
 msgstr ""
 
-#: ui/battle.slint:566
+#: ui/battle.slint:572
 msgid "MENU"
 msgstr ""
 
-#: ui/battle.slint:599
+#: ui/battle.slint:605
 msgid "PAUSED"
 msgstr ""
 
-#: ui/battle.slint:612
+#: ui/battle.slint:618
 msgid "RESUME"
 msgstr ""
 
-#: ui/battle.slint:612
+#: ui/battle.slint:618
 msgid "LANGUAGE: {0}"
 msgstr ""
 
-#: ui/battle.slint:612
+#: ui/battle.slint:618
 msgid "QUIT TO MENU"
 msgstr ""
 
-#: ui/battle.slint:612
+#: ui/battle.slint:618
 msgid "START OVER"
 msgstr ""
 
-#: ui/battle.slint:637
+#: ui/battle.slint:643
 msgid "The battle goes on while you're here: netplay can't pause."
 msgstr ""
 
-#: ui/battle.slint:649 ui/lobby.slint:416 ui/play.slint:498
-#: ui/battle.slint:649 ui/lobby.slint:416 ui/play.slint:498 ui/settings.slint:184 ui/title.slint:254
+#: ui/battle.slint:655 ui/lobby.slint:422 ui/play.slint:504
+#: ui/battle.slint:655 ui/lobby.slint:422 ui/play.slint:504 ui/settings.slint:184 ui/title.slint:254
 msgid "Choose"
 msgstr ""
 
-#: ui/battle.slint:650 ui/lobby.slint:418 ui/play.slint:500 ui/title.slint:255
+#: ui/battle.slint:656 ui/lobby.slint:424 ui/play.slint:506 ui/title.slint:255
 msgid "Confirm"
 msgstr ""
 
-#: ui/battle.slint:651
+#: ui/battle.slint:657
 msgid "Menu"
 msgstr ""
 
-#: ui/battle.slint:651
+#: ui/battle.slint:657
 msgid "Resume"
 msgstr ""
 
@@ -205,104 +209,104 @@ msgctxt "speed"
 msgid "×1/{0}"
 msgstr ""
 
-#: ui/lobby.slint:50 ui/lobby.slint:320 ui/play.slint:240
+#: ui/lobby.slint:52 ui/lobby.slint:326 ui/play.slint:245
 msgid "YOU"
 msgstr ""
 
-#: ui/lobby.slint:50 ui/lobby.slint:320
+#: ui/lobby.slint:52 ui/lobby.slint:326
 msgid "OPPONENT"
 msgstr ""
 
-#: ui/lobby.slint:55 ui/lobby.slint:325
+#: ui/lobby.slint:57 ui/lobby.slint:331
 msgid "Player"
 msgstr ""
 
 #. (Three dots, one more each beat.)
-#: ui/lobby.slint:69 ui/lobby.slint:325
+#: ui/lobby.slint:71 ui/lobby.slint:331
 msgid "Waiting for a player"
 msgstr ""
 
-#: ui/lobby.slint:90 ui/lobby.slint:325 ui/lobby.slint:341 ui/play.slint:83
+#: ui/lobby.slint:92 ui/lobby.slint:331 ui/lobby.slint:347 ui/play.slint:83
 msgid "READY"
 msgstr ""
 
-#: ui/lobby.slint:90 ui/lobby.slint:341
+#: ui/lobby.slint:92 ui/lobby.slint:347
 msgid "NOT READY"
 msgstr ""
 
-#: ui/lobby.slint:185
+#: ui/lobby.slint:191
 msgctxt "heading"
 msgid "NETPLAY"
 msgstr ""
 
-#: ui/lobby.slint:186
+#: ui/lobby.slint:192
 msgid "ROLLBACK · ROOM CODES OR A DIRECT LINK"
 msgstr ""
 
-#: ui/lobby.slint:206
+#: ui/lobby.slint:212
 msgid ""
-"Netplay connects through nettai-rtc, which isn't in this build yet. The "
-"lobby is shown as it will work."
+"No signaling server: set NETTAI_SIGNAL to one (ws://127.0.0.1:8787 for "
+"signaling/ run with `npx wrangler dev`)."
 msgstr ""
 
-#: ui/lobby.slint:226
+#: ui/lobby.slint:232
 msgid "MAKE A ROOM"
 msgstr ""
 
-#: ui/lobby.slint:226
+#: ui/lobby.slint:232
 msgid "JOIN A ROOM"
 msgstr ""
 
-#: ui/lobby.slint:254
+#: ui/lobby.slint:260
 msgid "YOUR ROOM'S CODE · CONFIRM TO COPY"
 msgstr ""
 
-#: ui/lobby.slint:254
+#: ui/lobby.slint:260
 msgid "THE ROOM'S CODE"
 msgstr ""
 
-#: ui/lobby.slint:272 ui/settings.slint:111
+#: ui/lobby.slint:278 ui/settings.slint:111
 msgid "YOUR NAME"
 msgstr ""
 
-#: ui/lobby.slint:273 ui/settings.slint:112
+#: ui/lobby.slint:279 ui/settings.slint:112
 msgid "Type your name"
 msgstr ""
 
-#: ui/lobby.slint:289 ui/play.slint:117
+#: ui/lobby.slint:295 ui/play.slint:117
 msgid "GAME"
 msgstr ""
 
-#: ui/lobby.slint:291
+#: ui/lobby.slint:297
 msgid "Both players play the same game"
 msgstr ""
 
-#: ui/lobby.slint:395
+#: ui/lobby.slint:401
 msgid "No link"
 msgstr ""
 
-#: ui/lobby.slint:395
+#: ui/lobby.slint:401
 msgid "In the room, waiting"
 msgstr ""
 
-#: ui/lobby.slint:395
+#: ui/lobby.slint:401
 msgid "Connecting…"
 msgstr ""
 
-#: ui/lobby.slint:395
+#: ui/lobby.slint:401
 msgid "Connected"
 msgstr ""
 
-#: ui/lobby.slint:395
+#: ui/lobby.slint:401
 msgid "Reconnecting…"
 msgstr ""
 
-#: ui/lobby.slint:417 ui/play.slint:499 ui/settings.slint:185
+#: ui/lobby.slint:423 ui/play.slint:505 ui/settings.slint:185
 msgid "Change"
 msgstr ""
 
-#: ui/lobby.slint:419 ui/play.slint:501 ui/replays.slint:388
-#: ui/lobby.slint:419 ui/play.slint:501 ui/replays.slint:388 ui/title.slint:256
+#: ui/lobby.slint:425 ui/play.slint:507 ui/replays.slint:388
+#: ui/lobby.slint:425 ui/play.slint:507 ui/replays.slint:388 ui/title.slint:256
 msgid "Back"
 msgstr ""
 
@@ -342,28 +346,28 @@ msgstr ""
 msgid "FIGHT"
 msgstr ""
 
-#: ui/play.slint:226
+#: ui/play.slint:235
 msgid "Choose a game"
 msgstr ""
 
-#: ui/play.slint:242
+#: ui/play.slint:247
 msgid "STAND-IN"
 msgstr ""
 
-#: ui/play.slint:253
+#: ui/play.slint:258
 msgid "THE ARENAS"
 msgstr ""
 
-#: ui/play.slint:284
+#: ui/play.slint:288
 msgid "ROUND {0}"
 msgstr ""
 
-#: ui/play.slint:396
+#: ui/play.slint:400
 msgctxt "heading"
 msgid "PLAY"
 msgstr ""
 
-#: ui/play.slint:397
+#: ui/play.slint:401
 msgid "OFFLINE · AGAINST THE STAND-IN"
 msgstr ""
 
