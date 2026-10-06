@@ -1,20 +1,20 @@
 //! Content-declared state: each object kind and action declares a schema
-//! of named, typed fields; the core stores the values as a
-//! [`ContentState`] next to the object (or in the actor's attack state)
-//! and snapshots them with the rest of the battle.
+//! of named, typed fields; the core stores the values in a [`StateArena`]
+//! by the object's slot (or the actor's, for its attack state) and
+//! snapshots them with the rest of the battle.
 //!
 //! Writes go through the field's type: integers wrap to the field's width
 //! (as the game's `strb`/`strh`/`str` do), and a value of the wrong kind is
 //! an error. So a script cannot put a fraction, a table or a string into
 //! battle state, and a `u16` timer written with -1 reads back as 0xFFFF.
 //!
-//! An object's or an action's state is a fixed-size block of bytes
-//! ([`MAX_BYTES`], [`ContentState`]); a game's rules' state of a side and a
-//! player's setup of them are a block of the schema's own size, whatever
-//! that is ([`Block`]). The schema decides where each field
-//! lives in either. That layout is private to this module: content and
-//! engine code read and write fields by name (or by the schema's field
-//! index), never by offset.
+//! Every state is a block of its schema's own size, whatever that is: an
+//! object's or an action's in its pool's arena ([`StateArena`], read and
+//! written through a [`StateRef`] or [`StateMut`]), a game's rules' state
+//! of a side and a player's setup of them on their own ([`Block`]). The
+//! schema decides where each field lives in a block. That layout is
+//! private to this module: content and engine code read and write fields
+//! by name (or by the schema's field index), never by offset.
 
 use std::fmt;
 
@@ -22,12 +22,6 @@ use crate::data::{Data, Key};
 use crate::registry::Registry;
 use crate::assets::AssetKind;
 use crate::types::{ObjectRef, Pool, Vec3};
-
-/// Bytes of state one kind or action may declare. (The game gives an
-/// object 0x1C to 0x2C bytes of scratch and an action about 0x40; this
-/// covers every kind ported so far with room to spare, and keeps a state a
-/// small `Copy` value.)
-pub const MAX_BYTES: usize = 64;
 
 /// Most elements an array field may have.
 pub const MAX_ARRAY: usize = 64;
@@ -344,9 +338,7 @@ pub struct Schema {
 
 impl Schema {
     /// A schema from its fields; names must be unique identifiers. Its size
-    /// is what its fields take (an object's or an action's state, a
-    /// [`ContentState`], fits in [`MAX_BYTES`]: [`Schema::fits_object`]; a
-    /// [`Block`] is of any size).
+    /// is what its fields take, whatever that is.
     pub fn new(fields: Vec<FieldDef>) -> Result<Schema, String> {
         let mut offsets = Vec::with_capacity(fields.len());
         let mut at = 0usize;
@@ -373,12 +365,6 @@ impl Schema {
     /// The bytes its fields take.
     pub fn size(&self) -> usize {
         self.size
-    }
-
-    /// Whether an object's or an action's state ([`ContentState`]) holds
-    /// it: [`MAX_BYTES`] at most.
-    pub fn fits_object(&self) -> bool {
-        self.size() <= MAX_BYTES
     }
 
     /// A schema from a `state` table as data: field name to a type name
@@ -431,15 +417,36 @@ impl Schema {
     }
 }
 
-/// The field codec of a state's bytes (`self.bytes`): what [`ContentState`]
-/// and [`Block`] both read and write by.
-macro_rules! codec {
+/// The field codec of a state's bytes (`self.bytes`), to read: what
+/// [`StateRef`], [`StateMut`] and [`Block`] read by.
+macro_rules! codec_read {
     () => {
     /// Field `i` of `schema` (for an array, its first element).
     pub fn get(&self, schema: &Schema, i: usize) -> FieldValue {
         schema.field(i).ty.decode(&self.bytes[schema.at(i)..])
     }
 
+    /// Whether field `i` is stated: an enum holds one of its variants (true
+    /// of any other field).
+    pub fn stated(&self, schema: &Schema, i: usize) -> bool {
+        match (&schema.field(i).ty, self.get(schema, i)) {
+            (FieldType::Enum(names), FieldValue::Enum(v)) => (v as usize) < names.len(),
+            _ => true,
+        }
+    }
+
+    /// Element `k` of array field `i` (None past its end).
+    pub fn get_elem(&self, schema: &Schema, i: usize, k: usize) -> Option<FieldValue> {
+        let FieldType::Array(elem, n) = &schema.field(i).ty else { return None };
+        (k < *n as usize).then(|| elem.decode(&self.bytes[schema.at(i) + k * elem.size()..]))
+    }
+    };
+}
+
+/// The field codec of a state's bytes, to write: what [`StateMut`] and
+/// [`Block`] write by.
+macro_rules! codec_write {
+    () => {
     /// Leave field `i` stated by nobody, if it is an enum: it holds no
     /// variant ([`ENUM_UNSTATED`]) until something states one. For a
     /// player's setup, whose enums have no default (a choice among named
@@ -452,15 +459,6 @@ macro_rules! codec {
         }
     }
 
-    /// Whether field `i` is stated: an enum holds one of its variants (true
-    /// of any other field).
-    pub fn stated(&self, schema: &Schema, i: usize) -> bool {
-        match (&schema.field(i).ty, self.get(schema, i)) {
-            (FieldType::Enum(names), FieldValue::Enum(v)) => (v as usize) < names.len(),
-            _ => true,
-        }
-    }
-
     /// Store `v` in field `i`, converted by the field's type.
     pub fn set(&mut self, schema: &Schema, i: usize, v: Value) -> Result<(), TypeError> {
         let ty = &schema.field(i).ty;
@@ -470,12 +468,6 @@ macro_rules! codec {
         let stored = ty.store(v)?;
         ty.encode(stored, &mut self.bytes[schema.at(i)..]);
         Ok(())
-    }
-
-    /// Element `k` of array field `i` (None past its end).
-    pub fn get_elem(&self, schema: &Schema, i: usize, k: usize) -> Option<FieldValue> {
-        let FieldType::Array(elem, n) = &schema.field(i).ty else { return None };
-        (k < *n as usize).then(|| elem.decode(&self.bytes[schema.at(i) + k * elem.size()..]))
     }
 
     /// Store `v` in element `k` of array field `i`.
@@ -494,42 +486,110 @@ macro_rules! codec {
 }
 
 /// What an enum field holds that nothing has stated
-/// ([`ContentState::unstate`]): no variant's index.
+/// ([`Block::unstate`]): no variant's index.
 pub const ENUM_UNSTATED: u8 = 0xFF;
 
-/// Which schema a [`ContentState`] follows (an index into the content's
+/// Which schema a state follows (an index into the content's
 /// [`crate::Manifest`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StateId(pub u16);
 
-/// The stored state of one object or action: the values of its schema's
-/// fields, in a fixed block of bytes. A plain `Copy` value, so snapshots
-/// copy it like any other engine state and the digest hashes it.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ContentState {
-    id: StateId,
-    bytes: [u8; MAX_BYTES],
+/// The states of a pool of slots (an object pool's, or the actors' attack
+/// states): each slot's block, of the size of the layout it last took,
+/// packed in slot order in one run of bytes. A copy of the arena (a
+/// snapshot's) carries no unused bytes, and no slot that never took a
+/// state has any.
+///
+/// A slot's block is replaced only when the slot takes a state
+/// ([`StateArena::reset`]: zeroed, of the new layout's size, the blocks
+/// above it moved by the difference). Freeing an object leaves its block as
+/// it is, so its state stays readable until the slot is taken again, as the
+/// game's memory does. The bytes follow from what each slot last took, so
+/// two battles that ran the same ticks have the same arena, and the
+/// arena's `Hash` (the digest's) covers every block and its slot.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct StateArena<const SLOTS: usize> {
+    bytes: Vec<u8>,
+    /// Each slot's block's size, in slot order (where a block starts is the
+    /// sum of the sizes below it).
+    sizes: [u32; SLOTS],
 }
 
-impl ContentState {
-    /// A zeroed state for the schema `id`. (Every field type's zero value
-    /// is all zero bytes.)
-    pub fn new(id: StateId) -> ContentState {
-        ContentState { id, bytes: [0; MAX_BYTES] }
+impl<const SLOTS: usize> Default for StateArena<SLOTS> {
+    fn default() -> StateArena<SLOTS> {
+        StateArena { bytes: Vec::new(), sizes: [0; SLOTS] }
+    }
+}
+
+impl<const SLOTS: usize> StateArena<SLOTS> {
+    /// Where `slot`'s block is in the bytes.
+    fn span(&self, slot: usize) -> std::ops::Range<usize> {
+        let at: usize = self.sizes[..slot].iter().map(|&n| n as usize).sum();
+        at..at + self.sizes[slot] as usize
     }
 
+    /// Give `slot` a zeroed block of `size` bytes in place of the one it
+    /// had (an object's spawn, a state of another layout; `size` 0: none).
+    /// Every field type's zero value is all zero bytes.
+    pub fn reset(&mut self, slot: usize, size: usize) {
+        let span = self.span(slot);
+        self.bytes.splice(span, std::iter::repeat_n(0, size));
+        self.sizes[slot] = u32::try_from(size).expect("a state's size fits in 32 bits");
+    }
+
+    /// The size of `slot`'s block.
+    pub fn size_of(&self, slot: usize) -> usize {
+        self.sizes[slot] as usize
+    }
+
+    /// The bytes every block takes.
+    pub fn size(&self) -> usize {
+        self.bytes.len()
+    }
+
+    /// `slot`'s block as a state of layout `id`, to read. (Its schema is
+    /// the one the block was sized for.)
+    pub fn state(&self, slot: usize, id: StateId) -> StateRef<'_> {
+        StateRef { id, bytes: &self.bytes[self.span(slot)] }
+    }
+
+    /// `slot`'s block as a state of layout `id`, to read and write.
+    pub fn state_mut(&mut self, slot: usize, id: StateId) -> StateMut<'_> {
+        let span = self.span(slot);
+        StateMut { id, bytes: &mut self.bytes[span] }
+    }
+}
+
+/// One state in a [`StateArena`], to read: its layout and its block.
+#[derive(Clone, Copy, Debug)]
+pub struct StateRef<'a> {
+    id: StateId,
+    bytes: &'a [u8],
+}
+
+impl StateRef<'_> {
     pub fn id(&self) -> StateId {
         self.id
     }
 
-    codec!();
+    codec_read!();
 }
 
-impl fmt::Debug for ContentState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let used = self.bytes.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
-        f.debug_struct("ContentState").field("id", &self.id).field("bytes", &&self.bytes[..used]).finish()
+/// One state in a [`StateArena`], to read and write: its layout and its
+/// block.
+#[derive(Debug)]
+pub struct StateMut<'a> {
+    id: StateId,
+    bytes: &'a mut [u8],
+}
+
+impl StateMut<'_> {
+    pub fn id(&self) -> StateId {
+        self.id
     }
+
+    codec_read!();
+    codec_write!();
 }
 
 /// A game's rules' state of a side, or a player's setup of them: the
@@ -551,7 +611,8 @@ impl Block {
         self.id
     }
 
-    codec!();
+    codec_read!();
+    codec_write!();
 }
 
 impl fmt::Debug for Block {
@@ -561,8 +622,8 @@ impl fmt::Debug for Block {
     }
 }
 
-/// A state's fields, of either kind ([`ContentState`], [`Block`]): what
-/// code that reads and writes either by its schema takes (the Luau
+/// A state's fields, of either kind (an arena's [`StateMut`], a [`Block`]):
+/// what code that reads and writes either by its schema takes (the Luau
 /// binding's state values).
 pub trait Fields {
     fn id(&self) -> StateId;
@@ -593,7 +654,7 @@ macro_rules! fields {
         }
     };
 }
-fields!(ContentState);
+fields!(StateMut<'_>);
 fields!(Block);
 
 #[cfg(test)]
@@ -615,7 +676,7 @@ mod tests {
     #[test]
     fn integer_fields_wrap_to_their_width() {
         let s = schema();
-        let mut st = ContentState::new(StateId(0));
+        let mut st = Block::new(StateId(0), &s);
         st.set(&s, 0, Value::Int(-1)).unwrap();
         assert_eq!(st.get(&s, 0), FieldValue::U16(0xFFFF));
         st.set(&s, 1, Value::Int(0x1F8)).unwrap();
@@ -625,7 +686,7 @@ mod tests {
     #[test]
     fn fields_read_back_what_was_stored() {
         let s = schema();
-        let mut st = ContentState::new(StateId(0));
+        let mut st = Block::new(StateId(0), &s);
         let o = ObjectRef { pool: Pool::Effect, slot: 31 };
         st.set(&s, 3, Value::Object(o)).unwrap();
         let p = Vec3 { x: -1, y: 0x12_3456, z: i32::MIN };
@@ -642,7 +703,7 @@ mod tests {
     #[test]
     fn arrays_are_read_and_written_by_element() {
         let s = schema();
-        let mut st = ContentState::new(StateId(0));
+        let mut st = Block::new(StateId(0), &s);
         st.set_elem(&s, 5, 5, Value::Int(0x1FF)).unwrap();
         assert_eq!(st.get_elem(&s, 5, 5), Some(FieldValue::U8(0xFF)));
         assert_eq!(st.get_elem(&s, 5, 0), Some(FieldValue::U8(0)));
@@ -665,7 +726,7 @@ mod tests {
         ])
         .unwrap();
         let (forms, which) = (s.index_of("forms").unwrap(), s.index_of("which").unwrap());
-        let mut st = ContentState::new(StateId(0));
+        let mut st = Block::new(StateId(0), &s);
         assert!((0..4).all(|i| st.stated(&s, i)), "zeroed: an empty list, the first variant");
         for i in 0..4 {
             st.unstate(&s, i);
@@ -674,8 +735,8 @@ mod tests {
         assert!((0..3).all(|k| st.get_elem(&s, forms, k) == Some(FieldValue::Ref(None))), "a list left out is empty");
     }
 
-    /// A block is its schema's size, past an object's, and reads and writes
-    /// as a state does.
+    /// A block is its schema's size, and reads and writes as an arena's
+    /// state does.
     #[test]
     fn a_block_is_its_schemas_size() {
         let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
@@ -690,7 +751,7 @@ mod tests {
     #[test]
     fn wrong_kinds_and_bad_enum_values_are_errors() {
         let s = schema();
-        let mut st = ContentState::new(StateId(0));
+        let mut st = Block::new(StateId(0), &s);
         assert!(st.set(&s, 0, Value::Bool(true)).is_err());
         assert!(st.set(&s, 2, Value::Int(2)).is_err());
         assert!(st.set(&s, 3, Value::Int(1)).is_err());
@@ -701,11 +762,7 @@ mod tests {
         let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
         assert!(Schema::new(vec![f("a", FieldType::U8), f("a", FieldType::U8)]).is_err());
         assert!(Schema::new(vec![f("1a", FieldType::U8)]).is_err());
-        // (Past an object's 64 bytes, a block's schema, of any size: the
-        // user, "drop the block cap".)
-        let six = Schema::new((0..6).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).unwrap();
-        assert!(!six.fits_object() && six.size() == 72);
-        assert!(Schema::new((0..16).map(|i| f(&format!("f{i}"), FieldType::U32)).collect()).unwrap().fits_object());
+        // (A schema of any size: the user, "drop the block cap".)
         let large = Schema::new((0..400).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).unwrap();
         assert_eq!(large.size(), 4800);
         let mut block = Block::new(StateId(0), &large);
@@ -713,5 +770,89 @@ mod tests {
         assert_eq!(block.get(&large, 399).load(), Value::Vec3(Vec3 { x: 1, y: 2, z: 3 }));
         assert!(FieldType::scalar("vec3[2]").is_none());
         assert!(FieldType::scalar("u8[0]").is_none());
+    }
+
+    fn arena_schemas() -> (Schema, Schema) {
+        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let small = Schema::new(vec![f("a", FieldType::U16), f("b", FieldType::U8)]).unwrap();
+        let large = Schema::new((0..20).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).unwrap();
+        (small, large)
+    }
+
+    /// Blocks are packed in slot order, each its layout's size; a write to
+    /// one leaves the others alone, and a neighbor's new block moves a
+    /// block's bytes without changing its values.
+    #[test]
+    fn an_arena_packs_each_slots_block_in_slot_order() {
+        let (small, large) = arena_schemas();
+        let (s, l) = (StateId(1), StateId(2));
+        let mut a = StateArena::<4>::default();
+        a.reset(2, small.size());
+        a.state_mut(2, s).set(&small, 0, Value::Int(0x1234)).unwrap();
+        a.reset(0, large.size());
+        a.state_mut(0, l).set(&large, 19, Value::Vec3(Vec3 { x: 7, y: 8, z: 9 })).unwrap();
+        a.reset(3, small.size());
+        a.state_mut(3, s).set(&small, 1, Value::Int(5)).unwrap();
+        assert_eq!(a.size(), large.size() + 2 * small.size(), "no slot without a state takes bytes");
+        assert_eq!((a.size_of(0), a.size_of(1), a.size_of(2)), (large.size(), 0, small.size()));
+        assert_eq!(a.state(2, s).get(&small, 0), FieldValue::U16(0x1234), "moved by slot 0's block, kept");
+        assert_eq!(a.state(2, s).get(&small, 1), FieldValue::U8(0));
+        assert_eq!(a.state(3, s).get(&small, 1), FieldValue::U8(5));
+        assert_eq!(a.state(0, l).get(&large, 19).load(), Value::Vec3(Vec3 { x: 7, y: 8, z: 9 }));
+        assert_eq!(a.state(0, l).id(), l);
+    }
+
+    /// Taking a state replaces the slot's block, zeroed, at the new
+    /// layout's size; nothing else does: a freed object's block stays
+    /// readable until its slot is taken again.
+    #[test]
+    fn a_slots_block_is_replaced_only_when_it_takes_a_state() {
+        let (small, large) = arena_schemas();
+        let (s, l) = (StateId(1), StateId(2));
+        let mut a = StateArena::<3>::default();
+        a.reset(0, small.size());
+        a.state_mut(0, s).set(&small, 0, Value::Int(3)).unwrap();
+        a.reset(1, large.size());
+        a.state_mut(1, l).set(&large, 0, Value::Vec3(Vec3 { x: 1, y: 1, z: 1 })).unwrap();
+        a.reset(2, small.size());
+        a.state_mut(2, s).set(&small, 0, Value::Int(4)).unwrap();
+        // Slot 1 freed, then taken by the small layout: its block shrinks,
+        // zeroed, and slot 2's moves down with its values.
+        assert_eq!(a.state(1, l).get(&large, 0).load(), Value::Vec3(Vec3 { x: 1, y: 1, z: 1 }), "left as it was");
+        a.reset(1, small.size());
+        assert_eq!(a.size(), 3 * small.size());
+        assert_eq!(a.state(1, s).get(&small, 0), FieldValue::U16(0));
+        assert_eq!((a.state(0, s).get(&small, 0), a.state(2, s).get(&small, 0)), (FieldValue::U16(3), FieldValue::U16(4)));
+        // Taken by a kind with no state: no block.
+        a.reset(1, 0);
+        assert_eq!((a.size_of(1), a.size()), (0, 2 * small.size()));
+        assert_eq!(a.state(2, s).get(&small, 0), FieldValue::U16(4));
+    }
+
+    /// The bytes follow from what each slot took, in what order: the same
+    /// steps give the same arena, and a copy reads as the original.
+    #[test]
+    fn the_same_steps_give_the_same_arena() {
+        let (small, large) = arena_schemas();
+        let steps = |a: &mut StateArena<8>| {
+            for (slot, big, v) in [(3, true, 1), (0, false, 2), (5, false, 3), (3, false, 4), (1, true, 5), (0, true, 6)] {
+                let (schema, id) = if big { (&large, StateId(2)) } else { (&small, StateId(1)) };
+                a.reset(slot, schema.size());
+                let mut st = a.state_mut(slot, id);
+                if big {
+                    st.set(schema, 3, Value::Vec3(Vec3 { x: v, y: -v, z: 0 })).unwrap();
+                } else {
+                    st.set(schema, 0, Value::Int(v as i64)).unwrap();
+                }
+            }
+        };
+        let (mut a, mut b) = (StateArena::<8>::default(), StateArena::<8>::default());
+        steps(&mut a);
+        steps(&mut b);
+        assert_eq!(a, b);
+        let c = a.clone();
+        assert_eq!(c.state(1, StateId(2)).get(&large, 3).load(), Value::Vec3(Vec3 { x: 5, y: -5, z: 0 }));
+        assert_eq!(c.state(5, StateId(1)).get(&small, 0), FieldValue::U16(3));
+        assert_eq!(c.size(), 2 * large.size() + 2 * small.size());
     }
 }
