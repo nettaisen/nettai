@@ -104,11 +104,9 @@ local rules: Rules = {
             compressed = "bool",
         }, 49),
         -- Their auto battle data as their save holds it (./auto_battle/block.luau: the block's 42 places and its eight
-        -- pattern records), which a navi in auto battle plays of them as their console sends it; `auto_battle_sent`:
-        -- the places are as the console sent them, a recording's (the round's setup sends nothing).
+        -- pattern records), which a navi in auto battle plays of them as their console sends it.
         auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
         auto_battle_records = schema.list(auto_battle.block.RECORD, auto_battle.block.RECORDS),
-        auto_battle_sent = "bool",
         -- What the save brings to the navi's stats (./save): MegaMan's base HP, the Regular memory, and a team navi's
         -- level (the story's progress).
         hp = "u16",
@@ -224,8 +222,10 @@ local rules: Rules = {
             navicust.round_setup(side)
             patch_cards.apply(side)
             light_dark.round_setup(side)
-            -- The auto battle data the console sends (./auto_battle/block.luau).
-            auto_battle.block.send(side)
+            -- The auto battle data both consoles send, shuffled alike, once for the round (./auto_battle/block.luau).
+            if side == 0 then
+                auto_battle.block.send()
+            end
         end,
         -- Light and dark MegaMan (./light_dark): his starting mood, palette, a hit's bug, the holy panels a dark
         -- one clears, the chips each may use and a dark chip's cost.
