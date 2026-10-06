@@ -139,7 +139,6 @@ impl Side {
         for (field, variant) in stated {
             side.set_fact(content, field, &[Fact::Name(variant)])?;
         }
-        side.stats = Side::base_stats(content, side.navi, side.version(content));
         side.folder = folder.into();
         let list: Vec<Fact> = forms.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
         side.set_fact(content, PlayerFact::CrossList.name(), &list)?;
@@ -196,9 +195,8 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
     }
     let mut side = Side {
         navi,
-        stats: Side::base_stats(content, navi, facts.version(content)),
         folder: folder.into(),
-        cards: Vec::new(),
+        patch_cards: Vec::new(),
         navi_level: crate::default_navi_level(content, navi),
         sp_times: Default::default(),
         navicust: None,
@@ -342,12 +340,11 @@ mod tests {
         // NaviCust programs (road panels carry him).
         let m = live(&content, "exe6", 0, None).unwrap();
         let fresh = &crate::Match::empty(&content, "exe6").unwrap().sides[0];
-        for side in &m.sides {
-            let s = &side.stats;
+        let started = crate::check::round_stats(&content, &m).unwrap();
+        for (side, s) in m.sides.iter().zip(&started) {
             assert_eq!((side.navi, side.navicust, side.navi_level), (fresh.navi, fresh.navicust, fresh.navi_level));
-            assert_eq!(*s, Side::base_stats(&content, side.navi, side.version(&content)));
             assert!(side.version(&content).is_some(), "a picked EXE6 side states its version");
-            assert_eq!((s.hp, s.max_hp), (100, 100));
+            assert_eq!((s.max_base_hp, s.hp, s.max_hp), (100, 100, 100));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
         }
         let stages = crate::link_battle_stages(&content, "exe6");
@@ -376,7 +373,10 @@ mod tests {
                 }
                 assert_eq!(b.fact(side as u8, PlayerFact::Version).and_then(|f| f.name()), m.sides[side].version(&content));
                 assert_eq!(b.fact(side as u8, PlayerFact::BeastOut).and_then(|f| f.flag()), Some(true));
-                assert_eq!(setup.navi_stats[side].version, crate::version_byte(&content, m.sides[side].version(&content)));
+                // (The navi's version byte is the version's place: the
+                // battle's start sets it.)
+                let place = crate::facts::versions(&content).iter().position(|v| Some(v.as_str()) == m.sides[side].version(&content));
+                assert_eq!(Some(b.stats[side].version as usize), place);
                 // (A picked side states its version and its form list, and
                 // nothing else: the rest is its rules' defaults.)
                 let stated: Vec<&str> =
@@ -421,7 +421,8 @@ mod tests {
         assert_eq!(m.arena.game, "exe5");
         // An EXE5 match has no version: its sides state none, their stats'
         // version byte is 0, and its file has no such key.
-        assert!(m.sides.iter().all(|s| s.version(&content).is_none() && s.stats.version == 0));
+        assert!(m.sides.iter().all(|s| s.version(&content).is_none()));
+        assert!(crate::check::round_stats(&content, &m).unwrap().iter().all(|s| s.version == 0));
         // (Nor anything else: EXE5's rules require no fact, and a random
         // side's are their defaults.)
         assert!(m.sides.iter().all(|s| s.facts == crate::Facts::defaults(&content)));

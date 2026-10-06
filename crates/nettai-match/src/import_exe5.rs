@@ -124,10 +124,9 @@ impl Side {
     }
 
     /// A side that operates a team navi (a navi with a story) takes the
-    /// save's level (its story flags' count) and, where the save's version
-    /// has the navi, the HP and the light/dark value of the navi's own
-    /// block (a battle from the real world starts it at its full HP); a
-    /// navi of the other version takes the story's HP at the save's level.
+    /// save's level (its story flags' count), which its HP is the story's
+    /// at (EXE5's save system), and, where the save's version has the navi,
+    /// the light/dark value of the navi's own block.
     fn import_exe5_team_navi(&mut self, content: &Content, save: &Save) -> Vec<String> {
         if content.navi(self.navi).story.is_none() {
             return Vec::new();
@@ -135,24 +134,20 @@ impl Side {
         let name = crate::names::navi(content, self.navi);
         let level = save.navi_level();
         self.navi_level = Some(level);
-        if let Some(s) = self.reloaded(content) {
-            self.stats = s;
-        }
         let compat = exe5_compat::Compat::exe5();
         let key = crate::ids::local(&content.defs.navi(self.navi).key);
         let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
+        let mut notes = vec![format!("{name}: the save's level {level}")];
         match block.map(|b| exe5_compat::codec::navi_stats(&b)) {
             Some(Ok(b)) => {
-                (self.stats.max_base_hp, self.stats.max_hp, self.stats.hp) = (b.max_base_hp, b.max_hp, b.max_hp);
-                let mut notes = vec![format!("{name}: the save's level {level} and its block's HP {}", b.max_hp)];
                 if let Err(e) = self.set_fact(content, "karma", &[Fact::Value(Value::Int(b.light_dark.0 as i64))]) {
                     notes.push(format!("{name}: its block's karma is left out: {e}"));
                 }
-                notes
             }
-            Some(Err(e)) => vec![format!("{name}: the save's level {level}; the navi's block doesn't read ({e}): the story's HP at that level")],
-            None => vec![format!("{name}: the save's level {level}; its version has no such navi: the story's HP at that level")],
+            Some(Err(e)) => notes.push(format!("{name}: the navi's block doesn't read ({e}): no karma of its own")),
+            None => notes.push(format!("{name}: its version has no such navi: no karma of its own")),
         }
+        notes
     }
 }
 
@@ -211,11 +206,12 @@ mod tests {
     }
 
     /// A Team ProtoMan save whose story is four flags along: a side that
-    /// operates ProtoMan takes its level (4) and his own block's HP and
+    /// operates ProtoMan takes its level (4), which his round's HP is the
+    /// story's at (450, whatever his block's says), and his own block's
     /// light/dark value; from a Team Colonel save, which hasn't him, the
-    /// level and the story's HP at it.
+    /// level alone.
     #[test]
-    fn a_exe5_save_gives_a_team_navi_its_level_and_hp() {
+    fn a_exe5_save_gives_a_team_navi_its_level() {
         let content = exe5_content();
         let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
@@ -231,20 +227,22 @@ mod tests {
         let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
         let mut m = crate::Match::empty(&content, "exe5").unwrap();
         let s = &mut m.sides[0];
-        s.navi_level = Some(0);
-        s.stats = s.reloaded_as(&content, protoman).unwrap();
-        (s.navi, s.navicust) = (protoman, None);
-        assert_eq!((s.stats.max_hp, s.stats.hp), (200, 200));
+        (s.navi, s.navi_level, s.navicust) = (protoman, Some(0), None);
         let notes = m.import_save(&content, 0, &image).unwrap();
         let s = &m.sides[0];
-        assert_eq!((s.navi_level, s.stats.max_base_hp, s.stats.max_hp, s.stats.hp), (Some(4), 470, 470, 470));
+        assert_eq!(s.navi_level, Some(4));
         assert_eq!(s.facts.get(&content, "karma"), Some(crate::facts::Stated::Number(519)));
-        assert!(notes.iter().any(|n| n.contains("level 4") && n.contains("470")), "{notes:?}");
+        assert!(notes.iter().any(|n| n.contains("level 4")), "{notes:?}");
         assert_eq!(crate::check::check_side_alone(&content, &m.arena, s), Vec::<String>::new());
+        let hp = |m: &crate::Match| {
+            let mut m = m.clone();
+            m.sides[1] = m.sides[0].clone();
+            crate::check::round_stats(&content, &m).unwrap()[0].max_hp
+        };
+        assert_eq!(hp(&m), 450, "the story's at level 4");
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
         let notes = m.import_save(&content, 0, &image).unwrap();
-        let s = &m.sides[0];
-        assert_eq!((s.navi_level, s.stats.max_hp, s.stats.hp), (Some(4), 450, 450));
+        assert_eq!((m.sides[0].navi_level, hp(&m)), (Some(4), 450));
         assert!(notes.iter().any(|n| n.contains("its version has no such navi")), "{notes:?}");
         // A MegaMan side takes no level from the save.
         assert_eq!(m.sides[1].navi_level, None);

@@ -1110,7 +1110,10 @@ version = "gregar"                         # the side's facts (see below). EXE6'
 crosses = ["heatcross", "spoutcross"]      # up to five of either version ([] none): a side states both (none is
 beast_out = false                          # assumed); beast_out, else unlocked (the save's flag 0xE0); bug_frags,
 bug_frags = 0                              # else 0
-cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
+hp = 1000                                  # what the save brings to the stats: MegaMan's base HP (else 100), the
+reg_up = 50                                # Regular memory (else the fresh stats' 4), the sun (else none); the rules
+sun = true                                 # build the rest (below)
+patch_cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 level = 0                                  # optional: the navi code's level, 0-14 (see below)
 folder = [                                 # 30 entries, [chip, code] ([] empty: a folder being made)
     ["cannon", "A"],
@@ -1122,11 +1125,6 @@ tags = [5, 6]                              # optional: the tag chips' entries
 
 [left.sp_times]                            # optional: how fast the save deleted each SP navi
 "sp/heatman" = "00:12.34"                  # mm:ss.cc, by the rules' slot (else the fastest, 00:00.00)
-
-[left.stats]                               # optional: what differs from the navi's fresh stats (a link navi's at its level)
-hp = 1000
-regular_memory = 50
-sun = true
 
 [left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
 expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default), in EXE6 and EXE5
@@ -1235,35 +1233,44 @@ records = [                                # the eight pattern records: a place 
 ]
 ```
 
-**The stats block** (`nettai_match::stats`) sets the navi's stats by name
-over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
-gives the navi, by its game's `fresh_stats` rules and its own definition),
-of the side's version; a link navi's over its stats at its
-`level`, as the PET's reload gives them (`nettai_match::link_navis`,
-docs/engine/link-navis.md: the base HP of the cleared game and the level's
-HP, buster levels, custom and Mega levels and abilities): `hp` (the base HP, which also sets the
-maximum and the HP the round starts with; `max_hp` and `current_hp` set
-those apart), `attack`, `rapid`, `charge`, `custom_level`, `mega_level`,
-`giga_level`, `regular_memory`, `mood`, `element`, `beast_out_counter`,
-`sun`, the NaviCust's abilities (`super_armor`, `float_shoes`, `air_shoes`,
-`undershirt`, `status_guard`, `first_barrier`, `gauge`, `supports`,
-`chip_recovery`, `chip_shuffle`, `number_open`), the weapons (`buster`,
-`charged_shot`, `back_special`, `a_charge`, `mode9_a`) and shot programs
-(`buster_shot`, `charged_shot_program`) by name or `none`, the forms, and the
-NaviCust's bugs (`step_bug`, `panel_trail`, `panel_trail_level`,
-`buster_blanks`, `buster_charged`, `hit_status`, `hp_drain`,
-`custom_drain`, `battle_start_bug`, `emotion_bug`, `starting_damage`,
-`custom_damage`, `hand_shrink_turn`, ...): every stat a round starts from,
-so a written block gives back the same stats. Writing a match, only the
-fields that differ are written.
+**A side states no stats.** A round starts from each navi's fresh stats
+(`NaviStats::fresh`, `init_8013B64`: what a new save gives the navi, by its
+game's `fresh_stats` rules and its own definition), and its game's rules
+build the rest as the round is set up (`round_setup`), in their systems'
+order:
+
+- **the save system** (content/exe6/rules/save, content/exe5/rules/save),
+  first: what the save brings that nothing derives, its facts, `hp` (the
+  base HP of the navi that compiles a NaviCust: MegaMan's, which HP
+  Memories raise; default 100), `reg_up` (the Regular memory; default the
+  fresh stats' 4) and, in EXE6, `sun` (default none; EXE5's block has no
+  sun), and MegaMan's variant (+0x2B, his base HP in hundreds); a link
+  navi's stats at its `level`, as the PET's reload gives them
+  (docs/engine/link-navis.md: the base HP of the cleared game and the
+  level's HP, buster levels, custom and Mega levels and abilities); an EXE5
+  team navi's HP, the story's at its level;
+- the NaviCust's compile (MegaMan's: the maximum HP the base and the HP
+  programs, the abilities, levels, weapons and bugs) and MegaMan's navi
+  code level's gains;
+- the patch cards.
+
+The navi's version byte (+0x20) is the version the side states, which the
+battle's start sets. Another navi than the one that compiles a NaviCust
+takes its HP from its level, so the checks refuse a side of one that
+states `hp`. The editor's stats pane shows the stats a round starts with,
+and nothing of them is edited: a test that needs an odd stat pokes the
+built `RoundSetup`. (A recording's stats are its console's block:
+exe6-compat and exe5-compat state the save's facts from it, start the sides
+the rules build, a link or team navi or a compiled MegaMan, from their fresh
+stats, and the replay compares what the rules built with the block.)
 
 **The emotion window's glitch** (the save's event flag 0x1720, 0x1723
 with patch cards; EXE5's 0x10C1 and 0x10C4: MegaMan's window flickers) is
 no key of a match and no field of a setup: the game's rules make it as the
 round is set up. The NaviCust's compile sets it when a bug applies, the
-patch cards' routine from the stats they leave, and for a side with no
-NaviCust (its stats set directly, or a recording's, which are as a compile
-left them) it is set when the stats carry a NaviCust bug
+patch cards' routine from the stats they leave, and for a setup with no
+NaviCust (a recording's, whose stats are as a compile left them) it is set
+when the stats carry a NaviCust bug
 (content/exelib/navicust/compile.luau). BugFix clears it.
 
 **The navi code's level** (`level`) is the level of the navi code the
@@ -1283,12 +1290,11 @@ none).
 story flags, which the battle's init exchange sends. A side that operates
 one (`navi = "protoman"`: any of the twelve, of either version) always has
 a level, **0** without `level`, and its stats are the navi's fresh stats
-with the HP the story gives at that level (the navi's `story`,
-`nettai_match::story`: a level below 6 is the story's progress, and at 6 the
-story is taken as done); the stats block says otherwise (an HP of the
-player's choosing). The checks refuse a level past 6. A team navi has no
-NaviCust, patch cards or souls: they are MegaMan's. EXE5's MegaMan takes no
-level.
+with the HP the story gives at that level (the navi's `story`, which EXE5's
+save system reads: a level below 6 is the story's progress, and at 6 the
+story is taken as done). A side states no HP of its own for one: the checks
+refuse a level past 6, and an `hp`. A team navi has no NaviCust, patch
+cards or souls: they are MegaMan's. EXE5's MegaMan takes no level.
 
 **The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
 the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp_chips.luau),
@@ -1304,18 +1310,17 @@ game first) of EXE6, a .sav as an emulator keeps it, read by
 `exe6_compat::save`, gives a side its version, Beast Out and the Crosses it
 owns (its `crosses`: those of its version's five its flags own, in the
 Cross numbers' order), the navi code's level (a link navi keeps its own when the save has no
-code) and the SP times; its folder, NaviCust, patch cards and stats are not
-read yet.
+code) and the SP times; its folder, NaviCust, patch cards and what it
+brings to the stats are not read yet. An EXE5 save gives a team navi side its
+level (its HP is the level's) and its block's karma.
 
 **The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
 programs placed on MegaMan's grid, by name and color name (a program's
-`colors`). With one, the stats block is the save's stats before the NaviCust:
-only what a save keeps through the NaviCust's reload (`hp`, `regular_memory`,
-`mood`, `beast_out_counter`, `sun`, `form` and the folder fields), since the
-game's `navicust` system makes the rest (the abilities, levels, weapons and
-bugs) from the programs as the round is set up. Without one, the stats block
-is the stats as they are, NaviCust included, as a recording's are. The
-editor's NaviCust pane places the programs on the board as the game does.
+`colors`), and its board; without it, none on the largest board. The game's
+`navicust` system makes the stats it gives (the maximum HP, the abilities,
+levels, weapons and bugs) from the programs as the round is set up, over
+what the save brings (`hp`, `reg_up`, `sun`). The editor's NaviCust pane
+places the programs on the board as the game does, and shows what they make.
 
 **The karma** (`karma`, `nettai_match::facts`) is EXE5's light/dark value
 (NaviStats +0x44), 0 to 1000; without it, **500**, a fresh save's
@@ -1512,7 +1517,9 @@ is said with where it is:
 - a NaviCust only in a game whose rules have the navicust system, and only for
   MegaMan; every program fits the board, none overlaps another, the copies of
   one program in one color are all compressed or all not (the save keeps
-  one flag for them), and the stats block holds only what a save keeps;
+  one flag for them);
+- a base HP (`hp`) only for the navi that compiles a NaviCust: any
+  other's HP is its level's;
 - a side's facts its game's rules' (`nettai_match::facts::check`, above):
   each one the rules require stated (EXE6's version and its Crosses), every
   definition the game's and once in its list with no gap before it, and

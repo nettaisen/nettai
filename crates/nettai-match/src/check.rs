@@ -5,7 +5,7 @@
 //! - **The arena**: the content's game, its link battle stages
 //!   (`crate::link_battle_stages`), and backgrounds its pack has.
 //! - **A side**: its navi, chips, patch cards and NaviCust programs
-//!   are the match's game's, its stats' forms the content's; its
+//!   are the match's game's; its
 //!   auto battle data what the game can hold (`crate::auto_battle`); its
 //!   facts its game's rules' (`crate::facts::check`: an enum the rules
 //!   require stated, each definition the game's and once in its list, the
@@ -23,7 +23,7 @@
 use crate::folders;
 use crate::{Arena, Match, Place, Side, ids};
 use nettai_battle::Battle;
-use nettai_battle::content::Content;
+use nettai_battle::content::{Content, PlayerFact};
 use nettai_battle::patch_cards::MAX_CARDS;
 use nettai_battle::setup::NaviStats;
 use std::sync::Arc;
@@ -72,21 +72,6 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         out.push(format!("a navi {game} hasn't"));
         return out;
     }
-    let st = &s.stats;
-    if st.navi != s.navi {
-        out.push("the stats are another navi's".into());
-    }
-    if [st.form, st.starting_form].iter().any(|f| f.index() >= defs.forms.len()) {
-        out.push("the stats name a form the content hasn't".into());
-    }
-    let weapons = [st.weapons.buster, st.weapons.charge_shot, st.weapons.back_special, st.weapons.a_charge, st.weapons.mode9_a];
-    if weapons.iter().flatten().any(|w| w.index() >= defs.weapons.len()) {
-        out.push("the stats name a weapon the content hasn't".into());
-    }
-    let records = [st.first_barrier, st.weapons.buster_shot, st.weapons.charge_shot_kind];
-    if records.iter().flatten().any(|r| r.index() >= defs.records.len()) {
-        out.push("the stats name a record the content hasn't".into());
-    }
     // The navi code's level: 0 to 14, and a link navi always has one (it
     // exists only through its code); MegaMan may have none.
     // (A navi with a story, EXE5's team navis: its own levels, which its
@@ -117,22 +102,22 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         return out;
     }
     // The patch cards.
-    if !s.cards.is_empty() {
+    if !s.patch_cards.is_empty() {
         if !crate::ruleset_has_system(content, crate::PATCH_CARDS_SYSTEM) {
             out.push(format!("patch cards, but {game} has no patch-cards system"));
         }
-        if s.cards.len() > MAX_CARDS {
-            out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.cards.len()));
+        if s.patch_cards.len() > MAX_CARDS {
+            out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.patch_cards.len()));
         }
-        if s.cards.iter().any(|c| c.card.index() >= defs.patch_cards.len() || !of_game(&defs.patch_card(c.card).key)) {
+        if s.patch_cards.iter().any(|c| c.card.index() >= defs.patch_cards.len() || !of_game(&defs.patch_card(c.card).key)) {
             out.push(format!("a patch card {game} hasn't"));
         } else {
-            for (i, c) in s.cards.iter().enumerate() {
-                if s.cards[..i].iter().any(|d| d.card == c.card) {
+            for (i, c) in s.patch_cards.iter().enumerate() {
+                if s.patch_cards[..i].iter().any(|d| d.card == c.card) {
                     out.push(format!("the patch card {} is installed twice", crate::names::patch_card(content, c.card)));
                 }
             }
-            let mb: u32 = s.cards.iter().map(|c| defs.patch_card(c.card).mb as u32).sum();
+            let mb: u32 = s.patch_cards.iter().map(|c| defs.patch_card(c.card).mb as u32).sum();
             if mb > CARD_MB {
                 out.push(format!("the patch cards are {mb} MB, past {CARD_MB}"));
             }
@@ -141,6 +126,18 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     // The NaviCust.
     if let Some(n) = &s.navicust {
         out.extend(check_navicust(content, arena, s, n));
+    }
+    // The base HP the save brings (the engine's `PlayerFact::BaseHp`) is the
+    // navi's that compiles a NaviCust (MegaMan's); any other's HP is its
+    // level's (a link navi's reload, a team navi's story), so a side of one
+    // that states another than the rules' default states what has no
+    // effect.
+    let base_hp = PlayerFact::BaseHp.name();
+    if defs.fact_field(PlayerFact::BaseHp).is_some() && crate::empty_navicust(content, s.navi).is_none() && !s.facts.is_default(content, base_hp) {
+        out.push(format!(
+            "{base_hp}: {}'s HP is its level's; a side states the base HP of the navi that compiles a NaviCust",
+            crate::names::navi(content, s.navi)
+        ));
     }
     // The folder's chips are the content's (its rules wait for the round).
     let in_folder = |i: u8| s.folder.has(i);
@@ -152,8 +149,7 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
 
 /// What is wrong with a side's NaviCust: it is MegaMan's (the navi that
 /// changes form: EXE6 compiles the PET's own navi's alone) under rules with
-/// the navicust system; the stats set besides are only what the save keeps
-/// through its compile; each program in one of its colors, on the board of
+/// the navicust system; each program in one of its colors, on the board of
 /// its expansions (EXE6's `sub_813BB00`: every cell it covers on the board or
 /// its frame, not all on the frame), over no other (`sub_813BB68`); copies
 /// of a program in one color all compressed or not (the save keeps it by
@@ -168,11 +164,6 @@ pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_bat
     }
     if content.navi(s.navi).forms.is_none() {
         out.push(format!("a NaviCust, but {}'s stats aren't a NaviCust's (only MegaMan's compiles)", crate::names::navi(content, s.navi)));
-    }
-    for name in s.stats_block(content).keys() {
-        if !crate::stats::SAVE_FIELDS.contains(&name.as_str()) {
-            out.push(format!("stats: {name} is the NaviCust's (with a NaviCust the stats set only {})", crate::stats::SAVE_FIELDS.join(", ")));
-        }
     }
     let rules = crate::navicust_rules(content);
     let Some(board) = rules.board(n.expansions) else {
@@ -322,8 +313,11 @@ mod tests {
         let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.navi_level = level;
-        s.stats = crate::Side::base_stats(&content, s.navi, s.version(&content));
-        (s.stats.max_base_hp, s.stats.hp, s.stats.max_hp, s.stats.reg_up) = (600, 600, 600, 50);
+        // (What the save brings: a base HP of 600, a Regular memory of 50.)
+        use nettai_battle::rules::Fact;
+        use nettai_content_api::Value;
+        s.set_fact(&content, "hp", &[Fact::Value(Value::Int(600))]).unwrap();
+        s.set_fact(&content, "reg_up", &[Fact::Value(Value::Int(50))]).unwrap();
         let placed: Vec<PlacedProgram> = parts
             .iter()
             .map(|&(name, color, x, y)| {
@@ -474,20 +468,20 @@ mod tests {
         assert!(places > 0, "compressed, BugStop fits a corner");
     }
 
-    /// A side with no NaviCust has its stats as a compile left them: no
-    /// match key or setup field gives the emotion window's glitch, and the
-    /// rules make it from the stats' NaviCust bugs (here the support bug,
-    /// which the window's own count of bugs doesn't see).
+    /// A setup with no NaviCust has its stats as a compile left them (a
+    /// recording's): no setup field gives the emotion window's glitch, and
+    /// the rules make it from the stats' NaviCust bugs (here the support
+    /// bug, which the window's own count of bugs doesn't see).
     #[test]
     fn stats_set_directly_glitch_as_their_bugs_say() {
         let content = crate::testing::exe6_content();
-        let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
-        for s in &mut m.sides {
-            s.navicust = None;
+        let m = crate::pick::live(&content, "exe6", 3, None).unwrap();
+        let mut setup = m.round(&content, 3);
+        for p in &mut setup.players {
+            p.navicust = None;
         }
-        m.sides[0].stats.support = None;
-        assert_eq!(check_match(&content, &m), Vec::<String>::new());
-        let b = Battle::new(m.round(&content, 3), content.clone());
+        setup.navi_stats[0].support = None;
+        let b = Battle::new(setup, content.clone());
         assert!(b.consoles[0].emotion_window_glitch, "the support bug");
         assert!(!b.consoles[1].emotion_window_glitch, "no bug");
     }

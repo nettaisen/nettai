@@ -65,10 +65,9 @@ impl Side {
     /// version (`version`), whether it has Beast Out (`beast_out`) and its
     /// Crosses (`crosses`: those of its version's five the save's flags
     /// own, in the Cross numbers' order, as the side's navi lists them;
-    /// none for a navi that doesn't change form), and a link navi's stats
-    /// follow its level and version as the save's reload gives them. What
-    /// is worth saying about it (what the side keeps), or why the save
-    /// can't be read.
+    /// none for a navi that doesn't change form); a link navi's stats are
+    /// the round's to build from its level. What is worth saying about it
+    /// (what the side keeps), or why the save can't be read.
     pub fn import_exe6_save(&mut self, content: &Content, save: &Save) -> Result<Vec<String>, String> {
         let level = save.navi_level()?;
         let mut notes = Vec::new();
@@ -93,11 +92,6 @@ impl Side {
         self.sp_times = save.sp_times();
         for t in self.sp_times.0.iter_mut().skip(slots) {
             *t = 0;
-        }
-        // The stats: the game's (NaviStats+0x20), a link navi's at its level.
-        self.stats.version = crate::version_byte(content, self.version(content));
-        if let Some(s) = self.reloaded(content) {
-            self.stats = s;
         }
         Ok(notes)
     }
@@ -128,7 +122,7 @@ mod tests {
         assert_eq!(m.sides[0].facts.form_list(&content).len(), 5);
         let notes = m.import_save(&content, 0, &save).unwrap();
         let s = &m.sides[0];
-        assert_eq!((s.version(&content), s.navi_level, s.stats.version), (Some("falzar"), Some(5), 1));
+        assert_eq!((s.version(&content), s.navi_level), (Some("falzar"), Some(5)));
         assert_eq!(s.facts.get(&content, "beast_out"), Some(Stated::Flag(false)));
         // (Falzar's second and fourth, by Cross number: the list holds them
         // from its front.)
@@ -163,10 +157,12 @@ mod tests {
         s.navi = protoman;
         s.set_fact(&content, "crosses", &[]).unwrap();
         s.navi_level = Some(7);
-        s.stats = crate::Side::save_base(&content, protoman, s.version(&content), Some(7));
         let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();
         let s = &m.sides[1];
-        assert_eq!((s.navi_level, s.version(&content), s.stats.version), (Some(7), Some("gregar"), 0));
+        assert_eq!((s.navi_level, s.version(&content)), (Some(7), Some("gregar")));
+        // (His round's stats: his level's, of the save's game.)
+        let b = crate::check::start(&content, &m).unwrap();
+        assert_eq!((b.stats[1].version, b.stats[1].max_hp), (0, 1230));
         assert_eq!(notes, ["the save received no navi code: the side's link navi keeps its level"]);
         assert!(m.import_save(&content, 1, b"not a save").is_err());
     }

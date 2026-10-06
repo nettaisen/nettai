@@ -10,10 +10,14 @@ local folder = require("@self/folder")
 local light_dark = require("@self/light_dark")
 local navicust = require("@self/navicust")
 local patch_cards = require("@self/patch_cards")
+local save = require("@self/save")
 local souls = require("@self/souls")
 
 return define.ruleset {
     systems = {
+        -- What the save brings to the navi's stats (MegaMan's base HP, the Regular memory), and a team navi's HP at its
+        -- level: first, as the reload builds the stats the NaviCust's compile reads.
+        save,
         -- The NaviCust compiled into the navi's stats as the round is set up (EXE6's compile, EXE5's board and bugs).
         navicust,
         -- The patch cards over what the NaviCust made, and the HP (0x0813F97C's).

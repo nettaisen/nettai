@@ -1,5 +1,5 @@
 //! Match setups: everything a round needs, chosen before the battle (the
-//! game, the arena, and each side's navi, stats, folder, patch cards and
+//! game, the arena, and each side's navi, folder, patch cards, NaviCust and
 //! what its game's rules take besides, its facts), as a human-readable TOML
 //! file of names (docs/frontend.md §6), checked against the content (`check`), and
 //! the round it plays ([`Match::round`]). Live play's random pick of one
@@ -103,21 +103,21 @@ pub fn systems(content: &Content) -> &[SystemHandle] {
 const AUTO_BATTLE_SALT: u32 = 0x5441_4354;
 
 /// What a player brings to a match, all of it the match's game's: their
-/// navi, the navi's stats (what their save and NaviCust give it), their
-/// folder (as a save holds it, once whole: the round's init shuffles it),
-/// their patch cards (each switched on or not, in the order they apply),
-/// the rest of what their save says that the engine keeps for every game,
-/// and what their game's rules take besides: its facts.
+/// navi, their folder (as a save holds it, once whole: the round's init
+/// shuffles it), their patch cards (each switched on or not, in the order
+/// they apply), their NaviCust, the rest of what their save says that the
+/// engine keeps for every game, and what their game's rules take besides:
+/// its facts (among them what the save brings to the navi's stats: EXE6's
+/// base HP, Regular memory and sun). A side states no stats: a round starts
+/// from the navi's fresh stats, which the game's rules build from all this
+/// as the round is set up ([`Match::round`]).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
     pub navi: NaviHandle,
-    /// The navi's stats as the round starts them (the version there is the
-    /// side's: `Side::round_stats`).
-    pub stats: NaviStats,
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
-    pub cards: Vec<InstalledCard>,
+    pub patch_cards: Vec<InstalledCard>,
     /// The level of the navi code the save received (0 to 14: a link
     /// navi's chip bonus and stats, MegaMan's gains over his NaviCust);
     /// none, MegaMan without a code (a link navi always has one:
@@ -127,9 +127,9 @@ pub struct Side {
     /// chips' damage; 0 the fastest).
     pub sp_times: SpTimes,
     /// The NaviCust, which the side's rules compile into the stats as the
-    /// round is set up (none: the stats are what the NaviCust gives, set
-    /// directly). With one, the stats are the navi's fresh stats with what
-    /// the save keeps (`stats::SAVE_FIELDS`).
+    /// round is set up: its programs and its board. None: no programs, on
+    /// the rules' largest board (the round compiles an empty one, for the
+    /// navi that changes form where the rules have the navicust system).
     pub navicust: Option<NaviCust>,
     /// EXE5's auto battle data, the player's save's block whole
     /// (`auto_battle`): what a navi in auto battle plays from it, the Dark
@@ -148,29 +148,12 @@ pub struct Side {
 }
 
 impl Side {
-    /// `navi`'s stats as a fresh save gives them ([`NaviStats::fresh`]),
-    /// of `version` (none: a side without one), as a battle starts them
-    /// (`starting`): what a side's stats block is written over.
-    pub fn base_stats(content: &Content, navi: NaviHandle, version: Option<&str>) -> NaviStats {
-        let s = NaviStats::fresh(navi, content).unwrap_or(NaviStats { navi, ..NaviStats::default() });
-        starting(content, s, version)
-    }
-
-    /// The side's stats as the battle starts them (`starting`).
-    pub fn round_stats(&self, content: &Content) -> NaviStats {
-        starting(content, self.stats, self.version(content))
-    }
-
-    /// The side's stats block: what differs from the navi's stats as a save
-    /// gives them (a link navi's at its level: `Side::save_base`), but what
-    /// the battle's start sets (MegaMan's variant).
-    pub fn stats_block(&self, content: &Content) -> std::collections::BTreeMap<String, toml::Value> {
-        let base = Side::save_base(content, self.navi, self.version(content), self.navi_level);
-        let mut block = stats::diff(content, &base, &self.round_stats(content));
-        if content.navi(self.navi).forms.is_some() {
-            block.remove("navi_variant");
-        }
-        block
+    /// The stats a round of this side's starts from, before its rules build
+    /// on them: its navi's fresh stats ([`NaviStats::fresh`]: what a new
+    /// save gives the navi, by its game's `fresh_stats` rules and its own
+    /// definition).
+    pub fn fresh_stats(content: &Content, navi: NaviHandle) -> NaviStats {
+        NaviStats::fresh(navi, content).unwrap_or(NaviStats { navi, ..NaviStats::default() })
     }
 }
 
@@ -179,27 +162,6 @@ impl Side {
 /// received).
 pub fn default_navi_level(content: &Content, navi: NaviHandle) -> Option<u8> {
     (!content.navi(navi).changes_form()).then_some(0)
-}
-
-/// What the console sets in the stats as a battle starts, whatever the
-/// save says: the navi's version (NaviStats+0x20) is the player's, and
-/// MegaMan's variant (+0x2B, which picks his move lag) is his base HP in
-/// hundreds (`sub_800A2F8`).
-pub fn starting(content: &Content, mut s: NaviStats, version: Option<&str>) -> NaviStats {
-    s.version = version_byte(content, version);
-    if content.navi(s.navi).forms.is_some() {
-        s.navi_variant = (s.max_base_hp / 100) as u8;
-    }
-    s
-}
-
-/// The navi's version as NaviStats+0x20 has it, for a side of the version
-/// named `version`: the version's place among those the game's rules
-/// declare (`facts::versions`, which come in the original's order: EXE6's
-/// Gregar 0, Falzar 1). A side without a version has 0 there (EXE5's games
-/// write nothing a battle reads to it: the recordings' are 0).
-pub fn version_byte(content: &Content, version: Option<&str>) -> u8 {
-    version.and_then(|v| facts::versions(content).iter().position(|name| name == v)).map_or(0, |place| place as u8)
 }
 
 /// Whether the game's rules have a system named `system` (`forms`,
@@ -214,6 +176,16 @@ pub const FORMS_SYSTEM: &str = "forms";
 pub const PATCH_CARDS_SYSTEM: &str = "patch-cards";
 /// The system that compiles the NaviCust (EXE6's).
 pub const NAVICUST_SYSTEM: &str = "navicust";
+
+/// A NaviCust with no programs on the rules' largest board, for `navi`
+/// where it compiles one: the navi that changes form, in a game whose rules
+/// have the navicust system. None for any other.
+pub fn empty_navicust(content: &Content, navi: NaviHandle) -> Option<NaviCust> {
+    let boards = navicust_rules(content).boards.len();
+    (ruleset_has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0)
+        .then(|| NaviCust::new(&[], (boards - 1) as u8).ok())
+        .flatten()
+}
 
 /// The NaviCust board of the content's game (its rule section
 /// `navicust`).
@@ -299,9 +271,8 @@ impl Side {
         let facts = Facts::defaults(content);
         let mut side = Side {
             navi,
-            stats: Side::base_stats(content, navi, facts.version(content)),
             folder: Folder::EMPTY,
-            cards: Vec::new(),
+            patch_cards: Vec::new(),
             navi_level: default_navi_level(content, navi),
             sp_times: SpTimes::default(),
             navicust: None,
@@ -310,10 +281,7 @@ impl Side {
             auto_battle: if auto_battle::has(content) { AutoBattle::nothing_learned() } else { AutoBattle::default() },
             facts,
         };
-        let boards = navicust_rules(content).boards.len();
-        if ruleset_has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
-            side.navicust = NaviCust::new(&[], (boards - 1) as u8).ok();
-        }
+        side.navicust = empty_navicust(content, navi);
         Ok(side)
     }
 }
@@ -347,8 +315,11 @@ impl Match {
                 // What the side brings that its rules' systems take: their
                 // setup blocks, as the side holds them.
                 rules: s.facts.blocks().to_vec(),
-                patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
-                navicust: s.navicust,
+                patch_cards: PatchCards::new(&s.patch_cards).unwrap_or_default(),
+                // (The navi that changes form compiles a NaviCust where the
+                // rules have one: an empty one on the largest board when the
+                // side places none.)
+                navicust: s.navicust.or_else(|| empty_navicust(content, s.navi)),
                 // The block the console sends (0x0802C7BE), its RNG2 a
                 // stream of the side's own from the seed (the original's
                 // is the console's at the link's start, which nothing
@@ -360,8 +331,10 @@ impl Match {
         RoundSetup {
             content: content.hash(),
             settings,
-            // (The game's rules.)
-            navi_stats: [self.sides[0].round_stats(content), self.sides[1].round_stats(content)],
+            // (Each navi's fresh stats, which its rules build on: the
+            // version byte, what the save brings, a link navi's level, the
+            // NaviCust, the patch cards.)
+            navi_stats: self.sides.each_ref().map(|s| Side::fresh_stats(content, s.navi)),
             rng: seed,
             local_side: 0,
             score: SetScore::default(),
@@ -478,9 +451,9 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
                 out.push_str(&format!("; {}: {}", f.name, facts::shown(content, &value)));
             }
         }
-        if !s.cards.is_empty() {
+        if !s.patch_cards.is_empty() {
             let cards: Vec<String> =
-                s.cards.iter().map(|c| format!("{}{}", if c.enabled { "" } else { "-" }, names::patch_card(content, c.card))).collect();
+                s.patch_cards.iter().map(|c| format!("{}{}", if c.enabled { "" } else { "-" }, names::patch_card(content, c.card))).collect();
             out.push_str(&format!("; patch cards: {}", cards.join(", ")));
         }
         if folders {

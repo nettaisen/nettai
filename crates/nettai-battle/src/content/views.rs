@@ -96,8 +96,9 @@ impl ButtonView {
     }
 }
 
-/// What a player brings that a frontend shows their console by: a field of
-/// a system's setup, by this name (`Battle::fact`). It is read of the first
+/// What a player brings that a frontend shows their console by, or a tool
+/// fills in for a person: a field of a system's setup, by this name
+/// (`Battle::fact`). It is read of the first
 /// system of the game's ruleset that declares the field (a setup writes it
 /// into every one that does); a game none of whose systems does has none.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -111,10 +112,16 @@ pub enum PlayerFact {
     /// The forms they have for their form list, in its order (EXE6's
     /// Crosses, up to five of either version): an empty list is none.
     CrossList,
+    /// The base HP their save holds for their navi (MegaMan's, which HP
+    /// Memories raise; EXE5's team navis', the story's at their progress):
+    /// a game's save system writes it into the stats as the round is set
+    /// up. A tool fills it in from what a navi's level gives (EXE5's
+    /// `story`).
+    BaseHp,
 }
 
 impl PlayerFact {
-    pub const ALL: &'static [PlayerFact] = &[PlayerFact::Version, PlayerFact::BeastOut, PlayerFact::CrossList];
+    pub const ALL: &'static [PlayerFact] = &[PlayerFact::Version, PlayerFact::BeastOut, PlayerFact::CrossList, PlayerFact::BaseHp];
 
     /// The setup field's name.
     pub fn name(self) -> &'static str {
@@ -122,6 +129,7 @@ impl PlayerFact {
             PlayerFact::Version => "version",
             PlayerFact::BeastOut => "beast_out",
             PlayerFact::CrossList => "crosses",
+            PlayerFact::BaseHp => "hp",
         }
     }
 
@@ -132,6 +140,7 @@ impl PlayerFact {
             PlayerFact::Version => matches!(ty, FieldType::Enum(_)),
             PlayerFact::BeastOut => matches!(ty, FieldType::Bool),
             PlayerFact::CrossList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
+            PlayerFact::BaseHp => matches!(ty, FieldType::U16),
         };
         if ok {
             return Ok(());
@@ -140,6 +149,7 @@ impl PlayerFact {
             PlayerFact::Version => "a list of the versions' names",
             PlayerFact::BeastOut => "a bool",
             PlayerFact::CrossList => "an array of forms",
+            PlayerFact::BaseHp => "a u16",
         })
     }
 }

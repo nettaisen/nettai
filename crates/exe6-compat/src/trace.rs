@@ -128,6 +128,27 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
     }
 }
 
+/// What the save's reload starts a link navi's stats from (a navi with
+/// `levels` that doesn't change form: `reloadCurNaviBaseStats_8120df0`), of
+/// `recorded`: its fresh stats (`NaviStats::fresh`) with what the save keeps
+/// (`byte_81210C8`: the folder, its Regular and tag chips and the HP; the
+/// Regular memory, the save system's to write). None for any other navi:
+/// its stats are as recorded.
+pub fn link_navi_reset(content: &Content, recorded: &NaviStats) -> Option<NaviStats> {
+    let navi = content.navi(recorded.navi);
+    if navi.changes_form() || navi.levels.is_none() {
+        return None;
+    }
+    let fresh = NaviStats::fresh(recorded.navi, content)?;
+    Some(NaviStats {
+        folder: recorded.folder,
+        folder_reg: recorded.folder_reg,
+        folder_tags: recorded.folder_tags,
+        hp: recorded.hp,
+        ..fresh
+    })
+}
+
 /// A battle object as the trace records it.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct Object {
@@ -267,6 +288,7 @@ use nettai_battle::kinds::player::Emotion;
 use nettai_battle::link::Link;
 use nettai_battle::rng::Rng;
 use nettai_battle::setup::{NaviStats, RoundSetup, SetScore};
+use nettai_content_api::Value;
 
 /// A custom-screen exchange record from a trace.
 #[derive(Clone, Debug, Deserialize)]
@@ -336,9 +358,34 @@ impl Round {
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> RoundSetup {
         let ids = Ids::new(content, compat);
         let bs = unhex(&self.setup.battle_state);
-        let stats = |p: usize| match self.stats_before_cards(p) {
+        let recorded = |p: usize| match self.stats_before_cards(p) {
             Some(b) => codec::navi_stats(&b, &ids),
             None => navi_stats(&self.setup.navi_stats[p], &ids),
+        };
+        let mut players: [PlayerSetup; 2] = std::array::from_fn(|p| self.player_setup(p as u8, &ids));
+        // What each save brings to its navi's stats (EXE6's save system's
+        // setup), from the recorded block: the rules write it into a side
+        // whose stats they build, which then comes out as recorded.
+        for (p, player) in players.iter_mut().enumerate() {
+            let s = recorded(p);
+            for (field, value) in [
+                ("hp", Value::Int(s.max_base_hp as i64)),
+                ("reg_up", Value::Int(s.reg_up as i64)),
+                ("sun", Value::Bool(s.sun)),
+            ] {
+                player.set_fact(content, field, &[nettai_battle::rules::Fact::Value(value)]).unwrap_or_else(|e| panic!("the save's {field}: {e}"));
+            }
+        }
+        // A link navi's stats are the rules' to build from its level (EXE6's
+        // save system runs the save's reload): its fresh stats with what
+        // the save keeps, which the replay then compares with the block the
+        // console's own reload made.
+        let stats = |p: usize| {
+            let s = recorded(p);
+            match players[p].navi_level {
+                Some(_) => link_navi_reset(content, &s).unwrap_or(s),
+                None => s,
+            }
         };
         RoundSetup {
             content: content.hash(),
@@ -351,7 +398,7 @@ impl Round {
             score: SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
             later_stages: codec::later_stages(&unhex(&self.setup.stages), &ids),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
-            players: std::array::from_fn(|p| self.player_setup(p as u8, &ids)),
+            players,
             link_delay: self.link_delay(),
         }
     }

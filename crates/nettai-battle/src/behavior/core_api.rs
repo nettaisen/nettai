@@ -576,6 +576,10 @@ impl CoreApi for Battle {
             }
         };
         match (stat, v) {
+            (NaviStat::Sun, FieldValue::Bool(x)) => s.sun = x,
+            (NaviStat::NaviVariant, FieldValue::U8(x)) => s.navi_variant = x,
+            (NaviStat::RegularMemory, FieldValue::U8(x)) => s.reg_up = x,
+            (NaviStat::MaxBaseHp, FieldValue::U16(x)) => s.max_base_hp = x,
             (NaviStat::Element, FieldValue::U8(x)) => s.element = x,
             (NaviStat::Mood, FieldValue::U8(x)) => s.mood = x,
             (NaviStat::ChipRecovery, FieldValue::U16(x)) => s.chip_recovery = x,
