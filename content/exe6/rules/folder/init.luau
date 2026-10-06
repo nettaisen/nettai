@@ -153,5 +153,5 @@ local function check(side: number)
 end
 
 return {
-    hooks = { folder_check = check },
+    check = check,
 }

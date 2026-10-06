@@ -510,7 +510,7 @@ mod tests {
         assert_eq!(content.form(heat_beast).version.as_deref(), Some("gregar"));
     }
 
-    // EXE6's Cross window (the cross part's: content/exe6/rules/cross/
+    // EXE6's Cross window (rules/cross's: content/exe6/rules/cross/
     // window.luau) with Crosses of both games, which no recording covers.
 
     /// A link battle on EXE6's content whose side 0 is a `version` player

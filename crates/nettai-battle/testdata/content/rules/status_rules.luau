@@ -1,5 +1,5 @@
 --!strict
--- The test content's status rules (the ruleset's `status` section): the HP
+-- The test content's status rules (the rules' `status` section): the HP
 -- bug's made-up drain periods by bug level, and the choices a game makes
 -- where games differ (the test content plays as EXE6 does). Its statuses
 -- are rules/status.luau's.

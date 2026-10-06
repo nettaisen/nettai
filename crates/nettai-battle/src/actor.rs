@@ -189,7 +189,7 @@ pub struct AttackVars {
     pub kind: u8,
     /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
     /// runs the role `actions.wrapper` instead): EXE6's Beast Out lock-on
-    /// byte, which its beast part sets as a chip's use starts
+    /// byte, which rules/beast sets as a chip's use starts
     /// (`chip_used`) and the rush as it chains the next.
     pub wrapped: u8,
     /// The lock-on mode the attack's own action asks the Beast Out rush
@@ -254,7 +254,7 @@ pub struct ActorData {
     pub ai_index: u8,
     /// The identity whose actor record this is (a navi's: it stays the
     /// navi's through its forms). What the original's tables by actor
-    /// type and AI index hold, the ruleset reads of it.
+    /// type and AI index hold, the rules read of it.
     pub identity: Option<nettai_content_api::IdentityHandle>,
     /// 1 = not counted as a combatant.
     pub not_counted: u8,
@@ -317,7 +317,7 @@ pub struct ActorData {
     pub anger: u16,
     /// AIData+0x36: exhausted for the rest of the battle (EXE6's after Beast
     /// Over: `sub_80158CC` → `sub_8014466` stores 0x3C0, which nothing
-    /// counts down; its beast part sets it, `form_reverted`): emotion 5,
+    /// counts down; rules/beast sets it, `form_reverted`): emotion 5,
     /// mood changes blocked, and 1 HP lost per tick, never the last one
     /// (`sub_8014498`).
     pub exhausted: bool,

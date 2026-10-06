@@ -88,7 +88,7 @@ pub struct NaviData {
     #[serde(default = "one_palette")]
     pub palette_step: u8,
     /// Its forms ([`NaviForms`]): where the original asks whether a navi is
-    /// MegaMan, the ruleset asks whether it has forms. (This and what
+    /// MegaMan, the rules ask whether it has forms. (This and what
     /// follows are read from the definition by handle, not with the rest of
     /// the record.)
     #[serde(skip)]
@@ -184,7 +184,7 @@ impl NaviData {
     }
 }
 
-/// What the ruleset asks of particular navis. In a content file, a list of
+/// What the rules ask of particular navis. In a content file, a list of
 /// names.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviTraits(pub u8);
@@ -666,7 +666,7 @@ impl FormEffects {
 
 serde_flags!(FormEffects, u16);
 
-/// What the ruleset asks of particular forms. In a content file, a list of
+/// What the rules ask of particular forms. In a content file, a list of
 /// names.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FormTraits(pub u16);

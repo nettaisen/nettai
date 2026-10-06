@@ -36,7 +36,7 @@ return define.form {
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 5,
     -- The custom screen deals one more chip for each screen spent in it, up to three (the
-    -- cross part's, `sub_802A49C`).
+    -- rules/cross's, `sub_802A49C`).
     extra_chips = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 5 },

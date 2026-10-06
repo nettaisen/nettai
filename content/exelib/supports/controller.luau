@@ -2,7 +2,7 @@
 -- The NaviCust supports' dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x79, `sub_80E8FE0`; EXE5's
 -- #0x74, 0x080E8F50, the same code), of a game's `SupportsLook` (`controller.make`). In link battles a NaviCust
 -- program's support acts once: Rush eats a chip the opponent uses and Beat snatches a Mega or Giga chip (their host is
--- the chip user's opponent), Tango heals her host when its HP drops to a quarter. The ruleset turns the chip back
+-- the chip user's opponent), Tango heals her host when its HP drops to a quarter. The rules turn the chip back
 -- (`sub_8010740`, `sub_80106C0`) or holds the navi (`sub_8010660`), spawns this controller on the host's panel
 -- (`sub_80E90FE`; the role `kinds.support`) and starts a dimming no one can cut in on (`sub_800BF16`).
 --
@@ -11,7 +11,7 @@
 -- to go, waits 31 ticks, the host warps back in (not Tango's), 31 ticks, and the screen undims. See
 -- docs/engine/chips.md §2.10.
 --
--- The ruleset sets its state as it spawns it: which support (the original's first parameter), the chip Rush eats (its
+-- The rules set its state as it spawns it: which support (the original's first parameter), the chip Rush eats (its
 -- third and fourth) and the telop's chip. Related object 1 is the host.
 
 local dimming_chips = require("../dimming")
@@ -28,7 +28,7 @@ export type State = {
     -- without a spared chip, EXE5's, keeps none).
     eaten: Chip?,
     -- The chip the telop names (+0x30: Rush's, Beat's or Tango's, the
-    -- roles' `chips.rush`, `beat` and `tango`), which the ruleset sets.
+    -- roles' `chips.rush`, `beat` and `tango`), which the rules set.
     -- (The port's telop banner doesn't show a name yet.)
     telop_chip: Chip?,
 }

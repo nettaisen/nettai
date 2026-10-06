@@ -1,6 +1,6 @@
 //! The players' rules (docs/design/rules-in-luau.md): a game's rules are one
 //! definition written in Luau (`define.rules { ... }`), whose hooks call the
-//! game's parts in the order the rules choose; the framework calls the
+//! game's modules as their code says; the framework calls the
 //! rules' hooks at its points, and keeps their state of each side here, in
 //! the battle, where snapshots and the digest cover it.
 //!
@@ -594,9 +594,8 @@ mod tests {
         started_on(setup, scenario::content())
     }
 
-    /// The same on `content`: the test content with its rules made of other
-    /// parts (`testing::with_parts`: a game has one definition of its
-    /// rules).
+    /// The same on `content`: the test content with its rules patched
+    /// (`testing::with_rules`).
     fn started_on(mut setup: RoundSetup, content: std::sync::Arc<Content>) -> Battle {
         setup.content = content.hash();
         let mut b = Battle::new(setup, content);
@@ -612,7 +611,7 @@ mod tests {
         s.get(schema, schema.index_of(field).expect("a field"))
     }
 
-    /// EXE6's bug frags are its dark chips part's (docs/design/
+    /// EXE6's bug frags are rules/dark_chips's (docs/design/
     /// rules-in-luau.md, As built S8): the player brings them in the rules'
     /// setup (a tool writes them as a fact), and the round starts with them
     /// in the rules' state, which the chips spend through EXE6's API.
@@ -655,7 +654,7 @@ mod tests {
         assert_eq!((b.fact(0, PlayerFact::Version).and_then(|f| f.name()), b.fact(1, PlayerFact::Version).and_then(|f| f.name())), (Some("gregar"), Some("falzar")));
     }
 
-    /// A part's setup defaults may give an array field a list: its
+    /// The rules' setup defaults may give an array field a list: its
     /// elements from the first, the rest zero; a definition by its id. More
     /// values than the field holds, a value of another type and an id the
     /// content hasn't are content errors that name the field.
@@ -663,11 +662,11 @@ mod tests {
     fn a_setups_defaults_may_be_lists() {
         let with = |defaults: &str| -> Result<Content, String> {
             let mut c = testing::build();
-            let module = c.scripts.module_mut(testing::ROOT, "rules/parts").expect("the test content's rules");
-            let stock = "    setup = { bonus = \"u8\" },\n";
-            assert!(module.contains(stock), "rules/parts.luau's counter has `{stock}`");
-            let fields = "bonus = \"u8\", marks = \"u8[3]\", owned = \"bool[2]\", wears = \"form[2]\"";
-            *module = module.replace(stock, &format!("    setup = {{ {fields} }},\n    setup_defaults = {defaults},\n"));
+            let module = c.scripts.module_mut(testing::ROOT, "rules/init").expect("the test content's rules");
+            let stock = "        bonus = \"u8\",\n    },\n    setup_defaults = { beast_out = true, hp = 100, reg_up = fresh_stats.reg_up, sun = false },\n";
+            assert!(module.contains(stock), "rules/init.luau's setup ends with `{stock}`");
+            let fields = "        bonus = \"u8\",\n        marks = \"u8[3]\",\n        owned = \"bool[2]\",\n        wears = \"form[2]\",\n";
+            *module = module.replace(stock, &format!("{fields}    }},\n    setup_defaults = {defaults},\n"));
             c.define().map_err(|e| e.message)?;
             Ok(c)
         };
@@ -698,8 +697,8 @@ mod tests {
         assert!(e.contains("setup_defaults.bonus: "), "{e}");
     }
 
-    /// Each side has the rules' state of its own: the counter part's
-    /// `round_start` ran once for each side, for that side.
+    /// Each side has the rules' state of its own: the test rules' counter
+    /// ran once for each side as the round started, for that side.
     #[test]
     fn each_side_runs_the_rules_for_itself() {
         let b = started(scenario::setup());
@@ -707,19 +706,6 @@ mod tests {
             assert!(b.side_rules(side).state.is_some());
             assert_eq!(field(&b, side, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
             assert_eq!(field(&b, side, "side"), FieldValue::U8(side), "it ran for its own side");
-        }
-    }
-
-    /// One definition of a game's rules (the user: "collapse systems into
-    /// one rules definition"): both sides play by its parts, in its order,
-    /// each with its own state. (Other parts are another content's.)
-    #[test]
-    fn both_sides_play_by_the_games_rules() {
-        let content = testing::with_parts("marker, counter");
-        let b = started_on(scenario::setup_on(&content), content);
-        for side in 0..2u8 {
-            assert_eq!(field(&b, side, "mark"), FieldValue::U8(0x40 + side));
-            assert_eq!(field(&b, side, "side"), FieldValue::U8(side));
         }
     }
 
@@ -739,10 +725,19 @@ mod tests {
     /// The per-tick and chip-use hooks (docs/design/exe5-map.md §15.3 item
     /// 14): the rules' `navi_intake` is called with the side and its navi,
     /// and their `chip_check` with the chip about to be used, whose answer
-    /// takes the chip's place; rules that lack them call nothing.
+    /// takes the chip's place; rules that lack them call nothing. (Rules
+    /// that count the side's navi intakes, keep its panel, and refuse the
+    /// test bomb, giving the test seed instead.)
     #[test]
     fn the_rules_intake_and_chip_check_hooks() {
-        let content = testing::with_parts("watcher");
+        let content = testing::with_rules(&[
+            ("        -- The counter's.\n        starts = \"u8\",", "        intakes = \"u16\",\n        x = \"u8\",\n        y = \"u8\",\n        -- The counter's.\n        starts = \"u8\","),
+            ("local save = require(\"@self/save\")\n", "local save = require(\"@self/save\")\nlocal test_chips = require(\"./chips/test\")\n"),
+            (
+                "    hooks = {\n",
+                "    hooks = {\n        navi_intake = function(_side: number, navi: Object)\n            local s = rules.state() :: { intakes: number, x: number, y: number }\n            s.intakes += 1\n            s.x, s.y = navi.panel_x, navi.panel_y\n        end,\n        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?\n            return if chip == test_chips.bomb then test_chips.seed else nil\n        end,\n",
+            ),
+        ]);
         let mut b = started_on(scenario::setup_on(&content), content.clone());
         let navi = b.player(1).expect("side 1's navi");
         b.rules_navi_intake(1, navi);
@@ -755,7 +750,7 @@ mod tests {
         assert_eq!(b.rules_chip_check(1, navi, Some(bomb)), Some(seed));
         assert_eq!(b.rules_chip_check(1, navi, Some(seed)), None);
         assert_eq!(b.rules_chip_check(1, navi, None), None);
-        // The test content's own parts have neither hook.
+        // The test content's own rules have neither hook.
         let mut stock = started(scenario::setup());
         let navi0 = stock.player(0).expect("side 0's navi");
         assert_eq!(stock.rules_chip_check(0, navi0, Some(bomb)), None);
@@ -773,28 +768,10 @@ mod tests {
         assert_ne!(changed.digest(), b.digest());
     }
 
-    /// A game's rules are the parts it lists: the test content's less EXE6's
-    /// forms part, the marker after them, keep the marker's state and not
-    /// the forms'.
-    #[test]
-    fn the_rules_are_the_parts_their_game_lists() {
-        let content = testing::with_parts("save, beast, counter, emotion.part, dark_chips, marker");
-        let rules = content.defs.rules().expect("the rules");
-        let state = content.defs.schema(rules.state);
-        assert!(state.index_of("mark").is_some() && state.index_of("went_beast_out").is_none());
-        let b = started_on(scenario::setup_on(&content), content.clone());
-        assert_eq!(field(&b, 1, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
-        assert_eq!(field(&b, 1, "starts"), FieldValue::U8(1));
-    }
-
-    /// EXE6's patch cards part (content/exe6/rules/patch_cards) with the
-    /// test content's made-up cards: its `round_setup` changes the stats
-    /// before anything reads them.
     /// The rules' extension of their game's definitions
     /// (docs/design/rules-in-luau.md §7.5): kept on the definition, which a
     /// tool reads through `Defs::extension`, and checked as the content is
-    /// defined: its types, its tables' fields, its variants, one part giving
-    /// a field.
+    /// defined: its types, its tables' fields, its variants.
     #[test]
     fn the_rules_extend_their_games_definitions() {
         use nettai_content_api::{Data, Registry};
@@ -819,15 +796,9 @@ mod tests {
         refused(chips, "test_weight = 3,", "test_weight = 300,", "chip test/veil.test_weight is Int(300), not u8");
         refused(chips, "kind = \"b\" }", "kind = \"c\" }", "chip test/veil.test_tag.kind");
         refused(chips, "kind = \"b\" }", "kind = \"b\", hue = 1 }", "`hue` is none of its fields (kind, level)");
-        let parts = "rules/parts";
-        refused(parts, "            test_weight = \"u8\",", "            test_weight = \"u9\",", "no type is named \"u9\"");
-        refused(parts, "        chip = {\n            test_weight", "        stage = {},\n        chip = {\n            test_weight", "the rules extend chip, form or navi");
-        refused(
-            parts,
-            "local PARTS: { RulesPart } = { save, beast, counter,",
-            "marker.extends = { chip = { test_weight = \"u8\" } }\nlocal PARTS: { RulesPart } = { save, beast, marker, counter,",
-            "two parts give an extension of chip definitions, `test_weight`",
-        );
+        let rules = "rules/init";
+        refused(rules, "            test_weight = \"u8\",", "            test_weight = \"u9\",", "no type is named \"u9\"");
+        refused(rules, "    extends = {\n        chip = {", "    extends = {\n        stage = {},\n        chip = {", "the rules extend chip, form or navi");
     }
 
     /// A window's and a button's `view` (docs/design/rules-in-luau.md §4.8)
@@ -838,90 +809,94 @@ mod tests {
     #[test]
     fn views_and_facts_are_checked_as_the_content_is_defined() {
         use crate::content::{ButtonView, WindowView};
-        // (The marker, listed among the parts, with what a test gives it.)
-        let marker = "local marker: RulesPart = {\n    state = { mark = \"u8\" },";
-        let listed = ("local PARTS: { RulesPart } = { save, beast, counter,", "local PARTS: { RulesPart } = { save, beast, marker, counter,");
+        // (The rules' state and their windows, with what a test gives them.)
+        let marker = "        -- The counter's.\n        starts = \"u8\",";
         let patched = |from: &str, to: &str| {
             let mut c = testing::build();
-            let src = c.scripts.module_mut(testing::ROOT, "rules/parts").expect("the module");
-            for (from, to) in [(from, to), listed] {
-                assert!(src.contains(from), "{from}");
-                *src = src.replacen(from, to, 1);
-            }
+            let src = c.scripts.module_mut(testing::ROOT, "rules/init").expect("the module");
+            assert!(src.contains(from), "{from}");
+            *src = src.replacen(from, to, 1);
             c.define().map(|_| c).map_err(|e| e.message)
         };
-        let window = |state: &str, view: &str| {
-            format!(
-                "local marker: RulesPart = {{\n    state = {{ {state} }},\n    windows = {{ w = {{ view = \"{view}\", update = function(side: number): boolean return false end }} }},"
-            )
+        // A window `w` with view `view`, and `state` among the rules' state.
+        let window_patched = |state: &str, view: &str| -> Result<Content, String> {
+            let mut c = testing::build();
+            let src = c.scripts.module_mut(testing::ROOT, "rules/init").expect("the module");
+            *src = src.replacen(marker, &format!("        {state},\n{marker}"), 1);
+            let windows = "    windows = { beast_out";
+            assert!(src.contains(windows), "{windows}");
+            *src = src.replacen(windows, &format!("    windows = {{ w = {{ view = \"{view}\", update = function(side: number): boolean return false end }}, beast_out"), 1);
+            c.define().map(|_| c).map_err(|e| e.message)
         };
         let refused = |from: &str, to: &str, said: &[&str]| {
             let e = patched(from, to).err().unwrap_or_else(|| panic!("{said:?}: defined"));
+            assert!(said.iter().all(|s| e.contains(s)), "{said:?}: {e}");
+        };
+        let window_refused = |state: &str, view: &str, said: &[&str]| {
+            let e = window_patched(state, view).err().unwrap_or_else(|| panic!("{said:?}: defined"));
             assert!(said.iter().all(|s| e.contains(s)), "{said:?}: {e}");
         };
         let window_named = |c: &Content, name: &str| c.defs.rules().unwrap().windows.iter().copied().find(|&w| c.defs.window(w).name == name);
         let button_named = |c: &Content, name: &str| c.defs.rules().unwrap().buttons.iter().copied().find(|&b| c.defs.button(b).name == name);
         // A window's view: a name of the engine's, whose fields the rules
         // keep as the view's types.
-        refused(marker, &window("mark = \"u8\"", "form_lst"), &["rules/parts.luau: rules", "window `w`: `view` is \"form_lst\"", "form_list_opening"]);
-        refused(
-            marker,
-            &window("mark = \"u8\"", "offer_flight"),
+        window_refused("mark = \"u8\"", "form_lst", &["rules/init.luau: rules", "window `w`: `view` is \"form_lst\"", "form_list_opening"]);
+        window_refused(
+            "mark = \"u8\"",
+            "offer_flight",
             &["window `w` has the view `offer_flight`", "the state field `unite_step` (a u8): the rules' state has none"],
         );
-        refused(marker, &window("unite_step = \"bool\", unite_count = \"u8\"", "offer_flight"), &["the state field `unite_step` as a u8: it is Bool"]);
-        let content = patched(marker, &window("unite_step = \"u8\", unite_count = \"u8\"", "offer_flight")).expect("a view with its fields");
+        window_refused("unite_step = \"bool\", unite_count = \"u8\"", "offer_flight", &["the state field `unite_step` as a u8: it is Bool"]);
+        let content = window_patched("unite_step = \"u8\", unite_count = \"u8\"", "offer_flight").expect("a view with its fields");
         let rules = content.defs.rules().expect("the rules");
         assert_eq!(content.defs.window(window_named(&content, "w").expect("the window")).view, Some(WindowView::OfferFlight));
         assert!(rules.views.offer_flight.is_some() && rules.views.form_list.is_none());
         // A button's.
+        let buttons = "    buttons = { beast_out";
         let button = |view: &str| {
             format!(
-                "{marker}\n    buttons = {{ b = {{ slot = 8, view = \"{view}\", shown = function(side: number): boolean return false end, pressed = function(side: number) end }} }},"
+                "    buttons = {{ b = {{ slot = 8, view = \"{view}\", shown = function(side: number): boolean return false end, pressed = function(side: number) end }}, beast_out"
             )
         };
-        refused(marker, &button("soul"), &["button `b`: `view` is \"soul\"", "form_offer, chip_picture"]);
-        refused(marker, &button("form_offer"), &["button `b` has the view `form_offer`", "the state field `offer` (a form)"]);
-        let content = patched(marker, &button("chip_picture")).expect("a view that shows no field");
+        refused(buttons, &button("soul"), &["button `b`: `view` is \"soul\"", "form_offer, chip_picture"]);
+        refused(buttons, &button("form_offer"), &["button `b` has the view `form_offer`", "the state field `offer` (a form)"]);
+        let content = patched(buttons, &button("chip_picture")).expect("a view that shows no field");
         assert_eq!(content.defs.button(button_named(&content, "b").expect("the button")).view, Some(ButtonView::ChipPicture));
         // A fact: the setup field of its name, of its type.
-        let setup = "    setup = { bonus = \"u8\" },";
+        let setup = "        -- The counter's.\n        bonus = \"u8\",";
         refused(
             setup,
-            "    setup = { bonus = \"u8\", crosses = \"u8\" },",
-            &["rules/parts.luau: rules", "their setup field `crosses` is the fact a player brings by that name, an array of forms"],
+            "        crosses = \"u8\",\n        bonus = \"u8\",",
+            &["rules/init.luau: rules", "their setup field `crosses` is the fact a player brings by that name, an array of forms"],
         );
-        let content = patched(setup, "    setup = { bonus = \"u8\", crosses = \"form[5]\" },").expect("a fact of its type");
+        let content = patched(setup, "        crosses = \"form[5]\",\n        bonus = \"u8\",").expect("a fact of its type");
         assert!(content.defs.fact_field(PlayerFact::CrossList).is_some());
     }
 
     /// The rules say, for tools, the chips they can't play of a player's
     /// auto battle data, each with why (`unplayable_in_auto_battle`): the
-    /// game's rules answer for a chip (`Defs::unplayable_in_auto_battle`), a
-    /// part the rules don't list doesn't, and an id that is no chip of the
-    /// game is refused as the content is defined.
+    /// game's rules answer for a chip (`Defs::unplayable_in_auto_battle`),
+    /// and an id that is no chip of the game is refused as the content is
+    /// defined.
     #[test]
     fn the_rules_say_the_chips_auto_battle_cant_play() {
-        let with = |part: &str, entry: &str| {
+        let with = |entry: &str| {
             let mut c = testing::build();
-            let src = c.scripts.module_mut(testing::ROOT, "rules/parts").expect("the module");
-            let from = format!("local {part}: RulesPart = {{");
-            assert!(src.contains(&from), "{from}");
-            *src = src.replacen(&from, &format!("{from}\n    unplayable_in_auto_battle = {entry},"), 1);
+            let src = c.scripts.module_mut(testing::ROOT, "rules/init").expect("the module");
+            let from = "    hooks = {\n";
+            assert!(src.contains(from), "{from}");
+            *src = src.replacen(from, &format!("    unplayable_in_auto_battle = {entry},\n{from}"), 1);
             c.define().map(|_| c).map_err(|e| e.message)
         };
         let chip = |c: &Content, key: &str| c.defs.chip_by_key(key).unwrap_or_else(|| panic!("no chip {key}"));
-        let content = with("counter", "{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
+        let content = with("{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
         assert_eq!(content.defs.unplayable_in_auto_battle(chip(&content, "test/veil")), Some("it has no weight"));
         assert_eq!(content.defs.unplayable_in_auto_battle(chip(&content, testing::BOMB)), None);
         let stock = scenario::content();
-        assert_eq!(stock.defs.unplayable_in_auto_battle(chip(&stock, "test/veil")), None, "no part says any");
-        // (The marker isn't one of the stock rules' parts.)
-        let unused = with("marker", "{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
-        assert_eq!(unused.defs.unplayable_in_auto_battle(chip(&unused, "test/veil")), None);
-        let e = with("counter", "{ [\"test/nothing\"] = \"it isn't\" }").map(|_| ()).expect_err("no such chip");
+        assert_eq!(stock.defs.unplayable_in_auto_battle(chip(&stock, "test/veil")), None, "the stock rules say none");
+        let e = with("{ [\"test/nothing\"] = \"it isn't\" }").map(|_| ()).expect_err("no such chip");
         assert!(e.contains("`unplayable_in_auto_battle` names test/nothing, which is no chip of the game"), "{e}");
-        let e = with("counter", "{ \"test/veil\" }").map(|_| ()).expect_err("a list");
+        let e = with("{ \"test/veil\" }").map(|_| ()).expect_err("a list");
         assert!(e.contains("`unplayable_in_auto_battle` is a table of sentences by chip id"), "{e}");
     }
 
@@ -930,11 +905,11 @@ mod tests {
         use crate::patch_cards::{InstalledCard, PatchCards};
         use crate::setup::{GaugeSpeed, NaviStats, Supports};
 
-        /// A battle on the test content with EXE6's patch cards part
-        /// (then the counter), side 0 with `cards` installed (key,
-        /// switched on), its stats changed by `tweak` first.
+        /// A battle on the test content (whose rules apply EXE6's patch
+        /// cards as the round is set up), side 0 with `cards` installed
+        /// (key, switched on), its stats changed by `tweak` first.
         fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
-            let content = testing::with_parts("patch_cards, counter");
+            let content = scenario::content();
             let mut s = scenario::setup_on(&content);
             let p = &mut s.players[0];
             let list: Vec<InstalledCard> = cards
@@ -947,6 +922,14 @@ mod tests {
             p.patch_cards = PatchCards::new(&list).unwrap();
             tweak(&mut s.navi_stats[0]);
             Battle::new(s, content)
+        }
+
+        /// Side `side`'s stats as the setup gives them, with the version
+        /// byte the version fact writes (`testing::VERSION`).
+        fn setup_stats(side: usize) -> NaviStats {
+            let mut stats = scenario::setup().navi_stats[side];
+            stats.version = 1;
+            stats
         }
 
         #[test]
@@ -973,7 +956,7 @@ mod tests {
             assert_eq!((s.attack, s.element, s.bugs.hp_drain), (3, 2, 2));
             assert_eq!(b.reserves[0], b.stats[0], "the battle-start copy is of the stats after the cards");
             assert!(b.consoles[0].emotion_window_glitch, "the HP drain is a bug: flag 0x1723");
-            assert_eq!(b.stats[1], scenario::setup().navi_stats[1], "the other side has none");
+            assert_eq!(b.stats[1], setup_stats(1), "the other side has none");
         }
 
         #[test]
@@ -1005,7 +988,7 @@ mod tests {
         #[test]
         fn a_switched_off_card_does_nothing_but_the_glitch_follows_the_stats() {
             let b = with_cards(&[("test-stats", false)], |s| s.support = Some(Supports::default()));
-            let mut want = scenario::setup().navi_stats[0];
+            let mut want = setup_stats(0);
             want.support = Some(Supports::default());
             // The HP is set to its maximum (the reload's, in the real world).
             want.hp = want.max_hp;
@@ -1021,7 +1004,7 @@ mod tests {
         #[test]
         fn without_cards_the_stats_and_the_glitch_are_the_setups() {
             let b = with_cards(&[], |s| s.bugs.emotion = 1);
-            let mut want = scenario::setup().navi_stats[0];
+            let mut want = setup_stats(0);
             want.bugs.emotion = 1;
             assert_eq!(b.stats[0], want);
             assert!(!b.consoles[0].emotion_window_glitch, "the console's own flag (0x1720), not the cards'");

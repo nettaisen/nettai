@@ -150,7 +150,7 @@ pub enum ScreenCall {
 }
 
 impl ScreenSound {
-    /// The ruleset's role for it.
+    /// The rules' role for it.
     pub fn role(self) -> SoundRole {
         match self {
             ScreenSound::Open => SoundRole::CustomOpen,

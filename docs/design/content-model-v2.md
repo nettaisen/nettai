@@ -386,7 +386,7 @@ of them by number, they say:
   and `remove_navi_parts` (now `me:add_parts(identity, arg)`, `me:remove_parts(identity)`: the navi chips' navis
   define identities for their parts, which compat's `[identities]` numbers), and the generator's body-overlay
   rows. Content reads a side's navi and form as definitions (`battle.navi(side).form.base`, `.navi.forms`;
-  EXE6's kinds are its forms part's extension, which rules/forms/kind.luau reads: S7b).
+  EXE6's kinds are the rules' extension, which rules/forms/kind.luau reads: S7b).
 - **Compat** keeps navis.toml and forms.toml: the trace harness and the save codecs map numbers to handles
   through their keys (`exe6_compat::codec::Ids`; a bug code may write the base form, 0, to a form byte and
   nothing to the navi byte), and the frontend's emotion window draws the pack's faces by the original's form
@@ -446,7 +446,7 @@ chips' own weapons, beside the chip that gives them (`bugrswrd/charge`, `bgdthth
 arguments of its own (a sword's slash, Thunder's shot, AquaNdl1's volley, an electric pulse no chip has) or
 names a chip's instant effect (FireHit's fists, Boomer's boomerang: `instant`, without `instant_waits`, which
 only an effect no chip has sets: TenguCross's wind), and the two bug chips' spend a bug frag
-(EXE6's API since rules-in-luau.md S8: `exe6.spend_bug_frags(side, n)`, the dark chips part's state). A form's `weapons` and a navi's are handles (`FormWeapons` of
+(EXE6's API since rules-in-luau.md S8: `exe6.spend_bug_frags(side, n)`, the rules' state). A form's `weapons` and a navi's are handles (`FormWeapons` of
 `Option<WeaponHandle>`); a navi's definition also carries what a Cross change brings it with (`fresh`: HP, the
 body's programs, the first barrier, the Mega and Giga levels, the B+Back special's damage) and its HP after one
 (`cross_hp`, by side), which were tables in the engine (`byte_80210DD`, `byte_802DD88`). The content API's
@@ -573,7 +573,7 @@ and registers itself are roles (§7.4): `effects.*`, `sparks.*`, `regions.anchor
 type keeps `row_offset`, the bug code's garbage byte. rules/numbers.luau, which numbered the effects, sparks and
 regions for v1 modules and the ruleset, is gone (weapons by handle took its last table), and `data.regions` and
 `data.rules.field_regions` went with it. The engine's test content defines its own for the roles
-(crates/nettai-battle/testdata/content/rules/ruleset.luau: one made-up look for every effect, one for every spark,
+(crates/nettai-battle/testdata/content/rules/role_definitions.luau: one made-up look for every effect, one for every spark,
 and collision types by what they are). Compat's rules.toml gives each role the original's number, for
 `gen-content check` alone (§9.3).
 
@@ -615,9 +615,9 @@ crates/nettai-battle/testdata/content/stages/test.luau, and tests name stages by
 
 A game's rules are one plain Luau library with a single definition: `define.rules`, in `rules/init.luau` (the
 game's top module requires it as `@self/rules`, the folder's name, as a require names a folder's `init`; it
-requires its own folder's modules as `@self/panels`). The definition is what its parts make (plain tables:
-their state, setup, hooks, buttons and windows; @exelib/rules/compose makes one of them,
-rules-in-luau.md §2.3) and, as fields, each rule table, a **section**, and the game's roles (§7.4). A section is a plain table its
+requires its own folder's modules as `@self/panels`). The definition states, by hand and whole, a side's state, a
+player's setup, the hooks (plain functions that call the game's modules) and the custom screen's buttons and windows
+(rules-in-luau.md §2.5) and, as fields, each rule table, a **section**, and the game's roles (§7.4). A section is a plain table its
 module returns; the engine reads each against its schema when the ruleset is defined (sections.rs), and a message
 names the place (`rules/init.luau: ruleset: panels.types.grass.flags: invalid type`):
 
@@ -635,13 +635,17 @@ return {
 }
 
 -- rules/init.luau
-return define.rules(compose.rules({ save, cross, navicust, patch_cards, forms.part, beast, emotion.part, folder, dark_chips }, {
+return define.rules {
+    state = { ... },
+    setup = { ... },
+    hooks = { ... },
+    -- ...
     elements = require("@self/elements"),
     panels = require("@self/panels"),
     lockon = require("@self/lockon").rules,   -- a module whose table holds more than the section
     -- ...
     roles = require("@self/roles"),
-}))
+}
 ```
 
 A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`).
@@ -723,7 +727,7 @@ a weapon set; the dimming and navi chip actions read the chip's usage. Content's
 `define.patch_card { id, mb, effects }` (content/exe6/patch_cards/<name>/card.luau) is a patch card, BN4's, EXE5's and EXE6's
 Modification Card (docs/engine/patch-cards.md): the engine keeps its capacity cost and its effects' kinds and bug
 flags (`PatchCardDef`), and a player's installed cards are their setup's (`PlayerSetup::patch_cards`). What an
-effect does is a game's rules' (EXE6's patch cards part, rules/patch_cards), which read the effects' own fields
+effect does is a game's rules' (EXE6's patch cards module, rules/patch_cards), which read the effects' own fields
 from the definition. Its name is the locales' (`[patch-cards]`).
 
 ## 4. Folder layout
@@ -827,7 +831,7 @@ require("@self/megaman/weapons/buster-2e")  -- defined for its id alone: nothing
   (`packs::find`, where a load's `require` and the content check's reading of a module's text both find a
   module) refuses anything else, naming the requiring module and the require as written.
 - **What a game has.** Its inits require the modules that define what a person picks or the rules name: its rules
-  (rules/init.luau: its parts, rule sections and roles, required by the top module), and its chips, navis,
+  (rules/init.luau: its one definition, with its rule sections and roles, required by the top module), and its chips, navis,
   forms, stages, patch cards and NaviCust programs, each required by the init of the folder of the pack it is in
   (chips/init.luau the chips; navis/init.luau the navis, their forms and a link navi's own chip). A series module
   stands for its chips. Weapons, kinds, actions and the rest come in through requires. A module that defines
@@ -944,7 +948,7 @@ module is the one the folder is for:
 | patch_cards/<card>/, navicust/<program>/ | the patch card, the NaviCust program |
 | navis/<navi>/ | the navi |
 | .../forms/<form>/, .../weapons/<weapon>/ | the form, the weapon |
-| rules/, rules/<part>/ | the game's rules, one of their parts |
+| rules/, rules/<module>/ | the game's rules, one of the game's modules they call |
 | any other with a module of the folder's name | that module (objects/boulder/, lib/barriers/, exelib's attachment/) |
 
 Every other module keeps its name, and says what it is: action.luau, charge.luau, controller.luau, a kind's
@@ -1021,7 +1025,7 @@ differs from EXE6's layout in two things the port and the ids impose:
 Where EXE5's shared kinds went: the families' to lib/ (lib/bombs/seed for the seeds, as EXE6's; lib/instruments;
 the Anti traps' in lib/traps; the Guard chips' shock wave in lib/guard; the navi chips' throw marker in
 lib/navi_chips), each family's builder moving into its folder with them (lib/bombs/init.luau, as EXE6's
-lib/barriers/init.luau); the souls part's (Chaos Unison's shade, the soul's image) to rules/souls, as EXE6's
+lib/barriers/init.luau); the souls module's (Chaos Unison's shade, the soul's image) to rules/souls, as EXE6's
 Cross merge is rules/forms'; a kind with a natural owner and borrowers to the owner (the Vulcans' gun, which the
 InfVulcs borrow; DrilArm's drill, DarkDril's too; CrakBom's bomb, ParaBom's and ResetBom's too). objects/ keeps
 what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer, projectile,

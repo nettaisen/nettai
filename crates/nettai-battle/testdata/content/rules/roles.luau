@@ -1,5 +1,5 @@
 --!strict
--- What the ruleset needs from the engine's test content by role
+-- What the rules need from the engine's test content by role
 -- (docs/design/content-model-v2.md §7.4): the EXE6 overlay's modules the
 -- test content has. (The test pack, crates/nettai-battle/testdata/pack,
 -- brings its own.)
@@ -13,7 +13,7 @@ local dust_beast_scatter = require("../navis/megaman/forms/dustcross_beast/scatt
 local falling_rock = require("../objects/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local invalid = require("../chips/invalid")
-local ruleset = require("./ruleset")
+local defined = require("./role_definitions")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross_beast/lunge")
 local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
@@ -62,14 +62,14 @@ return {
         hit_bug_blind = statuses.blind_1200,
         hit_bug_confuse = statuses.confuse_960,
     },
-    effects = ruleset.effects,
-    sparks = ruleset.sparks,
-    regions = ruleset.regions,
-    collision = ruleset.collision,
-    sounds = ruleset.sounds,
-    music = ruleset.music,
-    sprites = ruleset.sprites,
-    banners = ruleset.banners,
+    effects = defined.effects,
+    sparks = defined.sparks,
+    regions = defined.regions,
+    collision = defined.collision,
+    sounds = defined.sounds,
+    music = defined.music,
+    sprites = defined.sprites,
+    banners = defined.banners,
     hooks = {
         -- The first barrier, as EXE6's roles fill it: the barrier the
         -- navi's stats name, and its visual.
