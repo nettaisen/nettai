@@ -343,13 +343,35 @@ mod tests {
     /// A live set recorded plays back to the same end, round by round,
     /// every digest and mark the recording's, from either side's console
     /// (side 1's sees the set lost); and played out without a picture.
-    /// Both games.
+    /// Both games. Each round's mark is the first tick its battle has the
+    /// round over, as a set stepped by hand on the recorded buttons has it:
+    /// the rule netplay's rounds end by too (`netplay`'s
+    /// `both_players_record_the_same_set`).
     #[test]
     fn a_recorded_set_plays_back() {
         for (content, game) in [(nettai_match::testing::exe6_content(), "exe6"), (nettai_match::testing::exe5_content(), "exe5")] {
             let (replay, ticks) = recorded(&content, game);
             assert_eq!((replay.end, replay.ticks.len() as u64, replay.rounds().len()), (End::Set, ticks, 2), "{game}");
             assert!(replay.ticks.iter().filter(|t| t.digest.is_some()).count() as u64 >= ticks / DIGEST_EVERY, "{game}");
+            let m = nettai_match::binary::read_match(&content, &replay.match_bytes).unwrap();
+            let set = Set::of(&content, &m, m.seed.unwrap());
+            let mut b = set.start();
+            let mut ends = Vec::new();
+            for (i, t) in replay.ticks.iter().enumerate() {
+                let TickInput { players, events } = nettai_netplay::standin::tick_input(&b, t.buttons);
+                b.tick(&players, events);
+                assert_eq!(t.round_ended, b.round_end().is_some(), "{game}: tick {i}");
+                if let Some(d) = t.digest {
+                    assert_eq!(b.digest(), d, "{game}: tick {i}");
+                }
+                if t.round_ended {
+                    ends.push(i);
+                    if let Some(After::Round(next)) = set.after(&b, 0) {
+                        b = *next;
+                    }
+                }
+            }
+            assert_eq!(ends.len(), 2, "{game}");
             let out = play_out(&content, &replay).unwrap();
             let want = Outcome { ticks, rounds: vec![Some(0), Some(0)], result: Some(BattleResult::Won), end: End::Set, diverged: None, stopped: None };
             assert_eq!(out, want, "{game}");
@@ -364,6 +386,51 @@ mod tests {
                 assert_eq!((p.diverged, p.result, p.finished, rounds, p.ticks), (None, Some(result), true, 1, ticks), "{game} side {side}");
             }
         }
+    }
+
+    /// How long `play_out` takes over a long EXE6 set: the left side
+    /// mashing, the right the stand-in's custom screen, 2000 HP each so the
+    /// rounds last, recorded, then played out. Run in a release build:
+    /// `cargo test --release -p nettai-frontend play_out_timing -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn play_out_timing() {
+        use nettai_battle::battle::mode;
+        let content = nettai_match::testing::exe6_content();
+        let mut m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        let hp = nettai_battle::content::PlayerFact::BaseHp.name();
+        for s in &mut m.sides {
+            s.set_fact(&content, hp, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(2000))]).unwrap();
+        }
+        let sink = Shared::default();
+        let mut s = Session::new(Box::new(LivePlayer::new(Set::of(&content, &m, 11))));
+        s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::default()).unwrap()).unwrap();
+        let mut masher = nettai_netplay::standin::Masher::new(11);
+        let started = std::time::Instant::now();
+        while s.ticks < 60_000 {
+            let mashed = masher.buttons();
+            let keys = if s.battle.round.mode == mode::CUSTOM { short_set::shooter(&s.battle, 0, s.ticks as u32) } else { mashed };
+            if !s.step(keys) {
+                break;
+            }
+        }
+        let played = started.elapsed();
+        let replay = Replay::read(&sink.bytes()).unwrap();
+        let started = std::time::Instant::now();
+        let out = play_out(&content, &replay).unwrap();
+        let took = started.elapsed();
+        assert_eq!((out.diverged, out.stopped, out.ticks), (None, None, s.ticks));
+        let minutes = out.ticks as f64 / crate::player::FRAME_RATE / 60.0;
+        eprintln!(
+            "play_out: {} ticks ({minutes:.1} minutes of play; {} rounds, {:?}, the file {} bytes) in {took:.2?}: {:.0} ticks a second, \
+             {:.3} s for three minutes (playing and recording it live: {played:.2?})",
+            out.ticks,
+            out.rounds.len(),
+            out.result,
+            sink.bytes().len(),
+            out.ticks as f64 / took.as_secs_f64(),
+            took.as_secs_f64() / minutes * 3.0,
+        );
     }
 
     /// A replay that doesn't play as recorded says where: other buttons at

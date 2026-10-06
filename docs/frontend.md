@@ -1783,7 +1783,11 @@ console shown; default the recorder's; `--headless F` renders the set's ticks
 F); in the library, `ReplayPlayer::new(&content, &replay, side)?` is a driver
 like any other, and `replay::play_out(&content, &replay)` plays one to its end
 with no picture or sound (the ticks, each round's winner, the set's result,
-how the file ends, and the first difference). A digest or a round's or the
+how the file ends, and the first difference). In a release build it plays
+about 200,000 ticks a second: a 10.4-minute EXE6 set of three rounds (37,187
+ticks, one side mashing) in 0.18 s, about 0.05 s for three minutes of play
+(`cargo test --release -p nettai-frontend play_out_timing -- --ignored
+--nocapture`); a host listing replays can afford to play each one out. A digest or a round's or the
 set's end that differs from the recording is reported as a difference
 (`Player::diverged`), with its tick; the simulation is side 0's on every
 console, so a replay shown from side 1 compares the same digests.
