@@ -14,7 +14,7 @@
 //! wheel or R turns the held program, C compresses it. Right-clicking a
 //! placed program turns it where it is.
 
-use crate::app::{Choice, Editor, Msg};
+use crate::editor::app::{Choice, Editor, Msg};
 use iced::keyboard;
 use iced::mouse;
 use iced::widget::canvas::{self, Frame, Geometry, Path, Stroke};
@@ -519,7 +519,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         if on { b.style(button::primary) } else { b.style(button::secondary) }
     };
     let header = row![
-        text(format!("{}: NaviCust", crate::view::SIDES[s])).size(20),
+        text(format!("{}: NaviCust", crate::editor::view::SIDES[s])).size(20),
         space().width(Length::Fill),
         tab("Grid", !state.show_stats, false),
         tab("Stats and bugs", state.show_stats, true),
@@ -529,7 +529,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     if state.show_stats {
         let body: Element<Msg> = column![
             text("The stats and bugs are the NaviCust's: the programs on the grid make them as the round is set up.").size(13),
-            crate::view::round_stats(e, s),
+            crate::editor::view::round_stats(e, s),
         ]
         .spacing(8)
         .into();
@@ -673,7 +673,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         grid,
         note,
         picked,
-        crate::view::round_stats(e, s),
+        crate::editor::view::round_stats(e, s),
     ]
     .spacing(8)
     .width(Length::Fixed(CELL * SIZE as f32 + 120.0));
