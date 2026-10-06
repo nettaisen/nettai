@@ -86,13 +86,10 @@ impl Side {
         if save.navi() != 0 && !link_navi {
             notes.push("the save operates a link navi: its level is MegaMan's here".into());
         }
-        // The SP times of the rules' slots (the save's halfwords past them,
-        // unused, read as 0xFFFF: a match file holds the slots alone).
-        let slots = crate::sp_slots(content).len();
-        self.sp_times = save.sp_times();
-        for t in self.sp_times.0.iter_mut().skip(slots) {
-            *t = 0;
-        }
+        // The SP times, by the chip compat names each slot the game reads by
+        // (the save's halfwords past them, unused, left out).
+        let times = exe6_compat::codec::Ids::new(content, exe6_compat::Compat::exe6()).sp_times(&save.sp_times());
+        self.facts.set_sp_times(content, &times)?;
         Ok(notes)
     }
 }
@@ -104,7 +101,7 @@ mod tests {
     use exe6_compat::save::testing::file;
     use exe6_compat::GameVersion;
     use nettai_battle::rules::Fact;
-    use nettai_battle::setup::SpTimes;
+    use exe6_compat::codec::SpTimes;
 
     /// A Falzar save without Beast Out, owning TomahawkCross and
     /// GroundCross, operating ProtoMan from his level-5 code: a MegaMan side
@@ -114,8 +111,8 @@ mod tests {
     #[test]
     fn a_save_gives_the_game_unlocks_level_and_times() {
         let content = exe6_content();
-        let mut times = SpTimes(std::array::from_fn(|i| 600 + i as u16));
-        times.0[19] = 0xFFFF;
+        let mut times: SpTimes = std::array::from_fn(|i| 600 + i as u16);
+        times[19] = 0xFFFF;
         let save = file(GameVersion::Falzar, false, [false, true, false, true, false], 11, Some(5), &times);
         let mut m = crate::pick::live(&content, "exe6", 1, None).unwrap();
         m.sides[0].set_fact(&content, "version", &[Fact::Name("gregar")]).unwrap();
@@ -128,18 +125,20 @@ mod tests {
         // from its front.)
         let list: Vec<&str> = s.facts.form_list(&content).iter().map(|&f| crate::ids::local(&content.defs.form(f).key)).collect();
         assert_eq!(list, ["tomahawkcross", "groundcross"]);
-        assert_eq!((s.sp_times.0[0], s.sp_times.0[17], s.sp_times.0[18], s.sp_times.0[19]), (600, 617, 0, 0));
+        // (By the chips of the slots the game reads, in the slots' order.)
+        let times: Vec<(&str, u16)> = s.facts.sp_times(&content).iter().map(|&(c, f)| (crate::ids::local(&content.defs.chip(c).key), f)).collect();
+        assert_eq!((times.len(), times[0], times[17]), (18, ("heatman-sp", 600), ("colonel-sp", 617)));
         assert_eq!(notes, ["the save operates a link navi: its level is MegaMan's here"]);
         assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
         // Every Cross owned: the game's own five, stated; and none owned,
         // an empty list, stated too.
-        let all = file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default());
+        let all = file(GameVersion::Gregar, true, [true; 5], 0, None, &[0; 20]);
         m.import_save(&content, 0, &all).unwrap();
         let s = &m.sides[0];
         assert_eq!((s.version(&content), s.level(&content)), (Some("gregar"), None));
         assert_eq!(s.facts.form_list(&content), content.navi(s.navi).forms.as_ref().unwrap().listed("gregar"));
         assert!(s.facts.is_default(&content, "beast_out"));
-        let none = file(GameVersion::Gregar, true, [false; 5], 0, None, &SpTimes::default());
+        let none = file(GameVersion::Gregar, true, [false; 5], 0, None, &[0; 20]);
         m.import_save(&content, 0, &none).unwrap();
         assert_eq!(m.sides[0].facts.get(&content, "crosses").map(|v| v.defs()), Some(Vec::new()));
         assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
@@ -156,7 +155,7 @@ mod tests {
         s.navi = protoman;
         s.set_fact(&content, "crosses", &[]).unwrap();
         s.set_level(&content, Some(7)).unwrap();
-        let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();
+        let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &[0; 20])).unwrap();
         let s = &m.sides[1];
         assert_eq!((s.level(&content), s.version(&content)), (Some(7), Some("gregar")));
         // (His round's stats: his level's, of the save's game.)

@@ -64,7 +64,8 @@ impl PlayerSetup {
 
     /// Write a fact of what the player brings into the rules' setup field
     /// `field`: one value for a field, an element each for an array (the
-    /// rest zero), an enum's by its name (`Fact::Name`). Whether the rules
+    /// rest zero) or a list (its length theirs), an enum's by its name
+    /// (`Fact::Name`), a record's by its fields (`Fact::Record`). Whether the rules
     /// take it: none on a content without rules. ([`set_fact`], on a setup
     /// of the rules.)
     pub fn set_fact(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<bool, String> {
@@ -87,35 +88,61 @@ pub fn set_fact(setup: &mut Option<Block>, content: &Content, field: &str, value
     let block = setup.get_or_insert_with(|| rules.setup_block());
     let schema = &content.defs.schemas[block.id().0 as usize].schema;
     let Some(i) = schema.index_of(field) else { return Ok(false) };
-    let ty = &schema.field(i).ty;
-    let value = |f: &Fact| -> Result<Value, String> {
-        match (f, ty) {
-            (Fact::Value(v), _) => Ok(*v),
-            (Fact::Name(n), FieldType::Enum(names)) => {
-                names.iter().position(|x| x == n).map(|i| Value::Int(i as i64)).ok_or_else(|| format!("setup field `{field}` has no variant {n:?}"))
-            }
-            (Fact::Name(n), _) => Err(format!("setup field `{field}` isn't an enum, for {n:?}")),
+    let place = schema.place(i);
+    let at = format!("setup field `{field}`");
+    match place.ty() {
+        FieldType::Array(..) | FieldType::List(..) => write_fact(block, place, &Fact::List(values.to_vec()), &at)?,
+        _ => {
+            let [f] = values else { return Err(format!("{at} takes one value, not {}", values.len())) };
+            write_fact(block, place, f, &at)?;
         }
-    };
-    if let FieldType::Array(elem, n) = ty {
-        if values.len() > *n as usize {
-            return Err(format!("setup field `{field}` holds {n}, not {}", values.len()));
-        }
-        // (Past the values given, zero: false, 0, none.)
-        let zero = match **elem {
-            FieldType::Bool => Value::Bool(false),
-            FieldType::Ref(..) | FieldType::Asset(_) | FieldType::Object => Value::Nil,
-            _ => Value::Int(0),
-        };
-        for k in 0..*n as usize {
-            let v = values.get(k).map(value).transpose()?.unwrap_or(zero);
-            block.set_elem(schema, i, k, v).map_err(|e| format!("setup field `{field}`: {e}"))?;
-        }
-    } else {
-        let [f] = values else { return Err(format!("setup field `{field}` takes one value, not {}", values.len())) };
-        block.set(schema, i, value(f)?).map_err(|e| format!("setup field `{field}`: {e}"))?;
     }
     Ok(true)
+}
+
+/// Write `f` at `place` of a setup of the rules: a value; an enum's
+/// variant by its name; an array's elements from the first (the rest
+/// zero), a list's (its length theirs); a record's fields by name (the
+/// rest zero). `at` says where, in a message.
+fn write_fact(block: &mut Block, place: nettai_content_api::Place, f: &Fact, at: &str) -> Result<(), String> {
+    match (place.ty(), f) {
+        (FieldType::Array(..) | FieldType::List(..), Fact::List(items)) => {
+            let room = place.capacity().expect("an array or a list");
+            if items.len() > room {
+                return Err(format!("{at} holds {room}, not {}", items.len()));
+            }
+            block.clear_at(place);
+            if let FieldType::List(..) = place.ty() {
+                block.set_len_at(place, items.len())?;
+            }
+            for (k, item) in items.iter().enumerate() {
+                write_fact(block, place.elem(k).expect("within its room"), item, &format!("{at}[{}]", k + 1))?;
+            }
+            Ok(())
+        }
+        (FieldType::Record(fields), Fact::Record(entries)) => {
+            block.clear_at(place);
+            for (name, x) in entries.iter() {
+                let Some(p) = place.field(name) else {
+                    let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
+                    return Err(format!("{at} has no field `{name}` ({})", names.join(", ")));
+                };
+                write_fact(block, p, x, &format!("{at}.{name}"))?;
+            }
+            Ok(())
+        }
+        (FieldType::Enum(names), Fact::Name(n)) => {
+            let i = names.iter().position(|x| x == n).ok_or_else(|| format!("{at} has no variant {n:?}"))?;
+            block.set_at(place, Value::Int(i as i64)).map_err(|e| format!("{at}: {e}"))
+        }
+        (_, Fact::Name(n)) => Err(format!("{at} isn't an enum, for {n:?}")),
+        (ty, Fact::Value(v)) if ty.is_scalar() => block.set_at(place, *v).map_err(|e| format!("{at}: {e}")),
+        (ty, f) => Err(format!("{at} is a {ty}, not {}", match f {
+            Fact::List(_) => "a list",
+            Fact::Record(_) => "a record",
+            _ => "one value",
+        })),
+    }
 }
 
 /// A fact read from a setup of the rules (`setup`: as [`set_fact`] takes
@@ -128,12 +155,15 @@ pub fn fact_in<'a>(setup: &'a Block, content: &'a Content, field: &str) -> Optio
     Some(SetupFact { schema, block: setup, index: schema.index_of(field)? })
 }
 
-/// A value [`PlayerSetup::set_fact`] writes: a field's value, or an enum
-/// variant by its name.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// A value [`PlayerSetup::set_fact`] writes: a field's value, an enum
+/// variant by its name, a list's or an array's elements, a record's fields
+/// by name.
+#[derive(Clone, Debug, PartialEq)]
 pub enum Fact<'a> {
     Value(Value),
     Name(&'a str),
+    List(Vec<Fact<'a>>),
+    Record(Vec<(&'a str, Fact<'a>)>),
 }
 
 /// A fact of what a player brought, read back ([`Battle::fact`]): a field
@@ -178,10 +208,22 @@ impl<'a> SetupFact<'a> {
         }
     }
 
-    /// Element `k` of an array (none past its end, or for a field that is
-    /// no array).
+    /// Element `k` of an array or a list (none past its end, or for a
+    /// field that is neither).
     pub fn elem(&self, k: usize) -> Option<nettai_content_api::FieldValue> {
-        self.block.get_elem(self.schema, self.index, k)
+        let place = self.place();
+        (k < self.block.len_at(place)?).then(|| place.elem(k).map(|p| self.block.get_at(p))).flatten()
+    }
+
+    /// Where it is in the setup's block: to read a record's or a list's
+    /// parts (`place.elem(k)`, `place.field(name)`, [`SetupFact::block`]).
+    pub fn place(&self) -> nettai_content_api::Place<'a> {
+        self.schema.place(self.index)
+    }
+
+    /// The setup's block it is read of.
+    pub fn block(&self) -> &'a Block {
+        self.block
     }
 
     /// Element `k` of an array of forms: the form, if it holds one.
@@ -801,6 +843,32 @@ mod tests {
         // A list's elements' fields are no one field: each element's has a
         // place of its own.
         assert_eq!(schema.find("chip"), Ok(None));
+    }
+
+    /// An SP navi chip's damage goes by how long its user's save took to
+    /// delete its SP navi (step c2: EXE6's rules/sp_chips, a function of the
+    /// side and the chip, which the round's setup asks): a step down per
+    /// two seconds past ten, by the deletion time the side's `sp_times`
+    /// states for the chip (none: no time, the best damage).
+    #[test]
+    fn an_sp_chips_damage_goes_by_its_deletion_time() {
+        use nettai_content_api::Registry;
+        let content = scenario::content();
+        let count_sp = testing::chip_in(&content, "count-sp");
+        let damage = |frames: Option<u16>| {
+            let mut setup = scenario::setup();
+            if let Some(f) = frames {
+                let time = Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, count_sp.0))), ("frames", Fact::Value(Value::Int(f as i64)))]);
+                setup.players[0].set_fact(&content, "sp_times", &[time]).unwrap();
+            }
+            started(setup).given.damage(count_sp, 0)
+        };
+        // Count[SP]'s steps: 50, 45, 45, 45, 40, ... (its `sp.by_time`).
+        assert_eq!(damage(None), Some(50), "no time stated: in no time");
+        assert_eq!(damage(Some(600)), Some(50), "10.00 s: no step passed");
+        assert_eq!(damage(Some(601)), Some(45), "10.01 s: past the first");
+        assert_eq!(damage(Some(721)), Some(45), "12.01 s: past the second");
+        assert_eq!(damage(Some(60 * 60)), Some(30), "a minute: past every step");
     }
 
     #[test]

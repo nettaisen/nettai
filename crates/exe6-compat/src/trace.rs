@@ -493,7 +493,6 @@ impl Round {
         let mut player = PlayerSetup {
             folder,
             joypad_phase: self.setup.joypad_phases[side as usize],
-            sp_times: codec::sp_times(&unhex(&self.setup.sp_times[side as usize])),
             console: self.console_setup(side),
             rules: None,
             patch_cards: self.patch_cards(side, ids),
@@ -510,6 +509,10 @@ impl Round {
             l => nettai_content_api::Value::Int(l as i64),
         };
         player.set_fact(ids.content, "level", &[nettai_battle::rules::Fact::Value(level)]).unwrap_or_else(|e| panic!("the navi code's level: {e}"));
+        // The SP navi deletion times: the rules' (their setup's
+        // `sp_times`), by the chips compat names the slots by.
+        let times = ids.sp_times(&codec::sp_times(&unhex(&self.setup.sp_times[side as usize])));
+        codec::write_sp_times(&mut player, ids.content, &times).unwrap_or_else(|e| panic!("the save's SP times: {e}"));
         // The bug frags: the rules' (their setup's `bug_frags`).
         let frags = self.setup.bug_frags[side as usize];
         player

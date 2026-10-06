@@ -89,6 +89,9 @@ local rules: Rules = {
         souls = "form[16]",
         soul_unison = "bool",
         chaos_unison = "bool",
+        -- How long the save took to delete each SP navi (./sp_chips: the save's 0x0203E560), by its SP chip, in
+        -- frames.
+        sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
     },
     -- A setup that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the fresh
     -- stats'), no level (MegaMan's); a fresh save's light/dark value (0x08010C00 writes 500: light for the chips, no
@@ -114,6 +117,27 @@ local rules: Rules = {
         },
         soul_unison = true,
         chaos_unison = true,
+        -- Every SP navi deleted in no time (its chip's best damage), in the save's order.
+        sp_times = {
+            { chip = "protomn-sp", frames = 0 },
+            { chip = "gyroman-sp", frames = 0 },
+            { chip = "serchmn-sp", frames = 0 },
+            { chip = "naplmmn-sp", frames = 0 },
+            { chip = "magntmn-sp", frames = 0 },
+            { chip = "meddy-sp", frames = 0 },
+            { chip = "colonel-sp", frames = 0 },
+            { chip = "shadomn-sp", frames = 0 },
+            { chip = "numbrmn-sp", frames = 0 },
+            { chip = "tmhwkmn-sp", frames = 0 },
+            { chip = "knigtmn-sp", frames = 0 },
+            { chip = "toadman-sp", frames = 0 },
+            { chip = "shademn-sp", frames = 0 },
+            { chip = "blizman-sp", frames = 0 },
+            { chip = "cloudmn-sp", frames = 0 },
+            { chip = "cosmomn-sp", frames = 0 },
+            { chip = "larkman-sp", frames = 0 },
+            { chip = "gridman-sp", frames = 0 },
+        },
     },
     -- The state of each navi no player controls that the rules drive (./auto_battle).
     navi_state = AI,
@@ -125,6 +149,10 @@ local rules: Rules = {
     -- whatever the charge (lib/stepsword, 0x08012538); VarSwrd's wait for its sequence while A is up (chips/varswrd,
     -- 0x080ED570); the cameras' shake as MegaMan emerges in it (./souls/change, 0x0801212C).
     extends = {
+        chip = {
+            -- An SP navi chip's damage by its deletion-time step, and in the own-gauges mode (./sp_chips).
+            sp = { by_time = "u16[11]", operation_battle = "u16" },
+        },
         form = {
             image = "record:soul-image",
             custom = "record:soul-custom",
@@ -204,7 +232,6 @@ local rules: Rules = {
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),
     roles = require("@self/roles"),
-    sp_chips = require("@self/sp_chips"),
     status = require("@self/status").rules,
 }
 

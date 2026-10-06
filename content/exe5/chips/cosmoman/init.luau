@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- CosmoMan (EXE5 chip 0x10d): CosmoMan cuts in, takes the field objects around him and calls meteors down on the
 -- enemy area (./navi).
@@ -32,7 +33,8 @@ local cosmomn_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 80,
-    damage = { formula = "sp_navi", slot = "sp/cosmoman", by_time = { 130, 125, 120, 115, 110, 105, 100, 95, 90, 85, 80 }, operation_battle = 80 },
+    sp = { by_time = { 130, 125, 120, 115, 110, 105, 100, 95, 90, 85, 80 }, operation_battle = 80 },
+    damage = sp_chips.damage,
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

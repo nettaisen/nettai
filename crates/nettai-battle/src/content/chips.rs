@@ -269,18 +269,6 @@ pub enum Trap {
 pub enum DamageFormula {
     /// The opponent's HP, at most 500 (`sub_8010A90`; formula 0).
     OpponentHp,
-    /// An SP navi chip's: by how long its user took to delete that SP navi
-    /// (`sub_8010AE4`; formulas 1 to 18). `slot`: the SP navi, one of the
-    /// rules' `sp_slots`; `by_time`: the damage by deletion-time step
-    /// (`Rules::sp_deletion_times`). `operation_battle`: EXE5's SP navi
-    /// chips' damage in the own-gauges mode instead (0x0800E8DE's
-    /// table; EXE6's has no such branch).
-    SpNavi {
-        slot: String,
-        by_time: Vec<u16>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        operation_battle: Option<u16>,
-    },
     /// By how full the custom gauge is (`sub_8010B78`; formula 19).
     Gauge,
     /// The HP its user has lost, at most `cap`: EXE6's 500 (`sub_8010BD0`;
@@ -297,11 +285,14 @@ pub enum DamageFormula {
     /// its user's buster attack up to 5 (`sub_8010C50`, a row of
     /// `byte_80212D4`; formulas 23 to 44).
     NaviLevel { base: u8, per_level: u8 },
-    /// A function of the side gives it (`damage = function(side)`), which
-    /// the round's setup asks once for each side (`Battle::given`): EXE5's
-    /// team navis' own chips (its formulas 50 to 72, 0x0800EAF8: a row of
-    /// 0x0801D74F at the side's level, as EXE5's rules read the level,
-    /// lib/navi_level).
+    /// A function of the side and the chip gives it (`damage =
+    /// function(side, chip)`), which the round's setup asks once for each
+    /// side (`Battle::given`): EXE5's team navis' own chips (its formulas
+    /// 50 to 72, 0x0800EAF8: a row of 0x0801D74F at the side's level, as
+    /// EXE5's rules read the level, lib/navi_level); both games' SP navi
+    /// chips (EXE6's formulas 1 to 18, `sub_8010AE4`, EXE5's 0x0800E8DE: the
+    /// chip's `sp.by_time` at the side's deletion time for it,
+    /// rules/sp_chips).
     #[serde(skip)]
     Given(nettai_content_api::FnId),
     /// EXE5's CusVolt (its formulas 73 to 75, 0x0800EB0E): `base` plus 100

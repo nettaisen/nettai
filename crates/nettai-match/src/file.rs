@@ -33,8 +33,9 @@
 //! regular = 4                        # optional: the Regular chip's entry, counting from 0
 //! tags = [5, 6]                      # optional: the tag chips' entries
 //!
-//! [left.sp_times]                    # optional: SP navi deletion times, mm:ss.cc (else the fastest)
-//! "sp/heatman" = "00:12.34"
+//! [[left.sp_times]]                  # a fact that is a list of records: EXE6's and EXE5's SP navi deletion times,
+//! chip = "heatman-sp"                # each by its SP chip, in frames (60 a second); else the rules' default, every
+//! frames = 741                       # SP navi in no time (the best damage)
 //!
 //! [left.navicust]                    # optional: the NaviCust, which the rules compile
 //! expansions = 2                     # optional: the board's (else the largest)
@@ -72,9 +73,7 @@ use nettai_battle::rules::Fact;
 use nettai_content_api::{FieldType, Value};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
-use nettai_battle::setup::SpTimes;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -125,8 +124,6 @@ pub struct SideFile {
     pub regular: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<[u8; 2]>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub sp_times: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -350,10 +347,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             say(crate::facts::no_field(content, key));
             continue;
         };
-        match fact_values(content, game, field.ty, value).and_then(|values| {
-            let values: Vec<Fact> = values.into_iter().map(Fact::Value).collect();
-            facts.set(content, key, &values)
-        }) {
+        match fact_values(content, game, field.ty, value).and_then(|values| facts.set(content, key, &values)) {
             Ok(()) => {}
             Err(e) => say(format!("{key}: {e}")),
         }
@@ -392,57 +386,71 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             }
         }
     };
-    // The SP navis' deletion times, by the rules' slot names.
-    let slots = crate::sp_slots(content);
-    let mut sp_times = SpTimes::default();
-    for (name, time) in &s.sp_times {
-        let Some(i) = slots.iter().position(|x| x == name) else {
-            say(format!("sp_times: no SP navi slot {name:?} (the rules' are {})", slots.join(", ")));
-            continue;
-        };
-        match crate::sp_times::parse(time) {
-            Ok(frames) => sp_times.0[i] = frames,
-            Err(e) => say(format!("sp_times: {name}: {e}")),
-        }
-    }
     let auto_battle = s.auto_battle.as_ref().map(|c| resolve_auto_battle(content, game, c, &mut say)).unwrap_or_default();
     let navi = navi?;
     if problems.len() > start {
         return None;
     }
-    Some(Side { navi, folder: folder?, patch_cards, sp_times, navicust, auto_battle, facts })
+    Some(Side { navi, folder: folder?, patch_cards, navicust, auto_battle, facts })
 }
 
 /// A fact's value as a file states it, read by the field's type `ty`: a
 /// flag, a whole number that fits the type, an enum's variant by its name,
-/// a definition by its name in `game` ("" none), an array's elements from
-/// the first.
-fn fact_values(content: &Content, game: &str, ty: &FieldType, v: &toml::Value) -> Result<Vec<Value>, String> {
-    let one = |ty: &FieldType, v: &toml::Value| -> Result<Value, String> {
-        match ty {
-            FieldType::Bool => v.as_bool().map(Value::Bool).ok_or_else(|| format!("{v} is neither true nor false")),
-            // (A number past its type is the facts' writer's to refuse.)
-            ty if crate::facts::range(ty).is_some() => v.as_integer().map(Value::Int).ok_or_else(|| format!("{v} is no whole number")),
-            FieldType::Enum(names) => match v.as_str().map(|n| names.iter().position(|x| x == n)) {
-                Some(Some(i)) => Ok(Value::Int(i as i64)),
-                _ => Err(format!("no {v} ({})", names.join(" or "))),
-            },
-            FieldType::Ref(registry, _) => match v.as_str() {
-                Some("") => Ok(Value::Nil),
-                Some(name) => {
-                    ids::handle_of(content, game, *registry, name).map(|h| Value::Def(*registry, h)).ok_or_else(|| unknown(&registry.to_string(), name, game, &[]))
-                }
-                None => Err(format!("{v} is no {registry}'s name")),
-            },
-            other => Err(format!("a match states no {other:?}")),
-        }
-    };
-    match (ty, v) {
-        (FieldType::Array(elem, n), toml::Value::Array(items)) if items.len() <= *n as usize => items.iter().map(|item| one(elem, item)).collect(),
-        (FieldType::Array(_, n), toml::Value::Array(items)) => Err(format!("{} entries, it holds {n}", items.len())),
-        (FieldType::Array(..), _) => Err(format!("{v} is no list")),
-        (ty, v) => Ok(vec![one(ty, v)?]),
+/// a definition by its name in `game` ("" none), an array's or a list's
+/// elements from the first, a record's fields by name (a table). (The
+/// values a fact's writer takes: one, or an array's or a list's elements.)
+fn fact_values<'v>(content: &Content, game: &str, ty: &FieldType, v: &'v toml::Value) -> Result<Vec<Fact<'v>>, String> {
+    match one(content, game, ty, v)? {
+        Fact::List(items) => Ok(items),
+        f => Ok(vec![f]),
     }
+}
+
+/// [`fact_values`]' value at a place of type `ty`.
+fn one<'v>(content: &Content, game: &str, ty: &FieldType, v: &'v toml::Value) -> Result<Fact<'v>, String> {
+    Ok(match ty {
+        FieldType::Bool => Fact::Value(v.as_bool().map(Value::Bool).ok_or_else(|| format!("{v} is neither true nor false"))?),
+        // (A number past its type is the facts' writer's to refuse.)
+        ty if crate::facts::range(ty).is_some() => Fact::Value(v.as_integer().map(Value::Int).ok_or_else(|| format!("{v} is no whole number"))?),
+        FieldType::Enum(names) => match v.as_str().map(|n| names.iter().position(|x| x == n)) {
+            Some(Some(i)) => Fact::Value(Value::Int(i as i64)),
+            _ => return Err(format!("no {v} ({})", names.join(" or "))),
+        },
+        FieldType::Ref(registry, _) => Fact::Value(match v.as_str() {
+            Some("") => Value::Nil,
+            Some(name) => {
+                ids::handle_of(content, game, *registry, name).map(|h| Value::Def(*registry, h)).ok_or_else(|| unknown(&registry.to_string(), name, game, &[]))?
+            }
+            None => return Err(format!("{v} is no {registry}'s name")),
+        }),
+        FieldType::Array(..) | FieldType::List(..) => {
+            let (elem, n) = match ty {
+                FieldType::Array(elem, n) => (elem, *n as usize),
+                FieldType::List(elem, n) => (elem, *n as usize),
+                _ => unreachable!("an array or a list"),
+            };
+            let Some(items) = v.as_array() else { return Err(format!("{v} is no list")) };
+            if items.len() > n {
+                return Err(format!("{} entries, it holds {n}", items.len()));
+            }
+            Fact::List(
+                items.iter().enumerate().map(|(k, item)| one(content, game, elem, item).map_err(|e| format!("[{}]: {e}", k + 1))).collect::<Result<_, _>>()?,
+            )
+        }
+        FieldType::Record(fields) => {
+            let Some(table) = v.as_table() else { return Err(format!("{v} is no table of fields")) };
+            let mut out = Vec::with_capacity(table.len());
+            for (name, x) in table {
+                let Some(i) = fields.index_of(name) else {
+                    let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
+                    return Err(format!("no field `{name}` ({})", names.join(", ")));
+                };
+                out.push((name.as_str(), one(content, game, &fields.field(i).ty, x).map_err(|e| format!("{name}: {e}"))?));
+            }
+            Fact::Record(out)
+        }
+        other => return Err(format!("a match states no {other:?}")),
+    })
 }
 
 /// A fact's value as a file writes it: a flag, a number, an enum's
@@ -460,6 +468,9 @@ fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
             toml::Value::Array(items[..last].iter().map(|v| fact_toml(content, v).unwrap_or_else(|| toml::Value::String(String::new()))).collect())
         }
         Stated::Optional(n) => toml::Value::Integer((*n)?),
+        Stated::Record(fields) => {
+            toml::Value::Table(fields.iter().filter_map(|(name, v)| Some((name.clone(), fact_toml(content, v)?))).collect())
+        }
         Stated::Other => return None,
     })
 }
@@ -577,10 +588,6 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
                 .filter_map(|f| Some((f.name.to_string(), fact_toml(content, &s.facts.get(content, f.name)?)?)))
                 .collect(),
         ),
-        sp_times: crate::sp_times::named(crate::sp_slots(content), &s.sp_times)
-            .into_iter()
-            .map(|(name, frames)| (name, crate::sp_times::format(frames)))
-            .collect(),
         patch_cards: s.patch_cards.iter().map(|c| CardFile { card: name(&content.defs.patch_card(c.card).key), on: c.enabled }).collect(),
         // An empty entry is [], and those after the last chip are left off.
         folder: {
@@ -1028,7 +1035,7 @@ mod tests {
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sun, version)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sp_times, sun, version)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
@@ -1049,7 +1056,7 @@ mod tests {
             "left: crosses: 6 entries, it holds 5",
         );
         has(bad(list, "crosses = true"), "left: crosses: true is no list");
-        has(bad(list, "crosses = [\"heatcros\"]"), "left: crosses: no form \"heatcros\" in exe6");
+        has(bad(list, "crosses = [\"heatcros\"]"), "left: crosses: [1]: no form \"heatcros\" in exe6");
         has(bad(list, "crosses = [\"heatcross\", \"heatcross\"]"), "left: crosses: HeatCross is there twice");
         // (The Crosses are forms of the navi's own lists: a Cross's Beast
         // form is a form of EXE6's, and none of them.)
@@ -1110,8 +1117,8 @@ mod tests {
         let mut m = crate::pick::live(&content, "exe6", 2, None).unwrap();
         m.sides[0].set_fact(&content, "beast_out", &[Fact::Value(Value::Bool(false))]).unwrap();
         m.sides[0].set_level(&content, Some(3)).unwrap();
-        m.sides[0].sp_times.0[0] = 721;
-        m.sides[0].sp_times.0[11] = 1500;
+        let chip = |k: &str| ids::chip(&content, "exe6", k).unwrap();
+        m.sides[0].facts.set_sp_times(&content, &[(chip("heatman-sp"), 721), (chip("blastmn-sp"), 1500)]).unwrap();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
@@ -1119,7 +1126,7 @@ mod tests {
         m.sides[1].set_level(&content, Some(0)).unwrap();
         m.sides[1].folder.regular = None;
         let text = write(&content, &m);
-        for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
+        for line in ["beast_out = false", "level = 3", "chip = \"heatman-sp\"", "frames = 721", "chip = \"blastmn-sp\"", "frames = 1500"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
         let right = &text[text.find("[right]").unwrap()..];
@@ -1132,11 +1139,13 @@ mod tests {
         let no_level = format!("{}{}", &text[..text.find("[right]").unwrap()], right.replacen("level = 0\n", "", 1));
         let refused = parse(&content, &no_level).unwrap_err();
         assert!(refused.iter().any(|p| p == "right: ProtoMan has no level (0 to 14): a link navi exists only through its navi code"), "{refused:?}");
-        // A time that isn't one, a slot the rules lack.
-        let bad = parse(&content, &text.replacen("\"00:12.01\"", "\"12:60.00\"", 1)).unwrap_err();
-        assert!(bad.iter().any(|p| p.contains("sp_times: sp/heatman")), "{bad:?}");
-        let bad = parse(&content, &text.replacen("\"sp/heatman\"", "\"sp/nobody\"", 1)).unwrap_err();
-        assert!(bad.iter().any(|p| p.contains("no SP navi slot \"sp/nobody\"")), "{bad:?}");
+        // Frames past a u16, a chip the game lacks, a field the record lacks.
+        let bad = parse(&content, &text.replacen("frames = 721", "frames = 70000", 1)).unwrap_err();
+        assert!(bad.iter().any(|p| p.contains("sp_times: 70000 is past a u16")), "{bad:?}");
+        let bad = parse(&content, &text.replacen("\"heatman-sp\"", "\"nobody\"", 1)).unwrap_err();
+        assert!(bad.iter().any(|p| p.contains("sp_times: [1]: chip: no chip \"nobody\"")), "{bad:?}");
+        let bad = parse(&content, &text.replacen("frames = 721", "time = 721", 1)).unwrap_err();
+        assert!(bad.iter().any(|p| p.contains("no field `time` (chip, frames)")), "{bad:?}");
     }
 
     /// A navi code's level is 0 to 14, and a link navi has one.

@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- Colonel (EXE5 chip 0x0f5): Colonel cuts in and divides the screen with a diagonal slash on the first enemy navi ahead
 -- (./navi).
@@ -33,7 +34,8 @@ local colonel_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 75,
-    damage = { formula = "sp_navi", slot = "sp/colonel", by_time = { 300, 290, 280, 270, 260, 250, 240, 230, 220, 210, 200 }, operation_battle = 230 },
+    sp = { by_time = { 300, 290, 280, 270, 260, 250, 240, 230, 220, 210, 200 }, operation_battle = 230 },
+    damage = sp_chips.damage,
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

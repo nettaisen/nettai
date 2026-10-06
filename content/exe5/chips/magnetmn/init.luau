@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- MagnetMn (EXE5 chip 0x0e9): MagnetMan cuts in and sends two magnets sliding along his row to meet at the first enemy
 -- navi, immobilizing (./navi).
@@ -32,7 +33,8 @@ local magntmn_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 75,
-    damage = { formula = "sp_navi", slot = "sp/magnetmn", by_time = { 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100 }, operation_battle = 150 },
+    sp = { by_time = { 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100 }, operation_battle = 150 },
+    damage = sp_chips.damage,
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

@@ -266,14 +266,13 @@ pub fn shift_damage_carry(b: &mut Battle) {
 pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, formula: &crate::content::DamageFormula) -> u16 {
     use crate::content::DamageFormula as F;
     // EXE5's: a fixed damage in the own-gauges mode.
-    if let F::SpNavi { operation_battle: Some(d), .. } | F::Count { operation_battle: Some(d), .. } = formula
+    if let F::Count { operation_battle: Some(d), .. } = formula
         && b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0
     {
         return *d;
     }
     match formula {
         F::OpponentHp => opponent_hp(b, side),
-        F::SpNavi { by_time, .. } => sp_chip_damage(b, id, side, by_time),
         F::Count { of, by_count, .. } => {
             let n = counted(b, side, of);
             *by_count.get(n.min(by_count.len().saturating_sub(1))).unwrap_or_else(|| {
@@ -391,18 +390,6 @@ fn damage_taken(b: &Battle, side: u8, cap: u16) -> u16 {
     lost.min(cap as i32) as u16
 }
 
-/// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
-/// deleted that SP navi (a step per two seconds past ten): `by_time`, by
-/// the deletion-time step, of the chip's slot among the setup's SP times.
-fn sp_chip_damage(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, by_time: &[u16]) -> u16 {
-    let n = b.content.chip_links(id).sp_slot.expect("an SP navi chip's slot (resolved when the content loads)") as usize;
-    let time = time_bcd(b.setup.players[side as usize & 1].sp_times.frames(n) as u32);
-    let step = b.content.rules().sp_deletion_times.iter().take_while(|&&t| time > t).count();
-    *by_time.get(step).unwrap_or_else(|| {
-        panic!("SP chip {:?} has no damage for deletion-time step {step} (sub_8010AE4)", b.content.defs.chip(id).key)
-    })
-}
-
 /// What a `DamageFormula::Count` counts for `side`.
 fn counted(b: &Battle, side: u8, of: &crate::content::Counted) -> usize {
     use crate::content::Counted as C;
@@ -427,23 +414,8 @@ fn navi_chip_damage(b: &Battle, side: u8, base: u8, per_level: u8) -> u16 {
     base as u16 + per_level as u16 * level
 }
 
-/// `sub_8000D84`: frames as a BCD time, hours:minutes:seconds.hundredths
-/// (a byte each), capped at 99:59:59.99.
-fn time_bcd(frames: u32) -> u32 {
-    if frames > 0x149_9727 {
-        return 0x9959_5999;
-    }
-    let bcd = |v: u32| ((v / 10) << 4) | (v % 10);
-    let (hours, rest) = (frames / 216_000, frames % 216_000);
-    let (minutes, rest) = (rest / 3600, rest % 3600);
-    let (seconds, frames) = (rest / 60, rest % 60);
-    (bcd(hours) << 24) | (bcd(minutes) << 16) | (bcd(seconds) << 8) | bcd(frames * 100 / 60)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::time_bcd;
-
     /// NumbrBl's damage (formula 21) is the last two digits of its user's
     /// HP.
     #[test]
@@ -460,13 +432,5 @@ mod tests {
             let formula = crate::content::DamageFormula::HpLastDigits;
             assert_eq!(super::chip_damage_formula(&b, testing::chip_handle(testing::SUN_GUN_3), 1, &formula), want, "HP {hp}");
         }
-    }
-
-    #[test]
-    fn deletion_times_read_as_bcd_clock_times() {
-        assert_eq!(time_bcd(600), 0x1000, "10 seconds");
-        assert_eq!(time_bcd(203), 0x0338, "3.38 seconds");
-        assert_eq!(time_bcd(216_000 + 3600 * 2 + 61), 0x0102_0101);
-        assert_eq!(time_bcd(0x149_9728), 0x9959_5999, "capped");
     }
 }

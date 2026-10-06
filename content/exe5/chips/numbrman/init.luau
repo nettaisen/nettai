@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- NumbrMan (EXE5 chip 0x0f2): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it
 -- bursts (./navi).
@@ -33,7 +34,8 @@ local numbrmn_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 66,
-    damage = { formula = "sp_navi", slot = "sp/numbrman", by_time = { 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40 }, operation_battle = 70 },
+    sp = { by_time = { 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40 }, operation_battle = 70 },
+    damage = sp_chips.damage,
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

@@ -581,13 +581,20 @@ impl Editor {
                 }
                 self.typed.insert((s, "level"), t);
             }
-            Msg::SpTime(s, slot, t) => {
+            Msg::SpTime(s, entry, t) => {
                 let frames = if t.trim().is_empty() { Ok(0) } else { nettai_match::sp_times::parse(&t) };
-                if let Ok(f) = frames {
-                    self.m.sides[s].sp_times.0[slot] = f;
-                    self.edited();
+                let content = self.content.clone();
+                let facts = &mut self.m.sides[s].facts;
+                let mut times = facts.sp_times(&content);
+                if let (Ok(f), Some(time)) = (frames, times.get_mut(entry))
+                    && f != time.1
+                {
+                    time.1 = f;
+                    if facts.set_sp_times(&content, &times).is_ok() {
+                        self.edited();
+                    }
                 }
-                self.sp_typed.insert((s, slot), t);
+                self.sp_typed.insert((s, entry), t);
             }
             Msg::ImportSave(s) => {
                 // An EXE6 save, or an EXE5 one (a .sav, or a raw image as

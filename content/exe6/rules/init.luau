@@ -82,10 +82,39 @@ local rules: Rules = {
         level = "u8?",
         -- The save's bug frags (./dark_chips), which the init exchange shares.
         bug_frags = "u32",
+        -- How long the save took to delete each SP navi (./sp_chips: the save's `byte_203EB00`), by its SP chip, in
+        -- frames.
+        sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
     },
     -- A setup that says nothing: Beast Out (a finished game's save); a new game's base HP, 100 (MegaMan's fresh
     -- HP), and Regular memory (the fresh stats'); no sun; no navi code received (no level).
-    setup_defaults = { beast_out = true, hp = 100, reg_up = fresh_stats.reg_up, sun = false },
+    setup_defaults = {
+        beast_out = true,
+        hp = 100,
+        reg_up = fresh_stats.reg_up,
+        sun = false,
+        -- Every SP navi deleted in no time (its chip's best damage), in the save's order.
+        sp_times = {
+            { chip = "heatman-sp", frames = 0 },
+            { chip = "elecman-sp", frames = 0 },
+            { chip = "slashmn-sp", frames = 0 },
+            { chip = "erasemn-sp", frames = 0 },
+            { chip = "chrgemn-sp", frames = 0 },
+            { chip = "spoutmn-sp", frames = 0 },
+            { chip = "tmhkman-sp", frames = 0 },
+            { chip = "tengumn-sp", frames = 0 },
+            { chip = "grndman-sp", frames = 0 },
+            { chip = "dustman-sp", frames = 0 },
+            { chip = "protomn-sp", frames = 0 },
+            { chip = "blastmn-sp", frames = 0 },
+            { chip = "diveman-sp", frames = 0 },
+            { chip = "crcusmn-sp", frames = 0 },
+            { chip = "judgemn-sp", frames = 0 },
+            { chip = "elmntmn-sp", frames = 0 },
+            { chip = "count-sp", frames = 0 },
+            { chip = "colonel-sp", frames = 0 },
+        },
+    },
     -- EXE6's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none
     -- of.
     extends = {
@@ -97,6 +126,8 @@ local rules: Rules = {
             -- use worsens the user's HP bug (`sub_800B79A`).
             dark_substitute = "chip",
             hp_bug = "u8",
+            -- An SP navi chip's damage by its deletion-time step (./sp_chips).
+            sp = { by_time = "u16[11]" },
         },
         form = {
             -- Its kind (./forms/kind.luau: every form but the base form names one), the navi a Cross (and one in
@@ -198,7 +229,6 @@ local rules: Rules = {
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),
     roles = require("@self/roles"),
-    sp_chips = require("@self/sp_chips"),
     status = require("@self/status").rules,
 }
 
