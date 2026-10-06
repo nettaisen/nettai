@@ -17,6 +17,7 @@ local navicust = require("@self/navicust")
 local navicust_board = require("@self/navicust/board")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
+local soldier = require("./objects/soldier")
 local souls = require("@self/souls")
 
 -- The auto battle AI's state (./auto_battle/ai.luau's `State`): a navi's it drives (Dark MegaMan's, AIData +0x80 on),
@@ -255,6 +256,8 @@ local rules: Rules = {
         chip_check = light_dark.chip_check,
         -- A loss of HP to 0: a dark MegaMan's last stand (./emotion/dark_survival).
         hp_emptied = dark_survival.hp_emptied,
+        -- An obstacle where ColonelSoul's army can use it turns into a soldier (objects/soldier).
+        obstacle_reaction = soldier.obstacle_reaction,
         -- Full Synchro on a counter, and the NaviCust's swing bug (./emotion).
         round_start = emotion.round_start,
         countered = emotion.countered,

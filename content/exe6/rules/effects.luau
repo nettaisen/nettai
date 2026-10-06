@@ -4,8 +4,7 @@
 -- secondary, `sub_80302B6`), each console's drawing its jitter from its own RNG1; its hit spark steps its sprite
 -- once as it starts (`sub_80E0864`); setting an object's collision types again (`sub_801A082`) sets what it is and
 -- what it hits, marked as made while dimmed when the battle is; its damage words' flag bits (`sub_8019F44`) are
--- 0x4000 the paralysis with a flinch, then 0x2000 bug code 0xF8, else 0x1000 bug code 0xF7; its obstacles have no
--- soldiers' step (EXE5's ColonelSoul's army); its screen palette flash (effect object 0x0A, `sub_80E10C0`,
+-- 0x4000 the paralysis with a flinch, then 0x2000 bug code 0xF8, else 0x1000 bug code 0xF7; its screen palette flash (effect object 0x0A, `sub_80E10C0`,
 -- `sub_80E114C`) keeps going through a pause and dimming with its mode's bit 1, else a pause holds it and dimming
 -- does unless the variant's bit is set.
 
@@ -14,7 +13,6 @@ return {
     spark_steps_at_start = true,
     retype = "is_and_hits",
     damage_word = "paralysis_and_bugs",
-    obstacle_conversion = false,
     palette_flash = "mode_runs_through_pause",
     -- Presentation: its flash is a palette transform in slot 20 (`sub_80E10C0`), after the fade system's first record's
     -- (slots 18 and 19: a dimming's), so its white stands over a dimming.

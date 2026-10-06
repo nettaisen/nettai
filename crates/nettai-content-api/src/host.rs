@@ -308,6 +308,14 @@ pub enum RulesHook {
     /// `applyDamageToPlayer`, 0x080185A2, by the register the check
     /// leaves). None answering true: it doesn't.
     HpEmptied,
+    /// `obstacle_reaction(side, obstacle)`: an obstacle's reaction (after
+    /// the damage and the crushing hits) leaves it standing, outside the
+    /// dimming and past its first action, while a side is armed
+    /// (`obstacle.arm_conversion`): the rules may turn it into something
+    /// else and break it (its HP and max HP to 0: EXE5's ColonelSoul army,
+    /// 0x080CAB02 from its four obstacle reactions). `side` is the
+    /// obstacle's. Its result is unused.
+    ObstacleReaction,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
     /// first part that answers decides; none answering, the framework's
@@ -412,6 +420,7 @@ impl RulesHook {
             RulesHook::NaviPalette => "navi_palette",
             RulesHook::NaviBug => "navi_bug",
             RulesHook::HpEmptied => "hp_emptied",
+            RulesHook::ObstacleReaction => "obstacle_reaction",
             RulesHook::CustomHandSize => "custom.hand_size",
             RulesHook::CustomDeal => "custom.deal",
             RulesHook::CustomOpen => "custom.open",
@@ -430,7 +439,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 39] = [
+    pub const ALL: [RulesHook; 40] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -455,6 +464,7 @@ impl RulesHook {
         RulesHook::NaviPalette,
         RulesHook::NaviBug,
         RulesHook::HpEmptied,
+        RulesHook::ObstacleReaction,
         RulesHook::CustomHandSize,
         RulesHook::ButtonShown,
         RulesHook::ButtonState,

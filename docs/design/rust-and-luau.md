@@ -58,8 +58,7 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
 | The stat block and versions | | 1 | 1 | | 2 |
 | Tools | | | 1 | | 1 |
-| Across features | | 1 | | | 1 |
-| **All** | **1** | **8** | **7** | **5** | **21** |
+| **All** | **1** | **7** | **7** | **5** | **20** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -209,14 +208,6 @@ rename left of EXE5's logic.
 - **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
   link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
 
-### Across features
-
-- **X5. The obstacles' conversion** (`conversion_step`, `conversion_call`, kinds/obstacle.rs:525–620): EXE5's
-  ColonelSoul army's step in an obstacle's reactions (0x080CAB02), which looks for where an armed side can use the
-  obstacle and turns it into the side's converted obstacle (the role `converted_obstacle`, its `ranged` state set by
-  the engine). Renamed in step 1 (X4); the search is still EXE5's logic. *(b)* A hook on an obstacle's reaction in
-  EXE5's rules, with the search in Luau. About 100 lines; it runs on an obstacle's reaction while a side is armed.
-
 ### Done
 
 Each with what it was and what it is now.
@@ -289,6 +280,12 @@ Each with what it was and what it is now.
   `KindRole::ConvertedObstacle` (`converted_obstacle`) and its state field `ranged`. DustMan's junk is the absorbed
   look: `absorbed_look`, `wear_absorbed_look`. `spawn_mode9_objects` and `start_stance_counter` stay: they name the
   original's battle mode 9 and a stance's counter, not a feature.
+
+- **X5.** The obstacles' conversion is EXE5's rules' `obstacle_reaction(side, obstacle)` hook (objects/soldier's: the
+  search 0x080CAB02 and the soldier's spawn 0x080CAAE2), which an obstacle's reaction asks outside the dimming and
+  past its first action while a side is armed (`obstacle.arm_conversion`, which stays the framework's).
+  `conversion_call`, the rule `effects.obstacle_conversion` and the role `KindRole::ConvertedObstacle` are gone. A Luau
+  call per obstacle reaction while a side is armed.
 
 The [stated rule](#the-line) still holds as the goal: when B1–B9, C1–C10 and the rest are done, Rust knows no
 "beast", no "cross", no "soul" and no "exe5".

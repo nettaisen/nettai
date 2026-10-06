@@ -18,7 +18,6 @@ local beat = require("../chips/beat").beat
 local charged_shot = require("../navis/megaman/weapons/charged_shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local dive_ripple = require("../objects/dive_ripple/ripple")
-local soldier = require("../objects/soldier")
 local chaos = require("./souls/chaos")
 local drive_end = require("../chips/darkinvs/drive_end")
 local dark_survival = require("./emotion/dark_survival")
@@ -65,9 +64,6 @@ local roles: RolesSpec = {
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (EXE6's code).
         anti_recovery = anti_recovery.kind,
-        -- What an obstacle turns into where an armed side's ColonelSoul can use it (attack object 0x30: EXE5's own,
-        -- objects/soldier).
-        converted_obstacle = soldier.kind,
         -- The NaviCust supports' controller (Rush's, Beat's and Tango's: EXE5's effect object 0x74, EXE6's code,
         -- lib/supports).
         support = supports.kind,
