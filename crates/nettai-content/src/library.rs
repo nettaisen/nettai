@@ -138,7 +138,7 @@ impl Library {
 
 /// Sort `items` by `rank` of their keys: what has a place first, in its
 /// order; what has none after it, by key.
-pub fn sort_by_rank<T>(items: &mut [T], key: impl Fn(&T) -> &str, rank: impl Fn(&str) -> Option<Rank>) {
+pub fn sort_by_rank<'k, T>(items: &mut [T], key: impl Fn(&T) -> &'k str, rank: impl Fn(&str) -> Option<Rank>) {
     items.sort_by(|a, b| {
         let (ka, kb) = (key(a), key(b));
         match (rank(ka), rank(kb)) {
@@ -286,7 +286,7 @@ mod tests {
     fn a_sort_puts_what_has_no_place_after_by_key() {
         let lib = parse(TEXT, "library.toml").unwrap();
         let mut keys = vec!["zzz", "roll", "aaa", "hicannon", "cannon"];
-        sort_by_rank(&mut keys, |k| k, |k| lib.chip_rank(k));
+        sort_by_rank(&mut keys, |k| *k, |k| lib.chip_rank(k));
         assert_eq!(keys, ["cannon", "hicannon", "roll", "aaa", "zzz"]);
     }
 
