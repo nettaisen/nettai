@@ -1,0 +1,402 @@
+// The app's window: every screen, the backdrop behind them, the wipe between
+// them, and the keys that navigate them.
+
+import { Theme, NavAction, Screen, UiSound } from "theme.slint";
+import { Backdrop, Input, Slant } from "widgets.slint";
+import { Format } from "format.slint";
+import { TitleScreen } from "title.slint";
+import { BattleScreen, BattleKind, Side, Playback, Connection } from "battle.slint";
+import { PlayScreen, GameCard, GameState, MatchPreview, RoundCard } from "play.slint";
+import { LobbyScreen, LinkState, Peer } from "lobby.slint";
+import { ReplaysScreen, ReplayRow, ReplayCheck } from "replays.slint";
+import { SettingsScreen } from "settings.slint";
+
+// The strings the host shows that it doesn't take from the content: here,
+// so they come from the same catalog as the rest.
+export global Strings {
+    pure public function random() -> string {
+        @tr("match" => "Random")
+    }
+
+    pure public function stand-in() -> string {
+        @tr("Stand-in")
+    }
+
+    // The language's name, in itself (its catalog's translation of
+    // "English"; the build reads it for the list of languages).
+    pure public function language-name() -> string {
+        @tr("language" => "English")
+    }
+}
+
+export { Theme, NavAction, Screen, UiSound, Input, Format, BattleKind, Side, Playback, Connection, GameCard, GameState, MatchPreview, RoundCard, LinkState, Peer, ReplayRow, ReplayCheck }
+
+export component AppWindow inherits Window {
+    title: "nettai";
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    min-width: 320px;
+    min-height: 480px;
+    max-width: 100000px;
+    max-height: 100000px;
+    background: Theme.ink;
+    default-font-family: Theme.family;
+    default-font-size: Theme.body;
+
+    in-out property <Screen> screen: Screen.title;
+    // The wipe between two screens, 0 to 1 (the screen changes halfway).
+    in property <float> wipe;
+    // The picture the host presents (the battle's, or the title's demo),
+    // and its scale.
+    in property <image> picture;
+    in property <int> scale;
+    // Where the picture goes, for the host to present for.
+    out property <length> picture-area-width: root.screen == Screen.battle ? battle.stage-width : title.monitor-width;
+    out property <length> picture-area-height: root.screen == Screen.battle ? battle.stage-height : title.monitor-height;
+    // While the battle has the keys, the window passes none to the menus.
+    in property <bool> playing;
+
+    in property <string> version;
+    in property <string> monitor-game;
+
+    // The screens' requests, for the host.
+    callback go(Screen);
+    callback quit();
+    callback sound(UiSound);
+
+    callback play-game(int);
+    callback play-source(int);
+    callback play-reroll();
+    callback play-fight();
+
+    callback battle-resume();
+    callback battle-restart();
+    callback battle-quit();
+    callback battle-rematch();
+    callback battle-touch(int, bool);
+
+    callback lobby-mode(int);
+    callback lobby-code(string);
+    callback lobby-game(int);
+    callback lobby-ready();
+    callback lobby-copy();
+
+    callback replays-watch(int, int);
+
+    callback settings-step(int, int);
+    callback set-name(string);
+
+    // A navigation action from the host (a gamepad's).
+    public function nav(a: NavAction) {
+        if root.wipe > 0 && root.wipe < 1 {
+            return;
+        }
+        if root.screen == Screen.title {
+            title.nav(a);
+        } else if root.screen == Screen.battle {
+            battle.nav(a);
+        } else if root.screen == Screen.play {
+            play.nav(a);
+        } else if root.screen == Screen.lobby {
+            lobby.nav(a);
+        } else if root.screen == Screen.replays {
+            replays.nav(a);
+        } else if root.screen == Screen.settings {
+            settings.nav(a);
+        }
+    }
+
+    // A small window (a phone's) is drawn smaller.
+    property <bool> compact: root.width < 760px || root.height < 560px;
+    property <bool> portrait: root.height > root.width;
+    changed compact => {
+        Theme.compact = self.compact;
+    }
+    changed portrait => {
+        Theme.portrait = self.portrait;
+    }
+    changed width => {
+        Theme.window-width = self.width;
+    }
+    changed height => {
+        Theme.window-height = self.height;
+    }
+    init => {
+        Theme.compact = self.compact;
+        Theme.portrait = self.portrait;
+        Theme.window-width = self.width;
+        Theme.window-height = self.height;
+    }
+
+    Backdrop {
+        calm: root.screen == Screen.battle ? 1 : 0;
+        animate calm { duration: Theme.slow; }
+    }
+
+    keys := FocusScope {
+        // A text field has the keyboard: up, down and Esc still leave it
+        // (the IME has the keys it is composing with before this).
+        capture-key-pressed(event) => {
+            if !Input.editing {
+                return reject;
+            }
+            if event.text == Key.UpArrow {
+                root.nav(NavAction.up);
+            } else if event.text == Key.DownArrow || event.text == Key.Tab {
+                root.nav(NavAction.down);
+            } else if event.text == Key.Backtab {
+                root.nav(NavAction.up);
+            } else if event.text == Key.Escape {
+                root.nav(NavAction.back);
+            } else {
+                return reject;
+            }
+            accept
+        }
+        key-pressed(event) => {
+            if root.playing {
+                return reject;
+            }
+            Input.pad = false;
+            if event.text == Key.UpArrow {
+                root.nav(NavAction.up);
+            } else if event.text == Key.DownArrow {
+                root.nav(NavAction.down);
+            } else if event.text == Key.LeftArrow {
+                root.nav(NavAction.left);
+            } else if event.text == Key.RightArrow {
+                root.nav(NavAction.right);
+            } else if event.text == Key.Return || event.text == " " || event.text == "z" || event.text == "Z" {
+                root.nav(NavAction.confirm);
+            } else if event.text == Key.Escape || event.text == Key.Backspace || event.text == "x" || event.text == "X" {
+                root.nav(NavAction.back);
+            } else if event.text == "a" || event.text == "A" || event.text == Key.PageUp {
+                root.nav(NavAction.previous);
+            } else if event.text == "s" || event.text == "S" || event.text == Key.PageDown {
+                root.nav(NavAction.next);
+            } else if event.text == Key.Tab {
+                // (The next item; Slint's own focus would move into a
+                // screen not shown.)
+                root.nav(NavAction.down);
+            } else if event.text == Key.Backtab {
+                root.nav(NavAction.up);
+            } else {
+                return reject;
+            }
+            accept
+        }
+
+        title := TitleScreen {
+            visible: root.screen == Screen.title;
+            width: root.width;
+            height: root.height;
+            picture: root.picture;
+            scale: root.scale;
+            version: root.version;
+            monitor-game: root.monitor-game;
+            activate(i) => {
+                if i == 0 {
+                    root.go(Screen.play);
+                } else if i == 1 {
+                    root.go(Screen.lobby);
+                } else if i == 2 {
+                    root.go(Screen.replays);
+                } else if i == 3 {
+                    root.go(Screen.settings);
+                } else {
+                    root.quit();
+                }
+            }
+            sound(s) => {
+                root.sound(s);
+            }
+        }
+
+        play := PlayScreen {
+            visible: root.screen == Screen.play;
+            width: root.width;
+            height: root.height;
+            back => {
+                root.go(Screen.title);
+            }
+            choose-game(i) => {
+                root.play-game(i);
+            }
+            choose-source(i) => {
+                root.play-source(i);
+            }
+            reroll => {
+                root.play-reroll();
+            }
+            fight => {
+                root.play-fight();
+            }
+            sound(s) => {
+                root.sound(s);
+            }
+        }
+
+        lobby := LobbyScreen {
+            visible: root.screen == Screen.lobby;
+            name <=> root.name;
+            width: root.width;
+            height: root.height;
+            back => {
+                root.go(Screen.title);
+            }
+            set-mode(m) => {
+                root.lobby-mode(m);
+            }
+            set-code(c) => {
+                root.lobby-code(c);
+            }
+            set-name(n) => {
+                root.set-name(n);
+            }
+            set-game(g) => {
+                root.lobby-game(g);
+            }
+            ready => {
+                root.lobby-ready();
+            }
+            copy-code => {
+                root.lobby-copy();
+            }
+            sound(s) => {
+                root.sound(s);
+            }
+        }
+
+        replays := ReplaysScreen {
+            visible: root.screen == Screen.replays;
+            width: root.width;
+            height: root.height;
+            back => {
+                root.go(Screen.title);
+            }
+            watch(i, side) => {
+                root.replays-watch(i, side);
+            }
+            sound(s) => {
+                root.sound(s);
+            }
+        }
+
+        settings := SettingsScreen {
+            visible: root.screen == Screen.settings;
+            name <=> root.name;
+            width: root.width;
+            height: root.height;
+            back => {
+                root.go(Screen.title);
+            }
+            step(row, by) => {
+                root.settings-step(row, by);
+            }
+            set-name(n) => {
+                root.set-name(n);
+            }
+            sound(s) => {
+                root.sound(s);
+            }
+        }
+
+        battle := BattleScreen {
+            visible: root.screen == Screen.battle;
+            width: root.width;
+            height: root.height;
+            picture: root.picture;
+            scale: root.scale;
+            resume => {
+                root.battle-resume();
+            }
+            restart => {
+                root.battle-restart();
+            }
+            quit => {
+                root.battle-quit();
+            }
+            rematch => {
+                root.battle-rematch();
+            }
+            sound(s) => {
+                root.sound(s);
+            }
+            touch(b, d) => {
+                root.battle-touch(b, d);
+            }
+        }
+    }
+
+    // The wipe: a slanted band of the players' colors sweeping across.
+    if root.wipe > 0 && root.wipe < 1: Rectangle {
+        property <length> band: root.width * 1.6;
+        Slant {
+            x: (1.05 - root.wipe * 2.9) * root.width;
+            width: band;
+            lean: root.height * 0.35;
+            color: Theme.ink;
+        }
+
+        Slant {
+            x: (1.05 - root.wipe * 2.9) * root.width - 18px;
+            width: 36px + root.height * 0.35;
+            lean: root.height * 0.35;
+            color: Theme.cyan;
+        }
+
+        Slant {
+            x: (1.05 - root.wipe * 2.9) * root.width + band - root.height * 0.35 - 18px;
+            width: 36px + root.height * 0.35;
+            lean: root.height * 0.35;
+            color: Theme.magenta;
+        }
+    }
+
+    // What the screens show, from the host.
+    in property <BattleKind> battle-kind <=> battle.kind;
+    in property <Side> battle-left <=> battle.left-side;
+    in property <Side> battle-right <=> battle.right-side;
+    in property <[int]> battle-left-pips <=> battle.left-pips;
+    in property <[int]> battle-right-pips <=> battle.right-pips;
+    in property <Playback> battle-playback <=> battle.playback;
+    in property <Connection> battle-connection <=> battle.connection;
+    in property <bool> battle-paused <=> battle.paused;
+    in property <int> battle-result <=> battle.result;
+    in property <string> battle-stopped <=> battle.stopped;
+    in property <string> battle-recorded <=> battle.recorded;
+    in-out property <int> battle-cursor <=> battle.cursor;
+    in-out property <bool> title-started <=> title.started;
+    in-out property <int> title-cursor <=> title.cursor;
+    in property <[GameCard]> games <=> play.games;
+    in-out property <int> play-chosen <=> play.game;
+    in property <[string]> play-sources <=> play.sources;
+    in-out property <int> play-source-index <=> play.source;
+    in property <MatchPreview> play-preview <=> play.preview;
+    in-out property <int> play-cursor <=> play.cursor;
+    in-out property <int> lobby-mode-index <=> lobby.mode;
+    in property <string> lobby-code-text <=> lobby.code;
+    in property <[string]> lobby-games <=> lobby.games;
+    in-out property <int> lobby-game-index <=> lobby.game;
+    in property <Peer> lobby-me <=> lobby.me;
+    in property <Peer> lobby-them <=> lobby.them;
+    in property <LinkState> lobby-link <=> lobby.link;
+    in property <string> lobby-problem <=> lobby.problem;
+    in property <string> lobby-server <=> lobby.server;
+    in-out property <int> lobby-cursor <=> lobby.cursor;
+    in property <[ReplayRow]> replay-rows <=> replays.rows;
+    in-out property <int> replays-cursor <=> replays.cursor;
+    in-out property <int> replays-side <=> replays.side;
+    in property <string> replays-folder <=> replays.folder;
+    in-out property <string> name;
+    in property <string> settings-language <=> settings.language;
+    in property <int> settings-volume <=> settings.volume;
+    in property <bool> settings-menu-sounds <=> settings.menu-sounds;
+    in property <bool> settings-crisp-text <=> settings.crisp-text;
+    in property <bool> settings-sharp <=> settings.sharp;
+    in-out property <int> settings-cursor <=> settings.cursor;
+
+    public function focus-keys() {
+        keys.focus();
+    }
+}

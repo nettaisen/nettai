@@ -1200,7 +1200,7 @@ impl UserData for StatePart {
         // first, as a table's.
         methods.add_meta_method(MetaMethod::Iter, |lua, this, ()| {
             this.len()?;
-            let next = lua.create_function(|lua, (part, i): (AnyUserData, i64)| {
+            let next = lua.create_function(|lua, (part, i): (AnyUserData, mlua::Integer)| {
                 let this = part.borrow::<StatePart>()?;
                 if i < 0 || i as usize >= this.len()? {
                     return Ok((LuaValue::Nil, LuaValue::Nil));
@@ -2382,6 +2382,12 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     Ok(t)
 }
 
+/// A Lua integer as the content's: mlua's is 32 bits on wasm32.
+#[allow(clippy::useless_conversion)]
+fn lua_int(i: mlua::Integer) -> i64 {
+    i.into()
+}
+
 fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     type Me = mlua::UserDataRef<Object>;
     let t = lua.create_table()?;
@@ -2734,7 +2740,7 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
     Ok(match v {
         LuaValue::Nil | LuaValue::Function(_) => Data::Nil,
         LuaValue::Boolean(b) => Data::Bool(*b),
-        LuaValue::Integer(i) => Data::Int(*i),
+        LuaValue::Integer(i) => Data::Int(lua_int(*i)),
         LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 9.0e15 => Data::Int(*n as i64),
         LuaValue::String(s) => Data::Str(s.to_str()?.to_string()),
         LuaValue::Table(t) => {
@@ -2751,7 +2757,7 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
                 }
                 let key = match &k {
                     LuaValue::String(s) => DataKey::Str(s.to_str()?.to_string()),
-                    LuaValue::Integer(i) => DataKey::Int(*i),
+                    LuaValue::Integer(i) => DataKey::Int(lua_int(*i)),
                     LuaValue::Number(f) if f.fract() == 0.0 => DataKey::Int(*f as i64),
                     other => return Err(mlua::Error::runtime(format!("a table keyed by names or numbers, not {}", other.type_name()))),
                 };

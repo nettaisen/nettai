@@ -1,0 +1,92 @@
+// The app's look: its palette, its type and its spacing, and the actions
+// every screen is navigated by (keys, a gamepad, touch: the same actions).
+
+import "../../nettai-render/fonts/murecho/Murecho-VariableFont_wght.ttf";
+
+export enum NavAction {
+    up,
+    down,
+    left,
+    right,
+    // A, Enter, a tap.
+    confirm,
+    // B, Esc.
+    back,
+    // The shoulder buttons: the previous and next tab or page.
+    previous,
+    next,
+}
+
+export enum Screen {
+    title,
+    play,
+    battle,
+    lobby,
+    replays,
+    settings,
+}
+
+// What a menu sound is for (the game's own custom screen sounds, through its
+// rules' roles).
+export enum UiSound {
+    cursor,
+    pick,
+    back,
+    refused,
+}
+
+export global Theme {
+    // The arena at night: ink to deep navy, the net's lines over it.
+    out property <color> ink: #04060d;
+    out property <color> night: #0a1026;
+    out property <color> deep: #0e1838;
+    out property <color> panel: #111d42;
+    out property <color> raised: #18285a;
+    out property <color> line: #1d2c5e;
+    out property <color> line-bright: #2e4690;
+    // Player one, the focus and the net: electric cyan.
+    out property <color> cyan: #2ce6ff;
+    out property <color> cyan-deep: #0f7ea6;
+    // Player two and the versus: a hot magenta.
+    out property <color> magenta: #ff2e7e;
+    out property <color> magenta-deep: #8c1446;
+    // Wins and the main action.
+    out property <color> gold: #ffc93c;
+    out property <color> gold-deep: #a86a00;
+    out property <color> ready: #3dffa2;
+    out property <color> warn: #ffb03c;
+    out property <color> text: #eaf2ff;
+    out property <color> text-dim: #93a3cc;
+    out property <color> text-faint: #56648c;
+
+    // Murecho throughout (Latin and Japanese), its weights for the roles.
+    out property <string> family: "Murecho";
+    out property <int> black: 900;
+    out property <int> bold: 700;
+    out property <int> medium: 500;
+    out property <int> regular: 400;
+
+    // Spacing and sizes, scaled down on a small screen (`compact`); the
+    // window held upright (`portrait`). The window sets both as its size
+    // changes (a layout that follows them doesn't size the window).
+    in-out property <bool> compact: false;
+    in-out property <bool> portrait: false;
+    // How far apart the tracked capitals' letters are set: 1 for Latin,
+    // less for scripts set solid (Japanese).
+    in-out property <float> tracking: 1;
+    // The window's width, for a layout that divides it.
+    in-out property <length> window-width: 1280px;
+    in-out property <length> window-height: 800px;
+    out property <length> gutter: compact ? 16px : 40px;
+    out property <length> gap: compact ? 10px : 16px;
+    out property <length> display: compact ? 56px : 112px;
+    out property <length> heading: compact ? 26px : 40px;
+    out property <length> title-size: compact ? 20px : 26px;
+    out property <length> body: compact ? 15px : 17px;
+    out property <length> label: compact ? 11px : 12px;
+    out property <length> slant: compact ? 10px : 16px;
+
+    out property <duration> quick: 140ms;
+    out property <duration> settle: 260ms;
+    out property <duration> slow: 520ms;
+}
