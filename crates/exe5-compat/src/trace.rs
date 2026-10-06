@@ -704,9 +704,30 @@ impl Round {
                 p.set_fact(content, "souls", &souls)?;
             }
         }
+        // What each save brings to its navi's stats (EXE5's save system's
+        // setup), from the recorded block: the rules write it into a side
+        // whose stats they build (a compiled MegaMan, a team navi), which
+        // then comes out as recorded.
+        for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
+            if let Ok(p) = p {
+                let s = &d.navi_stats[side];
+                for (field, value) in [("hp", s.max_base_hp as i64), ("reg_up", s.reg_up as i64)] {
+                    p.set_fact(content, field, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(value))])?;
+                }
+            }
+        }
+        // A team navi's stats are the rules' to build from its level (EXE5's
+        // save system: its story's HP), from its fresh stats with what the
+        // save keeps, which the replay then compares with the recorded block.
         let stats = |side: usize| -> Result<EngineNaviStats, String> {
             let recorded = navi_stats(content, compat, &d.navi_stats[side])?;
-            if compiled(side) { reset(content, &recorded) } else { Ok(recorded) }
+            if compiled(side) {
+                reset(content, &recorded)
+            } else if content.navi(recorded.navi).story.is_some() {
+                team_navi_reset(content, &recorded)
+            } else {
+                Ok(recorded)
+            }
         };
         Ok(RoundSetup {
             content: content.hash(),
@@ -922,6 +943,27 @@ pub fn reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNavi
         folder: recorded.folder,
         folder_reg: recorded.folder_reg,
         reg_up: recorded.reg_up,
+        navi_variant: recorded.navi_variant,
+        ..fresh
+    })
+}
+
+/// The stats a team navi's are built from (a navi with a `story`: EXE5's
+/// save system sets its HP by its level), of `recorded`: its fresh stats
+/// (`NaviStats::fresh`) with what the save keeps (the folder, its Regular
+/// and tag chips; the Regular memory, the save system's to write) and the
+/// recording's own mood and variant (the battle's start's, as [`reset`]
+/// keeps them).
+pub fn team_navi_reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNaviStats, String> {
+    let fresh = EngineNaviStats::fresh(recorded.navi, content)
+        .ok_or_else(|| format!("{} has no fresh stats (its definition's `fresh`)", content.defs.navi(recorded.navi).key))?;
+    Ok(EngineNaviStats {
+        mood: recorded.mood,
+        form: recorded.form,
+        starting_form: recorded.starting_form,
+        folder: recorded.folder,
+        folder_reg: recorded.folder_reg,
+        folder_tags: recorded.folder_tags,
         navi_variant: recorded.navi_variant,
         ..fresh
     })

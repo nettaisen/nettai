@@ -459,7 +459,7 @@ mod tests {
         let content = exe6_test_content();
         let mut o = offer(&content, 5);
         o.stage = Some(nettai_match::link_battle_stages(&content, "exe6")[3]);
-        o.side.cards = nettai_match::patch_cards(&content, "exe6", "canodumb,-shadow").unwrap_or_default();
+        o.side.patch_cards = nettai_match::patch_cards(&content, "exe6", "canodumb,-shadow").unwrap_or_default();
         let bytes = o.to_bytes(&content);
         let text = String::from_utf8(bytes.clone()).unwrap();
         assert!(text.starts_with("game = \"exe6\"") && !text.contains("exe6:"), "{text}");

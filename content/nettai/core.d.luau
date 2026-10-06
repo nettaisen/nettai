@@ -855,14 +855,17 @@ declare class Object
 end
 
 -- A side's navi stats (read-only but the buster's levels, the custom
--- level, the hand-shrink bug's turn, the start weapons and the shoes; and
--- what the patch cards change, which they write at the round's start).
+-- level, the hand-shrink bug's turn, the start weapons and the shoes; what
+-- the patch cards change, which they write at the round's start; and what a
+-- game's save system writes as the round is set up: the sun, the Regular
+-- memory, the base HP and MegaMan's variant).
 declare class Navi
     -- Fighting in the sun.
     sun: boolean
     -- The form and the navi, as their definitions.
     form: FormDef
     navi: NaviDef
+    -- MegaMan's variant (+0x2B, his move lag): his base HP in hundreds.
     navi_variant: number
     -- The base form's element.
     element: number
@@ -876,7 +879,8 @@ declare class Navi
     -- (`form` is writable too: a game's form change puts the navi in it.)
     -- The form the navi started the battle in.
     starting_form: FormDef
-    -- The navi's game: 0 Gregar, 1 Falzar.
+    -- The navi's game: 0 Gregar, 1 Falzar (the place of the player's
+    -- version among those the rules declare: a battle's start sets it).
     version: number
     -- The Regular chip's MB at most.
     regular_memory: number
