@@ -20,6 +20,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     dimming = bugfix.controller.spawn,
+    auto_battle = { class = "when_bugged" },
 }
 
 return { bugfix = chip }

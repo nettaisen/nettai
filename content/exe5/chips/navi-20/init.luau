@@ -20,6 +20,7 @@ local chip: Chip = {
     slot_in_limit = 3,
     modifier = "navi_plus",
     instant = plus.navi,
+    auto_battle = { class = "at_once" },
 }
 
 return { ["navi-20"] = chip }

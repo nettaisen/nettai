@@ -48,6 +48,7 @@ local chip: Chip = {
         picks = { longswrd, ftrsword, wideswrd, lifesrd, sonicbom },
         sword = sword,
     },
+    auto_battle = { class = "sword_swing" },
 }
 
 return { varswrd = chip }

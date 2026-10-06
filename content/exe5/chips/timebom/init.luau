@@ -19,6 +19,7 @@ local timebom1: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = timebom.controller.hook(timebom.variants.bomb),
+    auto_battle = { class = "at_once" },
 }
 
 -- TimeBom2 (EXE5 chip 0x04c): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
@@ -36,6 +37,7 @@ local timebom2: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = timebom.controller.hook(timebom.variants.bomb),
+    auto_battle = { class = "at_once" },
 }
 
 -- TimeBom3 (EXE5 chip 0x04d): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
@@ -53,6 +55,7 @@ local timebom3: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = timebom.controller.hook(timebom.variants.bomb),
+    auto_battle = { class = "at_once" },
 }
 
 -- TimeBom+ (EXE5 chip 0x15b): the Program Advance of TimeBom1, TimeBom2 and TimeBom3 in that order: TimeBom1-3's bomb
@@ -81,6 +84,7 @@ local timebom_chip: Chip = {
         { order = 23, sequence = { recipe_timebom1, recipe_timebom2, recipe_timebom3 } },
     },
     dimming = timebom.controller.hook(timebom.variants.big),
+    auto_battle = { class = "at_once" },
 }
 
 return { timebom1 = timebom1, timebom2 = timebom2, timebom3 = timebom3, timebom = timebom_chip }

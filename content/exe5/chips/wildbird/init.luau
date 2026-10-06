@@ -29,6 +29,7 @@ local chip: Chip = {
         { order = 29, sequence = { recipe_katana1, recipe_katana1, recipe_larkman_ds } },
     },
     navi = navi.summon_wild,
+    auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
 return { wildbird = chip }

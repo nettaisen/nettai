@@ -19,6 +19,7 @@ local astroid1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = meteors.instant(false, 6),
+    auto_battle = { class = "at_once" },
 }
 
 -- Astroid2 (EXE5 chip 0x069): a shower of 8 Fire meteors, one every 20 ticks on one of the enemy navis' panels or
@@ -36,6 +37,7 @@ local astroid2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = meteors.instant(false, 8),
+    auto_battle = { class = "at_once" },
 }
 
 -- Astroid3 (EXE5 chip 0x06a): a shower of 10 Fire meteors, one every 20 ticks on one of the enemy navis' panels or
@@ -53,6 +55,7 @@ local astroid3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     instant = meteors.instant(false, 10),
+    auto_battle = { class = "at_once" },
 }
 
 return { astroid1 = astroid1, astroid2 = astroid2, astroid3 = astroid3 }

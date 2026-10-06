@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = elemrage.action(3, 30, 0),
+    auto_battle = { class = "into_reach", range = "three_in_row" },
 }
 
 return { elemrage = chip }

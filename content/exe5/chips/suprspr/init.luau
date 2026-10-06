@@ -34,6 +34,7 @@ local suprspr1: Chip = {
         { order = 39, code_run = { chip = recipe_widesht1, count = 3 } },
     },
     action = widesht.action { wave = wave.super, waves = 3, z = 0 },
+    auto_battle = { class = "at_once" },
 }
 
 -- SuprSpr2 (EXE5 chip 0x14a): the Program Advance of WideSht2, WideSht2 and WideSht2 with one code: the navi raises its
@@ -60,6 +61,7 @@ local suprspr2: Chip = {
         { order = 40, code_run = { chip = recipe_widesht2, count = 3 } },
     },
     action = widesht.action { wave = wave.super2, waves = 3, z = 0 },
+    auto_battle = { class = "at_once" },
 }
 
 -- SuprSpr3 (EXE5 chip 0x14b): the Program Advance of WideSht3, WideSht3 and WideSht3 with one code: the navi raises its
@@ -86,6 +88,7 @@ local suprspr3: Chip = {
         { order = 41, code_run = { chip = recipe_widesht3, count = 3 } },
     },
     action = widesht.action { wave = wave.super3, waves = 3, z = 0 },
+    auto_battle = { class = "at_once" },
 }
 
 return { suprspr1 = suprspr1, suprspr2 = suprspr2, suprspr3 = suprspr3 }

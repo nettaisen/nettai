@@ -33,6 +33,7 @@ local boxer1: Chip = {
         { order = 45, code_run = { chip = recipe_firehit1, count = 3 } },
     },
     instant = boxer.instant(1),
+    auto_battle = { class = "at_once" },
 }
 
 -- Boxer2 (EXE5 chip 0x147): the Program Advance of two HotBody2s and a FireHit2 (or three FireHit2s of one code): an
@@ -58,6 +59,7 @@ local boxer2: Chip = {
         { order = 46, code_run = { chip = recipe_firehit2, count = 3 } },
     },
     instant = boxer.instant(1),
+    auto_battle = { class = "at_once" },
 }
 
 -- Boxer3 (EXE5 chip 0x148): the Program Advance of two HotBody3s and a FireHit3 (or three FireHit3s of one code): an
@@ -83,6 +85,7 @@ local boxer3: Chip = {
         { order = 47, code_run = { chip = recipe_firehit3, count = 3 } },
     },
     instant = boxer.instant(1),
+    auto_battle = { class = "at_once" },
 }
 
 return { boxer1 = boxer1, boxer2 = boxer2, boxer3 = boxer3 }

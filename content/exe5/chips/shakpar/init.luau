@@ -34,6 +34,7 @@ local shakpar1: Chip = {
         { order = 48, code_run = { chip = recipe_spshake1, count = 3 } },
     },
     instant = shakpar.instant(spshake.wave(2, true, 0)),
+    auto_battle = { class = "at_once" },
 }
 
 -- ShakPar2 (EXE5 chip 0x14d): the Program Advance of two Voltz2s and a SpShake2 (or three SpShake2s of one code): three
@@ -59,6 +60,7 @@ local shakpar2: Chip = {
         { order = 49, code_run = { chip = recipe_spshake2, count = 3 } },
     },
     instant = shakpar.instant(spshake.wave(2, true, 6)),
+    auto_battle = { class = "at_once" },
 }
 
 -- ShakPar3 (EXE5 chip 0x14e): the Program Advance of two Voltz3s and a SpShake3 (or three SpShake3s of one code): three
@@ -84,6 +86,7 @@ local shakpar3: Chip = {
         { order = 50, code_run = { chip = recipe_spshake3, count = 3 } },
     },
     instant = shakpar.instant(spshake.wave(2, true, 12)),
+    auto_battle = { class = "at_once" },
 }
 
 return { shakpar1 = shakpar1, shakpar2 = shakpar2, shakpar3 = shakpar3 }
