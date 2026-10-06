@@ -92,8 +92,8 @@ pub enum Msg {
     Play,
     Lang(Lang),
     // The arena.
-    /// A place's stage (0 the first round's, 1 and 2 the later rounds').
-    Stage(usize, Choice<StageHandle>),
+    /// A round's stage (0 the first round's; none: picked from the seed).
+    Stage(usize, Choice<Option<StageHandle>>),
     Background(usize, Choice<Option<String>>),
     LaterSame(bool),
     Seed(String),
@@ -522,24 +522,18 @@ impl Editor {
             Msg::Play => {}
             Msg::Lang(l) => self.set_lang(l),
             Msg::Stage(i, c) => {
-                match i {
-                    0 => self.m.arena.first.stage = c.value,
-                    i => self.m.arena.later[i - 1].stage = c.value,
-                }
+                self.m.rounds[i].stage = c.value;
                 self.edited();
             }
             Msg::Background(i, c) => {
-                match i {
-                    0 => self.m.arena.first.background = c.value,
-                    i => self.m.arena.later[i - 1].background = c.value,
-                }
+                self.m.rounds[i].background = c.value;
                 self.edited();
             }
             Msg::LaterSame(same) => {
-                if same {
-                    self.m.arena.later = [self.m.arena.first.clone(), self.m.arena.first.clone()];
-                } else if let Ok(a) = nettai_match::pick::arena(&content, &self.m.arena.game, &mut nettai_match::Picks::new(self.m.seed.unwrap_or(1)), None) {
-                    self.m.arena.later = a.later;
+                // (Otherwise the later rounds are picked from the seed.)
+                let later = if same { self.m.rounds[0].clone() } else { nettai_match::RoundSettings::default() };
+                for r in &mut self.m.rounds[1..] {
+                    *r = later.clone();
                 }
                 self.edited();
             }
@@ -551,7 +545,7 @@ impl Editor {
             Msg::Game(c) => {
                 // Everything below the game is the game's: a new match of
                 // it, the seed kept.
-                if c.value != self.m.arena.game {
+                if c.value != self.m.game {
                     match self.content_of(&c.value).and_then(|content| nettai_match::Match::empty(&content, &c.value)) {
                         Ok(mut m) => {
                             m.seed = self.m.seed;
@@ -571,7 +565,7 @@ impl Editor {
                 self.edited();
             }
             Msg::Fact(s, name, edit) => {
-                let game = self.m.arena.game.clone();
+                let game = self.m.game.clone();
                 let changed = crate::editor::facts::apply(&content, &game, &mut self.m.sides[s], &name, &edit);
                 // (What is typed stays as typed until it is a number the
                 // fact takes; any other edit shows the fact's value.)
@@ -607,7 +601,7 @@ impl Editor {
                 // Tango's netplay templates hold): a match of its game.
                 if let Some(path) = rfd::FileDialog::new().add_filter("EXE6 or EXE5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
-                    let game = self.m.arena.game.clone();
+                    let game = self.m.game.clone();
                     // (The save's game's content: loaded if it is another's.)
                     let imported = read.and_then(|bytes| {
                         let content = self.content_of(nettai_match::save_game(&bytes)?)?;
@@ -615,7 +609,7 @@ impl Editor {
                     });
                     match imported {
                         Ok(notes) => {
-                            if self.m.arena.game != game {
+                            if self.m.game != game {
                                 self.forget_sides();
                             }
                             self.typed.retain(|&(x, _), _| x != s);

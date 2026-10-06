@@ -151,14 +151,15 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
         e.games.iter().map(|g| Choice { label: game_label(g), value: g.clone() }).collect();
     let picked = games.iter().find(|g| g.value == game).cloned();
     let stage_label = |s: nettai_content_api::StageHandle| nettai_match::ids::local(&c.defs.stage(s).key).to_string();
-    let stages: Vec<Choice<_>> =
-        nettai_match::link_battle_stages(c, game).into_iter().map(|s| Choice { label: stage_label(s), value: s }).collect();
-    let mut backgrounds: Vec<Choice<Option<String>>> = vec![Choice { label: "the stage's own".into(), value: None }];
+    let stage_choice = |s: Option<nettai_content_api::StageHandle>| Choice { label: s.map_or("from the seed".into(), stage_label), value: s };
+    let mut stages: Vec<Choice<_>> = vec![stage_choice(None)];
+    stages.extend(nettai_match::link_battle_stages(c, game).into_iter().map(|s| stage_choice(Some(s))));
+    let mut backgrounds: Vec<Choice<Option<String>>> = vec![Choice { label: "from the seed".into(), value: None }];
     // (By the name a match writes: the game's.)
     backgrounds.extend(nettai_match::ids::backgrounds(c, game).into_iter().map(|b| Choice { label: b.to_string(), value: Some(b.to_string()) }));
-    let place = |i: usize, p: &nettai_match::Place| -> Element<Msg> {
-        let stage = Choice { label: stage_label(p.stage), value: p.stage };
-        let bg = Choice { label: p.background.clone().unwrap_or("the stage's own".into()), value: p.background.clone() };
+    let place = |i: usize, p: &nettai_match::RoundSettings| -> Element<Msg> {
+        let stage = stage_choice(p.stage);
+        let bg = Choice { label: p.background.clone().unwrap_or("from the seed".into()), value: p.background.clone() };
         column![
             field("Stage", pick_list(stages.clone(), Some(stage), move |s| Msg::Stage(i, s))),
             field("Background", pick_list(backgrounds.clone(), Some(bg), move |b| Msg::Background(i, b))),
@@ -166,7 +167,7 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
         .spacing(6)
         .into()
     };
-    let same = m.arena.later == [m.arena.first.clone(), m.arena.first.clone()];
+    let same = m.rounds[1..].iter().all(|r| *r == m.rounds[0]);
     let seed = e.typed.get(&(2, "seed")).cloned().unwrap_or_else(|| m.seed.map(|s| s.to_string()).unwrap_or_default());
     let mut col = column![
         heading("Arena"),
@@ -177,12 +178,12 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     ]
     .spacing(10);
     col = col.push(rule::horizontal(1));
-    col = col.push(place(0, &m.arena.first));
+    col = col.push(place(0, &m.rounds[0]));
     col = col.push(checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame));
     if !same {
-        for (i, p) in m.arena.later.iter().enumerate() {
-            col = col.push(text(format!("Round {}", i + 2)).size(14));
-            col = col.push(place(i + 1, p));
+        for (i, p) in m.rounds.iter().enumerate().skip(1) {
+            col = col.push(text(format!("Round {}", i + 1)).size(14));
+            col = col.push(place(i, p));
         }
     }
     col = col.push(field("Seed", text_input("from the clock", &seed).on_input(Msg::Seed).width(Length::Fixed(160.0))));

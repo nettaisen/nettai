@@ -16,12 +16,12 @@
 //! player refuses another's ([`Head::require`]).
 //!
 //! ```text
-//! file   := "NTRP", layout (a byte: 1), head, match, info, input
+//! file   := "NTRP", layout (a byte: 1), head, info, match, input
 //! head   := "HEAD", length (u32), engine version (string), game (string),
 //!           content hash (u64), the first battle's digest before any tick (u64)
-//! match  := "MTCH", length (u32), the match in nettai-match's binary
 //! info   := "INFO", length (u32), when (u64: unix seconds), the side that
 //!           recorded (a byte: 0, 1), the players' names by side (two strings)
+//! match  := "MTCH", length (u32), the match in nettai-match's binary
 //! input  := "TICK", then a record per tick to the end of the file
 //! record := control (a byte), then what its bits announce, in their order:
 //!           bit 0: side 0's buttons (u16) follow, bit 1: side 1's,
@@ -141,7 +141,7 @@ pub const BUTTON_MASK: u16 = 0x3FF;
 
 // ---- Writing ------------------------------------------------------------------
 
-/// Writes a replay as its set is played: the head, the match and the info
+/// Writes a replay as its set is played: the head, the info and the match
 /// at once, then a record a tick, each flushed as it is written.
 pub struct Writer<W: Write> {
     out: W,
@@ -163,13 +163,13 @@ impl<W: Write> Writer<W> {
         h.extend_from_slice(&head.content.to_le_bytes());
         h.extend_from_slice(&head.start.to_le_bytes());
         section(&mut b, b"HEAD", &h);
-        section(&mut b, b"MTCH", match_bytes);
         let mut i = info.when.to_le_bytes().to_vec();
         i.push(info.side);
         for name in &info.names {
             string(&mut i, name);
         }
         section(&mut b, b"INFO", &i);
+        section(&mut b, b"MTCH", match_bytes);
         b.extend_from_slice(b"TICK");
         out.write_all(&b)?;
         out.flush()?;
@@ -318,7 +318,7 @@ impl<'a> Bytes<'a> {
 
 impl Replay {
     /// A replay from a file's bytes. Refused, saying why: bytes that aren't
-    /// a replay (another file, another layout), a head, match or info cut
+    /// a replay (another file, another layout), a head, info or match cut
     /// short or running on, and a tick's record no writer writes (unknown
     /// bits, a round's end without its digest, the set's end without a
     /// round's, buttons past the GBA's, anything after the set's end). A
@@ -335,7 +335,6 @@ impl Replay {
         let mut h = b.section(b"HEAD", "head")?;
         let head = Head { engine: h.string()?, game: h.string()?, content: h.u64()?, start: h.u64()? };
         h.done()?;
-        let match_bytes = b.section(b"MTCH", "match")?.rest.to_vec();
         let mut i = b.section(b"INFO", "info")?;
         let when = i.u64()?;
         let side = i.u8()?;
@@ -344,6 +343,7 @@ impl Replay {
         }
         let info = Info { when, side, names: [i.string()?, i.string()?] };
         i.done()?;
+        let match_bytes = b.section(b"MTCH", "match")?.rest.to_vec();
         b.what = "input";
         if b.take(4)? != b"TICK" {
             return Err("no input where it goes".into());
@@ -466,6 +466,10 @@ mod tests {
         assert_eq!(r.rounds().iter().map(|t| t.len()).collect::<Vec<_>>(), [150, 150]);
         let header = bytes.len() - written(&[]).len();
         assert!(header < 300 * 3, "{header} bytes of input");
+        // (The head, the info, the match, the input: a reader that wants
+        // who played when reads no match.)
+        let at = |tag: &[u8]| bytes.windows(4).position(|w| w == tag).unwrap();
+        assert!(at(b"HEAD") < at(b"INFO") && at(b"INFO") < at(b"MTCH") && at(b"MTCH") < at(b"TICK"));
     }
 
     /// A file cut short: every whole tick before the cut, and the cut

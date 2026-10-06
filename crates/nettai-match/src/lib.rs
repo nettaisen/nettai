@@ -9,7 +9,7 @@
 //! a side of one: the same checks refuse a bad file and a bad offer.
 //! the editor (nettai-demo) edits them.
 //!
-//! A match is of one game, which its arena chooses (`Arena::game`): a
+//! A match is of one game (`Match::game`): a
 //! game is its rules (it has one rules definition), and both sides play by them
 //! with the game's navis, chips, forms and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
@@ -52,32 +52,33 @@ pub use import::save_game;
 pub use folders::Folder;
 pub use set::{After, Set};
 
-/// Where a round is fought: a stage and the background shown, by its name
-/// in the match's game's pack (none: the stage's own).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Place {
-    pub stage: StageHandle,
+/// A round of a match as the match states it: where it is fought, its
+/// stage (one of the game's link battle stages) and the background shown
+/// (by its name in the game's pack), each part none where the match leaves
+/// it to be picked from its seed (`Match::places`: as the game picks a link
+/// battle's, `pick::places`). The original's battle settings of a round
+/// follow from its stage (`RoundSetup::next_settings`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct RoundSettings {
+    pub stage: Option<StageHandle>,
     pub background: Option<String>,
 }
 
-/// The arena, which decides everything else: the match's game (`exe6`,
-/// `exe5`: everything else a match names is that game's, and its rules are
-/// the game's: a game has one rules definition), the first round's place and the
-/// set's later rounds' (the original's init exchange carries those), its
-/// stages the game's.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Arena {
-    pub game: String,
-    pub first: Place,
-    pub later: [Place; 2],
-}
-
-impl Arena {
-    /// Every round of a match of `game` on one place.
-    pub fn on(game: &str, place: Place) -> Arena {
-        Arena { game: game.to_string(), later: [place.clone(), place.clone()], first: place }
+impl RoundSettings {
+    /// A round on `place`, both parts stated (`background` named by the
+    /// game's pack).
+    pub fn at(content: &Content, place: Stage) -> RoundSettings {
+        RoundSettings { stage: Some(place.stage), background: ids::background_name(content, place.background).map(str::to_string) }
     }
 }
+
+/// The most rounds a set has: its round's number is shown in two digits
+/// (the ROUND banner's).
+pub const MAX_ROUNDS: usize = 99;
+
+/// The rounds of the original's triple battle, best of three: a random
+/// match's (`pick::live`), and a new match's (`Match::empty`).
+pub const TRIPLE_BATTLE: usize = 3;
 
 /// That `content` is `game`'s (a content holds one game), with rules to
 /// play by: or why a match of `game` can't be made on it.
@@ -138,13 +139,17 @@ pub fn level_required(content: &Content, navi: NaviHandle) -> bool {
 }
 
 
-/// A whole match: the arena and both sides (the left, side 0, then the
-/// right), and the seed its setup and battle are picked from, if it names
-/// one.
+/// A whole match: what is set for the match (its game: `exe6`, `exe5`;
+/// everything else a match names is that game's, and its rules are the
+/// game's: a game has one rules definition), each of its rounds (a set of
+/// as many: best of three for the original's three, and on: `rounds`),
+/// both sides (the left, side 0, then the right), and the seed its setup
+/// and battle are picked from, if it names one.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Match {
+    pub game: String,
     pub seed: Option<u32>,
-    pub arena: Arena,
+    pub rounds: Vec<RoundSettings>,
     pub sides: [Side; 2],
 }
 
@@ -165,14 +170,9 @@ pub(crate) fn no_background(at: &str, game: &str, name: &str) -> String {
     format!("{at}: no background {name:?} in {game}")
 }
 
-/// The background a place of a match of `game` shows.
-fn background_id(content: &Content, game: &str, p: &Place) -> nettai_battle::content::BackgroundId {
-    p.background.as_ref().and_then(|b| background(content, game, b)).unwrap_or(content.stage(p.stage).background)
-}
-
 impl Match {
-    /// A new match of `game`, nothing chosen yet: the game's first link
-    /// battle stage (with its own background), and on each
+    /// A new match of `game`, nothing chosen yet: a triple battle's three
+    /// rounds, each picked from the seed, and on each
     /// side its navi (MegaMan, the navi that changes form, else the first
     /// with fresh stats) at its fresh stats; of the facts its rules take
     /// what a side that says nothing has (their defaults: an empty folder,
@@ -185,22 +185,35 @@ impl Match {
     /// rules require.
     pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
         playable(content, game)?;
-        let stage = *link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
-        let arena = Arena::on(game, Place { stage, background: None });
-        let side = Side::fresh(content, &arena)?;
-        Ok(Match { seed: None, arena, sides: [side.clone(), side] })
+        link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
+        let side = Side::fresh(content, game)?;
+        Ok(Match { game: game.to_string(), seed: None, rounds: vec![RoundSettings::default(); TRIPLE_BATTLE], sides: [side.clone(), side] })
     }
 
     /// The match's game.
     pub fn game(&self) -> &str {
-        &self.arena.game
+        &self.game
+    }
+
+    /// Every round's place, in order, picked from `seed` where the match
+    /// leaves a part of one unstated (`pick::places`). Refused: a match
+    /// that leaves a stage to a game whose rules pick none, or names a
+    /// background its game's pack hasn't (the checks refuse both).
+    pub fn places(&self, content: &Content, seed: u32) -> Result<Vec<Stage>, String> {
+        pick::places(content, &self.game, &self.rounds, &mut Picks::new(seed))
+    }
+
+    /// The match with every round's place stated: as `seed` picks those it
+    /// leaves (`places`), as a replay keeps it.
+    pub fn stated(&self, content: &Content, seed: u32) -> Result<Match, String> {
+        let rounds = self.places(content, seed)?.into_iter().map(|p| RoundSettings::at(content, p)).collect();
+        Ok(Match { rounds, ..self.clone() })
     }
 }
 
 impl Side {
-    /// A side of a match on `arena`, nothing chosen yet (`Match::empty`).
-    pub fn fresh(content: &Content, arena: &Arena) -> Result<Side, String> {
-        let game = &arena.game;
+    /// A side of a match of `game`, nothing chosen yet (`Match::empty`).
+    pub fn fresh(content: &Content, game: &str) -> Result<Side, String> {
         let navi = first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
         // (Its facts the rules' defaults: where they require one that has
         // none, a version, the side is given its own, or the checks say
@@ -218,17 +231,14 @@ impl Side {
 
 impl Match {
     /// The round this match starts with, its battle's RNG and each console's
-    /// from `seed`: the arena's first place, each side's player on their
+    /// from `seed`: the first round's place, each side's player on their
     /// side (their folder shuffled by their console's RNG), the set's later
-    /// places.
+    /// rounds' places (every place picked from `seed` where the match
+    /// leaves it: `places`). The match is a checked one.
     pub fn round(&self, content: &Content, seed: u32) -> RoundSetup {
-        let first = &self.arena.first;
-        let game = &self.arena.game;
-        let settings = BattleSettings {
-            stage: first.stage,
-            background: background_id(content, game, first),
-            effects: content.stage(first.stage).effects | MATCH_EFFECTS,
-        };
+        let mut places = self.places(content, seed).expect("a checked match's places").into_iter();
+        let first = places.next().expect("a checked match has a round");
+        let settings = BattleSettings { stage: first.stage, background: first.background, effects: content.stage(first.stage).effects | MATCH_EFFECTS };
         let player = |side: usize| {
             let s = &self.sides[side];
             // Each console shuffles its folder with its own RNG (RNG1),
@@ -256,7 +266,7 @@ impl Match {
             rng: seed,
             local_side: 0,
             score: SetScore::default(),
-            later_stages: self.arena.later.clone().map(|p| Stage { stage: p.stage, background: background_id(content, game, &p) }),
+            later_stages: places.collect(),
             low_hp_music_latched: false,
             players: [player(0), player(1)],
         }
@@ -313,21 +323,27 @@ pub fn navi_forms(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_cont
     Some(facts::versions(content).iter().flat_map(|version| forms.listed(version).iter().copied()).collect())
 }
 
-/// What a match is, for the terminal: its game, the seed, the field, each
+/// What a match is, for the terminal: its game, the seed, its rounds'
+/// places (as the seed picks those it leaves), each
 /// side's navi and the facts it states (those that aren't its rules'
 /// defaults, each as its field's name and its value: `version: falzar`),
 /// with `folders` the folders, and where the game has auto battle what a
 /// navi in it plays from the side's save; `you` is the side the player
 /// plays.
 pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usize) -> String {
-    let place = |p: &Place| {
+    let place = |p: &Stage| {
         let stage = ids::local(&content.defs.stage(p.stage).key);
-        match &p.background {
+        match ids::background_name(content, p.background) {
             Some(b) => format!("stage {stage}, background {b}"),
             None => format!("stage {stage}"),
         }
     };
-    let mut out = format!("match of {}: seed {seed}, {}", m.arena.game, place(&m.arena.first));
+    let places = match m.places(content, seed) {
+        Ok(places) => places.iter().map(place).collect::<Vec<_>>().join("; "),
+        Err(e) => e,
+    };
+    let rounds = m.rounds.len();
+    let mut out = format!("match of {}: seed {seed}, {rounds} round{}: {places}", m.game, if rounds == 1 { "" } else { "s" });
     for (side, s) in m.sides.iter().enumerate() {
         let who = match (side == you, side) {
             (true, _) => "you",

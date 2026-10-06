@@ -220,7 +220,7 @@ mod tests {
     }
 
     /// Offline play goes on after a round: the next one starts with the
-    /// score carried, on the arena's next stage, the presentation told to
+    /// score carried, on the match's next round's stage, the presentation told to
     /// start over (`new_round`), and the frames numbered on from the round
     /// before. Both games.
     #[test]
@@ -229,7 +229,7 @@ mod tests {
             let (s, rounds, m) = played(game);
             let (frame, score, stage, heard) = rounds[0];
             assert_eq!(score, (1, 1, 0), "{game}: one round played, won");
-            assert_eq!(stage, m.arena.later[0].stage, "{game}");
+            assert_eq!(Some(stage), m.rounds[1].stage, "{game}");
             assert!(heard && frame > 100, "{game}: frame {frame}");
             assert!(s.driver.position().starts_with("live round 2 tick "), "{game}: {}", s.driver.position());
         }

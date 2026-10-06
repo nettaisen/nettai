@@ -22,7 +22,7 @@
 //! documented where they are declared: content/exe6/rules and
 //! content/exe5/rules.
 
-use crate::{Arena, Folder, Side, ids};
+use crate::{Folder, Side, ids};
 use nettai_battle::content::{ChipCode, Content, PlayerFact};
 use nettai_battle::custom::FolderChip;
 use nettai_battle::rules::{self, Fact, SetupFact};
@@ -395,16 +395,15 @@ pub fn may_be(field: &Field) -> String {
     }
 }
 
-/// What is wrong with a side's facts on `arena`: facts that aren't the
+/// What is wrong with a side's facts in a match of `game`: facts that aren't the
 /// game's; an enum or a list of definitions nothing states (a round starts
 /// with none assumed: an empty list is stated as one); a
 /// definition the content hasn't, or of another game than the match's; a
 /// definition twice in a list, or an empty entry before one (a list is
 /// filled from the front: a gap states what no save has); a form in the
 /// side's form list that is none of its navi's lists'.
-pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
+pub fn check(content: &Content, game: &str, side: &Side) -> Vec<String> {
     let mut out = Vec::new();
-    let game = arena.game.as_str();
     if !side.facts.fit(content) {
         out.push(format!("the side's facts aren't {game}'s rules' (a side of {game} takes {})", names_phrase(content)));
         return out;

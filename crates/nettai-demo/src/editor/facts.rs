@@ -357,7 +357,7 @@ mod tests {
             assert!(apply(&six, "exe6", side, name, &Edit::Default), "{name}");
             assert!(side.facts.is_default(&six, name), "{name}");
         }
-        assert_eq!(nettai_match::check::check_side_alone(&six, &m.arena, &m.sides[0]).iter().filter(|p| !p.contains("folder")).count(), 0);
+        assert_eq!(nettai_match::check::check_side_alone(&six, &m.game, &m.sides[0]).iter().filter(|p| !p.contains("folder")).count(), 0);
 
         let five = exe5_content();
         let mut m = nettai_match::Match::empty(&five, "exe5").unwrap();

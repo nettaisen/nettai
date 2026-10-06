@@ -856,7 +856,8 @@ impl Round {
             rng: self.setup.rng2,
             local_side: bs[0x0D],
             score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
-            later_stages: [nettai_battle::Stage { stage, background }; 2],
+            // (A triple battle's: two rounds after the first.)
+            later_stages: vec![nettai_battle::Stage { stage, background }; 2],
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
             players: [p0?, p1?],
         })
