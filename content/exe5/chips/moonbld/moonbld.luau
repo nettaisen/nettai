@@ -45,7 +45,6 @@ local function set_step(me: Object, step: number)
 end
 
 moonbld.action = define.action {
-    id = "moonbld/action",
     state = moonbld.STATE,
     update = function(me: Object, s: State)
         local step = me.step

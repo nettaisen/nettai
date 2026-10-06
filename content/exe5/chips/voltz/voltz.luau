@@ -37,7 +37,6 @@ local SHOCK_SPRITE = asset.sprite("thunder-ball")
 -- NameID 0xE4: actor record 0xE4 (0x08014C94: version 5, AI index 0x21); its look (0x0801D6B0's row 0x17: the
 -- sensor, a ground shadow); EXE5's swallowing and Poltergeist leave it (0x0800D372, 0x080E8CA0).
 local IDENTITY = define.identity {
-    id = "voltz",
     class = "field_object",
     version = 5,
     ai_index = 0x21,

@@ -173,7 +173,6 @@ end
 
 -- The Pulsars' action.
 pulsar.action = armshot.action {
-    id = "pulsar/action",
     fire = function(me: Object, x: number, y: number, damage: number)
         spawn(me, x, y, me.attack_element, damage)
     end,

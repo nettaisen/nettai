@@ -18,5 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
-    action = sonicbom.make("sprsonic/action", 1, true),
+    action = sonicbom.make(1, true),
 }

@@ -23,7 +23,6 @@ local LEAVE_TICKS = 10
 local satelity: Chip
 
 local action = define.action {
-    id = "satelity/action",
     state = { timer = "u16" },
     -- 0x080F0DFC
     update = function(me: Object, s: State)

@@ -277,7 +277,7 @@ local STAND, RECOVER = 0x0, 0x4
 local RECOVER_TICKS = 5
 
 -- HotBody's action: the fire burns `rounds` rounds (the record's second parameter).
-function hotbody.action(id: string, rounds: number): Action
+function hotbody.action(rounds: number): Action
     -- 0x080F0154: the fire out (0x080E6C0C: on the navi's panel, the chip's element, damage word plus the Atk+
     -- bonus; the navi's related1 it); the navi stands; until the fire lets it go.
     local function stand(me: Object, s: State)
@@ -335,7 +335,7 @@ function hotbody.action(id: string, rounds: number): Action
         end
     end
 
-    return define.action { id = id, state = { timer = "u16" }, args = { rounds = rounds }, update = update_action }
+    return define.action { state = { timer = "u16" }, args = { rounds = rounds }, update = update_action }
 end
 
 return hotbody

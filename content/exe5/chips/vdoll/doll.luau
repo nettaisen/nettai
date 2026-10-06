@@ -29,7 +29,6 @@ return common.make {
     id = "vdoll/doll",
     sprite = SPRITE,
     identity = define.identity {
-        id = "vdoll",
         class = "field_object",
         version = 3,
         ai_index = 0x21,

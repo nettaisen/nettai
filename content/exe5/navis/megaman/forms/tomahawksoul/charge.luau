@@ -78,7 +78,6 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "tomahawksoul/charge/action",
     state = { timer = "u16" },
     -- 0x080EEE84
     update = function(me: Object, s: State)
@@ -104,7 +103,6 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "tomahawksoul/charge",
     -- The charge table's row 0x1A (0x0801CB70); Charge 5 reads on into row 0x1B's first entry.
     charge_ticks = { 160, 150, 140, 130, 120, 20 },
     setup = setup,

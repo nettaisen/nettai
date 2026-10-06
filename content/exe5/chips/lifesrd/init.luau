@@ -34,7 +34,6 @@ return define.chip {
         { order = 22, sequence = { recipe_sword, recipe_wideblde, recipe_longblde } },
     },
     action = swords.slash {
-        id = "lifesrd/action",
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.wide_long, collision = swords.slashes_navis, hit_mod = 3 },

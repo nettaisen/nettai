@@ -40,5 +40,5 @@ return define.chip {
         { order = 18, sequence = { recipe_energbom, recipe_megenbom, recipe_spreader }, operation_battle_only = true },
         { order = 54, code_run = { chip = recipe_spreader, count = 3 } },
     },
-    action = action.action({ id = "h-burst/action", bursts = 8 }, LOOK),
+    action = action.action({ bursts = 8 }, LOOK),
 }
