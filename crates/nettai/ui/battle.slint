@@ -182,20 +182,18 @@ export component BattleScreen {
     in property <string> stopped;
     // The replay this set is recorded to, if any.
     in property <string> recorded;
-    in property <string> language;
     in-out property <int> cursor;
     property <bool> portrait: root.height > root.width * 1.15;
     property <bool> wide: (root.width - root.picture-width) / 2 > 220px && !root.portrait;
     property <length> picture-width: 240phx * root.scale;
     property <length> picture-height: 160phx * root.scale;
     property <bool> over: root.result != 0 || root.stopped != "";
-    property <int> menu-count: root.over ? 2 : (root.kind == BattleKind.netplay ? 3 : 4);
+    property <int> menu-count: root.over ? 2 : (root.kind == BattleKind.netplay ? 2 : 3);
 
     callback resume();
     callback restart();
     callback quit();
     callback rematch();
-    callback next-language();
     callback sound(UiSound);
     // A touch button of the pad held or let go: its GBA button's bit.
     callback touch(int, bool);
@@ -216,9 +214,6 @@ export component BattleScreen {
         } else if a == NavAction.back && root.paused {
             root.sound(UiSound.back);
             root.resume();
-        } else if (a == NavAction.left || a == NavAction.right) && root.paused && root.cursor == 2 && root.kind != BattleKind.netplay {
-            root.sound(UiSound.cursor);
-            root.next-language();
         }
     }
 
@@ -235,8 +230,6 @@ export component BattleScreen {
             // (No restart in real time with another player.)
             if i == 0 {
                 root.resume();
-            } else if i == 1 {
-                root.next-language();
             } else {
                 root.quit();
             }
@@ -246,8 +239,6 @@ export component BattleScreen {
             root.resume();
         } else if i == 1 {
             root.restart();
-        } else if i == 2 {
-            root.next-language();
         } else {
             root.quit();
         }
@@ -650,7 +641,7 @@ export component BattleScreen {
             height: 10px;
         }
 
-        for item[i] in root.kind == BattleKind.netplay ? [@tr("RESUME"), @tr("LANGUAGE: {0}", root.language), @tr("QUIT TO MENU")] : [@tr("RESUME"), @tr("START OVER"), @tr("LANGUAGE: {0}", root.language), @tr("QUIT TO MENU")]: Rectangle {
+        for item[i] in root.kind == BattleKind.netplay ? [@tr("RESUME"), @tr("QUIT TO MENU")] : [@tr("RESUME"), @tr("START OVER"), @tr("QUIT TO MENU")]: Rectangle {
             height: 52px;
             Slant {
                 lean: 14px;

@@ -33,133 +33,129 @@ msgctxt "player"
 msgid "P1"
 msgstr "1P"
 
-#: ui/battle.slint:321 ui/lobby.slint:375 ui/replays.slint:108
-#: ui/battle.slint:321 ui/lobby.slint:375 ui/replays.slint:108 ui/widgets.slint:630
+#: ui/battle.slint:312 ui/lobby.slint:375 ui/replays.slint:116
+#: ui/battle.slint:312 ui/lobby.slint:375 ui/replays.slint:116 ui/widgets.slint:631
 msgctxt "versus"
 msgid "VS"
 msgstr "VS"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342
+#: ui/battle.slint:333
 msgid "ping —"
 msgstr "ping —"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342 ui/lobby.slint:407
+#: ui/battle.slint:333 ui/lobby.slint:407
 msgid "ping {0}"
 msgstr "ping {0}"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342
+#: ui/battle.slint:333
 msgid "delay {0}"
 msgstr "ディレイ {0}"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342
+#: ui/battle.slint:333
 msgid "rollback {0} (max {1})"
 msgstr "ロールバック {0}（最大 {1}）"
 
-#: ui/battle.slint:360
+#: ui/battle.slint:351
 msgid "Reconnecting… {0}"
 msgstr "再接続中… {0}"
 
-#: ui/battle.slint:360
+#: ui/battle.slint:351
 msgctxt "seconds"
 msgid "{n} s"
 msgid_plural "{n} s"
 msgstr[0] "{n}秒"
 
-#: ui/battle.slint:375
+#: ui/battle.slint:366
 msgid "REPLAY"
 msgstr "リプレイ"
 
-#: ui/battle.slint:381
+#: ui/battle.slint:372
 msgid "Round {0}"
 msgstr "ラウンド{0}"
 
-#: ui/battle.slint:418 ui/replays.slint:345
+#: ui/battle.slint:409 ui/replays.slint:353
 msgctxt "side"
 msgid "Left console"
 msgstr "左側の視点"
 
-#: ui/battle.slint:418 ui/replays.slint:345
+#: ui/battle.slint:409 ui/replays.slint:353
 msgctxt "side"
 msgid "Right console"
 msgstr "右側の視点"
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgid "STOPPED"
 msgstr "停止"
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgctxt "result"
 msgid "YOU WIN"
 msgstr "勝利"
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgctxt "result"
 msgid "YOU LOSE"
 msgstr "敗北"
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgctxt "result"
 msgid "DRAW"
 msgstr "引き分け"
 
-#: ui/battle.slint:566
+#: ui/battle.slint:592
 msgid "Recorded to {0}"
 msgstr "{0} に記録しました"
 
-#: ui/battle.slint:572
+#: ui/battle.slint:598
 msgid "WATCH AGAIN"
 msgstr "もう一度見る"
 
-#: ui/battle.slint:572
+#: ui/battle.slint:598
 msgid "REMATCH"
 msgstr "再戦"
 
-#: ui/battle.slint:572
+#: ui/battle.slint:598
 msgid "MENU"
 msgstr "メニュー"
 
-#: ui/battle.slint:605
+#: ui/battle.slint:631
 msgid "PAUSED"
 msgstr "ポーズ"
 
-#: ui/battle.slint:618
+#: ui/battle.slint:644
 msgid "RESUME"
 msgstr "再開"
 
-#: ui/battle.slint:618
-msgid "LANGUAGE: {0}"
-msgstr "言語：{0}"
-
-#: ui/battle.slint:618
+#: ui/battle.slint:644
 msgid "QUIT TO MENU"
 msgstr "メニューに戻る"
 
-#: ui/battle.slint:618
+#: ui/battle.slint:644
 msgid "START OVER"
 msgstr "最初から"
 
-#: ui/battle.slint:643
+#: ui/battle.slint:669
 msgid "The battle goes on while you're here: netplay can't pause."
 msgstr "ネット対戦は止められません。バトルは続いています。"
 
-#: ui/battle.slint:655 ui/lobby.slint:422 ui/play.slint:504
-#: ui/battle.slint:655 ui/lobby.slint:422 ui/play.slint:504 ui/settings.slint:184 ui/title.slint:254
+#: ui/battle.slint:681 ui/lobby.slint:422 ui/play.slint:514
+#: ui/battle.slint:681 ui/lobby.slint:422 ui/play.slint:514 ui/settings.slint:183 ui/title.slint:254
 msgid "Choose"
 msgstr "選択"
 
-#: ui/battle.slint:656 ui/lobby.slint:424 ui/play.slint:506 ui/title.slint:255
+#: ui/battle.slint:682 ui/lobby.slint:424 ui/play.slint:516 ui/title.slint:255
 msgid "Confirm"
 msgstr "決定"
 
-#: ui/battle.slint:657
+#: ui/battle.slint:683
 msgid "Menu"
 msgstr "メニュー"
 
-#: ui/battle.slint:657
+#: ui/battle.slint:683
 msgid "Resume"
 msgstr "再開"
 
@@ -203,7 +199,7 @@ msgctxt "speed"
 msgid "×1/{0}"
 msgstr "×1/{0}"
 
-#: ui/lobby.slint:52 ui/lobby.slint:326 ui/play.slint:245
+#: ui/lobby.slint:52 ui/lobby.slint:326 ui/play.slint:253
 msgid "YOU"
 msgstr "あなた"
 
@@ -293,12 +289,12 @@ msgstr "接続完了"
 msgid "Reconnecting…"
 msgstr "再接続中…"
 
-#: ui/lobby.slint:423 ui/play.slint:505 ui/settings.slint:185
+#: ui/lobby.slint:423 ui/play.slint:515 ui/settings.slint:184
 msgid "Change"
 msgstr "変更"
 
-#: ui/lobby.slint:425 ui/play.slint:507 ui/replays.slint:388
-#: ui/lobby.slint:425 ui/play.slint:507 ui/replays.slint:388 ui/title.slint:256
+#: ui/lobby.slint:425 ui/play.slint:517 ui/replays.slint:396
+#: ui/lobby.slint:425 ui/play.slint:517 ui/replays.slint:396 ui/title.slint:256
 msgid "Back"
 msgstr "戻る"
 
@@ -338,78 +334,78 @@ msgstr "matches フォルダのマッチファイル"
 msgid "FIGHT"
 msgstr "バトル開始"
 
-#: ui/play.slint:235
+#: ui/play.slint:243
 msgid "Choose a game"
 msgstr "ゲームを選んでください"
 
-#: ui/play.slint:247
+#: ui/play.slint:255
 msgid "STAND-IN"
 msgstr "練習相手"
 
-#: ui/play.slint:258
+#: ui/play.slint:266
 msgid "THE ARENAS"
 msgstr "ステージ"
 
-#: ui/play.slint:288
+#: ui/play.slint:296
 msgid "ROUND {0}"
 msgstr "ラウンド{0}"
 
-#: ui/play.slint:400
+#: ui/play.slint:408
 msgctxt "heading"
 msgid "PLAY"
 msgstr "プレイ"
 
-#: ui/play.slint:401
+#: ui/play.slint:409
 msgid "OFFLINE · AGAINST THE STAND-IN"
 msgstr "オフライン · 練習相手と対戦"
 
-#: ui/replays.slint:232
+#: ui/replays.slint:240
 msgctxt "heading"
 msgid "REPLAYS"
 msgstr "リプレイ"
 
-#: ui/replays.slint:233
+#: ui/replays.slint:241
 msgid "{n} SET RECORDED"
 msgid_plural "{n} SETS RECORDED"
 msgstr[0] "{n}セット記録済み"
 
-#: ui/replays.slint:271
+#: ui/replays.slint:279
 msgid "No replays yet"
 msgstr "リプレイはまだありません"
 
-#: ui/replays.slint:279
+#: ui/replays.slint:287
 msgid "Every set you play is recorded to {0}."
 msgstr "遊んだセットはすべて {0} に記録されます。"
 
-#: ui/replays.slint:316
+#: ui/replays.slint:324
 msgid "Not played to its end"
 msgstr "最後まで遊ばれていません"
 
-#: ui/replays.slint:316
+#: ui/replays.slint:324
 msgid "A draw"
 msgstr "引き分け"
 
-#: ui/replays.slint:316
+#: ui/replays.slint:324
 msgid "{0} won"
 msgstr "{0}の勝ち"
 
-#: ui/replays.slint:330
+#: ui/replays.slint:338
 msgid "Checking that it plays back…"
 msgstr "再生を確かめています…"
 
-#: ui/replays.slint:330
+#: ui/replays.slint:338
 msgid "It plays back as it was played."
 msgstr "記録どおりに再生できます。"
 
-#: ui/replays.slint:370
+#: ui/replays.slint:378
 msgid "WATCH"
 msgstr "見る"
 
-#: ui/replays.slint:386
+#: ui/replays.slint:394
 msgid "Console"
 msgstr "視点"
 
-#: ui/replays.slint:387
+#: ui/replays.slint:395
 msgid "Watch"
 msgstr "見る"
 
@@ -513,10 +509,6 @@ msgstr "SELECT"
 #: ui/settings.slint:158
 msgid "Pause"
 msgstr "ポーズ"
-
-#: ui/settings.slint:159
-msgid "Next language"
-msgstr "次の言語"
 
 #: ui/title.slint:50
 msgid "BATTLE NETWORK · ROLLBACK NETPLAY"
