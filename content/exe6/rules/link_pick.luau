@@ -28,6 +28,11 @@ return {
         stages.netbattle_85, stages.netbattle_86, stages.netbattle_87, stages.netbattle_88, stages.netbattle_89, stages.netbattle_90,
         stages.netbattle_91, stages.netbattle_92, stages.netbattle_93, stages.netbattle_94, stages.netbattle_95, stages.netbattle_96,
     },
+    -- How many of them, from the first, a set's first round picks among: the count the comm menu passes for the first
+    -- round goes by the match type (`sub_812A76C`: a single battle's mode 0, a triple battle's mode 1, a random
+    -- battle's mode 2, `dword_8120A14`'s 0x44, 0x60 and 0x44 past the records' 0x60), and a random match is a triple
+    -- battle's practice (nettai-match's effects, `off_812B7AC`'s 0x600): 0x60, all of them, as the rounds after.
+    first_round_stages = 96,
     -- The backgrounds a link battle picks one of at random with its settings (`sub_81209DC`: `byte_8120A20`, 21
     -- entries, in the table's order; three are there twice, so twice as likely). Whoever makes a random match picks
     -- from them (the engine picks none: a round's settings state its background).
