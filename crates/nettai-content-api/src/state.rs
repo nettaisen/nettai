@@ -8,10 +8,13 @@
 //! an error. So a script cannot put a fraction, a table or a string into
 //! battle state, and a `u16` timer written with -1 reads back as 0xFFFF.
 //!
-//! A state is a fixed-size block of bytes ([`MAX_BYTES`]); the schema
-//! decides where each field lives in it. That layout is private to this
-//! module: content and engine code read and write fields by name (or by
-//! the schema's field index), never by offset.
+//! An object's or an action's state is a fixed-size block of bytes
+//! ([`MAX_BYTES`], [`ContentState`]); a game's rules' state of a side and a
+//! player's setup of them are a block of the schema's own size
+//! ([`MAX_BLOCK_BYTES`], [`Block`]). The schema decides where each field
+//! lives in either. That layout is private to this module: content and
+//! engine code read and write fields by name (or by the schema's field
+//! index), never by offset.
 
 use std::fmt;
 
@@ -25,6 +28,11 @@ use crate::types::{ObjectRef, Pool, Vec3};
 /// covers every kind ported so far with room to spare, and keeps a state a
 /// small `Copy` value.)
 pub const MAX_BYTES: usize = 64;
+
+/// Bytes a [`Block`] may hold: a game's rules' state of a side, or a
+/// player's setup of them (a folder, a NaviCust's programs, an auto battle
+/// data block among them).
+pub const MAX_BLOCK_BYTES: usize = 0x1000;
 
 /// Most elements an array field may have.
 pub const MAX_ARRAY: usize = 64;
@@ -334,12 +342,15 @@ pub struct FieldDef {
 pub struct Schema {
     fields: Vec<FieldDef>,
     /// Where each field starts in a state's bytes.
-    offsets: Vec<u8>,
+    offsets: Vec<u16>,
+    /// The bytes its fields take.
+    size: u16,
 }
 
 impl Schema {
     /// A schema from its fields; names must be unique identifiers and the
-    /// fields must fit in [`MAX_BYTES`].
+    /// fields must fit in [`MAX_BLOCK_BYTES`] (an object's or an action's
+    /// state, a [`ContentState`], in [`MAX_BYTES`]: [`Schema::fits_object`]).
     pub fn new(fields: Vec<FieldDef>) -> Result<Schema, String> {
         let mut offsets = Vec::with_capacity(fields.len());
         let mut at = 0usize;
@@ -357,13 +368,24 @@ impl Schema {
             {
                 return Err(format!("state field {:?}: an enum needs 1 to 256 variants", f.name));
             }
-            offsets.push(at as u8);
+            offsets.push(at as u16);
             at += f.ty.size();
+            if at > MAX_BLOCK_BYTES {
+                return Err(format!("the state's fields take more than {MAX_BLOCK_BYTES} bytes"));
+            }
         }
-        if at > MAX_BYTES {
-            return Err(format!("the state's fields take {at} bytes; at most {MAX_BYTES} are allowed"));
-        }
-        Ok(Schema { fields, offsets })
+        Ok(Schema { fields, offsets, size: at as u16 })
+    }
+
+    /// The bytes its fields take.
+    pub fn size(&self) -> usize {
+        self.size as usize
+    }
+
+    /// Whether an object's or an action's state ([`ContentState`]) holds
+    /// it: [`MAX_BYTES`] at most.
+    pub fn fits_object(&self) -> bool {
+        self.size() <= MAX_BYTES
     }
 
     /// A schema from a `state` table as data: field name to a type name
@@ -416,35 +438,10 @@ impl Schema {
     }
 }
 
-/// What an enum field holds that nothing has stated
-/// ([`ContentState::unstate`]): no variant's index.
-pub const ENUM_UNSTATED: u8 = 0xFF;
-
-/// Which schema a [`ContentState`] follows (an index into the content's
-/// [`crate::Manifest`]).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct StateId(pub u16);
-
-/// The stored state of one object or action: the values of its schema's
-/// fields, in a fixed block of bytes. A plain `Copy` value, so snapshots
-/// copy it like any other engine state and the digest hashes it.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ContentState {
-    id: StateId,
-    bytes: [u8; MAX_BYTES],
-}
-
-impl ContentState {
-    /// A zeroed state for the schema `id`. (Every field type's zero value
-    /// is all zero bytes.)
-    pub fn new(id: StateId) -> ContentState {
-        ContentState { id, bytes: [0; MAX_BYTES] }
-    }
-
-    pub fn id(&self) -> StateId {
-        self.id
-    }
-
+/// The field codec of a state's bytes (`self.bytes`): what [`ContentState`]
+/// and [`Block`] both read and write by.
+macro_rules! codec {
+    () => {
     /// Field `i` of `schema` (for an array, its first element).
     pub fn get(&self, schema: &Schema, i: usize) -> FieldValue {
         schema.field(i).ty.decode(&self.bytes[schema.at(i)..])
@@ -500,6 +497,39 @@ impl ContentState {
         elem.encode(stored, &mut self.bytes[schema.at(i) + k * elem.size()..]);
         Ok(())
     }
+    };
+}
+
+/// What an enum field holds that nothing has stated
+/// ([`ContentState::unstate`]): no variant's index.
+pub const ENUM_UNSTATED: u8 = 0xFF;
+
+/// Which schema a [`ContentState`] follows (an index into the content's
+/// [`crate::Manifest`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StateId(pub u16);
+
+/// The stored state of one object or action: the values of its schema's
+/// fields, in a fixed block of bytes. A plain `Copy` value, so snapshots
+/// copy it like any other engine state and the digest hashes it.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ContentState {
+    id: StateId,
+    bytes: [u8; MAX_BYTES],
+}
+
+impl ContentState {
+    /// A zeroed state for the schema `id`. (Every field type's zero value
+    /// is all zero bytes.)
+    pub fn new(id: StateId) -> ContentState {
+        ContentState { id, bytes: [0; MAX_BYTES] }
+    }
+
+    pub fn id(&self) -> StateId {
+        self.id
+    }
+
+    codec!();
 }
 
 impl fmt::Debug for ContentState {
@@ -508,6 +538,71 @@ impl fmt::Debug for ContentState {
         f.debug_struct("ContentState").field("id", &self.id).field("bytes", &&self.bytes[..used]).finish()
     }
 }
+
+/// A game's rules' state of a side, or a player's setup of them: the
+/// values of a schema's fields in a block of the schema's own size (at most
+/// [`MAX_BLOCK_BYTES`]). Cloned with the battle (the setup is the round's,
+/// read-only in battle) and digested with it.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Block {
+    id: StateId,
+    bytes: Vec<u8>,
+}
+
+impl Block {
+    /// A zeroed block of `schema` (`id`'s).
+    pub fn new(id: StateId, schema: &Schema) -> Block {
+        Block { id, bytes: vec![0; schema.size()] }
+    }
+
+    pub fn id(&self) -> StateId {
+        self.id
+    }
+
+    codec!();
+}
+
+impl fmt::Debug for Block {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let used = self.bytes.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
+        f.debug_struct("Block").field("id", &self.id).field("bytes", &&self.bytes[..used]).finish()
+    }
+}
+
+/// A state's fields, of either kind ([`ContentState`], [`Block`]): what
+/// code that reads and writes either by its schema takes (the Luau
+/// binding's state values).
+pub trait Fields {
+    fn id(&self) -> StateId;
+    fn get(&self, schema: &Schema, i: usize) -> FieldValue;
+    fn set(&mut self, schema: &Schema, i: usize, v: Value) -> Result<(), TypeError>;
+    fn get_elem(&self, schema: &Schema, i: usize, k: usize) -> Option<FieldValue>;
+    fn set_elem(&mut self, schema: &Schema, i: usize, k: usize, v: Value) -> Result<(), String>;
+}
+
+macro_rules! fields {
+    ($t:ty) => {
+        impl Fields for $t {
+            fn id(&self) -> StateId {
+                <$t>::id(self)
+            }
+            fn get(&self, schema: &Schema, i: usize) -> FieldValue {
+                <$t>::get(self, schema, i)
+            }
+            fn set(&mut self, schema: &Schema, i: usize, v: Value) -> Result<(), TypeError> {
+                <$t>::set(self, schema, i, v)
+            }
+            fn get_elem(&self, schema: &Schema, i: usize, k: usize) -> Option<FieldValue> {
+                <$t>::get_elem(self, schema, i, k)
+            }
+            fn set_elem(&mut self, schema: &Schema, i: usize, k: usize, v: Value) -> Result<(), String> {
+                <$t>::set_elem(self, schema, i, k, v)
+            }
+        }
+    };
+}
+fields!(ContentState);
+fields!(Block);
 
 #[cfg(test)]
 mod tests {
@@ -587,6 +682,19 @@ mod tests {
         assert!((0..3).all(|k| st.get_elem(&s, forms, k) == Some(FieldValue::Ref(None))), "a list left out is empty");
     }
 
+    /// A block is its schema's size, past an object's, and reads and writes
+    /// as a state does.
+    #[test]
+    fn a_block_is_its_schemas_size() {
+        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let s = Schema::new(vec![f("big", FieldType::scalar("u16[60]").unwrap()), f("last", FieldType::U32)]).unwrap();
+        let mut b = Block::new(StateId(0), &s);
+        b.set_elem(&s, 0, 59, Value::Int(0x1234)).unwrap();
+        b.set(&s, 1, Value::Int(-1)).unwrap();
+        assert_eq!((b.get_elem(&s, 0, 59), b.get(&s, 1)), (Some(FieldValue::U16(0x1234)), FieldValue::U32(u32::MAX)));
+        assert_eq!(b.get_elem(&s, 0, 0), Some(FieldValue::U16(0)));
+    }
+
     #[test]
     fn wrong_kinds_and_bad_enum_values_are_errors() {
         let s = schema();
@@ -601,8 +709,12 @@ mod tests {
         let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
         assert!(Schema::new(vec![f("a", FieldType::U8), f("a", FieldType::U8)]).is_err());
         assert!(Schema::new(vec![f("1a", FieldType::U8)]).is_err());
-        assert!(Schema::new((0..6).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).is_err());
-        assert!(Schema::new((0..16).map(|i| f(&format!("f{i}"), FieldType::U32)).collect()).is_ok());
+        // (Past an object's 64 bytes, a block's schema; past a block's,
+        // none.)
+        let six = Schema::new((0..6).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).unwrap();
+        assert!(!six.fits_object() && six.size() == 72);
+        assert!(Schema::new((0..16).map(|i| f(&format!("f{i}"), FieldType::U32)).collect()).unwrap().fits_object());
+        assert!(Schema::new((0..400).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).is_err());
         assert!(FieldType::scalar("vec3[2]").is_none());
         assert!(FieldType::scalar("u8[0]").is_none());
     }

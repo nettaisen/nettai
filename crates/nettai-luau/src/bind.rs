@@ -22,7 +22,7 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use nettai_content_api::{
-    ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
+    ActorField, ApiError, BattleInfo, CollisionField, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
     AssetKind, SpawnAt,
     ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
@@ -942,12 +942,12 @@ impl State {
         self,
         key: &str,
         write: bool,
-        f: impl FnOnce(&mut ContentState, &nettai_content_api::Schema, usize) -> mlua::Result<R>,
+        f: impl FnOnce(&mut dyn nettai_content_api::Fields, &nettai_content_api::Schema, usize) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
         with(|api, bound| {
             // (A setup is read through a copy: it can't be written.)
             let mut setup;
-            let s = match self.0 {
+            let s: &mut dyn nettai_content_api::Fields = match self.0 {
                 StateOf::Object(o) => api.state_mut(o).ok_or_else(|| api_error(ApiError::NoState(o)))?,
                 StateOf::Action(o) => api.action_state_mut(o).map_err(api_error)?,
                 StateOf::ActionAs(o, id) => api.attack_state_for(o, id).map_err(api_error)?,
@@ -958,7 +958,7 @@ impl State {
                     )));
                 }
                 StateOf::Setup(c) => {
-                    setup = *api.system_setup(c.side, c.slot).map_err(api_error)?;
+                    setup = api.system_setup(c.side, c.slot).map_err(api_error)?.clone();
                     &mut setup
                 }
             };

@@ -1738,7 +1738,7 @@ impl CoreApi for Battle {
         }
     }
 
-    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut ContentState> {
+    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut nettai_content_api::Block> {
         self.rules
             .get_mut(side as usize)
             .and_then(|r| r.states.get_mut(slot as usize))
@@ -1749,7 +1749,7 @@ impl CoreApi for Battle {
         self.system_slot(side & 1, system).map(|(_, slot)| slot)
     }
 
-    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&ContentState> {
+    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&nettai_content_api::Block> {
         self.setup
             .players
             .get(side as usize)
