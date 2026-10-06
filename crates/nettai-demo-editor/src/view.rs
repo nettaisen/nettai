@@ -65,7 +65,7 @@ fn choose(a: &App) -> Element<'_, Msg> {
     }
     let mut col = Column::new().spacing(16).push(heading("A new match")).push(text("Which game is it of?"));
     col = if a.games.is_empty() {
-        col.push(text("No game has its pack: extract one into the packs directory ($NETTAI_PACKS, else data/content), or give it with --pack.").color(RED))
+        col.push(text("No game has its pack: extract one into the packs directory ($NETTAI_PACKS, else data), or give it with --pack.").color(RED))
     } else {
         col.push(games)
     };

@@ -49,8 +49,8 @@ netplay needs.
 You need Rust with edition 2024. Extract assets from your own US or Japanese EXE5/EXE6 ROMs into a new or empty
 pack directory (the directories below are gitignored). ROMs can be supplied in any order:
 
-    cargo run --release -p nettai-extract -- exe6 data/content/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
-    cargo run --release -p nettai-extract -- exe5 data/content/exe5 <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>
+    cargo run --release -p nettai-extract -- exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
+    cargo run --release -p nettai-extract -- exe5 data/exe5 <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>
 
 Any subset works, including a single ROM or no ROMs. Available sources supply their assets; unavailable graphics
 become checkerboard placeholders and missing songs become silence. The pack includes `extraction.txt` with missing
@@ -70,7 +70,7 @@ let files = assets.files()?; // Vec<(relative_path, bytes)>
 
 The [extractor documentation](crates/nettai-extract/README.md) describes source selection, diagnostics and the API.
 
-The frontend and the editor find the packs in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
+The frontend and the editor find the packs in `data` (or the directory `$NETTAI_PACKS` names), each by the
 game it says, with no options: an EXE5 pack written there (`nettai-extract exe5`) sits beside EXE6's. You play one game
 at a time, EXE6 or EXE5: a match file names its game and a trace states its own (there is no default game), and the battle is that
 game's content on its pack. `--pack DIR` names a pack elsewhere, in place of the found one of its game.

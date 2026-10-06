@@ -275,11 +275,11 @@ fn battle_content_of(
 
 // ---- Finding packs -------------------------------------------------------------
 
-/// Where the extractors write their packs (`data/content/exe6`,
-/// `data/content/exe5`), and where a frontend finds them.
-pub const PACKS: &str = "data/content";
+/// Where the extractors write their packs (`data/exe6`,
+/// `data/exe5`), and where a frontend finds them.
+pub const PACKS: &str = "data";
 
-/// The packs directory: `$NETTAI_PACKS`, else `data/content`.
+/// The packs directory: `$NETTAI_PACKS`, else `data`.
 pub fn packs_dir() -> PathBuf {
     std::env::var_os("NETTAI_PACKS").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(PACKS))
 }
