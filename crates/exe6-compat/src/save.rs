@@ -117,16 +117,16 @@ impl Save {
     }
 
     /// What the save unlocks on the custom screen: the version's Crosses it
-    /// owns and Beast Out (no Cross list: the save's are the version's).
+    /// owns, by Cross number, and Beast Out.
     pub fn unlocks(&self) -> Unlocks {
         let first = match self.version {
             GameVersion::Gregar => GREGAR_CROSSES,
             GameVersion::Falzar => FALZAR_CROSSES,
         };
         Unlocks {
+            version: self.version,
             crosses: std::array::from_fn(|i| self.event_flag(first + i as u16)),
             beast_out: self.event_flag(BEAST_OUT_FLAG),
-            ..Unlocks::nothing(self.version)
         }
     }
 
@@ -244,7 +244,7 @@ mod tests {
         let s = Save::read(&f).unwrap();
         assert_eq!((s.version(), s.region(), s.navi()), (GameVersion::Falzar, Region::Us, 11));
         let u = s.unlocks();
-        assert_eq!((u.crosses, u.beast_out, u.cross_list), ([false, true, false, true, false], true, None));
+        assert_eq!((u.crosses, u.beast_out), ([false, true, false, true, false], true));
         assert_eq!(s.navi_level(), Ok(Some(5)));
         assert_eq!((s.sp_times().0[0], s.sp_times().0[19]), (721, 1500));
     }

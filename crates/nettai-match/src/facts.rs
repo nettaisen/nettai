@@ -2,21 +2,22 @@
 //!
 //! A fact is a field of the setup of a system of the game's ruleset, as
 //! the content declares it (`setup = { version = { "gregar", "falzar" },
-//! cross_list = "form[5]" }`, `setup = { karma = "u16" }`): its name, its
-//! type, its default (`setup_defaults`; zero without one, and an enum
-//! unstated). A side holds its facts as those systems' setup blocks
+//! crosses = "form[5]" }`, `setup = { karma = "u16" }`): its name, its
+//! type, its default (`setup_defaults`; zero without one, and an enum or a
+//! list of definitions unstated). A side holds its facts as those systems' setup blocks
 //! ([`Facts`]), which the round's setup hands the engine as they are. A
 //! field several systems declare is one fact, written into each.
 //!
 //! This crate names no game's fact. Which facts there are, what a side
 //! that says nothing has, and which a round can't start without (an enum
-//! nothing states) are the content's; a match file states a fact under its
+//! or a list of definitions nothing states: no variant is assumed, and an
+//! empty list is a statement) are the content's; a match file states a fact under its
 //! field's name, and the editor shows one by its type. Three the engine
 //! itself knows by role (`PlayerFact`: the version, Beast Out, the form
 //! list), and where this crate needs one of those (the version's place in a
 //! navi's stats, the forms a navi's list may hold) it asks by the role.
 //!
-//! The games' own (EXE6's `version`, `crosses`, `cross_list`, `beast_out`,
+//! The games' own (EXE6's `version`, `crosses`, `beast_out`,
 //! `bug_frags`; EXE5's `karma`, `souls`, `soul_unison`, `chaos_unison`) are
 //! documented where they are declared: content/exe6/rules and
 //! content/exe5/rules.
@@ -64,8 +65,8 @@ pub fn takes(content: &Content, field: &str) -> bool {
     self::field(content, field).is_some()
 }
 
-/// The facts' names in a phrase, for a message: "version, crosses,
-/// cross_list".
+/// The facts' names in a phrase, for a message: "crosses, version,
+/// beast_out".
 pub fn names_phrase(content: &Content) -> String {
     let names: Vec<&str> = fields(content).iter().map(|f| f.name).collect();
     if names.is_empty() { "none".to_string() } else { names.join(", ") }
@@ -82,6 +83,9 @@ pub enum Stated {
     Def(Registry, Option<u16>),
     /// An array's elements.
     List(Vec<Stated>),
+    /// A list of definitions nothing has stated (not an empty one: that
+    /// is a list).
+    Unlisted,
     /// A value no match states (an object, a vector, an asset).
     Other,
 }
@@ -171,6 +175,7 @@ impl Facts {
             let schema = content.defs.schema(content.defs.system(h).setup);
             let Some(i) = schema.index_of(field) else { continue };
             match &schema.field(i).ty {
+                _ if !default.stated(schema, i) => block.unstate(schema, i),
                 FieldType::Array(_, n) => {
                     for k in 0..*n as usize {
                         if let Some(v) = default.get_elem(schema, i, k) {
@@ -178,7 +183,6 @@ impl Facts {
                         }
                     }
                 }
-                _ if !default.stated(schema, i) => block.unstate(schema, i),
                 _ => {
                     let _ = block.set(schema, i, default.get(schema, i).load());
                 }
@@ -195,11 +199,12 @@ impl Facts {
     pub fn get(&self, content: &Content, field: &str) -> Option<Stated> {
         let fact = self.fact(content, field)?;
         Some(match fact.ty() {
-            FieldType::Array(elem, n) => Stated::List((0..*n as usize).filter_map(|k| fact.elem(k)).map(|v| stated_of(elem, v)).collect()),
             ty if !fact.stated() => match ty {
                 FieldType::Enum(_) => Stated::Variant(None),
+                FieldType::Array(..) => Stated::Unlisted,
                 _ => Stated::Other,
             },
+            FieldType::Array(elem, n) => Stated::List((0..*n as usize).filter_map(|k| fact.elem(k)).map(|v| stated_of(elem, v)).collect()),
             ty => stated_of(ty, fact.value()),
         })
     }
@@ -222,8 +227,8 @@ impl Facts {
         self.role(content, PlayerFact::Version)?.name()
     }
 
-    /// The forms the side's form list offers in place of its version's own
-    /// (the engine's form list fact), in order; none listed, or no such
+    /// The forms the side has for its form list (the engine's form list
+    /// fact: EXE6's Crosses), in order; none, a list not stated, or no such
     /// fact: empty.
     pub fn form_list(&self, content: &Content) -> Vec<FormHandle> {
         match self.role(content, PlayerFact::CrossList) {
@@ -277,24 +282,33 @@ pub fn form_list_capacity(content: &Content) -> usize {
     }
 }
 
-/// What a round can't start without, of the game's facts: the enums no
-/// default states (EXE6's `version`), with their variants.
-pub fn required(content: &Content) -> Vec<(&str, &[String])> {
+/// What a round can't start without, of the game's facts: the enums and
+/// the lists of definitions no default states (EXE6's `version`, one of two
+/// names, and its `crosses`, a list that may be empty), in the facts'
+/// order.
+pub fn required(content: &Content) -> Vec<Field<'_>> {
     let defaults = Facts::defaults(content);
-    fields(content)
-        .into_iter()
-        .filter_map(|f| match f.ty {
-            FieldType::Enum(names) if defaults.get(content, f.name) == Some(Stated::Variant(None)) => Some((f.name, names.as_slice())),
-            _ => None,
-        })
-        .collect()
+    fields(content).into_iter().filter(|f| matches!(defaults.get(content, f.name), Some(Stated::Variant(None) | Stated::Unlisted))).collect()
+}
+
+/// What a required fact may be stated as, for a message: an enum's
+/// variants ("gregar or falzar"), a list's room ("up to 5 forms, an empty
+/// list for none").
+pub fn may_be(field: &Field) -> String {
+    match field.ty {
+        FieldType::Enum(names) => names.join(" or "),
+        FieldType::Array(elem, n) => format!("up to {n} {elem}s, an empty list for none"),
+        other => other.to_string(),
+    }
 }
 
 /// What is wrong with a side's facts on `arena`: facts that aren't the
-/// game's; an enum nothing states (a round starts with none assumed); a
+/// game's; an enum or a list of definitions nothing states (a round starts
+/// with none assumed: an empty list is stated as one); a
 /// definition the content hasn't, or of another game than the match's; a
-/// definition twice in a list; a form in the side's form list that is none
-/// of its navi's lists'.
+/// definition twice in a list, or an empty entry before one (a list is
+/// filled from the front: a gap states what no save has); a form in the
+/// side's form list that is none of its navi's lists'.
 pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     let mut out = Vec::new();
     let game = arena.game.as_str();
@@ -306,9 +320,8 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
         let Some(value) = side.facts.get(content, f.name) else { continue };
         let of_game = |registry: Registry, h: u16| ids::key_of(content, registry, h).is_some_and(|key| ids::in_game(content, game, key));
         match &value {
-            Stated::Variant(None) => {
-                let FieldType::Enum(names) = f.ty else { continue };
-                out.push(format!("no {}: a side of {game} states its own ({}); none is assumed", f.name, names.join(" or ")));
+            Stated::Variant(None) | Stated::Unlisted => {
+                out.push(format!("no {}: a side of {game} states its own ({}); none is assumed", f.name, may_be(&f)));
             }
             Stated::Def(registry, Some(h)) if !of_game(*registry, *h) => out.push(format!("{}: a {registry} {game} hasn't", f.name)),
             Stated::List(items) => {
@@ -321,6 +334,13 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
                     if defs[..i].contains(&(r, h)) {
                         out.push(format!("{}: {} is there twice", f.name, ids::shown(content, r, h)));
                     }
+                }
+                let after_a_gap = items.iter().skip_while(|v| !matches!(v, Stated::Def(_, None))).find_map(|v| match v {
+                    Stated::Def(r, Some(h)) => Some((*r, *h)),
+                    _ => None,
+                });
+                if let Some((r, h)) = after_a_gap {
+                    out.push(format!("{}: an empty entry before {} (a list is filled from the front)", f.name, ids::shown(content, r, h)));
                 }
             }
             _ => {}
@@ -353,6 +373,7 @@ pub fn shown(content: &Content, value: &Stated) -> String {
         Stated::Variant(v) => v.clone().unwrap_or_else(|| "not stated".to_string()),
         Stated::Def(r, Some(h)) => ids::shown(content, *r, *h),
         Stated::Def(_, None) => "none".to_string(),
+        Stated::Unlisted => "not stated".to_string(),
         Stated::List(items) => {
             let all: Vec<String> = items.iter().filter(|v| !matches!(v, Stated::Def(_, None))).map(|v| shown(content, v)).collect();
             if all.is_empty() { "none".to_string() } else { all.join(", ") }
@@ -372,6 +393,28 @@ impl Side {
     /// Write one of the side's facts (`Facts::set`).
     pub fn set_fact(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<(), String> {
         self.facts.set(content, field, values)
+    }
+
+    /// State the side's form list (the engine's form list fact: EXE6's
+    /// Crosses) as its navi's own of its version: the forms the navi lists
+    /// for the version the side states (EXE6's version's five), or none for
+    /// a navi that doesn't change form. What a tool writes for a person
+    /// once the side's version is chosen, and a random match for a side it
+    /// picks no list for: the rules assume nothing, so a round doesn't
+    /// start until the list is stated. False, and nothing written: the
+    /// game's rules take no form list, or the navi changes form and the
+    /// side states no version yet.
+    pub fn state_own_forms(&mut self, content: &Content) -> bool {
+        if content.defs.fact_field(PlayerFact::CrossList).is_none() {
+            return false;
+        }
+        let own: Vec<FormHandle> = match (content.navi(self.navi).forms.as_ref(), self.version(content)) {
+            (None, _) => Vec::new(),
+            (Some(forms), Some(version)) => forms.listed(version).to_vec(),
+            (Some(_), None) => return false,
+        };
+        let list: Vec<Fact> = own.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
+        self.set_fact(content, PlayerFact::CrossList.name(), &list).is_ok()
     }
 
     /// Whether a side takes a version (the engine's version fact: EXE6's

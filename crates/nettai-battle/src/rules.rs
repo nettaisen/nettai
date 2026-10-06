@@ -27,10 +27,11 @@ impl SideRules {
     /// state, zeroed (a game has one ruleset, which every match of it
     /// plays by). Their setup's blocks are made the systems' defaults
     /// (`setup_defaults`, the rest zero) for a setup that gives none, and
-    /// must otherwise be the ruleset's. An enum of a system's setup has no
-    /// default but its `setup_defaults`': the round doesn't start with one
-    /// the player's setup leaves unstated (EXE6's version: nothing fills in
-    /// gregar or falzar).
+    /// must otherwise be the ruleset's. An enum of a system's setup, and a
+    /// list of definitions, has no default but its `setup_defaults`': the
+    /// round doesn't start with one the player's setup leaves unstated
+    /// (EXE6's version: nothing fills in gregar or falzar; its Crosses: an
+    /// empty list is none, and saying nothing is not a list).
     pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
         if content.defs.ruleset().is_none() {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
@@ -45,14 +46,15 @@ impl SideRules {
         for (block, system) in player.rules.iter().zip(&systems) {
             let schema = content.defs.schema(system.setup);
             for (i, field) in schema.fields().iter().enumerate() {
-                if let (FieldType::Enum(names), false) = (&field.ty, block.stated(schema, i)) {
-                    panic!(
-                        "a player's setup doesn't state the {} system's `{}` ({}): none is assumed",
-                        system.key,
-                        field.name,
-                        names.join(" or ")
-                    );
+                if block.stated(schema, i) {
+                    continue;
                 }
+                let what = match &field.ty {
+                    FieldType::Enum(names) => names.join(" or "),
+                    FieldType::Array(elem, n) => format!("up to {n} {elem}s, an empty list for none"),
+                    _ => continue,
+                };
+                panic!("a player's setup doesn't state the {} system's `{}` ({what}): none is assumed", system.key, field.name);
             }
         }
         SideRules { states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
@@ -219,8 +221,8 @@ impl<'a> SetupFact<'a> {
         &self.schema.field(self.index).ty
     }
 
-    /// Whether it holds a value: false of an enum nothing stated (a round
-    /// doesn't start with one).
+    /// Whether it holds a value: false of an enum or a list of definitions
+    /// nothing stated (a round doesn't start with one).
     pub fn stated(&self) -> bool {
         self.block.stated(self.schema, self.index)
     }
@@ -1087,10 +1089,10 @@ mod tests {
         let setup = "    setup = { bonus = \"u8\" },";
         refused(
             setup,
-            "    setup = { bonus = \"u8\", cross_list = \"u8\" },",
-            &["rules/systems.luau: system test/counter", "its setup field `cross_list` is the fact a player brings by that name, an array of forms"],
+            "    setup = { bonus = \"u8\", crosses = \"u8\" },",
+            &["rules/systems.luau: system test/counter", "its setup field `crosses` is the fact a player brings by that name, an array of forms"],
         );
-        let content = patched(setup, "    setup = { bonus = \"u8\", cross_list = \"form[5]\" },").expect("a fact of its type");
+        let content = patched(setup, "    setup = { bonus = \"u8\", crosses = \"form[5]\" },").expect("a fact of its type");
         assert!(content.defs.fact_field(PlayerFact::CrossList).is_some());
     }
 

@@ -267,7 +267,7 @@ mod tests {
         s.stats.reg_up = 50;
         s.stats = s.reloaded_as(&content, heatman).unwrap();
         (s.navi, s.navicust) = (heatman, None);
-        s.facts.reset(&content, "cross_list");
+        s.set_fact(&content, "crosses", &[]).unwrap();
         s.folder.regular = None;
         let text = crate::write(&content, &m);
         assert!(text.contains("level = 14") && text.ends_with("[right.stats]\nregular_memory = 50\n"), "{text}");

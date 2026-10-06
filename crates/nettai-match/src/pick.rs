@@ -94,11 +94,18 @@ pub fn arena(content: &Content, game: &str, picks: &mut Picks, stage: Option<Sta
     Ok(Arena { game: game.to_string(), first, later })
 }
 
-/// What a random side states of the facts its rules require (the enums no
+/// What a random side states of the enums its rules require (those no
 /// default states: EXE6's version, gregar or falzar): one variant of each,
-/// picked at random, in the facts' order.
+/// picked at random, in the facts' order. (A list its rules require is
+/// stated with the side: the form list picked, or the navi's own.)
 fn required(content: &Content, picks: &mut Picks) -> Vec<(String, String)> {
-    crate::facts::required(content).into_iter().map(|(name, variants)| (name.to_string(), variants[picks.below(variants.len())].clone())).collect()
+    crate::facts::required(content)
+        .into_iter()
+        .filter_map(|f| match f.ty {
+            nettai_content_api::FieldType::Enum(variants) => Some((f.name.to_string(), variants[picks.below(variants.len())].clone())),
+            _ => None,
+        })
+        .collect()
 }
 
 /// What live play's players' required facts are picked from, with the
@@ -156,7 +163,8 @@ impl Side {
 
 /// A plain side on `arena`: the navi a new side operates (`first_navi`:
 /// MegaMan), its fresh stats, what its rules require picked from `picks`
-/// (a version, where they take one), the rest of its facts their defaults,
+/// (a version, where they take one) or its navi's own (its form list: the
+/// version's five), the rest of its facts their defaults,
 /// and a folder of the rules' pool picked from `picks` (else
 /// the game's first chip with a code, thirty times); where the game has
 /// navis in auto battle (EXE5's), the auto battle data the game would have
@@ -175,6 +183,13 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
     for (field, variant) in required(content, picks) {
         facts.set(content, &field, &[Fact::Name(&variant)])?;
     }
+    // (A list its rules require besides, where it isn't the form list: none
+    // of them. No game has one.)
+    for f in crate::facts::required(content) {
+        if matches!(f.ty, nettai_content_api::FieldType::Array(..)) {
+            facts.set(content, f.name, &[])?;
+        }
+    }
     let mut side = Side {
         navi,
         stats: Side::base_stats(content, navi, facts.version(content)),
@@ -186,6 +201,8 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
         auto_battle: Default::default(),
         facts,
     };
+    // (Its form list, where the rules take one: its version's own.)
+    side.state_own_forms(content);
     let m = Match { seed: None, arena: arena.clone(), sides: [side.clone(), side.clone()] };
     if let Ok(mut b) = crate::check::start(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
@@ -350,7 +367,7 @@ mod tests {
                 // nothing else: the rest is its rules' defaults.)
                 let stated: Vec<&str> =
                     crate::facts::fields(&content).iter().map(|f| f.name).filter(|n| !m.sides[side].facts.is_default(&content, n)).collect();
-                assert_eq!(stated, ["cross_list", "version"]);
+                assert_eq!(stated, ["crosses", "version"]);
             }
             assert_eq!(live(&content, "exe6", seed, None).unwrap(), m);
             assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));

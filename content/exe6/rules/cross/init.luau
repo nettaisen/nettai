@@ -90,20 +90,21 @@ return define.system {
         cross_chosen = "bool",
         chosen = "u8",
     },
-    -- What the player's save brings (exe6-compat writes it, nettai-match
-    -- from a match's side): the game's version (its five Crosses), the
-    -- Crosses it owns (by Cross number: Gregar's event flags 0xE2-0xE6,
-    -- Falzar's 0xE7-0xEB), and nettai's Cross list (window.luau).
+    -- What the player brings (nettai-match from a match's side, exe6-compat
+    -- from a save or a recording): the game's version, and the Crosses they
+    -- have (window.luau), up to five, of either version, in the window's
+    -- order. Neither has a default: a side states its version, and its
+    -- Crosses (an empty list: none), or the round doesn't start. A save's
+    -- are those of its version's five it owns (by Cross number: Gregar's
+    -- event flags 0xE2-0xE6, Falzar's 0xE7-0xEB), which a boundary writes
+    -- as the list of them.
     -- The versions come in the original's order (Gregar 0, Falzar 1: the
     -- number a navi's stats carry, NaviStats+0x20), which tools go by: they
     -- list and draw the versions in it, and number them by it.
     setup = {
         version = { "gregar", "falzar" },
-        crosses = "bool[5]",
-        cross_list = "form[5]",
+        crosses = "form[5]",
     },
-    -- A setup that says nothing owns every Cross of its version (a finished game's save).
-    setup_defaults = { crosses = { true, true, true, true, true } },
     -- ChargeCross's extra chips (`extra_chips`, `sub_802A49C`) and DustCross's
     -- scrap button (`scrap_button`, `sub_8027F10`), and theirs in Beast Out.
     extends = {

@@ -181,8 +181,8 @@ fn an_unknown_name_is_refused() {
     says(parse(&content, &side("heatman", &TANGO_EXE5, ""), &ok).unwrap_err(), "left: no navi \"heatman\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: no form \"heatcross\" in exe5");
-    let crosses = exe5(&TANGO_EXE5, "cross_list = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"cross_list\" (a side of exe5 takes karma, chaos_unison, soul_unison, souls)");
+    let crosses = exe5(&TANGO_EXE5, "crosses = [\"heatcross\"]");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes karma, chaos_unison, soul_unison, souls)");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = exe6_content();
@@ -286,13 +286,15 @@ fn a_match_is_described_by_its_facts() {
     let mut m = crate::pick::live(&six, "exe6", 1, None).unwrap();
     let side = &mut m.sides[0];
     side.set_fact(&six, "version", &[Fact::Name("falzar")]).unwrap();
-    side.set_fact(&six, "cross_list", &forms(&six, "exe6", &["heatcross", "spoutcross"])).unwrap();
+    side.set_fact(&six, "crosses", &forms(&six, "exe6", &["heatcross", "spoutcross"])).unwrap();
     side.set_fact(&six, "beast_out", &flag(false)).unwrap();
-    side.set_fact(&six, "crosses", &[true, false, true, true, true].map(|on| Fact::Value(Value::Bool(on)))).unwrap();
     side.set_fact(&six, "bug_frags", &number(9)).unwrap();
     let said = crate::describe(&six, &m, 1, false, 0);
     let line = said.lines().nth(1).unwrap();
-    assert_eq!(line, "  MegaMan (you); cross_list: HeatCross, SpoutCross; crosses: yes, no, yes, yes, yes; version: falzar; beast_out: no; bug_frags: 9");
+    assert_eq!(line, "  MegaMan (you); crosses: HeatCross, SpoutCross; version: falzar; beast_out: no; bug_frags: 9");
+    // (No Crosses is said: a stated list.)
+    m.sides[0].set_fact(&six, "crosses", &[]).unwrap();
+    assert!(crate::describe(&six, &m, 1, false, 0).lines().nth(1).unwrap().starts_with("  MegaMan (you); crosses: none; version: falzar"));
     let five = exe5_content();
     let mut m = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you)");
@@ -309,7 +311,7 @@ fn a_match_is_described_by_its_facts() {
 fn a_list_fact_offers_its_definitions() {
     let six = exe6_content();
     let m = crate::pick::live(&six, "exe6", 1, None).unwrap();
-    let field = crate::facts::field(&six, "cross_list").unwrap();
+    let field = crate::facts::field(&six, "crosses").unwrap();
     let offered = crate::facts::offered(&six, "exe6", &m.sides[0], &field).unwrap();
     let megaman = six.navi(m.sides[0].navi).forms.as_ref().unwrap();
     let own: Vec<u16> = megaman.listed("gregar").iter().chain(megaman.listed("falzar")).map(|f| f.0).collect();
@@ -318,7 +320,7 @@ fn a_list_fact_offers_its_definitions() {
     link.navi = crate::ids::navi(&six, "exe6", "protoman").unwrap();
     assert_eq!(crate::facts::offered(&six, "exe6", &link, &field), Some(Vec::new()));
     // (Flags and single values are no lists of definitions.)
-    for name in ["crosses", "version", "beast_out", "bug_frags"] {
+    for name in ["version", "beast_out", "bug_frags"] {
         assert_eq!(crate::facts::offered(&six, "exe6", &m.sides[0], &crate::facts::field(&six, name).unwrap()), None, "{name}");
     }
     let five = exe5_content();
@@ -368,7 +370,7 @@ fn karma_and_souls_write_and_read_back() {
     let bad = side("megaman", &EXE6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let six = exe6_content();
     let e = parse_in(&six, "exe6", &side("megaman", &EXE6, ""), &bad).unwrap_err();
-    let takes = "(a side of exe6 takes cross_list, crosses, version, beast_out, bug_frags)";
+    let takes = "(a side of exe6 takes crosses, version, beast_out, bug_frags)";
     for p in [format!("right: no field \"karma\" {takes}"), format!("right: no field \"souls\" {takes}")] {
         assert!(e.iter().any(|x| *x == p), "{p:?} not in {e:?}");
     }
@@ -388,9 +390,10 @@ fn karma_and_souls_write_and_read_back() {
 }
 
 /// What a setup that says nothing has is the rules' own to state (their
-/// systems' `setup_defaults`), and a match writes none of it: EXE6's, every
-/// Cross of the version owned and Beast Out; EXE5's, every soul of either
-/// version, Soul Unison, Chaos Unison and a fresh save's karma.
+/// systems' `setup_defaults`), and a match writes none of it: EXE6's, Beast
+/// Out (its version and its Crosses have no default: a setup that says
+/// nothing states neither); EXE5's, every soul of either version, Soul
+/// Unison, Chaos Unison and a fresh save's karma.
 #[test]
 fn a_setup_that_says_nothing_has_the_rules_defaults() {
     use nettai_battle::custom::PlayerSetup;
@@ -398,8 +401,17 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     let nothing = PlayerSetup::default();
     let six = exe6_content();
     let (schema, block) = nothing.rule_block(&six, "cross").expect("EXE6's cross system");
+    for required in ["crosses", "version"] {
+        assert!(!block.stated(schema, schema.index_of(required).unwrap()), "{required}");
+    }
+    // (An unstated list reads as holding nothing; a stated empty one holds
+    // nothing either, and is stated.)
     let crosses = schema.index_of("crosses").unwrap();
-    assert!((0..5).all(|k| block.get_elem(schema, crosses, k) == Some(FieldValue::Bool(true))));
+    assert!((0..5).all(|k| block.get_elem(schema, crosses, k) == Some(FieldValue::Ref(None))));
+    let mut none = PlayerSetup::default();
+    none.set_fact(&six, "crosses", &[]).unwrap();
+    let (schema, block) = none.rule_block(&six, "cross").unwrap();
+    assert!(block.stated(schema, crosses) && (0..5).all(|k| block.get_elem(schema, crosses, k) == Some(FieldValue::Ref(None))));
     let (schema, block) = nothing.rule_block(&six, "beast").expect("EXE6's beast system");
     assert_eq!(block.get(schema, schema.index_of("beast_out").unwrap()), FieldValue::Bool(true));
     let five = exe5_content();
