@@ -15,7 +15,6 @@ return define.chip {
     damage = 40,
     hit_param = 0,
     lockout = 0,
-    library = { number = 379, index = 0, sort = 0 },
     slot_in_limit = 1,
     action = cannon_chips.cannon.action,
 }

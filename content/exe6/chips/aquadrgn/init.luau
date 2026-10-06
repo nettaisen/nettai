@@ -13,7 +13,6 @@ return define.chip {
     element = "aqua", family = "aqua", class = "standard",
     rarity = 3, mb = 44, damage = 120, hit_param = 30, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 125, index = 125, sort = 14 },
     slot_in_limit = 3,
     -- No Beast rush; its lock-on mode (rules/lockon).
     beast = { rush = false, lockon = lockon.cannon },

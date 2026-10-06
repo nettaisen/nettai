@@ -18,7 +18,6 @@ return define.chip {
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 10, damage = 0, hit_param = 20, lockout = 20,
-    library = { number = 0, index = 61, sort = 0 },
     slot_in_limit = 1,
     dimming = navi_boost.arm(charge, PALETTE),
 }

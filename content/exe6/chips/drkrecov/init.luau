@@ -16,7 +16,6 @@ return define.chip {
     hit_param = 49,
     lockout = 0,
     extra_flags = { 16, 32 },
-    library = { number = 0, index = 68, sort = 0 },
     slot_in_limit = 1,
     dark_substitute = recov_chips.recov10,
     hp_bug = 7,

@@ -195,7 +195,6 @@ export type ChipSpec = {
     flags: { ChipFlag }?,      -- "dimming", "has_damage", "navi", "variable_damage", ...
     extra_flags: { ExtraChipFlag }?,
     beast: { lockon: Lockon }?, -- in Beast Out, the chip goes through the Beast rush with this lock-on
-    library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
     traits: { ChipTrait }?,    -- what the ruleset asks of a particular chip (§7.5)
     dark_substitute: Chip?,
@@ -208,6 +207,11 @@ export type ChipSpec = {
     instant: InstantHook?,     -- an instant chip: (user, spec) -> ()
 }
 ```
+
+A chip's place in the game's library is not the chip's: the game pack's `library.toml` lists the chips by
+library category in the order the game's library screens have them (a `[chips]` table, each tab a list of keys:
+`standard`, `mega`, ...), and the NaviCust programs and patch cards in theirs (`navicust`, `patch_cards`); menus list in it, the battle
+reads none of it (`nettai_content::library`). The verification workspace's generators write it from the ROMs.
 
 - `damage` is a number, or a formula the ruleset evaluates: `{ formula = "sp_navi", slot = "sp/heatman",
   by_time = {...} }` (the SP chips' damage by the user's deletion time of that navi; the slot is one of
@@ -1279,7 +1283,6 @@ return define.chip {
     rarity = 0, mb = 6, damage = 50, hit_param = 30,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.throw },
-    library = { number = 58, index = 58, sort = 317 },
     slot_in_limit = 3,
     action = throw.action {
         held = bomb.held,
@@ -3297,8 +3300,7 @@ Numbers that remain for other reasons, and are not names of content:
   the pack's asset index (assets.toml) maps the names. Since rules-in-luau.md's R3a the engine knows an asset by
   its handle over the loaded packs' names alone (`SpriteId`, `SoundId`, ... are handles); a pack's own numbers are
   read at the edges (the frontend, the audio, compat).
-- **The game's values**: tick counts, damage, a flags word compared whole, a chip's library number, a stage's
-  battle number; a hit's bug code, which names a NaviStats byte by its offset as the game's does (bug codes have
+- **The game's values**: tick counts, damage, a flags word compared whole, a stage's battle number; a hit's bug code, which names a NaviStats byte by its offset as the game's does (bug codes have
   no definition); and the engine's own progress numbers (an object's state, action and phase, the navi
   framework's states), which the traces compare as the original numbers them.
 

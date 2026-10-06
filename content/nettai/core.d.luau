@@ -2072,7 +2072,6 @@ export type ChipSpec = {
     flags: { string }?,
     -- Named bits, and the value of a bit the engine doesn't name yet.
     extra_flags: { string | number }?,
-    library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
     -- What the ruleset asks of the chip: "no_chain" (the Beast rush's
     -- chain leaves it out), "aura_bonus" (it hits harder while the user's

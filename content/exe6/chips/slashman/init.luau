@@ -17,7 +17,6 @@ local slashman = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 248, index = 9, sort = 408 },
     slot_in_limit = 1,
     navi = navi.summon { wave_damage = 10 },
 }
@@ -35,7 +34,6 @@ local slashmn_ex = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 249, index = 10, sort = 409 },
     slot_in_limit = 1,
     navi = navi.summon { wave_damage = 20 },
 }
@@ -53,7 +51,6 @@ local slashmn_sp = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 1 },
-    library = { number = 250, index = 11, sort = 410 },
     slot_in_limit = 1,
     navi = navi.summon { wave_damage = 20 },
 }

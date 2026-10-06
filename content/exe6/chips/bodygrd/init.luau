@@ -22,7 +22,6 @@ return define.chip {
     hit_param = 133,
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
-    library = { number = 343, index = 24, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 3, sequence = { antinavi, antiswrd, antidmg } } },
     trap = "body_guard",

@@ -11,7 +11,6 @@ return define.chip {
     element = "fire", family = "fire", class = "standard",
     rarity = 3, mb = 32, damage = 250, hit_param = 18, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 65, index = 65, sort = 42 },
     slot_in_limit = 3,
     action = throw.action { held = black_bomb.held, thrower = black_bomb.thrower() },
 }

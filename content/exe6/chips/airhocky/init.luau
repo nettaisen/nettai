@@ -19,7 +19,6 @@ return define.chip {
     lockout = 50,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.thunder },
-    library = { number = 51, index = 51, sort = 1 },
     slot_in_limit = 3,
     action = flick.action { id = "airhocky/action", puck = puck.variants.airhocky, down = true },
 }

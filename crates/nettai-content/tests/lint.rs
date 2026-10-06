@@ -95,7 +95,7 @@ fn exe6_content_has_no_definition_errors() {
 
 /// The strings tables (content/<game>/locales) name only definitions the content
 /// has, and every chip, navi and form of EXE6 has its name in the own
-/// language's. The loader reads them apart from the modules; the own
+/// language's; so do the library orders (content/<game>/library.toml). The loader reads them apart from the modules; the own
 /// language's strings shape the records (a description's lines), and the
 /// hash covers that shape alone: text that keeps it changes nothing.
 #[test]
@@ -117,6 +117,30 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     let mut five = read(&["exe5"]);
     five.define().unwrap_or_else(|e| panic!("content/exe5: {e}"));
     nettai_content::locale::check_games(dir, &five, &mut r);
+    // The library orders (content/<game>/library.toml) name the games' own
+    // definitions, each once, in sections their classes fit.
+    nettai_content::library::check_games(dir, &c, &mut r);
+    nettai_content::library::check_games(dir, &five, &mut r);
+    for game in ["exe5", "exe6"] {
+        assert!(nettai_content::library::load(&dir.join(game)).unwrap().is_some(), "content/{game} has no library.toml");
+    }
+    // What the check refuses: a chip of another class, a key twice, a key
+    // nothing has.
+    use nettai_content::library::{Library, Section};
+    let wrong = Library {
+        chips: vec![(Section::Mega, vec!["cannon".into(), "roll".into(), "roll".into(), "nosuch".into()])],
+        navicust: vec!["nosuch".into()],
+        patch_cards: Vec::new(),
+    };
+    assert_eq!(
+        nettai_content::library::check(&wrong, &c.defs),
+        [
+            "chips.mega: cannon is a Standard chip",
+            "chips.mega: roll is in chips.mega already",
+            "chips.mega: no chip has the key nosuch",
+            "navicust: nothing has the key nosuch",
+        ]
+    );
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.

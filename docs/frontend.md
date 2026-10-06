@@ -328,11 +328,13 @@ over, and the frames go on being numbered from the set's first tick.
   picks them, from the game's rule section `link_pick` (`sub_81209DC`: its
   `stages`, the stage for each index of the original's pick, EXE6's 96 link
   battle stages each once; its `backgrounds`, EXE6's `byte_8120A20`). The
-  set's later rounds get theirs the same way. gen-content checks both lists
-  against the ROM, and verify's `link_pick` test checks them against every
-  recording's later rounds. (EXE5's are its own: 96 indices over 82 stages,
-  the first twelve records twice and twelve stages never, as its 0x08129F2C
-  picks; and 27 backgrounds.)
+  set's later rounds get theirs the same way; the first round's stage is one
+  of the first `first_round_stages` (the count the comm menu passes for a
+  triple battle's practice: EXE6's all 96, EXE5's the first 68). gen-content
+  checks the lists and the count against the ROM, and verify's `link_pick`
+  test checks them against every recording's rounds. (EXE5's are its own: 96
+  indices over 82 stages, the first twelve records twice and twelve stages
+  never, as its 0x08129F2C picks; and 27 backgrounds.)
 - **A folder for each player**: 30 chips that keep EXE6's folder rules
   (`nettai_match::folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
   of a chip by its MB, five up to 19 MB down to one from 50; Mega and Giga

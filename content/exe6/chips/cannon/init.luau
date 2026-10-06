@@ -20,7 +20,6 @@ local cannon = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 1, index = 1, sort = 52 },
     slot_in_limit = 3,
     action = shooter.action { id = "cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
 }
@@ -38,7 +37,6 @@ local hicannon = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 2, index = 2, sort = 240 },
     slot_in_limit = 3,
     action = shooter.action { id = "hicannon/action", arm = shooter.arms.hicannon, shot = variants.cannon },
 }
@@ -56,7 +54,6 @@ local m_cannon = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 3, index = 3, sort = 311 },
     slot_in_limit = 3,
     action = shooter.action { id = "m-cannon/action", arm = shooter.arms.m_cannon, shot = variants.cannon },
 }

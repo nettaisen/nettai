@@ -16,7 +16,6 @@ local elmntman = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 269, index = 34, sort = 146 },
     slot_in_limit = 1,
     navi = navi.summon { cycle_ticks = 16 },
 }
@@ -33,7 +32,6 @@ local elmntmn_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 270, index = 35, sort = 147 },
     slot_in_limit = 1,
     navi = navi.summon { cycle_ticks = 14 },
 }
@@ -50,7 +48,6 @@ local elmntmn_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 271, index = 36, sort = 148 },
     slot_in_limit = 1,
     navi = navi.summon { cycle_ticks = 12 },
 }

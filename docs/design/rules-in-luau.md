@@ -520,8 +520,8 @@ netbattles run with each side on another ruleset.
 
 ### 6.1 Today
 
-`rollback_cost` (rollback.md §6): the worst case of a 10-frame rollback on every rendered frame (a restore, eleven
-advances each followed by a save, a digest). Release build, Apple M1 Max shared with other agents (load average
+`rollback_cost` (rollback.md §6; the example was removed on 2026-10-05): the worst case of a 10-frame rollback on
+every rendered frame (a restore, eleven advances each followed by a save, a digest). Release build, Apple M1 Max shared with other agents (load average
 about 24); best of five runs; engine main 20fcf9e4:
 
 | Round or scenario | µs per rendered frame | Advance (µs) |
@@ -581,10 +581,9 @@ battle change nothing: each side's systems run for their own side.
 
 ### 6.5 Measuring a slice
 
-- **rollback_cost** gains a frame range (`--frames A..B`) and an optional `luau-profile` feature that counts and
-  times calls into Luau per advance, by kind, action and hook.
-- **The basket**: the rows of §6.1 plus each slice's own, best of N, by the verification workspace's
-  tools/rollback-cost.sh, the branch and main alternating so the machine's load hits both.
+- The tools this section used (the `rollback_cost` example and the verification workspace's rollback-cost.sh) were
+  removed on 2026-10-05. nettai-battle's `luau-profile` feature, which counts and times calls into Luau per advance
+  by kind, action and hook (`behavior::profile`), remains for whatever measures next.
 
 ## 7. Composable with EXE6 content
 
@@ -856,9 +855,6 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
 - **Tests.** The test content (testdata/content/rules/systems.luau) has two made-up systems and two rulesets;
   `rules::tests` check each side runs its own ruleset's systems for itself, a player plays by the ruleset their
   setup names, a system's setup reaches it alone, and the state is in the digest and the snapshot.
-- **Cost tools.** rollback_cost takes `--frames A..B` (or `all`), and with nettai-netplay's feature `luau-profile`
-  reports the calls into Luau per advance (`behavior::profile`). The verification workspace's
-  tools/rollback-cost.sh runs the basket of §6.1, best of N, alternating a checkout with a baseline.
 - **Gates** (on main 3b1ffc6f, a pack from all four ROMs): the build without warnings, 384 tests, the content check
   (653 modules), `gen-content check` (0 errors), both golden traces in full with rollback at every latency and their
   sound calls (and the 189 replay rounds), the full lab 6299/6299 scenarios, 5,641,457 frames, with the sound gate (0
@@ -2712,20 +2708,35 @@ engine picks none: a round's settings state its stage and background):
   first twelve records' stages are there twice and the twelve from 76 never; records 50 and 52, and 51 and 53, are
   the same, so two more stages are there twice. The list is the original's as it stands. EXE5 got the stage of its
   record 95 (netbattle-94), which the pick reaches and the content lacked.
+- **`first_round_stages`** (2026-10-05): how many of `stages`, from the first, a set's first round picks among. The
+  comm menu passes the pick a mode for the first round, and the count goes by it; the rounds after are mode 1, the
+  count 0x60, in both games. A random match is a triple battle's practice (`nettai_match::MATCH_EFFECTS`, 0x600,
+  both games' effects for it). EXE6's mode goes by the match type (`sub_812A76C`: single 0, triple 1, random 2;
+  `dword_8120A14`'s 0x44, 0x60, 0x44): a triple battle's 0x60, all 96. EXE5's goes by practice or not, whatever the
+  single or triple battle (0x08134F20 passes the practice row's 0, the battle row's 1): a practice's 0x44, the first
+  68, netbattle-1 to netbattle-66 (51 and 52 twice). The fold, from index 76, is past them. The first round's indices
+  are a prefix of the list in both games, so a count says it. Before, a random EXE5 match's first round could land on
+  netbattle-67 and up, which the original's never does.
 - **`backgrounds`**: EXE6's `byte_8120A20` (21, three of them twice); EXE5's 27 at 0x08129F6C, each once.
 - **A section of its own, which every ruleset states** (empty `stages`: no random pick, as the engine's test content
   states it). It was `flow.link_backgrounds` for a day. A module
   that states stages requires the game's stages, and `flow.luau` is taken whole by other contents (the engine's
   test content plays EXE6's flow), which then loaded all of EXE6's stages. The stages are references, resolved once
   the definitions have their handles (`sections::link`, as the fresh stats' weapon is).
-- **nettai-match** (`pick::arena`) picks from both lists. A match may still name any link battle stage
-  (`link_battle_stages`) and any background.
+- **nettai-match** (`pick::arena`) picks from both lists, the first round's stage among the first
+  `first_round_stages`. A match may still name any link battle stage (`link_battle_stages`) and any background.
 - **Checked against the original three ways:** gen-content reads EXE6's count and table off the ROM (and pins the
   routine's bytes between the modulo and the record); `tools/exe5/gen_content.py check` reads EXE5's count, fold and
   table off its ROM's code; and verify's `link_pick` test finds, in every EXE6 recording, the later rounds'
   backgrounds as `backgrounds[PosRNG2() % 21]` from the setup's RNG2 and, in the link master's recordings, the two
   stage indices as `PosRNG1() % 96` twice in a row before the setup's RNG1. EXE5's recordings hold neither the later
-  rounds' picks nor the RNG before the first round's, so its pick rests on the ROM's code.
+  rounds' picks nor the RNG before the first round's, so its pick rests on the ROM's code. Both generators read
+  `first_round_stages` off the menu's code, and the `link_pick` tests find every recording's first round among the
+  first `first_round_stages` records (2026-10-05: EXE6's 6,558, 439 of them past 0x44's 68; EXE5's 2,462, the highest
+  record 66).
+- **What moved for a seed with the first round's count:** EXE6's matches are the same (its count is all of them).
+  An EXE5 seed's first round's stage moves (seeds 0 to 15: all but seed 6); its later rounds, its backgrounds and its
+  sides are the same (a pick takes one number from the stream whatever its count).
 - **What moved for a seed:** EXE5's random matches are what the original picks now (they took an even pick among its
   stages and the stage's own background). EXE6's keep their 96 stages each as likely, but a seed gives other stages
   than before: the list is in the original's record order, where the pool was in the definitions' key order.

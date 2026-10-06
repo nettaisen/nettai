@@ -13,7 +13,6 @@ return define.chip {
     element = "null", family = "sword", class = "giga",
     rarity = 4, mb = 80, damage = 0, hit_param = 168, lockout = 0,
     flags = { "dimming" },
-    library = { number = 305, index = 5, sort = 47 },
     slot_in_limit = 1,
     dimming = navi_boost.bug(charge),
 }
