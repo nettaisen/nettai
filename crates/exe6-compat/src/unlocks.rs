@@ -6,8 +6,8 @@
 //! (`crosses`); this boundary writes a save's as the list of those it owns
 //! ([`Unlocks::owned_crosses`], [`Unlocks::write`]).
 //!
-//! Event flag 0x163 (a navi code received) isn't here: it is the setup's
-//! `navi_level` (`sub_800B144` sends a level only with the flag set), which
+//! Event flag 0x163 (a navi code received) isn't here: it is the save
+//! system's `level` (`sub_800B144` sends a level only with the flag set), which
 //! EXE6's rules read as the seal on Beast Out and the Cross window.
 
 use crate::GameVersion;
