@@ -8,6 +8,7 @@
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
 local auto_battle = require("@self/auto_battle")
+local dark_survival = require("@self/emotion/dark_survival")
 local emotion = require("@self/emotion")
 local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
@@ -252,6 +253,8 @@ local rules: Rules = {
         navi_intake = light_dark.navi_intake,
         chip_cost = light_dark.chip_cost,
         chip_check = light_dark.chip_check,
+        -- A loss of HP to 0: a dark MegaMan's last stand (./emotion/dark_survival).
+        hp_emptied = dark_survival.hp_emptied,
         -- Full Synchro on a counter, and the NaviCust's swing bug (./emotion).
         round_start = emotion.round_start,
         countered = emotion.countered,

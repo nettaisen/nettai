@@ -49,7 +49,7 @@ local roles: RolesSpec = {
         -- for (rules/status's `no_charge_drive`; chips/darkinvs/drive_end). EXE6's is its stun strike.
         stun_strike = drive_end.action,
         -- The request 0x40000000's action (EXE5's 0x30): a dark MegaMan's last stand, which a loss of HP that brings
-        -- him to 0 asks for (rules/status's `hp_loss`; ./emotion/dark-survival). EXE6's is a volley no routine asks
+        -- him to 0 asks for (the rules' `hp_emptied`; ./emotion/dark_survival). EXE6's is a volley no routine asks
         -- for.
         volley = dark_survival.action,
     },

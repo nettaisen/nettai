@@ -414,10 +414,10 @@ local status = {
         -- auto battle AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
         no_charge_drive = true,
         -- EXE5's loss of HP (object_subtractHP, 0x0800C6E0; applyDamageToPlayer, 0x080185A2): a player's loss drains
-        -- its side's gauge too, a dark MegaMan (emotion 5) brought to 0 holds at 1 HP once a battle and asks for his
-        -- last stand (0x0802C16C: the roles' `volley`, rules/emotion/dark_survival), and a hit shows (white, its
-        -- sounds) by the register that check leaves.
-        hp_loss = "gauge_and_last_stand",
+        -- its side's gauge too, a loss to 0 asks the rules' `hp_emptied` (0x0802C16C: a dark MegaMan, emotion 5,
+        -- holds at 1 HP once a battle and asks for his last stand, the roles' `volley`; ./emotion/dark_survival), and
+        -- a hit shows (white, its sounds) by their answer, the register that check leaves.
+        hp_loss = "gauge",
         -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi
         -- in a soul reads as normal (the soul's own face), then anger is read before a mood of 0 (a dark MegaMan's,
         -- worn out), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.

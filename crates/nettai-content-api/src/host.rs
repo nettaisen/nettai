@@ -299,6 +299,15 @@ pub enum RulesHook {
     /// 0x400 on a light/dark value of 1000 or more). The first part that
     /// answers true decides.
     NaviBug,
+    /// `hp_emptied(side, navi)`: a loss of HP brought the side's navi (an
+    /// object with actor data) to 0, by a game whose HP loss asks
+    /// (`status.hp_loss = "gauge"`: EXE5's `object_subtractHP`,
+    /// 0x0800C6E0, which calls 0x0802C16C): the rules may hold it (EXE5's
+    /// last stand: its HP back to 1, and the volley asked for), and answer
+    /// true: the hit shows (white, its sounds: EXE5's
+    /// `applyDamageToPlayer`, 0x080185A2, by the register the check
+    /// leaves). None answering true: it doesn't.
+    HpEmptied,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
     /// first part that answers decides; none answering, the framework's
@@ -402,6 +411,7 @@ impl RulesHook {
             RulesHook::StartingMood => "starting_mood",
             RulesHook::NaviPalette => "navi_palette",
             RulesHook::NaviBug => "navi_bug",
+            RulesHook::HpEmptied => "hp_emptied",
             RulesHook::CustomHandSize => "custom.hand_size",
             RulesHook::CustomDeal => "custom.deal",
             RulesHook::CustomOpen => "custom.open",
@@ -420,7 +430,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 38] = [
+    pub const ALL: [RulesHook; 39] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -444,6 +454,7 @@ impl RulesHook {
         RulesHook::StartingMood,
         RulesHook::NaviPalette,
         RulesHook::NaviBug,
+        RulesHook::HpEmptied,
         RulesHook::CustomHandSize,
         RulesHook::ButtonShown,
         RulesHook::ButtonState,
