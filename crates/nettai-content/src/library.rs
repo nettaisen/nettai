@@ -6,30 +6,26 @@
 //! generators write it from the ROMs and their checks compare it with them.
 //!
 //! ```toml
-//! [chips.standard]
-//! order = [
+//! navicust = [
+//!     "superarmor",
+//! ]
+//! patch_cards = [
+//!     "canodumb",
+//! ]
+//!
+//! [chips]
+//! standard = [
 //!     "cannon",
 //!     "hicannon",
 //! ]
-//!
-//! [chips.mega]
-//! order = [
+//! mega = [
 //!     "roll",
-//! ]
-//!
-//! [navicust]
-//! order = [
-//!     "superarmor",
-//! ]
-//!
-//! [patch_cards]
-//! order = [
-//!     "canodumb",
 //! ]
 //! ```
 //!
 //! The chip sections are the game's library tabs, in the order its library
-//! screen has them: `standard`, `mega`, `giga`, `secret`, `program_advance`
+//! screen has them (the file's: the loader keeps the `chips` table's key
+//! order): `standard`, `mega`, `giga`, `secret`, `program_advance`
 //! and, in EXE5, `dark`. Where the versions of a game list different chips
 //! at the same places (EXE6's Gregar and Falzar, EXE5's Team ProtoMan and
 //! Team Colonel), the first version's come first. A standard, mega, giga or
@@ -155,38 +151,30 @@ pub fn path(pack: &Path) -> PathBuf {
     pack.join(FILE)
 }
 
-/// Parse a library order (`file` names it in messages): only the tables
-/// above, each an `order` of keys.
+/// Parse a library order (`file` names it in messages): the lists above,
+/// each of keys; the `chips` table's in the file's order (`toml_edit`
+/// keeps a table's key order).
 pub fn parse(text: &str, file: &str) -> Result<Library, String> {
     let doc: toml_edit::DocumentMut = text.parse().map_err(|e| format!("{file}: {e}"))?;
-    let order = |item: &toml_edit::Item, at: &str| -> Result<Vec<String>, String> {
-        let table = item.as_table().ok_or_else(|| format!("{file}: [{at}] is not a table"))?;
-        if let Some((k, _)) = table.iter().find(|(k, _)| *k != "order") {
-            return Err(format!("{file}: [{at}] has `{k}`, not `order`"));
-        }
-        let list = table.get("order").and_then(|o| o.as_array()).ok_or_else(|| format!("{file}: [{at}] needs `order`, a list of keys"))?;
-        list.iter()
-            .map(|v| v.as_str().map(String::from).ok_or_else(|| format!("{file}: [{at}] order has {v}, not a key")))
-            .collect()
+    let keys = |item: &toml_edit::Item, at: &str| -> Result<Vec<String>, String> {
+        let list = item.as_array().ok_or_else(|| format!("{file}: `{at}` is not a list of keys"))?;
+        list.iter().map(|v| v.as_str().map(String::from).ok_or_else(|| format!("{file}: `{at}` has {v}, not a key"))).collect()
     };
     let mut out = Library::default();
     for (k, item) in doc.iter() {
         match k {
             "chips" => {
-                let table = item.as_table().ok_or_else(|| format!("{file}: `chips` is not a table of sections"))?;
-                for (name, section) in table.iter() {
+                let table = item.as_table().ok_or_else(|| format!("{file}: `chips` is not a table of lists"))?;
+                for (name, list) in table.iter() {
                     let s = Section::from_name(name).ok_or_else(|| {
                         let names: Vec<&str> = Section::NAMES.iter().map(|(_, n)| *n).collect();
-                        format!("{file}: [chips.{name}] is none of the sections ({})", names.join(", "))
+                        format!("{file}: `chips.{name}` is none of the sections ({})", names.join(", "))
                     })?;
-                    if out.chips.iter().any(|(t, _)| *t == s) {
-                        return Err(format!("{file}: [chips.{name}] twice"));
-                    }
-                    out.chips.push((s, order(section, &format!("chips.{name}"))?));
+                    out.chips.push((s, keys(list, &format!("chips.{name}"))?));
                 }
             }
-            "navicust" => out.navicust = order(item, "navicust")?,
-            "patch_cards" => out.patch_cards = order(item, "patch_cards")?,
+            "navicust" => out.navicust = keys(item, "navicust")?,
+            "patch_cards" => out.patch_cards = keys(item, "patch_cards")?,
             other => return Err(format!("{file}: `{other}` is none of chips, navicust and patch_cards")),
         }
     }
@@ -264,8 +252,8 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
 mod tests {
     use super::*;
 
-    const TEXT: &str = "[chips.standard]\norder = [\"cannon\", \"hicannon\"]\n\n[chips.mega]\norder = [\"roll\"]\n\n\
-                        [navicust]\norder = [\"superarmor\"]\n\n[patch_cards]\norder = [\"canodumb\"]\n";
+    const TEXT: &str = "navicust = [\"superarmor\"]\npatch_cards = [\"canodumb\"]\n\n\
+                        [chips]\nstandard = [\"cannon\", \"hicannon\"]\nmega = [\"roll\"]\n";
 
     #[test]
     fn an_order_parses_in_its_sections_order_and_ranks() {
@@ -278,7 +266,7 @@ mod tests {
         assert_eq!(lib.navicust, ["superarmor"]);
         assert_eq!(lib.patch_cards, ["canodumb"]);
         // Mega's section is first where the file says so.
-        let swapped = parse("[chips.mega]\norder = [\"roll\"]\n[chips.standard]\norder = [\"cannon\"]\n", "f").unwrap();
+        let swapped = parse("[chips]\nmega = [\"roll\"]\nstandard = [\"cannon\"]\n", "f").unwrap();
         assert_eq!(swapped.chip_rank("cannon"), Some((1, 0)));
     }
 
@@ -292,9 +280,9 @@ mod tests {
 
     #[test]
     fn an_order_refuses_what_it_doesnt_know() {
-        assert!(parse("[chips.extra]\norder = []\n", "f").unwrap_err().contains("[chips.extra] is none of the sections"));
-        assert!(parse("[chips.mega]\nlist = []\n", "f").unwrap_err().contains("has `list`, not `order`"));
-        assert!(parse("[chips.mega]\norder = [1]\n", "f").unwrap_err().contains("not a key"));
-        assert!(parse("[folders]\norder = []\n", "f").unwrap_err().contains("`folders` is none of"));
+        assert!(parse("[chips]\nextra = []\n", "f").unwrap_err().contains("`chips.extra` is none of the sections"));
+        assert!(parse("[chips]\nmega = \"roll\"\n", "f").unwrap_err().contains("`chips.mega` is not a list of keys"));
+        assert!(parse("[chips]\nmega = [1]\n", "f").unwrap_err().contains("not a key"));
+        assert!(parse("folders = []\n", "f").unwrap_err().contains("`folders` is none of"));
     }
 }
