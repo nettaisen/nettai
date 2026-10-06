@@ -40,18 +40,18 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// - the stream's elements and their wire form (this module): a tick is its
 ///   buttons and its flags (`battle::flags`: the link closing), and the
 ///   round's and the match's end are markers;
-/// - the handshake's Hello (the program's, nettai-demo's `net`): the
-///   protocol's and the engine's versions, the game the side plays, its
-///   content's hash, the role, a nonce, and the side's offer;
-/// - the offer (the frontend's): a side, and the host's stage or arena, in
-///   nettai-match's binary (`nettai_match::binary`: a side's facts in the
-///   order of its game's rules' setup, definitions by their handles in the
-///   content the Hello names);
-/// - how a round is set up from the two offers and the nonces, which both
-///   peers must do alike.
+/// - the lobby and the handshake (nettai-frontend's `lobby`): the
+///   settings' messages (the game and the rounds by name, with the
+///   compatibility fields), the Hello's commitment (SHA-256 of the agreed
+///   settings' hash and the Reveal's bytes), the Reveal (a nonce and the
+///   side, in nettai-match's binary: a side's facts in the order of its
+///   game's rules' setup, definitions by their handles in the content both
+///   name);
+/// - how the match is set up from the agreed settings, both sides and both
+///   nonces (the seed), which both peers must do alike.
 ///
 /// A change to any of them is a new version.
-pub const VERSION: u16 = 2;
+pub const VERSION: u16 = 3;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer

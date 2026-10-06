@@ -20,6 +20,7 @@
 
 pub mod driver;
 pub mod game;
+pub mod lobby;
 pub mod netplay;
 pub mod player;
 pub mod replay;
