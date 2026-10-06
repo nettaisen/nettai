@@ -89,9 +89,8 @@ local function navi_tick(side: number, navi: Object)
     end
 end
 
-emotion.part = {
-    state = { swing_ticks = "u16", swung = "u8" },
-    hooks = { round_start = round_start, countered = countered, navi_tick = navi_tick },
-}
+emotion.round_start = round_start
+emotion.countered = countered
+emotion.navi_tick = navi_tick
 
 return emotion

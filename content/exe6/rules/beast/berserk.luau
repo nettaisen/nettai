@@ -1,9 +1,9 @@
 --!strict
--- Beast Over's berserk (`sub_802D322`), the beast part's `controller`: a
+-- Beast Over's berserk (`sub_802D322`), rules/beast's `controller`: a
 -- navi in a `controlled` form (forms 0x17 and 0x18) doesn't read the
 -- player's buttons; its idle action cycles on its own through moving next
 -- to an opponent, using the next chip, and firing the buster. Its state is
--- the part's (the original's last 0x10 bytes of the navi's AIData,
+-- the rules' (the original's last 0x10 bytes of the navi's AIData,
 -- +0xF0), which the Cross special (cross-special.luau) shares and the
 -- form's `berserk` effect starts over (`sub_802D310`).
 
@@ -13,8 +13,8 @@ local berserk_rules = require("../berserk")
 
 local berserk = {}
 
--- The beast part's state fields the controllers keep (rules/beast/
--- init.luau declares them): the berserk's and the Cross special's.
+-- The rules' state fields the controllers keep (rules/init.luau declares
+-- them): the berserk's and the Cross special's.
 export type State = {
     -- +0: the step (read as a jump-table offset).
     controller_step: number,

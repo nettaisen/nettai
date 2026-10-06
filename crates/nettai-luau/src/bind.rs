@@ -1455,7 +1455,7 @@ fn rules_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     // Side `side`'s player's setup of the rules, read-only, likewise a
     // game's rules' alone (its API module: EXE6's and EXE5's navi level,
-    // their save part's `level`).
+    // the rules' `level`).
     lib_fn!(lua, t, "setup_of", |lua, side: LuaValue| {
         rules_only(lua, "rules.setup_of", "setup")?;
         Ok(State(StateOf::Setup(RulesCtx { side: u8_arg(side, "side")? & 1 })))

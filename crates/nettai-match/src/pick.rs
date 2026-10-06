@@ -61,7 +61,7 @@ fn link_backgrounds(content: &Content) -> Vec<&str> {
 
 /// Whether live play picks the game's match with a form list each side:
 /// its rules take one (the rules' setup declares the engine's
-/// `PlayerFact::CrossList`: EXE6's cross part). A game whose rules take
+/// `PlayerFact::CrossList`: EXE6's rules/cross). A game whose rules take
 /// none gets a plain match ([`plain`]).
 fn picks_live(content: &Content) -> bool {
     content.defs.fact_field(PlayerFact::CrossList).is_some()

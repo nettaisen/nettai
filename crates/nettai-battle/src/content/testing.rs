@@ -166,25 +166,27 @@ pub fn content() -> Arc<Content> {
     shared().0.clone()
 }
 
-/// The content set with its rules made of `parts` instead (the Luau
-/// list's text, by rules/parts.luau's names: `"marker, counter"`),
-/// defined once per list: a game has one definition of its rules, so a test
-/// that plays by other parts plays another content. Its definitions are the
-/// content set's but the rules, so every handle is the same; a round's setup
-/// names it by its hash (`RoundSetup::content`).
-pub fn with_parts(parts: &str) -> Arc<Content> {
-    static MADE: std::sync::Mutex<Vec<(String, Arc<Content>)>> = std::sync::Mutex::new(Vec::new());
+/// The content set with its rules (testdata/content/rules/init.luau) patched:
+/// each `(from, to)` replaces the first `from` in the definition's text.
+/// Defined once per patch list: a game has one definition of its rules, so a
+/// test that plays by other rules plays another content. Its definitions are
+/// the content set's but the rules, so every handle is the same; a round's
+/// setup names it by its hash (`RoundSetup::content`).
+pub fn with_rules(patches: &[(&str, &str)]) -> Arc<Content> {
+    static MADE: std::sync::Mutex<Vec<(Vec<(String, String)>, Arc<Content>)>> = std::sync::Mutex::new(Vec::new());
+    let key: Vec<(String, String)> = patches.iter().map(|&(a, b)| (a.to_string(), b.to_string())).collect();
     let mut made = MADE.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some((_, c)) = made.iter().find(|(s, _)| s == parts) {
+    if let Some((_, c)) = made.iter().find(|(k, _)| *k == key) {
         return c.clone();
     }
     let mut c = make();
-    let module = c.scripts.module_mut(ROOT, "rules/parts").expect("the test content's rules");
-    let stock = "local PARTS: { RulesPart } = { save, beast, counter, forms.part, emotion.part, dark_chips }";
-    assert!(module.contains(stock), "rules/parts.luau lists its parts as `{stock}`");
-    *module = module.replace(stock, &format!("local PARTS: {{ RulesPart }} = {{ {parts} }}"));
+    let module = c.scripts.module_mut(ROOT, "rules/init").expect("the test content's rules");
+    for (from, to) in patches {
+        assert!(module.contains(from), "rules/init.luau has no `{from}`");
+        *module = module.replacen(from, to, 1);
+    }
     let c = Arc::new(c.defined());
-    made.push((parts.to_string(), c.clone()));
+    made.push((key, c.clone()));
     c
 }
 
@@ -199,7 +201,7 @@ fn shared() -> &'static (Arc<Content>, crate::content::ContentHash) {
 }
 
 /// The version the test rounds' players are of: this content plays by
-/// EXE6's beast part, whose setup takes one, and a round states it (none
+/// EXE6's rules/beast, whose setup takes one, and a round states it (none
 /// is assumed: `SideRules::for_player`).
 pub const VERSION: &str = "falzar";
 
@@ -231,8 +233,8 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
 }
 
 /// Play `setup` on `content`, another build of the test content (its own
-/// ruleset and handles): the round names it, and its players' setups are
-/// remade for its parts (a setup's blocks are its content's): of
+/// rules and handles): the round names it, and its players' setups are
+/// remade for its rules (a setup's block is its content's): of
 /// [`VERSION`], and nothing else.
 pub fn on(setup: &mut crate::setup::RoundSetup, content: &Content) {
     setup.content = content.hash();
@@ -392,7 +394,7 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
 /// hands and navi stats hold them (`TICKER_1`, `TICKER_2`, `TICK_SHOT`).
 pub fn with_test_pack() -> Content {
     let mut c = make();
-    // The test pack brings its own roles (the ruleset's `roles`).
+    // The test pack brings its own roles (the rules' `roles`).
     c.scripts.modules.insert(Scripts::name(ROOT, "rules/roles"), "return require(\"../test/rules/roles\")\n".to_string());
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(Scripts::name(ROOT, &format!("test/{path}")), source);
@@ -423,7 +425,7 @@ fn make() -> Content {
     Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
-        // (Its rules are its ruleset's: testdata/content/rules.)
+        // (Its rules are its rules': testdata/content/rules.)
         base_rules: None,
         rules: None,
         animations: animations(&assets),
@@ -524,7 +526,7 @@ fn pack_index() -> nettai_content_api::PackIndex {
 }
 
 /// The ids of the test content's sounds, music, sprites and banners for the
-/// ruleset's roles (testdata/content/rules/ruleset.luau's assets, by role
+/// rules' roles (testdata/content/rules/role_definitions.luau's assets, by role
 /// name): what the tests look for in the cues and the HUD.
 const ROLE_SOUNDS: &[(&str, u16)] = &[
     ("panel-crack", 0x97),
@@ -1108,7 +1110,7 @@ pub fn scripts() -> Scripts {
                 // the test chips compose (the plus chips', FireHit's fist,
                 // FlmHook's hook).
                 ("lib/instant/plus", "lib/instant/plus"),
-                // The chips the ruleset names: the custom screen's Beast Out
+                // The chips the rules name: the custom screen's Beast Out
                 // button, and what a selection it can't allow becomes.
                 ("chips/beastout/init", "chips/beastout/init"),
                 ("chips/invalid/init", "chips/invalid/init"),
@@ -1168,7 +1170,7 @@ pub fn scripts() -> Scripts {
                 ("lib/effects", "lib/effects"),
                 ("lib/sparks", "lib/sparks"),
                 ("rules/collision", "rules/collision"),
-                // EXE6's Beast Out turns, a part of the test rules.
+                // EXE6's Beast Out turns, which the test rules run.
                 ("rules/beast/init", "rules/beast/init"),
                 ("rules/emotion/init", "rules/emotion/init"),
                 ("rules/beast/rush", "rules/beast/rush"),
@@ -1255,7 +1257,7 @@ pub fn scripts() -> Scripts {
                 ("objects/boulder/init", "objects/boulder/init"),
                 ("objects/encased_bubble/bubble", "objects/encased_bubble/bubble"),
                 // The NaviCust supports (content model v2): the controller the
-                // ruleset spawns by role, Rush, Beat, Tango and her heal, with
+                // rules spawn by role, Rush, Beat, Tango and her heal, with
                 // the barrier it raises.
                 ("lib/barriers/visual", "lib/barriers/visual"),
                 ("lib/barriers/init", "lib/barriers/init"),
@@ -1451,11 +1453,11 @@ pub fn scripts() -> Scripts {
         .clone()
 }
 
-/// The test content's rules: what its ruleset states
+/// The test content's rules: what its rules state
 /// (testdata/content/rules: a made-up game's, every rule its own choice;
 /// where games differ it plays as EXE6 does, with EXE5's three panel types
 /// beside EXE6's). For a test that wants a rule's value as the test content
-/// has it, or that makes a content of a few modules and a small ruleset of
+/// has it, or that makes a content of a few modules and small rules of
 /// its own and gives it these as its Rust tables (`Content::base_rules`).
 pub fn rules() -> Rules {
     content().rules().clone()
@@ -1608,7 +1610,7 @@ fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame
 }
 
 /// Side `side`'s bug frags in battle `b`: the rules' state (the test
-/// content's rules have EXE6's dark chips part).
+/// content's rules have EXE6's rules/dark_chips).
 pub fn bug_frags(b: &crate::Battle, side: u8) -> u32 {
     let (schema, state) = b.rules_state(side).expect("the test content's rules");
     match state.get(schema, schema.index_of("bug_frags").expect("its bug frags")) {

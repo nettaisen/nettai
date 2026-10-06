@@ -1,7 +1,7 @@
 --!strict
 -- Barriers (docs/engine/dimming-chips.md §3): a navi's barrier is a row of
 -- the original's `byte_8020B2C` and `byte_8020B8C` (`sub_801A7CC` sets it
--- in the collision data; the ruleset's `sub_801A802` wears it down) with
+-- in the collision data; the rules' `sub_801A802` wears it down) with
 -- its visual's look (`byte_80E0A14`, visual.luau). The barriers the game
 -- raises in a netbattle, by type: 1 the Barrier chip's and FirstBarrier's,
 -- 5 Barr100's and Tango's heal's, 7 Barr200's, 8 BblWrap's bubble, 9

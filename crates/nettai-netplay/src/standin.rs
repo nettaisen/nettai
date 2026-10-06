@@ -129,7 +129,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
 }
 
 /// The version the stand-in's players are of (the test content plays by
-/// EXE6's beast part, and EXE6's content by its own: each takes one).
+/// EXE6's rules/beast, and EXE6's content by its own: each takes one).
 pub const VERSION: &str = "falzar";
 
 /// A stand-in player's setup but for what the content's rules take.

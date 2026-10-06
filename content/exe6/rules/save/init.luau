@@ -6,7 +6,7 @@
 -- he was received from a code. The engine knows no level: EXE6's rules read it (exe6.navi_level: the custom screen's
 -- seal, the reload, what a level gives a link navi in battle, ../by_level). The rest of a
 -- round's stats are derived as the round is set up, from the navi's fresh stats (`fresh_stats`, its definition):
--- this part first, then the NaviCust's compile (../navicust) and the patch cards (../patch_cards).
+-- this module first, then the NaviCust's compile (../navicust) and the patch cards (../patch_cards).
 --
 -- `round_setup` builds a side's stats only when its setup gives the rules something to build them from:
 --
@@ -20,7 +20,6 @@
 -- Otherwise the stats are as the setup gives them, whole (a recording's MegaMan, whose block the console's own
 -- reload made; a test's).
 
-local fresh_stats = require("./fresh_stats")
 local levels = require("./levels")
 
 type Setup = { hp: number, reg_up: number, sun: boolean, level: number? }
@@ -46,9 +45,5 @@ local function round_setup(side: number)
 end
 
 return {
-    setup = { hp = "u16", reg_up = "u8", sun = "bool", level = "u8?" },
-    -- A save that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the rules' fresh
-    -- stats'); no sun; no navi code received (no level).
-    setup_defaults = { hp = 100, reg_up = fresh_stats.reg_up, sun = false },
-    hooks = { round_setup = round_setup },
+    round_setup = round_setup,
 }

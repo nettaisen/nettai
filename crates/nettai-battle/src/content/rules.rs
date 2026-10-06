@@ -1,4 +1,4 @@
-//! The ruleset's tables: data no single entity owns.
+//! The rules' tables: data no single entity owns.
 
 use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffset, SecondaryElements};
 use crate::field::PanelType;
@@ -58,8 +58,8 @@ pub struct FlowRules {
 /// its settings (EXE6's `sub_81209DC`, EXE5's 0x08129F2C: two numbers a
 /// round, the first RNG's for the stage and the second's for the
 /// background). For whoever makes a random match: the engine picks none (a
-/// round's settings state its stage and background). Every ruleset states
-/// it; one whose `stages` is empty has no random pick.
+/// round's settings state its stage and background). Every game's rules
+/// state it; rules whose `stages` is empty have no random pick.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct LinkPick {
     /// The stages, by the pick's index: entry `i` is the stage of the
@@ -596,7 +596,7 @@ pub struct AuraRules {
 }
 
 /// Global rules: element weakness, collision types, panels, banners,
-/// statuses and the Beast Out lock-on. No default: a game's ruleset states
+/// statuses and the Beast Out lock-on. No default: a game's rules state
 /// them (`content::sections`), and the engine has no game's of its own.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Rules {
@@ -724,7 +724,7 @@ pub struct Rules {
     pub pools: PoolSizes,
     /// The NaviCust's board (rule section `navicust`; none: the game has no
     /// NaviCust): what a setup's programs may cover. What they do is the
-    /// game's rules' (EXE6's navicust part).
+    /// game's rules' (EXE6's rules/navicust).
     pub navicust: NaviCustRules,
 }
 

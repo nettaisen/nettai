@@ -1,7 +1,7 @@
 --!strict
 -- The turn (the original's navi action 0x3B, `sub_80EDF0C`): where turning
 -- is enabled (the navi's "can_turn" state), L or R raises a request, and
--- the idle navi answers it by turning round two ticks later. The ruleset
+-- the idle navi answers it by turning round two ticks later. The rules
 -- starts it by role (`actions.turn`, rules/roles.luau).
 
 local turn = {}

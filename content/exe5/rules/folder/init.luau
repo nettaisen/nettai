@@ -25,7 +25,7 @@
 --   0x081327E8.)
 -- - `tags`: EXE5's folders have no tag chips (they are EXE6's).
 --
--- The editor doesn't look at a chip's light or dark (`megaman`, the record's +0x15): the light and dark part does,
+-- The editor doesn't look at a chip's light or dark (`megaman`, the record's +0x15): rules/light_dark does,
 -- as a chip is used. A chip of another game (a mixed folder) is held to these rules by its record: its class, its
 -- codes, its MB, its dark flag.
 
@@ -145,5 +145,5 @@ local function check(side: number)
 end
 
 return {
-    hooks = { folder_check = check },
+    check = check,
 }

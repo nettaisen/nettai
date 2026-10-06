@@ -533,7 +533,7 @@ mod tests {
 
     /// A Cross's description is its form's own, in either language: the
     /// Cross window describes the Cross under its cursor by its form (the
-    /// cross part's `custom.describe`), so a Gregar Cross (HeatCross) in
+    /// rules/cross's `custom.describe`), so a Gregar Cross (HeatCross) in
     /// a Falzar player's mixed Cross list shows HeatCross's, not that of
     /// Falzar's Cross in its place.
     #[test]

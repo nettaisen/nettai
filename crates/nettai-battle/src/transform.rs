@@ -138,10 +138,10 @@ impl Battle {
 
     /// `sub_801486C`: a side asking for a navi switch gets it started; a
     /// side without a transformation has its rules check whether its form's
-    /// time ran out (EXE6's beast part: Beast Out, `sub_80159C6`).
+    /// time ran out (EXE6's rules/beast: Beast Out, `sub_80159C6`).
     fn sequencer_check(&mut self) {
         // EXE5's 0x08011DDC: each side's request for the turn is read first
-        // (its ColonelSoul's arm chip, 0x080124AE: the souls part's).
+        // (its ColonelSoul's arm chip, 0x080124AE: rules/souls's).
         for side in 0..2u8 {
             if self.player(side).is_some() {
                 self.notify_side(side, nettai_content_api::RulesHook::TurnOpened);
