@@ -1,8 +1,12 @@
 //! HUD graphics for the pack's graphics. Everything here is uncompressed in
 //! the ROM; the HUD tasks (`sub_801BF64`) copy it to VRAM as needed.
 
-use crate::{Rom, u32at};
-use nettai_assets::{BannerLayout, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
+pub(crate) use crate::decode::{banner_at, tiles};
+use crate::exe6::{Rom, u32at};
+use nettai_assets::{
+    BannerLayout, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles,
+    palettes_from_bytes,
+};
 use nettai_content::names::AssetNames;
 
 /// HUD layer tiles 0x1A0..=0x1D1: HP digits and blank, the box border,
@@ -26,7 +30,6 @@ pub(crate) const FONT_GLYPHS: u32 = 0xE0;
 const TEXTS: u32 = 0x086F_0374;
 const TEXT_END: u8 = 0xE6;
 /// ChipData: 0x2C bytes per chip; +0x20 icon pointer.
-const CHIP_DATA: u32 = 0x0802_1DA8;
 const CHIP_COUNT: u32 = 411;
 /// The opponent's HP digits by color, and their sprite palette.
 const ENEMY_DIGITS: [u32; 3] = [0x086E_0AB8, 0x086E_0D38, 0x086E_0FB8];
@@ -88,10 +91,6 @@ const WAITING: u32 = 0x086F_2040;
 const WARNING: u32 = 0x086E_55FC;
 const WARNING_PALETTE: u32 = 0x086E_56FC;
 
-pub(crate) fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
-    Tiles::from_4bpp(rom.bytes(a, len))
-}
-
 /// The HUD's text lines at `at` (`TEXTS` in the US ROMs): a line with
 /// anything but glyphs in it (a text command) is cut there.
 pub(crate) fn texts(rom: &Rom, at: u32) -> Vec<Vec<u16>> {
@@ -99,59 +98,40 @@ pub(crate) fn texts(rom: &Rom, at: u32) -> Vec<Vec<u16>> {
     (0..offset(0) / 2)
         .map(|i| {
             let line = rom.bytes(at + offset(i), 0x40);
-            line.iter().take_while(|&&c| c != TEXT_END && (c as u32) < FONT_GLYPHS).map(|&c| c as u16).collect()
+            line.iter()
+                .take_while(|&&c| c != TEXT_END && (c as u32) < FONT_GLYPHS)
+                .map(|&c| c as u16)
+                .collect()
         })
         .collect()
 }
 
 pub(crate) fn palette(rom: &Rom, a: u32) -> Palette {
+    if !rom.is_present() {
+        return crate::placeholders::PALETTE;
+    }
     palettes_from_bytes(rom.bytes(a, 32))[0]
 }
 
 fn map(rom: &Rom, a: u32, n: u32) -> Vec<MapEntry> {
-    (0..n).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect()
+    (0..n)
+        .map(|i| MapEntry::from_gba(rom.u16(a + 2 * i)))
+        .collect()
 }
 
 fn banner(rom: &Rom, id: u32) -> BannerLayout {
     banner_at(rom, (BANNERS, BANNER_FILLER), id)
 }
 
-/// Banner `id` of a banner table and its glyph filler (`BANNERS`,
-/// `BANNER_FILLER` in the US ROMs).
-pub(crate) fn banner_at(rom: &Rom, (table, filler): (u32, u32), id: u32) -> BannerLayout {
-    let p = u32at(rom, table + 4 * id);
-    let head = u32at(rom, p);
-    let (x, y, kind) = (head as u8, (head >> 8) as u8, (head >> 16) as u8);
-    let mut glyphs = Tiles::default();
-    let mut number_at = None;
-    // Kind 3 (the telops) has no glyphs; kind 4 (the judge's) has them
-    // like the plain ones.
-    if kind <= 2 || kind == 4 {
-        // 20 glyph pointers; once the filler shows up it repeats.
-        let mut q = p + 4;
-        for _ in 0..20 {
-            let g = u32at(rom, q);
-            let t = tiles(rom, g, 0x40);
-            glyphs.push(t.get(0).unwrap());
-            glyphs.push(t.get(1).unwrap());
-            if g != filler {
-                q += 4;
-            }
-        }
-        if u32at(rom, q) == filler {
-            q += 4;
-        }
-        if kind == 1 {
-            let n = u32at(rom, q);
-            number_at = Some((n as u8, (n >> 8) as u8));
-        }
-    }
-    BannerLayout { x, y, kind, glyphs, number_at }
-}
-
 /// An emotion-window face of a ROM, its mugshot palettes at `palettes`.
 fn mugshot(rom: &Rom, palettes: u32, e: u32) -> (Tiles, Palette) {
-    (tiles(rom, u32at(rom, MUGSHOTS + 4 * e), 0x100), palette(rom, palettes + 0x20 * e))
+    if !rom.is_present() {
+        return (crate::placeholders::tiles(8), crate::placeholders::PALETTE);
+    }
+    (
+        tiles(rom, u32at(rom, MUGSHOTS + 4 * e), 0x100),
+        palette(rom, palettes + 0x20 * e),
+    )
 }
 
 /// A link navi's face of a ROM's table.
@@ -165,14 +145,42 @@ fn navi_mugshot(rom: &Rom, (faces, palettes): (u32, u32), n: u32) -> NaviMugshot
 /// The HUD's graphics; `names` gives the chip icons their chips' keys and
 /// the font its characters. Gregar's own faces and five chips' icons are
 /// the Gregar ROM's (`gregar`).
-pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
+pub fn hud(roms: &crate::exe6::Roms, names: &AssetNames) -> Hud {
+    let (rom, gregar) = (roms.falzar, roms.gregar);
+    if !rom.is_present() {
+        let mut h = crate::placeholders::hud(names, BANNER_COUNT as usize);
+        h.chip_icons = chip_icons(roms, names);
+        h.mugshots = (0..MUGSHOT_COUNT)
+            .map(|_| (crate::placeholders::tiles(8), crate::placeholders::PALETTE))
+            .chain(
+                crate::exe6::gregar::OWN_FACES
+                    .map(|e| mugshot(gregar, crate::exe6::gregar::MUGSHOT_PALETTES, e)),
+            )
+            .collect();
+        h.navi_mugshots = (0..NAVI_MUGSHOT_COUNT)
+            .map(|_| NaviMugshot {
+                tiles: crate::placeholders::tiles(8),
+                palettes: [crate::placeholders::PALETTE; 2],
+            })
+            .chain((0..crate::exe6::gregar::OWN_NAVI_FACES).map(|n| {
+                navi_mugshot(
+                    gregar,
+                    (
+                        crate::exe6::gregar::NAVI_MUGSHOTS,
+                        crate::exe6::gregar::NAVI_MUGSHOT_PALETTES,
+                    ),
+                    n,
+                )
+            }))
+            .collect();
+        return h;
+    }
     let mut hud_tiles = tiles(rom, HUD_TILES, 0x640);
     for g in [TIMES_GLYPH, TWO_GLYPH] {
         let t = tiles(rom, g, 0x40);
         hud_tiles.push(t.get(0).unwrap());
         hud_tiles.push(t.get(1).unwrap());
     }
-    let chip = |id: u32| CHIP_DATA + 0x2C * id;
     let mut banner_digits = tiles(rom, BANNER_DIGITS, 0x40 * 10);
     let blank = tiles(rom, BANNER_FILLER, 0x40);
     banner_digits.push(blank.get(0).unwrap());
@@ -195,37 +203,50 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
         hp_box: map(rom, HP_BOX, 12),
         gauge_frame: map(rom, GAUGE_FRAME, 36),
         font: tiles(rom, FONT, 0x40 * FONT_GLYPHS as usize),
-        font_chars: names.glyphs.iter().take(FONT_GLYPHS as usize).cloned().collect(),
+        font_chars: names
+            .glyphs
+            .iter()
+            .take(FONT_GLYPHS as usize)
+            .cloned()
+            .collect(),
         enemy_digits: ENEMY_DIGITS.map(|a| tiles(rom, a, 0x40 * 10)),
         enemy_palette: palette(rom, ENEMY_PALETTE),
-        chip_icons: (0..CHIP_COUNT)
-            .map(|id| {
-                let rom = crate::gregar::chip_source(rom, gregar, id);
-                let p = u32at(rom, chip(id) + 0x20);
-                let icon = if (0x0800_0000..0x0A00_0000).contains(&p) { tiles(rom, p, 0x80) } else { Tiles::default() };
-                ChipIcon { key: names.chip_icon(id as u16), tiles: icon }
-            })
-            .collect(),
+        chip_icons: chip_icons(roms, names),
         hidden_icon: tiles(rom, HIDDEN_ICON, 0x80),
         icon_palette: palette(rom, ICON_PALETTE),
         // The Falzar ROM's, then Gregar's own (`gregar::OWN_FACES`).
         mugshots: (0..MUGSHOT_COUNT)
             .map(|e| mugshot(rom, MUGSHOT_PALETTES, e))
-            .chain(crate::gregar::OWN_FACES.map(|e| mugshot(gregar, crate::gregar::MUGSHOT_PALETTES, e)))
+            .chain(
+                crate::exe6::gregar::OWN_FACES
+                    .map(|e| mugshot(gregar, crate::exe6::gregar::MUGSHOT_PALETTES, e)),
+            )
             .collect(),
-        counts: (0..=10u32).map(|n| tiles(rom, COUNTS + 0x80 * (10 - n), 0x80)).collect(),
+        counts: (0..=10u32)
+            .map(|n| tiles(rom, COUNTS + 0x80 * (10 - n), 0x80))
+            .collect(),
         count_box: tiles(rom, COUNT_BOX, 0x80),
         mugshot_boxes: Vec::new(),
         // The Falzar ROM's six, then Gregar's own five.
         navi_mugshots: (0..NAVI_MUGSHOT_COUNT)
             .map(|n| navi_mugshot(rom, (NAVI_MUGSHOTS, NAVI_MUGSHOT_PALETTES), n))
-            .chain(
-                (0..crate::gregar::OWN_NAVI_FACES)
-                    .map(|n| navi_mugshot(gregar, (crate::gregar::NAVI_MUGSHOTS, crate::gregar::NAVI_MUGSHOT_PALETTES), n)),
-            )
+            .chain((0..crate::exe6::gregar::OWN_NAVI_FACES).map(|n| {
+                navi_mugshot(
+                    gregar,
+                    (
+                        crate::exe6::gregar::NAVI_MUGSHOTS,
+                        crate::exe6::gregar::NAVI_MUGSHOT_PALETTES,
+                    ),
+                    n,
+                )
+            }))
             .collect(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
-        dialogue_font: dialogue_font(rom, (DIALOGUE_FONT, DIALOGUE_ADVANCES), (&names.glyphs, &names.dialogue_glyphs)),
+        dialogue_font: dialogue_font(
+            rom,
+            (DIALOGUE_FONT, DIALOGUE_ADVANCES),
+            (&names.glyphs, &names.dialogue_glyphs),
+        ),
         pause,
         texts: texts(rom, TEXTS),
         banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
@@ -244,11 +265,24 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
 /// The dialogue font at `font` with its advances at `advances`, its
 /// glyphs drawing `chars` (the 8x16 font's characters, then the dialogue
 /// font's past them).
-pub(crate) fn dialogue_font(rom: &Rom, (font, advances): (u32, u32), (cell, dialogue): (&[String], &[String])) -> DialogueFont {
+pub(crate) fn dialogue_font(
+    rom: &Rom,
+    (font, advances): (u32, u32),
+    (cell, dialogue): (&[String], &[String]),
+) -> DialogueFont {
     DialogueFont {
-        pixels: rom.bytes(font, 0x60 * DIALOGUE_GLYPHS as usize).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
+        pixels: rom
+            .bytes(font, 0x60 * DIALOGUE_GLYPHS as usize)
+            .iter()
+            .flat_map(|&b| [b & 15, b >> 4])
+            .collect(),
         advances: rom.bytes(advances, DIALOGUE_GLYPHS as usize).to_vec(),
-        chars: cell.iter().chain(dialogue).take(DIALOGUE_GLYPHS as usize).cloned().collect(),
+        chars: cell
+            .iter()
+            .chain(dialogue)
+            .take(DIALOGUE_GLYPHS as usize)
+            .cloned()
+            .collect(),
     }
 }
 
@@ -258,7 +292,10 @@ fn chatbox(rom: &Rom) -> nettai_assets::Chatbox {
         (0..n as u32)
             .map(|i| {
                 let e = MapEntry::from_gba(rom.u16(a + 2 * i));
-                MapEntry { tile: e.tile.wrapping_sub(CHATBOX_FIRST_TILE), ..e }
+                MapEntry {
+                    tile: e.tile.wrapping_sub(CHATBOX_FIRST_TILE),
+                    ..e
+                }
             })
             .collect()
     };
@@ -266,9 +303,35 @@ fn chatbox(rom: &Rom) -> nettai_assets::Chatbox {
         tiles: tiles(rom, CHATBOX_TILES, 0x20 * CHATBOX_TILE_COUNT),
         palette: palette(rom, CHATBOX_PALETTE),
         boxes: (0..CHATBOX_KINDS)
-            .map(|kind| std::array::from_fn(|step| map(u32at(rom, CHATBOX_BOXES + 4 * (8 * kind + step as u32)))))
+            .map(|kind| {
+                std::array::from_fn(|step| {
+                    map(u32at(rom, CHATBOX_BOXES + 4 * (8 * kind + step as u32)))
+                })
+            })
             .collect(),
         arrow: tiles(rom, CHATBOX_ARROW, 3 * 0x80),
         text_palette: palette(rom, CHATBOX_TEXT_PALETTE),
     }
+}
+
+fn chip_icons(roms: &crate::exe6::Roms, names: &AssetNames) -> Vec<ChipIcon> {
+    (0..CHIP_COUNT)
+        .map(|id| {
+            let (rom, table) = crate::exe6::gregar::chip_source(roms, id);
+            let icon = if rom.is_present() {
+                let p = u32at(rom, table + 0x2c * id + 0x20);
+                if rom.contains(p) {
+                    tiles(rom, p, 0x80)
+                } else {
+                    Tiles::default()
+                }
+            } else {
+                Tiles::default()
+            };
+            ChipIcon {
+                key: names.chip_icon(id as u16),
+                tiles: icon,
+            }
+        })
+        .collect()
 }

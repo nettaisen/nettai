@@ -1,6 +1,6 @@
 //! The graphics a battle frontend draws with, in typed form: what a
 //! content pack's graphics (nettai-content) load into. Nothing ROM-derived is
-//! checked in; `exe6-extract content` writes the pack from the user's copies
+//! checked in; `nettai-extract exe6` writes the pack from the user's copies
 //! of the games (both US ROMs).
 //!
 //! Colors are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
@@ -567,7 +567,7 @@ pub struct BannerLayout {
 mod tests {
     use super::*;
 
-    /// A glyph name may be several characters (exe5-extract names a glyph
+    /// A glyph name may be several characters (nettai-extract names a glyph
     /// its content has no character for by its number, `[0a3]`); EXE6's
     /// are one each, its marks too (U+E002 the stacked EX).
     #[test]

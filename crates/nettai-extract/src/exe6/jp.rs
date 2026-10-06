@@ -18,7 +18,7 @@
 //! console shows the placeholder there, a difference the frame comparison
 //! knows.
 
-use crate::{Rom, u32at};
+use crate::exe6::{Rom, u32at};
 
 /// The region the Japanese ROMs' assets are marked with.
 pub const REGION: &str = "jp";
@@ -98,18 +98,34 @@ pub const DBLBEAST_PALETTE: u32 = 0x0874_9C78;
 /// picture's address there, its palette's (`None`: in no ROM), and the
 /// game version it is of (`VERSIONED`'s); `None` for a chip that isn't
 /// cut.
-pub fn chip_picture<'a>(roms: &'a crate::Roms, id: u32) -> Option<(&'a Rom, u32, Option<u32>, Option<&'static str>)> {
+pub fn chip_picture<'a>(
+    roms: &'a crate::exe6::Roms,
+    id: u32,
+) -> Option<(&'a Rom, u32, Option<u32>, Option<&'static str>)> {
     let &(_, source) = CHIP_PICTURES.iter().find(|(c, _)| *c == id)?;
-    let (rom, version) = match source {
+    let (mut rom, version) = match source {
         Source::Falzar => (&roms.falzar_jp, "falzar"),
         Source::Gregar => (&roms.gregar_jp, "gregar"),
     };
+    if !rom.is_present() && !VERSIONED.contains(&id) {
+        rom = [&roms.falzar_jp, &roms.gregar_jp]
+            .into_iter()
+            .find(|r| r.is_present())?;
+    }
+    if !rom.is_present() {
+        return None;
+    }
     let record = CHIP_DATA + 0x2C * id;
     let (picture, palette) = (u32at(rom, record + 0x24), u32at(rom, record + 0x28));
     let palette = match palette {
-        0x0200_0AF0 => Some(DBLBEAST_PALETTE),
+        0x0200_0AF0 if std::ptr::eq(*rom, roms.falzar_jp) => Some(DBLBEAST_PALETTE),
         p if (0x0800_0000..0x0A00_0000).contains(&p) => Some(p),
         _ => None,
     };
-    Some((rom, picture, palette, VERSIONED.contains(&id).then_some(version)))
+    Some((
+        rom,
+        picture,
+        palette,
+        VERSIONED.contains(&id).then_some(version),
+    ))
 }

@@ -69,10 +69,9 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
   states its own. Live play's setup comes from the match file; use
   nettai-demo-editor to create or randomize one. The battle is that game's:
   its content folder and the support folders it uses, drawn and heard
-  from its pack (graphics and
-  sound, written from your ROMs by `exe6-extract content <falzar-us>
-  <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6`, EXE5's by
-  exe5-extract), found in the packs directory, $NETTAI_PACKS, else
+  from its pack (graphics and sound, written from any subset of your ROMs
+  by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`), found in the packs
+  directory, $NETTAI_PACKS, else
   data/content, each pack by the game it says.
   --pack DIR       a pack's directory, in place of the found pack of its game
   --content DIR    the content directory (default: $NETTAI_CONTENT, else

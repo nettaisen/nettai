@@ -6,7 +6,7 @@
 //!     nettai-content aseprite-export <pack> [NAME ...]
 //!     nettai-content aseprite-import <pack> [NAME ...]
 //!
-//! A pack exported from a ROM (`exe6-extract content`) holds the game's own
+//! A pack exported from a ROM (`nettai-extract exe6`) holds the game's own
 //! data: keep it out of version control (data/ is ignored).
 
 use nettai_content::report::{Level, Report};

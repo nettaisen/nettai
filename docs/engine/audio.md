@@ -195,7 +195,7 @@ with the command named.
 
 ## 4. Sound data
 
-`exe6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` reads the Falzar ROM's M4A data
+`nettai-extract exe6 <dir> <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>` reads the Falzar ROM's M4A data
 (`m4a::rom::extract`) into a typed `m4a::SoundBank` (songs as command
 lists with running status resolved and jumps as command indices,
 voicegroups, drum kits, key splits, samples and PSG waves, the mixer
@@ -220,7 +220,7 @@ the path into a jump target is refused at extraction (none in EXE6).
 
 ## 5. Hearing it
 
-    cargo run -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6
+    cargo run -p nettai-extract -- exe6 data/content/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
     cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/content/exe6
     cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/content/exe6 --wav out.wav --frames 600
     cargo run -p nettai-audio --example play_song -- data/content/exe6 0x15,0x94 --every 120

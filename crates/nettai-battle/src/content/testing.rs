@@ -6,7 +6,7 @@
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not EXE6's
 //! data, which comes only from a content pack extracted from the user's ROM
-//! (`exe6-extract content`), and its numbers are chosen for tests, not taken
+//! (`nettai-extract exe6`), and its numbers are chosen for tests, not taken
 //! from the game. It has just what battles of two such navis need:
 //! stepping, the chips below, custom screens, rocks and the round's flow.
 //!

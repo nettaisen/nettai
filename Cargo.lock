@@ -956,17 +956,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "exe5-extract"
-version = "0.1.0"
-dependencies = [
- "exe5-compat",
- "m4a",
- "nettai-assets",
- "nettai-content",
- "nettai-content-api",
-]
-
-[[package]]
 name = "exe6-compat"
 version = "0.1.0"
 dependencies = [
@@ -976,17 +965,6 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
-]
-
-[[package]]
-name = "exe6-extract"
-version = "0.1.0"
-dependencies = [
- "exe6-compat",
- "m4a",
- "nettai-assets",
- "nettai-content",
- "nettai-content-api",
 ]
 
 [[package]]
@@ -2313,6 +2291,19 @@ dependencies = [
  "png",
  "rfd",
  "toml",
+]
+
+[[package]]
+name = "nettai-extract"
+version = "0.1.0"
+dependencies = [
+ "exe5-compat",
+ "exe6-compat",
+ "m4a",
+ "nettai-assets",
+ "nettai-content",
+ "nettai-content-api",
+ "tempfile",
 ]
 
 [[package]]

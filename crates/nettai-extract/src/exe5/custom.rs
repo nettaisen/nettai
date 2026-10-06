@@ -7,15 +7,16 @@
 //! element icons (13 to EXE6's 11). It has no Cross window and no Beast Out:
 //! its buttons (`CustomScreen::buttons`) are the soul button under OK and,
 //! over slots 8 and 9, Shuffle's re-deal and Arm Change.
-//! Read where the counterparts of the EXE6 routines exe6-extract reads load
+//! Read where the counterparts of the EXE6 routines the EXE6 module reads load
 //! them (the HUD's load list at 0x0801B54C, the window's opening, the chip
 //! window's 0x080242FA and 0x080244F8 on, the emblems' 0x08023F68).
 
-use crate::hud::{palette, tiles};
-use crate::rom::{Rom, Roms, Version};
+use crate::decode::patches;
+use crate::exe5::hud::{palette, tiles};
+use crate::exe5::rom::{Rom, Roms, Version};
 use nettai_assets::{
-    ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry, MapPatch, PatchList, Picture, SlotPictures, Tiles,
-    VersionPictures, Versioned,
+    ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry,
+    PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned,
 };
 use nettai_content::names::AssetNames;
 
@@ -49,19 +50,37 @@ const LAYOUT: CustomLayout = CustomLayout {
     name_bar: 0x1B6,
     cross_names: 0,
     slot_blank: 2,
-    ok_cursor: CursorPlace { x: 0x58, y: 0x70, corners: [[(0, 0, false, false); 4]; 2] },
+    ok_cursor: CursorPlace {
+        x: 0x58,
+        y: 0x70,
+        corners: [[(0, 0, false, false); 4]; 2],
+    },
 };
 /// The cursor over the soul button (0x08024734: at (0x58, 0x88)), its
 /// corners read from `CURSOR_CORNERS`; and over a button two slots wide in
 /// the slots' row (Shuffle's and Arm Change's, over slots 8 and 9: EXE6's
 /// `sub_8028820`'s counterpart).
-const SOUL_CURSOR: CursorPlace = CursorPlace { x: 0x58, y: 0x88, corners: [[(0, 0, false, false); 4]; 2] };
+const SOUL_CURSOR: CursorPlace = CursorPlace {
+    x: 0x58,
+    y: 0x88,
+    corners: [[(0, 0, false, false); 4]; 2],
+};
 const ROW_BUTTON_CURSOR: CursorPlace = CursorPlace {
     x: 0x38,
     y: 0x80,
     corners: [
-        [(2, 2, false, false), (2, 0x1C, true, false), (0x14, 0x1C, true, true), (0x14, 2, false, true)],
-        [(4, 4, false, false), (4, 0x1A, true, false), (0x12, 0x1A, true, true), (0x12, 4, false, true)],
+        [
+            (2, 2, false, false),
+            (2, 0x1C, true, false),
+            (0x14, 0x1C, true, true),
+            (0x14, 2, false, true),
+        ],
+        [
+            (4, 4, false, false),
+            (4, 0x1A, true, false),
+            (0x12, 0x1A, true, true),
+            (0x12, 4, false, true),
+        ],
     ],
 };
 /// The cursor's corners over OK and over the soul button (`sub_80288D0`'s
@@ -75,7 +94,12 @@ fn cursor_corners(rom: &Rom, a: u32) -> [[(i8, i8, bool, bool); 4]; 2] {
         std::array::from_fn(|k| {
             let w = rom.u32(a + 16 * f as u32 + 4 * k as u32);
             let hi = (w >> 16) as u16;
-            (w as u16 as i8, (hi & 0xFF) as i8, hi & 0x1000 != 0, hi & 0x2000 != 0)
+            (
+                w as u16 as i8,
+                (hi & 0xFF) as i8,
+                hi & 0x1000 != 0,
+                hi & 0x2000 != 0,
+            )
         })
     })
 }
@@ -168,13 +192,20 @@ struct Emblems {
     palettes: u32,
     palette_of: u32,
 }
-const PROTOMAN_EMBLEMS: Emblems = Emblems { pictures: 0x0874_22B8, palettes: 0x086F_AE2C, palette_of: 0x0802_3FC4 };
-const COLONEL_EMBLEMS: Emblems = Emblems { pictures: 0x0874_35BC, palettes: 0x086F_C0E8, palette_of: 0x0802_3FC8 };
+const PROTOMAN_EMBLEMS: Emblems = Emblems {
+    pictures: 0x0874_22B8,
+    palettes: 0x086F_AE2C,
+    palette_of: 0x0802_3FC4,
+};
+const COLONEL_EMBLEMS: Emblems = Emblems {
+    pictures: 0x0874_35BC,
+    palettes: 0x086F_C0E8,
+    palette_of: 0x0802_3FC8,
+};
 /// The navis that operate (NaviStats +0x29): MegaMan (0), Team ProtoMan's
 /// six (1 to 6) and Team Colonel's (7 to 12).
 const NAVI_COUNT: u8 = 13;
 const TEAM_NAVIS: u8 = 6;
-const EMBLEM_PALETTE_COUNT: u32 = 8;
 /// The Program Advance animation's names' colors (EXE6 `byte_802BA48`'s
 /// counterpart: three sets of four).
 const ADVANCE_NAME_COLORS: (u32, u32) = (0x0802_7DC8, 3);
@@ -184,19 +215,10 @@ fn block(rom: &Rom, (a, len): (u32, usize)) -> Tiles {
 }
 
 pub(crate) fn picture(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
-    Picture { tiles: tiles(rom, gfx, PICTURE_BYTES), palette: palette(rom, pal) }
-}
-
-/// A patch list: six bytes a patch (x, y, width, height, palette, mode),
-/// ending with 0xFF.
-fn patches(rom: &Rom, (mut a, first_tile): (u32, u16)) -> PatchList {
-    let mut patches = Vec::new();
-    while rom.u8(a) != 0xFF {
-        let b = rom.bytes(a, 6);
-        patches.push(MapPatch { x: b[0], y: b[1], width: b[2], height: b[3], palette: b[4], by_column: b[5] == 1 });
-        a += 6;
+    Picture {
+        tiles: tiles(rom, gfx, PICTURE_BYTES),
+        palette: palette(rom, pal),
     }
-    PatchList { first_tile, patches }
 }
 
 /// The navis' emblems: navi n's picture is its ROM's nth (Team Colonel's
@@ -206,23 +228,21 @@ fn patches(rom: &Rom, (mut a, first_tile): (u32, u16)) -> PatchList {
 /// navi's own, from the ROM that has it, under the navi's key (`names`): a
 /// navi the content doesn't have yet has none.
 fn emblems(roms: &Roms, names: &AssetNames) -> Vec<Emblem> {
-    let (protoman, colonel) = (&roms.protoman, roms.us(Version::Colonel));
-    let palettes = |rom: &Rom, e: &Emblems| (0..EMBLEM_PALETTE_COUNT).map(|i| palette(rom, e.palettes + 0x20 * i)).collect::<Vec<_>>();
-    let colors = palettes(protoman, &PROTOMAN_EMBLEMS);
-    let palette_of = protoman.bytes(PROTOMAN_EMBLEMS.palette_of, NAVI_COUNT as usize);
-    assert_eq!(
-        (&colors, palette_of),
-        (&palettes(colonel, &COLONEL_EMBLEMS), colonel.bytes(COLONEL_EMBLEMS.palette_of, NAVI_COUNT as usize)),
-        "the versions' emblems' colors"
-    );
-    assert_eq!(tiles(protoman, PROTOMAN_EMBLEMS.pictures, 0x80), tiles(colonel, COLONEL_EMBLEMS.pictures, 0x80), "MegaMan's emblem in each version");
     (0..NAVI_COUNT)
         .filter_map(|n| {
-            let (rom, e, picture) = if n <= TEAM_NAVIS { (protoman, &PROTOMAN_EMBLEMS, n) } else { (colonel, &COLONEL_EMBLEMS, n - TEAM_NAVIS) };
+            let (rom, e, picture) = if n <= TEAM_NAVIS {
+                (roms.protoman, &PROTOMAN_EMBLEMS, n)
+            } else {
+                (roms.colonel, &COLONEL_EMBLEMS, n - TEAM_NAVIS)
+            };
+            if !rom.is_present() {
+                return None;
+            }
+            let color = rom.u8(e.palette_of + n as u32) as u32;
             Some(Emblem {
                 navi: names.navis.get(&n)?.clone(),
                 tiles: tiles(rom, e.pictures + 0x80 * picture as u32, 0x80),
-                palette: colors[palette_of[n as usize] as usize],
+                palette: palette(rom, e.palettes + 32 * color),
             })
         })
         .collect()
@@ -248,7 +268,24 @@ fn row_button(rom: &Rom, buttons: (u32, usize), details: (u32, u32)) -> ButtonPi
 /// navis' keys, `chip_art` is the chips' pictures (graphics.rs).
 pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> CustomScreen {
     let rom = &roms.protoman;
-    let palettes = |(a, n): (u32, usize)| (0..n as u32).map(|i| palette(rom, a + 32 * i)).collect::<Vec<_>>();
+    if !rom.is_present() {
+        let mut c = crate::placeholders::custom();
+        c.layout = LAYOUT;
+        c.buttons = vec![
+            (SOUL_BUTTON.into(), crate::placeholders::button(3, 2)),
+            (REDEAL_BUTTON.into(), crate::placeholders::button(2, 3)),
+            (ARM_CHANGE_BUTTON.into(), crate::placeholders::button(2, 3)),
+        ];
+        c.versioned = Versioned::new(Version::ProtoMan.name(), VersionPictures::default());
+        c.chip_art = chip_art;
+        c.emblems = emblems(roms, names);
+        return c;
+    }
+    let palettes = |(a, n): (u32, usize)| {
+        (0..n as u32)
+            .map(|i| palette(rom, a + 32 * i))
+            .collect::<Vec<_>>()
+    };
     let glyphs = |(a, n): (u32, usize)| tiles(rom, a, 0x40 * n);
     let soul = ButtonPictures {
         width: 3,
@@ -256,14 +293,23 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
         tiles: block(rom, SOUL_BUTTONS),
         // (0x08024540: gray when unavailable or picked.)
         sets: ButtonSets::Other,
-        cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.1), ..SOUL_CURSOR },
+        cursor: CursorPlace {
+            corners: cursor_corners(rom, CURSOR_CORNERS.1),
+            ..SOUL_CURSOR
+        },
         picture: picture(rom, (SOUL_PICTURE, SOUL_PALETTES.0)),
-        palettes: (0..SOUL_PALETTES.1).map(|i| palette(rom, SOUL_PALETTES.0 + 0x20 * i)).collect(),
+        palettes: (0..SOUL_PALETTES.1)
+            .map(|i| palette(rom, SOUL_PALETTES.0 + 0x20 * i))
+            .collect(),
         icons: block(rom, SOUL_ICONS),
         icon_palette: palette(rom, SOUL_ICON_PALETTE),
         icon_palettes: {
             let colonel = palette(roms.us(Version::Colonel), COLONEL_SOUL_ICON_PALETTE);
-            if colonel == palette(rom, SOUL_ICON_PALETTE) { Vec::new() } else { vec![(Version::Colonel.name().into(), colonel)] }
+            if colonel == palette(rom, SOUL_ICON_PALETTE) {
+                Vec::new()
+            } else {
+                vec![(Version::Colonel.name().into(), colonel)]
+            }
         },
         ..ButtonPictures::default()
     };
@@ -271,13 +317,33 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
     // its uses left in the chip window, 0x080245F2) and ColonelSoul's Arm
     // Change (0x0802415A and 0x080245A0, in EXE6's scrap button's place:
     // picked, it looks on offer, the chip it holds drawn over it).
-    let redeal = ButtonPictures { uses_digit: true, ..row_button(rom, REDEAL_BUTTONS, REDEAL) };
-    let arm_change =
-        ButtonPictures { sets: ButtonSets::Unavailable, held_at: Some(ARM_CHANGE_HELD_AT), ..row_button(rom, SCRAP_BUTTONS, SCRAP) };
-    let map = |a: u32| -> Vec<MapEntry> { (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect() };
+    let redeal = ButtonPictures {
+        uses_digit: true,
+        ..row_button(rom, REDEAL_BUTTONS, REDEAL)
+    };
+    let arm_change = ButtonPictures {
+        sets: ButtonSets::Unavailable,
+        held_at: Some(ARM_CHANGE_HELD_AT),
+        ..row_button(rom, SCRAP_BUTTONS, SCRAP)
+    };
+    let map = |a: u32| -> Vec<MapEntry> {
+        (0..MAP_CELLS)
+            .map(|i| MapEntry::from_gba(rom.u16(a + 2 * i)))
+            .collect()
+    };
     CustomScreen {
-        layout: CustomLayout { ok_cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.0), ..LAYOUT.ok_cursor }, ..LAYOUT },
-        buttons: vec![(SOUL_BUTTON.into(), soul), (REDEAL_BUTTON.into(), redeal), (ARM_CHANGE_BUTTON.into(), arm_change)],
+        layout: CustomLayout {
+            ok_cursor: CursorPlace {
+                corners: cursor_corners(rom, CURSOR_CORNERS.0),
+                ..LAYOUT.ok_cursor
+            },
+            ..LAYOUT
+        },
+        buttons: vec![
+            (SOUL_BUTTON.into(), soul),
+            (REDEAL_BUTTON.into(), redeal),
+            (ARM_CHANGE_BUTTON.into(), arm_change),
+        ],
         window_tiles: block(rom, WINDOW_TILES),
         column_cells: block(rom, COLUMN_CELLS),
         turn_limit: block(rom, TURN_LIMIT),
@@ -297,8 +363,18 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
             other: picture(rom, OTHER),
         },
         codes: glyphs(CODES),
-        elements: Tiles { pixels: FAMILY_BYTES.iter().flat_map(|&b| tiles(rom, ELEMENTS + 0x80 * b, 0x80).pixels).collect() },
-        element_colors: FAMILY_BYTES.iter().map(|&b| std::array::from_fn(|i| rom.u16(ELEMENT_COLORS + 12 * b + 2 * i as u32) & 0x7FFF)).collect(),
+        elements: Tiles {
+            pixels: FAMILY_BYTES
+                .iter()
+                .flat_map(|&b| tiles(rom, ELEMENTS + 0x80 * b, 0x80).pixels)
+                .collect(),
+        },
+        element_colors: FAMILY_BYTES
+            .iter()
+            .map(|&b| {
+                std::array::from_fn(|i| rom.u16(ELEMENT_COLORS + 12 * b + 2 * i as u32) & 0x7FFF)
+            })
+            .collect(),
         digits: glyphs(DIGITS),
         slot_codes: glyphs(SLOT_CODES),
         empty_icon: tiles(rom, EMPTY_ICON, 0x80),
@@ -311,7 +387,11 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
         emblems: emblems(roms, names),
         regular: block(rom, REGULAR),
         advance_name_colors: (0..ADVANCE_NAME_COLORS.1)
-            .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLORS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
+            .map(|i| {
+                std::array::from_fn(|k| {
+                    rom.u16(ADVANCE_NAME_COLORS.0 + 8 * i + 2 * k as u32) & 0x7FFF
+                })
+            })
             .collect(),
         languages: Vec::new(),
     }

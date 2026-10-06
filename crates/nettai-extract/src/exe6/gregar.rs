@@ -17,7 +17,7 @@
 //! - What a Gregar console shows of its own on the custom screen (the
 //!   custom screen's versioned pictures, `custom::GREGAR`).
 
-use crate::Rom;
+use crate::exe6::Rom;
 
 /// The chips whose picture and icon the Falzar ROM has wrong and the
 /// Gregar ROM right: Bass, BigHook, DeltaRay, ColForce, BugRSwrd (their
@@ -56,8 +56,24 @@ pub fn chip_version(id: u32) -> Option<&'static str> {
     }
 }
 
-/// The ROM to read chip `id`'s picture and icon from: the Gregar ROM for
-/// `RIGHT_IN_GREGAR` (the chip table is at the same address in both).
-pub fn chip_source<'a>(rom: &'a Rom, gregar: &'a Rom, id: u32) -> &'a Rom {
-    if RIGHT_IN_GREGAR.contains(&id) { gregar } else { rom }
+/// Select a chip's actual version; common chips can use any supplied ROM.
+pub fn chip_source<'a>(roms: &crate::exe6::Roms<'a>, id: u32) -> (&'a Rom, u32) {
+    let preferred = match chip_version(id) {
+        Some("gregar") => [roms.gregar, roms.gregar_jp, roms.gregar, roms.gregar_jp],
+        Some("falzar") => [roms.falzar, roms.falzar_jp, roms.falzar, roms.falzar_jp],
+        _ => [roms.falzar, roms.gregar, roms.falzar_jp, roms.gregar_jp],
+    };
+    let rom = preferred
+        .into_iter()
+        .find(|r| r.is_present())
+        .unwrap_or(preferred[0]);
+    let jp = std::ptr::eq(rom, roms.falzar_jp) || std::ptr::eq(rom, roms.gregar_jp);
+    (
+        rom,
+        if jp {
+            crate::exe6::jp::CHIP_DATA
+        } else {
+            0x0802_1da8
+        },
+    )
 }
