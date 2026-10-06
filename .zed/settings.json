@@ -1,0 +1,33 @@
+{
+  "lsp": {
+    "luau-lsp": {
+      "binary": {
+        "arguments": [
+          "lsp",
+          "--flag:LuauSolverV2=true",
+          "--definitions=.zed/luau-globals.d.luau"
+        ]
+      },
+      "settings": {
+        "fflags": {
+          "sync": false
+        },
+        "luau-lsp": {
+          "platform": {
+            "type": "standard"
+          },
+          "types": {
+            "definitionFiles": [
+              ".zed/luau-globals.d.luau",
+              "content/nettai/core.d.luau",
+              "content/exelib/types.d.luau",
+              "content/exe5/types.d.luau",
+              "content/exe6/types.d.luau"
+            ]
+          },
+          "ignoreGlobs": ["**/*.d.luau", "target/**", ".claude/**"]
+        }
+      }
+    }
+  }
+}

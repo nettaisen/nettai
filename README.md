@@ -125,6 +125,28 @@ These checks need no ROM:
     cargo test --workspace                             # the engine on its own test content
     cargo run -p nettai-content-check                  # every content module type-checks; the lints
 
+## Editing Luau in Zed
+
+Install the [Luau extension](https://github.com/4teapo/zed-luau), open the repository root, and generate the
+editor's type definitions once:
+
+    python3 .zed/generate-luau-definitions.py
+
+The project settings load the generated `.zed/luau-globals.d.luau`, use the new type solver, and select the
+standard Luau platform. The engine and pack declarations must be loaded together because they reference each
+other; passing each `.d.luau` to the server separately leaves unresolved types. The generated file is gitignored.
+The sources use `declare extern type`, which current luau-lsp and the project's content checker both understand.
+The launch arguments load only the combined file; `types.definitionFiles` also lists the source declarations so
+the server recognizes them as definitions when opened, rather than reporting syntax errors for ordinary scripts.
+
+After editing a source `.d.luau`, run the Zed task **Luau: regenerate editor definitions** (or the command above),
+then **editor: restart language server** from the command palette with a Luau file open. This also applies the
+configuration if the server was already running. The existing `content/.luaurc` supplies the pack require aliases.
+`nettai-content-check` remains the check for each pack's permitted dependencies and types; the editor loads all
+packs' declarations into one shared environment. The editor also follows imports and can report cross-module
+type errors that the checker, which types `require` as `any`, does not catch. A module with a same-named folder
+belongs in that folder's `init.luau`; luau-lsp resolves the folder before a sibling `.luau` file.
+
 ## The match editor
 
 A match file sets up a set of one game, EXE6 or EXE5: the game (which is its rules), its rounds (each a stage and

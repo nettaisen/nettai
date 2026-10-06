@@ -1,7 +1,7 @@
 -- The battle engine's content API, as Luau content sees it. A definitions
--- file for editors and the type checker (luau-lsp:
--- `--definitions=content/nettai/core.d.luau`, with a root's own, as
--- `--definitions=content/exe6/types.d.luau`); every root checks against it
+-- file for editors and the type checker (for luau-lsp, generate the combined
+-- declarations with `.zed/generate-luau-definitions.py`; see README.md).
+-- Every root checks against it
 -- (docs/design/rules-in-luau.md §7.2: content/nettai declares the engine's
 -- API and defines nothing; EXE6's own parts move to content/exe6 in slice
 -- S8). The engine implements it in
@@ -207,7 +207,7 @@ export type ObstacleFlag =
     | "absorbed_by_1"
 
 -- A 16.16 fixed-point vector (x right, y down the field, z up). Immutable.
-declare class Vec3
+declare extern type Vec3 with
     x: number
     y: number
     z: number
@@ -224,7 +224,7 @@ declare Vec3: {
 }
 
 -- How an object's sprite is drawn, and its animation.
-declare class Sprite
+declare extern type Sprite with
     palette: number
     hflip: boolean
     vflip: boolean
@@ -275,7 +275,7 @@ declare class Sprite
 end
 
 -- An object's collision registration.
-declare class Collision
+declare extern type Collision with
     -- The region its hits cover (a region definition; nil, none) and the
     -- spark they show (a spark definition; nil, none): the fields, and
     -- the same as methods.
@@ -343,7 +343,7 @@ end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
 -- object (and then names whatever takes the slot next).
-declare class Object
+declare extern type Object with
     pool: Pool
     -- Its kind (read-only): compare with a kind definition
     -- (`me.kind == bomb.kind`).
@@ -859,7 +859,7 @@ end
 -- the patch cards change, which they write at the round's start; and what a
 -- game's rules/save writes as the round is set up: the sun, the Regular
 -- memory, the base HP and MegaMan's variant).
-declare class Navi
+declare extern type Navi with
     -- Fighting in the sun.
     sun: boolean
     -- The form and the navi, as their definitions.
@@ -1635,19 +1635,19 @@ declare int: {
 -- Assets, named while content loads by the game's asset pack's names (`asset.sprite("bomb")`, a game's
 -- compat/assets.toml's): one value per asset. Only a game's modules have `asset`; a support pack's take
 -- theirs from their callers. (`SpriteAsset`, since `Sprite` is an object's sprite.)
-declare class SpriteAsset
+declare extern type SpriteAsset with
     name: string
 end
-declare class Sound
+declare extern type Sound with
     name: string
 end
-declare class Banner
+declare extern type Banner with
     name: string
 end
-declare class Background
+declare extern type Background with
     name: string
 end
-declare class Mugshot
+declare extern type Mugshot with
     name: string
 end
 
@@ -3018,4 +3018,3 @@ declare rules: {
     -- game's rules' alone: its API module reads the save's `level` there.
     setup_of: (side: number) -> any,
 }
-
