@@ -382,9 +382,9 @@ impl Round {
         // console's own reload made.
         let stats = |p: usize| {
             let s = recorded(p);
-            match players[p].navi_level {
-                Some(_) => link_navi_reset(content, &s).unwrap_or(s),
-                None => s,
+            match self.setup.navi_levels[p] {
+                0xFF => s,
+                _ => link_navi_reset(content, &s).unwrap_or(s),
             }
         };
         RoundSetup {
@@ -488,13 +488,9 @@ impl Round {
             Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
             None => Unlocks::everything(version),
         };
-        // The navi code's level (0xFF: none).
-        let level = self.setup.navi_levels[side as usize];
-        let navi_level = (level != 0xFF).then_some(level);
         let mut player = PlayerSetup {
             folder,
             joypad_phase: self.setup.joypad_phases[side as usize],
-            navi_level,
             sp_times: codec::sp_times(&unhex(&self.setup.sp_times[side as usize])),
             console: self.console_setup(side),
             rules: Vec::new(),
@@ -506,6 +502,12 @@ impl Round {
         // (The Crosses the console's save owns, as the list a setup states:
         // those of its navi's of its version, in Cross-number order.)
         unlocks.write(ids.content, stats.navi, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
+        // The navi code's level (0xFF: none): the save system's `level`.
+        let level = match self.setup.navi_levels[side as usize] {
+            0xFF => nettai_content_api::Value::Nil,
+            l => nettai_content_api::Value::Int(l as i64),
+        };
+        player.set_fact(ids.content, "level", &[nettai_battle::rules::Fact::Value(level)]).unwrap_or_else(|e| panic!("the navi code's level: {e}"));
         // The bug frags: the dark-chips system's (its setup's `bug_frags`).
         let frags = self.setup.bug_frags[side as usize];
         player

@@ -112,6 +112,12 @@ pub enum PlayerFact {
     /// The forms they have for their form list, in its order (EXE6's
     /// Crosses, up to five of either version): an empty list is none.
     CrossList,
+    /// The level their navi has (EXE6's: the navi code the save received,
+    /// 0 to 14, none without one; EXE5's team navis': the story's
+    /// progress): a link navi's chip bonus and charge limits, the damage of
+    /// the chips that go by it (`DamageFormula::NaviLevel`, `Level`). None:
+    /// no level (0xFF in the battle).
+    Level,
     /// The base HP their save holds for their navi (MegaMan's, which HP
     /// Memories raise; EXE5's team navis', the story's at their progress):
     /// a game's save system writes it into the stats as the round is set
@@ -121,7 +127,8 @@ pub enum PlayerFact {
 }
 
 impl PlayerFact {
-    pub const ALL: &'static [PlayerFact] = &[PlayerFact::Version, PlayerFact::BeastOut, PlayerFact::CrossList, PlayerFact::BaseHp];
+    pub const ALL: &'static [PlayerFact] =
+        &[PlayerFact::Version, PlayerFact::BeastOut, PlayerFact::CrossList, PlayerFact::Level, PlayerFact::BaseHp];
 
     /// The setup field's name.
     pub fn name(self) -> &'static str {
@@ -129,6 +136,7 @@ impl PlayerFact {
             PlayerFact::Version => "version",
             PlayerFact::BeastOut => "beast_out",
             PlayerFact::CrossList => "crosses",
+            PlayerFact::Level => "level",
             PlayerFact::BaseHp => "hp",
         }
     }
@@ -140,6 +148,7 @@ impl PlayerFact {
             PlayerFact::Version => matches!(ty, FieldType::Enum(_)),
             PlayerFact::BeastOut => matches!(ty, FieldType::Bool),
             PlayerFact::CrossList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
+            PlayerFact::Level => matches!(ty, FieldType::OptionalU8),
             PlayerFact::BaseHp => matches!(ty, FieldType::U16),
         };
         if ok {
@@ -149,6 +158,7 @@ impl PlayerFact {
             PlayerFact::Version => "a list of the versions' names",
             PlayerFact::BeastOut => "a bool",
             PlayerFact::CrossList => "an array of forms",
+            PlayerFact::Level => "a u8? (a level, or none)",
             PlayerFact::BaseHp => "a u16",
         })
     }

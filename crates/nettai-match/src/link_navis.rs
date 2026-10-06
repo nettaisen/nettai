@@ -41,7 +41,8 @@ mod tests {
     fn with_link_navi(content: &Arc<Content>, navi: &str, level: u8) -> Match {
         let mut m = crate::pick::live(content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[1];
-        (s.navi, s.navi_level, s.navicust) = (ids::navi(content, "exe6", navi).unwrap(), Some(level), None);
+        (s.navi, s.navicust) = (ids::navi(content, "exe6", navi).unwrap(), None);
+        s.set_level(content, Some(level)).unwrap();
         s.set_fact(content, "crosses", &[]).unwrap();
         s.folder.regular = None;
         m
@@ -121,7 +122,7 @@ mod tests {
     fn a_levels_gains_clamp() {
         let content = exe6_content();
         let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
-        m.sides[0].navi_level = Some(14);
+        m.sides[0].set_level(&content, Some(14)).unwrap();
         let s = crate::check::round_stats(&content, &m).unwrap()[0];
         let fresh = NaviStats::fresh(m.sides[0].navi, &content).unwrap();
         let g = content.navi(m.sides[0].navi).levels.as_ref().unwrap().by_level[14];
