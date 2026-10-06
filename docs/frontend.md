@@ -1806,12 +1806,12 @@ console, so a replay shown from side 1 compares the same digests.
 **The file** (nettai-replay, which holds the format alone and runs no engine):
 
 ```text
-file   := "NTRP", layout (a byte: 1), head, match, info, input
+file   := "NTRP", layout (a byte: 1), head, info, match, input
 head   := "HEAD", length (u32), engine version (string), game (string),
           content hash (u64), the first battle's digest before any tick (u64)
-match  := "MTCH", length (u32), the match in nettai-match's binary
 info   := "INFO", length (u32), when (u64: unix seconds), the side that
           recorded (a byte), the players' names by side (two strings)
+match  := "MTCH", length (u32), the match in nettai-match's binary
 input  := "TICK", then a record per tick to the end of the file
 record := control (a byte), then what its bits announce, in their order:
           bit 0: side 0's buttons (u16) follow, bit 1: side 1's,
