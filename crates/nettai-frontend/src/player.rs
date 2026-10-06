@@ -118,7 +118,6 @@ impl Player {
     /// console the driver's.
     fn start_over(&mut self) {
         self.renderer.reset();
-        self.renderer.console_region = self.session.driver.console_region();
         self.renderer.console_version = self.session.driver.console_version();
         self.owed = 0.0;
     }
@@ -256,8 +255,7 @@ impl Player {
     /// language it offers and keeps it, and nothing is loaded here). Only the
     /// drawing changes, the pack's lettering and the content's strings: the
     /// battle doesn't know its language, what the renderer follows over
-    /// time (the HUD's rolling numbers, its timers) carries on, and the
-    /// console's region is the driver's still.
+    /// time (the HUD's rolling numbers, its timers) carries on.
     pub fn set_language(&mut self, graphics: &Graphics) {
         self.renderer.set_graphics(graphics.packs());
         self.renderer.set_strings(graphics.strings.clone());

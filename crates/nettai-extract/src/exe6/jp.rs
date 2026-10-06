@@ -13,15 +13,12 @@
 //!   picture (a purple block) in the US ROMs; the Japanese ROMs have their
 //!   art. Their icons are the same in all four ROMs, so the US ones stay.
 //!
-//! Each asset taken from the Japanese ROMs is marked with the region it is
-//! from (nettai-assets `SpriteSheet::region`, `ChipArt::region`): a US
-//! console shows the placeholder there, a difference the frame comparison
-//! knows.
+//! The pack has one picture of each: nettai draws it on every console. A US
+//! console shows the placeholder there, which the verification's frame
+//! comparison knows (its table of what a console shows otherwise); the
+//! pack keeps no mark of whose ROM a picture is from.
 
 use crate::exe6::{Rom, u32at};
-
-/// The region the Japanese ROMs' assets are marked with.
-pub const REGION: &str = "jp";
 
 /// The Japanese ROMs' sprite list (`SpritePointersList`; the US ROMs' is
 /// at 0x08031CC4).

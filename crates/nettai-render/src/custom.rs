@@ -305,8 +305,6 @@ struct View<'a> {
     hud: &'a Hud,
     /// Every pack's graphics: a chip's icon and picture are its game's.
     packs: crate::packs::Packs<'a>,
-    /// The console's region (`Renderer::console_region`).
-    region: crate::render::Region,
 }
 
 /// A button of the rules as the frontend draws it (docs/design/rules-in-luau.md
@@ -632,6 +630,9 @@ struct Window {
     /// Why the chip window's picture isn't the one the console shows, if
     /// it isn't: a known difference (`known_picture`).
     picture_known: Option<&'static str>,
+    /// The chip window's picture's mark, where the caller names its chip
+    /// (`chip:KEY`, `Problems::marking`).
+    picture_mark: Option<String>,
     /// In the font text mode, the strings whose tiles were left blank for
     /// the text layer: the chip window's name, and the Program Advance
     /// animation's names by their place (each with the cells it has, and
@@ -720,6 +721,7 @@ impl Window {
             tiles: LayerTiles::new(),
             palettes: [[0; 16]; 16],
             picture_known: None,
+            picture_mark: None,
             name: None,
             advance_names: Vec::new(),
             layout: a.layout,
@@ -1022,11 +1024,9 @@ impl Window {
         // (The Beast Out chip's picture is the Beast's the navi goes into.)
         let beast_out = v.b.roles().try_chip(nettai_battle::content::ChipRole::BeastOut) == Some(c);
         // A chip whose palette no ROM holds has its definition's
-        // (`art_palette`). The picture of a chip the US release cut is the
-        // Japanese ROMs': a US console shows a placeholder there. The
-        // Gregar and Falzar chips' are each their own beast: a console
-        // shows its own in both. A version's own chip's is its own ROM's:
-        // a console of the other version shows its counterpart's.
+        // (`art_palette`). A version's own chip's picture is its own ROM's:
+        // a console of the other version shows its counterpart's. (The
+        // picture is marked where the caller names its chip: `chip:KEY`.)
         let art = if beast_out {
             view_look(v, ButtonView::ChipPicture).map(|b| (&b.picture, None))
         } else {
@@ -1037,17 +1037,13 @@ impl Window {
             self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
             let console_version = console_version(v.b, &v.packs, v.side);
             self.picture_known = match art {
-                Some(a) if a.region.as_deref().is_some_and(|r| r != v.region.name()) => {
-                    Some("the Japanese games' chip picture (a US console shows a placeholder)")
-                }
-                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(match a.region {
-                    // (The Gregar and Falzar chips', which the US release
-                    // cut: each Japanese ROM has its own beast in both.)
-                    Some(_) => "the chip's own beast's picture (a console shows its own)",
-                    None => crate::lookups::OTHER_VERSIONS_ART,
-                }),
+                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(crate::lookups::OTHER_VERSIONS_ART),
                 _ => None,
             };
+            let what = format!("chip:{}", nettai_content_api::keys::local(&v.b.content.defs.chip(c).key));
+            if art.is_some() && problems.wants(&what) {
+                self.picture_mark = Some(what);
+            }
         }
     }
 
@@ -1206,6 +1202,14 @@ impl Window {
     /// The window's cells that show `tiles` of its block, where they show,
     /// as a known difference.
     fn known_tiles(&self, place: Placement, tiles: std::ops::Range<u16>, why: &'static str, problems: &mut Problems) {
+        if let Some([x0, y0, x1, y1]) = self.tiles_rect(place, tiles) {
+            problems.known(x0, y0, x1 - x0, y1 - y0, why);
+        }
+    }
+
+    /// Where the window's cells that show `tiles` of its block are, on the
+    /// screen (none: none shows).
+    fn tiles_rect(&self, place: Placement, tiles: std::ops::Range<u16>) -> Option<[i32; 4]> {
         let mut rect: Option<[i32; 4]> = None;
         for y in 0..ROWS {
             for x in place.from..place.to {
@@ -1220,12 +1224,9 @@ impl Window {
                 });
             }
         }
-        if let Some([x0, y0, x1, y1]) = rect {
-            let (x0, x1) = (x0.max(0), x1.min(240));
-            if x0 < x1 {
-                problems.known(x0, y0, x1 - x0, y1 - y0, why);
-            }
-        }
+        let [x0, y0, x1, y1] = rect?;
+        let (x0, x1) = (x0.max(0), x1.min(240));
+        (x0 < x1).then_some([x0, y0, x1, y1])
     }
 
     /// Draw a tile of the layer's character block at a cell of the layer.
@@ -1527,7 +1528,6 @@ pub fn draw<'a>(
     packs: &crate::packs::Packs<'a>,
     emblem: &'a Tiles,
     emblem_palette: Palette,
-    region: crate::render::Region,
     hud_layer: &mut Layer,
     names_layer: &mut Layer,
     list: &mut SpriteList<'a>,
@@ -1549,7 +1549,6 @@ pub fn draw<'a>(
         emblem_palette,
         hud: &assets.hud,
         packs: packs.clone(),
-        region,
     };
     let place = placement(screen);
     let mut w = Window::build(&v, text, problems);
@@ -1557,6 +1556,12 @@ pub fn draw<'a>(
     w.draw(hud_layer, place);
     if let Some(why) = w.picture_known {
         w.known_picture(place, why, problems);
+    }
+    if let Some(what) = w.picture_mark.take() {
+        let tiles = w.layout.art..w.layout.art + PICTURE_TILES;
+        if let Some(rect) = w.tiles_rect(place, tiles) {
+            problems.mark(rect, what);
+        }
     }
     w.known_icons(&v, place, problems);
     w.name_item(text, place);

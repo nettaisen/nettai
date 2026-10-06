@@ -191,11 +191,10 @@ pub const OTHER_VERSIONS_ART: &str = "another version's chip's art, its own ROM'
 /// version's own chip (`ChipArt::version`), which the other version's ROM
 /// draws as its counterpart. The frontend shows the chip's own on either
 /// console: its icon is a known difference where it shows, as its picture
-/// is. (Not a chip the US release cut, whose picture alone is another
-/// ROM's: EXE6's Gregar and Falzar chips' icons are the pack's own.)
+/// is.
 pub fn other_versions_icon(packs: &Packs, b: &nettai_battle::battle::Battle, chip: ChipHandle) -> bool {
     let console = crate::custom::console_version(b, packs, b.setup.local_side);
-    let art = packs.chip_art(&b.content, key(&b.content, chip)).filter(|a| a.region.is_none());
+    let art = packs.chip_art(&b.content, key(&b.content, chip));
     art.and_then(|a| a.version.as_deref()).is_some_and(|v| v != console)
 }
 

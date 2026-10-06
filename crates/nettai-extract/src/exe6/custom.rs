@@ -415,18 +415,16 @@ pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
 /// (`art_palette`).
 fn chip_art(roms: &crate::exe6::Roms, names: &AssetNames, id: u32) -> ChipArt {
     let key = names.chip_icon(id as u16);
-    if let Some((rom, gfx, pal, version)) = crate::exe6::jp::chip_picture(roms, id) {
+    // (A cut chip's picture is the Japanese ROMs': each Japanese ROM has its
+    // own beast in the Gregar and Falzar chips, the pack each chip's own.
+    // What a console shows otherwise there is the verification's to know.)
+    if let Some((rom, gfx, pal, _)) = crate::exe6::jp::chip_picture(roms, id) {
         let tiles = tiles(rom, (gfx, PICTURE_BYTES));
         let palette = pal.map_or([0; 16], |p| palette(rom, p));
-        let (region, version) = (
-            Some(crate::exe6::jp::REGION.into()),
-            version.map(String::from),
-        );
         return ChipArt {
             key,
             picture: Picture { tiles, palette },
-            region,
-            version,
+            version: None,
         };
     }
     // A cut chip with no Japanese source must not reuse the US purple block.
@@ -436,7 +434,6 @@ fn chip_art(roms: &crate::exe6::Roms, names: &AssetNames, id: u32) -> ChipArt {
     {
         return ChipArt {
             key,
-            region: Some(crate::exe6::jp::REGION.into()),
             ..Default::default()
         };
     }
@@ -458,7 +455,6 @@ fn chip_art(roms: &crate::exe6::Roms, names: &AssetNames, id: u32) -> ChipArt {
     ChipArt {
         key,
         picture,
-        region: None,
         version: crate::exe6::gregar::chip_version(id).map(String::from),
     }
 }

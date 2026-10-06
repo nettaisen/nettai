@@ -36,7 +36,6 @@ fn assets() -> Bundle {
         palette_sets: vec![vec![palette]],
         part_lists: vec![vec![part(0, -16, -8, 32, 16), part(8, -8, -32, 16, 32)]],
         animations: vec![vec![frame]; 32],
-        region: None,
     };
     // Panels: one solid tile, palette 1 for the left side's, 5 for the
     // right side's.
@@ -76,7 +75,9 @@ fn rgb(c: u16) -> [u8; 3] {
 #[test]
 fn renders_a_live_battle_to_png() {
     let assets = assets();
-    let renderer = Renderer::new(std::sync::Arc::new(assets));
+    let mut renderer = Renderer::new(std::sync::Arc::new(assets));
+    // (Where the navis' sprite is drawn, marked: `--mark`.)
+    renderer.problems.marking = ["sprite:test-navi".to_string()].into_iter().collect();
     // A live battle on the engine's hand-authored test content.
     let content = testing::content();
     let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
@@ -107,5 +108,16 @@ fn renders_a_live_battle_to_png() {
     assert_eq!(pixel(&f, 180, 105), rgb(BODY));
     // Above the field is the backdrop (no background in this asset set).
     assert_eq!(pixel(&f, 120, 40), [0, 0, 0]);
+    // Both navis marked where they are drawn, on the frames written: the
+    // left one's box holds its body and its shadow.
+    let marks = std::fs::read_to_string(out.join("marks.tsv")).unwrap();
+    let at_100: Vec<[i32; 4]> = marks
+        .lines()
+        .map(|l| l.split('\t').collect::<Vec<_>>())
+        .filter(|f| f[0] == "100" && f[5] == "sprite:test-navi")
+        .map(|f| [1, 2, 3, 4].map(|i| f[i].parse().unwrap()))
+        .collect();
+    assert_eq!(at_100.len(), 2, "{marks}");
+    assert!(at_100.iter().any(|&[x, y, w, h]| (x..x + w).contains(&60) && (y..y + h).contains(&105) && (x..x + w).contains(&45) && (y..y + h).contains(&117)), "{marks}");
     std::fs::remove_dir_all(&out).ok();
 }

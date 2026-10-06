@@ -14,7 +14,6 @@ use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
 use nettai_match::{After, Set};
-use nettai_render::Region;
 #[cfg(test)]
 use std::sync::Arc;
 
@@ -48,12 +47,6 @@ pub trait Driver {
     }
     /// A short description of where playback is.
     fn position(&self) -> String;
-    /// The region of the console whose screen this is: what the original
-    /// would show of the assets only one region's ROMs have
-    /// (`Renderer::console_region`).
-    fn console_region(&self) -> Region {
-        Region::Us
-    }
     /// The game version of the console whose screen this is, as its pack
     /// names its versions' assets, for a game whose versions the engine
     /// doesn't tell apart (EXE5's "protoman" and "colonel": the other
