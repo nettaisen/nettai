@@ -24,7 +24,7 @@
 //! same; only the Cross names are by game. The addresses are the Japanese
 //! ROMs' own (their data moved against the US ROMs').
 
-use crate::Rom;
+use crate::exe6::Rom;
 use nettai_assets::{ButtonLettering, CustomLettering, Hud, HudLettering, SlotPictures};
 use nettai_content::names::AssetNames;
 
@@ -59,9 +59,16 @@ const CROSS_NAMES_GREGAR: u32 = 0x0870_8774;
 
 /// The HUD's Japanese lettering; `base` is the pack's own HUD (a banner
 /// whose glyphs are the same is left to it).
-pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames) -> HudLettering {
-    use crate::hud::{FONT_GLYPHS, banner_at, dialogue_font, palette, texts, tiles};
-    let (cell, dialogue) = names.language_glyphs.get(LANGUAGE).cloned().unwrap_or_default();
+pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames, base_present: bool) -> HudLettering {
+    if !jp.is_present() {
+        return crate::placeholders::lettering(base, names, LANGUAGE);
+    }
+    use crate::exe6::hud::{FONT_GLYPHS, banner_at, dialogue_font, palette, texts, tiles};
+    let (cell, dialogue) = names
+        .language_glyphs
+        .get(LANGUAGE)
+        .cloned()
+        .unwrap_or_default();
     let banners = base
         .banners
         .iter()
@@ -70,12 +77,14 @@ pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames) -> HudLettering {
             let b = banner_at(jp, BANNERS, id as u32);
             // The words differ, and where a banner starts with them (a
             // longer name further left); not what kind of banner it is.
-            assert_eq!(
-                (b.kind, b.number_at, b.glyphs.len()),
-                (own.kind, own.number_at, own.glyphs.len()),
-                "the Japanese ROM's banner {:#04x} is another kind",
-                4 * id
-            );
+            if base_present {
+                assert_eq!(
+                    (b.kind, b.number_at, b.glyphs.len()),
+                    (own.kind, own.number_at, own.glyphs.len()),
+                    "the Japanese ROM's banner {:#04x} is another kind",
+                    4 * id
+                );
+            }
             (b != *own).then_some(b)
         })
         .collect();
@@ -94,20 +103,35 @@ pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames) -> HudLettering {
 
 /// The custom screen's Japanese lettering.
 pub fn custom(falzar: &Rom, gregar: &Rom) -> CustomLettering {
-    use crate::custom::{CROSS_NAMES, REDEAL_BUTTON, SCRAP_BUTTON, picture};
-    let names = |rom: &Rom, a: u32| crate::hud::tiles(rom, a, CROSS_NAMES.0 * CROSS_NAMES.1);
+    use crate::exe6::custom::{CROSS_NAMES, REDEAL_BUTTON, SCRAP_BUTTON, picture};
+    let names = |rom: &Rom, a: u32| crate::exe6::hud::tiles(rom, a, CROSS_NAMES.0 * CROSS_NAMES.1);
     CustomLettering {
         pictures: SlotPictures {
             ok: picture(falzar, OK),
             ok_picked: picture(falzar, OK_PICKED),
             other: picture(falzar, OTHER),
         },
-        cross_names: vec![("falzar".into(), names(falzar, CROSS_NAMES_FALZAR)), ("gregar".into(), names(gregar, CROSS_NAMES_GREGAR))],
+        cross_names: vec![
+            ("falzar".into(), names(falzar, CROSS_NAMES_FALZAR)),
+            ("gregar".into(), names(gregar, CROSS_NAMES_GREGAR)),
+        ],
         // The re-deal and scrap buttons' pictures in the chip window (their
         // tiles in the slots' row, and Beast Out's, have no words).
         buttons: vec![
-            (REDEAL_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(falzar, REDEAL)) }),
-            (SCRAP_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(falzar, SCRAP)) }),
+            (
+                REDEAL_BUTTON.into(),
+                ButtonLettering {
+                    tiles: None,
+                    picture: Some(picture(falzar, REDEAL)),
+                },
+            ),
+            (
+                SCRAP_BUTTON.into(),
+                ButtonLettering {
+                    tiles: None,
+                    picture: Some(picture(falzar, SCRAP)),
+                },
+            ),
         ],
     }
 }

@@ -325,12 +325,10 @@ pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Ve
     Some(found)
 }
 
-/// How to write the asset pack of `game` into `dir`, for a message: its
-/// extractor's `content` command. A game's extractor is the crate named for
-/// the game pack's id (`<id>-extract`); which ROMs it takes is the game's
-/// own, and the README lists them (no code here knows a game by name).
+/// How to write the asset pack of `game` into `dir`, for a frontend message.
+/// The shared extractor identifies any supplied ROMs by their headers.
 pub fn extract_command(game: &str, dir: &Path) -> String {
-    format!("cargo run --release -p {game}-extract -- content <its ROMs> {}", dir.join(game).display())
+    format!("cargo run --release -p nettai-extract -- {game} {} <ROM ...>", dir.join(game).display())
 }
 
 /// A game of the content a frontend can offer (docs/frontend.md §1): a

@@ -4,10 +4,11 @@
 //! as it runs (`sub_80284E2` the chip window, `sub_8028250` the slots,
 //! `off_802A744` its sprites).
 
-use crate::{Rom, u32at};
+use crate::decode::patches;
+use crate::exe6::{Rom, u32at};
 use nettai_assets::{
-    ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures,
-    Tiles, VersionPictures, Versioned, palettes_from_bytes,
+    ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry,
+    Palette, Picture, SlotPictures, Tiles, VersionPictures, Versioned, palettes_from_bytes,
 };
 use nettai_content::names::AssetNames;
 
@@ -36,7 +37,6 @@ const GRAY_PALETTE: u32 = 0x0872_CFB4;
 const OTHER_PALETTE: u32 = 0x086E_58FC;
 /// ChipData: 0x2C bytes a chip; +0x24 its picture, +0x28 the picture's
 /// palette.
-const CHIP_DATA: u32 = 0x0802_1DA8;
 const CHIP_COUNT: u32 = 411;
 const PICTURE_BYTES: usize = 0x540;
 /// The chip window's other pictures and their palettes (`sub_80286D4`,
@@ -73,7 +73,6 @@ const CROSS_CURSOR: (u32, usize) = (0x086E_57FC, 0x80);
 const CROSS_CURSOR_PALETTE: u32 = 0x086A_5D40;
 const EMBLEM_OF: u32 = 0x0802_819C;
 const EMBLEM_PALETTE_OF: u32 = 0x0802_818C;
-const EMBLEM_PALETTE_COUNT: u32 = 7;
 const LINK_NAVIS: u8 = 12;
 /// The link navis whose own emblems the Gregar ROM has (navis 1 to 5,
 /// HeatMan to ChargeMan: its version's); the others' are the Falzar ROM's.
@@ -106,8 +105,18 @@ const LAYOUT: CustomLayout = CustomLayout {
         x: 0x58 + 3,
         y: 0x70 - 2,
         corners: [
-            [(2, 1, false, false), (2, 0x16, true, false), (0x14, 0x16, true, true), (0x14, 1, false, true)],
-            [(4, 3, false, false), (4, 0x14, true, false), (0x12, 0x14, true, true), (0x12, 3, false, true)],
+            [
+                (2, 1, false, false),
+                (2, 0x16, true, false),
+                (0x14, 0x16, true, true),
+                (0x14, 1, false, true),
+            ],
+            [
+                (4, 3, false, false),
+                (4, 0x14, true, false),
+                (0x12, 0x14, true, true),
+                (0x12, 3, false, true),
+            ],
         ],
     },
 };
@@ -118,16 +127,36 @@ const SPECIAL_CURSOR: CursorPlace = CursorPlace {
     x: 0x58 + 3,
     y: 0x88 - 1,
     corners: [
-        [(2, 1, false, false), (2, 0x16, true, false), (0xE, 0x16, true, true), (0xE, 1, false, true)],
-        [(3, 2, false, false), (3, 0x15, true, false), (0xD, 0x15, true, true), (0xD, 2, false, true)],
+        [
+            (2, 1, false, false),
+            (2, 0x16, true, false),
+            (0xE, 0x16, true, true),
+            (0xE, 1, false, true),
+        ],
+        [
+            (3, 2, false, false),
+            (3, 0x15, true, false),
+            (0xD, 0x15, true, true),
+            (0xD, 2, false, true),
+        ],
     ],
 };
 const ROW_BUTTON_CURSOR: CursorPlace = CursorPlace {
     x: 0x38,
     y: 0x80,
     corners: [
-        [(2, 2, false, false), (2, 0x1C, true, false), (0x14, 0x1C, true, true), (0x14, 2, false, true)],
-        [(4, 4, false, false), (4, 0x1A, true, false), (0x12, 0x1A, true, true), (0x12, 4, false, true)],
+        [
+            (2, 2, false, false),
+            (2, 0x1C, true, false),
+            (0x14, 0x1C, true, true),
+            (0x14, 2, false, true),
+        ],
+        [
+            (4, 4, false, false),
+            (4, 0x1A, true, false),
+            (0x12, 0x1A, true, true),
+            (0x12, 4, false, true),
+        ],
     ],
 };
 const REGULAR: (u32, usize) = (0x086E_1238, 0x400);
@@ -178,7 +207,11 @@ pub(crate) const CROSS_NAMES: (usize, usize) = (10, 0x240);
 const CROSS_PALETTE_COUNT: u32 = 10;
 
 fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
-    let palettes = |at: u32, n: u32| (0..n).map(|i| palette(rom, at + 32 * i)).collect::<Vec<_>>();
+    let palettes = |at: u32, n: u32| {
+        (0..n)
+            .map(|i| palette(rom, at + 32 * i))
+            .collect::<Vec<_>>()
+    };
     // The Beast Out button, the version's Beast's (`sub_8028250`: 4x2 a
     // set: selectable, unavailable, battle mode 1's, and the hidden
     // slot's), with its picture in the chip window. The picture's palette
@@ -194,7 +227,10 @@ fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
         sets: ButtonSets::Other,
         hidden: Some(3),
         cursor: SPECIAL_CURSOR,
-        picture: Picture { tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)), palette: own },
+        picture: Picture {
+            tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)),
+            palette: own,
+        },
         palettes: vec![own],
         ..ButtonPictures::default()
     };
@@ -230,54 +266,52 @@ fn row_button(rom: &Rom, buttons: (u32, usize), details: (u32, u32)) -> ButtonPi
 /// has SpoutMan's, in HeatMan's colors). The pack has each navi's own, from
 /// the ROM that has it, under the navi's key (`names`): a navi compat
 /// doesn't name has none.
-fn emblems(roms: &crate::Roms, names: &AssetNames) -> Vec<Emblem> {
-    let (falzar, gregar) = (&roms.falzar, &roms.gregar);
-    let table = |a: u32| (falzar.bytes(a, LINK_NAVIS as usize), gregar.bytes(a, LINK_NAVIS as usize));
-    let (of, palette_of) = (table(EMBLEM_OF), table(EMBLEM_PALETTE_OF));
-    assert_eq!((of.0, palette_of.0), (of.1, palette_of.1), "the versions' emblem tables");
-    let palettes = |rom: &Rom, a: &VersionAddresses| (0..EMBLEM_PALETTE_COUNT).map(|i| palette(rom, a.emblem_palettes + 32 * i)).collect::<Vec<_>>();
-    let colors = palettes(falzar, &FALZAR);
-    assert_eq!(colors, palettes(gregar, &GREGAR), "the versions' emblems' colors");
+fn emblems(roms: &crate::exe6::Roms, names: &AssetNames) -> Vec<Emblem> {
     (0..LINK_NAVIS)
         .filter_map(|n| {
-            let (rom, a) = if GREGAR_NAVIS.contains(&n) { (gregar, &GREGAR) } else { (falzar, &FALZAR) };
+            let (rom, a) = if GREGAR_NAVIS.contains(&n) {
+                (roms.gregar, &GREGAR)
+            } else {
+                (roms.falzar, &FALZAR)
+            };
+            if !rom.is_present() {
+                return None;
+            }
+            let picture = rom.u8(EMBLEM_OF + n as u32) as u32;
+            let color = rom.u8(EMBLEM_PALETTE_OF + n as u32) as u32;
             Some(Emblem {
                 navi: names.navis.get(&n)?.clone(),
-                tiles: tiles(rom, (a.emblems + 0x80 * of.0[n as usize] as u32, 0x80)),
-                palette: colors[palette_of.0[n as usize] as usize],
+                tiles: tiles(rom, (a.emblems + 0x80 * picture, 0x80)),
+                palette: palette(rom, a.emblem_palettes + 32 * color),
             })
         })
         .collect()
 }
 
 fn tiles(rom: &Rom, (a, len): (u32, usize)) -> Tiles {
-    Tiles::from_4bpp(rom.bytes(a, len))
+    crate::exe6::hud::tiles(rom, a, len)
 }
 
 /// A palette as the hardware shows it: bit 15 of a color is ignored
 /// (the pictures of the chips the US release cut hold 0xCCCC).
 fn palette(rom: &Rom, a: u32) -> Palette {
+    if !rom.is_present() {
+        return crate::placeholders::PALETTE;
+    }
     palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)
 }
 
 pub(crate) fn picture(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
-    Picture { tiles: tiles(rom, (gfx, PICTURE_BYTES)), palette: palette(rom, pal) }
+    Picture {
+        tiles: tiles(rom, (gfx, PICTURE_BYTES)),
+        palette: palette(rom, pal),
+    }
 }
 
 fn map(rom: &Rom, a: u32) -> Vec<MapEntry> {
-    (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect()
-}
-
-/// A patch list: six bytes a patch (x, y, width, height, palette, mode),
-/// ending with 0xFF.
-fn patches(rom: &Rom, (mut a, first_tile): (u32, u16)) -> PatchList {
-    let mut patches = Vec::new();
-    while rom.u8(a) != 0xFF {
-        let b = rom.bytes(a, 6);
-        patches.push(MapPatch { x: b[0], y: b[1], width: b[2], height: b[3], palette: b[4], by_column: b[5] == 1 });
-        a += 6;
-    }
-    PatchList { first_tile, patches }
+    (0..MAP_CELLS)
+        .map(|i| MapEntry::from_gba(rom.u16(a + 2 * i)))
+        .collect()
 }
 
 fn rom_pointer(p: u32) -> bool {
@@ -288,19 +322,40 @@ fn rom_pointer(p: u32) -> bool {
 /// chips' keys. A Gregar console's own pictures are the US Gregar ROM's,
 /// where they differ; the pictures of the chips the US release cut are the
 /// Japanese ROMs' (`jp::CHIP_PICTURES`).
-pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
+pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
     let (rom, gregar) = (&roms.falzar, &roms.gregar);
     let mut versioned = Versioned::new("falzar", version_pictures(rom, &FALZAR));
     let own = version_pictures(gregar, &GREGAR);
-    if own != versioned.base {
+    if own != versioned.base || !rom.is_present() || !gregar.is_present() {
         versioned.versions.push(("gregar".into(), own));
     }
+    if !rom.is_present() {
+        let mut c = crate::placeholders::custom();
+        c.layout = LAYOUT;
+        c.buttons = vec![
+            (REDEAL_BUTTON.into(), crate::placeholders::button(2, 3)),
+            (SCRAP_BUTTON.into(), crate::placeholders::button(2, 3)),
+        ];
+        c.versioned = versioned;
+        c.chip_art = (0..CHIP_COUNT)
+            .map(|id| chip_art(roms, names, id))
+            .collect();
+        c.emblems = emblems(roms, names);
+        return c;
+    }
     let glyphs = |(a, n): (u32, usize)| tiles(rom, (a, 0x40 * n));
-    let palettes = |(a, n): (u32, usize)| (0..n as u32).map(|i| palette(rom, a + 32 * i)).collect::<Vec<_>>();
+    let palettes = |(a, n): (u32, usize)| {
+        (0..n as u32)
+            .map(|i| palette(rom, a + 32 * i))
+            .collect::<Vec<_>>()
+    };
     CustomScreen {
         layout: LAYOUT,
         buttons: vec![
-            (REDEAL_BUTTON.into(), row_button(rom, REDEAL_BUTTONS, REDEAL)),
+            (
+                REDEAL_BUTTON.into(),
+                row_button(rom, REDEAL_BUTTONS, REDEAL),
+            ),
             (SCRAP_BUTTON.into(), row_button(rom, SCRAP_BUTTONS, SCRAP)),
         ],
         window_tiles: tiles(rom, WINDOW_TILES),
@@ -309,13 +364,17 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
         name_bar: tiles(rom, NAME_BAR),
         window_maps: WINDOW_MAPS.iter().map(|&a| map(rom, a)).collect(),
         window_patches: patches(rom, WINDOW_PATCHES),
-        cross_maps: (0..CROSS_MAPS.1).map(|i| map(rom, CROSS_MAPS.0 + 2 * MAP_CELLS * i)).collect(),
+        cross_maps: (0..CROSS_MAPS.1)
+            .map(|i| map(rom, CROSS_MAPS.0 + 2 * MAP_CELLS * i))
+            .collect(),
         cross_patches: patches(rom, CROSS_PATCHES),
         frame_palettes: palettes(FRAME_PALETTES),
         icon_palette: palette(rom, ICON_PALETTE),
         gray_palette: palette(rom, GRAY_PALETTE),
         other_palette: palette(rom, OTHER_PALETTE),
-        chip_art: (0..CHIP_COUNT).map(|id| chip_art(roms, names, id)).collect(),
+        chip_art: (0..CHIP_COUNT)
+            .map(|id| chip_art(roms, names, id))
+            .collect(),
         pictures: SlotPictures {
             ok: picture(rom, OK),
             ok_picked: picture(rom, OK_PICKED),
@@ -336,7 +395,11 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
         emblems: emblems(roms, names),
         regular: tiles(rom, REGULAR),
         advance_name_colors: (0..ADVANCE_NAME_COLORS.1)
-            .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLORS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
+            .map(|i| {
+                std::array::from_fn(|k| {
+                    rom.u16(ADVANCE_NAME_COLORS.0 + 8 * i + 2 * k as u32) & 0x7FFF
+                })
+            })
             .collect(),
         languages: Vec::new(),
     }
@@ -350,17 +413,52 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
 /// palette no ROM holds (the Gregar and Falzar chips': a Card e+ gift's,
 /// kept in the save) gets a black one; its definition gives the palette
 /// (`art_palette`).
-fn chip_art(roms: &crate::Roms, names: &AssetNames, id: u32) -> ChipArt {
+fn chip_art(roms: &crate::exe6::Roms, names: &AssetNames, id: u32) -> ChipArt {
     let key = names.chip_icon(id as u16);
-    if let Some((rom, gfx, pal, version)) = crate::jp::chip_picture(roms, id) {
+    if let Some((rom, gfx, pal, version)) = crate::exe6::jp::chip_picture(roms, id) {
         let tiles = tiles(rom, (gfx, PICTURE_BYTES));
         let palette = pal.map_or([0; 16], |p| palette(rom, p));
-        let (region, version) = (Some(crate::jp::REGION.into()), version.map(String::from));
-        return ChipArt { key, picture: Picture { tiles, palette }, region, version };
+        let (region, version) = (
+            Some(crate::exe6::jp::REGION.into()),
+            version.map(String::from),
+        );
+        return ChipArt {
+            key,
+            picture: Picture { tiles, palette },
+            region,
+            version,
+        };
     }
-    let rom = crate::gregar::chip_source(&roms.falzar, &roms.gregar, id);
-    let record = CHIP_DATA + 0x2C * id;
+    // A cut chip with no Japanese source must not reuse the US purple block.
+    if crate::exe6::jp::CHIP_PICTURES
+        .iter()
+        .any(|(chip, _)| *chip == id)
+    {
+        return ChipArt {
+            key,
+            region: Some(crate::exe6::jp::REGION.into()),
+            ..Default::default()
+        };
+    }
+    let (rom, table) = crate::exe6::gregar::chip_source(roms, id);
+    if !rom.is_present() {
+        return ChipArt {
+            key,
+            version: crate::exe6::gregar::chip_version(id).map(String::from),
+            ..Default::default()
+        };
+    }
+    let record = table + 0x2C * id;
     let (gfx, pal) = (u32at(rom, record + 0x24), u32at(rom, record + 0x28));
-    let picture = if rom_pointer(gfx) && rom_pointer(pal) { picture(rom, (gfx, pal)) } else { Picture::default() };
-    ChipArt { key, picture, region: None, version: crate::gregar::chip_version(id).map(String::from) }
+    let picture = if rom_pointer(gfx) && rom_pointer(pal) {
+        picture(rom, (gfx, pal))
+    } else {
+        Picture::default()
+    };
+    ChipArt {
+        key,
+        picture,
+        region: None,
+        version: crate::exe6::gregar::chip_version(id).map(String::from),
+    }
 }

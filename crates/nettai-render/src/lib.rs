@@ -2,7 +2,7 @@
 //!
 //! Everything on screen is drawn from engine state (panels, objects with
 //! their sprite, animation frame and look, HP, the custom gauge) and the
-//! content packs' graphics (`exe6-extract content`); nothing emulates the
+//! content packs' graphics (`nettai-extract exe6`); nothing emulates the
 //! original's hardware. The frame is the original's 240x160, composed with
 //! its layer and sprite ordering rules ([`Renderer::render`]), with the
 //! font mode's text items to draw over it at the output's resolution

@@ -1,8 +1,4 @@
-//! The battle sprite archive, the format EXE5 and EXE6 share
-//! (`sprite_loadAnimationData`, the same code in both): animations of
-//! frames that name a tileset, a palette block, a mini-animation and a part
-//! table. exe6-extract decodes EXE6's with the same reading; the two belong
-//! in one shared decoder when exe6-extract is next reworked.
+//! The sprite and portrait archive format shared by EXE5 and EXE6.
 
 use crate::rom::Rom;
 use nettai_assets::*;
@@ -32,12 +28,19 @@ const MAX_PALETTES: usize = 64;
 /// duration at +0x10 and the flags at +0x12, 0x80 ending it).
 pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
     const BASE: usize = 4;
-    let rd32 = |o: usize| data.get(o..o + 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize);
+    let rd32 = |o: usize| {
+        data.get(o..o + 4)
+            .map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize)
+    };
     let count = rd32(BASE)? / 4;
     if count == 0 || count > 256 {
         return None;
     }
-    let mut sheet = SpriteSheet { category, index, ..Default::default() };
+    let mut sheet = SpriteSheet {
+        category,
+        index,
+        ..Default::default()
+    };
     // Where the archive's blocks start: a palette block runs up to the next.
     let mut blocks: Vec<usize> = Vec::new();
     for a in 0..count {
@@ -64,7 +67,9 @@ pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
                 Some(&i) => i,
                 None => {
                     let size = rd32(BASE + t)?;
-                    sheet.tilesets.push(Tiles::from_4bpp(data.get(BASE + t + 4..BASE + t + 4 + size)?));
+                    sheet.tilesets.push(Tiles::from_4bpp(
+                        data.get(BASE + t + 4..BASE + t + 4 + size)?,
+                    ));
                     let i = (sheet.tilesets.len() - 1) as u16;
                     tilesets.insert(t, i);
                     i
@@ -78,8 +83,12 @@ pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
                     let start = BASE + p + 4;
                     let avail = data.len().saturating_sub(start) / 32;
                     let end = blocks.iter().copied().filter(|&b| b > BASE + p).min();
-                    let count = end.map_or(16, |end| ((end - start) / 32).clamp(16, MAX_PALETTES));
-                    sheet.palette_sets.push(palettes_from_bytes(&data[start..start + 32 * avail.min(count)]));
+                    let count = end.map_or(16, |end| {
+                        (end.saturating_sub(start) / 32).clamp(16, MAX_PALETTES)
+                    });
+                    sheet.palette_sets.push(palettes_from_bytes(
+                        data.get(start..start + 32 * avail.min(count))?,
+                    ));
                     let i = (sheet.palette_sets.len() - 1) as u16;
                     palsets.insert(p, i);
                     i
@@ -100,7 +109,13 @@ pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
                     i
                 }
             };
-            frames.push(SpriteFrame { tileset, palette_set, parts: parts_index, duration, flags });
+            frames.push(SpriteFrame {
+                tileset,
+                palette_set,
+                parts: parts_index,
+                duration,
+                flags,
+            });
             if flags & 0x80 != 0 || frames.len() > 512 {
                 break;
             }
@@ -117,23 +132,35 @@ pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
 /// sheet, and each of its entries (part list, duration, flags) a frame.
 pub fn portrait_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
     const BASE: usize = 4;
-    let rd32 = |o: usize| data.get(o..o + 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize);
+    let rd32 = |o: usize| {
+        data.get(o..o + 4)
+            .map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize)
+    };
     // Animation 0's frame (the table's first offset is also its size).
     let f = BASE + rd32(BASE).filter(|&o| o != 0)?;
     let (t, p, m, o) = (rd32(f)?, rd32(f + 4)?, rd32(f + 8)?, rd32(f + 12)?);
-    let mut sheet = SpriteSheet { category, index, ..Default::default() };
+    let mut sheet = SpriteSheet {
+        category,
+        index,
+        ..Default::default()
+    };
     let size = rd32(BASE + t)?;
-    sheet.tilesets.push(Tiles::from_4bpp(data.get(BASE + t + 4..BASE + t + 4 + size)?));
+    sheet.tilesets.push(Tiles::from_4bpp(
+        data.get(BASE + t + 4..BASE + t + 4 + size)?,
+    ));
     let start = BASE + p + 4;
     let avail = data.len().saturating_sub(start) / 32;
-    sheet.palette_sets.push(palettes_from_bytes(&data[start..start + 32 * avail.min(16)]));
+    sheet.palette_sets.push(palettes_from_bytes(
+        data.get(start..start + 32 * avail.min(16))?,
+    ));
     let (mini, table) = (BASE + m, BASE + o);
     let mut lists: HashMap<usize, u16> = HashMap::new();
     for a in 0..(rd32(mini)? / 4).min(16) {
         let mut e = mini + rd32(mini + 4 * a)?;
         let mut frames = Vec::new();
         loop {
-            let (list_index, duration, flags) = (*data.get(e)? as usize, *data.get(e + 1)?, *data.get(e + 2)?);
+            let (list_index, duration, flags) =
+                (*data.get(e)? as usize, *data.get(e + 1)?, *data.get(e + 2)?);
             let list = table + rd32(table + 4 * list_index)?;
             let parts = match lists.get(&list) {
                 Some(&i) => i,
@@ -144,7 +171,13 @@ pub fn portrait_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteShee
                     i
                 }
             };
-            frames.push(SpriteFrame { tileset: 0, palette_set: 0, parts, duration, flags });
+            frames.push(SpriteFrame {
+                tileset: 0,
+                palette_set: 0,
+                parts,
+                duration,
+                flags,
+            });
             if flags & 0x80 != 0 || frames.len() > 64 {
                 break;
             }
