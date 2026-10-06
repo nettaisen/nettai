@@ -2131,7 +2131,7 @@ pub trait CoreApi {
     /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
     /// of `o`'s identity: the parts the navi image wears.
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool);
-    /// `sub_80DBB64`: put the junk look `look` (a field object's identity)
+    /// `sub_80DBB64`: put the absorbed look `look` (a field object's identity)
     /// on `o`'s sprite (`sub_800F26C`: the sprite, a shadow if the look has
     /// one, its animation and palette; flipped by `o`'s side unless the
     /// look keeps its own); false when the look shows nothing (the table's

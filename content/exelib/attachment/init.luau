@@ -69,19 +69,11 @@ local function follow(me: Object)
 end
 
 -- What a game's attachments are raised by for who holds them, over their look's (`lifted(owner, side)`; nil: the
--- look's). EXE6's (`sub_80B8CF8`, the default): a Cross's identity (the navi that changes form's, NameIDs 0x1AC to
--- 0x1B5: the side's form one of EXE6's kind `cross`, not the base form), 8 pixels.
+-- look's).
 export type Lifted = (owner: Object, side: number) -> number?
-local function cross_lifted(owner: Object, side: number): number?
-    local identity = owner.identity
-    if identity ~= nil and identity.changes_form and (battle.navi(side).form :: any).kind == "cross" then
-        return -8
-    end
-    return nil
-end
 
 -- `sub_80B8CF8`.
-local function init(me: Object, lifted: Lifted)
+local function init(me: Object, lifted: Lifted?)
     local s = me.state :: State
     local k = s.look
     local owner = me.related1 :: Object
@@ -91,7 +83,7 @@ local function init(me: Object, lifted: Lifted)
     sprite.palette = k.palette + s.palette_add
     me.no_sprite_update = false
     local identity = owner.identity
-    s.lift = lifted(owner, me.alliance) or k.lift or 0
+    s.lift = (lifted and lifted(owner, me.alliance)) or k.lift or 0
     local anim = s.anim
     me.anim = anim
     me.anim_loaded = anim
@@ -118,9 +110,8 @@ local function init(me: Object, lifted: Lifted)
     follow(me)
 end
 
--- A game's attachment kind, keyed `id`, raised by its rule (`lifted`; none: EXE6's).
+-- A game's attachment kind, keyed `id`, raised by its rule (`lifted`; none: by the look's alone).
 function attachment.make_kind(id: string, lifted: Lifted?): Kind
-    local rule: Lifted = lifted or cross_lifted
     return new.kind {
         id = id,
         pool = "actor",
@@ -137,7 +128,7 @@ function attachment.make_kind(id: string, lifted: Lifted?): Kind
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
-                init(me, rule)
+                init(me, lifted)
             elseif l == "update" then
                 follow(me)
             else

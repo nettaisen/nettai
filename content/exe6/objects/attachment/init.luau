@@ -12,7 +12,25 @@ local attachment = {}
 -- An attachment's look (see AttachmentLook in types.d.luau).
 attachment.look = common.look
 
-attachment.kind = common.make_kind("attachment")
+-- EXE6's lift (`sub_80B8CF8`): a Cross's identity (NameIDs 0x1AC to 0x1B5: a form of the side's navi's form lists,
+-- its `forms.gregar` and `forms.falzar`) while the side's navi isn't in its base form (NaviStats +0x2C), 8 pixels;
+-- else the look's. (DblBeast's beasts wear Beast Out's identity: never lifted, whatever the side's form.)
+attachment.kind = common.make_kind("attachment", function(owner: Object, side: number): number?
+    local identity = owner.identity
+    local stats = battle.navi(side)
+    if identity == nil or stats.form.base then
+        return nil
+    end
+    local sets: { [string]: FormSet } = (stats.navi.forms or {}) :: any
+    for _, set in sets do
+        for _, form in set.form_list do
+            if form.identity == identity then
+                return -8
+            end
+        end
+    end
+    return nil
+end)
 
 -- `sub_80B8E30`: attach `look` to `owner`, stored in `which`.
 function attachment.attach(owner: Object, look: AttachmentLook, which: Slot, options: AttachmentOptions?): Object?

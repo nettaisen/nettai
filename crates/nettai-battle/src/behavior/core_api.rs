@@ -3014,7 +3014,7 @@ impl CoreApi for Battle {
             return Err(ApiError::Other(format!("no identity has handle {}", look.0)));
         };
         let Some(l) = identity.look.filter(|_| identity.class == crate::content::IdentityClass::FieldObject) else {
-            return Err(ApiError::Other(format!("identity {:?} has no junk look (enemy_getStruct1's sprite)", identity.key)));
+            return Err(ApiError::Other(format!("identity {:?} has no absorbed look (enemy_getStruct1's sprite)", identity.key)));
         };
         let Some(id) = l.sprite else { return Ok(false) };
         self.sprite_load(o, id);
