@@ -1,6 +1,6 @@
 //! What two netplay peers say before a match, and how they agree it: the
 //! lobby and the handshake, without any IO of their own. The host brings
-//! the datagrams (the program's UDP socket, a WebRTC data channel):
+//! the datagrams (the program's: a WebRTC data channel, nettai-rtc's link):
 //! [`Lobby::receive`] takes each one that arrives from the other peer,
 //! [`Lobby::poll`] says where things stand and [`Lobby::outgoing`] hands
 //! over what to send. Nothing is assumed of delivery: a datagram may be
