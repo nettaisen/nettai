@@ -24,7 +24,11 @@ nettai-match = { path = "../nettai-match" }
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
 # The window.
-iced = { version = "0.14", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "x11", "wayland", "canvas", "image-without-codecs"] }
+iced = { version = "0.14", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "x11", "wayland", "canvas", "image-without-codecs", "advanced"] }
+# The battle's picture on the GPU renderer: a texture written in place
+# (src/picture.rs: iced_wgpu's custom primitive, wgpu through iced).
+iced_wgpu = { version = "0.14", default-features = false }
+bytemuck = "1"
 rfd = "0.15"
 png = "0.17"
 toml = "0.8"
