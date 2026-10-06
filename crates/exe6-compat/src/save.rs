@@ -1,7 +1,9 @@
 //! An EXE6 save file (the .sav an emulator keeps), and what nettai reads of
 //! it for a player's setup: the game, what it unlocks on the custom screen,
-//! the navi code's level and the SP navi deletion times. (More of a side, its
-//! folder, NaviCust and patch cards, can follow.)
+//! the navi operated and its navi code's level, the SP navi deletion times,
+//! the equipped folder with its Regular and tag chips, the NaviCust, the
+//! patch cards, the BugFrags, and the operated navi's NaviStats block (what
+//! the save brings to its stats).
 //!
 //! The file holds the save image at 0x100: 0x6710 bytes, the game's EWRAM
 //! from 0x02000000 as the game saves it (an address's offset in the image
@@ -10,8 +12,12 @@
 //! is 0 in a save the game wrote; the game's name is at 0x1C70; the word at
 //! 0x1C6C is the checksum: the image's bytes summed, less the checksum's
 //! own, plus 0x72 for Gregar and 0x18 for Falzar. The four games (US and
-//! Japanese, Gregar and Falzar) keep what is read here at the same places.
-//! (The format as Tango's save support reads it.)
+//! Japanese, Gregar and Falzar) keep what is read here at the same places,
+//! but that a Japanese image's shop region is 0x40 shorter: what a US one
+//! keeps from 0x414C to 0x513C sits 0x40 earlier there (the NaviCust's list,
+//! the NaviStats blocks). (The format as Tango's save support reads it;
+//! Tango's raw netplay saves are such an image, unmasked:
+//! [`Save::from_image`].)
 
 use crate::codec;
 use crate::unlocks::Unlocks;
@@ -29,7 +35,7 @@ const GAME_NAME: usize = 0x1C70;
 
 /// The event flags (`oToolkit_EventFlagsPtr`, 0x02001C88): flag `f` is bit
 /// `0x80 >> (f & 7)` of byte `f >> 3`.
-const EVENT_FLAGS: usize = 0x1C88;
+pub const EVENT_FLAGS: usize = 0x1C88;
 /// The navi operated (`GameState+0x01`, 0x02001B81: 0 MegaMan, 1 to 11 the
 /// link navis), and the navi code received (`S2001c04+0x30`, 0x02001C34, a
 /// word: `0x141 + 15 · navi + level`, `sub_8121198`).
@@ -41,6 +47,41 @@ const NAVI_CODES: u32 = 15;
 /// exchange sends (`sub_800B144`, the block's +0x70) and a battle reads at
 /// `byte_203EB00`.
 const SP_TIMES: usize = 0x18C0;
+
+/// The folders (three of 30 halfwords: the chip in the low 9 bits, the code
+/// above; `sub_8133B70`), and the BugFrags (a word, which the game checks
+/// against its two mirrors before it trusts it, `sub_8006FD0`).
+pub const FOLDERS: usize = 0x2178;
+const FOLDER_SIZE: usize = 30;
+pub const BUG_FRAGS: usize = 0x1BE0;
+/// The key items' counts (a byte an item: ExpMemry's, item 0x71, is the
+/// NaviCust board's expansions).
+pub const KEY_ITEMS: usize = 0x3134;
+pub const EXP_MEMORY: u8 = 0x71;
+/// The NaviCust's list (0x31 parts of 8 bytes, at 0x02004190), and the
+/// event flags that compress a part (0x2660 + its id, which `sub_813B7A0`
+/// reads).
+pub const NAVICUST: usize = 0x4190;
+pub const NAVICUST_PARTS: usize = 0x31;
+const COMPRESSED_FLAG: u16 = 0x2660;
+/// The NaviStats blocks (0x64 bytes): MegaMan's, then the link navi's the
+/// save operates (`sub_80136CC`'s, by the navi operated).
+pub const NAVI_STATS: usize = 0x47CC;
+pub const NAVI_STATS_SIZE: usize = 0x64;
+/// A block's equipped folder, its Regular chip by folder (an entry, from 0;
+/// 30 and on none), and its tag chips by folder (two entries; 0xFF none).
+const EQUIPPED_FOLDER: usize = 0x2D;
+const REGULAR_CHIPS: usize = 0x2E;
+const TAG_CHIPS: usize = 0x56;
+/// The patch cards' count and list (a byte a card: its number, bit 7 when
+/// switched off).
+pub const CARD_COUNT: usize = 0x65F0;
+pub const CARDS: usize = 0x6620;
+const MAX_CARDS: usize = 0x30;
+/// The Japanese images' shorter shop region: from here on (the US's), a
+/// Japanese image's bytes sit 0x40 earlier, to its end.
+const JP_SHIFTED: std::ops::Range<usize> = 0x414C..0x513C;
+const JP_SHIFT: usize = 0x40;
 
 /// Beast Out unlocked; a navi code received; the version's first Cross
 /// (`sub_8029EF8`'s table).
@@ -69,7 +110,28 @@ impl std::fmt::Debug for Save {
     }
 }
 
+/// A save's equipped folder, by the original's numbers: its 30 chips (each
+/// `code << 9 | chip`), its Regular chip and its tag chips (entries, from 0).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SaveFolder {
+    pub chips: [u16; FOLDER_SIZE],
+    pub regular: Option<u8>,
+    pub tags: Option<[u8; 2]>,
+}
+
 impl Save {
+    /// A save image, unmasked (Tango's raw netplay saves): its game's name
+    /// and the shift word checked, not its checksum.
+    pub fn from_image(image: &[u8]) -> Result<Save, String> {
+        let image: Box<[u8]> = image.get(..IMAGE_SIZE).ok_or_else(|| format!("an EXE6 save image is {IMAGE_SIZE:#x} bytes, not {:#x}", image.len()))?.into();
+        let word = |at: usize| u32::from_le_bytes(image[at..at + 4].try_into().expect("four bytes"));
+        if word(SHIFT) != 0 {
+            return Err(format!("the save's shift word is {:#x}, not 0: not a save the game wrote", word(SHIFT)));
+        }
+        let (version, region) = game_of(&image)?;
+        Ok(Save { image, version, region })
+    }
+
     /// The save in `file` (a .sav's bytes), checked: its game's name, the
     /// shift word and the checksum.
     pub fn read(file: &[u8]) -> Result<Save, String> {
@@ -86,13 +148,7 @@ impl Save {
         if word(SHIFT) != 0 {
             return Err(format!("the save's shift word is {:#x}, not 0: not a save the game wrote", word(SHIFT)));
         }
-        let (version, region) = match &image[GAME_NAME..GAME_NAME + 20] {
-            b"REXE6 G 20060110a US" => (GameVersion::Gregar, Region::Us),
-            b"REXE6 F 20060110a US" => (GameVersion::Falzar, Region::Us),
-            b"REXE6 G 20050924a JP" => (GameVersion::Gregar, Region::Jp),
-            b"REXE6 F 20050924a JP" => (GameVersion::Falzar, Region::Jp),
-            name => return Err(format!("not an EXE6 save (its game is {:?})", String::from_utf8_lossy(name))),
-        };
+        let (version, region) = game_of(&image)?;
         let sum: u32 = image.iter().map(|&b| b as u32).sum::<u32>() - image[CHECKSUM..CHECKSUM + 4].iter().map(|&b| b as u32).sum::<u32>();
         let expected = sum
             + match version {
@@ -159,6 +215,70 @@ impl Save {
     pub fn sp_times(&self) -> SpTimes {
         codec::sp_times(&self.image[SP_TIMES..SP_TIMES + 0x28])
     }
+
+    /// Where the image keeps what a US one keeps at `us`.
+    fn at(&self, us: usize) -> usize {
+        if self.region == Region::Jp && JP_SHIFTED.contains(&us) { us - JP_SHIFT } else { us }
+    }
+
+    /// The NaviStats block of the navi operated (MegaMan's, or the link
+    /// navi's after it).
+    pub fn navi_stats(&self) -> [u8; NAVI_STATS_SIZE] {
+        let at = self.at(NAVI_STATS) + if self.navi() == 0 { 0 } else { NAVI_STATS_SIZE };
+        self.image[at..at + NAVI_STATS_SIZE].try_into().expect("a NaviStats block")
+    }
+
+    /// The equipped folder of the navi operated, with its Regular and tag
+    /// chips.
+    pub fn folder(&self) -> SaveFolder {
+        let stats = self.navi_stats();
+        let folder = (stats[EQUIPPED_FOLDER] as usize).min(2);
+        let at = FOLDERS + folder * FOLDER_SIZE * 2;
+        let chips = std::array::from_fn(|i| u16::from_le_bytes([self.image[at + i * 2], self.image[at + i * 2 + 1]]));
+        let regular = Some(stats[REGULAR_CHIPS + folder]).filter(|&r| (r as usize) < FOLDER_SIZE);
+        let tags = [stats[TAG_CHIPS + folder * 2], stats[TAG_CHIPS + folder * 2 + 1]];
+        let tags = (tags.iter().all(|&t| (t as usize) < FOLDER_SIZE)).then_some(tags);
+        SaveFolder { chips, regular, tags }
+    }
+
+    /// The NaviCust's list (`codec::navicust` reads it).
+    pub fn navicust_list(&self) -> &[u8] {
+        let at = self.at(NAVICUST);
+        &self.image[at..at + NAVICUST_PARTS * 8]
+    }
+
+    /// Whether the NaviCust compresses part `part` (its event flag).
+    pub fn compressed(&self, part: u8) -> bool {
+        self.event_flag(COMPRESSED_FLAG + part as u16)
+    }
+
+    /// The NaviCust board's expansions: the ExpMemry the save has.
+    pub fn expansions(&self) -> u8 {
+        self.image[KEY_ITEMS + EXP_MEMORY as usize]
+    }
+
+    /// The patch cards' list (`codec::patch_cards` reads it): a byte a card,
+    /// its number, bit 7 when switched off.
+    pub fn patch_cards(&self) -> &[u8] {
+        let n = (self.image[CARD_COUNT] as usize).min(MAX_CARDS);
+        &self.image[CARDS..CARDS + n]
+    }
+
+    /// The BugFrags.
+    pub fn bug_frags(&self) -> u32 {
+        u32::from_le_bytes(self.image[BUG_FRAGS..BUG_FRAGS + 4].try_into().expect("four bytes"))
+    }
+}
+
+/// The game of an image: its version and region, by its game's name.
+fn game_of(image: &[u8]) -> Result<(GameVersion, Region), String> {
+    Ok(match &image[GAME_NAME..GAME_NAME + 20] {
+        b"REXE6 G 20060110a US" => (GameVersion::Gregar, Region::Us),
+        b"REXE6 F 20060110a US" => (GameVersion::Falzar, Region::Us),
+        b"REXE6 G 20050924a JP" => (GameVersion::Gregar, Region::Jp),
+        b"REXE6 F 20050924a JP" => (GameVersion::Falzar, Region::Jp),
+        name => return Err(format!("not an EXE6 save (its game is {:?})", String::from_utf8_lossy(name))),
+    })
 }
 
 /// Save files for tests: what a save says of these facts.
@@ -169,6 +289,20 @@ pub mod testing {
     /// Crosses owned, the navi `navi` operated and its navi code at `level`
     /// (none: event flag 0x163 clear), and these SP times; nothing else.
     pub fn file(version: GameVersion, beast_out: bool, crosses: [bool; 5], navi: u8, level: Option<u8>, sp_times: &SpTimes) -> Vec<u8> {
+        file_with(version, beast_out, crosses, navi, level, sp_times, &[])
+    }
+
+    /// [`file`], with these bytes of the image set besides (a US image's
+    /// offsets; event flags past the first 0x30 bytes among them).
+    pub fn file_with(
+        version: GameVersion,
+        beast_out: bool,
+        crosses: [bool; 5],
+        navi: u8,
+        level: Option<u8>,
+        sp_times: &SpTimes,
+        set: &[(usize, &[u8])],
+    ) -> Vec<u8> {
         let mut flags = [0u8; 0x30];
         let mut set_flag = |f: u16| flags[(f >> 3) as usize] |= 0x80 >> (f & 7);
         if beast_out {
@@ -183,7 +317,10 @@ pub mod testing {
         }
         let code = level.map_or(0, |l| 0x141 + 15 * navi as u32 + l as u32).to_le_bytes();
         let times: Vec<u8> = sp_times.iter().flat_map(|t| t.to_le_bytes()).collect();
-        tests_file(version, &[(EVENT_FLAGS, &flags), (NAVI, &[navi]), (NAVI_CODE, &code), (SP_TIMES, &times)], 0x3C)
+        let navi = [navi];
+        let mut all: Vec<(usize, &[u8])> = vec![(EVENT_FLAGS, &flags), (NAVI, &navi), (NAVI_CODE, &code), (SP_TIMES, &times)];
+        all.extend_from_slice(set);
+        tests_file(version, &all, 0x3C)
     }
 
     /// A save image with these bytes set, masked with `mask` and given its
