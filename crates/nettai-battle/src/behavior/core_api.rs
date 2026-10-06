@@ -6,7 +6,7 @@
 use nettai_content_api::api::ApiResult;
 use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
-    ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
+    ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi, DimmingStep,
     Emotion, FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
     ScreenFade, Shadow,
@@ -29,7 +29,7 @@ use crate::field::PanelType;
 use crate::input::keys;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::actions::ActionVars;
-use crate::kinds::{self, Vars};
+use crate::kinds;
 use crate::object::sprite;
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::sound::SoundId;
@@ -1729,18 +1729,8 @@ impl CoreApi for Battle {
         kinds::player::snap_to_future_panel(self, o);
     }
 
-    fn state(&self, o: ObjectRef) -> Option<&ContentState> {
-        match &self.objects.get(o).vars {
-            Vars::Content(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState> {
-        match &mut self.objects.get_mut(o).vars {
-            Vars::Content(s) => Some(s),
-            _ => None,
-        }
+    fn state_mut(&mut self, o: ObjectRef) -> Option<nettai_content_api::StateMut<'_>> {
+        self.objects.state_mut(o)
     }
 
     fn rules_state_mut(&mut self, side: u8) -> ApiResult<&mut nettai_content_api::Block> {
@@ -2063,7 +2053,7 @@ impl CoreApi for Battle {
         Ok(word & key_bit(key) != 0)
     }
 
-    fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState> {
+    fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<nettai_content_api::StateMut<'_>> {
         // The running action's: the content action the navi runs.
         self.actor_of(o)?;
         let kinds::player::NaviAction::Content(h) = kinds::player::navi_action(self, o) else {
@@ -2073,18 +2063,16 @@ impl CoreApi for Battle {
         self.attack_state_for(o, id)
     }
 
-    fn attack_state_for(&mut self, o: ObjectRef, id: StateId) -> ApiResult<&mut ContentState> {
-        let a = self.actor_of_mut(o)?;
+    fn attack_state_for(&mut self, o: ObjectRef, id: StateId) -> ApiResult<nettai_content_api::StateMut<'_>> {
+        let a = self.objects.get(o).actor.ok_or(ApiError::NoActor(o))?;
         // The game keeps an action's variables in the shared attack state,
         // where they outlive the action; an action of another layout starts
         // from zero.
-        if !matches!(&a.attack.action, ActionVars::Content(s) if s.id() == id) {
-            a.attack.action = ActionVars::Content(ContentState::new(id));
+        if self.actors.get(a).attack.action != ActionVars::Content(id) {
+            let size = self.content.defs.schema(id).size();
+            self.actors.set_action_state(a, id, size);
         }
-        match &mut a.attack.action {
-            ActionVars::Content(s) => Ok(s),
-            _ => unreachable!(),
-        }
+        Ok(self.actors.action_state_mut(a).expect("the attack state holds a content action's"))
     }
 
     fn action_schema(&self, action: u16) -> ApiResult<StateId> {

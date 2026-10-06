@@ -17,7 +17,7 @@ pub mod sprite;
 
 use crate::collision::CollisionId;
 use crate::actor::ActorId;
-use nettai_content_api::{ChipHandle, KindHandle};
+use nettai_content_api::{ChipHandle, KindHandle, StateArena, StateId, StateMut, StateRef};
 use sprite::Sprite;
 
 pub use nettai_content_api::{ObjectRef, PanelPos, Pool, Vec3};
@@ -129,6 +129,9 @@ pub struct New {
     pub pool: Pool,
     pub kind: KindHandle,
     pub vars: crate::kinds::Vars,
+    /// The bytes of its content state (a content kind's schema's size; an
+    /// engine kind's, none): its block in the pool's arena, zeroed.
+    pub state_size: usize,
     pub pos: Vec3,
     pub params: [u8; 4],
 }
@@ -214,7 +217,8 @@ pub struct Object {
     /// A lifecycle position saved by status reactions (the game's +0x5C
     /// word; None = nothing saved).
     pub saved_state: Option<StateWord>,
-    /// Behavior-private state.
+    /// Behavior-private state. A content kind's is its layout: the values
+    /// are its slot's block in the pool's arena (`Objects::state`).
     pub vars: crate::kinds::Vars,
     /// A dimming controller's chip and bonus, which its telop shows
     /// (BattleObject+0x30 / +0x32 of a controller). Presentation only:
@@ -264,6 +268,10 @@ pub struct Objects {
     /// doesn't clear it when a slot is reused.
     sprites: Vec<Sprite>,
     in_use: [u32; 3],
+    /// Per pool, its content objects' states, each at its slot (the
+    /// objects' `Vars::Content` says which layout): a snapshot copies the
+    /// blocks there are and no more.
+    states: [StateArena<SLOTS>; 3],
     links: [Links; NODES],
     /// The object whose update is running, if any.
     current: Option<Node>,
@@ -297,6 +305,7 @@ impl Objects {
             slots: vec![Object::default(); 3 * SLOTS],
             sprites: vec![Sprite::default(); 3 * SLOTS],
             in_use: [0; 3],
+            states: Default::default(),
             links: [Links::default(); NODES],
             current: None,
             loop_passed: [0; 3],
@@ -340,6 +349,29 @@ impl Objects {
         &mut self.sprites[slot_index(r)]
     }
 
+    /// The object's content state (None for an engine kind). A freed
+    /// object's is what it left, until its slot is taken again.
+    pub fn state(&self, r: ObjectRef) -> Option<StateRef<'_>> {
+        match self.get(r).vars {
+            crate::kinds::Vars::Content(id) => Some(self.states[r.pool as usize].state(r.slot as usize, id)),
+            _ => None,
+        }
+    }
+
+    pub fn state_mut(&mut self, r: ObjectRef) -> Option<StateMut<'_>> {
+        match self.get(r).vars {
+            crate::kinds::Vars::Content(id) => Some(self.states[r.pool as usize].state_mut(r.slot as usize, id)),
+            _ => None,
+        }
+    }
+
+    /// Give the object a content state of layout `id`, `size` bytes,
+    /// zeroed, in place of what it had (a player's navi state).
+    pub fn set_state(&mut self, r: ObjectRef, id: StateId, size: usize) {
+        self.get_mut(r).vars = crate::kinds::Vars::Content(id);
+        self.states[r.pool as usize].reset(r.slot as usize, size);
+    }
+
     /// Whether `pool` has a free slot.
     pub fn has_room(&self, pool: Pool) -> bool {
         self.in_use[pool as usize].count_ones() < self.capacity[pool as usize] as u32
@@ -352,11 +384,12 @@ impl Objects {
     /// Allocate the lowest free slot of `pool` and initialize the object.
     /// Returns None if the pool is full. The caller links it.
     fn allocate(&mut self, new: New) -> Option<ObjectRef> {
-        let New { pool, kind, vars, pos, params } = new;
+        let New { pool, kind, vars, state_size, pos, params } = new;
         let bits = &mut self.in_use[pool as usize];
         let slot = (0..self.capacity[pool as usize]).find(|&i| *bits & (0x8000_0000 >> i) == 0)?;
         *bits |= 0x8000_0000 >> slot;
         let r = ObjectRef { pool, slot };
+        self.states[pool as usize].reset(slot as usize, state_size);
         *self.get_mut(r) = Object {
             flags: spawn_flags(pool),
             kind,
@@ -415,7 +448,8 @@ impl Objects {
     }
 
     /// Free an object: clear its flags and slot bit and unlink it. Its own
-    /// links are left as they were, as in the game.
+    /// links are left as they were, as in the game, and so is its content
+    /// state, until the slot is taken again.
     pub fn free(&mut self, r: ObjectRef) {
         self.get_mut(r).flags = 0;
         self.in_use[r.pool as usize] &= !(0x8000_0000 >> r.slot);

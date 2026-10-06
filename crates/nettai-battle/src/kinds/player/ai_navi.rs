@@ -87,7 +87,8 @@ pub(crate) fn spawn(
     o.panel = panel;
     o.future_panel = panel;
     o.chip = None;
-    o.vars = crate::kinds::Vars::Content(nettai_content_api::ContentState::new(navi_state));
+    let size = content.defs.schema(navi_state).size();
+    b.objects.set_state(r, navi_state, size);
     let ad = b.actors.get_mut(a);
     ad.actor_type = id.record.actor_type;
     ad.ai_index = id.record.ai_index;
