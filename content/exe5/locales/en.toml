@@ -393,53 +393,53 @@ language = "en"
 "tomahawksoul" = { name = "TmhkSoul" }
 
 [navicust_programs]
-"airshoes" = { name = "AirShoes" }
-"antidmg" = { name = "AntiDmg" }
-"attck-1" = { name = "Attck+1" }
-"attckmax" = { name = "AttckMAX" }
-"autoheal" = { name = "AutoHeal" }
-"autorun" = { name = "AutoRun" }
-"battery" = { name = "Battery" }
-"beat" = { name = "Beat" }
-"bodypack" = { name = "BodyPack" }
-"bugstop" = { name = "BugStop" }
-"bustpack" = { name = "BustPack" }
-"charge-1" = { name = "Charge+1" }
-"chargmax" = { name = "ChargMAX" }
-"chivalry" = { name = "Chivalry" }
-"collect" = { name = "Collect" }
-"custom1" = { name = "Custom1" }
-"custom2" = { name = "Custom2" }
-"fish" = { name = "Fish" }
-"flotshoe" = { name = "FlotShoe" }
-"fstbarr" = { name = "FstBarr" }
-"gigavirs" = { name = "GigaVirs" }
-"gigfldr1" = { name = "GigFldr1" }
-"hp-100" = { name = "HP+100" }
-"hp-200" = { name = "HP+200" }
-"hp-300" = { name = "HP+300" }
-"hp-400" = { name = "HP+400" }
-"hp-50" = { name = "HP+50" }
-"hp-500" = { name = "HP+500" }
-"hubbatc" = { name = "HubBatc" }
-"humor" = { name = "Humor" }
-"jungle" = { name = "Jungle" }
-"megavirs" = { name = "MegaVirs" }
-"megfldr1" = { name = "MegFldr1" }
-"megfldr2" = { name = "MegFldr2" }
-"millions" = { name = "Millions" }
-"oilbody" = { name = "OilBody" }
-"reflect" = { name = "Reflect" }
-"rush" = { name = "Rush" }
-"shield" = { name = "Shield" }
-"sneakrun" = { name = "SneakRun" }
-"soulclen" = { name = "SoulClen" }
-"soult-1" = { name = "SoulT+1" }
-"speed-1" = { name = "Speed+1" }
-"speedmax" = { name = "SpeedMAX" }
-"sprarmr" = { name = "SprArmr" }
-"tango" = { name = "Tango" }
-"undersht" = { name = "UnderSht" }
+"airshoes" = { name = "AirShoes", description = "Move\novr hole" }
+"antidmg" = { name = "AntiDmg", description = "B+Left=\nThrow a\nstar!" }
+"attck-1" = { name = "Attck+1", description = "MegaBstr\nAttck +1" }
+"attckmax" = { name = "AttckMAX", description = "MegaBstr\nAttckMAX" }
+"autoheal" = { name = "AutoHeal", description = "HP recv\nafter\nbattle" }
+"autorun" = { name = "AutoRun", description = "Run\nwithout\nusing B" }
+"battery" = { name = "Battery", description = "Attracts\nElec\nViruses!" }
+"beat" = { name = "Beat", description = "VS only!\nSnatches\nMegachps!" }
+"bodypack" = { name = "BodyPack", description = "Armr,Sht\nFlot,Air\n4-pc set" }
+"bugstop" = { name = "BugStop", description = "Prevents\nbugs" }
+"bustpack" = { name = "BustPack", description = "Atk/speed\n/charge\n+3 each!" }
+"charge-1" = { name = "Charge+1", description = "MegaBstr\nCharge\n+1" }
+"chargmax" = { name = "ChargMAX", description = "MegaBstr\nCharge\nMAX!" }
+"chivalry" = { name = "Chivalry", description = "Become\nmacho!\nPress L" }
+"collect" = { name = "Collect", description = "Get more\nchips\nfrm enmy" }
+"custom1" = { name = "Custom1", description = "Custom\nScreen\n+1 chip" }
+"custom2" = { name = "Custom2", description = "Custom\nScreen\n+2 chips" }
+"fish" = { name = "Fish", description = "Attracts\nAqua\nViruses!" }
+"flotshoe" = { name = "FlotShoe", description = "No effct\nfrom\npnl type" }
+"fstbarr" = { name = "FstBarr", description = "Start\nwith\nBarrier" }
+"gigavirs" = { name = "GigaVirs", description = "GigaVirs" }
+"gigfldr1" = { name = "GigFldr1", description = "GigaChip\n+1" }
+"hp-100" = { name = "HP+100", description = "Max HP\n+100!" }
+"hp-200" = { name = "HP+200", description = "Max HP\n+200!" }
+"hp-300" = { name = "HP+300", description = "Max HP\n+300!" }
+"hp-400" = { name = "HP+400", description = "Max HP\n+400!" }
+"hp-50" = { name = "HP+50", description = "Max HP\n+50!" }
+"hp-500" = { name = "HP+500", description = "Max HP\n+500!" }
+"hubbatc" = { name = "HubBatc", description = "Maximize\nyour\nability" }
+"humor" = { name = "Humor", description = "Install\nand try\nL Btn" }
+"jungle" = { name = "Jungle", description = "Attracts\nWood\nViruses!" }
+"megavirs" = { name = "MegaVirs", description = "MegaVirs" }
+"megfldr1" = { name = "MegFldr1", description = "MegaChip\n+1" }
+"megfldr2" = { name = "MegFldr2", description = "MegaChip\n+2" }
+"millions" = { name = "Millions", description = "Gn mstry\ndata =\nZennys" }
+"oilbody" = { name = "OilBody", description = "Attracts\nFire\nViruses!" }
+"reflect" = { name = "Reflect", description = "B+Left=\nReflect\nattacks!" }
+"rush" = { name = "Rush", description = "VS only!\nTracks\nenemys" }
+"shield" = { name = "Shield", description = "B+Left=\nStrong\nshield!" }
+"sneakrun" = { name = "SneakRun", description = "No weak\nenemies" }
+"soulclen" = { name = "SoulClen", description = "Prog to\npurify\nyr soul" }
+"soult-1" = { name = "SoulT+1", description = "DublSoul\neffect\n+1 turn" }
+"speed-1" = { name = "Speed+1", description = "MegaBstr\nSpeed +1" }
+"speedmax" = { name = "SpeedMAX", description = "MegaBstr\nSpeedMAX" }
+"sprarmr" = { name = "SprArmr", description = "Won't be\npushed!" }
+"tango" = { name = "Tango", description = "VS only!\nHeals\nlow HP" }
+"undersht" = { name = "UnderSht", description = "Keep 1HP\neven on\nhard hit" }
 
 [patch_cards]
 "alpha" = { name = "Alpha" }
