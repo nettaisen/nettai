@@ -8,8 +8,8 @@ local card: PatchCard = {
     mb = 7,
     effects = {
         cards.hp(40),
-        cards.back_special(chips.mettguard),
         cards.bug(cards.float_shoes(false)),
+        cards.back_special(chips.mettguard),
     },
 }
 

@@ -9,8 +9,8 @@ local card: PatchCard = {
         cards.hp(100),
         cards.body("aqua"),
         cards.rapid(5),
-        cards.encounter_element("fish"),
         cards.bug(cards.tango(false)),
+        cards.encounter_element("fish"),
     },
 }
 

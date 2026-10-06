@@ -8,8 +8,8 @@ local card: PatchCard = {
     mb = 5,
     effects = {
         cards.body("elec"),
-        cards.charged_shot(chips.thunder),
         cards.bug(cards.undershirt(false)),
+        cards.charged_shot(chips.thunder),
     },
 }
 

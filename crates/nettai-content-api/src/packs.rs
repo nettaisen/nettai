@@ -89,6 +89,12 @@ pub struct PackManifest {
     /// The support packs it requires modules of, by name.
     #[serde(default)]
     pub depends: Vec<String>,
+    /// Its locales' text tables, by name: top-level tables of key to text
+    /// that no definition owns (`patch_card_effects`), which tools read; a
+    /// top-level table that is no collection of the game and not declared
+    /// here is the locales' check's to refuse.
+    #[serde(default)]
+    pub text: Vec<String>,
 }
 
 impl PackManifest {
@@ -477,7 +483,7 @@ mod tests {
     use super::*;
 
     fn pack(id: &str, kind: PackKind, depends: &[&str]) -> (String, PackManifest) {
-        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect() })
+        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect(), text: Vec::new() })
     }
 
     #[test]

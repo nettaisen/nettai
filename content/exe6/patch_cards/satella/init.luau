@@ -6,8 +6,8 @@ local cards = require("../rules/patch_cards/cards")
 local card: PatchCard = {
     mb = 8,
     effects = {
-        cards.air_shoes(true),
         cards.rapid(4),
+        cards.air_shoes(true),
         cards.bug(cards.custom_damage(20)),
     },
 }

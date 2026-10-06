@@ -9,8 +9,8 @@ local card: PatchCard = {
     effects = {
         cards.hp(170),
         cards.body("aqua"),
-        cards.charged_shot(chips.seaseed),
         cards.bug(cards.undershirt(false)),
+        cards.charged_shot(chips.seaseed),
     },
 }
 

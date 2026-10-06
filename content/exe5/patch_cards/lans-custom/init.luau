@@ -9,9 +9,9 @@ local card: PatchCard = {
     mb = 25,
     effects = {
         cards.body("null"),
+        cards.mega_folder(2),
         cards.bug(cards.b_button(buster.weapon)),
         cards.bug(cards.charged_shot(charged_shot.program)),
-        cards.mega_folder(2),
     },
 }
 
