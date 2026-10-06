@@ -2,20 +2,20 @@
 -- EXE5's CrakBom, ParaBom and ResetBom bomb (attack object #0x24, 0x080C91A4: EXE6's #0x24, `sub_80C882C`, the same
 -- code, which no EXE6 chip throws): thrown three panels ahead in 35 ticks (0x080C9406), it lands and hits the column
 -- there (region 4) with its chip's hit, a burst on each panel of it; off solid ground it ends in a puff. What
--- differs is its kind (the record's Param1): 1 CrakBom's hit modifier 3, cracking the column; 2 ParaBom's
--- paralysis; 3 ResetBom's bug 0xFB (MegaMan loses his body programs), each its burst's palette and its sound.
--- Kinds 4 and up would light the column up as it flies, and 5 crack only its panel (no chip throws those).
+-- differs is its variant (the record's Param1, its kind; `crakbom.variant { ... }`, its chip's): CrakBom's (kind 1)
+-- hit modifier 3, cracking the column; ParaBom's (2) paralysis; ResetBom's (3) bug 0xFB (MegaMan loses his body
+-- programs), each its burst's palette and its sound. (Kinds 4 and up, which would light the column up as it flies,
+-- and 5, which cracks only its panel, no chip throws.)
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
-local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")
 
 local crakbom = {}
 
 export type State = {
-    -- Its kind (Param1).
-    which: number,
+    -- Its variant (Param1).
+    variant: CrakBomVariant,
     -- Its flight's ticks (Param2, 35).
     ticks: number,
     -- The panel it aims at (Param3 and Param4).
@@ -29,34 +29,13 @@ local ANIM = 7
 local FLIGHT_TICKS, GRAVITY = 35, -0x3000
 -- Effect 0x14: a puff of smoke.
 local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
--- Effects 0x50 to 0x53 (0x080C93E8, by the kind's low two bits): the burst in palettes 0 to 3.
-local BURST = asset.sprite("bomb-burst")
-local BURSTS = {
-    [0] = new.effect { sprite = BURST, anim = 0, palette = 0 },
-    [1] = new.effect { sprite = BURST, anim = 0, palette = 1 },
-    [2] = new.effect { sprite = BURST, anim = 0, palette = 2 },
-    [3] = new.effect { sprite = BURST, anim = 0, palette = 3 },
-}
--- Its landing's sound (0x080C932C, by the kind's low two bits).
-local SOUNDS = {
-    [0] = asset.sound("hit-bomb-1"),
-    [1] = asset.sound("panel-crack"),
-    [2] = asset.sound("panel-poison"),
-    [3] = asset.sound("panel-poison"),
-}
--- Its hit by kind (0x080C93C8: hit modifier, status, bug and argument bytes): 0x3, 0x3, 0x1000 (paralysis, status
--- 0x10), 0xFB0003, then the same again.
-type Hit = { hit_mod: number, status: Status?, bug: number }
-local HITS: { [number]: Hit } = {
-    [0] = { hit_mod = 3, bug = 0 },
-    [1] = { hit_mod = 3, bug = 0 },
-    [2] = { hit_mod = 0, status = statuses.paralyze_90, bug = 0 },
-    [3] = { hit_mod = 3, bug = 0xFB },
-    [4] = { hit_mod = 3, bug = 0 },
-    [5] = { hit_mod = 3, bug = 0 },
-    [6] = { hit_mod = 0, status = statuses.paralyze_90, bug = 0 },
-    [7] = { hit_mod = 3, bug = 0xFB },
-}
+-- The bursts' sheet (effects 0x50 to 0x53, 0x080C93E8: palettes 0 to 3).
+crakbom.burst = asset.sprite("bomb-burst")
+
+-- A bomb's variant.
+function crakbom.variant(v: CrakBomVariant): CrakBomVariant
+    return new.record("crakbom-variant", v)
+end
 
 -- A puff where it is, and gone.
 local function puff(me: Object)
@@ -64,15 +43,12 @@ local function puff(me: Object)
     me:set_lifecycle("destroy")
 end
 
--- 0x080C9354: the landing: a burst on each panel of the column, the column's hit; a kind 1 cracks it, a kind 5 its
--- panel (0x080C93EC, cracking whatever the panel).
+-- 0x080C9354: the landing: a burst on each panel of the column, the column's hit; CrakBom's cracks the column
+-- (0x080C93EC, cracking whatever the panel).
 local function land(me: Object, s: State)
     local x, y = me.panel_x, me.panel_y
-    battle.region_effects(x, y, regions.wide, me.alliance, BURSTS[bit32.band(s.which, 3)], 0)
-    local hit = HITS[s.which]
-    if hit == nil then
-        error(string.format("CrakBom's bomb kind %d reads past its hits", s.which))
-    end
+    local hit = s.variant
+    battle.region_effects(x, y, regions.wide, me.alliance, hit.burst, 0)
     local word = int.u32(me.damage + me.stamina * 0x10000)
     battle.hitbox(me, {
         panel_x = x,
@@ -91,9 +67,7 @@ local function land(me: Object, s: State)
         bug = hit.bug,
         bug_arg = 0,
     })
-    if s.which == 5 then
-        field.crack(x, y)
-    elseif s.which == 1 then
+    if hit.cracks then
         field.crack(x, y)
         field.crack(x, y + 1)
         field.crack(x, y - 1)
@@ -117,12 +91,6 @@ local function fly(me: Object, s: State)
         me.pos = Vec3.new(p.x + v.x, p.y + v.y, p.z + v.z)
         me.vel = Vec3.new(v.x, v.y, int.i32(v.z + GRAVITY))
         me:set_panel_from_coordinates()
-        -- (Kinds 4 and up light up the column every other four ticks.)
-        if bit32.btest(t, 4) and s.which >= 4 then
-            field.highlight(s.target_x, s.target_y)
-            field.highlight(s.target_x, s.target_y - 1)
-            field.highlight(s.target_x, s.target_y + 1)
-        end
         return
     end
     me:set_coordinates_from_panel()
@@ -133,7 +101,7 @@ local function fly(me: Object, s: State)
         return
     end
     land(me, s)
-    battle.play_sound(SOUNDS[bit32.band(s.which, 3)])
+    battle.play_sound(s.variant.sound)
     me.action = 4
     me.phase, me.phase_init = 0, 0
 end
@@ -158,7 +126,7 @@ end
 crakbom.kind = new.kind {
     id = "crakbom/bomb",
     pool = "attack",
-    state = { which = "u8", ticks = "u8", target_x = "u8", target_y = "u8" },
+    state = { variant = "record:crakbom-variant", ticks = "u8", target_x = "u8", target_y = "u8" },
     -- 0x080C91A4.
     update = function(me: Object)
         local l = me.lifecycle
@@ -185,8 +153,8 @@ crakbom.kind = new.kind {
     end,
 }
 
--- 0x080C9406: a thrower of kind `which` bombs, three panels ahead of the user.
-function crakbom.thrower(which: number): Thrower
+-- 0x080C9406: a thrower of `variant` bombs, three panels ahead of the user.
+function crakbom.thrower(variant: CrakBomVariant): Thrower
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
             local o = battle.spawn(crakbom.kind, pos)
@@ -195,7 +163,7 @@ function crakbom.thrower(which: number): Thrower
                 o.element = 0
                 o:set_damage_word(damage)
                 local s = o.state :: State
-                s.which = which
+                s.variant = variant
                 s.ticks = FLIGHT_TICKS
                 s.target_x, s.target_y = user.panel_x + 3 * user.facing, user.panel_y
             end

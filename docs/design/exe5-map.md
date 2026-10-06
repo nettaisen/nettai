@@ -1767,7 +1767,9 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   chip's play; the
   pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
   side's auto battle data; their counters stay 0); getting in place for a chip by its positioning class
-  (rules/auto_battle/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
+  (rules/auto_battle/place: the classes of 0x08029B3C a chip has, by name, and the panel searches they share,
+  ./panels; class 12, which waits on the target's counter window, no chip has, and classes 0 and 17 are one
+  routine, `into_reach`).
 - *The auto battle data* (EXE5's rules' setup, block.luau): a recording's saves' blocks and the RNG2 the send
   started from (exe5-compat); a match file's `[side.auto_battle]` (below); both sent as the consoles send them
   (0x0802C7BE).
@@ -1923,7 +1925,9 @@ seven saves (Tango's templates and three played ones):
   (0x186 to 0x1A7: StepSwrd, C-Cannon, T-Swing). So no save the game wrote has one among its places, and only a
   hand-made block can put one there. A pattern record can hold one (a run takes any used chip whose byte 14 has
   bit 2, 0x0802C294: StepSwrd's has), where nothing plays it. rules/auto_battle/data.luau lists every chip with a
-  key, these among them (tools/exe5/gen_auto_battle.py, whose `--check` names a chip it lacks).
+  key, these among them (class `unplayable`), its classes, reach lists, spot tests and the panel offset lists the
+  searches read each by name (tools/exe5/gen_auto_battle.py, which maps the ROM's numbers to the names and whose
+  `--check` names a chip it lacks or a number it has no name for).
 
 ### 15.10 EXE5's emotions (as built)
 
