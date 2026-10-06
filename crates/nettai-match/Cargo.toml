@@ -12,7 +12,7 @@ nettai-content-api = { path = "../nettai-content-api" }
 # is the original's bytes, which a game's compat crate reads. EXE5's also
 # gives the original's chip numbers, the tie-break of the auto battle data
 # the game's writer would make (src/auto_battle.rs).
-exe6-compat.workspace = true
+exe6-compat = { path = "../exe6-compat" }
 exe5-compat = { path = "../exe5-compat" }
 serde ={ version = "1", features = ["derive"] }
 toml = "0.8"

@@ -12,7 +12,7 @@ nettai-battle = { path = "../nettai-battle" }
 nettai-render = { path = "../nettai-render" }
 # The recording replay alone (src/trace.rs: `trace_rounds`): a recording is
 # the original's numbers, which a game's compat crate reads and compares.
-exe6-compat = { workspace = true, features = ["trace"] }
+exe6-compat = { path = "../exe6-compat", features = ["trace"] }
 # EXE5's recordings (the chip lab's EXE5 library), played as EXE6's are.
 exe5-compat = { path = "../exe5-compat", features = ["trace"] }
 nettai-assets = { path = "../nettai-assets" }
