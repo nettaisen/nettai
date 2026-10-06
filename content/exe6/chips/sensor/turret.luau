@@ -10,7 +10,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle")
+local absorbed_obstacle = require("../../objects/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local laser = require("./laser")

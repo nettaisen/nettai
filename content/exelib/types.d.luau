@@ -391,7 +391,7 @@ export type SeedLook = {
     puff: Effect,
 }
 
--- A game's H-Burst shot (@exelib/h-burst/burst): its probe's self type, what its bursts are and reach, their status
+-- A game's H-Burst shot (@exelib/h_burst/burst): its probe's self type, what its bursts are and reach, their status
 -- and the explosion on each of their panels.
 export type HyperBurstShotLook = {
     probe: CollisionType,
@@ -401,7 +401,7 @@ export type HyperBurstShotLook = {
     explosion: Effect,
 }
 
--- A game's H-Burst (@exelib/h-burst/action): the spreader the navi holds, its attachment kind, the shot's sound and
+-- A game's H-Burst (@exelib/h_burst/action): the spreader the navi holds, its attachment kind, the shot's sound and
 -- the shot's kind.
 export type HyperBurstLook = { spreader: AttachmentLook, attachment: Kind, sound: Sound, burst: Kind }
 
@@ -412,7 +412,7 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
 
--- A follow effect's look (@exelib/follow-effect): a row of a game's looks and its routine.
+-- A follow effect's look (@exelib/follow_effect): a row of a game's looks and its routine.
 export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed"
 
 export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
@@ -597,8 +597,8 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
--- A patch card's effect (@exelib/patch-cards/effects' constructors make them; a game's patch-cards system applies
--- them, @exelib/patch-cards/apply): its kind, and the kind's fields.
+-- A patch card's effect (@exelib/patch_cards/effects' constructors make them; a game's patch-cards system applies
+-- them, @exelib/patch_cards/apply): its kind, and the kind's fields.
 export type PatchCardEffect = {
     kind: string,
     amount: number?,
@@ -618,7 +618,7 @@ export type PatchCardEffect = {
     bug: boolean?,
 }
 
--- What a game's patch cards' application (@exelib/patch-cards/apply) reads of the game: its kinds in the order they
+-- What a game's patch cards' application (@exelib/patch_cards/apply) reads of the game: its kinds in the order they
 -- apply (the original's effect numbers), the kinds whose choice is part of what the effect is (and the choice's
 -- field), the element bytes of the bodies and the hit statuses' bytes.
 export type PatchCardsGame = {
@@ -663,7 +663,7 @@ export type CopyDamageMark = {
 -- Fan's pulling gust from the far column rather than Wind's pushing one
 -- from the enemy's front column; ticks from becoming its side's wind to
 -- the first gust; HP; its identity (what it is taken for) and how it looks
--- absorbed (objects/absorbed-obstacle's `look`; EXE6's, which absorbs it).
+-- absorbed (objects/absorbed_obstacle's `look`; EXE6's, which absorbs it).
 export type FanVariant = {
     palette: number,
     pulls: boolean,
@@ -1009,7 +1009,7 @@ export type AnubisVariant = {
     identity: Identity,
 }
 
--- A panel change (objects/panel-changer, a row of the original's
+-- A panel change (objects/panel_changer, a row of the original's
 -- `byte_80E272C`): which panels (all, the changer's row, the panel in
 -- front of it, its own) meeting its side's condition become `panel` (on
 -- side 1 `side1_panel` if set: the roads point the other way) after

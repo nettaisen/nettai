@@ -47,7 +47,7 @@ actor_lists = 0x1870
 
 # Objects spawned with a routine's address as their X (a register their spawner
 # left): by kind, the Falzar ROM's (which the content keeps) and this game's. The
-# patch cards' meteors (lib/patch-cards/meteors) spawn the shower with
+# patch cards' meteors (lib/patch_cards/meteors) spawn the shower with
 # `sub_80F00B0`'s.
 [gregar.spawner_xs]
 "meteor-shower" = [0x080F00B1, 0x080F13F1]

@@ -24,7 +24,7 @@ local meddy = define.chip {
 }
 
 -- MeddySP (EXE5 chip 0x0ed): Meddy cuts in and throws two capsules beside the enemy navi, bursting along their lines
--- (../meddy/navi); its damage by how fast its user deleted Meddy SP (rules/sp-chips: formula 7, its table's row 6).
+-- (../meddy/navi); its damage by how fast its user deleted Meddy SP (rules/sp_chips: formula 7, its table's row 6).
 local meddy_sp = define.chip {
     id = "meddy-sp",
     codes = { "M" },

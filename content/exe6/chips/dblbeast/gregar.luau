@@ -11,7 +11,7 @@ local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local gregar_beast = require("../../navis/megaman/forms/gregar-beast")
+local gregar_beast = require("../../navis/megaman/forms/gregar_beast")
 local parts = require("../../lib/swords/parts")
 
 local gregar = {}

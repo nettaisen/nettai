@@ -1,9 +1,9 @@
 --!strict
 -- DarkInvs, a dark chip: its navi runs the Cross special, fighting on its
 -- own with chips by its HP (the navi's cross-special request;
--- lib/navi-boost/controller).
+-- lib/navi_boost/controller).
 
-local navi_boost = require("../lib/navi-boost/controller")
+local navi_boost = require("../lib/navi_boost/controller")
 local invisibl = require("./invisibl")
 
 return define.chip {

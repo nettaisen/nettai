@@ -25,7 +25,7 @@ local toadman = define.chip {
 }
 
 -- ToadManSP (EXE5 chip 0x102): ToadMan cuts in and plays a chain of paralyzing notes toward the nearest enemy ahead
--- (../toadman/navi); its damage by how fast its user deleted ToadMan SP (rules/sp-chips: formula 13, its table's row
+-- (../toadman/navi); its damage by how fast its user deleted ToadMan SP (rules/sp_chips: formula 13, its table's row
 -- 12).
 local toadman_sp = define.chip {
     id = "toadman-sp",

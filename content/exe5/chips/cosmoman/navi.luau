@@ -4,7 +4,7 @@
 -- takes the field objects around him, sends himself to the sky over the enemy area (./caller), where he calls his
 -- meteors down, waits three seconds, and goes; the controller moves on.
 
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local caller = require("./caller")
 
 export type State = {

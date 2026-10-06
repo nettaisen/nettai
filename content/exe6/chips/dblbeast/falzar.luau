@@ -11,7 +11,7 @@ local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local falzar_beast = require("../../navis/megaman/forms/falzar-beast")
+local falzar_beast = require("../../navis/megaman/forms/falzar_beast")
 local parts = require("../../lib/swords/parts")
 
 local falzar = {}

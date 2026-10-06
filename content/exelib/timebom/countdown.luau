@@ -3,7 +3,7 @@
 -- `sub_80CD8EC`; EXE5's)
 -- the TimeBom chips set (./controller): a field obstacle that counts 3, 2,
 -- 1 and blows up the whole enemy area (a hit over it and bursts over its
--- panels: objects/panel-bursts), unless it is broken first (a small puff,
+-- panels: objects/panel_bursts), unless it is broken first (a small puff,
 -- no blast). It stays until it goes off; it has no lifetime.
 --
 -- What it is comes with its variant (a `CountdownVariant` record, a row of
@@ -21,7 +21,7 @@
 -- collision, how it looks absorbed, whether any removal just puffs (no
 -- absorbing, no blinking out), its effects and its panel bursts' kind.
 
-local panel_bursts = require("../panel-bursts")
+local panel_bursts = require("../panel_bursts")
 local regions = require("../regions")
 
 export type State = { variant: CountdownVariant }

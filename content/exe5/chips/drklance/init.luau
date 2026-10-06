@@ -1,6 +1,6 @@
 --!strict
 -- DrkLance (EXE5 chip 0x0bf): a dark chip: Lance's three lances (instant chip effect 4) with its Param1 1, in their
--- second palette with the bug 0x16 (chips/lance/lance). Its use costs a hit status (rules/light-dark).
+-- second palette with the bug 0x16 (chips/lance/lance). Its use costs a hit status (rules/light_dark).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local exe5_lance = require("./lance/lance")

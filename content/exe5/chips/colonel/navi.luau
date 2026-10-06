@@ -9,7 +9,7 @@
 --
 -- Not reached: the slash of his Param1 0 (region 0x1F, effect 0x48): his init sets 2, and only 1 replaces it.
 
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")

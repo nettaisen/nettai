@@ -3,7 +3,7 @@
 -- each of the other side's combatants is paralyzed (status 0x11: 120 ticks) where it stands (lib/instruments/instrument:
 -- the shared @exelib/instruments with EXE5's look; its row 4 of 0x080D5158: it plays 0x3C × 2 ticks, its effect every 120
 -- (so once a playing), in its palette 0xC, and pauses 0x78; its tune 0x14A; its effect 0x080D5502). Its use costs a
--- step bug (rules/light-dark).
+-- step bug (rules/light_dark).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local exe5_instrument = require("../lib/instruments/instrument")

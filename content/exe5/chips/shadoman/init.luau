@@ -24,7 +24,7 @@ local shadoman = define.chip {
 }
 
 -- ShadoMnSP (EXE5 chip 0x0f9): ShadowMan cuts in and sends three of himself to throw shurikens at the enemies
--- (../shadoman/navi); its damage by how fast its user deleted ShadowMan SP (rules/sp-chips: formula 9, its table's row
+-- (../shadoman/navi); its damage by how fast its user deleted ShadowMan SP (rules/sp_chips: formula 9, its table's row
 -- 8).
 local shadomn_sp = define.chip {
     id = "shadomn-sp",

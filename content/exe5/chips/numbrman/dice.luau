@@ -12,7 +12,7 @@
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 
 local dice = {}
 

@@ -1508,7 +1508,7 @@ export type PlaceSpec = {
     argument: number,
 }
 
--- How an absorbed obstacle looks (objects/absorbed-obstacle's `look`, an
+-- How an absorbed obstacle looks (objects/absorbed_obstacle's `look`, an
 -- "absorbed-look" record; the original's obstacle kinds, `byte_80E98C0`):
 -- its sprite; `keeps_parts`, it flies with the obstacle's hidden sprite
 -- parts (the original's kind 2); `own_facing`, thrown, its sprite's parts
@@ -1587,7 +1587,7 @@ declare obstacle: {
     -- `sub_800F8CE`: blink out for 20 ticks when it vanishes.
     blink_out: (me: Object) -> BlinkOut,
     -- `sub_800F90E`: absorbed, it flies to the absorbing navi as an
-    -- absorbed obstacle of look `look` (objects/absorbed-obstacle's
+    -- absorbed obstacle of look `look` (objects/absorbed_obstacle's
     -- `look { ... }`; the original's obstacle kind).
     fly_to_absorber: (me: Object, look: AbsorbedLook) -> (),
     -- `sub_802EF5C`: the per-side target tracking some chips keep.
@@ -2495,7 +2495,7 @@ export type Status = StatusDef
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (EXE6's
--- patch-cards system, rules/patch-cards), and its type is the game's (EXE6's
+-- patch-cards system, rules/patch_cards), and its type is the game's (EXE6's
 -- `PatchCardEffect`, which its cards' constructors make). Its name is the
 -- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {

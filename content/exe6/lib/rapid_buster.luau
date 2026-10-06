@@ -8,7 +8,7 @@
 --
 -- Weapon routine 0x39 is named by no form, navi or NaviStats byte; its
 -- twin 0x92 (the same routine, its own charge row) is the patch card Bass
--- BX's charged shot (cards/bassbx/charge), which composes `rapid_buster.setup`.
+-- BX's charged shot (patch_cards/bassbx/charge), which composes `rapid_buster.setup`.
 
 local attachment = require("../objects/attachment")
 local buster = require("./buster")

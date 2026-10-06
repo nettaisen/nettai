@@ -24,7 +24,7 @@ local napalmmn = define.chip {
 }
 
 -- NaplmMnSP (EXE5 chip 0x0e4): NapalmMan cuts in and lobs a napalm bomb four panels ahead, its fire spreading around an
--- empty panel (../napalmmn/navi); its damage by how fast its user deleted NapalmMan SP (rules/sp-chips: formula 5, its
+-- empty panel (../napalmmn/navi); its damage by how fast its user deleted NapalmMan SP (rules/sp_chips: formula 5, its
 -- table's row 4).
 local naplmmn_sp = define.chip {
     id = "naplmmn-sp",

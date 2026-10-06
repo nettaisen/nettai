@@ -322,7 +322,7 @@ readers), and what I know of the games. Each claim below is marked:
 
 What is shared: the folder and its shuffle, the deal, the selection rule (same code or same chip), the Program
 Advance builder, the modifier chips, the chatbox's timing for descriptions, the send over the link. What is
-not: the slot layout (already a content table, `rules/custom-screen.luau`), the buttons, the sub-screens, and
+not: the slot layout (already a content table, `rules/custom_screen.luau`), the buttons, the sub-screens, and
 what OK turns into a transformation.
 
 ### 2.6 Chips and statuses

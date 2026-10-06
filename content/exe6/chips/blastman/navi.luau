@@ -7,7 +7,7 @@
 -- §3.6.14.
 
 local fire = require("./fire")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 
 export type State = {
     -- The controller waiting for him (its pointer sits in his collision

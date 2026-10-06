@@ -8,7 +8,7 @@
 -- another panel) and goes once it is off the field. It waits while dimmed.
 
 local collision = require("../../rules/collision")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 

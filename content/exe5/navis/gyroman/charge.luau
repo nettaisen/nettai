@@ -4,9 +4,9 @@
 -- action 8 (0x080F0B6E): he raises his arm (animation 17) for 4 ticks, then a tornado blows along the three panels
 -- ahead (GyroSoul's, navis/megaman/forms/gyrosoul/tornado, lying on the ground; the action plays its sound too);
 -- 30 ticks, then back to idle. No counter window opens. In the operation battle the panel ahead is marked as he
--- raises his arm (lib/navi-chips/marker).
+-- raises his arm (lib/navi_chips/marker).
 
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local navi_level = require("../../lib/navi_level")
 local tornado = require("../megaman/forms/gyrosoul/tornado")
 

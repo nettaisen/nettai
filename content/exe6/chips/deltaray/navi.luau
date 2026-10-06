@@ -14,7 +14,7 @@
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
-local follow_effect = require("../../objects/follow-effect")
+local follow_effect = require("../../objects/follow_effect")
 local parts = require("../../lib/swords/parts")
 
 -- What a chip summons him with: his palette (the chip's first parameter

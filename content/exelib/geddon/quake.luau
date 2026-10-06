@@ -8,7 +8,7 @@
 -- Each game makes its own kind (`quake.make`) with its look: the puff, the bubble kind and the sounds.
 
 local panels = require("@exelib/panels")
-local rising_bubble = require("@exelib/rising-bubble")
+local rising_bubble = require("@exelib/rising_bubble")
 
 local quake = {}
 

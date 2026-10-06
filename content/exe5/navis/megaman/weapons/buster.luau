@@ -15,7 +15,7 @@
 
 local attachment = require("../../../objects/attachment")
 local blank = require("@exelib/megaman/blank_shot")
-local charged_shot = require("./charged-shot")
+local charged_shot = require("./charged_shot")
 local common = require("@exelib/megaman/buster")
 local lib = require("../../../lib/buster")
 local projectile = require("../../../lib/projectile")

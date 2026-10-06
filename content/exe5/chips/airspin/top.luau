@@ -5,7 +5,7 @@
 -- is sent; a wind hit doesn't spin it more and no chip removes it; its gust
 -- (effect 0x4F, not turned to its side) hits without pushing. As it stands,
 -- and after each spin, it draws RNG2 (bit 2) for the style, 9 or 11, of a
--- marker over its panel (lib/navi-chips/marker: the operation battle's), for 20
+-- marker over its panel (lib/navi_chips/marker: the operation battle's), for 20
 -- ticks, then its interval and 3; its spins count down on Timer 2.
 --
 -- Not reached: 0x080DA194, after the gust's routine, which would turn its
@@ -14,7 +14,7 @@
 local collision = require("../../rules/collision")
 local common = require("@exelib/airspin/top")
 local effects = require("../../lib/effects")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 
 -- Its sprite: animation 0 standing, 1 spinning.
 local SPRITE = asset.sprite("air-spin")

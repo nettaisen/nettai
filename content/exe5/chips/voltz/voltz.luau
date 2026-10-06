@@ -9,10 +9,10 @@
 -- ends it at once. Its palette is its level's (the record's first parameter, 4 palettes apart).
 --
 -- In the operation battle's mode (never in a netbattle) it marks its panel as it comes and as it lands (EXE5's effect
--- object 0x83: lib/navi-chips/marker).
+-- object 0x83: lib/navi_chips/marker).
 
 local collision = require("../../rules/collision")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 

@@ -12,7 +12,7 @@ with its variants (`byte_80CF934`'s rows, records) and its debris
 (T4#0x38, `rockcube/debris`), which the stages, the encasing and the
 boulder use too, beside the chips and their controller; the stages'
 boulder (T3#0x6E) is in `objects/boulder`; the absorbed obstacle
-(T4#0x87) in `objects/absorbed-obstacle`, whose looks (the original's
+(T4#0x87) in `objects/absorbed_obstacle`, whose looks (the original's
 obstacle kinds, `byte_80E98C0`) are records each obstacle defines for
 itself (`absorbed_obstacle.look { sprite, ... }`). What a
 stage places goes through its kind's `place`: the stage's `actors` name
@@ -408,7 +408,7 @@ and damage word; f2 |= 0x1000 (ice) or 0x2000 (bubble).
   debris (`sub_80E47A4`, palette 1) at (X, Y) each jittered by mask 0xF,
   effect 2 at Z + 16 px, sound 0xD9, VISIBLE off, state destroy.
 - Engine: `obstacle::encased`; the replacement is content's role
-  `hooks.encased` (objects/encased-bubble: the rock's ice block, or the
+  `hooks.encased` (objects/encased_bubble: the rock's ice block, or the
   bubble, kind `encased-bubble`). Class 0xFF is a content error there; the
   bubble's Z with side 1's wind set (an address) is 0.
 
@@ -444,7 +444,7 @@ count, count += 1, destroy (a full list leaves the timer to wrap: 65534
 ticks before it tries again). Then a bare `sprite_update`. Engine: the
 navi's `ActorData::absorbed` list (each entry its look's record and its
 animation, which a throw moves into the attack: `thrown_look`,
-`thrown_anim`); the kind is the content's `objects/absorbed-obstacle`.
+`thrown_anim`); the kind is the content's `objects/absorbed_obstacle`.
 
 **T4#0x38 rock debris (`sub_80E46D8`).** Init: VISIBLE, sprite (0x10, 1),
 animation RNG2 & 1, palette Param1, r = RNG2: Xvel = ((r & 15) − 7) << 15,

@@ -2,8 +2,8 @@
 -- Snctuary: a cut-in chip that makes the user's whole area holy
 -- (`byte_80E272C` row 5).
 
-local panel_changer = require("../objects/panel-changer")
-local panel_chips = require("../lib/panel-chips/controller")
+local panel_changer = require("../objects/panel_changer")
+local panel_chips = require("../lib/panel_chips/controller")
 
 return define.chip {
     id = "snctuary",

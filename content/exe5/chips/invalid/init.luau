@@ -1,6 +1,6 @@
 --!strict
 -- The invalid chip (EXE5 chip 0x185, past the named ones, no name): what a chip use EXE5's light and dark rule
--- refuses becomes (0x080100EC: rules/light-dark), and what an illegal pick counts as. Its own use is action 0x1A's
+-- refuses becomes (0x080100EC: rules/light_dark), and what an illegal pick counts as. Its own use is action 0x1A's
 -- effect 26, EXE6's `sub_80104E0` (0x0800E240, the same code): a sparkle by the navi (lib/plus: @exelib/instant/sparkle). A
 -- refused use runs effect 3 instead (0x0800E198, EXE5's plus chip), which with the parameters the refusal zeroes
 -- shows the same sparkle.

@@ -1327,7 +1327,7 @@ meteor's rows, 2's hit modifier 0, 3 cracking, 4 DarkMetr's breaking with bug 0x
 parameter), DarkDril (with DrilArm1 to 3: EXE6's drills of EXE5's look, no wait outside flag 0x40, DarkDril's 60
 ticks and bug 0xFA), DrkSonic (with Fanfare and EXE5's own instruments: row 4, its effect paralyzing each enemy
 where it stands), DarkPlus (its damage the next damaging chip's Atk+ bonus, the dark tint AIData+0x3C); the dark
-chips' rule and costs (rules/light-dark: `battle.set_side_stat`, the mood, `battle.no_dark_chips`); TimeBom1 to 3
+chips' rule and costs (rules/light_dark: `battle.set_side_stat`, the mood, `battle.no_dark_chips`); TimeBom1 to 3
 and TimeBom+'s use (EXE6's TimeBom with EXE5's placement: a random row's frontmost enemy panel, 0x080E3420; the
 bombs' identities of AI index 0x21, EXE5's field objects' index: actor records 0xD8 to 0xE1 all have it, and nothing
 of EXE5's reads it but the record).
@@ -1651,7 +1651,7 @@ them.
     diving body on sea is under the surface (its dive timer, EXE5's CollisionData +0x2C, held), its flag 0x80000000
     on (the bit EXE6's bubble has; EXE5's kernel doubles no elec hit by it, the panel's elec bonus does) unless it uses
     an action, is dragged, flinches or is paralyzed; under (0x80000004) it is hidden, a ripple over it (effect object
-    0x3E, objects/dive-ripple, the role `kinds.dive_ripple`; a splash as it starts, row 0x5D). EXE6's submerged
+    0x3E, objects/dive_ripple, the role `kinds.dive_ripple`; a splash as it starts, row 0x5D). EXE6's submerged
     state (`sub_8010162`, +0x28 in EXE5) stays apart.
   - **GyroSoul's propeller while primed:** MegaMan's per-form tick (0x080EB1E8's row 0, 0x080F04CE) in soul 2 sets
     his body overlay's animation offset (its ExtraVars word, 0x080C451A, which EXE5's overlay adds to its owner's
@@ -1743,7 +1743,7 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
 - *The failure* (action 0x39: rules/souls/chaos, the role `chaos_failure`): the dim, the white flashes, the fade,
   the dismissal of the Dark MegaMen across (0x08104284) and the new one on a random solid empty panel of the other
   side's area, then the revert to the base form.
-- *Dark MegaMan* (navis/dark-megaman: NameID 0x18D's record, enemy structs, collision and post-init hook) and the
+- *Dark MegaMan* (navis/dark_megaman: NameID 0x18D's record, enemy structs, collision and post-init hook) and the
   system that drives him (rules/auto_battle/init: EXE5's auto battle, a system of EXE5's stock ruleset): his
   idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
   outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
@@ -2138,7 +2138,7 @@ holds, antirecv, antirecv-mood, soul, every frame matching). A player MegaMan (A
 of 0 out of a soul, unangry; never in battle mode 1) whom a loss of HP brings to 0 holds at 1 HP, once a battle (the
 side's statistic 1 marks it spent; NaviStats +0x2A, the operation battle's, rules it out), and asks for the request
 0x40000000 (0x0802C16C, from object_subtractHP, 0x0800C6E0, and applyDamageToPlayer, 0x080185A2): the roles' `volley`,
-EXE5's action 0x30 (rules/emotion/dark-survival). The battle dims and the screen fades out (the transformation's fade,
+EXE5's action 0x30 (rules/emotion/dark_survival). The battle dims and the screen fades out (the transformation's fade,
 `battle.screen_fade`; white, untouchable, his future panel, a flash), the HUD's gauge, HP box and emotion window go (the
 HUD part `hp_box`: draw task 7, the box's drawing only, its low-HP alarm sounding on), his dark self comes out and spirals back (actor 0x2E:
 rules/souls/shade's code, `shade.make`), he is in auto battle for 720 ticks as DarkInvs's drive does (its end
@@ -2198,7 +2198,7 @@ animation, the thunder ball's sound and a shock (attack object 0x92, 0x080D8AF0,
 it that isn't its side's (up, down, behind, ahead: 0x080D8944), each going on its way to the next such panel after the
 record's third parameter (20 ticks) and lasting 5 more; 30 ticks later it blinks out over 30. Its palette is its level
 (the record's first parameter) times 4; its drop sound is 0xEA (`voltz-drop`). In battle flag 0x40's mode it marks its
-panel as it comes and lands (effect 0x83, lib/navi-chips/marker). The chip lab's chips/0x04e-voltz1/chain (from the
+panel as it comes and lands (effect 0x83, lib/navi_chips/marker). The chip lab's chips/0x04e-voltz1/chain (from the
 back column: a shock goes on to the back column) and evicted (a second Voltz evicts the first) record the rest.
 
 VDoll (action 0x12's subtype 8: EXE5's throw, holding the bomb, the attachment table's row 4) lobs EXE6's doll
@@ -2274,7 +2274,7 @@ recording).
   DarkCirc chips/circgun/circgun, DarkWide chips/widesht/wave), the InfVulcs chips/vulcan/vulcan, PoisPhar
   chips/anubis/anubis, ParaBom and ResetBom chips/crakbom/crakbom, MudWave and RedWave chips/wavepit/wavepit. A
   family's is in its lib/ folder, its builder with it: lib/bombs (bombs, seed), lib/guard (guard, the Guard chips'
-  shock wave), lib/traps (traps, the Anti traps' anti_trap), lib/instruments (instrument), lib/navi-chips (the
+  shock wave), lib/traps (traps, the Anti traps' anti_trap), lib/instruments (instrument), lib/navi_chips (the
   navi chips' throw marker). The soul system's are rules/souls' (shade, image); a soul's own are in its form's
   folder (§15.8).
 - **objects/** keeps what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer,
@@ -2406,11 +2406,11 @@ What the programs in battle brought into the engine:
 
 EXE5's patch cards (its Modification Cards, 改造カード) work as EXE6's: after the NaviCust's compile, 0x0813F97C runs
 the cards' routine (0x08138214) and then the HP rule. The application is EXE6's, so the two share it
-(content/exelib/patch-cards/apply.luau and the effects' constructors, effects.luau; each game's
-rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `PatchCardsGame`). EXE6's is unchanged
-(the JP lab's card traces). EXE5's, content/exe5/rules/patch-cards:
+(content/exelib/patch_cards/apply.luau and the effects' constructors, effects.luau; each game's
+rules/patch_cards/cards.luau gives its kinds' order, its choices and tables: `PatchCardsGame`). EXE6's is unchanged
+(the JP lab's card traces). EXE5's, content/exe5/rules/patch_cards:
 
-- **The cards** (content/exe5/cards/, 112; compat/patch-cards.toml by number, card 111 by version), written by the
+- **The cards** (content/exe5/patch_cards/, 112; compat/patch-cards.toml by number, card 111 by version), written by the
   verification workspace's tools/exe5/gen_patch_cards.py (gen_content.py) from the card table (BRBE 0x08138874,
   BRKE 0x0813895C, BRBJ 0x0813842C, BRKJ 0x08138514: u16 offsets by card number, 111 cards, three-byte entries: the
   effect's number, its value and whether the card shows it as a bug; the first the MB, number 0x8B), their names
@@ -2607,7 +2607,7 @@ under 0x190 of that family that is neither a dimming nor a dark chip (its flags'
 not; no level is read. So each of the four states `charged_chips = { family = ..., damaging = false, plain = true }`
 (a navi's rule always says `damaging`: EXE6's link navis say true, with their `from_level`) and `charged_bonus =
 { damage = 0xFF }` (the chip's damage again, with the bonus's sound), and its `a_charge` weapon is the charged-chip
-routine with its row of the charge table (navis/megaman/weapons/charged-chip's `routine`: 0x29 NapalmMan's, 0x2A
+routine with its row of the charge table (navis/megaman/weapons/charged_chip's `routine`: 0x29 NapalmMan's, 0x2A
 MagnetMan's, 0x2B TomahawkMan's, 0x2C ToadMan's). Where a form and its navi both state a `charged_bonus` the form's
 is the one read, as the original tests the soul first; the navi's is read in a form that states none. (NapalmSoul's
 charged Fire chips start its bomb's action, 0x08010442, by the soul alone: NapalmMan's are the chips themselves.)

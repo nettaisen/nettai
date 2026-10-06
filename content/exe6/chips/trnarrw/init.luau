@@ -1,14 +1,14 @@
 --!strict
 -- TrnArrw1, TrnArrw2 and TrnArrw3 (the original's action 0x28,
 -- `sub_80ECDFC`): the navi draws the bow (an attachment) and sets an arrow
--- (objects/flying-shot) over each panel ahead that lets one through, the
+-- (objects/flying_shot) over each panel ahead that lets one through, the
 -- nearest leaving last (after 16, 12, 8, 4 and 0 ticks); 24 ticks later
 -- it shoots one more from its own panel at once, and the bow's animation
 -- steps on. It recovers for 16 ticks, the bow stepping on again when the
 -- navi's animation ends. The three differ only in their damage.
 
 local attachment = require("../objects/attachment")
-local flying_shot = require("../objects/flying-shot")
+local flying_shot = require("../objects/flying_shot")
 local lockon = require("../rules/lockon")
 
 export type State = {

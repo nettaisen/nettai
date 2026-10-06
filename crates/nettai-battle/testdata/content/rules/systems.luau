@@ -5,7 +5,7 @@
 -- the watcher, EXE6's patch-cards system) writes its list in place of
 -- `SYSTEMS` (testing.rs's `with_systems`).
 
-local patch_cards = require("./patch-cards")
+local patch_cards = require("./patch_cards")
 
 export type CounterState = { starts: number, side: number, bonus: number }
 
@@ -72,9 +72,9 @@ local watcher = define.system {
 -- EXE6's own Beast Out turns (content/exe6/rules/beast), which the test
 -- navis' forms go by as EXE6's do, its emotions (content/exe6/rules/
 -- emotion: Full Synchro on a counter) and its dark chips' bug frags
--- (content/exe6/rules/dark-chips).
+-- (content/exe6/rules/dark_chips).
 local beast = require("./beast")
-local dark_chips = require("./dark-chips")
+local dark_chips = require("./dark_chips")
 local emotion = require("./emotion")
 local forms = require("./forms")
 
@@ -99,7 +99,7 @@ return {
         systems = SYSTEMS,
         berserk = require("./berserk"),
         buster = require("./buster"),
-        chip_use = require("./chip-use"),
+        chip_use = require("./chip_use"),
         custom_screen = require("./custom_screen"),
         effects = require("./effects"),
         elements = require("./elements"),

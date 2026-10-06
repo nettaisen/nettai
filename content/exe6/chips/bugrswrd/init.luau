@@ -1,9 +1,9 @@
 --!strict
 -- BugRSwrd (Gregar's Giga chip): the navi's charged shot becomes the bug
--- rise sword's weapon (lib/navi-boost/controller).
+-- rise sword's weapon (lib/navi_boost/controller).
 
 local charge = require("@self/charge")
-local navi_boost = require("../lib/navi-boost/controller")
+local navi_boost = require("../lib/navi_boost/controller")
 
 -- (The record's extra flags 0x04 and 0x10 have no battle reader, and no
 -- name.)
