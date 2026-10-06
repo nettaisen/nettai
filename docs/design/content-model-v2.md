@@ -209,8 +209,8 @@ export type ChipSpec = {
 ```
 
 A chip's place in the game's library is not the chip's: the game pack's `library.toml` lists the chips by
-library category in the order the game's library screens have them (`[chips.standard]`, `[chips.mega]`, ...,
-each an `order` of keys), and the NaviCust programs and patch cards in theirs; menus list in it, the battle
+library category in the order the game's library screens have them (a `[chips]` table, each tab a list of keys:
+`standard`, `mega`, ...), and the NaviCust programs and patch cards in theirs (`navicust`, `patch_cards`); menus list in it, the battle
 reads none of it (`nettai_content::library`). The verification workspace's generators write it from the ROMs.
 
 - `damage` is a number, or a formula the ruleset evaluates: `{ formula = "sp_navi", slot = "sp/heatman",
