@@ -30,12 +30,10 @@ local function megaman(side: number): boolean
 end
 
 -- The beast system's setup (rules/beast/init.luau declares it): the
--- player's game, Beast Out unlocked (event flag 0xE0), and nettai's Cross
--- list (the cross system's too), whose Crosses can be the other game's.
+-- player's game, and Beast Out unlocked (event flag 0xE0).
 type Setup = {
     version: "falzar" | "gregar",
     beast_out: boolean,
-    cross_list: { FormDef? },
 }
 
 -- Event flag 0x163, a navi code received (`sub_800B144` sends its level
@@ -44,17 +42,17 @@ local function sealed(side: number): boolean
     return battle.navi_level(side) ~= nil
 end
 
--- The game of the Beast the navi goes into, or is in: the player's
--- version, except that with a setup's Cross list a form of the other game
--- (one of its Crosses, or a Beast form of one) is that game's
--- (docs/engine/custom-screen.md §4.1).
+-- The game of the Beast the navi goes into, or is in: a form that isn't
+-- the base form is its own version's (a Cross's, or a Beast form of one:
+-- the other game's when the player's Crosses hold one of its, which a
+-- save's never do; docs/engine/custom-screen.md §4.1), and the base form
+-- the player's.
 local function beast_game(side: number): "gregar" | "falzar"
-    local setup = system.setup() :: Setup
     local form = battle.navi(side).form
-    if form.version ~= nil and setup.cross_list[1] ~= nil and not form.base then
+    if form.version ~= nil and not form.base then
         return form.version :: "gregar" | "falzar"
     end
-    return setup.version
+    return (system.setup() :: Setup).version
 end
 
 -- The form Beast Out takes the navi to (`sub_802937A`, `sub_802A040`): when
