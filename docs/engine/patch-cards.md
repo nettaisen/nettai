@@ -335,7 +335,7 @@ order they apply in). "(bug)" is the card's own marking.
 | 39 | プラネットマン | PlanetMn | 40 | HP+300; Wood body; StatusGuard; no AirShoes (bug); B: CrakShot |
 | 40 | ビーストマン | BeastMan | 33 | UnderShirt; Rapid+4; charge: StepSwrd; Rush; step bug 1 (bug) |
 | 41 | デザートマン | DesertMn | 36 | HP+160; no AirShoes (bug); Charge+4; hit bug 0 |
-| 42 | ヤマトマン | YamatoMn | 35 | HP+10%; Attack+1; B+Back: Reflect; custom HP drain +2 (bug) |
+| 42 | ヤマトマン | JapanMan | 35 | HP+10%; Attack+1; B+Back: Reflect; custom HP drain +2 (bug) |
 | 43 | ビデオマン | VideoMan | 32 | HP-10% (bug); charged shot: road left; fast gauge |
 | 44 | バーナーマン | BurnrMan | 29 | HP+120; Fire body; Attack+2; custom damage 40 (bug); emotion bug 1 (bug) |
 | 45 | スターマン | StarMan | 32 | Attack-2 (bug); MegaFolder+1; panel trail 0x90; emotion bug 0; HP drain +0 |
