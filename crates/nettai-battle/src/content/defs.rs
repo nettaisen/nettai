@@ -355,8 +355,8 @@ pub struct SystemDef {
     pub setup: StateId,
     /// Its player setup when the player's setup says nothing of a field:
     /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500; an
-    /// array's, a list: EXE6's Crosses owned, every one),
-    /// zero elsewhere, but an enum, which has no default unless
+    /// array's, a list: EXE5's souls, every one),
+    /// zero elsewhere (a list: empty), but an enum, which has no default unless
     /// `setup_defaults` gives it one: it is left unstated
     /// (`ContentState::unstate`: EXE6's player's version, gregar or falzar),
     /// and a round doesn't start until the player's setup states it

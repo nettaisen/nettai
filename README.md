@@ -177,9 +177,9 @@ side states one), all on the navi pane under "What the rules take" (EXE6's Hp, R
 list of definitions has a pane of its own with a checkbox for each one
 it may hold (EXE6's Crosses: the side's navi's ten of both versions, five at most, kept in the window's
 order; EXE5's Souls: the twelve the rules' default lists, each with its face). Each has a Default button where the
-rules give it a default and it isn't that. What the rules require and assume nothing of (EXE6's version, and its
-Crosses, where an empty list means none) starts unchosen, and the editor fills in what it can: choosing the version
-states that version's own five Crosses, to edit from there ("None" and "Its version's own" on the pane).
+rules give it a default and it isn't that ("None" where the default is an empty list). What the rules require and
+assume nothing of (EXE6's version) starts unchosen. EXE6's Crosses start as none, the list's default; "Its version's
+own" on the pane states the version's own five, to edit from there.
 A game that declares another fact has its control here with no change to the editor.
 
 An EXE5 match's Auto battle pane (shown where the game's rules have auto
