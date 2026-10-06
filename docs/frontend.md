@@ -1579,16 +1579,27 @@ loop below; the editor is in the same window), and
 the display's rate) it advances the player; when a tick ran, the window's
 size or the language changed, it presents into a buffer of the window's size
 in logical pixels (as the earlier minifb window had it; a HiDPI display scales
-it up) and hands iced a new `image::Handle::from_rgba` of it. Each handle is
-new, and the renderer keeps only what the last frame drew, so memory stays
-flat: a minute's play held 169 to 171 MB. The renderer is iced's GPU one
-(wgpu; its software one, tiny-skia, is the fallback without a GPU): on a
-Retina display at 960x640 points tiny-skia drew 30 frames a second, the
-software rendering of every physical pixel being the cost, while wgpu shows
-120 (the display's rate) with a picture presented each tick in about 5.7 ms.
+it up), and the window shows that picture (`picture.rs`). On iced's GPU
+renderer (wgpu) it is one texture of the window's size, written in place with
+each new picture (`queue.write_texture`) and drawn with the nearest texel; on
+its software renderer (tiny-skia, the fallback without a GPU) an image. (An
+image widget given a new `image::Handle` each tick flickered: iced_wgpu
+uploads a raster image of 2 MiB or more, the picture from 960x640 up, on a
+thread of its own and draws nothing for it until that is done. Of 60
+consecutive captures of a window at 960x640 playing a match, 47 showed no
+picture, and 22 of 40 playing a recording; at 720x480, under the 2 MiB, none.
+With the texture: none of 60, of 40, and of 30 on tiny-skia.) Memory stays
+flat: a minute's play held 169 to 171 MB, and with the texture 14 seconds
+held 166 to 171 MB. On a Retina display at 960x640 points tiny-skia drew 30
+frames a second, the software rendering of every physical pixel being the
+cost, while wgpu shows up to 120 (the display's rate), a picture presented
+each tick in about 2 ms (5.7 ms when each was converted for an image).
 `NETTAI_PHYSICAL_PIXELS` presents at the display's own density instead
 (sharper text; four times the pixels on a Retina display: about 22 ms a
-picture, 43 frames a second).
+picture, 43 frames a second). `NETTAI_PLAY_STATS` prints, every two
+seconds, the frames shown, the pictures presented and their cost, how long
+after it was presented each picture was drawn, and for the keys pressed the
+time to the tick that saw each and to that tick's picture drawn.
 
 **Loading a game** is one call, `game::load(name, &Options)`: the packs found
 (in `Options::packs_dir`, by default where the program looks), the game's
