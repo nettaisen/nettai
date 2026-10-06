@@ -8,8 +8,8 @@ local card: PatchCard = {
     mb = 47,
     effects = {
         cards.hp(250),
-        cards.charge_shot_kind(variants.charged_uninstalling),
         cards.bug(cards.soul_time(-1)),
+        cards.charge_shot_kind(variants.charged_uninstalling),
     },
 }
 

@@ -7,8 +7,8 @@ local card: PatchCard = {
     mb = 15,
     effects = {
         cards.hp(150),
-        cards.custom_hp_drain(0),
         cards.bug(cards.chip_recovery(0)),
+        cards.custom_hp_drain(0),
     },
 }
 

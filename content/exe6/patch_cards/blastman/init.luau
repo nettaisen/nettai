@@ -8,8 +8,8 @@ local card: PatchCard = {
     effects = {
         cards.bug(cards.hp(-80)),
         cards.body("fire"),
-        cards.float_shoes(true),
         cards.attack(1),
+        cards.float_shoes(true),
         cards.panel_trail("none", 0),
     },
 }

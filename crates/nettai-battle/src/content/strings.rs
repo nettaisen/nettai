@@ -69,11 +69,23 @@ pub struct EntryStrings {
     pub name: Option<String>,
 }
 
+/// A table of the game's own, at the top level beside the core's sections:
+/// a collection's entries' strings by id (`[patch_cards]`), or a text table
+/// of key to text that no definition owns (`[patch_card_effects]`), which
+/// its game's manifest declares (`text`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Table {
+    Entries(BTreeMap<String, EntryStrings>),
+    Text(BTreeMap<String, String>),
+}
+
 /// One language's strings, by definition key: the core's sections' (chips,
-/// navis, forms), and each of the game's collections' under its name
-/// (`[patch_cards]`), by id; and the game's text tables that no definition
-/// owns (`[text.<table>]`), by key. (A table that is no collection of the
-/// content is the locales' check's to refuse.)
+/// navis, forms), and the game's own tables by name: each of its
+/// collections' (`[patch_cards]`), by id, and its text tables
+/// (`[patch_card_effects]`), by key. (A table that is no collection of the
+/// content and no text table its manifest declares is the locales' check's
+/// to refuse.)
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Strings {
     /// Its language (`en`, `ja`).
@@ -84,16 +96,13 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
-    /// The game's own text tables, by table, then key: text that no
-    /// definition owns, which tools show and nothing in a battle reads
-    /// (EXE6's and EXE5's `patch_card_effects`: each line a patch card's
-    /// menu shows, by its effect's kind and choice, its numbers by the
-    /// effect's fields, `{amount}`).
-    #[serde(default)]
-    pub text: BTreeMap<String, BTreeMap<String, String>>,
-    /// The game's collections' entries', by collection, then id.
+    /// The game's own tables, by name: its collections' entries'
+    /// (`[patch_cards]`) and its text tables, which tools show and nothing
+    /// in a battle reads (EXE6's and EXE5's `patch_card_effects`: each line a
+    /// patch card's menu shows, by its effect's kind and choice, its numbers
+    /// by the effect's fields, `{amount}`).
     #[serde(flatten)]
-    pub collections: BTreeMap<String, BTreeMap<String, EntryStrings>>,
+    pub tables: BTreeMap<String, Table>,
 }
 
 /// Presentation: the records hold what the battle reads of the strings (the
@@ -111,11 +120,14 @@ impl Strings {
         self.chips.extend(other.chips);
         self.navis.extend(other.navis);
         self.forms.extend(other.forms);
-        for (t, lines) in other.text {
-            self.text.entry(t).or_default().extend(lines);
-        }
-        for (c, entries) in other.collections {
-            self.collections.entry(c).or_default().extend(entries);
+        for (name, table) in other.tables {
+            match (self.tables.get_mut(&name), table) {
+                (Some(Table::Entries(have)), Table::Entries(more)) => have.extend(more),
+                (Some(Table::Text(have)), Table::Text(more)) => have.extend(more),
+                (_, table) => {
+                    self.tables.insert(name, table);
+                }
+            }
         }
     }
 
@@ -133,12 +145,18 @@ impl Strings {
 
     /// Entry `id` of collection `collection`'s strings.
     pub fn entry(&self, collection: &str, id: &str) -> Option<&EntryStrings> {
-        self.collections.get(collection)?.get(id)
+        match self.tables.get(collection)? {
+            Table::Entries(entries) => entries.get(id),
+            Table::Text(_) => None,
+        }
     }
 
     /// Key `key` of the game's text table `table`.
     pub fn text(&self, table: &str, key: &str) -> Option<&str> {
-        self.text.get(table)?.get(key).map(String::as_str)
+        match self.tables.get(table)? {
+            Table::Text(lines) => lines.get(key).map(String::as_str),
+            Table::Entries(_) => None,
+        }
     }
 }
 

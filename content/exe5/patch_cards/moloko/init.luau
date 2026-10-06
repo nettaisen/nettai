@@ -8,8 +8,8 @@ local variants = require("../objects/projectile/variants")
 local card: PatchCard = {
     mb = 5,
     effects = {
-        cards.first_barrier(barriers.barrier_10),
         cards.bug(cards.charge_shot_kind(variants.charged)),
+        cards.first_barrier(barriers.barrier_10),
     },
 }
 

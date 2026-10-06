@@ -10,8 +10,8 @@ local card: PatchCard = {
     effects = {
         cards.hp(150),
         cards.buster_shot(variants.grass),
-        cards.charge_shot_kind(variants.charged_ice),
         cards.bug(cards.charged_shot(chrgs)),
+        cards.charge_shot_kind(variants.charged_ice),
         cards.panel_trail("none", 0),
     },
 }

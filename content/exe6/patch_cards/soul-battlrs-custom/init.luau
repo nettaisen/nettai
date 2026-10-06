@@ -7,10 +7,10 @@ local charge = require("@self/charge")
 local card: PatchCard = {
     mb = 66,
     effects = {
-        cards.super_armor(true),
         cards.attack(4),
         cards.rapid(4),
         cards.charge(4),
+        cards.super_armor(true),
         cards.charged_shot(charge),
     },
 }
