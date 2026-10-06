@@ -13,9 +13,10 @@
 -- - a NaviCust to compile (MegaMan): the Regular memory, the sun, the base HP and MegaMan's variant, his base HP in
 --   hundreds (+0x2B, which picks his move lag; the console sets it as the battle starts, `sub_800A2F8`); the
 --   compile then makes the maximum the base and the HP programs;
--- - a link navi (one with `levels` that doesn't change form) at its navi code's level: the Regular memory, the sun,
---   and its stats as the save's reload gives them at the level (../levels: the base HP its story progress's, the
---   game cleared; the base HP stated here is MegaMan's alone).
+-- - a link navi (one with `levels` that doesn't change form) at its navi code's level: the Regular memory, and its
+--   stats as the save's reload gives them at the level (../levels: the base HP its story progress's, the game
+--   cleared; the base HP and the sun stated here are MegaMan's alone: the overworld writes his block's sun,
+--   `sub_80355EC` from `EnterMap`, a link navi's never).
 --
 -- Otherwise the stats are as the setup gives them, whole (a recording's MegaMan, whose block the console's own
 -- reload made; a test's).
@@ -36,22 +37,23 @@ local function round_setup(side: number)
         return
     end
     stats.regular_memory = setup.reg_up
-    stats.sun = setup.sun
     if link_navi then
         levels.reload(stats, level :: number)
     else
+        stats.sun = setup.sun
         stats.max_base_hp = setup.hp
         stats.navi_variant = setup.hp // 100
     end
 end
 
--- The base HP a setup that says nothing has (a new game's: MegaMan's fresh HP).
-local NEW_GAME_HP = 100
+-- What every side's save brings at its highest (the rules' `setup_defaults`: no player states these): the base HP
+-- (HP Memories to their last) and the Regular memory (RegUps to theirs).
+local MAX_HP = 1000
+local MAX_REG_UP = 50
 
--- `validate`'s part: the navi's level and the base HP as what the save brings allows: a navi code's level, 0 to its
--- last (../levels), which a link navi always states (it exists only through its code) and MegaMan may leave out (no
--- code received); none for a navi without levels. The base HP is MegaMan's (the navi that compiles a NaviCust): any
--- other's HP is its level's, so a side of one that states another than a new game's states what has no effect.
+-- `validate`'s part: the navi's level as what the save brings allows: a navi code's level, 0 to its last
+-- (../levels), which a link navi always has (it exists only through its code: the tools state its last) and MegaMan
+-- may leave out (no code received); none for a navi without levels.
 local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
     local setup = rules.setup_of(side)
     local navi: NaviDef? = setup.navi
@@ -70,13 +72,11 @@ local function validate(side: number, problem: (text: string, field: string?, en
     elseif by_level ~= nil and navi.forms == nil then
         problem(string.format("%s has no level (0 to %d): a link navi exists only through its navi code", name, #by_level - 1), "level")
     end
-    if navi.forms == nil and setup.hp ~= NEW_GAME_HP then
-        problem(string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name), "hp")
-    end
 end
 
 return {
     round_setup = round_setup,
     validate = validate,
-    NEW_GAME_HP = NEW_GAME_HP,
+    MAX_HP = MAX_HP,
+    MAX_REG_UP = MAX_REG_UP,
 }

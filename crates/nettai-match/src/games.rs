@@ -130,7 +130,7 @@ fn a_exe5_folder_keeps_exe5s_rules() {
     let content = exe5_content();
     let right = exe5(&TANGO_EXE5, "");
     parse(&content, &exe5(&TANGO_EXE5, ""), &right).unwrap_or_else(|p| panic!("{p:?}"));
-    // A Regular chip within the fresh navi's Regular memory (4 MB: CrakOut).
+    // A Regular chip within the Regular memory (every side's 50 MB: CrakOut's 4).
     parse(&content, &exe5(&TANGO_EXE5, "regular_chip = 21"), &right).unwrap_or_else(|p| panic!("{p:?}"));
     // Three Mega chips, three dark chips (one of each), one Giga chip.
     let megas = with(&TANGO_EXE5, 0, &["blizman-ds B", "cloudmn-ds C", "colonel C", "drksword Z", "darkthnd M", "darkwide T", "bass F"]);
@@ -171,9 +171,9 @@ fn exe5s_rules_refuse() {
     says(&e, "entry 1: lifesrd is no chip a folder can hold");
     let code = with(&TANGO_EXE5, 0, &["cannon Z"]);
     says(&refused(&code, ""), "entry 0: cannon doesn't come in code Z");
-    // A Regular chip past the Regular memory (Cannon is 8 MB; a fresh
-    // navi's memory is 4); tag chips, which EXE5's folders haven't.
-    says(&refused(&with(&TANGO_EXE5, 0, &[]), "regular_chip = 0"), "the Regular chip cannon is 8 MB, past the navi's 4");
+    // A Regular chip past the Regular memory (Astroid3 is 56 MB; every
+    // side's memory is 50); tag chips, which EXE5's folders haven't.
+    says(&refused(&with(&TANGO_EXE5, 0, &["astroid3 C"]), "regular_chip = 0"), "the Regular chip astroid3 is 56 MB, past the navi's 50");
     let e = parse(&content, &exe5(&TANGO_EXE5, "tag_chips = [4, 5]"), &right).expect_err("refused");
     says(&e, "left: no field \"tag_chips\" (a side of exe5 takes");
 }
@@ -382,7 +382,7 @@ fn karma_and_souls_write_and_read_back() {
     let bad = side("megaman", &EXE6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let six = exe6_content();
     let e = parse_in(&six, "exe6", &side("megaman", &EXE6, ""), &bad).unwrap_err();
-    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips, version)";
+    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, folder, navi, navicust_expansions, navicust_programs, patch_cards, regular_chip, sp_times, tag_chips, version)";
     for p in [format!("right: no field \"karma\" {takes}"), format!("right: no field \"souls\" {takes}")] {
         assert!(e.iter().any(|x| *x == p), "{p:?} not in {e:?}");
     }
