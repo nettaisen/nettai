@@ -41,6 +41,11 @@ impl Sound {
         Sound { out, problem, menu: None, menu_game: None, menu_sounds: true, last: None, owed: 0.0, mix: Vec::new() }
     }
 
+    /// The sound queued for the device, in seconds.
+    pub fn queued(&self) -> f64 {
+        self.out.as_ref().map_or(0.0, Output::buffered)
+    }
+
     /// The volume, 0 to 10.
     pub fn set_volume(&self, level: u32) {
         if let Some(o) = &self.out {
@@ -83,32 +88,48 @@ impl Sound {
         }
     }
 
-    /// A frame at `now`: the menus' sound runs at the battle's rate, and
-    /// what it made is added to `battle`'s samples (the battle's ticks
-    /// since the last frame), which go to the device.
-    pub fn frame(&mut self, now: Instant, battle: &mut Vec<[f32; 2]>) {
+    /// A frame at `now`, which ran `ticks` of a battle that made
+    /// `battle`'s samples (none: no battle runs, or it is paused): the
+    /// menus' sound is ticked with the battle's ticks, its samples added to
+    /// the battle's where they fall (the device gets one stream, at the
+    /// battle's rate); with no battle running, on its own clock at the same
+    /// rate. What there is goes to the device.
+    pub fn frame(&mut self, now: Instant, ticks: Option<u32>, battle: &mut Vec<[f32; 2]>) {
         let elapsed = self.last.map_or(Duration::ZERO, |l| now.saturating_duration_since(l)).min(Duration::from_millis(250));
         self.last = Some(now);
-        self.owed += elapsed.as_secs_f64() * FRAME_RATE;
+        let due = match ticks {
+            Some(n) => {
+                self.owed = 0.0;
+                n
+            }
+            None => {
+                self.owed += elapsed.as_secs_f64() * FRAME_RATE;
+                let due = self.owed.floor();
+                self.owed -= due;
+                due as u32
+            }
+        };
         self.mix.clear();
         if let Some(m) = &mut self.menu {
-            while self.owed >= 1.0 {
-                self.owed -= 1.0;
+            for _ in 0..due {
                 m.audio.tick(&mut self.mix);
             }
+        }
+        if ticks.is_some() {
+            // (Added sample for sample; a sample the menus' driver made past
+            // the battle's frames is let go, so the stream keeps the
+            // battle's rate.)
+            for (b, m) in battle.iter_mut().zip(&self.mix) {
+                b[0] += m[0];
+                b[1] += m[1];
+            }
         } else {
-            self.owed = self.owed.fract();
+            battle.clear();
+            battle.extend_from_slice(&self.mix);
         }
-        // (The two at the same rate: added where both play, the longer's
-        // rest after.)
-        for (b, m) in battle.iter_mut().zip(&self.mix) {
-            b[0] += m[0];
-            b[1] += m[1];
-        }
-        if self.mix.len() > battle.len() {
-            battle.extend_from_slice(&self.mix[battle.len()..]);
-        }
-        if let Some(out) = &self.out {
+        if let Some(out) = &self.out
+            && !battle.is_empty()
+        {
             out.queue(battle);
         }
         battle.clear();

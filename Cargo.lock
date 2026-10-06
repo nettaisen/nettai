@@ -4051,6 +4051,7 @@ dependencies = [
  "arboard",
  "chrono",
  "gilrs",
+ "glow 0.16.0",
  "nettai-audio",
  "nettai-battle",
  "nettai-content",

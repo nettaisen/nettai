@@ -17,6 +17,7 @@
 mod app;
 mod arenas;
 mod games;
+mod gl;
 mod input;
 mod lang;
 mod lobby;
@@ -77,7 +78,17 @@ fn main() -> Result<(), slint::PlatformError> {
     // display link and draw directly, with no window event before them.)
     let (weak, state) = (ui.as_weak(), app.clone());
     ui.window()
-        .set_rendering_notifier(move |s, _| match s {
+        .set_rendering_notifier(move |s, api| match s {
+            // The window's OpenGL: the picture's texture is made in it.
+            #[cfg(not(target_arch = "wasm32"))]
+            RenderingState::RenderingSetup => {
+                if let slint::GraphicsAPI::NativeOpenGL { get_proc_address } = api
+                    && std::env::var_os("NETTAI_NO_TEXTURE").is_none()
+                {
+                    state.borrow_mut().gl = Some(gl::GlPicture::new(get_proc_address));
+                }
+            }
+            RenderingState::RenderingTeardown => state.borrow_mut().gl = None,
             RenderingState::BeforeRendering => {
                 let nav = state.borrow_mut().frame(Instant::now());
                 if let Some(ui) = weak.upgrade() {

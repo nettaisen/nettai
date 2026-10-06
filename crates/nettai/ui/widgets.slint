@@ -18,7 +18,8 @@ export component Backdrop inherits Rectangle {
     // How much it steps back (the battle: the picture is what's seen).
     in property <float> calm: 0;
     property <length> cell: Theme.compact ? 36px : 48px;
-    property <float> drift: mod(animation-tick() / 1ms, 6000) / 6000;
+    // (Still behind the battle: nothing of it is re-evaluated each frame.)
+    property <float> drift: root.calm >= 1 ? 0 : mod(animation-tick() / 1ms, 6000) / 6000;
     background: @linear-gradient(170deg, Theme.night 0%, Theme.ink 85%);
     clip: true;
 
@@ -57,7 +58,7 @@ export component Backdrop inherits Rectangle {
     }
 
     // A streak of light that crosses now and then, along the net.
-    property <float> streak: mod(animation-tick() / 1ms, 7000) / 7000;
+    property <float> streak: root.calm >= 1 ? 0 : mod(animation-tick() / 1ms, 7000) / 7000;
     Rectangle {
         x: (root.streak * 1.6 - 0.3) * root.width;
         y: root.height * 0.72;
