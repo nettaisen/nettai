@@ -197,7 +197,6 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
         navi,
         folder: folder.into(),
         patch_cards: Vec::new(),
-        sp_times: Default::default(),
         navicust: None,
         auto_battle: Default::default(),
         facts,

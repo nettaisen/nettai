@@ -267,14 +267,13 @@ library category in the order the game's library screens have them (a `[chips]` 
 `standard`, `mega`, ...), and the NaviCust programs and patch cards in theirs (`navicust`, `patch_cards`); menus list in it, the battle
 reads none of it (`nettai_content::library`). The verification workspace's generators write it from the ROMs.
 
-- `damage` is a number, or a formula the ruleset evaluates: `{ formula = "sp_navi", slot = "sp/heatman",
-  by_time = {...} }` (the SP chips' damage by the user's deletion time of that navi; the slot is one of
-  rules/sp_chips.luau's `slots`, the save's deletion times in the setup's order), `{ formula = "hp_lost" }`
+- `damage` is a number, or a formula the ruleset evaluates: `{ formula = "hp_lost" }`
   (Muramasa), `{ formula = "hp_last_digits" }` (NumbrBl), `{ formula = "navi_level", base = 60, per_level =
   10 }` (the link navis' chips, by the buster's attack level), and the ones no EXE6 chip uses (`opponent_hp`,
-  `gauge`, `half_opponent_max_hp`); or a function of the side, which the round's setup asks once for each side
-  (`Battle::given`): EXE5's team navis' chips, `damage = navi_level.row({...})`, a row read at the side's level
-  (lib/navi_level: the engine knows no level). The original's "1000 + n selects formula n" encoding is gone; the
+  `gauge`, `half_opponent_max_hp`); or a function of the side and the chip, which the round's setup asks once
+  for each side (`Battle::given`): EXE5's team navis' chips, `damage = navi_level.row({...})`, a row read at the
+  side's level (lib/navi_level: the engine knows no level); the SP chips' `damage = sp_chips.damage`, by the user's
+  deletion time of that navi (the setup's `sp_times` entry for the chip) and the chip's `sp.by_time` (step c2). The original's "1000 + n selects formula n" encoding is gone; the
   hand holds the evaluated damage, as it does today.
 - `setup(navi)`, beside its use: what the chip itself does to the attack as a navi's use of it is prepared, once
   the attack is loaded (EXE5's chip records name a routine each: a team navi's own chip sets attack variables,
@@ -702,7 +701,7 @@ return define.rules {
 }
 ```
 
-A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`).
+A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `status_rules`).
 **The rules state every rule of their game**: the engine has no game's rules of its own (the user: "no default
 games anywhere please"). The sections `chip_use`, `effects`, `flow`, `fresh_stats`, `link_pick`, `panels`, `pools`,
 `reactions` and `status` are required, and so is every field of them that has no neutral value; one left out is a
@@ -712,7 +711,7 @@ the content check reports rules without one before any load; which field of a se
 load's to say. `fresh_stats` is what a navi's stats hold when made fresh beyond its own row (`NaviStats::fresh`):
 the Regular memory, the custom level and the mood, and for a game that has them the Beast Out turns and the weapon
 of battle mode 9's A button. What may be left out reads as nothing for
-every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`), a table
+every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `banners`), a table
 that is empty without it (`elements`, `buster`, `math`, `custom_screen`), and in a section a list or an attribute
 of one entry that is none unless stated (a panel type's `burn`, the buster's `chaos_cycle`). A rule that picks
 between behaviors is named for what it does, not for a game (`shake = "console_rng"`, `retype = "is_alone"`,
@@ -735,7 +734,7 @@ in a game is a load error, and there are no variants (`stock`, `base`, `add`, `r
 | `custom_screen` | rules/custom_screen.luau | the slot grid and neighbor scans (rules/custom_screen.toml) |
 | `buster` | rules/buster.luau | recovery by Rapid and open panels; the empty hand's chip (rules/weapons.toml) |
 | `banners` | rules/banners.luau | which banners hold until removed, by banner asset (rules/banners.toml) |
-| `pools`, `flow`, `chip_use`, `sp_chips`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the SP navis' deletion times and slots, the NaviCust boards, EXE5's effect rules |
+| `pools`, `flow`, `chip_use`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the NaviCust boards, EXE5's effect rules (the SP navis' deletion times are no section since step c2: rules/sp_chips.luau is a module the SP chips' `damage` names) |
 
 Where v1 kept per-entity rows in a shared table, they move to the entity: charge times into weapons, the Cross
 palettes into forms, the SP chips' deletion-time steps into `lib/navi_chips/sp.luau` next to the formula,
@@ -1705,14 +1704,14 @@ end
 
 ```luau
 -- chips/eraseman/init.luau: the series (v1: action 0x1B, subtype 5, Param1 20, 16, 12).
-local sp = require("../../lib/navi_chips/sp")
+local sp_chips = require("../../rules/sp_chips")
 return {
     define.chip { id = "eraseman", damage = 120, hit_param = 138, -- ...
         navi = eraseman.summon { aim_ticks = 20 } },
     define.chip { id = "erasemn-ex", damage = 140, hit_param = 138, -- ...
         navi = eraseman.summon { aim_ticks = 16 } },
     define.chip { id = "erasemn-sp", hit_param = 138, -- ...
-        damage = formula.sp_navi { slot = sp.eraseman, by_time = { --[[ eleven steps ]] } },
+        damage = sp_chips.damage, sp = { by_time = { --[[ eleven steps ]] } },
         navi = eraseman.summon { aim_ticks = 12 } },
 }
 ```
@@ -2201,7 +2200,7 @@ need.
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rockcube/rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
-| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/rock/cube" = 1`); NaviCust buster shots when their producers are known |
+| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slot of each SP chip (`[sp_slots] "erasemn-sp" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/rock/cube" = 1`); NaviCust buster shots when their producers are known |
 | rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01`; and likewise for the roles that name assets, `[sounds] hit = 0x06D`, `[music] link_battle = 0x015`, `[sprites] eruption = "10-24"`, `[banners] draw = 0x1C` |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the game's marks as characters: Ⓐ, the EX and SP glyphs U+E002 and U+E003; text-rendering.md §10.5) |
@@ -2347,7 +2346,7 @@ pub struct Content {
 | `ContentState` with a `StateId` per registered module | `StateId` = schema handle; reference field types hold handles |
 | `LinkedChip.chip`, `dimming` records' chip | `ChipHandle` |
 | `BattleSettings { layout, music, background, actors: ActorListId, ... }` | `{ stage: StageHandle, background: AssetHandle, effects, ... }` |
-| `SpTimes` by SP navi number | by SP slot record handle (`sp.eraseman`) |
+| `SpTimes` by SP navi number | the rules' setup fact `sp_times`, a `{ chip, frames }` each (step c2) |
 | `navi_chips_used` bit per chip id past 0x18F | bit per navi handle |
 | `SoundCue::Effect(SoundId)` | `SoundCue::Effect(SoundHandle)` |
 
@@ -2595,8 +2594,8 @@ gone. What replaced each number:
   BodyGrd, AntiNavi, AntiRecv); `Battle::linked_trap` asks it.
 - *Dark chips*: `dark_substitute` is the substitute chip itself and `hp_bug` what the use adds to the user's HP
   bug.
-- *`formula`* (`DamageFormula`): the damage formulas by name, an SP navi chip's with its slot (`Rules::sp_slots`,
-  rules/sp_chips.luau) and its damage by deletion-time step.
+- *`formula`* (`DamageFormula`): the damage formulas by name; a function of the side and the chip (`Given`), the
+  SP navi chips' (rules/sp_chips.luau) and EXE5's team navis' chips'.
 - *Roles* (`ChipRole`, rules/roles.luau's `chips`): `zeroed` (what a zeroed chip field reads: the original's
   chip 0), `beast_out` and `invalid` (the custom screen's), `rush`, `beat` and `tango` (the chips the supports'
   telops name).

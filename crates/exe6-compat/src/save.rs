@@ -16,7 +16,7 @@
 use crate::codec;
 use crate::unlocks::Unlocks;
 use crate::GameVersion;
-use nettai_battle::setup::SpTimes;
+use crate::codec::SpTimes;
 
 /// Where the image starts in the file, and its size.
 const IMAGE_START: usize = 0x100;
@@ -182,7 +182,7 @@ pub mod testing {
             set_flag(NAVI_CODE_FLAG);
         }
         let code = level.map_or(0, |l| 0x141 + 15 * navi as u32 + l as u32).to_le_bytes();
-        let times: Vec<u8> = sp_times.0.iter().flat_map(|t| t.to_le_bytes()).collect();
+        let times: Vec<u8> = sp_times.iter().flat_map(|t| t.to_le_bytes()).collect();
         tests_file(version, &[(EVENT_FLAGS, &flags), (NAVI, &[navi]), (NAVI_CODE, &code), (SP_TIMES, &times)], 0x3C)
     }
 
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn the_testing_file_reads_back() {
-        let times = SpTimes(std::array::from_fn(|i| i as u16 * 37));
+        let times: SpTimes = std::array::from_fn(|i| i as u16 * 37);
         let f = testing::file(GameVersion::Gregar, false, [true, false, true, false, false], 3, Some(9), &times);
         let s = Save::read(&f).unwrap();
         assert_eq!((s.version(), s.navi(), s.navi_level(), s.sp_times()), (GameVersion::Gregar, 3, Ok(Some(9)), times));
@@ -249,7 +249,7 @@ mod tests {
         let u = s.unlocks();
         assert_eq!((u.crosses, u.beast_out), ([false, true, false, true, false], true));
         assert_eq!(s.navi_level(), Ok(Some(5)));
-        assert_eq!((s.sp_times().0[0], s.sp_times().0[19]), (721, 1500));
+        assert_eq!((s.sp_times()[0], s.sp_times()[19]), (721, 1500));
     }
 
     #[test]

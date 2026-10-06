@@ -123,11 +123,16 @@ pub enum PlayerFact {
     /// up. A tool fills it in from what a navi's level gives (EXE5's
     /// `story`).
     BaseHp,
+    /// How long their save took to delete each SP navi, by its SP navi
+    /// chip, in frames: a list of `{ chip, frames }` (EXE6's and EXE5's;
+    /// their rules' sp_chips read it for the chips' damage). A tool shows
+    /// and edits them as times, and a boundary writes a save's.
+    SpTimes,
 }
 
 impl PlayerFact {
     pub const ALL: &'static [PlayerFact] =
-        &[PlayerFact::Version, PlayerFact::BeastOut, PlayerFact::CrossList, PlayerFact::Level, PlayerFact::BaseHp];
+        &[PlayerFact::Version, PlayerFact::BeastOut, PlayerFact::CrossList, PlayerFact::Level, PlayerFact::BaseHp, PlayerFact::SpTimes];
 
     /// The setup field's name.
     pub fn name(self) -> &'static str {
@@ -137,6 +142,7 @@ impl PlayerFact {
             PlayerFact::CrossList => "crosses",
             PlayerFact::Level => "level",
             PlayerFact::BaseHp => "hp",
+            PlayerFact::SpTimes => "sp_times",
         }
     }
 
@@ -149,6 +155,16 @@ impl PlayerFact {
             PlayerFact::CrossList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
             PlayerFact::Level => matches!(ty, FieldType::OptionalU8),
             PlayerFact::BaseHp => matches!(ty, FieldType::U16),
+            PlayerFact::SpTimes => match ty {
+                FieldType::List(elem, _) => match &**elem {
+                    FieldType::Record(fields) => {
+                        let names: Vec<(&str, &FieldType)> = fields.fields().iter().map(|f| (f.name.as_str(), &f.ty)).collect();
+                        matches!(names[..], [("chip", FieldType::Ref(Registry::Chip, _)), ("frames", FieldType::U16)])
+                    }
+                    _ => false,
+                },
+                _ => false,
+            },
         };
         if ok {
             return Ok(());
@@ -159,6 +175,7 @@ impl PlayerFact {
             PlayerFact::CrossList => "an array of forms",
             PlayerFact::Level => "a u8? (a level, or none)",
             PlayerFact::BaseHp => "a u16",
+            PlayerFact::SpTimes => "a list of { chip = \"chip\", frames = \"u16\" }",
         })
     }
 }

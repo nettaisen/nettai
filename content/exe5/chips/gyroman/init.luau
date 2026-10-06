@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- GyroMan (EXE5 chip 0x0e0): GyroMan cuts in and flies along his row, dropping bombs on the enemy panels (./navi).
 local gyroman: Chip = {
@@ -30,7 +31,8 @@ local gyroman_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 66,
-    damage = { formula = "sp_navi", slot = "sp/gyroman", by_time = { 140, 135, 130, 125, 120, 115, 110, 105, 100, 95, 90 }, operation_battle = 80 },
+    sp = { by_time = { 140, 135, 130, 125, 120, 115, 110, 105, 100, 95, 90 }, operation_battle = 80 },
+    damage = sp_chips.damage,
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

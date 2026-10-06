@@ -40,7 +40,7 @@ use nettai_battle::custom::{BattleFolder, PlayerSetup};
 use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
-use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage, effects};
+use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
 use nettai_battle::Rng;
 use nettai_content_api::{NaviHandle, StageHandle};
 
@@ -112,9 +112,6 @@ pub struct Side {
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
     pub patch_cards: Vec<InstalledCard>,
-    /// How fast the save deleted each SP navi, in frames (the SP navi
-    /// chips' damage; 0 the fastest).
-    pub sp_times: SpTimes,
     /// The NaviCust, which the side's rules compile into the stats as the
     /// round is set up: its programs and its board. None: no programs, on
     /// the rules' largest board (the round compiles an empty one, for the
@@ -182,12 +179,6 @@ pub fn empty_navicust(content: &Content, navi: NaviHandle) -> Option<NaviCust> {
 /// `navicust`).
 pub fn navicust_rules(content: &Content) -> &nettai_battle::content::NaviCustRules {
     &content.rules().navicust
-}
-
-/// The SP navis whose deletion times a side's setup carries, by slot
-/// (the game's rules' `sp_slots`: EXE6's `sp/heatman` ...).
-pub fn sp_slots(content: &Content) -> &[String] {
-    &content.rules().sp_slots
 }
 
 /// A whole match: the arena and both sides (the left, side 0, then the
@@ -264,7 +255,6 @@ impl Side {
             navi,
             folder: Folder::EMPTY,
             patch_cards: Vec::new(),
-            sp_times: SpTimes::default(),
             navicust: None,
             // (What the game's battle end writes of a player it has
             // learned nothing of, where the game has auto battle.)
@@ -303,7 +293,6 @@ impl Match {
             let player = PlayerSetup {
                 folder,
                 joypad_phase: 0,
-                sp_times: s.sp_times,
                 console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
                 // What the side brings that its rules' systems take: their
                 // setup blocks, as the side holds them.

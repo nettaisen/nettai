@@ -1807,7 +1807,7 @@ export type WindowSpec = {
 -- here, so rules without one don't type-check), and every field of
 -- them that has no neutral value (one left out is a load error that names
 -- it). A section it may leave out is a feature the game
--- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
+-- hasn't (`berserk`, `lockon`, `navicust`, `banners`) or a
 -- table that is empty without it.
 --
 -- A section is a table of its rules by name, which the engine reads by its
@@ -1825,10 +1825,13 @@ export type RulesSpec = {
     navi_state: StateSchema?,
     -- What a player's setup that says nothing of a field holds (else zero): a
     -- value of each field given (an enum's by name, a definition's by its
-    -- id; an array's, a list of them from its first element). An enum of the
-    -- setup has no default but one given here: a player's setup states it, or
-    -- the round doesn't start (the engine picks none of its names).
-    setup_defaults: { [string]: number | boolean | string | { number | boolean | string } }?,
+    -- id; an array's or a list's, a list of them from its first element; a
+    -- record's, a table of its fields). An enum of the setup has no default
+    -- but one given here: a player's setup states it, or the round doesn't
+    -- start (the engine picks none of its names). (The load checks each
+    -- against its field: a number, a flag, a name, a list, a table of
+    -- fields, as deep as the field's type nests them.)
+    setup_defaults: { [string]: any }?,
     -- Its own actions, which reach the rules' state (`rules.state()`) for
     -- the side of the navi running them.
     actions: { Action }?,
@@ -1984,7 +1987,6 @@ export type RulesSpec = {
     lockon: any?,
     math: any?,
     navicust: any?,
-    sp_chips: any?,
     roles: RolesSpec?,
 }
 export type Rules = RulesSpec
@@ -2039,20 +2041,18 @@ export type WeaponSpec = {
 export type Weapon = WeaponSpec
 
 -- A chip: its record, and exactly one use.
--- A chip's damage by formula: the opponent's HP; an SP navi chip's, by its
--- navi's deletion time (its slot of the rules' `sp-chips`, and the damage
--- for each of that section's time steps); the custom gauge's; the HP the
--- user has lost (at most `cap`: EXE6's 500 when none); the last two digits
--- of the user's HP; half the opponent's max HP; a link navi's own chip's,
--- by its buster's attack level; by a count of the user's side (EXE5's DS
--- navi chips, Roll SP's, Django SP's: `by_count[n]`, the last for more).
--- EXE5's SP and count formulas give `operation_battle` in its operation
--- battle. (A chip whose damage goes by its side, EXE5's team navis' own
--- chips by their level, gives a function of the side instead: `ChipSpec`'s
--- `damage`.)
+-- A chip's damage by formula: the opponent's HP; the custom gauge's; the HP
+-- the user has lost (at most `cap`: EXE6's 500 when none); the last two
+-- digits of the user's HP; half the opponent's max HP; a link navi's own
+-- chip's, by its buster's attack level; by a count of the user's side
+-- (EXE5's DS navi chips, Roll SP's, Django SP's: `by_count[n]`, the last
+-- for more). EXE5's count formula gives `operation_battle` in its operation
+-- battle. (A chip whose damage goes by its side gives a function of the
+-- side and the chip instead, `ChipSpec`'s `damage`: EXE5's team navis' own
+-- chips by their level, both games' SP navi chips by the side's deletion
+-- time, rules/sp_chips.)
 export type DamageFormula =
     { formula: "opponent_hp" }
-    | { formula: "sp_navi", slot: string, by_time: { number }, operation_battle: number? }
     | { formula: "gauge" }
     | { formula: "gauge_level", base: number }
     | { formula: "hp_lost", cap: number? }
@@ -2081,10 +2081,11 @@ export type ChipSpec = {
     mb: number?,
     -- A number below 1000, or a formula the rules compute when the chip
     -- enters a hand.
-    -- A number, a formula, or a function of the side, which the round's
-    -- setup asks once for each side (EXE5's team navis' own chips: their
-    -- row at the side's level, lib/navi_level).
-    damage: (number | DamageFormula | (side: number) -> number)?,
+    -- A number, a formula, or a function of the side and the chip, which the
+    -- round's setup asks once for each side (EXE5's team navis' own chips:
+    -- their row at the side's level, lib/navi_level; the SP navi chips: by
+    -- the side's deletion time for the chip, rules/sp_chips).
+    damage: (number | DamageFormula | (side: number, chip: Chip) -> number)?,
     hit_param: number?,
     lockout: number?,
     flags: { string }?,

@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- GridMan (EXE5 chip 0x113): GridMan cuts in, dashes across the field and strikes the whole enemy area (./navi).
 local gridman: Chip = {
@@ -30,7 +31,8 @@ local gridman_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 72,
-    damage = { formula = "sp_navi", slot = "sp/gridman", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, operation_battle = 230 },
+    sp = { by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, operation_battle = 230 },
+    damage = sp_chips.damage,
     hit_param = 168,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
