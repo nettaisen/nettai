@@ -520,8 +520,8 @@ netbattles run with each side on another ruleset.
 
 ### 6.1 Today
 
-`rollback_cost` (rollback.md §6): the worst case of a 10-frame rollback on every rendered frame (a restore, eleven
-advances each followed by a save, a digest). Release build, Apple M1 Max shared with other agents (load average
+`rollback_cost` (rollback.md §6; the example was removed on 2026-10-05): the worst case of a 10-frame rollback on
+every rendered frame (a restore, eleven advances each followed by a save, a digest). Release build, Apple M1 Max shared with other agents (load average
 about 24); best of five runs; engine main 20fcf9e4:
 
 | Round or scenario | µs per rendered frame | Advance (µs) |
@@ -581,10 +581,9 @@ battle change nothing: each side's systems run for their own side.
 
 ### 6.5 Measuring a slice
 
-- **rollback_cost** gains a frame range (`--frames A..B`) and an optional `luau-profile` feature that counts and
-  times calls into Luau per advance, by kind, action and hook.
-- **The basket**: the rows of §6.1 plus each slice's own, best of N, by the verification workspace's
-  tools/rollback-cost.sh, the branch and main alternating so the machine's load hits both.
+- The tools this section used (the `rollback_cost` example and the verification workspace's rollback-cost.sh) were
+  removed on 2026-10-05. nettai-battle's `luau-profile` feature, which counts and times calls into Luau per advance
+  by kind, action and hook (`behavior::profile`), remains for whatever measures next.
 
 ## 7. Composable with EXE6 content
 
@@ -856,9 +855,6 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
 - **Tests.** The test content (testdata/content/rules/systems.luau) has two made-up systems and two rulesets;
   `rules::tests` check each side runs its own ruleset's systems for itself, a player plays by the ruleset their
   setup names, a system's setup reaches it alone, and the state is in the digest and the snapshot.
-- **Cost tools.** rollback_cost takes `--frames A..B` (or `all`), and with nettai-netplay's feature `luau-profile`
-  reports the calls into Luau per advance (`behavior::profile`). The verification workspace's
-  tools/rollback-cost.sh runs the basket of §6.1, best of N, alternating a checkout with a baseline.
 - **Gates** (on main 3b1ffc6f, a pack from all four ROMs): the build without warnings, 384 tests, the content check
   (653 modules), `gen-content check` (0 errors), both golden traces in full with rollback at every latency and their
   sound calls (and the 189 replay rounds), the full lab 6299/6299 scenarios, 5,641,457 frames, with the sound gate (0
