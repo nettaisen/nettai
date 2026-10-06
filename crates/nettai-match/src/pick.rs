@@ -212,12 +212,9 @@ fn plain_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], pick
     let mut side = Side { facts };
     side.set_navi(content, navi)?;
     side.set_folder(content, &folder.into())?;
-    // (Its form list, where the rules take one: its version's own; its
-    // navi's level, where it must have one: 0.)
+    // (Its form list, where the rules take one: its version's own. Its
+    // navi's level is every side's, its highest: `set_navi`.)
     side.state_own_forms(content);
-    if crate::level_required(content, navi) {
-        side.set_level(content, Some(0))?;
-    }
     let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side.clone(), side.clone()] };
     if let Ok(mut b) = crate::check::start(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
@@ -380,8 +377,8 @@ mod tests {
     #[test]
     fn the_live_match_is_picked_from_the_seed() {
         let content = crate::testing::exe6_content();
-        // The navi: MegaMan at his fresh stats, as a new match's, with no
-        // NaviCust programs (road panels carry him).
+        // The navi: MegaMan at what every side's save brings (1000 HP), as
+        // a new match's, with no NaviCust programs (road panels carry him).
         let m = live(&content, "exe6", 0, None).unwrap();
         let fresh = &crate::Match::empty(&content, "exe6").unwrap().sides[0];
         let started = crate::check::round_stats(&content, &m).unwrap();
@@ -389,7 +386,7 @@ mod tests {
             let navicust = |s: &Side| (crate::testing::navicust_expansions(&content, s), s.facts.get(&content, "navicust_programs"));
             assert_eq!((side.navi(&content), navicust(side), side.level(&content)), (fresh.navi(&content), navicust(fresh), fresh.level(&content)));
             assert!(side.version(&content).is_some(), "a picked EXE6 side states its version");
-            assert_eq!((s.max_base_hp, s.hp, s.max_hp), (100, 100, 100));
+            assert_eq!((s.max_base_hp, s.hp, s.max_hp, s.reg_up, s.sun), (1000, 1000, 1000, 50, true));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
         }
         let stages = crate::link_battle_stages(&content, "exe6");

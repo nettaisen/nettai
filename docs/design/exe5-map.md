@@ -649,10 +649,12 @@ EXE5's stages (the settings record stays raw).
 - *NaviStats:* the light/dark value (+0x44); the weapon bytes' EXE5 meaning (+0x04, +0x05, +0x07, +0x39: EXE6's
   buster and +0x39 swap places in the one call each that pairs them); and the bytes whose EXE5 meaning isn't read:
   +0x00, +0x0F, +0x11 to +0x1A and +0x24 (paired with EXE6's NaviCust bug bytes at the same offsets, EXE5's bugs not
-  checked), +0x1E to +0x22, +0x25 to +0x28, +0x2A, +0x2D to +0x38 (EXE6's folder bytes; EXE5's patch-card routine
+  checked), +0x1E to +0x21, +0x25 to +0x28, +0x2A, +0x2D to +0x38 (EXE6's folder bytes; EXE5's patch-card routine
   writes there), +0x3A to +0x3D, +0x46 to +0x5F. EXE6's fields EXE5 has elsewhere or not at all: the starting form
-  (EXE6 +0x17, EXE5 +0x2C), the Tag chips, ChpShufl and NumbrOpn, the Beast Out counter, the version byte, the sun,
-  the hand-shrink bug.
+  (EXE6 +0x17, EXE5 +0x2C), the Tag chips, ChpShufl and NumbrOpn, the Beast Out counter, the version byte, the
+  hand-shrink bug. (The sun, +0x22, is EXE5's too: the overworld's 0x080358DC, from EnterMap at 0x08004D5E, sets
+  MegaMan's to 1 on the maps it lists, 0x0803591C's halfwords to 0xFF, and to 0 elsewhere; the reset, 0x08133DBC,
+  keeps it; GunDelSol's look and damage read it, 0x080EDD6A and 0x080EDE08, 4 a hit in the sun.)
 - *Setup:* the BattleSettings record (EXE5's stages by their own numbers), BattleState (0xF0 bytes; the traces carry
   it raw), the versions and regions (both decoded).
 

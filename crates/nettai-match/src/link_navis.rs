@@ -96,21 +96,20 @@ mod tests {
         assert_eq!((s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.max_hp, s.max_base_hp), (1, 1, 1, 5, 5, 1150, 800));
     }
 
-    /// The reload keeps what the save brings (the Regular memory and the
-    /// sun, which the side states) and is its level's over its fresh stats;
-    /// the base HP is the cleared game's; the base HP the side states is
-    /// MegaMan's alone.
+    /// The reload keeps what the save brings (the Regular memory, every
+    /// side's 50) and is its level's over its fresh stats; the base HP is
+    /// the cleared game's; the base HP and the sun are MegaMan's alone (the
+    /// overworld writes his block's sun, a link navi's never).
     #[test]
     fn what_the_reload_keeps() {
         let content = exe6_content();
         let mut m = with_link_navi(&content, "heatman", 0);
         let s = &mut m.sides[1];
-        s.set_fact(&content, "reg_up", &[Fact::Value(Value::Int(50))]).unwrap();
-        s.set_fact(&content, "sun", &[Fact::Value(Value::Bool(true))]).unwrap();
+        s.set_fact(&content, "reg_up", &[Fact::Value(Value::Int(45))]).unwrap();
         s.set_fact(&content, "hp", &[Fact::Value(Value::Int(1234))]).unwrap();
         let st = started(&content, &m);
         let fresh = NaviStats::fresh(m.sides[1].navi(&content), &content).unwrap();
-        assert_eq!((st.reg_up, st.sun), (50, true));
+        assert_eq!((st.reg_up, st.sun), (45, false));
         assert_eq!((st.custom_level, st.mega_level, st.giga_level), (fresh.custom_level, fresh.mega_level, fresh.giga_level));
         assert_eq!((st.max_base_hp, st.max_hp, st.hp), (800, 900, 900));
     }
@@ -152,21 +151,21 @@ mod tests {
                 at(fresh.charge, g.charge, 4),
                 at(fresh.mega_level, g.mega_level, 10),
                 at(fresh.custom_level, g.custom_level, 8),
-                100 + g.hp
+                1000 + g.hp
             )
         );
     }
 
-    /// A match file names a link navi and its level, and no stats: its
-    /// round's are the level's, with the Regular memory the file states.
+    /// A match file names a link navi, and neither its level nor stats: its
+    /// round's are its highest level's (every side's), with the Regular
+    /// memory every side has.
     #[test]
     fn a_match_file_gives_a_link_navi_its_levels_stats() {
         let content = exe6_content();
-        let mut m = with_link_navi(&content, "heatman", 14);
-        m.sides[1].set_fact(&content, "reg_up", &[Fact::Value(Value::Int(50))]).unwrap();
+        let m = with_link_navi(&content, "heatman", 14);
         let text = crate::write(&content, &m);
         let right = &text[text.find("[right]").unwrap()..];
-        assert!(right.contains("level = 14") && right.contains("reg_up = 50") && !text.contains("stats"), "{text}");
+        assert!(right.contains("navi = \"heatman\"") && !right.contains("level") && !right.contains("reg_up") && !text.contains("stats"), "{text}");
         let back = crate::parse(&content, &text).unwrap();
         assert_eq!(back, m);
         let s = started(&content, &back);
