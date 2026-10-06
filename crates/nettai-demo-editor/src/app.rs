@@ -9,7 +9,7 @@ use nettai_battle::custom::FolderChip;
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::{ChipHandle, NaviHandle, PatchCardHandle, StageHandle};
-use nettai_match::{Match, Side, stats};
+use nettai_match::{Match, Side};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -116,10 +116,6 @@ pub enum Msg {
     CardOn(usize, usize, bool),
     CardMove(usize, usize, bool),
     CardRemove(usize, usize),
-    // The stats.
-    StatText(usize, &'static str, String),
-    StatValue(usize, &'static str, stats::Value),
-    StatsReset(usize),
     // The NaviCust.
     NaviCust(usize, crate::navicust::Edit),
     // EXE5's auto battle data.
@@ -557,27 +553,9 @@ impl Editor {
                 }
             }
             Msg::Navi(s, c) => {
-                // A link navi: its stats at the side's level, as the game switches.
-                if crate::levels::switch_navi(&content, &mut self.m.sides[s], c.value) {
-                    self.typed.retain(|&(x, k), _| x != s || stats::field(k).is_none());
-                    self.edited();
-                    return Task::none();
-                }
-                let side = &mut self.m.sides[s];
-                let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.version(&content)), &side.stats);
-                side.navi = c.value;
-                // (Operating MegaMan again clears the navi code received,
-                // `sub_809CD60`.)
-                side.navi_level = nettai_match::default_navi_level(&content, c.value);
+                crate::levels::switch_navi(&content, &mut self.m.sides[s], c.value);
                 self.typed.remove(&(s, "level"));
-                side.stats = Side::base_stats(&content, c.value, side.version(&content));
-                // The save's own fields carry over.
-                let carried: std::collections::BTreeMap<String, toml::Value> =
-                    keep.into_iter().filter(|(k, _)| ["hp", "regular_memory", "mood", "sun", "beast_out_counter"].contains(&k.as_str())).collect();
-                stats::apply(&content, &self.m.arena.game, &carried, &mut side.stats);
-                // (Its form list is its new navi's: the version's own, or
-                // none for a navi that doesn't change form.)
-                side.state_own_forms(&content);
+                self.fact_typed.retain(|(x, _), _| *x != s);
                 self.edited();
             }
             Msg::Fact(s, name, edit) => {
@@ -607,9 +585,6 @@ impl Editor {
                 };
                 if let Some(v) = level {
                     self.m.sides[s].navi_level = v;
-                    crate::levels::level_changed(&content, &mut self.m.sides[s]);
-                    // (The stats' fields show the new values.)
-                    self.typed.retain(|&(x, k), _| x != s || stats::field(k).is_none());
                     self.edited();
                 }
                 self.typed.insert((s, "level"), t);
@@ -709,29 +684,6 @@ impl Editor {
             }
             Msg::CardRemove(s, i) => {
                 self.m.sides[s].cards.remove(i);
-                self.edited();
-            }
-            Msg::StatText(s, name, t) => {
-                if let (Some(f), Ok(v)) = (stats::field(name), t.trim().parse::<u32>()) {
-                    if let stats::Kind::Int(max) = f.kind
-                        && v <= max
-                    {
-                        (f.set)(&mut self.m.sides[s].stats, stats::Value::Int(v));
-                        self.edited();
-                    }
-                }
-                self.typed.insert((s, name), t);
-            }
-            Msg::StatValue(s, name, v) => {
-                if let Some(f) = stats::field(name) {
-                    (f.set)(&mut self.m.sides[s].stats, v);
-                    self.edited();
-                }
-            }
-            Msg::StatsReset(s) => {
-                let side = &mut self.m.sides[s];
-                side.stats = crate::levels::reset(&content, side);
-                self.typed.retain(|(x, _), _| *x != s);
                 self.edited();
             }
             Msg::NaviCust(s, edit) => {

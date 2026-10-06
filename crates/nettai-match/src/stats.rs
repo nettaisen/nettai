@@ -1,20 +1,18 @@
-//! A side's stats block: the navi's stats by name, over what a save gives
-//! it (`Side::save_base`: its fresh stats, a link navi's at its level). A
-//! match file's `[left.stats]` sets what differs; writing one, the fields
-//! that differ are written. Every stat a round starts from is a field, so a
-//! written block gives back the same stats.
+//! A round's navi stats by name, for a tool to show (the editor's stats
+//! pane): each stat's name, what it means, and its value in the stats a
+//! round starts with (`check::round_stats`: what the side's rules built on
+//! the navi's fresh stats). A side states none of them: what a save brings
+//! to them is its game's facts (EXE6's `hp`, `reg_up`, `sun`), and the rest
+//! is derived as the round is set up.
 //!
-//! The fields, in the order they apply: `hp` sets the base HP, the maximum
-//! and the HP the round starts with together; `max_hp` and `current_hp`
-//! set those apart. Weapons, barriers, shot programs and forms are names in
-//! the match's game (`none` for no weapon, barrier or program); `gauge` is `normal`,
+//! Weapons, barriers, shot programs and forms are names in the match's
+//! game (`none` for no weapon, barrier or program); `gauge` is `normal`,
 //! `fast` or `slow`; `supports` lists `rush`, `beat` and `tango`, or is
 //! `bug` (the NaviCust's support bug: none, and none can be set).
 
 use nettai_battle::content::Content;
 use nettai_battle::setup::{GaugeSpeed, NaviStats, Supports};
 use nettai_content_api::{FormHandle, RecordHandle, WeaponHandle};
-use std::collections::BTreeMap;
 
 /// One stat's value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -49,7 +47,6 @@ pub struct Field {
     /// What it means, for the editor.
     pub about: &'static str,
     pub get: fn(&NaviStats) -> Value,
-    pub set: fn(&mut NaviStats, Value),
 }
 
 macro_rules! int {
@@ -59,11 +56,6 @@ macro_rules! int {
             kind: Kind::Int($max),
             about: $about,
             get: |$s| Value::Int($place as u32),
-            set: |$s, v| {
-                if let Value::Int(x) = v {
-                    $place = x as _;
-                }
-            },
         }
     };
 }
@@ -75,11 +67,6 @@ macro_rules! flag {
             kind: Kind::Bool,
             about: $about,
             get: |$s| Value::Bool($place),
-            set: |$s, v| {
-                if let Value::Bool(x) = v {
-                    $place = x;
-                }
-            },
         }
     };
 }
@@ -91,11 +78,6 @@ macro_rules! weapon {
             kind: Kind::Weapon,
             about: $about,
             get: |$s| Value::Weapon($place),
-            set: |$s, v| {
-                if let Value::Weapon(x) = v {
-                    $place = x;
-                }
-            },
         }
     };
 }
@@ -107,11 +89,6 @@ macro_rules! record {
             kind: Kind::Record($ty),
             about: $about,
             get: |$s| Value::Record($place),
-            set: |$s, v| {
-                if let Value::Record(x) = v {
-                    $place = x;
-                }
-            },
         }
     };
 }
@@ -123,30 +100,15 @@ macro_rules! form {
             kind: Kind::Form,
             about: $about,
             get: |$s| Value::Form($place),
-            set: |$s, v| {
-                if let Value::Form(x) = v {
-                    $place = x;
-                }
-            },
         }
     };
 }
 
-/// Every stat, in the order a block applies them.
+/// Every stat, in the order a tool shows them.
 pub const FIELDS: &[Field] = &[
-    Field {
-        name: "hp",
-        kind: Kind::Int(9999),
-        about: "base HP (the HP memories'); with no max_hp or current_hp, also the maximum and the HP the round starts with",
-        get: |s| Value::Int(s.max_base_hp as u32),
-        set: |s, v| {
-            if let Value::Int(x) = v {
-                (s.max_base_hp, s.max_hp, s.hp) = (x as u16, x as u16, x as u16);
-            }
-        },
-    },
+    int!("base_hp", 9999, "the base HP (MegaMan's, the HP memories'; a link navi's, its story progress's)", |s| s.max_base_hp),
     int!("max_hp", 9999, "the maximum HP (the base and the NaviCust's HP programs)", |s| s.max_hp),
-    int!("current_hp", 9999, "the HP the round starts with", |s| s.hp),
+    int!("current_hp", 9999, "the HP in the block (a link battle starts at the maximum)", |s| s.hp),
     int!("attack", 255, "the buster's Attack level (0 is level 1)", |s| s.attack),
     int!("rapid", 255, "the buster's Rapid level (0 is level 1)", |s| s.rapid),
     int!("charge", 255, "the buster's Charge level (0 is level 1)", |s| s.charge),
@@ -170,22 +132,12 @@ pub const FIELDS: &[Field] = &[
         kind: Kind::Gauge,
         about: "the custom gauge's speed",
         get: |s| Value::Gauge(s.gauge_speed),
-        set: |s, v| {
-            if let Value::Gauge(x) = v {
-                s.gauge_speed = x;
-            }
-        },
     },
     Field {
         name: "supports",
         kind: Kind::Supports,
         about: "the supports (Rush, Beat, Tango), or the support bug",
         get: |s| Value::Supports(s.support),
-        set: |s, v| {
-            if let Value::Supports(x) = v {
-                s.support = x;
-            }
-        },
     },
     int!("chip_recovery", 0xFFFF, "HP healed per chip used", |s| s.chip_recovery),
     flag!("chip_shuffle", "ChpShufl: the custom screen re-deals", |s| s.chip_shuffle),
@@ -227,25 +179,6 @@ pub const FIELDS: &[Field] = &[
     int!("hand_shrink_turn", 255, "bug: from this custom screen on, one chip fewer each (0 never)", |s| s.bugs.hand_shrink_turn),
 ];
 
-/// The fields a save keeps when its NaviCust compiles (`sub_8136C24` keeps
-/// them through its reset; the rest the NaviCust makes): what a side with a
-/// NaviCust may set.
-pub const SAVE_FIELDS: &[&str] = &[
-    "hp",
-    "regular_memory",
-    "mood",
-    "beast_out_counter",
-    "sun",
-    "form",
-    "folder",
-    "folder_1_regular",
-    "folder_2_regular",
-    "folder_1_tag_a",
-    "folder_1_tag_b",
-    "folder_2_tag_a",
-    "folder_2_tag_b",
-];
-
 /// The field with this name.
 pub fn field(name: &str) -> Option<&'static Field> {
     FIELDS.iter().find(|f| f.name == name)
@@ -276,126 +209,5 @@ pub fn gauge_name(g: GaugeSpeed) -> &'static str {
         GaugeSpeed::Normal => "normal",
         GaugeSpeed::Fast => "fast",
         GaugeSpeed::Slow => "slow",
-    }
-}
-
-/// A value of `f` from a match file of `game`.
-pub fn from_toml(content: &Content, game: &str, f: &Field, v: &toml::Value) -> Result<Value, String> {
-    let key = |v: &toml::Value| v.as_str().map(str::to_string).ok_or_else(|| format!("{} takes a name, not {v}", f.name));
-    match f.kind {
-        Kind::Int(max) => match v.as_integer() {
-            Some(x) if (0..=max as i64).contains(&x) => Ok(Value::Int(x as u32)),
-            _ => Err(format!("{} takes a whole number from 0 to {max}, not {v}", f.name)),
-        },
-        Kind::Bool => v.as_bool().map(Value::Bool).ok_or_else(|| format!("{} takes true or false, not {v}", f.name)),
-        Kind::Weapon => {
-            let k = key(v)?;
-            if k == "none" {
-                return Ok(Value::Weapon(None));
-            }
-            crate::ids::weapon(content, game, &k).map(|h| Value::Weapon(Some(h))).ok_or_else(|| format!("{}: no weapon {k:?} in {game}", f.name))
-        }
-        Kind::Record(ty) => {
-            let k = key(v)?;
-            if k == "none" {
-                return Ok(Value::Record(None));
-            }
-            match crate::ids::record(content, game, &k) {
-                Some(h) if content.defs.records[h.index()].record_type == ty => Ok(Value::Record(Some(h))),
-                Some(_) => Err(format!("{}: {k:?} is no {ty}", f.name)),
-                None => Err(format!("{}: no {ty} {k:?} in {game}", f.name)),
-            }
-        }
-        Kind::Form => {
-            let k = key(v)?;
-            crate::ids::form(content, game, &k).map(Value::Form).ok_or_else(|| format!("{}: no form {k:?} in {game}", f.name))
-        }
-        Kind::Gauge => match v.as_str() {
-            Some("normal") => Ok(Value::Gauge(GaugeSpeed::Normal)),
-            Some("fast") => Ok(Value::Gauge(GaugeSpeed::Fast)),
-            Some("slow") => Ok(Value::Gauge(GaugeSpeed::Slow)),
-            _ => Err(format!("gauge is normal, fast or slow, not {v}")),
-        },
-        Kind::Supports => match v {
-            toml::Value::String(s) if s == "bug" => Ok(Value::Supports(None)),
-            toml::Value::Array(list) => {
-                let mut n = Supports::default();
-                for item in list {
-                    match item.as_str() {
-                        Some("rush") => n.rush = true,
-                        Some("beat") => n.beat = true,
-                        Some("tango") => n.tango = true,
-                        _ => return Err(format!("supports lists rush, beat and tango, not {item}")),
-                    }
-                }
-                Ok(Value::Supports(Some(n)))
-            }
-            _ => Err(format!("supports is a list of rush, beat and tango, or \"bug\", not {v}")),
-        },
-    }
-}
-
-/// `block`, of a match of `game`, applied over `stats`, in the fields'
-/// order; the problems with it, each said.
-pub fn apply(content: &Content, game: &str, block: &BTreeMap<String, toml::Value>, stats: &mut NaviStats) -> Vec<String> {
-    let mut problems = Vec::new();
-    for name in block.keys() {
-        if field(name).is_none() {
-            problems.push(format!("no stat {name:?} (the stats are {})", FIELDS.iter().map(|f| f.name).collect::<Vec<_>>().join(", ")));
-        }
-    }
-    for f in FIELDS {
-        if let Some(v) = block.get(f.name) {
-            match from_toml(content, game, f, v) {
-                Ok(v) => (f.set)(stats, v),
-                Err(e) => problems.push(e),
-            }
-        }
-    }
-    problems
-}
-
-/// The block that turns `base` into `stats`: each field that differs once
-/// the fields before it are set.
-pub fn diff(content: &Content, base: &NaviStats, stats: &NaviStats) -> BTreeMap<String, toml::Value> {
-    let mut now = *base;
-    let mut block = BTreeMap::new();
-    for f in FIELDS {
-        let want = (f.get)(stats);
-        if (f.get)(&now) != want {
-            (f.set)(&mut now, want);
-            block.insert(f.name.to_string(), to_toml(content, want));
-        }
-    }
-    block
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A MegaMan with stats of his own (1000 HP, Regular memory 50, a
-    /// buster bug), written as a block over his fresh stats, is himself
-    /// again.
-    #[test]
-    fn a_block_gives_back_the_stats() {
-        let content = crate::testing::exe6_content();
-        let megaman = content.form_changing_navi().unwrap();
-        let base = crate::Side::base_stats(&content, megaman, Some("falzar"));
-        let mut live = base;
-        (live.max_base_hp, live.max_hp, live.hp, live.reg_up, live.sun) = (1000, 1000, 1000, 50, true);
-        (live.bugs.buster_blanks, live.bugs.buster_charged) = (6, 1);
-        let block = diff(&content, &base, &live);
-        assert!(block.contains_key("hp"), "{block:?}");
-        let mut back = base;
-        assert_eq!(apply(&content, "exe6", &block, &mut back), Vec::<String>::new());
-        assert_eq!(back, live);
-        // A name no stat has, a value out of range, a key of nothing.
-        let mut bad = BTreeMap::new();
-        bad.insert("atack".to_string(), toml::Value::Integer(1));
-        bad.insert("rapid".to_string(), toml::Value::Integer(-1));
-        bad.insert("buster".to_string(), toml::Value::String("nothing".into()));
-        let problems = apply(&content, "exe6", &bad, &mut back);
-        assert_eq!(problems.len(), 3, "{problems:?}");
     }
 }

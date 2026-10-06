@@ -135,15 +135,16 @@ pub struct Ran {
 
 /// A round to play live on `content` with these battle settings: two
 /// MegaMen of `version` (one of the names the game's rules declare) at
-/// their fresh stats (`nettai_match::Side::base_stats`, as live play picks
-/// them), each bringing their folder, shuffled from the seed, and of what
+/// their fresh stats with a NaviCust of no programs (as live play picks
+/// them: their rules build the round's stats on them), each bringing their
+/// folder, shuffled from the seed, and of what
 /// the game's rules take besides, the version (the engine's version fact),
 /// the navi's own forms of it for their form list (the engine's: EXE6's
 /// version's five Crosses) and the rules' defaults for the rest (EXE6's
 /// Beast Out).
 pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: &str, seed: u32) -> RoundSetup {
     let megaman = content.form_changing_navi().expect("a navi that changes form");
-    let stats = nettai_match::Side::base_stats(content, megaman, Some(version));
+    let stats = nettai_match::Side::fresh_stats(content, megaman);
     let player = |side: u32| {
         // Each console shuffles its folder with its own RNG (RNG1), which
         // goes on from there.
@@ -157,7 +158,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             rules: Vec::new(),
             patch_cards: Default::default(),
-            navicust: None,
+            navicust: nettai_match::empty_navicust(content, megaman),
             auto_battle: Default::default(),
         };
         use nettai_battle::content::PlayerFact;
@@ -281,8 +282,10 @@ pub(crate) mod short_set {
     /// when the left one's buster hits.
     pub fn of(content: &Arc<Content>, game: &str, seed: u32) -> nettai_match::Match {
         let mut m = nettai_match::pick::live(content, game, seed, None).unwrap();
-        let right = &mut m.sides[1].stats;
-        (right.max_base_hp, right.max_hp, right.hp) = (1, 1, 1);
+        // (A base HP of 1: what the save brings, which the NaviCust's
+        // compile makes the maximum.)
+        let base_hp = nettai_battle::content::PlayerFact::BaseHp.name();
+        m.sides[1].set_fact(content, base_hp, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1))]).unwrap();
         assert_eq!(nettai_match::check_match(content, &m), Vec::<String>::new());
         m
     }
@@ -354,7 +357,7 @@ mod tests {
             let mut drawn = nettai_match::pick::live(&content, "exe6", seed, None).unwrap();
             // (1000 HP each, so the round lasts the test.)
             for s in &mut drawn.sides {
-                (s.stats.max_base_hp, s.stats.max_hp, s.stats.hp) = (1000, 1000, 1000);
+                s.set_fact(&content, "hp", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1000))]).unwrap();
             }
             let text = nettai_match::write(&content, &drawn);
             let read = nettai_match::parse(&content, &text).unwrap();
