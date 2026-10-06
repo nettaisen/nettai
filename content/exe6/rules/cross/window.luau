@@ -62,6 +62,11 @@ local OK_SLOT = 10
 -- the fade, then one more).
 local FADE_SPEED = 0x20
 local PUT_ON_TICK = 25
+-- The window's sounds: it opens (`sub_8027834`, the original's 0x7A) and closes (`sub_802790C`, 0x7D), and a Cross
+-- is put on (`sub_8027AAE`, 0x92).
+local OPEN_SOUND = asset.sound("select-7a")
+local CLOSE_SOUND = asset.sound("cross-window-close")
+local CHOSEN_SOUND = asset.sound("delta-ray-2")
 
 -- The side's navi changes form (MegaMan).
 local function megaman(side: number): boolean
@@ -175,7 +180,7 @@ function window.open(side: number)
             end
         end
     end
-    custom.set_cross_tab(side, megaman(side) and allowed and crosses_left(side) ~= 0)
+    custom.set_form_list_tab(side, megaman(side) and allowed and crosses_left(side) ~= 0)
 end
 
 -- OK: the Cross chosen is used this round.
@@ -222,7 +227,7 @@ end
 -- counts on.
 local function draw(side: number)
     custom.draw_window(side)
-    custom.draw_cross_cursor(side)
+    custom.draw_form_list_cursor(side)
     custom.set_frame(side, custom.frame(side) + 1)
 end
 
@@ -233,7 +238,7 @@ window.opening = {
     update = function(side: number): boolean
         local tick = custom.window_tick(side)
         if tick == 1 then
-            custom.play(side, "cross_window_open")
+            custom.play_sound(side, OPEN_SOUND)
         end
         if tick >= 12 then
             custom.open_window(side, "cross_window", 1)
@@ -321,7 +326,7 @@ window.closing = {
     update = function(side: number): boolean
         local tick = custom.window_tick(side)
         if tick == 1 then
-            custom.play(side, "cross_window_close")
+            custom.play_sound(side, CLOSE_SOUND)
         end
         custom.set_frame(side, tick)
         if tick >= 6 then
@@ -356,7 +361,7 @@ window.chosen = {
             end
             custom.draw_window(side)
             custom.show_chip_window(side)
-            custom.play(side, "cross_chosen")
+            custom.play_sound(side, CHOSEN_SOUND)
         elseif tick == 34 then
             custom.draw_window(side)
             custom.show_chip_window(side)

@@ -155,10 +155,10 @@ pub struct EffectsRules {
     pub damage_word: DamageWordRule,
     /// An obstacle's reaction has EXE5's step for ColonelSoul's army
     /// (0x080CAB02 from its four reactions, docs/design/exe5-map.md §15.11:
-    /// `kinds::obstacle::Soldiers`): one standing where an armed side can
+    /// `kinds::obstacle::Conversion`): one standing where an armed side can
     /// use it turns into that side's soldier (the role
-    /// `kinds.obstacle_soldier`).
-    pub obstacle_soldiers: bool,
+    /// `kinds.converted_obstacle`).
+    pub obstacle_conversion: bool,
     /// What holds a screen palette flash (effect object #0x0A,
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,
@@ -502,7 +502,7 @@ pub enum FormBreak {
     /// it breaks to (EXE6's `sub_8015766`: a Cross Beast to its Beast,
     /// else the base form), with animation 2, its overlay refreshed and
     /// kept stepping, and the collision region taken off and put back.
-    CrossOrBeast,
+    MarkedForms,
     /// Any form breaks, to the base form (EXE5's 0x080122C8), with none of
     /// those, and fewer flags cleared.
     AnyForm,
@@ -702,7 +702,6 @@ pub struct Rules {
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
-    pub berserk: BerserkRules,
     /// The battle's flow where a game's differs (rule section `flow`, the
     /// arena's game's).
     pub flow: FlowRules,
@@ -985,23 +984,6 @@ pub struct SlideVector {
 
 impl SlideVector {
     pub const NONE: SlideVector = SlideVector { dx: 0, dy: 0, tiles: 0 };
-}
-
-/// The panels Beast Over's berserk controller (`sub_802D322`) looks at,
-/// each by alliance.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct BerserkRules {
-    /// Where its steps may land (`byte_802D410`, and `byte_802D420` with
-    /// AirShoe).
-    pub step: StepRuleSet,
-    /// A panel with an opponent on it (`off_8109784`, `sub_810971A`).
-    pub opponent: [PanelCondition; 2],
-    /// Panel flags that end the look behind an opponent (`byte_8015D78`,
-    /// `sub_8015CC0`).
-    pub blocking: [u32; 2],
-    /// The panel flag of the opposing player (`byte_80E74C4`,
-    /// `sub_80E7486`).
-    pub opposing_player: [u32; 2],
 }
 
 /// The Beast Out lock-on: where the Beast rush attacks from (`ho_8026554`,

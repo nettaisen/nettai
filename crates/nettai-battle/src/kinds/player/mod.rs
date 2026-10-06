@@ -474,7 +474,7 @@ fn gauge_loss(amount: u16) -> u32 {
 /// its side's gauge (0x0802D4C0: by the loss ×128, in the own-gauges mode
 /// mode by `gauge_loss`), then the HP goes down, to 0, where the last
 /// stand may hold. Whether r1 is left non-zero (`kinds::subtract_hp`).
-pub(crate) fn exe5_lose_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
+pub(crate) fn lose_hp_gauge_and_last_stand(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
     let player = b.objects.get(r).actor.is_some_and(|id| b.actors.get(id).actor_type == ActorType::Player);
     if player {
         let drain = if own_gauges(b) { gauge_loss(amount) } else { (amount as u32) << 7 };
@@ -860,7 +860,7 @@ pub fn changing_form(b: &Battle, r: ObjectRef) -> bool {
 }
 
 /// `sub_802DCEC`: a navi switch is pending or running.
-pub fn changing_cross(b: &Battle, r: ObjectRef) -> bool {
+pub fn switching_navi(b: &Battle, r: ObjectRef) -> bool {
     ai(b, r).status & crate::actor::status::SWITCHING_NAVI != 0 || ai(b, r).requests & request::NAVI_SWITCH != 0
 }
 
@@ -884,7 +884,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let (body, target) = body_types(b, false);
     b.setup_collision(r, body, target, hm);
     init_hp(b, r);
-    init_navicust(b, r);
+    init_round_state(b, r);
     update_element(b, r);
     let s = *stats(b, r);
     if is_megaman(b, r) {
@@ -1005,7 +1005,7 @@ fn init_hp(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8013892`: counter strength, mood, first barrier and the
 /// NaviCust-driven flags.
-fn init_navicust(b: &mut Battle, r: ObjectRef) {
+fn init_round_state(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).stamina = 10;
     let eff = b.setup.settings.effects;
     if eff & effects::LINK != 0 || eff & 0x1_0000 != 0 || stats(b, r).mood != 0xFF {
@@ -1028,11 +1028,11 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
     }
     // (EXE6's rules/emotion holds a navi whose Beast Out counter is spent
     // tired from the round's start.)
-    reset_navicust_state(b, r);
+    reset_abilities(b, r);
 }
 
 /// `sub_801390C`: weapon bytes, invulnerability and the NaviCust flags.
-fn reset_navicust_state(b: &mut Battle, r: ObjectRef) {
+fn reset_abilities(b: &mut Battle, r: ObjectRef) {
     let w = stats(b, r).weapons;
     let a = ai_mut(b, r);
     a.charge_shot = w.charge_shot;
@@ -1048,24 +1048,24 @@ fn reset_navicust_state(b: &mut Battle, r: ObjectRef) {
     if let Some(o) = ai_mut(b, r).reset_linked_object.take() {
         crate::kinds::common::set_progress(b, o, crate::kinds::common::Progress::DESTROY);
     }
-    apply_navicust_flags(b, r);
+    apply_ability_flags(b, r);
 }
 
 /// `sub_801393A`: refresh the weapon bytes (base form) and the NaviCust
 /// flags after a NaviCust change.
-fn refresh_navicust_state(b: &mut Battle, r: ObjectRef) {
+fn refresh_abilities(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     if in_base_form(b, r) {
         let a = ai_mut(b, r);
         a.charge_shot = s.weapons.charge_shot;
         a.back_special = s.weapons.back_special;
     }
-    apply_navicust_flags(b, r);
+    apply_ability_flags(b, r);
 }
 
 /// `loc_8013956`: FloatShoe (also changes what the body is), AirShoe,
 /// ice, Undershirt and SuperArmor from the navi stats.
-fn apply_navicust_flags(b: &mut Battle, r: ObjectRef) {
+fn apply_ability_flags(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let hm = body_hit_modifier(b);
     if s.float_shoes {
@@ -1103,7 +1103,7 @@ fn update_element(b: &mut Battle, r: ObjectRef) {
 /// `sub_80144C0`: the full status reset (NaviCust state, hand bonuses,
 /// hit modifier, region, charge, weapon bytes, element, body damage).
 pub(crate) fn reset_status(b: &mut Battle, r: ObjectRef) {
-    reset_navicust_state(b, r);
+    reset_abilities(b, r);
     reset_status_tail(b, r, true);
 }
 
@@ -1114,9 +1114,9 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     let side = b.objects.get(r).alliance as usize;
     b.hands[side].charge_bonus = [0; 6];
     // EXE5's (0x08011B3C, 0x080CAC30) disarms the side's ColonelSoul army
-    // (`obstacle::Soldiers`; the form's reset below arms it again): EXE6
+    // (`obstacle::Conversion`; the form's reset below arms it again): EXE6
     // has none to disarm.
-    b.obstacle_soldiers[side & 1].armed = false;
+    b.obstacle_conversion[side & 1].armed = false;
     ai_mut(b, r).status &= !0x20;
     // (Netbattle, local player: removes the opponent's HUD entry.)
     // EXE5's 0x08011B74: a form's priming is spent (EXE6 never primes).
@@ -1397,7 +1397,7 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
     if navi.changes_form() {
         if form.hover != 0 {
             b.objects.get_mut(r).pos.z = (form.hover as i32) << 16;
-        } else if !runs_role(b, r, crate::content::ActionRole::DustBeastScatter) && flag1(b, r) & f1::BUBBLED == 0 {
+        } else if !runs_role(b, r, crate::content::ActionRole::Ungrounded) && flag1(b, r) & f1::BUBBLED == 0 {
             b.objects.get_mut(r).pos.z = 0;
         }
     }

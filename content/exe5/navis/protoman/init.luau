@@ -39,7 +39,7 @@ local navi: NaviDef = {
     -- his level, which his damage rows are read at, is that count up to 6 (0x0800EBE0).
     story = { hp = { 200, 300, 350, 400, 450, 500, 600, 700, 800 }, max_level = 6 },
     identity = new.identity {
-        class = "link_navi",
+        class = "player",
         version = 0,
         actor_type = "player",
         ai_index = 1,

@@ -50,7 +50,8 @@ local form: FormDef = {
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 1 of category 0: what a chip's icon
     -- over him and his attachments sit by).
     identity = new.identity {
-        class = "megaman",
+        class = "player",
+        changes_form = true,
         version = 0,
         actor_type = "player",
         ai_index = 0,

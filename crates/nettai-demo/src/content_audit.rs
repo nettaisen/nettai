@@ -210,9 +210,9 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     }
     field(c, packs, p);
 
-    // The chips: the Beast Out chip's picture is the Beast's (the custom
-    // screen's), not its own.
-    let beast_out: BTreeSet<ChipHandle> = std::iter::once(c.defs.roles()).filter_map(|r| r.try_chip(ChipRole::BeastOut)).collect();
+    // The chips: the button chip's picture is its button's (EXE6's
+    // BeastOut's, the Beast's: the custom screen's), not its own.
+    let beast_out: BTreeSet<ChipHandle> = std::iter::once(c.defs.roles()).filter_map(|r| r.try_chip(ChipRole::ButtonChip)).collect();
     let font = &hud.dialogue_font;
     for (i, d) in c.defs.chips.iter().enumerate() {
         let chip = ChipHandle(i as u16);

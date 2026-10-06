@@ -632,6 +632,15 @@ impl Defs {
         self.facts.get(k).copied().flatten().map(|field| field as usize)
     }
 
+    /// The name of the rules' setup field that holds fact `fact` (its own,
+    /// whatever role it has: EXE6's form list is its `crosses`). None: the
+    /// game's rules take no such fact.
+    pub fn fact_name(&self, fact: PlayerFact) -> Option<&str> {
+        let field = self.fact_field(fact)?;
+        let rules = self.rules()?;
+        Some(self.schema(rules.setup).field(field).name.as_str())
+    }
+
     /// The game's roles.
     pub fn roles(&self) -> &Roles {
         &self.roles
@@ -817,7 +826,7 @@ fn claim_identity(
     }
     if !id.class.is_player() {
         return Err(ContentError::new(format!(
-            "identity {} ({whose}'s) is of class {:?}: a navi's or a form's is a player's (megaman, link_navi, cross, beast, cross_beast, beast_over)",
+            "identity {} ({whose}'s) is of class {:?}: a navi's or a form's is a player's (class `player`)",
             id.key, id.class
         )));
     }
@@ -1501,7 +1510,7 @@ impl Defs {
             record.fresh = super::navis::read_fresh(d, |key| {
                 definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16))
             })?;
-            record.cross_hp = super::navis::read_cross_hp(d)?;
+            record.switch_hp = super::navis::read_switch_hp(d)?;
             record.levels = super::navis::read_levels(d, &weapon_handle)?;
             record.story = super::navis::read_story(d)?;
             record.identity = identity_of(d, &identities)?;
@@ -1509,16 +1518,17 @@ impl Defs {
                 Data::Nil => None,
                 forms @ Data::Map(_) => {
                     // The forms a form list offers, by version: each set of
-                    // the table that lists them (`crosses`; the rest of a set
-                    // is its game's: EXE6's Beast Out and Beast Over).
+                    // the table that lists them (`form_list`: EXE6's Crosses;
+                    // the rest of a set is its game's: EXE6's Beast Out and
+                    // Beast Over).
                     let mut by_version = Vec::new();
                     if let Data::Map(sets) = forms {
                         for (version, set) in sets {
-                            let Data::List(items) = set.field("crosses") else { continue };
+                            let Data::List(items) = set.field("form_list") else { continue };
                             let version = version.to_string();
                             let listed = items
                                 .iter()
-                                .map(|v| form_ref(d, v, &format!("forms.{version}.crosses")).map(|f| f.expect("a form")))
+                                .map(|v| form_ref(d, v, &format!("forms.{version}.form_list")).map(|f| f.expect("a form")))
                                 .collect::<Result<Vec<_>, _>>()?;
                             by_version.push((version, listed));
                         }
@@ -2084,17 +2094,22 @@ impl Defs {
             }
         }
         // What a player brings that a frontend and tools read by the
-        // engine's name for it: the rules' setup field of the name, of the
-        // fact's type.
+        // engine's name for it: the rules' setup field that has the role
+        // (`schema.role`), else the field of the name (one with no role of
+        // its own), of the fact's type.
         let mut facts = vec![None; PlayerFact::ALL.len()];
         if let Some(r) = &rules {
             let schema = &schemas[r.setup.0 as usize].schema;
             for (k, fact) in PlayerFact::ALL.iter().enumerate() {
-                let Some(i) = schema.index_of(fact.name()) else { continue };
+                let fields = schema.fields();
+                let by_role = fields.iter().position(|f| f.role.as_deref() == Some(fact.name()));
+                let by_name = || fields.iter().position(|f| f.name == fact.name() && f.role.is_none());
+                let Some(i) = by_role.or_else(by_name) else { continue };
                 if let Err(want) = fact.fits(&schema.field(i).ty) {
                     let module = rules_definition(&definitions).map_or("", |d| d.module.as_str());
                     return Err(ContentError::new(format!(
-                        "{module}.luau: rules: their setup field `{}` is the fact a player brings by that name, {want}: it is {:?}",
+                        "{module}.luau: rules: their setup field `{}` is the fact a player brings as `{}`, {want}: it is {:?}",
+                        schema.field(i).name,
                         fact.name(),
                         schema.field(i).ty
                     )));

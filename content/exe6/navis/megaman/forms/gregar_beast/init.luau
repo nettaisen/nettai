@@ -33,7 +33,9 @@ local form: FormDef = {
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 11 },
     identity = new.identity {
-        class = "beast",
+        class = "player",
+        changes_form = true,
+        breaks_on_weakness = true,
         -- Where a held thing with no attach point sits (BatCan's cannon).
         held_offset = { 11, -7 },
         version = 0,

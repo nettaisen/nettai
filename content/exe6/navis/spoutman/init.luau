@@ -28,7 +28,7 @@ local navi: NaviDef = {
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = a_charge },
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
-    cross_hp = { 150, 150 },
+    switch_hp = { 150, 150 },
     -- What the save's reload gives it at its link navi level
     -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
     -- and maximum HP by the story's progress (`off_8120F44`), and what each
@@ -57,7 +57,7 @@ local navi: NaviDef = {
     charged_chips = { family = "aqua", damaging = true, when = by_level.from(11) },
     charge_doubles = { element = "aqua" },
     identity = new.identity {
-        class = "link_navi",
+        class = "player",
         version = 0,
         actor_type = "player",
         ai_index = 6,

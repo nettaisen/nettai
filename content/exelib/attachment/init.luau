@@ -69,11 +69,12 @@ local function follow(me: Object)
 end
 
 -- What a game's attachments are raised by for who holds them, over their look's (`lifted(owner, side)`; nil: the
--- look's). EXE6's (`sub_80B8CF8`, the default): a Cross's identity in a form other than the base form, 8 pixels.
+-- look's). EXE6's (`sub_80B8CF8`, the default): a Cross's identity (the navi that changes form's, NameIDs 0x1AC to
+-- 0x1B5: the side's form one of EXE6's kind `cross`, not the base form), 8 pixels.
 export type Lifted = (owner: Object, side: number) -> number?
 local function cross_lifted(owner: Object, side: number): number?
     local identity = owner.identity
-    if identity ~= nil and identity.class == "cross" and not battle.navi(side).form.base then
+    if identity ~= nil and identity.changes_form and (battle.navi(side).form :: any).kind == "cross" then
         return -8
     end
     return nil

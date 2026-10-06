@@ -48,7 +48,7 @@ function controller.make(look: Look): Controller
             if not user then
                 error("BugFix's controller has no user (sub_80E49C4 reads through a null pointer)")
             end
-            battle.clear_navicust_bugs(user.alliance)
+            battle.clear_bugs(user.alliance)
             -- sub_801E658: the emotion portrait's bug face goes, on every
             -- console (its flicker draws the console's RNG1).
             battle.clear_emotion_window_glitch()

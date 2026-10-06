@@ -211,8 +211,8 @@ mod tests {
         }
         // (The SP times by the chips of the slots the game reads, in the
         // slots' order.)
-        let times: Vec<(&str, u16)> = s.facts.sp_times(&content).iter().map(|&(c, f)| (crate::ids::local(&content.defs.chip(c).key), f)).collect();
-        assert_eq!((times.len(), times[0], times[17]), (18, ("heatman-sp", 600), ("colonel-sp", 617)));
+        let times = crate::testing::sp_times(&content, &s.facts);
+        assert_eq!((times.len(), &times[0], &times[17]), (18, &("heatman-sp".to_string(), 600), &("colonel-sp".to_string(), 617)));
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert!(crate::check::start(&content, &m).is_ok());
         // Every Cross owned: the game's own five, stated; and none owned,

@@ -660,19 +660,25 @@ impl Ids<'_> {
     }
 }
 
-/// Write `times` (chips and frames) as a player's setup fact `sp_times`.
+/// The setup field EXE6's rules keep a player's SP navi deletion times in
+/// (rules/sp_chips: a `{ chip, frames }` each).
+pub const SP_TIMES: &str = "sp_times";
+
+/// `times` (chips and frames) as the facts of the setup field [`SP_TIMES`]
+/// holds: a `{ chip, frames }` each, in this order.
+pub fn sp_time_facts(times: &[(nettai_content_api::ChipHandle, u16)]) -> Vec<nettai_battle::rules::Fact<'static>> {
+    use nettai_battle::rules::Fact;
+    use nettai_content_api::{Registry, Value};
+    times.iter().map(|&(c, f)| Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, c.0))), ("frames", Fact::Value(Value::Int(f as i64)))])).collect()
+}
+
+/// Write `times` (chips and frames) as a player's setup fact [`SP_TIMES`].
 pub fn write_sp_times(
     player: &mut nettai_battle::custom::PlayerSetup,
     content: &Content,
     times: &[(nettai_content_api::ChipHandle, u16)],
 ) -> Result<bool, String> {
-    use nettai_battle::rules::Fact;
-    use nettai_content_api::{Registry, Value};
-    let records: Vec<Fact> = times
-        .iter()
-        .map(|&(c, f)| Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, c.0))), ("frames", Fact::Value(Value::Int(f as i64)))]))
-        .collect();
-    player.set_fact(content, "sp_times", &records)
+    player.set_fact(content, SP_TIMES, &sp_time_facts(times))
 }
 
 #[cfg(test)]

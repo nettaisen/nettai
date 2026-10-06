@@ -439,7 +439,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         spark_steps_at_start = true,
         retype = "is_and_hits",
         damage_word = "statuses_and_bug",
-        obstacle_soldiers = false,
+        obstacle_conversion = false,
         palette_flash = "mode_runs_through_pause",
         palette_flash_order = "after_fades",
         overlays_run_while_paused = true,
@@ -522,7 +522,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         no_charge_drive = false,
         hp_loss = "hp_alone",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", plain_in_battle_mode_1 = false, normal_in_a_form = true, anger_before_worn_out = false, tired_and_exhausted = true, worried_below = 40 },
-        form_break = "cross_or_beast",
+        form_break = "marked_forms",
         weakness_hit_breaks_form = true,
         weakness_mark = "weak_element_damage","#,
             ),
@@ -572,7 +572,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((r.hit_test.float_shoe_needs_self_bit, r.hit_test.elec_reaches_submerged, r.hit_test.guard_breaks_to), (true, true, 0x1002));
         assert!(!r.obstacle_slide_bounds);
         assert_eq!((r.slide_speed.x, r.slide_speed.y), (0x30000, 0x20000));
-        assert_eq!((r.reactions, r.form_break, r.intake.hp_loss), (Reactions::FlashTimerFirst, FormBreak::CrossOrBeast, HpLoss::HpAlone));
+        assert_eq!((r.reactions, r.form_break, r.intake.hp_loss), (Reactions::FlashTimerFirst, FormBreak::MarkedForms, HpLoss::HpAlone));
         assert_eq!((r.weakness_hit_breaks_form, r.weakness_mark), (true, WeaknessMark::WeakElementDamage));
         let m = r.emotion;
         assert_eq!((m.mood_held, m.anger_end, m.worried_below), (MoodHeld::AtZero, AngerEnd::ResetsMood, Some(40)));
@@ -635,8 +635,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         // A rule is one of the engine's, by name.
         let e = game(rules(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
         assert!(e.contains("rules: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");
-        let e = game(rules(None, None, Some(("form_break = \"cross_or_beast\"", "form_break = \"exe6\"")))).unwrap_err();
-        assert!(e.contains("rules: status.form_break: unknown variant `exe6`, expected `cross_or_beast` or `any_form`"), "{e}");
+        let e = game(rules(None, None, Some(("form_break = \"marked_forms\"", "form_break = \"exe6\"")))).unwrap_err();
+        assert!(e.contains("rules: status.form_break: unknown variant `exe6`, expected `marked_forms` or `any_form`"), "{e}");
         // A game with no rules states no rules: a load error too. (Modules
         // of no game, a test's, have no rules, and no battle is made of
         // them.) Rust tables state them for a content that has those (the

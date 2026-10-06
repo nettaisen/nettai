@@ -122,9 +122,10 @@ pub enum PlayerFact {
     /// Their save has Beast Out (EXE6's event flag 0xE0: the emotion window
     /// shows its count).
     BeastOut,
-    /// The forms they have for their form list, in its order (EXE6's
-    /// Crosses, up to five of either version): an empty list is none.
-    CrossList,
+    /// The forms they have for their form list, in its order: the forms a
+    /// form list window offers (EXE6's Crosses, up to five of either
+    /// version, its setup field `crosses`): an empty list is none.
+    FormList,
     /// The level their navi has (EXE6's: the navi code the save received,
     /// 0 to 14, none without one; EXE5's team navis': the story's
     /// progress): a link navi's chip bonus and charge limits, the damage of
@@ -137,11 +138,6 @@ pub enum PlayerFact {
     /// up. A tool fills it in from what a navi's level gives (EXE5's
     /// `story`).
     BaseHp,
-    /// How long their save took to delete each SP navi, by its SP navi
-    /// chip, in frames: a list of `{ chip, frames }` (EXE6's and EXE5's;
-    /// their rules' sp_chips read it for the chips' damage). A tool shows
-    /// and edits them as times, and a boundary writes a save's.
-    SpTimes,
 }
 
 impl PlayerFact {
@@ -153,13 +149,14 @@ impl PlayerFact {
             PlayerFact::TagChips,
             PlayerFact::Version,
             PlayerFact::BeastOut,
-            PlayerFact::CrossList,
+            PlayerFact::FormList,
             PlayerFact::Level,
             PlayerFact::BaseHp,
-            PlayerFact::SpTimes,
         ];
 
-    /// The setup field's name.
+    /// Its name: the setup field that holds it is the one the rules' setup
+    /// gives this role (`schema.role(name, T)`), else the field of this
+    /// name (`Defs::fact_name`: the field's own name).
     pub fn name(self) -> &'static str {
         match self {
             PlayerFact::Navi => "navi",
@@ -168,10 +165,9 @@ impl PlayerFact {
             PlayerFact::TagChips => "tag_chips",
             PlayerFact::Version => "version",
             PlayerFact::BeastOut => "beast_out",
-            PlayerFact::CrossList => "crosses",
+            PlayerFact::FormList => "form_list",
             PlayerFact::Level => "level",
             PlayerFact::BaseHp => "hp",
-            PlayerFact::SpTimes => "sp_times",
         }
     }
 
@@ -196,15 +192,9 @@ impl PlayerFact {
             PlayerFact::TagChips => matches!(ty, FieldType::List(e, 2) if matches!(**e, FieldType::U8)),
             PlayerFact::Version => matches!(ty, FieldType::Enum(_)),
             PlayerFact::BeastOut => matches!(ty, FieldType::Bool),
-            PlayerFact::CrossList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
+            PlayerFact::FormList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
             PlayerFact::Level => matches!(ty, FieldType::OptionalU8),
             PlayerFact::BaseHp => matches!(ty, FieldType::U16),
-            PlayerFact::SpTimes => match ty {
-                FieldType::List(elem, _) => {
-                    record_of(elem, &[("chip", |t| matches!(t, FieldType::Ref(Registry::Chip, _))), ("frames", |t| matches!(t, FieldType::U16))])
-                }
-                _ => false,
-            },
         };
         if ok {
             return Ok(());
@@ -216,10 +206,9 @@ impl PlayerFact {
             PlayerFact::TagChips => "a list of two u8 (entries of the folder)",
             PlayerFact::Version => "a list of the versions' names",
             PlayerFact::BeastOut => "a bool",
-            PlayerFact::CrossList => "an array of forms",
+            PlayerFact::FormList => "an array of forms",
             PlayerFact::Level => "a u8? (a level, or none)",
             PlayerFact::BaseHp => "a u16",
-            PlayerFact::SpTimes => "a list of { chip = \"chip\", frames = \"u16\" }",
         })
     }
 }

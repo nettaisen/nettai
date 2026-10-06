@@ -129,7 +129,7 @@ pub fn set(content: &Content, navi: NaviHandle, game: GameVersion) -> Option<Set
         Data::Ref(Registry::Form, k) => content.defs.form_by_key(k),
         _ => None,
     };
-    let crosses = match g.field("crosses") {
+    let crosses = match g.field("form_list") {
         Data::List(items) => items.iter().filter_map(form).collect(),
         _ => Vec::new(),
     };

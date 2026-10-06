@@ -34,7 +34,7 @@ local navi: NaviDef = {
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = tengu_wind.weapon },
     fresh = { hp = 150, float_shoes = true, air_shoes = true, mega_level = 5, giga_level = 1 },
-    cross_hp = { 100, 150 },
+    switch_hp = { 100, 150 },
     -- What the save's reload gives it at its link navi level
     -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
     -- and maximum HP by the story's progress (`off_8120F44`), and what each
@@ -60,7 +60,7 @@ local navi: NaviDef = {
         },
     },
     identity = new.identity {
-        class = "link_navi",
+        class = "player",
         version = 0,
         actor_type = "player",
         ai_index = 8,

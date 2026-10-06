@@ -51,22 +51,22 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 
 | Feature | (a) | (b) | (c) | (d) | All |
 |---|---|---|---|---|---|
-| Beast Out and Beast Over | 5 | 3 | 1 | | 9 |
-| Crosses and the form framework | 8 | | 2 | | 10 |
+| Beast Out and Beast Over | | 2 | 1 | | 3 |
+| Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | 2 | 1 | 3 | 6 |
-| Dark chips and light/dark | 3 | | | | 3 |
-| NaviCust | 1 | 3 | | 2 | 6 |
+| NaviCust | | 2 | | 2 | 4 |
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
 | The stat block and versions | | 1 | 1 | | 2 |
-| Tools | 1 | 2 | 2 | | 5 |
-| Across features | 4 | | | | 4 |
-| **All** | **23** | **12** | **8** | **5** | **48** |
+| Tools | | 1 | 1 | | 2 |
+| Across features | | 1 | | | 1 |
+| **All** | **1** | **10** | **7** | **5** | **23** |
+
+Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
+dead code; the library agent's steps did N5, T2 and T4. They are listed under [Done](#done) with their new names.
+X5 is new: what X4's rename left of EXE5's logic.
 
 ### Beast Out and Beast Over (EXE6)
 
-- **B1. The `berserk` rule section** (`BerserkRules`, content/rules.rs:1047; sections.rs's `SECTIONS`, :551). Rust
-  parses it and nothing reads it. EXE6's rules/beast/berserk.luau requires rules/berserk.luau itself. *(b)* Drop the
-  section from `SECTIONS` and `Rules`; the module stays a plain table. Trivial; no cost.
 - **B2. The lock-on** (`ho_8026554`). Pieces:
   - actions/lockon.rs (131 lines);
   - the `lockon` section (`Lockon`, rules.rs:1065; sections.rs:616);
@@ -81,56 +81,11 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   `fresh_stats.beast_out_counter`, rules.rs:326; `NaviStat::BeastOutCounter`, api.rs:480). *(b)* A field of EXE6's
   rules state, which rules/beast already spends and rules/emotion reads. The HUD's count becomes a view (B6). Small:
   read at a turn's start and a custom screen.
-- **B4. The BeastOut chip's role** (`ChipRole::BeastOut`, roles.rs:551) and `Library::beast_out_chip`
-  (custom/library.rs:17, :77), which nothing calls. *(a)* Delete the method. The role is the Beast Out button's chip,
-  as §4.8 names a button's picture; the renderer's own art for it is C7's kind.
-- **B5. Beast Out's screen sounds** (`ScreenSound::{BeastOutGregar, BeastOutFalzar, BeastOutFlash}`,
-  custom/look.rs:246; their names, screen.rs:988; `SoundRole::CustomBeastOut*`, roles.rs:415). *(a)* The custom
-  screen plays sounds by a role name the game's sections list. No closed enum of one game's sounds.
 - **B6. The HUD's Beast Out count** (render hud.rs:102, :879; `beast_count_shown`, :926, which reads
   `PlayerFact::BeastOut`) and that fact role (views.rs:124), which nothing else reads. *(c)* A HUD view the rules fill
   (a count, and whether it shows). The fact stays EXE6's setup field, with no role.
-- **B7. `FormEffects::BERSERK`** ("berserk", navis.rs:649) and the `berserk` locals around `FormTraits::CONTROLLED`
-  (battle.rs:1635, :1852). *(a)* Call it `controller_restart`.
-- **B8. `ActionRole::DustBeastScatter`** (roles.rs:51). The navi's hover isn't reset while it runs
-  (player/mod.rs:1400). *(a)* Make it a flag on the action (it keeps the body raised) instead of a role.
-- **B9. The Cybeasts** (`IdentityClass::{Gregar, Falzar}`, `is_cybeast`, identity.rs:24, :78). Where they act:
-  - a win over one has no music or banner and fades to white (battle.rs:1911, :1981, :2001);
-  - the 0xF6 bug doesn't blind them (intake.rs:535);
-  - the target marker skips Gregar's animation 0x4F (target_marker.rs:146).
-
-  Both games have Cybeasts (EXE5's 0x173 to 0x176). *(a)* Identity traits: a quiet win, immune to the bug's blind,
-  the marker's unraised animation as data.
-
 ### Crosses and the form framework (EXE6; the form break and the navi switch are both games')
 
-- **C1. The player identity classes** (`IdentityClass::{MegaMan, LinkNavi, Cross, Beast, CrossBeast, BeastOver}`,
-  `is_player`, `is_form`, identity.rs:26–75). Read by:
-  - the weakness break's class test (status.rs:425);
-  - core_api.rs:2943;
-  - the identity check (defs.rs:818);
-  - the HUD (render hud.rs:979).
-
-  *(a)* Traits on identities: a player, breaks on a weakness hit.
-- **C2. The form break under the Cross's name** (`status::CROSS_BREAKING`, `cross_lane`, status.rs:66, :398;
-  `break_cross`, actions/transform.rs:218; `FormBreak::CrossOrBeast`, rules.rs:505; `NaviState::CrossBreaking` as
-  "cross_breaking", api.rs:754). The mechanism is both games' (rule `form_break`). *(a)* Rename to `form_break` and
-  `FORM_BREAKING`, with variants by behavior. It runs on the per-tick reaction path and stays Rust.
-- **C3. The navi switch's old names** (`changing_cross`, player/mod.rs:863, transform.rs:237;
-  `NaviState::{ChangingCross, CrossKnockout, Crossed}`, api.rs:749, core_api.rs:158). *(a)* Rename the Rust names;
-  the Luau names are already `switching_navi`, `switch_knockout` and `switched`.
-- **C4. `NaviData::cross_hp`** (navis.rs:109, :916), the HP a navi switched to starts with (actions/navi_switch.rs:283).
-  *(a)* Call it `switch_hp`.
-- **C5. The chip-use doubling and heal under the Cross's name** (`cross_doubles`, `Boost::Cross`, chip_use.rs:576,
-  :614; `heal_on_use`, :661). They already read navi and form data (`charge_doubles`, `chip_heals`, `null_bonus`).
-  *(a)* Names only. It runs per chip use, and the form data stays data (§2.1 rule 6).
-- **C6. The form list window's state and API under the Cross's name**:
-  - `ScreenLook::{cross_tab, cross_cursor}`, `draw_cross_cursor` (custom/look.rs:46, :125, :420);
-  - `custom_draw_cross_cursor`, `custom_set_cross_tab` (api.rs:1401, :1403; core_api.rs:991, :1001);
-  - `ScreenSound::{CrossWindowOpen, CrossWindowClose, CrossChosen}` and `SoundRole::CustomCross*` (look.rs:233;
-    roles.rs:404).
-
-  *(a)* Names of the `FormList` view: `form_list_tab`, `form_list_cursor`, and sounds by role name (as B5).
 - **C7. The renderer's Cross window**. Pieces:
   - render custom.rs's `cross_stage`, `cross_map`, `cross_names`, `cross_cursor_parts`, `navi_crosses`,
     `cross_picture` and `cross_at` (custom.rs:553–735, :865–890, :1354), the last reading `PlayerFact::CrossList`;
@@ -147,16 +102,6 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 
   About 120 lines. *(c)* The pack format names these pictures for the form list window. Rename with C7 at a pack
   format bump.
-- **C9. `PlayerFact::CrossList`** (views.rs:127). Read by:
-  - the renderer (C7);
-  - nettai-match: the side's list, its checks and `state_own_forms` (facts.rs:312–682), and `picks_live` and the
-    random side (pick.rs:68, :163);
-  - nettai-frontend's `live_setup` (driver.rs:179).
-
-  *(a)* A `FormList` role (the forms a form list window offers). "crosses" stays EXE6's field name and nothing else.
-- **C10. The navi's per-version form lists read under `<version>.crosses`** (defs.rs:1517; `NaviForms::by_version`).
-  *(a)* A neutral key such as `form_list`, which touches EXE6's navi data.
-
 ### Emotions (both games; EXE6's tired, Full Synchro and anger, EXE5's worried and dark)
 
 - **E1. The `Emotion` enum and its derivation** (`Emotion`, `emotion()`, player/mod.rs:360–412: `sub_8015B54` read
@@ -197,25 +142,10 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 
   *(c)* Faces keyed by the game's emotion names once E1 is done. The second set of faces is a look the rules push
   (`face_hub` already is; `face_chaos` follows S1).
-- **E6. EXE5's last stand** (`last_stand`, `hold_last_stand`, player/mod.rs:427–460, from `exe5_lose_hp`, :477, and
-  `exe5_apply_damage`, status.rs:339; `HpLoss::GaugeAndLastStand`, rules.rs:471). A dark MegaMan holds at 1 HP once a
+- **E6. EXE5's last stand** (`last_stand`, `hold_last_stand`, player/mod.rs:427–460, from `lose_hp_gauge_and_last_stand`,
+  :477, and `apply_damage_gauge_and_last_stand`, status.rs:339; `HpLoss::GaugeAndLastStand`, rules.rs:471). A dark MegaMan holds at 1 HP once a
   battle. *(b)* A hook when a player's HP reaches 0. EXE5's rules/emotion/dark_survival.luau already plays the volley.
   About 40 lines, and the hook is rare. The side gauge's drain on HP loss is a rule variant (X2's kind).
-
-### Dark chips and light/dark
-
-- **D1. The dark chip's hover**:
-  - `DarkHover` and `ScreenLook::hover` (custom/look.rs:38, :81, :360–392);
-  - `on_dark_chip`, `is_dark` and the opening cursor's dark chip (screen.rs:429, :590, :1571);
-  - `FadeMode::DarkChip*`, `ScreenSound::DarkHover` and `SoundRole::CustomDarkHover`;
-  - the renderer's fades (render custom.rs:206–237);
-  - `ChipFlags::DARK` (chips.rs:132) and the library's Dark section (nettai-content library.rs:53).
-
-  The framework's (§4.4), both games. *(a)* Name it by what it does (a flagged chip whose hover darkens the screen).
-  It runs per tick on the screen and stays Rust.
-- **D2. `dark_substitute`** (chip_use.rs:385). It is already the rules' hook `chip_substitute`. *(a)* Name only.
-- **D3. `BattleInfo::{NoDarkChips, LightDarkHeld}`** (api.rs:590, :593): battle effect bits named for EXE5's dark
-  chip rule and light/dark value. *(a)* The battle's effect bits by the names a game's rules give them.
 
 ### NaviCust (both games)
 
@@ -237,20 +167,13 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   from code to NaviStats offset. *(b)* A hook `bug_inflicted(side, code, arg)` with EXE6's table from code to stat in
   its Luau, writing through `NaviStat` (§3.3). About 310 lines. It runs per hit that carries a bug, which is rare.
 - **N3. The abilities in the stat block** (`float_shoes`, `air_shoes`, `undershirt`, `super_armor`,
-  `status_guard`, setup.rs:159–162; `apply_navicust_flags`, `init_navicust`, player/mod.rs:1008–1090). *(d)* Navi
-  mechanics the framework reads per tick: panels, holes, flinching, deletion. Chips and forms give them too. Rename
-  the `navicust` functions.
+  `status_guard`, setup.rs:159–162; `apply_ability_flags`, `init_round_state`, player/mod.rs:1008–1090). *(d)* Navi
+  mechanics the framework reads per tick: panels, holes, flinching, deletion. Chips and forms give them too. (Their
+  functions' `navicust` names went in step 1: N6.)
 - **N4. ChpShufl, NumbrOpn and the shrinking hand in the default hand size** (`chip_shuffle`, `number_open`,
   setup.rs:194–196; `hand_size`, screen.rs:1584–1606). *(b)* EXE6's rules/cross already adds to
   `custom.hand_size`. NumbrOpn and the bug move into it, and the two flags into EXE6's rules state. Small; once per
   custom screen.
-- **N5. The NaviCust board** (`NaviCustRules`, rules.rs:751; the `navicust` section, sections.rs:584; navicust.rs, 93
-  lines). Read by the editor and nettai-match (`has_navicust`, `navicust_rules`, lib.rs:143–157; import_exe5.rs:116).
-  *(b)* Done in step c3b: the section, `NaviCustRules` and navicust.rs are gone. The board is the game's
-  rules/navicust/board.luau, which the editor's own grid reads as data (`Battle::module_data`).
-- **N6. Feature-named API and functions**: `clear_navicust_bugs` (api.rs:2034), `refresh_navicust_state`,
-  `low_hp_navicust_effect` (idle.rs:309, the series' Tango support). *(a)* `clear_afflictions` and the like.
-
 ### Souls and Chaos Unison (EXE5)
 
 - **S1. Chaos Unison in the navi framework**:
@@ -264,15 +187,11 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   *(b)* EXE5's souls system: a `navi_tick` while armed (§2.1 rule 4 allows per-tick Luau while a state is active), a
   charge-release hook, and the glow's sprite as a look the rules push. About 150 lines. It costs one call per tick
   for an armed navi, and none in a plain fight.
-- **S2. Soul data in the engine's records**:
-  - `SoulData` and `FormData::soul` (navis.rs:284, :305);
-  - `NaviForms::souls` (navis.rs:213; defs.rs:1526);
-  - `TransformRequest::{turns, chaos}` (transform.rs:20);
-  - `form_change_soul` (api.rs:1844; core_api.rs:2222);
-  - `custom_set_form`'s `chaos` (core_api.rs:870).
+- **S2. Soul data in the engine's records**: `SoulData` and `FormData::soul` (navis.rs:284, :305), `NaviForms::souls`
+  (navis.rs:213; defs.rs:1526), which Chaos Unison's Rust (S1) reads. *(a)* With S1's move: the soul list as a form
+  list like `by_version`, the soul's data as EXE5's form extension (`SystemDef::extends`). (The transform record's
+  names went in step 1: its `alternate`, `form_change_terms`.)
 
-  *(a)* The transform record's extra fields as the rules' own result fields, the soul list as a form list like
-  `by_version`, and the soul's data as EXE5's form extension (`SystemDef::extends`).
 - **S3. The renderer's soul icons and flights** (`soul_icon`, `soul_place`, `soul_flight`, `soul_palette_row`,
   `CHAOS_ICON`, render custom.rs:393–505; they read `NaviForms::souls`). *(c)* The form offer view's icon (§4.8's
   `offer`, `offer_chaos`). Rename to the view.
@@ -296,39 +215,78 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only. (As built,
   at the user's word: nettai-match's `import::exe6` and `import::exe5`, each giving a whole side by field name; the
   hook is a question with the user.)
-- **T2. EXE5's auto battle view** (auto_battle.rs, about 500 lines without tests: its lists for the editor's pane,
-  `AutoBattle::learned`, and `of_folder` for random matches). *(b)* Done, by removal: nettai-match's view, the
-  learner and its exe5_compat call (the chip numbers) are gone. The user: "i don't think you need learning right?
-  since the battles are one-off". A random EXE5 match states no auto battle data (the rules' default, nothing
-  learned); the editor's pane is its own view of the two facts by field name, laid out by EXE5's
-  rules/auto_battle/block read with `Battle::module_data`; the save import writes the facts from the block.
 - **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
   link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
-- **T4. `has_navicust`, `has_patch_cards`, `navicust_rules`** (lib.rs:143–157), for the editor's panes. *(c)* Done
-  in step c3b: gone. The editor lays out a side's setup from the setup schema itself, its richer views keyed by
-  field and data names (crates/nettai-demo's editor/layout.rs).
-- **T5. The remaining fact roles**: `PlayerFact::SpTimes` (only tools read it: `Facts::sp_times`, sp_times.rs, the
-  editor's SP pane), and `RegularChip` and `TagChips` (the deal reads them: `BattleFolder::shuffled_with_tag_pair`).
-  *(a)* `RegularChip` and `TagChips` are the series' folder and stay roles. `SpTimes` is the role the editor's own
-  time view reads (step c3b).
 
 ### Across features
 
-- **X1. The fade table** (`FadeMode`, battle.rs:192–240: `SoulFlash`, `DarkChip*`, `BeastOut*`, `BlackOut` "the
-  Gregar and Falzar chips' controllers"; `custom_fade` by name, core_api.rs:817–829; the renderer's layer choice, render
-  custom.rs:202–249). *(a)* A `fades` rule section mapping a name to its code, course and level (§3.3). Rust steps a
-  fade by its record and the renderer reads the record's layers.
-- **X2. Game-named rule variants and functions**: `exe5_reactions` (status.rs:113), `exe5_apply_damage` (:339) and
-  `exe5_lose_hp` (player/mod.rs:477), chosen by `Reactions::FlashTimerFirst` and `HpLoss::GaugeAndLastStand`;
-  `FormBreak::CrossOrBeast` (C2). *(a)* Name each by the variant's behavior. They run per tick and stay Rust; the
-  last stand goes to E6.
-- **X3. Rule sections named for a feature**: `berserk` (B1), `lockon` (B2), `navicust` (N5, gone in step c3b), `chaos_cycle` (S1),
-  `effects.full_synchro_aura` (E3) and the `emotion` section's variants (E1). *(a)* What moves takes its section with
-  it; what stays is renamed by role.
-- **X4. Content-named API**: the obstacles' soldiers (`obstacle_arm_soldiers` and its kin, api.rs:2154; the
-  `effects.obstacle_soldiers` rule), DustMan's junk (`junk_look`, `wear_junk_look`, api.rs:2107),
-  `spawn_mode9_objects` and `start_stance_counter` (api.rs:1783, :1788). These name a chip or navi, not a game
-  feature. *(a)* Roles for what they do, when their content is next touched.
+- **X5. The obstacles' conversion** (`conversion_step`, `conversion_call`, kinds/obstacle.rs:525–620): EXE5's
+  ColonelSoul army's step in an obstacle's reactions (0x080CAB02), which looks for where an armed side can use the
+  obstacle and turns it into the side's converted obstacle (the role `converted_obstacle`, its `ranged` state set by
+  the engine). Renamed in step 1 (X4); the search is still EXE5's logic. *(b)* A hook on an obstacle's reaction in
+  EXE5's rules, with the search in Luau. About 100 lines; it runs on an obstacle's reaction while a side is armed.
+
+### Done
+
+Each with what it was and what it is now.
+
+- **B1.** The `berserk` rule section (`BerserkRules`) is gone. EXE6's rules/berserk.luau is a record of type
+  `berserk`, which its berserk controller reads and gen-content checks against the ROM.
+- **B4.** `Library::beast_out_chip` is gone. `ChipRole::BeastOut` is `ChipRole::ButtonChip` (`button_chip`): the chip
+  a button's pick stands as in the hand, whose picture is the button's.
+- **B5, and C6's sounds.** `ScreenSound::{BeastOutGregar, BeastOutFalzar, BeastOutFlash, CrossWindowOpen,
+  CrossWindowClose, CrossChosen}` and their `SoundRole::Custom*` roles are gone. The rules play their own sounds in
+  the screen's order (`custom.play_sound`, `ScreenSound::Rules`): EXE6's beast/custom.luau and cross/window.luau
+  hold them.
+- **B7.** `FormEffects::BERSERK` (`berserk`) is `CONTROLLER_RESTART` (`controller_restart`).
+- **B8.** `ActionRole::DustBeastScatter` is `Ungrounded` (`ungrounded`), and `ChargeTackle` is `Glowless`
+  (`glowless`).
+- **B9, C1.** The identity classes are `virus`, `field_object`, `navi` and `player`, and an identity's traits say
+  the rest: `changes_form`, `breaks_on_weakness`, `quiet_win`, `bug_blind_immune` and `marker_flat_anim`.
+- **C2.** The form break: `status::FORM_BREAKING`, `breaking_form`, `break_form`, `FormBreak::MarkedForms`
+  (`marked_forms`: forms whose identity `breaks_on_weakness`) and `NaviState::FormBreaking` (`form_breaking`).
+- **C3.** The navi switch: `switching_navi` and `NaviState::{SwitchingNavi, SwitchKnockout, Switched}`.
+- **C4.** `NaviData::cross_hp` is `switch_hp`.
+- **C5.** `cross_doubles` and `Boost::Cross` are `charge_doubles` and `Boost::Charged`.
+- **C6.** The form list window: `ScreenLook::{form_list_tab, form_list_cursor}` and `custom.draw_form_list_cursor`,
+  `custom.set_form_list_tab`.
+- **C9.** `PlayerFact::CrossList` is `PlayerFact::FormList`, which a setup field takes by declaring the role
+  (`schema.role("form_list", T)`): EXE6's `crosses`, whose name stays its own, so its match files keep
+  `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
+- **C10.** The navi's forms table lists a version's forms under `<version>.form_list`.
+- **D1.** The dark chip's hover is the shade a dark chip casts: `ChipShade` (`Shading`, `Shaded`),
+  `on_shading_chip`, `FadeMode::{Shade, ShadeBack, ShadeWindow, ShadeWindowBack}`, `ScreenSound::Shade` and
+  `SoundRole::CustomShade` (`custom_shade`). `ChipFlags::DARK` stays: a chip category of the series, as Mega and
+  Giga are, which both games' rules read.
+- **D2.** `dark_substitute` is `rules_substitute`.
+- **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are
+  `BattleInfo::Effects` (`battle.effects()`), whose bits EXE5's rules/light_dark names.
+- **N5** (step c3b). The NaviCust section, `NaviCustRules` and navicust.rs are gone; the board is the game's
+  rules/navicust/board.luau, which the editor reads as data.
+- **N6.** `clear_bugs`, `init_round_state`, `reset_abilities`, `refresh_abilities`, `apply_ability_flags`,
+  `low_hp_support`, and the form's `ability_refresh` (was `navicust_refresh`).
+- **S2, its record's names.** `TransformRequest::alternate`, `form_change_terms`, `custom_set_form`'s `alternate`
+  and `Screen::form_alternate` (were `chaos`, `form_change_soul`, `form_chaos`).
+- **T2.** EXE5's auto battle view is gone, by removal: nettai-match's view, the learner and its exe5_compat call
+  (the user: "i don't think you need learning right? since the battles are one-off"). A random EXE5 match states no
+  auto battle data; the editor's pane reads the two facts by field name, laid out by EXE5's rules/auto_battle/block
+  (`Battle::module_data`), and the save import writes the facts from the block.
+- **T4** (step c3b). `has_navicust`, `has_patch_cards` and `navicust_rules` are gone.
+- **T5.** `PlayerFact::SpTimes` and `Facts::{sp_times, set_sp_times, takes_sp_times}` are gone. The times are the
+  field `sp_times`, which tools set and read through the generic facts and compat writes by name
+  (`exe6_compat::codec::SP_TIMES`); the editor's times view keys on a list of `{ <definition>, frames }` and titles
+  the field `sp_times` by its name. `RegularChip` and `TagChips` stay roles: the battle folder's deal reads them.
+- **X1.** The fades by what they do: `FadeMode::{Flash, FlashBack, HalfOut, HalfOutBack}` (content's `flash`,
+  `half_out`, ...; were `SoulFlash*`, `BeastOut*`), and D1's. A `fades` rule section stays §3.3's way for a fade of a
+  game's own, which none needs yet.
+- **X2.** `flash_timer_first_reactions`, `apply_damage_gauge_and_last_stand` and `lose_hp_gauge_and_last_stand`.
+- **X3.** What it named goes with its entry: `berserk` (B1) went; `lockon` (B2), `chaos_cycle` (S1),
+  `effects.full_synchro_aura` (E3) and the `emotion` variants (E1) go with theirs.
+- **X4.** The obstacles' soldiers are their conversion: `obstacle_arm_conversion`, `obstacle_disarm_conversion`,
+  `obstacle_conversion` (Luau `obstacle.arm_conversion`, ...), `effects.obstacle_conversion`,
+  `KindRole::ConvertedObstacle` (`converted_obstacle`) and its state field `ranged`. DustMan's junk is the absorbed
+  look: `absorbed_look`, `wear_absorbed_look`. `spawn_mode9_objects` and `start_stance_counter` stay: they name the
+  original's battle mode 9 and a stance's counter, not a feature.
 
 The [stated rule](#the-line) still holds as the goal: when B1–B9, C1–C10 and the rest are done, Rust knows no
 "beast", no "cross", no "soul" and no "exe5".
