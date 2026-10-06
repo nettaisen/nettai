@@ -1787,8 +1787,9 @@ export type WindowSpec = {
 -- table that is empty without it.
 --
 -- A section is a table of its rules by name, which the engine reads by its
--- schema. (A table and not `any`: a field of type `any` may be left out.)
-export type RuleSection = { [string]: any }
+-- schema. Named records need no string indexer. A table, rather than `any`,
+-- keeps required sections required; the loader validates each section's fields.
+export type RuleSection = {}
 export type RulesSpec = {
     -- What a side keeps through a round (its state, which only the rules' own
     -- calls reach: `rules.state()`).

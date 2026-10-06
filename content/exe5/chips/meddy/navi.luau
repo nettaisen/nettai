@@ -99,7 +99,8 @@ local function pick(me: Object): (number, number, number)
         end
         if #list ~= 0 then
             battle.rng_positive()
-            x, y = panels.x(list[1]), panels.y(list[1])
+            x = panels.x(list[1])
+            y = panels.y(list[1])
             found = true
             line = -1
             for i, o in AROUND do

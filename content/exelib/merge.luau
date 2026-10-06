@@ -4,10 +4,11 @@
 -- (`merge { require("@self/airshot"), require("@self/cannon"), ... }`, in
 -- their paths' order). An id two modules give is an error naming it.
 
-return function(parts: { { [string]: any } }): { [string]: any }
+return function(parts: { {} }): { [string]: any }
     local out = {}
     for _, part in parts do
-        for id, definition in part do
+        -- Modules export records with named fields, rather than string indexers.
+        for id, definition in part :: { [string]: any } do
             if out[id] ~= nil then
                 error(string.format("two modules give %s", tostring(id)), 2)
             end

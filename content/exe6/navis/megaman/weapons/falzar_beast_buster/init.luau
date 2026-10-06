@@ -141,7 +141,7 @@ local function shoot_volley(me: Object, s: State, falls: boolean, z: number, dam
         return
     end
     local back = x - me.facing * VOLLEY_BACK
-    local shot = { variant = VOLLEY_SHOT, falls = falls, palette = palette, damage = damage }
+    local shot: FlyingShot = { variant = VOLLEY_SHOT, falls = falls, palette = palette, damage = damage }
     flying_shot.launch(me, Vec3.new(back, y - VOLLEY_SIDE, z), shot)
     flying_shot.launch(me, Vec3.new(back, y + VOLLEY_SIDE, z - VOLLEY_DROP), shot)
 end

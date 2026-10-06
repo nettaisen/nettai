@@ -12,7 +12,7 @@ local collision = require("../../rules/collision")
 local beast = {}
 
 -- One state for both kinds.
-beast.STATE = {
+local STATE: StateSchema = {
     controller = "object",
     base = "u32",
     next = "u8",
@@ -22,6 +22,8 @@ beast.STATE = {
     held = "object",
     held2 = "object",
 }
+
+beast.STATE = STATE
 
 -- The ticks of an attack and of a wait.
 beast.TICKS = 0x1E

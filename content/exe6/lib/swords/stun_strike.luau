@@ -21,7 +21,7 @@ return {
         state = strike.STATE,
         update = function(me: Object, s: any)
             local chip = me.attack_chip
-            local sword = if chip == elemswrd or chip == assnswrd then chip else mchnswrd;
+            local sword = if chip ~= nil and (chip == elemswrd or chip == assnswrd) then chip else mchnswrd;
             (sword.action :: Action).update(me, s)
         end,
     },

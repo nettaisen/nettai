@@ -117,9 +117,11 @@ end
 local function bomb(me: Object)
     local s = me.state :: State
     local list = targets(me)
-    local x, y
+    local x: number
+    local y: number
     if #list == 0 then
-        x, y = bit32.bxor(me.alliance, 1) * 5 + 1, me.panel_y
+        x = bit32.bxor(me.alliance, 1) * 5 + 1
+        y = me.panel_y
     else
         local i = s.next_target
         if i >= #list then
@@ -128,13 +130,15 @@ local function bomb(me: Object)
         s.next_target = i + 1
         local p = list[i + 1]
         local draw = bit32.band(battle.rng_positive(), 7)
-        x, y = bit32.band(p, 7), bit32.rshift(p, 4)
+        x = bit32.band(p, 7)
+        y = bit32.rshift(p, 4)
         if draw == 1 or draw == 5 then
             local dir = panels.side_direction(me.alliance)
             local cond = STRAY[me.alliance]
             local nx, ny = regions.random_panel(x, y, regions.neighbors, dir, cond.require, cond.forbid)
             if nx and ny then
-                x, y = nx, ny
+                x = nx
+                y = ny
             else
                 -- None: x 0, and the row the last test (the neighbor
                 -- behind) left in a register.
