@@ -1,42 +1,18 @@
 --!strict
 -- EXE5's flying shot (attack object #0x0B, 0x080C5DCC): EXE5's own, EXE6's (`sub_80C60A8`, objects/flying_shot)
--- without the wait, the fall, the palette, the thrown obstacle and the end effect. It flies forward at its row's
+-- without the wait, the fall, the palette, the thrown obstacle and the end effect. It flies forward at its variant's
 -- speed until it has passed its range in panel centers, and ends on the first thing it hits or when it leaves the
--- field. Its row (its first parameter; the 16-byte rows at 0x080C5D0C) gives its collision, element, spark, status,
--- look, speed and range, and whether it lights its panel. SideBub's bubbles burst into row 7's (chips/sidebub/sidebub).
+-- field. Its variant (its first parameter: one of the 16-byte rows at 0x080C5D0C, which each user defines where it
+-- fires it: `flying_shot.variant { ... }`) gives its collision, element, spark, status, look, speed and range, and
+-- whether it lights its panel.
 
 local collision = require("../rules/collision")
-local sparks = require("../lib/sparks")
-local statuses = require("../rules/status")
 
 local flying_shot = {}
 
-type Row = {
-    -- Its collision (the row's first three bytes: what it is, what it hits, the hit modifier).
-    is: CollisionType,
-    hits: CollisionType,
-    hit_mod: number,
-    -- Its element byte.
-    element: number,
-    -- Its hit spark (0xFF: none).
-    spark: Spark?,
-    sprite: SpriteAsset,
-    anim: number,
-    -- It lights the panels it covers (its second parameter).
-    highlight: boolean,
-    -- The panel centers it passes before it ends (its third parameter).
-    range: number,
-    -- It casts a shadow on the ground (else its first part is drawn with the sprite).
-    shadow: boolean,
-    -- The status its hits carry (`object_setCollisionStatusEffect1`).
-    status: Status?,
-    -- 16.16 a tick, forward.
-    speed: number,
-}
-
 export type State = {
-    -- Its row (its first parameter).
-    row: number,
+    -- Its variant (its first parameter).
+    variant: FlyingShotVariant,
     -- The panel centers it has left to pass (its third parameter).
     range: number,
     -- It lights its panel (its second parameter).
@@ -44,9 +20,11 @@ export type State = {
 }
 
 local SHOT = { is = collision.attack, hits = collision.hits_navis }
-local ELEC_SHOT = asset.sprite("thunder-ball")
 
-local function row(r: {
+-- A flying shot variant: what it is (an attack unless said), its hit modifier, element byte, hit spark (none: none),
+-- look, whether it lights its panel, the status its hits carry and its speed. (Every row hits navis, passes 8 panel
+-- centers and draws its first part with the sprite.)
+function flying_shot.variant(r: {
     is: CollisionType?,
     hit_mod: number,
     element: number,
@@ -56,8 +34,8 @@ local function row(r: {
     highlight: boolean?,
     status: Status?,
     speed: number,
-}): Row
-    return {
+}): FlyingShotVariant
+    return new.record("flying-shot-variant", {
         is = r.is or SHOT.is,
         hits = SHOT.hits,
         hit_mod = r.hit_mod,
@@ -70,59 +48,7 @@ local function row(r: {
         shadow = false,
         status = r.status,
         speed = r.speed,
-    }
-end
-
-local BUBBLE = asset.sprite("side-bubble")
-
--- The rows at 0x080C5D0C.
-local ROWS: { [number]: Row } = {
-    [0x0] = row {
-        is = collision.thrown_piercing_break,
-        hit_mod = 3,
-        element = 0,
-        spark = sparks.plain,
-        sprite = asset.sprite("holy-dream-shot"),
-        speed = 0x5_0000,
-    },
-    -- BugCharg's shots (its charger's sprite).
-    [0x1] = row { hit_mod = 3, element = 0, spark = sparks.heavy, sprite = asset.sprite("bug-charger"), speed = 0xA_0000 },
-    [0x2] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x3_0000 },
-    [0x3] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x3_8000 },
-    [0x4] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x4_0000 },
-    [0x5] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x4_8000 },
-    [0x6] = row {
-        hit_mod = 1,
-        element = 0,
-        sprite = asset.sprite("immobilized"),
-        anim = 1,
-        status = statuses.immobilize_120,
-        speed = 0xA_0000,
-    },
-    -- SideBub's bubble's burst (and three more like it, faster).
-    [0x7] = row { hit_mod = 3, element = 2, sprite = BUBBLE, anim = 2, highlight = true, speed = 0x4_0000 },
-    [0x8] = row { hit_mod = 3, element = 2, sprite = BUBBLE, anim = 2, highlight = true, speed = 0x4_0000 },
-    [0x9] = row { hit_mod = 3, element = 2, sprite = BUBBLE, anim = 2, highlight = true, speed = 0x5_8000 },
-    [0xA] = row { hit_mod = 3, element = 2, sprite = BUBBLE, anim = 2, highlight = true, speed = 0x7_0000 },
-    [0xB] = row {
-        is = collision.thrown,
-        hit_mod = 0,
-        element = 3,
-        sprite = ELEC_SHOT,
-        status = statuses.paralyze_90,
-        speed = 0x4_0000,
-    },
-}
-
--- The rows by name.
-flying_shot.rows = { bubble = 0x7 }
-
-local function row_of(n: number): Row
-    local r = ROWS[n]
-    if not r then
-        error(string.format("EXE5's flying shot row %#x reads past 0x080C5D0C's rows", n))
-    end
-    return r
+    })
 end
 
 -- `sub_800E6E8` (EXE5's 0x0800CB08): `c` lies past `a` and up to `b`, either way.
@@ -141,7 +67,7 @@ local function finish(me: Object)
 end
 
 -- 0x080C5E80: the hits against it resolve and spark; it ends on a hit, else flies: each panel center passed spends
--- its range, and it ends when that runs out or it leaves the field. A highlighting row lights its panel.
+-- its range, and it ends when that runs out or it leaves the field. A highlighting variant lights its panel.
 local function tick(me: Object)
     local s = me.state :: State
     local c = me.collision
@@ -178,11 +104,11 @@ local function tick(me: Object)
     end
 end
 
--- 0x080C5DF0: its look, element, range, speed and collision from its row, on the panel under it. (The game
+-- 0x080C5DF0: its look, element, range, speed and collision from its variant, on the panel under it. (The game
 -- overwrites its link to its owner with its row's address, so the owner is forgotten.)
 local function init(me: Object)
     local s = me.state :: State
-    local r = row_of(s.row)
+    local r = s.variant
     me.related1 = nil
     local look = me.sprite
     look:load(r.sprite)
@@ -212,7 +138,7 @@ end
 flying_shot.kind = new.kind {
     id = "flying-shot",
     pool = "attack",
-    state = { row = "u8", range = "u8", highlight = "bool" },
+    state = { variant = "record:flying-shot-variant", range = "u8", highlight = "bool" },
     -- 0x080C5DCC.
     update = function(me: Object)
         local l = me.lifecycle
@@ -231,13 +157,12 @@ flying_shot.kind = new.kind {
     end,
 }
 
--- 0x080C5EE6: a flying shot of row `row` from `owner` at `pos`, with the damage word; it takes the owner's side and
+-- 0x080C5EE6: a flying shot of `variant` from `owner` at `pos`, with the damage word; it takes the owner's side and
 -- flip, and runs later this tick, right after its spawner.
-function flying_shot.launch(owner: Object, pos: Vec3, row: number, damage: number): Object?
-    row_of(row)
+function flying_shot.launch(owner: Object, pos: Vec3, variant: FlyingShotVariant, damage: number): Object?
     local o = battle.spawn(flying_shot.kind, pos)
     if o then
-        (o.state :: State).row = row
+        (o.state :: State).variant = variant
         o:set_damage_word(damage)
         o.alliance, o.flip = owner.alliance, owner.flip
         o.related1 = owner

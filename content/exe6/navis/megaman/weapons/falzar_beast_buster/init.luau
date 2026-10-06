@@ -11,7 +11,9 @@
 
 local buster = require("../../../lib/buster")
 local plain_buster = require("./buster")
+local collision = require("../../../rules/collision")
 local flying_shot = require("../../../objects/flying_shot")
+local sparks = require("../../../lib/sparks")
 local weapon = require("../../../lib/weapon")
 local chip_gate_battle = require("../../../lib/chip_gate_battle")
 
@@ -38,6 +40,31 @@ local SHOOT, RECOVER = 0x0, 0x4
 local BEAST_OVER = "falzar-beast-over"
 
 local SOUND = asset.sound("aqua-needle-2")
+
+-- The shots (the flying shot's rows 3 and 5: `sub_80EC5EC` passes 3, and
+-- `sub_80EC710` adds 2 for the volley's): the shot ahead, and the volley's
+-- other two, which fly two panels and burst.
+local SHOT_SPRITE = asset.sprite("beast-shot")
+local HITS = { is = collision.attack, hits = collision.hits_navis }
+local SHOT = flying_shot.variant {
+    collision = HITS,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    sprite = SHOT_SPRITE,
+    speed = 0xC_0000,
+    range = 8,
+}
+local VOLLEY_SHOT = flying_shot.variant {
+    collision = HITS,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    sprite = SHOT_SPRITE,
+    speed = 0xC_0000,
+    range = 2,
+    end_effect = new.effect { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 },
+}
 
 -- The first shot's height (`dword_80EC70C`'s first byte), pixels.
 local HEIGHT = 0x16
@@ -109,13 +136,12 @@ local function shoot_volley(me: Object, s: State, falls: boolean, z: number, dam
         error(string.format("form %s reads outside sub_80EC710's palette table", form))
     end
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
-    local variants = flying_shot.variants
-    flying_shot.launch(me, Vec3.new(x, y, z), { variant = variants.beast_shot, falls = falls, palette = palette, damage = damage })
+    flying_shot.launch(me, Vec3.new(x, y, z), { variant = SHOT, falls = falls, palette = palette, damage = damage })
     if s.cycle == 0 then
         return
     end
     local back = x - me.facing * VOLLEY_BACK
-    local shot: FlyingShot = { variant = variants.beast_volley_shot, falls = falls, palette = palette, damage = damage }
+    local shot: FlyingShot = { variant = VOLLEY_SHOT, falls = falls, palette = palette, damage = damage }
     flying_shot.launch(me, Vec3.new(back, y - VOLLEY_SIDE, z), shot)
     flying_shot.launch(me, Vec3.new(back, y + VOLLEY_SIDE, z - VOLLEY_DROP), shot)
 end

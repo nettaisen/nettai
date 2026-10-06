@@ -1,10 +1,12 @@
 --!strict
 -- CloudMan's cloud (EXE5's attack object #0xB3, 0x080DCA10; EXE5's own: EXE6's #0xB3 is DustMan's junk, on the same
 -- skeleton), on a panel behind an enemy: hidden for 80 ticks, it shows (a sound), waits 30, charges 60 (animation
--- 7, a sound), and strikes: a bolt (objects/flying_shot's row 0xB: elec, paralyzing) from 16 pixels ahead of it,
+-- 7, a sound), and strikes: a bolt (objects/flying_shot: elec, paralyzing) from 16 pixels ahead of it,
 -- 16 up, toward the enemy, running while dimmed; 91 ticks on it goes. The battle's end ends it at once.
 
+local collision = require("../../rules/collision")
 local flying_shot = require("../../objects/flying_shot")
+local statuses = require("../../rules/status")
 
 local cloud = {}
 
@@ -12,7 +14,15 @@ local SPRITE = asset.sprite("cloudman")
 local SOUND_SHOW = asset.sound("panel-poison")
 local SOUND_CHARGE = asset.sound("erase-man-2")
 local SOUND_BOLT = asset.sound("wave")
-local BOLT_ROW = 0xB
+-- The bolt (the flying shot's row 0xB, 0x080DCB32): thrown, elec, paralyzing for 90 ticks.
+local BOLT = flying_shot.variant {
+    is = collision.thrown,
+    hit_mod = 0,
+    element = 3,
+    sprite = asset.sprite("thunder-ball"),
+    status = statuses.paralyze_90,
+    speed = 0x4_0000,
+}
 
 -- Enter the action with a timer (its phase byte the entry flag), or count down; true once it has run out.
 local function countdown(me: Object, ticks: number): boolean
@@ -57,7 +67,7 @@ local function charge(me: Object)
         return
     end
     local p = me.pos
-    local bolt = flying_shot.launch(me, Vec3.new(p.x + me.facing * 0x10_0000, p.y, 0x10_0000), BOLT_ROW,
+    local bolt = flying_shot.launch(me, Vec3.new(p.x + me.facing * 0x10_0000, p.y, 0x10_0000), BOLT,
         bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
     if bolt then
         bolt.run_while_dimmed = true
