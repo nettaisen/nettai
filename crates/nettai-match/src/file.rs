@@ -44,8 +44,7 @@
 //! # An EXE5 side's facts ([left] of game = "exe5"; a fact left out is its rules' default):
 //! level = 3                          # a team navi's level, 0 to 6: its damage rows' (its HP is the save's `hp`)
 //! karma = 100                        # the light/dark value (default 500, a fresh save's; dark under 470)
-//! souls = ["protosoul"]              # the souls it has, either version's (default: every soul)
-//! soul_unison = false                # no soul button (the save's event flag 0; default true)
+//! souls = ["protosoul"]              # the souls it has, either version's (default: every soul; none, no soul button)
 //! chaos_unison = false               # no Chaos Unison (the save's event flag 0x236; default true)
 //!
 //! auto_battle_places = [           # EXE5's: what a navi in auto battle plays from the side's save, its block's 42

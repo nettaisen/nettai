@@ -56,7 +56,7 @@ pub enum Edit {
     Default,
 }
 
-/// A fact's name as a pane's label: `soul_unison` as "Soul unison".
+/// A fact's name as a pane's label: `chaos_unison` as "Chaos unison".
 pub fn title(name: &str) -> String {
     let spaced = name.replace('_', " ");
     let mut letters = spaced.chars();

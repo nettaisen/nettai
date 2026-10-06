@@ -1203,7 +1203,7 @@ descriptions and the editor without a line of Rust.
   what the rest are is the game's rules'.
 - A fact a file leaves out is what the rules say a side that says nothing
   has (`setup_defaults`: EXE6's Beast Out; EXE5's
-  every soul, both unisons and a fresh save's karma, 500), else zero. A
+  every soul, Chaos Unison and a fresh save's karma, 500), else zero. A
   file is written with only the facts that differ from that.
 - **The facts' order is their names'**: a setup's layout keeps its
   fields sorted by name, whatever order its `setup` tables write them in
@@ -1226,7 +1226,7 @@ descriptions and the editor without a line of Rust.
   five it picked).
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
   key the rules' setup doesn't declare ("left: no field \"karm\" (a side of
-  exe5 takes chaos_unison, hp, karma, level, reg_up, soul_unison, souls)"); a value that isn't
+  exe5 takes chaos_unison, hp, karma, level, reg_up, souls)"); a value that isn't
   the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
   no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
   twice in a list, or an empty entry before one (a list is filled from
@@ -1246,8 +1246,8 @@ are those of its version's five it owns, which the original keeps as
 five flags and a save import writes as the list: `[]` for a save that
 owns none); `beast_out`; `bug_frags`. EXE5's: `karma` (the
 light/dark value; dark under 470), `souls` (up to sixteen, either
-version's; every soul unless said), `soul_unison` and `chaos_unison` (the
-save's event flags 0 and 0x236). An EXE5 match has no
+version's; every soul unless said; none, no soul button, as a save without
+Soul Unison has) and `chaos_unison` (the save's event flag 0x236). An EXE5 match has no
 version: Team ProtoMan and Team Colonel play alike (its rules take none: a
 side may hold either version's souls and chips), so a `version` in an EXE5
 match is refused as any key its rules don't declare, and its sides bring
@@ -1409,7 +1409,7 @@ them, so both peers start alike.
 **The souls** (`souls`, `nettai_match::facts`) are the souls the side has,
 EXE5's Soul Unison, by name: those the custom screen's soul button may
 offer. Without `souls`, every soul of the game (both versions'); with a
-list, those; an empty list, none (the button never lit). The original's soul
+list, those; an empty list, none (no button). The original's soul
 button (0x08024B28) offers the soul of the last chip's family when the save
 has it: each version's table (0x08024BF0) gives Team ProtoMan's souls 1 to 6
 the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
@@ -1423,12 +1423,16 @@ list may name either version's), and a soul whose family the folder never
 holds never comes up. Only a game whose rules take `souls` takes a list
 (the checks refuse one elsewhere, and a form that is no soul).
 
-**Soul Unison and Chaos Unison** (`soul_unison`, `chaos_unison`) are the
-save's event flags 0 and 0x236: the soul button at all, and a dark chip's
-Chaos Unison. Both are on unless a side says (`soul_unison = false`), as a
-finished save has them; the round's setup writes them into the souls
-part's setup (its defaults, on, for a setup that says nothing). A game
-whose rules take neither refuses one off. The netplay offer carries them.
+**Soul Unison** (the save's event flag 0: the soul button at all) is the
+souls': the button is there when the side has souls, and a save without
+Soul Unison gives none. (The original shows the button for Soul Unison
+whatever souls the save has: a save with Soul Unison and no soul shows it
+never lit, where nettai shows none.) **Chaos Unison** (`chaos_unison`, the
+save's event flag 0x236: a dark chip's Chaos Unison) is on unless a side
+says (`chaos_unison = false`), as a finished save has it; the round's
+setup writes it into the souls part's setup (its default, on, for a setup
+that says nothing). A game whose rules don't take it refuses one off. The
+netplay offer carries it.
 
 **An EXE5 save** (the editor's "Import from save…" in an EXE5 match,
 `exe5_compat::import`: a .sav, or a raw save image as Tango's netplay
@@ -1436,8 +1440,8 @@ templates hold, read by `exe5_compat::save`) gives the navi it operates, its equ
 chip, MegaMan's NaviCust (the board of its ExpMemry and the programs as
 placed) and patch cards (those switched on; a team navi has neither), his
 base HP and the operated navi's Regular memory, its karma, the souls its
-version's flags give (the forms compat names for those numbers), its Soul
-Unison and Chaos Unison, and its auto battle data (the block at
+version's flags give (the forms compat names for those numbers; none
+without Soul Unison), its Chaos Unison, and its auto battle data (the block at
 save +0x554C, place for place and record for record, chips by their
 numbers' names), and its SP navi deletion times (save +0x2670, a halfword
 a slot: each SP chip whose damage goes by one, by the slot compat's
