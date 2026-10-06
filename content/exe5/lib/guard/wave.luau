@@ -4,7 +4,8 @@
 -- is gone at once) with its collision on, after its variant's ticks starts the next segment one panel ahead, and goes
 -- when its animation ends (moved off the field, out of sight). A variant may mark the panels it passes (crack,
 -- break, or turn them to another type); such a wave is thrown (row 0x0A), the others plain attacks (row 4); either
--- hits navis with hit modifier 3 and no spark. The Guard chips' counterattack is variant 0xC.
+-- hits navis with hit modifier 3 and no spark. Its variant (`wave.variant { ... }`, a row of 0x080C7360) is its
+-- sender's: the Guard chips' counterattack's (./init) is row 0xC.
 --
 -- (In the operation battle, never set in a netbattle, each segment also marks the panel ahead, 0x080E9FA4's effect
 -- object #0x83, which isn't ported.)
@@ -13,32 +14,18 @@ local collision = require("../../rules/collision")
 
 local wave = {}
 
--- A variant (0x080C7360's rows, by the wave's first parameter): its animation, its ticks on a panel, and what it does
+-- A variant (a row of 0x080C7360, the wave's first parameter): its animation, its ticks on a panel, and what it does
 -- to the panels it passes.
 export type Variant = { anim: number, ticks: number, panel: ("cracked" | "broken" | "poison")? }
 
 export type State = {
-    -- Its row (passed on to the next segment).
-    row: number,
+    -- Its variant (passed on to the next segment).
+    variant: Variant,
 }
 
-local ROWS: { [number]: Variant } = {
-    [0x0] = { anim = 0, ticks = 0x19 },
-    [0x1] = { anim = 0, ticks = 0x14 },
-    [0x2] = { anim = 1, ticks = 0x10 },
-    [0x3] = { anim = 1, ticks = 0x0C },
-    [0x4] = { anim = 2, ticks = 0x0A, panel = "cracked" },
-    [0x5] = { anim = 2, ticks = 0x08, panel = "poison" },
-    [0x6] = { anim = 0, ticks = 0x19, panel = "cracked" },
-    [0x7] = { anim = 0, ticks = 0x14, panel = "cracked" },
-    [0x8] = { anim = 1, ticks = 0x10, panel = "poison" },
-    [0x9] = { anim = 1, ticks = 0x0C, panel = "poison" },
-    [0xA] = { anim = 2, ticks = 0x0A, panel = "poison" },
-    [0xB] = { anim = 2, ticks = 0x08, panel = "poison" },
-    [0xC] = { anim = 0, ticks = 0x0A },
-    [0xD] = { anim = 1, ticks = 0x07 },
-    [0xE] = { anim = 2, ticks = 0x04 },
-}
+function wave.variant(v: Variant): Variant
+    return new.record("shock-wave-variant", v)
+end
 
 -- Its sheet (10-04) and sound (0x0A6).
 local SPRITE = asset.sprite("shock-wave")
@@ -76,7 +63,7 @@ local function spread(me: Object)
     me.timer = int.u16(t)
     if t == 0 then
         local damage = int.u32(me.damage + me.stamina * 0x10000)
-        wave.spawn(me, me.panel_x + me.facing, me.panel_y, (me.state :: State).row, damage)
+        wave.spawn(me, me.panel_x + me.facing, me.panel_y, (me.state :: State).variant, damage)
         me.action = FADING
     end
     hide(me)
@@ -131,7 +118,7 @@ local function init(me: Object)
         me:free()
         return
     end
-    local v = ROWS[(me.state :: State).row]
+    local v = (me.state :: State).variant
     local sprite = me.sprite
     sprite:load(SPRITE)
     -- (`sprite_noShadow`: the first part is drawn with the sprite.)
@@ -159,7 +146,7 @@ end
 wave.kind = new.kind {
     id = "shock-wave",
     pool = "attack",
-    state = { row = "u8" },
+    state = { variant = "record:shock-wave-variant" },
     -- 0x080C739C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -178,15 +165,12 @@ wave.kind = new.kind {
     end,
 }
 
--- EXE6's `sub_80C6CE4`, EXE5's 0x080C752C: a segment of `owner`'s on (x, y), of row `row`, with the damage word, of no
--- element. (Its position is the spawner's registers until its init places it.)
-function wave.spawn(owner: Object, x: number, y: number, row: number, damage: number): Object?
-    if not ROWS[row] then
-        error(string.format("the shock wave's row %#x reads past 0x080C7360", row))
-    end
+-- EXE6's `sub_80C6CE4`, EXE5's 0x080C752C: a segment of `owner`'s on (x, y), of `variant`, with the damage word, of
+-- no element. (Its position is the spawner's registers until its init places it.)
+function wave.spawn(owner: Object, x: number, y: number, variant: Variant, damage: number): Object?
     local o = battle.spawn(wave.kind, Vec3.new(y, 0, 0))
     if o then
-        (o.state :: State).row = row
+        (o.state :: State).variant = variant
         o.panel_x, o.panel_y = x, y
         o.element = 0
         o:set_damage_word(damage)

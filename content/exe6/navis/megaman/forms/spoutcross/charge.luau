@@ -7,6 +7,7 @@
 -- leaves the charge and the lockout as they were.
 
 local bullet = require("../../../../objects/bullet")
+local regions = require("@exelib/regions")
 local spreader = require("../../../../chips/spreadr/action")
 local weapon = require("../../../../lib/weapon")
 
@@ -14,12 +15,13 @@ local charge = {}
 
 -- The Spreaders' action as the original's variant 2 (the water cannon,
 -- fired from the ground: `dword_80ECC54`, `dword_80ECC5C`) with the spout's
--- bullet (the parameter word 0xD). (Its compat key maps it to 0x25.)
+-- bullet (the parameter word 0xD: the bullet's row 0xD, a splash over the
+-- panel found and the one behind it). (Its compat key maps it to 0x25.)
 local SHOT = spreader.action {
     id = "spoutcross/charge/action",
     gun = spreader.guns.water_cannon,
     z = 0,
-    bullet = bullet.variants.spout,
+    bullet = bullet.variant { region = regions.long, hit_mod = 3, effect = bullet.splash, sound = bullet.splash_sound },
 }
 
 -- The attack's element (Aqua) and hit parameter.

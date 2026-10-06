@@ -7,9 +7,10 @@
 -- shaking. Meteors (./chip) drops thirty (running while dimmed); the
 -- instant chips' meteor shower (lib/instant/meteor_shower) uses it too,
 -- dropping them one at a time. What it is and does when it lands is its
--- row (`byte_80CF3AC`, by the original's first parameter: EXE6's three
--- alike); each game's meteor is a kind of its look (its sprite, sounds,
--- rows, sparks, burst and marker: `falling_meteor.make_kind`).
+-- row (`byte_80CF3AC`, the original's first parameter: `falling_meteor.row
+-- { ... }`, which its dropper names); each game's meteor is a kind of its
+-- look (its sprite, sounds, sparks, burst and marker:
+-- `falling_meteor.make_kind`).
 
 local marker = require("./marker")
 local regions = require("../regions")
@@ -18,8 +19,13 @@ local falling_meteor = {}
 
 export type State = {
     -- Its row (Param1).
-    row: number,
+    row: MeteorRow,
 }
+
+-- A meteor's row.
+function falling_meteor.row(r: MeteorRow): MeteorRow
+    return new.record("meteor-row", r)
+end
 
 
 
@@ -37,12 +43,7 @@ local SHAKE_TICKS = 0xF
 function falling_meteor.make_kind(id: string, look: MeteorLook): Kind
     -- Its row.
     local function row_of(me: Object): MeteorRow
-        local n = (me.state :: State).row
-        local row = look.rows[n]
-        if not row then
-            error(string.format("a falling meteor's row %d reads past byte_80CF3AC", n))
-        end
-        return row
+        return (me.state :: State).row
     end
 
     -- `sub_80CF4C8`: 30 ticks up there.
@@ -150,7 +151,7 @@ function falling_meteor.make_kind(id: string, look: MeteorLook): Kind
     return new.kind {
         id = id,
         pool = "attack",
-        state = { row = "u8" },
+        state = { row = "record:meteor-row" },
         -- `sub_80CF3BE`.
         update = function(me: Object)
             local l = me.lifecycle
@@ -171,7 +172,7 @@ end
 -- (the spawner's registers) until its init places it.
 function falling_meteor.spawn_kind(
     kind: Kind,
-    row: number,
+    row: MeteorRow,
     owner: Object,
     x: number,
     y: number,

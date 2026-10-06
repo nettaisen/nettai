@@ -19,7 +19,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = bombs.throw { held = bombs.held, thrower = geyser.thrower(0) },
+    action = bombs.throw { held = bombs.held, thrower = geyser.thrower() },
 }
 
 return { geyser = chip }

@@ -18,9 +18,6 @@ local sparks = require("../../lib/sparks")
 local missile = {}
 
 export type State = {
-    -- Its first parameter (its HP's row, and its speeds': the same for every row), and its second (its wait's).
-    variant: number,
-    slow: number,
     -- +6: it has turned.
     turned: boolean,
     -- +0x50: what it follows (none: an enemy navi of its column).
@@ -29,9 +26,8 @@ export type State = {
 
 local SPRITE = asset.sprite("magnet-missile")
 local SOUND = asset.sound("junk-shot")
--- Its HP by the variant (0x080D24E4), and its wait by the second parameter (0x080D261C).
-local HP: { [number]: number } = { [0] = 5, 12, 16, 20, 20 }
-local WAIT: { [number]: number } = { [0] = 15, 35 }
+-- Its HP (0x080D24E4 by its first parameter: MagnetMan's charge's 4) and its wait (0x080D261C by its second: 0).
+local HP, WAIT = 20, 15
 -- Its speeds, 16.16 a tick (0x080D26B8 and 0x080D275C: every row the same).
 local SPEED, TURNED_SPEED = 0x4_0000, 0x2_6666
 local ANIM_UP, ANIM_DOWN = 1, 2
@@ -101,11 +97,7 @@ end
 local function wait(me: Object)
     if me.phase == 0 then
         me.phase = 4
-        local ticks = WAIT[(me.state :: State).slow]
-        if ticks == nil then
-            error(string.format("a magnet missile's wait %d reads past its table (0x080D261C)", (me.state :: State).slow))
-        end
-        me.timer = ticks
+        me.timer = WAIT
         return
     end
     local left = me.timer - 1
@@ -205,18 +197,14 @@ local function init(me: Object)
     me:setup_collision(collision.own_object, collision.hit_by_other_side_or_blockers, 3)
     me.collision:set_hit_effect(sparks.elec)
     me.collision:present()
-    local hp = HP[s.variant]
-    if hp == nil then
-        error(string.format("a magnet missile's variant %d reads past its HP table (0x080D24E4)", s.variant))
-    end
-    me.hp, me.max_hp = hp, hp
+    me.hp, me.max_hp = HP, HP
     me:set_lifecycle("update")
 end
 
 missile.kind = new.kind {
     id = "magnetman/missile",
     pool = "attack",
-    state = { variant = "u8", slow = "u8", turned = "bool", target = "object" },
+    state = { turned = "bool", target = "object" },
     -- 0x080D24F0.
     update = function(me: Object)
         local l = me.lifecycle
@@ -237,12 +225,11 @@ missile.kind = new.kind {
 }
 
 -- 0x080D26D4: a missile of `owner`'s side and facing at (x, y), 16 pixels up, with the element and the damage
--- word, of `variant`, following `target` if any; it is called while the battle is dimmed too.
-function missile.spawn(owner: Object, x: number, y: number, element: number, variant: number, damage: number, target: Object?): Object?
+-- word, following `target` if any; it is called while the battle is dimmed too.
+function missile.spawn(owner: Object, x: number, y: number, element: number, damage: number, target: Object?): Object?
     local o = battle.spawn(missile.kind, Vec3.new(x, y, 0x10_0000))
     if o then
         local s = o.state :: State
-        s.variant, s.slow = variant, 0
         s.target = target
         o.element = element
         o.related1 = owner
