@@ -61,12 +61,16 @@ pub struct FormStrings {
 }
 
 /// An entry's strings (of one of the game's collections: a patch card's, a
-/// NaviCust program's): its name, which a menu shows.
+/// NaviCust program's): its name, which a menu shows, and its description
+/// where the game has one (a NaviCust program's, as its screen's box shows
+/// it: `\n` its line breaks).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EntryStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// A table of the game's own, at the top level beside the core's sections:

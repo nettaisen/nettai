@@ -393,53 +393,53 @@ language = "ja"
 "tomahawksoul" = { name = "トマホークソウル" }
 
 [navicust_programs]
-"airshoes" = { name = "エアシューズ" }
-"antidmg" = { name = "カワリミマジック" }
-"attck-1" = { name = "アタック+1" }
-"attckmax" = { name = "アタックMAX" }
-"autoheal" = { name = "セルフリカバリー" }
-"autorun" = { name = "オートランニング" }
-"battery" = { name = "バッテリーモード" }
-"beat" = { name = "ビートサポート" }
-"bodypack" = { name = "ボディパック" }
-"bugstop" = { name = "バグストッパー" }
-"bustpack" = { name = "バスターパック" }
-"charge-1" = { name = "チャージ+1" }
-"chargmax" = { name = "チャージMAX" }
-"chivalry" = { name = "ダンディズム" }
-"collect" = { name = "コレクターズアイ" }
-"custom1" = { name = "カスタム1" }
-"custom2" = { name = "カスタム2" }
-"fish" = { name = "アイムフィッシュ" }
-"flotshoe" = { name = "フロートシューズ" }
-"fstbarr" = { name = "ファーストバリア" }
-"gigavirs" = { name = "ギガウイルス" }
-"gigfldr1" = { name = "ギガフォルダ1" }
-"hp-100" = { name = "HP+100" }
-"hp-200" = { name = "HP+200" }
-"hp-300" = { name = "HP+300" }
-"hp-400" = { name = "HP+400" }
-"hp-50" = { name = "HP+50" }
-"hp-500" = { name = "HP+500" }
-"hubbatc" = { name = "サイトバッチ" }
-"humor" = { name = "ユーモアセンス" }
-"jungle" = { name = "ジャングルランド" }
-"megavirs" = { name = "メガウイルス" }
-"megfldr1" = { name = "メガフォルダ1" }
-"megfldr2" = { name = "メガフォルダ2" }
-"millions" = { name = "ミリオネア" }
-"oilbody" = { name = "オイルボディ" }
-"reflect" = { name = "リフレクト" }
-"rush" = { name = "ラッシュサポート" }
-"shield" = { name = "シールド" }
-"sneakrun" = { name = "シノビダッシュ" }
-"soulclen" = { name = "ソウルクリーナー" }
-"soult-1" = { name = "ソウルタイム+1" }
-"speed-1" = { name = "ラピッド+1" }
-"speedmax" = { name = "ラピッドMAX" }
-"sprarmr" = { name = "スーパーアーマー" }
-"tango" = { name = "タンゴサポート" }
-"undersht" = { name = "アンダーシャツ" }
+"airshoes" = { name = "エアシューズ", description = "パネルのないマスでも\nいどうできる!" }
+"antidmg" = { name = "カワリミマジック", description = "B+左のコマンドで\n攻撃をうけたふりして\nしゅりけんをなげる!" }
+"attck-1" = { name = "アタック+1", description = "ロックバスターの\n攻撃力が1アップ!" }
+"attckmax" = { name = "アタックMAX", description = "ロックバスターの\n攻撃力がMAXに!" }
+"autoheal" = { name = "セルフリカバリー", description = "バトルしゅうりょうご\nHPがすこしだけ\nかいふくする" }
+"autorun" = { name = "オートランニング", description = "Bボタンをおしながら\nじゃなくても ナビが\nはしるようになる" }
+"battery" = { name = "バッテリーモード", description = "バッテリーじょうたい\nで電気属性ウイルスが\nよってくるようになる" }
+"beat" = { name = "ビートサポート", description = "たいせんせんよう!\nメガクラスいじょうの\nチップをうばいさる" }
+"bodypack" = { name = "ボディパック", description = "アーマー、シャツ\nエア、フロートの\n4てんパック!" }
+"bugstop" = { name = "バグストッパー", description = "バグの発生をおさえる\nとくしゅなプログラム" }
+"bustpack" = { name = "バスターパック", description = "バスターのアタック、\nラピッド、チャージが\nそれぞれ+3!" }
+"charge-1" = { name = "チャージ+1", description = "ロックバスターの\nチャージ力が\n1アップ!" }
+"chargmax" = { name = "チャージMAX", description = "ロックバスターの\nチャージ力が\nMAXに!" }
+"chivalry" = { name = "ダンディズム", description = "おとこのびがくが\nわかるナビになる\nLボタンでかいわ!" }
+"collect" = { name = "コレクターズアイ", description = "てきのざんがいから\nチップデータをみつけ\nだすがんりきがアップ" }
+"custom1" = { name = "カスタム1", description = "カスタム画面で\nさいしょにえらべる\nチップ枚数が+1" }
+"custom2" = { name = "カスタム2", description = "カスタム画面で\nさいしょにえらべる\nチップ枚数が+2" }
+"fish" = { name = "アイムフィッシュ", description = "さかなになりきって\n水属性のウイルスから\nみつけられやすくなる" }
+"flotshoe" = { name = "フロートシューズ", description = "地面からすこしういて\nいるのでパネルの\nえいきょうをうけない" }
+"fstbarr" = { name = "ファーストバリア", description = "さいしょからバリアが\nそうびされている!" }
+"gigavirs" = { name = "ギガウイルス", description = "ギガウイルス" }
+"gigfldr1" = { name = "ギガフォルダ1", description = "フォルダに入れられる\nギガクラスチップの\n枚数が+1" }
+"hp-100" = { name = "HP+100", description = "マックスHPが\n100ふえる!" }
+"hp-200" = { name = "HP+200", description = "マックスHPが\n200ふえる!" }
+"hp-300" = { name = "HP+300", description = "マックスHPが\n300ふえる!" }
+"hp-400" = { name = "HP+400", description = "マックスHPが\n400ふえる!" }
+"hp-50" = { name = "HP+50", description = "マックスHPが\n50ふえる!" }
+"hp-500" = { name = "HP+500", description = "マックスHPが\n500ふえる!" }
+"hubbatc" = { name = "サイトバッチ", description = "せんざいのうりょくを\n100%ひきだす\nキケンなプログラム" }
+"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLボタンで\nはなしてみてください" }
+"jungle" = { name = "ジャングルランド", description = "ジャングルのかおりを\nほうしゅつして木属性\nウイルスをひきつける" }
+"megavirs" = { name = "メガウイルス", description = "メガウイルス" }
+"megfldr1" = { name = "メガフォルダ1", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+1" }
+"megfldr2" = { name = "メガフォルダ2", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+2" }
+"millions" = { name = "ミリオネア", description = "ランダムミステリー\nデータからゼニー\nばかりが手に入る!" }
+"oilbody" = { name = "オイルボディ", description = "炎属性ウイルスが\n大スキなオイルをぬり\nねらわれやすくなる!" }
+"reflect" = { name = "リフレクト", description = "B+左のコマンドで\n攻撃をはねかえす\nリフレクト!" }
+"rush" = { name = "ラッシュサポート", description = "たいせんせんよう!\nきえたあいてのニオイ\nをかぎつけとびかかる" }
+"shield" = { name = "シールド", description = "B+左のコマンドで\nほとんどの攻撃を\nふせぐシールド!" }
+"sneakrun" = { name = "シノビダッシュ", description = "自分よりよわいてきと\nであわなくなる!" }
+"soulclen" = { name = "ソウルクリーナー", description = "おのれのあくぎょうを\nくいあらためるための\nしゅぎょうプログラム" }
+"soult-1" = { name = "ソウルタイム+1", description = "ソウルユニゾンして\nいられるターン数が\n+1される" }
+"speed-1" = { name = "ラピッド+1", description = "ロックバスターの\n連射力が1アップ!" }
+"speedmax" = { name = "ラピッドMAX", description = "ロックバスターの\n連射力がMAXに!" }
+"sprarmr" = { name = "スーパーアーマー", description = "攻撃をくらっても\nのけぞらなくなる!" }
+"tango" = { name = "タンゴサポート", description = "たいせんせんよう!\nひんしになったときに\nてあてをしてくれる!" }
+"undersht" = { name = "アンダーシャツ", description = "ちしりょうのダメージ\nをうけてもHP1で\nとりあえずたえる!" }
 
 [patch_cards]
 "alpha" = { name = "プロト" }

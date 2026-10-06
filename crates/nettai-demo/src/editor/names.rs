@@ -74,6 +74,15 @@ impl Names {
         self.pick(content, &content.defs.navi(n).key, |s, k| s.navi(k).and_then(|c| c.name.clone()))
     }
 
+    /// An entry's description (a NaviCust program's), in the editor's
+    /// language, else the content's own, its line breaks as the game's box
+    /// has them; none where neither has one.
+    pub fn entry_description(&self, content: &Content, e: EntryHandle) -> Option<String> {
+        let d = content.defs.entry(e);
+        let get = |s: &Strings| s.entry(&d.collection, d.id()).and_then(|x| x.description.clone());
+        self.other.as_ref().and_then(get).or_else(|| get(&content.strings))
+    }
+
     /// Key `key` of the game's text table `table` (`[<table>]`), in
     /// the editor's language, else the content's own; none where neither
     /// has it.
