@@ -73,10 +73,11 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         return out;
     }
     // The navi's level (the engine's level fact), up to its last: a navi
-    // code's (EXE6's `levels`: 0 to 14), and a link navi always has one (it
-    // exists only through its code), MegaMan may have none; a navi with a
-    // story (EXE5's team navis): its own levels, which its damage rows are
-    // read at; a navi with neither takes none.
+    // code's (EXE6's `levels`: 0 to 14), which a link navi always states
+    // (it exists only through its code) and MegaMan may leave out (no code
+    // received); a navi with a story (EXE5's team navis): its own levels,
+    // which its damage rows are read at, always stated; a navi with neither
+    // takes none. Nothing fills in a level a side leaves out.
     let name = crate::names::navi(content, s.navi);
     let navi = content.navi(s.navi);
     let story_last = navi.story.as_ref().map(|st| st.max_level);
@@ -85,8 +86,8 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         (Some(l), Some(last), _) if l > last => out.push(format!("level {l}: {name}'s level is 0 to {last}")),
         (None, Some(last), _) => out.push(format!("{name} has no level (0 to {last})")),
         (Some(l), None, Some(last)) if l > last => out.push(format!("level {l}: a navi code's level is 0 to {last}")),
-        (None, None, Some(_)) if !navi.changes_form() => {
-            out.push(format!("{name} has no level: a link navi exists only through its navi code"))
+        (None, None, Some(last)) if !navi.changes_form() => {
+            out.push(format!("{name} has no level (0 to {last}): a link navi exists only through its navi code"))
         }
         (Some(l), None, None) => out.push(format!("level {l}: {name} takes no level")),
         _ => {}

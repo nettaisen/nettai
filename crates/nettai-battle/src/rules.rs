@@ -27,11 +27,10 @@ impl SideRules {
     /// state, zeroed (a game has one ruleset, which every match of it
     /// plays by). Their setup's blocks are made the systems' defaults
     /// (`setup_defaults`, the rest zero) for a setup that gives none, and
-    /// must otherwise be the ruleset's. An enum of a system's setup, and a
-    /// list of definitions, has no default but its `setup_defaults`': the
-    /// round doesn't start with one the player's setup leaves unstated
-    /// (EXE6's version: nothing fills in gregar or falzar; its Crosses: an
-    /// empty list is none, and saying nothing is not a list).
+    /// must otherwise be the ruleset's. An enum of a system's setup has no
+    /// default but its `setup_defaults`': the round doesn't start with one
+    /// the player's setup leaves unstated (EXE6's version: nothing fills in
+    /// gregar or falzar). A list left out is its default, or empty.
     pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
         if content.defs.ruleset().is_none() {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
@@ -49,11 +48,8 @@ impl SideRules {
                 if block.stated(schema, i) {
                     continue;
                 }
-                let what = match &field.ty {
-                    FieldType::Enum(names) => names.join(" or "),
-                    FieldType::Array(elem, n) => format!("up to {n} {elem}s, an empty list for none"),
-                    _ => continue,
-                };
+                let FieldType::Enum(names) = &field.ty else { continue };
+                let what = names.join(" or ");
                 panic!("a player's setup doesn't state the {} system's `{}` ({what}): none is assumed", system.key, field.name);
             }
         }
