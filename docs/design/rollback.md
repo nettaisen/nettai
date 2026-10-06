@@ -498,41 +498,45 @@ that a player left (`Peer::leave`).
 
 The transport is the host's: nettai-netplay and nettai-frontend have no socket and no handshake. The frontend's
 `NetPlayer` plays on a `netplay::Channel` the host implements (send a frame to the other player, take the next one
-that came, neither ever waiting; nothing is assumed of delivery), and the host agrees the match before it
-(`netplay::agree`, from both offers and the seed). The program's transport is nettai-demo's `net`, below; a larger
+that came, neither ever waiting; nothing is assumed of delivery), and the match is agreed before it (`lobby::Lobby`
+over the host's datagrams, below). The program's transport is nettai-demo's `net`, below; a larger
 app brings its own (a signaling server and WebRTC, §4.8) and hands the library the agreed match and the frames.
 
 `net::Datagram` is all the program's handshake needs of a socket: send a datagram to the other peer, and take the
 next one that arrived, neither ever waiting. `net::Udp` is direct play: a host binds a UDP port on every IPv4
-interface and takes the first Hello's sender as the other peer (connecting the socket to it, so that nothing else
-is read); a joiner connects to the host's address. The "port unreachable" a UDP socket reports for a datagram the
-other end didn't take (the host isn't up yet) is not an error.
+interface and takes the first lobby datagram's sender as the other peer (connecting the socket to it, so that
+nothing else is read); a joiner connects to the host's address. The "port unreachable" a UDP socket reports for a
+datagram the other end didn't take (the host isn't up yet) is not an error.
 
-Every datagram on the channel starts with a byte that says what it is (`net::Kind`): a protocol frame, a
-Hello, or a refusal. A frame needs that byte because a handshake message can come late or twice, into the match,
-and must not be read as a frame. (A WebRTC peer could keep the handshake on a reliable channel of its own and do
-without the byte.)
+Every datagram on the channel starts with a byte that says what it is (`lobby::Kind`): a protocol frame, a lobby
+message, a Hello, a Reveal, or a refusal. A frame needs that byte because a handshake message can come late or
+twice, into the match, and must not be read as a frame. (A WebRTC peer could keep the handshake on a reliable
+channel of its own and do without the byte.)
 
-**The handshake** (`net::Handshake`, which the window polls each frame, so it never waits and the window stays
-responsive; `net::NetHandshake` is it and then the agreement): the joiner sends its `Hello` every 100 ms until it
-has the host's; the host answers each Hello with its own. A Hello says:
+**The lobby and the handshake** (nettai-frontend's `lobby::Lobby`, without IO: the host feeds it the datagrams
+that arrive and sends what it hands back; nettai-demo's `net::NetHandshake` runs it over UDP, polled each frame):
 
-- the protocol's version (`protocol::VERSION`) and the engine's (the crate version: peers must run the same engine,
-  since the digest covers the state's layout and the simulation must be the same code);
-- the content's hash (`Content::hash`: the definitions, scripts and rule tables, and the asset names and animation
-  timing the battle reads from the pack);
-- the role (host or joiner) and the side's half of the seed (a nonce from the clock and the process);
-- what the player brings, as bytes the frontend encodes (its `Offer`: a folder, a game, the Crosses, the patch cards,
-  and from the host a forced stage; the language is each player's own and isn't sent).
+1. **Lobby.** Each peer says its proposal, the match's settings (the game and the rounds, each round's stage and
+   background by name or left to the seed), and whether it is ready, when it changes and every 100 ms, with the
+   compatibility fields: the protocol's version (`protocol::VERSION`), the engine's (the crate version: peers must
+   run the same engine, since the digest covers the state's layout and the simulation must be the same code), the
+   content's hash (`Content::hash`) and the role. The lobby is symmetric: any change by either peer clears both
+   readies, and the settings are agreed when both are ready on the same. (The program proposes each player's match
+   file's settings, ready, and stops on settings of the other's that differ, saying what differs.)
+2. **Hello.** A peer that sees the settings agreed commits: its Hello carries the compatibility fields, the lobby
+   revisions it agrees to and the rounds' count, in the clear, and SHA-256 of the agreed settings' hash and the
+   bytes of the Reveal it will send. It reveals nothing before it has the other's Hello; a change in the lobby takes
+   the commitment back (and a Reveal already sent is spent: the next one has a fresh nonce).
+3. **Reveal.** A peer's half of the seed (a 64-bit nonce from the clock and the process) and its side (the player's
+   setup, in nettai-match's binary). Each peer checks the other's Reveal against its commitment, and stops on one
+   that doesn't match, saying so; then reads the other's side and checks it against the content as a match file's
+   side is. The seed comes from both nonces (SplitMix64), and the match is the agreed rounds, each part they leave
+   picked from the seed alike on both, with both sides (`netplay::netplay_setup`).
 
-A side that gets a Hello it can't play with (another protocol or engine, other content, the same role) sends a
-refusal with the reason three times and stops; the other stops on reading it, so both say what differs. Once a
-side has the other's Hello the match is on: both have the seed (`net::Connection::seed`, mixed from both halves)
-and both players' setups, and build the same round. If the host's answer was lost, the joiner keeps sending its
-Hello, and the host, in the match, answers it again (its `Connection`, the player's channel, does); the first frame
-from the other side is the sign it has ours. The frontend checks the other player's setup against the content
-(`netplay::agree`, `netplay::Offer::check`: a legal folder of the content's chips, Crosses of MegaMan's, the
-content's patch cards, a link battle stage) before building the round.
+A peer that can't play with the other (another protocol or engine, other content, the same role) sends a refusal
+with the reason three times and stops; the other stops on reading it, so both say why. There is no third message:
+the frames follow the Reveals, and a Hello or a Reveal that comes again, into the match, is answered with this
+peer's Reveal (its `Connection`, the player's channel, does).
 
 ### 4.8 What WebRTC would need
 
@@ -544,8 +548,8 @@ signaling server (matchmaking by a link code). To plug in here:
   frontend's thread, which polls the queue every frame);
 - the signaling: an offer and an answer (SDP) and ICE candidates exchanged through a server, before the channel
   opens; the host and joiner roles follow who made the link code;
-- a handshake that swaps the Hellos' facts (the program's as it is, over the channel, or on a second, reliable
-  channel, without the kind byte on frames), then `netplay::agree`;
+- the lobby and the handshake (the library's `lobby::Lobby`, as it is, over the channel, or on a second, reliable
+  channel, without the kind byte on frames);
 - NAT traversal (STUN, and TURN when that fails) comes with WebRTC; UDP direct play needs a forwarded port instead.
 
 Nothing above the `Channel` changes: the protocol, the peer and the frontend's driver are the same.

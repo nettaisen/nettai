@@ -104,8 +104,9 @@ forwarded to the host's machine:
     cargo run --release -p nettai-demo -- --match match.toml --join 192.0.2.10:7777        # join, the right navi
 
 Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings the
-left side of their own match file; the host's file supplies the rounds (both files list as many). The battle's RNG comes from both players'
-randomly generated seed halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they
+left side of their own match file, and the two files must state the same game and rounds (the players agree them;
+otherwise it stops, saying what differs). Each commits to its half of the seed and its side before either reveals
+them; the battle's RNG comes from both halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they
 arrive, and the battle is simulated again when a prediction was wrong. The window's title shows the round trip, the
 loss, the present delay (`--present-delay N`, default 0, and `[` and `]` during the match: how far behind your newest
 input the frame shown is), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
