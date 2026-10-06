@@ -26,7 +26,7 @@ return define.form {
     revert = soul_revert.action,
     -- Colonel's image as MegaMan unites with him (rules/souls/image), in his cape (0x0800EDBC's routine for the soul).
     image = soul_image.wearing(asset.sprite("colonel"), "soul-image/colonel", body_overlays.colonel),
-    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): Arm Change (./arm_change).
+    -- What it adds to the custom screen (the souls part gathers it, rules/souls/custom): Arm Change (./arm_change).
     custom = arm_change.custom,
     sprite = asset.sprite("colonelsoul"),
     element = "null",

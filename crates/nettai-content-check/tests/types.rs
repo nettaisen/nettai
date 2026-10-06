@@ -39,7 +39,7 @@ fn what_the_packs_refuse() {
     write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\ndepends = [\"base\"]\n");
     write(
         "lib/x.luau",
-        "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"x\")\nlocal s = system.state\nreturn define.kind { id = \"x\" }\n",
+        "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"x\")\nlocal s = rules.state\nreturn define.kind { id = \"x\" }\n",
     );
     write("base/manifest.toml", "id = \"base\"\nkind = \"support\"\ndepends = [\"lib\"]\n");
     write("stray/x.luau", "return {}\n");
@@ -52,7 +52,7 @@ fn what_the_packs_refuse() {
     has("g/there.luau: require(\"@h/x\"): h is a game pack, which no other pack requires");
     has("lib/x.luau: require(\"@g/there\"): g is a game pack, which no other pack requires");
     has("lib/x.luau:2: support pack lib reaches for the game's context by itself, `asset`");
-    has("lib/x.luau:3: support pack lib reaches for the game's context by itself, `system`");
+    has("lib/x.luau:3: support pack lib reaches for the game's context by itself, `rules`");
     has("lib/x.luau:4: support pack lib reaches for the game's context by itself, `id = \"x\"`");
     has("its `depends` make a cycle: base depends on lib depends on base");
     has("stray/: no manifest.toml; a folder of content/ is a pack");
@@ -85,7 +85,7 @@ fn the_test_pack_and_test_content_type_check() {
 /// table, to the type), then `more` (its fields, each ending in a comma).
 fn ruleset(more: &str) -> String {
     format!(
-        "local _ = define.ruleset {{ chip_use = {{}}, effects = {{}}, flow = {{}}, fresh_stats = {{}}, link_pick = {{}}, panels = {{}}, pools = {{}}, reactions = {{}}, status = {{}}, {more} }}"
+        "local _ = define.rules {{ chip_use = {{}}, effects = {{}}, flow = {{}}, fresh_stats = {{}}, link_pick = {{}}, panels = {{}}, pools = {{}}, reactions = {{}}, status = {{}}, {more} }}"
     )
 }
 
@@ -97,7 +97,7 @@ fn ruleset(more: &str) -> String {
 fn a_ruleset_without_a_required_section_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     let mut check = |source: &str| checker.check("rules/init.luau", &format!("--!strict\n{source}\n")).unwrap();
-    let whole = ruleset("systems = {}, math = { sine = {} },");
+    let whole = ruleset("math = { sine = {} },");
     assert_eq!(check(&whole), Vec::<String>::new(), "every required section stated");
     for section in ["chip_use", "effects", "flow", "fresh_stats", "link_pick", "panels", "pools", "reactions", "status"] {
         let without = whole.replace(&format!("{section} = {{}}, "), "");
@@ -105,7 +105,7 @@ fn a_ruleset_without_a_required_section_is_a_type_error() {
         let problems = check(&without);
         assert!(problems.iter().any(|p| p.contains(section)), "without `{section}`: {problems:?}");
     }
-    // A section a game may leave out is no problem, nor are no systems.
+    // A section a game may leave out is no problem, nor are no parts.
     assert_eq!(check(&ruleset("")), Vec::<String>::new());
 }
 

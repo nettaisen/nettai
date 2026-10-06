@@ -704,8 +704,8 @@ What an EXE5 console does otherwise, by data, not by game:
 
 - the emotion window: the faces EXE5's forms name bring their own box
   (MegaMan's five, Team Colonel's), and a soul's face shows the soul's
-  turns left beside it (`Battle::form_turns`: the turns the system of the
-  button that offers a form keeps);
+  turns left beside it (`Battle::form_turns`: the turns the rules keep for
+  the button that offers a form);
 - the custom screen: the special slot's button is drawn by the pack's look
   of its name (Soul Unison's, its picture in the chip
   window in Chaos Unison's palette for Chaos, as a button whose view is
@@ -714,7 +714,7 @@ What an EXE5 console does otherwise, by data, not by game:
   view is `offer_flight`, EXE5's state 9) flies the soul's icon
   up onto the column's first cell under its flash, and the cell keeps it
   (`Battle::offer` and `Battle::offer_flight`: the offer, a soul's form, and
-  the window's step, typed reads of what the view shows of its system's
+  the window's step, typed reads of what the view shows of the rules'
   state; the icon is the soul's place
   among its navi's souls, `soul_place`: a pack's soul icons are in the order
   the navi lists its souls, the original's soul numbers'), in the palette of
@@ -1144,15 +1144,16 @@ programs = [                               # in the save's order; x, y the cente
 ```
 
 **A side's facts.** What a side brings that its game's rules take is the
-game's own to say: each system of the game's ruleset declares a `setup`
+game's own to say: its rules declare a `setup`, which their parts make
 (content/exe6/rules/cross: `setup = { version = { "gregar", "falzar" },
 crosses = "form[5]" }`; content/exe5/rules/light_dark:
-`setup = { karma = "u16" }`), and every field of every system's setup is a
-fact a side of that game may state, as a key of its table by the field's
-name. `nettai-match` names none of them (`nettai_match::facts`): a side
-holds its facts as those setup blocks, the round's setup hands the engine
-the blocks as they are, and a game that declares another fact has it in its
-match files, its descriptions and the editor without a line of Rust.
+`setup = { karma = "u16" }`; parts that declare the same field declare it
+once, of one type), and every field of that setup is a fact a side of that
+game may state, as a key of its table by the field's name. `nettai-match`
+names none of them (`nettai_match::facts`): a side holds its facts as that
+setup block, the round's setup hands the engine the block as it is, and a
+game that declares another fact has it in its match files, its
+descriptions and the editor without a line of Rust.
 
 - A fact's value is its field's type's: a flag `true` or `false`; a whole
   number in the type's range; an enum's variant by the name the rules give
@@ -1163,12 +1164,11 @@ match files, its descriptions and the editor without a line of Rust.
   has (`setup_defaults`: EXE6's Beast Out; EXE5's
   every soul, both unisons and a fresh save's karma, 500), else zero. A
   file is written with only the facts that differ from that.
-- **The facts' order is the rules'**: the ruleset's systems in its order,
-  and each system's setup fields by name (a setup's layout keeps its
-  fields sorted by name, whatever order its `setup` table writes them in).
-  A file writes its facts in that order, `describe` says them in it, and
-  a round's setup holds the blocks in it. So renaming a setup field can
-  move it within its block: anything that lays a block out by position
+- **The facts' order is their names'**: a setup's layout keeps its
+  fields sorted by name, whatever order its `setup` tables write them in
+  (and whichever part declares each). A file writes its facts in that
+  order, `describe` says them in it, and a round's setup holds the block
+  in it. So renaming a setup field can move it within the block: anything that lays a block out by position
   (a binary form of a match, docs/design/match-binary.md when it comes)
   changes with it, and the content hash (which covers every key) says so.
 - An enum without a default is **required**: nothing fills one in.
@@ -1184,8 +1184,8 @@ match files, its descriptions and the editor without a line of Rust.
   the editor's "Its version's own" states those, and a random match the
   five it picked).
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
-  key no system declares ("left: no field \"karm\" (a side of exe5 takes
-  hp, level, reg_up, karma, chaos_unison, soul_unison, souls)"); a value that isn't
+  key the rules' setup doesn't declare ("left: no field \"karm\" (a side of
+  exe5 takes chaos_unison, hp, karma, level, reg_up, soul_unison, souls)"); a value that isn't
   the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
   no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
   twice in a list, or an empty entry before one (a list is filled from
@@ -1251,10 +1251,10 @@ records = [                                # the eight pattern records: a place 
 **A side states no stats.** A round starts from each navi's fresh stats
 (`NaviStats::fresh`, `init_8013B64`: what a new save gives the navi, by its
 game's `fresh_stats` rules and its own definition), and its game's rules
-build the rest as the round is set up (`round_setup`), in their systems'
+build the rest as the round is set up (`round_setup`), in their parts'
 order:
 
-- **the save system** (content/exe6/rules/save, content/exe5/rules/save),
+- **the save part** (content/exe6/rules/save, content/exe5/rules/save),
   first: what the save brings that nothing derives, its facts, `hp` (the
   base HP of the navi that compiles a NaviCust: MegaMan's, which HP
   Memories raise; default 100), `reg_up` (the Regular memory; default the
@@ -1290,7 +1290,7 @@ when the stats carry a NaviCust bug
 
 **The navi code's level** (`level`) is the level of the navi code the
 save received (docs/engine/link-navis.md), 0 to 14: a fact of EXE6's save
-system (`level = "u8?"`, a number or none). The engine knows no level: EXE6's
+part (`level = "u8?"`, a number or none). The engine knows no level: EXE6's
 rules read it (`exe6.navi_level`, its API module): the seal below, the
 reload, MegaMan's gains, and what a level gives a link navi in battle (its
 chip bonus, its charged chips, ChargeMan's Fire charge: rules/by_level.luau,
@@ -1312,14 +1312,14 @@ A navi takes a level where its definition says what one gives it
 checks refuse a level for any other (EXE5's MegaMan), and one past the
 navi's last.
 
-**An EXE5 team navi's level** (`level`, 0 to 6, EXE5's save system's fact; docs/design/exe5-map.md
+**An EXE5 team navi's level** (`level`, 0 to 6, EXE5's save part's fact; docs/design/exe5-map.md
 §15.16) is the level its attacks' damage goes by: the count of the save's
 story flags, which the battle's init exchange sends. A side that operates
 one (`navi = "protoman"`: any of the twelve, of either version) always
 states a level (nothing fills one in: "right: ProtoMan has no level (0 to
 6)"; tools state 0 for a new side), and its stats are the navi's fresh stats
 with the HP the story gives at that level (the navi's `story`, which EXE5's
-save system reads: a level below 6 is the story's progress, and at 6 the
+save part reads: a level below 6 is the story's progress, and at 6 the
 story is taken as done). A side states no HP of its own for one: the checks
 refuse a level past 6, and an `hp`. A team navi has no NaviCust, patch
 cards or souls: they are MegaMan's. EXE5's MegaMan takes no level.
@@ -1345,7 +1345,7 @@ level (its HP is the level's) and its block's karma.
 **The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
 programs placed on MegaMan's grid, by name and color name (a program's
 `colors`), and its board; without it, none on the largest board. The game's
-`navicust` system makes the stats it gives (the maximum HP, the abilities,
+`navicust` part makes the stats it gives (the maximum HP, the abilities,
 levels, weapons and bugs) from the programs as the round is set up, over
 what the save brings (`hp`, `reg_up`, `sun`). The editor's NaviCust pane
 places the programs on the board as the game does, and shows what they make.
@@ -1357,9 +1357,9 @@ cleared. Under 470 a dark MegaMan (mood 0, the dark face and palette, dark
 chips usable in a link battle, no soul button); 499 or under clears holy
 panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
 light templates). Like EXE6's `version`, `crosses` and `beast_out` (S6c's
-facts), the round's setup writes it into whichever of the rules' systems
-declares the setup field (`PlayerSetup::set_fact`): EXE5's light and dark
-system's `karma`. A game whose rules take none refuses one other than 500.
+facts), the round's setup writes it into the rules' setup, where a part declares
+the field (`PlayerSetup::set_fact`): EXE5's light and dark part's
+`karma`. A game whose rules take none refuses one other than 500.
 Hub Style (NaviStats +0x4C, which EXE5's patch card 111 sets) waits for
 EXE5's patch cards. A netplay offer carries the karma and the souls,
 by their names in the game, and a round's setup and the battle's digest hold
@@ -1374,19 +1374,19 @@ has it: each version's table (0x08024BF0) gives Team ProtoMan's souls 1 to 6
 the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
 other version's none, and a dark chip's Chaos Unison needs flag 0x236 too.
 The engine ports that check on the souls owned: the round's setup writes
-the side's into the souls system's setup field `souls` (`set_fact`), and the
+the side's into the souls part's setup field `souls` (`set_fact`), and the
 battle reads them as the save's flags (a soul is its form, named by its id;
 the original's number for it is compat's, exe5-compat's `form_number`). A side may have
 any of the game's souls, of either version (nettai's extension, as a Cross
 list may name either version's), and a soul whose family the folder never
-holds never comes up. Only a game whose rules' systems take `souls` takes a list
+holds never comes up. Only a game whose rules take `souls` takes a list
 (the checks refuse one elsewhere, and a form that is no soul).
 
 **Soul Unison and Chaos Unison** (`soul_unison`, `chaos_unison`) are the
 save's event flags 0 and 0x236: the soul button at all, and a dark chip's
 Chaos Unison. Both are on unless a side says (`soul_unison = false`), as a
 finished save has them; the round's setup writes them into the souls
-system's setup (its defaults, on, for a setup that says nothing). A game
+part's setup (its defaults, on, for a setup that says nothing). A game
 whose rules take neither refuses one off. The netplay offer carries them.
 
 **An EXE5 save** (the editor's "Import from save…", `Match::import_save`,
@@ -1404,7 +1404,7 @@ a save ("From a save…", `nettai_match::auto_battle::of_save`), and edits
 it: the 42 places in their six lists, the eight records, and the game's
 chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
 the save's level (its story flags' count), whose HP the story gives (EXE5's
-save system), and, where the save's version has the navi, the light/dark
+save part), and, where the save's version has the navi, the light/dark
 value of the navi's own block.
 
 **The auto battle data** (`[left.auto_battle]`,
@@ -1451,7 +1451,7 @@ writer never puts one among the 42 places (it counts library chips only),
 so only a block made by hand holds one, and the check says where: "place 29
 of the auto battle data (`mega`, entry 2) holds StepSwrd: the original
 can't play it in auto battle (...)". Which chips those are is the content's
-to say (the auto battle system's `unplayable_in_auto_battle`, from its own data's
+to say (the auto battle part's `unplayable_in_auto_battle`, from its own data's
 classes: `Defs::unplayable_in_auto_battle`), so a navi's own chip is covered as it
 lands. A pattern record may hold one (the game writes any chip used in a
 run there, and a record never plays): the editor notes it quietly, and its
@@ -1525,7 +1525,7 @@ is said with where it is:
   holding another game's (no file or offer can) is refused the same way
   ("right: a navi exe5 hasn't");
 - the arena's stages are the game's link battle stages (`link_battle_stages`);
-- the folder keeps the game's rules: their systems' `folder_check` hooks (EXE6's are rules/folder/init.luau:
+- the folder keeps the game's rules: their `folder_check` hook (EXE6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
   copies by MB, each chip in one of its codes, at most three dark
   chips, chips the chip pack lists, the Regular chip within the Regular
@@ -1534,16 +1534,16 @@ is said with where it is:
   (after the rules' `round_setup`: the NaviCust's and the patch cards' folder
   limits, as the original's folder editor and link battle check read the
   reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
-  the hooks say, so another game's folder rules are its own Luau: EXE5's
+  the hook says, so another game's folder rules are its own Luau: EXE5's
   (content/exe5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
   levels, at most three dark chips, the chips its pack lists, the Regular
   chip within the Regular memory, and no tag chips. A folder holds the
   game's chips alone (the rules' pool is the game's). Live play's random
   folders are drawn from the rules' pool and kept only
-  when the hooks accept them (`nettai_match::folders`);
-- a NaviCust only in a game whose rules have the navicust system, and only for
-  MegaMan; every program fits the board, none overlaps another, the copies of
+  when the hook accepts them (`nettai_match::folders`);
+- a NaviCust only in a game whose rules' `navicust` section has a board,
+  and only for MegaMan; every program fits the board, none overlaps another, the copies of
   one program in one color are all compressed or all not (the save keeps
   one flag for them);
 - a base HP (`hp`) only for the navi that compiles a NaviCust: any
@@ -1554,7 +1554,7 @@ is said with where it is:
   the form list (EXE6's Crosses) forms of the navi's own lists (none for a
   navi that doesn't change form);
 - karma 0 to 1000, and other than 500 only with rules that take it;
-- patch cards only in a game whose rules have the patch-cards system, each
+- patch cards only in a game that defines any, each
   installed once, at most 32, their MB together at most 80 (EXE6's menu adds
   none past 80 MB, `0x08141868`);
 - the round starts (`Battle::new` doesn't stop).

@@ -106,7 +106,7 @@ pub struct Setup {
 /// (`Setup::unlock_flags`): Beast Out (flag 0xE0), the version's five
 /// Crosses (`sub_8029EF8`'s table: Gregar's flags 0xE2-0xE6, Falzar's
 /// 0xE7-0xEB, by Cross number). (Flag 0x163, a navi code received, is the
-/// save system's `level`: the recordings that have both agree.)
+/// save part's `level`: the recordings that have both agree.)
 fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
     let flag = |f: u16| {
         let byte = match f >> 3 {
@@ -132,7 +132,7 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
 /// `levels` that doesn't change form: `reloadCurNaviBaseStats_8120df0`), of
 /// `recorded`: its fresh stats (`NaviStats::fresh`) with what the save keeps
 /// (`byte_81210C8`: the folder, its Regular and tag chips and the HP; the
-/// Regular memory, the save system's to write). None for any other navi:
+/// Regular memory, the save part's to write). None for any other navi:
 /// its stats are as recorded.
 pub fn link_navi_reset(content: &Content, recorded: &NaviStats) -> Option<NaviStats> {
     let navi = content.navi(recorded.navi);
@@ -363,7 +363,7 @@ impl Round {
             None => navi_stats(&self.setup.navi_stats[p], &ids),
         };
         let mut players: [PlayerSetup; 2] = std::array::from_fn(|p| self.player_setup(p as u8, &ids));
-        // What each save brings to its navi's stats (EXE6's save system's
+        // What each save brings to its navi's stats (EXE6's save part's
         // setup), from the recorded block: the rules write it into a side
         // whose stats they build, which then comes out as recorded.
         for (p, player) in players.iter_mut().enumerate() {
@@ -377,7 +377,7 @@ impl Round {
             }
         }
         // A link navi's stats are the rules' to build from its level (EXE6's
-        // save system runs the save's reload): its fresh stats with what
+        // save part runs the save's reload): its fresh stats with what
         // the save keeps, which the replay then compares with the block the
         // console's own reload made.
         let stats = |p: usize| {
@@ -493,7 +493,7 @@ impl Round {
             joypad_phase: self.setup.joypad_phases[side as usize],
             sp_times: codec::sp_times(&unhex(&self.setup.sp_times[side as usize])),
             console: self.console_setup(side),
-            rules: Vec::new(),
+            rules: None,
             patch_cards: self.patch_cards(side, ids),
             // (A recording's stats are what its NaviCust made.)
             navicust: None,
@@ -502,13 +502,13 @@ impl Round {
         // (The Crosses the console's save owns, as the list a setup states:
         // those of its navi's of its version, in Cross-number order.)
         unlocks.write(ids.content, stats.navi, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
-        // The navi code's level (0xFF: none): the save system's `level`.
+        // The navi code's level (0xFF: none): the save part's `level`.
         let level = match self.setup.navi_levels[side as usize] {
             0xFF => nettai_content_api::Value::Nil,
             l => nettai_content_api::Value::Int(l as i64),
         };
         player.set_fact(ids.content, "level", &[nettai_battle::rules::Fact::Value(level)]).unwrap_or_else(|e| panic!("the navi code's level: {e}"));
-        // The bug frags: the dark-chips system's (its setup's `bug_frags`).
+        // The bug frags: the dark chips part's (its setup's `bug_frags`).
         let frags = self.setup.bug_frags[side as usize];
         player
             .set_fact(ids.content, "bug_frags", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(frags as i64))])
@@ -855,7 +855,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
 /// mood 0, or past a Beast Over this round (AIData+0x36, which also keeps
 /// the mood from dropping to 0). Tired: its Beast Out turns are spent
 /// (NaviStats+0x21 is 0) and it is out of the Beast (the turn's check that
-/// raises AIData+0x32 has run: EXE6's beast system's `turn_check`). Not seen: anger, and
+/// raises AIData+0x32 has run: EXE6's beast part's `turn_check`). Not seen: anger, and
 /// the NaviCust emotion bug's swings to tired, which need the fight.
 fn screen_emotion(stats: &NaviStats, content: &Content, beast_over_before: bool) -> Emotion {
     let kind = crate::forms::kind(content, stats.form);
@@ -891,7 +891,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
     let ids = Ids::new(content, compat);
     let frames: Vec<&Frame> = round.battle_frames().collect();
     let setup = round.round_setup(content, compat);
-    // A battle for the screens' extras (the sides' systems' `custom`
+    // A battle for the screens' extras (the sides' rules' `custom`
     // hooks): their state through the round, and the stats and turn each
     // screen reads, set from the trace as it opens.
     let mut battle = Battle::new(setup.clone(), content.clone());

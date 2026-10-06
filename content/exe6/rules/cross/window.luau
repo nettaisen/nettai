@@ -4,10 +4,10 @@
 -- (`sub_8026840`) as the screen opens; UP opening the window (`sub_8028B74`);
 -- its opening (`sub_8027834`), the window and its keys (`sub_802794A`,
 -- `sub_8028A78`), its closing (`sub_802790C`) and a Cross chosen
--- (`sub_8027A58`, `sub_8027AAE`, `sub_8027ADE`) as the system's windows; B
+-- (`sub_8027A58`, `sub_8027AAE`, `sub_8027ADE`) as the part's windows; B
 -- taking the Cross back (`sub_8029032`); the form it puts the navi in at
 -- the turn's start (`sub_802937A`); and the round's record of the Crosses
--- used (`dword_20349A0`). Its state is the cross system's, which the
+-- used (`dword_20349A0`). Its state is the cross part's, which the
 -- frontend draws the window from: its four windows are a form list's (their
 -- `view`), which shows these fields by their names.
 
@@ -17,7 +17,7 @@ local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local window = {}
 
--- The cross system's setup (rules/cross/init.luau declares it): the
+-- The cross part's setup (rules/cross/init.luau declares it): the
 -- player's game, and the Crosses they have: up to five forms of either
 -- game, in the window's order, filled from the front
 -- (docs/engine/custom-screen.md §4.1). The original's window offers those
@@ -35,7 +35,7 @@ local function sealed(side: number): boolean
     return exe6.navi_level(side) ~= nil
 end
 
--- The cross system's state fields the window keeps (rules/cross/init.luau
+-- The cross part's state fields the window keeps (rules/cross/init.luau
 -- declares them).
 export type State = {
     -- `dword_20349A0`: the Crosses used this round, by their place among
@@ -71,7 +71,7 @@ end
 -- The player's Cross in place `place`: the setup's list's entry (of either
 -- game); none past the list's end.
 local function cross_at(_side: number, place: number): FormDef?
-    return (system.setup() :: Setup).crosses[place + 1]
+    return (rules.setup() :: Setup).crosses[place + 1]
 end
 
 -- The player has a Cross in place `place`.
@@ -94,7 +94,7 @@ end
 
 -- `sub_8029EC8`: how many Crosses the navi owns and hasn't used this round.
 local function crosses_left(side: number): number
-    local s = system.state() :: State
+    local s = rules.state() :: State
     local n = 0
     for place = 0, CROSSES - 1 do
         if owns_cross(side, place) and not s.crosses_used[place + 1] then
@@ -144,7 +144,7 @@ end
 -- starts battles in (`sub_8029EF8`), unless the navi is worn out; and the
 -- window has the Cross tab while MegaMan has a Cross left this round.
 function window.open(side: number)
-    local s = system.state() :: State
+    local s = rules.state() :: State
     if battle.turn() == 1 then
         for place = 1, CROSSES do
             s.crosses_used[place] = false
@@ -180,7 +180,7 @@ end
 
 -- OK: the Cross chosen is used this round.
 function window.confirmed(side: number)
-    local s = system.state() :: State
+    local s = rules.state() :: State
     if s.cross_chosen then
         s.crosses_used[s.chosen + 1] = true
     end
@@ -190,8 +190,8 @@ end
 -- no other pick holds the turn's form (Beast Out's), and the cursor is on
 -- the top row or OK.
 function window.keys(side: number): boolean
-    local s = system.state() :: State
-    if not custom.repeated(side, "up") or not megaman(side) or custom.form_taken(side) or s.offered_count == 0 then
+    local s = rules.state() :: State
+    if not custom.repeated(side, "up") or not megaman(side) or custom.form_taken(side, "cross_window") or s.offered_count == 0 then
         return false
     end
     local cursor = custom.cursor(side)
@@ -204,14 +204,14 @@ end
 
 -- B with nothing picked takes the Cross chosen back.
 function window.take_back(side: number): boolean
-    local s = system.state() :: State
+    local s = rules.state() :: State
     if not s.cross_chosen then
         return false
     end
     s.marked[s.window_cursor + 1] = false
     s.cross_chosen = false
     s.chosen = 0
-    custom.set_form(side, nil)
+    custom.set_form(side, "cross_window", nil)
     custom.set_face(side, nil)
     custom.play(side, "cancel")
     return true
@@ -253,7 +253,7 @@ window.opening = {
 -- cursor on OK, and R describes the Cross under the cursor (its own, of
 -- whichever game it is).
 local function keys(side: number)
-    local s = system.state() :: State
+    local s = rules.state() :: State
     if not s.cross_chosen then
         local n = s.offered_count
         local up, down = custom.repeated(side, "up"), custom.repeated(side, "down")
@@ -280,7 +280,7 @@ local function keys(side: number)
             s.marked[i] = true
             s.cross_chosen = true
             s.chosen = s.offered[i]
-            custom.set_form(side, result_form(side, s.chosen))
+            custom.set_form(side, "cross_window", result_form(side, s.chosen))
             custom.open_window(side, "cross_chosen")
             -- A chosen Cross grays out Beast Out (its button's state).
             custom.refresh_buttons(side)
@@ -340,7 +340,7 @@ window.closing = {
 window.chosen = {
     view = "form_chosen",
     update = function(side: number): boolean
-        local s = system.state() :: State
+        local s = rules.state() :: State
         local tick = custom.window_tick(side)
         if tick == 1 then
             custom.set_frame(side, 0)

@@ -13,7 +13,7 @@
 -- - its bugs' table (0x08140054; ./programs.luau's BUGS);
 -- - the emotion window's glitch: its flag, 0x10C1 (set when a bug applies, 0x08140040), which the window's start
 --   (0x0801AF14, through 0x0813F650) reads when the save has no patch cards (with cards, the cards' own flag:
---   ../patch-cards/system);
+--   ../patch_cards);
 -- - BugStop (+0x1F) stops the bugs unless the patch cards say (0x0813FA48 asks 0x08137A30 first): a switched-on
 --   card's BugStop effect (the last card's) stops them at 1 and keeps them else;
 -- - the HP (0x0803C13C): the maximum again and the HP with it, as EXE6's. That is the original's ending in the real
@@ -114,8 +114,7 @@ local EXE5: NaviCustGame = {
     end,
 }
 
-return define.system {
-    id = "navicust",
+return {
     hooks = {
         round_setup = function(side: number)
             compile.run(side, EXE5)

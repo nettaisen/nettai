@@ -309,7 +309,7 @@ struct View<'a> {
     region: crate::render::Region,
 }
 
-/// A system's button as the frontend draws it (docs/design/rules-in-luau.md
+/// A button of the rules as the frontend draws it (docs/design/rules-in-luau.md
 /// §4.8): the pack's look of the name its content registers it under
 /// (`ButtonPictures`: its tiles by set, which set a state shows, the cursor
 /// over it, its picture in the chip window), and its tiles a set, its
@@ -572,7 +572,7 @@ pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, for
 
 /// The pictures of the Beast a side's navi goes into, or is in: the
 /// Beast Out button, its picture in the chip window and the BeastOut
-/// chip's. They are its version's (EXE6's beast system's rule): a form
+/// chip's. They are its version's (EXE6's beast part's rule): a form
 /// that isn't the base form goes into its own version's Beast (the form's
 /// `version`: another's than the player's when their Crosses hold one of
 /// its), and the base form into the player's (docs/engine/custom-screen.md
@@ -652,11 +652,11 @@ fn state_number(s: SlotState) -> usize {
 }
 
 /// The tick of a Cross's choice the white fade is over and the Cross put
-/// on (`sub_8027AAE`; the cross system's `PUT_ON_TICK`): the window's map
+/// on (`sub_8027AAE`; the cross part's `PUT_ON_TICK`): the window's map
 /// is the chips' again.
 const CROSS_PUT_ON_TICK: u16 = 25;
 
-/// The Cross in place `place` of a side's Crosses, as EXE6's cross system
+/// The Cross in place `place` of a side's Crosses, as EXE6's cross part
 /// finds it (content/exe6/rules/cross/window.luau's `cross_at`), from what
 /// the player brought: the entry of their form list
 /// (`PlayerFact::CrossList`: the Crosses they have, in the window's order).

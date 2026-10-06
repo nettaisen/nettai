@@ -597,7 +597,7 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
--- A patch card's effect (@exelib/patch_cards/effects' constructors make them; a game's patch-cards system applies
+-- A patch card's effect (@exelib/patch_cards/effects' constructors make them; a game's patch cards part applies
 -- them, @exelib/patch_cards/apply): its kind, and the kind's fields.
 export type PatchCardEffect = {
     kind: string,

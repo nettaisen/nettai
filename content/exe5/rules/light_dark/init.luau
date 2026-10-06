@@ -1,6 +1,6 @@
 --!strict
 -- EXE5's light and dark MegaMan (docs/design/exe5-map.md §6.1). A side's MegaMan is light or dark by his save's
--- light/dark value (NaviStats +0x44, read through 0x08012882): the system's setup, which a setup takes from the
+-- light/dark value (NaviStats +0x44, read through 0x08012882): the part's setup, which a setup takes from the
 -- save (exe5-compat from a recording's). Two of EXE5's rules read it:
 --
 -- - **A dark MegaMan clears holy panels** (0x08017136, from the navi's intake every tick of the fight): when the
@@ -101,7 +101,7 @@ local function value(): number
     if battle.light_dark_held() then
         return 500
     end
-    return (system.setup() :: Setup).karma
+    return (rules.setup() :: Setup).karma
 end
 
 -- 0x0801283A: the starting mood by the value (its caller, 0x08010F1A, passes 0 for the Full Synchro it could ask).
@@ -268,8 +268,7 @@ local function navi_bug(_side: number, navi: Object): boolean?
     return nil
 end
 
-return define.system {
-    id = "light-dark",
+return {
     setup = { karma = "u16" },
     -- A fresh save's value (0x08010C00 writes 500 to NaviStats +0x44): light for the chips, no holy panels cleared,
     -- the starting mood 0x80.

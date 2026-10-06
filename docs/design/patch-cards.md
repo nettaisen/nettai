@@ -1,7 +1,7 @@
 # Patch cards (改造カード): the plan, and how it was built
 
 **Status: done (2026-10-02).** Patch cards are an engine definition kind with a typed player setup, and EXE6's
-patch-cards system (content/exe6/rules/patch_cards/) applies them,
+patch cards part (content/exe6/rules/patch_cards/) applies them,
 all 117 cards are content (content/exe6/patch_cards/), and the chip lab's library/jp/cards/ (222 scenarios on Japanese
 consoles) matches on every frame. docs/engine/patch-cards.md is the reference: how the Japanese games do it, what
 the cards do, how nettai has it, and the cards (its appendix). This document keeps the plan's reasoning and the
@@ -63,8 +63,8 @@ All of it is content now (docs/engine/patch-cards.md §3).
 
 **The cards are the engine's; their effects are a game's rules'** (the user, 2026-10-02: "the engine should know
 what a patch card is"). BN4, EXE5 (JP) and EXE6 (JP) all have patch cards, so a card and a player's installed cards
-are engine concepts, as chips and folders are; what an effect does is each game's rule, a system of its stock
-ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_cards/init.luau, whose
+are engine concepts, as chips and folders are; what an effect does is each game's rule, a part of its
+rules (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_cards/init.luau, whose
 `round_setup` hook applies them.
 
 - **A definition kind of its own**: `define.patch_card { id, mb, effects }`, `Registry::PatchCard`,
@@ -80,16 +80,16 @@ ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch
   `PatchCardStrings`). The card weapons have no names: nothing shows a weapon's (text-rendering.md §10.2).
 - **The setup is typed**: `PlayerSetup::patch_cards`, the card handles in the list's order with each switched on
   or off, at most 32 (EXE6's save list's room; its 80 MB allow 16). It is part of the setup the peers exchange and
-  the digest covers. The EXE6 system reads it with `battle.patch_cards(side)`.
+  the digest covers. The EXE6 part reads it with `battle.patch_cards(side)`.
 - **Before** (until the user's decision), the cards were records of type "patch-card" and the installed cards the
-  system's own setup block (`record:patch-card[16]`, `bool[16]`), with the names in a `[records]` table.
+  part's own setup block (`record:patch-card[16]`, `bool[16]`), with the names in a `[records]` table.
 - **The hook.** The cards must change the stats before the battle copies them: the navi's init reads them as it
   spawns, and the battle-start copy (`reserves`) is made with the battle. S0's `round_start` runs after the
   navis spawn, too late, so this work added `round_setup(side)`: once per side in `Battle::new`, before anything
-  reads the side's stats, which a system may change through `battle.navi(side)`. After it the framework copies the
+  reads the side's stats, which the rules may change through `battle.navi(side)`. After it the framework copies the
   stats to the battle-start copy. It is a hook like S0's (`SystemHook::RoundSetup`, called with
-  `Battle::notify_systems`), and costs one call per side per round.
-- **The glitch is pushed**, as rules-in-luau.md §2.1 rule 5 asks: with cards installed the system sets the
+  `Battle::notify_rules`), and costs one call per side per round.
+- **The glitch is pushed**, as rules-in-luau.md §2.1 rule 5 asks: with cards installed the part sets the
   console's emotion window glitch (`battle.set_emotion_window_glitch(side, on)`) from the stats after the cards.
 - **`RoundSetup::navi_stats` is the stats before the cards.** A trace's setup gives both: the oracle traps the
   apply routine's entry for the stats before (`navi_stats_before_cards`), and the init exchange has the stats
@@ -132,7 +132,7 @@ ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch
 6. **Two effects of one kind on a card apply in the card's order**; the original orders them by effect id. No card
    has two of a kind with different choices, so nothing tells them apart.
 7. **The HP.** The reload sets the HP to MaxHP in the real world and to the lesser of the two on the Internet; a
-   netbattle's stats come from the real world, so the system sets HP = MaxHP.
+   netbattle's stats come from the real world, so the part sets HP = MaxHP.
 8. **A link navi's glitch.** With a link navi operated the routine doesn't run, and flag 0x1723 stays as the last
-   application with MegaMan left it, which the save holds. The system counts the link navi's stats' bugs instead:
+   application with MegaMan left it, which the save holds. The part counts the link navi's stats' bugs instead:
    the same for a save whose flag is clear (the chip lab's); unverified otherwise.

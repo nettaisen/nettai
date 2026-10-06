@@ -282,7 +282,7 @@ named_fields! {
         /// Its mood is held (`sub_8015BEC`): held tired or exhausted. What
         /// another side's rules read (EXE6's counter, `sub_801A200`).
         MoodHeld = "mood_held", Bool, ro;
-        /// The side's systems' `navi_tick` runs for it each tick.
+        /// The side's rules' `navi_tick` runs for it each tick.
         Ticked = "ticked", Bool, rw;
         /// Exhausted for the rest of the battle (EXE6's after Beast Over):
         /// worn out, the mood can't change, 1 HP lost per tick (never the
@@ -458,14 +458,14 @@ named_fields! {
     /// A side's navi stats that content reads (and the few it changes).
     pub enum NaviStat {
         /// Fighting in the sun (+0x22, the save's; writable: a game's save
-        /// system writes it as the round is set up).
+        /// part writes it as the round is set up).
         Sun = "sun", Bool, rw;
         /// The form and the navi, as their definitions.
         /// Writable: a game's form change puts the navi in its form.
         Form = "form", Ref(Registry::Form, None), rw;
         Navi = "navi", Ref(Registry::Navi, None), ro;
         /// MegaMan's variant (+0x2B, which picks his move lag): his base HP
-        /// in hundreds, which a game's save system writes.
+        /// in hundreds, which a game's save part writes.
         NaviVariant = "navi_variant", U8, rw;
         /// The base form's element (patch cards write it).
         Element = "element", U8, rw;
@@ -475,7 +475,7 @@ named_fields! {
         Charge = "charge", U8, rw;
         /// Writable: EXE5's dark chips set it (0x080127D6).
         Mood = "mood", U8, rw;
-        /// The Beast Out turns left (writable: EXE6's beast system spends
+        /// The Beast Out turns left (writable: EXE6's beast part spends
         /// them).
         BeastOutCounter = "beast_out_counter", U8, rw;
         /// The form the navi started the battle in.
@@ -483,7 +483,7 @@ named_fields! {
         /// The navi's game: 0 Gregar, 1 Falzar.
         Version = "version", U8, ro;
         /// The Regular chip's MB at most (+0x09, RegUp's), and the base HP
-        /// (+0x3E): the save's, which a game's save system writes as the
+        /// (+0x3E): the save's, which a game's save part writes as the
         /// round is set up.
         RegularMemory = "regular_memory", U8, rw;
         MaxBaseHp = "max_base_hp", U16, rw;
@@ -715,7 +715,7 @@ named_flags! {
         NaviSwitch = "navi_switch",
         SwitchKnockout = "switch_knockout",
         Mode9A = "mode9_a",
-        /// A system's takeover of the side's navi (EXE6's Cross special).
+        /// The rules' takeover of the side's navi (EXE6's Cross special).
         Takeover = "takeover",
         Volley = "volley",
         WeaknessHit = "weakness_hit",
@@ -893,7 +893,7 @@ pub struct CustomPlayer {
 
 named_flags! {
     /// A side's special in progress (the own-gauges mode;
-    /// `sub_802E4B8`): the SELECT special, or a system's takeover of the
+    /// `sub_802E4B8`): the SELECT special, or the rules' takeover of the
     /// side's navi (EXE6's Cross special).
     pub enum SideSpecial {
         None = "none",
@@ -1246,8 +1246,8 @@ pub trait CoreApi {
     fn set_dimmed(&mut self, on: bool);
     /// EXE5's 0x08006AAE: the navi `identity` (actor type navi, with a
     /// `body`) comes onto `panel` for `side`, brought by `summoner`, driven
-    /// by `system` (its `controller` and `navi_state`; of the summoner's
-    /// side's ruleset). None when a pool or the side's list of alive actors
+    /// by the rules of the summoner's side (their `controller` and
+    /// `navi_state`). None when a pool or the side's list of alive actors
     /// is full.
     fn spawn_navi(
         &mut self,
@@ -1255,7 +1255,6 @@ pub trait CoreApi {
         panel: PanelPos,
         side: u8,
         summoner: Option<ObjectRef>,
-        system: crate::SystemHandle,
     ) -> ApiResult<Option<ObjectRef>>;
     fn is_paused(&self) -> bool;
     /// `battle_isBattleOver`: a side has no navi left, or time is up.
@@ -1320,7 +1319,7 @@ pub trait CoreApi {
     /// leaving).
     fn lose_mood(&mut self, side: u8, n: u16);
     /// Whether `side`'s console starts its emotion window glitching (the
-    /// save's NaviCust bug flag; a ruleset's system decides it as the round
+    /// save's NaviCust bug flag; the rules decide it as the round
     /// is set up, as EXE6's patch cards do).
     fn set_emotion_window_glitch(&mut self, side: u8, on: bool);
     /// A side's installed patch cards in their list's order (handles), and
@@ -1338,12 +1337,12 @@ pub trait CoreApi {
     fn folder_problem(&mut self, rule: &str, text: &str);
     /// `sub_802E4B8`: the side's SELECT special or takeover in progress.
     fn side_special(&self, side: u8) -> SideSpecial;
-    /// A system's takeover of side `side`'s navi starts, for `ticks`
+    /// The rules' takeover of side `side`'s navi starts, for `ticks`
     /// (counted down in the navi's stage B, `sub_802E1D8`), or ends: while
-    /// it runs, idle asks the side's systems' `takeover` (EXE6's Cross
+    /// it runs, idle asks the side's rules' `takeover` (EXE6's Cross
     /// special: SideState +0x54 and +0x30).
     fn take_over(&mut self, side: u8, ticks: u16);
-    /// The side's custom screen, in a system's custom hook (its button's
+    /// The side's custom screen, in a custom hook of the rules (its button's
     /// functions; docs/design/rules-in-luau.md §4.4): the refusal sound;
     /// the shared machinery for the button under the cursor (the picked
     /// chips scrapped: EXE6's DustCross; the chips not picked dealt again:
@@ -1362,15 +1361,15 @@ pub trait CoreApi {
     fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;
     fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool>;
     fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str>;
-    /// More of the side's custom screen, for a system's buttons and windows
-    /// (§4.4). `system` is the calling system's place in the side's ruleset,
-    /// whose button, window or form a call names.
+    /// More of the side's custom screen, for the rules' buttons and windows
+    /// (§4.4). `by` (`custom_set_form`, `custom_form_taken`) is the calling
+    /// button's or window's name, whose pick holds the turn's form.
     fn custom_pick(&mut self, side: u8) -> ApiResult<()>;
     fn custom_play(&mut self, side: u8, sound: &str) -> ApiResult<()>;
     fn custom_set_column_icon(&mut self, side: u8, chip: Option<crate::ChipHandle>) -> ApiResult<()>;
     /// `ticks`: the ticks it has had already (EXE6's Cross window, whose
     /// first tick its opening's last runs).
-    fn custom_open_window(&mut self, side: u8, system: u8, window: &str, ticks: u16) -> ApiResult<()>;
+    fn custom_open_window(&mut self, side: u8, window: &str, ticks: u16) -> ApiResult<()>;
     fn custom_window_tick(&self, side: u8) -> ApiResult<u16>;
     fn custom_shake(&mut self, side: u8, magnitude: u16, ticks: u16) -> ApiResult<()>;
     fn custom_frame(&self, side: u8) -> ApiResult<u32>;
@@ -1379,41 +1378,44 @@ pub trait CoreApi {
     fn custom_fade(&mut self, side: u8, mode: &str, speed: u8) -> ApiResult<()>;
     fn custom_set_face(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
     fn custom_pick_first(&mut self, side: u8, icon: Option<crate::ChipHandle>) -> ApiResult<()>;
-    fn custom_set_button_state(&mut self, side: u8, system: u8, button: &str, state: &str) -> ApiResult<()>;
+    fn custom_set_button_state(&mut self, side: u8, button: &str, state: &str) -> ApiResult<()>;
     fn custom_update_availability(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_emblem(&mut self, side: u8, x: u32) -> ApiResult<()>;
-    /// The form the system's pick holds for the turn's start, with the
-    /// transform record's turns and Chaos flag (EXE5's Soul Unison; 0 and
-    /// false elsewhere).
-    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<crate::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()>;
-    fn custom_form_taken(&self, side: u8, system: u8) -> ApiResult<bool>;
+    /// The form a pick holds for the turn's start, with the transform
+    /// record's turns and Chaos flag (EXE5's Soul Unison; 0 and false
+    /// elsewhere), and which of the rules' buttons or windows (`by`, its
+    /// name) made the pick.
+    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<crate::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()>;
+    /// Whether a pick another button or window than `by` made holds the
+    /// turn's form.
+    fn custom_form_taken(&self, side: u8, by: &str) -> ApiResult<bool>;
     fn custom_full(&self, side: u8) -> ApiResult<bool>;
-    fn custom_button_picked(&self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
+    fn custom_button_picked(&self, side: u8, button: &str) -> ApiResult<bool>;
     /// The last pick, if it is a chip (dealt, or a link navi's own), as the
     /// screen checked it (`custom.last_pick`).
     fn custom_last_pick(&mut self, side: u8) -> ApiResult<Option<CustomPick>>;
-    /// The system's button `button` takes the last pick's place, first in
+    /// The rules' button `button` takes the last pick's place, first in
     /// the selection (EXE5's soul given for a chip, 0x080233E0); false when
     /// the last pick isn't a chip (`custom.trade_last_pick`).
-    fn custom_trade_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
-    /// The system's button `button` is used on the last pick, a chip with
+    fn custom_trade_last_pick(&mut self, side: u8, button: &str) -> ApiResult<bool>;
+    /// The rules' button `button` is used on the last pick, a chip with
     /// no button attached yet: the pick carries `modifiers` (the hand's
     /// modifier bits) into the hand, and the button is picked until B takes
     /// the chip back (EXE5's capsules, 0x080237B4); false when the last pick
     /// isn't such a chip (`custom.attach_to_last_pick`).
-    fn custom_attach_to_last_pick(&mut self, side: u8, system: u8, button: &str, modifiers: u8) -> ApiResult<bool>;
+    fn custom_attach_to_last_pick(&mut self, side: u8, button: &str, modifiers: u8) -> ApiResult<bool>;
     /// The last pick, a chip dealt from the folder, leaves the picks for
-    /// the system's button `button`, which is picked (EXE5's Arm Change,
+    /// the rules' button `button`, which is picked (EXE5's Arm Change,
     /// 0x080236C0: B, with the picks as they were, puts it back; at OK it
     /// leaves the folder); false when the last pick isn't such a chip
     /// (`custom.hold_last_pick`).
-    fn custom_hold_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
-    /// The chip the system's button `button` holds, as the screen checked
+    fn custom_hold_last_pick(&mut self, side: u8, button: &str) -> ApiResult<bool>;
+    /// The chip the rules' button `button` holds, as the screen checked
     /// it (`custom.held_pick`).
-    fn custom_held_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<Option<crate::ChipHandle>>;
+    fn custom_held_pick(&mut self, side: u8, button: &str) -> ApiResult<Option<crate::ChipHandle>>;
     /// The held chip's icon in the column cell it left, shown or not
     /// (`custom.set_held_icon`: EXE5's Arm Change's blink, 0x080236EC).
-    fn custom_set_held_icon(&mut self, side: u8, system: u8, button: &str, shown: bool) -> ApiResult<()>;
+    fn custom_set_held_icon(&mut self, side: u8, button: &str, shown: bool) -> ApiResult<()>;
     /// The screen's fade is still running (`custom.fading`).
     fn custom_fading(&self, side: u8) -> ApiResult<bool>;
     /// The screen's cursor (its slot), and moving it; whether a key (its
@@ -1423,7 +1425,7 @@ pub trait CoreApi {
     fn custom_set_cursor(&mut self, side: u8, slot: u8) -> ApiResult<()>;
     fn custom_pressed(&self, side: u8, key: &str) -> ApiResult<bool>;
     fn custom_repeated(&self, side: u8, key: &str) -> ApiResult<bool>;
-    /// The screen's drawing, for a system's window: the window's sprites
+    /// The screen's drawing, for a window of the rules: the window's sprites
     /// (`sub_80279C8`: the emblem, the Regular chip's frame and the last
     /// turns' block), the Regular chip's frame alone (`sub_802899C`), the
     /// Cross window's cursor (`sub_80289E4`), the chip window showing the
@@ -1437,12 +1439,12 @@ pub trait CoreApi {
     fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()>;
     fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()>;
     fn custom_set_cross_tab(&mut self, side: u8, on: bool) -> ApiResult<()>;
-    /// R in a system's window: `form`'s description (`sub_8026E78`; three
+    /// R in a window of the rules: `form`'s description (`sub_8026E78`; three
     /// lines without one), back to the window when it closes.
     fn custom_describe(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
-    /// The systems' buttons' states asked again (`sub_8028F48`).
+    /// The rules' buttons' states asked again (`sub_8028F48`).
     fn custom_refresh_buttons(&mut self, side: u8) -> ApiResult<()>;
-    /// What the screen reads of its player that isn't a system's setup: the
+    /// What the screen reads of its player that isn't the rules' setup: the
     /// emotion it reads, and a random battle.
     fn custom_player(&self, side: u8) -> ApiResult<CustomPlayer>;
     fn end_takeover(&mut self, side: u8);
@@ -1741,15 +1743,12 @@ pub trait CoreApi {
     /// The object's content state (None for kinds the engine implements).
     fn state(&self, o: ObjectRef) -> Option<&ContentState>;
     fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState>;
-    /// The state of the system in place `slot` of side `side`'s ruleset
-    /// (docs/design/rules-in-luau.md §5).
-    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut Block>;
-    /// The player setup of that system: what the player brought, read-only
-    /// in battle.
-    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&Block>;
-    /// The place of system `system` in side `side`'s ruleset, if the
-    /// ruleset has it (`system.state_of`, `battle.side_has_system`).
-    fn system_slot_of(&self, side: u8, system: crate::SystemHandle) -> Option<u8>;
+    /// The game's rules' state of side `side` (docs/design/rules-in-luau.md
+    /// §5): one block, which the rules' parts share.
+    fn rules_state_mut(&mut self, side: u8) -> ApiResult<&mut Block>;
+    /// The side's player's setup of the rules: what the player brought,
+    /// read-only in battle.
+    fn rules_setup(&self, side: u8) -> ApiResult<&Block>;
     /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
     fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
     /// `sub_801BD3C`: the one-shot effect `look` on each field panel of

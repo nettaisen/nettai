@@ -536,7 +536,7 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
   0x95, the digits 0x99, the slots 0x9F, the column's icons 0xE1 and cells 0x47, the turn limit 0x4B, the name
   bar 0x1B6), a hidden slot filled with tile 2, the cursor over OK at (0x58, 0x70) and over the button at (0x58,
   0x88) with their corners (0x08024714, 0x08024744); the 13 element icons in EXE5's family order, put in the
-  engine's; the re-deal and scrap buttons; the soul button (the souls system's; `buttons`: its states' tiles
+  engine's; the re-deal and scrap buttons; the soul button (the souls part's; `buttons`: its states' tiles
   0x086FBB64, its picture
   0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
   sprite palette 13, 0x0874AAB8); the emblems (each ROM's seven, MegaMan's and its own team's six navis',
@@ -1064,7 +1064,7 @@ The smallest engine additions EXE5's data and rules need, for the rules agent (n
    systems that count families (AntiRecv's) read them.
 6. **NaviStats +0x0E** (EXE5's mood byte, §13): a recovery adds its +0x0A to it (0x08012802, cap 254, not from 0 or
    0xFF); a navi chip's leaving subtracts its +0x2E (0x08012820, floor 1). A field of EXE5's navi record and a
-   hook on recovery and on a navi chip's leaving (or the emotion system's, when EXE5's comes).
+   hook on recovery and on a navi chip's leaving (or the emotion part's, when EXE5's comes).
 7. **The flow** (§15.4's table): a `flow` section for its numbers (the result waits), and the arena's game
    choosing the flow's code where EXE5's differs (the state machine's structure, below).
 8. **Mixes with their own sections** (rules-in-luau.md R2): Soul Unison's custom-screen layout (the shared custom
@@ -1458,11 +1458,11 @@ More for §15.3:
    icons and chip window on) and closes the tick after (its state 8, 0x08025FEC). Built as the flow section's
    `result_words` (EXE6 50, EXE5 49, of the sending side's game); an earlier `custom_closes_with_results` (the screen
    closing on the tick both results are in) had the close on the right tick but the results a tick late. EXE5's
-   screen sets no AIData +0x0F on the navis (EXE6's `sub_8009338` does): EXE6's beast system's `custom_closed`.
+   screen sets no AIData +0x0F on the navis (EXE6's `sub_8009338` does): EXE6's beast part's `custom_closed`.
    **The dark chip offer** (0x08025114, from the screen's opening 0x08022C5C, after its hand size 0x08025BE4 and
    before the folder closes up 0x080250E6): a worried or dark MegaMan (emotions 1 and 5) gets one of his folder's
    dark chips (0xBB-0xC6) moved to the place after the hand unless the first is dealt: the first taken, each later
-   one on an RNG1 draw's low bit, DrkRecov first under a quarter of his HP. Built in EXE5's light and dark system's
+   one on an RNG1 draw's low bit, DrkRecov first under a quarter of his HP. Built in EXE5's light and dark part's
    `custom.deal` (the custom screen's deal hook, with `custom.folder`, `custom.swap_folder`, `custom.hand_size`);
    its RNG1 draws were what the dark chip recordings' consoles were ahead by.
 Items 14 to 18 are built (rules-in-luau.md, "P1b"); 19 and the dark chips' costs wait for a replay that needs
@@ -1501,7 +1501,7 @@ them.
 - **Where it is.** A soul is a form of MegaMan's, named by its id (`colonelsoul`), never by the original's number.
   - *The soul's own* is in its folder, navis/megaman/forms/<soul>/: the form (init.luau), its weapons, its sprite's
     attach points (attach_points.luau) and what only it does. The form says what the rules ask of a soul: its
-    family (`soul = { family }`, the engine's), its buster arm's animation (`buster_arm`), and the souls system's
+    family (`soul = { family }`, the engine's), its buster arm's animation (`buster_arm`), and the souls part's
     fields (the system's `extends`; content/exe5/types.d.luau types them): its navi's image at the change
     (`image`, a `SoulImage`: the sprite, and what the image puts on and takes off), what it adds to the custom
     screen (`custom`, a `SoulCustom`: below), its blade's animation (`blade_anim`), its charged sword's step behind
@@ -1517,7 +1517,7 @@ them.
     `forms.souls`): the order of the soul button's icons in a pack, by which the frontend takes a soul's icon
     (nettai-render's `soul_place`; nettai-match's `megamans_souls_are_in_the_order_of_their_numbers` holds the
     list to compat's numbers).
-- **The soul button** (the souls system's button `soul`, rules/souls/custom.luau: EXE5's layout's slot 11,
+- **The soul button** (the souls part's button `soul`, rules/souls/custom.luau: EXE5's layout's slot 11,
   0x08023C54, 0x08024B28, 0x08024972): shown for MegaMan with souls, outside battle flag 0x40, with the save's
   Soul Unison (event flag 0, the setup's `soul_unison`), unless he is worried or dark (in a soul or angry he may);
   lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { family }`),
@@ -1589,7 +1589,7 @@ them.
   - Not built: the Liberation Missions' team navis' part of the same routine (the screen's +0x10 nonzero: a chip
     pair by navi from 0x08025EA0 in slot 9, 0x08023EFE; the navi switch, state 0x40; battle mode 1's button in
     slot 11). A netbattle's navi is MegaMan.
-- **SearchSoul's Shuffle** (the souls system's button `redeal`, the name the frontend draws the pack's re-deal
+- **SearchSoul's Shuffle** (the souls part's button `redeal`, the name the frontend draws the pack's re-deal
   button's tiles and picture for; navis/megaman/forms/searchsoul/shuffle.luau; the per-soul slots,
   0x08023CF8, by the soul the emotion routine leaves in r1, so never in battle mode 1): slots 8 and 9 (types 4 and 5),
   its right neighbor the special slot, its left the eighth chip's; three uses a screen (3 less the screen's +0x16,
@@ -1599,7 +1599,7 @@ them.
   in the hand (0x080253E8's table, 0x080254C8: the custom-screen rules' `redeal_kept`, by how many of the hand it
   deals again: 0, 0, 0, 1, 1, 2, 2, 3, 3): the hand's are shuffled among themselves, then all but the first kept
   with the rest of the folder. Its scenarios: souls/03-cursor/shuffle, shuffle-3, shuffle-picked-1 to 5.
-- **NumberSoul's hand of ten** (navis/megaman/forms/numbersoul/hand.luau, through the souls system's
+- **NumberSoul's hand of ten** (navis/megaman/forms/numbersoul/hand.luau, through the souls part's
   `custom.hand_size`; 0x08025BE4): MegaMan
   in NumberSoul is dealt ten chips whatever his custom level, in battle modes 0 and 6 (mode 1 takes the same branch, but
   its emotion routine, 0x080127C0, leaves the stats' address in r1, not the soul: the custom level's hand; any other
@@ -1610,7 +1610,7 @@ them.
   in, blinks and fades; MegaMan emerges in the soul (the
   old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake, its form's
   `emerge_shake`), the
-  status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls system
+  status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls part
   (rules/souls/init.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
   and asks for the revert when they run out (0x0801246C); the revert is the souls' own (`FormData::revert`, the
   pause handler's: rules/souls/revert.luau, 0x080121D8: back to `exe5:base` with no state saved).
@@ -1651,7 +1651,7 @@ them.
     damaging Null chips +10 and NapalmSoul's damaging Fire chips +40 on a use that isn't charged with the A charge
     not full (the form's `chip_bonus`, `uncharged`); in any other form, MegaMan's damaging Aqua chips +30 on sea
     (the navi's `panel_bonus`), the sea under him turning Normal as the use is prepared (0x080100B0), after the
-    light-dark system's dark-chip use and cost (the system hook `chip_cost`, 0x08010030) and before its
+    light and dark part's dark-chip use and cost (the system hook `chip_cost`, 0x08010030) and before its
     light/dark check (`chip_check`, 0x08010118).
   - **The charged swords** (action 0x13 by the attack's charge, 0x080EBD04; lib/swords' `SlashSteps` for the common
     slash): a charged slash steps two panels ahead (charge 1, 0x080125D4), or in ShadowSoul (and by a charge of 2)
@@ -1734,7 +1734,7 @@ byte the same.
    for its AI index 0x16; its per-side list is the system's side state, its per-navi state (AIData +0xF0, sixteen
    bytes) an actor state the system declares (`actor_state`), allocated with the actor (several Dark MegaMen can
    stand on one side: each Chaos Unison's failure brings one). A side whose ruleset hasn't the system leaves such
-   a navi standing (a mixed battle's EXE6 side); the souls system brings EXE5's AI into a mix that needs it.
+   a navi standing (a mixed battle's EXE6 side); the souls part brings EXE5's AI into a mix that needs it.
 4. *Its chips and weapons:* `navi:start_chip_attack(chip)` (S4) for the list's chips, the weapon routines by
    number as the content's weapons (0x3E), its stats the side's (`battle.navi(side)`, as EXE5 reads them).
 5. *HP, deletion, targeting, the round's end:* the navi's own HP and collision; its deletion as any navi's, not
@@ -1938,12 +1938,12 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 - **The starting mood** (0x08010EC8's, where EXE6's `sub_8013892` sets 0x80): by the light/dark value (0x0801283A):
   under 470 0, under 500 64, from 1000 190, else value / 20 + 103 (500 gives 0x80, so a light MegaMan's is EXE6's).
   Battle effect 0x20000 holds the value at 500 (0x08010EDC). The hook `starting_mood`, which the light and dark
-  system answers.
+  part answers.
 - **Full Synchro on a counter** (0x08016FDC, EXE6's `sub_801A200`): the counterer, in no soul, to 0xFF through the
   setter (rules/emotion, `exe5:emotion`). The aura (0x0801100C, 0x080C45E0) is EXE6's, for an AI index up to 12 in
   EXE5's emotion 2.
 - **The palette** (0x0800DD94, EXE6's `sub_801002C`; presentation): the hook `navi_palette`, the light and dark
-  system's. Dark MegaMan (a navi in auto battle of AI index 0x16 or 0x17) 1, another navi in auto battle 0; MegaMan in AI index
+  part's. Dark MegaMan (a navi in auto battle of AI index 0x16 or 0x17) 1, another navi in auto battle 0; MegaMan in AI index
   23 2; unable to charge 1; in a soul 0, or 2 with the Chaos Unison charge armed; else by the mood: 0xFF 4, 0 2 (dark)
   or 3 (light), else the value's tier (0x0800DE5C: from 1000 4, from 500 0, from 470 3, else 2). Then Hub Style's
   `hub_style * 5 + 20`, else the element's `* 5` (none in a soul). A link navi's (0x0800DA98, by EXE5's navi numbers)
@@ -2014,7 +2014,7 @@ which the engine runs for a side whose rules say so (the status section's `emoti
     request (`weakness_hit_breaks_form`) alone.
 
 - **The light/dark bug codes** (0x0801103E, the navi's hit NaviCust bug; the hook `navi_bug`, the light and dark
-  system's): a hit with hit flag 0x400 brings nothing to a value of 1000 or more (not even the weapons' reload); code
+  part's): a hit with hit flag 0x400 brings nothing to a value of 1000 or more (not even the weapons' reload); code
   0xFD is an HP drain of level 1 (code 0x18, argument 1, through the drain's flags rule) on a dark MegaMan (the value's
   tier 2), code 0xFC the same from 500; else neither is anything. Django's hits bring both: his recordings match.
 
@@ -2289,7 +2289,7 @@ recording).
   chips/anubis/anubis, ParaBom and ResetBom chips/crakbom/crakbom, MudWave and RedWave chips/wavepit/wavepit. A
   family's is in its lib/ folder, its builder with it: lib/bombs (bombs, seed), lib/guard (guard, the Guard chips'
   shock wave), lib/traps (traps, the Anti traps' anti_trap), lib/instruments (instrument), lib/navi_chips (the
-  navi chips' throw marker). The soul system's are rules/souls' (shade, image); a soul's own are in its form's
+  navi chips' throw marker). The souls part's are rules/souls' (shade, image); a soul's own are in its form's
   folder (§15.8).
 - **objects/** keeps what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer,
   projectile with its variants, rising-bubble), and six modules whose `define.kind` keys name no owner, which
@@ -2307,7 +2307,7 @@ recording).
 ### 15.13 EXE5's NaviCust (as built)
 
 EXE5's compile (0x0813FA10; 0x0813F97C runs it, then the patch cards, 0x08138214) is EXE6's routine for routine, so the
-two share it: content/exelib/navicust/compile.luau, each game's navicust system passing its board, its bugs and its
+two share it: content/exelib/navicust/compile.luau, each game's navicust part passing its board, its bugs and its
 quirks (`NaviCustGame`). EXE6's compile is unchanged (trace-tests' navicust: Tango's four saves and the lab's 1274
 NaviCusts). EXE5's, content/exe5/rules/navicust:
 
@@ -2450,7 +2450,7 @@ rules/patch_cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   4): with cards in the save's list (its count, switched on or not) the cards' flag 0x10C4, which the routine sets
   when the stats after the cards have a bug (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,
   no supports); without, the NaviCust's flag 0x10C1, which its bugs' routine sets when a bug applies (0x08140040).
-  Each console reads its own save's. The navicust system's `glitch`, and the patch-cards system with cards; a
+  Each console reads its own save's. The navicust part's `glitch`, and the patch cards part with cards; a
   recording's setup carries both consoles' (`emotion_window_glitches`, oracle-trace's `exe5_emotion_window_glitch`).
   No setup gives the engine the flag: the rules make it, from a NaviCust's compile or, for a side without one
   (whose stats are as a compile left them), from the NaviCust bugs in the stats. A recording that carries its
@@ -2483,7 +2483,7 @@ rules/patch_cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   `hub_style * 5 + 20` and the faces move (§15.10), and in a link battle the enemy names show the navi's variant
   name (0x0801AE3A, presentation: with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else
   0xEA, BCMegaMn, in Hub Style; +0x53 is the reload's, 0x08135968, 1 exactly when 0x08137A58 finds no Hub Style:
-  the light-dark system's `round_setup`, `battle.set_name_variant`, the locales' `variant_name`; checked against
+  the light and dark part's `round_setup`, `battle.set_name_variant`, the locales' `variant_name`; checked against
   mGBA by verification's library-exe5 custom/hub-name). Battle effect 0x40000 names every entry 0xE6 (ChaosLrd): no
   stage of EXE5's content has it, not built. A deliberate difference: the routine's names start as side 1's actors'
   NameIDs (0x080091A2 reads the battle state's +0x90 list, whichever side the console is), and the link battle's
@@ -2628,7 +2628,7 @@ charged Fire chips start its bomb's action, 0x08010442, by the soul alone: Napal
 
 **The level.** A team navi's attacks take their damage from the damage rows (0x0801D74F, seven entries a row,
 0x0800EBC4) at the side's level: a word a side (0x0203C870) the init exchange sends, which 0x0800EBE0 counts from the
-save's story flags, 0x300 on, up to 6. In content it is EXE5's save system's `level`, which the engine knows nothing
+save's story flags, 0x300 on, up to 6. In content it is EXE5's save part's `level`, which the engine knows nothing
 of: `exe5.navi_level(side)` (rules/api.luau) through lib/navi_level for a weapon, and `damage =
 navi_level.row({ ... })` for an own chip (the chips' damage formulas 50 to 72, each a row: 0x0800EAF8), a function of
 the side, which the round's setup asks once for each side (`Battle::given`).
@@ -2652,7 +2652,7 @@ their own navis): ProtoMan and Colonel 200, 300, 350, 400, 450, 500, 600, 700, 8
 400, 500, 550, 600, 650, 700, 800, 900; GyroMan and ShadowMan 250, 250, 250, 300, 350, 400, 500, 600, 700; NapalmMan
 and TomahawkMan 300, 300, 300, 300, 350, 400, 500, 600, 700; SearchMan and NumberMan 300, 300, 300, 300, 300, 350,
 450, 550, 650; Meddy and ToadMan 300, 300, 300, 300, 300, 300, 400, 500, 600. In content it is the navi's `story`
-(`hp` and `max_level`), which EXE5's save system reads as the round is set up (its HP, current, maximum and base,
+(`hp` and `max_level`), which EXE5's save part reads as the round is set up (its HP, current, maximum and base,
 at the side's `level`): a level below the last is the progress, and at the last the story is taken as done. A side
 of a team navi states its level (a new one's is 0, a tool's statement); a save's import takes the save's level and,
 where its version has the navi, the light/dark value of the navi's own block.

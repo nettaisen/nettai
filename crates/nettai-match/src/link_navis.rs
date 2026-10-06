@@ -5,7 +5,7 @@
 //! tables are the navi definitions' `levels` (content/exe6/navis/*/init.luau);
 //! docs/engine/link-navis.md has the routines and how the level is set.
 //!
-//! A side states its navi and its level, and no stats: EXE6's save system
+//! A side states its navi and its level, and no stats: EXE6's save part
 //! (content/exe6/rules/save, rules/levels) runs the reload on the navi's
 //! fresh stats as the round is set up, the game cleared and in the real
 //! world, so a round starts as the save's reload left the navi. The chip
@@ -133,7 +133,7 @@ mod tests {
     }
 
     /// A level's gains clamp: MegaMan from a navi code at level 14 gets its
-    /// gains over his NaviCust (EXE6's navicust system), the buster's levels
+    /// gains over his NaviCust (EXE6's navicust part), the buster's levels
     /// at 4, the Mega level at 10, the custom level at 8.
     #[test]
     fn a_levels_gains_clamp() {

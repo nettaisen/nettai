@@ -1,5 +1,5 @@
 --!strict
--- Made-up patch cards for the engine's tests of EXE6's patch-cards system
+-- Made-up patch cards for the engine's tests of EXE6's patch cards part
 -- (rules/patch_cards; EXE6's cards are content/exe6/patch_cards).
 
 local cards = require("../rules/patch_cards/cards")

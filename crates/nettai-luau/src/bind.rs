@@ -28,7 +28,7 @@ use nettai_content_api::{
     ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
-use nettai_content_api::{ObjectRef, SystemHook};
+use nettai_content_api::{ObjectRef, RulesHook};
 use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
@@ -38,57 +38,56 @@ use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMetho
 
 type Ctx = (NonNull<dyn CoreApi>, NonNull<Bound>);
 
-/// The system a call runs for: its side and its place in the side's
-/// ruleset (docs/design/rules-in-luau.md §5.3).
+/// The side a call of the game's rules runs for (docs/design/
+/// rules-in-luau.md §5.3): whose rules' state `rules.state()` is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SystemCtx {
+pub struct RulesCtx {
     pub side: u8,
-    pub slot: u8,
 }
 
 thread_local! {
     /// The engine, and what the binding reads, of the call running on this
     /// thread.
     static CTX: Cell<Option<Ctx>> = const { Cell::new(None) };
-    /// The system the running call is for, if it is a system's: what
-    /// `system.state()` reaches. Every call sets it (to none for content's
-    /// own calls), so a system's state is out of reach of anything a
-    /// system's hook leads to.
-    static SYSTEM: Cell<Option<SystemCtx>> = const { Cell::new(None) };
+    /// The side the running call is the rules' for, if it is the rules':
+    /// what `rules.state()` reaches. Every call sets it (to none for
+    /// content's own calls), so the rules' state is out of reach of
+    /// anything else a hook of theirs leads to.
+    static RULES: Cell<Option<RulesCtx>> = const { Cell::new(None) };
 }
 
 /// Makes the engine reachable from script callbacks for one call.
 pub struct Enter<'a> {
     prev: Option<Ctx>,
-    prev_system: Option<SystemCtx>,
+    prev_rules: Option<RulesCtx>,
     _borrow: PhantomData<&'a mut ()>,
 }
 
 impl<'a> Enter<'a> {
-    /// For a call of `system`'s, or of content's own (none).
-    pub fn new(api: &'a mut dyn CoreApi, bound: &'a Bound, system: Option<SystemCtx>) -> Enter<'a> {
+    /// For a call of the rules' (for a side), or of content's own (none).
+    pub fn new(api: &'a mut dyn CoreApi, bound: &'a Bound, rules: Option<RulesCtx>) -> Enter<'a> {
         let api: NonNull<dyn CoreApi + 'a> = NonNull::from(api);
         // SAFETY: only the lifetime is erased. The pointer is reachable
         // (through CTX) only while this guard lives, and the guard borrows
         // `api` exclusively for its whole life.
         let api: NonNull<dyn CoreApi + 'static> = unsafe { std::mem::transmute(api) };
         let prev = CTX.with(|c| c.replace(Some((api, NonNull::from(bound)))));
-        let prev_system = SYSTEM.with(|c| c.replace(system));
-        Enter { prev, prev_system, _borrow: PhantomData }
+        let prev_rules = RULES.with(|c| c.replace(rules));
+        Enter { prev, prev_rules, _borrow: PhantomData }
     }
 }
 
 impl Drop for Enter<'_> {
     fn drop(&mut self) {
         CTX.with(|c| c.set(self.prev));
-        SYSTEM.with(|c| c.set(self.prev_system));
+        RULES.with(|c| c.set(self.prev_rules));
     }
 }
 
-/// The system the running call is for.
-fn system_ctx(what: &str) -> mlua::Result<SystemCtx> {
-    SYSTEM.with(|c| c.get()).ok_or_else(|| {
-        mlua::Error::runtime(format!("{what}: only a system's own calls reach its state (a hook the framework calls)"))
+/// The side the running call of the rules' is for.
+fn rules_ctx(what: &str) -> mlua::Result<RulesCtx> {
+    RULES.with(|c| c.get()).ok_or_else(|| {
+        mlua::Error::runtime(format!("{what}: only the rules' own calls reach their state (a hook the framework calls)"))
     })
 }
 
@@ -684,7 +683,7 @@ impl UserData for Object {
             Ok((p.x, p.y))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
-        // A controller's (the systems' `controller` hook).
+        // A controller's (the rules' `controller` hook).
         methods.add_method("next_chip", |_, this, ()| {
             let chip = with(|api, _| api.next_chip(this.0).map_err(api_error))?;
             bound(|b| chip.map_or(Ok(LuaValue::Nil), |c| Ok(LuaValue::Table(b.def_value(Registry::Chip, c.0)?))))
@@ -931,10 +930,10 @@ pub enum StateOf {
     /// The attack state as a state of this layout (an action's update's
     /// own, `navi:action_state(action)`), rather than the running action's.
     ActionAs(ObjectRef, StateId),
-    /// A system's state of a side (`system.state()`).
-    System(SystemCtx),
-    /// A system's player setup of a side (`system.setup()`): read-only.
-    Setup(SystemCtx),
+    /// The rules' state of a side (`rules.state()`).
+    Rules(RulesCtx),
+    /// A side's player's setup of the rules (`rules.setup()`): read-only.
+    Setup(RulesCtx),
 }
 
 impl State {
@@ -951,14 +950,14 @@ impl State {
                 StateOf::Object(o) => api.state_mut(o).ok_or_else(|| api_error(ApiError::NoState(o)))?,
                 StateOf::Action(o) => api.action_state_mut(o).map_err(api_error)?,
                 StateOf::ActionAs(o, id) => api.attack_state_for(o, id).map_err(api_error)?,
-                StateOf::System(c) => api.system_state_mut(c.side, c.slot).map_err(api_error)?,
+                StateOf::Rules(c) => api.rules_state_mut(c.side).map_err(api_error)?,
                 StateOf::Setup(_) if write => {
                     return Err(mlua::Error::runtime(format!(
                         "setup field `{key}`: a player's setup is read-only in battle"
                     )));
                 }
                 StateOf::Setup(c) => {
-                    setup = api.system_setup(c.side, c.slot).map_err(api_error)?.clone();
+                    setup = api.rules_setup(c.side).map_err(api_error)?.clone();
                     &mut setup
                 }
             };
@@ -1161,12 +1160,12 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("Vec3", vec3)?;
 
     g.set("int", int_lib(lua)?)?;
-    g.set("system", system_lib(lua)?)?;
+    g.set("rules", rules_lib(lua)?)?;
     g.set("custom", custom_lib(lua)?)?;
     Ok(())
 }
 
-/// `custom`: a side's custom screen, in its systems' custom hooks
+/// `custom`: a side's custom screen, in the rules' custom hooks
 /// (docs/design/rules-in-luau.md §4.4).
 fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
@@ -1219,8 +1218,9 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_cursor_state(side).map_err(api_error))
     });
-    // The calling system's place, whose button, window or form a call names.
-    let own = |what: &str| -> mlua::Result<u8> { Ok(system_ctx(what)?.slot) };
+    // (A button, a window or a form a call names is the rules': only their
+    // calls make it.)
+    let own = |what: &str| -> mlua::Result<()> { rules_ctx(what).map(|_| ()) };
     let chip_or_nil = |v: &LuaValue, what: &str| -> mlua::Result<Option<nettai_content_api::ChipHandle>> {
         if v.is_nil() { Ok(None) } else { Ok(Some(nettai_content_api::ChipHandle(bound(|b| def_arg(b, v, Registry::Chip, what))?))) }
     };
@@ -1242,9 +1242,9 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "open_window", move |_, (side, window, ticks): (LuaValue, String, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.open_window")?;
+        own("custom.open_window")?;
         let ticks = if ticks.is_nil() { 0 } else { int(&ticks, "ticks")? as u16 };
-        with(|api, _| api.custom_open_window(side, system, &window, ticks).map_err(api_error))
+        with(|api, _| api.custom_open_window(side, &window, ticks).map_err(api_error))
     });
     lib_fn!(lua, t, "window_tick", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1285,8 +1285,8 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "set_button_state", move |_, (side, button, state): (LuaValue, String, String)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.set_button_state")?;
-        with(|api, _| api.custom_set_button_state(side, system, &button, &state).map_err(api_error))
+        own("custom.set_button_state")?;
+        with(|api, _| api.custom_set_button_state(side, &button, &state).map_err(api_error))
     });
     lib_fn!(lua, t, "update_availability", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1297,15 +1297,16 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let x = int(&x, "x")? as u32;
         with(|api, _| api.custom_draw_emblem(side, x).map_err(api_error))
     });
-    lib_fn!(lua, t, "set_form", move |_, (side, form, turns, chaos): (LuaValue, LuaValue, Option<LuaValue>, Option<bool>)| {
+    // `by`: the rules' button or window whose pick holds the form.
+    lib_fn!(lua, t, "set_form", move |_, (side, by, form, turns, chaos): (LuaValue, String, LuaValue, Option<LuaValue>, Option<bool>)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.set_form")?;
+        own("custom.set_form")?;
         let form = form_or_nil(&form, "custom.set_form")?;
         let turns = match turns {
             Some(v) if !v.is_nil() => int(&v, "turns")? as u8,
             _ => 0,
         };
-        with(|api, _| api.custom_set_form(side, system, form, turns, chaos.unwrap_or(false)).map_err(api_error))
+        with(|api, _| api.custom_set_form(side, &by, form, turns, chaos.unwrap_or(false)).map_err(api_error))
     });
     lib_fn!(lua, t, "last_pick", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1320,39 +1321,39 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "attach_to_last_pick", move |_, (side, button, modifiers): (LuaValue, String, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.attach_to_last_pick")?;
+        own("custom.attach_to_last_pick")?;
         let modifiers = u8_arg(modifiers, "modifiers")?;
-        with(|api, _| api.custom_attach_to_last_pick(side, system, &button, modifiers).map_err(api_error))
+        with(|api, _| api.custom_attach_to_last_pick(side, &button, modifiers).map_err(api_error))
     });
     lib_fn!(lua, t, "hold_last_pick", move |_, (side, button): (LuaValue, String)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.hold_last_pick")?;
-        with(|api, _| api.custom_hold_last_pick(side, system, &button).map_err(api_error))
+        own("custom.hold_last_pick")?;
+        with(|api, _| api.custom_hold_last_pick(side, &button).map_err(api_error))
     });
     lib_fn!(lua, t, "held_pick", move |_, (side, button): (LuaValue, String)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.held_pick")?;
-        let chip = with(|api, _| api.custom_held_pick(side, system, &button).map_err(api_error))?;
+        own("custom.held_pick")?;
+        let chip = with(|api, _| api.custom_held_pick(side, &button).map_err(api_error))?;
         bound(|b| chip_value(b, chip))
     });
     lib_fn!(lua, t, "set_held_icon", move |_, (side, button, shown): (LuaValue, String, bool)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.set_held_icon")?;
-        with(|api, _| api.custom_set_held_icon(side, system, &button, shown).map_err(api_error))
+        own("custom.set_held_icon")?;
+        with(|api, _| api.custom_set_held_icon(side, &button, shown).map_err(api_error))
     });
     lib_fn!(lua, t, "trade_last_pick", move |_, (side, button): (LuaValue, String)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.trade_last_pick")?;
-        with(|api, _| api.custom_trade_last_pick(side, system, &button).map_err(api_error))
+        own("custom.trade_last_pick")?;
+        with(|api, _| api.custom_trade_last_pick(side, &button).map_err(api_error))
     });
     lib_fn!(lua, t, "fading", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_fading(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "form_taken", move |_, side: LuaValue| {
+    lib_fn!(lua, t, "form_taken", move |_, (side, by): (LuaValue, String)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.form_taken")?;
-        with(|api, _| api.custom_form_taken(side, system).map_err(api_error))
+        own("custom.form_taken")?;
+        with(|api, _| api.custom_form_taken(side, &by).map_err(api_error))
     });
     lib_fn!(lua, t, "full", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1360,8 +1361,8 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "button_picked", move |_, (side, button): (LuaValue, String)| {
         let side = u8_arg(side, "side")? & 1;
-        let system = own("custom.button_picked")?;
-        with(|api, _| api.custom_button_picked(side, system, &button).map_err(api_error))
+        own("custom.button_picked")?;
+        with(|api, _| api.custom_button_picked(side, &button).map_err(api_error))
     });
     lib_fn!(lua, t, "cursor", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1424,52 +1425,41 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     Ok(t)
 }
 
-/// `system`: what a system's own calls reach (docs/design/rules-in-luau.md
-/// §4.5, §5.3): its state and its player's setup, of the side it was called
-/// for, and that side.
-fn system_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
+/// `rules`: what the game's rules' own calls reach (docs/design/
+/// rules-in-luau.md §4.5, §5.3): their state and the player's setup, of
+/// the side they were called for, and that side.
+fn rules_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
-    lib_fn!(lua, t, "state", |_, ()| Ok(State(StateOf::System(system_ctx("system.state")?))));
-    lib_fn!(lua, t, "setup", |_, ()| Ok(State(StateOf::Setup(system_ctx("system.setup")?))));
-    lib_fn!(lua, t, "side", |_, ()| Ok(system_ctx("system.side")?.side));
-    // Another system's state of side `side`, for a game's rules alone (its
-    // API module, docs/design/rules-in-luau.md, As built S8): the game's
-    // API reaches what its systems keep (EXE6's bug frags, the dark-chips
-    // system's) for its chips, which never call it themselves. Nil when the
-    // side's ruleset lacks the system.
-    lib_fn!(lua, t, "state_of", |lua, (side, system): (LuaValue, LuaValue)| {
-        let caller = crate::define::caller(lua);
-        if !nettai_content_api::keys::local(&caller).starts_with("rules/") {
-            return Err(mlua::Error::runtime(format!(
-                "{caller}: system.state_of is a game's rules' (a module under rules/, its API module): content reaches a system's state through the game's API"
-            )));
-        }
-        let side = u8_arg(side, "side")? & 1;
-        let slot = with(|api, b| {
-            let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "system.state_of")?);
-            Ok(api.system_slot_of(side, system))
-        })?;
-        Ok(slot.map(|slot| State(StateOf::System(SystemCtx { side, slot }))))
+    lib_fn!(lua, t, "state", |_, ()| Ok(State(StateOf::Rules(rules_ctx("rules.state")?))));
+    lib_fn!(lua, t, "setup", |_, ()| Ok(State(StateOf::Setup(rules_ctx("rules.setup")?))));
+    lib_fn!(lua, t, "side", |_, ()| Ok(rules_ctx("rules.side")?.side));
+    // The rules' state of side `side`, for a game's rules alone (its API
+    // module, docs/design/rules-in-luau.md, As built S8): the game's API
+    // reaches what its rules keep (EXE6's bug frags) for its chips, which
+    // never call it themselves.
+    lib_fn!(lua, t, "state_of", |lua, side: LuaValue| {
+        rules_only(lua, "rules.state_of", "state")?;
+        Ok(State(StateOf::Rules(RulesCtx { side: u8_arg(side, "side")? & 1 })))
     });
-    // Another system's player setup of side `side`, read-only, likewise a
+    // Side `side`'s player's setup of the rules, read-only, likewise a
     // game's rules' alone (its API module: EXE6's and EXE5's navi level,
-    // their save system's `level`). Nil when the side's ruleset lacks the
-    // system.
-    lib_fn!(lua, t, "setup_of", |lua, (side, system): (LuaValue, LuaValue)| {
-        let caller = crate::define::caller(lua);
-        if !nettai_content_api::keys::local(&caller).starts_with("rules/") {
-            return Err(mlua::Error::runtime(format!(
-                "{caller}: system.setup_of is a game's rules' (a module under rules/, its API module): content reaches a system's setup through the game's API"
-            )));
-        }
-        let side = u8_arg(side, "side")? & 1;
-        let slot = with(|api, b| {
-            let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "system.setup_of")?);
-            Ok(api.system_slot_of(side, system))
-        })?;
-        Ok(slot.map(|slot| State(StateOf::Setup(SystemCtx { side, slot }))))
+    // their save part's `level`).
+    lib_fn!(lua, t, "setup_of", |lua, side: LuaValue| {
+        rules_only(lua, "rules.setup_of", "setup")?;
+        Ok(State(StateOf::Setup(RulesCtx { side: u8_arg(side, "side")? & 1 })))
     });
     Ok(t)
+}
+
+/// A call only a game's rules make (a module under rules/: its API module).
+fn rules_only(lua: &Lua, what: &str, reaches: &str) -> mlua::Result<()> {
+    let caller = crate::define::caller(lua);
+    if nettai_content_api::keys::local(&caller).starts_with("rules/") {
+        return Ok(());
+    }
+    Err(mlua::Error::runtime(format!(
+        "{caller}: {what} is a game's rules' (a module under rules/, its API module): content reaches the rules' {reaches} through the game's API"
+    )))
 }
 
 fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
@@ -1481,14 +1471,13 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "spawn_navi",
-        |lua, (identity, x, y, side, summoner, system): (LuaValue, LuaValue, LuaValue, LuaValue, LuaValue, LuaValue)| {
+        |lua, (identity, x, y, side, summoner): (LuaValue, LuaValue, LuaValue, LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             let side = u8_arg(side, "side")?;
             let summoner = object_arg(&summoner, "summoner")?;
             let o = with(|api, b| {
                 let identity = nettai_content_api::IdentityHandle(def_arg(b, &identity, Registry::Identity, "battle.spawn_navi")?);
-                let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "battle.spawn_navi")?);
-                api.spawn_navi(identity, p, side, summoner, system).map_err(api_error)
+                api.spawn_navi(identity, p, side, summoner).map_err(api_error)
             })?;
             object_value(lua, o)
         }
@@ -1575,15 +1564,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.emotion(side).name()))
-    });
-    // Whether side `side`'s ruleset has system `system` (a game's folder
-    // rules ask it of the chips a system plays).
-    lib_fn!(lua, t, "side_has_system", |_, (side, system): (LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, b| {
-            let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "battle.side_has_system")?);
-            Ok(api.system_slot_of(side, system).is_some())
-        })
     });
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
@@ -2456,11 +2436,11 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         // The side, then the navi, the chip and the weapon, where the hook
         // has them (nil in between).
         // A custom screen's chip hooks: the side, then the chip.
-        HookCall::System { side, hook: SystemHook::CustomChipPicked | SystemHook::CustomChipTakenBack, chip, .. } => vec![
+        HookCall::Rules { side, hook: RulesHook::CustomChipPicked | RulesHook::CustomChipTakenBack, chip, .. } => vec![
             LuaValue::Integer(mlua::Integer::from(side)),
             chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
         ],
-        HookCall::System { side, navi, chip, weapon, .. } => {
+        HookCall::Rules { side, navi, chip, weapon, .. } => {
             let mut v = vec![
                 LuaValue::Integer(mlua::Integer::from(side)),
                 navi.map_or(Ok(LuaValue::Nil), obj)?,
@@ -2510,21 +2490,21 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 1e15 => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("a function of the side returns a whole number, a flag or nil, not {v:?}"))),
         },
-        // A chip check's, cost's or substitute's chip; no other system hook
+        // A chip check's, cost's or substitute's chip; no other rules hook
         // returns anything.
-        HookCall::System {
-            hook: hook @ (SystemHook::ChipCheck | SystemHook::ChipCost | SystemHook::ChipSubstitute), ..
+        HookCall::Rules {
+            hook: hook @ (RulesHook::ChipCheck | RulesHook::ChipCost | RulesHook::ChipSubstitute), ..
         } if !v.is_nil() => match bound.def(&v) {
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
             _ => Err(mlua::Error::runtime(format!(
-                "a system's {} returns nil or a chip definition, not a {}",
+                "the rules' {} returns nil or a chip definition, not a {}",
                 hook.name(),
                 v.type_name()
             ))),
         },
         // A controller's or a takeover's outcome, by the original's number
         // (4: an attack of the takeover's own).
-        HookCall::System { hook: SystemHook::Controller | SystemHook::Takeover, .. } => match &v {
+        HookCall::Rules { hook: RulesHook::Controller | RulesHook::Takeover, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::String(s) => match &*s.to_str()? {
                 "nothing" => Ok(Value::Int(0)),
@@ -2538,24 +2518,24 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             },
             _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
         },
-        // A button's `shown` and `state`, a window's `update`, and whether a
-        // system took the keys or took something back.
-        HookCall::System {
+        // A button's `shown` and `state`, a window's `update`, and whether
+        // the rules took the keys or took something back.
+        HookCall::Rules {
             hook:
-                SystemHook::ButtonShown
-                | SystemHook::WindowUpdate
-                | SystemHook::CustomKeys
-                | SystemHook::CustomTakeBack
-                | SystemHook::NaviBug,
+                RulesHook::ButtonShown
+                | RulesHook::WindowUpdate
+                | RulesHook::CustomKeys
+                | RulesHook::CustomTakeBack
+                | RulesHook::NaviBug,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
         // A button's chip.
-        HookCall::System { hook: SystemHook::ButtonChip, .. } => match bound.def(&v) {
+        HookCall::Rules { hook: RulesHook::ButtonChip, .. } => match bound.def(&v) {
             _ if v.is_nil() => Ok(Value::Nil),
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
             _ => Err(mlua::Error::runtime(format!("a button's chip is nil or a chip definition, not a {}", v.type_name()))),
         },
-        HookCall::System { hook: SystemHook::ButtonState, .. } => match &v {
+        HookCall::Rules { hook: RulesHook::ButtonState, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::String(s) => match &*s.to_str()? {
                 "selectable" => Ok(Value::Int(0)),
@@ -2567,19 +2547,19 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             _ => Err(mlua::Error::runtime(format!("a button's state is its name, not a {}", v.type_name()))),
         },
         // A mood or a palette.
-        HookCall::System { hook: hook @ (SystemHook::StartingMood | SystemHook::NaviPalette), .. } => match &v {
+        HookCall::Rules { hook: hook @ (RulesHook::StartingMood | RulesHook::NaviPalette), .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("{} returns a byte or nil, not {v:?}", hook.name()))),
         },
         // A hand size.
-        HookCall::System { hook: SystemHook::CustomHandSize, .. } => match &v {
+        HookCall::Rules { hook: RulesHook::CustomHandSize, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("custom.hand_size returns a count of chips, not {v:?}"))),
         },
-        HookCall::System { .. } => Ok(Value::Nil),
+        HookCall::Rules { .. } => Ok(Value::Nil),
     }
 }

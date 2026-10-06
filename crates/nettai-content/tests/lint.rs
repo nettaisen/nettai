@@ -171,7 +171,7 @@ fn a_game_loads_alone_under_its_names() {
     assert!(d.chip_by_key("cannon").is_some(), "an id is local to its game");
     assert_eq!(d.chip_by_key("exe6:cannon"), None, "EXE6's chips are another content's"); // (written in full)
     assert_eq!(d.chip_by_key("exe5:cannon"), None, "an id is written without its game"); // (written in full)
-    assert!(d.ruleset().is_some_and(|r| !r.systems.is_empty()), "EXE5's one ruleset");
+    assert!(d.rules().is_some(), "EXE5's rules");
     assert_eq!(c.strings.chip("cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
     let mut both = read(&["exe6", "exe5"]);
     let e = both.define().unwrap_err().message;
@@ -251,7 +251,7 @@ fn exe5s_rules_are_its_games() {
     let mut exe6 = read(&["exe6"]);
     exe6.define().unwrap_or_else(|e| panic!("{e}"));
     let d = &c.defs;
-    assert!(d.ruleset().is_some(), "EXE5's ruleset");
+    assert!(d.rules().is_some(), "EXE5's rules");
     let (six, five) = (exe6.rules(), c.rules());
     assert_eq!(five.pools.slots(), [16, 32, 32]);
     assert_eq!(six.pools.slots(), [32, 32, 32]);

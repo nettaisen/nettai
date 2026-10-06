@@ -84,7 +84,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
             (chatbox, said, None, chip.map(Lookup::ChipDescription))
         }
         Phase::Description { window: Some(_), form, chatbox } => {
-            // A form a system's window describes (EXE6's Cross window: the
+            // A form a window of the rules describes (EXE6's Cross window: the
             // Cross under its cursor, of whichever game it is).
             let said = form.and_then(|f| strings.form_description(&b.content, f));
             (chatbox, said, None, form.map(Lookup::CrossDescription))
@@ -533,7 +533,7 @@ mod tests {
 
     /// A Cross's description is its form's own, in either language: the
     /// Cross window describes the Cross under its cursor by its form (the
-    /// cross system's `custom.describe`), so a Gregar Cross (HeatCross) in
+    /// cross part's `custom.describe`), so a Gregar Cross (HeatCross) in
     /// a Falzar player's mixed Cross list shows HeatCross's, not that of
     /// Falzar's Cross in its place.
     #[test]

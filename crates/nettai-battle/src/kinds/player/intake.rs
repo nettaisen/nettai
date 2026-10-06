@@ -31,7 +31,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     // The side's rules, each tick (EXE5's light and dark: a dark MegaMan
     // clears the holy panel he stands on, 0x08017136; EXE6's call nothing).
     let side = b.objects.get(r).alliance;
-    b.systems_navi_intake(side, r);
+    b.rules_navi_intake(side, r);
     slide_triggers(b, r);
     // (EXE5's takes the hit's NaviCust bug before the HP bug drains: the
     // navi's game's intake rules.)
@@ -110,7 +110,7 @@ pub(super) fn collect_hits_navi(b: &mut Battle, r: ObjectRef) {
     barrier(b, r);
     standing_effects(b, r);
     let side = b.objects.get(r).alliance;
-    b.systems_navi_intake(side, r);
+    b.rules_navi_intake(side, r);
     slide_triggers(b, r);
     drop_cursor_trap(b, r);
     anti_damage_traps(b, r);
@@ -569,9 +569,9 @@ fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
 /// the stat byte; a few codes are special); the weapon routines are
 /// reloaded every tick.
 fn bug_navicust(b: &mut Battle, r: ObjectRef) {
-    // The side's systems first (EXE5's light and dark codes, its skip).
+    // The side's rules first (EXE5's light and dark codes, its skip).
     let side = b.objects.get(r).alliance;
-    if b.systems_navi_bug(side, r) {
+    if b.rules_navi_bug(side, r) {
         return;
     }
     let bugs = coll(b, r).acc.inflicted_bugs;

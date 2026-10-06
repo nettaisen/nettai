@@ -156,9 +156,9 @@ pub(crate) fn install_assets(
 /// What a game's modules have and a support pack's don't: the playing
 /// game's context, which reaches a support pack only as its callers'
 /// arguments (docs/design/content-model-v2.md §4.0). `asset` names the
-/// game's asset pack; `system` is the running system of the game's
-/// ruleset.
-pub(crate) const GAME_CONTEXT: [&str; 2] = ["asset", "system"];
+/// game's asset pack; `rules` reaches the game's rules' state, of the side
+/// their running call is for.
+pub(crate) const GAME_CONTEXT: [&str; 2] = ["asset", "rules"];
 
 /// The environments modules run in: a game pack's modules', and a support
 /// pack's, which lacks [`GAME_CONTEXT`] (a module's closures keep its
@@ -354,7 +354,7 @@ pub(crate) fn finish(
         // (A game's ruleset is one: it has a key of its own, and no name.)
         if m.registry == Registry::Ruleset {
             if !m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))?.is_nil() {
-                return Err(format!("{what} takes no `id`: a game has one ruleset, its rules"));
+                return Err(format!("{what} takes no `id`: a game has one rules definition"));
             }
             keys[i] = Some(nettai_content_api::RULESET_KEY.to_string());
             continue;
@@ -422,7 +422,7 @@ pub(crate) fn finish(
         if let Some(&j) = by_key.get(&(m.registry, keys[i].as_str())) {
             if m.registry == Registry::Ruleset {
                 return Err(format!(
-                    "a game has one ruleset: {}.luau defines one, and {}.luau another",
+                    "a game has one rules definition: {}.luau defines one, and {}.luau another",
                     keys::module_path(&made[j].module),
                     keys::module_path(&m.module)
                 ));
@@ -438,8 +438,8 @@ pub(crate) fn finish(
         by_key.insert((m.registry, keys[i].as_str()), i);
     }
 
-    // Schemas: the `state` tables of kinds, actions and systems, and the
-    // `setup` and `navi_state` tables of systems.
+    // Schemas: the `state` tables of kinds, actions and the game's rules,
+    // and the rules' `setup` and `navi_state` tables.
     let mut schema_of: HashMap<Ptr, usize> = HashMap::new();
     let mut schemas: Vec<(String, String, Table)> = Vec::new();
     let mut claim = |t: Table, key: String, module: &str, schemas: &mut Vec<(String, String, Table)>| {
@@ -454,7 +454,7 @@ pub(crate) fn finish(
     for (&(registry, key), &i) in &by_key {
         let tables: &[&str] = match registry {
             Registry::Kind | Registry::Action => &["state"],
-            Registry::System => &["state", "setup", "navi_state"],
+            Registry::Ruleset => &["state", "setup", "navi_state"],
             _ => continue,
         };
         for &field in tables {

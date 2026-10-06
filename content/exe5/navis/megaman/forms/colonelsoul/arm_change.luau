@@ -1,7 +1,7 @@
 --!strict
 -- ColonelSoul's Arm Change on EXE5's custom screen (docs/design/exe5-map.md §15.8; the screen's slots 8 and 9 in
 -- ColonelSoul, kinds 8 and 9: 0x08023D74): what the soul adds to the screen (its form's `custom`, which the souls
--- system gathers: rules/souls/custom). The last pick, a standard Null chip that deals damage and neither dims nor is
+-- part gathers: rules/souls/custom). The last pick, a standard Null chip that deals damage and neither dims nor is
 -- dark (0x08024C00), leaves the picks for the button (the screen's state 0x38, 0x08023694) and is the turn's arm chip
 -- (the transform record's +6, 0x080123FC): at the turn's start ColonelSoul's charged shot fires it (0x080124AE:
 -- AIData +0x32, the weapon routine 0x13: ./arm), for that turn. The chip leaves the folder. B, with the picks as
@@ -11,12 +11,12 @@ local arm = require("./arm")
 
 local arm_change = {}
 
--- What Arm Change keeps in the souls system's state, and the system's field it fills.
+-- What Arm Change keeps in the souls part's state, and the part's field it fills.
 type State = {
     -- Its sequence's step (0x080236B8's offsets 0 and 4) and timer (the screen's +0x40).
     arm_step: number,
     arm_timer: number,
-    -- The souls system's own (rules/souls): the turn's arm chip (the transform record's +6; none: its 0xFFFF), which
+    -- The souls part's own (rules/souls): the turn's arm chip (the transform record's +6; none: its 0xFFFF), which
     -- each screen's open clears and the soul change copies into the navi's weapon chip.
     arm_chip: Chip?,
 }

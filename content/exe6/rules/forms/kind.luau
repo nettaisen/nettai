@@ -1,5 +1,5 @@
 --!strict
--- EXE6's kinds of form: the forms system's extension `kind` (system.luau),
+-- EXE6's kinds of form: the forms part's extension `kind` (init.luau),
 -- which every EXE6 form but the base form names: a Cross, Beast Out ("beast"),
 -- a Cross in Beast Out ("cross_beast") or Beast Over. What EXE6's rules and
 -- chips ask of a side's form by it (the original's tests of the form's

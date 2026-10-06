@@ -155,7 +155,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             joypad_phase: 0,
             sp_times: Default::default(),
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
-            rules: Vec::new(),
+            rules: None,
             patch_cards: Default::default(),
             navicust: nettai_match::empty_navicust(content, megaman),
             auto_battle: Default::default(),
@@ -510,7 +510,7 @@ mod tests {
         assert_eq!(content.form(heat_beast).version.as_deref(), Some("gregar"));
     }
 
-    // EXE6's Cross window (the cross system's: content/exe6/rules/cross/
+    // EXE6's Cross window (the cross part's: content/exe6/rules/cross/
     // window.luau) with Crosses of both games, which no recording covers.
 
     /// A link battle on EXE6's content whose side 0 is a `version` player
@@ -585,9 +585,10 @@ mod tests {
         b.custom.sides[0].sent.as_ref().unwrap().result.clone()
     }
 
-    /// The cross system's record of the Crosses used this round.
+    /// The rules' record of the Crosses used this round (EXE6's cross
+    /// part's).
     fn crosses_used(b: &Battle) -> [bool; 5] {
-        let (schema, state) = b.system_state(0, "cross").expect("EXE6's cross system");
+        let (schema, state) = b.rules_state(0).expect("EXE6's rules");
         let i = schema.index_of("crosses_used").unwrap();
         std::array::from_fn(|k| state.get_elem(schema, i, k) == Some(nettai_content_api::FieldValue::Bool(true)))
     }

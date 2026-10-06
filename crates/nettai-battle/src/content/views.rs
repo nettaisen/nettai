@@ -1,21 +1,21 @@
-//! What a frontend draws of a system's own on the custom screen, by what
+//! What a frontend draws of the rules' own on the custom screen, by what
 //! the engine names it (docs/design/rules-in-luau.md §4.8). A frontend has
 //! drawing of its own for some of what content declares: a window with a
 //! list of forms, an icon flying to the picked column, a button that offers
 //! a form. Content says which of them a window or a button is, in its
 //! definition (`view`), by one of these names; the names are checked as the
-//! content loads, and the frontend reads the values, never a system's, a
+//! content loads, and the frontend reads the values, never the rules', a
 //! window's or a button's own name.
 //!
-//! A view shows what its system keeps: state fields the frontend reads by
-//! the names given here (a view's contract with its system). They are found
-//! once, as the content loads ([`ViewFields`]), and a system that has the
+//! A view shows what the rules keep: state fields the frontend reads by
+//! the names given here (a view's contract with the rules). They are found
+//! once, as the content loads ([`ViewFields`]), and rules that have the
 //! view without a field, or with one of another type, is refused there.
 //! Nothing here is state of its own.
 
 use nettai_content_api::{FieldType, Registry, Schema};
 
-/// What a frontend draws while a system's custom-screen window is up (the
+/// What a frontend draws while a custom-screen window of the rules is up (the
 /// window's `view`; a window with none shows the screen as it is).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WindowView {
@@ -65,7 +65,7 @@ impl WindowView {
     }
 }
 
-/// What a frontend draws of a system's custom-screen button besides its
+/// What a frontend draws of a custom-screen button of the rules besides its
 /// look (the button's `view`; a button with none is its pack's look alone).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ButtonView {
@@ -97,10 +97,9 @@ impl ButtonView {
 }
 
 /// What a player brings that a frontend shows their console by, or a tool
-/// fills in for a person: a field of a system's setup, by this name
-/// (`Battle::fact`). It is read of the first
-/// system of the game's ruleset that declares the field (a setup writes it
-/// into every one that does); a game none of whose systems does has none.
+/// fills in for a person: a field of the rules' setup, by this name
+/// (`Battle::fact`). It is read of the
+/// rules' setup; a game whose rules don't declare it has none.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PlayerFact {
     /// The version of the game they play, one of the names its field lists
@@ -120,7 +119,7 @@ pub enum PlayerFact {
     Level,
     /// The base HP their save holds for their navi (MegaMan's, which HP
     /// Memories raise; EXE5's team navis', the story's at their progress):
-    /// a game's save system writes it into the stats as the round is set
+    /// a game's save part writes it into the stats as the round is set
     /// up. A tool fills it in from what a navi's level gives (EXE5's
     /// `story`).
     BaseHp,
@@ -164,7 +163,7 @@ impl PlayerFact {
     }
 }
 
-/// A form list's fields in its system's state (the views `form_list_opening`,
+/// A form list's fields in the rules' state (the views `form_list_opening`,
 /// `form_list`, `form_list_closing` and `form_chosen`): the places of the
 /// forms offered among the player's (`offered`, a u8 array) and how many
 /// (`offered_count`), which entries are marked (`marked`, a bool array), the
@@ -180,7 +179,7 @@ pub struct FormListFields {
     pub chosen: usize,
 }
 
-/// A form offer's fields in its system's state (the button view
+/// A form offer's fields in the rules' state (the button view
 /// `form_offer`): the form on offer, none for no offer (`offer`, a form),
 /// whether the offer is the form's alternate (`offer_chaos`), and the turns
 /// left in the form it gave (`turns`), which the emotion window counts.
@@ -191,7 +190,7 @@ pub struct OfferFields {
     pub turns: usize,
 }
 
-/// A flight's fields in its system's state: its step and its count in the
+/// A flight's fields in the rules' state: its step and its count in the
 /// step. The offer's (the window view `offer_flight`: `unite_step`,
 /// `unite_count`), or a chip's (`chip_flight`: `mix_step`, `mix_count`, and
 /// `button`, which of the screen's buttons that show a chip, counted from
@@ -203,7 +202,7 @@ pub struct FlightFields {
     pub button: Option<usize>,
 }
 
-/// The state fields a frontend reads of a system for its windows' and
+/// The state fields a frontend reads of the rules for their windows' and
 /// buttons' views, each found by its name as the content loads.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ViewFields {
@@ -245,7 +244,7 @@ impl Want {
 }
 
 impl ViewFields {
-    /// The fields the views of a system's windows and buttons read of its
+    /// The fields the views of the rules' windows and buttons read of their
     /// state (`state`). `Err`: a view's field the state lacks or keeps as
     /// another type, said with the view's name and the window or button
     /// that has it (`what`).
@@ -257,7 +256,7 @@ impl ViewFields {
         let mut fields = ViewFields::default();
         let find = |who: &str, view: &str, name: &str, want: Want| -> Result<usize, String> {
             let Some(i) = state.index_of(name) else {
-                return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` ({}): the system's state has none", want.says()));
+                return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` ({}): the rules' state has none", want.says()));
             };
             if !want.fits(&state.field(i).ty) {
                 return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` as {}: it is {:?}", want.says(), state.field(i).ty));
@@ -300,7 +299,7 @@ impl ViewFields {
                         turns: find(&who, view.name(), "turns", Want::U8)?,
                     });
                 }
-                // (It shows a picture, nothing its system keeps.)
+                // (It shows a picture, nothing the rules keep.)
                 ButtonView::ChipPicture => {}
             }
         }

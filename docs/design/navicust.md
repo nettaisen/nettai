@@ -16,7 +16,7 @@ file gives each side its NaviCust (docs/frontend.md §6), and the editor (nettai
 | What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | EXE6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
 | A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
 | The board: which cells a program may cover, its frame, the command line | the game's rule section | the stock ruleset's `navicust` (rules/navicust/section.luau), `Rules::navicust` (`NaviCustRules`) |
-| The compile: placement into stats and bugs | the game's rules | EXE6's `navicust` system (`round_setup`) |
+| The compile: placement into stats and bugs | the game's rules | EXE6's `navicust` part (`round_setup`) |
 | A program's name | the locales | `[navicust-programs]` in locales/<lang>.toml |
 | A program's number (a save's part id is 4 × it + the color variant) | compat | content/exe6/compat/navicust.toml |
 
@@ -25,17 +25,17 @@ centered on its middle cell, quarter turns as EXE6's four copies make them (`nav
 (board), `f` (frame) and `.` (no cell) cells. It also knows the one placement rule every NaviCust game shares,
 `NaviCustRules::fits` (EXE6's `sub_813BB00`: each covered cell is a board or frame cell, and not all of them are
 frame). It knows nothing of what a program does. The definition's other fields are the game's, which its rules
-read through `battle.navicust(side)`. A game without a NaviCust has no `navicust` section and no system to compile
+read through `battle.navicust(side)`. A game without a NaviCust has no `navicust` section and no part to compile
 one.
 
 **None means none.** `PlayerSetup::navicust` is `None` when the setup's stats are already the NaviCust's: a
-recording's. The system then does nothing, so the golden traces and the lab are unchanged. `Some` means the stats
+recording's. The part then does nothing, so the golden traces and the lab are unchanged. `Some` means the stats
 are the navi's before the NaviCust: its fresh stats with what the save keeps, which is what the original's reset
 leaves (§3, step 3). A match states no stats: every side starts from its navi's fresh stats (nettai-match's
-`Side::fresh_stats`), the game's save system writes what the save keeps (its `hp`, `reg_up` and, in EXE6, `sun`),
-and MegaMan's side always has a NaviCust (an empty one where it states none), which the system compiles over them.
+`Side::fresh_stats`), the game's save part writes what the save keeps (its `hp`, `reg_up` and, in EXE6, `sun`),
+and MegaMan's side always has a NaviCust (an empty one where it states none), which the part compiles over them.
 
-**The NaviCust is MegaMan's.** The original compiles the PET's own navi's NaviCust, navi 0's. The system compiles
+**The NaviCust is MegaMan's.** The original compiles the PET's own navi's NaviCust, navi 0's. The part compiles
 a NaviCust only for the navi that changes form, and a match refuses one for another navi.
 
 ## 2. EXE6's programs as content
@@ -68,12 +68,12 @@ return define.navicust_program {
   order. Weapons and barriers are named by definition: Shield's is `require("navis/megaman/weapons/shield/init")`,
   FstBarr's is lib/barriers' `barrier_10`. A program whose handler writes a stat no netbattle reads (SneakRun,
   OilBody, Fish, Battery, Jungle, Millions, Humor, Poem, SlipRunr, AutoHeal) has `programs.outside(...)`, which
-  the system does nothing for, because the engine doesn't keep the stat.
+  the part does nothing for, because the engine doesn't keep the stat.
 - **Compressed shapes** are given where they differ from the shape. Every EXE6 program has one.
 
 ## 3. EXE6's compile (rules/navicust/init.luau)
 
-The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi is navi 0. The system's
+The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi is navi 0. The part's
 `round_setup` hook is that routine. The stock ruleset runs it before the patch cards, which apply to what it made
 (docs/engine/patch-cards.md §1.2). It works in six steps.
 
@@ -123,7 +123,7 @@ The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi
    | `status-strong` | a stronger one (+0x1A = 10) |
 
    Any bug sets the save's flag 0x1720, the emotion window's glitch (`battle.set_emotion_window_glitch`). With
-   patch cards installed, the cards' system then sets the flag the Japanese console reads instead (0x1723).
+   patch cards installed, the cards' part then sets the flag the Japanese console reads instead (0x1723).
 6. **The HP** (`sub_803CE44`). The maximum is the base plus the HP programs, and the round starts at the maximum, as
    it does in the real world.
 
@@ -134,9 +134,9 @@ setup gives both (nettai-match's `starting`).
 ## 4. Other games
 
 A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colors), its
-own board section and its own compile system. **EXE5's is built** (exe5-map.md §15.13): its compile is EXE6's routine
+own board section and its own compile part. **EXE5's is built** (exe5-map.md §15.13): its compile is EXE6's routine
 for routine, so the routines are shared (content/exelib/navicust/compile.luau, `compile.run(side, game)`), and each
-game's navicust system passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in
+game's navicust part passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in
 the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (EXE5's
 HubBatc counts its own bug once more), and whether any bug sets the emotion window's glitch (EXE6's flag 0x1720; EXE5's
 flag is read outside battle only). (EXE5's compile leaves the HP for a console in the cyberworld; the rules have the

@@ -92,8 +92,6 @@ use nettai_battle::content::{ChipClass, Content};
 use nettai_battle::auto_battle::{AutoBattleData, AutoBattleEntry, MAX_ENTRIES, MAX_PATTERNS, PATTERN_CHIPS, PatternChip, PatternRecord};
 use nettai_content_api::ChipHandle;
 
-/// The system that drives the navis in auto battle (EXE5's).
-pub const SYSTEM: &str = "auto-battle";
 /// The block's places, and how many of them (the first) the send shuffles
 /// apart from the rest.
 pub const PLACES: usize = MAX_ENTRIES;
@@ -223,9 +221,10 @@ impl Default for AutoBattle {
     }
 }
 
-/// Whether the game's rules have auto battle (a side takes the data).
+/// Whether the game's rules have auto battle (they drive navis no player
+/// controls: a side takes the data).
 pub fn has(content: &Content) -> bool {
-    crate::ruleset_has_system(content, SYSTEM)
+    content.defs.rules().is_some_and(|r| r.navi_state.is_some())
 }
 
 /// Why a navi in auto battle can't play `chip`, if it can't: what the
@@ -368,7 +367,7 @@ impl AutoBattle {
             return out;
         }
         if !has(content) {
-            out.push(format!("auto battle data, but {game} has no auto battle (no {SYSTEM} system)"));
+            out.push(format!("auto battle data, but {game} has no auto battle (its rules drive no navi)"));
         }
         for (i, e) in self.places.iter().enumerate() {
             if let Entry::Pattern(n) = e
@@ -631,7 +630,7 @@ mod tests {
         let six = exe6_content();
         let cannon6 = ids::chip(&six, "exe6", "cannon").unwrap();
         let problems = data(&[(0, Entry::Chip(cannon6))]).check(&six, "exe6");
-        assert_eq!(problems, ["auto battle data, but exe6 has no auto battle (no auto-battle system)"]);
+        assert_eq!(problems, ["auto battle data, but exe6 has no auto battle (its rules drive no navi)"]);
         assert!(AutoBattle::default().check(&six, "exe6").is_empty());
         assert!(super::has(&content) && !super::has(&six));
     }
