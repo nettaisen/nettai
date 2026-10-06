@@ -122,12 +122,6 @@ pub enum KindRole {
     /// #0xD2, `sub_80DFD74`) and an actor object (#0x28, `sub_80C02A6`).
     Mode9Attack,
     Mode9Actor,
-    /// What an obstacle turns into where an armed side's ColonelSoul can
-    /// use it (EXE5's attack object #0x30, 0x080CA834: the step
-    /// `effects.obstacle_conversion` enables, `kinds::obstacle::Conversion`).
-    /// The engine sets its state field `gun` (0 the sword's soldier, 1 the
-    /// gun's: its Param1).
-    ConvertedObstacle,
     /// The ripple over a body under the sea's surface (EXE5's effect object
     /// #0x3E, 0x080E4B64), which the navi's status tick keeps
     /// (0x0800DEB2): the engine gives it the body as its first related.
@@ -135,14 +129,13 @@ pub enum KindRole {
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 8] = [
+    pub const ALL: [KindRole; 7] = [
         KindRole::AbsorbedObstacle,
         KindRole::FallingRock,
         KindRole::Support,
         KindRole::AntiRecovery,
         KindRole::Mode9Attack,
         KindRole::Mode9Actor,
-        KindRole::ConvertedObstacle,
         KindRole::DiveRipple,
     ];
 
@@ -155,7 +148,6 @@ impl KindRole {
             KindRole::Mode9Actor => "mode9_actor",
             KindRole::Support => "support",
             KindRole::AntiRecovery => "anti_recovery",
-            KindRole::ConvertedObstacle => "converted_obstacle",
             KindRole::DiveRipple => "dive_ripple",
         }
     }
