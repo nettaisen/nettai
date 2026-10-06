@@ -142,7 +142,6 @@ mod tests {
         let none = file(GameVersion::Gregar, true, [false; 5], 0, None, &SpTimes::default());
         m.import_save(&content, 0, &none).unwrap();
         assert_eq!(m.sides[0].facts.get(&content, "crosses").map(|v| v.defs()), Some(Vec::new()));
-        assert_ne!(m.sides[0].facts.get(&content, "crosses"), Some(Stated::Unlisted));
         assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
     }
 

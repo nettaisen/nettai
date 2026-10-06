@@ -292,9 +292,9 @@ fn a_match_is_described_by_its_facts() {
     let said = crate::describe(&six, &m, 1, false, 0);
     let line = said.lines().nth(1).unwrap();
     assert_eq!(line, "  MegaMan (you); crosses: HeatCross, SpoutCross; version: falzar; beast_out: no; bug_frags: 9");
-    // (No Crosses is said: a stated list.)
+    // (No Crosses is the list's default, which goes unsaid.)
     m.sides[0].set_fact(&six, "crosses", &[]).unwrap();
-    assert!(crate::describe(&six, &m, 1, false, 0).lines().nth(1).unwrap().starts_with("  MegaMan (you); crosses: none; version: falzar"));
+    assert!(crate::describe(&six, &m, 1, false, 0).lines().nth(1).unwrap().starts_with("  MegaMan (you); version: falzar"));
     let five = exe5_content();
     let mut m = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you)");
@@ -401,16 +401,9 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     let nothing = PlayerSetup::default();
     let six = exe6_content();
     let (schema, block) = nothing.rule_block(&six, "cross").expect("EXE6's cross system");
-    for required in ["crosses", "version"] {
-        assert!(!block.stated(schema, schema.index_of(required).unwrap()), "{required}");
-    }
-    // (An unstated list reads as holding nothing; a stated empty one holds
-    // nothing either, and is stated.)
+    assert!(!block.stated(schema, schema.index_of("version").unwrap()), "version");
+    // (A Cross list left out is empty: no Crosses.)
     let crosses = schema.index_of("crosses").unwrap();
-    assert!((0..5).all(|k| block.get_elem(schema, crosses, k) == Some(FieldValue::Ref(None))));
-    let mut none = PlayerSetup::default();
-    none.set_fact(&six, "crosses", &[]).unwrap();
-    let (schema, block) = none.rule_block(&six, "cross").unwrap();
     assert!(block.stated(schema, crosses) && (0..5).all(|k| block.get_elem(schema, crosses, k) == Some(FieldValue::Ref(None))));
     let (schema, block) = nothing.rule_block(&six, "beast").expect("EXE6's beast system");
     assert_eq!(block.get(schema, schema.index_of("beast_out").unwrap()), FieldValue::Bool(true));

@@ -1106,15 +1106,15 @@ later = [                                  # optional: the set's later rounds (e
 
 [left]                                     # you (side 0); then [right]
 navi = "megaman"
-version = "gregar"                         # the side's facts (see below). EXE6's: version, gregar or falzar, and crosses,
-crosses = ["heatcross", "spoutcross"]      # up to five of either version ([] none): a side states both (none is
-beast_out = false                          # assumed); beast_out, else unlocked (the save's flag 0xE0); bug_frags,
-bug_frags = 0                              # else 0
+version = "gregar"                         # the side's facts (see below). EXE6's: version, gregar or falzar (stated:
+crosses = ["heatcross", "spoutcross"]      # none is assumed), crosses, up to five of either version (else none),
+beast_out = false                          # beast_out, else unlocked (the save's flag 0xE0), bug_frags, else 0
+bug_frags = 0
 hp = 1000                                  # what the save brings to the stats: MegaMan's base HP (else 100), the
 reg_up = 50                                # Regular memory (else the fresh stats' 4), the sun (else none); the rules
 sun = true                                 # build the rest (below)
 patch_cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
-level = 0                                  # optional: the navi code's level, 0-14 (see below)
+level = 0                                  # the navi code's level, 0-14: a link navi's always, MegaMan's optional
 folder = [                                 # 30 entries, [chip, code] ([] empty: a folder being made)
     ["cannon", "A"],
     ["cannon", "A"],
@@ -1155,23 +1155,21 @@ match files, its descriptions and the editor without a line of Rust.
   has (`setup_defaults`: EXE6's Beast Out; EXE5's
   every soul, both unisons and a fresh save's karma, 500), else zero. A
   file is written with only the facts that differ from that.
-- An enum or a list of definitions without a default is **required**:
-  nothing fills one in, and an empty list is a statement (none), not a
-  list left out. EXE6 has both kinds: its `version`, `falzar` or `gregar`
-  (its Beast, its pictures and its navi's version byte), and its
-  `crosses`, the Crosses the side has (`[]` for none; nothing is read as
-  "its version's own five"). The engine itself starts no round whose
-  player's setup leaves either unstated, and a file without one is
-  refused with what is missing ("left: no version: a side of exe6 states
-  its own (gregar or falzar); none is assumed"; "left: no crosses: a side
-  of exe6 states its own (up to 5 forms, an empty list for none); none is
-  assumed"). A new match's sides have neither until they are given
-  theirs: the editor shows nothing chosen, and once the version is chosen
-  it fills in that version's own five for the person to edit; a random
-  match picks each side's from its seed and writes them.
+- An enum without a default is **required**: nothing fills one in.
+  EXE6's `version`, `falzar` or `gregar` (its Beast, its pictures and its
+  navi's version byte), is one. The engine itself starts no round whose
+  player's setup leaves it unstated, and a file without one is refused
+  with what is missing ("left: no version: a side of exe6 states its own
+  (gregar or falzar); none is assumed"). A new match's sides have none
+  until they are given theirs: the editor shows nothing chosen; a random
+  match picks each side's from its seed and writes it.
+- A list a side leaves out is its default, else empty: EXE6's `crosses`
+  left out is no Crosses (nothing is read as "its version's own five";
+  the editor's "Its version's own" states those, and a random match the
+  five it picked).
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
   key no system declares ("left: no field \"karm\" (a side of exe5 takes
-  karma, chaos_unison, soul_unison, souls)"); a value that isn't
+  hp, level, reg_up, karma, chaos_unison, soul_unison, souls)"); a value that isn't
   the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
   no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
   twice in a list, or an empty entry before one (a list is filled from
@@ -1184,7 +1182,7 @@ match files, its descriptions and the editor without a line of Rust.
   navi's version byte in its stats, the forms a random match's form list is
   picked from.
 
-EXE6's facts: `version` (required); `crosses` (required), up to five
+EXE6's facts: `version` (required); `crosses` (none unless stated), up to five
 Crosses of either version for the Cross window, in its order (a save's
 are those of its version's five it owns, which the original keeps as
 five flags and a save import writes as the list: `[]` for a save that
@@ -1279,15 +1277,18 @@ system (`level = "u8?"`, a number or none), which the engine reads by its
 role (`PlayerFact::Level`: a link navi's chip bonus and charge limits, the
 chips whose damage goes by it) and EXE6's rules through `battle.navi_level`
 (the seal below, the reload, MegaMan's gains). A link navi exists only
-through its code, so it always has one: without `level` it is **0**, its
-stats are its reload's at level 0 and its chip bonus is level 0's. MegaMan
-without `level` has **none** (no code received, 0xFF in the battle); with
-one he was received from a navi code: his level's gains go over his
-NaviCust, and, as the game's event flag 0x163 does, his custom screen has
-no Beast Out button and his Cross window stays his even with a gauge for
-each player. The checks refuse a level past 14 and a link navi without one;
-a file written leaves out the navi's default (a link navi's 0, MegaMan's
-none). A navi takes a level where its definition says what one gives it
+through its code, so it always has one, and a side of one states it:
+nothing fills one in ("right: ProtoMan has no level (0 to 14): a link navi
+exists only through its navi code"); tools state it (the editor 0 when the
+navi is picked, a random match what it picked, an import the save's). At
+0 its stats are its reload's at level 0 and its chip bonus is level 0's.
+MegaMan without `level` has **none** (no code received, 0xFF in the
+battle); with one he was received from a navi code: his level's gains go
+over his NaviCust, and, as the game's event flag 0x163 does, his custom
+screen has no Beast Out button and his Cross window stays his even with a
+gauge for each player. The checks refuse a level past 14 and a link navi
+without one; a file is written with the level whenever the side has one.
+A navi takes a level where its definition says what one gives it
 (`levels`: EXE6's MegaMan and link navis; `story`: EXE5's team navis); the
 checks refuse a level for any other (EXE5's MegaMan), and one past the
 navi's last.
@@ -1295,8 +1296,9 @@ navi's last.
 **An EXE5 team navi's level** (`level`, 0 to 6, EXE5's save system's fact; docs/design/exe5-map.md
 §15.16) is the level its attacks' damage goes by: the count of the save's
 story flags, which the battle's init exchange sends. A side that operates
-one (`navi = "protoman"`: any of the twelve, of either version) always has
-a level, **0** without `level`, and its stats are the navi's fresh stats
+one (`navi = "protoman"`: any of the twelve, of either version) always
+states a level (nothing fills one in: "right: ProtoMan has no level (0 to
+6)"; tools state 0 for a new side), and its stats are the navi's fresh stats
 with the HP the story gives at that level (the navi's `story`, which EXE5's
 save system reads: a level below 6 is the story's progress, and at 6 the
 story is taken as done). A side states no HP of its own for one: the checks

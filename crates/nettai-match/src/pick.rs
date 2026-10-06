@@ -203,10 +203,10 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
         facts,
     };
     // (Its form list, where the rules take one: its version's own; its
-    // navi's level, a navi that doesn't change form's 0.)
+    // navi's level, where it must have one: 0.)
     side.state_own_forms(content);
-    if let Some(level) = crate::default_navi_level(content, navi) {
-        side.set_level(content, Some(level))?;
+    if crate::level_required(content, navi) {
+        side.set_level(content, Some(0))?;
     }
     let m = Match { seed: None, arena: arena.clone(), sides: [side.clone(), side.clone()] };
     if let Ok(mut b) = crate::check::start(content, &m)

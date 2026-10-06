@@ -64,7 +64,6 @@
 
 use crate::auto_battle::{self, ChipPlace, AutoBattle, Entry, Record};
 use crate::facts::Stated;
-use nettai_battle::content::PlayerFact;
 use crate::{Arena, Facts, Folder, Match, Place, Side, ids};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
@@ -408,13 +407,6 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     }
     let auto_battle = s.auto_battle.as_ref().map(|c| resolve_auto_battle(content, game, c, &mut say)).unwrap_or_default();
     let navi = navi?;
-    // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
-    if facts.role(content, PlayerFact::Level).is_some_and(|f| f.value() == nettai_content_api::FieldValue::OptionalU8(None)) {
-        let level = crate::default_navi_level(content, navi);
-        if let Err(e) = facts.set(content, PlayerFact::Level.name(), &[Fact::Value(level.map_or(Value::Nil, |l| Value::Int(l as i64)))]) {
-            say(format!("level: {e}"));
-        }
-    }
     if problems.len() > start {
         return None;
     }
@@ -468,7 +460,7 @@ fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
             toml::Value::Array(items[..last].iter().map(|v| fact_toml(content, v).unwrap_or_else(|| toml::Value::String(String::new()))).collect())
         }
         Stated::Optional(n) => toml::Value::Integer((*n)?),
-        Stated::Unlisted | Stated::Other => return None,
+        Stated::Other => return None,
     })
 }
 
@@ -577,13 +569,11 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     SideFile {
         navi: name(&content.defs.navi(s.navi).key),
         // The facts that aren't the rules' defaults, in the rules' order
-        // (and the level, where it is the navi's own default: a link navi's
-        // 0, which the reader gives a level left out).
+        // (a level whenever the side has one).
         facts: FactsFile(
             crate::facts::fields(content)
                 .into_iter()
                 .filter(|f| !s.facts.is_default(content, f.name))
-                .filter(|f| f.name != PlayerFact::Level.name() || s.level(content) != crate::default_navi_level(content, s.navi))
                 .filter_map(|f| Some((f.name.to_string(), fact_toml(content, &s.facts.get(content, f.name)?)?)))
                 .collect(),
         ),
@@ -942,8 +932,8 @@ mod tests {
     /// else: a new EXE6 match's sides have none until each is given its own
     /// (the checks refuse the match: none is assumed), a random one's are
     /// picked and written; an EXE5 match has none, and its file takes no
-    /// `version`: its rules declare no such fact. EXE6's Crosses likewise:
-    /// a list a side states, an empty one for none, with nothing assumed.
+    /// `version`: its rules declare no such fact. EXE6's Crosses are a list
+    /// a side states, none when it states none.
     #[test]
     fn a_version_is_stated_where_the_game_takes_one() {
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
@@ -953,17 +943,12 @@ mod tests {
         let problems = crate::check_match(&six, &new);
         for side in ["left", "right"] {
             has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (gregar or falzar); none is assumed"));
-            has(problems.clone(), &format!("{side}: no crosses: a side of exe6 states its own (up to 5 forms, an empty list for none); none is assumed"));
         }
+        assert!(!problems.iter().any(|p| p.contains("crosses")), "no Crosses is none: {problems:?}");
         assert!(!write(&six, &new).contains("version") && !write(&six, &new).contains("crosses"));
         // (Nor does the engine start its round: a player's setup states the
-        // version, and nothing fills one in. With the Crosses stated, that
-        // is what it says is missing.)
-        let mut no_version = new.clone();
-        for s in &mut no_version.sides {
-            s.set_fact(&six, "crosses", &[]).unwrap();
-        }
-        let refused = crate::check::start(&six, &no_version).err().expect("no round without the versions");
+        // version, and nothing fills one in.)
+        let refused = crate::check::start(&six, &new).err().expect("no round without the versions");
         assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `version` (gregar or falzar): none is assumed");
         let picked = write(&six, &crate::pick::live(&six, "exe6", 1, None).unwrap());
         assert_eq!(picked.matches("\nversion = \"falzar\"\n").count() + picked.matches("\nversion = \"gregar\"\n").count(), 2, "{picked}");
@@ -973,32 +958,25 @@ mod tests {
         // (EXE6's come in the original's order, which numbers them: the
         // byte a navi's stats carry is the version's place.)
         assert_eq!(crate::facts::versions(&six), ["gregar", "falzar"]);
-        // (EXE6's rules require two facts: the one enum and the one list
-        // of definitions no default states.)
-        assert_eq!(crate::facts::required(&six).iter().map(|f| f.name).collect::<Vec<_>>(), ["crosses", "version"]);
+        // (EXE6's rules require one fact: the one enum no default states.)
+        assert_eq!(crate::facts::required(&six).iter().map(|f| f.name).collect::<Vec<_>>(), ["version"]);
         let live = crate::pick::live(&six, "exe6", 1, None).unwrap();
         assert!(live.sides.iter().all(|s| crate::facts::versions(&six).iter().any(|v| Some(v.as_str()) == s.version(&six))));
         let mut odd = live.clone();
         let refused = odd.sides[0].set_fact(&six, "version", &[Fact::Name("azure")]).unwrap_err();
         assert_eq!(refused, "setup field `version` has no variant \"azure\"");
         assert_eq!(odd, live);
-        // The Crosses: stated with the version, the round starts; left
-        // out, neither the match nor the engine's round does; an empty list
-        // is a statement (none), and written as one.
+        // The Crosses: left out, the round starts with none, and a file
+        // leaves them out.
         let mut none = new.clone();
         for s in &mut none.sides {
             s.set_fact(&six, "version", &[Fact::Name("falzar")]).unwrap();
-        }
-        let refused = crate::check::start(&six, &none).err().expect("no round without the Crosses");
-        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `crosses` (up to 5 forms, an empty list for none): none is assumed");
-        for s in &mut none.sides {
-            s.set_fact(&six, "crosses", &[]).unwrap();
         }
         // (The navi's version byte, NaviStats+0x20, is the version's place
         // among those the rules declare: the battle's start sets it.)
         let b = crate::check::start(&six, &none).unwrap();
         assert_eq!((b.stats[0].version, b.stats[1].version), (1, 1));
-        assert_eq!(write(&six, &none).matches("\ncrosses = []\n").count(), 2);
+        assert!(!write(&six, &none).contains("crosses"));
         // (And a side's own of its version, as a tool fills them in: the
         // version's five.)
         assert!(none.sides[0].state_own_forms(&six));
@@ -1076,9 +1054,10 @@ mod tests {
         // (The Crosses are forms of the navi's own lists: a Cross's Beast
         // form is a form of EXE6's, and none of them.)
         has(bad(list, "crosses = [\"heatcross-beast\"]"), "left: crosses: heatcross-beast is no form of MegaMan's lists");
-        // (Left out, they are missing: none is assumed. A list with a gap
-        // states what no save has.)
-        has(bad(&format!("{list}\n"), ""), "left: no crosses: a side of exe6 states its own (up to 5 forms, an empty list for none); none is assumed");
+        // (Left out, they are none. A list with a gap states what no save
+        // has.)
+        let none = parse(&content, &good.replacen(&format!("{list}\n"), "", 1)).unwrap();
+        assert!(none.sides[0].facts.form_list(&content).is_empty());
         has(bad(list, "crosses = [\"\", \"heatcross\"]"), "left: crosses: an empty entry before HeatCross (a list is filled from the front)");
         has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (gregar or falzar); none is assumed");
         // Thirty copies of a chip.
@@ -1144,12 +1123,15 @@ mod tests {
             assert!(text.contains(line), "{line}:\n{text}");
         }
         let right = &text[text.find("[right]").unwrap()..];
-        assert!(!right.contains("level ="), "ProtoMan's level 0 is his default:\n{right}");
+        assert!(right.contains("level = 0"), "ProtoMan's level is written, 0 too:\n{right}");
         assert_eq!(parse(&content, &text).unwrap(), m, "{text}");
-        // No level: ProtoMan's 0, MegaMan's none.
+        // No level: MegaMan's none; ProtoMan's is missing (nothing fills
+        // one in).
         let no_level = text.replacen("level = 3\n", "", 1);
-        let back = parse(&content, &no_level).unwrap();
-        assert_eq!((back.sides[0].level(&content), back.sides[1].level(&content)), (None, Some(0)));
+        assert_eq!(parse(&content, &no_level).unwrap().sides[0].level(&content), None);
+        let no_level = format!("{}{}", &text[..text.find("[right]").unwrap()], right.replacen("level = 0\n", "", 1));
+        let refused = parse(&content, &no_level).unwrap_err();
+        assert!(refused.iter().any(|p| p == "right: ProtoMan has no level (0 to 14): a link navi exists only through its navi code"), "{refused:?}");
         // A time that isn't one, a slot the rules lack.
         let bad = parse(&content, &text.replacen("\"00:12.01\"", "\"12:60.00\"", 1)).unwrap_err();
         assert!(bad.iter().any(|p| p.contains("sp_times: sp/heatman")), "{bad:?}");
@@ -1171,7 +1153,7 @@ mod tests {
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
         m.sides[1].set_level(&content, None).unwrap();
         let problems = crate::check_match(&content, &m);
-        has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
+        has(problems.clone(), "right: ProtoMan has no level (0 to 14): a link navi exists only through its navi code");
         assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");
     }
 }

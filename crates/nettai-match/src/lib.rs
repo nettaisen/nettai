@@ -152,13 +152,14 @@ impl Side {
     }
 }
 
-/// The level a side of `navi` has when its file states none: a navi that
-/// doesn't change form, 0 (a link navi exists only through its navi code,
-/// an EXE5 team navi starts at the story's first level); the navi that
-/// changes form, none (MegaMan without a navi code). What a tool states for
-/// a side it makes, and the match file's reader takes for a level left out.
-pub fn default_navi_level(content: &Content, navi: NaviHandle) -> Option<u8> {
-    (!content.navi(navi).changes_form()).then_some(0)
+/// Whether a side of `navi` must state a level: a navi that takes one
+/// (its definition says what a level gives it: `levels`, `story`) and
+/// doesn't change form (a link navi exists only through its navi code, an
+/// EXE5 team navi is at its story's progress). MegaMan's is optional (none:
+/// no navi code received). A tool that makes such a side states one (0).
+pub fn level_required(content: &Content, navi: NaviHandle) -> bool {
+    let n = content.navi(navi);
+    !n.changes_form() && (n.levels.is_some() || n.story.is_some())
 }
 
 /// Whether the game's rules have a system named `system` (`forms`,
@@ -278,9 +279,9 @@ impl Side {
             facts,
         };
         side.navicust = empty_navicust(content, navi);
-        // (A navi that doesn't change form has a level: 0.)
-        if let Some(level) = default_navi_level(content, navi) {
-            side.set_level(content, Some(level))?;
+        // (A navi that must have a level states one: 0.)
+        if level_required(content, navi) {
+            side.set_level(content, Some(0))?;
         }
         Ok(side)
     }

@@ -397,11 +397,10 @@ the window lists them, filled from the front. There are no flags in a setup.
   with a gap (a Cross owned above one that isn't, which only a save written by hand has: the lab's
   `custom/one-cross-owned` pokes TomahawkCross alone) give a list that closes the gap, the Cross at an earlier
   place than the original's.
-- **The list is always stated.** It has no default, and nothing is read as "the version's own five": an empty list
-  is no Crosses (a save before its first one), and a setup that doesn't state the list starts no round, as one
-  that doesn't state its version (`SideRules::for_player`: a list of definitions without a default is unstated
-  until something states it, `ContentState::unstate`). Tools state it for a person: the editor fills in the
-  version's own five when the version is chosen, a random match states the five it picked.
+- **A list left out is none.** Nothing is read as "the version's own five": an empty list is no Crosses (a save
+  before its first one), and so is a setup that doesn't state the list (the user's ruling of 2026-10-05; the list
+  was required before). Tools state it for a person: the editor's "Its version's own" states the version's own
+  five, a random match states the five it picked.
 - **Not the original's: Crosses of either game.** A list may hold any of MegaMan's ten. nettai-frontend's live
   play picks five of them for each player (docs/frontend.md §2). Every recording's, the chip lab's and the netplay
   stand-in's lists are a save's own version's, and the screen is the original's.
