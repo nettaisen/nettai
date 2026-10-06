@@ -280,7 +280,8 @@ local rules: Rules = {
     fresh_stats = fresh_stats,
     link_pick = require("@self/link_pick"),
     math = require("@self/math"),
-    navicust = require("@self/navicust/section"),
+    -- What a tool shows of a side's setup, pane by pane (./panes).
+    panes = require("@self/panes"),
     panels = require("@self/panels"),
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),

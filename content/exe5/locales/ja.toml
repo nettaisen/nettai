@@ -554,3 +554,13 @@ language = "ja"
 "yahoots-bug-repair" = { name = "マハ・ジャラマの\nバグしゅうせい" }
 "yort" = { name = "ヨーヨット" }
 "zomon" = { name = "ザエモン" }
+
+# What a tool says of a side's setup: the rules' panes' titles and labels (rules/panes.luau).
+[setup]
+command_line = "コマンドライン"
+navicust = "ナビカスタマイザー"
+navicust_expansions = "ボード"
+navicust_programs = "プログラム"
+patch_cards = "改造カード"
+souls = "ソウル"
+sp_times = "SPナビ デリートタイム"

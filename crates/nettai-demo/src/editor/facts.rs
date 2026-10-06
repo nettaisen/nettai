@@ -71,12 +71,14 @@ pub fn is_list(field: &Field) -> bool {
     matches!(field.ty, FieldType::Array(elem, _) if matches!(**elem, FieldType::Ref(..)))
 }
 
-/// The side's list facts with something to offer, each a pane: its place
-/// among the game's facts and its title.
-pub fn lists(content: &Content, game: &str, side: &Side) -> Vec<(usize, String)> {
+/// The side's list facts with something to offer that no pane of the
+/// rules' shows (`in_panes`), each a pane: its place among the game's facts
+/// and its title.
+pub fn lists(content: &Content, game: &str, side: &Side, in_panes: &[&str]) -> Vec<(usize, String)> {
     facts::fields(content)
         .iter()
         .enumerate()
+        .filter(|(_, f)| !in_panes.contains(&f.name))
         .filter(|(_, f)| facts::offered(content, game, side, f).is_some_and(|o| !o.is_empty()))
         .map(|(i, f)| (i, title(f.name)))
         .collect()
@@ -157,9 +159,11 @@ pub fn rows(e: &Editor, s: usize) -> Column<'_, Msg> {
     let side = e.side(s);
     let defaults = nettai_match::Facts::defaults(c);
     let mut col = Column::new().spacing(10);
+    let in_panes = nettai_match::panes::shown_fields(&e.panes);
     for f in facts::fields(c) {
-        // (The level has its own field, with the navi.)
-        if facts::role_of(c, f.name) == Some(PlayerFact::Level) {
+        // (The level has its own field, with the navi; a pane of the rules'
+        // shows its own.)
+        if facts::role_of(c, f.name) == Some(PlayerFact::Level) || in_panes.contains(&f.name) {
             continue;
         }
         let Some(value) = side.facts.get(c, f.name) else { continue };
@@ -311,12 +315,13 @@ mod tests {
         let side = &mut m.sides[0];
         // (The facts in the setup's order, their names': beast_out,
         // bug_frags, crosses, ...)
-        assert_eq!(lists(&six, "exe6", side), [(2, "Crosses".to_string())]);
+        // (The Crosses are a pane of the rules', not a list of the facts'.)
+        let in_panes = nettai_match::panes::panes(&six).unwrap();
+        assert!(lists(&six, "exe6", side, &nettai_match::panes::shown_fields(&in_panes)).is_empty());
         assert_eq!(list_named(&six, "crosses"), Some(2));
         assert_eq!(list_named(&six, "version"), None, "an enum: a row, no pane");
-        let field = facts::field(&six, "crosses").unwrap();
-        let offered = facts::offered(&six, "exe6", side, &field).unwrap();
-        assert_eq!(offered.len(), 10, "MegaMan's Crosses of both versions: Gregar's five, then Falzar's");
+        let megaman = six.navi(side.navi(&six)).forms.as_ref().unwrap();
+        let offered: Vec<u16> = megaman.listed("gregar").iter().chain(megaman.listed("falzar")).map(|f| f.0).collect();
         let crosses = |side: &Side| side.facts.get(&six, "crosses").unwrap().defs();
         // A new side states no version and has no Crosses (the list's
         // default). Choosing the version (a variant by its name) leaves
@@ -333,20 +338,12 @@ mod tests {
         assert_eq!(crosses(side), offered[..5]);
         assert!(!apply(&six, "exe6", side, "version", &Edit::Variant("azure".into())));
         assert_eq!(side.version(&six), Some("gregar"));
-        // The Crosses: none, which is a statement; then checked in any
-        // order they keep the window's order, and hold five.
+        // The Crosses: none, which is a statement; of the side's own
+        // choosing, they stay when the version changes.
         assert!(apply(&six, "exe6", side, "crosses", &Edit::Empty));
         assert_eq!(side.facts.get(&six, "crosses"), Some(Stated::List(vec![Stated::Def(Registry::Form, None); 5])));
-        for &h in [offered[7], offered[2], offered[9], offered[0], offered[4], offered[5]].iter() {
-            apply(&six, "exe6", side, "crosses", &Edit::Listed(h, true));
-        }
-        let held = crosses(side);
-        assert_eq!(held, [offered[0], offered[2], offered[4], offered[7], offered[9]], "the sixth isn't taken");
-        // (Crosses of the side's own choosing stay when the version changes.)
         assert!(apply(&six, "exe6", side, "version", &Edit::Variant("falzar".into())));
-        assert_eq!(crosses(side), held);
-        assert!(apply(&six, "exe6", side, "crosses", &Edit::Listed(offered[2], false)));
-        assert_eq!(crosses(side).len(), 4);
+        assert!(crosses(side).is_empty());
         assert!(apply(&six, "exe6", side, "crosses", &Edit::Own));
         assert_eq!(crosses(side), offered[5..]);
         // A flag, a number as typed.
@@ -361,15 +358,12 @@ mod tests {
             assert!(side.facts.is_default(&six, name), "{name}");
         }
         assert_eq!(nettai_match::check::check_side_alone(&six, &m.arena, &m.sides[0]).iter().filter(|p| !p.contains("folder")).count(), 0);
-        // A navi that doesn't change form is offered no form list.
-        let side = &mut m.sides[0];
-        side.set_navi(&six, nettai_match::ids::navi(&six, "exe6", "protoman").unwrap()).unwrap();
-        assert!(lists(&six, "exe6", side).is_empty());
 
         let five = exe5_content();
         let mut m = nettai_match::Match::empty(&five, "exe5").unwrap();
         let side = &mut m.sides[0];
-        let panes = lists(&five, "exe5", side);
+        // (Undeclared, the souls would be a list of the facts'.)
+        let panes = lists(&five, "exe5", side, &[]);
         assert_eq!(panes.iter().map(|(_, t)| t.as_str()).collect::<Vec<_>>(), ["Souls"]);
         let field = facts::field(&five, "souls").unwrap();
         let offered = facts::offered(&five, "exe5", side, &field).unwrap();

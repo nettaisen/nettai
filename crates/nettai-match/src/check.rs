@@ -240,7 +240,6 @@ mod tests {
     #[test]
     fn exe5s_board_grows_with_its_expansions() {
         let content = crate::testing::exe5_content();
-        assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         assert_eq!(crate::testing::navicust_expansions(&content, &crate::Match::empty(&content, "exe5").unwrap().sides[0]), Some(2));
         let undersht = ids::entry(&content, "exe5", "navicust_programs", "undersht").unwrap();
@@ -287,7 +286,7 @@ mod tests {
     /// off the command line, where it stops nothing.
     #[test]
     fn exe5s_hubbatc_shares_a_board_with_no_hp_program() {
-        use nettai_battle::navicust::{SIZE, cells};
+        use crate::testing::{SIZE, cells};
         let content = crate::testing::exe5_content();
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         let program = |name: &str| ids::entry(&content, "exe5", "navicust_programs", name).unwrap();
@@ -326,7 +325,13 @@ mod tests {
         assert!(beside_hub(at(program("hp-500"), 3, 2, 0, false)).iter().any(|p| p.contains("is over program 1")));
         // BugStop beside it: compressed alone, and never on the command line.
         let bugstop = program("bugstop");
-        let line = crate::navicust_rules(&content).command_line as i32;
+        // (The command line: the row the NaviCust's grid sets apart.)
+        let line = crate::panes::panes(&content)
+            .unwrap()
+            .iter()
+            .flat_map(|p| &p.fields)
+            .find_map(|f| if let crate::panes::View::Grid(g) = &f.view { g.rows_of_note.first().map(|r| r.0 as i32) } else { None })
+            .unwrap();
         let mut places = 0;
         for (x, y) in everywhere() {
             for rotation in 0..4 {

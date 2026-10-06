@@ -98,6 +98,22 @@ impl Stated {
     }
 }
 
+/// A fact's value as the facts' writer takes it back ([`Facts::set`]): a
+/// read value written again, whole (a tool's edit of a part of it).
+pub fn fact_of(value: &Stated) -> Fact<'_> {
+    match value {
+        Stated::Flag(b) => Fact::Value(Value::Bool(*b)),
+        Stated::Number(n) => Fact::Value(Value::Int(*n)),
+        Stated::Variant(Some(name)) => Fact::Name(name),
+        Stated::Def(r, Some(h)) => Fact::Value(Value::Def(*r, *h)),
+        Stated::Optional(Some(n)) => Fact::Value(Value::Int(*n)),
+        Stated::List(items) => Fact::List(items.iter().map(fact_of).collect()),
+        Stated::Record(fields) => Fact::Record(fields.iter().map(|(n, v)| (n.as_str(), fact_of(v))).collect()),
+        Stated::Code(Some(c)) => Fact::Value(Value::Code(*c as u8)),
+        Stated::Variant(None) | Stated::Def(_, None) | Stated::Optional(None) | Stated::Code(None) | Stated::Other => Fact::Value(Value::Nil),
+    }
+}
+
 /// The value at `place` of a setup's block, read: a record's fields, an
 /// array's elements, a list's (its length's), a value.
 fn stated_at(block: &Block, place: nettai_content_api::Place) -> Stated {
@@ -664,25 +680,20 @@ pub fn role_of(content: &Content, name: &str) -> Option<PlayerFact> {
 }
 
 /// The definitions a tool offers for `side`'s list fact `field` (a list of
-/// definitions of a registry), by their handles, in the list's order:
+/// definitions of a registry), by their handles, in the list's order, where
+/// the rules' panes don't say (`crate::panes`: EXE6's Crosses, the navi's
+/// own ten, are its pane's `offered`):
 ///
-/// - the engine's form list: the forms of the side's navi's own lists, of
-///   every version (EXE6's ten Crosses; none for a navi that doesn't
-///   change form);
-/// - else what the rules' default lists (what a side that says nothing
-///   has: EXE5's twelve souls), and after them any other the side's list
-///   holds;
+/// - what the rules' default lists (what a side that says nothing has:
+///   EXE5's twelve souls), and after them any other the side's list holds;
 /// - a list whose default holds nothing: the game's definitions of the
-///   registry.
+///   registry (an entry of its collection).
 ///
 /// None for a fact that is no list of definitions.
 pub fn offered(content: &Content, game: &str, side: &Side, field: &Field) -> Option<Vec<u16>> {
     let FieldType::Array(elem, _) = field.ty else { return None };
     let FieldType::Ref(registry, of) = &**elem else { return None };
     let registry = *registry;
-    if role_of(content, field.name) == Some(PlayerFact::CrossList) {
-        return Some(crate::navi_forms(content, side.navi(content)).unwrap_or_default().into_iter().map(|f| f.0).collect());
-    }
     let mut out = Facts::defaults(content).get(content, field.name).map(|v| v.defs()).unwrap_or_default();
     if out.is_empty() {
         out = ids::all_of(content, registry, of.as_deref())
