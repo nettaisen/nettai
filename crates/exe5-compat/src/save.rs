@@ -2,7 +2,8 @@
 //! it for a player's setup: the version, the navi operated, the equipped
 //! folder with its Regular chip, the light/dark value, the souls it has, its
 //! NaviCust (the list, the compression flags, whether the compile leaves
-//! the HP), its patch cards and its auto battle data.
+//! the HP), its patch cards, its auto battle data and its SP navi deletion
+//! times.
 //!
 //! The file holds the save image at 0x100: 0x7C14 bytes, the game's EWRAM
 //! from 0x02000000 as the game saves it (an address's offset in the image
@@ -32,6 +33,11 @@
 //! follow MegaMan's (0x60 bytes each: a version's six navis in its souls'
 //! order, 0x0801165C by navi number); the story sets their HP as it sets
 //! event flags from 0x300 on, whose count is the team navis' level too.
+//! The SP navi deletion times are at 0x2670 (22 halfwords of frames, a slot
+//! each: an SP chip's slot is its chip record's +0x1A less 0x3E9). A new
+//! game fills them with 0xFFFF (0x080092E0), a fight's end keeps a better
+//! time there (0x08028CC6, JP 0x08028C82), and a battle reads its copy at
+//! 0x0203E560 (0x08009A14 copies them).
 
 use crate::Version;
 
@@ -60,6 +66,9 @@ const FOLDERS: usize = 0x2DF4;
 const FOLDER_SIZE: usize = 30;
 const EQUIPPED_FOLDER: usize = 0x2D;
 const REGULAR_CHIPS: usize = 0x2E;
+/// The SP navi deletion times (frames), by slot.
+const SP_TIMES: usize = 0x2670;
+pub const SP_SLOTS: usize = 22;
 /// The key items' counts (a byte an item, which 0x0803C120 reads), and
 /// ExpMemry among them: the NaviCust board's expansions, which the NaviCust
 /// screen reads as it opens (0x08132928) to pick its board (0x0813F138).
@@ -329,6 +338,12 @@ impl Save {
     /// The NaviCust's list (`trace::navicust` reads it).
     pub fn navicust_list(&self) -> &[u8] {
         &self.image[NAVICUST..NAVICUST + NAVICUST_PARTS * 8]
+    }
+
+    /// The SP navi deletion times, by slot (frames; 0xFFFF never
+    /// deleted, a new game's).
+    pub fn sp_times(&self) -> [u16; SP_SLOTS] {
+        std::array::from_fn(|i| u16::from_le_bytes([self.image[SP_TIMES + 2 * i], self.image[SP_TIMES + 2 * i + 1]]))
     }
 
     /// The player's auto battle data: what a navi in auto battle plays from

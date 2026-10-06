@@ -17,6 +17,7 @@ pub mod editor;
 pub mod headless;
 pub mod net;
 mod picture;
+pub mod save_import;
 pub mod sound_lookups;
 pub mod trace;
 pub mod window;

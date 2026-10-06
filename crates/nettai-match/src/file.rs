@@ -806,7 +806,8 @@ mod tests {
         m.sides[0].set_fact(&content, "beast_out", &[Fact::Value(Value::Bool(false))]).unwrap();
         m.sides[0].set_level(&content, Some(3)).unwrap();
         let chip = |k: &str| ids::chip(&content, "exe6", k).unwrap();
-        m.sides[0].facts.set(&content, "sp_times", &exe6_compat::codec::sp_time_facts(&[(chip("heatman-sp"), 721), (chip("blastmn-sp"), 1500)])).unwrap();
+        let time = |c: &str, frames: i64| Fact::Record(vec![("chip", Fact::Value(Value::Def(nettai_content_api::Registry::Chip, chip(c).0))), ("frames", Fact::Value(Value::Int(frames)))]);
+        m.sides[0].facts.set(&content, "sp_times", &[time("heatman-sp", 721), time("blastmn-sp", 1500)]).unwrap();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].set_navi(&content, protoman).unwrap();
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();

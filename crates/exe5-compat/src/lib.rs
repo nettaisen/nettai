@@ -21,6 +21,7 @@
 //! exe5-map.md §13 lists what of EXE5's records has no engine counterpart.
 
 pub mod codec;
+pub mod import;
 pub mod save;
 #[cfg(feature = "trace")]
 pub mod trace;
@@ -299,10 +300,11 @@ pub struct StageEntry {
     pub actor_list: u32,
 }
 
-/// What EXE5's NaviStats name by number (records.toml): navis by navi
-/// number, weapons by routine number, projectile variants by row, barriers
-/// by type, MegaMan's forms by form number (+0x2C: 0 his base form, 1 to 12
-/// his souls), each by its key.
+/// What EXE5's NaviStats and its save name by number (records.toml): navis
+/// by navi number, weapons by routine number, projectile variants by row,
+/// barriers by type, MegaMan's forms by form number (+0x2C: 0 his base
+/// form, 1 to 12 his souls), the SP chips whose damage goes by a deletion
+/// time by the save's slot of it, each by its key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordNumbers {
@@ -316,6 +318,8 @@ pub struct RecordNumbers {
     pub barriers: BTreeMap<String, u8>,
     #[serde(default)]
     pub forms: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub sp_slots: BTreeMap<String, u8>,
 }
 
 /// EXE5's NaviCust programs (navicust.toml): each program's number (a part
@@ -570,6 +574,15 @@ impl Compat {
         for (k, n) in &records.forms {
             if let Some(other) = forms.insert(*n, k) {
                 return Err(format!("records.toml: forms {k} and {other} are both {n}"));
+            }
+        }
+        let mut sp_slots = BTreeMap::new();
+        for (k, n) in &records.sp_slots {
+            if *n as usize >= save::SP_SLOTS {
+                return Err(format!("records.toml: sp_slots {k} is {n}, past the save's {} slots", save::SP_SLOTS));
+            }
+            if let Some(other) = sp_slots.insert(*n, k) {
+                return Err(format!("records.toml: sp_slots {k} and {other} are both {n}"));
             }
         }
         let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
