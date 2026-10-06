@@ -272,13 +272,10 @@ pub(crate) fn run_action(b: &mut Battle, action: ActionHandle, r: ObjectRef) {
     }
 }
 
-/// Call the rules' function `f` for a tool, for side `side` (`Battle::call_pane`).
-pub(crate) fn call_tool(b: &mut Battle, f: FnId, side: u8, args: &[Value]) -> Result<nettai_content_api::Data, String> {
-    let l = loaded(b);
-    l.host.call_tool(b as &mut dyn CoreApi, f, side, args).map_err(|e| {
-        let source = &b.content.defs.functions[f.0 as usize];
-        format!("{source}: {e}")
-    })
+/// What module `module` returned as the content loaded, as plain data
+/// (`Battle::module_data`).
+pub(crate) fn module_data(b: &Battle, module: &str) -> Option<Result<nettai_content_api::Data, String>> {
+    loaded(b).host.module_data(module).map(|r| r.map_err(|e| format!("{module}.luau: {e}")))
 }
 
 /// Call the content function `f` for a hook.

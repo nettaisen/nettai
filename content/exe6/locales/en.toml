@@ -559,13 +559,3 @@ language = "en"
 "suprarmr" = { name = "SuprArmr" }
 "tango" = { name = "Tango" }
 "undersht" = { name = "UnderSht" }
-
-# What a tool says of a side's setup: the rules' panes' titles and labels (rules/panes.luau).
-[setup]
-command_line = "command line"
-crosses = "Crosses"
-navicust = "NaviCust"
-navicust_expansions = "Board"
-navicust_programs = "Programs"
-patch_cards = "Patch cards"
-sp_times = "SP navi deletion times"

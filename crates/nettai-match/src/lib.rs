@@ -17,7 +17,6 @@
 pub mod auto_battle;
 pub mod binary;
 pub mod check;
-pub mod panes;
 pub mod pick;
 pub mod facts;
 pub mod file;

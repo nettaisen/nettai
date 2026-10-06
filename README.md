@@ -148,24 +148,29 @@ its rules (one definition of them). The lists of chips, NaviCust programs and pa
 are in the game's library order (its content's `library.toml`: the chips by the game's library tabs in their order,
 Gregar's or Team ProtoMan's version chips first; the programs and cards by number), what isn't in it after, by name
 in the game. The panes show only what
-that game has (patch cards where it defines any, the NaviCust where its rules have a board, and each fact
-the rules' setup declares of a side): the arena's stages and backgrounds (the game's); each side's navi
+that game has: the arena (the game; the rounds, a list of one to 99, each added or removed, each round's stage and
+background stated or left to the seed; the seed); each side's navi
 (the game's), with the stats the round starts the navi with (what the rules build: a link navi's from its level, a
-team navi's HP from its story; MegaMan's optional navi code level); the SP navi deletion times; Import from save;
+team navi's HP from its story; MegaMan's optional navi code level), and Import from save;
 the folder (the game's chips the rules
 allow, with their pictures from the game's pack, searchable; a code puts a chip in the selected entry; the Regular
 and tag chips; the copies and the Mega, Giga, Regular and tag limits live, as the game's folder rules count them:
-EXE6's folder editor's, or EXE5's, content/exe5/rules/folder); the lists the rules take of a side (EXE6's
-Crosses, EXE5's souls); the patch cards (the game's; MB used of 80);
-the NaviCust (the board as the game draws it, with its frame and command line, edited with the mouse as Tango's is:
-drag a program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it
-shows where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click,
-Delete or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
-compiles to show beside it); every stat as the round starts it (shown, not edited). The problems with the match show
-at the bottom as you edit. Play plays the match in the window, from its seed (else the clock's), as `--match`
+EXE6's folder editor's, or EXE5's, content/exe5/rules/folder); every stat as the round starts it (shown, not
+edited). The rest of a side's setup the editor lays out from the game's rules' setup alone (crates/nettai-demo's
+editor/layout.rs): a value a row on the navi pane, a few definitions a checklist (EXE6's Crosses, EXE5's souls), any
+other list a pane of rows to add (from the game's, in library order), remove and reorder (the patch cards, with
+their MB in all). Richer views are the editor's own, chosen by the data's names and shape, never by a game's name:
+the SP navi deletion times a time each, as the games show one; the NaviCust a grid, where the game's data fit it
+(each program's shape, colors and plus mark, and the boards of its rules/navicust/board module): the board as the
+game draws it, with its frame and command line, edited with the mouse as Tango's is (drag a program's color swatch
+onto the grid, or press a placed program to pick it up and drag it; while held it shows where it would land, lit if
+it fits and red if not; the wheel or R turns it, right-click, Delete or a drag off the grid takes it off, Esc puts it
+back; right-clicking a placed program turns it; the selected program's color and compression beside it), with the
+stats it compiles to. The problems with the match show at the bottom as you edit, and each the rules tie to a fact
+beside it too (a row of a list, a program on the grid, outlined red). Play plays the match in the window, from its seed (else the clock's), as `--match`
 does, and Esc comes back to the editor; it saves nothing. A new match
-(the program started with nothing to play, or New) is an empty one of the game the editor asks for: its stock rules, its
-first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, its facts the rules'
+(the program started with nothing to play, or New) is an empty one of the game the editor asks for: its stock rules,
+three rounds, each left to the seed (the original's triple battle), and on each side its MegaMan at his fresh stats with an empty folder, its facts the rules'
 defaults (an EXE6 side has no version stated: its navi pane asks it, falzar or gregar, with nothing chosen, since
 neither is assumed; and no Crosses, the list's default; an EXE5 match has
 no version to state), no patch cards and no NaviCust programs (the problems list

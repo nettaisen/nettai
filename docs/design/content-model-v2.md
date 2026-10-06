@@ -733,7 +733,7 @@ in a game is a load error, and there are no variants (`stock`, `base`, `add`, `r
 | `custom_screen` | rules/custom_screen.luau | the slot grid and neighbor scans (rules/custom_screen.toml) |
 | `buster` | rules/buster.luau | recovery by Rapid and open panels; the empty hand's chip (rules/weapons.toml) |
 | `banners` | rules/banners.luau | which banners hold until removed, by banner asset (rules/banners.toml) |
-| `pools`, `flow`, `chip_use`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the NaviCust boards, EXE5's effect rules (the SP navis' deletion times are no section since step c2: rules/sp_chips.luau is a module the SP chips' `damage` names) |
+| `pools`, `flow`, `chip_use`, `effects` | rules/<name>.luau | the object pools' sizes, the flow's timings, chip use, EXE5's effect rules (the NaviCust boards are no section since step c3b: rules/navicust/board.luau, which the rules' compile reads and the editor's grid reads as data) (the SP navis' deletion times are no section since step c2: rules/sp_chips.luau is a module the SP chips' `damage` names) |
 
 Where v1 kept per-entity rows in a shared table, they move to the entity: charge times into weapons, the Cross
 palettes into forms, the SP chips' deletion-time steps into `lib/navi_chips/sp.luau` next to the formula,

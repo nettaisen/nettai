@@ -509,11 +509,12 @@ pub trait ContentHost {
     ) -> Result<(), ContentError>;
     /// Call function `f` for a hook.
     fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError>;
-    /// Call function `f` of the game's rules for a tool (a pane's of the
-    /// editor: the rules' `panes`) for side `side`, with `args`: while it
-    /// runs, the rules' setup and state are that side's. Its answer as plain
-    /// data (a definition as `Data::Ref`). No part of the simulation.
-    fn call_tool(&self, _api: &mut dyn CoreApi, _f: FnId, _side: u8, _args: &[Value]) -> Result<crate::Data, ContentError> {
-        Err(ContentError::new("this content runs no tool's call"))
+    /// What module `module` (by its name: a game pack's module by its pack
+    /// and path, `exe6:rules/navicust/board`) returned as the content
+    /// loaded, as plain data: for a tool reading a game's data (the
+    /// editor's NaviCust board). Nothing is called, and a function in it is
+    /// left out. None: no module of that name was loaded.
+    fn module_data(&self, _module: &str) -> Option<Result<crate::Data, ContentError>> {
+        None
     }
 }
