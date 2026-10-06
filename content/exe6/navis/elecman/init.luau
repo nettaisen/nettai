@@ -4,10 +4,9 @@
 local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local elecman = require("@self/chip")
+local elecman = require("@self/chip").delecswd
 
-return define.navi {
-    id = "elecman",
+local navi: NaviDef = {
     sprite = asset.sprite("elecman"),
     element = "elec",
     buster_bonus = 1,
@@ -59,7 +58,7 @@ return define.navi {
             { hp = 1100, attack = 3, rapid = 2, charge = 2, custom_level = 1, mega_level = 2, float_shoes = true },
         },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -105,3 +104,5 @@ return define.navi {
         },
     },
 }
+
+return { elecman = navi }

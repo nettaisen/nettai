@@ -26,7 +26,7 @@ export type Shield = {
 }
 
 function shield.look(l: Look): Look
-    return define.record("reflector-shield-look", l)
+    return new.record("reflector-shield-look", l)
 end
 
 -- The actions: held up, then fading.
@@ -98,7 +98,7 @@ function shield.make(spec: { id: string, sound: Sound }): Shield
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "attack",
         state = { slot = slot.TYPE, look = "record:reflector-shield-look" },

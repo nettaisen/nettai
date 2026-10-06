@@ -5,8 +5,7 @@
 
 local controller = require("@self/controller")
 
-return define.chip {
-    id = "dethphnx",
+local chip: Chip = {
     codes = { "D" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     traits = { "not_navi_slot" },
     dimming = controller.hook,
 }
+
+return { dethphnx = chip }

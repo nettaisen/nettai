@@ -25,7 +25,7 @@ export type State = {
 }
 
 function wave.variant(v: Variant): Variant
-    return define.record("shock-wave-variant", v)
+    return new.record("shock-wave-variant", v)
 end
 
 -- `byte_80C6B00`'s rows: the first twelve the viruses' (no chip has them),
@@ -57,9 +57,9 @@ local SOLID = 0x10
 -- The rows ahead it looks for enemies in (`byte_80C6DB8`), by facing
 -- (right, left) and panel column: the panels from the next one to the
 -- field's edge (regions 0x08, 0x20, 0x07, 0x06, 0x02, 0x01).
-local AHEAD_4 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } }
-local AHEAD_5 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } } }
-local AHEAD_6 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
+local AHEAD_4 = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } }
+local AHEAD_5 = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } } }
+local AHEAD_6 = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
 local AHEAD: { [number]: { [number]: Region } } = {
     [0] = {
         [0] = AHEAD_6,
@@ -86,8 +86,8 @@ local AHEAD: { [number]: { [number]: Region } } = {
 -- the word's other bytes are 0), and where it looks for an enemy before
 -- turning (regions 0x16 and 0x17).
 local ROW_TURN = { -1, 1, 0, 0 }
-local UP_AHEAD = define.region { panels = { { 0, 0 }, { 1, -1 } } }
-local DOWN_AHEAD = define.region { panels = { { 0, 0 }, { 1, 1 } } }
+local UP_AHEAD = new.region { panels = { { 0, 0 }, { 1, -1 } } }
+local DOWN_AHEAD = new.region { panels = { { 0, 0 }, { 1, 1 } } }
 -- Where it goes when it is done: x 240 pixels, off the field.
 local OFF_FIELD = 0xF0
 
@@ -253,7 +253,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-wave.kind = define.kind {
+wave.kind = new.kind {
     id = "wavearm/wave",
     pool = "attack",
     state = { variant = "record:shock-wave-variant", turned = "u8" },

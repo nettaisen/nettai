@@ -53,7 +53,7 @@ local function tick(me: Object)
     end
 end
 
-arrival.kind = define.kind {
+arrival.kind = new.kind {
     id = "beast-chips/arrival",
     pool = "effect",
     state = { look = "sprite", anim = "u8", ticks = "u8" },

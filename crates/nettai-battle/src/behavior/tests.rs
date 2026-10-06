@@ -54,7 +54,6 @@ fn battles_run_the_content_scripts() {
             "blastman/navi",
             "blkbomb/bomb",
             "bomb",
-            "bomb-slash",
             "boomer/boomerang",
             "boulder",
             "bugbomb/bomb",

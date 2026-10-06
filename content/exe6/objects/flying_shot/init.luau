@@ -41,7 +41,7 @@ local SPARKS, NO_SPARK = 0x3F800000, 1
 
 -- A flying shot variant.
 function flying_shot.variant(v: FlyingShotVariant): FlyingShotVariant
-    return define.record("flying-shot-variant", v)
+    return new.record("flying-shot-variant", v)
 end
 
 local ARROW_SPRITE = asset.sprite("bow")
@@ -109,7 +109,7 @@ local ROWS: { [number]: FlyingShotVariant } = {
         sprite = SHOT_SPRITE,
         speed = 0xC_0000,
         range = 2,
-        end_effect = define.effect { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 },
+        end_effect = new.effect { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 },
     },
     -- A thrown obstacle.
     [6] = flying_shot.variant {
@@ -292,7 +292,7 @@ local function init(me: Object)
     tick(me)
 end
 
-flying_shot.kind = define.kind {
+flying_shot.kind = new.kind {
     id = "flying-shot",
     pool = "attack",
     state = {

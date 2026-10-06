@@ -97,7 +97,7 @@ function strike.make_kind(id: string, look: ElemTrapStrikeLook): Kind
         end
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { bonus = "u16" },

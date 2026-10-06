@@ -246,7 +246,7 @@ local function init(me: Object)
     tick(me)
 end
 
-shadow.kind = define.kind {
+shadow.kind = new.kind {
     id = "shadowman/shadow",
     pool = "actor",
     state = { held = "object", orders = "u8", gone = "bool", wait = "u8", slash_damage = "u32" },

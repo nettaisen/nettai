@@ -19,7 +19,7 @@ local ANIM_WIND_UP, ANIM_THROW = 0x13, 0x14
 local WIND_UP_TICKS, RECOVER_TICKS = 8, 0x1E
 
 local SOUND = asset.sound("bubble")
-local SPLASH = define.effect { sprite = asset.sprite("spout-man-effect"), anim = 0, palette = 0 }
+local SPLASH = new.effect { sprite = asset.sprite("spout-man-effect"), anim = 0, palette = 0 }
 
 -- The hits' counter byte, and the ball's element: Aqua (the attack's
 -- element byte).
@@ -63,7 +63,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [WIND_UP] = wind_up, [RECOVER] = recover }
 
-charge.action = define.action {
+charge.action = new.action {
     id = "spoutman/charge/action",
     state = { timer = "u16" },
     -- `sub_80F153C` (`off_80F1550`).
@@ -72,7 +72,7 @@ charge.action = define.action {
     end,
 }
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "spoutman/charge",
     -- The charge table's row 0x41, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

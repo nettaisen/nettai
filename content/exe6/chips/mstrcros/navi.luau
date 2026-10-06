@@ -45,17 +45,17 @@ export type State = {
 }
 
 -- MegaMan and his Crosses.
-local megaman = require("../../navis/megaman")
-local HEATCROSS = require("../../navis/megaman/forms/heatcross")
-local ELECCROSS = require("../../navis/megaman/forms/eleccross")
-local SLASHCROSS = require("../../navis/megaman/forms/slashcross")
-local ERASECROSS = require("../../navis/megaman/forms/erasecross")
-local CHARGECROSS = require("../../navis/megaman/forms/chargecross")
-local SPOUTCROSS = require("../../navis/megaman/forms/spoutcross")
-local TOMAHAWKCROSS = require("../../navis/megaman/forms/tomahawkcross")
-local TENGUCROSS = require("../../navis/megaman/forms/tengucross")
-local GROUNDCROSS = require("../../navis/megaman/forms/groundcross")
-local DUSTCROSS = require("../../navis/megaman/forms/dustcross")
+local megaman = require("../../navis/megaman").megaman
+local HEATCROSS = require("../../navis/megaman/forms/heatcross").heatcross
+local ELECCROSS = require("../../navis/megaman/forms/eleccross").eleccross
+local SLASHCROSS = require("../../navis/megaman/forms/slashcross").slashcross
+local ERASECROSS = require("../../navis/megaman/forms/erasecross").erasecross
+local CHARGECROSS = require("../../navis/megaman/forms/chargecross").chargecross
+local SPOUTCROSS = require("../../navis/megaman/forms/spoutcross").spoutcross
+local TOMAHAWKCROSS = require("../../navis/megaman/forms/tomahawkcross").tomahawkcross
+local TENGUCROSS = require("../../navis/megaman/forms/tengucross").tengucross
+local GROUNDCROSS = require("../../navis/megaman/forms/groundcross").groundcross
+local DUSTCROSS = require("../../navis/megaman/forms/dustcross").dustcross
 
 -- A wave's Cross: his form, move and sword look, which side of his
 -- target he stands on (`beside`: 1 in front of it, 0 behind it), his
@@ -110,12 +110,12 @@ local SWORDS = {
 -- WindRack's rack) and its gust (effect 0x44).
 local DRILL_ARM = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 19 }
 local FAN = attachment.look { sprite = asset.sprite("wind-rack"), palette = 0 }
-local GUST = define.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
+local GUST = new.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
 
 -- The finale's charge: the glow while it builds (effect 0x4E) and the
 -- flash when it is full (0x4F), at the Cross's attach point 0.
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = new.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
+local CHARGED = new.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
 
 local SOUND_APPEAR, SOUND_CIRCLE = asset.sound("appear"), asset.sound("sun-moon")
 local SOUND_BEAM, SOUND_DRILL, SOUND_FAN = asset.sound("erase-man-2"), asset.sound("drilarm"), asset.sound("windrack")
@@ -783,7 +783,7 @@ local function init(me: Object)
     update(me)
 end
 
-mstrcros.kind = define.kind {
+mstrcros.kind = new.kind {
     id = "mstrcros/navi",
     pool = "actor",
     state = {

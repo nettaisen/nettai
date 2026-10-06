@@ -36,7 +36,7 @@ local HIT_Z = 0x18_0000
 local SOUND_DASH, SOUND_RUMBLE = asset.sound("ground-beast-dash"), asset.sound("ground-beast-dash-2")
 
 -- The dust it lands in, 16.16 up.
-local LANDING_DUST = define.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
+local LANDING_DUST = new.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
 local LANDING_Z = 0x1E_0000
 
 -- `sub_8011D54`: 90 damage and 20 more per point of buster Attack (up to
@@ -145,7 +145,7 @@ local function land(me: Object, s: State)
     me:exit_attack()
 end
 
-dash_weapon.action = define.action {
+dash_weapon.action = new.action {
     id = "groundcross-beast/dash/action",
     state = { timer = "u16" },
     -- `sub_80EC1F0`.
@@ -163,7 +163,7 @@ dash_weapon.action = define.action {
     end,
 }
 
-dash_weapon.weapon = define.weapon {
+dash_weapon.weapon = new.weapon {
     id = "groundcross-beast/dash",
     -- The charge table's row 0x17; Charge 5 reads on into row 0x18's first
     -- entry, as the original's table does.

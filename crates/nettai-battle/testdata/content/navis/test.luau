@@ -1,8 +1,8 @@
 --!strict
--- The engine's test navis: MegaMan with his base form, a link navi with an
--- actor record of its own (AI index 4), and one with hooks of its own (AI
--- index 5) that wears an object of this content's own kind, each with the
--- EXE6 overlay's buster and charged shot.
+-- The engine's test navis: MegaMan (his base form: ../forms/test), a link
+-- navi with an actor record of its own (AI index 4), and one with hooks of
+-- its own (AI index 5) that wears an object of this content's own kind,
+-- each with the EXE6 overlay's buster and charged shot.
 
 local buster = require("./megaman/weapons/buster")
 local charged_shot = require("./megaman/weapons/charged_shot")
@@ -23,7 +23,7 @@ local WEAPONS: FormWeapons = { buster = buster.weapon, charge_shot = charged_sho
 
 -- What the navi with hooks starts as it lands: three ticks, then out of the
 -- air and back to idle with the animation it has.
-local landing = define.action {
+local landing = new.action {
     id = "test/landing",
     state = { timer = "u16" },
     update = function(me: Object, s: { timer: number })
@@ -45,7 +45,7 @@ local landing = define.action {
 -- the 64 bytes an object's once had at most: it counts its ticks, and marks
 -- the last of its 24 words with three times the count.
 type WornState = { ticks: number, marks: { number } }
-local worn = define.kind {
+local worn = new.kind {
     id = "test/worn",
     pool = "actor",
     state = { ticks = "u16", marks = "u32[24]" },
@@ -108,14 +108,13 @@ local HOOKS: Hooks = {
 
 -- `megaman`: the navi that changes form (it has forms, though this content
 -- defines none but the base form).
-local function navi(id: string, sprite: string, class: IdentityClass, ai_index: number, megaman: boolean, hooks: Hooks?): NaviDef
-    return define.navi {
+local function navi(sprite: string, class: IdentityClass, ai_index: number, megaman: boolean, hooks: Hooks?): NaviDef
+    return {
         tick = if hooks then hooks.tick else nil,
         idle = if hooks then hooks.idle else nil,
         post_init = if hooks then hooks.post_init else nil,
         -- (The navi with hooks: its charge glow shows 16 pixels higher in its animation 9.)
         charge_glow_lift = if hooks then { anims = { 9 }, pixels = 16 } else nil,
-        id = id,
         sprite = asset.sprite(sprite),
         element = "null",
         buster_bonus = 1,
@@ -128,7 +127,7 @@ local function navi(id: string, sprite: string, class: IdentityClass, ai_index: 
         fresh = { hp = 100, mega_level = 5, giga_level = 1 },
         cross_hp = { 100, 150 },
         forms = if megaman then { gregar = { crosses = {} }, falzar = { crosses = {} } } else nil,
-        identity = define.identity {
+        identity = new.identity {
             class = class,
             version = 0,
             actor_type = "player",
@@ -142,17 +141,10 @@ local function navi(id: string, sprite: string, class: IdentityClass, ai_index: 
     }
 end
 
-return {
-    megaman = navi("megaman", "test-megaman", "megaman", 0, true),
-    link_navi = navi("test/link-navi", "test-navi", "link_navi", 4, false),
-    hooked_navi = navi("test/hooked-navi", "test-navi", "link_navi", 5, false, HOOKS),
-    base = define.form {
-        id = "base",
-        base = true,
-        sprite = asset.sprite("test-navi"),
-        element = "null",
-        buster_bonus = 0,
-        weapons = WEAPONS,
-        buster_arm = { anim = 0 },
-    },
+local navis: { [string]: NaviDef } = {
+    megaman = navi("test-megaman", "megaman", 0, true),
+    ["test/link-navi"] = navi("test-navi", "link_navi", 4, false),
+    ["test/hooked-navi"] = navi("test-navi", "link_navi", 5, false, HOOKS),
 }
+
+return navis

@@ -98,8 +98,7 @@ local function update(me: Object, s: State)
     end
 end
 
-return define.chip {
-    id = "drilarm",
+local chip: Chip = {
     codes = { "G", "M", "W" },
     element = "null", family = "break", class = "standard",
     rarity = 2, mb = 32, damage = 70, hit_param = 10, lockout = 0,
@@ -107,5 +106,7 @@ return define.chip {
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.thunder },
-    action = define.action { state = { timer = "u16" }, update = update },
+    action = new.action { state = { timer = "u16" }, update = update },
 }
+
+return { drilarm = chip }

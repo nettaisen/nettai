@@ -56,7 +56,7 @@ local function init(me: Object)
     tick(me)
 end
 
-hit_flash.kind = define.kind {
+hit_flash.kind = new.kind {
     id = "slashcross-beast/hit-flash",
     pool = "effect",
     state = { flashes = "u8" },

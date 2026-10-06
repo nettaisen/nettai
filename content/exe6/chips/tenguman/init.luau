@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-local tenguman = define.chip {
-    id = "tenguman",
+local tenguman: Chip = {
     codes = { "T", "*" },
     element = "null",
     family = "wind",
@@ -20,8 +19,7 @@ local tenguman = define.chip {
     navi = navi.summon,
 }
 
-local tengumn_ex = define.chip {
-    id = "tengumn-ex",
+local tengumn_ex: Chip = {
     codes = { "T" },
     element = "null",
     family = "wind",
@@ -36,8 +34,7 @@ local tengumn_ex = define.chip {
     navi = navi.summon,
 }
 
-local tengumn_sp = define.chip {
-    id = "tengumn-sp",
+local tengumn_sp: Chip = {
     codes = { "T" },
     element = "null",
     family = "wind",
@@ -52,4 +49,4 @@ local tengumn_sp = define.chip {
     navi = navi.summon,
 }
 
-return { tenguman = tenguman, tengumn_ex = tengumn_ex, tengumn_sp = tengumn_sp }
+return { tenguman = tenguman, ["tengumn-ex"] = tengumn_ex, ["tengumn-sp"] = tengumn_sp }

@@ -45,7 +45,7 @@ type Variant = {
 -- The effect table's row 0 (an explosion), its palette raised.
 local EXPLOSIONS: { [number]: Effect } = {}
 for palette = 0, 4 do
-    EXPLOSIONS[palette] = define.effect { sprite = EXPLOSION, anim = 0, palette = palette }
+    EXPLOSIONS[palette] = new.effect { sprite = EXPLOSION, anim = 0, palette = palette }
 end
 
 local VARIANTS: { [number]: Variant } = {
@@ -285,7 +285,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-capsule.kind = define.kind {
+capsule.kind = new.kind {
     id = "meddy/capsule",
     pool = "attack",
     state = { variant = "u8", line = "u8", mode = "u8" },

@@ -5,8 +5,7 @@
 
 local anubis = require("@self/anubis")
 
-return define.chip {
-    id = "anubis",
+local chip: Chip = {
     codes = { "A" },
     element = "null",
     family = "summon",
@@ -21,3 +20,5 @@ return define.chip {
     megaman = "dark",
     dimming = anubis.controller.hook(anubis.variants.anubis),
 }
+
+return { anubis = chip }

@@ -131,7 +131,7 @@ local function init(me: Object)
     tick(me)
 end
 
-pile.kind = define.kind {
+pile.kind = new.kind {
     id = "piledrvr/pile",
     pool = "attack",
     state = { controller = "object", slot = "u8", distance = "u8" },

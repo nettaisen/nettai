@@ -1,65 +1,22 @@
 --!strict
--- EXE6's navis/ (docs/design/content-model-v2.md §4.0): the folder's modules that define what the game has, which load
--- when the game's init.luau requires the folder. Written by tools/content/index.py (the verification workspace) from
--- the modules that are there: run it again rather than edit this, also to settle a merge conflict in it.
+-- EXE6's navis (docs/design/content-model-v2.md §4.0), by id: the tables of the modules that define them as one, which
+-- the game's init.luau returns as its `navis`. Written by tools/content/index.py (the verification workspace) from the
+-- modules that are there: run it again rather than edit this, also to settle a merge conflict in it.
 
--- Navis (a navi chip's navi is defined with its chips).
-require("@self/chargeman")
-require("@self/dustman")
-require("@self/elecman")
-require("@self/eraseman")
-require("@self/groundman")
-require("@self/heatman")
-require("@self/megaman")
-require("@self/protoman")
-require("@self/slashman")
-require("@self/spoutman")
-require("@self/tenguman")
-require("@self/tomahawkman")
--- Chips: a module defining one, or a series module defining several.
-require("@self/chargeman/chip")
-require("@self/dustman/chip")
-require("@self/elecman/chip")
-require("@self/eraseman/chip")
-require("@self/groundman/chip")
-require("@self/heatman/chip")
-require("@self/protoman/chip")
-require("@self/slashman/chip")
-require("@self/spoutman/chip")
-require("@self/tenguman/chip")
-require("@self/tomahawkman/chip")
--- Forms.
-require("@self/megaman/forms/base")
-require("@self/megaman/forms/chargecross")
-require("@self/megaman/forms/chargecross_beast")
-require("@self/megaman/forms/dustcross")
-require("@self/megaman/forms/dustcross_beast")
-require("@self/megaman/forms/eleccross")
-require("@self/megaman/forms/eleccross_beast")
-require("@self/megaman/forms/erasecross")
-require("@self/megaman/forms/erasecross_beast")
-require("@self/megaman/forms/falzar_beast")
-require("@self/megaman/forms/falzar_beast_over")
-require("@self/megaman/forms/gregar_beast")
-require("@self/megaman/forms/gregar_beast_over")
-require("@self/megaman/forms/groundcross")
-require("@self/megaman/forms/groundcross_beast")
-require("@self/megaman/forms/heatcross")
-require("@self/megaman/forms/heatcross_beast")
-require("@self/megaman/forms/slashcross")
-require("@self/megaman/forms/slashcross_beast")
-require("@self/megaman/forms/spoutcross")
-require("@self/megaman/forms/spoutcross_beast")
-require("@self/megaman/forms/tengucross")
-require("@self/megaman/forms/tengucross_beast")
-require("@self/megaman/forms/tomahawkcross")
-require("@self/megaman/forms/tomahawkcross_beast")
--- Modules nothing else requires, loaded for what they define: the alias routines, kinds and effects the original's
--- tables number, which compat names.
-require("@self/megaman/weapons/buster_2e")
-require("@self/megaman/weapons/buster_3f")
-require("@self/megaman/weapons/buster_6f")
-require("@self/megaman/weapons/buster_70")
-require("@self/megaman/weapons/buster_79")
-require("@self/megaman/weapons/buster_7e")
-require("@self/megaman/weapons/buster_82")
+local merge = require("@exelib/merge")
+
+return merge {
+    -- Navis.
+    ["navis/chargeman"] = require("@self/chargeman"),
+    ["navis/dustman"] = require("@self/dustman"),
+    ["navis/elecman"] = require("@self/elecman"),
+    ["navis/eraseman"] = require("@self/eraseman"),
+    ["navis/groundman"] = require("@self/groundman"),
+    ["navis/heatman"] = require("@self/heatman"),
+    ["navis/megaman"] = require("@self/megaman"),
+    ["navis/protoman"] = require("@self/protoman"),
+    ["navis/slashman"] = require("@self/slashman"),
+    ["navis/spoutman"] = require("@self/spoutman"),
+    ["navis/tenguman"] = require("@self/tenguman"),
+    ["navis/tomahawkman"] = require("@self/tomahawkman"),
+}

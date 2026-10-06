@@ -3,11 +3,12 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "yahoots-bug-repair",
+local card: PatchCard = {
     mb = 17,
     effects = {
         cards.step_bug(0),
         cards.panel_trail("none", 0),
     },
 }
+
+return { ["yahoots-bug-repair"] = card }

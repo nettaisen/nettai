@@ -5,8 +5,7 @@
 
 local grab = require("../lib/grab")
 
-return define.chip {
-    id = "areagrab",
+local chip: Chip = {
     codes = { "A", "L", "S", "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = grab.area,
 }
+
+return { areagrab = chip }

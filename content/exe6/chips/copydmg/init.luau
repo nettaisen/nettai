@@ -10,8 +10,7 @@ local buster = require("../lib/buster")
 local lockon = require("../rules/lockon")
 local mark = require("@self/mark")
 
-return define.chip {
-    id = "copydmg",
+local chip: Chip = {
     codes = { "*" },
     element = "null", family = "cursor", class = "standard",
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,
@@ -27,3 +26,5 @@ return define.chip {
         shot = mark.spawn,
     },
 }
+
+return { copydmg = chip }

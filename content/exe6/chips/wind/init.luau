@@ -7,8 +7,7 @@
 local controller = require("@self/controller")
 local fan = require("@self/fan")
 
-local wind = define.chip {
-    id = "wind",
+local wind: Chip = {
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -26,7 +25,7 @@ local wind = define.chip {
         pulls = false,
         wait = 1,
         hp = 40,
-        identity = define.identity {
+        identity = new.identity {
             id = "wind",
             class = "field_object",
             version = 3,
@@ -37,8 +36,7 @@ local wind = define.chip {
     }),
 }
 
-local fan_chip = define.chip {
-    id = "fan",
+local fan_chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -56,7 +54,7 @@ local fan_chip = define.chip {
         pulls = true,
         wait = 1,
         hp = 40,
-        identity = define.identity {
+        identity = new.identity {
             id = "fan",
             class = "field_object",
             version = 4,

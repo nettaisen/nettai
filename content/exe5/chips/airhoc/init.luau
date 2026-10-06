@@ -8,8 +8,7 @@
 local flick = require("@exelib/airhocky/flick")
 local puck = require("@self/puck")
 
-return define.chip {
-    id = "airhoc",
+local chip: Chip = {
     codes = { "Q", "R", "S" },
     element = "null",
     family = "break",
@@ -28,3 +27,5 @@ return define.chip {
         down = true,
     },
 }
+
+return { airhoc = chip }

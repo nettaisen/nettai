@@ -7,15 +7,15 @@
 local ticker = require("./ticker")
 
 local SHORT = ticker.variant { lifetime = 5 }
-local BURST = define.effect { sprite = asset.sprite("test-burst"), anim = 2 }
-local WIDE = define.region { panels = { { 1, -1 }, { 1, 0 }, { 1, 1 } } }
-local THROWN = define.collision { id = "test/thrown", side0 = 0x80000088, side1 = 0x40000088 }
-local HITS = define.collision { id = "test/hits-navis", side0 = 0x15800000, side1 = 0x2a800000 }
+local BURST = new.effect { sprite = asset.sprite("test-burst"), anim = 2 }
+local WIDE = new.region { panels = { { 1, -1 }, { 1, 0 }, { 1, 1 } } }
+local THROWN = new.collision { id = "test/thrown", side0 = 0x80000088, side1 = 0x40000088 }
+local HITS = new.collision { id = "test/hits-navis", side0 = 0x15800000, side1 = 0x2a800000 }
 local TICK = asset.sound("test-tick")
 
 local launcher = {}
 
-launcher.kind = define.kind {
+launcher.kind = new.kind {
     id = "test/launcher",
     pool = "attack",
     state = { launched = "bool" },
@@ -40,9 +40,9 @@ launcher.kind = define.kind {
 }
 
 -- A kind that stores a record of the wrong type in a ticker's variant.
-local OTHER = define.record("other-variant", { lifetime = 1 })
+local OTHER = new.record("other-variant", { lifetime = 1 })
 
-launcher.misuse = define.kind {
+launcher.misuse = new.kind {
     id = "test/misuse",
     pool = "effect",
     update = function(me: Object)

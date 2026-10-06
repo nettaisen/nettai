@@ -6,8 +6,7 @@
 
 local lifesync = require("@self/controller")
 
-return define.chip {
-    id = "lifesync",
+local chip: Chip = {
     codes = { "B", "R", "S", "*" },
     element = "null",
     family = "cursor",
@@ -22,3 +21,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = lifesync.hook,
 }
+
+return { lifesync = chip }

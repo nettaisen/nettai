@@ -104,7 +104,7 @@ local function init(me: Object)
     tick(me)
 end
 
-note.kind = define.kind {
+note.kind = new.kind {
     id = "toadman/note",
     pool = "attack",
     state = { target = "object", next_y = "u8", life = "u8", delay = "u8", dimmed = "bool" },

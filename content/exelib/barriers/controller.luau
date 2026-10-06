@@ -39,7 +39,7 @@ function controller.make(spec: Spec): { kind: Kind, hook: (barrier: Barrier) -> 
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { barrier = "record:barrier" },

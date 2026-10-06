@@ -193,7 +193,7 @@ local function init(me: Object)
     tick(me)
 end
 
-geyser.kind = define.kind {
+geyser.kind = new.kind {
     id = "spoutman/geyser",
     pool = "attack",
     state = { while_dimmed = "bool", ticks = "u8", target = "u8", column = "u8" },

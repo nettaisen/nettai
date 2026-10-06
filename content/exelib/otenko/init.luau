@@ -225,7 +225,7 @@ function otenko.make(look: Look): Otenko
         tick(me)
     end
 
-    local statue = define.kind {
+    local statue = new.kind {
         id = look.statue_id,
         pool = "attack",
         state = { entry = "u32", turn = "u32", count = "u32" },
@@ -280,7 +280,7 @@ function otenko.make(look: Look): Otenko
         end
     end
 
-    local controller = define.kind {
+    local controller = new.kind {
         id = look.controller_id,
         pool = "effect",
         -- `sub_80E7624`.

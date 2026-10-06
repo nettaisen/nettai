@@ -39,7 +39,7 @@ local function setup(navi: Object): Action
     return buster.setup(navi)
 end
 
-throw_absorbed.weapon = define.weapon {
+throw_absorbed.weapon = new.weapon {
     id = "dustcross/throw-absorbed",
     -- The charge table's row 0x2B, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

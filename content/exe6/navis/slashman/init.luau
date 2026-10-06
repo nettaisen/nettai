@@ -4,10 +4,9 @@
 local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local slashman = require("@self/chip")
+local slashman = require("@self/chip").rslash
 
-return define.navi {
-    id = "slashman",
+local navi: NaviDef = {
     sprite = asset.sprite("slashman"),
     element = "null",
     weakness = { "break" },
@@ -60,7 +59,7 @@ return define.navi {
             { hp = 1000, attack = 2, rapid = 4, charge = 1, custom_level = 2, mega_level = 1 },
         },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -106,3 +105,5 @@ return define.navi {
         },
     },
 }
+
+return { slashman = navi }

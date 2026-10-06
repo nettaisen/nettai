@@ -28,7 +28,8 @@ Words:
 - the **core** is the engine's mechanism (pools, collision, the panel grid, RNG, snapshots);
 - the **framework** is the Rust rules the BN4–EXE6 lineage shares (the navi framework, the hit kernel, the custom
   screen's chip window, the flow, the turn-start sequencer);
-- a game's **rules** are its one definition (`define.rules`, its rules/init.luau), written by hand as a whole: what a
+- a game's **rules** are its one definition (its root's `rules`, rules/init.luau; `define.rules` until the
+  define-less content of 2026-10-06), written by hand as a whole: what a
   side keeps, what a player brings, the hooks the framework calls, the custom screen's extras, the data the framework
   reads (rule sections, roles); each game has one (R6: the user, "there should only be one ruleset per game"; the
   mixes this document designed are gone);
@@ -2899,3 +2900,34 @@ pointless", then "drop ids where they aren't needed by the compat map or match s
   record by its record type.
 - **Checked**: the setup dump of 57 match files is the previous step's but for EXE5's weapon handles, renumbered one
   to one, the same definitions behind each; the recordings replayed for the rules steps match every frame.
+
+### Define-less content (2026-10-06, branch nettai-player)
+
+The user: "i dunno if i like any of this define api. why don't you just return tables or whatever and then at the top
+level put everything in a table with ids? ... so there's no side effects", "sure, have tag constructors" and "you
+should drop the ids from the chip/patch card/navicust program/etc definitions, they should be indicated by the top
+level table in init.luau" (content-model-v2.md §2.2, As built).
+
+- **A game's top module returns its root**: `{ chips, navis, forms, stages, patch_cards, navicust_programs, rules }`,
+  each section the init that merges its modules' tables by id (tools/content/index.py writes them; @exelib/merge),
+  the rules rules/init.luau's plain table (`local rules: Rules = { ... }`). No `define`: the root's definitions are
+  plain tables with no `id` (a module returns its chips by key), and what only code reaches is tagged (`new.kind`,
+  `new.action`, `new.weapon`, `new.effect`, `new.spark`, `new.region`, `new.collision`, `new.status`,
+  `new.identity`, `new.record`).
+- **The loader walks from the root** (nettai-luau's `define::finish`), through tables and what functions capture:
+  what it reaches is what the game has. Keys: a root's definition, its id there (and `chip.id` reads it, a view
+  through the table's metatable); a tagged table, its `id` where compat names it, else the module that holds it
+  and the fields (`rules/collision/attack`), else its path from the definition that holds it (`minibomb/action`).
+  A game held in memory (a test's) gets a root from its modules' typed locals (`Scripts::init_for`), and its
+  other modules are walked as they are (`Scripts::held`).
+- **Gone with nothing reaching them**, and their compat entries: EXE6's 82 statuses nothing inflicts, the buster's
+  seven alias routines and B Reflect's weapon (no navi, form or card has them), the kinds `bomb-slash` and
+  `dimming/blinding-flash` (and the flash's collision type), the actions `recov/none` and `tornado/back-spread`,
+  and lib/instant/repair's effect. gen-content's check skips a status byte compat names nothing for and a collision
+  row no definition gives (nothing of the content's reaches them).
+- **Fixed on the way**: Django's navi tells Otenko on his side by the statue's identity (the table), where it read
+  an `id` the previous step had taken off; EXE6's Tornado and TrnArrw and Recov return their chips alone.
+- **Checked**: the setup dump of 57 match files is the previous step's but for EXE6's weapon handles (13 of 20
+  renumbered, the same key and module behind each) and its rules' state id, one fewer before it; the recordings
+  (EXE6's 17 lab traces, 22,014 frames; EXE5's 13, 13,984 frames) match every frame; the content check, index.py,
+  both generators (EXE5's gen_content.py and the auto battle's, gen-content and navicust/gen.py) pass.

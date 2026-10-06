@@ -15,7 +15,7 @@ export type Spec = { delay: number, is: CollisionType, hits: CollisionType, spar
 export type State = Spec
 
 local HEIGHT = 0x30_0000
-local DUST = define.effect { sprite = asset.sprite("dust-2"), anim = 0, palette = 0 }
+local DUST = new.effect { sprite = asset.sprite("dust-2"), anim = 0, palette = 0 }
 -- Its hit lasts 15 less 5 ticks.
 local HIT_TICKS = 0x0F - 5
 local HIT_MOD = 3
@@ -117,7 +117,7 @@ local function init(me: Object)
     tick(me)
 end
 
-strike.kind = define.kind {
+strike.kind = new.kind {
     id = "tomahawkman/strike",
     pool = "attack",
     state = { delay = "u8", is = "collision", hits = "collision", spark = "spark" },

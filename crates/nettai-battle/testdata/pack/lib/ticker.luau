@@ -11,7 +11,7 @@ local ticker = {}
 -- lifetime (or `LIFETIME`). `parent` is the kind that spawned it.
 local LIFETIME = 30
 
-ticker.kind = define.kind {
+ticker.kind = new.kind {
     id = "test/ticker",
     pool = "effect",
     state = { ticks = "u16", variant = "record:ticker-variant", parent = "kind" },
@@ -30,7 +30,7 @@ ticker.kind = define.kind {
 
 -- A ticker variant: a record a ticker's state refers to.
 function ticker.variant(v: Variant): Variant
-    return define.record("ticker-variant", v)
+    return new.record("ticker-variant", v)
 end
 
 -- One state for every action the builder makes: they continue each
@@ -43,7 +43,7 @@ export type Spec = { id: string?, length: number, next: any? }
 -- While it runs, the navi runs it (`navi_action`).
 function ticker.action(spec: Spec): any
     local def: any
-    def = define.action {
+    def = new.action {
         id = spec.id,
         state = STATE,
         args = spec,

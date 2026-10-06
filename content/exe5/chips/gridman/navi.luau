@@ -31,8 +31,8 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_DASH = asset.sound("grid-dash")
 local SOUND_STRIKE = asset.sound("hit-bomb-1")
 -- The explosions over the enemy area (effect 0) and the puffs behind his dash (effect 2).
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
-local PUFF = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
 local HIT_MOD = 3
 
 -- By the level (0x080BDF0C): the dark palette for DS's 4.
@@ -220,7 +220,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = dash, [0xC] = strike, [0x10] = leave }
 
-gridman.kind = define.kind {
+gridman.kind = new.kind {
     id = "gridman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", end_x = "u8", crossed = "u8", grid = "object" },

@@ -170,8 +170,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [SLIDE] = slide, [SLASH] = slash, [RETURN] = return_home, [RECOVER] = recover }
 
-return define.chip {
-    id = "delecswd",
+local chip: Chip = {
     codes = { "E" },
     element = "elec",
     family = "elec",
@@ -184,7 +183,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 3,
     -- `sub_80F09B8` (`off_80F09CC`).
-    action = define.action {
+    action = new.action {
         id = "delecswd/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -192,3 +191,5 @@ return define.chip {
         end,
     },
 }
+
+return { delecswd = chip }

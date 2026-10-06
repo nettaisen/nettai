@@ -102,7 +102,7 @@ local function tick(me: Object)
     end
 end
 
-beam.kind = define.kind {
+beam.kind = new.kind {
     id = "eraseman/beam",
     pool = "attack",
     state = { aim = "u8", ticks = "u8", navis = "bool", action = "action" },

@@ -147,7 +147,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = rise, [0xC] = attack }
 
-larkman.kind = define.kind {
+larkman.kind = new.kind {
     id = "larkman/navi",
     pool = "actor",
     state = {

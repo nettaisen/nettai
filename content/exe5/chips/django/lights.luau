@@ -98,7 +98,7 @@ local function init(me: Object)
     tick(me)
 end
 
-lights.kind = define.kind {
+lights.kind = new.kind {
     id = "django/lights",
     pool = "effect",
     state = { light = "bool", blessed = "bool", done = "bool", children = "object[8]" },

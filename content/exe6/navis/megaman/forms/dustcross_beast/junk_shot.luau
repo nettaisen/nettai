@@ -132,7 +132,7 @@ local function init(me: Object)
     me.lifecycle = "update"
 end
 
-junk_shot.kind = define.kind {
+junk_shot.kind = new.kind {
     id = "dustcross-beast/junk-shot",
     pool = "attack",
     state = { target = "u8" },

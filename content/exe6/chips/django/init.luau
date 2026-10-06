@@ -11,8 +11,7 @@
 
 local navi = require("@self/navi")
 
-local django = define.chip {
-    id = "django",
+local django: Chip = {
     codes = { "D", "*" },
     element = "null",
     family = "null",
@@ -27,8 +26,7 @@ local django = define.chip {
     navi = navi.summon { slash_damage = 0x32 },
 }
 
-local django2 = define.chip {
-    id = "django2",
+local django2: Chip = {
     codes = { "D" },
     element = "null",
     family = "null",
@@ -43,8 +41,7 @@ local django2 = define.chip {
     navi = navi.summon { slash_damage = 0x50 },
 }
 
-local django3 = define.chip {
-    id = "django3",
+local django3: Chip = {
     codes = { "D" },
     element = "null",
     family = "null",

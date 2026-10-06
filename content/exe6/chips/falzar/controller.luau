@@ -177,7 +177,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "falzar/controller",
     pool = "effect",
     state = { bonus = "u16", falzar_out = "bool", last_x = "u32", last_y = "u32" },

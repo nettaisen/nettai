@@ -106,7 +106,7 @@ end
 
 -- A fist kind (`id`) of `look`.
 function fist.make_kind(id: string, look: FireHitFistLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { hit_mod = "u8" },

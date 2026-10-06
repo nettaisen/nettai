@@ -22,7 +22,7 @@ local LEAVE_TICKS = 10
 
 local numtrap: Chip
 
-local action = define.action {
+local action = new.action {
     state = { timer = "u16" },
     -- 0x080F169C
     update = function(me: Object, s: State)
@@ -52,8 +52,7 @@ local action = define.action {
     end,
 }
 
-numtrap = define.chip {
-    id = "numtrap",
+numtrap = {
     codes = { "N" },
     element = "null",
     family = "null",
@@ -66,6 +65,6 @@ numtrap = define.chip {
     flags = { "dimming", "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     action = action,
-}
+} :: Chip
 
-return numtrap
+return { numtrap = numtrap }

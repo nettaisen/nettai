@@ -141,7 +141,7 @@ function fist.make(look: Look): {
         me:set_lifecycle("update")
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { fast = "bool" },

@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local charge = require("@self/charge")
 
-return define.patch_card {
-    id = "django",
+local card: PatchCard = {
     mb = 52,
     effects = {
         cards.hp(200),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.charged_shot(charge),
     },
 }
+
+return { django = card }

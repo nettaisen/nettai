@@ -20,7 +20,7 @@ local function setup(navi: Object): Action
     return action
 end
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/triple-buster",
     -- The charge table's row 0x8F (the buster isn't charged), by Charge 0
     -- to 7: past 4 it reads on into the next routine's row.

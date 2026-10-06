@@ -19,7 +19,7 @@ local souls = require("@self/souls")
 
 -- The auto battle AI's state (./auto_battle/ai.luau's `State`): a navi's it drives (Dark MegaMan's, AIData +0x80 on),
 -- and a side's own drive's under DarkInvs (AIData +0xF0 on), in the side's state.
-local AI = {
+local AI: StateSchema = {
     timed = "bool",
     lifetime = "u16",
     drive_ticks = "u16",
@@ -78,7 +78,7 @@ for _, fields in souls.custom.states do
     end
 end
 
-return define.rules {
+local rules: Rules = {
     state = state,
     -- What a player brings (nettai-match from a match's side, exe5-compat from a recording): a side's facts.
     setup = {
@@ -214,3 +214,5 @@ return define.rules {
     sp_chips = require("@self/sp_chips"),
     status = require("@self/status").rules,
 }
+
+return rules

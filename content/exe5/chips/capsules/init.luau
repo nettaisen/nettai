@@ -13,8 +13,7 @@ local supports = require("../lib/supports/dimming")
 
 -- YelCapsl (EXE5 chip 0x17c): the chip it is mixed into confuses (the hand's modifier 0x04). Its record's use is
 -- the cannon's (action 0x14, subtype 0).
-local yelcapsl = define.chip {
-    id = "yelcapsl",
+local yelcapsl: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -31,8 +30,7 @@ local yelcapsl = define.chip {
 
 -- BlkCapsl (EXE5 chip 0x17d): the chip it is mixed into blinds (the hand's modifier 0x08). Its record's use is
 -- Poltrgst's (the dimming handler's subtype 49, its first parameter 0).
-local blkcapsl = define.chip {
-    id = "blkcapsl",
+local blkcapsl: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -49,8 +47,7 @@ local blkcapsl = define.chip {
 
 -- WhiCapsl (EXE5 chip 0x17e): the chip it is mixed into paralyzes (the hand's modifier 0x02). Its record's use is
 -- RockCube's controller with the ice rock (the dimming handler's subtype 20, its first parameter 3).
-local whicapsl = define.chip {
-    id = "whicapsl",
+local whicapsl: Chip = {
     codes = {},
     element = "null",
     family = "summon",
@@ -67,8 +64,7 @@ local whicapsl = define.chip {
 
 -- PrpCapsl (EXE5 chip 0x17f): the chip it is mixed into gives the HP bug (the hand's modifier 0x20). Its record's use
 -- is the supports' controller bringing Rush (the dimming handler's subtype 50, its first parameter 0).
-local prpcapsl = define.chip {
-    id = "prpcapsl",
+local prpcapsl: Chip = {
     codes = {},
     element = "null",
     family = "summon",
@@ -86,8 +82,7 @@ local prpcapsl = define.chip {
 -- PnkCapsl (EXE5 chip 0x180): the user of the chip it is mixed into heals a tenth of its HP at the use (the hand's
 -- modifier 0x10). Its record's use is the supports' controller bringing Beat (the dimming handler's subtype 50, its
 -- first parameter 1).
-local pnkcapsl = define.chip {
-    id = "pnkcapsl",
+local pnkcapsl: Chip = {
     codes = {},
     element = "null",
     family = "summon",

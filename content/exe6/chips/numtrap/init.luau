@@ -4,10 +4,11 @@
 
 local plus = require("../lib/instant/plus")
 
-return define.chip {
-    id = "numtrap",
+local chip: Chip = {
     element = "null", family = "null", class = "special",
     rarity = 0, mb = 99, damage = 10, hit_param = 0, lockout = 0,
     slot_in_limit = 1,
     instant = plus.attack,
 }
+
+return { numtrap = chip }

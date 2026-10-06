@@ -41,7 +41,7 @@ function instruments.make(id: string, instrument_kind: Kind): (Instrument) -> (u
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = id,
         pool = "effect",
         state = { instrument = "record:instrument" },

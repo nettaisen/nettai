@@ -148,7 +148,7 @@ local function init(me: Object)
     tick(me)
 end
 
-spray.kind = define.kind {
+spray.kind = new.kind {
     id = "sandwrm/spray",
     pool = "attack",
     state = {

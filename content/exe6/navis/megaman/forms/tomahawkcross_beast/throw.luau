@@ -75,7 +75,7 @@ local function swing(me: Object, s: State)
     end
 end
 
-throw.action = define.action {
+throw.action = new.action {
     id = "tomahawkcross-beast/throw/action",
     state = { timer = "u16" },
     -- `sub_80EF1EC`.
@@ -91,7 +91,7 @@ throw.action = define.action {
     end,
 }
 
-throw.weapon = define.weapon {
+throw.weapon = new.weapon {
     id = "tomahawkcross-beast/throw",
     -- The charge table's row 0x1B, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

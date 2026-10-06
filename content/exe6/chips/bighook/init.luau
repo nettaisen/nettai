@@ -5,8 +5,7 @@
 local hook = require("./flmhook/hook")
 local sparks = require("../lib/sparks")
 
-return define.chip {
-    id = "bighook",
+local chip: Chip = {
     codes = { "H" },
     element = "null",
     family = "break",
@@ -23,3 +22,5 @@ return define.chip {
     traits = { "user_stays" },
     navi = hook.summon { big = true, spark = sparks.breaking },
 }
+
+return { bighook = chip }

@@ -5,9 +5,9 @@
 -- what its use starts.
 
 local weapon = require("../../lib/weapon")
-local minibomb = require("../../chips/minibomb")
+local minibomb = require("../../chips/minibomb").minibomb
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/beetle/b-button",
     -- The charge table's row 0x7d, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

@@ -141,7 +141,7 @@ local function update(me: Object)
     me:update_sprite()
 end
 
-element_pillar.kind = define.kind {
+element_pillar.kind = new.kind {
     id = "element-pillar",
     pool = "attack",
     state = {

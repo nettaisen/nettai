@@ -137,7 +137,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-doll.kind = define.kind {
+doll.kind = new.kind {
     id = "dolthdr/doll",
     pool = "attack",
     state = { columns = "object[6]", slot = slot.TYPE, registers = "bool", ticks = "u8" },

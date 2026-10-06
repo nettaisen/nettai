@@ -111,7 +111,7 @@ function rapid_buster.make(look: RapidBusterLook): { setup: (navi: Object) -> Ac
         end
     end
 
-    made.action = define.action {
+    made.action = new.action {
         id = look.id,
         state = { timer = "u16", pattern = "u8" },
         -- `sub_80F00F2`.

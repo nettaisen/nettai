@@ -37,7 +37,7 @@ export type State = {
 local SPRITE = asset.sprite("sensor")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     id = "sensor",
     class = "field_object",
     version = 5,
@@ -319,7 +319,7 @@ local function init(me: Object)
     tick(me)
 end
 
-turret.kind = define.kind {
+turret.kind = new.kind {
     id = "sensor/turret",
     pool = "attack",
     state = {

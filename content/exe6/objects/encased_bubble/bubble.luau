@@ -129,7 +129,7 @@ local function init(me: Object)
     battle.play_sound(SOUND_FORM)
 end
 
-bubble.kind = define.kind {
+bubble.kind = new.kind {
     id = "encased-bubble",
     pool = "attack",
     state = { look = "u8" },

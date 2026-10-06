@@ -21,7 +21,7 @@ export type State = {
 
 local SPRITE = asset.sprite("pulsar")
 local SOUND, BURST_SOUND = asset.sound("pulsar"), asset.sound("elec-pulse")
-local BURST = define.effect { sprite = asset.sprite("pulsar-burst"), anim = 0, palette = 0 }
+local BURST = new.effect { sprite = asset.sprite("pulsar-burst"), anim = 0, palette = 0 }
 local HEIGHT, SPEED = 0x18_0000, 0x8_0000
 -- What it may touch and go on bursting: bodies.
 local BODIES = 0x03800000
@@ -136,7 +136,7 @@ local function init(me: Object)
     battle.play_sound(SOUND)
 end
 
-pulsar.kind = define.kind {
+pulsar.kind = new.kind {
     id = "pulsar/pulse",
     pool = "attack",
     state = { hit_at = "u32" },

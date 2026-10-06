@@ -56,7 +56,7 @@ end
 
 -- The action launching with `launch` (the owner, the damage word); `at` names the action's phase table in errors.
 function arm_launch.action(at: string, launch: (me: Object, damage: number) -> ()): Action
-    return define.action {
+    return new.action {
         state = { timer = "u16" },
         update = function(me: Object, s: ActionState)
             local step = me.step

@@ -8,8 +8,7 @@ local lockon = require("../rules/lockon")
 -- Every head charges at 12 pixels a tick (`byte_80D74D4`).
 local SPEED = 0xC_0000
 
-local aurahed1 = define.chip {
-    id = "aurahed1",
+local aurahed1: Chip = {
     codes = { "B", "C", "D" },
     element = "null",
     family = "break",
@@ -29,8 +28,7 @@ local aurahed1 = define.chip {
     },
 }
 
-local aurahed2 = define.chip {
-    id = "aurahed2",
+local aurahed2: Chip = {
     codes = { "D", "E", "F" },
     element = "null",
     family = "break",
@@ -50,8 +48,7 @@ local aurahed2 = define.chip {
     },
 }
 
-local aurahed3 = define.chip {
-    id = "aurahed3",
+local aurahed3: Chip = {
     codes = { "F", "G", "H" },
     element = "null",
     family = "break",
@@ -71,8 +68,7 @@ local aurahed3 = define.chip {
     },
 }
 
-local streamhd = define.chip {
-    id = "streamhd",
+local streamhd: Chip = {
     codes = {},
     element = "null",
     family = "program_advance",

@@ -295,7 +295,7 @@ local function leave(me: Object)
     me:free()
 end
 
-sunmoon.kind = define.kind {
+sunmoon.kind = new.kind {
     id = "sunmoon/sun",
     pool = "actor",
     state = { controller = "object" },

@@ -36,7 +36,7 @@ local function count(s: State): boolean
     return t <= 0
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "gyroman/charge/action",
     state = { timer = "u16" },
     -- 0x080F0B6E
@@ -78,7 +78,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "gyroman/charge",
     -- The charge table's row 0x28 (0x0801CBFC), by Charge 0 to 5: past 4 it reads on into row 0x29's first entry.
     charge_ticks = { 80, 75, 70, 65, 60, 120 },

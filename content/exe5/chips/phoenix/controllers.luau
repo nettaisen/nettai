@@ -88,7 +88,7 @@ function controllers.make(spec: Spec): Controller
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { chip = "chip", bonus = "u16", busy = "bool" },

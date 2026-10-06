@@ -309,7 +309,7 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
         end
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { variant = "record:countdown-variant" },
@@ -319,7 +319,7 @@ end
 
 -- A bomb's variant, as a record the bomb keeps.
 function countdown.variant(v: CountdownVariant): CountdownVariant
-    return define.record("countdown-variant", v)
+    return new.record("countdown-variant", v)
 end
 
 -- `sub_80CDC7C`: a bomb of `kind` and `variant` for `side` on (x, y) with

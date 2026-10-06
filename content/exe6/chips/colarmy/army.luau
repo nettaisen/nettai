@@ -193,7 +193,7 @@ local function init(me: Object)
     tick(me)
 end
 
-army.kind = define.kind {
+army.kind = new.kind {
     id = "colarmy/army",
     pool = "attack",
     -- `sub_80C9D00`.

@@ -25,7 +25,7 @@ local PULL, RECOVER = 0x0, 0x4
 local COOLDOWN = 0x28
 
 -- The vortex effect, and what keeps it alive each tick.
-local VORTEX = define.effect { sprite = asset.sprite("dust-cloud"), anim = 0, palette = 0 }
+local VORTEX = new.effect { sprite = asset.sprite("dust-cloud"), anim = 0, palette = 0 }
 local VORTEX_TICKS = 2
 
 -- DustCross's Beast form (the navi stats' form).
@@ -85,7 +85,7 @@ local function recover(me: Object, s: State)
     me:exit_attack()
 end
 
-absorb.action = define.action {
+absorb.action = new.action {
     id = "megaman/absorb/action",
     state = { timer = "u16", vortex = "object" },
     -- `sub_80EFCB4`: the phase, then the vortex lives on while this runs.
@@ -105,7 +105,7 @@ absorb.action = define.action {
     end,
 }
 
-absorb.weapon = define.weapon {
+absorb.weapon = new.weapon {
     id = "megaman/absorb",
     -- The charge table's row 0x2A, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

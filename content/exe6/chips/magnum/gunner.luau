@@ -38,7 +38,7 @@ local SOUND_BLAST = asset.sound("target-move")
 -- The sight (effect 0x49), each part 12 ticks: its panel and the column's
 -- other rows (24 pixels up and down) or the row's other columns (40
 -- pixels either side).
-local SIGHT = define.effect { sprite = asset.sprite("sight"), anim = 0, palette = 0 }
+local SIGHT = new.effect { sprite = asset.sprite("sight"), anim = 0, palette = 0 }
 -- The shot's panels (hit regions 4 and 0x1D, not turned by the facing):
 -- the column's three, or the row's three.
 local COLUMN = { { 0, 0 }, { 0, -1 }, { 0, 1 } }
@@ -217,7 +217,7 @@ local function tick(me: Object)
     end
 end
 
-gunner.kind = define.kind {
+gunner.kind = new.kind {
     id = "magnum/gunner",
     pool = "actor",
     state = {

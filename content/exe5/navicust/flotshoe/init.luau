@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "flotshoe",
+local program: NaviCustProgram = {
     colors = { "blue" },
     shape = {
         ".......",
@@ -27,3 +26,5 @@ return define.navicust_program {
     bug = "panel",
     effects = { programs.float_shoes() },
 }
+
+return { flotshoe = program }

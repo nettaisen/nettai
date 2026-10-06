@@ -8,8 +8,7 @@
 
 local navi = require("@self/navi")
 
-return define.chip {
-    id = "chaoslrd",
+local chip: Chip = {
     codes = { "X" },
     element = "null",
     family = "null",
@@ -24,3 +23,5 @@ return define.chip {
     art_palette = { 0x0000, 0x773A, 0x5AB9, 0x657F, 0x587A, 0x0173, 0x127A, 0x1D9B, 0x0099, 0x0031, 0x0D0D, 0x18C8, 0x1C25, 0x556F, 0x34C6, 0x76A6 },
     navi = navi.summon,
 }
+
+return { chaoslrd = chip }

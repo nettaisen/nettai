@@ -19,7 +19,7 @@ local SPRITE = asset.sprite("diveman")
 local SOUND_SURFACE = asset.sound("sand-worm")
 
 -- What he is taken for: his actor record, and what he wears (his overlay, `sub_8010F96`).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     id = "diveman",
     class = "navi",
     version = 0,
@@ -145,7 +145,7 @@ end
 
 local ACTIONS = { [SURFACE] = surface, [WAIT] = wait, [DIVE] = dive, [WAVES] = waves, [RISE] = rise, [LEAVE] = leave }
 
-diveman.kind = define.kind {
+diveman.kind = new.kind {
     id = "diveman/navi",
     pool = "actor",
     state = { controller = "object" },

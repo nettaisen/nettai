@@ -169,7 +169,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-numberman.kind = define.kind {
+numberman.kind = new.kind {
     id = "numbrbl/numberman",
     pool = "actor",
     state = { controller = "object", level = "u8" },

@@ -69,7 +69,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-flame.kind = define.kind {
+flame.kind = new.kind {
     id = "gregar/flame",
     pool = "attack",
     state = { ticks = "u8" },

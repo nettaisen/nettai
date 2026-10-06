@@ -6,8 +6,7 @@ local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local beast_claw = require("../weapons/beast_claw")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "gregar-beast",
+local form: FormDef = {
     kind = "beast",
     -- The target marker shows, its afterimages stay, a Null chip's A charge times by the claw,
     -- and its palette follows the mood (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`,
@@ -33,7 +32,7 @@ return define.form {
     special_volley = 2,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 11 },
-    identity = define.identity {
+    identity = new.identity {
         class = "beast",
         -- Where a held thing with no attach point sits (BatCan's cannon).
         held_offset = { 11, -7 },
@@ -81,3 +80,5 @@ return define.form {
         },
     },
 }
+
+return { ["gregar-beast"] = form }

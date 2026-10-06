@@ -108,7 +108,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-tornado.kind = define.kind {
+tornado.kind = new.kind {
     id = "falzar/tornado",
     pool = "attack",
     state = { ticks = "u8", every = "u32", blows = "u32" },

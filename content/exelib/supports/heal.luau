@@ -80,7 +80,7 @@ function heal.make(look: TangoHealLook): TangoHeal
         me:update_sprite()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { target_x = "u8", target_y = "u8" },

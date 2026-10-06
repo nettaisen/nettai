@@ -39,7 +39,7 @@ local function make(id: string, place: (me: Object) -> ())
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = id,
         pool = "effect",
         state = { bonus = "u16", variant = "record:countdown-variant" },

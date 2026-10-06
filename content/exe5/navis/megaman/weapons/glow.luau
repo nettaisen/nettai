@@ -11,7 +11,7 @@ export type State = {
     shadow: boolean,
 }
 
-glow.kind = define.kind {
+glow.kind = new.kind {
     id = "megaman/glow",
     pool = "effect",
     state = { sprite = "sprite", anim = "u8", shadow = "bool" },

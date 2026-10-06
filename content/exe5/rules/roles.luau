@@ -14,7 +14,7 @@
 
 local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("../lib/barriers")
-local beat = require("../chips/beat")
+local beat = require("../chips/beat").beat
 local charged_shot = require("../navis/megaman/weapons/charged_shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local dive_ripple = require("../objects/dive_ripple/ripple")
@@ -22,16 +22,16 @@ local soldier = require("../objects/soldier")
 local chaos = require("./souls/chaos")
 local drive_end = require("../chips/darkinvs/drive_end")
 local dark_survival = require("./emotion/dark_survival")
-local invalid = require("../chips/invalid")
+local invalid = require("../chips/invalid").invalid
 local collision = require("./collision")
 local effects = require("../lib/effects")
 local regions = require("@exelib/regions")
-local rush = require("../chips/rush")
+local rush = require("../chips/rush").rush
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 local swords = require("../lib/swords")
-local tango = require("../chips/tango")
+local tango = require("../chips/tango").tango
 
 return {
     actions = {
@@ -106,7 +106,7 @@ return {
         -- 16 pixels up; EXE6's 16 pixels down the field and 32 up).
         trap_mark = effects.trap_mark,
         -- The splash of a body a sea panel holds at a move's end (effect 0x63: 0x0801715E).
-        panel_splash = define.effect { sprite = asset.sprite("splash"), anim = 0, palette = 0 },
+        panel_splash = new.effect { sprite = asset.sprite("splash"), anim = 0, palette = 0 },
     },
     collision = {
         -- A navi's body, its body when it floats, and what it reacts to.

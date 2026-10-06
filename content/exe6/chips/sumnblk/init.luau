@@ -7,9 +7,8 @@
 local controller = require("@self/controller")
 local lockon = require("../rules/lockon")
 
-return {
-    sumnblk1 = define.chip {
-        id = "sumnblk1",
+local chips: { [string]: Chip } = {
+    sumnblk1 = {
         codes = { "E", "I", "P" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 30, damage = 160, hit_param = 158, lockout = 0,
@@ -18,8 +17,7 @@ return {
         beast = { rush = false, lockon = lockon.cannon },
         dimming = controller.hook(0),
     },
-    sumnblk2 = define.chip {
-        id = "sumnblk2",
+    sumnblk2 = {
         codes = { "H", "O", "V" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 40, damage = 200, hit_param = 158, lockout = 0,
@@ -28,8 +26,7 @@ return {
         beast = { rush = false, lockon = lockon.cannon },
         dimming = controller.hook(1),
     },
-    sumnblk3 = define.chip {
-        id = "sumnblk3",
+    sumnblk3 = {
         codes = { "W", "Y", "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 46, damage = 260, hit_param = 158, lockout = 0,
@@ -39,3 +36,5 @@ return {
         dimming = controller.hook(2),
     },
 }
+
+return chips

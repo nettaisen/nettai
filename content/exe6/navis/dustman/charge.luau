@@ -60,7 +60,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [ROLL] = roll, [RECOVER] = recover }
 
-charge.action = define.action {
+charge.action = new.action {
     id = "dustman/charge/action",
     state = { timer = "u16" },
     -- `sub_80F1F18` (`off_80F1F2C`).
@@ -69,7 +69,7 @@ charge.action = define.action {
     end,
 }
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "dustman/charge",
     -- The charge table's row 0x49, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

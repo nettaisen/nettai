@@ -5,11 +5,10 @@
 
 local ticker = require("../lib/ticker")
 
-return {
-    define.chip { id = "test/ticker1", action = ticker.action { length = 6 } },
-    define.chip { id = "test/ticker2", action = ticker.action { length = 9 } },
-    define.chip {
-        id = "test/ticker3",
-        action = ticker.action { length = 3, next = ticker.action { length = 2 } },
-    },
+local chips: { [string]: Chip } = {
+    ["test/ticker1"] = { action = ticker.action { length = 6 } },
+    ["test/ticker2"] = { action = ticker.action { length = 9 } },
+    ["test/ticker3"] = { action = ticker.action { length = 3, next = ticker.action { length = 2 } } },
 }
+
+return chips

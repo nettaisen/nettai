@@ -23,7 +23,7 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_FIRE = asset.sound("cannon")
 -- What he wears (0x0800EE8A: EXE5's body overlay row 4, its sprite 10-18, behind him in his animations 20 to 22),
 -- stepping even while paused.
-local CANNON = define.identity {
+local CANNON = new.identity {
     class = "navi",
     parts = {
         body = { sprite = asset.sprite("napalm-cannon"), anims = 23, behind = { { 20, 22 } } },
@@ -177,7 +177,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-napalmman.kind = define.kind {
+napalmman.kind = new.kind {
     id = "napalmmn/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },

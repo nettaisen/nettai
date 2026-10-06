@@ -127,7 +127,7 @@ end
 
 -- A game's snowball kind.
 function ball.make_kind(look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = { roller = "object", growth = "u16", size = "u8" },

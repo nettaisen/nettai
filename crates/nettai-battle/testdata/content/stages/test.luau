@@ -12,9 +12,8 @@ local PLAIN = {
     "normal normal normal normal normal normal",
 }
 
-local function stage(id: string, actors: { StageActor }): StageDef
-    return define.stage {
-        id = id,
+local function stage(actors: { StageActor }): StageDef
+    return {
         layout = PLAIN,
         panel_pattern = 0x38,
         music = asset.sound("test-stage-music"),
@@ -39,9 +38,11 @@ local function stone(x: number, y: number): StageActor
     return { place = boulder.kind, x = x, y = y }
 end
 
-return {
-    link_battle = stage("test/link-battle", { navi(1, 5), navi(0, 2) }),
-    link_battle_side0_first = stage("test/link-battle-side0-first", { navi(0, 2), navi(1, 5) }),
-    rock_battle = stage("test/rock-battle", { navi(0, 1), navi(1, 6), cube(3, 3), cube(4, 1) }),
-    boulder_battle = stage("test/boulder-battle", { navi(0, 1), navi(1, 6), stone(2, 2), stone(5, 2), stone(3, 1) }),
+local stages: { [string]: StageDef } = {
+    ["test/link-battle"] = stage({ navi(1, 5), navi(0, 2) }),
+    ["test/link-battle-side0-first"] = stage({ navi(0, 2), navi(1, 5) }),
+    ["test/rock-battle"] = stage({ navi(0, 1), navi(1, 6), cube(3, 3), cube(4, 1) }),
+    ["test/boulder-battle"] = stage({ navi(0, 1), navi(1, 6), stone(2, 2), stone(5, 2), stone(3, 1) }),
 }
+
+return stages

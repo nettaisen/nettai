@@ -114,7 +114,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "gregar/controller",
     pool = "effect",
     state = { bonus = "u16", rock_damage = "u8", gregar_out = "bool" },

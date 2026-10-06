@@ -1,5 +1,5 @@
 //! The players' rules (docs/design/rules-in-luau.md): a game's rules are one
-//! definition written in Luau (`define.rules { ... }`), whose hooks call the
+//! definition written in Luau (the game's root's `rules`), whose hooks call the
 //! game's modules as their code says; the framework calls the
 //! rules' hooks at its points, and keeps their state of each side here, in
 //! the battle, where snapshots and the digest cover it.
@@ -735,7 +735,7 @@ mod tests {
             ("local save = require(\"@self/save\")\n", "local save = require(\"@self/save\")\nlocal test_chips = require(\"./chips/test\")\n"),
             (
                 "    hooks = {\n",
-                "    hooks = {\n        navi_intake = function(_side: number, navi: Object)\n            local s = rules.state() :: { intakes: number, x: number, y: number }\n            s.intakes += 1\n            s.x, s.y = navi.panel_x, navi.panel_y\n        end,\n        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?\n            return if chip == test_chips.bomb then test_chips.seed else nil\n        end,\n",
+                "    hooks = {\n        navi_intake = function(_side: number, navi: Object)\n            local s = rules.state() :: { intakes: number, x: number, y: number }\n            s.intakes += 1\n            s.x, s.y = navi.panel_x, navi.panel_y\n        end,\n        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?\n            return if chip == test_chips[\"test/bomb\"] then test_chips[\"test/seed\"] else nil\n        end,\n",
             ),
         ]);
         let mut b = started_on(scenario::setup_on(&content), content.clone());

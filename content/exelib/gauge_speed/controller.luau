@@ -79,7 +79,7 @@ end
 
 -- A game's controller.
 function gauge_speed.make(spec: Spec): GaugeSpeed
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { fast = "bool" },

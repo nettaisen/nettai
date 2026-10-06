@@ -51,7 +51,7 @@ local function init(me: Object)
     tick(me)
 end
 
-blaze.kind = define.kind {
+blaze.kind = new.kind {
     id = "phoenix/blaze",
     pool = "effect",
     -- 0x080EA4FC.

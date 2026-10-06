@@ -54,7 +54,7 @@ end
 local function record(chip: Chip)
     local r = data.chips[chip.id]
     if r == nil then
-        error(string.format("the navi in auto battle plays %s, which the AI's data (./data) doesn't list", chip.id))
+        error(string.format("the navi in auto battle plays %s, which the AI's data (./data) doesn't list", chip.id :: string))
     end
     return r
 end
@@ -643,7 +643,7 @@ local ELEMENT_TRAPS: { [string]: boolean } = {
 -- 0x0802A9B4 (class 23, the traps): the navi's side holds no defensive chip (`sub_802CE78`), or an element trap.
 local function trap_free(navi: Object): boolean
     local held = battle.linked(navi.alliance).chip
-    return held == nil or ELEMENT_TRAPS[held.id] == true
+    return held == nil or ELEMENT_TRAPS[held.id :: string] == true
 end
 
 -- 0x0802A9F4, 0x0802AA34, 0x0802AA74 (classes 24 to 26): either side holds a sea panel; a lava panel; a broken or a

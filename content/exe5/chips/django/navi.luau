@@ -18,6 +18,7 @@ local coffin = require("./coffin")
 local sun = require("./sun")
 local lights = require("./lights")
 local rubble = require("./rubble")
+local otenko = require("../otenko/identity")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
@@ -71,8 +72,7 @@ end
 -- 0x080BF59C: Otenko blesses his side (its statue in the side's field object slot for class 1).
 local function blessed(me: Object): boolean
     for _, o in field.objects(me.alliance) do
-        local identity = o.identity
-        if identity and identity.id == "otenko" then
+        if o.identity == otenko then
             return true
         end
     end
@@ -367,7 +367,7 @@ local function init(me: Object)
     act(me)
 end
 
-django.kind = define.kind {
+django.kind = new.kind {
     id = "django/navi",
     pool = "actor",
     state = {

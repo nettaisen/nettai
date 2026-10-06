@@ -6,8 +6,7 @@ local moonbld = require("@self/moonbld")
 
 -- MoonBld1 (EXE5 chip 0x039): a spin with a blade that sweeps the eight panels around the navi (EXE5's MoonBld,
 -- chips/moonbld/moonbld: action 0x53, EXE6's swing with the shared moon blade; a charged one steps first).
-local moonbld1 = define.chip {
-    id = "moonbld1",
+local moonbld1: Chip = {
     codes = { "E", "N", "Z" },
     element = "null",
     family = "sword",
@@ -24,8 +23,7 @@ local moonbld1 = define.chip {
 
 -- MoonBld2 (EXE5 chip 0x03a): a spin with a blade that sweeps the eight panels around the navi (EXE5's MoonBld,
 -- chips/moonbld/moonbld: action 0x53, EXE6's swing with the shared moon blade; a charged one steps first).
-local moonbld2 = define.chip {
-    id = "moonbld2",
+local moonbld2: Chip = {
     codes = { "G", "O", "V" },
     element = "null",
     family = "sword",
@@ -42,8 +40,7 @@ local moonbld2 = define.chip {
 
 -- MoonBld3 (EXE5 chip 0x03b): a spin with a blade that sweeps the eight panels around the navi (EXE5's MoonBld,
 -- chips/moonbld/moonbld: action 0x53, EXE6's swing with the shared moon blade; a charged one steps first).
-local moonbld3 = define.chip {
-    id = "moonbld3",
+local moonbld3: Chip = {
     codes = { "C", "L", "T" },
     element = "null",
     family = "sword",

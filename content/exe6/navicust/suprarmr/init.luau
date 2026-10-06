@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "suprarmr",
+local program: NaviCustProgram = {
     colors = { "red" },
     shape = {
         ".......",
@@ -28,3 +27,5 @@ return define.navicust_program {
     exclusive = "super-armor",
     effects = { programs.super_armor() },
 }
+
+return { suprarmr = program }

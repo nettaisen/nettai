@@ -74,8 +74,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [RAISE] = raise, [SLASH] = slash, [RECOVER] = recover }
 
-return define.chip {
-    id = "edeletbm",
+local chip: Chip = {
     codes = { "K" },
     element = "null",
     family = "cursor",
@@ -88,7 +87,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     -- `sub_80F1056` (`off_80F1068`).
-    action = define.action {
+    action = new.action {
         id = "edeletbm/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -96,3 +95,5 @@ return define.chip {
         end,
     },
 }
+
+return { edeletbm = chip }

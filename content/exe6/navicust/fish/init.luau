@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "fish",
+local program: NaviCustProgram = {
     colors = { "blue" },
     shape = {
         ".......",
@@ -28,3 +27,5 @@ return define.navicust_program {
     exclusive = "encounter-element",
     effects = { programs.outside("fish") },
 }
+
+return { fish = program }

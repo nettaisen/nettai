@@ -47,7 +47,7 @@ local BURST_HIT_MOD = 3
 
 -- A projectile variant.
 function projectile.variant(v: ProjectileVariant): ProjectileVariant
-    return define.record("projectile-variant", v)
+    return new.record("projectile-variant", v)
 end
 
 -- `sub_80C5090`: a climbing variant sits a pixel further down the field
@@ -197,7 +197,7 @@ end
 
 -- A game's projectile kind.
 function projectile.make_kind(look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = { variant = "record:projectile-variant", row = "i8" },

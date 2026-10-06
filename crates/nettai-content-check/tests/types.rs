@@ -32,14 +32,14 @@ fn what_the_packs_refuse() {
     write("g/init.luau", "require(\"@self/there\")\nrequire(\"@self/gone\")\nrequire(\"./there\")\nrequire(\"@self/chips\")\n");
     // (A folder's name is its init; a commented require is none.)
     write("g/chips/init.luau", "require(\"@self/sword\")\n-- require(\"@self/later\")  -- no use yet\n");
-    write("g/chips/sword/init.luau", "return define.chip { id = \"sword\" }\n");
+    write("g/chips/sword/init.luau", "return { sword = {} }\n");
     write("g/there.luau", "local y = require(\"./nowhere\")\nlocal z = require(\"@h/x\")\nlocal w = require(\"@lib/x\")\nreturn {}\n");
     write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
     write("h/x.luau", "return {}\n");
     write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\ndepends = [\"base\"]\n");
     write(
         "lib/x.luau",
-        "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"x\")\nlocal s = rules.state\nreturn define.kind { id = \"x\" }\n",
+        "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"x\")\nlocal s = rules.state\nreturn new.kind { id = \"x\" }\n",
     );
     write("base/manifest.toml", "id = \"base\"\nkind = \"support\"\ndepends = [\"lib\"]\n");
     write("stray/x.luau", "return {}\n");
@@ -85,7 +85,7 @@ fn the_test_pack_and_test_content_type_check() {
 /// table, to the type), then `more` (its fields, each ending in a comma).
 fn rules(more: &str) -> String {
     format!(
-        "local _ = define.rules {{ chip_use = {{}}, effects = {{}}, flow = {{}}, fresh_stats = {{}}, link_pick = {{}}, panels = {{}}, pools = {{}}, reactions = {{}}, status = {{}}, {more} }}"
+        "local _: Rules = {{ chip_use = {{}}, effects = {{}}, flow = {{}}, fresh_stats = {{}}, link_pick = {{}}, panels = {{}}, pools = {{}}, reactions = {{}}, status = {{}}, {more} }}"
     )
 }
 
@@ -113,13 +113,13 @@ fn rules_without_a_required_section_are_a_type_error() {
 fn misuse_of_the_v2_api_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     for (bad, why) in [
-        ("local _ = define.kind { id = 'x', pool = 'water', update = function(me: Object) end }", "not a pool"),
-        ("local _ = define.kind { id = 'x', pool = 'attack' }", "a kind without its update"),
+        ("local _ = new.kind { id = 'x', pool = 'water', update = function(me: Object) end }", "not a pool"),
+        ("local _ = new.kind { id = 'x', pool = 'attack' }", "a kind without its update"),
         ("local _ = asset.sprite(3)", "an asset by number"),
-        ("local _ = define.effect { sprite = 'bomb' }", "a sprite by string"),
+        ("local _ = new.effect { sprite = 'bomb' }", "a sprite by string"),
         ("local function f(me: Object) me:set_attack('shot', 1) end", "an action by name"),
         ("local function f(me: Object) local _ = battle.spawn(me, me.pos) end", "an object for a kind"),
-        ("local _ = define.region { panels = { 'front' } }", "a panel that isn't { dx, dy }"),
+        ("local _ = new.region { panels = { 'front' } }", "a panel that isn't { dx, dy }"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

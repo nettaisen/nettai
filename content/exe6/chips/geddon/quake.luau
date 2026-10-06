@@ -13,7 +13,7 @@ local rising_bubble = require("../../objects/rising_bubble")
 
 return common.make {
     id = "geddon/quake",
-    puff = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
+    puff = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
     bubble = rising_bubble.kind,
     sounds = { puff = asset.sound("panel-crack"), bubble = asset.sound("panel-poison") },
 }

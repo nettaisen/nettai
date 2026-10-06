@@ -162,7 +162,7 @@ local function tick(me: Object)
     end
 end
 
-soldier.kind = define.kind {
+soldier.kind = new.kind {
     id = "colforce/soldier",
     pool = "attack",
     state = { delay = "u8" },

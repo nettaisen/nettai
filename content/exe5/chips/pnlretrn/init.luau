@@ -6,8 +6,7 @@
 local panel_changer = require("../objects/panel_changer")
 local panel_chips = require("../lib/panel_chips")
 
-return define.chip {
-    id = "pnlretrn",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "null",
@@ -30,3 +29,5 @@ return define.chip {
         change_sound = panel_changer.CHANGE_SOUND,
     }),
 }
+
+return { pnlretrn = chip }

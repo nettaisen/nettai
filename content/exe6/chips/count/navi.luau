@@ -274,7 +274,7 @@ local ACTIONS: { [number]: (me: Object) -> () } = {
     [LEAVE] = leave,
 }
 
-count.kind = define.kind {
+count.kind = new.kind {
     id = "count/navi",
     pool = "actor",
     state = { controller = "object", lance_damage = "u8", targets = "u8[3]", count = "u8", next = "u8" },

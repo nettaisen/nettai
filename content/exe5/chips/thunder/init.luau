@@ -6,8 +6,7 @@
 local statuses = require("../rules/status")
 local thunder = require("@self/ball")
 
-return define.chip {
-    id = "thunder",
+local chip: Chip = {
     codes = { "B", "L", "P", "*" },
     element = "elec",
     family = "elec",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     action = thunder.shoot { ball = { panels = 5, status = statuses.paralyze_90 } },
 }
+
+return { thunder = chip }

@@ -39,7 +39,7 @@ local SOUND_STEP = asset.sound("erase-man")
 local SOUND_FIRE = asset.sound("mark")
 -- The square's corners (effect 0x48), each 6 ticks: 40 pixels apart
 -- across, 24 down.
-local CORNER = define.effect { sprite = asset.sprite("hit-sparks"), anim = 12, palette = 0 }
+local CORNER = new.effect { sprite = asset.sprite("hit-sparks"), anim = 12, palette = 0 }
 local ACROSS, DOWN = 0x28_0000, 0x18_0000
 -- Its flames (`sub_80C8DE0`): fire, HeatMan's (acting while dimmed), 30
 -- ticks.
@@ -192,7 +192,7 @@ local function tick(me: Object)
     end
 end
 
-burner.kind = define.kind {
+burner.kind = new.kind {
     id = "burnsqr/burner",
     pool = "actor",
     state = {

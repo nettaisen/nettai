@@ -64,7 +64,7 @@ local DRAIN_ELEMENT, DRAIN_DAMAGE, DRAIN_COUNTER = 5, 1, 0x81
 
 -- An Anubis statue's variant (`byte_80CF0C0`, by the chip's first parameter).
 function statue.variant(v: AnubisVariant): AnubisVariant
-    return define.record("anubis-variant", v)
+    return new.record("anubis-variant", v)
 end
 
 function statue.make(look: Look): Statue
@@ -246,7 +246,7 @@ function statue.make(look: Look): Statue
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { variant = "record:anubis-variant", bubble_in = "u32" },

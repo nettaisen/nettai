@@ -1,15 +1,14 @@
 --!strict
 -- EraseCross Beast: one of MegaMan's forms.
 
-local eraseman = require("../../eraseman")
-local gregar_beast = require("./gregar_beast")
+local eraseman = require("../../eraseman").eraseman
+local gregar_beast = require("./gregar_beast")["gregar-beast"]
 local gregar_beast_buster = require("../weapons/gregar_beast_buster")
 local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local drop = require("@self/drop")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "erasecross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -42,7 +41,7 @@ return define.form {
     traits = { "erases", "shows_target_marker", "afterimages_stay", "alt_charge_time" },
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 16, palette_add = 8 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -88,3 +87,5 @@ return define.form {
         },
     },
 }
+
+return { ["erasecross-beast"] = form }

@@ -9,9 +9,8 @@ local lockon = require("../rules/lockon")
 -- parameter).
 local TICKS = 0x0F
 
-return {
-    dolthdr1 = define.chip {
-        id = "dolthdr1",
+local chips: { [string]: Chip } = {
+    dolthdr1 = {
         codes = { "A", "E", "Q" },
         element = "elec", family = "elec", class = "standard",
         rarity = 0, mb = 24, damage = 120, hit_param = 30, lockout = 0,
@@ -21,8 +20,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = action.action { ticks = TICKS },
     },
-    dolthdr2 = define.chip {
-        id = "dolthdr2",
+    dolthdr2 = {
         codes = { "C", "L", "P" },
         element = "elec", family = "elec", class = "standard",
         rarity = 1, mb = 31, damage = 150, hit_param = 30, lockout = 0,
@@ -32,8 +30,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = action.action { ticks = TICKS },
     },
-    dolthdr3 = define.chip {
-        id = "dolthdr3",
+    dolthdr3 = {
         codes = { "B", "R", "V" },
         element = "elec", family = "elec", class = "standard",
         rarity = 2, mb = 38, damage = 180, hit_param = 30, lockout = 0,
@@ -44,3 +41,5 @@ return {
         action = action.action { ticks = TICKS },
     },
 }
+
+return chips

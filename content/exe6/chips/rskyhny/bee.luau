@@ -328,7 +328,7 @@ local function init(me: Object): boolean
     return true
 end
 
-bee.kind = define.kind {
+bee.kind = new.kind {
     id = "rskyhny/bee",
     pool = "attack",
     state = { speed = "i32", turn_speed = "i32", target = "object", palette = "u8", turns = "u8" },

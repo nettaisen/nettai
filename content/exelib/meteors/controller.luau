@@ -122,7 +122,7 @@ function controller.make(id: string, meteor_kind: Kind): (user: Object, spec: Di
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = id,
         pool = "effect",
         state = { bonus = "u16", panels = "u8[20]", count = "u32", next = "u32" },

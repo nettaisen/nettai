@@ -146,7 +146,7 @@ function gust.make_kind(id: string, look: GustLook): Kind
         tick(me)
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { stop_on_hit = "bool", holder = "object", slot = "u8", pulls = "bool", unseen = "bool" },

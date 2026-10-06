@@ -12,7 +12,7 @@ return common.make {
     sprite = asset.sprite("tango-heal"),
     sound = asset.sound("heal"),
     -- The sparkle as it lands (the original's effect 6: a recovery's).
-    sparkle = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
+    sparkle = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
     trajectory = trajectory,
     -- `sub_801A7CC(5)`, then the barrier's visual.
     raise_barrier = function(navi: Object)

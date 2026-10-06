@@ -181,7 +181,7 @@ an instant effect. The content has each as a definition with the original's numb
 | Count's rain (a dust storm over the opponent's middle) | 0x6D, `sub_801244A`, action 0x5E (`sub_80F020E`) | patch_cards/count/charge.luau |
 | Bass BX's nine-shot buster | 0x92, `sub_8012124`, action 0x5D | patch_cards/bassbx/charge.luau, lib/rapid_buster.luau |
 | The Bass Cross card's seeking whirlwind (AirSpin's action, variant 1) | 0x93, `sub_8012144`, action 0x38 | patch_cards/bass-cross-megaman/charge.luau |
-| The B button: Sword, a meteor, MiniBomb, CrakShot, the triple buster; RflectR (no card) | 0x8E, 0x52, 0x7D, 0x81, 0x8F; 0x76 | lib/patch_cards/b_sword.luau, patch_cards/mettfire/b_button.luau, patch_cards/beetle/b_button.luau, patch_cards/planetmn/b_button.luau, lib/patch_cards/triple_buster.luau; lib/patch_cards/b_reflect.luau |
+| The B button: Sword, a meteor, MiniBomb, CrakShot, the triple buster; RflectR (no card) | 0x8E, 0x52, 0x7D, 0x81, 0x8F; 0x76 | lib/patch_cards/b_sword.luau, patch_cards/mettfire/b_button.luau, patch_cards/beetle/b_button.luau, patch_cards/planetmn/b_button.luau, lib/patch_cards/triple_buster.luau; none (lib/patch_cards/b_reflect.luau went 2026-10-06: no card reaches it) |
 | B+Back: three meteors, the immobilizer, the fan, RskyHny, MchnSwrd | 0x53, 0x83, 0x86, 0x88, 0x89 | patch_cards/\<card\>/back_special.luau (metrid, magntman, dustman, honybomr, darkmech) |
 | The meteors (a shower of instant effect 16's meteors) | action 0x5C | lib/patch_cards/meteors.luau |
 | The fan: TenguCross's wind, which the navi waits after | instant effect 0x14 (`sub_80CD4AC`) | navis/megaman/weapons/tengu_wind (`blow`) |
@@ -200,8 +200,8 @@ address as its Z (compared by whole pixels, kinds.toml `scratch_z_fraction`).
 card and a player's cards are engine concepts (the user's decision, 2026-10-02); what an effect does is each game's
 rule, EXE6's patch cards module (content/exe6/rules/patch_cards/init.luau, in content/exe6/rules/init.luau).
 
-- **The cards** are definitions of their own (`define.patch_card`, `Registry::PatchCard`, `PatchCardHandle`,
-  `Content::patch_card`): content/exe6/patch_cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat
+- **The cards** are definitions of their own (the root's `patch_cards`, `Registry::PatchCard`, `PatchCardHandle`,
+  `Content::patch_card`): content/exe6/patch_cards/<name>/init.luau, keyed by name (`canodumb`) as chips are, compat
   patch-cards.toml giving each its number. **The engine's record of a card** (`PatchCardDef`) is what every game's
   card is: its capacity cost (`mb`, EXE6's MB, which the installed cards' limit counts) and its effects in the
   card's order, each a `kind` and whether the card shows it as a `bug`. The kind's own fields stay the

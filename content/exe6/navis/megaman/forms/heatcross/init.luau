@@ -1,16 +1,15 @@
 --!strict
 -- HeatCross: one of MegaMan's forms.
 
-local base = require("./base")
+local base = require("./base").base
 local cross_overlay = require("./cross_overlay")
-local heatman = require("../../heatman")
-local heatcross_beast = require("./heatcross_beast")
+local heatman = require("../../heatman").heatman
+local heatcross_beast = require("./heatcross_beast")["heatcross-beast"]
 local buster = require("../weapons/buster")
 local charge = require("@self/charge")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "heatcross",
+local form: FormDef = {
     kind = "cross",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -34,7 +33,7 @@ return define.form {
     special_volley = 1,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 1 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross",
         version = 0,
         actor_type = "player",
@@ -82,3 +81,5 @@ return define.form {
         },
     },
 }
+
+return { heatcross = form }

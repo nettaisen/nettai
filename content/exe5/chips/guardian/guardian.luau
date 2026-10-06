@@ -26,7 +26,7 @@ local SPRITE = asset.sprite("guardian-statue")
 guardian.statue = statue.make {
     id = "guardian/statue",
     sprite = SPRITE,
-    identity = define.identity {
+    identity = new.identity {
         class = "field_object",
         version = 4,
         ai_index = 0x21,
@@ -40,8 +40,8 @@ guardian.statue = statue.make {
         strike = asset.sound("beast-over-burst"),
     },
     -- Effects 0x15 and 0x36 (EXE5's table, 0x080DFC94): sheet 14-0d's animation 3, and 14-14.
-    arrival = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 },
-    burst = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 },
+    arrival = new.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 },
+    burst = new.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 },
     is = collision.neutral_body,
     hits = collision.everything,
     strike_is = collision.thrown_piercing_break,
