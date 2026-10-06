@@ -674,24 +674,40 @@ impl CoreApi for Battle {
         self.consoles[side as usize & 1].emotion_window_glitch = on;
     }
 
-    fn patch_cards(&self, side: u8) -> Vec<(u16, bool)> {
-        self.setup.players[side as usize & 1].patch_cards.iter().map(|c| (c.card.0, c.enabled)).collect()
+    fn setup_problem(&mut self, text: &str, field: Option<&str>, entry: Option<u32>) {
+        if let Some(problems) = &mut self.validation {
+            problems.push(crate::rules::Problem { text: text.to_string(), field: field.map(str::to_string), entry: entry.map(|e| e as usize) });
+        }
     }
 
-    fn navicust(&self, side: u8) -> Option<(u8, Vec<nettai_content_api::api::PlacedProgram>)> {
-        let n = self.setup.players[side as usize & 1].navicust.as_ref()?;
-        let parts = n
-            .iter()
-            .map(|p| nettai_content_api::api::PlacedProgram {
-                program: p.program.0,
-                color: p.color,
-                x: p.x,
-                y: p.y,
-                rotation: p.rotation,
-                compressed: p.compressed,
-            })
-            .collect();
-        Some((n.expansions, parts))
+    fn def_name(&self, registry: nettai_content_api::Registry, handle: u16) -> String {
+        use nettai_content_api::Registry;
+        let defs = &self.content.defs;
+        let strings = &self.content.strings;
+        let (key, name) = match registry {
+            Registry::Chip => {
+                let key = &defs.chip(nettai_content_api::ChipHandle(handle)).key;
+                (key, strings.chip(key).and_then(|s| s.name.clone()))
+            }
+            Registry::Navi => {
+                let key = &defs.navi(nettai_content_api::NaviHandle(handle)).key;
+                (key, strings.navi(key).and_then(|s| s.name.clone()))
+            }
+            Registry::Form => {
+                let key = &defs.form(nettai_content_api::FormHandle(handle)).key;
+                (key, strings.form(key).and_then(|s| s.name.clone()))
+            }
+            Registry::PatchCard => {
+                let key = &defs.patch_card(nettai_content_api::PatchCardHandle(handle)).key;
+                (key, strings.patch_card(key).and_then(|s| s.name.as_ref().map(|n| n.replace('\n', " "))))
+            }
+            Registry::NaviCustProgram => {
+                let key = &defs.navicust_program(nettai_content_api::NaviCustProgramHandle(handle)).key;
+                (key, strings.navicust_program(key).and_then(|s| s.name.clone()))
+            }
+            _ => return format!("{registry} {handle}"),
+        };
+        name.unwrap_or_else(|| key.clone())
     }
 
     fn checked_folder(&self) -> Option<nettai_content_api::api::CheckedFolder> {

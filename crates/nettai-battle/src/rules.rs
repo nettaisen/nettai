@@ -426,6 +426,17 @@ impl Battle {
         self.folder_check.take().map(|c| c.problems).unwrap_or_default()
     }
 
+    /// What side `side`'s rules say is wrong with its setup (their
+    /// `validate`): each problem, in their order; nothing when they find
+    /// none, or have no `validate`. The rules read the setup and the stats
+    /// as the round set them up. For tools (a match's checks, netplay's
+    /// offer, the editor): no part of the simulation.
+    pub fn validate(&mut self, side: u8) -> Vec<Problem> {
+        self.validation = Some(Vec::new());
+        self.notify_side(side & 1, RulesHook::Validate);
+        self.validation.take().unwrap_or_default()
+    }
+
     /// The rules' `navi_intake(side, navi)`, each tick of the fight in the
     /// navi's intake. (Rules without the hook call nothing: EXE6's.)
     pub(crate) fn rules_navi_intake(&mut self, side: u8, navi: ObjectRef) {
@@ -602,6 +613,16 @@ impl Battle {
 pub struct FolderCheck {
     pub folder: nettai_content_api::api::CheckedFolder,
     pub problems: Vec<FolderProblem>,
+}
+
+/// A problem of a side's setup, as its rules' `validate` says it: what to
+/// say, and the setup field it is of and the entry of a list field (from
+/// 0), where the rules say (a tool shows it there).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Problem {
+    pub text: String,
+    pub field: Option<String>,
+    pub entry: Option<usize>,
 }
 
 /// A folder rule broken: the rule's name (the game's own: EXE6's `chip`,
@@ -1017,8 +1038,8 @@ mod tests {
 
     mod patch_cards {
         use super::*;
-        use crate::patch_cards::{InstalledCard, PatchCards};
         use crate::setup::{GaugeSpeed, NaviStats, Supports};
+        use nettai_content_api::Registry;
 
         /// A battle on the test content (whose rules apply EXE6's patch
         /// cards as the round is set up), side 0 with `cards` installed
@@ -1026,15 +1047,15 @@ mod tests {
         fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
             let content = scenario::content();
             let mut s = scenario::setup_on(&content);
-            let p = &mut s.players[0];
-            let list: Vec<InstalledCard> = cards
+            // (The setup's `patch_cards`: `{ card, on }` each.)
+            let list: Vec<Fact> = cards
                 .iter()
-                .map(|&(key, enabled)| InstalledCard {
-                    card: content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("no card {key:?}")),
-                    enabled,
+                .map(|&(key, on)| {
+                    let card = content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("no card {key:?}"));
+                    Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))])
                 })
                 .collect();
-            p.patch_cards = PatchCards::new(&list).unwrap();
+            s.players[0].set_fact(&content, "patch_cards", &list).unwrap();
             tweak(&mut s.navi_stats[0]);
             Battle::new(s, content)
         }
@@ -1058,7 +1079,7 @@ mod tests {
             // The cards are in the setup, which the digest covers.
             let a = with_cards(&[("test-stats", true)], |_| {});
             let b = with_cards(&[("test-stats", false)], |_| {});
-            assert_ne!(a.setup.players[0].patch_cards, b.setup.players[0].patch_cards);
+            assert_ne!(a.setup.players[0].rules, b.setup.players[0].rules);
             assert_ne!(a.digest(), b.digest());
         }
 

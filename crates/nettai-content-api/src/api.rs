@@ -781,20 +781,6 @@ pub struct CheckedFolder {
     pub complete: bool,
 }
 
-/// A program on a side's NaviCust, as content reads it
-/// (`battle.navicust`): the program's handle, its color (an index into the
-/// definition's `colors`), its center on the 7x7 grid, its quarter turns
-/// clockwise, and whether it is compressed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PlacedProgram {
-    pub program: u16,
-    pub color: u8,
-    pub x: u8,
-    pub y: u8,
-    pub rotation: u8,
-    pub compressed: bool,
-}
-
 named_flags! {
     /// A button.
     pub enum Key {
@@ -1322,19 +1308,19 @@ pub trait CoreApi {
     /// save's NaviCust bug flag; the rules decide it as the round
     /// is set up, as EXE6's patch cards do).
     fn set_emotion_window_glitch(&mut self, side: u8, on: bool);
-    /// A side's installed patch cards in their list's order (handles), and
-    /// whether each is switched on (the setup's: `PlayerSetup::patch_cards`).
-    fn patch_cards(&self, side: u8) -> Vec<(u16, bool)>;
-    /// A side's NaviCust (the setup's: `PlayerSetup::navicust`): its
-    /// board's expansions and its programs in its list's order; none when
-    /// the setup gives none (its stats are already the NaviCust's).
-    fn navicust(&self, side: u8) -> Option<(u8, Vec<PlacedProgram>)>;
     /// The folder a tool asks the side's rules to check (`folder_check`),
     /// while it is checked.
     fn checked_folder(&self) -> Option<CheckedFolder>;
     /// A rule the checked folder breaks: the rule's name (`copies`, `mega`,
     /// ... the game's own) and what to say.
     fn folder_problem(&mut self, rule: &str, text: &str);
+    /// A problem of the setup a tool asked the rules to validate
+    /// (`validate`): what to say, and the setup field it is of and the
+    /// entry of a list field (from 0), if the rules say.
+    fn setup_problem(&mut self, text: &str, field: Option<&str>, entry: Option<u32>);
+    /// A definition's name in the content's own strings (its locales'
+    /// language), else its key: for what the rules say to a tool.
+    fn def_name(&self, registry: crate::Registry, handle: u16) -> String;
     /// `sub_802E4B8`: the side's SELECT special or takeover in progress.
     fn side_special(&self, side: u8) -> SideSpecial;
     /// The rules' takeover of side `side`'s navi starts, for `ticks`

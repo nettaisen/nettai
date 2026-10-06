@@ -60,9 +60,27 @@ function apply.in_order(effects: { PatchCardEffect }, game: PatchCardsGame): { P
     return out
 end
 
+-- What is wrong with `installed` (a side's setup's `patch_cards`), each said with `problem(text, entry)` (a card's
+-- place in the list, from 1): a card installed twice; the cards' MB together past `mb` (the game's list's).
+function apply.check(installed: { InstalledCard }, mb: number, problem: (text: string, entry: number?) -> ())
+    local total = 0
+    for i, c in installed do
+        for j = 1, i - 1 do
+            if installed[j].card == c.card then
+                problem(string.format("the patch card %s is installed twice", battle.name(c.card)), i)
+                break
+            end
+        end
+        total += c.card.mb
+    end
+    if total > mb then
+        problem(string.format("the patch cards are %d MB, past %d", total, mb), nil)
+    end
+end
+
 -- The switched-on cards of `installed` over the block (`slot`, seeded by the game; `hp` the working HP, EXE6's
 -- `sub_8141AEC`, EXE5's 0x08137B00): the working HP after them, and which slots a card wrote.
-function apply.run(installed: { { card: PatchCard, enabled: boolean } }, game: PatchCardsGame, hp: number, slot: { [string]: any }): (number, { [string]: boolean })
+function apply.run(installed: { InstalledCard }, game: PatchCardsGame, hp: number, slot: { [string]: any }): (number, { [string]: boolean })
     local written: { [string]: boolean } = {}
     local clamp, signed_byte = apply.clamp, apply.signed_byte
     local function put(name: string, v: any)
@@ -73,7 +91,7 @@ function apply.run(installed: { { card: PatchCard, enabled: boolean } }, game: P
         put(name, bit32.band(clamp(signed_byte(slot[name]) + d, lo, hi), 0xFF))
     end
     for _, c in installed do
-        if c.enabled then
+        if c.on then
             for _, e in apply.in_order(c.card.effects, game) do
                 local k, n = e.kind, e.amount or 0
                 if k == "hp_add" then

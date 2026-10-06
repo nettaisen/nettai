@@ -43,7 +43,7 @@ impl Set {
     /// The set a match plays from `seed` (`Match::round`). The match is a
     /// checked one: both folders are whole.
     pub fn of(content: &Arc<Content>, m: &Match, seed: u32) -> Set {
-        let folders = [0, 1].map(|side| m.sides[side].folder.saved().expect("a whole folder (the match's checks refuse one being made)"));
+        let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().expect("a whole folder (the match's checks refuse one being made)"));
         Set::new(content.clone(), m.round(content, seed), folders)
     }
 

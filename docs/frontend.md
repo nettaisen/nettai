@@ -1122,35 +1122,35 @@ later = [                                  # optional: the set's later rounds (e
     { stage = "netbattle-7" },
 ]
 
-[left]                                     # you (side 0); then [right]
-navi = "megaman"
-version = "gregar"                         # the side's facts (see below). EXE6's: version, gregar or falzar (stated:
-crosses = ["heatcross", "spoutcross"]      # none is assumed), crosses, up to five of either version (else none),
-beast_out = false                          # beast_out, else unlocked (the save's flag 0xE0), bug_frags, else 0
+[left]                                     # you (side 0); then [right]: the side's facts (see below)
+navi = "megaman"                           # the navi (stated: a side states its own)
+version = "gregar"                         # EXE6's: version, gregar or falzar (stated: none is assumed), crosses, up
+crosses = ["heatcross", "spoutcross"]      # to five of either version (else none), beast_out, else unlocked (the
+beast_out = false                          # save's flag 0xE0), bug_frags, else 0
 bug_frags = 0
 hp = 1000                                  # what the save brings to the stats: MegaMan's base HP (else 100), the
 reg_up = 50                                # Regular memory (else the fresh stats' 4), the sun (else none); the rules
 sun = true                                 # build the rest (below)
-patch_cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 level = 0                                  # the navi code's level, 0-14: a link navi's always, MegaMan's optional
-folder = [                                 # 30 entries, [chip, code] ([] empty: a folder being made)
-    ["cannon", "A"],
-    ["cannon", "A"],
-    ["airshot", "*"],
+regular_chip = 4                           # the Regular chip's entry, counting from 0 (else none)
+tag_chips = [5, 6]                         # the tag chips' entries (else none; EXE6's)
+navicust_expansions = 2                    # MegaMan's NaviCust's board, 0 (4x4) to 2 (5x5, the default)
+folder = [                                 # up to 30 entries, { chip, code } ({} empty: a folder being made)
+    { chip = "cannon", code = "A" },
+    { chip = "cannon", code = "A" },
+    { chip = "airshot", code = "*" },
 ]
-regular = 4                                # optional: the Regular chip's entry, counting from 0
-tags = [5, 6]                              # optional: the tag chips' entries
-
-[[left.sp_times]]                          # optional: how long the save took to delete each SP navi,
-chip = "heatman-sp"                        # by its SP chip, in frames (60 a second; else the rules'
-frames = 741                               # default: every SP navi in no time)
-
-[left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
-expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default), in EXE6 and EXE5
-programs = [                               # in the save's order; x, y the center on the 7x7 grid
-    { program = "suprarmr", color = "red", x = 2, y = 3 },
-    { program = "undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
-    { program = "hp-100", color = "pink", x = 3, y = 1, compressed = true },
+patch_cards = [                            # each installed card, on or off, in the order they apply
+    { card = "canodumb", on = true },
+    { card = "shadow" },
+]
+sp_times = [                               # how long the save took to delete each SP navi, by its SP chip,
+    { chip = "heatman-sp", frames = 741 },  # in frames (60 a second; else every SP navi in no time)
+]
+navicust_programs = [                      # MegaMan's NaviCust's programs, in the save's order; x, y the center
+    { program = "suprarmr", color = "red", x = 2, y = 3, rotation = 0 },    # on the 7x7 grid; quarter turns
+    { program = "undersht", color = "white", x = 5, y = 3, rotation = 1 },
+    { program = "hp-100", color = "pink", x = 3, y = 1, rotation = 0, compressed = true },
 ]
 ```
 
@@ -1167,8 +1167,16 @@ descriptions and the editor without a line of Rust.
 - A fact's value is its field's type's: a flag `true` or `false`; a whole
   number in the type's range; an enum's variant by the name the rules give
   it (`version = "falzar"`); a definition by its name in the game
-  (`"heatcross"`); a list as a TOML array, no longer than it holds, the
-  entries past the last given empty (`souls = []`: none).
+  (`"heatcross"`); a chip code by its letter (`"A"`, `"*"`); a list as a
+  TOML array, no longer than it holds, the entries past the last given
+  empty (`souls = []`: none); a record as a table of its fields, a field
+  left out holding nothing (false, none, zero), and a list of records an
+  array of tables, a line each, written after the side's other facts.
+- Every part of a side is a fact (step c3 of the rules-in-Luau work): its
+  navi, its folder, its Regular and tag chips, its patch cards, its
+  NaviCust. The engine knows the navi and the folder parts by role (the
+  round's stats are the navi's, its battle folder is dealt from the folder);
+  what the rest are is the game's rules'.
 - A fact a file leaves out is what the rules say a side that says nothing
   has (`setup_defaults`: EXE6's Beast Out; EXE5's
   every soul, both unisons and a fresh save's karma, 500), else zero. A
@@ -1332,7 +1340,7 @@ story is taken as done). A side states no HP of its own for one: the checks
 refuse a level past 6, and an `hp`. A team navi has no NaviCust, patch
 cards or souls: they are MegaMan's. EXE5's MegaMan takes no level.
 
-**The SP deletion times** (`[[left.sp_times]]`) are a fact of the match's
+**The SP deletion times** (`sp_times`) are a fact of the match's
 rules like any other (`sp_times`, a list of `{ chip, frames }` records: the
 engine knows it as `PlayerFact::SpTimes`), an entry each SP navi chip, by
 the chip's name, the frames the save took to delete its navi. A side that
@@ -1354,9 +1362,10 @@ code) and the SP times; its folder, NaviCust, patch cards and what it
 brings to the stats are not read yet. An EXE5 save gives a team navi side its
 level (its HP is the level's) and its block's karma.
 
-**The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
-programs placed on MegaMan's grid, by name and color name (a program's
-`colors`), and its board; without it, none on the largest board. The game's
+**The NaviCust** (`navicust_expansions` and `navicust_programs`,
+docs/design/navicust.md) is the programs placed on MegaMan's grid, by name
+and color name (one of the program's `colors`), and its board; without
+them, none on the largest board. The game's
 `navicust` part makes the stats it gives (the maximum HP, the abilities,
 levels, weapons and bugs) from the programs as the round is set up, over
 what the save brings (`hp`, `reg_up`, `sun`). The editor's NaviCust pane
@@ -1537,7 +1546,10 @@ is said with where it is:
   holding another game's (no file or offer can) is refused the same way
   ("right: a navi exe5 hasn't");
 - the arena's stages are the game's link battle stages (`link_battle_stages`);
-- the folder keeps the game's rules: their `folder_check` hook (EXE6's are rules/folder/init.luau:
+- what the game's rules say of the side (their `validate` hook,
+  `Battle::validate`, once the round is set up; nettai-match reports what it
+  says and knows none of it). EXE6's and EXE5's say:
+- the folder keeps the game's rules (EXE6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
   copies by MB, each chip in one of its codes, at most three dark
   chips, chips the chip pack lists, the Regular chip within the Regular
@@ -1545,30 +1557,31 @@ is said with where it is:
   Mega, Giga and Regular limits are the navi's stats as the round starts them
   (after the rules' `round_setup`: the NaviCust's and the patch cards' folder
   limits, as the original's folder editor and link battle check read the
-  reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
-  the hook says, so another game's folder rules are its own Luau: EXE5's
+  reloaded stats). Rust only asks and reports what the rules say, so
+  another game's folder rules are its own Luau: EXE5's
   (content/exe5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
   levels, at most three dark chips, the chips its pack lists, the Regular
   chip within the Regular memory, and no tag chips. A folder holds the
   game's chips alone (the rules' pool is the game's). Live play's random
   folders are drawn from the rules' pool and kept only
-  when the hook accepts them (`nettai_match::folders`);
-- a NaviCust only in a game whose rules' `navicust` section has a board,
-  and only for MegaMan; every program fits the board, none overlaps another, the copies of
-  one program in one color are all compressed or all not (the save keeps
-  one flag for them);
+  when their `folder_check` hook accepts them (`nettai_match::folders`);
+- a NaviCust's programs only for MegaMan; its board one of the game's;
+  every program in one of its colors, turned 0 to 3 quarters, fitting the
+  board, over no other, the copies of one program in one color all
+  compressed or all not (the save keeps one flag for them);
 - a base HP (`hp`) only for the navi that compiles a NaviCust: any
-  other's HP is its level's;
-- a side's facts its game's rules' (`nettai_match::facts::check`, above):
+  other's HP is its level's; the navi's level within its navi code's or its
+  story's;
+- patch cards each installed once, their MB together at most 80 (EXE6's
+  menu adds none past 80 MB, `0x08141868`);
+- and of nettai-match's own, generic: a side's navi stated, and its facts
+  its game's rules' (`nettai_match::facts::check`, above):
   each one the rules require stated (EXE6's version and its Crosses), every
   definition the game's and once in its list with no gap before it, and
   the form list (EXE6's Crosses) forms of the navi's own lists (none for a
   navi that doesn't change form);
 - karma 0 to 1000, and other than 500 only with rules that take it;
-- patch cards only in a game that defines any, each
-  installed once, at most 32, their MB together at most 80 (EXE6's menu adds
-  none past 80 MB, `0x08141868`);
 - the round starts (`Battle::new` doesn't stop).
 
 **Netplay with a match file** (`--match FILE --host PORT` or

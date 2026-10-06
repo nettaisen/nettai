@@ -22,10 +22,11 @@
 //! documented where they are declared: content/exe6/rules and
 //! content/exe5/rules.
 
-use crate::{Arena, Side, ids};
-use nettai_battle::content::{Content, PlayerFact};
+use crate::{Arena, Folder, Side, ids};
+use nettai_battle::content::{ChipCode, Content, PlayerFact};
+use nettai_battle::custom::FolderChip;
 use nettai_battle::rules::{self, Fact, SetupFact};
-use nettai_content_api::{Block, ChipHandle, FieldType, FieldValue, FormHandle, Registry, Value};
+use nettai_content_api::{Block, ChipHandle, FieldType, FieldValue, FormHandle, NaviHandle, Registry, Value};
 
 /// A side's facts: its setup of its game's rules, one block (none on a
 /// content without rules).
@@ -79,6 +80,8 @@ pub enum Stated {
     Optional(Option<i64>),
     /// A record's fields, by name, in their order.
     Record(Vec<(String, Stated)>),
+    /// A chip code, by its letter (`*` too); none: no code.
+    Code(Option<char>),
     /// A value no match states (an object, a vector, an asset).
     Other,
 }
@@ -159,6 +162,7 @@ fn stated_of(ty: &FieldType, v: FieldValue) -> Stated {
         (_, FieldValue::OptionalU8(v)) => Stated::Optional(v.map(i64::from)),
         (FieldType::Enum(names), FieldValue::Enum(i)) => Stated::Variant(names.get(i as usize).cloned()),
         (FieldType::Ref(registry, _), FieldValue::Ref(r)) => Stated::Def(*registry, r.map(|(_, h)| h)),
+        (_, FieldValue::Code(c)) => Stated::Code(c.map(char::from)),
         (_, FieldValue::U8(_) | FieldValue::U16(_) | FieldValue::U32(_) | FieldValue::I8(_) | FieldValue::I16(_) | FieldValue::I32(_)) => {
             match v.load() {
                 Value::Int(i) => Stated::Number(i),
@@ -170,6 +174,12 @@ fn stated_of(ty: &FieldType, v: FieldValue) -> Stated {
 }
 
 impl Facts {
+    /// A setup's block as facts (a test's).
+    #[cfg(test)]
+    pub(crate) fn of_block(block: Block) -> Facts {
+        Facts(Some(block))
+    }
+
     /// What a side that says nothing has: the rules' defaults.
     pub fn defaults(content: &Content) -> Facts {
         Facts(rules::default_setup(content))
@@ -387,6 +397,15 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     for f in fields(content) {
         let Some(value) = side.facts.get(content, f.name) else { continue };
         let of_game = |registry: Registry, h: u16| ids::key_of(content, registry, h).is_some_and(|key| ids::in_game(content, game, key));
+        // (A definition a record names, at any depth: the game's.)
+        if let Stated::List(items) = &value
+            && items.iter().any(|v| matches!(v, Stated::Record(_)))
+        {
+            if let Some((r, _)) = named(&value).into_iter().find(|&(r, h)| !of_game(r, h)) {
+                out.push(format!("{}: a {r} {game} hasn't", f.name));
+            }
+            continue;
+        }
         match &value {
             Stated::Variant(None) => {
                 out.push(format!("no {}: a side of {game} states its own ({}); none is assumed", f.name, may_be(&f)));
@@ -418,18 +437,29 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     let listed = side.facts.form_list(content);
     if !listed.is_empty() && !out.iter().any(|p| p.starts_with(PlayerFact::CrossList.name())) {
         let name = PlayerFact::CrossList.name();
-        match crate::navi_forms(content, side.navi) {
-            None => out.push(format!("{name}: {} doesn't change form", crate::names::navi(content, side.navi))),
+        match crate::navi_forms(content, side.navi(content)) {
+            None => out.push(format!("{name}: {} doesn't change form", crate::names::navi(content, side.navi(content)))),
             Some(own) => {
                 for &f in &listed {
                     if !own.contains(&f) {
-                        out.push(format!("{name}: {} is no form of {}'s lists", crate::names::form(content, f), crate::names::navi(content, side.navi)));
+                        out.push(format!("{name}: {} is no form of {}'s lists", crate::names::form(content, f), crate::names::navi(content, side.navi(content))));
                     }
                 }
             }
         }
     }
     out
+}
+
+/// The definitions a value names, at any depth, each by its registry and
+/// handle.
+fn named(value: &Stated) -> Vec<(Registry, u16)> {
+    match value {
+        Stated::Def(r, Some(h)) => vec![(*r, *h)],
+        Stated::List(items) => items.iter().flat_map(named).collect(),
+        Stated::Record(fields) => fields.iter().flat_map(|(_, v)| named(v)).collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// A fact's value in words, for a description: a flag as yes or no, a
@@ -451,11 +481,110 @@ pub fn shown(content: &Content, value: &Stated) -> String {
             let all: Vec<String> = fields.iter().map(|(name, v)| format!("{name} {}", shown(content, v))).collect();
             format!("({})", all.join(", "))
         }
+        Stated::Code(c) => c.map_or_else(|| "none".to_string(), String::from),
         Stated::Other => "?".to_string(),
     }
 }
 
 impl Side {
+    /// The side's navi (the engine's navi fact), where it states one.
+    pub fn stated_navi(&self, content: &Content) -> Option<NaviHandle> {
+        match self.facts.role(content, PlayerFact::Navi)?.value() {
+            FieldValue::Ref(Some((_, h))) => Some(NaviHandle(h)),
+            _ => None,
+        }
+    }
+
+    /// The side's navi: every side states one (a new side its game's first,
+    /// a match file its own: the checks refuse one without).
+    pub fn navi(&self, content: &Content) -> NaviHandle {
+        self.stated_navi(content).expect("a side states its navi (the engine's navi fact)")
+    }
+
+    /// State the side's navi. An error where the game's rules take no navi
+    /// fact.
+    pub fn set_navi(&mut self, content: &Content, navi: NaviHandle) -> Result<(), String> {
+        self.set_fact(content, PlayerFact::Navi.name(), &[Fact::Value(Value::Def(Registry::Navi, navi.0))])
+    }
+
+    /// The side's folder (the engine's folder facts: its entries, its
+    /// Regular and tag chips): 30 entries, those past the list's empty, as
+    /// is an entry with no chip or no code.
+    pub fn folder(&self, content: &Content) -> Folder {
+        let mut folder = Folder::EMPTY;
+        if let Some(fact) = self.facts.role(content, PlayerFact::Folder) {
+            let (block, place) = (fact.block(), fact.place());
+            let fields = match place.ty() {
+                FieldType::List(elem, _) => match &**elem {
+                    FieldType::Record(fields) => fields.index_of("chip").zip(fields.index_of("code")),
+                    _ => None,
+                },
+                _ => None,
+            };
+            if let Some((chip, code)) = fields {
+                let n = block.len_at(place).unwrap_or(0);
+                for (k, slot) in folder.chips.iter_mut().enumerate().take(n) {
+                    let Some(entry) = place.elem(k) else { continue };
+                    let id = match block.get_at(entry.field_at(chip)) {
+                        FieldValue::Ref(Some((_, h))) => Some(ChipHandle(h)),
+                        _ => None,
+                    };
+                    let code = match block.get_at(entry.field_at(code)) {
+                        FieldValue::Code(Some(c)) => ChipCode::from_letter(char::from(c)),
+                        _ => None,
+                    };
+                    *slot = id.zip(code).map(|(id, code)| FolderChip::new(id, code));
+                }
+            }
+        }
+        folder.regular = match self.facts.role(content, PlayerFact::RegularChip).map(|f| f.value()) {
+            Some(FieldValue::OptionalU8(r)) => r,
+            _ => None,
+        };
+        folder.tags = match self.facts.get(content, PlayerFact::TagChips.name()).filter(|_| content.defs.fact_field(PlayerFact::TagChips).is_some()) {
+            Some(Stated::List(items)) => match items[..] {
+                [Stated::Number(a), Stated::Number(b)] => Some((a as u8, b as u8)),
+                _ => None,
+            },
+            _ => None,
+        };
+        folder
+    }
+
+    /// State the side's folder: its entries to the last with a chip (an
+    /// empty one `{}`), its Regular chip, its tag chips. An error where the
+    /// game's rules take no folder, or the folder has tag chips and the
+    /// rules take none (EXE5's).
+    pub fn set_folder(&mut self, content: &Content, folder: &Folder) -> Result<(), String> {
+        let last = folder.chips.iter().rposition(|c| c.is_some()).map_or(0, |i| i + 1);
+        let entries: Vec<Fact> = folder.chips[..last]
+            .iter()
+            .map(|c| match c {
+                Some(c) => Fact::Record(vec![
+                    ("chip", Fact::Value(Value::Def(Registry::Chip, c.id.0))),
+                    ("code", Fact::Value(Value::Code(c.code.letter() as u8))),
+                ]),
+                None => Fact::Record(Vec::new()),
+            })
+            .collect();
+        let mut facts = self.facts.clone();
+        facts.set(content, PlayerFact::Folder.name(), &entries)?;
+        let regular = folder.regular.map_or(Value::Nil, |r| Value::Int(r as i64));
+        if content.defs.fact_field(PlayerFact::RegularChip).is_some() {
+            facts.set(content, PlayerFact::RegularChip.name(), &[Fact::Value(regular)])?;
+        } else if folder.regular.is_some() {
+            return Err(format!("a Regular chip, but {}'s rules take none", content.game()));
+        }
+        if content.defs.fact_field(PlayerFact::TagChips).is_some() {
+            let tags: Vec<Fact> = folder.tags.map_or(Vec::new(), |(a, b)| vec![Fact::Value(Value::Int(a as i64)), Fact::Value(Value::Int(b as i64))]);
+            facts.set(content, PlayerFact::TagChips.name(), &tags)?;
+        } else if folder.tags.is_some() {
+            return Err(format!("tag chips, but {}'s rules take none", content.game()));
+        }
+        self.facts = facts;
+        Ok(())
+    }
+
     /// The side's version of the game, where its rules take one and the
     /// side states it (`Facts::version`): its navi's version in the stats
     /// (NaviStats+0x20) goes by it.
@@ -498,7 +627,7 @@ impl Side {
         if content.defs.fact_field(PlayerFact::CrossList).is_none() {
             return false;
         }
-        let own: Vec<FormHandle> = match (content.navi(self.navi).forms.as_ref(), self.version(content)) {
+        let own: Vec<FormHandle> = match (content.navi(self.navi(content)).forms.as_ref(), self.version(content)) {
             (None, _) => Vec::new(),
             (Some(forms), Some(version)) => forms.listed(version).to_vec(),
             (Some(_), None) => return false,
@@ -518,7 +647,7 @@ impl Side {
     /// level gives it (`levels`: EXE6's MegaMan and link navis, a navi
     /// code's; `story`: EXE5's team navis; EXE5's MegaMan has neither).
     pub fn takes_level(&self, content: &Content) -> bool {
-        let navi = content.navi(self.navi);
+        let navi = content.navi(self.navi(content));
         navi.levels.is_some() || navi.story.is_some()
     }
 
@@ -552,7 +681,7 @@ pub fn offered(content: &Content, game: &str, side: &Side, field: &Field) -> Opt
     let FieldType::Array(elem, _) = field.ty else { return None };
     let FieldType::Ref(registry, _) = **elem else { return None };
     if role_of(content, field.name) == Some(PlayerFact::CrossList) {
-        return Some(crate::navi_forms(content, side.navi).unwrap_or_default().into_iter().map(|f| f.0).collect());
+        return Some(crate::navi_forms(content, side.navi(content)).unwrap_or_default().into_iter().map(|f| f.0).collect());
     }
     let mut out = Facts::defaults(content).get(content, field.name).map(|v| v.defs()).unwrap_or_default();
     if out.is_empty() {

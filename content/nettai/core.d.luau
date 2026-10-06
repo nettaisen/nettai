@@ -1211,15 +1211,10 @@ declare battle: {
     -- save's NaviCust bug flag): the rules decide it in `round_setup` (EXE6's
     -- patch cards do).
     set_emotion_window_glitch: (side: number, on: boolean) -> (),
-    -- A side's installed patch cards in their list's order, each switched
-    -- on or not (the player's setup's; a game's rules apply them).
-    patch_cards: (side: number) -> { { card: PatchCard, enabled: boolean } },
-    -- A side's NaviCust (the player's setup's; a game's rules compile it into
-    -- the navi's stats in `round_setup`): its board's expansions and its
-    -- programs in its list's order, each with its color, its center on the
-    -- 7x7 grid, its quarter turns clockwise and whether it is compressed;
-    -- nil when the setup gives none (the stats are already the NaviCust's).
-    navicust: (side: number) -> NaviCust?,
+    -- A definition's name in the content's own strings (its locales'
+    -- language), else its key: for what the rules say to a tool
+    -- (`validate`).
+    name: (def: any) -> string,
     -- The folder a tool asks the rules to check (the rules' `folder_check`):
     -- whose side, its chips in order, its Regular and tag chips (places in
     -- `chips`), and whether it is all of a folder (else the chips so far:
@@ -1903,6 +1898,11 @@ export type RulesSpec = {
         -- (not the simulation): the folder is `battle.checked_folder()`, and
         -- each rule it breaks is `battle.folder_problem(rule, text)`.
         folder_check: ((side: number) -> ())?,
+        -- A tool asks what is wrong with side `side`'s setup (not the
+        -- simulation), once the round is set up: each problem a sentence, or
+        -- with the setup field it is of and the entry of a list field (from
+        -- 1). Nothing: none.
+        validate: ((side: number) -> { SetupProblem }?)?,
         -- Each tick of the fight, in the navi's intake after the standing
         -- effects (`sub_801AC6C`; EXE5's light and dark MegaMan clears a holy
         -- panel there).
@@ -2561,20 +2561,9 @@ export type NaviCustProgramSpec = {
 }
 export type NaviCustProgram = NaviCustProgramSpec
 
--- A program on a side's NaviCust (`battle.navicust`).
-export type PlacedProgram = {
-    program: NaviCustProgram,
-    color: string,
-    x: number,
-    y: number,
-    rotation: number,
-    compressed: boolean,
-}
-
-export type NaviCust = {
-    expansions: number,
-    parts: { PlacedProgram },
-}
+-- A problem of a side's setup (the rules' `validate`): a sentence, or with the setup field it is of and the entry
+-- of a list field (from 1), which a tool shows it at.
+export type SetupProblem = string | { text: string, field: string?, entry: number? }
 
 -- A folder being checked (`battle.checked_folder`).
 export type CheckedFolder = {

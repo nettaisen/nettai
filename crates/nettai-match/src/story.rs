@@ -53,7 +53,7 @@ mod tests {
         let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
         let mut m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         let s = &mut m.sides[0];
-        (s.navi, s.navicust) = (protoman, None);
+        s.set_navi(&content, protoman).unwrap();
         s.set_level(&content, Some(3)).unwrap();
         assert_eq!(crate::check::check_match(&content, &m), Vec::<String>::new());
         let text = crate::write(&content, &m);

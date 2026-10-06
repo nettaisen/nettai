@@ -106,10 +106,18 @@ impl Side {
         }
         state(self, "souls", &souls);
         notes.extend(missing.iter().map(|n| format!("the save has soul {n}, which {} hasn't", arena.game)));
-        if let Some(n) = &mut self.navicust {
+        // The NaviCust's board, where the side has a NaviCust (its
+        // `navicust_expansions` stated).
+        let has_navicust = matches!(
+            self.facts.fact(content, "navicust_expansions").map(|f| f.value()),
+            Some(nettai_content_api::FieldValue::OptionalU8(Some(_)))
+        );
+        if has_navicust {
             let (had, sizes) = (save.expansions(), crate::navicust_rules(content).boards.len());
             if (had as usize) < sizes {
-                n.expansions = had;
+                if let Err(e) = self.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Int(had as i64))]) {
+                    notes.push(format!("the save's navicust_expansions is left out: {e}"));
+                }
             } else {
                 notes.push(format!("the save has {had} ExpMemry, but the NaviCust's board has {sizes} sizes: the side's board is kept"));
             }
@@ -128,16 +136,16 @@ impl Side {
     /// at (EXE5's rules/save), and, where the save's version has the navi,
     /// the light/dark value of the navi's own block.
     fn import_exe5_team_navi(&mut self, content: &Content, save: &Save) -> Vec<String> {
-        if content.navi(self.navi).story.is_none() {
+        if content.navi(self.navi(content)).story.is_none() {
             return Vec::new();
         }
-        let name = crate::names::navi(content, self.navi);
+        let name = crate::names::navi(content, self.navi(content));
         let level = save.navi_level();
         if let Err(e) = self.set_level(content, Some(level)) {
-            return vec![format!("{}: the save's level {level} is left out: {e}", crate::names::navi(content, self.navi))];
+            return vec![format!("{}: the save's level {level} is left out: {e}", crate::names::navi(content, self.navi(content)))];
         }
         let compat = exe5_compat::Compat::exe5();
-        let key = crate::ids::local(&content.defs.navi(self.navi).key);
+        let key = crate::ids::local(&content.defs.navi(self.navi(content)).key);
         let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
         let mut notes = vec![format!("{name}: the save's level {level}")];
         match block.map(|b| exe5_compat::codec::navi_stats(&b)) {
@@ -187,8 +195,8 @@ mod tests {
         let e = six.import_save(&exe6_content(), 0, &image).unwrap_err();
         assert!(e.contains("an exe5 save, but the content is exe6's"), "{e}");
         let s = &m.sides[0];
-        assert_eq!(crate::ids::local(&content.defs.navi(s.navi).key), "megaman");
-        assert!(crate::ids::in_game(&content, "exe5", &content.defs.navi(s.navi).key));
+        assert_eq!(crate::ids::local(&content.defs.navi(s.navi(&content)).key), "megaman");
+        assert!(crate::ids::in_game(&content, "exe5", &content.defs.navi(s.navi(&content)).key));
         use crate::facts::Stated;
         assert_eq!(s.facts.get(&content, "karma"), Some(Stated::Number(100)));
         let listed = s.facts.get(&content, "souls").unwrap().defs();
@@ -197,12 +205,13 @@ mod tests {
         // (Its six souls: those the game hasn't yet are said.)
         assert_eq!(notes.len() - 1 + souls.len(), 6, "{notes:?}");
         assert_eq!(m.sides[1], crate::Match::empty(&content, "exe5").unwrap().sides[1]);
-        assert_eq!((s.navicust.map(|n| n.expansions), m.sides[1].navicust.map(|n| n.expansions)), (Some(1), Some(2)));
+        let expansions = |s: &crate::Side| crate::testing::navicust_expansions(&content, s);
+        assert_eq!((expansions(s), expansions(&m.sides[1])), (Some(1), Some(2)));
         // More ExpMemry than the board has sizes: said, the board kept.
         image[0x3DB0 + 0x61] = 3;
         let notes = m.import_save(&content, 0, &image).unwrap();
         assert!(notes.iter().any(|n| n.contains("3 ExpMemry")), "{notes:?}");
-        assert_eq!(m.sides[0].navicust.map(|n| n.expansions), Some(1));
+        assert_eq!(crate::testing::navicust_expansions(&content, &m.sides[0]), Some(1));
         let e = m.import_save(&content, 0, b"not a save").unwrap_err();
         assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
     }
@@ -229,7 +238,7 @@ mod tests {
         let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
         let mut m = crate::Match::empty(&content, "exe5").unwrap();
         let s = &mut m.sides[0];
-        (s.navi, s.navicust) = (protoman, None);
+        s.set_navi(&content, protoman).unwrap();
         s.set_level(&content, Some(0)).unwrap();
         let notes = m.import_save(&content, 0, &image).unwrap();
         let s = &m.sides[0];

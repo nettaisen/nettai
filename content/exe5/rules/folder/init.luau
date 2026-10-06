@@ -75,16 +75,10 @@ local function mb(c: Chip): number
     return c.mb or 0
 end
 
-local function check(side: number)
-    local f = battle.checked_folder()
-    if f == nil or f.side ~= side then
-        return
-    end
-    local stats = battle.navi(side)
+-- The rules folder `f` breaks (a folder as `battle.checked_folder()` gives one: its chips, its Regular and tag chips
+-- by their place among them, from 1), each said with `problem(rule, text)`; its limits are `stats'`.
+local function rules_broken(stats: Navi, f: CheckedFolder, problem: (rule: string, text: string) -> ())
     local chips = f.chips
-    local function problem(rule: string, text: string)
-        battle.folder_problem(rule, text)
-    end
     if f.complete and #chips ~= SIZE then
         problem("size", string.format("the folder has %d chips; a folder is %d", #chips, SIZE))
     end
@@ -144,6 +138,47 @@ local function check(side: number)
     end
 end
 
+-- `folder_check`: the folder a tool asks of (`battle.checked_folder()`), each rule it breaks a
+-- `battle.folder_problem(rule, text)`.
+local function check(side: number)
+    local f = battle.checked_folder()
+    if f == nil or f.side ~= side then
+        return
+    end
+    rules_broken(battle.navi(side), f, battle.folder_problem)
+end
+
+-- `validate`'s part: the side's own folder (its setup's `folder`, `regular_chip`), each problem said with
+-- `problem(text, field)`: its Regular and tag chips are entries with a chip, and it keeps the rules.
+local function validate(side: number, problem: (text: string, field: string?) -> ())
+    local setup = rules.setup_of(side)
+    -- The entries with a chip, and each one's place among them (from 1) by its entry (from 0).
+    local chips: { { chip: Chip, code: string } } = {}
+    local place: { [number]: number } = {}
+    for i, e in setup.folder do
+        local chip: Chip?, code: string? = e.chip, e.code
+        if chip ~= nil and code ~= nil then
+            table.insert(chips, { chip = chip, code = code })
+            place[i - 1] = #chips
+        end
+    end
+    local outside = false
+    local regular: number? = nil
+    if setup.regular_chip ~= nil then
+        regular = place[setup.regular_chip]
+        outside = regular == nil
+    end
+    local tags: { number }? = nil
+    if outside then
+        problem("folder: the Regular or tag chips aren't chips of the folder", "folder")
+    end
+    local f: CheckedFolder = { side = side, chips = chips, regular = regular, tags = tags, complete = true }
+    rules_broken(battle.navi(side), f, function(_, text)
+        problem("folder: " .. text, "folder")
+    end)
+end
+
 return {
     check = check,
+    validate = validate,
 }
