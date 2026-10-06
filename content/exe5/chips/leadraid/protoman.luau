@@ -13,7 +13,7 @@ local attachment = require("../../objects/attachment")
 local colonel = require("./colonel")
 local collision = require("../../rules/collision")
 local glow = require("./glow")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local regions = require("@exelib/regions")
 
 export type State = {

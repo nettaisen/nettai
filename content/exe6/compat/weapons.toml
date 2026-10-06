@@ -82,7 +82,7 @@
 "patch-cards/beastman/charge" = [0x5C]
 "patch-cards/blizman/charge" = [0x5D]
 "patch-cards/handy/charge" = [0x5E]
-"patch-cards/puffball/charge" = [0x5F]
+"patch-cards/puffy/charge" = [0x5F]
 "patch-cards/kilby/charge" = [0x60]
 "patch-cards/canguard/charge" = [0x61]
 "patch-cards/bombcorn/charge" = [0x62]

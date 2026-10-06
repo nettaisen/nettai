@@ -9,7 +9,7 @@
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 local regions = require("@exelib/regions")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local grid = require("./grid")
 
 export type State = {

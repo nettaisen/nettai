@@ -994,7 +994,7 @@ mod tests {
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
     }
 
-    /// EXE6's patch-cards system (content/exe6/rules/patch-cards) with the
+    /// EXE6's patch-cards system (content/exe6/rules/patch_cards) with the
     /// test content's made-up cards: its `round_setup` changes the stats
     /// before anything reads them.
     /// A system's extension of its game's definitions

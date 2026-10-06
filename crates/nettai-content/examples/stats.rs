@@ -1,7 +1,7 @@
 //! Survey a content pack's graphics: how sprites use tilesets, parts and
 //! palettes (to choose an exact editable format).
 //!
-//!     cargo run -p nettai-content --example stats -- data/content/exe6
+//!     cargo run -p nettai-content --example stats -- data/exe6
 
 use nettai_assets::Bundle;
 use std::collections::{BTreeMap, BTreeSet, HashMap};

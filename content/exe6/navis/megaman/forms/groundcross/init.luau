@@ -4,10 +4,10 @@
 local base = require("./base")
 local cross_overlay = require("./cross_overlay")
 local groundman = require("../../groundman")
-local groundcross_beast = require("./groundcross-beast")
+local groundcross_beast = require("./groundcross_beast")
 local buster = require("../weapons/buster")
 local drill = require("@self/drill")
-local rock_barrage = require("../weapons/rock-barrage")
+local rock_barrage = require("../weapons/rock_barrage")
 local forms = require("../../../rules/forms")
 
 return define.form {

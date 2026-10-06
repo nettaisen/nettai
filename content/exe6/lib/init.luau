@@ -8,4 +8,4 @@
 require("@self/bombs/slash")
 require("@self/dimming/blinding_flash")
 require("@self/instant/repair")
-require("@self/patch-cards/b-reflect")
+require("@self/patch_cards/b_reflect")

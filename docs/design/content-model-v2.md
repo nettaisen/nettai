@@ -211,7 +211,7 @@ export type ChipSpec = {
 
 - `damage` is a number, or a formula the ruleset evaluates: `{ formula = "sp_navi", slot = "sp/heatman",
   by_time = {...} }` (the SP chips' damage by the user's deletion time of that navi; the slot is one of
-  rules/sp-chips.luau's `slots`, the save's deletion times in the setup's order), `{ formula = "hp_lost" }`
+  rules/sp_chips.luau's `slots`, the save's deletion times in the setup's order), `{ formula = "hp_lost" }`
   (Muramasa), `{ formula = "hp_last_digits" }` (NumbrBl), `{ formula = "navi_level", base = 60, per_level =
   10 }` (the link navis' chips), `{ formula = "level", by_level = {...} }` (EXE5's team navis' chips: a row
   read at the side's navi level), and the ones no EXE6 chip uses (`opponent_hp`, `gauge`,
@@ -667,13 +667,13 @@ there are no variants (`base`, `add`, `remove` are refused). The engine reads th
 | `lockon` | rules/lockon.luau | column shifts, the clear path, the charged sword's modes; modes are `define.lockon` (rules/lockon.toml) |
 | `berserk` | rules/berserk.luau | Beast Over's berserk panel rules (rules/berserk.toml) |
 | `math` | rules/math.luau | the sine table (rules/math.toml) |
-| `custom_screen` | rules/custom-screen.luau | the slot grid and neighbor scans (rules/custom-screen.toml) |
+| `custom_screen` | rules/custom_screen.luau | the slot grid and neighbor scans (rules/custom_screen.toml) |
 | `buster` | rules/buster.luau | recovery by Rapid and open panels; the empty hand's chip (rules/weapons.toml) |
 | `banners` | rules/banners.luau | which banners hold until removed, by banner asset (rules/banners.toml) |
 | `pools`, `flow`, `chip_use`, `sp_chips`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the SP navis' deletion times and slots, the NaviCust boards, EXE5's effect rules |
 
 Where v1 kept per-entity rows in a shared table, they move to the entity: charge times into weapons, the Cross
-palettes into forms, the SP chips' deletion-time steps into `lib/navi-chips/sp.luau` next to the formula,
+palettes into forms, the SP chips' deletion-time steps into `lib/navi_chips/sp.luau` next to the formula,
 collision types into `rules/collision.luau` as named definitions, the actor records into identities,
 `registries/*` into named definitions (§3.6). rules/stages.toml becomes `stages/`.
 
@@ -713,10 +713,10 @@ a weapon set; the dimming and navi chip actions read the chip's usage. Content's
 
 ### 3.11 Patch cards
 
-`define.patch_card { id, mb, effects }` (content/exe6/cards/<name>/card.luau) is a patch card, BN4's, EXE5's and EXE6's
+`define.patch_card { id, mb, effects }` (content/exe6/patch_cards/<name>/card.luau) is a patch card, BN4's, EXE5's and EXE6's
 Modification Card (docs/engine/patch-cards.md): the engine keeps its capacity cost and its effects' kinds and bug
 flags (`PatchCardDef`), and a player's installed cards are their setup's (`PlayerSetup::patch_cards`). What an
-effect does is a game's rules' (EXE6's patch-cards system, rules/patch-cards), which read the effects' own fields
+effect does is a game's rules' (EXE6's patch-cards system, rules/patch_cards), which read the effects' own fields
 from the definition. Its name is the locales' (`[patch-cards]`).
 
 ## 4. Folder layout
@@ -743,7 +743,7 @@ content/
     manifest.toml                     the pack: its id, its kind, what it depends on
     init.luau                         the game's top module: it requires the game's rules and folders (below)
     <folder>/init.luau                a folder's index: it requires the folder's modules that define what the
-                                      game has (chips/, navis/, stages/, cards/, navicust/, lib/)
+                                      game has (chips/, navis/, stages/, patch_cards/, navicust/, lib/)
     **/*.luau                         its scripts (the layout below, §4.1)
     types.d.luau                      its own declarations
     locales/<language>.toml           its display text by id
@@ -772,7 +772,7 @@ require("@self/rules")                      -- rules/init.luau: the game's rules
 require("@self/chips")
 require("@self/navis")
 require("@self/stages")
-require("@self/cards")
+require("@self/patch_cards")
 require("@self/navicust")
 require("@self/lib")
 
@@ -892,13 +892,13 @@ the modules required for what only an id names, the loader that follows requires
 ```text
 content/exe6/
   init.luau                           the game's top module: it requires the rules and the folders (§4.0)
-  <folder>/init.luau                  a folder's index (chips/, navis/, stages/, cards/, navicust/, lib/): it
+  <folder>/init.luau                  a folder's index (chips/, navis/, stages/, patch_cards/, navicust/, lib/): it
                                       requires the folder's modules that define what the game has (§4.0)
   types.d.luau                        the game's shared types (the API: content/nettai/core.d.luau)
   chips/<id>/                         one chip: init.luau, and kinds only it uses
   chips/<series>/                     a series (X1-X3, Hi-/M-, EX/SP, Recov*, the upgrades of one chip): init.luau
                                       defines all of them and returns them by name
-  cards/<card>/, navicust/<program>/  a patch card, a NaviCust program: init.luau
+  patch_cards/<card>/, navicust/<program>/  a patch card, a NaviCust program: init.luau
   navis/megaman/                      init.luau; kinds and weapons several forms share
   navis/megaman/forms/<form>/         init.luau; weapons and kinds only that form uses
   navis/megaman/weapons/<weapon>/     weapons several forms share (buster, charged shot, blank shot, beast claw)
@@ -919,7 +919,9 @@ content/exe6/
 4. A kind a navi chip series shares with the same navi's link-navi chip lives with the navi chip series
    (`chips/eraseman/beam.luau`, required by `navis/eraseman/`).
 5. Everything else shared across families is in `objects/`.
-6. Folders and files are named by name: no index prefixes. A series folder is named by its plainest member
+6. Folders and files are named by name: no index prefixes. Luau filenames and module folders use snake_case,
+   except the names of chips, patch cards and NaviCust programs, which keep their content names. Patch card
+   definitions live under `patch_cards/`. A series folder is named by its plainest member
    (`chips/cannon/` for Cannon, HiCannon, M-Cannon; `chips/recov/` for Recov10 to Recov300).
 
 `nettai-content where <key>` prints the module that defines a key, and load errors name the module.
@@ -932,7 +934,7 @@ module is the one the folder is for:
 | Folder | Its init.luau |
 |---|---|
 | chips/<chip>/, chips/<series>/ | the chip, or the series' chips |
-| cards/<card>/, navicust/<program>/ | the patch card, the NaviCust program |
+| patch_cards/<card>/, navicust/<program>/ | the patch card, the NaviCust program |
 | navis/<navi>/ | the navi |
 | .../forms/<form>/, .../weapons/<weapon>/ | the form, the weapon |
 | rules/, rules/<system>/ | the game's rules, the system |
@@ -951,8 +953,8 @@ module. Where a folder holds two things, the folder's own is the init:
 - a module beside a folder of its name keeps the folder's modules' names (exelib's projectile.luau and
   projectile/projectile.luau: both can't be `projectile`);
 - a folder whose only module says what it is keeps it (exelib's antirecv/controller.luau), and so do the modules
-  with a main module's name out of its place (lib/weapon.luau, lib/navi-chips/navi.luau,
-  objects/falling-rock/chip.luau, EXE5's navis/megaman/weapons/chips.luau, exelib's bass/navi.luau and the other
+  with a main module's name out of its place (lib/weapon.luau, lib/navi_chips/navi.luau,
+  objects/falling_rock/chip.luau, EXE5's navis/megaman/weapons/chips.luau, exelib's bass/navi.luau and the other
   navi makers: exelib has no chips/ or navis/).
 
 **Requires follow Luau's own rule** (`keys::resolve`, the Luau require navigator's), so an editor resolves them
@@ -1011,7 +1013,7 @@ differs from EXE6's layout in two things the port and the ids impose:
 
 Where EXE5's shared kinds went: the families' to lib/ (lib/bombs/seed for the seeds, as EXE6's; lib/instruments;
 the Anti traps' in lib/traps; the Guard chips' shock wave in lib/guard; the navi chips' throw marker in
-lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/init.luau, as EXE6's
+lib/navi_chips), each family's builder moving into its folder with them (lib/bombs/init.luau, as EXE6's
 lib/barriers/init.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as EXE6's
 Cross merge is rules/forms'; a kind with a natural owner and borrowers to the owner (the Vulcans' gun, which the
 InfVulcs borrow; DrilArm's drill, DarkDril's too; CrakBom's bomb, ParaBom's and ResetBom's too). objects/ keeps
@@ -1027,10 +1029,10 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 
 | Kind (v1) | Used by | v2 home |
 |---|---|---|
-| absorbed-obstacle | the obstacle framework (Rust, absorb) | objects/absorbed-obstacle (role) |
+| absorbed-obstacle | the obstacle framework (Rust, absorb) | objects/absorbed_obstacle (role) |
 | air-spin | AirSpin1-3 | chips/airspin/ |
 | aqua-needle | needle-volley (AquaNdl1-3) | chips/aquandl/ |
-| aqua-surge | SpoutCross Beast's charged shot | navis/megaman/forms/spoutcross-beast/ |
+| aqua-surge | SpoutCross Beast's charged shot | navis/megaman/forms/spoutcross_beast/ |
 | area-grab | PanlGrab, AreaGrab | lib/grab/ (controller) |
 | attachment | 24 modules (bombs, swords, GunDelSol, the buster, navis...) | objects/attachment; its rows become attachment looks (records) defined by their users |
 | aura-head | AuraHed1-3, StreamHd | chips/aurahed/ |
@@ -1044,7 +1046,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | bubble-star | BblStar1-3 | chips/bblstar/ |
 | bug-bomb | BugBomb | chips/bugbomb/ |
 | charge-man, charge-car | ChrgeMan series | chips/chrgeman/ |
-| charge-wave | ChargeCross Beast's charged shot | navis/megaman/forms/chargecross-beast/ |
+| charge-wave | ChargeCross Beast's charged shot | navis/megaman/forms/chargecross_beast/ |
 | col-army | ColArmy | chips/colarmy/ |
 | col-force, col-force-soldier | ColForce | chips/colforce/ |
 | colonel | Colonel series, CrossDiv | chips/colonel/ |
@@ -1063,21 +1065,21 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | elec-man, elec-thunder | ElecMan series | chips/elecman/ |
 | elec-pulse | ElcPuls1-3, DestPuls | chips/elcpuls/ |
 | elem-trap, elem-trap-strike | ElemTrap | chips/elemtrap/ |
-| element-pillar | HeatCross Beast's and ElecCross Beast's charged shots; Darkness's dark flames | objects/element-pillar |
+| element-pillar | HeatCross Beast's and ElecCross Beast's charged shots; Darkness's dark flames | objects/element_pillar |
 | elmnt-man, elmnt-bolt, elmnt-ice, elmnt-vine, meteor | ElmntMan series | chips/elmntman/ |
 | energy-burst | EnergBom, MegEnBom (through bomb) | chips/energbom/ |
 | erase-man, erase-mark | EraseMan series | chips/eraseman/ |
 | erase-beam | EraseMan's navi; EDeletBm | chips/eraseman/ (rule 4) |
-| erase-drop | EraseCross Beast's drop | navis/megaman/forms/erasecross-beast/ |
+| erase-drop | EraseCross Beast's drop | navis/megaman/forms/erasecross_beast/ |
 | erase-ray | EraseCross's charged shot | navis/megaman/forms/erasecross/ |
-| falling-rock, rock-chip | the ruleset (the rock barrage in chip use) | objects/falling-rock (role) |
+| falling-rock, rock-chip | the ruleset (the rock barrage in chip use) | objects/falling_rock (role) |
 | fire-hit | FireHit1-3 | chips/firehit/ |
 | flame | FireBrn1-3, WideBrn1-3; HeatCross's charged shot | lib/burner/ |
 | flame-hook, flame-hook-fire | FlmHook1-3 | chips/flmhook/ |
 | flash-bomb | FlshBom1-3 | chips/flshbom/ |
-| flying-shot | TrnArrw, the buster's throw, the Falzar beast's buster | objects/flying-shot |
-| follow-effect | DeltaRay's bursts, DElecSwd's glow (ElecMan's link chip) | objects/follow-effect |
-| gauge-speed | SloGauge, FstGauge | lib/gauge-speed/ |
+| flying-shot | TrnArrw, the buster's throw, the Falzar beast's buster | objects/flying_shot |
+| follow-effect | DeltaRay's bursts, DElecSwd's glow (ElecMan's link chip) | objects/follow_effect |
+| gauge-speed | SloGauge, FstGauge | lib/gauge_speed/ |
 | golem | GolmHit1-3 | chips/golmhit/ |
 | grab-shot | area-grab | lib/grab/ |
 | great-yoyo, yoyo | YoYo, GreatYo | chips/yoyo/ |
@@ -1085,30 +1087,30 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | gust | WindRack; TenguCross's wind | objects/gust |
 | heat-man | HeatMan series | chips/heatman/ |
 | heat-flame | HeatMan's navi; HeatPres | chips/heatman/ (rule 4) |
-| hit-flash, lunge-slash | SlashCross Beast's lunge | navis/megaman/forms/slashcross-beast/ |
+| hit-flash, lunge-slash | SlashCross Beast's lunge | navis/megaman/forms/slashcross_beast/ |
 | hockey-puck | AirHocky, PitHocky | chips/airhocky/ |
 | honey-bee | RskyHny1-3 | chips/rskyhny/ |
 | hyper-burst | H-Burst | chips/h-burst/ |
 | immobilizer | instant effect 9 (no chip yet) | lib/instant/ |
 | invisible | Invisibl, WhiCapsl, instant effect 2, seeking-whirl | chips/invisibl/controller (as built; the second WhiCapsl requires it) |
 | iron-shell | IronShl1-3, ParaShl | chips/ironshl/ |
-| junk-shot | DustCross Beast's scatter | navis/megaman/forms/dustcross-beast/ |
+| junk-shot | DustCross Beast's scatter | navis/megaman/forms/dustcross_beast/ |
 | justice-one | JustcOne | chips/justcone/ |
 | lance | Lance | chips/lance/ |
 | mine, land-mine | Mine | chips/mine/ |
 | magnet | MagCoil | chips/magcoil/ |
 | meteor-shower | instant effect 16 (no chip yet) | lib/instant/ |
 | moon-blade | MoonBld | chips/moonbld/ |
-| navi-boost | PunchArm, NeedlArm, PuzzlArm, BoomrArmSyncTrgr, DarkInvs, BugRSwrd, HubBatc, BgDthThd | lib/navi-boost/ |
-| navi-effect | a second port of follow-effect (effect #0x31), deleted | objects/follow-effect |
+| navi-boost | PunchArm, NeedlArm, PuzzlArm, BoomrArmSyncTrgr, DarkInvs, BugRSwrd, HubBatc, BgDthThd | lib/navi_boost/ |
+| navi-effect | a second port of follow-effect (effect #0x31), deleted | objects/follow_effect |
 | needle-volley | AquaNdl1-3 | chips/aquandl/ |
-| panel-bursts | black-bomb, countdown-bomb, elem-trap-strike | objects/panel-bursts |
-| panel-strike | Bass, MachGun1-3 | objects/panel-strike (rule 5) |
+| panel-bursts | black-bomb, countdown-bomb, elem-trap-strike | objects/panel_bursts |
+| panel-strike | Bass, MachGun1-3 | objects/panel_strike (rule 5) |
 | projectile | the buster, the cannons, AirShot and many more (lib/projectile) | objects/projectile (with lib/projectile.luau's helpers) |
 | proto-man | ProtoMan series | chips/protoman/ |
 | reflected-shot, reflector-shield | Rflectr1-3 | chips/rflectr/ |
 | riding-hit | RSlash (SlashMan's link chip) | navis/slashman/ |
-| rising-bubble | the plus chips' instant effect, black-bomb, bug-bomb, guardian-statue | objects/rising-bubble |
+| rising-bubble | the plus chips' instant effect, black-bomb, bug-bomb, guardian-statue | objects/rising_bubble |
 | rock, rock-debris | stages (actor lists), rock-cube | chips/rockcube/rock and debris (as built; the stages, the encased bubble and the boulder require them) |
 | rock-cube | RockCube, IceCube | chips/rockcube/ |
 | roll, roll-heart | Roll series | chips/roll/ |
@@ -1131,7 +1133,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | tomahawk-man | TmhkMan series | chips/tmhkman/ |
 | tornado | Tornado, Static | chips/tornado/ |
 | trap-chip | AntiNavi, AntiDmg, AntiSwrd, AntiRecv, ElemTrap, BodyGrd | lib/traps/ |
-| whirlwind | TenguCross Beast's charged shot | navis/megaman/forms/tengucross-beast/ |
+| whirlwind | TenguCross Beast's charged shot | navis/megaman/forms/tengucross_beast/ |
 
 What stays in `objects/`: absorbed-obstacle, attachment, boomerang, drill, falling-rock (with rock-chip),
 flying-shot, gust, invisible, panel-bursts, projectile, rising-bubble, rock (with rock-debris), thunder-column.
@@ -1573,9 +1575,9 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
 
 **As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
 docs/engine/chips.md §3.6.9 and §3.6.10): lib/traps/controller (the trap chips'), chips/elemtrap (its trap and
-strike), chips/timebom (controller, countdown), chips/mine (controller, land_mine), lib/gauge-speed/controller,
+strike), chips/timebom (controller, countdown), chips/mine (controller, land_mine), lib/gauge_speed/controller,
 objects/invisible (since moved to chips/invisibl/controller, which the second WhiCapsl requires),
-lib/navi-boost/controller, and objects/panel-bursts. What it settled:
+lib/navi_boost/controller, and objects/panel_bursts. What it settled:
 
 - **The parameter that picked a table row is the hook's argument**: a trap chip's trap object (`traps.hook(trap?)`,
   a `trap` record whose `set` spawns it: ElemTrap's; the others pass none), a TimeBom's bomb
@@ -1637,7 +1639,7 @@ end
 
 ```luau
 -- chips/eraseman/init.luau: the series (v1: action 0x1B, subtype 5, Param1 20, 16, 12).
-local sp = require("../../lib/navi-chips/sp")
+local sp = require("../../lib/navi_chips/sp")
 return {
     define.chip { id = "eraseman", damage = 120, hit_param = 138, -- ...
         navi = eraseman.summon { aim_ticks = 20 } },
@@ -1651,7 +1653,7 @@ return {
 
 The generator writes each chip's parameter bytes under the names the family's builder gives them (§9.3). The
 navi chip controller (effect #0x10, `sub_80E1880`) stays the ruleset's; it calls the
-chip's `navi` hook, and the navi calls `navi_chip.navi_left(controller)` as today. `lib/navi-chips/` holds what
+chip's `navi` hook, and the navi calls `navi_chip.navi_left(controller)` as today. `lib/navi_chips/` holds what
 the navis share (appearing, leaving, the SP deletion-time damage).
 
 **As built** (step 7): chips/eraseman/navi.luau (the `eraseman/navi` kind, state `{ cycle, aim, controller,
@@ -1665,13 +1667,13 @@ navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-b
   records' navi chip subtype 5 runs chips/0ec-eraseman/chip.luau, which summons EraseMan with the record's first
   parameter as `aim_ticks`; it goes when the chips are definitions (a navi-chip trait for AntiNavi, step 10,
   and damage formulas in definitions) and each is `navi = eraseman.summon { aim_ticks = n }`. No
-  `lib/navi-chips` yet: EraseMan shares nothing with another navi so far (A2 starts it).
+  `lib/navi_chips` yet: EraseMan shares nothing with another navi so far (A2 starts it).
 - **Parameters became state**: the mark's time, the beam's aim, time and owner kind, EraseMan's switching time.
 - **Verified** on the test content (the navi chip duel and its rollback), the type check, and the traces and the
   chip lab on a real pack: every EraseMan scenario matches.
 - **The other navi chips took the same shape** (group A2): chips/grndman, dustman, diveman, crcusman and judgeman
   (each series' navi and what he brings), and the Program Advance and Giga navis chips/twinldrs, crosover,
-  mstrcros, darkness and chips/flmhook (BigHook's and FlmHook's hook and fire). lib/navi-chips/navi.luau holds
+  mstrcros, darkness and chips/flmhook (BigHook's and FlmHook's hook and fire). lib/navi_chips/navi.luau holds
   what the navis share (the spawn, the stand, the footing test, the action timers, the leaving). Their chips
   stay records behind the same registration by number, one module a series (chips/0fb-grndman, 0fe-dustman,
   104-diveman, 107-crcusman, 10a-judgeman by navi chip subtype; 15c-twinldrs, 15d-crosover, 15a-mstrcros,
@@ -1689,8 +1691,8 @@ navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-b
   `deltaray.summon { palette }`; the others' `summon` is the hook itself. What their kinds were spawned with by
   parameter is state set through typed specs (types.d.luau: `Thunderbolt`, `SlashWave`, `ChargeCar`,
   `WaterBall`, `Geyser`, `GeyserMark`, `FireBlast`, `PanelStrike`, `DarkBall`, `SunMeteor`). The panel strike
-  (Bass's and MachGun's) is objects/panel-strike and the follow effect (DeltaRay's bursts, DElecSwd's glow)
-  objects/follow-effect, both definitions (rule 5). The chips stay records behind one module a series
+  (Bass's and MachGun's) is objects/panel_strike and the follow effect (DeltaRay's bursts, DElecSwd's glow)
+  objects/follow_effect, both definitions (rule 5). The chips stay records behind one module a series
   (chips/0dd-roll, 0e0-protoman, 0e3-heatman, 0e6-elecman, 0e9-slashman, 0ef-chrgeman, 0f2-spoutman,
   0f5-tmhkman, 0f8-tenguman, 101-blastman, 10d-elmntman, 110-colonel by navi chip subtype, CrossDiv's record
   among Colonel's; 12d-bass, 12f-deltaray, 132-bassanly and 15b-sunmoon likewise: Giga chips and a Program
@@ -1701,7 +1703,7 @@ navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-b
 (navis/heatman ... navis/dustman: `chip.luau`, and `riding_hit`, `volcano_rock`, `drip_shower`, `axe`, `strike`,
 `tornado`, `clouds`); a kind the navi chip series has too stays with the series (`heatman/flame`,
 `eraseman/beam`, `grndman/drill`, `grndman/rock`, rule 4), and the follow effect, which DeltaRay's bursts and
-DElecSwd's glow share, is objects/follow-effect with its looks as records. lib/link_chips.luau is what the ten
+DElecSwd's glow share, is objects/follow_effect with its looks as records. lib/link_chips.luau is what the ten
 routines share. Each chip is a definition in its navi's folder (navis/<navi>/chip.luau: the record, its damage
 by the navi's level, and the action), which the navi's `own_chip` names. The kinds that lasted while their owner's action number was 0x0A keep his running action in an
 `"action"` state field and compare definitions (§7.6). Verified against the chip lab (docs/engine/
@@ -2012,7 +2014,7 @@ its typed state or a variant record:
 | CopyDmg | | `copydmg/mark` | a definition |
 | AirHocky | chips/airhocky/flick (`{ puck, down }`) | `airhocky/puck` (`hockey-puck-variant`: `byte_80C9818`'s rows, the chips' by name) | AirHocky, PitHocky: records |
 | FireBrn | lib/burner/burn (`{ burner, flame = { ticks, spread, wide?, cracks?, anim?, on_panel? } }`) | `flame` (lib/burner/flame) | FireBrn1-3, WideBrn1-3: records; HeatCross's charge returns its own burn |
-| TrnArrw | chips/trnarrw/init | `flying-shot` (objects/flying-shot: `flying-shot-variant`, `byte_80C6038`'s rows, also the buster's throw and the Falzar Beast buster's) | TrnArrw1-3: definitions |
+| TrnArrw | chips/trnarrw/init | `flying-shot` (objects/flying_shot: `flying-shot-variant`, `byte_80C6038`'s rows, also the buster's throw and the Falzar Beast buster's) | TrnArrw1-3: definitions |
 | Reflectr | chips/rflectr/guard (`{ ticks, look, counter?, heedless? }`) | `rflectr/shield` (`reflector-shield-look`: `byte_80C9664`'s rows, the chips' and the programs' by name), `rflectr/shot` | Rflectr1-3: definitions; the NaviCust Shield and Reflect (weapons 0x3B, 0x3C, 0x8B, 0x8C) return their own guards, `megaman/shield/action` and `megaman/reflect/action` |
 | IronShl | chips/ironshl/throw (`{ shell = { palette, speed, bumps, para? } }`) | `ironshl/shell` | IronShl1-3, ParaShl: records |
 | BblStar | chips/bblstar/init' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
@@ -2077,8 +2079,8 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   facing when thrown), which are the look's flags. `obstacle.fly_to_absorber(me, look)`, the navi's absorbed
   list (`absorbed`, `push_absorbed`, `pop_absorbed`), the throw's attack (`thrown_look`, `thrown_anim`, which
   replace the packed marker word) and the flying shot's state carry the record; the engine stores its handle
-  and checks its type. The absorbed obstacle itself (objects/absorbed-obstacle) and the falling rock with its
-  chips (objects/falling-rock) are definitions, which their roles name.
+  and checks its type. The absorbed obstacle itself (objects/absorbed_obstacle) and the falling rock with its
+  chips (objects/falling_rock) are definitions, which their roles name.
 - **What a stage places** is a kind with a `place`: the rock (entry type 8), the boulder (type 3,
   objects/boulder: newly ported, one of the field's two stage objects, `obstacle.stage_slot_free`,
   `enter_stage`, `leave_stage`) and the Guardian statue (type 9, chips/guardian/statue's `place`). The stages'
@@ -2416,8 +2418,8 @@ it.
 -- rules/roles.luau
 return {
     kinds = {
-        absorbed_obstacle = require("../objects/absorbed-obstacle/kind"),
-        falling_rock = require("../objects/falling-rock/kind"),
+        absorbed_obstacle = require("../objects/absorbed_obstacle/kind"),
+        falling_rock = require("../objects/falling_rock/kind"),
     },
     actions = {
         stun_strike = ...,  cross_protect = ...,  cross_death = ...,  volley = ...,
@@ -2528,11 +2530,11 @@ gone. What replaced each number:
 - *Dark chips*: `dark_substitute` is the substitute chip itself and `hp_bug` what the use adds to the user's HP
   bug.
 - *`formula`* (`DamageFormula`): the damage formulas by name, an SP navi chip's with its slot (`Rules::sp_slots`,
-  rules/sp-chips.luau) and its damage by deletion-time step.
+  rules/sp_chips.luau) and its damage by deletion-time step.
 - *Roles* (`ChipRole`, rules/roles.luau's `chips`): `zeroed` (what a zeroed chip field reads: the original's
   chip 0), `beast_out` and `invalid` (the custom screen's), `rush`, `beat` and `tango` (the chips the supports'
   telops name).
-- *Rules*: the Cross special's chips (rules/cross-special.luau: a row by the hundreds of the navi's base max
+- *Rules*: the Cross special's chips (rules/cross_special.luau: a row by the hundreds of the navi's base max
   HP, a chip of it at random, LifeSrd striking with VarSwrd's damage) and the Program Advances
   (`Defs::program_advances`: every chip's recipes in their order, their ingredients by handle; a chip made by
   one has an index among them, `ChipLinks::advance`, for the round's record of the ones formed).
@@ -3006,7 +3008,7 @@ reaches the traces and the game's setups through `exe6-compat`, which maps the e
   C, step 10). Rush's spared chip (lib/supports/rush: the second WhiCapsl's number) goes with them.
 - **The charged slashes by row.** `slashes.by_row` (navis/megaman/forms/slashcross/slashes) keeps the
   charged slashes by the original's row, a sword chip's subtype, and SlashCross's A-charge
-  (navis/megaman/weapons/slash-a-charge) the variable swords' and MoonBld's action numbers, for a charged
+  (navis/megaman/weapons/slash_a_charge) the variable swords' and MoonBld's action numbers, for a charged
   chip that is still a pack record (counted by the ratchet: the attack's variant and first parameter). They go
   when the swords SlashCross charges are definitions (step 5 for their records; their slashes already name
   their charged slash).
@@ -3128,7 +3130,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
 
 The waiting agents can start after step 7, writing their scopes in v2 (G3: the projectile and cannon family,
 §5.3, with SonicBom, Z Saver, LilBoiler, VDoll; B2a and B2b: the dimming chips on `lib/dimming`; A2: the navi
-chips on `lib/navi-chips`). To start them earlier, step 3b lets a chip definition be the chip (its record and
+chips on `lib/navi_chips`). To start them earlier, step 3b lets a chip definition be the chip (its record and
 its use) wherever a setup names its compat id, so a family can be written in v2 before step 5 lands; that saves
 about four agent-days on their critical path at the cost of a merge-ordering rule (step 5's generator skips
 chips already defined). (The first plan did this with an engine-side bridge from compat; the user's decision

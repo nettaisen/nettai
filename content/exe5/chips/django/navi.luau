@@ -13,7 +13,7 @@
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local coffin = require("./coffin")
 local sun = require("./sun")
 local lights = require("./lights")

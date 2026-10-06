@@ -17,7 +17,7 @@
 
 local collision = require("../../rules/collision")
 local magnet = require("../../chips/magnetmn/magnet")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local pull = require("../../chips/magnetmn/pull")
 local regions = require("@exelib/regions")
 

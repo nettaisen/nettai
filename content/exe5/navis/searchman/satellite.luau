@@ -8,10 +8,10 @@
 --
 -- Their first parameter says whether they run while the battle is dimmed (4 and up: Satelity's), their second the
 -- beam's hit's ticks (60). In the operation battle the satellite marks its target as it aims and fires
--- (lib/navi-chips/marker).
+-- (lib/navi_chips/marker).
 
 local collision = require("../../rules/collision")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 
 local satellite = {}

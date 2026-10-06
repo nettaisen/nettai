@@ -12,7 +12,7 @@
 -- `plus.attack_with(plus.UNINSTALL)`. The BeastOut chip's effect and the
 -- invalid chip's are the sparkle alone (`plus.sparkle_alone`).
 
-local rising_bubble = require("../../objects/rising-bubble")
+local rising_bubble = require("../../objects/rising_bubble")
 local sparkle = require("@exelib/instant/sparkle")
 
 local plus = {}

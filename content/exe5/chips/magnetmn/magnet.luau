@@ -9,7 +9,7 @@
 -- stops while dimmed: MagnetMan the navi's own chip's (navis/magnetman/chip), and EXE5's MagnetMan as an enemy's.
 
 local collision = require("../../rules/collision")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local pull = require("./pull")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")

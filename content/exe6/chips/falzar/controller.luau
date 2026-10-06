@@ -13,7 +13,7 @@
 local dimming_chips = require("@exelib/dimming")
 local feather = require("./feather")
 local summon = require("./summon")
-local targets = require("../../lib/beast-chips/targets")
+local targets = require("../../lib/beast_chips/targets")
 local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local controller = {}

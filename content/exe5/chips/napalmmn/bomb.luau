@@ -1,7 +1,7 @@
 --!strict
 -- A napalm bomb (EXE5's attack object #0x3A, 0x080CC490; EXE6's `sub_80CB284` is the same, though no EXE6 content
 -- throws it): lobbed at a panel, fire, it lands there in 45 ticks, falling by its variant's gravity (variant 2's
--- lighter), its target marked in the operation battle (lib/navi-chips/marker). Off a solid panel it goes in a
+-- lighter), its target marked in the operation battle (lib/navi_chips/marker). Off a solid panel it goes in a
 -- puff. On one it hits its panel for 5 ticks (thrown, hitting navis, hit modifier 3, no spark), with a sound; when
 -- nothing stands there, its fire spreads over the eight panels around too (a one-tick hit region) and burns on
 -- them in an order the console's own RNG (RNG1) shuffles, half at once and half as it goes. Variant 0, unless told
@@ -9,7 +9,7 @@
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")

@@ -5,7 +5,7 @@
 -- @exelib/blzrdbal, as EXE5 has it: his sprite's animation 18, 19 grown, 100 more damage a swallow, silent) from 20
 -- pixels ahead of him; 70 ticks on he leaves, and the controller moves on.
 
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local balls = require("@exelib/blzrdbal/ball")
 local rollers = require("@exelib/blzrdbal/roller")
 local collision = require("../../rules/collision")

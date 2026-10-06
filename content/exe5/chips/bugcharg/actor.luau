@@ -3,12 +3,12 @@
 -- @exelib/dimming/stand_in): drawn as the user (its animation 16), it raises its charger (an attachment: EXE5's row
 -- 0x1C, sprite 0C-43, on attach point 0x18) with a sound, takes in its user's NaviCust bugs (each it clears is a shot
 -- more, past the first; in the operation battle only three of them, three shots each) and the save's emotion
--- window glitch, and 41 ticks on fires: a heavy shot (objects/flying-shot's row 1) every 16 ticks from the panel ahead,
+-- window glitch, and 41 ticks on fires: a heavy shot (objects/flying_shot's row 1) every 16 ticks from the panel ahead,
 -- 20 pixels up, each with a sound and the camera shaken. 31 ticks after the last it gives the user back, and its
 -- controller (./controller) moves on.
 
 local attachment = require("../../objects/attachment")
-local flying_shot = require("../../objects/flying-shot")
+local flying_shot = require("../../objects/flying_shot")
 local stand_in = require("@exelib/dimming/stand_in")
 local operation_battle = require("../../lib/operation_battle")
 

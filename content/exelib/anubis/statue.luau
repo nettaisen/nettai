@@ -14,7 +14,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
 local regions = require("@exelib/regions")
-local rising_bubble = require("@exelib/rising-bubble")
+local rising_bubble = require("@exelib/rising_bubble")
 
 local statue = {}
 
@@ -40,7 +40,7 @@ export type Look = {
     absorbed: AbsorbedLook?,
     -- The effects it leaves (the game's lib/effects).
     effects: { puff: Effect, explosion: Effect },
-    -- The game's rising bubble kind (objects/rising-bubble).
+    -- The game's rising bubble kind (objects/rising_bubble).
     bubble: Kind,
 }
 

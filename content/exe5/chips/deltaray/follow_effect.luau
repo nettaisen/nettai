@@ -1,11 +1,11 @@
 --!strict
--- EXE5's follow effect (effect object #0x31, 0x080E3E3C): the shared follow effect (@exelib/follow-effect), EXE5's
+-- EXE5's follow effect (effect object #0x31, 0x080E3E3C): the shared follow effect (@exelib/follow_effect), EXE5's
 -- kind, which isn't shown as its owner is (0x080E3EB4 runs the look's routine alone). Its look and routine are its
 -- first parameter's row (0x080E3E28, 0x080E3ED0); its flip and the palette added its second and third. Of EXE5's
 -- looks only DeltaRay's burst (look 4, "flash", sprite 10-34) is here: looks 0 to 3 run EXE5's own routines, which
 -- nothing ported spawns.
 
-local common = require("@exelib/follow-effect")
+local common = require("@exelib/follow_effect")
 
 local follow_effect = {}
 

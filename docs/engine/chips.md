@@ -211,7 +211,7 @@ A chip's behavior is selected entirely by `cd.action` (+0x0B) and `cd.subtype` (
    Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit, the error chip 0x185, and others. `off_80EC3F0` has 23
    entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are content's: a chip definition's
    `instant` hook, or a weapon's `instant`. 0 BeastOut `sub_80104E0` and 3 the plus chips
-   `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising-bubble), 1 the boomerang
+   `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising_bubble), 1 the boomerang
    (chips/boomer/boomerang, kind `boomer/boomerang`), 4 Lance
    (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
    `sub_80EC44C` (chips/synctrgr), 15 ColForce (chips/colforce), 19 JustcOne (chips/justcone), 21 GolmHit
@@ -1460,18 +1460,18 @@ subtype:
   (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, in the chip gate battle (battle flag
   0x40) outside a link battle, the other side's 1080 (`sub_80107D4` counts them down; nothing else PvP reaches
   reads them); a warning blinks over the gauge (`sub_800AE90`, with sound 0x91 every 16 frames of the game's frame
-  counter, which the port approximates with the effect's own ticks), 70 ticks. lib/gauge-speed/controller
+  counter, which the port approximates with the effect's own ticks), 70 ticks. lib/gauge_speed/controller
   (`gauge_speed.slow`, `gauge_speed.fast`).
 - 38 (HubBatc, the arm chips, BugRSwrd, BgDthThd, DarkInvs; T4 0x84, `sub_80E95B4` by Param1): 0 raises the buster
   to attack 5 at least, rapid and charge 4, the custom level 8, defers the hand-shrink bug a turn, gives a B+Back
   special (0x3B) if there was none, and the shoes and undershirt (flags 0x40030 and the stats), resetting the
   body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
   (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
-  effect's height offset is lost to a shift of the wrong register. lib/navi-boost/controller (`navi_boost.hub`,
+  effect's height offset is lost to a shift of the wrong register. lib/navi_boost/controller (`navi_boost.hub`,
   `bug(weapon)`, `arm(weapon, palette)`, `dark`).
 
   **The weapons those chips install** (`off_80117D4[0x21..0x26]`; each chip's own `charge.luau`, with
-  lib/navi-boost/charge for what they share). Every setup clears the charged flag and the Atk+ bonus, sets the
+  lib/navi_boost/charge for what they share). Every setup clears the charged flag and the Atk+ bonus, sets the
   chip lockout 20 and the counter byte 0x14, then:
 
   | Routine | Chip | Element byte | Damage | Action | Parameters |
@@ -1493,7 +1493,7 @@ subtype:
 
 Ported too, and specified elsewhere (the chip lab's scenarios for all of them match):
 
-- 4 (the barriers: lib/barriers), 5 (the panel chips: lib/panel-chips), 9 (the instruments: lib/instruments),
+- 4 (the barriers: lib/barriers), 5 (the panel chips: lib/panel_chips), 9 (the instruments: lib/instruments),
   13 (AirRaid: chips/airraid), 26 (BugFix: chips/bugfix), 27 (ColorPt, DblPoint: chips/colorpt), 28 (Sensor:
   chips/sensor), 36 (SumnBlk: chips/sumnblk), the barrier routine `sub_801A7CC`, the barrier visual (T4 7) and
   FirstBarrier: specified in docs/engine/dimming-chips.md.
@@ -1515,7 +1515,7 @@ sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counte
 `chips/elemtrap/strike`; `sub_80E360E`) and registers it with `sub_800BF16` (the other side can't cut in), clears
 its side's record and ends. The counterattack's effect (`sub_80E362C`) hits every panel with any of
 `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus, `sub_80C53A6`) and
-spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers, among them TimeBom's
+spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel_bursts`: shared by seven callers, among them TimeBom's
 blast) over region 0x80.
 
 **Where the counterattack goes: the Japanese games' (the user's decision, 2026-10-02).** The US games' `sub_80E360E`
@@ -1646,7 +1646,7 @@ off-field and not-solid exits.
 
 Content: lib/bombs (throw, bomb, seed, slash) and the bomb chips (chips/minibomb, ...), objects/bomb (T3#8), objects/bomb-slash
 (T3#0xA), objects/energy-burst (T3#0x11), objects/seed (T3#0x4F), objects/flash-bomb (T3#0xA4), objects/bug-bomb
-(T3#0xA5), objects/black-bomb (T3#0x4A), objects/rising-bubble (T4#0x14), objects/panel-bursts (T4#0x24), lib/region.luau
+(T3#0xA5), objects/black-bomb (T3#0x4A), objects/rising_bubble (T4#0x14), objects/panel_bursts (T4#0x24), lib/region.luau
 (`sub_801BD3C`, `sub_80CE468`, `sub_80CE424`), lib/trajectory.luau (`sub_8001330`, `sub_800120E`, `sub_80011A0`,
 `calcAngle_800117C` and the BIOS division, square root and arctangent), lib/hp.luau (`object_applyDamage`).
 
@@ -1930,7 +1930,7 @@ dimmed, its action (`off_80D543C`); presented again.
   (`object_crackPanel`); sound 0xD9 unless Param4; region 0, state 8.
 
 Rubble (`sub_80D5516`): one draw, k = `GetPositiveSignedRNG2() & 3`; two pieces n = 0, 1 (`sub_80E1084`: effect #9,
-objects/falling-rock/chip) at (X, Y, 0), priority 2 (object +0x0C), Param1 n, velocity (vx, 0, vz) =
+objects/falling_rock/chip) at (X, Y, 0), priority 2 (object +0x0C), Param1 n, velocity (vx, 0, vz) =
 `byte_80D5550[(k + n) & 3]`: (0x8000, 0x28000), (−0x8000, 0x30000), (0x10000, 0x28000), (−0x8000, 0x18000). The rock's
 other spawners: effect #0x8A (`sub_80E9D2A`), RC Brakr (`sub_80F1E98`) and the navi AI (`sub_80FAC8A`).
 
@@ -2359,7 +2359,7 @@ scenarios (`chips/0x0b9-uninstll/folded` and its variants, docs/engine/unverifie
 
 #### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
 
-The pack's chips/bass/navi and objects/panel-strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
+The pack's chips/bass/navi and objects/panel_strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
 panel (no related1: the controller's flag pointer is kept in his X velocity). Init: sprite (8, 0x13), a ground
 shadow, his cape (`sub_80C468C`: form overlay T1 0x57 of the same sprite, animation + 0x14, stepping while dimmed;
 related1), sound 0x94, 100 ticks, and his first tick at once; he goes when his panel is off the field.
@@ -2460,7 +2460,7 @@ A Cross (Param4 = its place in its wave):
   sound SOUND_UNK_72; past 90 → 4. Phase 4 (`sub_80BF07A`): anim 0xC, Timer 0; at Timer 4, place 0 only: a hit on
   his panel with the whole-field region of `byte_80BF0F0[side]` (0x82; side 1 0x81: the other side's area; no hit
   spark, target 5, self 4; modifier 3; his element; Z his), the panel bursts on it (`sub_80E2FE8(region, 2, 0, r4
-  = 1)`: effect #0x24, objects/panel-bursts; the flags |= 0x10 after it goes through the routine's return value,
+  = 1)`: effect #0x24, objects/panel_bursts; the flags |= 0x10 after it goes through the routine's return value,
   the bursts' panel count, into the BIOS, so the bursts wait out the dimming), a camera shake (3, 30), a palette flash of 35 ticks
   (r4 0x12300), sound 0xC3; past 60 → 8. Phase 8 (`sub_80BF0F8`): 30 to −1 (31 ticks) → 0x20.
 - 0x20 (`sub_80BF11A`): anim 4, the attachment (ExtraVars[1]) off, 3 ticks: VISIBLE off, his flag cleared, his
@@ -2517,7 +2517,7 @@ Dark MegaMan (Param1 0), actions `off_80BF7E4`:
   once FuturePanelX is 0 (Bass gone) → phase 4 (`sub_80BF9FE`: 30 ticks → state 8).
 - His destroy (`sub_80BFCB2`): his parts off, the byte ExtraVars[1] points at (the controller's flag) cleared, freed.
 
-The dark flames `sub_80BFD02(n, 0x5A)`: element pillars (`sub_80D07A0`: attack #0x61, objects/element-pillar, kind 5;
+The dark flames `sub_80BFD02(n, 0x5A)`: element pillars (`sub_80D07A0`: attack #0x61, objects/element_pillar, kind 5;
 element 1, Z 6 pixels, r4 = Param1 5, Param2 (2 − n) · 8 + 0x5A, Param3 8, Param4 n; his damage word; flags |=
 0x10) on the panels `off_80BFD68[n]` from his (dx toward the front, dy): n 0 (1, 0); n 1 (2, −1), (2, 0), (2, 1);
 n 2 (3, −1), (3, 0), (3, 1).
@@ -2883,7 +2883,7 @@ In battle 2, `ns[0x2C] = 0x0C` (Falzar Beast Out), and the player object's NameI
 - **4, `sub_80EF608`**: count the timer down; when it was ≤ 1, `av.u16[0x12] -= 1`: nonzero → `av[0..1] = 0` (the
   next slash), zero → clear 0x400000 and `object_exitAttackState`.
 
-Both are the content's weapon definition `megaman/beast-claw` (navis/megaman/weapons/beast-claw: the setup writes
+Both are the content's weapon definition `megaman/beast-claw` (navis/megaman/weapons/beast_claw: the setup writes
 the slash count into its action's state before the action starts, `navi:action_state(beast_claw.action)`); a phase
 past the table's two is an error.
 

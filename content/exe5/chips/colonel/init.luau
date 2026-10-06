@@ -25,7 +25,7 @@ local colonel = define.chip {
 }
 
 -- ColonelSP (EXE5 chip 0x0f6): Colonel cuts in and divides the screen with a diagonal slash on the first enemy navi
--- ahead (../colonel/navi); its damage by how fast its user deleted Colonel SP (rules/sp-chips: formula 8, its table's
+-- ahead (../colonel/navi); its damage by how fast its user deleted Colonel SP (rules/sp_chips: formula 8, its table's
 -- row 7).
 local colonel_sp = define.chip {
     id = "colonel-sp",

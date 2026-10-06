@@ -1,8 +1,8 @@
 # Patch cards (改造カード): the plan, and how it was built
 
 **Status: done (2026-10-02).** Patch cards are an engine definition kind with a typed player setup, and EXE6's
-patch-cards system (content/exe6/rules/patch-cards/) applies them,
-all 117 cards are content (content/exe6/cards/), and the chip lab's library/jp/cards/ (222 scenarios on Japanese
+patch-cards system (content/exe6/rules/patch_cards/) applies them,
+all 117 cards are content (content/exe6/patch_cards/), and the chip lab's library/jp/cards/ (222 scenarios on Japanese
 consoles) matches on every frame. docs/engine/patch-cards.md is the reference: how the Japanese games do it, what
 the cards do, how nettai has it, and the cards (its appendix). This document keeps the plan's reasoning and the
 decisions.
@@ -64,7 +64,7 @@ All of it is content now (docs/engine/patch-cards.md §3).
 **The cards are the engine's; their effects are a game's rules'** (the user, 2026-10-02: "the engine should know
 what a patch card is"). BN4, EXE5 (JP) and EXE6 (JP) all have patch cards, so a card and a player's installed cards
 are engine concepts, as chips and folders are; what an effect does is each game's rule, a system of its stock
-ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch-cards/init.luau, whose
+ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_cards/init.luau, whose
 `round_setup` hook applies them.
 
 - **A definition kind of its own**: `define.patch_card { id, mb, effects }`, `Registry::PatchCard`,
@@ -74,7 +74,7 @@ ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch
   without one gives 0) and its effects in the card's order, each a `kind` (a string the game's rules know) and
   whether the card shows it as a `bug` (a menu's red text). The kinds' own fields (an amount, a weapon, a
   variant...) stay the definition's data: the engine checks only that every effect has a kind, and the game's
-  rules read the rest from the definition (EXE6's constructors in rules/patch-cards/cards.luau make them). The
+  rules read the rest from the definition (EXE6's constructors in rules/patch_cards/cards.luau make them). The
   name is the locales'. The cards' numbers are compat's, as every number is.
 - **Their names are the locales'** (content/exe6/locales/en.toml and ja.toml, `[patch-cards]` by card key,
   `PatchCardStrings`). The card weapons have no names: nothing shows a weapon's (text-rendering.md §10.2).
@@ -96,7 +96,7 @@ ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch
   after. exe6-compat builds the setup from the first (the bytes the cards write; the rest from the exchange) and
   the card list, and checks the engine's result against the second and the glitch against flag 0x1723.
 - **Tools write the setup**: exe6-compat's `codec::patch_cards` (a save's or a trace's list), the frontend's
-  `--cards` and `--their-cards`.
+  match file (each side's `cards`).
 
 ## 4. Verification as built
 
@@ -116,8 +116,8 @@ ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch
    from the fan translation of the Japanese games: the MMEXE6F and MMEXE6G IPS patches over the Japanese ROMs, read with the
    idealexe English charset (the user gave the patches as MMEXE6F.ips and MMEXE6G.ips, and the charset as a
    manifest.toml). The translation's eight-character spellings stay (Amonicul, KnigtMan), as the chip names do.
-   Two cards share "Puffy" there: センボン (22) is `puffy`, プクール (55) `puffball`. The Japanese names are the
-   ROMs' (ja.toml).
+   Two cards share "Puffy" there; the content calls センボン (22) Diodon (`diodon`) and プクール (55) Puffy (`puffy`).
+   The Japanese names are the ROMs' (ja.toml).
 2. **Applied by the simulation, from the setup** (§3), not by a setup builder outside it: the cards are part of
    the shared setup, and peers apply them alike.
 3. **An EXE6 system in the stock ruleset** applies them (the coordinator, after rules S0 landed); `round_setup` was

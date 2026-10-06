@@ -23,7 +23,7 @@ local gyroman = define.chip {
 }
 
 -- GyroManSP (EXE5 chip 0x0e1): GyroMan cuts in and flies along his row, dropping bombs on the enemy panels
--- (../gyroman/navi); its damage by how fast its user deleted GyroMan SP (rules/sp-chips: formula 3, its table's row 2).
+-- (../gyroman/navi); its damage by how fast its user deleted GyroMan SP (rules/sp_chips: formula 3, its table's row 2).
 local gyroman_sp = define.chip {
     id = "gyroman-sp",
     codes = { "G" },

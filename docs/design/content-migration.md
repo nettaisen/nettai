@@ -214,7 +214,7 @@ repository's crates by path. Extract a pack from your checkout and run the works
 checkout on it:
 
 ```sh
-cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>
+cargo run --release -p nettai-extract -- exe6 <pack> <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
 <verification>/tools/gen-content-against.sh <checkout> check
 EXE6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release
 EXE6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release --test lab -- --ignored

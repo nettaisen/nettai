@@ -10,7 +10,7 @@ marked **verified** or **unverified** in each section.
 |---|---|---|---|---|---|
 | (service) | AntiNavi 0xBA against navi chips 0xDD..0x118 | the navi chip controller T4#0x10 | effect #0 | §2 | crates/nettai-battle/src/dimming.rs |
 | 4 | 0xB2 Barrier, 0xB3 Barr100, 0xB4 Barr200, 0xB5 BblWrap, 0xB6 LifeAur | T4#0x2F | the barrier visual T4#7 | §3 | lib/barriers, chips/barrier, chips/bblwrap, chips/lifeaur; FirstBarrier: rules/roles |
-| 5 | 0xA6 PnlRetrn, 0xA8 HolyPanl, 0xA9 Snctuary, 0xAA ComingRd, 0xAB GoingRd | T4#0x20 | the panel changer T4#0x1F | §4 | lib/panel-chips, objects/panel-changer, chips/{pnlretrn,holypanl,snctuary,comingrd,goingrd} |
+| 5 | 0xA6 PnlRetrn, 0xA8 HolyPanl, 0xA9 Snctuary, 0xAA ComingRd, 0xAB GoingRd | T4#0x20 | the panel changer T4#0x1F | §4 | lib/panel_chips, objects/panel_changer, chips/{pnlretrn,holypanl,snctuary,comingrd,goingrd} |
 | 26 | 0xB0 BugFix | T4#0x3B | the glow T1#0x5D | §5 | chips/bugfix |
 | 9 | 0x92 Fanfare, 0x93 Discord, 0x94 Timpani, 0x95 Silence | T4#0x4A | the instrument T3#0x78 | §6 | lib/instruments, chips/{fanfare,discord,timpani,silence} |
 | 13 | 0x68..0x6A AirRaid1-3 | T4#0x4B | the plane T3#0x75, its propeller T1#3, its overlay T1#0x54, bombs (panel strikes T3#9) | §7 | chips/airraid (the overlay: chips/lilbolr/layer) |
@@ -242,10 +242,10 @@ action 0xC. Chips' Param1: PnlRetrn 0, HolyPanl 4, Snctuary 5, ComingRd 0x11, Go
 
 ### 4.2 The panel changer (T4#0x1F, `sub_80E28A8`)
 
-Port: objects/panel-changer (kind `panel-changer`, every change a `panel_changer.change` record), spawned by
+Port: objects/panel_changer (kind `panel-changer`, every change a `panel_changer.change` record), spawned by
 `panel_changer.spawn` (`sub_80E2ACA`: X = the panel's Y, Y and Z register garbage), which clears its holder's
 `busy` (the controller's Param2) when it ends. AntiRecv's counterattack uses change 6 (chips.md §3.6.7); the
-subtype-5 controller is lib/panel-chips.
+subtype-5 controller is lib/panel_chips.
 
 **Init `sub_80E28C8`**: on side 1, kind 0x11 ↔ 0x12 (the roads point the other way). EV+0 = &`byte_80E272C[kind
 * 20]` (a row, below). The row's collector (byte 1, a byte offset into `off_80E291C`) lists the panels meeting the
@@ -485,7 +485,7 @@ RelatedObject1 = its propeller (`sub_80B89DC` with r3 = 0: T1#3, §7.3); state 4
    offsets ((0,−1), (0,1), (1,0), (−1,0), dx by the side's direction) meeting `byte_80D37E4[side]` (side 0:
    require 0x10020; side 1: require 0x10000, forbid 0x20: the other side's panels), one more RNG2 draw
    (`% count`, BIOS division); none matching returns x 0 (a strike off the field) and y left in r1.
-4. A panel strike (`sub_80C5F2C`, objects/panel-strike) there: element 0, Z 0, parameters 0x20600 (Param2 6
+4. A panel strike (`sub_80C5F2C`, objects/panel_strike) there: element 0, Z 0, parameters 0x20600 (Param2 6
    ticks, Param3 2: hit modifier 0), the plane's damage word.
 
 ### 7.3 The propeller (T1#3, `sub_80B88D0`)

@@ -17,14 +17,8 @@ playback = ["dep:cpal"]
 
 [dev-dependencies]
 nettai-battle = { workspace = true, features = ["test-content"] }
-# trace_audio plays a golden trace.
-exe6-compat = { workspace = true, features = ["trace"] }
 # The examples load a content pack.
 nettai-content = { path = "../nettai-content" }
-
-[[example]]
-name = "trace_audio"
-required-features = ["playback"]
 
 [[example]]
 name = "play_song"

@@ -17,7 +17,7 @@
 
 local body_overlays = require("../lib/body_overlays")
 local buster = require("@self/buster")
-local charged_chips = require("./megaman/weapons/charged-chip")
+local charged_chips = require("./megaman/weapons/charged_chip")
 local napalm = require("@self/chip")
 
 return define.navi {

@@ -322,7 +322,7 @@ readers), and what I know of the games. Each claim below is marked:
 
 What is shared: the folder and its shuffle, the deal, the selection rule (same code or same chip), the Program
 Advance builder, the modifier chips, the chatbox's timing for descriptions, the send over the link. What is
-not: the slot layout (already a content table, `rules/custom-screen.luau`), the buttons, the sub-screens, and
+not: the slot layout (already a content table, `rules/custom_screen.luau`), the buttons, the sub-screens, and
 what OK turns into a transformation.
 
 ### 2.6 Chips and statuses
@@ -578,7 +578,7 @@ NaviStats-like layout), so EXE5's seams should fit it with less new work. The sa
 | Pack formats `nettai-content/hud`, `nettai-content/custom` | nettai-content hud.rs, custom.rs | EXE6's layouts under generic names. |
 | `EXE6_LOAD_TIMES` | nettai-frontend main.rs | Not EXE6's: already `NETTAI_LOAD_TIMES` since the rename. |
 | `EXE6_RATCHET_LOWER` | content-model-v2.md (history) | Dead since the ratchet was deleted; leave the history. |
-| The default pack path `data/content/exe6`, EXE6 as the frontend's default game (gone since: no command defaults to a game) | nettai-frontend, nettai-content | EXE6's defaults; fine while EXE6 is the only game. A `--game` choice later. |
+| The default pack path `data/exe6`, EXE6 as the frontend's default game (gone since: no command defaults to a game) | nettai-frontend, nettai-content | EXE6's defaults; fine while EXE6 is the only game. A `--game` choice later. |
 | docs/engine | docs | EXE6's reverse-engineering record (275 files cite it). Keep it in place and say so, or move it to docs/exe6 when a second game's docs arrive (one mechanical commit). |
 
 ### 5.2 What stays EXE6's

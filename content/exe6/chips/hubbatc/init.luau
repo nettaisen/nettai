@@ -1,9 +1,9 @@
 --!strict
 -- HubBatc: the navi gets the Hub batch's programs for the rest of the
 -- battle: a stronger buster, a bigger custom screen, a B+Back shield, the
--- shoes and the undershirt (lib/navi-boost/controller).
+-- shoes and the undershirt (lib/navi_boost/controller).
 
-local navi_boost = require("../lib/navi-boost/controller")
+local navi_boost = require("../lib/navi_boost/controller")
 
 -- (The record's extra flags 0x08 and 0x10 have no battle reader, and no
 -- name.)

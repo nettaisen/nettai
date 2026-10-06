@@ -17,7 +17,7 @@ use nettai_content_api::{
     SparkHandle, SpawnAt, StateId, WeaponHandle,
 };
 
-/// The record type of an absorbed obstacle's look (objects/absorbed-obstacle).
+/// The record type of an absorbed obstacle's look (objects/absorbed_obstacle).
 const ABSORBED_LOOK: &str = "absorbed-look";
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use nettai_content_api::{ObstacleHold, ObstaclePush, WindSource};
@@ -218,7 +218,7 @@ impl Battle {
     }
 
     /// An absorbed obstacle's look: record `h`, which must be an
-    /// absorbed-look record (objects/absorbed-obstacle's `look`).
+    /// absorbed-look record (objects/absorbed_obstacle's `look`).
     fn absorbed_look(&self, h: u16) -> ApiResult<RecordHandle> {
         match self.content.defs.records.get(h as usize) {
             Some(r) if r.record_type == ABSORBED_LOOK => Ok(RecordHandle(h)),
