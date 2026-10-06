@@ -446,6 +446,7 @@ language = "en"
 "hntdcndl" = { name = "HntdCndl" }
 "honybomr" = { name = "HonyBomr" }
 "iceman" = { name = "IceMan" }
+"japanman" = { name = "JapanMan" }
 "jelly" = { name = "Jelly" }
 "judgeman" = { name = "JudgeMan" }
 "kendoman" = { name = "KendoMan" }
@@ -510,7 +511,6 @@ language = "en"
 "volcano" = { name = "Volcano" }
 "walla" = { name = "Walla" }
 "wunote" = { name = "WuNote" }
-"japanman" = { name = "JapanMan" }
 
 [navicust-programs]
 "airshoes" = { name = "AirShoes" }
