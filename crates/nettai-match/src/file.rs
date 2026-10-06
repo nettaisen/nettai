@@ -107,7 +107,7 @@ pub struct PlaceFile {
 
 /// A side as a file states it: the engine's parts under their own keys, and
 /// every other key a fact of the game's rules, under its setup field's name
-/// (`crate::facts`: a key no system declares is refused when the side is
+/// (`crate::facts`: a key the rules' setup doesn't declare is refused when the side is
 /// resolved, with the facts the game takes).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct SideFile {
@@ -341,7 +341,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         say(unknown("navi", &s.navi, game, &have));
     }
     // The facts: each key that is none of the side's own parts, a field of
-    // a system's setup, its value read by the field's type. A fact the file
+    // the rules' setup, its value read by the field's type. A fact the file
     // leaves out is the rules' default (an enum without one, unstated: the
     // checks say a round needs it).
     let mut facts = Facts::defaults(content);
@@ -921,7 +921,7 @@ mod tests {
             vec![blank; 8].join(", ")
         );
         let problems = parse(&six, &format!("{good}\n[left.auto_battle]\n{stated}")).unwrap_err();
-        assert_eq!(problems, ["left: auto battle data, but exe6 has no auto battle (no auto-battle system)"]);
+        assert_eq!(problems, ["left: auto battle data, but exe6 has no auto battle (its rules drive no navi)"]);
         // (And a block nothing has written, stated whole, is the side that
         // states none.)
         let nothing = stated.replacen("\"cannon\"", "{}", 1);
@@ -949,7 +949,7 @@ mod tests {
         // (Nor does the engine start its round: a player's setup states the
         // version, and nothing fills one in.)
         let refused = crate::check::start(&six, &new).err().expect("no round without the versions");
-        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `version` (gregar or falzar): none is assumed");
+        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the rules' `version` (gregar or falzar): none is assumed");
         let picked = write(&six, &crate::pick::live(&six, "exe6", 1, None).unwrap());
         assert_eq!(picked.matches("\nversion = \"falzar\"\n").count() + picked.matches("\nversion = \"gregar\"\n").count(), 2, "{picked}");
         // A version is its name, one of those the game's rules declare
@@ -1028,7 +1028,7 @@ mod tests {
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes hp, level, reg_up, sun, crosses, version, beast_out, bug_frags)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sun, version)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
@@ -1089,13 +1089,13 @@ mod tests {
         has(crate::check_match(&content, &m), "right: crosses: ProtoMan doesn't change form");
     }
 
-    /// A game's rules have their systems, by name: EXE6's the forms system
+    /// A game's rules have their systems, by name: EXE6's the forms part
     /// (its Crosses), and no key names another ruleset.
     #[test]
     fn a_game_is_its_rules() {
         let content = exe6_content();
-        assert!(crate::ruleset_has_system(&content, crate::FORMS_SYSTEM));
-        assert!(!crate::ruleset_has_system(&content, "souls"));
+        assert!(content.defs.fact_field(nettai_battle::content::PlayerFact::CrossList).is_some());
+        assert!(!crate::facts::takes(&content, "souls"));
         let good = write(&content, &crate::pick::live(&content, "exe6", 1, None).unwrap());
         let e = parse(&content, &good.replacen("game = \"exe6\"\n", "game = \"exe6\"\nruleset = \"stock\"\n", 1)).unwrap_err();
         assert!(e[0].contains("unknown field `ruleset`"), "{e:?}");

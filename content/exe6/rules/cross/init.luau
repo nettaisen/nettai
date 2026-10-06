@@ -20,7 +20,7 @@ type State = {
 -- ChargeCross's; and the hand-shrink bug takes the extra first, then the
 -- hand, to 2 at least.
 local function hand_size(side: number): number
-    local s = system.state() :: State
+    local s = rules.state() :: State
     local stats = battle.navi(side)
     local turn = battle.turn()
     if turn == 1 then
@@ -77,8 +77,7 @@ local scrap: ButtonSpec = {
     end,
 }
 
-return define.system {
-    id = "cross",
+return {
     state = {
         charge_cross_screens = "u8",
         -- The Cross window's (window.luau).

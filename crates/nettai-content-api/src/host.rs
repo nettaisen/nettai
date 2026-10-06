@@ -174,28 +174,26 @@ pub enum HookCall {
     /// number, a flag or nil, which the battle keeps for the round
     /// (`Battle::given`).
     Given { side: u8 },
-    /// A hook of a system of side `side`'s ruleset (docs/design/
-    /// rules-in-luau.md §4.1), the system in place `slot` of the ruleset's
-    /// list: while it runs, `system.state()` is that system's state of that
-    /// side. It is called with the side, then the navi, the chip and the
-    /// weapon the hook is about, where it has them (nil in between). Its
-    /// result is the hook's.
-    System {
+    /// A hook of the game's rules for side `side` (docs/design/
+    /// rules-in-luau.md §4.1): while it runs, `rules.state()` is the rules'
+    /// state of that side. It is called with the side, then the navi, the
+    /// chip and the weapon the hook is about, where it has them (nil in
+    /// between). Its result is the hook's.
+    Rules {
         side: u8,
-        slot: u8,
-        hook: SystemHook,
+        hook: RulesHook,
         navi: Option<ObjectRef>,
         chip: Option<crate::ChipHandle>,
         weapon: Option<crate::WeaponHandle>,
     },
 }
 
-/// Which hook of a system is called (docs/design/rules-in-luau.md §4.1).
+/// Which hook of the rules is called (docs/design/rules-in-luau.md §4.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum SystemHook {
+pub enum RulesHook {
     /// `round_setup(side)`: once per side as the round is set up
-    /// (`Battle::new`), before anything reads the side's navi stats: a
-    /// system may change them (EXE6's patch cards). Its result is unused.
+    /// (`Battle::new`), before anything reads the side's navi stats: the
+    /// rules may change them (EXE6's patch cards). Its result is unused.
     RoundSetup,
     /// `round_start(side)`: once per side, after the navis spawn. Its result
     /// is unused.
@@ -221,14 +219,14 @@ pub enum SystemHook {
     CustomClosed,
     /// `navi_intake(side, navi)`: each tick of the fight, in the navi's
     /// intake (`sub_801AC6C`) after the standing effects: EXE5's light and
-    /// dark system clears the holy panel a dark MegaMan stands on
+    /// dark part clears the holy panel a dark MegaMan stands on
     /// (0x08017136). Its result is unused.
     NaviIntake,
     /// `chip_check(side, navi, chip)`: a chip's use is prepared (the end of
     /// `sub_80127C0`, where EXE5's 0x080100E6 checks it): nil lets it be
     /// used; a chip is what the navi uses instead (EXE5's light and dark
-    /// system refuses a chip its MegaMan may not use: 0x08010118). The
-    /// first system that answers decides.
+    /// part refuses a chip its MegaMan may not use: 0x08010118). The
+    /// first part that answers decides.
     ChipCheck,
     /// `chip_cost(side, navi, chip)`: earlier in a chip use's preparation,
     /// before the hand bonus's panel is spent (EXE5's 0x08010030: a dark
@@ -240,7 +238,7 @@ pub enum SystemHook {
     /// its record is loaded (`sub_80127C0`'s `sub_8010D58`): a chip is what
     /// the navi uses in its place, with its own record, damage and bonus
     /// (EXE6's dark chips' substitute, with no bug frag left); nil, the chip.
-    /// The first system that answers decides.
+    /// The first part that answers decides.
     ChipSubstitute,
     /// `chip_prepared(side, navi, chip)`: a chip's use was prepared
     /// (`sub_80127C0`, on each of its paths: a use, the wrapper's chain, the
@@ -251,7 +249,7 @@ pub enum SystemHook {
     /// `chip_used(side, navi, chip, weapon)`: a chip's use started
     /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
     /// zeroed chip for the empty hand), `weapon` the form's weapon run
-    /// instead of it (a charged use), else nil. EXE6's beast system decides
+    /// instead of it (a charged use), else nil. EXE6's beast part decides
     /// whether it runs inside the rush (the attack's `wrapped`). Its result
     /// is unused.
     ChipUsed,
@@ -259,50 +257,50 @@ pub enum SystemHook {
     /// form is `controlled` (EXE6's Beast Over: `sub_802D322`), in place of
     /// the player's decisions: "nothing", "chip" (a chip's use started),
     /// "buster" (the buster is to fire) or "moved" (a step started); the
-    /// framework carries it out as idle does. The first system that
+    /// framework carries it out as idle does. The first part that
     /// answers decides.
     Controller,
     /// `takeover_requested(side, navi)`: idle finds the navi's takeover
     /// request (`sub_802E4E4`; EXE6's DarkInvs asks for its Cross
-    /// special): a system starts it (`battle.take_over`). Its result is
+    /// special): the rules start it (`battle.take_over`). Its result is
     /// unused.
     TakeoverRequested,
     /// `takeover(side, navi)`: each tick of the idle action of a navi whose
     /// side's takeover runs (`sub_802D4C6`, the Cross special), in place
     /// of the player's decisions: what it did, as `controller` answers,
     /// or "own_chip" (an attack of its own started: the attack's chip). The
-    /// system ends it (`battle.end_takeover`). The first system that
+    /// rules end it (`battle.end_takeover`). The first part that
     /// answers decides.
     Takeover,
     /// `countered(side, victim)`: side `side`'s navi landed a counter on
-    /// `victim` (`sub_801A200`): EXE6's emotion system gives Full Synchro
+    /// `victim` (`sub_801A200`): EXE6's emotion part gives Full Synchro
     /// unless the victim's mood is held. Its result is unused.
     Countered,
     /// `navi_tick(side, navi)`: each unpaused tick, after the navi's input
-    /// (`sub_8013DA0`'s place), for a navi a system asked it for (its
+    /// (`sub_8013DA0`'s place), for a navi the rules asked it for (its
     /// `ticked`): EXE6's NaviCust emotion-swing bug. Its result is unused.
     NaviTick,
     /// `starting_mood(side)`: the mood the side's navi starts the round with
     /// (`sub_8015C2C`'s 0x80, set where `sub_8013892` sets it): EXE5's light
-    /// and dark system's by the light/dark value (0x0801283A). The first
-    /// system that answers decides; none, 0x80.
+    /// and dark part's by the light/dark value (0x0801283A). The first
+    /// part that answers decides; none, 0x80.
     StartingMood,
     /// `navi_palette(side, navi)`: each tick, the sprite palette of the
     /// side's navi of a player's kind (presentation; `sub_80100EC`'s
-    /// `sub_801002C`, EXE5's 0x0800DD94: its light and dark system's). The
-    /// first system that answers decides; none, the framework's (EXE6's).
+    /// `sub_801002C`, EXE5's 0x0800DD94: its light and dark part's). The
+    /// first part that answers decides; none, the framework's (EXE6's).
     NaviPalette,
     /// `navi_bug(side, navi)`: before the navi takes its hit's NaviCust bug
-    /// (`sub_80139F6`, EXE5's 0x0801103E): a system may change the bug
-    /// (the collision's `inflicted_bugs`: EXE5's light and dark system turns
+    /// (`sub_80139F6`, EXE5's 0x0801103E): the rules may change the bug
+    /// (the collision's `inflicted_bugs`: EXE5's light and dark part turns
     /// its codes 0xFD and 0xFC into an HP drain or none), or answer true:
     /// the bug and the weapons' reload are skipped (EXE5's, for hit flag
-    /// 0x400 on a light/dark value of 1000 or more). The first system that
+    /// 0x400 on a light/dark value of 1000 or more). The first part that
     /// answers true decides.
     NaviBug,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
-    /// first system that answers decides; none answering, the framework's
+    /// first part that answers decides; none answering, the framework's
     /// rule (the custom level, NumbrOpn and the hand-shrink bug).
     CustomHandSize,
     /// `custom.deal(side)`: the side's custom screen deals, before
@@ -310,7 +308,7 @@ pub enum SystemHook {
     /// still leave their places empty: `custom.folder`), with the
     /// framework's hand size (`custom.hand_size`); EXE5's custom screen
     /// opening (0x08022C5C) offers a worried or dark MegaMan a dark chip
-    /// there (0x08025114, its light and dark system's). Its result is
+    /// there (0x08025114, its light and dark part's). Its result is
     /// unused.
     CustomDeal,
     /// `custom.open(side)`: the side's custom screen opens, before its hand
@@ -331,21 +329,21 @@ pub enum SystemHook {
     CustomConfirmed,
     /// `custom.keys(side)`: choosing chips, on a tick a key repeats or is
     /// pressed, before the screen's own keys (`custom.pressed`,
-    /// `custom.repeated`): whether the system took the tick's keys (EXE6's
-    /// UP opening the Cross window, `sub_8028B74`). The first system that
+    /// `custom.repeated`): whether the rules took the tick's keys (EXE6's
+    /// UP opening the Cross window, `sub_8028B74`). The first part that
     /// answers true takes them.
     CustomKeys,
     /// `custom.take_back(side)`: B with nothing picked (`sub_8029032`):
-    /// whether the system took something back (EXE6's Cross chosen). The
-    /// first system that answers true did; none, and B is refused.
+    /// whether the rules took something back (EXE6's Cross chosen). The
+    /// first part that answers true did; none, and B is refused.
     CustomTakeBack,
-    /// A system's window's `update(side)`, each tick it is up: whether it
+    /// A window's `update(side)`, each tick it is up: whether it
     /// stays up (`custom.window_tick` counts its ticks from 1).
     WindowUpdate,
     /// A button's `taken_back(side)`: B took its pick back (EXE6's Beast
     /// Out: its face goes).
     ButtonTakenBack,
-    /// A system's custom-screen button's `shown(side)` (§4.4), as the
+    /// A custom-screen button's `shown(side)` (§4.4), as the
     /// screen opens: whether it is on the screen. (Not in `hooks`: each
     /// button names its own functions.)
     ButtonShown,
@@ -370,88 +368,88 @@ pub enum SystemHook {
     FolderCheck,
 }
 
-impl SystemHook {
-    /// The hook's name in a system's `hooks` table.
+impl RulesHook {
+    /// The hook's name in the rules' `hooks` table.
     pub fn name(self) -> &'static str {
         match self {
-            SystemHook::RoundSetup => "round_setup",
-            SystemHook::RoundStart => "round_start",
-            SystemHook::TurnOpened => "turn_opened",
-            SystemHook::TurnCheck => "turn_check",
-            SystemHook::TurnStarted => "turn_started",
-            SystemHook::CustomRequested => "custom_requested",
-            SystemHook::CustomClosed => "custom_closed",
-            SystemHook::FolderCheck => "folder_check",
-            SystemHook::NaviIntake => "navi_intake",
-            SystemHook::ChipCheck => "chip_check",
-            SystemHook::ChipCost => "chip_cost",
-            SystemHook::ChipSubstitute => "chip_substitute",
-            SystemHook::ChipPrepared => "chip_prepared",
-            SystemHook::ChipUsed => "chip_used",
-            SystemHook::Controller => "controller",
-            SystemHook::FormReverted => "form_reverted",
-            SystemHook::TakeoverRequested => "takeover_requested",
-            SystemHook::Countered => "countered",
-            SystemHook::NaviTick => "navi_tick",
-            SystemHook::StartingMood => "starting_mood",
-            SystemHook::NaviPalette => "navi_palette",
-            SystemHook::NaviBug => "navi_bug",
-            SystemHook::CustomHandSize => "custom.hand_size",
-            SystemHook::CustomDeal => "custom.deal",
-            SystemHook::CustomOpen => "custom.open",
-            SystemHook::CustomConfirmed => "custom.confirmed",
-            SystemHook::CustomKeys => "custom.keys",
-            SystemHook::CustomTakeBack => "custom.take_back",
-            SystemHook::CustomChipPicked => "custom.chip_picked",
-            SystemHook::CustomChipTakenBack => "custom.chip_taken_back",
-            SystemHook::WindowUpdate => "window.update",
-            SystemHook::ButtonTakenBack => "button.taken_back",
-            SystemHook::ButtonShown => "button.shown",
-            SystemHook::ButtonState => "button.state",
-            SystemHook::ButtonPressed => "button.pressed",
-            SystemHook::ButtonChip => "button.chip",
-            SystemHook::Takeover => "takeover",
+            RulesHook::RoundSetup => "round_setup",
+            RulesHook::RoundStart => "round_start",
+            RulesHook::TurnOpened => "turn_opened",
+            RulesHook::TurnCheck => "turn_check",
+            RulesHook::TurnStarted => "turn_started",
+            RulesHook::CustomRequested => "custom_requested",
+            RulesHook::CustomClosed => "custom_closed",
+            RulesHook::FolderCheck => "folder_check",
+            RulesHook::NaviIntake => "navi_intake",
+            RulesHook::ChipCheck => "chip_check",
+            RulesHook::ChipCost => "chip_cost",
+            RulesHook::ChipSubstitute => "chip_substitute",
+            RulesHook::ChipPrepared => "chip_prepared",
+            RulesHook::ChipUsed => "chip_used",
+            RulesHook::Controller => "controller",
+            RulesHook::FormReverted => "form_reverted",
+            RulesHook::TakeoverRequested => "takeover_requested",
+            RulesHook::Countered => "countered",
+            RulesHook::NaviTick => "navi_tick",
+            RulesHook::StartingMood => "starting_mood",
+            RulesHook::NaviPalette => "navi_palette",
+            RulesHook::NaviBug => "navi_bug",
+            RulesHook::CustomHandSize => "custom.hand_size",
+            RulesHook::CustomDeal => "custom.deal",
+            RulesHook::CustomOpen => "custom.open",
+            RulesHook::CustomConfirmed => "custom.confirmed",
+            RulesHook::CustomKeys => "custom.keys",
+            RulesHook::CustomTakeBack => "custom.take_back",
+            RulesHook::CustomChipPicked => "custom.chip_picked",
+            RulesHook::CustomChipTakenBack => "custom.chip_taken_back",
+            RulesHook::WindowUpdate => "window.update",
+            RulesHook::ButtonTakenBack => "button.taken_back",
+            RulesHook::ButtonShown => "button.shown",
+            RulesHook::ButtonState => "button.state",
+            RulesHook::ButtonPressed => "button.pressed",
+            RulesHook::ButtonChip => "button.chip",
+            RulesHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [SystemHook; 37] = [
-        SystemHook::RoundSetup,
-        SystemHook::RoundStart,
-        SystemHook::TurnOpened,
-        SystemHook::TurnCheck,
-        SystemHook::TurnStarted,
-        SystemHook::CustomRequested,
-        SystemHook::CustomClosed,
-        SystemHook::FolderCheck,
-        SystemHook::NaviIntake,
-        SystemHook::ChipCheck,
-        SystemHook::ChipCost,
-        SystemHook::ChipSubstitute,
-        SystemHook::ChipPrepared,
-        SystemHook::ChipUsed,
-        SystemHook::Controller,
-        SystemHook::FormReverted,
-        SystemHook::TakeoverRequested,
-        SystemHook::Takeover,
-        SystemHook::Countered,
-        SystemHook::NaviTick,
-        SystemHook::StartingMood,
-        SystemHook::NaviPalette,
-        SystemHook::NaviBug,
-        SystemHook::CustomHandSize,
-        SystemHook::ButtonShown,
-        SystemHook::ButtonState,
-        SystemHook::ButtonPressed,
-        SystemHook::ButtonChip,
-        SystemHook::CustomOpen,
-        SystemHook::CustomDeal,
-        SystemHook::CustomConfirmed,
-        SystemHook::WindowUpdate,
-        SystemHook::ButtonTakenBack,
-        SystemHook::CustomChipPicked,
-        SystemHook::CustomChipTakenBack,
-        SystemHook::CustomKeys,
-        SystemHook::CustomTakeBack,
+    pub const ALL: [RulesHook; 37] = [
+        RulesHook::RoundSetup,
+        RulesHook::RoundStart,
+        RulesHook::TurnOpened,
+        RulesHook::TurnCheck,
+        RulesHook::TurnStarted,
+        RulesHook::CustomRequested,
+        RulesHook::CustomClosed,
+        RulesHook::FolderCheck,
+        RulesHook::NaviIntake,
+        RulesHook::ChipCheck,
+        RulesHook::ChipCost,
+        RulesHook::ChipSubstitute,
+        RulesHook::ChipPrepared,
+        RulesHook::ChipUsed,
+        RulesHook::Controller,
+        RulesHook::FormReverted,
+        RulesHook::TakeoverRequested,
+        RulesHook::Takeover,
+        RulesHook::Countered,
+        RulesHook::NaviTick,
+        RulesHook::StartingMood,
+        RulesHook::NaviPalette,
+        RulesHook::NaviBug,
+        RulesHook::CustomHandSize,
+        RulesHook::ButtonShown,
+        RulesHook::ButtonState,
+        RulesHook::ButtonPressed,
+        RulesHook::ButtonChip,
+        RulesHook::CustomOpen,
+        RulesHook::CustomDeal,
+        RulesHook::CustomConfirmed,
+        RulesHook::WindowUpdate,
+        RulesHook::ButtonTakenBack,
+        RulesHook::CustomChipPicked,
+        RulesHook::CustomChipTakenBack,
+        RulesHook::CustomKeys,
+        RulesHook::CustomTakeBack,
     ];
 }
 
@@ -489,16 +487,16 @@ pub trait ContentHost {
     /// One tick of an action for the navi `me`: function `f` is the
     /// action's `update`, and its second argument is the attack state as a
     /// state of layout `state`.
-    /// `system`: the side and place in its ruleset of the system the
-    /// action is one of (`define.system { actions = ... }`), whose state
-    /// the action reaches (docs/design/rules-in-luau.md §5.3).
+    /// `rules`: the side whose rules' state the action reaches, for an
+    /// action of the rules' (`define.rules { actions = ... }`,
+    /// docs/design/rules-in-luau.md §5.3).
     fn update_action(
         &self,
         api: &mut dyn CoreApi,
         f: FnId,
         me: ObjectRef,
         state: StateId,
-        system: Option<(u8, u8)>,
+        rules: Option<u8>,
     ) -> Result<(), ContentError>;
     /// Call function `f` for a hook.
     fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError>;

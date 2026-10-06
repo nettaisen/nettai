@@ -1,20 +1,20 @@
 --!strict
--- Beast Over's berserk (`sub_802D322`), the beast system's `controller`: a
+-- Beast Over's berserk (`sub_802D322`), the beast part's `controller`: a
 -- navi in a `controlled` form (forms 0x17 and 0x18) doesn't read the
 -- player's buttons; its idle action cycles on its own through moving next
 -- to an opponent, using the next chip, and firing the buster. Its state is
--- the system's (the original's last 0x10 bytes of the navi's AIData,
+-- the part's (the original's last 0x10 bytes of the navi's AIData,
 -- +0xF0), which the Cross special (cross-special.luau) shares and the
 -- form's `berserk` effect starts over (`sub_802D310`).
 
 -- The step conditions, an opponent's panel, what ends the look behind an
 -- opponent and the opposing player's panel flag, by side.
-local rules = require("../berserk")
+local berserk_rules = require("../berserk")
 
 local berserk = {}
 
--- The beast system's state fields the controllers keep (rules/beast/
--- system.luau declares them): the berserk's and the Cross special's.
+-- The beast part's state fields the controllers keep (rules/beast/
+-- init.luau declares them): the berserk's and the Cross special's.
 export type State = {
     -- +0: the step (read as a jump-table offset).
     controller_step: number,
@@ -46,7 +46,7 @@ berserk.NO_MARKER_X, berserk.NO_MARKER_Y = NO_MARKER_X, NO_MARKER_Y
 -- `sub_80E7486`: the opposing player standing on (x, y) (the panel shows
 -- the other side's player flag and an alive actor's collision sits there).
 function berserk.opponent_on(x: number, y: number, alliance: number): Object?
-    local flag = rules.opposing_player[alliance + 1]
+    local flag = berserk_rules.opposing_player[alliance + 1]
     if bit32.band(field.flags(x, y), flag) == 0 then
         return nil
     end
@@ -90,7 +90,7 @@ end
 -- `sub_810971A`: an opponent's panel in row `y`, packed, picked at random
 -- among them (one RNG draw when there is one).
 function berserk.opponent_in_row(navi: Object, y: number): number?
-    return pick(panels_in_row(y, rules.opponent[navi.alliance + 1]))
+    return pick(panels_in_row(y, berserk_rules.opponent[navi.alliance + 1]))
 end
 
 -- `sub_8015CC0(x, y, cond, 0)`: from the opponent at `from` (packed), the
@@ -100,7 +100,7 @@ end
 -- alone (x 0, the register the scan leaves).
 local function behind(navi: Object, from: number, cond: { require: number, forbid: number }): number
     local dir = if navi.alliance == 0 then -1 else 1
-    local blocking = rules.blocking[navi.alliance + 1]
+    local blocking = berserk_rules.blocking[navi.alliance + 1]
     local y = bit32.rshift(from, 4)
     local x = bit32.band(from, 7) + dir
     local found = {}
@@ -211,7 +211,7 @@ end
 -- `sub_802D3CA`: step to a panel near an opponent (`sub_802D430`); a chip
 -- is next.
 function berserk.step_toward_opponent(navi: Object, s: State): "moved"
-    local conds = if navi:status("air_shoe") then rules.step.floor_free else rules.step.grounded
+    local conds = if navi:status("air_shoe") then berserk_rules.step.floor_free else berserk_rules.step.grounded
     local tx, ty = choose_panel(navi, conds[navi.alliance + 1])
     navi:start_move_to(tx, ty, 8)
     s.controller_moves = (s.controller_moves + 1) % 0x10000
@@ -221,7 +221,7 @@ end
 
 -- `sub_802D322`: one tick of the controller, from the idle action.
 function berserk.control(side: number, navi: Object): "nothing" | "chip" | "buster" | "moved"
-    local s = system.state() :: State
+    local s = rules.state() :: State
     -- (`sub_802D310` cleared it: it starts over.)
     if navi.controller_fresh then
         navi.controller_fresh = false

@@ -320,7 +320,7 @@ pub struct FreshStatsRules {
     /// +0x44: the weapon of the A button in battle mode 9 (EXE6's zeroed
     /// byte names weapon routine 0, MegaMan's buster). None stated: none
     /// (EXE5's block has the light/dark value there, its light and dark
-    /// system's).
+    /// part's).
     pub mode9_a: Option<nettai_content_api::WeaponHandle>,
 }
 
@@ -450,7 +450,7 @@ pub struct IntakeRules {
     /// no-charge state counts its drive's ticks down at the intake's end
     /// (0x0800DBE0) and asks for the stun strike when they run out (EXE5's
     /// action 0x49 ends the drive); its idle hands the step it would take
-    /// to the side's systems' `controller` (0x080F03E4: the auto battle
+    /// to the side's rules' `controller` (0x080F03E4: the auto battle
     /// AI, 0x0802B4AC, or the reset of its state); and its last 180 ticks
     /// it flickers gray (0x080136E0). EXE6 has none of it.
     pub no_charge_drive: bool,
@@ -724,7 +724,7 @@ pub struct Rules {
     pub pools: PoolSizes,
     /// The NaviCust's board (rule section `navicust`; none: the game has no
     /// NaviCust): what a setup's programs may cover. What they do is the
-    /// game's rules' (EXE6's navicust system).
+    /// game's rules' (EXE6's navicust part).
     pub navicust: NaviCustRules,
 }
 

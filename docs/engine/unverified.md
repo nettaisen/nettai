@@ -393,7 +393,7 @@ first only, and the second takes what the spawner leaves in that register, the e
 
 ## Patch cards (patch-cards.md)
 
-The Japanese games' patch cards are EXE6's patch-cards system. Scenarios are the chip lab's `jp/cards/`, on
+The Japanese games' patch cards are EXE6's patch cards part. Scenarios are the chip lab's `jp/cards/`, on
 Japanese consoles; each also checks the stats after the cards and the emotion window's glitch at the round's start.
 
 ### Covered
@@ -418,11 +418,11 @@ Japanese consoles; each also checks the stats after the cards and the emotion wi
 | GigaFolder− (effect 0x15) and its missing clamp | No card has it. |
 | The B button's MegaMan shield (0x1B), RflectR (0x1F) and plain buster (0x22); the charged shot "none" (0x56) | No card has them. |
 | The charged shot's programs 0x14 to 0x1A (effects 0x5B to 0x61), Blind as the hit status (0x90), the water, magnet, holy, poison and normal panel trails (0x86, 0x89 to 0x8C), ChipRecovery's second id (0x7C) | No card has them; the code is the cards' other values'. |
-| A link navi's glitch when the save's flag 0x1723 is set (the last application with MegaMan left it) | The system counts the link navi's stats' bugs; a save with the flag set and a link navi operated would differ. |
+| A link navi's glitch when the save's flag 0x1723 is set (the last application with MegaMan left it) | The part counts the link navi's stats' bugs; a save with the flag set and a link navi operated would differ. |
 
 ## The NaviCust's compile (docs/design/navicust.md)
 
-EXE6's NaviCust is compiled by the ruleset's `navicust` system (rules/navicust/init.luau) from a setup's placed
+EXE6's NaviCust is compiled by the ruleset's `navicust` part (rules/navicust/init.luau) from a setup's placed
 programs. The verification workspace's `trace-tests --test navicust` compiles every chip lab side that sets a
 NaviCust, and Tango's four raw saves, and compares the stats and the emotion window's glitch flag with the
 recording's setup.

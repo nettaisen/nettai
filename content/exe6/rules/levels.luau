@@ -44,7 +44,7 @@ function levels.add(stats: Navi, level: number)
 end
 
 -- `reloadCurNaviBaseStats_8120df0` for a link navi (one with `levels` that doesn't change form) at `level`, over
--- its fresh stats with what the save keeps (the setup's: the Regular memory, which the save system writes, and the
+-- its fresh stats with what the save keeps (the setup's: the Regular memory, which the save part writes, and the
 -- folder's bytes, which no battle reads), the game cleared and in the real world: the base and maximum HP by the
 -- story's progress (`off_8120F44`), the level's gains (`levels.add`), and the HP its maximum (as
 -- `reloadCurNaviStatBoosts_813c3ac` leaves it). The original runs it when a navi code is received or the navi

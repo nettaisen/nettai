@@ -22,7 +22,7 @@ pub const CHIP_BLOCK: usize = 0x50;
 /// EXE5's light/dark value (NaviStats +0x44, a halfword: exe5-map.md §6.1):
 /// Tango's finished Team ProtoMan save has 500, its Team Colonel save 0,
 /// its light netplay templates 1000. The engine has no counterpart (EXE5's
-/// light-and-dark system, not built).
+/// light and dark part, not built).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct LightDark(pub u16);
 

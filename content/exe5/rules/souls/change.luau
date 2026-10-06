@@ -29,7 +29,7 @@ export type State = {
     timer: number,
 }
 
--- The souls system's state (./init).
+-- The souls part's state (./init).
 type Souls = { turns: number, chaos: boolean, arm_chip: Chip? }
 
 local FLASH_SOUND = asset.sound("log-in")
@@ -98,7 +98,7 @@ local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
         s.timer = 10
         me:end_statuses()
         local turns, is_chaos = me:form_change_soul()
-        local souls = system.state() :: Souls
+        local souls = rules.state() :: Souls
         souls.turns, souls.chaos = turns, is_chaos
         -- (0x08012102: the record's arm chip, +6, into AIData +0x32: ColonelSoul's Arm Change fills it.)
         me.weapon_chip = souls.arm_chip
@@ -177,7 +177,7 @@ function change.update(me: Object, s: State)
     end
 end
 
--- The soul change, as the pause handler runs it: one of the souls system's actions (./init).
+-- The soul change, as the pause handler runs it: one of the souls part's actions (./init).
 change.action = define.action {
     id = "souls/change",
     state = { timer = "u16" },

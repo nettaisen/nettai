@@ -6,7 +6,7 @@
 -- navis' damage rows, lib/navi_level). (EXE5's
 -- block has no sun: its sun is none of the save's.) The rest of a round's stats are derived as the round is set up,
 -- from the navi's fresh stats
--- (`fresh_stats`, its definition): this system first, then the NaviCust's compile (../navicust) and the patch cards
+-- (`fresh_stats`, its definition): this part first, then the NaviCust's compile (../navicust) and the patch cards
 -- (../patch_cards).
 --
 -- `round_setup` builds a side's stats only when its setup gives the rules something to build them from:
@@ -38,7 +38,7 @@ end
 
 local function round_setup(side: number)
     local stats = battle.navi(side)
-    local setup = system.setup() :: Setup
+    local setup = rules.setup() :: Setup
     local story = stats.navi.story
     local level = setup.level
     local compiles = battle.navicust(side) ~= nil
@@ -60,8 +60,7 @@ local function round_setup(side: number)
     end
 end
 
-return define.system {
-    id = "save",
+return {
     setup = { hp = "u16", reg_up = "u8", level = "u8?" },
     -- A save that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the rules' fresh
     -- stats'); no level (MegaMan's).

@@ -2,7 +2,7 @@
 -- EXE5's NaviCust board (docs/design/exe5-map.md §15.13): its 5x5 grid, in the middle of the engine's 7x7 (a program's
 -- 5x5 shape likewise, centered on its middle cell), the board on it by how far it has been expanded, its command
 -- line and where a neighbor counts. The rule section (./section.luau) gives the boards and the command line to the
--- engine (a setup's programs must fit them); the navicust system (./system.luau) reads them all from here.
+-- engine (a setup's programs must fit them); the navicust part (./init.luau) reads them all from here.
 
 local board = {}
 

@@ -2,7 +2,7 @@
 //! what its saves, its traces and its link data say (Gregar 0, Falzar 1).
 //! The engine has no such type. It and the content know a version by the
 //! name the game's rules declare (`version = { "gregar", "falzar" }` in the
-//! cross and beast systems' setups), and a match's side holds that name;
+//! cross and beast parts' setups), and a match's side holds that name;
 //! this is those names at compat's boundary.
 
 /// A version of EXE6: it decides a player's Crosses and Beast form. Neither

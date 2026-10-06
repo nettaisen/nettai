@@ -79,8 +79,8 @@ const LINK_NAVIS: u8 = 12;
 const GREGAR_NAVIS: std::ops::RangeInclusive<u8> = 1..=5;
 
 /// The names EXE6's content registers its buttons under (content/exe6/rules:
-/// the navicust system's `redeal`, the cross system's `scrap`, the beast
-/// system's `beast_out`), which the pack has their looks by.
+/// the navicust part's `redeal`, the cross part's `scrap`, the beast
+/// part's `beast_out`), which the pack has their looks by.
 pub(crate) const REDEAL_BUTTON: &str = "redeal";
 pub(crate) const SCRAP_BUTTON: &str = "scrap";
 const BEAST_OUT_BUTTON: &str = "beast_out";

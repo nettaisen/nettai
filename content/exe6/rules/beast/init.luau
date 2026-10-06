@@ -5,8 +5,8 @@
 -- controller of its `controlled` forms) and its exhaustion; and the Cross
 -- special (cross-special.luau, DarkInvs' takeover), whose controller shares
 -- the berserk's state, as the original's share their 0x10 bytes. Their
--- state is the system's. The turn-start sequencer is the framework's (EXE5 has it
--- too); it asks each side's systems at its check and when the turn starts.
+-- state is the part's. The turn-start sequencer is the framework's (EXE5 has it
+-- too); it asks each side's rules at its check and when the turn starts.
 -- Beast Out on the custom screen (its button, its animations and the
 -- BeastOut chip's) is custom.luau.
 
@@ -54,8 +54,7 @@ local function changes_form(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
 end
 
-return define.system {
-    id = "beast",
+return {
     state = {
         check_delay = "u8",
         rush_phase = "u8",
@@ -74,7 +73,7 @@ return define.system {
     -- What the player's save brings (exe6-compat writes it, nettai-match
     -- from a match's side): the game's version (its Beast) and Beast Out
     -- unlocked (event flag 0xE0).
-    -- (The versions in the cross system's order, the original's.)
+    -- (The versions in the cross part's order, the original's.)
     setup = {
         version = { "gregar", "falzar" },
         beast_out = "bool",
@@ -150,7 +149,7 @@ return define.system {
         end,
         -- `sub_8009338`: the custom screen closed.
         custom_closed = function(side: number)
-            local s = system.state() :: State
+            local s = rules.state() :: State
             s.check_delay = 1
         end,
         -- `sub_8015A16`: a mid-battle custom screen was asked for.
@@ -158,7 +157,7 @@ return define.system {
             if not changes_form(side) then
                 return
             end
-            local s = system.state() :: State
+            local s = rules.state() :: State
             if s.check_delay ~= 0 and s.check_delay ~= 0xFF then
                 s.check_delay -= 1
             end
@@ -174,7 +173,7 @@ return define.system {
             if battle.mode() == 1 then
                 revert = kind.beast(side)
             else
-                local s = system.state() :: State
+                local s = rules.state() :: State
                 if s.check_delay ~= 0 then
                     return
                 end

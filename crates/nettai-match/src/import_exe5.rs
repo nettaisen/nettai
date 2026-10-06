@@ -125,7 +125,7 @@ impl Side {
 
     /// A side that operates a team navi (a navi with a story) takes the
     /// save's level (its story flags' count), which its HP is the story's
-    /// at (EXE5's save system), and, where the save's version has the navi,
+    /// at (EXE5's save part), and, where the save's version has the navi,
     /// the light/dark value of the navi's own block.
     fn import_exe5_team_navi(&mut self, content: &Content, save: &Save) -> Vec<String> {
         if content.navi(self.navi).story.is_none() {

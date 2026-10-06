@@ -3,7 +3,7 @@
 -- the row, then one more for each holy panel on the field, each panel turned Normal: 50 damage a shot
 -- (docs/design/exe5-map.md §6.2). Its dimming controller (./controller, EXE6's BurnSqr controller's code), stand-in
 -- (./actor) and shot (./shot); the light MegaMan it needs is the record's `megaman` field, which the rules' light
--- and dark system reads.
+-- and dark part reads.
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local controller = require("@self/controller")

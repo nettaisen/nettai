@@ -1,7 +1,7 @@
 //! Matches of each game (docs/frontend.md §6), each on its game's content
 //! alone (`testing::exe5_content`, `exe6_content`): a match is of one game,
 //! its arena's, and names nothing of another's. EXE5's folder rules on
-//! EXE5's sides (its rules' folder system,
+//! EXE5's sides (its rules' folder part,
 //! content/exe5/rules/folder), an EXE5 match played a few hundred ticks,
 //! EXE5's karma and souls, and a name another game has but the match's
 //! hasn't refused as any unknown name is.
@@ -182,7 +182,7 @@ fn an_unknown_name_is_refused() {
     let crosses = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: no form \"heatcross\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "crosses = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes hp, level, reg_up, karma, chaos_unison, soul_unison, souls)");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes chaos_unison, hp, karma, level, reg_up, soul_unison, souls)");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = exe6_content();
@@ -291,10 +291,10 @@ fn a_match_is_described_by_its_facts() {
     side.set_fact(&six, "bug_frags", &number(9)).unwrap();
     let said = crate::describe(&six, &m, 1, false, 0);
     let line = said.lines().nth(1).unwrap();
-    assert_eq!(line, "  MegaMan (you); crosses: HeatCross, SpoutCross; version: falzar; beast_out: no; bug_frags: 9");
+    assert_eq!(line, "  MegaMan (you); beast_out: no; bug_frags: 9; crosses: HeatCross, SpoutCross; version: falzar");
     // (No Crosses is the list's default, which goes unsaid.)
     m.sides[0].set_fact(&six, "crosses", &[]).unwrap();
-    assert!(crate::describe(&six, &m, 1, false, 0).lines().nth(1).unwrap().starts_with("  MegaMan (you); version: falzar"));
+    assert!(crate::describe(&six, &m, 1, false, 0).lines().nth(1).unwrap().starts_with("  MegaMan (you); beast_out: no; bug_frags: 9; version: falzar"));
     let five = exe5_content();
     let mut m = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you)");
@@ -370,7 +370,7 @@ fn karma_and_souls_write_and_read_back() {
     let bad = side("megaman", &EXE6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let six = exe6_content();
     let e = parse_in(&six, "exe6", &side("megaman", &EXE6, ""), &bad).unwrap_err();
-    let takes = "(a side of exe6 takes hp, level, reg_up, sun, crosses, version, beast_out, bug_frags)";
+    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sun, version)";
     for p in [format!("right: no field \"karma\" {takes}"), format!("right: no field \"souls\" {takes}")] {
         assert!(e.iter().any(|x| *x == p), "{p:?} not in {e:?}");
     }
@@ -400,15 +400,14 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     use nettai_content_api::{FieldValue, Registry};
     let nothing = PlayerSetup::default();
     let six = exe6_content();
-    let (schema, block) = nothing.rule_block(&six, "cross").expect("EXE6's cross system");
+    let (schema, block) = nothing.rules_block(&six).expect("EXE6's rules");
     assert!(!block.stated(schema, schema.index_of("version").unwrap()), "version");
     // (A Cross list left out is empty: no Crosses.)
     let crosses = schema.index_of("crosses").unwrap();
     assert!(block.stated(schema, crosses) && (0..5).all(|k| block.get_elem(schema, crosses, k) == Some(FieldValue::Ref(None))));
-    let (schema, block) = nothing.rule_block(&six, "beast").expect("EXE6's beast system");
     assert_eq!(block.get(schema, schema.index_of("beast_out").unwrap()), FieldValue::Bool(true));
     let five = exe5_content();
-    let (schema, block) = nothing.rule_block(&five, "souls").expect("EXE5's souls system");
+    let (schema, block) = nothing.rules_block(&five).expect("EXE5's rules");
     let souls = schema.index_of("souls").unwrap();
     let listed: Vec<_> = (0..16).filter_map(|k| block.get_elem(schema, souls, k)).take_while(|v| *v != FieldValue::Ref(None)).collect();
     let all: Vec<_> = EXE5_SOULS.iter().map(|n| FieldValue::Ref(Some((Registry::Form, crate::ids::form(&five, "exe5", n).unwrap().0)))).collect();
@@ -420,7 +419,7 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     // A side that says nothing of them plays with exactly that.
     let plain = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let setup = plain.round(&five, 3);
-    let (_, played) = setup.players[0].rule_block(&five, "souls").unwrap();
+    let (_, played) = setup.players[0].rules_block(&five).unwrap();
     assert_eq!(played, block);
 }
 
@@ -457,7 +456,7 @@ fn a_dark_side_starts_dark() {
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "megaman-dark"), Some(face.0));
 }
 
-/// The soul button (EXE5's souls system's) offers only a soul the side has:
+/// The soul button (EXE5's souls part's) offers only a soul the side has:
 /// with every soul (ProtoSoul among them), a Sword picked offers ProtoSoul;
 /// with none, or with GyroSoul alone, the button is there but the sword's
 /// soul isn't offered. Without Soul Unison there is no button.
@@ -501,7 +500,7 @@ fn an_unowned_soul_cant_be_chosen() {
     assert_eq!(offered(Some(&["protosoul", "colonelsoul"])), (true, true));
 }
 
-/// The soul given for a chip (the souls system's button and window): the
+/// The soul given for a chip (the souls part's button and window): the
 /// soul takes the Sword's place, first in the selection; B puts the Sword
 /// back and offers the soul again; given again and OK, the turn's form is
 /// ProtoSoul for 3 turns and the Sword leaves the folder in its place.
@@ -563,7 +562,7 @@ fn the_soul_takes_the_chips_place() {
     assert_eq!(folder.count(), 29);
 }
 
-/// What a soul keeps of a custom screen in the souls system's state (its
+/// What a soul keeps of a custom screen in the souls part's state (its
 /// form's `custom.state`) is as a fresh state has it when the next screen
 /// deals, whatever soul the navi is in then: the original zeroes the
 /// screen's record as it opens (0x08022CA2). MegaMan in MeddySoul is dealt
@@ -584,11 +583,11 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
     let base = b.stats[0].form;
     // (In MeddySoul from the start, his stats' starting form: the souls
-    // system's state is a fresh one, with no turns of the soul.)
+    // part's state is a fresh one, with no turns of the soul.)
     b.stats[0].starting_form = meddy;
     let field = |b: &Battle, name: &str| {
-        let (schema, state) = b.system_state(0, "souls").expect("EXE5's souls system");
-        state.get(schema, schema.index_of(name).unwrap_or_else(|| panic!("the souls system keeps no `{name}`")))
+        let (schema, state) = b.rules_state(0).expect("EXE5's rules");
+        state.get(schema, schema.index_of(name).unwrap_or_else(|| panic!("the rules keep no `{name}`")))
     };
     let choosing = |b: &Battle, side: usize| {
         let s = &b.custom.sides[side];
@@ -664,8 +663,8 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     assert!(!matches!(screen.slots[8].kind, SlotKind::Button { .. }), "no capsule's slot out of MeddySoul");
 }
 
-/// A side's karma and souls go into its round's setup: the light and dark
-/// system's block holds the karma, the souls system's the souls (which the
+/// A side's karma and souls go into its round's setup: the rules'
+/// setup holds the karma, the souls (which the
 /// soul button offers), Soul Unison and Chaos Unison (on unless the side
 /// says).
 #[test]
@@ -677,9 +676,8 @@ fn karma_and_souls_reach_the_round() {
     m.sides[0].set_fact(&content, "souls", &forms(&content, "exe5", &["colonelsoul"])).unwrap();
     m.sides[0].set_fact(&content, "chaos_unison", &flag(false)).unwrap();
     let b = started(&content, &m, 1);
-    let (schema, block) = b.system_setup(0, "light-dark").unwrap();
+    let (schema, block) = b.rules_setup(0).unwrap();
     assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
-    let (schema, block) = b.system_setup(0, "souls").unwrap();
     let field = |name: &str| block.get(schema, schema.index_of(name).unwrap());
     let soul = |k: usize| block.get_elem(schema, schema.index_of("souls").unwrap(), k);
     use nettai_content_api::{FieldValue, Registry};
@@ -690,7 +688,8 @@ fn karma_and_souls_reach_the_round() {
     let six_content = exe6_content();
     let six = crate::pick::live(&six_content, "exe6", 1, None).unwrap();
     let b = started(&six_content, &six, 1);
-    assert!(b.system_setup(1, "souls").is_none());
+    let (schema, _) = b.rules_setup(1).unwrap();
+    assert!(schema.index_of("souls").is_none());
 }
 
 /// What the match's rules and a side's navi take decide the side's own

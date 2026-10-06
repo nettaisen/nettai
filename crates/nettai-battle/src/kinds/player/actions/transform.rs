@@ -1,7 +1,7 @@
 //! Action 0x1C as a form's revert (`sub_8015614`, the same code in EXE5) and
 //! a Cross breaking (`sub_8015766`): the framework's. The change into a form
 //! (`sub_8014A38`, the original's action 0x1C too) is the action the form
-//! names (`FormData::change`): EXE6's five sequences are EXE6's forms system's,
+//! names (`FormData::change`): EXE6's five sequences are EXE6's forms part's,
 //! content/exe6/rules/forms (docs/design/rules-in-luau.md §3.1). See
 //! docs/engine/battle-flow.md §3.4.1 and objects-and-player.md §12.9-§12.10.
 
@@ -187,13 +187,13 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
     o.phase_init = s.phase_init;
 }
 
-/// `sub_80158CC`: mood 0x80 (stored directly); then the side's systems'
+/// `sub_80158CC`: mood 0x80 (stored directly); then the side's rules'
 /// `form_reverted` (EXE6's: outside battle mode 1, a Beast Out is used up,
 /// and Beast Over exhausts the navi).
 fn spend_form(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.stats[side].mood = 0x80;
-    b.systems_form_reverted(side as u8, r);
+    b.rules_form_reverted(side as u8, r);
 }
 
 /// `sub_80143B4`: anger ends, without touching the mood.

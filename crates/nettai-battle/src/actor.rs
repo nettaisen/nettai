@@ -88,9 +88,9 @@ pub mod request {
     pub const SWITCH_KNOCKOUT: u32 = 0x0800_0000;
     /// Battle mode 9 A press.
     pub const MODE9_A: u32 = 0x1000_0000;
-    /// A system's takeover of the side's navi is asked for (EXE6's Cross
+    /// The rules' takeover of the side's navi is asked for (EXE6's Cross
     /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
-    /// the side's systems (`takeover_requested`).
+    /// the side's rules (`takeover_requested`).
     pub const TAKEOVER: u32 = 0x2000_0000;
     /// Starts action 0x30 (the roles' `volley`, with `status::VOLLEY`). No
     /// EXE6 setter was found; EXE5's loss of HP sets it for a dark MegaMan's
@@ -189,7 +189,7 @@ pub struct AttackVars {
     pub kind: u8,
     /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
     /// runs the role `actions.wrapper` instead): EXE6's Beast Out lock-on
-    /// byte, which its beast system sets as a chip's use starts
+    /// byte, which its beast part sets as a chip's use starts
     /// (`chip_used`) and the rush as it chains the next.
     pub wrapped: u8,
     /// The lock-on mode the attack's own action asks the Beast Out rush
@@ -224,7 +224,7 @@ pub struct AttackVars {
     pub instant: Option<crate::kinds::player::actions::instant::Effect>,
     /// The wrapper's state starts over: `sub_801011A` clears its bytes
     /// (+0x1E..+0x27, which the game's wrapper, EXE6's Beast Out rush, now
-    /// keeps in its system's state); the wrapper clears this once it has.
+    /// keeps in the rules' state); the wrapper clears this once it has.
     pub wrapper_fresh: bool,
 }
 
@@ -271,11 +271,11 @@ pub struct ActorData {
     /// AIData+0x0A: ticks toward the next HP lost to the custom-screen HP
     /// drain bug (`sub_80102AC`).
     pub drain_counter: u8,
-    /// The side's systems' `navi_tick` runs for it each tick (EXE6's
+    /// The side's rules' `navi_tick` runs for it each tick (EXE6's
     /// NaviCust emotion-swing bug, `sub_8013DA0`).
     pub ticked: bool,
     // (AIData+0x0F, the turn-start Beast Out check's delay, is EXE6's beast
-    // system's state: content/exe6/rules/beast/init.luau.)
+    // part's state: content/exe6/rules/beast/init.luau.)
     /// AIData+0x10: drain hits this navi landed on the opponent, turned
     /// into healing (MaxHP/10 each) on its own next hit collection
     /// (`sub_801A308`, `sub_801A324`).
@@ -308,7 +308,7 @@ pub struct ActorData {
     pub dimmed_pad: Pad,
     /// AIData+0x32: held tired (the game stores 0xFFFF; EXE6's "the Beast
     /// Out counter is spent"): emotion 1, the mood held (`sub_8015BEC`)
-    /// and no anger (`sub_80143CE`). A game's systems set it: EXE6's at the
+    /// and no anger (`sub_80143CE`). A game's rules set it: EXE6's at the
     /// round's start with a zero counter (`sub_8013892`), at the turn-start
     /// check (`sub_80159C6`), when a Beast Out reverts (`sub_80158CC`), and
     /// by the NaviCust emotion-swing bug (`sub_8013DA0`); `sub_8014446`
@@ -317,7 +317,7 @@ pub struct ActorData {
     pub anger: u16,
     /// AIData+0x36: exhausted for the rest of the battle (EXE6's after Beast
     /// Over: `sub_80158CC` → `sub_8014466` stores 0x3C0, which nothing
-    /// counts down; its beast system sets it, `form_reverted`): emotion 5,
+    /// counts down; its beast part sets it, `form_reverted`): emotion 5,
     /// mood changes blocked, and 1 HP lost per tick, never the last one
     /// (`sub_8014498`).
     pub exhausted: bool,
@@ -399,7 +399,7 @@ pub struct ActorData {
     pub weapon_chip: Option<nettai_content_api::ChipHandle>,
     /// A navi no player controls (actor type navi): who brought it
     /// (AIData+0x54, `sub_80076A0`'s caller), its target (AIData+0x78: the
-    /// other side's player, `sub_800F318`), and the system that drives it.
+    /// other side's player, `sub_800F318`), and the rules that drive it.
     pub summoner: Option<ObjectRef>,
     pub target: Option<ObjectRef>,
     pub controller: Option<crate::kinds::player::Controller>,
@@ -459,7 +459,7 @@ impl Actors {
 
     /// Allocate the lowest free slot, cleared. (The game leaves the last
     /// 0x10 bytes alone: the controllers' state, Beast Over's berserk and
-    /// the Cross special's, which are EXE6's systems' now, by side.)
+    /// the Cross special's, which are EXE6's rules' now, by side.)
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;

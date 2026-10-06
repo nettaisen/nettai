@@ -74,7 +74,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 ai_mut(b, r).attack.charged = 0;
                 let action = super::idle::weapon_routine(b, r, weapon);
                 set_attack(b, r, action, 2);
-                // (EXE6's beast system runs the Beast forms' claw and
+                // (EXE6's beast part runs the Beast forms' claw and
                 // SlashCross Beast's charged sword inside its rush.)
                 chip_used(b, r, Some(weapon));
                 ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
@@ -84,21 +84,21 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     }
     let action = prepare(b, r, charge);
     set_attack(b, r, action, 2);
-    // (EXE6's beast system runs a chip with the lock-on flag inside its
+    // (EXE6's beast part runs a chip with the lock-on flag inside its
     // rush, in a Beast form or from the Cross special.)
     chip_used(b, r, None);
     ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
     Some(ai(b, r).attack.chip)
 }
 
-/// The side's systems' `chip_used` once the use's action started (and
+/// The side's rules' `chip_used` once the use's action started (and
 /// `set_attack` cleared the attack's `wrapped`): the chip the attack reads
 /// (the zeroed chip for the empty hand), and the form's weapon run instead
 /// of it.
 fn chip_used(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) {
     let side = b.objects.get(r).alliance;
     let chip = b.content.chip_or_zeroed(ai(b, r).attack.chip);
-    b.systems_chip_used(side, r, chip, weapon);
+    b.rules_chip_used(side, r, chip, weapon);
 }
 
 /// `sub_800FC30`: the wrapper (EXE6's Beast Out rush) chains the next chip,
@@ -278,13 +278,13 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if cd.flags.has(ChipFlags::NAVI) {
         b.bump_side_stat(side, 6, 1);
     }
-    // sub_800B79A: the side's systems' (EXE6's dark chips worsen the HP
+    // sub_800B79A: the side's rules' (EXE6's dark chips worsen the HP
     // bug).
     let used = b.content.chip_or_zeroed(e.chip);
-    b.systems_chip_prepared(side, r, used);
+    b.rules_chip_prepared(side, r, used);
     // EXE5's 0x08010030 and 0x080100E6: the side's rules may refuse the
     // chip, before the bonus's panel is spent (`chip_cost`: its light and
-    // dark system's dark chips) or after (`chip_check`: its chips for the
+    // dark part's dark chips) or after (`chip_check`: its chips for the
     // other kind of MegaMan, 0x08010118). The navi then uses the chip they
     // give instead (EXE5's 0x185, its variant 3 and no parameters, the rest
     // of the attack as prepared: its lockout is still the refused chip's).
@@ -292,7 +292,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         ai_mut(b, r).attack.chip = Some(instead);
         charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, Some(instead)))
     };
-    if let Some(instead) = b.systems_chip_cost(side, r, e.chip) {
+    if let Some(instead) = b.rules_chip_cost(side, r, e.chip) {
         return refuse(b, instead);
     }
     // EXE5's 0x080100B0: the panel the bonus came from turns Normal, if the
@@ -308,7 +308,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if let Some(setup) = e.chip.and_then(|c| b.content.defs.chip(c).setup) {
         crate::behavior::call_hook(b, setup, nettai_content_api::HookCall::FormNavi { navi: r });
     }
-    if let Some(instead) = b.systems_chip_check(side, r, e.chip) {
+    if let Some(instead) = b.rules_chip_check(side, r, e.chip) {
         return refuse(b, instead);
     }
     front_guard(b, r, cd);
@@ -378,7 +378,7 @@ fn deals_damage(flags: ChipFlags) -> bool {
     flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::DIMMING)
 }
 
-/// `sub_8010D58`: the chip the side's systems put in the chip's place
+/// `sub_8010D58`: the chip the side's rules put in the chip's place
 /// (`chip_substitute`: EXE6's dark chips cost a bug frag, and with none
 /// left the player gets the chip's substitute, `off_8010D84`), through
 /// `sub_800EF02`, with its own damage and bonus and no modifiers.
@@ -386,7 +386,7 @@ fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Op
     // (The empty hand's chip reads past the chip table, as for the record.)
     entry_record(&b.content, chip);
     let side = b.objects.get(r).alliance;
-    let sub = b.systems_chip_substitute(side, r, chip.expect("a chip"))?;
+    let sub = b.rules_chip_substitute(side, r, chip.expect("a chip"))?;
     let chip = Some(sub);
     // sub_800EF02: anything but a player keeps the chip it carries.
     if navi_record(b, r).actor_type != ActorType::Player {

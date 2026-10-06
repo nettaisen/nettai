@@ -309,8 +309,10 @@ mod tests {
         let six = exe6_content();
         let mut m = nettai_match::Match::empty(&six, "exe6").unwrap();
         let side = &mut m.sides[0];
-        assert_eq!(lists(&six, "exe6", side), [(4, "Crosses".to_string())]);
-        assert_eq!(list_named(&six, "crosses"), Some(4));
+        // (The facts in the setup's order, their names': beast_out,
+        // bug_frags, crosses, ...)
+        assert_eq!(lists(&six, "exe6", side), [(2, "Crosses".to_string())]);
+        assert_eq!(list_named(&six, "crosses"), Some(2));
         assert_eq!(list_named(&six, "version"), None, "an enum: a row, no pane");
         let field = facts::field(&six, "crosses").unwrap();
         let offered = facts::offered(&six, "exe6", side, &field).unwrap();

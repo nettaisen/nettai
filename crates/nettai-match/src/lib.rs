@@ -42,7 +42,7 @@ use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage, effects};
 use nettai_battle::Rng;
-use nettai_content_api::{NaviHandle, StageHandle, SystemHandle};
+use nettai_content_api::{NaviHandle, StageHandle};
 
 pub use check::{check_match, check_side};
 pub use auto_battle::AutoBattle;
@@ -86,16 +86,10 @@ pub fn playable(content: &Content, game: &str) -> Result<(), String> {
     if content.game() != game {
         return Err(format!("the content is {}'s, not {game}'s", content.game()));
     }
-    if systems(content).is_empty() {
+    if content.defs.rules().is_none() {
         return Err(format!("{game} has no rules"));
     }
     Ok(())
-}
-
-/// The systems of the game's rules (a game has one ruleset): the one
-/// place this crate reads the engine's ruleset.
-pub fn systems(content: &Content) -> &[SystemHandle] {
-    content.defs.ruleset_systems()
 }
 
 /// What the send of a side's auto battle data picks from, with the seed
@@ -124,7 +118,7 @@ pub struct Side {
     /// The NaviCust, which the side's rules compile into the stats as the
     /// round is set up: its programs and its board. None: no programs, on
     /// the rules' largest board (the round compiles an empty one, for the
-    /// navi that changes form where the rules have the navicust system).
+    /// navi that changes form where the rules have the navicust part).
     pub navicust: Option<NaviCust>,
     /// EXE5's auto battle data, the player's save's block whole
     /// (`auto_battle`): what a navi in auto battle plays from it, the Dark
@@ -134,10 +128,10 @@ pub struct Side {
     /// between rests), which a game without auto battle has. The round's
     /// setup sends it as the console does (`AutoBattleData::sent`).
     pub auto_battle: AutoBattle,
-    /// What the side brings that its game's rules take, each a field of a
-    /// system's setup by its name there (`facts`: EXE6's `version`, its
-    /// `crosses`; EXE5's `karma`, its `souls`): the systems' setup
-    /// blocks, as the round's setup carries them. A side that says nothing
+    /// What the side brings that its game's rules take, each a field of
+    /// the rules' setup by its name there (`facts`: EXE6's `version`, its
+    /// `crosses`; EXE5's `karma`, its `souls`): the rules' setup block, as
+    /// the round's setup carries it. A side that says nothing
     /// has the rules' defaults.
     pub facts: Facts,
 }
@@ -162,25 +156,24 @@ pub fn level_required(content: &Content, navi: NaviHandle) -> bool {
     !n.changes_form() && (n.levels.is_some() || n.story.is_some())
 }
 
-/// Whether the game's rules have a system named `system` (`forms`,
-/// `patch-cards`).
-pub fn ruleset_has_system(content: &Content, system: &str) -> bool {
-    systems(content).iter().any(|&s| ids::local(&content.defs.system(s).key) == system)
+/// Whether the game has a NaviCust (its rules' `navicust` section has a
+/// board). (Until a game's rules check what a side holds themselves: a
+/// match's NaviCust is MegaMan's, compiled by the game's rules.)
+pub fn has_navicust(content: &Content) -> bool {
+    !navicust_rules(content).boards.is_empty()
 }
 
-/// The system that brings the Cross window and the form changes (EXE6's).
-pub const FORMS_SYSTEM: &str = "forms";
-/// The system that applies patch cards (EXE6's).
-pub const PATCH_CARDS_SYSTEM: &str = "patch-cards";
-/// The system that compiles the NaviCust (EXE6's).
-pub const NAVICUST_SYSTEM: &str = "navicust";
+/// Whether the game has patch cards (it defines any).
+pub fn has_patch_cards(content: &Content) -> bool {
+    !content.defs.patch_cards.is_empty()
+}
 
 /// A NaviCust with no programs on the rules' largest board, for `navi`
-/// where it compiles one: the navi that changes form, in a game whose rules
-/// have the navicust system. None for any other.
+/// where it compiles one: the navi that changes form, in a game with a
+/// NaviCust. None for any other.
 pub fn empty_navicust(content: &Content, navi: NaviHandle) -> Option<NaviCust> {
     let boards = navicust_rules(content).boards.len();
-    (ruleset_has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0)
+    (content.navi(navi).forms.is_some() && boards > 0)
         .then(|| NaviCust::new(&[], (boards - 1) as u8).ok())
         .flatten()
 }
@@ -314,7 +307,7 @@ impl Match {
                 console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
                 // What the side brings that its rules' systems take: their
                 // setup blocks, as the side holds them.
-                rules: s.facts.blocks().to_vec(),
+                rules: s.facts.block().cloned(),
                 patch_cards: PatchCards::new(&s.patch_cards).unwrap_or_default(),
                 // (The navi that changes form compiles a NaviCust where the
                 // rules have one: an empty one on the largest board when the
