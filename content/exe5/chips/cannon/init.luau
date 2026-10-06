@@ -20,7 +20,7 @@ local cannon = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shooter.action { id = "cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
+    action = shooter.action { arm = shooter.arms.cannon, shot = variants.cannon },
 }
 
 -- HiCannon (EXE5 chip 0x002): EXE6's cannon (@exelib/cannon, the original's action 0x14; EXE5's the same code),
@@ -38,7 +38,7 @@ local hicannon = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shooter.action { id = "hicannon/action", arm = shooter.arms.hicannon, shot = variants.cannon },
+    action = shooter.action { arm = shooter.arms.hicannon, shot = variants.cannon },
 }
 
 -- M-Cannon (EXE5 chip 0x003): EXE6's cannon (@exelib/cannon, the original's action 0x14; EXE5's the same code),
@@ -56,7 +56,7 @@ local m_cannon = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shooter.action { id = "m-cannon/action", arm = shooter.arms.m_cannon, shot = variants.cannon },
+    action = shooter.action { arm = shooter.arms.m_cannon, shot = variants.cannon },
 }
 
 return { cannon = cannon, hicannon = hicannon, m_cannon = m_cannon }

@@ -14,7 +14,6 @@ local SLASH_SPRITE = asset.sprite("sword-slash")
 
 return {
     action = common.make {
-        id = "z-saver/action",
         swing_sound = asset.sound("z-saver"),
         command_sound = asset.sound("ok-8b"),
         attachment = attachment.kind,

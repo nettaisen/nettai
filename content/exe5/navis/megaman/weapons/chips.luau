@@ -90,7 +90,7 @@ chips.boomer = fires("megaman/boomer", boomer, { 120, 115, 110, 105, 100, 120 })
 chips.widesht = fires("megaman/widesht1", widesht_chips.widesht1, { 120, 115, 110, 105, 100, 110 }) -- 0x67, B↓Wshot
 
 -- 0x5F, B↓Ccann: TankCan1, its shell not cracking (the parameter's second byte 0).
-local CCANN = tankcan.make_action("megaman/tankcan1/action", { hit_mod = 0x4B, cracks = false, shift = 0 })
+local CCANN = tankcan.make_action({ hit_mod = 0x4B, cracks = false, shift = 0 }, "megaman/tankcan1/action")
 chips.tankcan = define.weapon {
     id = "megaman/tankcan1",
     charge_ticks = { 100, 95, 90, 85, 80, 180 },

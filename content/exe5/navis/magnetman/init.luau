@@ -36,7 +36,7 @@ return define.navi {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- The charge table's row 0x2A (0x0801CC10); Charge 5 reads on into row 0x2B's first entry.
-        a_charge = charged_chips.routine("magnetman/a-charge", { 60, 60, 60, 60, 60, 60 }),
+        a_charge = charged_chips.routine({ 60, 60, 60, 60, 60, 60 }, "magnetman/a-charge"),
     },
     -- The chips A charges, and what a charged one gains (its damage again).
     charged_chips = { family = "elec", damaging = false, plain = true },

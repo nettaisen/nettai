@@ -40,7 +40,6 @@ local SOUND_RUN = asset.sound("ok-8b")
 -- What he wears (0x0800EE4E: EXE5's body overlay row 0, its sprite 10-0A, behind him in his animations 0 to 5, 7,
 -- 16 and 17), stepping even while paused.
 local PROPELLER = define.identity {
-    id = "gyroman-navi",
     class = "navi",
     parts = {
         body = {

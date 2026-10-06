@@ -25,7 +25,7 @@ return define.form {
     change = soul_change.action,
     revert = soul_revert.action,
     -- Colonel's image as MegaMan unites with him (rules/souls/image), in his cape (0x0800EDBC's routine for the soul).
-    image = soul_image.wearing(asset.sprite("colonel"), "soul-image/colonel", body_overlays.colonel),
+    image = soul_image.wearing(asset.sprite("colonel"), body_overlays.colonel),
     -- What it adds to the custom screen (rules/souls gathers it, rules/souls/custom): Arm Change (./arm_change).
     custom = arm_change.custom,
     sprite = asset.sprite("colonelsoul"),
@@ -36,7 +36,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x3A (0x0800FA98): DrkSonic (chip 0xC6), the charge table's row 0x3A.
-        chaos = chaos.weapon("colonelsoul/chaos", drksonic, { 40, 60, 90, 120, 150, 60 }),
+        chaos = chaos.weapon(drksonic, { 40, 60, 90, 120, 150, 60 }),
     },
     -- 0x08011C44: the damage words (0x08011C50: 40 and 10 more per point of buster Attack plus one for the sword's
     -- soldier, 10 and 2 more for the gun's, each paralyzing with counter byte 0x94; 0x080CABF8), then the side armed

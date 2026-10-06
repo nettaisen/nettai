@@ -19,5 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
-    action = sonicbom.make("punisher/action", 0, false),
+    action = sonicbom.make(0, false),
 }

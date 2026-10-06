@@ -278,7 +278,7 @@ local ANIM, ARM_ANIM, ATTACH_POINT = 10, 1, 20
 local LAST_TICK, RECOVER_TICKS = 30, 5
 
 -- ElemRage's action: its flames' count, time and flags (the record's parameters).
-function elemrage.action(id: string, count: number, ticks: number, flags: number): Action
+function elemrage.action(count: number, ticks: number, flags: number): Action
     -- 0x080EFCEC: the rage by the panel; the flame out; the claw raised; the roar every 16 ticks; on after the 31st.
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
@@ -341,7 +341,6 @@ function elemrage.action(id: string, count: number, ticks: number, flags: number
     end
 
     return define.action {
-        id = id,
         state = { timer = "u16", roar = "u16", palette = "u8", raged = "bool" },
         -- 0x080EFCD0.
         update = function(me: Object, s: State)
