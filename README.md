@@ -134,7 +134,10 @@ A match's game is chosen before anything else, and none is preselected: an opene
 and for a new match (the editor started without a file, or New) the editor asks which game first (`--game` answers
 on the command line). The arena pane shows the game: everything below it is that game's, and there is no way to pick another
 game's navi, chip, soul or patch card. Changing the game there makes a new match of it (the sides start over). A game is
-its rules (it has one ruleset), whose systems the pane lists. The panes show only what
+its rules (it has one ruleset), whose systems the pane lists. The lists of chips, NaviCust programs and patch cards
+are in the game's library order (its content's `library.toml`: the chips by the game's library tabs in their order,
+Gregar's or Team ProtoMan's version chips first; the programs and cards by number), what isn't in it after, by name
+in the game. The panes show only what
 those rules have (patch cards with the patch-cards system, the NaviCust with the navicust system, and each fact
 the rules' systems declare of a side): the arena's stages and backgrounds (the game's); each side's navi
 (the game's), with the stats the round starts the navi with (a link navi's level fills in the stats
