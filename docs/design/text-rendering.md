@@ -762,8 +762,8 @@ the US's (the user's choice).
 ### 10.2 Where the strings live
 
 - **Every display string is a content root's `locales/<lang>.toml`**, keyed by definition key: `[chips]` (name,
-  description), `[navis]` (name, variant_name, run_message), `[forms]` (a Cross's name and description), `[patch-cards]` (a
-  patch card's name). What reads each is §10.6. The engine's
+  description), `[navis]` (name, variant_name, run_message), `[forms]` (a Cross's name and description), and a table
+  for each of the game's collections, by its name (`[patch_cards]`: a patch card's name). What reads each is §10.6. The engine's
   `content::strings::Strings` is one table; nettai-content's `locale` reads them. A definition holds none: the define
   phase refuses a `name`, `description` or `description_lines` field (core.d.luau's specs have none).
 - **The content's own language** (`locale::OWN`, English for EXE6) is part of the content: the loader puts its table
@@ -909,6 +909,7 @@ The user's question (2026-10-02): "are the forms/weapons sections even used in t
   Cross up by its form (`CrossWindow::hovered`; docs/engine/custom-screen.md §4.1).
 - `[weapons]` (124 names: 69 navi and form weapons', 55 patch card weapons') was read by nothing (no screen
   shows a weapon's name; `Strings::weapon` had no caller): the table, `WeaponStrings` and its check are gone.
-- `[patch-cards]` (`PatchCardStrings`): the patch cards' names, by card key, which gen-content checks (the English
+- `[patch_cards]` (a table of the game's collection's, `EntryStrings`; any collection of the game's root has one
+  by its name, `[navicust_programs]` too): the patch cards' names, by card id, which gen-content checks (the English
   ones there, the Japanese ones the ROM's); no screen of the frontend shows them yet. (Until the cards became an
   engine definition kind, 2026-10-02, they were records and their names a `[records]` table.)

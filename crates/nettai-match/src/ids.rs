@@ -14,8 +14,7 @@
 
 use nettai_battle::content::Content;
 use nettai_content_api::{
-    AssetKind, ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, Registry, StageHandle,
-    WeaponHandle, keys,
+    AssetKind, ChipHandle, EntryHandle, FormHandle, NaviHandle, RecordHandle, Registry, StageHandle, WeaponHandle, keys,
 };
 
 /// The content's key of the definition named `name` in `game`: the name,
@@ -54,13 +53,12 @@ pub fn stage(content: &Content, game: &str, name: &str) -> Option<StageHandle> {
     key(content, game, name).and_then(|k| content.defs.stage_by_key(k))
 }
 
-pub fn patch_card(content: &Content, game: &str, name: &str) -> Option<PatchCardHandle> {
-    key(content, game, name).and_then(|k| content.defs.patch_card_by_key(k))
+/// Entry `name` of `game`'s collection `collection` (the game's root's
+/// `patch_cards`, say).
+pub fn entry(content: &Content, game: &str, collection: &str, name: &str) -> Option<EntryHandle> {
+    key(content, game, name).and_then(|k| content.defs.entry_in(collection, k))
 }
 
-pub fn navicust_program(content: &Content, game: &str, name: &str) -> Option<NaviCustProgramHandle> {
-    key(content, game, name).and_then(|k| content.defs.navicust_program_by_key(k))
-}
 
 pub fn weapon(content: &Content, game: &str, name: &str) -> Option<WeaponHandle> {
     key(content, game, name).and_then(|k| content.defs.weapon_by_key(k))
@@ -72,8 +70,8 @@ pub fn record(content: &Content, game: &str, name: &str) -> Option<RecordHandle>
 
 /// The content's key of definition `h` of `registry`, for the registries a
 /// side's fact may hold a definition of (a form, a chip, a navi, a stage, a
-/// weapon); none: the content has no such definition, or the registry is
-/// none of those.
+/// weapon, an entry of one of the game's collections); none: the content
+/// has no such definition, or the registry is none of those.
 pub fn key_of(content: &Content, registry: Registry, h: u16) -> Option<&str> {
     let defs = &content.defs;
     let i = h as usize;
@@ -83,23 +81,41 @@ pub fn key_of(content: &Content, registry: Registry, h: u16) -> Option<&str> {
         Registry::Navi if i < defs.navis.len() => defs.navi(NaviHandle(h)).key.as_str(),
         Registry::Stage if i < defs.stages.len() => defs.stage(StageHandle(h)).key.as_str(),
         Registry::Weapon if i < defs.weapons.len() => defs.weapon(WeaponHandle(h)).key.as_str(),
-        Registry::PatchCard if i < defs.patch_cards.len() => defs.patch_card(PatchCardHandle(h)).key.as_str(),
-        Registry::NaviCustProgram if i < defs.navicust_programs.len() => defs.navicust_program(NaviCustProgramHandle(h)).key.as_str(),
+        Registry::Entry if i < defs.entries.len() => defs.entry(EntryHandle(h)).key.as_str(),
         _ => return None,
     })
 }
 
-/// The definition of `registry` named `name` in `game` (its handle), for
-/// the registries [`key_of`] knows.
-pub fn handle_of(content: &Content, game: &str, registry: Registry, name: &str) -> Option<u16> {
+/// The name a match writes for definition `h` of `registry`: an entry's
+/// id in its collection, else the definition's local name ([`local`]).
+pub fn name_of(content: &Content, registry: Registry, h: u16) -> Option<&str> {
     match registry {
+        Registry::Entry => Some(content.defs.entries.get(h as usize)?.id()),
+        _ => key_of(content, registry, h).map(local),
+    }
+}
+
+/// The definitions of `registry` a field of it may hold, by handle: those
+/// of the collection `of` names, for an entry (`patch_cards`); every one,
+/// for the other registries [`key_of`] knows.
+pub fn all_of(content: &Content, registry: Registry, of: Option<&str>) -> Vec<u16> {
+    match (registry, of) {
+        (Registry::Entry, Some(c)) => content.defs.entries_of(c).into_iter().map(|h| h.0).collect(),
+        (Registry::Entry, None) => Vec::new(),
+        _ => (0..=u16::MAX).map_while(|h| key_of(content, registry, h).map(|_| h)).collect(),
+    }
+}
+
+/// The definition of `registry` named `name` in `game` (its handle), for
+/// the registries [`key_of`] knows: an entry's in the collection `of` names.
+pub fn handle_of(content: &Content, game: &str, registry: Registry, of: Option<&str>, name: &str) -> Option<u16> {
+    match registry {
+        Registry::Entry => entry(content, game, of?, name).map(|h| h.0),
         Registry::Form => form(content, game, name).map(|h| h.0),
         Registry::Chip => chip(content, game, name).map(|h| h.0),
         Registry::Navi => navi(content, game, name).map(|h| h.0),
         Registry::Stage => stage(content, game, name).map(|h| h.0),
         Registry::Weapon => weapon(content, game, name).map(|h| h.0),
-        Registry::PatchCard => patch_card(content, game, name).map(|h| h.0),
-        Registry::NaviCustProgram => navicust_program(content, game, name).map(|h| h.0),
         _ => None,
     }
 }
@@ -111,8 +127,7 @@ pub fn shown(content: &Content, registry: Registry, h: u16) -> String {
         (Registry::Form, Some(_)) => crate::names::form(content, FormHandle(h)).to_string(),
         (Registry::Chip, Some(_)) => crate::names::chip(content, ChipHandle(h)).to_string(),
         (Registry::Navi, Some(_)) => crate::names::navi(content, NaviHandle(h)).to_string(),
-        (Registry::PatchCard, Some(_)) => crate::names::patch_card(content, PatchCardHandle(h)),
-        (Registry::NaviCustProgram, Some(_)) => crate::names::navicust_program(content, NaviCustProgramHandle(h)).to_string(),
+        (Registry::Entry, Some(_)) => crate::names::entry(content, EntryHandle(h)),
         (_, Some(key)) => local(key).to_string(),
         (_, None) => format!("{registry} {h}"),
     }

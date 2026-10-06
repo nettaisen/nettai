@@ -111,8 +111,7 @@ Every definition belongs to one registry. The engine knows the registries and th
 | status | `new.status` | `id` where compat names it, else derived | requests, duration, timer | its byte, in rules.toml |
 | (lockon) | `new.record("lockon", ...)` | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
 | record | `new.record(type, spec)` | `id` where compat names it, else derived | only its type name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
-| patch_card | the root's `patch_cards` | its id there (a match's side) | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
-| navicust_program | the root's `navicust_programs` | its id there (a match's NaviCust) | its colors and shapes | the program's number, in compat/navicust.toml |
+| entry | a collection of the game's own: the root's other keys (EXE6's `patch_cards`, `navicust_programs`; §3.11) | `<collection>/<id>`; a match names it by its id there | only its collection (Luau reads the fields) | EXE6's: the card's number in compat/patch-cards.toml, the program's in compat/navicust.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
 
 A game's rules are one definition, the root's `rules` (rules/init.luau), which holds its rule sections (§3.8) and
@@ -775,13 +774,19 @@ went with the stages' definitions, step 12). The instant chips' action runs the 
 a weapon set; the dimming and navi chip actions read the chip's usage. Content's function roles
 (`hooks.first_barrier`) are in §7.4.
 
-### 3.11 Patch cards
+### 3.11 A game's own collections
 
-`define.patch_card { id, mb, effects }` (content/exe6/patch_cards/<name>/card.luau) is a patch card, BN4's, EXE5's and EXE6's
-Modification Card (docs/engine/patch-cards.md): the engine keeps its capacity cost and its effects' kinds and bug
-flags (`PatchCardDef`), and a player's installed cards are their setup's (`PlayerSetup::patch_cards`). What an
-effect does is a game's rules' (EXE6's patch cards module, rules/patch_cards), which read the effects' own fields
-from the definition. Its name is the locales' (`[patch-cards]`).
+The user, 2026-10-06: "go generic". A game's root may hold collections the core doesn't know, any key besides its
+sections (chips, navis, forms, stages) and its rules: each a table of entries by id (EXE6's and EXE5's
+`patch_cards`, a patch card each, docs/engine/patch-cards.md; `navicust_programs`, a NaviCust program each,
+docs/design/navicust.md). An entry is a definition of `Registry::Entry`, keyed `<collection>/<id>`, whose data the
+core keeps and reads none of: the game's rules read it (EXE6's rules/patch_cards and rules/navicust). A setup field
+holds one by naming the collection as its type (`patch_cards = schema.list("patch_cards", 32)`; a name that is
+neither one of the core's types nor a collection of the game's root is refused as the content loads), a match
+names one by its id there (`patch_cards = ["canodumb"]`), the locales by a table of the collection's name
+(`[patch_cards]`), the library order by a list of its name (`navicust_programs = [...]`). Rust names neither
+patch cards nor NaviCust programs; their types (`PatchCard`, `NaviCustProgram`) are exelib's
+(content/exelib/types.d.luau), and compat, the game's boundary, maps a save's numbers to the entries.
 
 ## 4. Folder layout
 

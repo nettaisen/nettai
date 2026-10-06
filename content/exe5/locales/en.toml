@@ -392,7 +392,7 @@ language = "en"
 "toadsoul" = { name = "ToadSoul" }
 "tomahawksoul" = { name = "TmhkSoul" }
 
-[navicust-programs]
+[navicust_programs]
 "airshoes" = { name = "AirShoes" }
 "antidmg" = { name = "AntiDmg" }
 "attck-1" = { name = "Attck+1" }
@@ -441,7 +441,7 @@ language = "en"
 "tango" = { name = "Tango" }
 "undersht" = { name = "UnderSht" }
 
-[patch-cards]
+[patch_cards]
 "alpha" = { name = "Alpha" }
 "alphabug" = { name = "AlphaBug" }
 "anaconda" = { name = "Anaconda" }

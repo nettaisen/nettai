@@ -5,7 +5,7 @@
 # workspace's tools/exe5/gen_content.py from the ROMs; its `check` compares it with them. Menus list in it
 # (nettai_content::library); the battle reads none of it.
 
-navicust = [
+navicust_programs = [
     "sprarmr",
     "custom1",
     "custom2",
