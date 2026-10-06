@@ -84,6 +84,12 @@ pub struct LinkPick {
     /// entries, some there twice and so twice as likely; EXE5's 27, each
     /// once). None: a link battle shows its stage's own.
     pub backgrounds: Vec<super::BackgroundId>,
+    /// The stages a match may name: the game's link battle stages, whether
+    /// a random pick reaches them or not (EXE6's and EXE5's: each a
+    /// settings record with the link effect that isn't the random
+    /// battle's), in handle order. (The section states stages, which
+    /// `sections::link` resolves.)
+    pub match_stages: Vec<nettai_content_api::StageHandle>,
 }
 
 /// The battles whose win shows the winner's navi's banner
