@@ -89,6 +89,15 @@ pub struct Grid {
     pub size: String,
 }
 
+/// What modules `names` of `game`'s rules (`rules/navicust/board`) returned
+/// as the content loaded, as data (a function in them left out, nothing
+/// called): read from a round of a random match of the game (one that
+/// starts), none where none starts or the content has no such module.
+pub fn modules(content: &std::sync::Arc<Content>, game: &str, names: &[&str]) -> Vec<Option<Data>> {
+    let battle = nettai_match::pick::live(content, game, 0, None).ok().and_then(|m| nettai_match::check::start(content, &m).ok());
+    names.iter().map(|n| battle.as_ref().and_then(|b| b.module_data(&format!("{game}:{n}"))).and_then(Result::ok)).collect()
+}
+
 /// The type of a list's element, else the type itself.
 pub fn element(ty: &FieldType) -> &FieldType {
     match ty {
@@ -125,7 +134,11 @@ pub fn default_view(ty: &FieldType) -> View {
 /// The panes of a side's setup of the content's game, with the NaviCust's
 /// where its data fit one (`navicust`: what the game's NaviCust module and
 /// programs say, `crate::editor::navicust::Data`).
-pub fn layout(content: &Content, navicust: Option<&crate::editor::navicust::Data>) -> Vec<Pane> {
+pub fn layout(
+    content: &Content,
+    navicust: Option<&crate::editor::navicust::Data>,
+    auto_battle: Option<&crate::editor::auto_battle::Layout>,
+) -> Vec<Pane> {
     let grid = navicust.and_then(|n| crate::editor::navicust::pane(content, n));
     let in_grid: Vec<String> = grid.iter().flat_map(|p| p.fields.iter().map(|f| f.field.clone())).collect();
     let mut grid = grid;
@@ -134,7 +147,7 @@ pub fn layout(content: &Content, navicust: Option<&crate::editor::navicust::Data
         // (The core's own panes': the navi, the folder and its marks; the
         // auto battle pane's.)
         let role = facts::role_of(content, f.name);
-        if matches!(role, Some(PlayerFact::Navi | PlayerFact::Folder | PlayerFact::RegularChip | PlayerFact::TagChips)) || nettai_match::auto_battle::owns(content, f.name) {
+        if matches!(role, Some(PlayerFact::Navi | PlayerFact::Folder | PlayerFact::RegularChip | PlayerFact::TagChips)) || crate::editor::auto_battle::owns(auto_battle, f.name) {
             continue;
         }
         if in_grid.iter().any(|n| n == f.name) {

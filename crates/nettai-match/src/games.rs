@@ -736,18 +736,20 @@ fn a_sides_fields_are_its_rules() {
 /// recording's: `auto_battle_sent`) is the state as it is, with no draw.
 #[test]
 fn exe5s_rules_send_the_auto_battle_data() {
-    use crate::auto_battle::{AutoBattle, Entry};
     use nettai_battle::rules::Fact;
-    use nettai_content_api::{FieldValue, Value};
+    use nettai_content_api::{FieldValue, Registry, Value};
     let content = exe5_content();
     let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    let chip = |name: &str| crate::ids::chip(&content, "exe5", name).unwrap();
-    let mut data = AutoBattle::default();
-    data.places[1] = Entry::Chip(chip("areagrab"));
-    data.places[3] = Entry::Zero;
-    data.places[20] = Entry::Chip(chip("sword"));
-    data.places[41] = Entry::Pattern(0);
-    data.write(&content, &mut m.sides[0]).unwrap();
+    let chip = |name: &str| Fact::Value(Value::Def(Registry::Chip, crate::ids::chip(&content, "exe5", name).unwrap().0));
+    // Its places: a chip in place 2, a 0 in place 4, a chip in place 21, a
+    // pattern in place 42; its records none written.
+    let mut places: Vec<Fact> = (0..42).map(|_| Fact::Record(Vec::new())).collect();
+    places[1] = Fact::Record(vec![("chip", chip("areagrab"))]);
+    places[3] = Fact::Record(vec![("zero", Fact::Value(Value::Bool(true)))]);
+    places[20] = Fact::Record(vec![("chip", chip("sword"))]);
+    places[41] = Fact::Record(vec![("pattern", Fact::Value(Value::Int(1)))]);
+    m.sides[0].set_fact(&content, "auto_battle_places", &places).unwrap();
+    m.sides[0].set_fact(&content, "auto_battle_records", &[]).unwrap();
     // The sent places, by side: a chip, a pattern's number, 0, or empty.
     let sent = |b: &nettai_battle::Battle, side: u8| -> Vec<String> {
         let (schema, state) = b.rules_state(side).unwrap();

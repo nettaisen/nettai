@@ -14,7 +14,6 @@
 //! with the game's navis, chips, forms and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
-pub mod auto_battle;
 pub mod binary;
 pub mod check;
 pub mod pick;
@@ -43,11 +42,11 @@ use nettai_battle::Rng;
 use nettai_content_api::{NaviHandle, StageHandle};
 
 pub use check::{check_match, check_side};
-pub use auto_battle::AutoBattle;
 pub use facts::Facts;
 pub use pick::Picks;
 pub use file::{parse, write};
 pub use import::save_game;
+pub use import_exe5::auto_battle_of_save;
 pub use folders::Folder;
 pub use set::{After, Set};
 
@@ -326,9 +325,7 @@ pub fn navi_forms(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_cont
 /// places (as the seed picks those it leaves), each
 /// side's navi and the facts it states (those that aren't its rules'
 /// defaults, each as its field's name and its value: `version: falzar`),
-/// with `folders` the folders, and where the game has auto battle what a
-/// navi in it plays from the side's save; `you` is the side the player
-/// plays.
+/// with `folders` the folders; `you` is the side the player plays.
 pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usize) -> String {
     let place = |p: &Stage| {
         let stage = ids::local(&content.defs.stage(p.stage).key);
@@ -360,11 +357,6 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
         }
         if folders {
             out.push_str(&format!("\n  folder ({who}): {}", folders::describe(content, &s.folder(content))));
-        }
-        // What a navi in auto battle plays from the side's save, where the game
-        // has auto battle.
-        if auto_battle::has(content) {
-            out.push_str(&format!("\n  auto battle plays ({who}): {}", AutoBattle::of_side(content, s).describe(content)));
         }
     }
     out

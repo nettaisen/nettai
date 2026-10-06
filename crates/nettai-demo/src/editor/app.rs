@@ -263,6 +263,9 @@ pub struct Editor {
     /// What the NaviCust's grid reads of the game (none: its data don't fit
     /// the grid).
     pub navicust: Option<crate::editor::navicust::Data>,
+    /// The auto battle data's layout, where the game has the data (EXE5's:
+    /// its rules/auto_battle/block).
+    pub auto_battle_layout: Option<crate::editor::auto_battle::Layout>,
     /// Each side's grids' own state, by their views' paths.
     pub grids: [HashMap<String, crate::editor::navicust::GridState>; 2],
     /// What is typed into a side's facts' number fields (side, the fact's
@@ -320,6 +323,7 @@ impl Editor {
             pane_typed: HashMap::new(),
             panes: Vec::new(),
             navicust: None,
+            auto_battle_layout: None,
             grids: Default::default(),
             fact_typed: HashMap::new(),
             problems: Vec::new(),
@@ -384,8 +388,11 @@ impl Editor {
     /// The game's rules' panes (a load's).
     fn load_panes(&mut self) {
         let game = self.content.game().to_string();
-        self.navicust = crate::editor::navicust::read(&self.content, &game);
-        self.panes = crate::editor::layout::layout(&self.content, self.navicust.as_ref());
+        let modules = crate::editor::layout::modules(&self.content, &game, &[crate::editor::navicust::MODULE, crate::editor::auto_battle::MODULE]);
+        self.navicust = crate::editor::navicust::read(&self.content, modules[0].as_ref());
+        // (Where the game takes auto battle data.)
+        self.auto_battle_layout = crate::editor::auto_battle::Layout::read(modules[1].as_ref()).filter(|_| nettai_match::facts::takes(&self.content, "auto_battle_places"));
+        self.panes = crate::editor::layout::layout(&self.content, self.navicust.as_ref(), self.auto_battle_layout.as_ref());
     }
 
     /// Check the match again (each problem with where it is), and the
@@ -682,22 +689,21 @@ impl Editor {
             Msg::AutoBattle(s, crate::editor::auto_battle::Edit::FromSave) => {
                 if let Some(path) = rfd::FileDialog::new().add_filter("EXE5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
-                    match read.and_then(|bytes| nettai_match::auto_battle::of_save(&content, self.m.game(), &bytes)) {
-                        Ok((data, notes)) => match data.write(&content, &mut self.m.sides[s]) {
-                            Ok(()) => {
-                                self.auto_battle[s] = Default::default();
-                                self.edited();
-                                let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
-                                self.status = format!("took the auto battle data of {}{notes}", path.display());
-                            }
-                            Err(e) => self.status = format!("can't take the auto battle data of {}: {e}", path.display()),
-                        },
+                    let game = self.m.game().to_string();
+                    match read.and_then(|bytes| nettai_match::auto_battle_of_save(&content, &game, &bytes, &mut self.m.sides[s])) {
+                        Ok(notes) => {
+                            self.auto_battle[s] = Default::default();
+                            self.edited();
+                            let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
+                            self.status = format!("took the auto battle data of {}{notes}", path.display());
+                        }
                         Err(e) => self.status = format!("can't take the auto battle data of {}: {e}", path.display()),
                     }
                 }
             }
             Msg::AutoBattle(s, edit) => {
-                if crate::editor::auto_battle::update(&content, &mut self.m.sides[s], &mut self.auto_battle[s], edit) {
+                let layout = self.auto_battle_layout.clone().unwrap_or_default();
+                if crate::editor::auto_battle::update(&content, &layout, &mut self.m.sides[s], &mut self.auto_battle[s], edit) {
                     self.edited();
                 }
             }

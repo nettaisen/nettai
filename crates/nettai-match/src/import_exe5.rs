@@ -1,29 +1,37 @@
 //! A side from an EXE5 save file (exe5-compat's `save`): its karma (the
 //! light/dark value), the souls it has, its Soul Unison and Chaos Unison,
 //! how far its NaviCust's board is expanded (its ExpMemry), and its
-//! auto battle data (what a navi in auto battle plays from it:
-//! `crate::auto_battle`); for a side that operates a team navi, the
+//! auto battle data (what a navi in auto battle plays from it: EXE5's
+//! rules' `auto_battle_places` and `auto_battle_records`); for a side that operates a team navi, the
 //! navi's level and HP. (Its folder, the NaviCust's programs and MegaMan's
 //! stats are a later import's.) `Match::import_save` comes here for a save
 //! that isn't EXE6's. (A boundary with exe5-compat, as `import` is with
 //! exe6-compat: a save's bytes and the original's numbers in them.)
 
-use crate::auto_battle::{ChipPlace, AutoBattle, Entry, RECORDS, Record};
 use crate::{Side, ids};
-use exe5_compat::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, Save};
+use exe5_compat::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, AutoBattlePattern, Save};
 use nettai_battle::content::Content;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{Registry, Value};
 
-/// A save's auto battle data block as a side states it, place for place
-/// and record for record: its chips by their numbers' names in `game`, a
-/// pattern entry by its record's number. What a match can't state of it is
-/// left empty and said: a chip number `game` has no chip for, and an entry
-/// for a pattern record past the block's eight. (A chip the game's rules
-/// can't play in auto battle comes in as the save has it: the game writes
-/// none among the places, where a match's check refuses one, and a record
-/// may hold one.)
-pub(crate) fn auto_battle(content: &Content, game: &str, block: &AutoBattleBlock) -> (AutoBattle, Vec<String>) {
+/// The block's pattern records.
+const RECORDS: usize = 8;
+
+/// A pattern record nothing has written: 0xFF throughout.
+const BLANK: AutoBattlePattern = AutoBattlePattern { dx: -1, dy: -1, chips: [AUTO_BATTLE_EMPTY; 5], score: 0xFFFF_FFFF };
+
+/// A save's auto battle data block as `side`'s facts (EXE5's rules'
+/// `auto_battle_places`, to its last place that isn't empty, and
+/// `auto_battle_records`, to its last record that isn't blank), place for
+/// place and record for record: a chip by its number's name in `game` (`{
+/// chip }`), a pattern entry by its record's number from 1 (`{ pattern }`),
+/// a 0 (`{ zero = true }`), an empty place `{}`. What a match can't state of
+/// it is left empty and said: a chip number `game` has no chip for, and an
+/// entry for a pattern record past the block's eight. (A chip the game's
+/// rules can't play in auto battle comes in as the save has it: the game
+/// writes none among the places, where the rules' `validate` refuses one,
+/// and a record may hold one.) What is worth saying about it.
+pub(crate) fn state_auto_battle(content: &Content, game: &str, block: &AutoBattleBlock, side: &mut Side) -> Vec<String> {
     let mut notes = Vec::new();
     let compat = exe5_compat::Compat::exe5();
     let mut nameless: Vec<u16> = Vec::new();
@@ -32,36 +40,72 @@ pub(crate) fn auto_battle(content: &Content, game: &str, block: &AutoBattleBlock
         if c.is_none() && !nameless.contains(&n) {
             nameless.push(n);
         }
-        c
+        c.map(|c| Fact::Value(Value::Def(Registry::Chip, c.0)))
     };
-    let mut out = AutoBattle::default();
+    let yes = || Fact::Value(Value::Bool(true));
+    let mut places: Vec<Fact> = Vec::new();
     for (i, &h) in block.places.iter().enumerate() {
-        out.places[i] = match h {
-            AUTO_BATTLE_EMPTY => Entry::Empty,
-            0 => Entry::Zero,
+        places.push(Fact::Record(match h {
+            AUTO_BATTLE_EMPTY => Vec::new(),
+            0 => vec![("zero", yes())],
             h if h & AUTO_BATTLE_PATTERN != 0 => match (h & !AUTO_BATTLE_PATTERN) as usize {
-                n if n < RECORDS => Entry::Pattern(n as u8),
+                n if n < RECORDS => vec![("pattern", Fact::Value(Value::Int(n as i64 + 1)))],
                 n => {
                     notes.push(format!("place {} of the save's auto battle data names pattern {}, past its eight: left empty", i + 1, n + 1));
-                    Entry::Empty
+                    Vec::new()
                 }
             },
-            h => chip(h).map_or(Entry::Empty, Entry::Chip),
-        };
+            h => chip(h).map_or_else(Vec::new, |c| vec![("chip", c)]),
+        }));
     }
-    for (record, p) in out.records.iter_mut().zip(&block.patterns) {
-        let chips = p.chips.map(|h| match h {
-            AUTO_BATTLE_EMPTY => ChipPlace::Empty,
-            0 => ChipPlace::Zero,
-            h => chip(h).map_or(ChipPlace::Empty, ChipPlace::Chip),
-        });
-        *record = Record { dx: p.dx, dy: p.dy, chips, score: p.score };
+    let last = places.iter().rposition(|p| !matches!(p, Fact::Record(f) if f.is_empty())).map_or(0, |i| i + 1);
+    places.truncate(last);
+    let mut records: Vec<Fact> = Vec::new();
+    for p in &block.patterns {
+        let chips: Vec<Fact> = p
+            .chips
+            .iter()
+            .map(|&h| {
+                Fact::Record(match h {
+                    AUTO_BATTLE_EMPTY => Vec::new(),
+                    0 => vec![("zero", yes())],
+                    h => chip(h).map_or_else(Vec::new, |c| vec![("chip", c)]),
+                })
+            })
+            .collect();
+        records.push(Fact::Record(vec![
+            ("dx", Fact::Value(Value::Int(p.dx as i64))),
+            ("dy", Fact::Value(Value::Int(p.dy as i64))),
+            ("chips", Fact::List(chips)),
+            ("score", Fact::Value(Value::Int(p.score as i64))),
+        ]));
     }
+    let last = block.patterns.iter().rposition(|p| *p != BLANK).map_or(0, |i| i + 1);
+    records.truncate(last);
     if !nameless.is_empty() {
         let numbers: Vec<String> = nameless.iter().map(|n| format!("{n:#05x}")).collect();
         notes.push(format!("the save's auto battle data holds chip numbers {game} has no chip for ({}): their places are left empty", numbers.join(", ")));
     }
-    (out, notes)
+    let mut facts = side.facts.clone();
+    match facts.set(content, "auto_battle_places", &places).and_then(|()| facts.set(content, "auto_battle_records", &records)) {
+        Ok(()) => side.facts = facts,
+        Err(e) => notes.push(format!("the save's auto battle data is left out: {e}")),
+    }
+    notes
+}
+
+/// The auto battle data of the EXE5 save in `file` (a .sav's bytes, or a
+/// raw save image) as `side`'s, a side of a match of `game` (an editor
+/// takes it alone): what the game has learned of the save's player, and
+/// what is worth saying about it; or why the file gives none.
+pub fn auto_battle_of_save(content: &Content, game: &str, file: &[u8], side: &mut Side) -> Result<Vec<String>, String> {
+    if !crate::facts::takes(content, "auto_battle_places") {
+        return Err(format!("{game} has no auto battle"));
+    }
+    match crate::save_game(file)? {
+        exe5_compat::ROOT => Ok(state_auto_battle(content, game, &read(file)?.auto_battle(), side)),
+        other => Err(format!("a save of {other}, which keeps no auto battle data")),
+    }
 }
 
 /// The EXE5 save in `file` (a .sav's bytes, or a raw save image as Tango's
@@ -79,7 +123,7 @@ impl Side {
     /// ExpMemry (key item 0x61's count) as the expansions of the side's
     /// NaviCust, if it has one (its programs stay: one off a smaller board
     /// is the match's check's to say); the save's auto battle data (its
-    /// first block, [`auto_battle`]: what the game has learned of this
+    /// first block, [`state_auto_battle`]: what the game has learned of this
     /// player) as the side's. What is worth saying about it.
     pub fn import_exe5_save(&mut self, content: &Content, game: &str, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
@@ -116,12 +160,8 @@ impl Side {
         if has_navicust && let Err(e) = self.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Int(save.expansions() as i64))]) {
             notes.push(format!("the save's navicust_expansions is left out: {e}"));
         }
-        if crate::auto_battle::has(content) {
-            let (data, more) = auto_battle(content, game, &save.auto_battle());
-            if let Err(e) = data.write(content, self) {
-                notes.push(format!("the save's auto battle data is left out: {e}"));
-            }
-            notes.extend(more);
+        if crate::facts::takes(content, "auto_battle_places") {
+            notes.extend(state_auto_battle(content, game, &save.auto_battle(), self));
         }
         notes.extend(self.import_exe5_team_navi(content, save));
         notes
@@ -276,14 +316,54 @@ mod tests {
         assert_eq!((compat.form(0), compat.form(7), compat.form(13)), (Some("base"), Some("colonelsoul"), None));
     }
 
+    /// The block side `side`'s auto battle facts state (the import's way
+    /// back): a place past the list empty, a record past it blank.
+    fn block_of(content: &Content, side: &Side) -> AutoBattleBlock {
+        use crate::facts::Stated;
+        let number = |h: u16| exe5_compat::Compat::exe5().chip_entry(crate::ids::local(&content.defs.chip(nettai_content_api::ChipHandle(h)).key)).unwrap().id;
+        let get = |fields: &[(String, Stated)], name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v.clone());
+        let half = |fields: &[(String, Stated)]| match (get(fields, "chip"), get(fields, "pattern"), get(fields, "zero")) {
+            (Some(Stated::Def(_, Some(h))), _, _) => number(h),
+            (_, Some(Stated::Number(n)), _) if n > 0 => AUTO_BATTLE_PATTERN | (n - 1) as u16,
+            (_, _, Some(Stated::Flag(true))) => 0,
+            _ => AUTO_BATTLE_EMPTY,
+        };
+        let mut out = AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] };
+        if let Some(Stated::List(items)) = side.facts.get(content, "auto_battle_places") {
+            for (place, item) in out.places.iter_mut().zip(&items) {
+                if let Stated::Record(f) = item {
+                    *place = half(f);
+                }
+            }
+        }
+        if let Some(Stated::List(items)) = side.facts.get(content, "auto_battle_records") {
+            for (p, item) in out.patterns.iter_mut().zip(&items) {
+                let Stated::Record(f) = item else { continue };
+                let int = |name: &str| match get(f, name) {
+                    Some(Stated::Number(n)) => n,
+                    _ => 0,
+                };
+                let mut chips = [AUTO_BATTLE_EMPTY; 5];
+                if let Some(Stated::List(places)) = get(f, "chips") {
+                    for (c, item) in chips.iter_mut().zip(&places) {
+                        if let Stated::Record(f) = item {
+                            *c = half(f);
+                        }
+                    }
+                }
+                *p = AutoBattlePattern { dx: int("dx") as i8, dy: int("dy") as i8, chips, score: int("score") as u32 };
+            }
+        }
+        out
+    }
+
     /// A save's auto battle data becomes the side's, place for place and
     /// record for record: chips by their numbers' names, a pattern entry by
-    /// its record's number, a 0 a 0; a block nothing has written gives the
-    /// side's default; what a match can't state is said.
+    /// its record's number, a 0 a 0; a block nothing has written gives no
+    /// data; what a match can't state is said.
     #[test]
     fn a_exe5_save_gives_the_auto_battle_data() {
         let content = exe5_content();
-        let chip = |name: &str| crate::ids::chip(&content, "exe5", name).unwrap();
         let number = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
         let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
@@ -305,24 +385,20 @@ mod tests {
         image[0x554C + 0x68..0x554C + 0x78].fill(0);
         let mut m = crate::Match::empty(&content, "exe5").unwrap();
         let notes = m.import_save(&content, 1, &image).unwrap();
-        let mut want = AutoBattle::default();
-        want.places[1] = Entry::Chip(chip("areagrab"));
+        let mut want = AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] };
+        want.places[1] = number("areagrab");
         for i in 3..7 {
-            want.places[i] = Entry::Chip(chip("lance"));
+            want.places[i] = number("lance");
         }
-        want.places[7] = Entry::Chip(chip("sidebub3"));
-        want.places[33] = Entry::Pattern(0);
-        want.records[0] = Record {
-            dx: -3,
-            dy: 1,
-            chips: [ChipPlace::Chip(chip("sword")), ChipPlace::Chip(chip("wideswrd")), ChipPlace::Empty, ChipPlace::Empty, ChipPlace::Empty],
-            score: 7,
-        };
-        want.records[1] = Record::ZERO;
-        assert_eq!(AutoBattle::of_side(&content, &m.sides[1]), want);
+        want.places[7] = number("sidebub3");
+        want.places[33] = AUTO_BATTLE_PATTERN;
+        want.patterns[0] = AutoBattlePattern { dx: -3, dy: 1, chips: [number("sword"), number("wideswrd"), AUTO_BATTLE_EMPTY, AUTO_BATTLE_EMPTY, AUTO_BATTLE_EMPTY], score: 7 };
+        want.patterns[1] = AutoBattlePattern { dx: 0, dy: 0, chips: [0; 5], score: 0 };
+        assert_eq!(block_of(&content, &m.sides[1]), want);
         assert!(!notes.iter().any(|n| n.contains("auto battle")), "{notes:?}");
-        // (The other side: a new match's.)
-        assert_eq!(AutoBattle::of_side(&content, &m.sides[0]), AutoBattle::nothing_learned());
+        // (The other side: a new match's, nothing learned: every record zeros.)
+        let nothing = AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [AutoBattlePattern { dx: 0, dy: 0, chips: [0; 5], score: 0 }; RECORDS] };
+        assert_eq!(block_of(&content, &m.sides[0]), nothing);
         assert!(!crate::check_match(&content, &m).iter().any(|p| p.contains("auto battle")), "{:?}", crate::check_match(&content, &m));
         // What a match can't state: a chip number the game has no chip for
         // (among the places, and in a record), a pattern past the eighth.
@@ -333,55 +409,36 @@ mod tests {
         assert_eq!(said.len(), 2, "{notes:?}");
         assert!(said[0].contains("place 7 of the save's auto battle data names pattern 10, past its eight"), "{notes:?}");
         assert!(said[1].contains("holds chip numbers exe5 has no chip for (0x1ff, 0x1fe): their places are left empty"), "{notes:?}");
-        let data = AutoBattle::of_side(&content, &m.sides[1]);
-        assert_eq!(data.places[3..8], [Entry::Chip(chip("lance")), Entry::Empty, Entry::Zero, Entry::Empty, Entry::Chip(chip("sidebub3"))]);
-        assert_eq!(data.records[0].chips[2], ChipPlace::Empty);
-        // A block nothing has written.
+        let data = block_of(&content, &m.sides[1]);
+        assert_eq!(data.places[3..8], [number("lance"), AUTO_BATTLE_EMPTY, 0, AUTO_BATTLE_EMPTY, number("sidebub3")]);
+        assert_eq!(data.patterns[0].chips[2], AUTO_BATTLE_EMPTY);
+        // A block nothing has written: no data stated.
         image[0x554C..0x554C + 0xE0].fill(0xFF);
         m.import_save(&content, 1, &image).unwrap();
-        assert!(AutoBattle::of_side(&content, &m.sides[1]).is_blank());
-    }
-
-    /// The block a side's data is, by number: the import's way back.
-    fn block_of(content: &nettai_battle::content::Content, data: &AutoBattle) -> AutoBattleBlock {
-        let number = |c: nettai_content_api::ChipHandle| exe5_compat::Compat::exe5().chip_entry(crate::ids::local(&content.defs.chip(c).key)).unwrap().id;
-        AutoBattleBlock {
-            places: data.places.map(|e| match e {
-                Entry::Empty => AUTO_BATTLE_EMPTY,
-                Entry::Zero => 0,
-                Entry::Chip(c) => number(c),
-                Entry::Pattern(n) => AUTO_BATTLE_PATTERN | n as u16,
-            }),
-            patterns: data.records.map(|r| exe5_compat::save::AutoBattlePattern {
-                dx: r.dx,
-                dy: r.dy,
-                chips: r.chips.map(|c| match c {
-                    ChipPlace::Empty => AUTO_BATTLE_EMPTY,
-                    ChipPlace::Zero => 0,
-                    ChipPlace::Chip(c) => number(c),
-                }),
-                score: r.score,
-            }),
-        }
+        assert_eq!(block_of(&content, &m.sides[1]), AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] });
+        // The data alone, from a save's file (the editor's "From a save").
+        let mut side = m.sides[0].clone();
+        assert_eq!(auto_battle_of_save(&content, "exe5", &image, &mut side), Ok(Vec::new()));
+        assert_eq!(block_of(&content, &side), block_of(&content, &m.sides[1]));
+        assert!(auto_battle_of_save(&content, "exe5", b"not a save", &mut side).is_err());
     }
 
     /// What a match states of a block is the block: a block read into a
-    /// side's data and written back is the same in every place and every
-    /// record (all a battle reads of it: only its count and its last eight
-    /// bytes aren't stated), and so is the data written to a match file and
-    /// read back. Over blocks of each awkward shape: as a battle's end
-    /// writes one; a pattern that fills its record, the record after it
-    /// zeros, and another, the record after it blank; a 0 among the places
-    /// and among a record's chips; pattern entries out of the records'
-    /// order, in the first places, one twice, and records no entry names;
-    /// a full block; one with zeroed records alone; a blank one.
+    /// side's facts and back is the same in every place and every record
+    /// (all a battle reads of it: only its count and its last eight bytes
+    /// aren't stated), and so is the side written to a match file and read
+    /// back. Over blocks of each awkward shape: as a battle's end writes
+    /// one; a pattern that fills its record, the record after it zeros, and
+    /// another, the record after it blank; a 0 among the places and among a
+    /// record's chips; pattern entries out of the records' order, in the
+    /// first places, one twice, and records no entry names; a full block;
+    /// one with zeroed records alone; a blank one.
     #[test]
     fn what_a_match_states_of_a_block_is_the_block() {
-        use exe5_compat::save::AutoBattlePattern;
         let content = exe5_content();
         let n = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
         let none = AUTO_BATTLE_EMPTY;
-        let blank = AutoBattlePattern { dx: -1, dy: -1, chips: [none; 5], score: 0xFFFF_FFFF };
+        let blank = BLANK;
         let zero = AutoBattlePattern { dx: 0, dy: 0, chips: [0; 5], score: 0 };
         let block = |places: &[(usize, u16)], patterns: [AutoBattlePattern; 8]| {
             let mut out = AutoBattleBlock { places: [none; 42], patterns };
@@ -415,22 +472,19 @@ mod tests {
             ("blank", block(&[], [blank; 8])),
         ];
         for (name, original) in &blocks {
-            let (data, notes) = super::auto_battle(&content, "exe5", original);
+            let mut m = crate::Match::empty(&content, "exe5").unwrap();
+            let notes = state_auto_battle(&content, "exe5", original, &mut m.sides[0]);
             assert_eq!(notes, Vec::<String>::new(), "{name}");
-            assert_eq!(block_of(&content, &data), *original, "{name}");
+            assert_eq!(block_of(&content, &m.sides[0]), *original, "{name}");
             // (And as bytes, but for the count and the last eight.)
             assert_eq!(AutoBattleBlock::read(&original.bytes()), Ok(*original), "{name}");
             // Through a match file.
-            let mut m = crate::Match::empty(&content, "exe5").unwrap();
-            data.write(&content, &mut m.sides[0]).unwrap();
-            AutoBattle::default().write(&content, &mut m.sides[1]).unwrap();
+            state_auto_battle(&content, "exe5", &blocks[8].1, &mut m.sides[1]);
             let text = crate::write(&content, &m);
             let file: crate::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
             let back = crate::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
-            let back = AutoBattle::of_side(&content, &back.sides[0]);
-            assert_eq!(back, data, "{name}:\n{text}");
-            assert_eq!(block_of(&content, &back), *original, "{name}");
+            assert_eq!(back.sides[0], m.sides[0], "{name}:\n{text}");
+            assert_eq!(block_of(&content, &back.sides[0]), *original, "{name}");
         }
-        assert!(super::auto_battle(&content, "exe5", &blocks[8].1).0.is_blank());
     }
 }

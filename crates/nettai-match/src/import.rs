@@ -13,9 +13,7 @@
 //! A boundary with the compat crates: a save file is the original's own
 //! bytes, which each game's compat crate reads (`exe6_compat::save`,
 //! `exe5_compat::save`), and which game's a file is picks the reader. This
-//! module, `import_exe5` and the two uses in `auto_battle` (a save's block,
-//! and the original's chip numbers as the game's own tie-break) are all
-//! this crate has of compat.
+//! module and `import_exe5` are all this crate has of compat.
 
 use crate::{Match, Side};
 use exe6_compat::save::Save;
