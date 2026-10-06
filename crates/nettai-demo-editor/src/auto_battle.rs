@@ -434,7 +434,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         .map(|h| (e.names.chip(c, h), h))
         .filter(|(name, h)| needle.is_empty() || name.to_lowercase().contains(&needle) || nettai_match::ids::local(&c.defs.chip(*h).key).contains(&needle))
         .collect();
-    pool.sort();
+    e.order.chips(c, &mut pool);
     let mut choices = Column::new().spacing(1);
     for (name, h) in pool.into_iter().take(400) {
         let cd = c.chip(h);
