@@ -7,6 +7,7 @@
 
 local dark_chips = require("./dark_chips")
 local kind = require("./forms/kind")
+local save = require("./save")
 
 local exe6 = {}
 
@@ -30,10 +31,12 @@ function exe6.spend_bug_frags(side: number, n: number): boolean
 end
 
 -- The level of the navi code the side's save received (0 to 14), or nil
--- (event flag 0x163 clear): the engine's, which a link navi's chip bonus
--- reads too.
+-- (event flag 0x163 clear): its save system's `level` (rules/save), which
+-- the engine knows nothing of. What a level gives a link navi in battle is
+-- rules/by_level's.
 function exe6.navi_level(side: number): number?
-    return battle.navi_level(side)
+    local s = system.setup_of(side, save) :: { level: number? }?
+    return if s then s.level else nil
 end
 
 -- The side's form's kind (the forms system's extension: rules/forms/kind):

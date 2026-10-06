@@ -12,6 +12,7 @@
 -- guard back up at the end. The action's end sets his sprite's palette 2 whatever the variant (0x080FBFE0); a
 -- navi's own palette, set later in every tick (0x0800DA98), replaces it before it is drawn.
 
+local navi_level = require("../../lib/navi_level")
 local chain = require("./chain")
 local crusher = require("./crusher")
 
@@ -115,7 +116,7 @@ return define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 80, 80, 80, 100, 100, 120, 120 } },
+    damage = navi_level.row({ 80, 80, 80, 100, 100, 120, 120 }),
     hit_param = 158,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },

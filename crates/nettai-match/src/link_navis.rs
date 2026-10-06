@@ -115,6 +115,23 @@ mod tests {
         assert_eq!((st.max_base_hp, st.max_hp, st.hp), (800, 900, 900));
     }
 
+    /// What a link navi's level gives it in battle is EXE6's rules'
+    /// (rules/by_level.luau), asked as the round is set up: HeatMan's chip
+    /// bonus by his level (`byte_8021300`'s row), ChargeMan's charged chips
+    /// from level 3 (`byte_8021369`) and his Fire charge by his level
+    /// (`byte_802136D`); MegaMan's navi has none of them.
+    #[test]
+    fn a_link_navis_level_gives_it_its_rows() {
+        let content = exe6_content();
+        let given = |navi: &str, level: u8| crate::check::start(&content, &with_link_navi(&content, navi, level)).unwrap().given.navis[1];
+        assert_eq!([0, 6, 7, 14].map(|l| given("heatman", l).chip_bonus), [0, 0, 30, 50]);
+        assert_eq!([2, 3].map(|l| given("chargeman", l).charges), [false, true]);
+        assert_eq!([0, 3, 14].map(|l| given("chargeman", l).fire_charge), [Some(0), Some(30), Some(100)]);
+        let m = crate::pick::live(&content, "exe6", 3, None).unwrap();
+        let b = crate::check::start(&content, &m).unwrap();
+        assert_eq!(b.given.navis[0], nettai_battle::given::NaviGiven::default());
+    }
+
     /// A level's gains clamp: MegaMan from a navi code at level 14 gets its
     /// gains over his NaviCust (EXE6's navicust system), the buster's levels
     /// at 4, the Mega level at 10, the custom level at 8.

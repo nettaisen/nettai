@@ -297,10 +297,13 @@ pub enum DamageFormula {
     /// its user's buster attack up to 5 (`sub_8010C50`, a row of
     /// `byte_80212D4`; formulas 23 to 44).
     NaviLevel { base: u8, per_level: u8 },
-    /// EXE5's team navis' own chips' (its formulas 50 to 72, 0x0800EAF8, a
-    /// row of 0x0801D74F): `by_level[n]` at its user's side's navi level
-    /// (the setup's: EXE5's is its save's progress, 0 to 6).
-    Level { by_level: Vec<u16> },
+    /// A function of the side gives it (`damage = function(side)`), which
+    /// the round's setup asks once for each side (`Battle::given`): EXE5's
+    /// team navis' own chips (its formulas 50 to 72, 0x0800EAF8: a row of
+    /// 0x0801D74F at the side's level, as EXE5's rules read the level,
+    /// lib/navi_level).
+    #[serde(skip)]
+    Given(nettai_content_api::FnId),
     /// EXE5's CusVolt (its formulas 73 to 75, 0x0800EB0E): `base` plus 100
     /// by the custom gauge's level (its value >> 7): 100 × level / 95 below
     /// 96, 100 to 126, none from 127 (full); the side's own gauge in the

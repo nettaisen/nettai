@@ -7,6 +7,7 @@
 -- system's.
 
 local beast_out_chip = require("../../chips/beastout")
+local exe6 = require("../api")
 local kind = require("../forms/kind")
 local chip_gate_battle = require("../../lib/chip_gate_battle")
 
@@ -39,7 +40,7 @@ type Setup = {
 -- Event flag 0x163, a navi code received (`sub_800B144` sends its level
 -- only then): no Beast Out button.
 local function sealed(side: number): boolean
-    return battle.navi_level(side) ~= nil
+    return exe6.navi_level(side) ~= nil
 end
 
 -- The game of the Beast the navi goes into, or is in: a form that isn't
