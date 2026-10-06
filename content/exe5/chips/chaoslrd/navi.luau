@@ -38,10 +38,10 @@ local CAPE: FormOverlaySpec = { sprite = SPRITE, stepping = "while_dimmed", anim
 -- its fraction, and his strike's is his.
 -- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
 local SPAWNER_ADDRESS = 0x080C327F
--- What keeps him away (0x080C2FFC: an enemy navi's body, by side), and where it is looked for (0x080162A4's list 17:
--- his column and the one ahead, around the middle row).
+-- What keeps him away (0x080C2FFC: an enemy navi's body, by side), and where it is looked for (0x080162A4's list 17,
+-- the auto battle data's `two_columns`: his column and the one ahead, around the middle row).
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
-local AROUND = 17
+local AROUND = "two_columns"
 -- The beast's parts (0x080C2F5C: animation, blinking ticks, holding ticks).
 local PARTS: { { number } } = {
     { 0x0A, 0x0A, 0x5A },

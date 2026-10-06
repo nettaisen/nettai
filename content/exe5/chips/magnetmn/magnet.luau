@@ -5,8 +5,9 @@
 -- for MagnetMan (./navi) to send both (his action 8); then, with its pull (./pull) 20 pixels ahead, it slides 8
 -- pixels a tick: off the field, or, when it has a partner (pole 1 always), to 10 pixels short of the panel of
 -- MagnetMan's target, where the two meet. A navi it hits, or the meeting, stops it: it shakes (a sound) 11
--- ticks, waits 6 and goes. Its variant 1 hits with modifier 3 and without the immobilization, goes at once and
--- stops while dimmed: MagnetMan the navi's own chip's (navis/magnetman/chip), and EXE5's MagnetMan as an enemy's.
+-- ticks, waits 6 and goes. Its variant (its fourth parameter: `magnet.variant { ... }`, its spawner's) says its hit
+-- and its waits: the chip's (0) as above; MagnetMan the navi's own chip's (1, navis/magnetman/chip) hits with
+-- modifier 3 and without the immobilization, goes at once and stops while dimmed.
 
 local collision = require("../../rules/collision")
 local navi_chips = require("@exelib/navi_chips/navi")
@@ -17,11 +18,11 @@ local statuses = require("../../rules/status")
 
 export type State = {
     -- Its pole (its first parameter: 0, 1), it has a partner (its second), the column of MagnetMan's target (its
-    -- third), and its variant (its fourth: 0 for the chip).
+    -- third), and its variant (its fourth).
     pole: number,
     paired: number,
     target_x: number,
-    variant: number,
+    variant: MagnetVariant,
     -- The chip's level (+0x60), which picks its palette.
     level: number,
     -- It hit a navi (+0x64).
@@ -39,19 +40,20 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_CRASH = asset.sound("magnet-crash")
 -- By the level (0x0800DA8A: navi 5's count, 2, by 0x0800DAE8's row), then its pole added: DS's 6.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
--- By the variant (0x080D2DE0, 0x080D2DEC): the hit modifier and the status.
-local HIT_MODS: { [number]: number } = { [0] = 1, 3 }
-local STATUSES: { [number]: Status? } = { [0] = statuses.immobilize_60 }
 -- A navi's body among what it hit.
 local NAVI_HIT = 0x0C00_0000
 local SPEED = 0x8_0000
 
-local function variant_of(me: Object): number
-    local v = (me.state :: State).variant
-    if v > 1 then
-        error(string.format("a magnet's variant %d reads past 0x080D2DE0's table", v))
-    end
-    return v
+-- A magnet's variant.
+function magnet.variant(v: MagnetVariant): MagnetVariant
+    return new.record("magnet-variant", v)
+end
+
+-- The chips' (variant 0): hit modifier 1, immobilizing for 60 ticks; it waits for MagnetMan, and runs while dimmed.
+magnet.chips = magnet.variant { hit_mod = 1, status = statuses.immobilize_60, waits_for_navi = true, runs_while_dimmed = true }
+
+local function variant_of(me: Object): MagnetVariant
+    return (me.state :: State).variant
 end
 
 -- Its facing, as its flip reads it: its pole, its side and its flip together.
@@ -65,7 +67,7 @@ local function stop(me: Object)
 end
 
 -- Action 0 (0x080D2E4C; its phase byte the entry flag): where it stops; then it waits for MagnetMan to be done
--- sending (or not, variant 1), and goes with its pull ahead, its panel hit.
+-- sending (if its variant waits), and goes with its pull ahead, its panel hit.
 local function wait(me: Object)
     local s = me.state :: State
     if me.phase == 0 then
@@ -75,7 +77,7 @@ local function wait(me: Object)
         s.stop_x = int.i32(x - dir * 0xA_0000)
         return
     end
-    if s.variant == 1 or (me.related1 :: Object).action == 8 then
+    if not s.variant.waits_for_navi or (me.related1 :: Object).action == 8 then
         me.anim = 0x11
         local dir = if me.vel.x > 0 then 1 else -1
         pull.spawn(me, me.panel_x + dir, me.panel_y, me.element, dir)
@@ -166,8 +168,8 @@ end
 
 local ACTIONS = { [0] = wait, [4] = slide, [8] = crash, [0xC] = linger }
 
--- 0x080D2DF4: the hits against it resolve and spark (a navi's body among them stops it); its action (variant 1's
--- not while dimmed).
+-- 0x080D2DF4: the hits against it resolve and spark (a navi's body among them stops it); its action (not while
+-- dimmed, unless its variant runs then).
 local function tick(me: Object)
     local c = me.collision
     c:remove()
@@ -179,7 +181,7 @@ local function tick(me: Object)
             (me.state :: State).hit_navi = true
         end
     end
-    if variant_of(me) == 0 or not battle.dimmed() then
+    if variant_of(me).runs_while_dimmed or not battle.dimmed() then
         local action = ACTIONS[me.action]
         if not action then
             error(string.format("A magnet's action %#x reads past its table (0x080D2E38)", me.action))
@@ -212,10 +214,10 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(collision.collision_37, collision.hits_navis, HIT_MODS[variant])
+    me:setup_collision(collision.collision_37, collision.hits_navis, variant.hit_mod)
     local c = me.collision
     c:set_hit_effect(sparks.elec)
-    c.status_base = STATUSES[variant]
+    c.status_base = variant.status
     c:set_region(nil)
     c:present()
     battle.play_sound(SOUND_APPEAR)
@@ -230,7 +232,7 @@ magnet.kind = new.kind {
         pole = "u8",
         paired = "u8",
         target_x = "u8",
-        variant = "u8",
+        variant = "record:magnet-variant",
         level = "u8",
         hit_navi = "bool",
         stop_x = "i32",
@@ -250,12 +252,10 @@ magnet.kind = new.kind {
             me:destroy()
             return
         end
-        if (me.state :: State).variant ~= 0 then
-            if not battle.dimmed() then
-                me:update_sprite()
-            end
-        else
+        if (me.state :: State).variant.runs_while_dimmed then
             me:update_sprite_while_dimmed()
+        elseif not battle.dimmed() then
+            me:update_sprite()
         end
     end,
 }
@@ -264,8 +264,8 @@ export type Spec = {
     pole: number,
     paired: boolean,
     target_x: number,
-    -- Its variant (none: 0, the chips').
-    variant: number?,
+    -- Its variant (none: the chips').
+    variant: MagnetVariant?,
     -- The chip's level, and the damage word.
     level: number,
     damage: number,
@@ -278,7 +278,7 @@ function magnet.spawn(navi: Object, x: number, y: number, element: number, spec:
     if o then
         local s = o.state :: State
         s.pole, s.paired, s.target_x = spec.pole, if spec.paired then 1 else 0, spec.target_x
-        s.variant = spec.variant or 0
+        s.variant = spec.variant or magnet.chips
         s.level = spec.level
         o.panel_x, o.panel_y = x, y
         o.element = element

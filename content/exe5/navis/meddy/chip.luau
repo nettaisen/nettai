@@ -5,8 +5,18 @@
 -- (its third parameter is 1). Its damage is by her level (the chips' damage formula 60: the damage rows' row 11).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local capsule = require("../../chips/meddy/capsule")
 local navi_level = require("../../lib/navi_level")
+local statuses = require("../../rules/status")
 local throw = require("./throw")
+
+-- Its capsule (variant 5): palette 4, hit modifier 0, paralyzing for 150 ticks, its explosions in palette 3.
+local CAPSULE = capsule.variant {
+    palette = 4,
+    hit_mod = 0,
+    status = statuses.paralyze_150,
+    explosion = new.effect { sprite = capsule.explosion, anim = 0, palette = 3 },
+}
 
 local chip: Chip = {
     codes = { "M" },
@@ -20,7 +30,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
-    action = throw.action({ variant = 5, line = 0, mode = 1 }),
+    action = throw.action({ variant = CAPSULE, line = capsule.column, while_dimmed = false }),
 }
 
 return { meddycap = chip }
