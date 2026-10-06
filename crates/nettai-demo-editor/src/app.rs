@@ -269,6 +269,9 @@ pub struct Editor {
     pub round: Result<[NaviStats; 2], String>,
     /// The chips each side's rules let a folder hold.
     pub pool: [Vec<ChipHandle>; 2],
+    /// The game's library order, which the lists of chips, programs and
+    /// cards keep.
+    pub order: crate::order::Order,
     /// Each side's NaviCust pane's own state.
     pub navicust: [crate::navicust::State; 2],
     /// Each side's Auto battle pane's own state.
@@ -313,6 +316,7 @@ impl Editor {
             problems: Vec::new(),
             round: Err(String::new()),
             pool: Default::default(),
+            order: Default::default(),
             navicust: Default::default(),
             auto_battle: Default::default(),
             status: String::new(),
@@ -328,6 +332,7 @@ impl Editor {
             }
         }
         e.set_lang(e.options.lang);
+        e.load_order();
         e.refresh();
         e
     }
@@ -355,6 +360,15 @@ impl Editor {
                 }
             },
         };
+    }
+
+    /// The game's library order (its pack's library.toml).
+    fn load_order(&mut self) {
+        let (order, problem) = crate::order::Order::load(&self.options.content_dir, self.content.game());
+        self.order = order;
+        if let Some(p) = problem {
+            self.status = format!("the lists are by key: {p}");
+        }
     }
 
     /// Check the match again, and the stats its round starts with.
@@ -387,6 +401,7 @@ impl Editor {
             self.pictures = loaded.pictures;
             (self.options.content_dir, self.options.games) = (loaded.dir, vec![loaded.game]);
             self.set_lang(self.lang);
+            self.load_order();
         }
         Ok(self.content.clone())
     }
