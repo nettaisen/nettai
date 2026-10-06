@@ -16,7 +16,6 @@ local judgeman = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 266, index = 31, sort = 248 },
     slot_in_limit = 1,
     navi = navi.summon { book_damage = 20 },
 }
@@ -33,7 +32,6 @@ local judgemn_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 267, index = 32, sort = 249 },
     slot_in_limit = 1,
     navi = navi.summon { book_damage = 30 },
 }
@@ -50,7 +48,6 @@ local judgemn_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 268, index = 33, sort = 250 },
     slot_in_limit = 1,
     navi = navi.summon { book_damage = 40 },
 }

@@ -62,7 +62,6 @@ local function chip(key: string, n: number, fields: { [string]: any }): Chip
         hit_param = 0,
         lockout = 0,
         flags = { "standard_library" },
-        library = { number = n, index = bit32.band(n, 0xFF), sort = n },
         slot_in_limit = 3,
     }
     for k, v in fields do

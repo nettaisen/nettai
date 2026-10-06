@@ -14,7 +14,6 @@ return define.chip {
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 6, damage = 50, hit_param = 30, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 58, index = 58, sort = 317 },
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.yoyo },

@@ -19,7 +19,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming" },
     extra_flags = { 16, 32 },
-    library = { number = 0, index = 69, sort = 0 },
     slot_in_limit = 1,
     dark_substitute = invisibl,
     dimming = navi_boost.dark,

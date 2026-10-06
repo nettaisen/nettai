@@ -226,7 +226,6 @@ return define.chip {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },
-    library = { number = 408, index = 0, sort = 7 },
     slot_in_limit = 1,
     -- `sub_80F1C1C` (`off_80F1C30`).
     action = define.action {

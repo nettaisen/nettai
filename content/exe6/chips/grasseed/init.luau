@@ -10,7 +10,6 @@ return define.chip {
     element = "wood", family = "wood", class = "standard",
     rarity = 1, mb = 19, damage = 10, hit_param = 10, lockout = 10,
     flags = { "standard_library", "library" },
-    library = { number = 67, index = 67, sort = 222 },
     slot_in_limit = 3,
     action = throw.action {
         held = seed.held(2),
