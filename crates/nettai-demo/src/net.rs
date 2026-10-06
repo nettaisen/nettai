@@ -1,15 +1,18 @@
-//! Netplay's transport, the program's own (`--host`, `--join`): the UDP
-//! socket to the other player, and the handshake that starts a match on
-//! it. The library has none: it plays a match on any channel its host
-//! gives it (nettai-frontend's `netplay::Channel`), and a larger app brings
-//! its own (a signaling server and WebRTC, say) and hands the library the
-//! agreed match and the frames.
+//! Netplay's transport, the program's own (`--room`, `--host`, `--join`):
+//! a WebRTC data channel to the other player (nettai-rtc's [`Link`]), and
+//! the handshake that starts a match on it. The library has none: it plays
+//! a match on any channel its host gives it (nettai-frontend's
+//! `netplay::Channel`).
 //!
-//! [`Datagram`] is all the handshake needs from a socket: send a datagram
-//! to the other peer, and take the next one that arrived, without waiting.
-//! Nothing is assumed of delivery: datagrams may be lost, reordered or
-//! duplicated (rennet recovers). [`Udp`] is direct play (a LAN, or the
-//! Internet with the host's port forwarded).
+//! [`Datagram`] is all the handshake needs from a transport: send a
+//! datagram to the other peer, and take the next one that arrived, without
+//! waiting; and this side's role, once known. Nothing is assumed of
+//! delivery: datagrams may be lost, reordered or duplicated (rennet
+//! recovers). A [`Link`] meets the other player in a room of the signaling
+//! server, or directly (the host listens on a UDP port, the joiner dials
+//! it: a LAN, or the Internet with the host's port forwarded); it makes the
+//! connection again when it drops, and says how long it has been down,
+//! which the match waits out.
 //!
 //! What the peers say before the match is the library's lobby and
 //! handshake (`nettai_frontend::lobby`, sans IO): the settings agreed, then
@@ -22,7 +25,6 @@
 
 use std::fmt;
 use std::io;
-use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -31,6 +33,7 @@ use nettai_frontend::lobby::{Agreement, Lobby, Settings, Status};
 pub use nettai_frontend::lobby::{Kind, RESEND, Role};
 use nettai_frontend::netplay::Channel;
 use nettai_match::Side;
+pub use nettai_rtc::Link;
 
 /// A datagram channel to the other peer.
 pub trait Datagram {
@@ -41,97 +44,64 @@ pub trait Datagram {
     /// The next datagram that has arrived into `buf`, and its length; none
     /// if nothing has. Never waits.
     fn try_recv(&mut self, buf: &mut [u8]) -> io::Result<Option<usize>>;
+
+    /// This side's role, once it is known (a room's server says which as
+    /// the player comes in).
+    fn role(&self) -> Option<Role>;
+
+    /// While the channel is down and being made again, how long it has been
+    /// (`netplay::Channel::down_for`).
+    fn down_for(&self) -> Option<Duration> {
+        None
+    }
+
+    /// What keeps it from connecting, if it knows.
+    fn problem(&self) -> Option<String> {
+        None
+    }
+
+    /// The other player, as far as this side knows: a room, an address.
+    fn describe(&self) -> String;
 }
 
 /// The largest datagram a peer sends or takes: a horizon of one-byte ticks
-/// and a frame's header with room to spare, under the 1,500-byte Ethernet
-/// frame.
+/// and a frame's header with room to spare.
 pub const MAX_DATAGRAM: usize = 64 * 1024;
 
-/// UDP to one other peer.
-pub struct Udp {
-    socket: UdpSocket,
-    /// The other peer, once known (a host learns it from the first Hello).
-    peer: Option<SocketAddr>,
+/// What a WebRTC link's error is to the handshake and the match.
+fn io_error(e: nettai_rtc::Error) -> io::Error {
+    io::Error::other(e.0)
 }
 
-impl Udp {
-    /// A host on `port` of every IPv4 interface, waiting for a joiner: the
-    /// first lobby datagram ([`Kind::Lobby`]) that arrives names the other
-    /// peer.
-    pub fn host(port: u16) -> io::Result<Udp> {
-        let socket = UdpSocket::bind(("0.0.0.0", port))?;
-        socket.set_nonblocking(true)?;
-        Ok(Udp { socket, peer: None })
-    }
-
-    /// A host on a given address (`127.0.0.1:0` for a test on loopback).
-    pub fn host_on(addr: impl ToSocketAddrs) -> io::Result<Udp> {
-        let socket = UdpSocket::bind(addr)?;
-        socket.set_nonblocking(true)?;
-        Ok(Udp { socket, peer: None })
-    }
-
-    /// A joiner of the host at `addr` (`host:port`).
-    pub fn join(addr: impl ToSocketAddrs) -> io::Result<Udp> {
-        let peer = addr
-            .to_socket_addrs()?
-            .next()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "the host's address resolves to nothing"))?;
-        let any: SocketAddr = if peer.is_ipv4() { ([0, 0, 0, 0], 0).into() } else { (std::net::Ipv6Addr::UNSPECIFIED, 0).into() };
-        let socket = UdpSocket::bind(any)?;
-        socket.connect(peer)?;
-        socket.set_nonblocking(true)?;
-        Ok(Udp { socket, peer: Some(peer) })
-    }
-
-    pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        self.socket.local_addr()
-    }
-
-    pub fn peer(&self) -> Option<SocketAddr> {
-        self.peer
-    }
-}
-
-/// An error a UDP socket reports for an earlier datagram the other side
-/// didn't take (an ICMP "port unreachable": the host isn't up yet, or is
-/// gone); the channel itself is fine.
-fn transient(e: &io::Error) -> bool {
-    matches!(e.kind(), io::ErrorKind::ConnectionRefused | io::ErrorKind::ConnectionReset | io::ErrorKind::WouldBlock)
-}
-
-impl Datagram for Udp {
+impl Datagram for Link {
     fn send(&mut self, datagram: &[u8]) -> io::Result<()> {
-        if self.peer.is_none() {
-            // A host that hasn't heard from a joiner has no one to send to.
-            return Ok(());
-        }
-        match self.socket.send(datagram) {
-            Err(e) if transient(&e) => Ok(()),
-            r => r.map(|_| ()),
-        }
+        Link::send(self, datagram).map_err(io_error)
     }
 
     fn try_recv(&mut self, buf: &mut [u8]) -> io::Result<Option<usize>> {
-        loop {
-            let r = if self.peer.is_some() { self.socket.recv(buf).map(|n| (n, None)) } else { self.socket.recv_from(buf).map(|(n, a)| (n, Some(a))) };
-            match r {
-                Ok((n, None)) => return Ok(Some(n)),
-                Ok((n, Some(from))) => {
-                    // The first lobby datagram names the joiner; anything else
-                    // before it is ignored.
-                    if n > 0 && buf[0] == Kind::Lobby as u8 {
-                        self.socket.connect(from)?;
-                        self.peer = Some(from);
-                        return Ok(Some(n));
-                    }
-                }
-                Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(None),
-                Err(e) if transient(&e) => continue,
-                Err(e) => return Err(e),
-            }
-        }
+        let Some(d) = Link::recv(self).map_err(io_error)? else { return Ok(None) };
+        let n = d.len().min(buf.len());
+        buf[..n].copy_from_slice(&d[..n]);
+        Ok(Some(n))
+    }
+
+    fn role(&self) -> Option<Role> {
+        Link::role(self).map(|r| match r {
+            nettai_rtc::Role::Host => Role::Host,
+            nettai_rtc::Role::Join => Role::Join,
+        })
+    }
+
+    fn down_for(&self) -> Option<Duration> {
+        Link::down_for(self)
+    }
+
+    fn problem(&self) -> Option<String> {
+        Link::problem(self)
+    }
+
+    fn describe(&self) -> String {
+        Link::describe(self)
     }
 }
 
@@ -205,6 +175,19 @@ impl<D: Datagram> Channel for Connection<D> {
     fn recv(&mut self) -> Result<Option<&[u8]>, String> {
         self.try_recv_frame().map_err(|e| e.to_string())
     }
+
+    fn down_for(&self) -> Option<Duration> {
+        self.datagram.down_for()
+    }
+}
+
+/// How long a handshake waits for the other player: a host for a joiner, a
+/// joiner for the host; and for its role, the joiner's (a room's server
+/// that doesn't let it in).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Waits {
+    pub host: Duration,
+    pub join: Duration,
 }
 
 /// A netplay match being agreed, which never waits: the window polls it
@@ -212,10 +195,15 @@ impl<D: Datagram> Channel for Connection<D> {
 /// It is the library's lobby and handshake over the datagrams, this side
 /// proposing its match file's settings, ready; settings of the other's that
 /// differ stop it, saying what differs (the host isn't the only one that
-/// picks: both players' files state the match).
+/// picks: both players' files state the match). The lobby is made once the
+/// datagrams know this side's role.
 pub struct NetHandshake<D: Datagram> {
     datagram: Option<D>,
-    lobby: Lobby,
+    lobby: Option<Lobby>,
+    /// What the lobby proposes once it is made.
+    proposal: Option<(Settings, Side)>,
+    waits: Waits,
+    start: Option<Instant>,
     content: Arc<Content>,
     buf: Vec<u8>,
 }
@@ -239,13 +227,11 @@ pub struct Agreed<D: Datagram> {
 }
 
 impl<D: Datagram> NetHandshake<D> {
-    /// A handshake on `datagram` in `role` for a match on `content`,
-    /// proposing `settings` (ready) with this player's `side`; it fails if
-    /// nothing comes from the other side for `timeout`.
-    pub fn new(role: Role, datagram: D, content: &Arc<Content>, settings: Settings, side: Side, timeout: Duration) -> NetHandshake<D> {
-        let mut lobby = Lobby::new(role, content, settings, side, nettai_frontend::lobby::entropy(), timeout);
-        lobby.set_ready(true);
-        NetHandshake { datagram: Some(datagram), lobby, content: content.clone(), buf: vec![0u8; MAX_DATAGRAM] }
+    /// A handshake on `datagram` for a match on `content`, proposing
+    /// `settings` (ready) with this player's `side`; it fails if nothing
+    /// comes from the other side as long as `waits` says for its role.
+    pub fn new(datagram: D, content: &Arc<Content>, settings: Settings, side: Side, waits: Waits) -> NetHandshake<D> {
+        NetHandshake { datagram: Some(datagram), lobby: None, proposal: Some((settings, side)), waits, start: None, content: content.clone(), buf: vec![0u8; MAX_DATAGRAM] }
     }
 
     /// Step the handshake at `now`, without waiting; polling it after it
@@ -264,7 +250,7 @@ impl<D: Datagram> NetHandshake<D> {
             }
             Err(why) => {
                 // (What the lobby says last goes: a refusal.)
-                for d in self.lobby.outgoing() {
+                for d in self.lobby.as_mut().map(Lobby::outgoing).unwrap_or_default() {
                     let _ = datagram.send(&d);
                 }
                 Progress::Failed(why)
@@ -272,28 +258,58 @@ impl<D: Datagram> NetHandshake<D> {
         }
     }
 
+    /// Make the lobby once the role is known: whether it is made. Until
+    /// then the datagrams are polled (which, in a room, is what brings the
+    /// role), for as long as a joiner waits.
+    fn make_lobby(&mut self, datagram: &mut D, now: Instant) -> Result<bool, String> {
+        let start = *self.start.get_or_insert(now);
+        if self.lobby.is_some() {
+            return Ok(true);
+        }
+        let Some(role) = datagram.role() else {
+            datagram.try_recv(&mut self.buf).map_err(|e| format!("network error: {e}"))?;
+            if now.duration_since(start) >= self.waits.join {
+                return Err(match datagram.problem() {
+                    Some(why) => format!("no way to the other player: {why}"),
+                    None => "no answer from the signaling server".into(),
+                });
+            }
+            return Ok(false);
+        };
+        let (settings, side) = self.proposal.take().expect("the proposal");
+        let timeout = if role == Role::Host { self.waits.host } else { self.waits.join };
+        let mut lobby = Lobby::new(role, &self.content, settings, side, nettai_frontend::lobby::entropy(), timeout);
+        lobby.set_ready(true);
+        self.lobby = Some(lobby);
+        Ok(true)
+    }
+
     fn step(&mut self, datagram: &mut D, now: Instant) -> Result<Option<Agreement>, String> {
+        if !self.make_lobby(datagram, now)? {
+            return Ok(None);
+        }
+        let lobby = self.lobby.as_mut().expect("made");
         while let Some(n) = datagram.try_recv(&mut self.buf).map_err(|e| format!("network error: {e}"))? {
-            self.lobby.receive(now, &self.buf[..n]);
+            lobby.receive(now, &self.buf[..n]);
         }
         // This program's policy: the settings both files state, or none.
-        match self.lobby.theirs() {
-            Some(Ok(theirs)) if theirs != self.lobby.mine() => {
-                let differs = self.lobby.mine().differences(&self.content, theirs).join("; ");
-                self.lobby.refuse(&format!("the two players' matches differ ({differs})"));
+        match lobby.theirs() {
+            Some(Ok(theirs)) if theirs != lobby.mine() => {
+                let differs = lobby.mine().differences(&self.content, theirs).join("; ");
+                lobby.refuse(&format!("the two players' matches differ ({differs})"));
             }
             Some(Err(why)) => {
                 let why = format!("the other player's match can't be played here ({why})");
-                self.lobby.refuse(&why);
+                lobby.refuse(&why);
             }
             _ => {}
         }
-        let done = match self.lobby.poll(now) {
+        let done = match lobby.poll(now) {
             Status::Pending => None,
             Status::Agreed(a) => Some(Ok(a.clone())),
             Status::Failed(why) => Some(Err(why.to_string())),
         };
-        for d in self.lobby.outgoing() {
+        for d in lobby.outgoing() {
             datagram.send(&d).map_err(|e| format!("network error: {e}"))?;
         }
         done.transpose()
@@ -307,7 +323,7 @@ fn memory_pair() -> (Memory, Memory) {
     use std::sync::{Arc, Mutex};
     let a = Arc::new(Mutex::new(std::collections::VecDeque::new()));
     let b = Arc::new(Mutex::new(std::collections::VecDeque::new()));
-    (Memory { inbox: a.clone(), outbox: b.clone() }, Memory { inbox: b, outbox: a })
+    (Memory { inbox: a.clone(), outbox: b.clone(), role: Role::Host }, Memory { inbox: b, outbox: a, role: Role::Join })
 }
 
 /// One end of [`memory_pair`].
@@ -315,6 +331,7 @@ fn memory_pair() -> (Memory, Memory) {
 struct Memory {
     inbox: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>>,
     outbox: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<Vec<u8>>>>,
+    role: Role,
 }
 
 #[cfg(test)]
@@ -330,6 +347,14 @@ impl Datagram for Memory {
         buf[..n].copy_from_slice(&d[..n]);
         Ok(Some(n))
     }
+
+    fn role(&self) -> Option<Role> {
+        Some(self.role)
+    }
+
+    fn describe(&self) -> String {
+        "memory".into()
+    }
 }
 
 #[cfg(test)]
@@ -343,6 +368,15 @@ mod tests {
 
     fn triple() -> Settings {
         Settings { game: "exe6".into(), rounds: vec![RoundSettings::default(); TRIPLE_BATTLE] }
+    }
+
+    fn waits(both: Duration) -> Waits {
+        Waits { host: both, join: both }
+    }
+
+    /// Links that find each other on this machine, with no STUN server.
+    fn config() -> nettai_rtc::Config {
+        nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, ..nettai_rtc::Config::default() }
     }
 
     /// Two handshakes polled in turn on this thread (neither waits), until
@@ -365,21 +399,16 @@ mod tests {
         ended.map(Option::unwrap)
     }
 
-    /// Both players' handshakes on UDP on this machine, polled in turn on
-    /// one thread (the window's frames): neither waits, and they agree the
-    /// same match, each player's side on their side; then a frame goes
-    /// each way on the connection.
-    #[test]
-    fn a_udp_handshake_on_localhost_agrees_the_match() {
+    /// Both players' handshakes on `links` (the host's, then the joiner's),
+    /// polled in turn on one thread (the window's frames): neither waits,
+    /// and they agree the same match, each player's side on their side;
+    /// then a frame goes each way on the connection.
+    fn agree_on(links: [Link; 2]) {
         let content = nettai_match::testing::exe6_content();
-        let host = Udp::host_on("127.0.0.1:0").unwrap();
-        let joiner = Udp::join(host.local_addr().unwrap()).unwrap();
-        let timeout = Duration::from_secs(10);
+        let timeout = Duration::from_secs(20);
         let sides = [side(&content, 11), side(&content, 22)];
-        let shakes = [
-            NetHandshake::new(Role::Host, host, &content, triple(), sides[0].clone(), timeout),
-            NetHandshake::new(Role::Join, joiner, &content, triple(), sides[1].clone(), timeout),
-        ];
+        let [host, joiner] = links;
+        let shakes = [NetHandshake::new(host, &content, triple(), sides[0].clone(), waits(timeout)), NetHandshake::new(joiner, &content, triple(), sides[1].clone(), waits(timeout))];
         let [Progress::Agreed(mut h), Progress::Agreed(mut j)] = both(shakes, timeout) else { panic!("not agreed") };
         assert_eq!((h.agreement.side, j.agreement.side), (0, 1));
         assert_eq!(h.agreement.seed, j.agreement.seed);
@@ -399,7 +428,32 @@ mod tests {
                 }
                 std::thread::sleep(Duration::from_millis(1));
             }
+            assert_eq!(Channel::down_for(conn), None);
         }
+    }
+
+    /// Direct connect on this machine: the host on a port, the joiner
+    /// dialing it.
+    #[test]
+    fn a_direct_handshake_on_localhost_agrees_the_match() {
+        let host = Link::host(0, config()).unwrap();
+        let joiner = Link::join(&format!("127.0.0.1:{}", host.port().unwrap()), config()).unwrap();
+        agree_on([host, joiner]);
+    }
+
+    /// A room of a signaling server (in process): the first in hosts.
+    #[test]
+    fn a_room_handshake_agrees_the_match() {
+        let server = nettai_rtc::testing::Server::start();
+        let mut host = Link::room(&server.url(), "handshake", config()).unwrap();
+        let start = Instant::now();
+        while host.role().is_none() {
+            assert!(start.elapsed() < Duration::from_secs(10), "not let in");
+            host.poll().unwrap();
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let joiner = Link::room(&server.url(), "handshake", config()).unwrap();
+        agree_on([host, joiner]);
     }
 
     /// Two match files that state other rounds: no match, both sides saying
@@ -412,10 +466,7 @@ mod tests {
         let timeout = Duration::from_secs(10);
         let mut five = triple();
         five.rounds.resize(5, RoundSettings::default());
-        let shakes = [
-            NetHandshake::new(Role::Host, x, &content, triple(), side(&content, 11), timeout),
-            NetHandshake::new(Role::Join, y, &content, five, side(&content, 22), timeout),
-        ];
+        let shakes = [NetHandshake::new(x, &content, triple(), side(&content, 11), waits(timeout)), NetHandshake::new(y, &content, five, side(&content, 22), waits(timeout))];
         let [Progress::Failed(h), Progress::Failed(j)] = both(shakes, timeout) else { panic!("agreed") };
         let said = [h, j];
         assert!(said.contains(&"can't play: the two players' matches differ (the rounds: 5 here, 3 there)".to_string()) || said.contains(&"can't play: the two players' matches differ (the rounds: 3 here, 5 there)".to_string()), "{said:?}");
@@ -426,13 +477,35 @@ mod tests {
     #[test]
     fn a_handshake_nobody_answers_times_out() {
         let content = nettai_match::testing::exe6_content();
-        let (x, _nobody) = memory_pair();
+        let (_nobody, x) = memory_pair();
         let timeout = Duration::from_secs(10);
-        let mut join = NetHandshake::new(Role::Join, x, &content, triple(), side(&content, 3), timeout);
+        let mut join = NetHandshake::new(x, &content, triple(), side(&content, 3), Waits { host: timeout * 10, join: timeout });
         let t0 = Instant::now();
         assert!(matches!(join.poll(t0), Progress::Pending));
         assert!(matches!(join.poll(t0 + timeout - Duration::from_millis(1)), Progress::Pending));
         let Progress::Failed(why) = join.poll(t0 + timeout) else { panic!("no timeout") };
         assert_eq!(why, "no answer from the other side");
+    }
+
+    /// A room whose server can't be reached: the handshake gives up after
+    /// the joiner's wait, saying why.
+    #[test]
+    fn a_room_nobody_runs_gives_up() {
+        let content = nettai_match::testing::exe6_content();
+        // (A port nothing listens on: bound, then let go.)
+        let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let link = Link::room(&format!("ws://127.0.0.1:{port}"), "nobody", config()).unwrap();
+        let timeout = Duration::from_secs(2);
+        let mut shake = NetHandshake::new(link, &content, triple(), side(&content, 3), waits(timeout));
+        let t0 = Instant::now();
+        let why = loop {
+            match shake.poll(Instant::now()) {
+                Progress::Pending => assert!(t0.elapsed() < timeout * 3, "no end"),
+                Progress::Failed(why) => break why,
+                Progress::Agreed(_) => panic!("agreed with nobody"),
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        assert!(why.starts_with("no way to the other player: can't reach the signaling server"), "{why}");
     }
 }

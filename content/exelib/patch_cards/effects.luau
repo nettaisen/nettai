@@ -43,13 +43,14 @@ function effects.bug(e: PatchCardEffect): PatchCardEffect
     return effect(copy)
 end
 
--- Max HP: plus or minus `n` (a multiple of 10).
+-- Max HP: plus or minus `n` (a multiple of 10: the original's card table keeps it in tens, a byte, which its card
+-- screen shows times ten; the amount is the HP itself).
 function effects.hp(n: number): PatchCardEffect
     if n % 10 ~= 0 then
         error(string.format("patch card HP %d: the cards change HP by tens", n))
     end
     local kind = if n >= 0 then "hp_add" else "hp_sub"
-    return effect({ kind = kind :: any, amount = whole(math.abs(n) / 10, "hp", 255) })
+    return effect({ kind = kind :: any, amount = whole(math.abs(n), "hp", 2550) })
 end
 
 -- Max HP: plus or minus `n` percent.
