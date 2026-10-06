@@ -1120,14 +1120,17 @@ pub fn navicust<'c>(content: &'c Content, compat: &Compat, list: &[u8], compress
 
 /// A save's patch cards (each card's number and whether it is switched on,
 /// in the list's order: [`crate::save::Save::patch_cards`]) as the rules'
-/// setup's `patch_cards`, `{ card, on }` each, by `version`'s numbers
-/// (compat's patch-cards.toml).
+/// setup's `patch_cards`: the cards switched on, by `version`'s numbers
+/// (compat's patch-cards.toml). (A card switched off does nothing in battle:
+/// a side's cards are the ones that apply.)
 pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, list: &[(u8, bool)]) -> Result<Vec<Fact<'static>>, String> {
     let mut cards = Vec::new();
     for &(n, on) in list {
         let key = compat.patch_card(n, version)?;
         let card = content.defs.patch_card_by_key(key).ok_or_else(|| format!("the content has no patch card {key}"))?;
-        cards.push(Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))]));
+        if on {
+            cards.push(Fact::Value(Value::Def(Registry::PatchCard, card.0)));
+        }
     }
     Ok(cards)
 }

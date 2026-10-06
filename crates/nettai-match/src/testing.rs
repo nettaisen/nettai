@@ -101,21 +101,17 @@ pub fn navicust_expansions(content: &Content, side: &crate::Side) -> Option<u8> 
 }
 
 /// Patch cards of `game` from a list of their names, comma-separated, in
-/// the order they apply (`canodumb,-shadow`: a name after `-` installed but
-/// switched off), as the rules' `patch_cards` take them.
+/// the order they apply (`canodumb,shadow`), as the rules' `patch_cards`
+/// take them.
 pub fn patch_cards(content: &Content, game: &str, list: &str) -> Vec<nettai_battle::rules::Fact<'static>> {
     use nettai_battle::rules::Fact;
     use nettai_content_api::{Registry, Value};
     list.split(',')
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .map(|item| {
-            let (name, on) = match item.strip_prefix('-') {
-                Some(name) => (name, false),
-                None => (item, true),
-            };
+        .map(|name| {
             let card = crate::ids::patch_card(content, game, name).unwrap_or_else(|| panic!("no patch card {name:?} in {game}"));
-            Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))])
+            Fact::Value(Value::Def(Registry::PatchCard, card.0))
         })
         .collect()
 }

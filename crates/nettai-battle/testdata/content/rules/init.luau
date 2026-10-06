@@ -57,7 +57,7 @@ local rules_: Rules = {
         folder = schema.list({ chip = "chip", code = "code" }, 30),
         regular_chip = "u8?",
         tag_chips = schema.list("u8", 2),
-        patch_cards = schema.list({ card = "patch_card", on = "bool" }, 32),
+        patch_cards = schema.list("patch_card", 32),
         navicust_expansions = "u8?",
         navicust_programs = schema.list({
             program = "navicust_program",
