@@ -446,6 +446,9 @@ pub struct AbsorbedObstacle {
 pub struct Actors {
     slots: [ActorData; SLOTS],
     in_use: u8,
+    /// The actors' content actions' states, each at its actor's slot (its
+    /// attack state's `ActionVars::Content` says which layout).
+    action_states: nettai_content_api::StateArena<SLOTS>,
 }
 
 impl Actors {
@@ -464,7 +467,32 @@ impl Actors {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;
         self.slots[slot as usize] = ActorData::default();
+        self.action_states.reset(slot as usize, 0);
         Some(ActorId(slot))
+    }
+
+    /// The actor's content action's state, if its attack state holds one.
+    pub fn action_state(&self, id: ActorId) -> Option<nettai_content_api::StateRef<'_>> {
+        match self.get(id).attack.action {
+            crate::kinds::player::actions::ActionVars::Content(s) => Some(self.action_states.state(id.0 as usize, s)),
+            _ => None,
+        }
+    }
+
+    pub fn action_state_mut(&mut self, id: ActorId) -> Option<nettai_content_api::StateMut<'_>> {
+        match self.get(id).attack.action {
+            crate::kinds::player::actions::ActionVars::Content(s) => {
+                Some(self.action_states.state_mut(id.0 as usize, s))
+            }
+            _ => None,
+        }
+    }
+
+    /// Give the actor's attack state a content action's state of layout
+    /// `layout`, `size` bytes, zeroed, in place of what it held.
+    pub fn set_action_state(&mut self, id: ActorId, layout: nettai_content_api::StateId, size: usize) {
+        self.get_mut(id).attack.action = crate::kinds::player::actions::ActionVars::Content(layout);
+        self.action_states.reset(id.0 as usize, size);
     }
 
     pub fn free(&mut self, id: ActorId) {
