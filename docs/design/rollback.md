@@ -82,9 +82,9 @@ the frame's record combines both shares (`exe6::tick_input`).
 
 | Former input | Now |
 |---|---|
-| `PlayerTick::in_custom` | `custom::Side::in_custom`, carried to the fight by the simulated link (`link::Link`) |
+| `PlayerTick::in_custom` | `custom::Side::in_custom`, which the fight reads at once (`RoundState::remote_status`) |
 | `TickEvents::local_confirm` | Each player's screen, from their buttons |
-| `TickEvents::exchange` | Each player's result (`custom::Side::sent`), arriving 50 + `link_delay` ticks after it is sent |
+| `TickEvents::exchange` | Each player's result (`custom::Side::sent`), arriving 50 ticks after it is sent (its 50 words) |
 | `TickEvents::link_closed` | Still an event (the end state's link session closing) |
 
 The events are part
@@ -92,9 +92,10 @@ of the frame's input record: one player's input carries them (the golden-trace r
 both peers receive them like any input, and a peer that predicted "no events" rolls back when they arrive.
 Prediction repeats the buttons and never repeats events (`Game::predict` for `Battle`).
 
-The simulated link also delays the fight's view of the buttons by `RoundSetup::link_delay` ticks (4 in the
-recordings, as the original's link queue); the custom screens read them at once. This is part of the game, not
-of the netplay layer, whose own present delay and prediction come on top.
+The engine has no link of its own: the fight and the custom screens read a tick's buttons at once. The only
+delay is the netplay layer's present delay (`NetOptions::present_delay`, default 0: each player's own, changed
+during a match), and prediction. The original's link queue (4 ticks in the recordings) is the recordings' cable,
+which their replay reproduces at its boundary (battle-flow.md §6.1).
 
 For live netplay and synthetic matches, `standin::StandInBattle` closes the link at once at the end of a round;
 everything else is the engine, so the players' buttons are the whole input.

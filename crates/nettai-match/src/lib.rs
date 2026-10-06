@@ -37,7 +37,6 @@ pub mod testing;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::Content;
 use nettai_battle::custom::{BattleFolder, PlayerSetup};
-use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage, effects};
@@ -334,7 +333,6 @@ impl Match {
             later_stages: self.arena.later.clone().map(|p| Stage { stage: p.stage, background: background_id(content, game, &p) }),
             low_hp_music_latched: false,
             players: [player(0), player(1)],
-            link_delay: Link::RECORDED_DELAY,
         }
     }
 }
