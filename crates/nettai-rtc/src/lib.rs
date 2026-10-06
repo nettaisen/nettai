@@ -129,12 +129,6 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-impl Error {
-    pub(crate) fn new(what: impl fmt::Display) -> Error {
-        Error(what.to_string())
-    }
-}
-
 /// An ICE candidate as the browser's `RTCIceCandidateInit` has it: the
 /// candidate line, and the media section it is of.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
