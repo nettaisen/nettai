@@ -384,25 +384,38 @@ here: the form changes at the turn's start (battle-flow.md §3.4.1). The transfo
 never read in battle and is not modeled; its +4 ("Cross change") is always 0xFF (its only writer is dead code).
 All 20 recorded transformations match **[dumps]** (Crosses 2, 5, 6, 7, 0x0A, Beast Out 0x0B, 0x0C, 0x11).
 
-### 4.1 nettai's extension: a setup's Cross list
+### 4.1 A player's Crosses: the setup's list
 
-**Not the original's.** The original's window offers only its version's five Crosses that the save owns. A
-nettai setup can name the Crosses instead: the `cross_list` fact (a match's side's `nettai_match::CrossList`), up to five forms, of
-either game, in the order the window lists them. nettai-frontend's live play uses it to offer five of all ten
-Crosses (docs/frontend.md §2). Without a list (every recording, the chip lab, the netplay stand-in) nothing below
-applies and the screen is the original's.
+The original keeps which Crosses a player has as five event flags of the save, one for each of its version's
+Crosses by number, and its window offers those. A nettai setup states them as **one list**: the cross system's
+`crosses` (`form[5]`, the engine's `PlayerFact::CrossList`), the Crosses the player has, up to five, in the order
+the window lists them, filled from the front. There are no flags in a setup.
 
+- **A save's list is its window.** A boundary (exe6-compat's `Unlocks::owned_crosses`: a recording's setup, a save
+  import) writes the Crosses the flags own, of the console's version, in Cross-number order. A save the game makes
+  owns its Crosses from the first on, so each sits in the list at its Cross number, the original's place. Flags
+  with a gap (a Cross owned above one that isn't, which only a save written by hand has: the lab's
+  `custom/one-cross-owned` pokes TomahawkCross alone) give a list that closes the gap, the Cross at an earlier
+  place than the original's.
+- **The list is always stated.** It has no default, and nothing is read as "the version's own five": an empty list
+  is no Crosses (a save before its first one), and a setup that doesn't state the list starts no round, as one
+  that doesn't state its version (`SideRules::for_player`: a list of definitions without a default is unstated
+  until something states it, `ContentState::unstate`). Tools state it for a person: the editor fills in the
+  version's own five when the version is chosen, a random match states the five it picked.
+- **Not the original's: Crosses of either game.** A list may hold any of MegaMan's ten. nettai-frontend's live
+  play picks five of them for each player (docs/frontend.md §2). Every recording's, the chip lab's and the netplay
+  stand-in's lists are a save's own version's, and the screen is the original's.
 - **Places.** The window's entries, the Cross chosen and the round's record of Crosses used go by a Cross's place
-  among the player's Crosses (the cross system's `offered` and `crosses_used`): the version's Cross number without
-  a list, the place in the list with one (window.luau's `cross_at` and `owns_cross`, as `Unlocks`'). Everything else is as above:
-  a Cross used this round and the navi's starting form aren't offered, A chooses, B takes it back, the face is the
-  Cross's, OK sends the Cross's form (its form in Beast Out when the navi is in a Beast form).
-- **What a list offers.** Its entries that are Crosses (a form of kind `cross`; anything else is never offered),
+  in the list (the cross system's `offered` and `crosses_used`; window.luau's `cross_at`). Everything else is as
+  above: a Cross used this round and the navi's starting form aren't offered, A chooses, B takes it back, the face
+  is the Cross's, OK sends the Cross's form (its form in Beast Out when the navi is in a Beast form).
+- **What the list offers.** Its entries that are Crosses (a form of kind `cross`; anything else is never offered),
   and, while the navi is in a Beast form, only the Crosses whose Beast it is (that Beast's game's: their forms in
-  Beast Out are of that Beast).
-- **Beast Out from a Cross** takes the navi to that Cross's form in Beast Out, whichever game the Cross is from
-  (`Unlocks::beast_form`): a Falzar player in HeatCross becomes HeatCross Beast, of Gregar's Beast. Beast Out from
-  the base form is the player's own game's Beast.
+  Beast Out are of that Beast). A save's are its own version's, as its Beast is.
+- **Beast Out from a Cross** takes the navi to that Cross's form in Beast Out, whichever game the Cross is from:
+  a Falzar player in HeatCross becomes HeatCross Beast, of Gregar's Beast. The Beast's game is the form's own
+  (the beast system's `beast_game`: a form that isn't the base form is its own version's); Beast Out from the base
+  form is the player's own game's Beast.
 - **The Beast's game** (`Unlocks::beast_game`) is the game of the Beast the navi goes into or is in: the player's
   game, but a form of the other game's (one of its Crosses, or one of its Beast forms) is that game's. Beast Over
   (Beast Out when tired) is that game's, and so is the screen's Beast Out roar (§9); a frontend draws the Beast Out
@@ -518,7 +531,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 - **Unit tests** (in this repository, with made-up chips): the shuffle on four recorded folders, the joypad's
   repeat, the builder (Program Advances, modifiers, class counts), and scripted screens (dealing and layout, the
   timeline from opening to sending, the selection rules, invalid chips, Beast Out and a Cross for both games,
-  DustCross's scrap, hand sizes, SELECT), and a setup's Cross list (§4.1: either game's Crosses offered and
+  DustCross's scrap, hand sizes, SELECT), and Crosses of both games in a setup's list (§4.1: either game's Crosses offered and
   chosen, Beast Out from the other game's Cross with its roar and Beast Over, the window in a Beast form, entries
   that aren't Crosses). nettai-frontend's `a_falzar_player_plays_a_gregar_cross` plays one through on content/exe6:
   HeatCross chosen by a Falzar player, its form, element, buster and charged flame, then Beast Out from it into
@@ -655,8 +668,8 @@ reads depends on it.
 - **The sounds** a tick made (`Drawn::sounds`, `ScreenSound`), in the order its states call `PlaySoundEffect`;
   the battle plays each by its role for the screen's player only (docs/engine/audio.md §1 lists them). One is by
   the console's version: Beast Out's first sound (`sub_802774C`, the BeastOut chip's `sub_8027624`) is 0x193 on
-  Falzar and 0x191 on Gregar (`custom_beast_out_falzar`, `_gregar`). With a setup's Cross list it is by the Beast's
-  game (§4.1: a Falzar player in HeatCross roars Gregar's).
+  Falzar and 0x191 on Gregar (`custom_beast_out_falzar`, `_gregar`). It is by the Beast's
+  game (§4.1: a Falzar player in HeatCross, which only nettai's lists of both games have, roars Gregar's).
 
 What isn't in the look derives from the screen: the window's place (the phase's ticks), the slots' kinds and
 states, the cursor, the picks, and from the battle the camera's jitter, which in Beast Out's states, the Cross

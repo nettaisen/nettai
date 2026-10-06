@@ -343,9 +343,9 @@ over, and the frames go on being numbered from the set's first tick.
   chips, and not the five the US game has no routine for). The codes lean to
   two the folder favors, and `*`. Each console shuffles its folder from
   the seed at the round's init, as before.
-- **Five Crosses for each Cross window**, drawn from MegaMan's ten, both
-  games' (the setup's Cross list, nettai's extension:
-  docs/engine/custom-screen.md §4.1). A Cross of the other game is its own
+- **Five Crosses for each Cross window**, picked from MegaMan's ten, both
+  games' (the setup's list of the player's Crosses; one of both games is
+  nettai's: docs/engine/custom-screen.md §4.1). A Cross of the other game is its own
   form, buster, charged shot, element and face; Beast Out from it is its
   own Beast form (HeatCross Beast, of Gregar's Beast, for a Falzar player).
 - **Each player's game**, Falzar or Gregar: their Beast (Beast Out from
@@ -656,8 +656,8 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
-  navi goes into (`custom::beast_pictures`: the player's version's, but
-  with a Cross list a form of another version goes into that version's), so a
+  navi goes into (`custom::beast_pictures`: the player's version's from
+  the base form, and a form's own version's from a Cross), so a
   Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
@@ -1075,7 +1075,7 @@ A match file is everything a round needs, chosen before the battle: the
 game (which is its rules: a game has one ruleset, so a match names none),
 the arena, and each side's navi, navi code level, stats, folder, SP deletion
 times, patch cards and NaviCust, and what its game's rules take of it
-besides (its facts: EXE6's version, Cross list and Beast Out, EXE5's karma
+besides (its facts: EXE6's version, Crosses and Beast Out, EXE5's karma
 and souls), in TOML. **A match is of one game**, named
 once at the file's top: everything else is a name in that game's namespace
 (`cannon`, `megaman`, `netbattle-43`), looked up there alone
@@ -1104,11 +1104,10 @@ later = [                                  # optional: the set's later rounds (e
 
 [left]                                     # you (side 0); then [right]
 navi = "megaman"
-version = "gregar"                         # the side's facts (see below). EXE6's: version, gregar or falzar: a side states
-cross_list = ["heatcross", "spoutcross"]   # its own (none is assumed); cross_list, else the version's own five; crosses,
-crosses = [true, true, false, true, true]  # which of the version's five it owns (else all); beast_out, else unlocked
-beast_out = false                          # (the save's flag 0xE0); bug_frags, else 0
-bug_frags = 0
+version = "gregar"                         # the side's facts (see below). EXE6's: version, gregar or falzar, and crosses,
+crosses = ["heatcross", "spoutcross"]      # up to five of either version ([] none): a side states both (none is
+beast_out = false                          # assumed); beast_out, else unlocked (the save's flag 0xE0); bug_frags,
+bug_frags = 0                              # else 0
 cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 level = 0                                  # optional: the navi code's level, 0-14 (see below)
 folder = [                                 # 30 entries, [chip, code] ([] empty: a folder being made)
@@ -1139,7 +1138,7 @@ programs = [                               # in the save's order; x, y the cente
 **A side's facts.** What a side brings that its game's rules take is the
 game's own to say: each system of the game's ruleset declares a `setup`
 (content/exe6/rules/cross: `setup = { version = { "gregar", "falzar" },
-crosses = "bool[5]", cross_list = "form[5]" }`; content/exe5/rules/light_dark:
+crosses = "form[5]" }`; content/exe5/rules/light_dark:
 `setup = { karma = "u16" }`), and every field of every system's setup is a
 fact a side of that game may state, as a key of its table by the field's
 name. `nettai-match` names none of them (`nettai_match::facts`): a side
@@ -1153,25 +1152,31 @@ match files, its descriptions and the editor without a line of Rust.
   (`"heatcross"`); a list as a TOML array, no longer than it holds, the
   entries past the last given empty (`souls = []`: none).
 - A fact a file leaves out is what the rules say a side that says nothing
-  has (`setup_defaults`: EXE6's every Cross owned and Beast Out; EXE5's
+  has (`setup_defaults`: EXE6's Beast Out; EXE5's
   every soul, both unisons and a fresh save's karma, 500), else zero. A
   file is written with only the facts that differ from that.
-- An enum without a default is **required**: nothing fills one in. EXE6's
-  `version` is the one such: a side of EXE6 states `falzar` or `gregar`
-  (its Beast, its own Crosses, its pictures and its navi's version byte),
-  the engine itself starts no round whose player's setup leaves it
-  unstated, and a file without it is refused with where it is missing
-  ("left: no version: a side of exe6 states its own (gregar or falzar);
-  none is assumed"). A new match's sides have none until they are given
-  theirs (the editor shows nothing chosen), and a random match picks each
-  side's from its seed and writes it.
+- An enum or a list of definitions without a default is **required**:
+  nothing fills one in, and an empty list is a statement (none), not a
+  list left out. EXE6 has both kinds: its `version`, `falzar` or `gregar`
+  (its Beast, its pictures and its navi's version byte), and its
+  `crosses`, the Crosses the side has (`[]` for none; nothing is read as
+  "its version's own five"). The engine itself starts no round whose
+  player's setup leaves either unstated, and a file without one is
+  refused with what is missing ("left: no version: a side of exe6 states
+  its own (gregar or falzar); none is assumed"; "left: no crosses: a side
+  of exe6 states its own (up to 5 forms, an empty list for none); none is
+  assumed"). A new match's sides have neither until they are given
+  theirs: the editor shows nothing chosen, and once the version is chosen
+  it fills in that version's own five for the person to edit; a random
+  match picks each side's from its seed and writes them.
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
   key no system declares ("left: no field \"karm\" (a side of exe5 takes
   karma, chaos_unison, soul_unison, souls)"); a value that isn't
   the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
   no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
-  twice in a list; and, for the one list the engine knows by its role (its
-  form list, EXE6's `cross_list`), a form that is none of the side's navi's
+  twice in a list, or an empty entry before one (a list is filled from
+  the front); and, for the one list the engine knows by its role (its
+  form list, EXE6's `crosses`), a form that is none of the side's navi's
   own lists. What a value means is the rules' alone: no range is checked
   beyond the type's.
 - Three facts the engine knows by role (`PlayerFact`: the version, Beast
@@ -1179,10 +1184,11 @@ match files, its descriptions and the editor without a line of Rust.
   navi's version byte in its stats, the forms a random match's form list is
   picked from.
 
-EXE6's facts: `version` (required); `cross_list`, up to five Crosses of
-either version for the Cross window, in its order (none: the version's
-own); `crosses`, which of the version's own five the side owns (a save's
-flags; all, unless said); `beast_out`; `bug_frags`. EXE5's: `karma` (the
+EXE6's facts: `version` (required); `crosses` (required), up to five
+Crosses of either version for the Cross window, in its order (a save's
+are those of its version's five it owns, which the original keeps as
+five flags and a save import writes as the list: `[]` for a save that
+owns none); `beast_out`; `bug_frags`. EXE5's: `karma` (the
 light/dark value; dark under 470), `souls` (up to sixteen, either
 version's; every soul unless said), `soul_unison` and `chaos_unison` (the
 save's event flags 0 and 0x236). An EXE5 match has no
@@ -1294,8 +1300,8 @@ reads back as itself. The SP navi chips' damage goes by them
 match of the save's game: a save of the other game makes a new match of its
 game first) of EXE6, a .sav as an emulator keeps it, read by
 `exe6_compat::save`, gives a side its version, Beast Out and the Crosses it
-owns (as a Cross list, unless it owns all
-five), the navi code's level (a link navi keeps its own when the save has no
+owns (its `crosses`: those of its version's five its flags own, in the
+Cross numbers' order), the navi code's level (a link navi keeps its own when the save has no
 code) and the SP times; its folder, NaviCust, patch cards and stats are not
 read yet.
 
@@ -1505,10 +1511,11 @@ is said with where it is:
   MegaMan; every program fits the board, none overlaps another, the copies of
   one program in one color are all compressed or all not (the save keeps
   one flag for them), and the stats block holds only what a save keeps;
-- a Cross list only in a game whose rules have the forms system, of the navi's
-  Crosses (a navi that changes form), at most five, none twice;
-- a soul list only in a game whose rules have the souls system, each a soul
-  of the game's (a form of kind `soul`), none twice, of either version;
+- a side's facts its game's rules' (`nettai_match::facts::check`, above):
+  each one the rules require stated (EXE6's version and its Crosses), every
+  definition the game's and once in its list with no gap before it, and
+  the form list (EXE6's Crosses) forms of the navi's own lists (none for a
+  navi that doesn't change form);
 - karma 0 to 1000, and other than 500 only with rules that take it;
 - patch cards only in a game whose rules have the patch-cards system, each
   installed once, at most 32, their MB together at most 80 (EXE6's menu adds
