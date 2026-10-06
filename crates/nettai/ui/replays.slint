@@ -71,9 +71,10 @@ component Row {
         padding-left: 30px;
         padding-right: 26px;
         spacing: 16px;
-        VerticalLayout {
+        // (On a phone the game and the date go over the navis.)
+        if !Theme.compact: VerticalLayout {
             alignment: center;
-            width: Theme.compact ? 70px : 92px;
+            width: 92px;
             Text {
                 text: root.entry.game;
                 color: Theme.gold;
@@ -94,6 +95,13 @@ component Row {
             alignment: center;
             horizontal-stretch: 1;
             spacing: 2px;
+            if Theme.compact: Text {
+                text: root.entry.game + "  ·  " + Format.date(root.entry.year, root.entry.month, root.entry.day, root.entry.hour, root.entry.minute);
+                color: Theme.gold;
+                font-size: 10px;
+                font-weight: Theme.bold;
+                overflow: elide;
+            }
             HorizontalLayout {
                 spacing: 8px;
                 Text {
@@ -129,7 +137,7 @@ component Row {
             }
         }
 
-        HorizontalLayout {
+        if !Theme.compact: HorizontalLayout {
             spacing: 3px;
             alignment: end;
             for r in root.entry.rounds: Pip {

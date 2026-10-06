@@ -119,10 +119,14 @@ export component AppWindow inherits Window {
     changed width => {
         Theme.window-width = self.width;
     }
+    changed height => {
+        Theme.window-height = self.height;
+    }
     init => {
         Theme.compact = self.compact;
         Theme.portrait = self.portrait;
         Theme.window-width = self.width;
+        Theme.window-height = self.height;
     }
 
     Backdrop {
