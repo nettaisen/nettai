@@ -52,14 +52,6 @@ pub struct PlayerSetup {
     /// given: their defaults (`setup_defaults`, the rest zero;
     /// `PlayerSetup::set_fact` writes one by name).
     pub rules: Option<nettai_content_api::Block>,
-    /// The patch cards the player has installed (`crate::patch_cards`):
-    /// their rules' rules apply them (EXE6's rules/patch_cards).
-    pub patch_cards: crate::patch_cards::PatchCards,
-    /// The player's NaviCust (`crate::navicust`), which their rules'
-    /// rules compile into the navi's stats as the round is set up (EXE6's
-    /// rules/navicust); none: the stats are the setup's as they are (a
-    /// recording's, which the original's NaviCust has already made).
-    pub navicust: Option<crate::navicust::NaviCust>,
     /// The player's auto battle data (EXE5's, `crate::auto_battle`),
     /// which a navi in auto battle on the other side plays; none: empty. (A
     /// recording's; match files and netplay don't carry them yet.)
@@ -73,8 +65,6 @@ impl Default for PlayerSetup {
             joypad_phase: 0,
             console: ConsoleSetup::default(),
             rules: None,
-            patch_cards: Default::default(),
-            navicust: None,
             auto_battle: Default::default(),
         }
     }

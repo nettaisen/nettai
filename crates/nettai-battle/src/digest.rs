@@ -204,6 +204,7 @@ impl Hash for Battle {
             sound: _,
             outcome,
             folder_check: _,
+            validation: _,
         } = self;
         setup.hash(h);
         stats.hash(h);

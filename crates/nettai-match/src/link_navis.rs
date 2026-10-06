@@ -41,10 +41,10 @@ mod tests {
     fn with_link_navi(content: &Arc<Content>, navi: &str, level: u8) -> Match {
         let mut m = crate::pick::live(content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[1];
-        (s.navi, s.navicust) = (ids::navi(content, "exe6", navi).unwrap(), None);
+        s.set_navi(&content, ids::navi(content, "exe6", navi).unwrap()).unwrap();
         s.set_level(content, Some(level)).unwrap();
         s.set_fact(content, "crosses", &[]).unwrap();
-        s.folder.regular = None;
+        { let mut f = s.folder(&content); f.regular = None; s.set_folder(&content, &f).unwrap(); }
         m
     }
 
@@ -109,7 +109,7 @@ mod tests {
         s.set_fact(&content, "sun", &[Fact::Value(Value::Bool(true))]).unwrap();
         s.set_fact(&content, "hp", &[Fact::Value(Value::Int(1234))]).unwrap();
         let st = started(&content, &m);
-        let fresh = NaviStats::fresh(m.sides[1].navi, &content).unwrap();
+        let fresh = NaviStats::fresh(m.sides[1].navi(&content), &content).unwrap();
         assert_eq!((st.reg_up, st.sun), (50, true));
         assert_eq!((st.custom_level, st.mega_level, st.giga_level), (fresh.custom_level, fresh.mega_level, fresh.giga_level));
         assert_eq!((st.max_base_hp, st.max_hp, st.hp), (800, 900, 900));
@@ -141,8 +141,8 @@ mod tests {
         let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         m.sides[0].set_level(&content, Some(14)).unwrap();
         let s = crate::check::round_stats(&content, &m).unwrap()[0];
-        let fresh = NaviStats::fresh(m.sides[0].navi, &content).unwrap();
-        let g = content.navi(m.sides[0].navi).levels.as_ref().unwrap().by_level[14];
+        let fresh = NaviStats::fresh(m.sides[0].navi(&content), &content).unwrap();
+        let g = content.navi(m.sides[0].navi(&content)).levels.as_ref().unwrap().by_level[14];
         let at = |v: u8, n: u8, most: u8| (v + n).min(most);
         assert_eq!(
             (s.attack, s.rapid, s.charge, s.mega_level, s.custom_level, s.max_hp),

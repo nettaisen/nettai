@@ -51,6 +51,22 @@ local rules_: Rules = {
         bonus = "u16",
     },
     setup = {
+        -- EXE6's: the navi, the folder, the patch cards and the NaviCust (EXE6's rules/patch_cards and rules/save
+        -- read them; the test content has no NaviCust board).
+        navi = "navi",
+        folder = schema.list({ chip = "chip", code = "code" }, 30),
+        regular_chip = "u8?",
+        tag_chips = schema.list("u8", 2),
+        patch_cards = schema.list({ card = "patch_card", on = "bool" }, 32),
+        navicust_expansions = "u8?",
+        navicust_programs = schema.list({
+            program = "navicust_program",
+            color = { "white", "pink", "yellow", "red", "blue", "green" },
+            x = "u8",
+            y = "u8",
+            rotation = "u8",
+            compressed = "bool",
+        }, 49),
         -- EXE6's: the version, Beast Out, what the save brings, the bug frags.
         version = { "gregar", "falzar" },
         beast_out = "bool",

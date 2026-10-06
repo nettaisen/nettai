@@ -12,13 +12,14 @@ use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::custom::{BattleFolder, FolderChip};
 use nettai_battle::hand::ChipHand;
-use nettai_battle::navicust::{NaviCust, PlacedProgram};
-use nettai_battle::patch_cards::{InstalledCard, PatchCards};
+use nettai_battle::rules::Fact;
 use nettai_battle::setup::{
     BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, Stage, Supports,
 };
 use nettai_battle::transform::TransformRequest;
-use nettai_content_api::{ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle, WeaponHandle};
+use nettai_content_api::{
+    ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, Registry, StageHandle, Value, WeaponHandle,
+};
 
 // ---- Numbers and handles ----------------------------------------------------------
 
@@ -448,27 +449,46 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
 // ---- Patch cards -------------------------------------------------------------------
 
 /// A Japanese save's card list (its bytes: the number, bit 7 when switched
-/// off) as a player's installed patch cards.
-pub fn patch_cards(list: &[u8], ids: &Ids) -> Result<PatchCards, String> {
-    let cards: Vec<InstalledCard> = list.iter().map(|&b| InstalledCard { card: ids.patch_card(b & 0x7F), enabled: b & 0x80 == 0 }).collect();
-    PatchCards::new(&cards)
+/// off) as the rules' setup's `patch_cards`: `{ card, on }` each, in the
+/// list's order.
+pub fn patch_cards(list: &[u8], ids: &Ids) -> Vec<Fact<'static>> {
+    list.iter()
+        .map(|&b| {
+            Fact::Record(vec![
+                ("card", Fact::Value(Value::Def(Registry::PatchCard, ids.patch_card(b & 0x7F).0))),
+                ("on", Fact::Value(Value::Bool(b & 0x80 == 0))),
+            ])
+        })
+        .collect()
 }
 
 // ---- The NaviCust -------------------------------------------------------------------
 
-/// A save's NaviCust (EXE6: the list at 0x02004190, 0x31 parts of 8 bytes:
-/// +0 the part id, +3 the center's column, +4 its row, +5 the quarter turns
-/// clockwise), on a board with `expansions` (key item 0x71's count); a part
-/// is compressed when `compressed` says so of its part id (event flag 0x2660
-/// + the id, which `sub_813B7A0` reads). The list's empty entries (id 0)
-/// are left out, the others kept in order.
-pub fn navicust(list: &[u8], expansions: u8, compressed: impl Fn(u8) -> bool, ids: &Ids) -> Result<NaviCust, String> {
+/// A save's NaviCust programs (EXE6: the list at 0x02004190, 0x31 parts of
+/// 8 bytes: +0 the part id, +3 the center's column, +4 its row, +5 the
+/// quarter turns clockwise) as the rules' setup's `navicust_programs`:
+/// `{ program, color, x, y, rotation, compressed }` each, the color its
+/// variant's name (the definition's `colors` at the variant); a part is
+/// compressed when `compressed` says so of its part id (event flag 0x2660 +
+/// the id, which `sub_813B7A0` reads). The list's empty entries (id 0) are
+/// left out, the others kept in order. (The board's expansions, key item
+/// 0x71's count, are `navicust_expansions`.)
+pub fn navicust<'c>(list: &[u8], compressed: impl Fn(u8) -> bool, ids: &Ids<'c>) -> Result<Vec<Fact<'c>>, String> {
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
-        let Some((program, color)) = ids.navicust_part(e[0]) else { continue };
-        parts.push(PlacedProgram { program, color, x: e[3], y: e[4], rotation: e[5], compressed: compressed(e[0]) });
+        let Some((program, variant)) = ids.navicust_part(e[0]) else { continue };
+        let def = ids.content.defs.navicust_program(program);
+        let color = def.colors.get(variant as usize).ok_or_else(|| format!("part id {:#x}: {} has no color {variant}", e[0], def.key))?;
+        parts.push(Fact::Record(vec![
+            ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, program.0))),
+            ("color", Fact::Name(color)),
+            ("x", Fact::Value(Value::Int(e[3] as i64))),
+            ("y", Fact::Value(Value::Int(e[4] as i64))),
+            ("rotation", Fact::Value(Value::Int(e[5] as i64))),
+            ("compressed", Fact::Value(Value::Bool(compressed(e[0])))),
+        ]));
     }
-    NaviCust::new(&parts, expansions)
+    Ok(parts)
 }
 
 // ---- Folders, hands, transformations ---------------------------------------------

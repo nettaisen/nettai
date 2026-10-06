@@ -148,7 +148,7 @@ impl Offer {
         if !broken.is_empty() {
             return Err(format!("the other player's setup breaks the rules: {}", broken.join("; ")));
         }
-        if self.side.folder.saved().is_none() {
+        if self.side.folder(content).saved().is_none() {
             return Err("the other player's folder isn't whole".into());
         }
         if self.stage.is_some_and(|s| !nettai_match::link_battle_stages(content, &self.game).contains(&s)) {
@@ -505,7 +505,8 @@ mod tests {
         let content = exe6_test_content();
         let mut o = offer(&content, 5);
         o.stage = Some(nettai_match::link_battle_stages(&content, "exe6")[3]);
-        o.side.patch_cards = nettai_match::patch_cards(&content, "exe6", "canodumb,-shadow").unwrap_or_default();
+        let cards = nettai_match::testing::patch_cards(&content, "exe6", "canodumb,-shadow");
+        o.side.set_fact(&content, "patch_cards", &cards).unwrap();
         let bytes = o.to_bytes(&content);
         let text = String::from_utf8(bytes.clone()).unwrap();
         assert!(text.starts_with("game = \"exe6\"") && !text.contains("exe6:"), "{text}");
@@ -515,13 +516,15 @@ mod tests {
         a.arena = Some(nettai_match::pick::live(&content, "exe6", 9, None).unwrap().arena);
         assert_eq!(Offer::from_bytes(&content, "exe6", &a.to_bytes(&content)).unwrap(), a);
         let mut bad = o.clone();
-        bad.side.folder.chips = [bad.side.folder.chips[0]; 30];
-        bad.side.folder.regular = None;
+        let mut folder = bad.side.folder(&content);
+        folder.chips = [folder.chips[0]; 30];
+        folder.regular = None;
+        bad.side.set_folder(&content, &folder).unwrap();
         assert!(Offer::from_bytes(&content, "exe6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
         // A name the game hasn't: the ordinary unknown name.
         let bad = text.replacen("navi = \"megaman\"", "navi = \"exe5:megaman\"", 1); // (written in full)
         let e = Offer::from_bytes(&content, "exe6", bad.as_bytes()).unwrap_err();
-        assert!(e.contains("side: no navi \"exe5:megaman\" in exe6"), "{e}"); // (written in full)
+        assert!(e.contains("side: navi: no navi \"exe5:megaman\" in exe6"), "{e}"); // (written in full)
         // Another game's offer, and bytes that aren't one.
         assert!(Offer::from_bytes(&content, "exe5", &bytes).unwrap_err().contains("is of exe6, this match exe5's"));
         assert!(Offer::from_bytes(&content, "exe6", &bytes[..10]).is_err());

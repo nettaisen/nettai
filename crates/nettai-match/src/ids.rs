@@ -83,6 +83,8 @@ pub fn key_of(content: &Content, registry: Registry, h: u16) -> Option<&str> {
         Registry::Navi if i < defs.navis.len() => defs.navi(NaviHandle(h)).key.as_str(),
         Registry::Stage if i < defs.stages.len() => defs.stage(StageHandle(h)).key.as_str(),
         Registry::Weapon if i < defs.weapons.len() => defs.weapon(WeaponHandle(h)).key.as_str(),
+        Registry::PatchCard if i < defs.patch_cards.len() => defs.patch_card(PatchCardHandle(h)).key.as_str(),
+        Registry::NaviCustProgram if i < defs.navicust_programs.len() => defs.navicust_program(NaviCustProgramHandle(h)).key.as_str(),
         _ => return None,
     })
 }
@@ -96,6 +98,8 @@ pub fn handle_of(content: &Content, game: &str, registry: Registry, name: &str) 
         Registry::Navi => navi(content, game, name).map(|h| h.0),
         Registry::Stage => stage(content, game, name).map(|h| h.0),
         Registry::Weapon => weapon(content, game, name).map(|h| h.0),
+        Registry::PatchCard => patch_card(content, game, name).map(|h| h.0),
+        Registry::NaviCustProgram => navicust_program(content, game, name).map(|h| h.0),
         _ => None,
     }
 }
@@ -107,6 +111,8 @@ pub fn shown(content: &Content, registry: Registry, h: u16) -> String {
         (Registry::Form, Some(_)) => crate::names::form(content, FormHandle(h)).to_string(),
         (Registry::Chip, Some(_)) => crate::names::chip(content, ChipHandle(h)).to_string(),
         (Registry::Navi, Some(_)) => crate::names::navi(content, NaviHandle(h)).to_string(),
+        (Registry::PatchCard, Some(_)) => crate::names::patch_card(content, PatchCardHandle(h)),
+        (Registry::NaviCustProgram, Some(_)) => crate::names::navicust_program(content, NaviCustProgramHandle(h)).to_string(),
         (_, Some(key)) => local(key).to_string(),
         (_, None) => format!("{registry} {h}"),
     }

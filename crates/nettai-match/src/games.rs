@@ -45,6 +45,16 @@ const EXE5_SOULS: [&str; 12] = [
     "tomahawksoul",
 ];
 
+/// That two sides' facts are the same but a side's own navi and folder
+/// (its navi, its folder, its Regular and tag chips).
+fn same_but_navi_and_folder(content: &Content, a: &crate::Facts, b: &crate::Facts) {
+    for f in crate::facts::fields(content) {
+        if !["navi", "folder", "regular_chip", "tag_chips"].contains(&f.name) {
+            assert_eq!(a.get(content, f.name), b.get(content, f.name), "{}", f.name);
+        }
+    }
+}
+
 /// A match file's text of `game`: its first link battle stage, and the
 /// sides `left` and `right` (each a side's table body).
 fn match_text(content: &Content, game: &str, left: &str, right: &str) -> String {
@@ -53,13 +63,13 @@ fn match_text(content: &Content, game: &str, left: &str, right: &str) -> String 
 }
 
 /// A side's table body: its navi, the folder's chips (each "name code"),
-/// and `more` lines (`regular = 3`).
+/// and `more` lines (`regular_chip = 3`).
 fn side(navi: &str, chips: &[&str], more: &str) -> String {
     let chips: Vec<String> = chips
         .iter()
         .map(|c| {
             let (name, code) = c.rsplit_once(' ').unwrap();
-            format!("[\"{name}\", \"{code}\"]")
+            format!("{{ chip = \"{name}\", code = \"{code}\" }}")
         })
         .collect();
     format!("navi = \"{navi}\"\nfolder = [{}]\n{more}", chips.join(", "))
@@ -120,7 +130,7 @@ fn a_exe5_folder_keeps_exe5s_rules() {
     let right = exe5(&TANGO_EXE5, "");
     parse(&content, &exe5(&TANGO_EXE5, ""), &right).unwrap_or_else(|p| panic!("{p:?}"));
     // A Regular chip within the fresh navi's Regular memory (4 MB: CrakOut).
-    parse(&content, &exe5(&TANGO_EXE5, "regular = 21"), &right).unwrap_or_else(|p| panic!("{p:?}"));
+    parse(&content, &exe5(&TANGO_EXE5, "regular_chip = 21"), &right).unwrap_or_else(|p| panic!("{p:?}"));
     // Three Mega chips, three dark chips (one of each), one Giga chip.
     let megas = with(&TANGO_EXE5, 0, &["blizman-ds B", "cloudmn-ds C", "colonel C", "drksword Z", "darkthnd M", "darkwide T", "bass F"]);
     parse(&content, &exe5(&refs(&megas), ""), &right).unwrap_or_else(|p| panic!("{p:?}"));
@@ -162,8 +172,9 @@ fn exe5s_rules_refuse() {
     says(&refused(&code, ""), "entry 0: cannon doesn't come in code Z");
     // A Regular chip past the Regular memory (Cannon is 8 MB; a fresh
     // navi's memory is 4); tag chips, which EXE5's folders haven't.
-    says(&refused(&with(&TANGO_EXE5, 0, &[]), "regular = 0"), "the Regular chip cannon is 8 MB, past the navi's 4");
-    says(&refused(&with(&TANGO_EXE5, 0, &[]), "tags = [4, 5]"), "tag chips, but EXE5's folders have none");
+    says(&refused(&with(&TANGO_EXE5, 0, &[]), "regular_chip = 0"), "the Regular chip cannon is 8 MB, past the navi's 4");
+    let e = parse(&content, &exe5(&TANGO_EXE5, "tag_chips = [4, 5]"), &right).expect_err("refused");
+    says(&e, "left: no field \"tag_chips\" (a side of exe5 takes");
 }
 
 /// A name the match's game hasn't is refused as any unknown name is, the
@@ -178,11 +189,11 @@ fn an_unknown_name_is_refused() {
     // An EXE6 navi, Cross (as a soul: EXE5's rules take no Cross list at
     // all) and NaviCust program: none of EXE5's.
     // (EXE5 has a ProtoMan of its own: HeatMan is EXE6's alone.)
-    says(parse(&content, &side("heatman", &TANGO_EXE5, ""), &ok).unwrap_err(), "left: no navi \"heatman\" in exe5");
+    says(parse(&content, &side("heatman", &TANGO_EXE5, ""), &ok).unwrap_err(), "left: navi: no navi \"heatman\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: [1]: no form \"heatcross\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "crosses = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes chaos_unison, hp, karma, level, reg_up, soul_unison, souls, sp_times)");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes chaos_unison, folder, hp");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = exe6_content();
@@ -192,14 +203,14 @@ fn an_unknown_name_is_refused() {
         let mut chips = refs(&chips);
         let entry = format!("{name} A");
         chips[3] = &entry;
-        says(parse(&content, &exe5(&chips, ""), &ok).unwrap_err(), &format!("left: folder entry 3: no chip {name:?} in exe5"));
+        says(parse(&content, &exe5(&chips, ""), &ok).unwrap_err(), &format!("left: folder: [4]: chip: no chip {name:?} in exe5"));
     }
     // An EXE5 chip (GyroMan) in an EXE6 match.
     assert!(crate::ids::chip(&content, "exe5", "gyroman").is_some() && crate::ids::chip(&six, "exe6", "gyroman").is_none());
     let mut chips = EXE6.to_vec();
     chips[0] = "gyroman G";
     let e = parse_in(&six, "exe6", &side("megaman", &chips, ""), &side("megaman", &EXE6, "")).unwrap_err();
-    says(e, "left: folder entry 0: no chip \"gyroman\" in exe6");
+    says(e, "left: folder: [1]: chip: no chip \"gyroman\" in exe6");
     // A game the content hasn't (EXE6's file on EXE5's content, a game no
     // content has).
     let text = match_text(&content, "exe5", &ok, &ok);
@@ -228,7 +239,7 @@ fn a_matchs_lookups_only_see_its_game() {
         let pool = crate::folders::pool(&content, game, &mut b, 0);
         assert!(pool.len() > 100 && pool.iter().all(|&c| of(&content.defs.chip(c).key)), "{game}: {} chips", pool.len());
         for s in &m.sides {
-            assert!(of(&content.defs.navi(s.navi).key) && s.folder.chips().all(|c| of(&content.defs.chip(c.id).key)));
+            assert!(of(&content.defs.navi(s.navi(&content)).key) && s.folder(&content).chips().all(|c| of(&content.defs.chip(c.id).key)));
         }
         // Written, it names its game once, and nothing else qualified.
         let text = crate::write(&content, &m);
@@ -313,11 +324,11 @@ fn a_list_fact_offers_its_definitions() {
     let m = crate::pick::live(&six, "exe6", 1, None).unwrap();
     let field = crate::facts::field(&six, "crosses").unwrap();
     let offered = crate::facts::offered(&six, "exe6", &m.sides[0], &field).unwrap();
-    let megaman = six.navi(m.sides[0].navi).forms.as_ref().unwrap();
+    let megaman = six.navi(m.sides[0].navi(&six)).forms.as_ref().unwrap();
     let own: Vec<u16> = megaman.listed("gregar").iter().chain(megaman.listed("falzar")).map(|f| f.0).collect();
     assert_eq!((offered.len(), &offered), (10, &own));
     let mut link = m.sides[0].clone();
-    link.navi = crate::ids::navi(&six, "exe6", "protoman").unwrap();
+    link.set_navi(&six, crate::ids::navi(&six, "exe6", "protoman").unwrap()).unwrap();
     assert_eq!(crate::facts::offered(&six, "exe6", &link, &field), Some(Vec::new()));
     // (Flags and single values are no lists of definitions.)
     for name in ["version", "beast_out", "bug_frags"] {
@@ -352,7 +363,7 @@ fn karma_and_souls_write_and_read_back() {
     assert_eq!(crate::parse(&content, &text).unwrap(), m);
     // A side that says nothing of them: the defaults, nothing written.
     let plain = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    assert_eq!(plain.sides[0].facts, crate::Facts::defaults(&content));
+    same_but_navi_and_folder(&content, &plain.sides[0].facts, &crate::Facts::defaults(&content));
     assert_eq!(plain.sides[0].facts.get(&content, "karma"), Some(Stated::Number(500)));
     let all: Vec<u16> = EXE5_SOULS.map(|n| crate::ids::form(&content, "exe5", n).unwrap().0).to_vec();
     assert_eq!(plain.sides[0].facts.get(&content, "souls").unwrap().defs(), all);
@@ -370,13 +381,13 @@ fn karma_and_souls_write_and_read_back() {
     let bad = side("megaman", &EXE6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let six = exe6_content();
     let e = parse_in(&six, "exe6", &side("megaman", &EXE6, ""), &bad).unwrap_err();
-    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sp_times, sun, version)";
+    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips, version)";
     for p in [format!("right: no field \"karma\" {takes}"), format!("right: no field \"souls\" {takes}")] {
         assert!(e.iter().any(|x| *x == p), "{p:?} not in {e:?}");
     }
     let bad = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     let e = parse(&content, &bad, &exe5(&TANGO_EXE5, "")).unwrap_err();
-    assert!(e.contains(&"left: souls: [1]: no form \"heatcross\" in exe5".to_string()), "{e:?}");
+    assert!(e.iter().any(|p| p.starts_with("left: souls: [1]: no form \"heatcross\" in exe5")), "{e:?}");
     // A value past its field's type, a soul twice, more souls than the list
     // holds.
     for (stated, said) in [
@@ -420,7 +431,7 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     let plain = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let setup = plain.round(&five, 3);
     let (_, played) = setup.players[0].rules_block(&five).unwrap();
-    assert_eq!(played, block);
+    same_but_navi_and_folder(&five, &crate::facts::Facts::of_block(played), &crate::facts::Facts::of_block(block));
 }
 
 /// A round of `m` after `ticks` ticks of nothing pressed.
@@ -469,7 +480,7 @@ fn an_unowned_soul_cant_be_chosen() {
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
     let offered_with = |souls: Option<&[&str]>, soul_unison: bool| {
         let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-        m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
+        { let mut f = m.sides[0].folder(&content); f.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30]; m.sides[0].set_folder(&content, &f).unwrap(); }
         if let Some(names) = souls {
             m.sides[0].set_fact(&content, "souls", &forms(&content, "exe5", names)).unwrap();
         }
@@ -512,7 +523,7 @@ fn the_soul_takes_the_chips_place() {
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
     let proto = crate::ids::form(&content, "exe5", "protosoul").unwrap();
     let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
+    { let mut f = m.sides[0].folder(&content); f.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30]; m.sides[0].set_folder(&content, &f).unwrap(); }
     let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
     let screen = |b: &nettai_battle::Battle| b.custom.sides[0].screen.expect("a screen");
     // A tick with `key` pressed, then ticks without until the screen is
@@ -579,7 +590,7 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
     let meddy = crate::ids::form(&content, "exe5", "meddysoul").unwrap();
     let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
+    { let mut f = m.sides[0].folder(&content); f.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30]; m.sides[0].set_folder(&content, &f).unwrap(); }
     let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
     let base = b.stats[0].form;
     // (In MeddySoul from the start, his stats' starting form: the souls

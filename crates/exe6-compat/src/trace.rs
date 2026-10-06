@@ -405,10 +405,11 @@ impl Round {
         }
     }
 
-    /// A player's installed patch cards, as the trace has them.
-    fn patch_cards(&self, side: u8, ids: &Ids) -> nettai_battle::patch_cards::PatchCards {
-        let Some(lists) = &self.setup.patch_cards else { return Default::default() };
-        codec::patch_cards(&lists[side as usize & 1], ids).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"))
+    /// A player's installed patch cards, as the trace has them: the rules'
+    /// setup's `patch_cards` (none: the trace has no lists).
+    fn patch_cards(&self, side: u8, ids: &Ids) -> Vec<nettai_battle::rules::Fact<'static>> {
+        let Some(lists) = &self.setup.patch_cards else { return Vec::new() };
+        codec::patch_cards(&lists[side as usize & 1], ids)
     }
 
     /// For a player with patch cards: the stats the engine applies them to
@@ -495,11 +496,18 @@ impl Round {
             joypad_phase: self.setup.joypad_phases[side as usize],
             console: self.console_setup(side),
             rules: None,
-            patch_cards: self.patch_cards(side, ids),
-            // (A recording's stats are what its NaviCust made.)
-            navicust: None,
             auto_battle: Default::default(),
         };
+        // The navi and the folder (the engine's facts): the recording's
+        // navi, and no folder (the recording's is dealt: `folder` above).
+        let navi = nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Navi, stats.navi.0));
+        player.set_fact(ids.content, "navi", &[navi]).unwrap_or_else(|e| panic!("the navi: {e}"));
+        // The patch cards, and no NaviCust: a recording's stats are what its
+        // NaviCust made.
+        player.set_fact(ids.content, "patch_cards", &self.patch_cards(side, ids)).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"));
+        player
+            .set_fact(ids.content, "navicust_expansions", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Nil)])
+            .unwrap_or_else(|e| panic!("no NaviCust: {e}"));
         // (The Crosses the console's save owns, as the list a setup states:
         // those of its navi's of its version, in Cross-number order.)
         unlocks.write(ids.content, stats.navi, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));

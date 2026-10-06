@@ -16,30 +16,27 @@
 //!     { stage = "netbattle-7" },
 //! ]
 //!
-//! [left]                             # you, side 0; then [right]
-//! navi = "megaman"
-//! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
-//! patch_cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
-//! version = "falzar"                 # the side's facts: what its game's rules take, each under its setup field's
-//! crosses = ["heatcross", "spoutcross"]   # name (crate::facts). EXE6's: version (gregar or falzar) and crosses (up
-//! beast_out = false                  # to five, of either version; [] none), which a side states (none is assumed);
-//! bug_frags = 9                      # beast_out (else unlocked), bug_frags (else 0)
-//! hp = 1000                          # what the save brings to the stats: the base HP (else 100), the Regular
-//! reg_up = 50                        # memory (else the fresh stats' 4), the sun (else none); the rules derive the rest
-//! folder = [                         # 30 [chip, code] pairs ([] an empty entry, while it's being made)
-//!     ["cannon", "A"],
-//!     ["cannon", "A"],
+//! [left]                             # you, side 0; then [right]: the side's facts, what its game's rules take,
+//! navi = "megaman"                   # each under its setup field's name (crate::facts); one left out is the
+//! level = 7                          # rules' default. The navi (which a side states), the navi code's level (0-14;
+//! version = "falzar"                 # else none), EXE6's version (gregar or falzar, which a side states) and
+//! crosses = ["heatcross", "spoutcross"]   # crosses (up to five, of either version; [] none), beast_out (else
+//! beast_out = false                  # unlocked), bug_frags (else 0), what the save brings to the stats: the base
+//! bug_frags = 9                      # HP (else 100), the Regular memory (else the fresh stats' 4), the sun (else
+//! hp = 1000                          # none); the rules derive the rest
+//! reg_up = 50
+//! folder = [                         # a list of records, a table each, a line each (a field left out: false, none)
+//!     { chip = "cannon", code = "A" },   # up to 30 entries ({} an empty one, while it's being made)
+//!     { chip = "cannon", code = "A" },
 //! ]
-//! regular = 4                        # optional: the Regular chip's entry, counting from 0
-//! tags = [5, 6]                      # optional: the tag chips' entries
-//!
-//! [[left.sp_times]]                  # a fact that is a list of records: EXE6's and EXE5's SP navi deletion times,
-//! chip = "heatman-sp"                # each by its SP chip, in frames (60 a second); else the rules' default, every
-//! frames = 741                       # SP navi in no time (the best damage)
-//!
-//! [left.navicust]                    # optional: the NaviCust, which the rules compile
-//! expansions = 2                     # optional: the board's (else the largest)
-//! programs = [                       # in the list's order; x, y the center on the 7x7 grid
+//! regular_chip = 4                   # the Regular chip's entry, from 0 (else none)
+//! tag_chips = [5, 6]                 # the tag chips' entries (else none)
+//! patch_cards = [{ card = "canodumb", on = true }, { card = "shadow" }]   # each on or off (else none)
+//! sp_times = [                       # SP navi deletion times, by SP chip, in frames (else every SP navi in no time)
+//!     { chip = "heatman-sp", frames = 741 },
+//! ]
+//! navicust_expansions = 2            # the NaviCust's board (else the largest)
+//! navicust_programs = [              # its programs in the list's order; x, y the center on the 7x7 grid
 //!     { program = "suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //!
@@ -65,14 +62,10 @@
 
 use crate::auto_battle::{self, ChipPlace, AutoBattle, Entry, Record};
 use crate::facts::Stated;
-use crate::{Arena, Facts, Folder, Match, Place, Side, ids};
-use nettai_battle::content::{ChipCode, Content};
-use nettai_battle::custom::folder::FOLDER_SIZE;
-use nettai_battle::custom::FolderChip;
+use crate::{Arena, Facts, Match, Place, Side, ids};
+use nettai_battle::content::{ChipCode, Content, PlayerFact};
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FieldType, Value};
-use nettai_battle::navicust::{NaviCust, PlacedProgram};
-use nettai_battle::patch_cards::InstalledCard;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -104,28 +97,17 @@ pub struct PlaceFile {
     pub background: Option<String>,
 }
 
-/// A side as a file states it: the engine's parts under their own keys, and
-/// every other key a fact of the game's rules, under its setup field's name
-/// (`crate::facts`: a key the rules' setup doesn't declare is refused when the side is
-/// resolved, with the facts the game takes).
+/// A side as a file states it: each key a fact of the game's rules, under
+/// its setup field's name (`crate::facts`: the navi, the folder, EXE6's
+/// version...; a key the rules' setup doesn't declare is refused when the
+/// side is resolved, with the facts the game takes), and EXE5's auto battle
+/// data.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct SideFile {
-    pub navi: String,
-    /// The facts, in the order the file states them (written in the rules'
-    /// systems' order).
+    /// The facts, in the order the file states them (written the navi
+    /// first, then in the setup's fields' order).
     #[serde(flatten)]
     pub facts: FactsFile,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub patch_cards: Vec<CardFile>,
-    /// The folder's entries, each `[chip, code]` (`[]` empty, while it is
-    /// being made).
-    pub folder: Vec<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub regular: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tags: Option<[u8; 2]>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auto_battle: Option<AutoBattleFile>,
 }
@@ -211,53 +193,6 @@ pub struct RecordFile {
     pub score: u32,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NaviCustFile {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expansions: Option<u8>,
-    #[serde(default)]
-    pub programs: Vec<ProgramFile>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ProgramFile {
-    pub program: String,
-    pub color: String,
-    pub x: u8,
-    pub y: u8,
-    #[serde(default, skip_serializing_if = "is_zero")]
-    pub rotation: u8,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub compressed: bool,
-}
-
-fn is_zero(n: &u8) -> bool {
-    *n == 0
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CardFile {
-    pub card: String,
-    #[serde(default = "yes", skip_serializing_if = "is_yes")]
-    pub on: bool,
-}
-
-fn yes() -> bool {
-    true
-}
-
-fn is_yes(b: &bool) -> bool {
-    *b
-}
-
-/// A folder entry as a file writes it: the chip's name and its code.
-pub fn chip_entry(content: &Content, c: FolderChip) -> [String; 2] {
-    [ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter().to_string()]
-}
-
 /// What names nothing in `game`: "no chip "x" in exe6", and the game's
 /// names of that kind when they are few enough to read.
 fn unknown(what: &str, name: &str, game: &str, have: &[&str]) -> String {
@@ -266,11 +201,6 @@ fn unknown(what: &str, name: &str, game: &str, have: &[&str]) -> String {
     } else {
         format!("no {what} {name:?} in {game} ({game}'s are {})", have.join(", "))
     }
-}
-
-/// The local names of `game`'s definitions among `keys`.
-fn names_in<'k>(content: &Content, game: &str, keys: impl Iterator<Item = &'k str>) -> Vec<&'k str> {
-    keys.filter(|k| ids::in_game(content, game, k)).map(ids::local).collect()
 }
 
 /// Each name a file says, resolved in its game: the match, or every
@@ -332,15 +262,10 @@ pub fn resolve_arena(content: &Content, game: &str, a: &ArenaFile, problems: &mu
 pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, problems: &mut Vec<String>) -> Option<Side> {
     let start = problems.len();
     let mut say = |p: String| problems.push(format!("{at}: {p}"));
-    let navi = ids::navi(content, game, &s.navi);
-    if navi.is_none() {
-        let have = names_in(content, game, content.defs.navis.iter().map(|n| n.key.as_str()));
-        say(unknown("navi", &s.navi, game, &have));
-    }
-    // The facts: each key that is none of the side's own parts, a field of
-    // the rules' setup, its value read by the field's type. A fact the file
-    // leaves out is the rules' default (an enum without one, unstated: the
-    // checks say a round needs it).
+    // The facts: each key a field of the rules' setup, its value read by the
+    // field's type. A fact the file leaves out is the rules' default (an
+    // enum without one, unstated; the navi, none: the checks say a round
+    // needs them).
     let mut facts = Facts::defaults(content);
     for (key, value) in &s.facts.0 {
         let Some(field) = crate::facts::field(content, key) else {
@@ -352,46 +277,12 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             Err(e) => say(format!("{key}: {e}")),
         }
     }
-    let mut patch_cards = Vec::new();
-    for c in &s.patch_cards {
-        match ids::patch_card(content, game, &c.card) {
-            Some(card) => patch_cards.push(InstalledCard { card, enabled: c.on }),
-            None => say(unknown("patch card", &c.card, game, &[])),
-        }
-    }
-    let folder = resolve_folder(content, game, s, &mut say);
-    let navicust = match &s.navicust {
-        None => None,
-        Some(n) => {
-            let mut parts = Vec::with_capacity(n.programs.len());
-            for (i, p) in n.programs.iter().enumerate() {
-                let Some(program) = ids::navicust_program(content, game, &p.program) else {
-                    say(format!("navicust program {}: {}", i + 1, unknown("NaviCust program", &p.program, game, &[])));
-                    continue;
-                };
-                let def = content.defs.navicust_program(program);
-                let Some(color) = def.colors.iter().position(|c| *c == p.color) else {
-                    say(format!("navicust program {}: {} comes in {}, not {:?}", i + 1, p.program, def.colors.join(", "), p.color));
-                    continue;
-                };
-                parts.push(PlacedProgram { program, color: color as u8, x: p.x, y: p.y, rotation: p.rotation, compressed: p.compressed });
-            }
-            let expansions = n.expansions.unwrap_or_else(|| crate::navicust_rules(content).boards.len().saturating_sub(1) as u8);
-            match NaviCust::new(&parts, expansions) {
-                Ok(n) => Some(n),
-                Err(e) => {
-                    say(e);
-                    None
-                }
-            }
-        }
-    };
     let auto_battle = s.auto_battle.as_ref().map(|c| resolve_auto_battle(content, game, c, &mut say)).unwrap_or_default();
-    let navi = navi?;
-    if problems.len() > start {
-        return None;
+    let side = Side { auto_battle, facts };
+    if side.stated_navi(content).is_none() && problems.len() == start {
+        problems.push(format!("{at}: no navi: a side states its own"));
     }
-    Some(Side { navi, folder: folder?, patch_cards, navicust, auto_battle, facts })
+    (problems.len() == start).then_some(side)
 }
 
 /// A fact's value as a file states it, read by the field's type `ty`: a
@@ -418,10 +309,22 @@ fn one<'v>(content: &Content, game: &str, ty: &FieldType, v: &'v toml::Value) ->
         },
         FieldType::Ref(registry, _) => Fact::Value(match v.as_str() {
             Some("") => Value::Nil,
-            Some(name) => {
-                ids::handle_of(content, game, *registry, name).map(|h| Value::Def(*registry, h)).ok_or_else(|| unknown(&registry.to_string(), name, game, &[]))?
-            }
+            Some(name) => ids::handle_of(content, game, *registry, name).map(|h| Value::Def(*registry, h)).ok_or_else(|| {
+                let have: Vec<&str> = (0..=u16::MAX).map_while(|h| ids::key_of(content, *registry, h)).filter(|k| ids::in_game(content, game, k)).map(ids::local).collect();
+                unknown(&registry.to_string(), name, game, &have)
+            })?,
             None => return Err(format!("{v} is no {registry}'s name")),
+        }),
+        FieldType::Code => Fact::Value(match v.as_str() {
+            Some("") => Value::Nil,
+            Some(code) => {
+                let mut letters = code.chars();
+                match letters.next().and_then(ChipCode::from_letter).filter(|_| letters.next().is_none()) {
+                    Some(c) => Value::Code(c.letter() as u8),
+                    None => return Err(format!("{code:?} is no code (A-Z or *)")),
+                }
+            }
+            None => return Err(format!("{v} is no code (A-Z or *)")),
         }),
         FieldType::Array(..) | FieldType::List(..) => {
             let (elem, n) = match ty {
@@ -454,9 +357,10 @@ fn one<'v>(content: &Content, game: &str, ty: &FieldType, v: &'v toml::Value) ->
 }
 
 /// A fact's value as a file writes it: a flag, a number, an enum's
-/// variant's name, a definition's name, a list's entries (a list of
-/// definitions up to its last one; a hole in it, ""). None: nothing to
-/// write (an enum nothing states, no definition).
+/// variant's name, a definition's name, a code's letter, a list's entries
+/// (a list of definitions up to its last one; a hole in it, ""), a
+/// record's fields (one holding nothing, false or none, left out). None:
+/// nothing to write (an enum nothing states, no definition, no code).
 fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
     Some(match value {
         Stated::Flag(b) => toml::Value::Boolean(*b),
@@ -468,9 +372,10 @@ fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
             toml::Value::Array(items[..last].iter().map(|v| fact_toml(content, v).unwrap_or_else(|| toml::Value::String(String::new()))).collect())
         }
         Stated::Optional(n) => toml::Value::Integer((*n)?),
-        Stated::Record(fields) => {
-            toml::Value::Table(fields.iter().filter_map(|(name, v)| Some((name.clone(), fact_toml(content, v)?))).collect())
-        }
+        Stated::Record(fields) => toml::Value::Table(
+            fields.iter().filter(|(_, v)| *v != Stated::Flag(false)).filter_map(|(name, v)| Some((name.clone(), fact_toml(content, v)?))).collect(),
+        ),
+        Stated::Code(c) => toml::Value::String((*c)?.to_string()),
         Stated::Other => return None,
     })
 }
@@ -537,65 +442,22 @@ fn resolve_auto_battle(content: &Content, game: &str, c: &AutoBattleFile, say: &
     out
 }
 
-/// A file side's folder: up to 30 entries, an empty one `[]` and those past
-/// the last given empty (a folder being made; the checks say it isn't
-/// whole), and its Regular and tag chips.
-fn resolve_folder(content: &Content, game: &str, s: &SideFile, say: &mut impl FnMut(String)) -> Option<Folder> {
-    if s.folder.len() > FOLDER_SIZE {
-        say(format!("the folder has {} entries; a folder is {FOLDER_SIZE}", s.folder.len()));
-        return None;
-    }
-    let mut folder = Folder { regular: s.regular, tags: s.tags.map(|[a, b]| (a, b)), ..Folder::EMPTY };
-    let mut ok = true;
-    for (i, entry) in s.folder.iter().enumerate() {
-        let (name, code) = match entry.as_slice() {
-            [] => continue,
-            [name, code] => (name, code),
-            _ => {
-                say(format!("folder entry {i}: {entry:?} is not [chip, code] ([] an empty entry)"));
-                ok = false;
-                continue;
-            }
-        };
-        let mut letters = code.chars();
-        let Some(code) = letters.next().and_then(ChipCode::from_letter).filter(|_| letters.next().is_none()) else {
-            say(format!("folder entry {i}: {code:?} is no code (A-Z or *)"));
-            ok = false;
-            continue;
-        };
-        match ids::chip(content, game, name) {
-            Some(id) => folder.chips[i] = Some(FolderChip::new(id, code)),
-            None => {
-                say(format!("folder entry {i}: {}", unknown("chip", name, game, &[])));
-                ok = false;
-            }
-        }
-    }
-    ok.then_some(folder)
-}
-
 /// A side as a file writes it, each name its game's.
 pub fn side_file(content: &Content, s: &Side) -> SideFile {
     let name = |key: &str| ids::local(key).to_string();
+    // The facts that aren't the rules' defaults, the navi first, then in the
+    // setup's fields' order (a level whenever the side has one).
+    let navi = PlayerFact::Navi.name();
+    let mut fields = crate::facts::fields(content);
+    fields.sort_by_key(|f| f.name != navi);
     SideFile {
-        navi: name(&content.defs.navi(s.navi).key),
-        // The facts that aren't the rules' defaults, in the rules' order
-        // (a level whenever the side has one).
         facts: FactsFile(
-            crate::facts::fields(content)
+            fields
                 .into_iter()
                 .filter(|f| !s.facts.is_default(content, f.name))
                 .filter_map(|f| Some((f.name.to_string(), fact_toml(content, &s.facts.get(content, f.name)?)?)))
                 .collect(),
         ),
-        patch_cards: s.patch_cards.iter().map(|c| CardFile { card: name(&content.defs.patch_card(c.card).key), on: c.enabled }).collect(),
-        // An empty entry is [], and those after the last chip are left off.
-        folder: {
-            let last = s.folder.chips.iter().rposition(|c| c.is_some()).map_or(0, |i| i + 1);
-            s.folder.chips[..last].iter().map(|c| c.map_or(Vec::new(), |c| chip_entry(content, c).to_vec())).collect()
-        },
-        regular: s.folder.regular,
-        tags: s.folder.tags.map(|(a, b)| [a, b]),
         // (A block nothing has written is left out; any other is stated
         // whole.)
         auto_battle: (!s.auto_battle.is_blank()).then(|| {
@@ -632,23 +494,6 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
                 program_advance: one(5),
                 records: s.auto_battle.records.iter().map(record).collect(),
             }
-        }),
-        navicust: s.navicust.map(|n| NaviCustFile {
-            expansions: Some(n.expansions),
-            programs: n
-                .iter()
-                .map(|p| {
-                    let def = content.defs.navicust_program(p.program);
-                    ProgramFile {
-                        program: name(&def.key),
-                        color: def.colors.get(p.color as usize).cloned().unwrap_or_default(),
-                        x: p.x,
-                        y: p.y,
-                        rotation: p.rotation,
-                        compressed: p.compressed,
-                    }
-                })
-                .collect(),
         }),
     }
 }
@@ -722,6 +567,25 @@ fn play_item(play: &toml::Value) -> toml_edit::Value {
     }
 }
 
+/// A value of a fact as one inline value: a table an inline table.
+fn inline(v: &toml::Value) -> toml_edit::Value {
+    match v {
+        toml::Value::String(s) => s.as_str().into(),
+        toml::Value::Integer(n) => (*n).into(),
+        toml::Value::Boolean(b) => (*b).into(),
+        toml::Value::Float(f) => (*f).into(),
+        toml::Value::Array(items) => items.iter().map(inline).collect::<toml_edit::Array>().into(),
+        toml::Value::Table(t) => {
+            let mut table = toml_edit::InlineTable::new();
+            for (k, x) in t {
+                table.insert(k, inline(x));
+            }
+            table.into()
+        }
+        toml::Value::Datetime(d) => d.to_string().into(),
+    }
+}
+
 /// `items` laid out: a few on one line, more four to a line.
 fn laid_out(mut items: toml_edit::Array) -> toml_edit::Array {
     if items.len() > auto_battle::RECORDS {
@@ -755,18 +619,21 @@ fn tidy(body: &str, file: &MatchFile) -> String {
                 }
             }
         }
-        if let Some(folder) = doc.get_mut(side).and_then(|s| s.get_mut("folder")).and_then(|f| f.as_array_mut()) {
-            for entry in folder.iter_mut() {
-                if let Some(pair) = entry.as_array_mut() {
-                    pair.set_trailing_comma(false);
-                    pair.set_trailing("");
-                    for (i, v) in pair.iter_mut().enumerate() {
-                        v.decor_mut().set_prefix(if i == 0 { "" } else { " " });
-                        v.decor_mut().set_suffix("");
-                    }
-                }
+        // A list of records: an inline table each, a line each (the printer
+        // makes a table of each, under its own header).
+        for (key, value) in &of.facts.0 {
+            let toml::Value::Array(items) = value else { continue };
+            if !items.iter().any(|v| v.is_table()) {
+                continue;
             }
-            a_line_each(folder);
+            let Some(table) = doc.get_mut(side).and_then(|s| s.as_table_mut()) else { continue };
+            let mut list: toml_edit::Array = items.iter().map(inline).collect();
+            if list.len() > 1 {
+                a_line_each(&mut list);
+            }
+            // (After the side's other values: a long list last.)
+            table.remove(key);
+            table.insert(key, toml_edit::value(list));
         }
         // (The table written anew over the printer's, which makes tables of
         // the records and of the entries that are tables.)
@@ -820,7 +687,7 @@ mod tests {
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
         let text = write(&content, &crate::pick::live(&content, "exe6", 3, None).unwrap());
-        for line in ["game = \"exe6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.navicust]", "expansions = 2", "programs = []"] {
+        for line in ["game = \"exe6\"", "[arena]", "[left]", "navi = \"megaman\"", "folder = [\n    { chip = \"", "\", code = \""] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
         // (No stats: a side states none.)
@@ -1022,8 +889,8 @@ mod tests {
             parse(&content, &good.replacen(from, to, 1)).unwrap_err()
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
-        has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in exe6");
-        has(bad("navi = \"megaman\"", "navi = \"exe6:megaman\""), "left: no navi \"exe6:megaman\" in exe6"); // (written in full)
+        has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: navi: no navi \"nobody\" in exe6");
+        has(bad("navi = \"megaman\"", "navi = \"exe6:megaman\""), "left: navi: no navi \"exe6:megaman\" in exe6"); // (written in full)
         // (No stats block: a side states what the save brings to them as
         // facts, and nothing else of them.)
         let stats = parse(&content, &format!("{good}\n[left.stats]\nhp = 1000\n")).unwrap_err();
@@ -1035,7 +902,7 @@ mod tests {
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sp_times, sun, version)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips, version)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
@@ -1069,8 +936,8 @@ mod tests {
         has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (gregar or falzar); none is assumed");
         // Thirty copies of a chip.
         let mut m = picked.clone();
-        m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
-        m.sides[0].folder.regular = None;
+        { let mut f = m.sides[0].folder(&content); f.chips = [m.sides[0].folder(&content).chips[0]; 30]; m.sides[0].set_folder(&content, &f).unwrap(); }
+        { let mut f = m.sides[0].folder(&content); f.regular = None; m.sides[0].set_folder(&content, &f).unwrap(); }
         has(crate::check_match(&content, &m), "left: folder: 30 copies of");
         // Mega chips past the navi's Mega level (MegaMan's fresh 5, with no
         // NaviCust program that raises it): ten of the game's.
@@ -1082,17 +949,18 @@ mod tests {
             .take(10)
             .collect();
         for (i, &c) in megas.iter().enumerate() {
-            m.sides[1].folder.chips[i] = Some(FolderChip::new(c, content.chip(c).codes[0]));
+            { let mut f = m.sides[1].folder(&content); f.chips[i] = Some(nettai_battle::custom::FolderChip::new(c, content.chip(c).codes[0])); m.sides[1].set_folder(&content, &f).unwrap(); }
         }
-        m.sides[1].folder.regular = None;
+        { let mut f = m.sides[1].folder(&content); f.regular = None; m.sides[1].set_folder(&content, &f).unwrap(); }
         has(crate::check_match(&content, &m), "Mega chips, past the navi's 5");
         // Patch cards past 80 MB; Crosses for a navi without any.
         let mut m = picked.clone();
-        m.sides[0].patch_cards = crate::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
+        let cards = crate::testing::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant");
+        m.sides[0].set_fact(&content, "patch_cards", &cards).unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = picked.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
-        m.sides[1].navi = protoman;
+        m.sides[1].set_navi(&content, protoman).unwrap();
         has(crate::check_match(&content, &m), "right: crosses: ProtoMan doesn't change form");
     }
 
@@ -1120,11 +988,10 @@ mod tests {
         let chip = |k: &str| ids::chip(&content, "exe6", k).unwrap();
         m.sides[0].facts.set_sp_times(&content, &[(chip("heatman-sp"), 721), (chip("blastmn-sp"), 1500)]).unwrap();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
-        m.sides[1].navi = protoman;
+        m.sides[1].set_navi(&content, protoman).unwrap();
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
-        m.sides[1].navicust = None;
         m.sides[1].set_level(&content, Some(0)).unwrap();
-        m.sides[1].folder.regular = None;
+        { let mut f = m.sides[1].folder(&content); f.regular = None; m.sides[1].set_folder(&content, &f).unwrap(); }
         let text = write(&content, &m);
         for line in ["beast_out = false", "level = 3", "chip = \"heatman-sp\"", "frames = 721", "chip = \"blastmn-sp\"", "frames = 1500"] {
             assert!(text.contains(line), "{line}:\n{text}");
@@ -1158,7 +1025,7 @@ mod tests {
         has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[0].set_level(&content, None).unwrap();
-        m.sides[1].navi = protoman;
+        m.sides[1].set_navi(&content, protoman).unwrap();
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
         m.sides[1].set_level(&content, None).unwrap();
         let problems = crate::check_match(&content, &m);

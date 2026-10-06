@@ -90,6 +90,91 @@ local function cells(s: { { boolean } }, x: number, y: number, size: number): { 
     return out
 end
 
+-- What is wrong with a NaviCust (the game's setup's `navicust_expansions` and `navicust_programs`) on `game`'s board,
+-- each said with `problem(text, field, entry)` (the setup field, and a program's place in the list, from 1): a board of its expansions; each
+-- program in one of its colors (its definition's `colors`), turned 0 to 3 quarters, on the board (EXE6's
+-- `sub_813BB00`: every cell it covers is a cell of the board or its frame, and not all of them the frame), over no
+-- other (`sub_813BB68`); the copies of a program in one color all compressed or none (the save keeps it by program and
+-- color: EXE6's event flag 0x2660 + the part id). `compiles`: the side's navi compiles one (MegaMan, the navi that
+-- changes form); another's programs are refused.
+function compile.check(
+    game: NaviCustGame,
+    expansions: number?,
+    parts: { PlacedProgram },
+    compiles: boolean,
+    problem: (text: string, field: string, entry: number?) -> ()
+)
+    if expansions == nil then
+        return
+    end
+    local board = game.board
+    local size = board.SIZE
+    if #parts > 0 and not compiles then
+        problem("a NaviCust, but the navi's stats aren't a NaviCust's (only MegaMan's compiles)", "navicust_programs", nil)
+        return
+    end
+    local layout = board.boards[expansions + 1]
+    if layout == nil then
+        problem(string.format("a NaviCust with %d expansions: the game's board has %d sizes", expansions, #board.boards), "navicust_expansions", nil)
+        return
+    end
+    local grid: { [number]: number } = {}
+    local compression: { [string]: boolean } = {}
+    for i, p in parts do
+        local def = p.program
+        local name = battle.name(def)
+        local what = string.format("navicust program %d (%s)", i, name)
+        if table.find(def.colors, p.color) == nil then
+            problem(string.format("%s: a color it doesn't come in", what), "navicust_programs", i)
+        end
+        if p.rotation > 3 then
+            problem(string.format("%s: turned %d quarters (0 to 3)", what, p.rotation), "navicust_programs", i)
+        end
+        -- Its cells, the grid's or not.
+        local s = shape(p, size)
+        local center = size // 2
+        local covered: { { number } } = {}
+        for j = 0, size - 1 do
+            for k = 0, size - 1 do
+                if s[j][k] then
+                    table.insert(covered, { p.x - center + k, p.y - center + j })
+                end
+            end
+        end
+        local fits, on = true, false
+        for _, c in covered do
+            local cell = if c[1] >= 0 and c[1] < size and c[2] >= 0 and c[2] < size
+                then string.sub(layout[c[2] + 1], c[1] + 1, c[1] + 1)
+                else "."
+            if cell == "." then
+                fits = false
+            elseif cell == "o" then
+                on = true
+            end
+        end
+        if not (fits and on) then
+            problem(string.format("%s at (%d, %d): off the board", what, p.x, p.y), "navicust_programs", i)
+        else
+            for _, c in covered do
+                local at = c[2] * size + c[1]
+                local other = grid[at]
+                if other ~= nil then
+                    problem(string.format("%s is over program %d", what, other), "navicust_programs", i)
+                    break
+                end
+                grid[at] = i
+            end
+        end
+        local key = (def.id :: string) .. "/" .. p.color
+        local seen = compression[key]
+        if seen == nil then
+            compression[key] = p.compressed
+        elseif seen ~= p.compressed then
+            problem(string.format("%s: compressed and not (a save compresses every copy of a program in one color)", what), "navicust_programs", i)
+        end
+    end
+end
+
 local function clamp_add(v: number, n: number, most: number): number
     return math.min(v + n, most)
 end
@@ -173,12 +258,13 @@ local function stats_bugged(stats: Navi): boolean
         or stats.battle_start_bug ~= 0
 end
 
--- `round_setup`: `side`'s NaviCust compiled into its stats by `game`'s rules, if the setup gives one and the navi is
--- MegaMan (the navi that changes form: the original compiles the PET's own navi's, navi 0's). Whether it was. Without
--- one, the stats are as a compile left them, and the glitch is as their bugs say.
-function compile.run(side: number, game: NaviCustGame): boolean
-    local nc = battle.navicust(side)
-    if nc == nil then
+-- `round_setup`: `side`'s NaviCust compiled into its stats by `game`'s rules, if the setup gives one (`expansions`,
+-- how far its board has been expanded, none without one; `parts`, its programs in its list's order: the game's setup's
+-- `navicust_expansions` and `navicust_programs`) and the navi is MegaMan (the navi that changes form: the original
+-- compiles the PET's own navi's, navi 0's). Whether it was. Without one, the stats are as a compile left them, and the
+-- glitch is as their bugs say.
+function compile.run(side: number, game: NaviCustGame, expansions: number?, parts: { PlacedProgram }): boolean
+    if expansions == nil then
         if game.glitch then
             battle.set_emotion_window_glitch(side, stats_bugged(battle.navi(side)))
         end
@@ -190,10 +276,9 @@ function compile.run(side: number, game: NaviCustGame): boolean
     end
     local board = game.board
     local size = board.SIZE
-    local parts = nc.parts
-    local layout = board.boards[nc.expansions + 1]
+    local layout = board.boards[expansions + 1]
     if layout == nil then
-        error(string.format("a NaviCust with %d expansions: %s's board has %d sizes", nc.expansions, game.name, #board.boards))
+        error(string.format("a NaviCust with %d expansions: %s's board has %d sizes", expansions, game.name, #board.boards))
     end
     local function at(grid: { [number]: number }, x: number, y: number): number?
         return grid[y * size + x]
