@@ -29,14 +29,7 @@ pub struct FlowRules {
     /// effect 2, EXE5 65).
     pub result_wait: ResultWait,
     /// Presentation, read of a console's own game (the frontend's; the
-    /// simulation reads neither): the custom screen's close starts the
-    /// HUD's chip window too, so the next chip's name shows through the
-    /// turn's banner (EXE5's 0x080230CC calls `sub_801E012`'s counterpart,
-    /// as the Japanese EXE6 games' `sub_8026DC4` does, which nettai shows
-    /// on every console; the US EXE6 games' waits for the navi's first
-    /// decision).
-    pub chip_window_at_close: bool,
-    /// Presentation, as above: the intro fades in from black on a set's
+    /// simulation doesn't read it): the intro fades in from black on a set's
     /// first battle too (EXE5's `sub_80E0684` counterpart, 0x080E0698, reads
     /// the byte it tests through a flags value rather than the battle
     /// state: one the open bus gives, never 1 or less; EXE6's first battle

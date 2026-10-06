@@ -161,18 +161,17 @@ impl HudState {
     /// Follow one tick of the battle.
     pub fn tick(&mut self, b: &Battle) {
         // The custom screen, as it closes, starts the chip window's HUD task
-        // too where its game's flow says so (`chip_window_at_close`: EXE6's
-        // as its Japanese games' do, `sub_8026DC4` calling `sub_801E012`,
-        // task 0x40, besides the icons' task; EXE5's, 0x080230CC): the next
-        // chip's name shows with the icons through the turn's banner, where
-        // without it the name shows from the navi's first decision in the
-        // fight (`Battle::chip_hud`). Once the fight runs its decisions set
-        // the window either way. (The task starts as the screens' results
-        // are exchanged, on the tick the icons come back.)
+        // too, as both games' do (EXE6's Japanese games' `sub_8026DC4`
+        // calling `sub_801E012`, task 0x40, besides the icons' task; EXE5's
+        // 0x080230CC; nettai has the Japanese games' presentation on every
+        // console, where the US EXE6 games' name waits for the navi's first
+        // decision): the next chip's name shows with the icons through the
+        // turn's banner, then the fight's decisions set the window
+        // (`Battle::chip_hud`). (The task starts as the screens' results are
+        // exchanged, on the tick the icons come back.)
         let fighting = b.round.mode == mode::FIGHTING;
         let icons = b.chip_hud_for(b.setup.local_side).icons;
-        let at_close = b.content.rules().flow.chip_window_at_close;
-        if at_close && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
+        if icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
             (self.early_window, self.early_fight_ticks) = (true, 0);
         }
         if self.early_window {
