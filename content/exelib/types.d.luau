@@ -627,6 +627,9 @@ export type PatchCardEffect = {
     what: string?,
     -- The card shows it as a bug.
     bug: boolean?,
+    -- The group its card screen lists it in, as the effect's constructor says: "parameter" (a stat's change) or
+    -- "ability" (the rest, the bugs among them).
+    group: ("parameter" | "ability")?,
 }
 
 -- What a game's patch cards' application (@exelib/patch_cards/apply) reads of the game: its kinds in the order they
