@@ -1418,8 +1418,9 @@ export type SupportsLook = {
 -- rules/patch_cards, rules/patch_cards), and its type is the game's (EXE6's
 -- `PatchCardEffect`, which its cards' constructors make). Its name is the
 -- locales' (locales/<lang>.toml's `[patch_cards]`), and so is each effect's
--- line on its menu (`[text.patch_card_effects]`, by the effect's kind and its
--- one choice's name).
+-- line on its card screen (`[patch_card_effects]`, by the effect's kind and
+-- its one choice's name). Its effects are in its card screen's order (the
+-- original's effect numbers'), which the content keeps.
 export type PatchCardSpec = {
     -- Its id, its key in its collection (`patch_cards.canodumb`): the
     -- loader's to read, never written in the table.

@@ -8,8 +8,8 @@ local card: PatchCard = {
     mb = 10,
     effects = {
         cards.body("aqua"),
-        cards.charged_shot(spreads.bubble),
         cards.bug(cards.attack(-1)),
+        cards.charged_shot(spreads.bubble),
     },
 }
 

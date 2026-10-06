@@ -809,7 +809,8 @@ chips, etc."
 content/
   .luaurc                             the packs by name (`@exe6`, `@exelib`), for an editor's requires
   exe6/, exe5/                          the game packs: what a match plays
-    manifest.toml                     the pack: its id, its kind, what it depends on
+    manifest.toml                     the pack: its id, its kind, what it depends on, its locales' text tables
+                                      (`text`: top-level tables of key to text no definition owns)
     init.luau                         the game's top module: it requires the game's rules and folders (below)
     <folder>/init.luau                a folder's index: it requires the folder's modules that define what the
                                       game has (chips/, navis/, stages/, patch_cards/, navicust/, lib/)

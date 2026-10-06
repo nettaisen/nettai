@@ -8,9 +8,9 @@ local card: PatchCard = {
     mb = 8,
     effects = {
         cards.body("elec"),
-        cards.charged_shot(zap_ring),
         cards.bug(cards.super_armor(false)),
         cards.bug(cards.status_guard(false)),
+        cards.charged_shot(zap_ring),
     },
 }
 

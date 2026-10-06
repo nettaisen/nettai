@@ -9,9 +9,9 @@ local card: PatchCard = {
     effects = {
         cards.bug(cards.hp(-80)),
         cards.body("wood"),
+        cards.mega_folder(2),
         cards.status_guard(true),
         cards.charge_shot_kind(variants.charged_grass),
-        cards.mega_folder(2),
     },
 }
 

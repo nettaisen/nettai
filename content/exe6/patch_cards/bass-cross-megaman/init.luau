@@ -9,11 +9,11 @@ local card: PatchCard = {
     mb = 70,
     effects = {
         cards.hp_percent(20),
+        cards.body("null"),
+        cards.bug(cards.mega_folder(-2)),
         cards.float_shoes(true),
         cards.b_button(triple_buster),
         cards.charged_shot(charge),
-        cards.body("null"),
-        cards.bug(cards.mega_folder(-2)),
     },
 }
 
