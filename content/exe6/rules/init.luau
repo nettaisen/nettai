@@ -102,13 +102,12 @@ local rules: Rules = {
         beast_out = "bool",
         -- What the save brings to the navi's stats (./save): the base HP (HP Memories, +0x3E), the Regular memory
         -- (RegUps, +0x09), fighting in the sun (+0x22), and the level of the navi code it received (0 to 14, none
-        -- without one: event flag 0x163, `dword_203CFA0`). No player states them: every side plays at the highest
-        -- (`setup_defaults`; a link navi at its navi code's last level, which the tools state, MegaMan with none).
-        -- A recording's boundary states the save's own.
-        hp = schema.fixed("u16"),
-        reg_up = schema.fixed("u8"),
-        sun = schema.fixed("bool"),
-        level = schema.fixed("u8?"),
+        -- without one: event flag 0x163, `dword_203CFA0`). A side that states none has the highest (`setup_defaults`;
+        -- a link navi its navi code's last level, which the tools state, MegaMan none).
+        hp = "u16",
+        reg_up = "u8",
+        sun = "bool",
+        level = "u8?",
         -- The save's bug frags (./dark_chips), which the init exchange shares.
         bug_frags = "u32",
         -- How long the save took to delete each SP navi (./sp_chips: the save's `byte_203EB00`), by its SP chip, in

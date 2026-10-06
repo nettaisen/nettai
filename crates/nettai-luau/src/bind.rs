@@ -1394,15 +1394,6 @@ fn schema_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         field.raw_set("of", of)?;
         Ok(field)
     });
-    lib_fn!(lua, t, "fixed", |lua, of: LuaValue| {
-        if !matches!(of, LuaValue::String(_) | LuaValue::Table(_)) {
-            return Err(mlua::Error::runtime(format!("schema.fixed's field is a type, not a {}", of.type_name())));
-        }
-        let field = lua.create_table()?;
-        field.raw_set(nettai_content_api::FIXED_MARK, true)?;
-        field.raw_set("of", of)?;
-        Ok(field)
-    });
     Ok(t)
 }
 
