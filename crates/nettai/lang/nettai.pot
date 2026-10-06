@@ -2,7 +2,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: nettai VERSION\n"
-"POT-Creation-Date: 2026-10-06 21:35+0000\n"
+"POT-Creation-Date: 2026-10-06 22:22+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -36,134 +36,130 @@ msgctxt "player"
 msgid "P1"
 msgstr ""
 
-#: ui/battle.slint:321 ui/lobby.slint:375 ui/replays.slint:108
-#: ui/battle.slint:321 ui/lobby.slint:375 ui/replays.slint:108 ui/widgets.slint:630
+#: ui/battle.slint:312 ui/lobby.slint:375 ui/replays.slint:116
+#: ui/battle.slint:312 ui/lobby.slint:375 ui/replays.slint:116 ui/widgets.slint:631
 msgctxt "versus"
 msgid "VS"
 msgstr ""
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342
+#: ui/battle.slint:333
 msgid "ping —"
 msgstr ""
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342 ui/lobby.slint:407
+#: ui/battle.slint:333 ui/lobby.slint:407
 msgid "ping {0}"
 msgstr ""
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342
+#: ui/battle.slint:333
 msgid "delay {0}"
 msgstr ""
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:342
+#: ui/battle.slint:333
 msgid "rollback {0} (max {1})"
 msgstr ""
 
-#: ui/battle.slint:360
+#: ui/battle.slint:351
 msgid "Reconnecting… {0}"
 msgstr ""
 
-#: ui/battle.slint:360
+#: ui/battle.slint:351
 msgctxt "seconds"
 msgid "{n} s"
 msgid_plural "{n} s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/battle.slint:375
+#: ui/battle.slint:366
 msgid "REPLAY"
 msgstr ""
 
-#: ui/battle.slint:381
+#: ui/battle.slint:372
 msgid "Round {0}"
 msgstr ""
 
-#: ui/battle.slint:418 ui/replays.slint:345
+#: ui/battle.slint:409 ui/replays.slint:353
 msgctxt "side"
 msgid "Left console"
 msgstr ""
 
-#: ui/battle.slint:418 ui/replays.slint:345
+#: ui/battle.slint:409 ui/replays.slint:353
 msgctxt "side"
 msgid "Right console"
 msgstr ""
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgid "STOPPED"
 msgstr ""
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgctxt "result"
 msgid "YOU WIN"
 msgstr ""
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgctxt "result"
 msgid "YOU LOSE"
 msgstr ""
 
-#: ui/battle.slint:544
+#: ui/battle.slint:535
 msgctxt "result"
 msgid "DRAW"
 msgstr ""
 
-#: ui/battle.slint:566
+#: ui/battle.slint:592
 msgid "Recorded to {0}"
 msgstr ""
 
-#: ui/battle.slint:572
+#: ui/battle.slint:598
 msgid "WATCH AGAIN"
 msgstr ""
 
-#: ui/battle.slint:572
+#: ui/battle.slint:598
 msgid "REMATCH"
 msgstr ""
 
-#: ui/battle.slint:572
+#: ui/battle.slint:598
 msgid "MENU"
 msgstr ""
 
-#: ui/battle.slint:605
+#: ui/battle.slint:631
 msgid "PAUSED"
 msgstr ""
 
-#: ui/battle.slint:618
+#: ui/battle.slint:644
 msgid "RESUME"
 msgstr ""
 
-#: ui/battle.slint:618
-msgid "LANGUAGE: {0}"
-msgstr ""
-
-#: ui/battle.slint:618
+#: ui/battle.slint:644
 msgid "QUIT TO MENU"
 msgstr ""
 
-#: ui/battle.slint:618
+#: ui/battle.slint:644
 msgid "START OVER"
 msgstr ""
 
-#: ui/battle.slint:643
+#: ui/battle.slint:669
 msgid "The battle goes on while you're here: netplay can't pause."
 msgstr ""
 
-#: ui/battle.slint:655 ui/lobby.slint:422 ui/play.slint:504
-#: ui/battle.slint:655 ui/lobby.slint:422 ui/play.slint:504 ui/settings.slint:184 ui/title.slint:254
+#: ui/battle.slint:681 ui/lobby.slint:422 ui/play.slint:514
+#: ui/battle.slint:681 ui/lobby.slint:422 ui/play.slint:514 ui/settings.slint:183 ui/title.slint:254
 msgid "Choose"
 msgstr ""
 
-#: ui/battle.slint:656 ui/lobby.slint:424 ui/play.slint:506 ui/title.slint:255
+#: ui/battle.slint:682 ui/lobby.slint:424 ui/play.slint:516 ui/title.slint:255
 msgid "Confirm"
 msgstr ""
 
-#: ui/battle.slint:657
+#: ui/battle.slint:683
 msgid "Menu"
 msgstr ""
 
-#: ui/battle.slint:657
+#: ui/battle.slint:683
 msgid "Resume"
 msgstr ""
 
@@ -209,7 +205,7 @@ msgctxt "speed"
 msgid "×1/{0}"
 msgstr ""
 
-#: ui/lobby.slint:52 ui/lobby.slint:326 ui/play.slint:245
+#: ui/lobby.slint:52 ui/lobby.slint:326 ui/play.slint:253
 msgid "YOU"
 msgstr ""
 
@@ -301,12 +297,12 @@ msgstr ""
 msgid "Reconnecting…"
 msgstr ""
 
-#: ui/lobby.slint:423 ui/play.slint:505 ui/settings.slint:185
+#: ui/lobby.slint:423 ui/play.slint:515 ui/settings.slint:184
 msgid "Change"
 msgstr ""
 
-#: ui/lobby.slint:425 ui/play.slint:507 ui/replays.slint:388
-#: ui/lobby.slint:425 ui/play.slint:507 ui/replays.slint:388 ui/title.slint:256
+#: ui/lobby.slint:425 ui/play.slint:517 ui/replays.slint:396
+#: ui/lobby.slint:425 ui/play.slint:517 ui/replays.slint:396 ui/title.slint:256
 msgid "Back"
 msgstr ""
 
@@ -346,79 +342,79 @@ msgstr ""
 msgid "FIGHT"
 msgstr ""
 
-#: ui/play.slint:235
+#: ui/play.slint:243
 msgid "Choose a game"
 msgstr ""
 
-#: ui/play.slint:247
+#: ui/play.slint:255
 msgid "STAND-IN"
 msgstr ""
 
-#: ui/play.slint:258
+#: ui/play.slint:266
 msgid "THE ARENAS"
 msgstr ""
 
-#: ui/play.slint:288
+#: ui/play.slint:296
 msgid "ROUND {0}"
 msgstr ""
 
-#: ui/play.slint:400
+#: ui/play.slint:408
 msgctxt "heading"
 msgid "PLAY"
 msgstr ""
 
-#: ui/play.slint:401
+#: ui/play.slint:409
 msgid "OFFLINE · AGAINST THE STAND-IN"
 msgstr ""
 
-#: ui/replays.slint:232
+#: ui/replays.slint:240
 msgctxt "heading"
 msgid "REPLAYS"
 msgstr ""
 
-#: ui/replays.slint:233
+#: ui/replays.slint:241
 msgid "{n} SET RECORDED"
 msgid_plural "{n} SETS RECORDED"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/replays.slint:271
+#: ui/replays.slint:279
 msgid "No replays yet"
 msgstr ""
 
-#: ui/replays.slint:279
+#: ui/replays.slint:287
 msgid "Every set you play is recorded to {0}."
 msgstr ""
 
-#: ui/replays.slint:316
+#: ui/replays.slint:324
 msgid "Not played to its end"
 msgstr ""
 
-#: ui/replays.slint:316
+#: ui/replays.slint:324
 msgid "A draw"
 msgstr ""
 
-#: ui/replays.slint:316
+#: ui/replays.slint:324
 msgid "{0} won"
 msgstr ""
 
-#: ui/replays.slint:330
+#: ui/replays.slint:338
 msgid "Checking that it plays back…"
 msgstr ""
 
-#: ui/replays.slint:330
+#: ui/replays.slint:338
 msgid "It plays back as it was played."
 msgstr ""
 
-#: ui/replays.slint:370
+#: ui/replays.slint:378
 msgid "WATCH"
 msgstr ""
 
-#: ui/replays.slint:386
+#: ui/replays.slint:394
 msgid "Console"
 msgstr ""
 
-#: ui/replays.slint:387
+#: ui/replays.slint:395
 msgid "Watch"
 msgstr ""
 
@@ -521,10 +517,6 @@ msgstr ""
 
 #: ui/settings.slint:158
 msgid "Pause"
-msgstr ""
-
-#: ui/settings.slint:159
-msgid "Next language"
 msgstr ""
 
 #: ui/title.slint:50

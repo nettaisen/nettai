@@ -171,7 +171,6 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     ui.on_battle_restart(on(App::battle_restart));
     ui.on_battle_quit(on(App::battle_quit));
     ui.on_battle_rematch(on(App::battle_rematch));
-    ui.on_battle_language(on(App::battle_language));
     let a = app.clone();
     ui.on_battle_touch(move |bit, down| {
         let mut app = a.borrow_mut();

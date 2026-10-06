@@ -467,7 +467,6 @@ impl App {
         ui.set_battle_result(0);
         ui.set_battle_stopped(SharedString::default());
         ui.set_battle_recorded(SharedString::default());
-        ui.set_battle_language_name(lang::name(self.lang).into());
         ui.set_battle_cursor(0);
         ui.set_battle_playback(Playback::default());
         self.show_pips();
@@ -575,10 +574,6 @@ impl App {
         self.go(back);
     }
 
-    pub fn battle_language(&mut self) {
-        self.set_language(lang::step(self.lang, 1));
-    }
-
     /// Show the app and the battle in `code`: the app's strings from its
     /// catalog, the content's names from its strings table.
     pub fn set_language(&mut self, code: &'static str) {
@@ -598,7 +593,6 @@ impl App {
             a.stage.stale = true;
         }
         let ui = self.ui();
-        ui.set_battle_language_name(lang::name(code).into());
         self.show_settings();
         match ui.get_screen() {
             Screen::Play => self.show_preview(),
@@ -621,7 +615,6 @@ impl App {
         let replay = matches!(self.battle.as_ref().map(|b| &b.kind), Some(Kind::Replay { .. }));
         match key {
             Some(BattleKey::Pause) => self.battle_pause(),
-            Some(BattleKey::Language) => self.battle_language(),
             // A replay's own: its pause, its speed, a frame's step.
             Some(BattleKey::PlayPause) if replay => {
                 let b = self.battle.as_mut().expect("playing");
