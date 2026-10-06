@@ -33,6 +33,7 @@ local cacdanc1: Chip = {
         { order = 51, code_run = { chip = recipe_cactbal1, count = 3 } },
     },
     instant = cacdanc.instant(0),
+    auto_battle = { class = "at_once" },
 }
 
 -- CacDanc2 (EXE5 chip 0x150): the Program Advance of two WoodNos2s and a CactBal2 (or three CactBal2s of one code): an
@@ -58,6 +59,7 @@ local cacdanc2: Chip = {
         { order = 52, code_run = { chip = recipe_cactbal2, count = 3 } },
     },
     instant = cacdanc.instant(1),
+    auto_battle = { class = "at_once" },
 }
 
 -- CacDanc3 (EXE5 chip 0x151): the Program Advance of two WoodNos3s and a CactBal3 (or three CactBal3s of one code): an
@@ -83,6 +85,7 @@ local cacdanc3: Chip = {
         { order = 53, code_run = { chip = recipe_cactbal3, count = 3 } },
     },
     instant = cacdanc.instant(2),
+    auto_battle = { class = "at_once" },
 }
 
 return { cacdanc1 = cacdanc1, cacdanc2 = cacdanc2, cacdanc3 = cacdanc3 }

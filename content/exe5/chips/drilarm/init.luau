@@ -19,6 +19,7 @@ local drilarm1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = drill.action(false),
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 -- DrilArm2 (EXE5 chip 0x049): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
@@ -36,6 +37,7 @@ local drilarm2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = drill.action(false),
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 -- DrilArm3 (EXE5 chip 0x04a): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
@@ -53,6 +55,7 @@ local drilarm3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = drill.action(false),
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 return { drilarm1 = drilarm1, drilarm2 = drilarm2, drilarm3 = drilarm3 }

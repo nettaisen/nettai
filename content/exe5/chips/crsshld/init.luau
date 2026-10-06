@@ -19,6 +19,7 @@ local crsshld1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = guard.action { ticks = 60, look = guard.looks.crsshld1, counter = { kind = "cross", palette = 0 } },
+    auto_battle = { class = "at_once" },
 }
 
 -- CrsShld2 (EXE5 chip 0x0aa): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
@@ -36,6 +37,7 @@ local crsshld2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = guard.action { ticks = 60, look = guard.looks.crsshld2, counter = { kind = "cross", palette = 1 } },
+    auto_battle = { class = "at_once" },
 }
 
 -- CrsShld3 (EXE5 chip 0x0ab): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
@@ -53,6 +55,7 @@ local crsshld3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = guard.action { ticks = 60, look = guard.looks.crsshld3, counter = { kind = "cross", palette = 2 } },
+    auto_battle = { class = "at_once" },
 }
 
 return { crsshld1 = crsshld1, crsshld2 = crsshld2, crsshld3 = crsshld3 }

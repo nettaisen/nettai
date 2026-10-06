@@ -25,6 +25,7 @@ local chip: Chip = {
         effect = swords.effects.wide,
         sound = swords.swing,
     },
+    auto_battle = { class = "into_reach", range = "column_ahead" },
 }
 
 return { wideswrd = chip }

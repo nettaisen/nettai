@@ -19,6 +19,7 @@ local chip: Chip = {
     extra_flags = { 8, 16 },
     slot_in_limit = 1,
     navi = navi.summon_cross,
+    auto_battle = { class = "at_once" },
 }
 
 return { crossdiv = chip }

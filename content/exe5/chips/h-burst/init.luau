@@ -40,6 +40,7 @@ local chip: Chip = {
         { order = 54, code_run = { chip = recipe_spreader, count = 3 } },
     },
     action = action.action({ bursts = 8 }, LOOK),
+    auto_battle = { class = "behind_target" },
 }
 
 return { ["h-burst"] = chip }

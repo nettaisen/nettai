@@ -35,6 +35,7 @@ local chip: Chip = {
         z = 0x10_0000,
         bullet = bullet.variants.spreader,
     }, LOOK),
+    auto_battle = { class = "behind_target" },
 }
 
 return { spreader = chip }

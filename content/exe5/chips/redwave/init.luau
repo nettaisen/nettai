@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 3,
     instant = wavepit.instant(wavepit.pits.redwave),
+    auto_battle = { class = "when_any_lava" },
 }
 
 return { redwave = chip }

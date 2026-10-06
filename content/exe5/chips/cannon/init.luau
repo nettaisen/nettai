@@ -20,6 +20,7 @@ local cannon: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = shooter.action { arm = shooter.arms.cannon, shot = variants.cannon },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- HiCannon (EXE5 chip 0x002): EXE6's cannon (@exelib/cannon, the original's action 0x14; EXE5's the same code),
@@ -37,6 +38,7 @@ local hicannon: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = shooter.action { arm = shooter.arms.hicannon, shot = variants.cannon },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- M-Cannon (EXE5 chip 0x003): EXE6's cannon (@exelib/cannon, the original's action 0x14; EXE5's the same code),
@@ -54,6 +56,7 @@ local m_cannon: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = shooter.action { arm = shooter.arms.m_cannon, shot = variants.cannon },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { cannon = cannon, hicannon = hicannon, ["m-cannon"] = m_cannon }

@@ -1,6 +1,6 @@
 --!strict
 -- A navi in EXE5's auto battle getting in place for a chip (0x08029B3C, from the AI's chip play, ./ai): each chip's
--- record names how (byte 13, its positioning class: data.chips[...].class, by name), and the class's routine runs once
+-- record names how (byte 13, its positioning class: its `auto_battle.class`), and the class's routine runs once
 -- a decision until it says it is no longer busy. Most classes have two steps: a search for a panel the chip reaches the
 -- target from, a step there, and the next decision's "in place"; the rest test a condition and say at once. In place or
 -- not, the AI plays the chip once the navi is no longer busy (it reads only `busy`; `ready` is the AI's other users'),
@@ -50,13 +50,28 @@ local function target_of(s: State): Object
     return s.place_target :: Object
 end
 
--- What the AI reads of the chip's record (data.chips).
-local function record(chip: Chip)
-    local r = data.chips[assert(chip.id)]
+-- What the AI reads of the chip's record: its own `auto_battle` (the rules' extension). None: the AI can't play it
+-- (its positioning class is past the table at 0x08029B68: the original jumps wherever the memory after it says, and
+-- crashes).
+type AutoBattle = { class: string, range: string? }
+local function record(chip: Chip): AutoBattle
+    local r = (chip :: any).auto_battle :: AutoBattle?
     if r == nil then
-        error(string.format("the navi in auto battle plays %s, which the AI's data (./data) doesn't list", chip.id :: string))
+        error(string.format(
+            "the navi in auto battle plays %s, which the AI can't play (its positioning class is past the table at 0x08029B68: the original crashes)",
+            chip.id :: string
+        ))
     end
     return r
+end
+
+-- The chip's reach list or spot test (its `auto_battle.range`, which the classes that read it name).
+local function range_of(chip: Chip): string
+    local range = record(chip).range
+    if range == nil then
+        error(string.format("%s's positioning class %s reads a reach list, and it names none", chip.id :: string, record(chip).class))
+    end
+    return range
 end
 
 -- The chip's reach list (record byte 23, data.ranges by name; `sub_8022AF4`).
@@ -170,7 +185,7 @@ type Step = (navi: Object, s: State) -> ()
 -- else a step anywhere of its own area; else a step to a panel from which it reaches, or, with none, the next target
 -- and a step anywhere.
 local function reach_from_here(navi: Object, s: State)
-    local t, range = target_of(s), record(chip_of(s)).range
+    local t, range = target_of(s), range_of(chip_of(s))
     if reaches(navi, t, range, panels.enemy_direction(navi)) then
         if hittable(t) then
             return in_place(s)
@@ -220,7 +235,7 @@ local SPOTS: { [string]: (navi: Object, t: Object) -> boolean } = {
 -- 0x08029E24 (`spot_test`, class 2): no step: the target stands where the chip's test (above) says it reaches: in
 -- place if a hit would land; else not; with the test failing, the next target too. The navi doesn't move.
 local function spot(navi: Object, s: State)
-    local range = record(chip_of(s)).range
+    local range = range_of(chip_of(s))
     local test = SPOTS[range]
     if test == nil then
         -- (A reach list's number, under 32: 0x08029E7A branches to itself.)
@@ -706,7 +721,7 @@ local function hurt_reach(navi: Object, s: State)
     if NAVI_STATS_2A == 0 and navi.max_hp - navi.hp < 300 then
         return not_ready(s)
     end
-    local t, range = target_of(s), record(chip_of(s)).range
+    local t, range = target_of(s), range_of(chip_of(s))
     if reaches(navi, t, range, panels.front_direction(navi)) then
         s.place_step, s.place_step_init = 4, 0
         return
@@ -783,7 +798,7 @@ local function steps(first: Step): { [number]: Step }
     return { [0] = first, [4] = done }
 end
 
--- The classes (0x08029B68's routines, by the name data.chips gives each chip's): their steps by the step byte, or
+-- The classes (0x08029B68's routines, by the name each chip's `auto_battle` gives its own): their steps by the step byte, or
 -- one routine. (`gauge_into_reach`, class 7, is below; class 12, `sub_802A568`, which waits on the target's counter
 -- window, no chip has.)
 local CLASSES: { [string]: { [number]: Step } | Step } = {
@@ -856,20 +871,6 @@ function place.step(navi: Object, s: State): boolean
         run(class, navi, s)
     end
     return s.place_busy
-end
-
--- For tools (../block's `validate`), never the simulation: the chips of the AI's data it has no way to get
--- a navi in place for, by id, each with why: those of the class `unplayable`, past the classes' table (the original's
--- 255: 0x08029B68 has no entry for it, so the original jumps wherever the memory after the table says, and crashes;
--- `run` raises there).
-function place.unplayable(): { [string]: string }
-    local out: { [string]: string } = {}
-    for id, r in data.chips do
-        if r.class ~= "gauge_into_reach" and CLASSES[r.class] == nil then
-            out[id] = "the original can't play it in auto battle (its positioning class is past the game's table of them: the game crashes)"
-        end
-    end
-    return out
 end
 
 return place
