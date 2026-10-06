@@ -40,26 +40,38 @@ netplay needs.
   frames, the audits, the replay of recorded matches, and the sound through the audio device.
 - `nettai-match`: match files, everything a round needs by content key, checked; the editor's random pick.
 - `nettai-demo-editor`: a desktop app that edits match files and plays them with `nettai-demo`.
-- `exe6-extract`: extracts EXE6's graphics and sound from the four ROMs into a content pack.
+- `nettai-extract`: shared EXE5/EXE6 asset extraction library and CLI, including placeholders for missing ROMs.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
 
 ## Getting started
 
-You need Rust with edition 2024, and four Mega Man Battle Network 6 ROMs of your own: the US Cybeast Falzar
-(`MEGAMAN6_FXXBR6E`) and Cybeast Gregar (`MEGAMAN6_GXXBR5E`), and the Japanese Rockman EXE 6 Dennoujuu Falzar
-(`ROCKEXE6_RXXBR6J`) and Dennoujuu Gregar (`ROCKEXE6_GXXBR5J`), which have what the US release cut. Extract a
-content pack from them, in that order, into `data/content/exe6` (the directory is gitignored):
+You need Rust with edition 2024. Extract assets from your own US or Japanese EXE5/EXE6 ROMs into a new or empty
+pack directory (the directories below are gitignored). ROMs can be supplied in any order:
 
-    cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6
+    cargo run --release -p nettai-extract -- exe6 data/content/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
+    cargo run --release -p nettai-extract -- exe5 data/content/exe5 <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>
 
-An EXE5 pack is written the same way by its own extractor, from the four Mega Man Battle Network 5 ROMs in this order
-(the US Team ProtoMan and Team Colonel, then the Japanese Team of Blues and Team of Colonel), into `data/content/exe5`:
+Any subset works, including a single ROM or no ROMs. Available sources supply their assets; unavailable graphics
+become checkerboard placeholders and missing songs become silence. The pack includes `extraction.txt` with missing
+sources and generated assets. Add `--content content` to check the game's definitions against the written pack.
 
-    cargo run --release -p exe5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> data/content/exe5
+Applications can embed the same extractor without launching a process or writing files:
+
+```rust
+use nettai_extract::{extract, Game, RomSet};
+
+let mut roms = RomSet::default();
+roms.insert(rom_bytes)?; // Vec<u8>, identified by the ROM header
+let assets = extract(Game::Exe6, &roms)?;
+// Use assets.graphics and assets.sound directly, or serialize the pack:
+let files = assets.files()?; // Vec<(relative_path, bytes)>
+```
+
+The [extractor documentation](crates/nettai-extract/README.md) describes source selection, diagnostics and the API.
 
 The frontend and the editor find the packs in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
-game it says, with no options: an EXE5 pack written there (`exe5-extract content`) sits beside EXE6's. You play one game
+game it says, with no options: an EXE5 pack written there (`nettai-extract exe5`) sits beside EXE6's. You play one game
 at a time, EXE6 or EXE5: a match file names its game and a trace states its own (there is no default game), and the battle is that
 game's content on its pack. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
 

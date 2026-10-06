@@ -517,8 +517,8 @@ The verification workspace traces EXE5 consoles as it does EXE6's, with the same
 
 ## 11. The EXE5 pack (as built)
 
-`exe5-extract content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> <pack-dir>` (the four ROMs by header,
-as exe6-extract takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
+`nettai-extract exe5 <pack-dir> <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>` (any subset, identified by header,
+as the same extractor takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
 
 - **What it has:** the 272 battle sprites (the same in both US ROMs), the field (11 panel types, EXE6 13; one
   highlight block for both highlights, EXE6 two), the 29 battle backgrounds with their scrolling and animations, the
@@ -587,8 +587,10 @@ as exe6-extract takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
     netbattle shows "Cstmzing...": the pack has neither language's.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
   root names them in its compat, as EXE6's does.
-- **Shared decoding:** the sprite archive and GFX-animation decoders are EXE6's format and code; exe5-extract has its
-  own copy, which belongs in one shared decoder with exe6-extract's when that is next reworked.
+- **Shared decoding:** `nettai-extract` now owns one ROM/LZ77 reader, sprite and portrait decoder, field/background
+  decoders, GFX-animation decoder, banner and patch-list decoder, and pack writer for EXE5 and EXE6. Game modules
+  retain their address tables and version/region selection. Its library accepts ROM bytes and produces typed assets
+  or pack files; the CLI accepts any subset and generates placeholders for unavailable sources.
 - nettai-content's HUD reader accepts a pack without the count box (`no_count_box`: EXE5 has none).
 
 ## 12. Reproducing

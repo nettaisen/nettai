@@ -19,7 +19,7 @@
 //!
 //! The engine does no file IO: a loader outside it (nettai-content) reads a
 //! content root (EXE6's is the committed content/exe6) and an asset root
-//! (extracted from the user's ROM by `exe6-extract content`) into this
+//! (extracted from the user's ROM by `nettai-extract exe6`) into this
 //! model, and tests build small content sets in code.
 //!
 //! Content has an identity, [`Content::hash`], which a round's setup

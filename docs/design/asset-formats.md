@@ -5,10 +5,10 @@ widely supported files that ordinary tools edit, which loads into exactly the
 data the frontend and the audio use. This document describes the graphics and
 sound formats; the pack's battle data (chips, navis, rules, sprite timing:
 what the engine runs on) is described in [content-pack.md](content-pack.md).
-A pack is the only form this data takes: `exe6-extract content` writes it
+A pack is the only form this data takes: `nettai-extract exe6` writes it
 from the user's ROM, and everything loads it straight from its files.
 
-The code is the `nettai-content` crate, `exe6-extract content`, and pack
+The code is the `nettai-content` crate, `nettai-extract exe6`, and pack
 loading in `nettai-frontend` (`game`) and the audio examples. Everything below was
 checked on the game's full battle graphics and all of its songs; the in-repo
 tests use synthetic assets.
@@ -49,7 +49,7 @@ precisely what a format can't carry and how each case is handled.
   goes in a small text sidecar rather than in a private binary.
 - **Exact by construction, then proved.** Export writes a file, and for songs
   immediately reads it back and compares, refusing anything that wouldn't
-  return the same. `exe6-extract content` reads the battle data back before it
+  return the same. `nettai-extract exe6` reads the asset data back before it
   finishes, and `nettai-content verify` checks a whole pack against another.
 - **Imports explain, never guess silently.** An import returns a report of
   errors (the pack can't be built as it is), warnings (it builds, but likely
@@ -452,9 +452,9 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
   difference there (docs/frontend.md §5).
 
 **Four ROMs, and what differs by version and region.** An EXE6 pack is made
-from the two US ROMs and the two Japanese ones (`exe6-extract content
-<falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`, all four, in that
-order, each checked by its header's game code: BR6E, BR5E, BR6J, BR5J): the
+from the two US ROMs and the two Japanese ones (`nettai-extract exe6 <pack>
+<falzar-us> <gregar-us> <falzar-jp> <gregar-jp>`, any subset and order,
+identified by game code: BR6E, BR5E, BR6J, BR5J): the
 US Falzar ROM's data, with what only the US Gregar ROM has right or of its
 own, read at the addresses the same code points at there (exe6-extract's
 `gregar`), and what the US release cut, from the Japanese ROMs
@@ -873,14 +873,14 @@ total ever pass about a second, the sound import is where to look first.
 `Content::animations` (see [content-pack.md](content-pack.md)); nothing is
 compiled into the engine.
 
-**From the ROMs.** `exe6-extract content <falzar-us> <gregar-us> <falzar-jp>
-<gregar-jp> <dir>` writes a pack in one step from the four ROMs (the graphics
+**From the ROMs.** `nettai-extract exe6 <dir> [ROM ...]` writes a pack in one step from any
+subset of the four ROMs, generating placeholders for unavailable assets (the graphics
 extraction, the sound extraction, the exporters, then reading it all back),
 a few seconds. It is the only extraction.
 
 ## 10. Commands
 
-    cargo run -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6    # ROMs -> pack
+    cargo run -p nettai-extract -- exe6 data/content/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>    # ROMs -> pack
     cargo run -p nettai-demo -- <trace.jsonl>                          # every pack in data/content
     cargo run -p nettai-content -- check data/content/exe6            # lint every file
     cargo run -p nettai-content -- verify data/content/exe6 <reference-pack> [--seconds N]

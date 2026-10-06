@@ -8,7 +8,7 @@ comes from two places:
 
 - the **content root**, a checkout's folder of Luau modules that *define* the content. EXE6's is content/exe6 in
   this repository: people own it, and the verification workspace checks it against the ROM (§3);
-- a **content pack**, a folder of open-format assets that `exe6-extract content` writes from the user's ROM:
+- a **content pack**, a folder of open-format assets that `nettai-extract exe6` writes from the user's ROM:
   graphics (with the sprites' animation timing) and sound, each under its name, and the asset index that lists
   them. The definitions name the pack's assets in full (`asset.sprite("exe6:bomb")`), never their numbers.
 
@@ -19,10 +19,9 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
 
 ## 0. Summary
 
-- **One extraction, of assets.** `exe6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>` (the four ROMs:
-  US Falzar, US Gregar, JP Falzar, JP Gregar) writes the graphics, the sound and the asset
-  index, reads the graphics and the index back to check them, and defines the content root against the pack to
-  check its names resolve. The engine, the frontend, the audio, netplay and the verification workspace all load
+- **One extraction, of assets.** `nettai-extract exe6 <pack> <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>` (US Falzar, US Gregar, JP Falzar and JP Gregar, in any order) writes the graphics, the sound and the asset
+  index, and reads the graphics, sound structure and index back to check them. `--content <root>` also checks
+  that battle definitions load. Missing ROMs produce placeholders. The engine, the frontend, the audio, netplay and the verification workspace all load
   the content root with a pack.
 - **Content is definitions.** Everything in the content root is a `define.*` call in a module, keyed by name.
   The engine has no chip, weapon, kind, action, effect, spark, region, collision type, status, lock-on mode or

@@ -1,6 +1,6 @@
 //! The HUD's graphics, from the US Team ProtoMan ROM (Team Colonel's own
 //! faces from the US Team Colonel ROM): what EXE5's HUD tasks copy to VRAM,
-//! by the counterparts of the EXE6 routines exe6-extract reads them by (the
+//! by the counterparts of the EXE6 routines the EXE6 module reads them by (the
 //! verification workspace's tools/exe5 pairs them). EXE5's HUD is EXE6's but
 //! for where its blocks load (its HUD layer's tiles from 0x180, EXE6's
 //! 0x1A0; the gauge from 0x202, EXE6's 0x222) and its emotion window: a face
@@ -8,8 +8,12 @@
 //! souls', 5-10), and the faces' palettes run on past the pictures for
 //! Chaos Unison's (exe5-map.md §11).
 
-use crate::rom::{Rom, Roms, Version};
-use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
+pub(crate) use crate::decode::{banner_at, tiles};
+use crate::exe5::rom::{Rom, Roms, Version};
+use nettai_assets::{
+    Chatbox, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles,
+    palettes_from_bytes,
+};
 use nettai_content::names::AssetNames;
 
 /// The battle's HUD load list (EXE6 `off_801ECB4`, at 0x0801B54C):
@@ -56,12 +60,22 @@ struct FaceAddresses {
     palettes: u32,
 }
 
-const PROTOMAN_FACES: FaceAddresses =
-    FaceAddresses { faces: 0x0873_FD78, soul_faces: 0x0874_04F8, faces_dark: 0x0874_1078, counts: 0x0874_0AF8, palettes: 0x0874_17F8 };
+const PROTOMAN_FACES: FaceAddresses = FaceAddresses {
+    faces: 0x0873_FD78,
+    soul_faces: 0x0874_04F8,
+    faces_dark: 0x0874_1078,
+    counts: 0x0874_0AF8,
+    palettes: 0x0874_17F8,
+};
 /// Team Colonel's (the same routine's literals, from 0x080197E8: its
 /// pictures from 11 at 0x087412FC + 0x180 n).
-const COLONEL_FACES: FaceAddresses =
-    FaceAddresses { faces: 0x0874_107C, soul_faces: 0x0874_17FC, faces_dark: 0x0874_237C, counts: 0x0874_1DFC, palettes: 0x0874_2AFC };
+const COLONEL_FACES: FaceAddresses = FaceAddresses {
+    faces: 0x0874_107C,
+    soul_faces: 0x0874_17FC,
+    faces_dark: 0x0874_237C,
+    counts: 0x0874_1DFC,
+    palettes: 0x0874_2AFC,
+};
 const DARK_PALETTES: u32 = 11;
 /// The team navis' faces (EXE6 `sub_801CC34`'s counterpart, 0x08019724:
 /// navi n's at + 0x100 (n - 1), its version's six), the box beside them
@@ -122,24 +136,31 @@ const CHATBOX_BOXES: u32 = 0x0804_5864;
 const CHATBOX_KINDS: u32 = 2;
 const CHATBOX_ARROW: u32 = 0x086B_9028;
 
-pub(crate) fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
-    Tiles::from_4bpp(rom.bytes(a, len))
-}
-
 /// A palette (the hardware ignores bit 15 of a color; chip 0's placeholder
 /// palette has it set, which an image can't hold).
 pub(crate) fn palette(rom: &Rom, a: u32) -> Palette {
+    if !rom.is_present() {
+        return crate::placeholders::PALETTE;
+    }
     palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)
 }
 
 fn map(rom: &Rom, a: u32, n: u32) -> Vec<MapEntry> {
-    (0..n).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect()
+    (0..n)
+        .map(|i| MapEntry::from_gba(rom.u16(a + 2 * i)))
+        .collect()
 }
 
 /// What glyph `k` draws: the content's name for it (EXE5's text encoding,
 /// compat/text.toml), else its number in brackets.
 fn glyph_name(names: &AssetNames, k: usize) -> String {
-    names.glyphs.iter().chain(&names.dialogue_glyphs).nth(k).cloned().unwrap_or_else(|| format!("[{k:03x}]"))
+    names
+        .glyphs
+        .iter()
+        .chain(&names.dialogue_glyphs)
+        .nth(k)
+        .cloned()
+        .unwrap_or_else(|| format!("[{k:03x}]"))
 }
 
 /// The HUD's text lines at `at`: a line with anything but glyphs in it (a
@@ -149,7 +170,10 @@ pub(crate) fn texts(rom: &Rom, at: u32) -> Vec<Vec<u16>> {
     (0..offset(0) / 2)
         .map(|i| {
             let line = rom.bytes(at + offset(i), 0x40);
-            line.iter().take_while(|&&c| c != TEXT_END && (c as usize) < FONT_GLYPHS).map(|&c| c as u16).collect()
+            line.iter()
+                .take_while(|&&c| c != TEXT_END && (c as usize) < FONT_GLYPHS)
+                .map(|&c| c as u16)
+                .collect()
         })
         .collect()
 }
@@ -163,7 +187,14 @@ fn face(rom: &Rom, a: &FaceAddresses, picture: u32) -> (Tiles, Tiles) {
         _ => (a.faces_dark + 0x180 * (picture - 11), true),
     };
     let face = tiles(rom, at, 0x100);
-    (face, if boxed { tiles(rom, at + 0x100, 0x80) } else { Tiles::default() })
+    (
+        face,
+        if boxed {
+            tiles(rom, at + 0x100, 0x80)
+        } else {
+            Tiles::default()
+        },
+    )
 }
 
 /// The emotion window's faces, as compat/assets.toml numbers them (its
@@ -193,48 +224,30 @@ fn mugshots(roms: &Roms) -> (Vec<(Tiles, Palette)>, Vec<Tiles>) {
     (faces, boxes)
 }
 
-/// Banner `id` of the table at `banners`, whose glyph filler is at `filler`
-/// (EXE6's `pt_801EF84` layout, read as exe6-extract's `banner_at` reads
-/// EXE6's).
-pub(crate) fn banner_at(rom: &Rom, (banners, filler): (u32, u32), id: u32) -> BannerLayout {
-    let p = rom.u32(banners + 4 * id);
-    let head = rom.u32(p);
-    let (x, y, kind) = (head as u8, (head >> 8) as u8, (head >> 16) as u8);
-    let mut glyphs = Tiles::default();
-    let mut number_at = None;
-    // Kind 3 (the telops) has no glyphs; kind 4 (the judge's) has them
-    // like the plain ones.
-    if kind <= 2 || kind == 4 {
-        // 20 glyph pointers; once the filler shows up it repeats.
-        let mut q = p + 4;
-        for _ in 0..20 {
-            let g = rom.u32(q);
-            let t = tiles(rom, g, 0x40);
-            glyphs.push(t.get(0).unwrap());
-            glyphs.push(t.get(1).unwrap());
-            if g != filler {
-                q += 4;
-            }
-        }
-        if rom.u32(q) == filler {
-            q += 4;
-        }
-        if kind == 1 {
-            let n = rom.u32(q);
-            number_at = Some((n as u8, (n >> 8) as u8));
-        }
-    }
-    BannerLayout { x, y, kind, glyphs, number_at }
-}
-
 /// The dialogue font at `font` with its advances at `advances` (a word a
 /// glyph), its glyphs drawing `chars` (the 8x16 font's characters, then the
 /// dialogue font's past them; a glyph past them its number in brackets).
-pub(crate) fn dialogue_font(rom: &Rom, (font, advances): (u32, u32), (cell, dialogue): (&[String], &[String])) -> DialogueFont {
-    let name = |k: usize| cell.iter().chain(dialogue).nth(k).cloned().unwrap_or_else(|| format!("[{k:03x}]"));
+pub(crate) fn dialogue_font(
+    rom: &Rom,
+    (font, advances): (u32, u32),
+    (cell, dialogue): (&[String], &[String]),
+) -> DialogueFont {
+    let name = |k: usize| {
+        cell.iter()
+            .chain(dialogue)
+            .nth(k)
+            .cloned()
+            .unwrap_or_else(|| format!("[{k:03x}]"))
+    };
     DialogueFont {
-        pixels: rom.bytes(font, 0x60 * DIALOGUE_GLYPHS).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
-        advances: (0..DIALOGUE_GLYPHS as u32).map(|i| rom.u32(advances + 4 * i) as u8).collect(),
+        pixels: rom
+            .bytes(font, 0x60 * DIALOGUE_GLYPHS)
+            .iter()
+            .flat_map(|&b| [b & 15, b >> 4])
+            .collect(),
+        advances: (0..DIALOGUE_GLYPHS as u32)
+            .map(|i| rom.u32(advances + 4 * i) as u8)
+            .collect(),
         chars: (0..DIALOGUE_GLYPHS).map(name).collect(),
     }
 }
@@ -245,14 +258,23 @@ fn chatbox(rom: &Rom) -> Chatbox {
         (0..n as u32)
             .map(|i| {
                 let e = MapEntry::from_gba(rom.u16(a + 2 * i));
-                MapEntry { tile: e.tile.wrapping_sub(CHATBOX_FIRST_TILE), ..e }
+                MapEntry {
+                    tile: e.tile.wrapping_sub(CHATBOX_FIRST_TILE),
+                    ..e
+                }
             })
             .collect()
     };
     Chatbox {
         tiles: tiles(rom, CHATBOX_TILES, 0x20 * CHATBOX_TILE_COUNT),
         palette: palette(rom, CHATBOX_PALETTE),
-        boxes: (0..CHATBOX_KINDS).map(|kind| std::array::from_fn(|step| map(rom.u32(CHATBOX_BOXES + 4 * (8 * kind + step as u32))))).collect(),
+        boxes: (0..CHATBOX_KINDS)
+            .map(|kind| {
+                std::array::from_fn(|step| {
+                    map(rom.u32(CHATBOX_BOXES + 4 * (8 * kind + step as u32)))
+                })
+            })
+            .collect(),
         arrow: tiles(rom, CHATBOX_ARROW, 3 * 0x80),
         text_palette: palette(rom, CHATBOX_TEXT_PALETTE),
     }
@@ -261,7 +283,13 @@ fn chatbox(rom: &Rom) -> Chatbox {
 /// The HUD's graphics; `chip_icons` the chips' (graphics.rs), `names` the
 /// fonts' characters.
 pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
-    let rom = &roms.protoman;
+    let rom = roms.protoman;
+    if !rom.is_present() {
+        let mut h = crate::placeholders::hud(names, BANNER_COUNT as usize);
+        (h.mugshots, h.mugshot_boxes) = mugshots(roms);
+        h.chip_icons = chip_icons;
+        return h;
+    }
     let mut hud_tiles = tiles(rom, HUD_TILES, 0x640);
     for g in [TIMES_GLYPH, TWO_GLYPH] {
         let t = tiles(rom, g, 0x40);
@@ -283,7 +311,9 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
     }
     let (mugshots, mugshot_boxes) = mugshots(roms);
     // The soul faces' count boxes: 0..=10.
-    let counts = (0..=10u32).map(|n| tiles(rom, PROTOMAN_FACES.counts + 0x80 * (10 - n), 0x80)).collect();
+    let counts = (0..=10u32)
+        .map(|n| tiles(rom, PROTOMAN_FACES.counts + 0x80 * (10 - n), 0x80))
+        .collect();
     Hud {
         tiles: hud_tiles,
         first_tile: HUD_FIRST_TILE,
@@ -309,27 +339,39 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
         // Colonel's.
         navi_mugshots: [
             (rom, NAVI_MUGSHOTS, NAVI_MUGSHOT_PALETTES),
-            (roms.us(Version::Colonel), COLONEL_NAVI_MUGSHOTS, COLONEL_NAVI_MUGSHOT_PALETTES),
+            (
+                roms.us(Version::Colonel),
+                COLONEL_NAVI_MUGSHOTS,
+                COLONEL_NAVI_MUGSHOT_PALETTES,
+            ),
         ]
         .into_iter()
         .flat_map(|(rom, faces, palettes)| {
             (0..NAVI_MUGSHOT_COUNT).map(move |n| NaviMugshot {
                 tiles: tiles(rom, faces + 0x100 * n, 0x100),
-                palettes: std::array::from_fn(|k| palette(rom, palettes + 0x40 * n + 0x20 * k as u32)),
+                palettes: std::array::from_fn(|k| {
+                    palette(rom, palettes + 0x40 * n + 0x20 * k as u32)
+                }),
             })
         })
         .collect(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
         pause,
         texts: texts(rom, TEXTS),
-        banners: (0..BANNER_COUNT).map(|id| banner_at(rom, (BANNERS, BANNER_FILLER), id)).collect(),
+        banners: (0..BANNER_COUNT)
+            .map(|id| banner_at(rom, (BANNERS, BANNER_FILLER), id))
+            .collect(),
         banner_digits,
         banner_palette: palette(rom, BANNER_PALETTE),
         waiting: tiles(rom, WAITING, 0x200),
         waiting_palette: palette(rom, BANNER_PALETTE),
         warning: tiles(rom, WARNING, 0x100),
         warning_palette: palette(rom, WARNING_PALETTE),
-        dialogue_font: dialogue_font(rom, (DIALOGUE_FONT, DIALOGUE_ADVANCES), (&names.glyphs, &names.dialogue_glyphs)),
+        dialogue_font: dialogue_font(
+            rom,
+            (DIALOGUE_FONT, DIALOGUE_ADVANCES),
+            (&names.glyphs, &names.dialogue_glyphs),
+        ),
         chatbox: chatbox(rom),
         language: String::new(),
         languages: Vec::new(),
