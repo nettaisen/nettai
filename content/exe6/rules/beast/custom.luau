@@ -5,7 +5,7 @@
 -- puts the navi in at the turn's start (`sub_802937A`, `sub_802A040`), and
 -- the round's record of it (`dword_20349A0`). Its state is the rules'.
 
-local beast_out_chip = require("../../chips/beastout")
+local beast_out_chip = require("../../chips/beastout").beastout
 local exe6 = require("../api")
 local kind = require("../forms/kind")
 local chip_gate_battle = require("../../lib/chip_gate_battle")

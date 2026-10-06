@@ -91,7 +91,7 @@ local function tick(me: Object)
     end
 end
 
-meteors.shower = define.kind {
+meteors.shower = new.kind {
     id = "meteors/shower",
     pool = "effect",
     state = { target = "object", dark = "bool", drops = "u8" },

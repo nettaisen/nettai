@@ -29,7 +29,7 @@ local NEUTRAL_OBJECT = 0x0080_0000
 
 -- A fan's variant.
 function fan.variant(v: FanVariant): FanVariant
-    return define.record("fan-variant", v)
+    return new.record("fan-variant", v)
 end
 
 function fan.make(look: FanLook): Fan
@@ -237,7 +237,7 @@ function fan.make(look: FanLook): Fan
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { variant = "record:fan-variant", row_counter = "u32" },

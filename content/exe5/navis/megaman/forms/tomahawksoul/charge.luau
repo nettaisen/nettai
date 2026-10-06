@@ -22,7 +22,7 @@ local SWING_TICKS, STRIKE_AT, RECOVER_TICKS = 21, 12, 5
 local HIT_MOD = 3
 local WOOD = 4
 -- Effect 0x45: the big slash (sprite 0C-15, animation 1), 16 pixels up.
-local SLASH = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
+local SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 local SLASH_Z = 16 * 0x1_0000
 
 -- 0x080EEEA0: the swing; the strike on the count's 12; 22 ticks.
@@ -77,7 +77,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     state = { timer = "u16" },
     -- 0x080EEE84
     update = function(me: Object, s: State)
@@ -102,7 +102,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     -- The charge table's row 0x1A (0x0801CB70); Charge 5 reads on into row 0x1B's first entry.
     charge_ticks = { 160, 150, 140, 130, 120, 20 },
     setup = setup,

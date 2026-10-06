@@ -139,7 +139,7 @@ end
 
 -- A game's shot, keyed `look.id`.
 function buster.shot_action(look: MegaManBusterLook): Action
-    return define.action {
+    return new.action {
         id = look.id,
         state = { timer = "u16", mode = { "shot", "spread", "throw" }, projectile = "record:projectile-variant" },
         update = function(me: Object, s: State)

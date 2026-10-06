@@ -27,22 +27,22 @@ parts.blades = {
 local SLASH, BIG = asset.sprite("sword-slash"), asset.sprite("big-slash")
 parts.effects = {
     -- Sword's, over the panel ahead.
-    slash = define.effect { sprite = SLASH, anim = 2, palette = 0 },
+    slash = new.effect { sprite = SLASH, anim = 2, palette = 0 },
     -- Over a column: WideSwrd's, StepSwrd's, the elemental and machine
     -- swords' (in their colors).
-    wide = define.effect { sprite = SLASH, anim = 0, palette = 0 },
+    wide = new.effect { sprite = SLASH, anim = 0, palette = 0 },
     -- Over two panels: LongSwrd's.
-    long = define.effect { sprite = SLASH, anim = 1, palette = 0 },
-    wide_blade = define.effect { sprite = SLASH, anim = 0, palette = 5 },
-    long_blade = define.effect { sprite = SLASH, anim = 1, palette = 5 },
+    long = new.effect { sprite = SLASH, anim = 1, palette = 0 },
+    wide_blade = new.effect { sprite = SLASH, anim = 0, palette = 5 },
+    long_blade = new.effect { sprite = SLASH, anim = 1, palette = 5 },
     -- Over three panels: FtrSword's.
-    line = define.effect { sprite = SLASH, anim = 3, palette = 0 },
-    muramasa = define.effect { sprite = SLASH, anim = 1, palette = 6 },
+    line = new.effect { sprite = SLASH, anim = 3, palette = 0 },
+    muramasa = new.effect { sprite = SLASH, anim = 1, palette = 6 },
     -- LifeSrd's and DblDream's; DrkSword's, dark.
-    big = define.effect { sprite = BIG, anim = 0, palette = 0 },
-    dark = define.effect { sprite = BIG, anim = 0, palette = 2 },
+    big = new.effect { sprite = BIG, anim = 0, palette = 0 },
+    dark = new.effect { sprite = BIG, anim = 0, palette = 2 },
     -- CrosSwrd's X.
-    cross = define.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 },
+    cross = new.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 },
 }
 
 -- The swings: most swords', and the big swords' (LifeSrd, DrkSword,

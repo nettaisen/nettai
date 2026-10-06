@@ -1,17 +1,16 @@
 --!strict
 -- GroundCross: one of MegaMan's forms.
 
-local base = require("./base")
+local base = require("./base").base
 local cross_overlay = require("./cross_overlay")
-local groundman = require("../../groundman")
-local groundcross_beast = require("./groundcross_beast")
+local groundman = require("../../groundman").groundman
+local groundcross_beast = require("./groundcross_beast")["groundcross-beast"]
 local buster = require("../weapons/buster")
 local drill = require("@self/drill")
 local rock_barrage = require("../weapons/rock_barrage")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "groundcross",
+local form: FormDef = {
     kind = "cross",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -41,7 +40,7 @@ return define.form {
     cross_release_anim = 0x16,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 9 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross",
         version = 0,
         actor_type = "player",
@@ -89,3 +88,5 @@ return define.form {
         },
     },
 }
+
+return { groundcross = form }

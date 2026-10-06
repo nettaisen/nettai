@@ -23,7 +23,7 @@ local function setup(navi: Object)
     return nil
 end
 
-return define.weapon {
+return new.weapon {
     id = "puncharm/charge",
     charge_ticks = { 80, 80, 80, 80, 80, 100, 100, 100 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,

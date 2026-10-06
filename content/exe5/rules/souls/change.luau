@@ -178,7 +178,7 @@ function change.update(me: Object, s: State)
 end
 
 -- The soul change, as the pause handler runs it: one of rules/souls's actions (./init).
-change.action = define.action {
+change.action = new.action {
     id = "souls/change",
     state = { timer = "u16" },
     update = change.update,

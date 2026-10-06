@@ -17,7 +17,7 @@ local shadow = require("./shadow")
 -- The chip's record's first parameter: the shadow's wait before its swing.
 local WAIT = 0
 
-local action = define.action {
+local action = new.action {
     -- 0x080F998A
     update = function(me: Object)
         local x, y = aim.nearest_enemy(me)
@@ -29,8 +29,7 @@ local action = define.action {
     end,
 }
 
-return define.chip {
-    id = "splitup",
+local chip: Chip = {
     codes = { "S" },
     element = "null",
     family = "sword",
@@ -44,3 +43,5 @@ return define.chip {
     slot_in_limit = 1,
     action = action,
 }
+
+return { splitup = chip }

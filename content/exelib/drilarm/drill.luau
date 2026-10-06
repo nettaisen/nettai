@@ -167,7 +167,7 @@ function drill.make_kind(
         tick(me)
     end
 
-    kind = define.kind {
+    kind = new.kind {
         id = id,
         pool = "attack",
         state = {

@@ -1,16 +1,15 @@
 --!strict
 -- TenguCross Beast: one of MegaMan's forms.
 
-local tenguman = require("../../tenguman")
-local falzar_beast = require("./falzar_beast")
+local tenguman = require("../../tenguman").tenguman
+local falzar_beast = require("./falzar_beast")["falzar-beast"]
 local falzar_beast_buster = require("../weapons/falzar_beast_buster")
 local tengu_wind = require("../weapons/tengu_wind")
 local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local charge = require("@self/charge")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "tengucross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -44,7 +43,7 @@ return define.form {
     traits = { "special_holds_buster", "shows_target_marker", "afterimages_stay", "alt_charge_time" },
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 20 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -92,3 +91,5 @@ return define.form {
         },
     },
 }
+
+return { ["tengucross-beast"] = form }

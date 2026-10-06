@@ -13,8 +13,7 @@ local recipe_woodnos3 = require("./woodnos").woodnos3
 -- CacDanc1 (EXE5 chip 0x14f): the Program Advance of two WoodNos1s and a CactBal1 (or three CactBal1s of one code): an
 -- unseen dancer drops twelve cactuses on the other side's navis (chips/cacdanc/cacdanc, instant effect 23; the cactuses'
 -- palette the record's first parameter, 0, times 2).
-local cacdanc1 = define.chip {
-    id = "cacdanc1",
+local cacdanc1: Chip = {
     codes = {},
     element = "wood",
     family = "program_advance",
@@ -39,8 +38,7 @@ local cacdanc1 = define.chip {
 -- CacDanc2 (EXE5 chip 0x150): the Program Advance of two WoodNos2s and a CactBal2 (or three CactBal2s of one code): an
 -- unseen dancer drops twelve cactuses on the other side's navis (chips/cacdanc/cacdanc, instant effect 23; the cactuses'
 -- palette the record's first parameter, 1, times 2).
-local cacdanc2 = define.chip {
-    id = "cacdanc2",
+local cacdanc2: Chip = {
     codes = {},
     element = "wood",
     family = "program_advance",
@@ -65,8 +63,7 @@ local cacdanc2 = define.chip {
 -- CacDanc3 (EXE5 chip 0x151): the Program Advance of two WoodNos3s and a CactBal3 (or three CactBal3s of one code): an
 -- unseen dancer drops twelve cactuses on the other side's navis (chips/cacdanc/cacdanc, instant effect 23; the cactuses'
 -- palette the record's first parameter, 2, times 2).
-local cacdanc3 = define.chip {
-    id = "cacdanc3",
+local cacdanc3: Chip = {
     codes = {},
     element = "wood",
     family = "program_advance",

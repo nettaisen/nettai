@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local barriers = require("../lib/barriers")
 
-return define.patch_card {
-    id = "famous-custom",
+local card: PatchCard = {
     mb = 69,
     effects = {
         cards.first_barrier(barriers.life_aura),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.giga_folder(2),
     },
 }
+
+return { ["famous-custom"] = card }

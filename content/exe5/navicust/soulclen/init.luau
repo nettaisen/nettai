@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "soulclen",
+local program: NaviCustProgram = {
     colors = { "white" },
     shape = {
         ".......",
@@ -18,3 +17,5 @@ return define.navicust_program {
     bug = "step",
     effects = { programs.outside("soul-cleanse") },
 }
+
+return { soulclen = program }

@@ -8,7 +8,7 @@
 local weapon = require("../../lib/weapon")
 local vulcan_chips = require("../../chips/vulcan")
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/soul-battlrs-custom/charge",
     -- The charge table's row 0x6b, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

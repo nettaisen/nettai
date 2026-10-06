@@ -120,6 +120,6 @@ local custom_screen: SoulCustom = {
     end,
 }
 
-arm_change.custom = define.record("soul-custom", custom_screen)
+arm_change.custom = new.record("soul-custom", custom_screen)
 
 return arm_change

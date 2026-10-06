@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- CosmoMan (EXE5 chip 0x10d): CosmoMan cuts in, takes the field objects around him and calls meteors down on the
 -- enemy area (./navi).
-local cosmoman = define.chip {
-    id = "cosmoman",
+local cosmoman: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -26,8 +25,7 @@ local cosmoman = define.chip {
 -- CosmoMnSP (EXE5 chip 0x10e): CosmoMan cuts in, takes the field objects around him and calls meteors down on the
 -- enemy area (../cosmoman/navi); its damage by how fast its user deleted CosmoMan SP (rules/sp_chips: formula 17,
 -- its table's row 16).
-local cosmomn_sp = define.chip {
-    id = "cosmomn-sp",
+local cosmomn_sp: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -45,8 +43,7 @@ local cosmomn_sp = define.chip {
 
 -- CosmoMnDS (EXE5 chip 0x10f): CosmoMan, dark, cuts in, takes the field objects around him and calls meteors down on
 -- the enemy area (../cosmoman/navi); its damage by its user's side's statistic 3 (formula 39, its table's row 16).
-local cosmomn_ds = define.chip {
-    id = "cosmomn-ds",
+local cosmomn_ds: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -62,4 +59,4 @@ local cosmomn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { cosmoman = cosmoman, cosmomn_sp = cosmomn_sp, cosmomn_ds = cosmomn_ds }
+return { cosmoman = cosmoman, ["cosmomn-sp"] = cosmomn_sp, ["cosmomn-ds"] = cosmomn_ds }

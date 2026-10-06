@@ -18,7 +18,7 @@ return common.make {
     id = "vdoll/doll",
     sprite = SPRITE,
     -- Its identity: a field object, with the look something that takes its place shows (DustMan's junk).
-    identity = define.identity {
+    identity = new.identity {
         id = "vdoll",
         class = "field_object",
         version = 3,

@@ -60,7 +60,7 @@ local function tick(me: Object)
     end
 end
 
-drill.kind = define.kind {
+drill.kind = new.kind {
     id = "grndman/drill",
     pool = "effect",
     state = { follows_action = "bool", action = "action" },

@@ -6,15 +6,14 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local action = require("@self/action")
-local ftrsword = require("./ftrsword")
-local lifesrd = require("./lifesrd")
-local longswrd = require("./longswrd")
-local sonicbom = require("./sonicbom")
-local sword = require("./sword")
-local wideswrd = require("./wideswrd")
+local ftrsword = require("./ftrsword").ftrsword
+local lifesrd = require("./lifesrd").lifesrd
+local longswrd = require("./longswrd").longswrd
+local sonicbom = require("./sonicbom").sonicbom
+local sword = require("./sword").sword
+local wideswrd = require("./wideswrd").wideswrd
 
-return define.chip {
-    id = "varswrd",
+local chip: Chip = {
     codes = { "B", "C", "V" },
     element = "null",
     family = "sword",
@@ -50,3 +49,5 @@ return define.chip {
         sword = sword,
     },
 }
+
+return { varswrd = chip }

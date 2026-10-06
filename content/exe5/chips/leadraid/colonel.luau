@@ -33,8 +33,8 @@ local SWORD_ANIM = 7
 -- His X (0x080BECC4 rows 1 and 2: the diagonals and the panel, no spark, hitting navis, a slash, hit modifier 3),
 -- and its effects (the effect table's rows 0x49 and 0x4A).
 local X: { { region: Region, effect: Effect } } = {
-    { region = regions.diagonals, effect = define.effect { sprite = asset.sprite("screen-divide"), anim = 1, palette = 0 } },
-    { region = regions.single, effect = define.effect { sprite = asset.sprite("screen-divide"), anim = 2, palette = 0 } },
+    { region = regions.diagonals, effect = new.effect { sprite = asset.sprite("screen-divide"), anim = 1, palette = 0 } },
+    { region = regions.single, effect = new.effect { sprite = asset.sprite("screen-divide"), anim = 2, palette = 0 } },
 }
 -- The panels his target holds (0x080BEDE0): an enemy navi's body, by side.
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -235,7 +235,7 @@ local function init(me: Object)
     act(me)
 end
 
-colonel.kind = define.kind {
+colonel.kind = new.kind {
     id = "leadraid/colonel",
     pool = "actor",
     state = { protoman = "object", go = "bool", glow = "object" },

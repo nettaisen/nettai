@@ -16,10 +16,9 @@ export type State = {
     timer: number,
 }
 
-local chips = {}
 
 -- One state for the three chips' draws.
-chips.STATE = { timer = "u16" }
+local STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local DRAW, RECOVER = 0x0, 0x4
@@ -128,11 +127,10 @@ end
 
 -- A chip's draw.
 local function shoot(): Action
-    return define.action { state = chips.STATE, update = update }
+    return new.action { state = STATE, update = update }
 end
 
-chips.trnarrw1 = define.chip {
-    id = "trnarrw1",
+local trnarrw1: Chip = {
     codes = { "A", "F", "K" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 0, mb = 30, damage = 30, hit_param = 30, lockout = 0,
@@ -142,8 +140,7 @@ chips.trnarrw1 = define.chip {
     beast = { lockon = lockon.trnarrw1 },
     action = shoot(),
 }
-chips.trnarrw2 = define.chip {
-    id = "trnarrw2",
+local trnarrw2: Chip = {
     codes = { "G", "M", "Z" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 1, mb = 36, damage = 40, hit_param = 30, lockout = 0,
@@ -153,8 +150,7 @@ chips.trnarrw2 = define.chip {
     beast = { lockon = lockon.trnarrw1 },
     action = shoot(),
 }
-chips.trnarrw3 = define.chip {
-    id = "trnarrw3",
+local trnarrw3: Chip = {
     codes = { "M", "S", "Y" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 2, mb = 42, damage = 50, hit_param = 30, lockout = 0,
@@ -165,4 +161,4 @@ chips.trnarrw3 = define.chip {
     action = shoot(),
 }
 
-return chips
+return { trnarrw1 = trnarrw1, trnarrw2 = trnarrw2, trnarrw3 = trnarrw3 }

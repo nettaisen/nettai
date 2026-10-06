@@ -37,7 +37,7 @@ export type State = {
 local SPRITE = asset.sprite("air-raid-plane")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     id = "airraid-plane",
     class = "field_object",
     version = 2,
@@ -75,7 +75,7 @@ local APPEAR, DESTROYED, TAKE_OFF, BOMB = 0, 2, 8, 9
 
 -- A plane.
 function plane.plane(p: AirRaidPlane): AirRaidPlane
-    return define.record("airraid-plane", p)
+    return new.record("airraid-plane", p)
 end
 
 -- Gone from the field's bookkeeping, hidden, and destroyed at the next
@@ -296,7 +296,7 @@ local function init(me: Object)
     tick(me)
 end
 
-plane.kind = define.kind {
+plane.kind = new.kind {
     id = "airraid/plane",
     pool = "attack",
     state = {

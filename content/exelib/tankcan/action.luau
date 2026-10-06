@@ -93,7 +93,7 @@ function tankcan.action(spec: Spec): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = spec.id,
         state = tankcan.STATE,
         args = spec,

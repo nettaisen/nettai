@@ -179,7 +179,7 @@ end
 
 -- A game's BugBomb kind `id`, of `look`.
 function bomb.make_kind(id: string, look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { angle = "u8", target_x = "u8", target_y = "u8" },

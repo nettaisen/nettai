@@ -14,7 +14,7 @@ local bodygrd = {}
 bodygrd.striker = striker.make_kind {
     id = "bodygrd/striker",
     -- NameID 0xD3: a field object nothing swallows, leaves as junk or throws (Poltrgst's list).
-    identity = define.identity {
+    identity = new.identity {
         class = "field_object",
         version = 0,
         ai_index = 1,
@@ -45,7 +45,7 @@ local function effect(me: Object)
     end
 end
 
-bodygrd.controller = define.kind {
+bodygrd.controller = new.kind {
     id = "bodygrd/controller",
     pool = "effect",
     state = { bonus = "u16", wait = "u8" },

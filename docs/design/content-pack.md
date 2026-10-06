@@ -23,9 +23,11 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
   index, and reads the graphics, sound structure and index back to check them. `--content <root>` also checks
   that battle definitions load. Missing ROMs produce placeholders. The engine, the frontend, the audio, netplay and the verification workspace all load
   the content root with a pack.
-- **Content is definitions.** Everything in the content root is a `define.*` call in a module, keyed by name.
-  The engine has no chip, weapon, kind, action, effect, spark, region, collision type, status, lock-on mode or
-  identity by number, and no navi or form: it holds handles, and content passes definitions.
+- **Content is definitions.** A game's top module returns its root: what a match names, by id (chips, navis,
+  forms, stages, patch cards, NaviCust programs), and its rules. What the root reaches is what the game has; a
+  table only code reaches says what it is with a tag constructor (`new.kind { ... }`). The engine has no chip,
+  weapon, kind, action, effect, spark, region, collision type, status, lock-on mode or identity by number, and no
+  navi or form: it holds handles, and content passes definitions.
 - **The original's numbers are compat's.** content/exe6/compat maps keys to the original's numbers for the tools
   that need them (the trace harness, save and link-data codecs, the extractor's asset names, `gen-content
   check`). The engine never reads it (a test guards the dependency), and content can't load it.
@@ -38,14 +40,17 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
 ## 1. The content root
 
 ```text
-chips/KEY/chip.luau, chips.luau           a chip or a series (`define.chip`), with its use
+init.luau                                 the game's root: its sections (each the init of the folder named for
+                                          it, which merges its modules' tables) and its rules
+chips/KEY/init.luau                       a chip or a series, returned by key (`return { minibomb = chip }`),
+                                          with its use
 chips/KEY/*.luau                          what only that chip or series uses (its action's builder, its kinds)
 navis/KEY/navi.luau, chip.luau, *.luau    a navi, its own chip, its weapons and what they spawn
 navis/megaman/init.luau                   MegaMan
 navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons and kinds next to them
-navis/megaman/weapons/KEY/weapon.luau     the weapons several forms share (`define.weapon`)
-objects/KIND/*.luau                       object kinds several owners spawn (`define.kind`)
-stages.luau                               the stages (`define.stage`), with their layouts and actors
+navis/megaman/weapons/KEY/weapon.luau     the weapons several forms share (`new.weapon`)
+objects/KIND/*.luau                       object kinds several owners spawn (`new.kind`)
+stages.luau                               the stages by id, with their layouts and actors
 rules/init.luau                           the stock ruleset: the game's one rules definition
 rules/*.luau                              its rule sections (plain tables), collision types, statuses,
                                           lock-on modes, and the roles (roles.luau, a plain table)

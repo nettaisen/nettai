@@ -35,8 +35,8 @@ local HIT_PARAM = 0x9E
 -- and the sound.
 local CLAWS = asset.sprite("slash-man-effect")
 local LOOKS = {
-    [0] = define.effect { sprite = CLAWS, anim = 1, palette = 0 },
-    [1] = define.effect { sprite = CLAWS, anim = 0, palette = 0 },
+    [0] = new.effect { sprite = CLAWS, anim = 1, palette = 0 },
+    [1] = new.effect { sprite = CLAWS, anim = 0, palette = 0 },
 }
 local REGIONS = { [0] = regions.long, [1] = regions.wide }
 local HIT_MODS = { [0] = 1, [1] = 3 }
@@ -127,7 +127,7 @@ local function recover(me: Object, s: State)
     me:exit_attack()
 end
 
-beast_claw.action = define.action {
+beast_claw.action = new.action {
     id = "megaman/beast-claw/action",
     state = { timer = "u16" },
     -- `sub_80EF534`.
@@ -143,7 +143,7 @@ beast_claw.action = define.action {
     end,
 }
 
-beast_claw.weapon = define.weapon {
+beast_claw.weapon = new.weapon {
     id = "megaman/beast-claw",
     -- The charge table's row 0x1E, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

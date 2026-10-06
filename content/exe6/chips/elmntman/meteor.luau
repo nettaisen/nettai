@@ -115,7 +115,7 @@ local function tick(me: Object)
     fall(me)
 end
 
-meteor.kind = define.kind {
+meteor.kind = new.kind {
     id = "elmntman/meteor",
     pool = "attack",
     state = { while_dimmed = "bool" },

@@ -13,9 +13,8 @@ local shot = require("@self/shot")
 -- `byte_80EC1BC`).
 local batcan = shot.action
 
-return {
-    batcan1 = define.chip {
-        id = "batcan1",
+local chips: { [string]: Chip } = {
+    batcan1 = {
         codes = { "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -25,8 +24,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
-    batcan2 = define.chip {
-        id = "batcan2",
+    batcan2 = {
         codes = { "S" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -36,8 +34,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
-    batcan3 = define.chip {
-        id = "batcan3",
+    batcan3 = {
         codes = { "R" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -47,8 +44,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
-    batcan4 = define.chip {
-        id = "batcan4",
+    batcan4 = {
         codes = { "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -59,3 +55,5 @@ return {
         action = batcan { shots = { 1, 1, 3 } },
     },
 }
+
+return chips

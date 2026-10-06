@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- KnightMn (EXE5 chip 0x0fe): KnightMan cuts in and swings his wrecking ball around himself, confusing what it hits
 -- (./navi).
-local knightmn = define.chip {
-    id = "knightmn",
+local knightmn: Chip = {
     codes = { "K" },
     element = "wood",
     family = "break",
@@ -27,8 +26,7 @@ local knightmn = define.chip {
 -- KnigtMnSP (EXE5 chip 0x0ff): KnightMan cuts in and swings his wrecking ball around himself, confusing what it hits
 -- (../knightmn/navi); its damage by how fast its user deleted KnightMan SP (rules/sp_chips: formula 12, its table's row
 -- 11).
-local knigtmn_sp = define.chip {
-    id = "knigtmn-sp",
+local knigtmn_sp: Chip = {
     codes = { "K" },
     element = "null",
     family = "break",
@@ -47,8 +45,7 @@ local knigtmn_sp = define.chip {
 
 -- KnigtMnDS (EXE5 chip 0x100): KnightMan, dark, cuts in and swings his wrecking ball around himself, confusing what it
 -- hits (../knightmn/navi); its damage by its user's side's statistic 3 (formula 34, its table's row 11).
-local knigtmn_ds = define.chip {
-    id = "knigtmn-ds",
+local knigtmn_ds: Chip = {
     codes = { "K" },
     element = "null",
     family = "break",
@@ -65,4 +62,4 @@ local knigtmn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { knightmn = knightmn, knigtmn_sp = knigtmn_sp, knigtmn_ds = knigtmn_ds }
+return { knightmn = knightmn, ["knigtmn-sp"] = knigtmn_sp, ["knigtmn-ds"] = knigtmn_ds }

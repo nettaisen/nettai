@@ -150,7 +150,7 @@ end
 
 -- A game's shuriken kind.
 function shuriken.make_kind(look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = { hit_mod = "u8" },

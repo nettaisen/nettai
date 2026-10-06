@@ -44,7 +44,7 @@ local function set_step(me: Object, step: number)
     me.step_init = 0
 end
 
-moonbld.action = define.action {
+moonbld.action = new.action {
     state = moonbld.STATE,
     update = function(me: Object, s: State)
         local step = me.step

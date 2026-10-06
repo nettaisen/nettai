@@ -5,13 +5,12 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local action = require("./varswrd/action")
-local crosswrd = require("./crosswrd")
-local dbldream = require("./dbldream")
-local sprsonic = require("./sprsonic")
-local sword = require("./sword")
+local crosswrd = require("./crosswrd").crosswrd
+local dbldream = require("./dbldream").dbldream
+local sprsonic = require("./sprsonic").sprsonic
+local sword = require("./sword").sword
 
-return define.chip {
-    id = "neovari",
+local chip: Chip = {
     codes = { "V" },
     element = "null",
     family = "sword",
@@ -43,3 +42,5 @@ return define.chip {
         sword = sword,
     },
 }
+
+return { neovari = chip }

@@ -4,10 +4,9 @@
 local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local dustman = require("@self/chip")
+local dustman = require("@self/chip").dustbrk
 
-return define.navi {
-    id = "dustman",
+local navi: NaviDef = {
     sprite = asset.sprite("dustman"),
     element = "null",
     weakness = { "cursor" },
@@ -67,7 +66,7 @@ return define.navi {
             { hp = 1200, attack = 2, rapid = 3, charge = 2, custom_level = 3, mega_level = 1, super_armor = true },
         },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -113,3 +112,5 @@ return define.navi {
         },
     },
 }
+
+return { dustman = navi }

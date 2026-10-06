@@ -46,7 +46,7 @@ end
 
 -- A game's bubble kind: its key and its sprite (animation 1).
 function rising_bubble.make_kind(id: string, sprite: SpriteAsset): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { palette = "u8" },

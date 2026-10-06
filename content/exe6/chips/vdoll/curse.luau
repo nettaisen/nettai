@@ -7,7 +7,7 @@
 -- ticks later the dimming ends. See docs/engine/shot-chips.md §14.2.
 
 local collision = require("../../rules/collision")
-local curse_chip = require("../curse")
+local curse_chip = require("../curse").curse
 local dimming_chips = require("@exelib/dimming")
 local regions = require("@exelib/regions")
 local sparkles = require("./sparkles")
@@ -35,7 +35,7 @@ local HIT_MOD = 3
 local OCCUPIED = { [0] = 0x0020_0000, [1] = 0x0040_0000 }
 -- The sparkles over whoever is hit: 32 ticks of effect 0x24.
 local SPARKLES_LENGTH = 2
-local SPARKLE = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
+local SPARKLE = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
 
 -- `sub_80E7486`: the combatant (one of either side's still in) whose
 -- collision stands on (x, y), when the panel says one of `side`'s
@@ -144,7 +144,7 @@ local function effect(me: Object)
     end
 end
 
-curse.kind = define.kind {
+curse.kind = new.kind {
     id = "vdoll/curse",
     pool = "effect",
     state = { targets = "u8[4]", count = "u8" },

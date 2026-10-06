@@ -85,14 +85,13 @@ local function effect(me: Object)
 end
 
 -- Its controller (effect object #0x23; EXE6's `sub_80E2E34`).
-local CONTROLLER = define.kind {
+local CONTROLLER = new.kind {
     id = "blinder/controller",
     pool = "effect",
     update = dimming_chips.phases { name = "Blinder", effect = effect },
 }
 
-return define.chip {
-    id = "blinder",
+local chip: Chip = {
     codes = { "A", "D", "H", "*" },
     element = "null",
     family = "invisible",
@@ -109,3 +108,5 @@ return define.chip {
         return dimming_chips.spawn(CONTROLLER, user, spec, true)
     end,
 }
+
+return { blinder = chip }

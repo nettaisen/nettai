@@ -10,7 +10,7 @@
 local charge = require("../../lib/navi_boost/charge")
 local shoot = require("../thunder/shoot")
 local statuses = require("../../rules/status")
-local thunder = require("../thunder")
+local thunder = require("../thunder").thunder
 
 local bgdththd = {}
 
@@ -36,7 +36,7 @@ local function setup(navi: Object): Action
     return thunder.action
 end
 
-bgdththd.weapon = define.weapon {
+bgdththd.weapon = new.weapon {
     id = "bgdththd/charge",
     charge_ticks = { 200, 200, 200, 200, 200, 80, 80, 80 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,

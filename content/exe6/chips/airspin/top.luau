@@ -24,7 +24,7 @@ return common.make {
     sprite = SPRITE,
     -- Its identity: a field object, with the look something that takes its
     -- place shows (DustMan's junk).
-    identity = define.identity {
+    identity = new.identity {
         id = "airspin-top",
         class = "field_object",
         version = 0,
@@ -35,7 +35,7 @@ return common.make {
     body = collision.neutral_body,
     hit_by = collision.everything,
     -- The spin's gust (effect 0x43), and its palette offset.
-    gust = define.effect { sprite = asset.sprite("moon-blade"), anim = 0, palette = 0 },
+    gust = new.effect { sprite = asset.sprite("moon-blade"), anim = 0, palette = 0 },
     gust_palette = 2,
     gust_side = true,
     gust_self = collision.pushing,

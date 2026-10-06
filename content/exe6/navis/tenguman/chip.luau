@@ -20,7 +20,7 @@ local ANIM_BLOW, ANIM_RECOVER = 0x10, 7
 local SOUND = asset.sound("aqua-surge")
 
 -- The gust on him (32 pixels up).
-local GUST = define.effect { sprite = asset.sprite("swirl"), anim = 1, palette = 1 }
+local GUST = new.effect { sprite = asset.sprite("swirl"), anim = 1, palette = 1 }
 local GUST_Z = 0x20_0000
 
 local BLOW_TICKS, RECOVER_TICKS = 0x1E, 0x14
@@ -95,8 +95,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [BLOW] = blow, [RECOVER] = recover }
 
-return define.chip {
-    id = "ftornado",
+local chip: Chip = {
     codes = { "T" },
     element = "null",
     family = "wind",
@@ -109,7 +108,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     -- `sub_80F1A46` (`off_80F1A58`).
-    action = define.action {
+    action = new.action {
         id = "ftornado/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -117,3 +116,5 @@ return define.chip {
         end,
     },
 }
+
+return { ftornado = chip }

@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-return define.chip {
-    id = "deltaray",
+local chip: Chip = {
     codes = { "Z" },
     element = "null",
     family = "sword",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 1,
     navi = navi.summon { palette = 0 },
 }
+
+return { deltaray = chip }

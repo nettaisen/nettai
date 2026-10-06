@@ -30,7 +30,7 @@ local function setup(navi: Object): Action
     return back.action
 end
 
-back.weapon = define.weapon {
+back.weapon = new.weapon {
     id = "shadowman/back",
     -- (A B+Back, which nothing charges: the charge table's row 0x0D (0x0801CAEE), Charge 5 reading on into row
     -- 0x0E's first entry.)

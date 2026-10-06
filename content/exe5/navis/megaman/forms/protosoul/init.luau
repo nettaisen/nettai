@@ -16,8 +16,7 @@ local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
-return define.form {
-    id = "protosoul",
+local form: FormDef = {
     soul = { family = "sword" },
     change = soul_change.action,
     revert = soul_revert.action,
@@ -50,7 +49,7 @@ return define.form {
     var_sword_waits = true,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 1 of category 0: what a chip's icon
     -- over him and his attachments sit by).
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -59,3 +58,5 @@ return define.form {
         attach_points = attach_points,
     },
 }
+
+return { protosoul = form }

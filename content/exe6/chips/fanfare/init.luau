@@ -20,8 +20,7 @@ local function cheer(me: Object)
     end
 end
 
-return define.chip {
-    id = "fanfare",
+local chip: Chip = {
     codes = { "P", "S", "Z", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,
@@ -29,7 +28,7 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 0.
     dimming = instruments.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             id = "fanfare",
             class = "field_object",
             version = 4,
@@ -43,3 +42,5 @@ return define.chip {
         effect = cheer,
     }),
 }
+
+return { fanfare = chip }

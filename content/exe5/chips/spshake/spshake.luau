@@ -131,7 +131,7 @@ local function init(me: Object)
     battle.play_sound(SOUND)
 end
 
-spshake.kind = define.kind {
+spshake.kind = new.kind {
     id = "spshake/wave",
     pool = "attack",
     state = { wave = "record:shake-wave", step = "i32", center_y = "i32", hit_at = "u32" },
@@ -154,7 +154,7 @@ spshake.kind = define.kind {
 }
 
 for k, w in spshake.waves do
-    spshake.waves[k] = define.record("shake-wave", w)
+    spshake.waves[k] = new.record("shake-wave", w)
 end
 
 -- A wave by its parameters (ShakPar's: chips/shakpar/shakpar): Param1 the speed's row of 0x080D30D4, Param2 whether it
@@ -165,7 +165,7 @@ function spshake.wave(speed: number, paralyzes: boolean, palette: number): Wave
     if not v then
         error(string.format("the SpShake wave's speed %d reads past 0x080D30D4", speed))
     end
-    return define.record("shake-wave", { speed = v, paralyzes = paralyzes, palette = palette })
+    return new.record("shake-wave", { speed = v, paralyzes = paralyzes, palette = palette })
 end
 
 -- 0x080D319E: a wave of `wave` on (x, y) with `element` (the SpShakes' action passes elec) and the damage word.

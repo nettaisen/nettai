@@ -14,7 +14,7 @@ local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("@exelib/regions")
 local parts = require("../../lib/swords/parts")
-local protoman = require("../../navis/protoman")
+local protoman = require("../../navis/protoman").protoman
 
 local heroes = {}
 
@@ -42,8 +42,8 @@ local OFFSET: { [string]: { number } } = { megaman = { -10, -10 }, protoman = { 
 
 -- The charge (effects 0x4E and 0x4F at its attach point 0, for 40 and 20
 -- ticks).
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = new.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
+local CHARGED = new.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
 local CHARGE_TICKS, CHARGED_AT, CHARGING_LASTS = 0x3C, 0x14, 0x28
 local SOUND_CHARGING = asset.sound("buster-charge")
 local SOUND_CHARGED = asset.sound("buster-charged")
@@ -69,9 +69,9 @@ local SHOT_REGIONS: { [number]: Region? } = {
     [1] = regions.single,
     [2] = regions.long,
     [3] = regions.line,
-    [4] = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } },
-    [5] = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } } },
-    [6] = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } },
+    [4] = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } },
+    [5] = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } } },
+    [6] = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } },
 }
 
 local function who(s: State): string
@@ -488,7 +488,7 @@ local function init(me: Object)
     tick(me)
 end
 
-heroes.kind = define.kind {
+heroes.kind = new.kind {
     id = "dblhero/heroes",
     pool = "actor",
     state = {

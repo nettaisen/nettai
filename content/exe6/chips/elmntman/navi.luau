@@ -52,7 +52,7 @@ local SOUND_ELMNT_MAN_3 = asset.sound("grass")
 local SOUND_ELMNT_MAN_4 = asset.sound("elmnt-man-4")
 
 -- What he is taken for: his actor record, and what he wears (his overlay, `sub_8011004`).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     id = "elementman",
     class = "navi",
     version = 0,
@@ -391,7 +391,7 @@ local ACTIONS = {
     [0x18] = leave,
 }
 
-elmntman.kind = define.kind {
+elmntman.kind = new.kind {
     id = "elmntman/navi",
     pool = "actor",
     state = {

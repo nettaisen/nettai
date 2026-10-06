@@ -57,7 +57,7 @@ local OUT, ACROSS, BACK = 0, 1, 2
 
 -- A boomerang variant.
 function boomerang.variant(v: Variant): Variant
-    return define.record("boomerang-variant", v)
+    return new.record("boomerang-variant", v)
 end
 
 -- `sub_80CA510`: a grass boomerang turns the other side's panel it is on
@@ -203,7 +203,7 @@ end
 
 -- A game's boomerang kind.
 function boomerang.make_kind(look: BoomerangLook): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = {

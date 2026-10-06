@@ -183,7 +183,7 @@ local function init(me: Object)
     tick(me)
 end
 
-elemrage.flame = define.kind {
+elemrage.flame = new.kind {
     id = "elemrage/flame",
     pool = "attack",
     state = {
@@ -340,7 +340,7 @@ function elemrage.action(count: number, ticks: number, flags: number): Action
         end
     end
 
-    return define.action {
+    return new.action {
         state = { timer = "u16", roar = "u16", palette = "u8", raged = "bool" },
         -- 0x080EFCD0.
         update = function(me: Object, s: State)

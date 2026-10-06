@@ -92,7 +92,7 @@ local function destroy(me: Object)
     me:destroy()
 end
 
-riding_hit.kind = define.kind {
+riding_hit.kind = new.kind {
     id = "slashman/riding-hit",
     pool = "attack",
     state = { is = "collision", hits = "collision", hit_mod = "u8", spark = "spark", keeps_going = "bool", action = "action" },

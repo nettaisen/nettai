@@ -3,8 +3,7 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "anaconda",
+local card: PatchCard = {
     mb = 12,
     effects = {
         cards.hp(130),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.bug(cards.tango(false)),
     },
 }
+
+return { anaconda = card }

@@ -29,7 +29,7 @@ local SPAWNER_ADDRESS = 0x080B999B
 -- When his tomahawk lands (ticks left of his swing).
 local STRIKE = 0x37
 -- The earth it splashes (effect 0x33).
-local EARTH = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
+local EARTH = new.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 
 -- `sub_80B97E4`: on his panel, on the ground (Z's whole part cleared).
 local function init(me: Object)
@@ -152,7 +152,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = raise, [0xC] = swing, [0x10] = leave }
 
-tmhkman.kind = define.kind {
+tmhkman.kind = new.kind {
     id = "tmhkman/navi",
     pool = "actor",
     state = { controller = "object" },

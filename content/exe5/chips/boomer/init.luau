@@ -19,8 +19,7 @@ local VARIANT = boomerang.variant {
     spark = sparks.wood,
 }
 
-return define.chip {
-    id = "boomer",
+local chip: Chip = {
     codes = { "A", "L", "V", "*" },
     element = "wood",
     family = "wood",
@@ -35,3 +34,5 @@ return define.chip {
     -- (Strong: EXE5's instant chip dispatch leaves 0x01000005 in the boomerang's parameters, its Param4 1.)
     instant = boomerang.instant(kind, VARIANT, true),
 }
+
+return { boomer = chip }

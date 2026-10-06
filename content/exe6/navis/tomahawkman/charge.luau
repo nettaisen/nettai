@@ -39,7 +39,7 @@ local WOOD = 4
 
 -- The slash's hit modifier, and its effect 16 pixels up.
 local HIT_MOD = 1
-local SLASH = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
+local SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 local SLASH_Z = 0x10_0000
 
 -- `sub_8012258`: 100 damage and 20 more per point of buster Attack (up to
@@ -117,7 +117,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [RAISE] = raise, [SWING] = swing, [RECOVER] = recover }
 
-charge.action = define.action {
+charge.action = new.action {
     id = "tomahawkman/charge/action",
     state = { timer = "u16", raise = "u8", recover = "u8" },
     -- `sub_80F17C4` (`off_80F17D8`).
@@ -126,7 +126,7 @@ charge.action = define.action {
     end,
 }
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "tomahawkman/charge",
     -- The charge table's row 0x45, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

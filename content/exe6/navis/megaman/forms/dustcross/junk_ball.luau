@@ -176,7 +176,7 @@ local function tick(me: Object)
     end
 end
 
-junk_ball.kind = define.kind {
+junk_ball.kind = new.kind {
     id = "dustcross/junk-ball",
     pool = "attack",
     state = { while_dimmed = "bool" },

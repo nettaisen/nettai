@@ -6,8 +6,7 @@ local drill = require("@self/drill")
 
 -- DrilArm1 (EXE5 chip 0x048): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
 -- ticks plus 10: EXE6's DrilArm (action 0x4F, EXE6's 0x2E) as EXE5's (chips/drilarm/drill).
-local drilarm1 = define.chip {
-    id = "drilarm1",
+local drilarm1: Chip = {
     codes = { "A", "J", "W" },
     element = "null",
     family = "break",
@@ -24,8 +23,7 @@ local drilarm1 = define.chip {
 
 -- DrilArm2 (EXE5 chip 0x049): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
 -- ticks plus 10: EXE6's DrilArm (action 0x4F, EXE6's 0x2E) as EXE5's (chips/drilarm/drill).
-local drilarm2 = define.chip {
-    id = "drilarm2",
+local drilarm2: Chip = {
     codes = { "D", "L", "S" },
     element = "null",
     family = "break",
@@ -42,8 +40,7 @@ local drilarm2 = define.chip {
 
 -- DrilArm3 (EXE5 chip 0x04a): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
 -- ticks plus 10: EXE6's DrilArm (action 0x4F, EXE6's 0x2E) as EXE5's (chips/drilarm/drill).
-local drilarm3 = define.chip {
-    id = "drilarm3",
+local drilarm3: Chip = {
     codes = { "I", "P", "Z" },
     element = "null",
     family = "break",

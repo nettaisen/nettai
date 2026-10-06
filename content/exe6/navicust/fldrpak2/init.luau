@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "fldrpak2",
+local program: NaviCustProgram = {
     colors = { "pink" },
     shape = {
         ".......",
@@ -27,3 +26,5 @@ return define.navicust_program {
     bug = "custom",
     effects = { programs.mega_folder(2), programs.custom(2) },
 }
+
+return { fldrpak2 = program }

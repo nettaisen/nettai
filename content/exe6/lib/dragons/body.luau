@@ -146,7 +146,7 @@ local function init(me: Object)
     tick(me)
 end
 
-body.kind = define.kind {
+body.kind = new.kind {
     id = "dragon-body",
     pool = "attack",
     state = {

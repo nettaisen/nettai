@@ -116,7 +116,7 @@ function hook.make(spec: Spec): {
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { big = "bool", spark = "spark", controller = "object" },

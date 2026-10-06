@@ -5,8 +5,7 @@
 local crack = require("@self/crack")
 
 -- CrakOut (EXE5 chip 0x05b): action 0x1B, cracks on the panel ahead (chips/crakout/crack).
-local crakout = define.chip {
-    id = "crakout",
+local crakout: Chip = {
     codes = { "*" },
     element = "null",
     family = "null",
@@ -23,8 +22,7 @@ local crakout = define.chip {
 }
 
 -- DublCrak (EXE5 chip 0x05c): action 0x1B, cracks on the panel ahead and the one behind it (chips/crakout/crack).
-local dublcrak = define.chip {
-    id = "dublcrak",
+local dublcrak: Chip = {
     codes = { "*" },
     element = "null",
     family = "null",
@@ -41,8 +39,7 @@ local dublcrak = define.chip {
 }
 
 -- TripCrak (EXE5 chip 0x05d): action 0x1B, cracks on the column ahead (chips/crakout/crack).
-local tripcrak = define.chip {
-    id = "tripcrak",
+local tripcrak: Chip = {
     codes = { "*" },
     element = "null",
     family = "null",

@@ -64,7 +64,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-propeller.kind = define.kind {
+propeller.kind = new.kind {
     id = "airraid/propeller",
     pool = "actor",
     state = { keeps_flip = "bool" },

@@ -7,8 +7,7 @@ local top = require("@self/top")
 
 -- AirSpin1 (EXE5 chip 0x082): action 0x47, EXE6's AirSpin (@exelib/airspin/action): a whirlwind top
 -- (./top) set down ahead in palette 0, spinning 2 times.
-local airspin1 = define.chip {
-    id = "airspin1",
+local airspin1: Chip = {
     codes = { "C", "E", "O" },
     element = "null",
     family = "wind",
@@ -25,8 +24,7 @@ local airspin1 = define.chip {
 
 -- AirSpin2 (EXE5 chip 0x083): action 0x47, EXE6's AirSpin (@exelib/airspin/action): a whirlwind top
 -- (./top) set down ahead in palette 1, spinning 3 times.
-local airspin2 = define.chip {
-    id = "airspin2",
+local airspin2: Chip = {
     codes = { "B", "H", "W" },
     element = "null",
     family = "wind",
@@ -43,8 +41,7 @@ local airspin2 = define.chip {
 
 -- AirSpin3 (EXE5 chip 0x084): action 0x47, EXE6's AirSpin (@exelib/airspin/action): a whirlwind top
 -- (./top) set down ahead in palette 2, spinning 4 times.
-local airspin3 = define.chip {
-    id = "airspin3",
+local airspin3: Chip = {
     codes = { "A", "G", "J" },
     element = "null",
     family = "wind",

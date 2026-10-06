@@ -51,7 +51,7 @@ local FLASH_TICKS, FLASH_SWITCH, TIMED_TICKS = 0x3C, 0x37, 0x1E
 
 -- A look, as a record (a spawner's).
 function follow_effect.look(l: Look): Look
-    return define.record("follow-effect-look", l)
+    return new.record("follow-effect-look", l)
 end
 
 -- A game's follow effect kind.
@@ -213,7 +213,7 @@ function follow_effect.make_kind(spec: KindSpec): Kind
         tick(me)
     end
 
-    return define.kind {
+    return new.kind {
         id = spec.id,
         pool = "effect",
         state = { look = "record:follow-effect-look", flip = "u8", palette_add = "u8", action = "action" },

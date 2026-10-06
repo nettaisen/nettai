@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- NumbrMan (EXE5 chip 0x0f2): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it
 -- bursts (./navi).
-local numbrman = define.chip {
-    id = "numbrman",
+local numbrman: Chip = {
     codes = { "N" },
     element = "null",
     family = "null",
@@ -27,8 +26,7 @@ local numbrman = define.chip {
 -- NumbrMnSP (EXE5 chip 0x0f3): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it
 -- bursts (../numbrman/navi); its damage by how fast its user deleted NumberMan SP (rules/sp_chips: formula 10, its
 -- table's row 9).
-local numbrmn_sp = define.chip {
-    id = "numbrmn-sp",
+local numbrmn_sp: Chip = {
     codes = { "N" },
     element = "null",
     family = "null",
@@ -47,8 +45,7 @@ local numbrmn_sp = define.chip {
 
 -- NumbrMnDS (EXE5 chip 0x0f4): NumberMan, dark, cuts in and throws a die three columns ahead, its face times his damage
 -- when it bursts (../numbrman/navi); its damage by its user's side's statistic 3 (formula 32, its table's row 9).
-local numbrmn_ds = define.chip {
-    id = "numbrmn-ds",
+local numbrmn_ds: Chip = {
     codes = { "N" },
     element = "null",
     family = "null",
@@ -65,4 +62,4 @@ local numbrmn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { numbrman = numbrman, numbrmn_sp = numbrmn_sp, numbrmn_ds = numbrmn_ds }
+return { numbrman = numbrman, ["numbrmn-sp"] = numbrmn_sp, ["numbrmn-ds"] = numbrmn_ds }

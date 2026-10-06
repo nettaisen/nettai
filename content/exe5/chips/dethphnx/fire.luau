@@ -134,7 +134,7 @@ local function init(me: Object)
     tick(me)
 end
 
-fire.kind = define.kind {
+fire.kind = new.kind {
     id = "dethphnx/fire",
     pool = "effect",
     state = { far = "bool" },

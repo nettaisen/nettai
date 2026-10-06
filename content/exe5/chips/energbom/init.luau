@@ -9,8 +9,7 @@ local collision = require("../rules/collision")
 -- EnergBom (EXE5 chip 0x01e): a bomb that leaves an energy burst where it lands (three hits on that panel): EXE6's
 -- throw, bomb and burst (@exelib/bombs, @exelib/energbom/burst; EXE5's the same code), with EXE5's collision
 -- types.
-local energbom = define.chip {
-    id = "energbom",
+local energbom: Chip = {
     codes = { "E", "P", "W" },
     element = "null",
     family = "null",
@@ -38,8 +37,7 @@ local energbom = define.chip {
 -- MegEnBom (EXE5 chip 0x01f): a bomb that leaves an energy burst where it lands (three hits on that panel): EXE6's
 -- throw, bomb and burst (@exelib/bombs, @exelib/energbom/burst; EXE5's the same code), with EXE5's collision
 -- types.
-local megenbom = define.chip {
-    id = "megenbom",
+local megenbom: Chip = {
     codes = { "C", "K", "Z" },
     element = "null",
     family = "null",

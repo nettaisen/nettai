@@ -57,7 +57,7 @@ function armshot.action(spec: Spec): Action
         me:exit_attack()
     end
 
-    return define.action {
+    return new.action {
         id = spec.id,
         state = armshot.STATE,
         args = spec,

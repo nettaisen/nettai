@@ -102,11 +102,10 @@ local function mag_coil(spec: MagCoilSpec): Action
         end
     end
 
-    return define.action { id = spec.id, state = STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = STATE, args = spec, update = update }
 end
 
-return define.chip {
-    id = "magcoil",
+local chip: Chip = {
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 14, damage = 0, hit_param = 30, lockout = 0,
@@ -115,3 +114,5 @@ return define.chip {
     slot_in_limit = 3,
     action = mag_coil { ticks = 0x3C },
 }
+
+return { magcoil = chip }

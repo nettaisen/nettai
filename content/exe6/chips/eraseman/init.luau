@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-local eraseman = define.chip {
-    id = "eraseman",
+local eraseman: Chip = {
     codes = { "K", "*" },
     element = "null",
     family = "cursor",
@@ -21,8 +20,7 @@ local eraseman = define.chip {
     navi = navi.summon { aim_ticks = 20 },
 }
 
-local erasemn_ex = define.chip {
-    id = "erasemn-ex",
+local erasemn_ex: Chip = {
     codes = { "K" },
     element = "null",
     family = "cursor",
@@ -38,8 +36,7 @@ local erasemn_ex = define.chip {
     navi = navi.summon { aim_ticks = 16 },
 }
 
-local erasemn_sp = define.chip {
-    id = "erasemn-sp",
+local erasemn_sp: Chip = {
     codes = { "K" },
     element = "null",
     family = "cursor",
@@ -55,4 +52,4 @@ local erasemn_sp = define.chip {
     navi = navi.summon { aim_ticks = 12 },
 }
 
-return { eraseman = eraseman, erasemn_ex = erasemn_ex, erasemn_sp = erasemn_sp }
+return { eraseman = eraseman, ["erasemn-ex"] = erasemn_ex, ["erasemn-sp"] = erasemn_sp }

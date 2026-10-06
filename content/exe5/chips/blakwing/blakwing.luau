@@ -18,7 +18,7 @@ local sparks = require("../../lib/sparks")
 local blakwing = {}
 
 local SPRITE = asset.sprite("black-wing")
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 local SOUND_START, SOUND_FLAP = asset.sound("place"), asset.sound("black-wing-flap")
 
 -- ---- The perch ------------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ local function perch_update(me: Object)
     end
 end
 
-blakwing.perch = define.kind {
+blakwing.perch = new.kind {
     id = "blakwing/perch",
     pool = "effect",
     state = { going = "bool" },
@@ -130,7 +130,7 @@ local function wing_tick(me: Object)
     c:present()
 end
 
-blakwing.wing = define.kind {
+blakwing.wing = new.kind {
     id = "blakwing/wing",
     pool = "attack",
     -- 0x080D63EC.
@@ -301,7 +301,7 @@ local function flock_end(me: Object)
     me:destroy()
 end
 
-blakwing.flock = define.kind {
+blakwing.flock = new.kind {
     id = "blakwing/flock",
     pool = "attack",
     state = {
@@ -393,7 +393,7 @@ local function effect(me: Object)
     end
 end
 
-blakwing.controller = define.kind {
+blakwing.controller = new.kind {
     id = "blakwing/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },

@@ -202,7 +202,7 @@ local function linger(me: Object)
     end
 end
 
-local POLTERGEIST = define.kind {
+local POLTERGEIST = new.kind {
     id = "poltrgst/poltergeist",
     pool = "effect",
     state = { holder = "object", taken = "object[8]", count = "u8", nearest = "bool" },
@@ -295,7 +295,7 @@ local function stand_in_init(me: Object)
     stand(me)
 end
 
-local STAND_IN = define.kind {
+local STAND_IN = new.kind {
     id = "poltrgst/stand-in",
     pool = "actor",
     state = { busy = "bool", controller = "object", nearest = "bool" },
@@ -359,7 +359,7 @@ local function effect(me: Object)
     end
 end
 
-poltergeist.controller = define.kind {
+poltergeist.controller = new.kind {
     id = "poltrgst/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool", nearest = "bool" },

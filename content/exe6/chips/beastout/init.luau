@@ -4,8 +4,7 @@
 
 local plus = require("../lib/instant/plus")
 
-return define.chip {
-    id = "beastout",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     traits = { "goes_with_any" },
     instant = plus.sparkle_alone,
 }
+
+return { beastout = chip }

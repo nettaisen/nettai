@@ -7,8 +7,7 @@
 local bombs = require("../lib/bombs")
 local geyser = require("@self/geyser")
 
-return define.chip {
-    id = "geyser",
+local chip: Chip = {
     codes = { "G", "M", "S" },
     element = "aqua",
     family = "aqua",
@@ -22,3 +21,5 @@ return define.chip {
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, thrower = geyser.thrower(0) },
 }
+
+return { geyser = chip }

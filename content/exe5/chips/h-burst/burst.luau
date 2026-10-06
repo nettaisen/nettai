@@ -15,7 +15,7 @@ burst.kind = common.make_kind("h-burst/burst", {
     is = collision.attack,
     hits = collision.hits_navis,
     status = statuses.paralyze_90,
-    explosion = define.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 2 },
+    explosion = new.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 2 },
 })
 
 return burst

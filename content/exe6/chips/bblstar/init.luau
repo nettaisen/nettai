@@ -78,12 +78,11 @@ local function blow(spec: Blow): Action
         end
     end
 
-    return define.action { state = STATE, args = spec, update = update }
+    return new.action { state = STATE, args = spec, update = update }
 end
 
-return {
-    bblstar1 = define.chip {
-        id = "bblstar1",
+local chips: { [string]: Chip } = {
+    bblstar1 = {
         codes = { "B", "E", "T" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 0, mb = 30, damage = 60, hit_param = 30, lockout = 0,
@@ -93,8 +92,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = blow { speed = 0x1_8000, palette = 0 },
     },
-    bblstar2 = define.chip {
-        id = "bblstar2",
+    bblstar2 = {
         codes = { "C", "L", "V" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 1, mb = 38, damage = 80, hit_param = 30, lockout = 0,
@@ -104,8 +102,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = blow { speed = 0x2_4000, palette = 1 },
     },
-    bblstar3 = define.chip {
-        id = "bblstar3",
+    bblstar3 = {
         codes = { "G", "R", "S" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 2, mb = 46, damage = 100, hit_param = 30, lockout = 0,
@@ -116,3 +113,5 @@ return {
         action = blow { speed = 0x3_0000, palette = 2 },
     },
 }
+
+return chips

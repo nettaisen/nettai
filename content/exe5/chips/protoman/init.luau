@@ -17,12 +17,11 @@ local LOOK = common.look {
     palette = 0,
     sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
     sword_anim = 1,
-    slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
+    slash = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,
 }
 
-local protoman = define.chip {
-    id = "protoman",
+local protoman: Chip = {
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -47,12 +46,11 @@ local LOOK_PROTOMN_SP = common.look {
     palette = 0,
     sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
     sword_anim = 1,
-    slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
+    slash = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,
 }
 
-local protomn_sp = define.chip {
-    id = "protomn-sp",
+local protomn_sp: Chip = {
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -79,12 +77,11 @@ local LOOK_PROTOMN_DS = common.look {
     palette = 3,
     sword = attachment.look { sprite = asset.sprite("sword"), palette = 6 },
     sword_anim = 1,
-    slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
+    slash = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,
 }
 
-local protomn_ds = define.chip {
-    id = "protomn-ds",
+local protomn_ds: Chip = {
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -100,4 +97,4 @@ local protomn_ds = define.chip {
     navi = navi.summon_with(LOOK_PROTOMN_DS),
 }
 
-return { protoman = protoman, protomn_sp = protomn_sp, protomn_ds = protomn_ds }
+return { protoman = protoman, ["protomn-sp"] = protomn_sp, ["protomn-ds"] = protomn_ds }

@@ -123,8 +123,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [JUMP] = jump, [PRESS] = press, [BACK] = back }
 
-return define.chip {
-    id = "heatpres",
+local chip: Chip = {
     codes = { "H" },
     element = "fire",
     family = "fire",
@@ -137,7 +136,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     -- `sub_80F0778` (`off_80F078C`).
-    action = define.action {
+    action = new.action {
         id = "heatpres/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -145,3 +144,5 @@ return define.chip {
         end,
     },
 }
+
+return { heatpres = chip }

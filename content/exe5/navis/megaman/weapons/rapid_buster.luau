@@ -21,7 +21,7 @@ local made = common.make {
     overlay_steps = false,
 }
 
-return define.weapon {
+return new.weapon {
     id = "megaman/rapid-buster",
     -- The charge table's row 0x68, by Charge 0 to 5: past 4 it reads on into row 0x69's first entry.
     charge_ticks = { 110, 100, 90, 80, 70, 140 },

@@ -12,8 +12,7 @@ local statuses = require("../rules/status")
 local TICKS = 0x3C
 local HOLD, SHORT_HOLD = TICKS - 5, 5
 
-local elcpuls1 = define.chip {
-    id = "elcpuls1",
+local elcpuls1: Chip = {
     codes = { "J", "L", "S" },
     element = "elec",
     family = "elec",
@@ -33,8 +32,7 @@ local elcpuls1 = define.chip {
     },
 }
 
-local elcpuls2 = define.chip {
-    id = "elcpuls2",
+local elcpuls2: Chip = {
     codes = { "A", "E", "J" },
     element = "elec",
     family = "elec",
@@ -54,8 +52,7 @@ local elcpuls2 = define.chip {
     },
 }
 
-local elcpuls3 = define.chip {
-    id = "elcpuls3",
+local elcpuls3: Chip = {
     codes = { "A", "J", "S" },
     element = "elec",
     family = "elec",
@@ -76,8 +73,7 @@ local elcpuls3 = define.chip {
     },
 }
 
-local destpuls = define.chip {
-    id = "destpuls",
+local destpuls: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "program_advance",

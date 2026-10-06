@@ -5,8 +5,7 @@
 local lockon = require("../rules/lockon")
 local fist = require("@self/fist")
 
-local firehit1 = define.chip {
-    id = "firehit1",
+local firehit1: Chip = {
     codes = { "D", "E", "F" },
     element = "fire",
     family = "fire",
@@ -22,8 +21,7 @@ local firehit1 = define.chip {
     instant = fist.instant(3),
 }
 
-local firehit2 = define.chip {
-    id = "firehit2",
+local firehit2: Chip = {
     codes = { "R", "S", "T" },
     element = "fire",
     family = "fire",
@@ -39,8 +37,7 @@ local firehit2 = define.chip {
     instant = fist.instant(3),
 }
 
-local firehit3 = define.chip {
-    id = "firehit3",
+local firehit3: Chip = {
     codes = { "A", "B", "C" },
     element = "fire",
     family = "fire",

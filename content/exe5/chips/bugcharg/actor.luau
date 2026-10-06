@@ -176,7 +176,7 @@ local function init(me: Object)
     tick(me)
 end
 
-actor.kind = define.kind {
+actor.kind = new.kind {
     id = "bugcharg/actor",
     pool = "actor",
     state = { controller = "object", held = "object" },
