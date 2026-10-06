@@ -19,6 +19,7 @@ local moonbld1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = moonbld.action,
+    auto_battle = { class = "into_reach", range = "around" },
 }
 
 -- MoonBld2 (EXE5 chip 0x03a): a spin with a blade that sweeps the eight panels around the navi (EXE5's MoonBld,
@@ -36,6 +37,7 @@ local moonbld2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = moonbld.action,
+    auto_battle = { class = "into_reach", range = "around" },
 }
 
 -- MoonBld3 (EXE5 chip 0x03b): a spin with a blade that sweeps the eight panels around the navi (EXE5's MoonBld,
@@ -53,6 +55,7 @@ local moonbld3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = moonbld.action,
+    auto_battle = { class = "into_reach", range = "around" },
 }
 
 return { moonbld1 = moonbld1, moonbld2 = moonbld2, moonbld3 = moonbld3 }

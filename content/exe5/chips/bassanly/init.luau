@@ -20,6 +20,7 @@ local chip: Chip = {
     -- (Past the navi chips' block: AntiNavi lets it through, and it isn't kept as the last navi chip.)
     traits = { "not_navi_slot" },
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 return { bassanly = chip }

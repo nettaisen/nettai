@@ -26,6 +26,7 @@ local gundels1: Chip = {
         beam = gundels.beams.plain,
         beam_in_sun = gundels.beams.plain_in_sun,
     },
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 -- GunDelS2 (EXE5 chip 0x021): a sun beam that drains the column two panels ahead while A is held, more in the sun, for
@@ -50,6 +51,7 @@ local gundels2: Chip = {
         beam = gundels.beams.plain,
         beam_in_sun = gundels.beams.plain_in_sun,
     },
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 -- GunDelS3 (EXE5 chip 0x022): a sun beam that drains the column two panels ahead while A is held, more in the sun, for
@@ -74,6 +76,7 @@ local gundels3: Chip = {
         beam = gundels.beams.plain,
         beam_in_sun = gundels.beams.plain_in_sun,
     },
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 -- GunDelEX (EXE5 chip 0x0db): a wide sun beam that drains the column two panels ahead and the one past it while A is
@@ -100,6 +103,7 @@ local gundelex: Chip = {
         beam_in_sun = gundels.beams.wide_in_sun,
         wide = true,
     },
+    auto_battle = { class = "into_reach", range = "columns_two_and_three" },
 }
 
 return { gundels1 = gundels1, gundels2 = gundels2, gundels3 = gundels3, gundelex = gundelex }

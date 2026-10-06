@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "dark" },
     slot_in_limit = 1,
     instant = plus.dark,
+    auto_battle = { class = "into_reach", range = "columns_two_to_four" },
 }
 
 return { darkplus = chip }

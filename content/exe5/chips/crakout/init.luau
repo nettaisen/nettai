@@ -20,6 +20,7 @@ local crakout: Chip = {
     slot_in_limit = 3,
     -- (0x080C7818's row 0: the panel ahead.)
     action = crack.action({ { 0, 0 } }),
+    auto_battle = { class = "at_once" },
 }
 
 -- DublCrak (EXE5 chip 0x05c): action 0x1B, cracks on the panel ahead and the one behind it (chips/crakout/crack).
@@ -38,6 +39,7 @@ local dublcrak: Chip = {
     slot_in_limit = 3,
     -- (Row 1: the panel ahead and the one behind it.)
     action = crack.action({ { 0, 0 }, { 1, 0 } }),
+    auto_battle = { class = "at_once" },
 }
 
 -- TripCrak (EXE5 chip 0x05d): action 0x1B, cracks on the column ahead (chips/crakout/crack).
@@ -56,6 +58,7 @@ local tripcrak: Chip = {
     slot_in_limit = 3,
     -- (Row 2: the column ahead.)
     action = crack.action({ { 0, 0 }, { 0, -1 }, { 0, 1 } }),
+    auto_battle = { class = "at_once" },
 }
 
 return { crakout = crakout, dublcrak = dublcrak, tripcrak = tripcrak }

@@ -29,6 +29,7 @@ local chip: Chip = {
         { order = 24, sequence = { recipe_bugbomb, recipe_geddon3, recipe_anubis } },
     },
     dimming = anubis.controller.hook(anubis.variants.poisphar),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { poisphar = chip }

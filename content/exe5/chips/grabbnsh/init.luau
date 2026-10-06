@@ -20,6 +20,7 @@ local grabrvng: Chip = {
     flags = { "dimming", "standard_library", "library" },
     slot_in_limit = 1,
     dimming = controller.hook,
+    auto_battle = { class = "when_area_lost" },
 }
 
 -- GrabBnsh (EXE5 chip 0x077): the user's side takes back the panels the other side stole, a hand dropping on every
@@ -37,6 +38,7 @@ local grabbnsh: Chip = {
     flags = { "dimming", "standard_library", "library" },
     slot_in_limit = 1,
     dimming = controller.hook,
+    auto_battle = { class = "when_area_lost" },
 }
 
 return { grabrvng = grabrvng, grabbnsh = grabbnsh }

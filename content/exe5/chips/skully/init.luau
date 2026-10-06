@@ -19,6 +19,7 @@ local skully1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = skully.action(skully.skulls(0)),
+    auto_battle = { class = "to_front" },
 }
 
 -- Skully2 (EXE5 chip 0x046): skulls that hop toward the nearest enemy, confusing what they hit (EXE5's Skully,
@@ -36,6 +37,7 @@ local skully2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = skully.action(skully.skulls(1)),
+    auto_battle = { class = "to_front" },
 }
 
 -- Skully3 (EXE5 chip 0x047): skulls that hop toward the nearest enemy, confusing what they hit (EXE5's Skully,
@@ -53,6 +55,7 @@ local skully3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = skully.action(skully.skulls(2)),
+    auto_battle = { class = "to_front" },
 }
 
 return { skully1 = skully1, skully2 = skully2, skully3 = skully3 }

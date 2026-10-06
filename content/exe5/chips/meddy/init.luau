@@ -21,6 +21,7 @@ local meddy: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- MeddySP (EXE5 chip 0x0ed): Meddy cuts in and throws two capsules beside the enemy navi, bursting along their lines
@@ -40,6 +41,7 @@ local meddy_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "at_once" },
 }
 
 -- MeddyDS (EXE5 chip 0x0ee): Meddy, dark, cuts in and throws two capsules beside the enemy navi, bursting along their
@@ -58,6 +60,7 @@ local meddy_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "at_once" },
 }
 
 return { meddy = meddy, ["meddy-sp"] = meddy_sp, ["meddy-ds"] = meddy_ds }

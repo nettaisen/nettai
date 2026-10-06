@@ -19,6 +19,7 @@ local chip: Chip = {
     slot_in_limit = 3,
     trap = "anti_recovery",
     dimming = traps.hook(),
+    auto_battle = { class = "when_trap_free" },
 }
 
 return { antirecv = chip }

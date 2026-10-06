@@ -41,6 +41,7 @@ local chip: Chip = {
             return controller.spawn(me, x, y, z, damage, LEADER, FOLLOWER)
         end,
     },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 return { greatyo = chip }

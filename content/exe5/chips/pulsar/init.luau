@@ -19,6 +19,7 @@ local pulsar1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = pulsar.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- Pulsar2 (EXE5 chip 0x016): a pulse along the row that bursts around the first body it hits, paralyzing (EXE5's
@@ -36,6 +37,7 @@ local pulsar2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = pulsar.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- Pulsar3 (EXE5 chip 0x017): a pulse along the row that bursts around the first body it hits, paralyzing (EXE5's
@@ -53,6 +55,7 @@ local pulsar3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = pulsar.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { pulsar1 = pulsar1, pulsar2 = pulsar2, pulsar3 = pulsar3 }

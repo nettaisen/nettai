@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = snake.hook,
+    auto_battle = { class = "when_hole_in_area" },
 }
 
 return { snake = chip }

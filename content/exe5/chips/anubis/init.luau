@@ -19,6 +19,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     dimming = anubis.controller.hook(anubis.variants.anubis),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { anubis = chip }

@@ -19,6 +19,7 @@ local chip: Chip = {
     extra_flags = { 2, 128 },
     slot_in_limit = 3,
     dimming = invisible.hook(360),
+    auto_battle = { class = "when_visible" },
 }
 
 return { invisibl = chip }

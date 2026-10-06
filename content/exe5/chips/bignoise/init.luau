@@ -28,6 +28,7 @@ local chip: Chip = {
         { order = 35, sequence = { recipe_pulsar3, recipe_pulsar3, recipe_shademn_ds } },
     },
     navi = bignoise.summon,
+    auto_battle = { class = "at_once" },
 }
 
 return { bignoise = chip }

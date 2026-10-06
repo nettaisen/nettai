@@ -44,6 +44,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     dimming = OTENKO.hook,
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { otenko = chip }

@@ -29,6 +29,7 @@ local chip: Chip = {
         bug = 0x54,
         bug_arg = 0x32,
     }),
+    auto_battle = { class = "at_once" },
 }
 
 return { darkcirc = chip }

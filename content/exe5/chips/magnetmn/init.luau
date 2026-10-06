@@ -21,6 +21,7 @@ local magnetmn: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- MagntMnSP (EXE5 chip 0x0ea): MagnetMan cuts in and sends two magnets sliding along his row to meet at the first enemy
@@ -41,6 +42,7 @@ local magntmn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- MagntMnDS (EXE5 chip 0x0eb): MagnetMan, dark, cuts in and sends two magnets sliding along his row to meet at the first
@@ -60,6 +62,7 @@ local magntmn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { magnetmn = magnetmn, ["magntmn-sp"] = magntmn_sp, ["magntmn-ds"] = magntmn_ds }

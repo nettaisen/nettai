@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = yoyo.action(yoyo.spec { mode = 0, panels = 2, rounds = 2 }),
+    auto_battle = { class = "before_target" },
 }
 
 return { yoyo = chip }

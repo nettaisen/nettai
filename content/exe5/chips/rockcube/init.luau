@@ -19,6 +19,7 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     dimming = cube.hook,
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { rockcube = chip }
