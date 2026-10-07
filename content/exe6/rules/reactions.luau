@@ -61,13 +61,17 @@ return {
         { dx = 0, dy = 1, panels = 1 },
         { dx = 0, dy = 0, panels = 0 },
     },
+    -- A move's end on ice slides a body (`sub_801A3DA`), by the direction of the move (`byte_800E4E8`): none, up,
+    -- down, back, forward, other.
     ice = {
-        { dx = 0, dy = 0, panels = 0 },
-        { dx = 0, dy = -1, panels = 1 },
-        { dx = 0, dy = 1, panels = 1 },
-        { dx = -1, dy = 0, panels = 1 },
-        { dx = 1, dy = 0, panels = 1 },
-        { dx = 0, dy = 0, panels = 0 },
+        slide = {
+            { dx = 0, dy = 0, panels = 0 },
+            { dx = 0, dy = -1, panels = 1 },
+            { dx = 0, dy = 1, panels = 1 },
+            { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
+            { dx = 0, dy = 0, panels = 0 },
+        },
     },
     bubble_bob = {
         1,

@@ -500,7 +500,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         push_reading = { reads = "by_hitter_flip", bits = 4, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
         hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002, elec_bonus_on_sea = false },
         obstacle_slide_bounds = false,
-        ice = row(6, none),
+        ice = { slide = row(6, none) },
         move_direction = "by_side",
         bubble_bob = row(32, 0),
         slide_speed = { x = 0x30000, y = 0x20000 },

@@ -541,12 +541,16 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.1 Reactions and the hit
 
-1. **Ice is a push.** 0x0801335A: a body that ends a move on ice (panel type 7) gets a push bit ORed into the
-   collision record's final modifier (+0x0D) from the table at 0x080133B4 by the move's direction (`00 40 80 20 10`
-   for side 0, `00 40 80 10 20` for side 1: none, up, down, back, forward), so the slide that follows is the push's
-   (the push rows at 0x0800ACDC: a panel up, down, back or forward). The engine slides on ice by the reactions' `ice` rows (six
-   `SlideVector`s by direction). Shape: a reactions field `ice: { rows = {...} } | { push_bits = {side0, side1} }`
-   (or `ice_push_bits: [[u8; 5]; 2]?` beside `ice`). Placeholder: `reactions.ice` is six zero rows (no slide).
+1. **Done: ice is a push.** 0x0801335A: a body that ends a move on ice (panel type 7; not of aqua, floating or
+   submerged, flags 0x24, and affected by ice, 0x02000000) gets a push bit ORed into the collision record's final
+   modifier (+0x0D) from the table at 0x080133B4 by its side and the move's direction (`00 40 80 20 10` for side 0,
+   `00 40 80 10 20` for side 1: none, up, down, left, right), so the slide that follows is the push's (the push rows
+   at 0x0800ACDC: a panel up, down, back or forward), and a hit's flinch bit the same tick makes it a drag (item 2).
+   The rule `reactions.ice`: `{ slide = rows }` (EXE6's and EXE5's six rows by direction, slide type 2) or
+   `{ push = { side 0's bits, side 1's } }` (EXE4's, the ROM's table: gen_rules.py reads it). It runs where EXE6's
+   ice does in the intake (before the traps, which absorb it with a hit, as EXE4's 0x08023048 comes after it too);
+   EXE6's test of a drag or a move under way before the move's end (`sub_801A36A`) is not EXE4's, but a move's end
+   comes with neither.
    - **Done: the move's direction** the table is read by. EXE4's (0x0800AF90, from its `object_updateCollisionPanels`,
      0x08012D9A) is 0 none, 1 up, 2 down, 3 left and 4 right whatever the side, across before up and down, never
      EXE6's 5 (other); EXE6's and EXE5's (`sub_800E994`) is back and forward by the side, 5 for a move of two panels
