@@ -156,6 +156,8 @@ standard = [
     "elemleaf",
     "elemsand",
     "minibomb",
+    "energbom",
+    "megenbom",
     "sword",
     "wideswrd",
     "longswrd",

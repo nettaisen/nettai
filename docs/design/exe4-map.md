@@ -585,6 +585,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   ElemDark's, the poison its raging flames leave (the flame's `leaves`, the panel type Param4's high nibble names:
   the lab's panels/elemdark-poison). ElemDark's sound recordings differ only on the custom screen (a music volume
   change the engine makes and the game doesn't, frame 290: the custom screen's).
+- **The throws** (action 0x09, `lib/bombs`: EXE6's throw on @exelib/bombs/throw): each variant's thrower
+  (0x080EB4C4) and what the navi holds (0x080EB4EC: an attachment row and its animation). Variants 0 to 2 (MiniBomb,
+  EnergBom and MegEnBom, DarkBomb) all throw the bomb (attack 8, @exelib/bombs/bomb) of the row their parameter names
+  (0x080CE088, with its blast region at 0x080CE270 and explosion at 0x080CE277), each chip's own. **EnergBom,
+  MegEnBom** (`chips/energbom`): bomb row 2 blasts nothing and leaves an energy burst (attack 0x11, @exelib/energbom's,
+  EXE6's code with EXE4's sprite and sound 0xBD). (Row 1's landing spawns 0x080CE58E's object, which no chip throws.)
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
   navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,

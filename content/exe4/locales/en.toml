@@ -102,6 +102,8 @@ language = "en"
 "junkman" = { name = "JunkMan", description = "Throw any\nobjects\non field" }
 "junkmn-sp" = { name = "JunkMnSP", description = "Throw any\nobjects\non field" }
 "junkmn-ds" = { name = "JunkMnDS", description = "Throw any\nobjects\non field" }
+"energbom" = { name = "EnergBom", description = "Throws\nbomb 3sq\nahead" }
+"megenbom" = { name = "MegEnBom", description = "Throws\nbomb 3sq\nahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

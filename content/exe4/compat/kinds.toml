@@ -15,6 +15,8 @@
 "projectile" = { pool = "attack", index = 0x00 }
 "attachment" = { pool = "attack", index = 0x02 }
 "bomb" = { pool = "attack", index = 0x08 }
+# EnergBom's and MegEnBom's energy burst (0x080CF3B8).
+"energbom/burst" = { pool = "attack", index = 0x11 }
 "bullet" = { pool = "attack", index = 0x12 }
 "lance" = { pool = "attack", index = 0x4F }
 "panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
