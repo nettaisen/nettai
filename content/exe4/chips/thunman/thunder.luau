@@ -49,8 +49,8 @@ local function mark(me: Object)
     end
 end
 
--- 0x080DB65E: shown, its sound, its region the panel, a flash on a solid panel; then its panel broken once, highlighted,
--- 20 ticks.
+-- 0x080DB65E: shown, its sound, its region the panel, a flash on a solid panel; then its panel broken once,
+-- highlighted, 20 ticks.
 local function strike(me: Object)
     local s = me.state :: State
     if me.phase == 0 then
