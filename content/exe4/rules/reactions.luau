@@ -1,7 +1,7 @@
 --!strict
 -- Reactions: EXE4's push rows (0x0800ACDC: six and none), the slide and drag speeds (0x0801077C, 0x080111E8:
--- EXE5's), its ice push (0x0801335A), and what EXE4's code does where the engine can say it: its hit test,
--- request clears and stance its own, the nearest the engine can say, each a gap (exe4-map.md §18).
+-- EXE5's), its ice push (0x0801335A), its hit test and request clears, and its stance's counter, the nearest the
+-- engine can say until read (exe4-map.md §18).
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
 
 return {
@@ -38,8 +38,15 @@ return {
     move_direction = "absolute",
     -- An obstacle's slide keeps no bounds (0x0801145C, EXE5's code).
     obstacle_slide_bounds = false,
-    -- An attack's end zeroes the AI data's request halfword (0x0800CA4A): a gap; nothing more cleared meanwhile.
-    request_clears = { attack = {}, paralysis = {}, flinch = {}, drag = {} },
+    -- What the ends of a navi's actions clear of its requests besides the attacks' six: an attack's (0x0800CA28,
+    -- 0x0800C9FC: 0x3F) nothing more; a paralysis's, a flinch's and a drag's (0x08010A74, 0x080109E6, 0x08010C28:
+    -- 0x43F) the anti-sword trigger too (0x400, which AntiSwrd's trap sets: 0x0802309C).
+    request_clears = {
+        attack = {},
+        paralysis = { "anti_sword_triggered" },
+        flinch = { "anti_sword_triggered" },
+        drag = { "anti_sword_triggered" },
+    },
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },
