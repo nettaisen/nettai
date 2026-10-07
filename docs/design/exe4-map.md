@@ -421,9 +421,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   name, and a sprite or sound EXE4's code loads where EXE5's or EXE6's same code loads a named one (the place votes
   of tools/exe5/assetmap.py over both maps; a pair the same but for constants votes only where the asset's number is
   the same: such pairs in the object code are often other objects on one skeleton, and would have named an EXE4
-  sound EXE6's Beast Over burst). The rest (175 sprites, 387 sounds) are written under their numbers
-  (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's extraction.txt (`unnamed:`), to name by what loads them
-  as the port reads EXE4's own code.
+  sound EXE6's Beast Over burst). Then what EXE4's own code says (gen_content.py's BY_USE): the assets the ported
+  content uses, each by the code that loads it; the navis' sprites by navi number (0x0800B90A's table 0x08017F98:
+  navis 1 to 14, Roll to HealNavi, named by their win banners, 0x08008524) and MegaMan's in each soul by soul
+  number (RollSoul to WoodSoul, the navis' order: the chip names' list from MegaSoul has them so). The rest (142
+  sprites, 368 sounds: the story navis' 0x0E to 0x19, the viruses', the chips' objects and effects, and the sounds
+  of what isn't ported) are written under their numbers (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's
+  extraction.txt (`unnamed:`), to name by what loads them as the port reads EXE4's own code (the verification
+  workspace's tools/exe4/assetloads.py lists each one's loads).
 - **The field** (R, Red Sun US's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
   its transfer list 0x08006A68: background palettes 1 to 8), the panel blocks (0x080093FC: 6 * type + 3 * owner + row
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
