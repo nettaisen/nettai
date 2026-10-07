@@ -103,15 +103,15 @@ pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames, base_present: bool) -> HudL
 
 /// The custom screen's Japanese lettering.
 pub fn custom(falzar: &Rom, gregar: &Rom) -> CustomLettering {
-    use crate::exe6::custom::{CROSS_NAMES, REDEAL_BUTTON, SCRAP_BUTTON, picture};
-    let names = |rom: &Rom, a: u32| crate::exe6::hud::tiles(rom, a, CROSS_NAMES.0 * CROSS_NAMES.1);
+    use crate::exe6::custom::{FORM_NAMES, REDEAL_BUTTON, SCRAP_BUTTON, picture};
+    let names = |rom: &Rom, a: u32| crate::exe6::hud::tiles(rom, a, FORM_NAMES.0 * FORM_NAMES.1);
     CustomLettering {
         pictures: SlotPictures {
             ok: picture(falzar, OK),
             ok_picked: picture(falzar, OK_PICKED),
             other: picture(falzar, OTHER),
         },
-        cross_names: vec![
+        form_names: vec![
             ("falzar".into(), names(falzar, CROSS_NAMES_FALZAR)),
             ("gregar".into(), names(gregar, CROSS_NAMES_GREGAR)),
         ],
