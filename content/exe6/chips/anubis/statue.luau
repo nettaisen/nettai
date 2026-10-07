@@ -38,35 +38,8 @@ local made = common.make {
 statue.kind = made.kind
 statue.spawn = made.spawn
 
--- An Anubis statue's variant (`byte_80CF0C0`, by the chip's first
--- parameter).
+-- An Anubis statue's variant (a row of `byte_80CF0C0`, by the chip's first
+-- parameter): each chip's own (Anubis's, PoisPhar's).
 statue.variant = common.variant
-
-statue.anubis = statue.variant {
-    anim = 0,
-    period = 6,
-    hp = 100,
-    lifetime = 3000,
-    identity = new.identity {
-        id = "anubis",
-        class = "field_object",
-        version = 2,
-        ai_index = 1,
-        look = { sprite = asset.sprite("anubis"), anim = 0, palette = 0, shadow = true },
-    },
-}
-statue.poisphar = statue.variant {
-    anim = 1,
-    period = 1,
-    hp = 100,
-    lifetime = 1441,
-    identity = new.identity {
-        id = "poisphar",
-        class = "field_object",
-        version = 3,
-        ai_index = 1,
-        look = { sprite = asset.sprite("anubis"), anim = 1, palette = 0, shadow = true },
-    },
-}
 
 return statue
