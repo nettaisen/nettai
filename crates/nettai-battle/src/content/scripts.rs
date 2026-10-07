@@ -465,6 +465,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false },
         charge_glow = "with_navi",
         charge = "hold_flags",
+        steps = { keys = { "up", "down", "right", "left" }, confused = { up = "down", down = "up", left = "right", right = "left" }, idle_checks_target = false },
         fade_clear = "at_target",
         banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more" },
         rng1_per_frame = true,"#,
@@ -636,7 +637,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 86, "every field of every section");
+        assert_eq!(fields, 87, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

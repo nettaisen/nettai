@@ -196,6 +196,8 @@ pub struct EffectsRules {
     /// How a navi's buttons charge, and ask for the buster, the charged
     /// shot and chips.
     pub charge: ChargeControls,
+    /// How a navi's held direction keys pick its step.
+    pub steps: StepControls,
     /// When a screen fade toward clear ends (`Fade::step`).
     pub fade_clear: FadeClear,
     /// A banner's steps (`hud::Banner`).
@@ -279,6 +281,46 @@ pub enum ChargeControls {
     /// neither turn it nor ask for the custom screen; B then Left
     /// (whichever way it faces) within 8 ticks asks for the B+Left special.
     PerButton,
+}
+
+/// How a navi's held direction keys pick its step (`EffectsRules::steps`;
+/// `kinds::player::idle::held_direction`, the idle's step).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StepControls {
+    /// The keys read, first held first (EXE6's `sub_800FA54`: up, down,
+    /// right, left; EXE4's 0x0800B4B0: right, left, up, down). Right is
+    /// toward the other side, left away, on either side's console.
+    pub keys: Vec<StepKey>,
+    /// What each key steps toward while the navi is confused (EXE6's
+    /// `byte_800FAA4`: up and down swapped, right and left; EXE4's
+    /// 0x0800B550: down left, up right, left down, right up).
+    pub confused: ConfusedKeys,
+    /// The idle starts a step only toward a panel the navi may step to
+    /// (EXE4's idle, 0x080EEC82: 0x0800B4B0 tests the panel); else (EXE6's
+    /// `sub_80F0354`) a held direction starts the step, which, blocked,
+    /// leaves for idle at once (its phase from the start).
+    pub idle_checks_target: bool,
+}
+
+/// A direction key (`StepControls`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StepKey {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// A confused navi's step for each key (`StepControls::confused`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConfusedKeys {
+    pub up: StepKey,
+    pub down: StepKey,
+    pub left: StepKey,
+    pub right: StepKey,
 }
 
 /// When a navi's charge glow (effect #8, `kinds::charge_glow`) comes.
