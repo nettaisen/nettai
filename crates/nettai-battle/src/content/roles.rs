@@ -500,10 +500,15 @@ pub enum HookRole {
     /// object 0x11, `sub_80E1A6A`, for 90 ticks), which the deletion's end
     /// ends (`sub_80E1A86`).
     NaviDeleted,
+    /// `(navi)`: `sub_801390C` has taken the navi's guard and
+    /// untouchability down: what its stats raise again (EXE4's All Guard,
+    /// NaviStats +0x28: the guard, 0x0800D8E4).
+    AbilitiesReset,
 }
 
 impl HookRole {
-    pub const ALL: [HookRole; 3] = [HookRole::FirstBarrier, HookRole::Encased, HookRole::NaviDeleted];
+    pub const ALL: [HookRole; 4] =
+        [HookRole::FirstBarrier, HookRole::Encased, HookRole::NaviDeleted, HookRole::AbilitiesReset];
 
     /// Its name in `rules/roles.luau`'s `hooks`.
     pub fn name(self) -> &'static str {
@@ -511,6 +516,7 @@ impl HookRole {
             HookRole::FirstBarrier => "first_barrier",
             HookRole::Encased => "encased",
             HookRole::NaviDeleted => "navi_deleted",
+            HookRole::AbilitiesReset => "abilities_reset",
         }
     }
 

@@ -766,9 +766,9 @@ fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)
 /// (records.toml), the bugs' drains, the custom level and chip limits, the
 /// move lag's column (the engine's navi variant), the soul (the form), the
 /// aura, the HP, and the rules' stats (the weapon level, the move bug, the
-/// Full Synchro at the start, MegaMan's color). A block that holds what the
-/// port can't say yet (supports, All Guard: patch cards to come) is an
-/// error, which `Round::needs` lists.
+/// Full Synchro at the start, MegaMan's color, All Guard). A block that
+/// holds what the port can't say yet (the supports: patch cards to come) is
+/// an error, which `Round::needs` lists.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
@@ -783,13 +783,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         None => None,
         Some(k) => Some(content.defs.record(&k).ok_or_else(|| format!("the content has no aura {k}"))?),
     };
-    for (what, set) in [
-        ("supports (+0x18)", s.supports != 0),
-        ("All Guard (+0x28)", s.all_guard),
-    ] {
-        if set {
-            return Err(format!("{what}: not ported yet (docs/design/exe4-map.md §18)"));
-        }
+    if s.supports != 0 {
+        return Err("supports (+0x18): not ported yet (docs/design/exe4-map.md §18)".to_string());
     }
     stats.mood = s.mood;
     stats.super_armor = s.super_armor;
@@ -800,6 +795,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.set_game_stat(content, "move_bug", Value::Int(s.move_bug as i64))?;
     stats.set_game_stat(content, "full_synchro_start", Value::Bool(s.full_synchro))?;
     stats.set_game_stat(content, "color", Value::Int(s.color as i64))?;
+    stats.set_game_stat(content, "all_guard", Value::Bool(s.all_guard))?;
     stats.attack = s.attack;
     stats.rapid = s.rapid;
     stats.charge = s.charge;
@@ -827,7 +823,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// What the NaviCust and the patch cards compile into a side's stats (rules/navicust), as EXE4's block's bytes say
 /// them: the abilities (+0x01 to +0x04), the buster's levels and blanks (+0x05 to +0x08), the weapon level and the
 /// move bug (+0x0B, +0x0D), the drains (+0x0E, +0x0F), the custom level and chip limits (+0x12 to +0x14), the supports
-/// (+0x18), the panel trail (+0x1B), the Full Synchro at the start (+0x1F), MegaMan's color (+0x27), the max HP (+0x32).
+/// (+0x18), the panel trail (+0x1B), the Full Synchro at the start (+0x1F), MegaMan's color (+0x27), All Guard (+0x28),
+/// the max HP (+0x32).
 pub fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
     let game = |name: &str| match s.game_stat(&b.content, name) {
         Some(nettai_content_api::FieldValue::U8(n)) => n,
@@ -859,6 +856,7 @@ pub fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
             s.bugs.panel_trail_kind,
             game("full_synchro_start"),
             game("color"),
+            game("all_guard"),
         ],
         s.max_hp,
     )
@@ -870,14 +868,14 @@ pub fn compiled_of(s: &NaviStats) -> String {
     compiled_bytes(
         [
             b[0x01], b[0x02], b[0x03], b[0x04], b[0x05], b[0x06], b[0x07], b[0x08], b[0x0B], b[0x0D], b[0x0E], b[0x0F], b[0x12], b[0x13], b[0x14], b[0x18], b[0x1B],
-            b[0x1F], b[0x27],
+            b[0x1F], b[0x27], b[0x28],
         ],
         s.max_hp,
     )
 }
 
-fn compiled_bytes(v: [u8; 19], max_hp: u16) -> String {
-    const NAMES: [&str; 19] = [
+fn compiled_bytes(v: [u8; 20], max_hp: u16) -> String {
+    const NAMES: [&str; 20] = [
         "super armor",
         "float shoes",
         "air shoes",
@@ -897,6 +895,7 @@ fn compiled_bytes(v: [u8; 19], max_hp: u16) -> String {
         "panel trail",
         "full synchro",
         "color",
+        "all guard",
     ];
     let mut out: Vec<String> = NAMES.iter().zip(v).map(|(n, v)| format!("{n} {v:#04x}")).collect();
     out.push(format!("max hp {max_hp}"));

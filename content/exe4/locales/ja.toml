@@ -66,6 +66,18 @@ language = "ja"
 "greenwd1" = { name = "グリーンウッド1", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
 "greenwd2" = { name = "グリーンウッド2", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
 "greenwd3" = { name = "グリーンウッド3", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"counter1" = { name = "カウンター1", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"counter2" = { name = "カウンター2", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"counter3" = { name = "カウンター3", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"mokorus1" = { name = "モコラッシュ1", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"mokorus2" = { name = "モコラッシュ2", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"mokorus3" = { name = "モコラッシュ3", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"sidbmbo1" = { name = "サイドバンブー1", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
+"sidbmbo2" = { name = "サイドバンブー2", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
+"sidbmbo3" = { name = "サイドバンブー3", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
+"whitweb1" = { name = "ホワイトウェブ1", description = "てきエリアの上の\nれつにくものすを\n発生させる" }
+"whitweb2" = { name = "ホワイトウェブ2", description = "てきエリアのまん中\nれつにくものすを\n発生させる" }
+"whitweb3" = { name = "ホワイトウェブ3", description = "てきエリアの下の\nれつにくものすを\n発生させる" }
 "roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-sp" = { name = "ロールSP", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-ds" = { name = "ロールDS", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
@@ -204,6 +216,8 @@ language = "ja"
 "069-b-left-ability-activation" = { name = "B+左で技発動" }
 "072-b-left-ability-activation" = { name = "B+左で技発動" }
 "073-b-left-ability-activation" = { name = "B+左で技発動" }
+"076-all-guard-1-2" = { name = "オールガード1/2" }
+"077-all-guard-2-2" = { name = "オールガード1/2" }
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }
 "085-charge-shot-switch" = { name = "チャージ武器を変更" }
 "086-charge-shot-switch" = { name = "チャージ武器を変更" }

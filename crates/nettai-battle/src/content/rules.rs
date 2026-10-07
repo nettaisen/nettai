@@ -59,6 +59,18 @@ pub struct FlowRules {
     pub custom_request: CustomRequest,
 }
 
+/// A link battle's navi body damage (the rules' `status.link_body_damage`):
+/// the navi's damage as it is set up (`sub_80142B0`, EXE6's and EXE5's
+/// 0x080119AC: 10), which its body's collision takes, and whether its
+/// status reset sets the collision's again (`sub_80142C2`: EXE6's; EXE5's
+/// reset, 0x08011B3C, has none).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LinkBodyDamage {
+    pub damage: u16,
+    pub again_at_reset: bool,
+}
+
 /// How a player asks for the custom screen with a full gauge, L or R.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1463,6 +1475,10 @@ pub struct Rules {
     /// drag's, `DragEnding::KeepsPose`) holds those ticks and no more;
     /// EXE6's (`sub_80F0354`) and EXE5's (0x080F027A) leave the pose.
     pub idle_stands: bool,
+    /// What a navi's body hits for in a link battle (rule section
+    /// `status`): none for EXE4, which sets none (its body hits for its
+    /// object's zeroed damage).
+    pub link_body_damage: Option<LinkBodyDamage>,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,

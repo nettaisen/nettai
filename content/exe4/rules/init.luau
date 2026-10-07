@@ -27,6 +27,9 @@ local rules: Rules = {
         -- MegaMan's color (+0x27: 0, or patch cards 59, 60, 89, 90's 1 to 4, ./patch_cards; the reset clears it),
         -- which his palette reads (./light_dark).
         color = "u8",
+        -- All Guard (+0x28: the pair of patch cards 76 and 77, ./patch_cards; the reset clears it), which raises the
+        -- navi's guard whenever its abilities are reset (./roles' `abilities_reset`, 0x0800D8E4).
+        all_guard = "bool",
     },
     -- What a player brings (nettai-match from a match's side, exe4-compat from a recording): a side's facts.
     setup = {
