@@ -10,6 +10,15 @@
 "cannon/action" = 0x0B
 "hicannon/action" = 0x0B
 "m-cannon/action" = 0x0B
+# The recoveries (the chips' action 0x1D, 0x080EC71A).
+"recov10/action" = 0x1D
+"recov30/action" = 0x1D
+"recov50/action" = 0x1D
+"recov80/action" = 0x1D
+"recov120/action" = 0x1D
+"recov150/action" = 0x1D
+"recov200/action" = 0x1D
+"recov300/action" = 0x1D
 # The charged shot.
 "megaman/charged-shot/action" = 0x24
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
