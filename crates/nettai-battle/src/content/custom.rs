@@ -172,6 +172,12 @@ pub struct CustomScreenLayout {
     /// dark chip's shade goes with it); else they run on until the screens
     /// close (EXE6's `sub_8026A6C`: `sub_80062EC`). Presentation.
     pub fades_clear_at_ok: bool,
+    /// The tick a key leaves the choosing (OK, SELECT, R, L, a window)
+    /// still draws the cursor and the last turns' block (EXE6's
+    /// `sub_8026CCC` draws after its keys); else the tick draws what the
+    /// state its keys left it in draws: no cursor, the block taken off for
+    /// OK and SELECT (EXE4's 0x0801E412). Presentation.
+    pub cursor_after_leaving: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -339,6 +345,7 @@ impl Default for CustomScreenLayout {
             restore_players: vec![31, 22],
             gauge_empties_at_open: true,
             fades_clear_at_ok: false,
+            cursor_after_leaving: true,
         }
     }
 }
