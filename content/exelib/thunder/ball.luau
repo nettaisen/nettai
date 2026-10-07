@@ -12,9 +12,10 @@
 -- Its first related slot can hold an object whose header it sets (to 1
 -- when it comes, 0 when it goes); Thunder gives none.
 --
--- Its look (sprites, animations, collision type, hit modifier, spark, sounds) is a
--- game's: EXE6's below (`ball.kind`); another game's kind of it is
--- `ball.make_kind(id, look)` (EXE5's).
+-- Its look (sprites, animations, collision type, hit modifier, spark, sounds, and
+-- how it finds its target) is a game's: each game's kind of it is
+-- `ball.make_kind(id, look)` (EXE6's, EXE5's; EXE4's, attack 0x2A at 0x080D2000,
+-- is never big and finds its target its own way).
 
 local regions = require("../regions")
 
@@ -67,7 +68,8 @@ local function search(me: Object, dir: number): (number, number)
     return 0, 0
 end
 
--- `sub_80C95EC`: the nearest target, looking the way it faces first.
+-- `sub_80C95EC`: the nearest target, looking the way it faces first (a look's
+-- own search in its place: EXE4's).
 local function find_target(me: Object): (number, number)
     local ahead = if bit32.bxor(me.alliance, me.flip) == 0 then 1 else -1
     local x, y = search(me, ahead)
@@ -80,9 +82,9 @@ end
 -- `sub_80C956C`: head for the target for a panel's time: along its row,
 -- or along its column when the target is in it; straight ahead without
 -- one.
-local function aim(me: Object)
+local function aim(me: Object, look: ThunderBallLook)
     local fast = (me.state :: State).fast
-    local tx, ty = find_target(me)
+    local tx, ty = (look.find_target or find_target)(me)
     local vertical = false
     local dir = me.facing
     if tx ~= 0 then
@@ -103,7 +105,7 @@ end
 
 -- `sub_80C950C`: drift; after each panel's time, aim again, or burst after
 -- its panels.
-local function drift(me: Object)
+local function drift(me: Object, look: ThunderBallLook)
     local p, v = me.pos, me.vel
     me.pos = Vec3.new(int.i32(p.x + v.x), int.i32(p.y + v.y), p.z)
     me:set_panel_from_coordinates()
@@ -122,7 +124,7 @@ local function drift(me: Object)
         me:set_lifecycle("destroy")
         return
     end
-    aim(me)
+    aim(me, look)
 end
 
 -- Out of the fight: its region cleared, then the burst.
@@ -132,7 +134,7 @@ local function finish(me: Object)
 end
 
 -- `sub_80C94BC`.
-local function tick(me: Object)
+local function tick(me: Object, look: ThunderBallLook)
     local c = me.collision
     c:remove()
     me:hit_spark()
@@ -142,7 +144,7 @@ local function tick(me: Object)
     if me.action ~= 0 then
         error(string.format("thunder ball action %#x reads past its table", me.action))
     end
-    drift(me)
+    drift(me, look)
     if not field.valid(me.panel_x, me.panel_y) then
         return finish(me)
     end
@@ -154,12 +156,13 @@ end
 local function init(me: Object, look: ThunderBallLook)
     local s = me.state :: State
     local dark = s.panels == DARK_PANELS
-    local big = s.fast or dark
+    -- (A look with no big ball loads its one sprite whatever it is: EXE4's.)
+    local big = (s.fast or dark) and look.big_sprite ~= nil
     local sprite = me.sprite
-    sprite:load(if big then look.big_sprite else look.sprite)
+    sprite:load(if big then look.big_sprite :: SpriteAsset else look.sprite)
     sprite.shadow = "with_sprite"
     me.visible = true
-    local anim = if big then look.big_anim else look.small_anim
+    local anim = if big then look.big_anim :: number else look.small_anim
     me.anim = anim
     me.anim_loaded = anim
     sprite:set_animation(anim)
@@ -182,10 +185,10 @@ local function init(me: Object, look: ThunderBallLook)
         c.bugs = s.bug + 0x100
     end
     c:present()
-    aim(me)
+    aim(me, look)
     battle.play_sound(if dark then look.dark_sound or look.sound else look.sound)
     me:set_lifecycle("update")
-    tick(me)
+    tick(me, look)
 end
 
 -- `sub_80C93F0`: burst, then gone once the animation ends.
@@ -207,7 +210,7 @@ function ball.make_kind(id: string, look: ThunderBallLook): Kind
             if l == "init" then
                 init(me, look)
             elseif l == "update" then
-                tick(me)
+                tick(me, look)
             else
                 burst(me)
             end

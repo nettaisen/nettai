@@ -110,6 +110,11 @@ language = "ja"
 "seekbom1" = { name = "サーチボム1", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
 "seekbom2" = { name = "サーチボム2", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
 "seekbom3" = { name = "サーチボム3", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
+"ball" = { name = "ホウガン", description = "3マス前に\nホウガンをなげる!\nパネルはかい攻撃!" }
+"geyser" = { name = "カンケツセン", description = "3マス前になげつけ\nあなマスにおちると\n水がふきだす!" }
+"thunder1" = { name = "サンダーボール1", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"thunder2" = { name = "サンダーボール2", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"thunder3" = { name = "サンダーボール3", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
@@ -208,6 +213,7 @@ language = "ja"
 "022-charge-shot-switch" = { name = "チャージ武器を変更" }
 "023-charge-shot-switch" = { name = "チャージ武器を変更" }
 "024-charge-shot-switch" = { name = "チャージ武器を変更" }
+"025-charge-shot-switch" = { name = "チャージ武器を変更" }
 "026-charge-shot-switch" = { name = "チャージ武器を変更" }
 "027-charge-shot-switch" = { name = "チャージ武器を変更" }
 "028-pet-menu-color-change" = { name = "PET画面カラー変更" }
@@ -246,6 +252,7 @@ language = "ja"
 "077-all-guard-2-2" = { name = "オールガード1/2" }
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }
 "083-charge-shot-switch" = { name = "チャージ武器を変更" }
+"084-charge-shot-switch" = { name = "チャージ武器を変更" }
 "085-charge-shot-switch" = { name = "チャージ武器を変更" }
 "086-charge-shot-switch" = { name = "チャージ武器を変更" }
 "087-charge-shot-switch" = { name = "チャージ武器を変更" }
@@ -272,7 +279,9 @@ language = "ja"
 "110-custom3" = { name = "カスタム3" }
 "111-gigafolder1" = { name = "ギガフォルダ1" }
 "112-b-left-ability-activation" = { name = "B+左で技発動" }
+"114-charge-shot-switch" = { name = "チャージ武器を変更" }
 "116-charge-shot-switch" = { name = "チャージ武器を変更" }
+"117-charge-shot-switch" = { name = "チャージ武器を変更" }
 "119-charge-shot-switch" = { name = "チャージ武器を変更" }
 "120-charge-shot-switch" = { name = "チャージ武器を変更" }
 "133-weapon-change" = { name = "ウェポンチェンジ" }

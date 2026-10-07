@@ -600,6 +600,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   thrower at the other side's navi ahead nearest in columns (between equally near ones it compares the row itself with
   the nearest row distance so far: kept), flies 40 ticks and bursts where it lands in EXE4's sparkles (effect 0x11,
   objects/sparkles: @exelib/vdoll/sparkles whose look `stays` where its object was as they started, 0x080E3348).
+  **Ball** (variant 4, `chips/ball`): EXE5's CannBall's cannonball (attack 0x35), now @exelib/cannball/ball, with
+  EXE4's look. **Geyser** (variant 5, `chips/geyser`): EXE5's Geyser bomb and water (attacks 0x42 and 0x43), now
+  @exelib/geyser/geyser, with EXE4's look; EXE4's splash on solid ground also takes the throw's Atk+ bonus (the
+  spawn's +0x64, which EXE5's stores and never reads: `splash_bonus`). The water keeps its spawn's registers as its
+  position, its height the battle state's address (the battle-over test's r3): its hits' sparks show far above the
+  field (`water_height`; the lab's panels/geyser-hole and geyser-atk10).
+- **Thunder1** (with 2 and 3: action 0x26, `chips/thunder`): @exelib/thunder's shot and ball (EXE6's code) with EXE4's
+  look: the shot raises no arm and shows the navi's animation 0x12; the ball (attack 0x2A) is never big or fast, an
+  attack with hit modifier 0, sound 0xAD, and finds its target from its side's back column toward the other side
+  (0x080D21D4), not from where it is. Their parameters: 5, 7 or 9 panels, paralysis for 90, 120 or 150 ticks.
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -1484,13 +1494,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
-    `WEAPONS`; the 20 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    `WEAPONS`; the 24 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
-    the routines of chips still to port (0x2D Thunder1, 0x37 CopyDmg, 0x38 WideSht1, 0x3A Thunder2, 0x42 Hole, 0x43
-    WideSht2, 0x44 SandRing, 0x46 Thunder3, 0x4C WideSht3, 0x4E WindRack, 0x50 Ball, 0x51 BugBomb, 0x54 NrthWind, 0x55
-    PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
+    the routines of chips still to port (0x37 CopyDmg, 0x38 WideSht1, 0x42 Hole, 0x43 WideSht2, 0x44 SandRing, 0x4C
+    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
