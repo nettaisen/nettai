@@ -542,6 +542,9 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   panel is found with @exelib/panels' `closest_in_row`. The meteor and its marker are @exelib/meteors' with EXE4's
   look, which states two differences: the hit is set on the meteor's panel whether it bursts there or not
   (`hit_on = "landing"`), and the marker is left side 0 (`marker_takes_side = false`).
+- **Boomer1** (with Boomer2 and 3: action 0x20's variant 2, `chips/boomer`): @exelib/boomer's boomerang, which is
+  EXE5's code with EXE4's constants (its sound, 0xAB) and EXE5's variant rows; thrown from the back column by the side
+  alone (EXE4 objects have no flip).
 
 **For the next steps:**
 
