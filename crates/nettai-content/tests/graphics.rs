@@ -59,7 +59,7 @@ fn bundle() -> Bundle {
         first_palette: 1,
         palette_anims: vec![PaletteAnim { slot: 2, frames: vec![(palette(20), 16), (palette(21), 8)], initial_timer: 14 }],
         // (EXE5's: the types round-trip by name.)
-        panel_types: ["missing", "broken", "normal", "cracked", "poison", "metal", "grass", "ice", "lava", "holy", "sea"]
+        panel_types: ["missing", "broken", "normal", "cracked", "poison", "magnet", "grass", "ice", "lava", "holy", "sea"]
             .map(String::from)
             .to_vec(),
         panels: (0..11 * 6).map(|i| std::array::from_fn(|k| entry(10 + (k % 6) as u16, 1 + (i % 8) as u8, k % 2 == 0, false))).collect(),
@@ -74,6 +74,7 @@ fn bundle() -> Bundle {
         map_height: 4,
         palette: Some(palette(9)),
         scroll: (-8, 4),
+        speeding: Some(Speeding { step: (0, 0x400), top: (0, 0x4_0000), from_battle: true }),
         anims: vec![
             GfxAnim {
                 target: AnimTarget::Tiles { first: 2, count: 3 },

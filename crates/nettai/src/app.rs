@@ -442,14 +442,17 @@ impl App {
         let build = self.selected_name().map_or_else(|| ui.global::<Strings>().invoke_random(), SharedString::from);
         ui.set_select_build(build);
         ui.set_select_build_index(self.select.build as i32);
-        let navi = match (self.selected_side(), self.select.game.as_deref().and_then(|g| self.games.ready(g))) {
-            (Some(side), Some(ready)) => {
+        // (Its version, and its navi where it isn't the game's own.)
+        let (navi, version) = match (self.selected_side(), self.select.game.as_deref().and_then(|g| self.games.ready(g).map(|r| (g, r)))) {
+            (Some(side), Some((game, ready))) => {
                 let graphics = ready.graphics(self.lang);
-                Names::of(ready.content(), &graphics).navi(side.navi(ready.content()))
+                let names = Names::of(ready.content(), &graphics);
+                (crate::builds::view::odd_navi(ready.content(), &names, game, &side), crate::builds::presets::version(ready.content(), game, &side))
             }
-            _ => String::new(),
+            _ => (String::new(), String::new()),
         };
         ui.set_select_build_navi(navi.into());
+        ui.set_select_build_version(version.into());
         ui.set_select_can_act(self.select.game.as_deref().is_some_and(|g| self.games.ready(g).is_some()));
     }
 
@@ -593,8 +596,19 @@ impl App {
                 let graphics = ready.graphics(self.lang);
                 let content = ready.content();
                 let names = Names::of(content, &graphics);
-                preview.left = names.navi(m.sides[0].navi(content)).into();
-                preview.right = names.navi(m.sides[1].navi(content)).into();
+                // (Each side by its build, its navi said only where it isn't
+                // the game's own.)
+                let strings = ui.global::<Strings>();
+                let label = |b: usize| match b.checked_sub(1).and_then(|b| self.select.builds.get(b)) {
+                    Some((_, name, _)) => SharedString::from(name.as_str()),
+                    None if self.training.source == 0 => strings.invoke_random(),
+                    None => strings.invoke_from_the_match(),
+                };
+                preview.left = label(self.select.build);
+                preview.right = label(self.training.opponent_build);
+                let game = self.select.game.as_deref().unwrap_or_default();
+                preview.left_sub = crate::builds::view::odd_navi(content, &names, game, &m.sides[0]).into();
+                preview.right_sub = crate::builds::view::odd_navi(content, &names, game, &m.sides[1]).into();
                 preview.seed = seed.to_string().into();
                 // (An endless set's first arenas: each is played to be drawn.)
                 let first = nettai_match::Match { rounds: m.rounds.iter().take(ARENAS_SHOWN).cloned().collect(), ..m.clone() };
@@ -952,6 +966,14 @@ impl App {
         self.start_live(&game, &ready, m, self.training.seed, Opponent::StandIn);
         if let Some(b) = &mut self.battle {
             b.autoplay = true;
+        }
+    }
+
+    /// The tour's game is ready: `NETTAI_TOUR_GAME`'s, else any.
+    pub fn tour_ready(&self) -> bool {
+        match std::env::var("NETTAI_TOUR_GAME") {
+            Ok(game) => self.games.ready(&game).is_some(),
+            Err(_) => self.first_ready().is_some(),
         }
     }
 

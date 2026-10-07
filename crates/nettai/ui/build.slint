@@ -5,7 +5,7 @@
 // fall on.
 
 import { Theme, NavAction, UiSound } from "theme.slint";
-import { Slant, Label, Hints, Hint, Glyph, Input } from "widgets.slint";
+import { Slant, Label, Hints, Hint, Glyph, Input, NaviMark } from "widgets.slint";
 
 export enum TabKind {
     navi,
@@ -226,6 +226,8 @@ export global BuildText {
             return @tr("field" => "BugFrags");
         } else if key == "karma" {
             return @tr("field" => "Light/dark");
+        } else if key == "team" {
+            return @tr("field" => "Team");
         } else if key == "chaos_unison" {
             return @tr("field" => "Chaos Unison");
         } else if key == "navicust_expansions" {
@@ -236,7 +238,7 @@ export global BuildText {
 
     pure public function tab(t: BuildTab) -> string {
         if t.kind == TabKind.navi {
-            return @tr("tab" => "NAVI");
+            return @tr("tab" => "BUILD");
         } else if t.kind == TabKind.folder {
             return @tr("tab" => "FOLDER");
         } else if t.kind == TabKind.grid {
@@ -269,6 +271,8 @@ export global BuildText {
     pure public function note(r: FactRow) -> string {
         if r.kind == RowKind.name {
             return @tr("Confirm to rename it");
+        } else if r.kind == RowKind.navi {
+            return @tr("Other navis are a format of their own");
         } else if r.kind == RowKind.from-save {
             return @tr("The whole build, from an original save (.sav)");
         } else if r.kind == RowKind.duplicate {
@@ -293,6 +297,14 @@ export global BuildText {
             return @tr("preset" => "LIGHT");
         } else if key == "dark" {
             return @tr("preset" => "DARK");
+        } else if key == "gregar" {
+            return @tr("preset" => "GREGAR");
+        } else if key == "falzar" {
+            return @tr("preset" => "FALZAR");
+        } else if key == "protoman" {
+            return @tr("preset" => "TEAM PROTOMAN");
+        } else if key == "colonel" {
+            return @tr("preset" => "TEAM COLONEL");
         }
         key.to-uppercase()
     }
@@ -1081,10 +1093,13 @@ component DetailCard {
     }
 }
 
-// The NAVI tab's other side: the navi, what the round starts it with, and
-// everything the rules say of the build.
+// The BUILD tab's other side: the build, what the round starts its navi
+// with, and everything the rules say of it.
 component Summary {
     in property <image> face;
+    // The build's name and version; its navi where it isn't the game's own.
+    in property <string> title;
+    in property <string> version;
     in property <string> navi;
     in property <[StatRow]> stats;
     in property <[string]> problems;
@@ -1112,14 +1127,37 @@ component Summary {
                 image-rendering: pixelated;
             }
 
-            Text {
-                text: root.navi;
-                color: white;
-                font-size: Theme.title-size + 6px;
-                font-weight: Theme.black;
-                font-italic: true;
-                vertical-alignment: center;
-                overflow: elide;
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: root.title;
+                    color: white;
+                    font-size: Theme.title-size + 6px;
+                    font-weight: Theme.black;
+                    font-italic: true;
+                    overflow: elide;
+                }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    height: 24px;
+                    Text {
+                        text: BuildText.preset(root.version);
+                        color: Theme.text-dim;
+                        font-size: Theme.label + 1px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        horizontal-stretch: 1;
+                        preferred-width: 0px;
+                        min-width: 0px;
+                    }
+
+                    NaviMark {
+                        width: root.navi != "" ? 150px : 0px;
+                        navi: root.navi;
+                    }
+                }
             }
         }
 
@@ -1193,6 +1231,8 @@ export component BuildScreen {
     in property <string> pick-hint;
     in property <Detail> detail;
     in property <image> face;
+    in property <string> title;
+    in property <string> version;
     in property <string> navi;
     in property <[StatRow]> stats;
     in property <string> stopped;
@@ -1620,6 +1660,8 @@ export component BuildScreen {
                 min-width: 0px;
                 horizontal-stretch: 1;
                 face: root.face;
+                title: root.title;
+                version: root.version;
                 navi: root.navi;
                 stats: root.stats;
                 problems: root.problems;

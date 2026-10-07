@@ -43,7 +43,6 @@ return {
     statuses = {
         damage_word_paralysis = statuses.paralyze_90,
         counter_paralysis = statuses.paralyze_150,
-        ice_freeze = statuses.freeze_150,
     },
     effects = defined.effects,
     sparks = defined.sparks,

@@ -4,8 +4,8 @@
 -- grid) is compiled into MegaMan's stats, as the PET's reload does (0x08035130). EXE4's own routines, which EXE5's
 -- and EXE6's (@exelib/navicust/compile) grew from and differ from in most steps: the neighbors met by the shapes
 -- uncompressed, a program on the line skipped by its part (not an exclusive group), the colors bringing two bugs, the
--- bugs run twice around the patch cards, BugStop's dropped counts, the HP left as it was. Its 5x5 board is in the middle
--- of the engine's 7x7 grid, its command line the third row (the engine's fourth); no frame and no expansions.
+-- bugs run twice around the patch cards, BugStop's dropped counts, the HP left as it was. Its board and command line
+-- are ./board's.
 --
 -- 1. The analysis (0x08047344): the bugs counted by the bug each program brings: a plus part on the command line
 --    (0x080473D4, the line right to left, each program at its rightmost cell); a program off it (0x08047458); for each
@@ -25,24 +25,16 @@
 --
 -- The PET leaves the HP (+0x30) as it was, the save's: the HP programs raise the maximum alone.
 
+local board = require("@self/board")
 local patch_cards = require("./patch_cards")
 local programs = require("@self/programs")
 
 -- HubBatc (program 23), which bugs itself.
 local HUBBATC = "hubbatc"
 
--- The engine's grid is this many cells a side; EXE4's is the 5x5 in its middle, the command line its third row.
-local SIZE = 7
-local COMMAND_LINE = 3
-local BOARD = {
-    ".......",
-    ".ooooo.",
-    ".ooooo.",
-    ".ooooo.",
-    ".ooooo.",
-    ".ooooo.",
-    ".......",
-}
+local SIZE: number = board.SIZE
+local COMMAND_LINE: number = board.COMMAND_LINE
+local BOARD: { string } = board.boards[1]
 
 -- What a program's handler and a bug's routine work on besides the stats: the HP programs' sum, BugStop.
 export type Work = { hp: number, bug_stop: boolean }

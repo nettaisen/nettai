@@ -689,9 +689,9 @@ impl FormTraits {
     /// Its held buster doesn't fire while its B+Back special is asked for
     /// (TenguCross and DustCross in Beast Out).
     pub const SPECIAL_HOLDS_BUSTER: u16 = 0x004;
-    /// A metal panel doesn't slide the navi (EXE5's MagnetSoul:
+    /// A magnet panel doesn't slide the navi (EXE5's MagnetSoul:
     /// 0x08017216).
-    pub const STANDS_ON_METAL: u16 = 0x008;
+    pub const STANDS_ON_MAGNET: u16 = 0x008;
     /// The side's rules' controller decides the navi's idle (Beast Over's
     /// berserk, `sub_802D322`): the player's buttons don't reach it
     /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
@@ -715,7 +715,7 @@ impl FormTraits {
         (0x001, "status_immune"),
         (0x002, "erases"),
         (0x004, "special_holds_buster"),
-        (0x008, "stands_on_metal"),
+        (0x008, "stands_on_magnet"),
         (0x010, "controlled"),
         (0x020, "shows_target_marker"),
         (0x040, "afterimages_stay"),
@@ -726,6 +726,11 @@ impl FormTraits {
 
     pub fn has(self, bit: u16) -> bool {
         self.0 & bit != 0
+    }
+
+    /// The trait's bit by its name in a form's `traits`.
+    pub fn named(name: &str) -> Option<u16> {
+        Self::NAMES.iter().find(|&&(_, n)| n == name).map(|&(bit, _)| bit as u16)
     }
 }
 

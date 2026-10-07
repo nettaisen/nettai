@@ -5,7 +5,7 @@
 //! the same or nearly (docs/design/exe4-map.md §3), or EXE4's own (§14); the
 //! addresses are where their literals point in each ROM (rom.rs).
 
-use crate::decode::{BackgroundDescriptor, background_picture_by, gfx_anims, tiles};
+use crate::decode::{BackgroundDescriptor, background_picture_by, gfx_anims, speeding_scroll, tiles};
 use crate::exe4::rom::{Addresses, RED_SUN, Rom, Roms, Version};
 use nettai_assets::*;
 use nettai_content::names::AssetNames;
@@ -175,16 +175,15 @@ const PALETTE_BUFFER: u32 = 0x0300_2A50;
 /// The BG1 scroll callbacks by their offset from the first
 /// (`Addresses::scrollers`), and their counters' steps (1/16 pixel a frame):
 /// EXE6's `BGScrollCB_*` and EXE5's in EXE4's order. +0xB8 (Red Sun US's
-/// 0x08001F88) speeds a left scroll up by 1/16 pixel a frame each frame to 4
-/// pixels a frame: drawn at that speed from the start (background 0x17; the
-/// pack's scroll is a speed).
-const SCROLLERS: [(u32, (i32, i32)); 7] = [
+/// 0x08001F88, background 0x17's) speeds a left scroll up from the
+/// background's load, by 1/16 pixel a frame each frame to 4 pixels a frame:
+/// a `speeding` scroll, read from its code (`speeding_scroll`).
+const SCROLLERS: [(u32, (i32, i32)); 6] = [
     (0x00, (0, 0)),   // returns (EXE6 nullsub_35)
     (0x02, (-8, -4)), // EXE6 BGScrollCB_BG1Diagonal3to2Scroll
     (0x4C, (0, -4)),  // BGScrollCB_BG1UpScroll
     (0x5E, (0, 4)),   // BGScrollCB_BG1DownScroll
     (0x94, (-8, 0)),  // BGScrollCB_BG1FastLeftScroll
-    (0xB8, (-64, 0)), // the speeding left scroll, at its top speed
     (0xE4, (0, 0)),   // returns (EXE5's 0x08001A24)
 ];
 
@@ -193,10 +192,12 @@ fn backgrounds(rom: &Rom, a: &Addresses) -> Vec<Option<Background>> {
         .map(|id| {
             let (tiles, first_tile, map, map_width, map_height, palette) =
                 background_picture_by(rom, rom.u32(a.backgrounds + 4 * id), DESCRIPTOR)?;
-            let cb = (rom.u32(a.background_scroll + 16 * id + 4) & !1).wrapping_sub(a.scrollers);
+            let callback = rom.u32(a.background_scroll + 16 * id + 4) & !1;
+            let cb = callback.wrapping_sub(a.scrollers);
             let scroll = SCROLLERS.iter().find(|(o, _)| *o == cb).map(|(_, v)| *v).unwrap_or((0, 0));
+            let speeding = speeding_scroll(rom, callback);
             let anims = gfx_anims(rom, rom.u32(a.background_anims + 4 * id), PALETTE_BUFFER);
-            Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, anims })
+            Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, speeding, anims })
         })
         .collect()
 }

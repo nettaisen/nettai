@@ -106,6 +106,16 @@ pub fn stat_rows(st: &nettai_battle::setup::NaviStats) -> Vec<StatRow> {
     out
 }
 
+/// The navi of a side, where it is another than the game's own (its navi
+/// that changes form: MegaMan), by its name in the window's language; none
+/// for the game's own. A build of another navi is a format of its own (the
+/// user: navis are "a non-standard format that is supported but not
+/// major"): shown as such, never first.
+pub fn odd_navi(content: &Content, names: &Names, game: &str, side: &Side) -> String {
+    let navi = side.navi(content);
+    if nettai_match::first_navi(content, game) == Some(navi) { String::new() } else { names.navi(navi) }
+}
+
 /// A sheet with nothing to show yet (no game ready): its places held, the
 /// folder's 30 entries and the stats' rows, so nothing moves when one comes.
 pub fn empty_sheet() -> Sheet {
@@ -167,11 +177,27 @@ impl View<'_> {
                         // (Its preset by name, which the window words; the
                         // face the round starts the navi with.)
                         row.kind = RowKind::Preset;
-                        row.key = f.as_str().into();
-                        row.fallback = layout::title(f).into();
-                        let preset = presets::of(&e.game, f).and_then(|p| presets::current(c, &e.side, f, p));
+                        // (Named for its presets' title: EXE5's team, whose
+                        // fact is its souls.)
+                        let named = presets::title(&e.game, f);
+                        row.key = named.as_str().into();
+                        row.fallback = layout::title(&named).into();
+                        let preset = presets::of(&e.game, f).and_then(|p| presets::current(c, &e.game, &e.side, f, p));
                         row.value = preset.map_or("", |p| p.choice.as_str()).into();
-                        if let Ok(Some(face)) = e.round.as_ref().map(|r| r.face.as_ref()) {
+                        if presets::version_fact(&e.game).as_deref() == Some(f.as_str()) {
+                            // (A version's row: the forms it gives, by name,
+                            // which no row of their own shows.)
+                            fn listed(names: &Names, v: &Stated) -> Vec<String> {
+                                match v {
+                                    Stated::Def(r, Some(h)) => vec![names.def(*r, *h)],
+                                    Stated::List(items) => items.iter().flat_map(|i| listed(names, i)).collect(),
+                                    _ => Vec::new(),
+                                }
+                            }
+                            let facts = std::iter::once(f.clone()).chain(presets::others(&e.game, f));
+                            let given: Vec<String> = facts.filter_map(|x| e.side.facts.get(c, &x)).flat_map(|v| listed(names, &v)).collect();
+                            row.note = given.join(" · ").into();
+                        } else if let Ok(Some(face)) = e.round.as_ref().map(|r| r.face.as_ref()) {
                             row.picture = e.kit.pictures.shown(face);
                         }
                         let fields = std::iter::once(f.clone()).chain(presets::others(&e.game, f));
@@ -647,7 +673,8 @@ impl App {
                             let folder = side.folder(c);
                             BuildCard {
                                 name: s.listed.name.as_str().into(),
-                                navi: names.navi(navi).into(),
+                                navi: odd_navi(c, &names, game.as_deref().unwrap_or(""), side).into(),
+                                version: crate::builds::presets::version(c, game.as_deref().unwrap_or(""), side).into(),
                                 face: kit.pictures.navi(navi),
                                 chips: folder.chips().count() as i32,
                                 total: folder.chips.len() as i32,
@@ -821,13 +848,14 @@ impl App {
         let mut lines = Vec::new();
         for f in &l.rows {
             let (text, kind) = match (crate::builds::presets::of(game, f), side.facts.get(&c, f)) {
-                (Some(p), _) => (crate::builds::presets::current(&c, side, f, p).map(|p| p.choice.clone()).unwrap_or_default(), 2),
+                (Some(p), _) => (crate::builds::presets::current(&c, game, side, f, p).map(|p| p.choice.clone()).unwrap_or_default(), 2),
                 (None, Some(Stated::Flag(on))) => ((on as u8).to_string(), 1),
                 (None, Some(Stated::Variant(v))) => (v.as_deref().unwrap_or("—").to_uppercase(), 0),
                 (None, Some(v)) => (facts::shown(&c, &v), 0),
                 (None, None) => continue,
             };
-            lines.push(SheetLine { key: f.as_str().into(), fallback: layout::title(f).into(), text: text.into(), kind });
+            let named = crate::builds::presets::title(game, f);
+            lines.push(SheetLine { key: named.as_str().into(), fallback: layout::title(&named).into(), text: text.into(), kind });
         }
         for t in &l.tabs {
             let field = match t {
@@ -843,9 +871,10 @@ impl App {
         Sheet {
             shown: true,
             face: kit.pictures.navi(navi),
-            navi: names.navi(navi).into(),
+            navi: odd_navi(&c, &names, game, side).into(),
             name: name.into(),
             sub: game_names(game).0.into(),
+            version: crate::builds::presets::version(&c, game, side).into(),
             stats: model(round.as_ref().map(|r| stat_rows(&r.stats)).unwrap_or_default()),
             folder: model(chips),
             lines: model(lines),
@@ -1021,10 +1050,14 @@ impl App {
             ui.set_build_filters(model(view.filters()));
             ui.set_build_notes(strings(view.notes()));
             ui.set_build_counts(model(view.counts()));
+            // (The build, by its name and version; its navi said only where
+            // it isn't the game's own.)
             if let Some(n) = e.side.stated_navi(e.kit.content()) {
                 ui.set_build_face(e.kit.pictures.navi(n));
-                ui.set_build_navi(view.names.navi(n).into());
             }
+            ui.set_build_title(e.name.as_str().into());
+            ui.set_build_version(crate::builds::presets::version(e.kit.content(), &e.game, &e.side).into());
+            ui.set_build_navi(odd_navi(e.kit.content(), &view.names, &e.game, &e.side).into());
             ui.set_build_stats(model(view.stats()));
             ui.set_build_stopped(e.round.as_ref().err().cloned().unwrap_or_default().into());
             ui.set_build_problems(strings(e.problems.iter().map(|p| p.text.clone())));

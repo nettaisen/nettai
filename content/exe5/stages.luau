@@ -541,9 +541,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-33"] = {
         layout = {
-            "normal metal normal normal metal normal",
+            "normal magnet normal normal magnet normal",
             "normal normal normal normal normal normal",
-            "normal metal normal normal metal normal",
+            "normal magnet normal normal magnet normal",
         },
         panel_pattern = 0x38,
         music = asset.sound("virus-battle"),
@@ -555,9 +555,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-34"] = {
         layout = {
-            "normal metal normal normal metal normal",
+            "normal magnet normal normal magnet normal",
             "normal normal normal normal normal normal",
-            "normal metal normal normal metal normal",
+            "normal magnet normal normal magnet normal",
         },
         panel_pattern = 0x38,
         music = asset.sound("virus-battle"),
@@ -570,7 +570,7 @@ local stages: { [string]: StageDef } = {
     ["netbattle-35"] = {
         layout = {
             "normal normal normal normal normal normal",
-            "normal metal metal metal metal normal",
+            "normal magnet magnet magnet magnet normal",
             "normal normal normal normal normal normal",
         },
         panel_pattern = 0x38,
@@ -584,7 +584,7 @@ local stages: { [string]: StageDef } = {
     ["netbattle-36"] = {
         layout = {
             "normal normal normal normal normal normal",
-            "normal metal metal metal metal normal",
+            "normal magnet magnet magnet magnet normal",
             "normal normal normal normal normal normal",
         },
         panel_pattern = 0x38,
@@ -598,7 +598,7 @@ local stages: { [string]: StageDef } = {
     ["netbattle-37"] = {
         layout = {
             "normal normal normal normal normal normal",
-            "metal metal normal normal metal metal",
+            "magnet magnet normal normal magnet magnet",
             "normal normal normal normal normal normal",
         },
         panel_pattern = 0x38,
@@ -612,7 +612,7 @@ local stages: { [string]: StageDef } = {
     ["netbattle-38"] = {
         layout = {
             "normal normal normal normal normal normal",
-            "metal metal normal normal metal metal",
+            "magnet magnet normal normal magnet magnet",
             "normal normal normal normal normal normal",
         },
         panel_pattern = 0x38,
@@ -1157,9 +1157,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-77"] = {
         layout = {
-            "normal metal normal normal metal normal",
-            "metal normal metal metal normal metal",
-            "normal metal normal normal metal normal",
+            "normal magnet normal normal magnet normal",
+            "magnet normal magnet magnet normal magnet",
+            "normal magnet normal normal magnet normal",
         },
         panel_pattern = 0x38,
         music = asset.sound("virus-battle"),
@@ -1171,9 +1171,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-78"] = {
         layout = {
-            "normal metal normal normal metal normal",
-            "metal normal metal metal normal metal",
-            "normal metal normal normal metal normal",
+            "normal magnet normal normal magnet normal",
+            "magnet normal magnet magnet normal magnet",
+            "normal magnet normal normal magnet normal",
         },
         panel_pattern = 0x38,
         music = asset.sound("virus-battle"),
@@ -1185,9 +1185,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-79"] = {
         layout = {
-            "normal normal metal metal normal normal",
-            "normal metal normal normal metal normal",
-            "metal normal normal normal normal metal",
+            "normal normal magnet magnet normal normal",
+            "normal magnet normal normal magnet normal",
+            "magnet normal normal normal normal magnet",
         },
         panel_pattern = 0x38,
         music = asset.sound("virus-battle"),
@@ -1199,9 +1199,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-80"] = {
         layout = {
-            "normal normal metal metal normal normal",
-            "normal metal normal normal metal normal",
-            "metal normal normal normal normal metal",
+            "normal normal magnet magnet normal normal",
+            "normal magnet normal normal magnet normal",
+            "magnet normal normal normal normal magnet",
         },
         panel_pattern = 0x38,
         music = asset.sound("virus-battle"),

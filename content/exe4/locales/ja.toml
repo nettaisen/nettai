@@ -6,6 +6,9 @@ language = "ja"
 [chips]
 "cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "airshot" = { name = "エアシュート", description = "ヒットしたあいてを\n1マスおくへおす\nくうきほう" }
+"crakout" = { name = "クラックアウト", description = "パネルはかい攻撃!\n目の前の1マスを\nけしさってしまう" }
+"dublcrak" = { name = "ダブルクラック", description = "パネルはかい攻撃!\n前のよこ2マスを\nけしさってしまう" }
+"tripcrak" = { name = "トリプルクラック", description = "パネルはかい攻撃!\n前のたて3マスを\nけしさってしまう" }
 "hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "lance" = { name = "バンブーランス", description = "てきエリアの右はし\nたてれつにとつぜん\nたけやりが発生!" }
@@ -25,9 +28,61 @@ language = "ja"
 "drkspred" = { name = "ダークスプレッド", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
 "drkstage" = { name = "ダークステージ", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
 "drkrecov" = { name = "ダークリカバリー", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"panlgrab" = { name = "パネルスチール", description = "前方のてきエリアの\n1マスを 自分の\nエリアにぬりかえる" }
+"areagrab" = { name = "エリアスチール", description = "てきエリアの左はし\nたて1れつを自分の\nエリアにぬりかえる" }
+"sword" = { name = "ソード", description = "目の前のてきを\nきりつける!\n攻撃はんいは1マス" }
+"wideswrd" = { name = "ワイドソード", description = "目の前のてきを\nきりつける!\nはんいはたて3マス" }
+"longswrd" = { name = "ロングソード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
+"wideblde" = { name = "ワイドブレード", description = "目の前のてきを\nきりつける!\nはんいはたて3マス" }
+"longblde" = { name = "ロングブレード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
+"minibomb" = { name = "ミニボム", description = "3マス前におちる\nボムをなげつける" }
+"vulcan1" = { name = "バルカン1", description = "3れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"vulcan2" = { name = "バルカン2", description = "5れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"vulcan3" = { name = "バルカン3", description = "7れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"atk-10" = { name = "アタック+10", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+10できる" }
+"atk-30" = { name = "アタック+30", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+30できる" }
+"spreader" = { name = "スプレッドガン", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
+"heatshot" = { name = "ヒートショット", description = "ヒットすると\nおくの1マスに\nゆうばくする!" }
+"heat-v" = { name = "ヒートブイ", description = "ヒットすると\nななめおく2マスに\nゆうばくする" }
+"heatside" = { name = "ヒートサイド", description = "ヒットすると\n上下の2マスに\nゆうばくする" }
+"bubbler" = { name = "バブルショット", description = "ヒットすると\nおくの1マスに\nゆうばくする!" }
+"bub-v" = { name = "バブルブイ", description = "ヒットすると\nななめおく2マスに\nゆうばくする" }
+"bublside" = { name = "バブルサイド", description = "ヒットすると\n上下の2マスに\nゆうばくする" }
+"navi-20" = { name = "ナビ+20", description = "ナビチップの\nあとにえらぶと\n攻撃力を+20!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
+
+# The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
+# tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
+[backgrounds]
+"acdc-area" = { name = "秋原エリア" }
+"air-stadium" = { name = "くうちゅうスタジアム" }
+"black-earth" = { name = "ブラックアース" }
+"castillo-hp" = { name = "シェロ・カスティロのHP" }
+"colosseum" = { name = "コロッセオ" }
+"comp" = { name = "電脳" }
+"darksoul" = { name = "ダークソウル" }
+"dexs-hp" = { name = "デカオのHP" }
+"duo" = { name = "デューオ" }
+"eltwr-comp" = { name = "でんぱとうの電脳" }
+"hotel-hp" = { name = "ホテルのHP" }
+"jomonelec-hp" = { name = "ジョーモン電気のHP" }
+"lans-hp" = { name = "熱斗のHP" }
+"mayls-hp" = { name = "メイルのHP" }
+"meteor-comp" = { name = "しょうわくせいの電脳" }
+"netfrica-area" = { name = "アッフリクエリア" }
+"netopia-area" = { name = "アメロッパエリア" }
+"park-area" = { name = "パークエリア" }
+"sharo-area" = { name = "シャーロエリア" }
+"spacectr-hp" = { name = "うちゅうセンターのHP" }
+"stadium" = { name = "スタジアム" }
+"town-area" = { name = "タウンエリア" }
+"toyrobo-comp" = { name = "ぬいぐるみロボの電脳" }
+"toyrobo-comp4" = { name = "ぬいぐるみロボの電脳4" }
+"undernet" = { name = "ウラインターネット" }
+"yais-hp" = { name = "やいとのHP" }
+"yumland-area" = { name = "アジーナエリア" }
 
 [navicust_programs]
 "airshoes" = { name = "エアシューズ", description = "パネルのないマスでも\nいどうできる!" }

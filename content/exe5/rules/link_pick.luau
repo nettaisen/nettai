@@ -57,17 +57,19 @@ return {
     -- reaches (netbattle-75 to netbattle-86) too.
     match_stages = match_stages(),
     -- The backgrounds a link battle picks one of at random with its settings (`table[PosRNG2() % 27]`, the table at
-    -- 0x08129F6C: its backgrounds 0x00 to 0x1A, each once, in the table's order). A stage's own background (every
-    -- record's is the same one) is what a match that names none shows.
+    -- 0x08129F6C: its backgrounds 0x00 to 0x1A, each once, in the table's order). A liberation's map's number is its
+    -- area's background (the same load data: compat/assets.toml), so acdc-area, oran-area, scilab-area and undernet
+    -- are here twice and end-area three times, as the table's numbers are. A stage's own background (every record's
+    -- is the same one) is what a match that names none shows.
     backgrounds = {
         asset.background("main-comp"), asset.background("drill-comp"), asset.background("lans-hp"),
         asset.background("mayls-hp"), asset.background("dexs-hp"), asset.background("yais-hp"),
         asset.background("comp"), asset.background("comp-alt"), asset.background("acdc-area"),
         asset.background("oran-area"), asset.background("scilab-area"), asset.background("visionburst"),
-        asset.background("acdc-area3"), asset.background("oran-area3"), asset.background("scilab-area3"),
+        asset.background("acdc-area"), asset.background("oran-area"), asset.background("scilab-area"),
         asset.background("end-area"), asset.background("ship-comp"), asset.background("scilab-hp"),
-        asset.background("end-area2"), asset.background("gargcastle-hp"), asset.background("end-area5"),
+        asset.background("end-area"), asset.background("gargcastle-hp"), asset.background("end-area"),
         asset.background("soulserv-comp"), asset.background("gargoyle-comp"), asset.background("factory-comp"),
-        asset.background("undernet"), asset.background("nebula-area"), asset.background("undernet4"),
+        asset.background("undernet"), asset.background("nebula-area"), asset.background("undernet"),
     },
 }

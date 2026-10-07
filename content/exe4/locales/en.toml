@@ -6,6 +6,9 @@ language = "en"
 [chips]
 "cannon" = { name = "Cannon", description = "Cannon to\nattack\n1 enemy" }
 "airshot" = { name = "AirShot", description = "Knocks\nenemy\nback 1" }
+"crakout" = { name = "CrakOut", description = "Destroys\n1 panel\nin front" }
+"dublcrak" = { name = "DublCrak", description = "Destroys\n2 panels\nin front" }
+"tripcrak" = { name = "TripCrak", description = "Destroys\n3 panels\nin front" }
 "hicannon" = { name = "HiCannon", description = "Cannon to\nattack\n1 enemy" }
 "m-cannon" = { name = "M-Cannon", description = "Cannon to\nattack\n1 enemy" }
 "lance" = { name = "Lance", description = "Lances\nthrough\nback line" }
@@ -25,9 +28,61 @@ language = "en"
 "drkspred" = { name = "DrkSpred", description = "DARKCHIP\nCREATED\nBY DESIRE" }
 "drkstage" = { name = "DrkStage", description = "DARKCHIP\nCREATED\nBY DESIRE" }
 "drkrecov" = { name = "DrkRecov", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"panlgrab" = { name = "PanlGrab", description = "Steals 1\nenemy\nsquare!" }
+"areagrab" = { name = "AreaGrab", description = "Steals\nleft edge\nfrom enmy" }
+"sword" = { name = "Sword", description = "Cuts enmy\nin front!\nRange: 1" }
+"wideswrd" = { name = "WideSwrd", description = "Cuts enmy\nin front!\nRange: 3" }
+"longswrd" = { name = "LongSwrd", description = "Cuts enmy\nin front!\nRange: 2" }
+"wideblde" = { name = "WideBlde", description = "Cuts enmy\nin front!\nRange: 3" }
+"longblde" = { name = "LongBlde", description = "Cuts enmy\nin front!\nRange: 2" }
+"minibomb" = { name = "MiniBomb", description = "Throws a\nbomb 3\nsquares" }
+"vulcan1" = { name = "Vulcan1", description = "3-shot to\npierce 1\npanel!" }
+"vulcan2" = { name = "Vulcan2", description = "5-shot to\npierce 1\npanel!" }
+"vulcan3" = { name = "Vulcan3", description = "7-shot to\npierce 1\npanel!" }
+"atk-10" = { name = "Atk+10", description = "+10 for\nselected\natk chip" }
+"atk-30" = { name = "Atk+30", description = "+30 for\nselected\natk chip" }
+"spreader" = { name = "Spreader", description = "Creates a\nlarge\nexplosion" }
+"heatshot" = { name = "HeatShot", description = "Explodes\n1 square\nbehind" }
+"heat-v" = { name = "Heat-V", description = "Explodes\n2 diag.\nsquares" }
+"heatside" = { name = "HeatSide", description = "Explodes\nup,down\non hit" }
+"bubbler" = { name = "Bubbler", description = "Explodes\n1 square\nbehind" }
+"bub-v" = { name = "Bub-V", description = "Explodes\n2 diag.\nsquares" }
+"bublside" = { name = "BublSide", description = "Explodes\nup,down\non hit" }
+"navi-20" = { name = "Navi+20", description = "+20 for\nselected\nNavi chip" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
+
+# The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
+# tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
+[backgrounds]
+"acdc-area" = { name = "ACDC Area" }
+"air-stadium" = { name = "AirStadium" }
+"black-earth" = { name = "BlackEarth" }
+"castillo-hp" = { name = "Castillo HP" }
+"colosseum" = { name = "Colosseum" }
+"comp" = { name = "Comp" }
+"darksoul" = { name = "DarkSoul" }
+"dexs-hp" = { name = "Dex's HP" }
+"duo" = { name = "Duo" }
+"eltwr-comp" = { name = "ElTwrComp" }
+"hotel-hp" = { name = "Hotel HP" }
+"jomonelec-hp" = { name = "JomonElec HP" }
+"lans-hp" = { name = "Lan's HP" }
+"mayls-hp" = { name = "Mayl's HP" }
+"meteor-comp" = { name = "MeteorComp" }
+"netfrica-area" = { name = "NetFricaArea" }
+"netopia-area" = { name = "Netopia Area" }
+"park-area" = { name = "Park Area" }
+"sharo-area" = { name = "Sharo Area" }
+"spacectr-hp" = { name = "SpaceCtr HP" }
+"stadium" = { name = "Stadium" }
+"town-area" = { name = "Town Area" }
+"toyrobo-comp" = { name = "ToyRoboComp" }
+"toyrobo-comp4" = { name = "ToyRoboComp4" }
+"undernet" = { name = "Undernet" }
+"yais-hp" = { name = "Yai's HP" }
+"yumland-area" = { name = "YumLand Area" }
 
 [navicust_programs]
 "airshoes" = { name = "AirShoes", description = "Walk even\nif no\npanels!" }
