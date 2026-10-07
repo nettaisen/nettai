@@ -558,6 +558,8 @@ named_fields! {
         /// NaviCust bugs: random steps after a move (+0x11), damage at the
         /// battle's start (+0x3D).
         AutoStep = "auto_step", U8, rw;
+        /// The keys the navi steps by when none is held (EXE4's +0x0D).
+        IdleStepKeys = "idle_step_keys", U8, rw;
         StartingDamage = "starting_damage", U8, rw;
         /// The folder the navi brings (+0x2D, 0 to 2), the folders'
         /// Regular chips (+0x2E, +0x2F) and tag chips (+0x56 to +0x59),

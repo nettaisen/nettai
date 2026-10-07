@@ -517,21 +517,27 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
 
 /// `sub_800FA54` (EXE4's 0x0800B4B0): the held direction, its keys read in
 /// the rules' order and taken as the rules' confused keys while confused
-/// (`effects.steps`), none while sliding.
+/// (`effects.steps`), none while sliding. With no key held, or sliding, the
+/// keys of the navi's stats' `idle_step_keys` bug in the same order, never
+/// turned (EXE4's 0x0800B4D8: NaviStats +0x0D; every other game's stats
+/// keep none).
 pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     use crate::content::StepKey;
-    if flag1(b, r) & f1::SLIDING != 0 {
-        return 0;
-    }
     let steps = &b.game_rules().effects.steps;
-    let held = ai(b, r).pad.held;
     let bit = |k: StepKey| match k {
         StepKey::Up => keys::UP,
         StepKey::Down => keys::DOWN,
         StepKey::Left => keys::LEFT,
         StepKey::Right => keys::RIGHT,
     };
-    let Some(&key) = steps.keys.iter().find(|&&k| held & bit(k) != 0) else { return 0 };
+    let held = if flag1(b, r) & f1::SLIDING != 0 { None } else { steps.keys.iter().copied().find(|&k| ai(b, r).pad.held & bit(k) != 0) };
+    let Some(key) = held else {
+        let idle = stats(b, r).bugs.idle_step_keys;
+        if idle == 0xFF {
+            return 0;
+        }
+        return steps.keys.iter().find(|&&k| idle as u16 & bit(k) != 0).map_or(0, |&k| direction_code(k));
+    };
     let key = if flag1(b, r) & f1::CONFUSED != 0 {
         let c = steps.confused;
         match key {
@@ -543,7 +549,12 @@ pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     } else {
         key
     };
-    // The direction codes: 1 up, 2 down, 3 back (left), 4 forward (right).
+    direction_code(key)
+}
+
+/// The direction codes: 1 up, 2 down, 3 back (left), 4 forward (right).
+fn direction_code(key: crate::content::StepKey) -> u8 {
+    use crate::content::StepKey;
     match key {
         StepKey::Up => 1,
         StepKey::Down => 2,

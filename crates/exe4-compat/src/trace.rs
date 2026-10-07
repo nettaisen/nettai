@@ -764,6 +764,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.hp = s.hp;
     stats.max_hp = s.max_hp;
     stats.bugs.buster_blanks = s.buster_blanks;
+    stats.bugs.idle_step_keys = s.idle_step_keys;
     stats.bugs.hp_drain = s.hp_drain;
     stats.bugs.custom_drain = s.custom_drain;
     stats.weapons.buster = Some(weapon(s.buster_weapon)?);
