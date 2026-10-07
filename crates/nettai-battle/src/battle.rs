@@ -1301,7 +1301,7 @@ impl Battle {
             if let Place::Kind(kind) = entry.place {
                 let hook = content.defs.kind(kind).place.expect("a stage places kinds with a `place` (checked at load)");
                 let panel = PanelPos { x: entry.x, y: entry.y };
-                let spec = PlaceSpec { panel, side: entry.side, variant: entry.variant, argument: entry.argument, hp: entry.hp };
+                let spec = PlaceSpec { panel, side: entry.side, variant: entry.variant, hp: entry.hp };
                 crate::behavior::call_hook(self, hook, HookCall::Place { spec });
                 continue;
             }
