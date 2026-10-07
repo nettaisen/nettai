@@ -1,4 +1,5 @@
-# Japanese: EXE4's strings by definition key. Display text only. So far MegaMan's and Cannon's names.
+# Japanese: EXE4's strings by definition key. Display text only. So far MegaMan's and Cannon's names and MegaMan's
+# no-running message.
 
 language = "ja"
 
@@ -6,4 +7,4 @@ language = "ja"
 "cannon" = { name = "キャノン" }
 
 [navis]
-"megaman" = { name = "ロックマン" }
+"megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

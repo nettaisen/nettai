@@ -94,6 +94,12 @@ pub enum ChipShade {
     Clearing { step: u8 },
 }
 
+/// The console's two fade records as a screen finds them, clear (and as
+/// `sub_80062D0` and `sub_80062D6` leave them, zeroed).
+const CLEAR_FADE: Fade = Fade { mode: FadeMode::HalfOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false };
+const CLEAR_WINDOW_FADE: Fade =
+    Fade { mode: FadeMode::ShadeWindowBack, level: 0, speed: 0, target: 0, active: false, stepped: false };
+
 /// The dark-chip hover's fades' speed.
 const SHADE_FADE_SPEED: u8 = 0xA;
 
@@ -296,15 +302,8 @@ impl ScreenLook {
             emblem_matrix: (0, 0x40),
             turn_limit: false,
             regular_frame: 0,
-            fade: Fade { mode: FadeMode::HalfOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false },
-            window_fade: Fade {
-                mode: FadeMode::ShadeWindowBack,
-                level: 0,
-                speed: 0,
-                target: 0,
-                active: false,
-                stepped: false,
-            },
+            fade: CLEAR_FADE,
+            window_fade: CLEAR_WINDOW_FADE,
             shade: ChipShade::Clear,
             drawn: Drawn::default(),
             chip_window: ChipWindow { slot: 0, picks: 0, last_chip, framed: None },
@@ -329,6 +328,13 @@ impl ScreenLook {
             let set = ((self.pa_ticks >> 4) & 3) as u8;
             self.pa_palette = if set == 3 { 1 } else { set };
         }
+    }
+
+    /// `sub_80062D0`, `sub_80062D6`: both fade records cleared at once (EXE4's
+    /// OK, 0x08020656: the rules' `fades_clear_at_ok`).
+    pub(crate) fn clear_fades(&mut self) {
+        self.fade = CLEAR_FADE;
+        self.window_fade = CLEAR_WINDOW_FADE;
     }
 
     /// A tick of the hover over a dark chip, as the rules' `hover` has it

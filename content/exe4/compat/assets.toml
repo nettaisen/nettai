@@ -94,6 +94,9 @@ charge-glow-a = "14-15"
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
 netbattle = 0x015  # a netbattle's music, which the fight's setup starts (the lab's flow/buster-duel, frame 130)
+winner-special = 0x018  # the winner's music in a special battle, battle flag 2 (0x080071F8)
+loser = 0x019  # a netbattle's loser's music, battle type 0x46 and on (0x0800727C)
+winner = 0x01e  # the winner's music (0x080071F8)
 description-open = 0x066  # R's description on the custom screen (0x080203C0)
 unselect-68 = 0x068
 refused = 0x069  # what the custom screen can't pick or take back, a soul it can't give (0x08020386, 0x08020634)
@@ -111,6 +114,7 @@ custom-cursor = 0x07d  # the custom screen's cursor moving (0x0802049C, 0x080206
 custom-pick = 0x07e  # a chip picked on the custom screen (0x080203A0, from 0x080204B8)
 custom-back = 0x07f  # a pick taken back on the custom screen (0x080203A0, 0x0802066E, from 0x080204B8)
 custom-ok = 0x080  # OK on the custom screen (0x0802063E)
+gauge-full = 0x081  # the custom gauge full as it fills (0x080147F4), or filled at once (0x080159D0)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
 program-advance = 0x097  # the Program Advance animation's Program Advance (0x0801E83A)
 appear = 0x0b0  # the navis' appearance as a round starts (the lab's flow/buster-duel, frame 148)
