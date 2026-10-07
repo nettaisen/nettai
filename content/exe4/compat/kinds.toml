@@ -14,3 +14,4 @@
 "projectile" = { pool = "attack", index = 0x00 }
 "attachment" = { pool = "attack", index = 0x02 }
 "bomb" = { pool = "attack", index = 0x08 }
+"guard-shield" = { pool = "attack", index = 0x2B }
