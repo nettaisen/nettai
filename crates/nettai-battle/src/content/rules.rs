@@ -1466,6 +1466,13 @@ pub struct Rules {
     pub stance_counter: StanceCounter,
     /// What a deleted player's object does (the reactions section's).
     pub dead_player: DeadPlayer,
+    /// An attack's end hands its lockout on (`sub_801171C`: a chip's, an
+    /// attack of kind 2, to the chip lockout; the B+Back special's, kind
+    /// 3, to its cooldown): EXE6's, EXE5's. EXE4's end (0x0800CA28) hands
+    /// none on: its weapons and chips set the lockouts as they start
+    /// (Reflect's routine the special's cooldown, AIData +0x1A, 0x0800CFC4).
+    /// (The reactions section's.)
+    pub attack_end_lockouts: bool,
     /// What the ends of a navi's actions clear of its requests (the
     /// reactions section's).
     pub request_clears: RequestClears,
