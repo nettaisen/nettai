@@ -208,7 +208,7 @@ impl HudState {
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
         if let Some(n) = waiting_ticks(b) {
             self.frame = (n & 0x3F) as u8;
-        } else if gauge_shown(b, self) && b.gauge.value >= FULL && !b.late_turns() {
+        } else if gauge_shown(b, self) && b.gauge_for(b.setup.local_side) >= FULL && !b.late_turns() {
             self.frame = if self.frame + 1 >= 0x70 { 0 } else { self.frame + 1 };
         }
         if let Some(r) = b.player(b.setup.local_side) {
@@ -402,7 +402,8 @@ pub fn draw<'a>(
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
             put(layer, hud, pal, e, 6 + (i as i32 % 18), i as i32 / 18);
         }
-        let g = b.gauge.value;
+        // (The local console's: EXE4's keeps it full until its own send.)
+        let g = b.gauge_for(b.setup.local_side);
         let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
         for i in 0..16u16 {
@@ -961,7 +962,12 @@ fn icon_parts<'a>(
     let f = nettai_battle::kinds::common::facing(o.alliance, o.flip);
     // Attach point 3 of the navi's sprite (player NameIDs 0x1A0..=0x1C3).
     let (ax, ay) = if b.content.identity(o.identity).class.is_player() {
-        let p = b.content.attach_point(o.identity, 3);
+        let Some(p) = b.content.try_attach_point(o.identity, 3) else {
+            // (EXE4 has no attach points: its icons' own place, 0x08014860
+            // by 0x0800B9E4, isn't drawn yet.)
+            problems.note(format!("identity {} has no attach point 3: its chip icons aren't drawn", b.content.identity(o.identity).key));
+            return;
+        };
         (p.x as i32, p.y as i32)
     } else {
         (8, 48)

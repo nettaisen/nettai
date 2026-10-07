@@ -1404,6 +1404,31 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn drop_status_visuals(&mut self, o: ObjectRef) -> ApiResult<()> {
+        let c = self.collision_of_mut(o)?;
+        c.links[crate::collision::link::CONFUSE] = None;
+        c.links[crate::collision::link::BLIND] = None;
+        Ok(())
+    }
+
+    fn drop_chip(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        self.objects.get_mut(o).chip = None;
+        Ok(())
+    }
+
+    fn drop_alive_count(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let side = self.objects.get(o).alliance as usize;
+        self.round.alive[side] = self.round.alive[side].wrapping_sub(1);
+        Ok(())
+    }
+
+    fn drop_barrier(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of_mut(o)?.barrier = 0;
+        Ok(())
+    }
+
     fn leave(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         kinds::player::leave(self, o);
@@ -1744,6 +1769,10 @@ impl CoreApi for Battle {
 
     fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
         kinds::effect::spawn(self, pos, look, flip, palette_add, priority)
+    }
+
+    fn spawn_effect_after_spawn(&mut self, z: i32, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
+        kinds::effect::spawn_after_spawn(self, z, look, flip, palette_add, priority)
     }
 
     fn spawn_region_effects(&mut self, x: i32, y: i32, region: RegionHandle, side: u8, look: EffectHandle, z: i32) {

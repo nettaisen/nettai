@@ -626,6 +626,15 @@ declare extern type Object with
     -- As a navi leaves (EXE5's 0x081042E6): its status visuals forgotten and
     -- its chips off the HUD.
     function drop_links(self): ()
+    -- `sub_801A5E2`: its status visuals forgotten (confusion's, blindness').
+    function drop_status_visuals(self): ()
+    -- Its chip (BattleObject +0x2A) none, its chip count kept.
+    function drop_chip(self): ()
+    -- `sub_800A142` (EXE4's 0x080079C6): one fewer alive navi on its side,
+    -- the alive lists kept.
+    function drop_alive_count(self): ()
+    -- Its collision's barrier byte cleared (`sub_801A7F4`'s store).
+    function drop_barrier(self): ()
     -- A navi no player controls leaves (EXE5's 0x08104306): no HP, the
     -- damage-carry record forgets it, its reservation goes, it leaves its
     -- side's lists and is destroyed.
@@ -1316,6 +1325,10 @@ declare battle: {
     -- The generic one-shot effect (effect object #0) an effect definition
     -- describes.
     effect: (pos: Vec3, effect: Effect, flip: number?, palette_add: number?, priority: number?) -> Object?,
+    -- The same spawner called again straight after a spawn, at height z:
+    -- its X and Y what the object allocator left in their registers (list
+    -- node addresses), which the engine doesn't know.
+    effect_after_spawn: (z: number, effect: Effect, flip: number?, palette_add: number?, priority: number?) -> Object?,
     -- `sub_801BD3C`: the one-shot effect `effect` on each field panel of
     -- hit region `region` around (x, y), turned the way side `side` faces,
     -- at height z (default 0); a whole-field region's from the bottom
@@ -2698,6 +2711,10 @@ export type RolesSpec = {
         ungrounded: Action?,
         glowless: Action?,
         wrapper: Action?,
+        -- A player's deletion, where the rules have their own (EXE4's):
+        -- the navi's deletion action runs it (its phase, timer and
+        -- animation the object's); unfilled, the engine's.
+        deletion: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,

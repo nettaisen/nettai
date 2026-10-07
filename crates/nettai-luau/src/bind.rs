@@ -476,6 +476,10 @@ impl UserData for Object {
         methods.add_method("chips_enabled", |_, this, ()| with(|api, _| api.chips_enabled(this.0).map_err(api_error)));
         methods.add_method("move_lag", |_, this, ()| with(|api, _| api.move_lag(this.0).map_err(api_error)));
         methods.add_method("drop_links", |_, this, ()| with(|api, _| api.drop_links(this.0).map_err(api_error)));
+        methods.add_method("drop_status_visuals", |_, this, ()| with(|api, _| api.drop_status_visuals(this.0).map_err(api_error)));
+        methods.add_method("drop_chip", |_, this, ()| with(|api, _| api.drop_chip(this.0).map_err(api_error)));
+        methods.add_method("drop_alive_count", |_, this, ()| with(|api, _| api.drop_alive_count(this.0).map_err(api_error)));
+        methods.add_method("drop_barrier", |_, this, ()| with(|api, _| api.drop_barrier(this.0).map_err(api_error)));
         methods.add_method("leave", |_, this, ()| with(|api, _| api.leave(this.0).map_err(api_error)));
         methods.add_method("can_stand_any_side", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
@@ -2102,6 +2106,26 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let o = with(|api, b| {
                 let look = EffectHandle(def_arg(b, &id, Registry::Effect, "battle.effect")?);
                 Ok(api.spawn_effect(pos.0, look, flip, add, prio))
+            })?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(
+        lua,
+        t,
+        "effect_after_spawn",
+        |lua, (z, id, flip, palette_add, priority): (
+            i32,
+            LuaValue,
+            Option<LuaValue>,
+            Option<LuaValue>,
+            Option<LuaValue>
+        )| {
+            let opt = |v: Option<LuaValue>, what| v.map_or(Ok(0), |v| u8_arg(v, what));
+            let (flip, add, prio) = (opt(flip, "flip")?, opt(palette_add, "palette")?, opt(priority, "priority")?);
+            let o = with(|api, b| {
+                let look = EffectHandle(def_arg(b, &id, Registry::Effect, "battle.effect_after_spawn")?);
+                Ok(api.spawn_effect_after_spawn(z, look, flip, add, prio))
             })?;
             object_value(lua, o)
         }

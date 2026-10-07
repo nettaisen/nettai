@@ -1584,6 +1584,16 @@ pub trait CoreApi {
     /// A navi's links let go as it leaves (EXE5's 0x081042E6): its status
     /// visuals (`sub_801A5E2`) and its chips on the HUD (`sub_801DC36`).
     fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_801A5E2`: a navi's status visuals forgotten (its collision's
+    /// confusion and blindness links).
+    fn drop_status_visuals(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// A navi's chip (BattleObject +0x2A) none, its chip count kept.
+    fn drop_chip(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_800A142` (EXE4's 0x080079C6): one fewer alive navi on `o`'s
+    /// side; the alive lists kept.
+    fn drop_alive_count(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `o`'s collision's barrier byte cleared (`sub_801A7F4`'s store).
+    fn drop_barrier(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// A navi no player controls leaves (EXE5's 0x08104306): no HP, the
     /// damage-carry record forgets it, its reservation goes, it leaves its
     /// side's lists and is destroyed.
@@ -1702,6 +1712,10 @@ pub trait CoreApi {
     fn navi_game_stats_mut(&mut self, side: u8) -> ApiResult<&mut crate::SmallBlock>;
     /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
     fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
+    /// `SpawnT4BattleObjectWithId0` called again straight after a spawn, at
+    /// height `z`: its X and Y what the object allocator left in their
+    /// registers, which the engine doesn't know.
+    fn spawn_effect_after_spawn(&mut self, z: i32, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
     /// `sub_801BD3C`: the one-shot effect `look` on each field panel of
     /// hit region `region` around (x, y), turned the way side `side`
     /// faces, at height `z`; a whole-field region's from the bottom right,
