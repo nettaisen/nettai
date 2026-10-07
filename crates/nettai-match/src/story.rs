@@ -19,10 +19,6 @@ pub fn hp_at(content: &Content, navi: NaviHandle, level: u8) -> Option<u16> {
     content.navi(navi).story.as_ref()?.hp_at(level)
 }
 
-/// The last level of `navi`'s story (none: it has none).
-pub fn max_level(content: &Content, navi: NaviHandle) -> Option<u8> {
-    content.navi(navi).story.as_ref().map(|s| s.max_level)
-}
 
 #[cfg(test)]
 mod tests {
@@ -37,8 +33,8 @@ mod tests {
         let protoman = navi("protoman");
         let hp = |level| super::hp_at(&content, protoman, level);
         assert_eq!([hp(0), hp(1), hp(5), hp(6), hp(7)], [Some(200), Some(300), Some(500), Some(800), None]);
-        assert_eq!(super::max_level(&content, protoman), Some(6));
-        assert_eq!(super::max_level(&content, navi("megaman")), None);
+        assert_eq!(content.navi(protoman).last_level(), Some(6));
+        assert_eq!(content.navi(navi("megaman")).last_level(), None);
     }
 
     /// A match whose left side operates ProtoMan: he is at his story's last

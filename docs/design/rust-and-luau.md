@@ -57,8 +57,8 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | | | | | |
 | The stat block and versions | | | | | |
-| Tools | | | 1 | | 1 |
-| **All** | | | **3** | **5** | **8** |
+| Tools | | | | | |
+| **All** | | | **2** | **5** | **7** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -135,8 +135,6 @@ rename left of EXE5's logic.
 
 ### Tools (nettai-match)
 
-- **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name; link_navis.rs; story.rs). The
-  game's own are listed from its rules' `stats` since V1 (`stats::game_fields`). *(c)* The engine's by role.
 
 ### Done
 
@@ -268,6 +266,12 @@ Each with what it was and what it is now.
   (the user: "i don't think you need learning right? since the battles are one-off"). A random EXE5 match states no
   auto battle data; the editor's pane reads the two facts by field name, laid out by EXE5's rules/auto_battle/block
   (`Battle::module_data`), and the save import writes the facts from the block.
+- **T3.** The stats pane (stats.rs, every `NaviStats` field by name, and `game_fields`) went with nettai-demo. The
+  navi views read a navi's levels' range by one generic read, `NaviData::last_level` (what its definition says a
+  level gives it: `levels` or `story`), for `level_required`, `play_level`, `Side::takes_level` and the build
+  creator, where each matched both records; `story::max_level` and `link_navis::has_levels` (unused since the
+  editor) are gone, and `link_navis` keeps its tests of EXE6's reload. The build creator's NAVI tab shows the
+  engine's own stats by the engine's names (nettai, not audited).
 - **T4** (step c3b). `has_navicust`, `has_patch_cards` and `navicust_rules` are gone.
 - **T5.** `PlayerFact::SpTimes` and `Facts::{sp_times, set_sp_times, takes_sp_times}` are gone. The times are the
   field `sp_times`, which tools set and read through the generic facts and compat writes by name
@@ -279,8 +283,8 @@ Each with what it was and what it is now.
   compat codecs map to the block's bytes by name. EXE6's: `beast_out_counter`, `sun`, `chip_drops`, `encounters`,
   `chip_shuffle`, `number_open`; EXE5's: `sun`, `chip_drops`, `encounters`, `hub_style`, `soul_turn_bonus`. Their
   `NaviStats` fields and `NaviStat`s are gone. `version` is no stat: it is the side's version fact (EXE6's API
-  `exe6.version`, which MstrCros reads; exe6-compat writes +0x20 from it). The stats pane lists the game's own by the
-  schema's names (`stats::game_fields`). A bug code writes them by name (N2: a game's rules/navicust/bugs's `own`).
+  `exe6.version`, which MstrCros reads; exe6-compat writes +0x20 from it). The stats pane listed the game's own by the
+  schema's names (`stats::game_fields`; the pane went with nettai-demo). A bug code writes them by name (N2: a game's rules/navicust/bugs's `own`).
 - **V2.** `beast_pictures` is `button_pictures`: the version pictures a side's buttons draw, its navi's form's
   version's when the form isn't the base form, else the player's (EXE6's Beast Out button the case). The rest
   (`version_name`, `console_version`, `known_emblem`) was generic already.

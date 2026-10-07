@@ -152,9 +152,7 @@ pub fn as_built(content: &Content, game: &str, side: &mut Side) -> Built {
         && nettai_match::level_required(content, navi)
         && side.level(content).is_none()
     {
-        let n = content.navi(navi);
-        let last = n.levels.as_ref().map(|l| l.by_level.len().saturating_sub(1) as u8).or_else(|| nettai_match::story::max_level(content, navi));
-        let _ = side.set_level(content, last.or(Some(0)));
+        let _ = side.set_level(content, nettai_match::play_level(content, navi).or(Some(0)));
     }
     let taken = presets::settle(content, game, side);
     let changed: Vec<String> = facts::fields(content)
