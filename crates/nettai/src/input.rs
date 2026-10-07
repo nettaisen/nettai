@@ -31,7 +31,7 @@ pub enum BattleKey {
 }
 
 /// The battle's keys: the arrows move, Z is A, X is B, A is L, S is R,
-/// Enter is START and Backspace is SELECT (nettai-demo's keys), by where
+/// Enter is START and Backspace is SELECT (the retired nettai-demo's keys), by where
 /// they are on the keyboard.
 pub fn battle_key(code: KeyCode) -> Option<BattleKey> {
     use BattleKey::*;

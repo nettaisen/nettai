@@ -10,7 +10,7 @@
 //! on their own are [`pictures`]. docs/frontend.md §3.
 //!
 //! Drawing only: the window, the input, the sound and the sessions that
-//! run a battle are nettai-frontend's and its host's (nettai-demo).
+//! run a battle are nettai-frontend's and its host's (nettai, nettai-tools).
 
 pub mod audit;
 pub mod chatbox;

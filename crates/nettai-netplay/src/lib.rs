@@ -17,7 +17,7 @@
 //! it into an ordered stream, each player's inputs delivered once, in
 //! order, with a lost datagram's inputs recovered from the next one. The
 //! channel is the host's: this crate has no socket and no handshake (the
-//! program's are nettai-rtc and nettai-demo's `net`).
+//! app's are nettai-rtc and nettai's `netplay`).
 //!
 //! This crate provides what getgud and rennet leave to the game:
 //!
