@@ -57,6 +57,15 @@ language = "ja"
 "boomer3" = { name = "ブーメラン3", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 "repair" = { name = "リペア-", description = "キューブなどの\nおきもののHPを\nかいふくさせる" }
 "fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
+"ligtnin1" = { name = "ライトニング1", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"ligtnin2" = { name = "ライトニング2", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"ligtnin3" = { name = "ライトニング3", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"aquaup1" = { name = "アクアアッパー1", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"aquaup2" = { name = "アクアアッパー2", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"aquaup3" = { name = "アクアアッパー3", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"greenwd1" = { name = "グリーンウッド1", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"greenwd2" = { name = "グリーンウッド2", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"greenwd3" = { name = "グリーンウッド3", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
