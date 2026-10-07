@@ -1,10 +1,10 @@
 --!strict
 -- DrkLance (EXE4 chip 0x0BF): a dark chip, which no folder holds and the custom screen offers (rules/dark_chips). The
--- spawners' action 0x20, its variant 6: Lance's three lances (objects/lance), its parameters' first byte 1, their
+-- spawners' action 0x20, its variant 6: Lance's three lances (chips/lance/lance), its parameters' first byte 1, their
 -- second palette. Its damage is half the opponent's maximum HP, at most 999 (its power 1050: damage formula 50),
 -- worked out again every tick it waits in the hand (flag 0x80). Its cost: a worse custom drain (rules/dark_chips).
 
-local lance = require("../objects/lance")
+local lance = require("./lance/lance")
 local spawners = require("../lib/spawners")
 
 local drklance: Chip = {
