@@ -36,6 +36,7 @@ return merge {
     require("@self/panlgrab"),
     require("@self/recov"),
     require("@self/repair"),
+    require("@self/roll"),
     require("@self/spreader"),
     require("@self/sword"),
     require("@self/vulcan"),

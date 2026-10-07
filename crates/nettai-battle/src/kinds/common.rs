@@ -197,13 +197,24 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_updateSpriteTimestop`: like `update_sprite`, but it also steps
-/// while dimmed and whatever the object's collision says.
+/// while dimmed and whatever the object's collision says. A newly requested
+/// animation is loaded and stepped, or, by the game's
+/// `effects.dimmed_update_steps_on_load` (EXE4's), loaded alone.
 pub fn update_sprite_while_dimmed(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }
     let o = b.objects.get(r);
     if o.flags & flags::ACTIVE == 0 {
+        return;
+    }
+    if !b.game_rules().effects.dimmed_update_steps_on_load
+        && o.flags & flags::NO_SPRITE_UPDATE == 0
+        && o.anim != o.anim_loaded
+    {
+        let anim = o.anim;
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
+        b.objects.get_mut(r).anim_loaded = anim;
         return;
     }
     step_sprite(b, r);

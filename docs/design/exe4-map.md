@@ -566,6 +566,17 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   few ticks where mGBA shows the tower's previous frame or a mix of two (big sprites: the original's display falling
   a frame behind, not its state).
 
+- **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
+  navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
+  DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter):
+  @exelib/navi_chips/controller (EXE5's Phoenix's and DethPhnx's controllers are the same code), its course EXE4's
+  (content/exe4/lib/navi_chips: the user warping out, the navi, a wait, the user warping back in, in four shapes), the
+  user's warp EXE4's own effect #0x0C (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first
+  parameter is the navi's level (0, an SP's 3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a
+  variant times 0, 2 or 3). The SP chips' damage goes by the side's deletion time (rules/sp_chips, formulas 1 to 22),
+  the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count formula's `panels`). Roll (actor #0x2C)
+  is @exelib/roll's, with EXE4's differences as its spec's.
+
 **For the next steps:**
 
 - **Extraction** (`nettai-extract exe4`): as built, §14.
@@ -810,6 +821,8 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
+- Roll's chips against an armed AntiRecv (the spawner's own spring, 0x080E5554: the counterattack three times half
+  the chip's damage word, its dimming with no cut-in): no recording has Roll used into AntiRecv yet.
 - Settled: panels through a pause and a dimming (§18 item 13, a95f's `panels/` recordings). Poison doesn't drain
   through a pause (`poison-pause`: the player doesn't run paused); a player landing on lava burns the tick after
   it lands even while the battle is dimmed (`lava-dimming-33`, RockCube's dimming: the burn at 418, its flinch at
@@ -1481,3 +1494,13 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
       effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
       The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
       EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
+
+### 18.8 The chips (group F)
+
+150. **A navi chip's user hidden and shown** (from Roll's warps). EXE4's 0x080E2D56 and 0x080E2DCC (EXE6's
+    `sub_80E1352`, `sub_80E13DC`, similar) set no "vanished" mark (EXE6's `sub_8010312(0x100000)`), find the barrier
+    visual at the object's +0x50, hide the HUD's chip icons by task 8, and show the user back whatever the viewer's
+    blindness or a submerge (EXE6's tests `sub_800EB6C` and the submerged bit). The engine's `dimming.hide_user` and
+    `show_user` are EXE6's; Roll's recordings match (nothing in them reads the mark, and no viewer is blind). Shape: a
+    `chip_use` rule for the user's vanish (EXE6's and EXE5's marks and tests, EXE4's none), with a recording of a blind
+    viewer or a Reflector through a navi chip to confirm.

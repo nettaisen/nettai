@@ -26,6 +26,9 @@ return {
     afterimages_wear_overlays = false,
     -- Its sprites' frame load (IWRAM 0x0300632C) is EXE5's code.
     load_sets_part_palette = false,
+    -- A sprite updated through the dimming (0x08014446, `object_updateSpriteTimestop`) only loads a new animation,
+    -- stepping it from the next tick (its `object_updateSprite`, 0x080143FC, steps as it loads).
+    dimmed_update_steps_on_load = false,
     -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (the player's
     -- table, 0x080EAEFC: six framework states; an obstacle's to confirm, exe4-map.md §16).
     obstacle_actions = "own_from_6",
