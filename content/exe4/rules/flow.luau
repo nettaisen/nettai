@@ -22,4 +22,7 @@ return {
     navi_win_banner = "never",
     -- The intro (0x08007464) goes on from its init to its first step (the HUD's setup) on the same tick.
     intro_steps_on_init = true,
+    -- L or R with a full gauge: the fight reads both players' keys itself and asks for the custom screen on that tick
+    -- (0x08007A2E, from the fighting state, 0x08007188: no reversions).
+    custom_request = "joypads",
 }

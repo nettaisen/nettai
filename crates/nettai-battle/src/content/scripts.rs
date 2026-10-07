@@ -477,7 +477,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         intro_from_black = false,
         low_hp_music = true,
         navi_win_banner = "operation_battle",
-        intro_steps_on_init = false,"#,
+        intro_steps_on_init = false,
+        custom_request = "joypads","#,
             ),
             (
                 "fresh_stats",
@@ -584,6 +585,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             Reservations, RetypeRule, ShakeRule, StanceCounter, WeaknessMark,
         };
         assert_eq!((r.flow.result_words, r.flow.escape_check, r.flow.navi_win_banner), (49, false, NaviWinBanner::OperationBattle));
+        assert_eq!(r.flow.custom_request, crate::content::CustomRequest::Joypads);
         assert_eq!(
             (r.effects.shake, r.effects.damage_word.damage, r.effects.damage_word.flags.len(), r.effects.retype, r.effects.obstacle_actions),
             (ShakeRule::BattleRng, 0x7FF, 2, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
@@ -632,7 +634,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 82, "every field of every section");
+        assert_eq!(fields, 83, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

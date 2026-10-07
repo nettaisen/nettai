@@ -22,4 +22,7 @@ return {
     navi_win_banner = "operation_battle",
     -- The intro returns after its init, as EXE6's.
     intro_steps_on_init = false,
+    -- L or R with a full gauge: the navi's input decode asks for the custom screen, which the fight reads the next
+    -- tick, as EXE6's.
+    custom_request = "navi_input",
 }
