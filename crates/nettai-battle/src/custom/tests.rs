@@ -33,7 +33,7 @@ fn library() -> TestLibrary {
 }
 
 fn stats() -> NaviStats {
-    NaviStats { custom_level: 5, mega_level: 1, giga_level: 1, mood: 0x80, beast_out_counter: 3, ..NaviStats::default() }
+    NaviStats { custom_level: 5, mega_level: 1, giga_level: 1, mood: 0x80, ..NaviStats::default() }
 }
 
 /// A folder of these chips, then plain chips.
@@ -116,13 +116,15 @@ struct Player {
     console: Console,
     lib: TestLibrary,
     stats: NaviStats,
+    /// EXE6's ChpShufl (its rules' stat): the re-deal button shows.
+    chip_shuffle: bool,
     tick: u32,
 }
 
 impl Player {
     fn new(chips: &[(ChipId, u8)]) -> Player {
         let setup = PlayerSetup { folder: folder(chips), ..PlayerSetup::default() };
-        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), tick: 0 }
+        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), chip_shuffle: false, tick: 0 }
     }
 
     fn context(&self) -> Context<'_> {
@@ -145,7 +147,7 @@ impl Player {
             // (DustCross and DustCross Beast: EXE6's rules/cross's
             // `scrap_button`.)
             scrap: megaman && matches!(self.stats.form.0, 0x0A | 0x16),
-            redeal: megaman && self.stats.chip_shuffle,
+            redeal: megaman && self.chip_shuffle,
         }
     }
 
@@ -443,7 +445,7 @@ fn chip_shuffle_redeals_what_is_not_picked() {
     // Thirty different chips (ids and codes), the first one the pick.
     let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
     let mut p = Player::new(&chips);
-    p.stats.chip_shuffle = true;
+    p.chip_shuffle = true;
     p.console = Console::new(&ConsoleSetup { rng: 0x1234_5678, ..ConsoleSetup::default() });
     p.open();
     assert!(matches!(p.screen().slots[8].kind, SlotKind::Button { button: ButtonHandle(1), cell: ButtonCell::Left }));
@@ -488,7 +490,7 @@ fn chip_shuffle_redeals_what_is_not_picked() {
 fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
     let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
     let mut p = Player::new(&chips);
-    p.stats.chip_shuffle = true;
+    p.chip_shuffle = true;
     let mut f = folder(&chips);
     f.regular_pending = true;
     p.side.folder = f;
@@ -518,7 +520,7 @@ fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
 fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
     let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
     let mut p = Player::new(&chips);
-    p.stats.chip_shuffle = true;
+    p.chip_shuffle = true;
     p.console = Console::new(&ConsoleSetup { rng: 0x0BAD_F00D, tag_pair: Some(12), ..ConsoleSetup::default() });
     p.open();
     p.wait(10);

@@ -11,6 +11,7 @@ local collision = require("../../rules/collision")
 local drill = require("../drilarm/drill")
 local effects = require("../../lib/effects")
 local erase_ray = require("../../navis/megaman/forms/erasecross/ray")
+local exe6 = require("../../rules/api")
 local navi_chips = require("../../lib/navi_chips/navi")
 local panel_bursts = require("../../objects/panel_bursts")
 local panels = require("@exelib/panels")
@@ -252,9 +253,9 @@ local function bring(me: Object, entry: Entry, i: number): Object?
     return o
 end
 
--- The user's game's table.
+-- The user's game's table (its version: NaviStats+0x20, 0 Gregar, else Falzar).
 local function game(me: Object): string
-    return if battle.navi(me.alliance).version == 0 then "gregar" else "falzar"
+    return if exe6.version(me.alliance) == "gregar" then "gregar" else "falzar"
 end
 
 -- `sub_80BE8AE`: the first wave, all in one tick: each Cross beside his

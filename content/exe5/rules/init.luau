@@ -75,6 +75,20 @@ local state: StateSchema = {
 
 local rules: Rules = {
     state = state,
+    -- A navi's stats of EXE5's own, beside the engine's (NaviStats' bytes, which exe5-compat maps by these names):
+    -- fighting in the sun (+0x22, MegaMan's: ./save; GunDelSol reads it), what the NaviCust does to chip drops and
+    -- random encounters (+0x26, +0x28: the patch cards' bug count reads them), Hub Style (+0x4C, which its patch card
+    -- 111, 0x6F, sets when installed and on, 0x08138214: 1 by Team ProtoMan's card, 2 by Team Colonel's, 0x081382FC;
+    -- MegaMan's buster, arm, shade, palettes and faces read it), and the turns Soul Unison gives a soul beside its 3
+    -- (+0x32, signed: the NaviCust's SoulT+1, the patch cards' SoulTm+ and SoulTm-; ./souls reads it at OK,
+    -- 0x08024FF6).
+    stats = {
+        sun = "bool",
+        chip_drops = "u8",
+        encounters = "u8",
+        hub_style = "u8",
+        soul_turn_bonus = "i8",
+    },
     -- What a player brings (nettai-match from a match's side, exe5-compat from a recording): a side's facts.
     setup = {
         -- The navi they play: the round's stats are its (`Battle::new` holds them to it). No default: a side states

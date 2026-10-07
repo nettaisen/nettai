@@ -386,8 +386,12 @@ mod tests {
             let navicust = |s: &Side| (crate::testing::navicust_expansions(&content, s), s.facts.get(&content, "navicust_programs"));
             assert_eq!((side.navi(&content), navicust(side), side.level(&content)), (fresh.navi(&content), navicust(fresh), fresh.level(&content)));
             assert!(side.version(&content).is_some(), "a picked EXE6 side states its version");
-            assert_eq!((s.max_base_hp, s.hp, s.max_hp, s.reg_up, s.sun), (1000, 1000, 1000, 50, true));
-            assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
+            // (The sun, ChpShufl and NumbrOpn: EXE6's own stats.)
+            let stat = |name: &str| s.game_stat(&content, name);
+            let flag = |on: bool| Some(nettai_content_api::FieldValue::Bool(on));
+            assert_eq!((s.max_base_hp, s.hp, s.max_hp, s.reg_up, stat("sun")), (1000, 1000, 1000, 50, flag(true)));
+            assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor);
+            assert_eq!((stat("chip_shuffle"), stat("number_open")), (flag(false), flag(false)));
         }
         let stages = crate::link_battle_stages(&content, "exe6");
         assert_eq!(stages.len(), 96);
@@ -415,10 +419,6 @@ mod tests {
                 }
                 assert_eq!(b.fact(side as u8, PlayerFact::Version).and_then(|f| f.name()), m.sides[side].version(&content));
                 assert_eq!(b.fact(side as u8, PlayerFact::BeastOut).and_then(|f| f.flag()), Some(true));
-                // (The navi's version byte is the version's place: the
-                // battle's start sets it.)
-                let place = crate::facts::versions(&content).iter().position(|v| Some(v.as_str()) == m.sides[side].version(&content));
-                assert_eq!(Some(b.stats[side].version as usize), place);
                 // (A picked side states its version and its form list, and
                 // nothing else: the rest is its rules' defaults.)
                 // (Besides its navi and its folder.)
@@ -466,10 +466,9 @@ mod tests {
         let m = live(&content, "exe5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_eq!(m.game, "exe5");
-        // An EXE5 match has no version: its sides state none, their stats'
-        // version byte is 0, and its file has no such key.
+        // An EXE5 match has no version: its sides state none, and its file
+        // has no such key.
         assert!(m.sides.iter().all(|s| s.version(&content).is_none()));
-        assert!(crate::check::round_stats(&content, &m).unwrap().iter().all(|s| s.version == 0));
         // (Nor anything else: EXE5's rules require no fact, and a random
         // side's are their defaults, but its navi and its folder: its auto
         // battle data the rules' default, nothing learned.)

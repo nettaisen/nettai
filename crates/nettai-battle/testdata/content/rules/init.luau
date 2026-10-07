@@ -50,6 +50,15 @@ local rules_: Rules = {
         side = "u8",
         bonus = "u16",
     },
+    -- EXE6's stats of its own (content/exe6/rules).
+    stats = {
+        beast_out_counter = schema.role("window_count", "u8"),
+        sun = "bool",
+        chip_drops = "u8",
+        encounters = "u8",
+        chip_shuffle = "bool",
+        number_open = "bool",
+    },
     setup = {
         -- EXE6's: the navi, the folder, the patch cards and whether a NaviCust compiles (EXE6's rules/patch_cards
         -- and rules/save read them; the test content has no NaviCust board, nor programs).

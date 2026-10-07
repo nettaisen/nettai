@@ -29,7 +29,7 @@ use super::{
     ChipData, Content,
     FormData, NaviData,
 };
-use super::views::{ButtonView, PlayerFact, ViewFields, WindowView};
+use super::views::{ButtonView, PlayerFact, StatRole, ViewFields, WindowView};
 use super::roles::{
     ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, MusicRole, RegionRole,
     Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
@@ -378,6 +378,9 @@ pub struct RulesDef {
     /// The layout of their state of a side, and of a player's setup.
     pub state: StateId,
     pub setup: StateId,
+    /// The layout of a navi's stats of the game's own (`stats`: beside the
+    /// engine's, `NaviStats::game`), none declared an empty one.
+    pub stats: StateId,
     /// Its player setup when the player's setup says nothing of a field:
     /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500; an
     /// array's, a list: EXE5's souls, every one),
@@ -563,6 +566,9 @@ pub struct Defs {
     /// Where each fact a player brings is ([`PlayerFact::ALL`]'s order):
     /// the field of the rules' setup.
     facts: Vec<Option<u16>>,
+    /// Where each stat a frontend reads by a role is ([`StatRole::ALL`]'s
+    /// order): the field of the rules' `stats`.
+    stat_roles: Vec<Option<u16>>,
     /// Whether an action is the rules' (it reaches their state), by action
     /// handle.
     rules_actions: Vec<bool>,
@@ -630,6 +636,13 @@ impl Defs {
     pub fn fact_field(&self, fact: PlayerFact) -> Option<usize> {
         let k = PlayerFact::ALL.iter().position(|&f| f == fact).expect("every fact is listed");
         self.facts.get(k).copied().flatten().map(|field| field as usize)
+    }
+
+    /// Where stat `role` is: the field of the rules' `stats`. None: the
+    /// game has no such stat.
+    pub fn stat_field(&self, role: StatRole) -> Option<usize> {
+        let k = StatRole::ALL.iter().position(|&r| r == role).expect("every role is listed");
+        self.stat_roles.get(k).copied().flatten().map(|field| field as usize)
     }
 
     /// The name of the rules' setup field that holds fact `fact` (its own,
@@ -1765,8 +1778,8 @@ impl Defs {
         let mut windows: Vec<WindowDef> = Vec::new();
         if let Some(d) = rules_definition(&definitions) {
             let what = |e: &str| ContentError::new(format!("{}.luau: rules: {e}", d.module));
-            const FIELDS: [&str; 11] =
-                ["state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "roles"];
+            const FIELDS: [&str; 12] =
+                ["state", "setup", "setup_defaults", "navi_state", "stats", "hooks", "custom", "buttons", "windows", "actions", "extends", "roles"];
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
                     let nettai_content_api::DataKey::Str(f) = k else {
@@ -2053,9 +2066,11 @@ impl Defs {
                 own_buttons.iter().filter_map(|h| buttons[h.0 as usize].view.map(|v| (buttons[h.0 as usize].name.as_str(), v))),
             )
             .map_err(|e| what(&e))?;
+            let stats = layout("stats")?;
             rules = Some(RulesDef {
                 state,
                 setup,
+                stats,
                 setup_default,
                 navi_state,
                 hooks,
@@ -2097,6 +2112,29 @@ impl Defs {
         // engine's name for it: the rules' setup field that has the role
         // (`schema.role`), else the field of the name (one with no role of
         // its own), of the fact's type.
+        // What a frontend reads of a navi's stats of its game's own by the
+        // engine's name for it: the stat with the role, else the one of the
+        // name, of the role's type.
+        let mut stat_roles = vec![None; StatRole::ALL.len()];
+        if let Some(r) = &rules {
+            let schema = &schemas[r.stats.0 as usize].schema;
+            for (k, role) in StatRole::ALL.iter().enumerate() {
+                let fields = schema.fields();
+                let by_role = fields.iter().position(|f| f.role.as_deref() == Some(role.name()));
+                let by_name = || fields.iter().position(|f| f.name == role.name() && f.role.is_none());
+                let Some(i) = by_role.or_else(by_name) else { continue };
+                if let Err(want) = role.fits(&schema.field(i).ty) {
+                    let module = rules_definition(&definitions).map_or("", |d| d.module.as_str());
+                    return Err(ContentError::new(format!(
+                        "{module}.luau: rules: their stat `{}` is the stat a frontend reads as `{}`, {want}: it is {:?}",
+                        schema.field(i).name,
+                        role.name(),
+                        schema.field(i).ty
+                    )));
+                }
+                stat_roles[k] = Some(i as u16);
+            }
+        }
         let mut facts = vec![None; PlayerFact::ALL.len()];
         if let Some(r) = &rules {
             let schema = &schemas[r.setup.0 as usize].schema;
@@ -2204,6 +2242,7 @@ impl Defs {
             windows,
             rules,
             facts,
+            stat_roles,
             rules_actions,
             change_actions,
             program_advances,

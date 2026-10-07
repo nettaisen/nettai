@@ -23,9 +23,10 @@ pub struct Tick {
     pub events: TickEvents,
 }
 
-/// A plain MegaMan with 1000 HP, fighting in the sun.
+/// A plain MegaMan with 1000 HP, fighting in the sun (the game's own stat:
+/// `NaviStats::game`).
 fn megaman(content: &Content) -> NaviStats {
-    NaviStats {
+    let mut s = NaviStats {
         hp: 1000,
         max_hp: 1000,
         max_base_hp: 1000,
@@ -33,7 +34,6 @@ fn megaman(content: &Content) -> NaviStats {
         custom_level: 5,
         mega_level: 5,
         giga_level: 1,
-        sun: true,
         weapons: NaviWeapons {
             buster: testing::weapon_in(content, "megaman/buster"),
             charge_shot: testing::weapon_in(content, "megaman/charged-shot"),
@@ -43,7 +43,9 @@ fn megaman(content: &Content) -> NaviStats {
             ..Default::default()
         },
         ..testing::megaman_on(content)
-    }
+    };
+    s.set_game_stat(content, "sun", nettai_content_api::Value::Bool(true)).expect("the test content's stats have the sun");
+    s
 }
 
 /// The test content the duel is fought on.
