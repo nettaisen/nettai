@@ -29,6 +29,9 @@ return {
         guard_breaks_to = 0x0002,
         elec_bonus_on_sea = false,
     },
+    -- A move's direction in the collision record (`sub_800E994`, `object_updateCollisionPanels`): up, down, back
+    -- or forward by the side, other for a move of two panels or more right or down.
+    move_direction = "by_side",
     -- A pulled obstacle's slide stays out of the puller's area (`byte_8017F24`).
     obstacle_slide_bounds = true,
     -- A slide and a drag go 10 pixels a tick across and 6 in depth (`sub_8016730`, `sub_80178D4`).
