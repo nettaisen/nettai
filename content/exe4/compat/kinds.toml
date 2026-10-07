@@ -18,11 +18,14 @@
 "bullet" = { pool = "attack", index = 0x12 }
 "lance" = { pool = "attack", index = 0x4F }
 "panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
+"rising-bubble" = { pool = "effect", index = 0x14 }
 "drkstage/controller" = { pool = "effect", index = 0x6A, scratch_position = true }
 # The stages' boulder (the actor lists' entry type 3, 0x08006880) and the debris it breaks into (0x080E621C).
 "boulder" = { pool = "attack", index = 0x6E }
 "rock/debris" = { pool = "effect", index = 0x38 }
 "guard-shield" = { pool = "attack", index = 0x2B }
+# The cracks' crack (CrakOut and its kin, action 0x21: 0x080CFEFC).
+"crack" = { pool = "attack", index = 0x18 }
 # The flag stages' flags (the actor lists' entry type 7, 0x080068F4).
 "flag" = { pool = "attack", index = 0x9C }
 # The gear stages' gears (the actor lists' entry type 5, 0x080068C0).

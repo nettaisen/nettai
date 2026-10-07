@@ -603,21 +603,34 @@ pub(crate) fn exit_attack_state(b: &mut Battle, r: ObjectRef) {
     end_attack(b, r);
 }
 
+/// The same, keeping the lockouts as they are (EXE4's 0x0800CA28, the
+/// buster's and the charged shot's recovery's end).
+pub(crate) fn exit_attack_state_keeping_lockout(b: &mut Battle, r: ObjectRef) {
+    b.objects.get_mut(r).anim = 0;
+    end_attack_with(b, r, false);
+}
+
 /// `sub_801171C`: leave the current attack for the idle action. A move
 /// (kind 4) keeps pending requests and the charge.
-
 pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
+    end_attack_with(b, r, true);
+}
+
+/// [`end_attack`], its lockout handed on by the rules (`hands_on`) or not.
+fn end_attack_with(b: &mut Battle, r: ObjectRef, hands_on: bool) {
+    use crate::content::AttackEndLockout;
     // What else the end clears of the requests is its game's (EXE6's
     // 0x1000003F, EXE5's 0x1803F: the reactions section's).
     let clears = b.game_rules().request_clears.attack.0;
-    let hands_on = b.game_rules().attack_end_lockouts;
+    let rule = b.game_rules().attack_end_lockout;
     let a = ai_mut(b, r);
     a.attack.special_source = 0;
     let kind = a.attack.kind;
     if kind != 4 {
-        match kind {
-            2 if hands_on => a.lockout = a.attack.lockout,
-            3 if hands_on => a.back_special_cooldown = a.attack.lockout,
+        match (rule, kind) {
+            (_, _) if !hands_on => {}
+            (AttackEndLockout::ChipLockout, _) | (AttackEndLockout::ByKind, 2) => a.lockout = a.attack.lockout,
+            (AttackEndLockout::ByKind, 3) => a.back_special_cooldown = a.attack.lockout,
             // (EXE5's 0x0800F2D0 drops its Chaos Unison charge at the end
             // of its failure, slot 6: the failure's revert dropped it with
             // its status reset already, rules/souls/chaos.)

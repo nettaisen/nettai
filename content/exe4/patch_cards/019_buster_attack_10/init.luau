@@ -2,7 +2,7 @@
 -- The patch card Buster Attack 10 (19, バスター攻撃力10).
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
-local cards = require("../rules/patch_cards")
+local cards = require("../rules/patch_cards/cards")
 
 local card: PatchCard = {
     effects = {

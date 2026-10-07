@@ -1,9 +1,10 @@
 --!strict
 -- Recov10, Recov30, Recov50, Recov80, Recov120, Recov150, Recov200 and Recov300 (EXE4 chips 0x06B to 0x072; their
--- records at 0x080197EC + n * 0x2C): the recoveries' action 0x1D (lib/recov), its variants 0 to 7, the side's mood
+-- records at 0x080197EC + n * 0x2C): the recoveries' action 0x1D (./recov), its variants 0 to 7, the side's mood
 -- gaining each one's counter byte.
+-- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
-local recov = require("../lib/recov")
+local recov = require("@self/recov")
 
 local recov10: Chip = {
     codes = { "A", "L", "N", "*" },
@@ -12,7 +13,7 @@ local recov10: Chip = {
     class = "standard",
     rarity = 0,
     mb = 8,
-    damage = 0,
+    damage = 40,
     hit_param = 30,
     lockout = 30,
     flags = { "standard_library", "library" },
@@ -26,7 +27,7 @@ local recov30: Chip = {
     class = "standard",
     rarity = 0,
     mb = 16,
-    damage = 0,
+    damage = 40,
     hit_param = 30,
     lockout = 30,
     flags = { "standard_library", "library" },
@@ -40,7 +41,7 @@ local recov50: Chip = {
     class = "standard",
     rarity = 0,
     mb = 24,
-    damage = 0,
+    damage = 40,
     hit_param = 40,
     lockout = 30,
     flags = { "standard_library", "library" },
@@ -54,7 +55,7 @@ local recov80: Chip = {
     class = "standard",
     rarity = 1,
     mb = 32,
-    damage = 0,
+    damage = 40,
     hit_param = 40,
     lockout = 30,
     flags = { "standard_library", "library" },
@@ -68,7 +69,7 @@ local recov120: Chip = {
     class = "standard",
     rarity = 1,
     mb = 40,
-    damage = 0,
+    damage = 40,
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },
@@ -82,7 +83,7 @@ local recov150: Chip = {
     class = "standard",
     rarity = 2,
     mb = 48,
-    damage = 0,
+    damage = 40,
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },
@@ -96,7 +97,7 @@ local recov200: Chip = {
     class = "standard",
     rarity = 2,
     mb = 56,
-    damage = 0,
+    damage = 40,
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },
@@ -110,7 +111,7 @@ local recov300: Chip = {
     class = "standard",
     rarity = 3,
     mb = 64,
-    damage = 0,
+    damage = 40,
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },

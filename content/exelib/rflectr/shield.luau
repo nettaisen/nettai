@@ -4,7 +4,9 @@
 -- the guard is the navi's own status. It follows its owner at the owner's attach point 6, shows while its owner does,
 -- and ends with a short fade once the owner clears the slot it was stored in (its first related object). It runs
 -- while paused and dimmed, but doesn't animate while dimmed. Each game makes its kind (`shield.make`) with its sound;
--- its looks are the game's rows (`shield.look`).
+-- its looks are the game's rows (`shield.look`). EXE4's guard's (#0x2B, 0x080D2224) is the same code but for what
+-- its `make` states besides: running while dimmed alone, animating then too, no test of its owner's having
+-- vanished, and its spawn taking its owner's side alone.
 
 local slot = require("@exelib/slot")
 
@@ -61,25 +63,40 @@ local function fade(me: Object)
     end
 end
 
--- `sub_80C9726`: the action, then shown unless the viewer is blind to it or its owner vanished for a navi chip.
-local function tick(me: Object)
-    local a = me.action
-    if a == UP then
-        follow(me)
-    elseif a == FADING then
-        fade(me)
-    else
-        error(string.format("reflector shield action %#x reads past its table", a))
+-- A game's shield kind: its key and sound; `animates_while_dimmed` (EXE4's 0x080D2224 steps its sprite whatever
+-- the dimming), `runs_while_paused` (none: true; EXE4's spawn sets the dimming's bit alone, 0x080D2338),
+-- `hides_with_vanished_owner` (none: true; EXE4's tick, 0x080D2298, tests nothing of the kind) and `side_only` (its
+-- spawn takes its owner's side alone, not its facing: EXE4's).
+function shield.make(spec: {
+    id: string,
+    sound: Sound,
+    animates_while_dimmed: boolean?,
+    runs_while_paused: boolean?,
+    hides_with_vanished_owner: boolean?,
+    side_only: boolean?,
+}): Shield
+    local hides_with_owner = spec.hides_with_vanished_owner ~= false
+    local paused_too = spec.runs_while_paused ~= false
+    -- `sub_80C9726`: the action, then shown unless the viewer is blind to it or its owner vanished for a navi chip.
+    local function tick(me: Object)
+        local a = me.action
+        if a == UP then
+            follow(me)
+        elseif a == FADING then
+            fade(me)
+        else
+            error(string.format("reflector shield action %#x reads past its table", a))
+        end
+        me.visible = true
+        me:hide_from_blind()
+        if hides_with_owner then
+            local owner = me.related1 :: Object
+            if owner:navi_state("vanished") then
+                me.visible = false
+            end
+        end
     end
-    me.visible = true
-    me:hide_from_blind()
-    local owner = me.related1 :: Object
-    if owner:navi_state("vanished") then
-        me.visible = false
-    end
-end
 
-function shield.make(spec: { id: string, sound: Sound }): Shield
     -- `sub_80C96C8`: the look, the panel under the offset (the spawn position), and the offset kept in the velocity.
     local function init(me: Object)
         local l = (me.state :: State).look
@@ -114,7 +131,7 @@ function shield.make(spec: { id: string, sound: Sound }): Shield
                 me:free()
                 return
             end
-            if not battle.dimmed() then
+            if spec.animates_while_dimmed or not battle.dimmed() then
                 me:update_sprite()
             end
         end,
@@ -129,8 +146,11 @@ function shield.make(spec: { id: string, sound: Sound }): Shield
             local s = o.state :: State
             s.slot, s.look = "related", l
             slot.fill(owner, "related", o)
-            o.alliance, o.flip = owner.alliance, owner.flip
-            o.run_while_paused = true
+            o.alliance = owner.alliance
+            if not spec.side_only then
+                o.flip = owner.flip
+            end
+            o.run_while_paused = paused_too
             o.run_while_dimmed = true
         end
         return o
