@@ -483,8 +483,9 @@ toadman-win = 0xc0
 # its settings state one. The names are the menu's (0x08128B50), in full where its twelve characters cut one
 # short; the engine's docs/frontend.md §1 has the table of them, tools/backgrounds the names and their areas
 # from the ROM. A link battle draws one of 0x00 to 0x1a (0x08129F2C's table at 0x08129F6C). A liberation's map
-# draws its area's picture again (0x0c 0x08's, 0x0d 0x09's, 0x0e 0x0a's, 0x12 and 0x14 0x0f's, 0x1a 0x18's,
-# 0x1c 0x19's).
+# has its own number with its area's load data, scroll and animations (0x0c 0x08's, 0x0d 0x09's, 0x0e 0x0a's,
+# 0x12 and 0x14 0x0f's, 0x1a 0x18's, 0x1c 0x19's), so it is its area's background: a name with a list is one
+# background, the extractor's picture of its first number, and each number in the list draws it.
 [backgrounds]
 main-comp = 0x00  # MainComp1 and 2
 drill-comp = 0x01  # DrillComp1 to 4
@@ -499,31 +500,24 @@ comp = 0x06
 # 14): 0x06's picture in another palette; the comps share their map tiles, and nothing else in the data sets these
 # apart
 comp-alt = 0x07
-acdc-area = 0x08  # ACDC Area1 and 2
-oran-area = 0x09  # Oran Area1 and 2
-scilab-area = 0x0a  # SciLab1, 2 and 4 ("SciLab Area" in dialogue)
+acdc-area = [0x08, 0x0c]  # ACDC Area1, 2 and 3 (0x0c: Area3, the first liberation's map)
+oran-area = [0x09, 0x0d]  # Oran Area1, 2 and 3 (0x0d: Area3, the second liberation's)
+scilab-area = [0x0a, 0x0e]  # SciLab1 to 4 ("SciLab Area" in dialogue; 0x0e: SciLab3, the third liberation's)
 # the three VisionBursts (map group 0x8A): the menu names none of them; their own dialogue shows what they are, and
 # the game's word is the dialogue's ("VisionBurst of ACDC Town")
 visionburst = 0x0b
-acdc-area3 = 0x0c  # ACDC Area3, the first liberation's map
-oran-area3 = 0x0d  # Oran Area3, the second liberation's
-scilab-area3 = 0x0e  # SciLab3, the third liberation's
-end-area = 0x0f  # End Area1, 3 and 4
+end-area = [0x0f, 0x12, 0x14]  # End Area1 to 5 (0x12: Area2, the fourth liberation's; 0x14: Area5, the fifth's)
 ship-comp = 0x10  # ShipComp1 to 3
 scilab-hp = 0x11  # SciLab HP
-end-area2 = 0x12  # End Area2, the fourth liberation's
 gargcastle-hp = 0x13  # GargCastleHP
-end-area5 = 0x14  # End Area5, the fifth liberation's
 soulserv-comp = 0x15  # SoulServComp
 gargoyle-comp = 0x16  # GargoylComp1 to 3 ("Gargoyle" in dialogue)
 factory-comp = 0x17  # FactoryComp1 to 4
-undernet = 0x18  # Undernet1 to 3; NebulaArea6 too
-nebula-area = 0x19  # NebulaArea2 and 4
-undernet4 = 0x1a  # Undernet4, the sixth liberation's
+undernet = [0x18, 0x1a]  # Undernet1 to 4 (0x1a: Undernet4, the sixth liberation's); NebulaArea6 too
+nebula-area = [0x19, 0x1c]  # NebulaArea1 to 5 (0x1c: NebulaArea1, 3 and 5, the last three liberations')
 # no map's: the two NebulaGray battles' settings state it (0x081140E0, 0x08114270); the game's text places the fight
 # on the SoulServer, whose comp draws 0x15
 nebulagray = 0x1b
-nebula-area1 = 0x1c  # NebulaArea1, 3 and 5, the last three liberations'
 
 # Mugshots: the emotion window's faces, by the number exe5-extract gives them (its hud.rs: the face
 # table's pictures with their own palettes, then the version souls' with the palettes Chaos Unison

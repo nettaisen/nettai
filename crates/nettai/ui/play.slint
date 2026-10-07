@@ -6,9 +6,10 @@
 // when both are ready.
 
 import { Theme, NavAction, UiSound } from "theme.slint";
-import { Slant, Label, Button, Field, Hints, Hint } from "widgets.slint";
+import { Slant, Label, Button, Field, Hints, Hint, NaviMark } from "widgets.slint";
 import { Format } from "format.slint";
 import { Strip, SheetView, Sheet, Band, GameState } from "shell.slint";
+import { BuildText } from "build.slint";
 
 export enum LinkState {
     // No link: none made yet.
@@ -28,6 +29,11 @@ export struct Peer {
     // Nobody there yet.
     present: bool,
     name: string,
+    // What they bring: the build's name (the other player's: their game),
+    // its version by its preset's name; its navi where it isn't the game's
+    // own, marked.
+    build: string,
+    version: string,
     navi: string,
     ready: bool,
 }
@@ -68,11 +74,25 @@ component PlayerCard {
             overflow: elide;
         }
 
-        Text {
-            text: root.peer.present ? root.peer.navi : "";
-            color: Theme.text-dim;
-            font-size: Theme.body;
-            overflow: elide;
+        HorizontalLayout {
+            spacing: 10px;
+            height: 24px;
+            Text {
+                text: root.peer.present ? root.peer.build + (root.peer.version != "" ? "  ·  " + BuildText.preset(root.peer.version) : "") : "";
+                color: Theme.text-dim;
+                font-size: Theme.body;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+                // (Its length moves nothing.)
+                preferred-width: 0px;
+                min-width: 0px;
+            }
+
+            NaviMark {
+                width: Theme.compact ? 110px : 150px;
+                navi: root.peer.present ? root.peer.navi : "";
+            }
         }
     }
 
@@ -106,6 +126,7 @@ export component PlayScreen {
     in property <GameState> game-state;
     in property <string> build;
     in property <int> build-index;
+    in property <string> build-version;
     in property <string> build-navi;
     in property <bool> can-act;
     in property <Sheet> sheet;
@@ -223,6 +244,7 @@ export component PlayScreen {
             game-state: root.game-state;
             build: root.build;
             build-index: root.build-index;
+            build-version: root.build-version;
             build-navi: root.build-navi;
             can-act: root.can-act;
             cursor: root.keys && root.cursor <= 2 ? root.cursor : -1;
@@ -313,8 +335,11 @@ export component PlayScreen {
             HorizontalLayout {
                 spacing: 8px;
                 height: 52px;
+                // (Halves whatever they say.)
                 for p[i] in [root.me, root.them]: Rectangle {
                     horizontal-stretch: 1;
+                    preferred-width: 0px;
+                    min-width: 0px;
                     Slant {
                         lean: 12px;
                         color: (i == 0 ? Theme.cyan : Theme.magenta).with-alpha(p.present ? 0.18 : 0.06);
@@ -326,9 +351,27 @@ export component PlayScreen {
                         padding-left: 20px;
                         padding-right: 14px;
                         alignment: center;
-                        Label {
-                            text: i == 0 ? @tr("YOU") : @tr("OPPONENT");
-                            color: i == 0 ? Theme.cyan : Theme.magenta;
+                        // (Another navi than the game's own, marked beside
+                        // who it is.)
+                        HorizontalLayout {
+                            spacing: 6px;
+                            Label {
+                                text: i == 0 ? @tr("YOU") : @tr("OPPONENT");
+                                color: i == 0 ? Theme.cyan : Theme.magenta;
+                            }
+
+                            Text {
+                                horizontal-stretch: 1;
+                                preferred-width: 0px;
+                                min-width: 0px;
+                                text: p.present && p.navi != "" ? @tr("NAVI · {0}", p.navi) : "";
+                                color: Theme.gold;
+                                font-size: 10px;
+                                font-weight: Theme.black;
+                                horizontal-alignment: right;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
                         }
 
                         Text {

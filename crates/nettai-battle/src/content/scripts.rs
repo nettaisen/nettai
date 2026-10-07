@@ -450,7 +450,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         restore_players = { 9, 31 },
         gauge_empties_at_open = false,
         fades_clear_at_ok = true,
-        cursor_after_leaving = false,"#,
+        cursor_after_leaving = false,
+        frame_counts_first = true,"#,
             ),
             (
                 "effects",

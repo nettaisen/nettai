@@ -265,7 +265,22 @@ pub struct BackgroundDoc {
     pub palette: bool,
     /// Scroll per frame in 1/16 pixel.
     pub scroll: [i32; 2],
+    /// Or a scroll that speeds up (`nettai_assets::Speeding`): its speed's
+    /// step a frame and its top, in 1/65536 pixel a frame, x then y, and
+    /// whether it waits for the battle's first frame (`from_battle`; else it
+    /// runs from the background's load).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speeding: Option<SpeedingDoc>,
     pub anims: Vec<AnimDoc>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct SpeedingDoc {
+    pub step: [i32; 2],
+    pub top: [i32; 2],
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub from_battle: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -371,6 +386,7 @@ pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
         map: "map.tmj".into(),
         palette: bg.palette.is_some(),
         scroll: [bg.scroll.0, bg.scroll.1],
+        speeding: bg.speeding.map(|s| SpeedingDoc { step: [s.step.0, s.step.1], top: [s.top.0, s.top.1], from_battle: s.from_battle }),
         anims,
     };
     files.push(("background.json".into(), json_lines(&doc)));
@@ -445,6 +461,7 @@ pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Optio
         map_height: height,
         palette: doc.palette.then(|| palettes.first().copied().unwrap_or_default()),
         scroll: (doc.scroll[0], doc.scroll[1]),
+        speeding: doc.speeding.map(|s| nettai_assets::Speeding { step: (s.step[0], s.step[1]), top: (s.top[0], s.top[1]), from_battle: s.from_battle }),
         anims,
     };
     Some((doc.id, bg))

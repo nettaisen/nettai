@@ -5,9 +5,13 @@
 
 import { Theme, NavAction } from "theme.slint";
 import { Slant, Label, Hints, Glyph } from "widgets.slint";
+import { BuildText } from "build.slint";
 
 export struct BuildCard {
     name: string,
+    // Its version by its preset's name; its navi where it isn't the game's
+    // own.
+    version: string,
     navi: string,
     face: image,
     // Its folder's chips, and its room.
@@ -79,7 +83,7 @@ component Card {
             }
 
             Text {
-                text: root.kind == 1 ? @tr("Its navi, folder and the rest, from the start") : root.kind == 2 ? @tr("An original save (.sav), or drop one on the window") : root.card.navi + " · " + @tr("{0}/{1} chips", root.card.chips, root.card.total);
+                text: root.kind == 1 ? @tr("Its folder, version and the rest, from the start") : root.kind == 2 ? @tr("An original save (.sav), or drop one on the window") : (root.card.version != "" ? BuildText.preset(root.card.version) + "  ·  " : "") + (root.card.navi != "" ? @tr("NAVI · {0}", root.card.navi) + "  ·  " : "") + @tr("{0}/{1} chips", root.card.chips, root.card.total);
                 color: Theme.text-dim;
                 font-size: 12px;
                 overflow: elide;
