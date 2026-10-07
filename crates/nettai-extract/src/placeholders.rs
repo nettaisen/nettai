@@ -198,7 +198,7 @@ pub fn custom() -> CustomScreen {
         ..Default::default()
     }
 }
-pub fn complete(bundle: &mut Bundle, names: &AssetNames) -> Vec<String> {
+pub fn complete(bundle: &mut Bundle, names: &AssetNames, panel_names: &[String]) -> Vec<String> {
     let mut missing = Vec::new();
     for (_, l) in &mut bundle.custom.languages {
         l.buttons.sort_by(|a, b| a.0.cmp(&b.0));
@@ -218,8 +218,8 @@ pub fn complete(bundle: &mut Bundle, names: &AssetNames) -> Vec<String> {
         bundle.field = Field {
             tiles: tiles(1),
             palettes: vec![PALETTE],
-            panel_types: (0..16).collect(),
-            panels: vec![[MapEntry::default(); 15]; 16 * 6],
+            panel_types: panel_names.to_vec(),
+            panels: vec![[MapEntry::default(); 15]; panel_names.len() * 6],
             highlights: vec![[MapEntry::default(); 15]; 2],
             ..Default::default()
         };

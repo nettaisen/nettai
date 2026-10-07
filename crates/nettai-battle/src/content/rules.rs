@@ -1574,8 +1574,12 @@ impl Rules {
 /// Panel rules.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PanelRules {
-    /// By panel type (`PanelType as usize`).
+    /// The game's panel types, by number (`PanelType`): what each is.
     pub types: Vec<PanelTypeRule>,
+    /// Each type's name, by number (the section's `numbers`).
+    pub names: Vec<String>,
+    /// The types the engine's own code needs (the section's `roles`).
+    pub roles: PanelRoles,
     /// Whether each panel shows at the start of a round, `[y][x]`.
     pub start_visible: [[bool; 8]; 5],
     /// Whether each panel draws its front edge, `[y][x]`.
@@ -1589,11 +1593,6 @@ pub struct PanelRules {
     /// and 0x1E0, `sub_800C4BC`; EXE5: 600 in both, 0x0800A998).
     pub mend: u16,
     pub mend_in_battle_mode_1: u16,
-    /// The game's panel types by its own numbers, which a panel trail's
-    /// byte (NaviStats+0x12) names: EXE6's 13 (5 its holy, 8 its volcano,
-    /// then the roads), EXE5's 11 (5 its metal, 8 its lava, 9 its holy, 10
-    /// its sea).
-    pub numbers: Vec<PanelType>,
     /// Whether a reservation marks its holder (`Reservations`).
     pub reservations: Reservations,
     /// The flags word's bits a panel's type owns (its number, solidity, its
@@ -1739,28 +1738,79 @@ pub enum Reservations {
     Unmarked,
 }
 
+/// The panel types the engine's own code needs, each one of the game's
+/// (the panels section's `roles`): the missing panel (no type change
+/// reaches it), what a break and a crack make, and the normal panel (what
+/// a mend, an expiry, a clearing and a burn leave).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PanelRoles {
+    pub missing: PanelType,
+    pub broken: PanelType,
+    pub cracked: PanelType,
+    pub normal: PanelType,
+}
+
 impl PanelRules {
-    /// The panel type the game numbers `n` (a panel trail's byte).
+    /// The panel type the game numbers `n` (a panel trail's byte), if the
+    /// game has one.
     pub fn numbered(&self, n: u8) -> Option<PanelType> {
-        self.numbers.get(n as usize).copied()
+        ((n as usize) < self.types.len()).then_some(PanelType(n))
+    }
+
+    /// What panel type `t` is.
+    pub fn rule(&self, t: PanelType) -> &PanelTypeRule {
+        self.types.get(t.0 as usize).unwrap_or_else(|| panic!("panel type {} is none of its game's ({})", t.0, self.names.join(", ")))
+    }
+
+    /// The type the game names `name`.
+    pub fn named(&self, name: &str) -> Option<PanelType> {
+        self.names.iter().position(|n| n == name).map(|i| PanelType(i as u8))
+    }
+
+    /// Type `t`'s name.
+    pub fn name(&self, t: PanelType) -> &str {
+        self.names.get(t.0 as usize).map_or("(none of the game's)", String::as_str)
+    }
+
+    /// Whether type `t` is the one the game names `name`. (Where the
+    /// engine's code still tests a type of a game's by name, until the
+    /// type's behavior is its rules': docs/design/rules-in-luau.md.)
+    pub fn is_named(&self, t: PanelType, name: &str) -> bool {
+        self.names.get(t.0 as usize).is_some_and(|n| n == name)
     }
 
     /// The flag bits a panel type contributes to a panel's flags word,
     /// with the type itself in the low nibble: the game's number of it
-    /// (`numbers`: EXE5's holy is its 9, EXE6's its 5), which is what the
-    /// original's word holds and what content reading the word's low byte
-    /// reads (EXE5's GyroMan's Airforce, 0x080F0AD0). A type the game
-    /// doesn't number has the engine's own.
+    /// (EXE5's holy is its 9, EXE6's its 5), which is what the original's
+    /// word holds and what content reading the word's low byte reads (EXE5's
+    /// GyroMan's Airforce, 0x080F0AD0).
     pub fn type_flags(&self, t: PanelType) -> u32 {
-        let number = self.numbers.iter().position(|n| *n == t).unwrap_or(t as usize);
-        number as u32 | self.types[t as usize].flags
+        t.0 as u32 | self.rule(t).flags
     }
 
     /// Where a road panel carries a navi.
     pub fn road_slide(&self, t: PanelType) -> Option<SlideVector> {
-        self.types[t as usize].road_slide
+        self.rule(t).road_slide
     }
-}
+
+    /// Whether type `t` carries a navi (a road).
+    pub fn is_road(&self, t: PanelType) -> bool {
+        self.road_slide(t).is_some()
+    }
+
+    /// Type `t` as the right-hand console draws it: a road carrying across
+    /// the field is the one carrying the other way (EXE6's left and right
+    /// roads swap), any other type itself.
+    pub fn mirrored(&self, t: PanelType) -> PanelType {
+        match self.road_slide(t) {
+            Some(v) if v.dx != 0 => self
+                .types
+                .iter()
+                .position(|r| r.road_slide.is_some_and(|w| w.dx == -v.dx && w.dy == v.dy))
+                .map_or(t, |i| PanelType(i as u8)),
+            _ => t,
+        }
+    }}
 
 /// What one panel type is, and what it does (docs/design/exe5-map.md
 /// §15.2; the behaviors are the engine's, keyed by the panel type, their
@@ -1819,10 +1869,6 @@ pub struct PanelTypeRule {
     /// stage's from the tick a grounded body stands on it (0x08009120 arms
     /// every panel).
     pub crumbles: Option<u16>,
-    /// Whether the game's own section names the type; one it doesn't is
-    /// the first other loaded game's that does (docs/design/rules-in-luau.md
-    /// §7.4).
-    pub named: bool,
 }
 
 /// A panel's slide (EXE5's metal): by the direction the body last moved

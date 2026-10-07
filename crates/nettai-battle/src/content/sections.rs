@@ -22,11 +22,9 @@ use std::collections::BTreeMap;
 
 use nettai_content_api::{ContentError, Data, DataKey, Definitions};
 use serde::Deserialize;
-use serde_json::Value as Json;
 
 use super::reader::SpecReader;
 use super::*;
-use crate::field::PanelType;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -115,6 +113,8 @@ struct PanelsSection {
     front_edges: [[bool; 8]; 5],
     /// The game's panel types by its own numbers (names).
     numbers: Vec<String>,
+    /// The types the engine's own code needs, by name.
+    roles: PanelRolesSection,
     step: StepSection,
     dash_step: StepSection,
     any_side_step: StepSection,
@@ -122,6 +122,15 @@ struct PanelsSection {
     type_mask: u32,
     #[serde(default)]
     grass_heal_slows_at: Option<u16>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PanelRolesSection {
+    missing: String,
+    broken: String,
+    cracked: String,
+    normal: String,
 }
 
 #[derive(Deserialize)]
@@ -367,14 +376,6 @@ struct LinkPickSection {
 /// The names the elements section uses for the weakness table's rows.
 const ELEMENT_NAMES: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain"];
 
-/// A serde enum's written name.
-fn serde_name<T: serde::Serialize>(v: &T) -> String {
-    match serde_json::to_value(v) {
-        Ok(Json::String(s)) => s,
-        other => panic!("{other:?} is not a unit enum's name"),
-    }
-}
-
 /// The rule sections rules may name, by field (the engine's
 /// schemas).
 pub(crate) const SECTIONS: &[&str] = &[
@@ -491,11 +492,10 @@ impl Stated {
         let flow = self.flow.ok_or_else(|| missing("flow"))?;
         let link_pick = self.link_pick.ok_or_else(|| missing("link_pick"))?;
         let fresh_stats = self.fresh_stats.ok_or_else(|| missing("fresh_stats"))?;
-        let mut panels = self.panels.ok_or_else(|| missing("panels"))?;
+        let panels = self.panels.ok_or_else(|| missing("panels"))?;
         let pools = self.pools.ok_or_else(|| missing("pools"))?;
         let reactions = self.reactions.ok_or_else(|| missing("reactions"))?;
         let status = self.status.ok_or_else(|| missing("status"))?;
-        panels.types.resize(PanelType::ALL.len(), PanelTypeRule::default());
         let (element_weakness, chip_families, family_elements) = self.elements.unwrap_or_default();
         let buster = self.buster.unwrap_or(BusterSection { recovery: Vec::new(), empty_hand: EmptyHandChip::default() });
         Ok(Rules {
@@ -623,13 +623,14 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             }
             "panels" => {
                 let s: PanelsSection = r.read(spec, &at).map_err(e)?;
-                // The types the game has (docs/design/exe5-map.md §15.3 item
-                // 1): EXE6 names its 13, EXE5 its 11; the others keep an
-                // empty rule (no panel of the game is one).
-                let mut types = vec![PanelTypeRule::default(); PanelType::ALL.len()];
-                for t in PanelType::ALL {
-                    let name = serde_name(&t);
-                    let Some(rule) = s.types.get(&name) else { continue };
+                // The game's types, by its numbers (docs/design/exe5-map.md
+                // §15.3 item 1): EXE6's 13, EXE5's 11, EXE4's 12.
+                let mut types = Vec::with_capacity(s.numbers.len());
+                for (n, name) in s.numbers.iter().enumerate() {
+                    if s.numbers[..n].contains(name) {
+                        return Err(e(format!("{at}: numbers names {name:?} twice")));
+                    }
+                    let rule = s.types.get(name).ok_or_else(|| e(format!("{at}: numbers names {name:?}, which types doesn't state")))?;
                     let element = |field: &str, v: &Option<String>| -> Result<Option<u8>, ContentError> {
                         match v {
                             Some(element) => Ok(Some(
@@ -662,7 +663,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         }
                         None => None,
                     };
-                    types[t as usize] = PanelTypeRule {
+                    types.push(PanelTypeRule {
                         flags: rule.flags,
                         road_slide: rule.road_slide,
                         trail_sound: rule.trail_sound.map(crate::sound::SoundId),
@@ -678,25 +679,32 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         stops_slides: rule.stops_slides,
                         traps: rule.traps,
                         crumbles: rule.crumbles,
-                        named: true,
-                    };
+                    });
                 }
-                if let Some(unknown) = s.types.keys().find(|k| !PanelType::ALL.iter().any(|t| serde_name(t) == **k)) {
-                    return Err(e(format!("{at}: types names {unknown:?}, a panel type the engine doesn't have")));
+                if types.len() > 16 {
+                    return Err(e(format!("{at}: numbers names {} types; a panel's flags word holds 16", types.len())));
                 }
-                let numbers = s
-                    .numbers
-                    .iter()
-                    .map(|n| {
-                        PanelType::ALL
-                            .iter()
-                            .copied()
-                            .find(|t| serde_name(t) == *n)
-                            .ok_or_else(|| e(format!("{at}: numbers names {n:?}, a panel type the engine doesn't have")))
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
+                if let Some(unnumbered) = s.types.keys().find(|k| !s.numbers.contains(k)) {
+                    return Err(e(format!("{at}: types states {unnumbered:?}, which numbers doesn't number")));
+                }
+                let role = |role: &str, name: &str| {
+                    s.numbers
+                        .iter()
+                        .position(|n| n == name)
+                        .map(|i| crate::field::PanelType(i as u8))
+                        .ok_or_else(|| e(format!("{at}: roles.{role} names {name:?}, none of its types")))
+                };
+                let roles = super::rules::PanelRoles {
+                    missing: role("missing", &s.roles.missing)?,
+                    broken: role("broken", &s.roles.broken)?,
+                    cracked: role("cracked", &s.roles.cracked)?,
+                    normal: role("normal", &s.roles.normal)?,
+                };
+                let names = s.numbers.clone();
                 stated.panels = Some(PanelRules {
                     types,
+                    names,
+                    roles,
                     start_visible: s.start_visible,
                     front_edges: s.front_edges,
                     step: s.step.rules(),
@@ -704,7 +712,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     any_side_step: s.any_side_step.rules(),
                     mend: s.mend.normal,
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
-                    numbers,
                     reservations: s.reservations,
                     type_mask: s.type_mask,
                     grass_heal_slows_at: s.grass_heal_slows_at,

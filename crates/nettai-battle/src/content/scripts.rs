@@ -511,11 +511,12 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             (
                 "panels",
                 r#"
-        types = { normal = { flags = 0x10 } },
+        types = { missing = { flags = 0 }, broken = { flags = 0 }, normal = { flags = 0x10 } },
         mend = { normal = 600, battle_mode_1 = 480 },
         start_visible = row(5, row(8, true)),
         front_edges = row(5, row(8, false)),
         numbers = { "missing", "broken", "normal" },
+        roles = { missing = "missing", broken = "broken", cracked = "broken", normal = "normal" },
         step = step,
         dash_step = step,
         any_side_step = step,
@@ -635,7 +636,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let f = r.fresh_stats;
         assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
         assert_eq!((f.stats, f.mode9_a), (Default::default(), None), "none stated: none of the game's own, no weapon");
-        assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType::Normal), None), "its own numbers, no others");
+        assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType(2)), None), "its own numbers, no others");
         // What it may leave out reads as nothing, for every game.
         assert!(r.holding_banners.is_empty());
         assert!(r.sine.is_empty() && r.buster_recovery.is_empty());
@@ -656,7 +657,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 104, "every field of every section");
+        assert_eq!(fields, 105, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

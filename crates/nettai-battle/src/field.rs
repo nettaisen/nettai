@@ -7,75 +7,66 @@ use crate::content::{PanelCondition, SoundRole};
 use crate::sound::SoundId;
 use crate::object::{ObjectRef, PanelPos, Vec3};
 
-/// Panel types, in the engine's order. A panel's flags word holds its type
-/// in the low nibble by the game's number of it (`PanelRules::type_flags`):
-/// EXE6's numbers are this order's first thirteen, EXE5's its own.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PanelType {
-    #[default]
-    Missing = 0,
-    Broken = 1,
-    Normal = 2,
-    Cracked = 3,
-    Poison = 4,
-    Holy = 5,
-    Grass = 6,
-    Ice = 7,
-    Volcano = 8,
-    RoadUp = 9,
-    RoadDown = 10,
-    RoadLeft = 11,
-    RoadRight = 12,
-    /// A metal plate: EXE5's type 5 (docs/design/exe5-map.md §15.2: EXE6's
-    /// road flags; a move's end on it starts a slide), EXE4's type 5 (its
-    /// flag 0x20000: nothing cracks or breaks it). What it does is each
-    /// game's rules'.
-    Metal = 13,
-    /// EXE5's type 8: the volcano's flags and sound, but it burns a body
-    /// that stands on it and turns normal, and it doesn't erupt.
-    Lava = 14,
-    /// EXE5's type 10: drains fire bodies, holds a body that ends a move on
-    /// it, submerges what can dive.
-    Sea = 15,
-    /// EXE4's type 10, SandRing's ("opens a pitfall trap"): a slide or a
-    /// drag stops on it unless the body floats, and it turns normal a while
-    /// after a body stands on it.
-    Pitfall = 16,
-    /// EXE4's type 11, the Hole chip's ("appears Hole in front", DrkLine's
-    /// "turns all rows into Holes"): a solid panel, which a navi that isn't dark
-    /// standing on it closes (its rules' `navi_intake`, 0x08013318).
-    Hole = 17,
+/// A panel type: one of its game's, by the game's number of it, its place
+/// in the rules' list (`PanelRules::types`, named by `PanelRules::names`):
+/// the number a panel's flags word holds in its low nibble, the stages'
+/// layouts and a panel trail's byte name. What a type does is its game's
+/// rules'; the types the engine's own code needs (the missing panel, a
+/// break's and a crack's, the normal one) are the rules' roles
+/// (`PanelRoles`). In a content file, the type's name, which the game's
+/// panel rules say the number of (a definition's names are read while its
+/// game's content is defined: [`reading_panel_types`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PanelType(pub u8);
+
+thread_local! {
+    /// The panel types of the game whose definitions are being read (the
+    /// rules' `panels.numbers`), which a type's name is one of.
+    static READING: std::cell::RefCell<Option<Vec<String>>> = const { std::cell::RefCell::new(None) };
 }
 
-impl PanelType {
-    /// Every panel type, in order.
-    pub const ALL: [PanelType; 18] = [
-        PanelType::Missing,
-        PanelType::Broken,
-        PanelType::Normal,
-        PanelType::Cracked,
-        PanelType::Poison,
-        PanelType::Holy,
-        PanelType::Grass,
-        PanelType::Ice,
-        PanelType::Volcano,
-        PanelType::RoadUp,
-        PanelType::RoadDown,
-        PanelType::RoadLeft,
-        PanelType::RoadRight,
-        PanelType::Metal,
-        PanelType::Lava,
-        PanelType::Sea,
-        PanelType::Pitfall,
-        PanelType::Hole,
-    ];
+/// `f`, with a panel type's name read as one of `names` (the game's, by
+/// number, as its content is defined).
+pub fn reading_panel_types<T>(names: &[String], f: impl FnOnce() -> T) -> T {
+    let before = READING.with(|r| r.replace(Some(names.to_vec())));
+    let out = f();
+    READING.with(|r| *r.borrow_mut() = before);
+    out
+}
 
-    pub fn is_road(self) -> bool {
-        matches!(self, PanelType::RoadUp | PanelType::RoadDown | PanelType::RoadLeft | PanelType::RoadRight)
+/// The panel type `name` names among the game's being read.
+pub(crate) fn reading_panel_type(name: &str) -> Result<PanelType, String> {
+    READING.with(|r| match r.borrow().as_ref() {
+        Some(names) => names
+            .iter()
+            .position(|n| n == name)
+            .map(|i| PanelType(i as u8))
+            .ok_or_else(|| format!("{name:?} is none of its game's panel types ({})", names.join(", "))),
+        None => Err(format!("panel type {name:?}: no game's panel types are being read")),
+    })
+}
+
+impl serde::Serialize for PanelType {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_u8(self.0)
     }
 }
 
+impl<'de> serde::Deserialize<'de> for PanelType {
+    /// A type's name (one of the game's being read), or its number.
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<PanelType, D::Error> {
+        #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum Named {
+            Number(u8),
+            Name(String),
+        }
+        match Named::deserialize(d)? {
+            Named::Number(n) => Ok(PanelType(n)),
+            Named::Name(name) => reading_panel_type(&name).map_err(serde::de::Error::custom),
+        }
+    }
+}
 
 /// Bits of a panel's cached flags word.
 pub mod pflags {
@@ -298,7 +289,7 @@ impl Field {
         let mut panels = [[Panel::default(); 8]; 5];
         for y in 0..5u8 {
             for x in 0..8u8 {
-                let t = if is_valid(x, y) { rows[y as usize - 1][x as usize - 1] } else { PanelType::Missing };
+                let t = if is_valid(x, y) { rows[y as usize - 1][x as usize - 1] } else { rules.roles.missing };
                 let home = columns[x as usize].home;
                 panels[y as usize][x as usize] = Panel {
                     visible: rules.start_visible[y as usize][x as usize],
@@ -311,10 +302,10 @@ impl Field {
                     x,
                     y,
                     hole_timer: hole_ticks,
-                    expire_timer: rules.types[t as usize].expires.unwrap_or(0),
+                    expire_timer: rules.rule(t).expires.unwrap_or(0),
                     // (EXE4's field arms every panel's, 0x08009120: only a
                     // type that crumbles reads it.)
-                    crumble_timer: rules.types[t as usize].crumbles.map_or(0, |n| CRUMBLE_ARMED | n),
+                    crumble_timer: rules.rule(t).crumbles.map_or(0, |n| CRUMBLE_ARMED | n),
                     ..Panel::default()
                 };
             }
@@ -440,8 +431,9 @@ impl Battle {
         for y in 1..=3u8 {
             for x in 1..=6u8 {
                 self.tick_panel(x, y);
+                let cracked = self.content.rules().panels.roles.cracked;
                 let p = &mut self.field.panels[y as usize][x as usize];
-                p.latch = if p.kind == PanelType::Cracked { p.flags } else { 0 };
+                p.latch = if p.kind == cracked { p.flags } else { 0 };
             }
         }
     }
@@ -451,82 +443,79 @@ impl Battle {
     fn tick_panel(&mut self, x: u8, y: u8) {
         let h = self.field.hole_ticks;
         let p = self.field.panels[y as usize][x as usize];
-        let expires = self.content.rules().panels.types[p.kind as usize].expires;
-        let crumbles = self.content.rules().panels.types[p.kind as usize].crumbles.is_some();
-        match p.kind {
-            PanelType::Missing => {}
-            PanelType::Broken => {
-                let p = &mut self.field.panels[y as usize][x as usize];
-                p.hole_timer = p.hole_timer.wrapping_sub(1);
-                if p.hole_timer == 0 {
-                    p.kind = PanelType::Normal;
-                    self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
-                    self.field.panels[y as usize][x as usize].hole_timer = h;
-                    return;
-                }
-                // Blinks back to normal in its last second.
-                let blink = p.hole_timer <= 60 && p.hole_timer & 2 != 0;
-                p.display_kind = if blink { PanelType::Normal } else { PanelType::Broken };
+        let rules = &self.content.rules().panels;
+        let roles = rules.roles;
+        let expires = rules.rule(p.kind).expires;
+        let crumbles = rules.rule(p.kind).crumbles.is_some();
+        let volcano = rules.is_named(p.kind, "volcano");
+        if p.kind == roles.missing {
+        } else if p.kind == roles.broken {
+            let p = &mut self.field.panels[y as usize][x as usize];
+            p.hole_timer = p.hole_timer.wrapping_sub(1);
+            if p.hole_timer == 0 {
+                p.kind = roles.normal;
+                self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
+                self.field.panels[y as usize][x as usize].hole_timer = h;
+                return;
             }
-            PanelType::Cracked => {
-                let p = &mut self.field.panels[y as usize][x as usize];
-                p.hole_timer = h;
-                let latch = p.latch;
-                if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
-                    p.kind = PanelType::Broken;
-                    self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
-                    self.field.panels[y as usize][x as usize].hole_timer = h;
-                    self.sound(SoundRole::PanelCrack);
-                }
+            // Blinks back to normal in its last second.
+            let blink = p.hole_timer <= 60 && p.hole_timer & 2 != 0;
+            p.display_kind = if blink { roles.normal } else { roles.broken };
+        } else if p.kind == roles.cracked {
+            let p = &mut self.field.panels[y as usize][x as usize];
+            p.hole_timer = h;
+            let latch = p.latch;
+            if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
+                p.kind = roles.broken;
+                self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
+                self.field.panels[y as usize][x as usize].hole_timer = h;
+                self.sound(SoundRole::PanelCrack);
             }
-            PanelType::Volcano => {
-                let p = &mut self.field.panels[y as usize][x as usize];
-                p.hole_timer = h;
-                let at = if p.x <= 3 { 0x8C } else { 0x46 };
-                if self.field.volcano_counter == at {
-                    self.erupt(x, y);
-                }
+        } else if volcano {
+            let p = &mut self.field.panels[y as usize][x as usize];
+            p.hole_timer = h;
+            let at = if p.x <= 3 { 0x8C } else { 0x46 };
+            if self.field.volcano_counter == at {
+                self.erupt(x, y);
             }
+        } else if crumbles {
             // A type that crumbles (EXE4's pitfall, 0x0800980E): armed, it
             // waits for a grounded body standing on it (none floating);
             // then it counts down and turns normal, without a blink.
-            _ if crumbles => {
-                let p = &mut self.field.panels[y as usize][x as usize];
-                p.hole_timer = h;
-                if p.crumble_timer & CRUMBLE_ARMED != 0 {
-                    if p.flags & pflags::FLOATING != 0 || p.flags & pflags::BODY == 0 {
-                        return;
-                    }
-                    p.crumble_timer &= !CRUMBLE_ARMED;
-                }
-                if p.crumble_timer != 0 {
-                    p.crumble_timer -= 1;
-                    if p.crumble_timer > 0 {
-                        return;
-                    }
-                }
-                p.kind = PanelType::Normal;
-                self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
-            }
-            // A type that expires (EXE6's roads, EXE5's lava and sea): normal
-            // when its ticks are up, blinking back in its last second.
-            kind if let Some(ticks) = expires => {
-                let p = &mut self.field.panels[y as usize][x as usize];
-                p.hole_timer = h;
-                p.expire_timer = p.expire_timer.wrapping_sub(1);
-                if p.expire_timer == 0 {
-                    p.kind = PanelType::Normal;
-                    self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
-                    self.field.panels[y as usize][x as usize].expire_timer = ticks;
+            let p = &mut self.field.panels[y as usize][x as usize];
+            p.hole_timer = h;
+            if p.crumble_timer & CRUMBLE_ARMED != 0 {
+                if p.flags & pflags::FLOATING != 0 || p.flags & pflags::BODY == 0 {
                     return;
                 }
-                let blink = p.expire_timer <= 60 && p.expire_timer & 2 != 0;
-                p.display_kind = if blink { PanelType::Normal } else { kind };
+                p.crumble_timer &= !CRUMBLE_ARMED;
             }
-            _ => {
-                let p = &mut self.field.panels[y as usize][x as usize];
-                p.hole_timer = h;
+            if p.crumble_timer != 0 {
+                p.crumble_timer -= 1;
+                if p.crumble_timer > 0 {
+                    return;
+                }
             }
+            p.kind = roles.normal;
+            self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
+        } else if let Some(ticks) = expires {
+            // A type that expires (EXE6's roads, EXE5's lava and sea): normal
+            // when its ticks are up, blinking back in its last second.
+            let kind = p.kind;
+            let p = &mut self.field.panels[y as usize][x as usize];
+            p.hole_timer = h;
+            p.expire_timer = p.expire_timer.wrapping_sub(1);
+            if p.expire_timer == 0 {
+                p.kind = roles.normal;
+                self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
+                self.field.panels[y as usize][x as usize].expire_timer = ticks;
+                return;
+            }
+            let blink = p.expire_timer <= 60 && p.expire_timer & 2 != 0;
+            p.display_kind = if blink { roles.normal } else { kind };
+        } else {
+            let p = &mut self.field.panels[y as usize][x as usize];
+            p.hole_timer = h;
         }
     }
 
@@ -658,14 +647,17 @@ impl Battle {
 
     /// `_object_setPanelType`.
     pub fn set_panel_type(&mut self, x: u8, y: u8, t: PanelType) {
+        let rules = &self.content.rules().panels;
+        assert!((t.0 as usize) < rules.types.len(), "panel type {} is none of its game's ({})", t.0, rules.names.join(", "));
+        let missing = rules.roles.missing;
         let Some(p) = self.field.panel_mut(x, y) else { return };
-        if p.kind == PanelType::Missing {
+        if p.kind == missing {
             return;
         }
         p.kind = t;
         // (A type that expires starts its count: EXE6's roads,
         // `_object_setPanelType`; EXE5's lava and sea, 0x0800B2AE.)
-        let rule = &self.content.rules().panels.types[t as usize];
+        let rule = self.content.rules().panels.rule(t);
         if let Some(ticks) = rule.expires {
             p.expire_timer = ticks;
         }
@@ -678,8 +670,9 @@ impl Battle {
 
     /// `object_setPanelAlliance`.
     pub fn set_panel_alliance(&mut self, x: u8, y: u8, alliance: u8) {
+        let missing = self.content.rules().panels.roles.missing;
         let Some(p) = self.field.panel_mut(x, y) else { return };
-        if p.kind == PanelType::Missing {
+        if p.kind == missing {
             return;
         }
         p.alliance = alliance;
@@ -693,14 +686,14 @@ impl Battle {
         let o = self.objects.get(r);
         let Some(p) = self.field.panel(o.panel.x, o.panel.y) else { return false };
         let floats = o.collision.is_some_and(|c| self.collision.get(c).f1 & crate::collision::f1::FLOATSHOE != 0);
-        self.content.rules().panels.types[p.kind as usize].traps && !floats
+        self.content.rules().panels.rule(p.kind).traps && !floats
     }
 
     /// Whether nothing cracks or breaks panel (x, y): its type's rule
     /// (EXE4's metal, flag 0x20000, which its routines refuse: 0x08009AEC,
     /// 0x08009BAC, 0x08009BF0, 0x08009C4C, 0x08009D04).
     fn unbreakable(&self, x: u8, y: u8) -> bool {
-        self.field.panel(x, y).is_some_and(|p| self.content.rules().panels.types[p.kind as usize].unbreakable)
+        self.field.panel(x, y).is_some_and(|p| self.content.rules().panels.rule(p.kind).unbreakable)
     }
 
     /// `object_crackPanel`: crack a solid panel, or break an already
@@ -709,25 +702,25 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
-        let mask = self.content.rules().panels.type_mask;
+        let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 {
             return false;
         }
         if f & pflags::CRACKED == 0 {
-            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | 3;
-            p.kind = PanelType::Cracked;
-            p.display_kind = PanelType::Cracked;
+            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | roles.cracked.0 as u32;
+            p.kind = roles.cracked;
+            p.display_kind = roles.cracked;
             self.sound(SoundRole::PanelCrack);
             return true;
         }
         if f & pflags::OCCUPIED != 0 {
             return false;
         }
-        p.flags = (f & !mask) | 1;
-        p.kind = PanelType::Broken;
-        p.display_kind = PanelType::Broken;
+        p.flags = (f & !mask) | roles.broken.0 as u32;
+        p.kind = roles.broken;
+        p.display_kind = roles.broken;
         self.sound(SoundRole::PanelCrack);
         true
     }
@@ -738,15 +731,15 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
-        let mask = self.content.rules().panels.type_mask;
+        let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 || f & pflags::OCCUPIED != 0 {
             return false;
         }
-        p.flags = (f & !mask) | 1;
-        p.kind = PanelType::Broken;
-        p.display_kind = PanelType::Broken;
+        p.flags = (f & !mask) | roles.broken.0 as u32;
+        p.kind = roles.broken;
+        p.display_kind = roles.broken;
         self.sound(SoundRole::PanelCrack);
         true
     }
@@ -758,7 +751,7 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
-        let mask = self.content.rules().panels.type_mask;
+        let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 {
@@ -766,13 +759,13 @@ impl Battle {
         }
         let broke = f & 0x0F08_0080 == 0;
         if broke {
-            p.flags = (f & !mask) | 1;
-            p.kind = PanelType::Broken;
-            p.display_kind = PanelType::Broken;
+            p.flags = (f & !mask) | roles.broken.0 as u32;
+            p.kind = roles.broken;
+            p.display_kind = roles.broken;
         } else {
-            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | 3;
-            p.kind = PanelType::Cracked;
-            p.display_kind = PanelType::Cracked;
+            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | roles.cracked.0 as u32;
+            p.kind = roles.cracked;
+            p.display_kind = roles.cracked;
         }
         self.sound(SoundRole::PanelCrack);
         broke
@@ -793,20 +786,20 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
-        let mask = self.content.rules().panels.type_mask;
+        let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 {
             return false;
         }
         if f & pflags::OCCUPIED == 0 {
-            p.flags = (f & !mask) | 1;
-            p.kind = PanelType::Broken;
-            p.display_kind = PanelType::Broken;
+            p.flags = (f & !mask) | roles.broken.0 as u32;
+            p.kind = roles.broken;
+            p.display_kind = roles.broken;
         } else {
-            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | 3;
-            p.kind = PanelType::Cracked;
-            p.display_kind = PanelType::Cracked;
+            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | roles.cracked.0 as u32;
+            p.kind = roles.cracked;
+            p.display_kind = roles.cracked;
         }
         match sound {
             Some(s) => self.play_sound(s),
@@ -817,14 +810,18 @@ impl Battle {
 
     /// `object_panel_setPoison`: a solid panel turns to poison.
     pub fn poison_panel(&mut self, x: u8, y: u8) -> bool {
-        let mask = self.content.rules().panels.type_mask;
+        let rules = &self.content.rules().panels;
+        let mask = rules.type_mask;
+        let poison = rules.named("poison").expect("the game's poison panel");
+        // (The type's own bits, those the mask owns: the original's 0x114.)
+        let bits = rules.type_flags(poison) & mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         if p.flags & pflags::SOLID == 0 {
             return false;
         }
-        p.flags = (p.flags & !mask) | 0x114;
-        p.kind = PanelType::Poison;
-        p.display_kind = PanelType::Poison;
+        p.flags = (p.flags & !mask) | bits;
+        p.kind = poison;
+        p.display_kind = poison;
         self.sound(SoundRole::PanelPoison);
         true
     }
@@ -852,21 +849,23 @@ impl Battle {
 #[cfg(test)]
 mod tests {
     use crate::battle::Battle;
+    use crate::content::testing::panel;
     use crate::scenario;
 
     /// A panel's flags word holds its type in the low nibble by the game's
-    /// number of it (EXE5 numbers holy 9 and metal 5, where EXE6's 5 is
-    /// holy), with the type's own flags.
+    /// number of it (its place in the rules' `numbers`: the test content's
+    /// holy is its 5, its metal 13), with the type's own flags; the roles
+    /// name the types the engine's code needs.
     #[test]
     fn a_panels_flags_hold_the_games_number_of_its_type() {
-        use super::PanelType::*;
-        let mut rules = scenario::content().rules().panels.clone();
-        let own = |rules: &crate::content::PanelRules, t: super::PanelType| rules.types[t as usize].flags;
-        assert_eq!(rules.type_flags(Holy), Holy as u32 | own(&rules, Holy));
-        rules.numbers = vec![Missing, Broken, Normal, Cracked, Poison, Metal, Grass, Ice, Lava, Holy, Sea];
-        assert_eq!(rules.type_flags(Holy), 9 | own(&rules, Holy));
-        assert_eq!(rules.type_flags(Metal), 5 | own(&rules, Metal));
-        assert_eq!(rules.type_flags(Normal), 2 | own(&rules, Normal));
+        let content = scenario::content();
+        let rules = &content.rules().panels;
+        let (holy, metal) = (panel("holy"), panel("metal"));
+        assert_eq!((holy.0, metal.0), (5, 13));
+        assert_eq!(rules.type_flags(holy), 5 | rules.rule(holy).flags);
+        assert_eq!(rules.type_flags(metal), 13 | rules.rule(metal).flags);
+        assert_eq!((rules.roles.missing, rules.roles.broken, rules.roles.cracked, rules.roles.normal), (panel("missing"), panel("broken"), panel("cracked"), panel("normal")));
+        assert_eq!((rules.numbered(15), rules.numbered(16)), (Some(panel("sea")), None));
     }
 
     /// Stolen columns of one side that come due together return one a
@@ -896,28 +895,27 @@ mod tests {
     /// to normal in its last second, then turns normal.
     #[test]
     fn expiring_panels_turn_normal_when_their_ticks_are_up() {
-        use super::PanelType;
         let mut b = Battle::new(scenario::setup(), scenario::content());
-        b.set_panel_type(2, 2, PanelType::Lava);
-        b.set_panel_type(3, 2, PanelType::RoadUp);
+        b.set_panel_type(2, 2, panel("lava"));
+        b.set_panel_type(3, 2, panel("road_up"));
         assert_eq!((b.field.panels[2][2].expire_timer, b.field.panels[2][3].expire_timer), (960, 0x708));
         for _ in 0..959 {
             b.tick_panels();
         }
         let lava = b.field.panels[2][2];
-        assert_eq!((lava.kind, lava.expire_timer), (PanelType::Lava, 1));
+        assert_eq!((lava.kind, lava.expire_timer), (panel("lava"), 1));
         b.tick_panels();
-        assert_eq!(b.field.panels[2][2].kind, PanelType::Normal, "960 ticks of lava");
-        assert_eq!(b.field.panels[2][3].kind, PanelType::RoadUp, "the road counts on");
+        assert_eq!(b.field.panels[2][2].kind, panel("normal"), "960 ticks of lava");
+        assert_eq!(b.field.panels[2][3].kind, panel("road_up"), "the road counts on");
         // In its last second the panel shows normal every other pair of
         // ticks.
-        b.set_panel_type(2, 2, PanelType::Sea);
+        b.set_panel_type(2, 2, panel("sea"));
         b.field.panels[2][2].expire_timer = 61;
         b.tick_panels();
-        assert_eq!(b.field.panels[2][2].display_kind, PanelType::Sea);
+        assert_eq!(b.field.panels[2][2].display_kind, panel("sea"));
         b.tick_panels();
         b.tick_panels();
-        assert_eq!(b.field.panels[2][2].display_kind, PanelType::Normal);
+        assert_eq!(b.field.panels[2][2].display_kind, panel("normal"));
     }
 
     /// A crack, a break and poison clear the type's bits the game's
@@ -926,14 +924,14 @@ mod tests {
     /// the solidity and sets the crack bit.
     #[test]
     fn a_crack_clears_the_games_type_bits() {
-        use super::{PanelType, pflags};
+        use super::pflags;
         let run = |mask: u32| {
             let mut b = Battle::new(scenario::setup(), scenario::content());
             let mut c = (*b.content).clone();
             c.rules_mut().panels.type_mask = mask;
             b.content = std::sync::Arc::new(c);
-            b.set_panel_type(2, 1, PanelType::Normal);
-            b.set_panel_type(2, 2, PanelType::Normal);
+            b.set_panel_type(2, 1, panel("normal"));
+            b.set_panel_type(2, 2, panel("normal"));
             b.field.panels[1][2].flags |= 0x20000 | 0x0800_0000;
             b.field.panels[2][2].flags |= 0x20000;
             assert!(b.crack_panel(2, 1) && b.poison_panel(2, 2));
@@ -945,49 +943,54 @@ mod tests {
         assert_eq!(run(0x23F5F), (cracked(0x10000), 0x10000 | 0x114));
     }
 
-    /// The content API names the panel types as the engine's content does
-    /// (Luau's `PanelType`), in the engine's order.
+    /// The content API names a panel type as its game's rules do, both
+    /// ways (Luau's `PanelType`).
     #[test]
-    fn the_content_api_names_every_panel_type() {
-        let names: Vec<String> =
-            super::PanelType::ALL.iter().map(|t| serde_json::to_value(t).unwrap().as_str().unwrap().to_owned()).collect();
-        assert_eq!(names, nettai_content_api::PANEL_TYPES);
+    fn the_content_api_names_each_panel_type_as_its_game_does() {
+        use nettai_content_api::CoreApi;
+        let b = Battle::new(scenario::setup(), scenario::content());
+        let names = &b.content.rules().panels.names;
+        for (n, name) in names.iter().enumerate() {
+            assert_eq!((b.panel_type_name(n as u8), b.panel_type_named(name)), (name.clone(), Some(n as u8)));
+        }
+        assert_eq!(b.panel_type_named("pitfall"), None, "the test content has none");
     }
 
     /// docs/design/exe4-map.md §18 item 12: EXE4's metal is unbreakable (its
     /// panel routines refuse flag 0x20000), and its pitfall turns normal a
     /// while after a type change makes it; a stage's waits, armed, for a
-    /// grounded body.
+    /// grounded body. (The test content's metal and holy, made so.)
     #[test]
     fn exe4s_metal_holds_and_its_pitfall_crumbles() {
-        use super::{CRUMBLE_ARMED, PanelType};
+        use super::CRUMBLE_ARMED;
         let mut b = Battle::new(scenario::setup(), scenario::content());
         let mut c = (*b.content).clone();
+        let (metal, pitfall) = (panel("metal"), panel("holy"));
         {
             let types = &mut c.rules_mut().panels.types;
-            types[PanelType::Metal as usize].unbreakable = true;
-            types[PanelType::Pitfall as usize].crumbles = Some(190);
-            types[PanelType::Pitfall as usize].stops_slides = true;
+            types[metal.0 as usize].unbreakable = true;
+            types[pitfall.0 as usize].crumbles = Some(190);
+            types[pitfall.0 as usize].stops_slides = true;
         }
         b.content = std::sync::Arc::new(c);
-        b.set_panel_type(3, 1, PanelType::Metal);
+        b.set_panel_type(3, 1, metal);
         assert!(!b.crack_panel(3, 1) && !b.break_panel(3, 1) && !b.shatter_panel(3, 1) && !b.break_empty_panel(3, 1));
-        assert_eq!(b.field.panels[1][3].kind, PanelType::Metal);
-        b.set_panel_type(2, 1, PanelType::Pitfall);
+        assert_eq!(b.field.panels[1][3].kind, metal);
+        b.set_panel_type(2, 1, pitfall);
         assert_eq!(b.field.panels[1][2].crumble_timer, 190);
         for _ in 0..189 {
             b.tick_panels();
         }
-        assert_eq!(b.field.panels[1][2].kind, PanelType::Pitfall);
+        assert_eq!(b.field.panels[1][2].kind, pitfall);
         b.tick_panels();
-        assert_eq!(b.field.panels[1][2].kind, PanelType::Normal, "190 ticks after it was made");
+        assert_eq!(b.field.panels[1][2].kind, panel("normal"), "190 ticks after it was made");
         // Armed, as a stage's: nothing stands on it, so it waits.
-        b.set_panel_type(2, 1, PanelType::Pitfall);
+        b.set_panel_type(2, 1, pitfall);
         b.field.panels[1][2].crumble_timer = CRUMBLE_ARMED | 190;
         for _ in 0..300 {
             b.tick_panels();
         }
-        assert_eq!((b.field.panels[1][2].kind, b.field.panels[1][2].crumble_timer), (PanelType::Pitfall, CRUMBLE_ARMED | 190));
+        assert_eq!((b.field.panels[1][2].kind, b.field.panels[1][2].crumble_timer), (pitfall, CRUMBLE_ARMED | 190));
         // A grounded body stands on it: the count starts that tick.
         b.field.panels[1][2].flags |= super::pflags::BODY_SIDE0;
         b.tick_panels();

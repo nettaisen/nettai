@@ -252,7 +252,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         }
         Some(Boost::Grass) => {
             let p = b.objects.get(r).panel;
-            b.set_panel_type(p.x, p.y, PanelType::Normal);
+            b.set_panel_type(p.x, p.y, b.game_rules().panels.roles.normal);
             b.sound(BONUS_SOUND);
         }
         Some(Boost::Charged | Boost::NullDoubled) | None => {}
@@ -304,7 +304,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if let Some(kind) = e.spends {
         let p = b.objects.get(r).panel;
         if b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == kind) {
-            b.set_panel_type(p.x, p.y, PanelType::Normal);
+            b.set_panel_type(p.x, p.y, b.game_rules().panels.roles.normal);
         }
     }
     // EXE5's 0x080100CE: the chip's own routine (its record's +0x1F,
@@ -641,7 +641,7 @@ fn primed_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
 fn grass_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
     let Some(rule) = form_of(b, r).grass_doubles else { return false };
     let p = b.objects.get(r).panel;
-    b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == PanelType::Grass)
+    b.field.panel(p.x, p.y).is_some_and(|panel| b.game_rules().panels.is_named(panel.kind, "grass"))
         && deals_damage(cd.flags)
         && chip_matches(rule, cd)
 }

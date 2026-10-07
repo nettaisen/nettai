@@ -95,6 +95,12 @@ const FIELD_PALETTES: u32 = 0x0870_73C0;
 /// types (0x0800A3A8's flag words).
 const PANEL_BLOCKS: u32 = 0x0870_6640;
 const PANEL_TYPES: u8 = 12;
+
+/// EXE4's panel types' names by number (compat/panels.toml).
+pub fn panel_names() -> Vec<String> {
+    let c = exe4_compat::Compat::exe4();
+    (0..PANEL_TYPES).map(|n| c.panel_name(n).unwrap_or_else(|e| panic!("EXE4 panel {n}: {e}")).to_string()).collect()
+}
 /// The highlighted panel block (0x0800948A, EXE6 `sub_800C0BA`'s): one,
 /// which EXE4 draws for both highlights (it takes no highlight number).
 const HIGHLIGHT_BLOCK: u32 = 0x0870_6F40;
@@ -120,17 +126,9 @@ const PANEL_PALETTE_ANIMS: [(u32, usize, u32); 6] = [
 const PANEL_PALETTE_TICKS: u8 = 14;
 
 /// The field from Red Sun US: its panel blocks by EXE4's numbers, each type
-/// drawn as the engine's type content gives that number
-/// (compat/panels.toml); the types that have none are left out from the
-/// first such (the blocks are by place).
+/// by the name content gives that number (compat/panels.toml).
 fn field(rom: &Rom) -> Field {
-    let c = exe4_compat::Compat::exe4();
-    let panel_types = (0..PANEL_TYPES)
-        .map_while(|n| match c.panel_type(n) {
-            Ok(t) => t.map(|t| t as u8),
-            Err(e) => panic!("EXE4 panel {n}: {e}"),
-        })
-        .collect();
+    let panel_types = panel_names();
     let palette_anims = PANEL_PALETTE_ANIMS
         .iter()
         .enumerate()

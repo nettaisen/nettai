@@ -108,15 +108,13 @@ pub struct ChipEntry {
     pub save_slot: Option<u8>,
 }
 
-/// An EXE5 panel type: its name, the flag word the game gives it, and the
-/// engine's panel type it is (none for EXE5's metal and sea panels).
+/// An EXE5 panel type: content's name for it (its rules' `panels.numbers`,
+/// by the same number) and the flag word the game gives it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PanelEntry {
     pub name: String,
     pub flags: u32,
-    #[serde(default)]
-    pub engine: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -495,26 +493,6 @@ const EXE5: [(&str, &str); 12] = [
     ("rules.toml", include_str!("../../../content/exe5/compat/rules.toml")),
 ];
 
-/// The engine's panel type of an engine panel name as panels.toml writes
-/// it.
-fn engine_panel(name: &str) -> Option<PanelType> {
-    Some(match name {
-        "missing" => PanelType::Missing,
-        "broken" => PanelType::Broken,
-        "normal" => PanelType::Normal,
-        "cracked" => PanelType::Cracked,
-        "poison" => PanelType::Poison,
-        "holy" => PanelType::Holy,
-        "grass" => PanelType::Grass,
-        "ice" => PanelType::Ice,
-        "volcano" => PanelType::Volcano,
-        "metal" => PanelType::Metal,
-        "lava" => PanelType::Lava,
-        "sea" => PanelType::Sea,
-        _ => return None,
-    })
-}
-
 /// A sprite's "cc-ii".
 fn parse_sprite(id: &str) -> Option<(u8, u8)> {
     let (c, i) = id.split_once('-')?;
@@ -551,9 +529,6 @@ impl Compat {
         let mut by_number = BTreeMap::new();
         for (n, p) in panels.types {
             let n: u8 = n.parse().map_err(|_| format!("panels.toml: type {n:?} isn't a number"))?;
-            if let Some(e) = &p.engine {
-                engine_panel(e).ok_or_else(|| format!("panels.toml: type {n}'s engine panel {e:?} isn't the engine's"))?;
-            }
             by_number.insert(n, p);
         }
         let assets: AssetNames = toml::from_str(&text("assets.toml")?).map_err(|e| format!("assets.toml: {e}"))?;
@@ -765,10 +740,14 @@ impl Compat {
         self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))
     }
 
-    /// The engine's panel type of EXE5's panel type `n`: `Ok(None)` for a
-    /// type the engine has none of (metal, sea).
-    pub fn panel_type(&self, n: u8) -> Result<Option<PanelType>, String> {
-        let p = self.panels.get(&n).ok_or_else(|| format!("panels.toml has no type {n}"))?;
-        Ok(p.engine.as_deref().and_then(engine_panel))
+    /// The panel type EXE5 numbers `n`: the same number in content's rules,
+    /// which name it as panels.toml does.
+    pub fn panel_type(&self, n: u8) -> Result<PanelType, String> {
+        self.panels.get(&n).map(|_| PanelType(n)).ok_or_else(|| format!("panels.toml has no type {n}"))
+    }
+
+    /// The name content gives EXE5's panel type `n`.
+    pub fn panel_name(&self, n: u8) -> Result<&str, String> {
+        self.panels.get(&n).map(|p| p.name.as_str()).ok_or_else(|| format!("panels.toml has no type {n}"))
     }
 }

@@ -1180,17 +1180,12 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
         check("banner number", show(ours), show(theirs));
     }
-    let number = |t: nettai_battle::field::PanelType| {
-        compat.panels.keys().copied().find(|&n| compat.panel_type(n) == Ok(Some(t)))
-    };
+    // (A panel type is the game's number of it.)
     let panels: Vec<String> = (1..=3)
         .flat_map(|y| (1..=6).map(move |x| (x, y)))
         .map(|(x, y)| {
             let p = b.field.panel(x, y).expect("a field panel");
-            match number(p.kind) {
-                Some(n) => format!("[{n}, {}]", p.alliance),
-                None => format!("[{:?}, {}]", p.kind, p.alliance),
-            }
+            format!("[{}, {}]", p.kind.0, p.alliance)
         })
         .collect();
     let theirs: Vec<String> = f.panels.iter().map(|[t, a]| format!("[{t}, {a}]")).collect();

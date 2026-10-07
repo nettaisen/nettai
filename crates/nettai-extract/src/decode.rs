@@ -200,7 +200,7 @@ pub struct FieldAddresses {
     pub palette_anims: u32,
     pub palette_buffer: u32,
 }
-pub fn field(rom: &Rom, a: FieldAddresses, panel_types: Vec<u8>) -> Field {
+pub fn field(rom: &Rom, a: FieldAddresses, panel_types: Vec<String>) -> Field {
     let palette_anims = palette_anims(rom, a.palette_anims, a.palette_buffer);
     field_with(rom, a, panel_types, palette_anims)
 }
@@ -243,7 +243,7 @@ pub fn palette_anims(rom: &Rom, list: u32, palette_buffer: u32) -> Vec<PaletteAn
 
 /// The field at `a` (its `palette_anims` unread), with these panel palette
 /// animations.
-pub fn field_with(rom: &Rom, a: FieldAddresses, panel_types: Vec<u8>, palette_anims: Vec<PaletteAnim>) -> Field {
+pub fn field_with(rom: &Rom, a: FieldAddresses, panel_types: Vec<String>, palette_anims: Vec<PaletteAnim>) -> Field {
     let tiles = Tiles::from_4bpp(&rom.lz77(a.tiles).expect("the field's tiles"));
     let palettes = palettes_from_bytes(rom.bytes(a.palettes, 0x100));
     let block = |a: u32| -> [MapEntry; 15] { map_entries(rom, a, 15).try_into().unwrap() };
