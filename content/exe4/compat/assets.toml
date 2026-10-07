@@ -21,6 +21,7 @@ junksoul = "00-0a"  # MegaMan's sprite in soul 10 (0x0800B90A: his entry plus th
 aquasoul = "00-0b"  # MegaMan's sprite in soul 11 (0x0800B90A: his entry plus the soul)
 woodsoul = "00-0c"  # MegaMan's sprite in soul 12 (0x0800B90A: his entry plus the soul)
 instrument = "04-08"
+side-bamboo = "04-0c"  # SidBmbo's bamboo: attack 0x44's init (0x080D5C7C)
 moloko = "04-11"  # MokoRus's Molokos: attack 0x2C's init (0x080D2388)
 healnavi = "08-00"  # navi 14's sprite (0x0800B90A: 0x08017F98's entry 14; its win banner by 0x08008524)
 roll = "08-01"  # navi 1's sprite (0x0800B90A: 0x08017F98's entry 1; its win banner by 0x08008524)
