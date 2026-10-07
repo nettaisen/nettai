@@ -349,12 +349,13 @@ pub(crate) fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
     hand.ids.get(hand.cursor as usize).copied().flatten()
 }
 
-/// Whether hand chip `id` is of the Null family. The game looks an empty
-/// hand's chip (0xFFFF) up in the chip table too, reading the record past
-/// its end (`Rules::empty_hand`).
+/// Whether hand chip `id` is of the game's non-elemental family (the
+/// rules' `elements.non_elemental`). The game looks an empty hand's chip
+/// (0xFFFF) up in the chip table too, reading the record past its end
+/// (`Rules::empty_hand`).
 fn null_family(b: &Battle, id: Option<ChipHandle>) -> bool {
     let Some(id) = id else { return b.game_rules().empty_hand.null_family };
-    b.content.chip(id).family == crate::content::ChipFamily::Null
+    b.content.chip(id).family == b.game_rules().chip_families.non_elemental
 }
 
 pub use crate::content::{Emotion, EmotionRole};

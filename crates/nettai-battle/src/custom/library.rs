@@ -159,7 +159,7 @@ pub(crate) mod testing {
             codes: codes.to_vec(),
             element: Element::Null,
             rarity: 0,
-            family: ChipFamily::Fire,
+            family: ChipFamily(0),
             class,
             art_palette: None,
             mb: 0,

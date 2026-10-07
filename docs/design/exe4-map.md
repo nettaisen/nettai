@@ -932,8 +932,12 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 27. **The projectile** (0x080CD354, 0x080CD3D4) runs @exelib's EXE5 code with EXE4's rows; its tick is 0.89 alike and
     its rows 10 and 11 set a status (0x08013212): compare the code and port the difference.
 28. **The attack's +6 halfword** adds to the cannon's damage (0x080EB984); the engine's chip use doesn't set it.
-29. **Cannon's family** (+0x0B, 0x0B) and **what 0x0800BA66 does** as action 0x0B starts. Placeholder: `family =
-    "null"`.
+29. **Done: Cannon's family** and **what 0x0800BA66 does** as action 0x0B starts (group A). The engine's chip family
+    is the icon family, EXE4's +0x07 (the families are each game's data: EXE4's rules' `elements.families`, by that
+    byte: fire 0, aqua 1, elec 2, wood 3, recovery 4, plus 5, sword 6, invisible 7, break 8, summon 9, wind 10, metal
+    11, null 12, program advance 14, the souls' chips 15, `special`; 13 none). Cannon's is 12, null; its +0x0B, 0x0B,
+    is its action (`cannon/action`). Double Soul's table 0x08020008 reads the same byte as a soul's kind (gen_rules.py
+    holds the families to it). 0x0800BA66 opens the counter window (§7).
 30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
     neither, the lab's first batch's.
 
