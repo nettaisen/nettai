@@ -590,7 +590,9 @@ impl UserData for Object {
         methods.add_method("spawn_mode9_objects", |_, this, ()| with(|api, _| Ok(api.spawn_mode9_objects(this.0))));
         methods.add_method("start_stance_counter", |_, this, ()| with(|api, _| Ok(api.start_stance_counter(this.0))));
         methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));
-        methods.add_method("exit_attack", |_, this, ()| with(|api, _| Ok(api.exit_attack(this.0))));
+        methods.add_method("exit_attack", |_, this, keeps_lockout: Option<bool>| {
+            with(|api, _| Ok(api.exit_attack(this.0, keeps_lockout.unwrap_or(false))))
+        });
         // What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5).
         methods.add_method("clear_invulnerable", |_, this, ()| with(|api, _| api.clear_invulnerable(this.0).map_err(api_error)));
         methods.add_method("face_default", |_, this, ()| with(|api, _| api.face_default(this.0).map_err(api_error)));
