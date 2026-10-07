@@ -416,7 +416,7 @@ pub fn form_name<'a>(
             }
             Some((own, number)) => {
                 let names = crate::custom::FORM_NAME_TILES * (number + 5 + 1);
-                if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {
+                if own.form_names.len() < names || own.form_name_palettes.len() < number + 5 + 1 {
                     problems.note(format!("form {key:?}: the custom screen has no name or colors for its version's form {number}"));
                 }
             }

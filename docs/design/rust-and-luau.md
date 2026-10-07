@@ -52,13 +52,13 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Feature | (a) | (b) | (c) | (d) | All |
 |---|---|---|---|---|---|
 | Beast Out and Beast Over | | | | | |
-| Crosses and the form framework | | | 1 | | 1 |
+| Crosses and the form framework | | | | | |
 | Emotions | | | | 3 | 3 |
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | | | | | |
 | The stat block and versions | | | | | |
 | Tools | | | | | |
-| **All** | | | **1** | **5** | **6** |
+| **All** | | | | **5** | **5** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -69,13 +69,6 @@ rename left of EXE5's logic.
 
 ### Crosses and the form framework (EXE6; the form break and the navi switch are both games')
 
-- **C8. The Cross window's assets**. Pieces:
-  - nettai-assets' `CustomScreen::{cross_maps, cross_patches, cross_cursor, cross_cursor_palette}`,
-    `VersionPictures::{cross_names, cross_palettes}` and `CustomLayout::cross_names`;
-  - nettai-content's custom.rs (:60, :89, :131, :265–290, :443–525, :615–686).
-
-  About 120 lines. *(c)* The pack format names these pictures for the form list window. Rename with C7 at a pack
-  format bump.
 ### Emotions (both games; EXE6's tired, Full Synchro and anger, EXE5's worried and dark)
 
 - **E2. The mood and anger machinery**:
@@ -173,6 +166,11 @@ Each with what it was and what it is now.
   `lookups::form_name`, `Lookup::{FormName, FormDescription}`. The offered forms are the view's
   (`FormList::forms`: the player's form list's entries at the places offered), so `cross_at` and the renderer's
   read of the fact are gone. The pack's pictures keep their names until C8.
+- **C8.** The pack names the form list window's pictures for it (`custom.json` version 2): `form_list_maps`,
+  `form_list_patches`, `form-list-cursor.png`, `form-names[-V][-L].png` and the layout's `form_names`; nettai-assets'
+  `CustomScreen::{form_list_maps, form_list_patches, form_list_cursor, form_list_cursor_palette}`,
+  `VersionPictures::{form_names, form_name_palettes}`, `CustomLayout::form_names` and `CustomLettering::form_names`.
+  The pictures are the same bytes under the new names; a version 1 pack is refused until extracted again.
 - **C9.** `PlayerFact::CrossList` is `PlayerFact::FormList`, which a setup field takes by declaring the role
   (`schema.role("form_list", T)`): EXE6's `crosses`, whose name stays its own, so its match files keep
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
