@@ -49,3 +49,61 @@ language = "en"
 "sprarmr" = { name = "SprArmr", description = "You won't\nget push-\ned back!" }
 "tango" = { name = "Tango", description = "VS only!\nHeals in\na pinch" }
 "undersht" = { name = "UnderSht", description = "Keep 1HP\neven on\nfatal hit" }
+
+[patch_cards]
+"001-max-hp-up" = { name = "Max HP Up" }
+"002-max-hp-up" = { name = "Max HP Up" }
+"003-max-hp-up" = { name = "Max HP Up" }
+"004-max-hp-up" = { name = "Max HP Up" }
+"005-max-hp-up" = { name = "Max HP Up" }
+"006-max-hp-up" = { name = "Max HP Up" }
+"007-max-hp-up" = { name = "Max HP Up" }
+"008-max-hp-up" = { name = "Max HP Up" }
+"009-max-hp-up" = { name = "Max HP Up" }
+"010-max-hp-up" = { name = "Max HP Up" }
+"011-first-barrier-100" = { name = "First Barrier 100" }
+"014-panel-change" = { name = "Panel Change" }
+"015-panel-change" = { name = "Panel Change" }
+"016-panel-change" = { name = "Panel Change" }
+"017-custom2" = { name = "Custom2" }
+"018-megafolder2" = { name = "MegaFolder2" }
+"019-buster-attack-10" = { name = "Buster Attack 10" }
+"028-pet-menu-color-change" = { name = "PET Menu Color Change" }
+"029-pet-menu-color-change" = { name = "PET Menu Color Change" }
+"030-pet-menu-color-change" = { name = "PET Menu Color Change" }
+"031-max-hp-up" = { name = "Max HP Up" }
+"032-max-hp-up" = { name = "Max HP Up" }
+"033-max-hp-up" = { name = "Max HP Up" }
+"034-max-hp-up" = { name = "Max HP Up" }
+"035-max-hp-up" = { name = "Max HP Up" }
+"036-max-hp-up" = { name = "Max HP Up" }
+"037-max-hp-up" = { name = "Max HP Up" }
+"038-max-hp-up" = { name = "Max HP Up" }
+"046-first-barrier200" = { name = "First Barrier200" }
+"049-buster-attack-15" = { name = "Buster Attack 15" }
+"050-gigafolder1" = { name = "GigaFolder1" }
+"061-max-hp-up" = { name = "Max HP Up" }
+"062-max-hp-up" = { name = "Max HP Up" }
+"063-max-hp-up" = { name = "Max HP Up" }
+"064-max-hp-up" = { name = "Max HP Up" }
+"065-max-hp-up" = { name = "Max HP Up" }
+"066-max-hp-up" = { name = "Max HP Up" }
+"067-max-hp-up" = { name = "Max HP Up" }
+"078-first-life-aura" = { name = "First Life Aura" }
+"088-pet-menu-color-change" = { name = "PET Menu Color Change" }
+"091-max-hp-up" = { name = "Max HP Up" }
+"092-max-hp-up" = { name = "Max HP Up" }
+"093-max-hp-up" = { name = "Max HP Up" }
+"094-max-hp-up" = { name = "Max HP Up" }
+"095-max-hp-up" = { name = "Max HP Up" }
+"096-max-hp-up" = { name = "Max HP Up" }
+"097-max-hp-up" = { name = "Max HP Up" }
+"098-max-hp-up" = { name = "Max HP Up" }
+"099-max-hp-up" = { name = "Max HP Up" }
+"100-max-hp-up" = { name = "Max HP Up" }
+"101-max-hp-up" = { name = "Max HP Up" }
+"105-panel-change" = { name = "Panel Change" }
+"106-weapon-change" = { name = "Weapon Change" }
+"109-megafolder3" = { name = "MegaFolder3" }
+"110-custom3" = { name = "Custom3" }
+"111-gigafolder1" = { name = "GigaFolder1" }
