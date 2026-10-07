@@ -610,6 +610,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   look: the shot raises no arm and shows the navi's animation 0x12; the ball (attack 0x2A) is never big or fast, an
   attack with hit modifier 0, sound 0xAD, and finds its target from its side's back column toward the other side
   (0x080D21D4), not from where it is. Their parameters: 5, 7 or 9 panels, paralysis for 90, 120 or 150 ticks.
+- **The Anti chips** (the dimming chips' action 0x0C, its variant 0x13, `chips/anti`): the trap chips' controller
+  (lib/traps: @exelib/traps/controller, EXE6's code) makes the chip its user's side's defensive chip. AntiFire to
+  AntiWood (parameters 0 to 3) set the shared ElemTrap trap (lib/traps/anti_trap: @exelib/elemtrap, EXE5's code)
+  watching their element; sprung, its counterattack (@exelib/elemtrap/strike) strikes with EXE5's table but where
+  EXE4's look says: the other side's navi's panels only, then that side's mood to 1, and bursts (objects/panel_bursts)
+  over that side's area alone. AntiNavi, AntiDmg, AntiSwrd and AntiRecv (4 to 7) set only the record (their springs:
+  see §18 item 90).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -1551,6 +1558,17 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
     1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
     harness question (raised with the coordinator), not the engine's.
+90. **The Anti chips' springs** (group B). The traps are set (chips/anti); what springs them:
+    - AntiNavi (0x08008F80, EXE5's `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the
+      navi chips', with no block of chip numbers) wants the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle
+      0x0800815C: effect row 0x48, sound 0x10D);
+    - AntiDmg and AntiSwrd: EXE4's intake test (0x08023048) is its own: AntiDmg catches a hit of any damage (EXE5's and
+      EXE6's of 10 or more), AntiSwrd any sword hit (flag 0x2000, without EXE6's 0x20000 exclusion), no heat trap, no
+      BodyGrd; the counters are actions 0x38 (AntiDmg's, a shuriken: attack 0x5C) and its AntiSwrd counterpart;
+    - AntiRecv: the role `kinds.anti_recovery`.
+    A telop doesn't take the other player's used-chip name off the screen in EXE4 (item 71: the user's telop goes on
+    the banner block, the name stays on the second; EXE6's `sub_801BED6(0x10000)` clears it): the lab's
+    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine.
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's
