@@ -530,10 +530,11 @@ declares, the engine names the set and content states a value of it, as it fills
 of forms to choose from in its four windows, an offered form's or a button's chip's icon flying to the picked
 column) and a button's (it offers a form; its picture is a role chip's too), `WindowView` and `ButtonView`, which
 `core.d.luau` declares as unions of their names and the load reads into the enums, refusing another name with the
-module and the field. A view shows what its system keeps: the state fields the engine names for it (a form list's
-`offered`, `offered_count`, `marked`, `window_cursor`, `cross_chosen` and `chosen`; a form offer's `offer`,
-`offer_chaos` and `turns`; a flight's step and count), found by name once as the content loads and refused there
-if the system lacks one or keeps it as another type; the frontend reads them through typed reads on `Battle`
+module and the field. A view shows what its system keeps: the state fields the declaration gives the view's roles
+(`schema.role(role, T)`: a form list's `form_list.offered`, `.count`, `.marked`, `.cursor`, `.chosen` and
+`.chosen_place`; a form offer's `form_offer.form`, `.alternate` and `.turns`; a flight's `offer_flight.step` and
+`.count`, `chip_flight.step`, `.count` and `.button`), whatever the game names them, found by role once as the
+content loads and refused there if the system lacks one or keeps it as another type; the frontend reads them through typed reads on `Battle`
 (`form_list`, `offer`, `form_turns`, `offer_flight`, `chip_flight`). What a player brings that a console shows
 them by is a `PlayerFact` (their version, Beast Out, their Cross list): the setup field of that name, found and
 type-checked the same way (`Battle::fact`). The frontend names no system, window, button, state field or fact: a

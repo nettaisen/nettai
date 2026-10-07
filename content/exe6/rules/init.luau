@@ -44,12 +44,12 @@ local rules: Rules = {
         -- window's (./cross/window.luau).
         charge_cross_screens = "u8",
         crosses_used = "bool[5]",
-        offered = "u8[5]",
-        offered_count = "u8",
-        marked = "bool[5]",
-        window_cursor = "u8",
-        cross_chosen = "bool",
-        chosen = "u8",
+        offered = schema.role("form_list.offered", "u8[5]"),
+        offered_count = schema.role("form_list.count", "u8"),
+        marked = schema.role("form_list.marked", "bool[5]"),
+        window_cursor = schema.role("form_list.cursor", "u8"),
+        cross_chosen = schema.role("form_list.chosen", "bool"),
+        chosen = schema.role("form_list.chosen_place", "u8"),
         -- What a form change notes of the round (./forms, `byte_203EAE0`): the navi went Beast Out (+2), crossed
         -- (+0xB).
         went_beast_out = "bool",

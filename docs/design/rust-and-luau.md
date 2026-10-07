@@ -64,7 +64,8 @@ Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part t
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 did
 the kind (b) entries one at a time, and step 3 the kind (c) ones (presentation: the renderer and tools draw views by
 role, the pack names the form list window's pictures for it), each frame for frame alike. They are listed under
-[Done](#done) with their new names. X5 is new: what X4's rename left of EXE5's logic. What is left is kind (d).
+[Done](#done) with their new names. X5 is new: what X4's rename left of EXE5's logic; C11 too, what step 3 left
+in the views (the state fields they found by the games' names). What is left is kind (d).
 
 ### Beast Out and Beast Over (EXE6)
 
@@ -176,6 +177,13 @@ Each with what it was and what it is now.
   (`schema.role("form_list", T)`): EXE6's `crosses`, whose name stays its own, so its match files keep
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
 - **C10.** The navi's forms table lists a version's forms under `<version>.form_list`.
+- **C11.** The views find the rules' state fields they show by role, never by a game's name for them: each is the
+  field the declaration gives the view's role (`schema.role("form_list.cursor", "u8")`; `Schema::find_role`, at any
+  depth). The form list's `form_list.{offered, count, marked, cursor, chosen, chosen_place}` (EXE6's `offered`,
+  `offered_count`, `marked`, `window_cursor`, `cross_chosen`, `chosen`), the form offer's
+  `form_offer.{form, alternate, turns}` (EXE5's `offer`, `offer_chaos`, `turns`), the flights'
+  `offer_flight.{step, count}` and `chip_flight.{step, count, button}` (EXE5's `unite_*`, MeddySoul's `mix_*`). The
+  games keep their names. The custom screen's `CROSSES` is `FORM_LIST_ENTRIES`.
 - **D1.** The dark chip's hover is the shade a dark chip casts: `ChipShade` (`Shading`, `Shaded`),
   `on_shading_chip`, `FadeMode::{Shade, ShadeBack, ShadeWindow, ShadeWindowBack}`, `ScreenSound::Shade` and
   `SoundRole::CustomShade` (`custom_shade`). `ChipFlags::DARK` stays: a chip category of the series, as Mega and
