@@ -908,6 +908,9 @@ export type BombVariant = {
     palette: number,
     anim: number,
     blast: Region?,
+    -- Its own explosion over the blast, else the look's (EXE4's variants by
+    -- 0x080CE277: DarkBomb's).
+    explosion: Effect?,
     after: ((me: Object) -> ())?,
 }
 
