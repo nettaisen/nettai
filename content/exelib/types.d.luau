@@ -155,8 +155,9 @@ export type VulcanLook = {
     fire_anim: number,
 }
 
--- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
--- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
+-- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at its
+-- level (the chip's `level`, capped at 3: Static's the navi's kinds of NaviCust bug, DarkTorn's its side's statistic 3;
+-- `panels` by level, { dx, dy } from the panel two ahead, dx toward the navi's front; `tornadoes`, by level, over
 -- `tornado`: tornadoes that differ by level, EXE5's Static's); and the fan it holds, with an addition to its palette.
 export type TornadoBlow = {
     -- The action's key when no chip definition holds it.
@@ -167,7 +168,7 @@ export type TornadoBlow = {
     tornado_kind: Kind?,
     single: TornadoSpec?,
     spread: {
-        by: "bug_kinds" | "side_stat",
+        level: (me: Object) -> number,
         panels: { [number]: { { number } } },
         tornado: TornadoSpec,
         tornadoes: { [number]: TornadoSpec }?,

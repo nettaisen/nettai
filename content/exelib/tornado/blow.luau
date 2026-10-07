@@ -4,12 +4,14 @@
 -- (its attachment kind and tornadoes' kind): the navi holds out a fan (an
 -- attachment) and, ten ticks in, raises tornadoes (@exelib/tornado/tornado)
 -- two panels ahead; the fan turns while they blow. Tornado raises one on
--- that panel; Static raises them on more panels the more kinds of NaviCust
--- bug the navi has (none: that panel; up to three: also the one behind it,
--- the two beside it, and the two beside that one). The action's third form
--- (its subtype 3) does the same by a side statistic (`sub_800AB3A`,
--- counter 3), spreading back toward the navi, with HP-bug tornadoes, and a
--- fan of another palette. 42 ticks, then 21 to put the fan away.
+-- that panel; a spread raises them on more panels the higher its level, its
+-- chip's own (`TornadoBlow.spread`: the level, capped at 3, and the panels
+-- by level): Static's by the kinds of NaviCust bug the navi has (none: that
+-- panel; up to three: also the one behind it, the two beside it, and the
+-- two beside that one), the action's third form's (its subtype 3, EXE5's
+-- DarkTorn) by a side statistic (`sub_800AB3A`, counter 3), spreading back
+-- toward the navi, with HP-bug tornadoes, and a fan of another palette. 42
+-- ticks, then 21 to put the fan away.
 
 local attachment = require("../attachment")
 local tornado = require("../tornado")
@@ -30,24 +32,6 @@ local BLOW, PUT_AWAY = 0x0, 0x4
 -- The tick (timer value) the tornadoes rise.
 local RISE_AT = 0x20
 
--- The panels each spread covers, by level (capped at 3): Static's
--- (`off_80CA160`) and the action's third form's (`off_80CA1F8`), { dx, dy }
--- from the panel two ahead, dx toward the navi's front.
-local STATIC_SPREAD = {
-    [0] = { { 0, 0 } },
-    { { 0, 0 }, { 1, 0 } },
-    { { 0, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } },
-    { { 0, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { 1, -1 }, { 1, 1 } },
-}
-local BACK_SPREAD = {
-    [0] = { { 0, 0 } },
-    { { 0, 0 }, { -1, 0 } },
-    { { 0, 0 }, { -1, 0 }, { 0, -1 }, { 0, 1 } },
-    { { 0, 0 }, { -1, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } },
-}
--- The side statistic the third form spreads by.
-local SIDE_STAT = 3
-
 -- Turn the fan (its requested animation by `step`). Without one (the pool
 -- was full) the game writes to address 0x10, which does nothing.
 local function turn_fan(me: Object, step: number)
@@ -63,11 +47,8 @@ local function blow(spec: Blow, look: TornadoBlowLook): Action
     -- `sub_80CA104` / `sub_80CA19E`: the spread's tornadoes around (x, y).
     local function spread_tornadoes(me: Object, x: number, y: number, element: number, damage: number)
         local spread = spec.spread :: any
-        local level = if spread.by == "bug_kinds"
-            then battle.navi(me.alliance).bug_kinds
-            else battle.side_stat(me.alliance, SIDE_STAT)
         local dir = me.facing
-        level = math.min(level, 3)
+        local level = math.min(spread.level(me), 3)
         local tornadoes = spread.tornadoes :: { [number]: TornadoSpec }?
         local t: TornadoSpec = if tornadoes then tornadoes[level] else spread.tornado
         for _, p in spread.panels[level] do
@@ -143,6 +124,5 @@ local blows = {}
 
 blows.STATE = STATE
 blows.blow = blow
-blows.STATIC_SPREAD, blows.BACK_SPREAD = STATIC_SPREAD, BACK_SPREAD
 
 return blows
