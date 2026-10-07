@@ -81,4 +81,6 @@ return {
     cursor_after_leaving = true,
     -- The frame counts after what the choosing draws.
     frame_counts_first = false,
+    -- The description and L's message are the screen's own states.
+    description_in_choosing = false,
 }

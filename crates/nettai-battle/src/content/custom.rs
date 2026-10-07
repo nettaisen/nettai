@@ -184,6 +184,15 @@ pub struct CustomScreenLayout {
     /// the cursor a frame further on); else after them (EXE6's
     /// `sub_8026CCC`). Presentation.
     pub frame_counts_first: bool,
+    /// R's description and L's message are states of the choosing (EXE4's
+    /// selection states 0x18 and 0x1C, 0x0801E430): each of their ticks
+    /// draws the last turns' block and counts the frame as the choosing does
+    /// (0x0801E3D8), and the tick one sees its chatbox closed goes back to
+    /// the state it came from and draws it (the Regular chip's frame and the
+    /// cursor: 0x08020A0A, 0x0801E412); else they are the screen's own
+    /// states, which draw only the emblem (EXE6's `sub_8026E4C`).
+    /// Presentation.
+    pub description_in_choosing: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -353,6 +362,7 @@ impl Default for CustomScreenLayout {
             fades_clear_at_ok: false,
             cursor_after_leaving: true,
             frame_counts_first: false,
+            description_in_choosing: false,
         }
     }
 }
