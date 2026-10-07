@@ -232,6 +232,11 @@ pub struct EffectsRules {
     /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
     /// of the second block that shows without sliding, 33).
     pub used_chip_ticks: u8,
+    /// Each console's emotion window checks its navi's NaviCust bugs and
+    /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
+    /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
+    /// RNG1 never moves in a bugged navi's fight.
+    pub bug_flicker: bool,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the

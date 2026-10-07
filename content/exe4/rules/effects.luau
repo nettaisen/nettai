@@ -73,4 +73,6 @@ return {
     -- its hold of 30 (0x080149CE) and the tick it lets go of its sprites (0x080149E6), 32 frames (the count includes the
     -- tick it starts on, as EXE6's 0x3C does).
     used_chip_ticks = 33,
+    -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
+    bug_flicker = false,
 }

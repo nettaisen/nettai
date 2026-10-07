@@ -304,8 +304,12 @@ impl Battle {
     }
 
     /// The HUD's task bit 14 on each console: its own navi's emotion
-    /// window (`sub_800FE52` counts the navi's NaviCust bugs).
+    /// window (`sub_800FE52` counts the navi's NaviCust bugs), where the
+    /// game's has its check (`effects.bug_flicker`).
     pub(crate) fn update_emotion_windows(&mut self) {
+        if !self.content.rules().effects.bug_flicker {
+            return;
+        }
         for side in 0..2 {
             if !self.consoles[side].emotion_window.running {
                 continue;
