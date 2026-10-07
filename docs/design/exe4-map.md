@@ -1507,3 +1507,7 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     `show_user` are EXE6's; Roll's recordings match (nothing in them reads the mark, and no viewer is blind). Shape: a
     `chip_use` rule for the user's vanish (EXE6's and EXE5's marks and tests, EXE4's none), with a recording of a blind
     viewer or a Reflector through a navi chip to confirm.
+151. **What the poltergeist leaves** (JunkMan's, @exelib/poltergeist). EXE4's 0x080EA16C and 0x0800B3E8 take every
+    field object but attack objects #0x4C and #0x8C and effect object #0x6E, tested by kind (EXE5's by NameID); the
+    engine asks the identity (`throwable`). None of the three is ported: whoever ports one gives its identity
+    `throwable = false`. JunkMan's throws themselves wait on RockCube (the lab's junkman*/obstacle).
