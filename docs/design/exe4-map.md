@@ -868,6 +868,20 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     loaded) and fill the role. EXE4's content audit lists no problem with the pack (the custom screen's emblem is the
     window's own, §14). The banners, the faces (MegaMan's `forms`, so his faces are his base form's `mugshot`), the
     warning marker, the navis' sprites and MegaMan's souls' are in.
+    **Filled so far** (group A, each by its code): the custom screen's sounds (§5), the gauge full 0x81, the low-HP
+    alarm 0x82 (0x0801475E), a panel's crack 0x95 (0x08009AEC) and poison 0x124 (0x08009D68), the music (winner 0x1E,
+    a special battle's 0x18, a netbattle's loser 0x19: 0x080071F8, 0x0800727C), the banners but the telops (final
+    turn 0x10 at 0x08007094, draw 0x1C, the judge's win 0x14, loss 0x18 and its own 0x28, the Program Advance's 0x24
+    and 0x34). Group B fills the fight's sounds and effects its replays reach. **Not EXE4's** (left unfilled, as EXE5
+    leaves EXE6's): the telops; freeze, bubble and ice (no such status: group C), so `statuses.ice_freeze` and the
+    sounds `freeze`, `bubble`, `bubble_pop` and the sprites `ice`, `bubble`; the damage word's confusion and blindness
+    (its only status bit is paralysis: group C); battle mode 9's kinds, the dive ripple, the Crosses' and Beasts'
+    actions; the scrap (DustCross) and the Cross window's cancel (`custom_scrap`, `custom_scrap_done`,
+    `custom_cancel`). **Still to read:** the confusion and blindness visuals (EXE4 has both statuses, its table
+    0x08018550: sprites `confusion`, `blindness`, `immobilized`, the sound `confusion`), `statuses.counter_paralysis`
+    (with the counter hits, item 9), SearchSoul's shuffle sounds (`custom_redeal`, none at its start, 0x0802037A;
+    `custom_redeal_shuffle`, 0x123 every 4 ticks, 0x080209E0: with the souls), the Full Synchro aura (item 8), and the
+    roles of chips not ported yet (the counters, obstacles, eruption, the target marker), which come with the chips.
 
 ### 18.6 Found by the replays
 
