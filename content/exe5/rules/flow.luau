@@ -22,4 +22,6 @@ return {
     navi_win_banner = "operation_battle",
     -- The intro returns after its init, as EXE6's.
     intro_steps_on_init = false,
+    -- A turn starts with the transformation sequencer (the souls'), as EXE6's.
+    sequencer_at_turn_start = true,
 }

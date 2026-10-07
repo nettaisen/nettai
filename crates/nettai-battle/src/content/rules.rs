@@ -50,6 +50,11 @@ pub struct FlowRules {
     /// EXE4's intro (0x08007464) goes on from its init on the same tick,
     /// where EXE6's (`sub_80091F0`) and EXE5's return after it.
     pub intro_steps_on_init: bool,
+    /// A turn starts with the transformation sequencer (EXE6's fighting
+    /// state 0, `sub_800840C`, twice, which EXE5 has too): the turn's
+    /// banner a tick after it's through. EXE4 has none: its fighting state
+    /// 0 (0x08007064) is the turn's banner, from the turn's first tick.
+    pub sequencer_at_turn_start: bool,
 }
 
 /// The rule section `link_pick`: what a link battle picks at random with
