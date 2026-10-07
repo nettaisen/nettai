@@ -1059,7 +1059,7 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       holy panel's halving of the total, rounding up; the hit's sound 0xC8). Each side's in its back corner (the
       entry's argument: bit 7 the side, the rest the HP in eights: 0x7D and 0xFD, 1000), its HP numbered. Its HP out
       (unless time is up: `battle_isBattleOver`'s Z flag, `battle.time_up`), sound 0x6F and its side loses the round
-      (0x080E0842, EXE6's `sub_80D8DEE`: the side's alive count to 0 and the round's time-up byte to 1, the call
+      (0x080E0842, EXE6's `sub_80D8DEE`: the side's actor count, BS+4, to 0 and the round's time-up byte to 1, the call
       `battle.lose_round`; it also sets battle flag 8, which nothing in EXE4 reads: 0x08007A8C's 28 callers test 1, 2
       and 0x10). The lab's stages/lava-middle-close, typeA-row, ice-columns and holes-diagonal-b (null, stand, walk)
       and panels/lava-blinking replay every frame; none breaks a flag (a scenario that does is a95f's to record).
