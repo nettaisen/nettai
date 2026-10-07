@@ -97,31 +97,15 @@ const ELEMENTS: u32 = 0x0870_9260;
 const ELEMENT_COUNT: u32 = 13;
 const ELEMENT_PALETTE: u32 = 0x0870_9DE0;
 const ELEMENT_SPRITE: (i16, i16) = (24, 80);
-/// The icons are by the chip record's element byte (+7), EXE5's order; the
-/// pack has them by the engine's family numbers (`ChipFamily`): for each,
-/// EXE4's byte (the program advance's and the special family's, past the
-/// icons, show the last, null's).
-const FAMILY_BYTES: [u32; 15] = [
-    0,  // fire
-    1,  // aqua
-    2,  // elec
-    3,  // wood
-    5,  // plus
-    6,  // sword
-    8,  // cursor
-    9,  // summon
-    10, // wind
-    11, // break
-    12, // null
-    12, // program advance
-    12, // special
-    4,  // recovery
-    7,  // invisible
-];
-/// The slots' codes (16x8: 0x0801F5CC, by code, 27 of them; a code past
-/// them, the empty slot's, the fill solid 1: 0x08020EDC) and the empty
-/// slot's icon (0x0801F59C).
-const SLOT_CODES: (u32, usize) = (0x0870_C3C0, 27);
+/// The icons are by the chip record's element byte (+7), EXE4's own family
+/// numbers, which its rules' families are (`elements.families`): 0 to 15,
+/// those past the icons (13 none's, 14 the program advance's, 15 the
+/// souls') showing the last, null's.
+const FAMILIES: u32 = 16;
+/// The slots' codes (16x8: 0x0801F5CC, by code; code 27 is the fill solid
+/// 1, 0x08020EDC, and a code past it, the empty slot's, the table's 28th
+/// glyph, dark as the empty icon) and the empty slot's icon (0x0801F59C).
+const SLOT_CODES: (u32, usize) = (0x0870_C3C0, 28);
 const EMPTY_ICON: u32 = 0x0870_CAC0;
 /// The UNITE button (0x0801FF14: 3x2 at column 11, row 17, in palette 9,
 /// by its entries at 0x0801FF54's table): its tiles, on offer and gray (the
@@ -260,11 +244,8 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         picture: shuffle_picture,
         ..ButtonPictures::default()
     };
-    // The slots' codes, then the empty slot's: the fill.
-    let mut slot_codes = glyphs(SLOT_CODES);
-    for _ in 0..2 {
-        slot_codes.push(&[LAYOUT.slot_blank; Tiles::TILE]);
-    }
+    // The slots' codes, the last the empty slot's.
+    let slot_codes = glyphs(SLOT_CODES);
     let map = (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(WINDOW_MAP + 2 * i))).collect();
     let (patches, first_tile) = WINDOW_PATCHES;
     CustomScreen {
@@ -291,7 +272,7 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         },
         codes: glyphs(CODES),
         elements: Tiles {
-            pixels: FAMILY_BYTES.iter().flat_map(|&b| tiles(rom, ELEMENTS + 0x80 * b.min(ELEMENT_COUNT - 1), 0x80).pixels).collect(),
+            pixels: (0..FAMILIES).flat_map(|b| tiles(rom, ELEMENTS + 0x80 * b.min(ELEMENT_COUNT - 1), 0x80).pixels).collect(),
         },
         element_colors: Vec::new(),
         digits: glyphs(DIGITS),

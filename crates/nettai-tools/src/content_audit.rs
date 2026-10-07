@@ -307,7 +307,6 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     let telops: HashSet<BannerId> = std::iter::once(c.defs.roles())
         .flat_map(|r| [BannerRole::Telop, BannerRole::TelopRemote].into_iter().filter_map(|role| r.banners.get(&role).copied()))
         .collect();
-    let judges: HashSet<BannerId> = std::iter::once(c.defs.roles()).filter_map(|r| r.banners.get(&BannerRole::Judge).copied()).collect();
     let handles = |kind: AssetKind| 0..c.assets.names(kind).len() as u16;
     for h in handles(AssetKind::Sprite) {
         sprite(c, packs, SpriteId(h), p);
@@ -326,10 +325,8 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
             lookups::telop(packs, c, id, p);
             continue;
         }
+        // (The judge's banner draws its numbers by its role: `lookups::is_judge`.)
         lookups::banner(packs, c, id, p);
-        if judges.contains(&id) && !lookups::is_judge(packs, c, id) {
-            p.note(format!("the judge's {} is no judge's in the pack: its numbers aren't drawn", Lookup::Banner(id).describe(c)));
-        }
     }
     for h in handles(AssetKind::Background) {
         lookups::background(packs, c, BackgroundId(h), p);

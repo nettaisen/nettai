@@ -63,6 +63,22 @@ return {
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out", bounces = false },
     -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
     rng1_per_frame = false,
+    -- The chip icons over the local navi (0x08014860, 0x08015000): at its identity's `chip_icons_at` from its place on
+    -- the screen (0x0800B9E4 by navi number, which 0x08015B24 keeps), each chip it holds from the next one on by its own
+    -- icon (the chip record's +0x20), each next one two pixels up and two left: sprites of priority 1 in the field's layer,
+    -- the first in the depth bucket of the icons' count and each next one a bucket lower. EXE4 has no attach points.
+    chip_icons = "navi_offset",
+    -- The other player's console names a chip a player used (0x0800C7A8 to 0x080164B4) as a banner of the second block
+    -- (0x02037CF0) that shows without sliding (its table's state 3, 0x08016508): drawn the tick it is laid out, through
+    -- its hold of 30 (0x080149CE) and the tick it lets go of its sprites (0x080149E6), 32 frames (the count includes the
+    -- tick it starts on, as EXE6's 0x3C does).
+    used_chip_ticks = 33,
     -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
     bug_flicker = false,
+    -- An object's destroy (0x080D8C58) unregisters its collision first (0x080129FC: its panels refreshed, its hits
+    -- and the panels it clears resolved on them), then frees it.
+    destroy = "unregisters",
+    -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
+    -- not in update order: of two parts in one depth bucket the higher slot's is in front.
+    draw_order = "slots",
 }

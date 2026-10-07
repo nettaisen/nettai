@@ -461,6 +461,9 @@ local status = {
         -- loop skips it while paused from then on); its status block has no pause handler, and runs its action
         -- (0x08013C2A).
         paused_navi = "stops_at_control",
+        -- Its status timers count while paused (0x0800AE58 has no pause test): before it takes control, through the
+        -- round's first paused ticks.
+        timers_while_paused = true,
     },
 }
 
