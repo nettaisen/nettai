@@ -23,7 +23,11 @@
 //! - a line break (`E9`), which ends the tick's printing;
 //! - the wait for a key (`E7`): six ticks before it takes one, then A or B
 //!   (or any key) pressed, or B held for eleven ticks;
-//! - the end (`E6`), which closes the box.
+//! - the end (`E6`), which closes the box; its clear of the text, where a
+//!   game's clears the text's tiles in video memory itself (the rule
+//!   `custom_screen.chatbox_end_clears_tiles`: EXE4's), shows a frame
+//!   before the box's first closing step: from the tick the wait for a key
+//!   is answered.
 //!
 //! Verified against chip-lab recordings (docs/engine/custom-screen.md
 //! §3.5): the tick a description takes keys from by its line breaks, a
@@ -256,6 +260,9 @@ pub struct Chatbox {
     /// A command waits out the character printed before it (the game's
     /// rule, `CustomScreenLayout::chatbox_commands_wait_for_text`).
     commands_wait: bool,
+    /// The end clears the text's tiles in video memory itself (the game's
+    /// rule, `CustomScreenLayout::chatbox_end_clears_tiles`). Presentation.
+    end_clears_tiles: bool,
     /// What it shows (presentation).
     look: ChatboxLook,
 }
@@ -283,6 +290,7 @@ impl Chatbox {
             count: 1,
             halt: 0,
             commands_wait: false,
+            end_clears_tiles: false,
             look: ChatboxLook::default(),
         }
     }
@@ -291,6 +299,13 @@ impl Chatbox {
     /// game's rule `custom_screen.chatbox_commands_wait_for_text`).
     pub fn commands_wait_for_text(mut self, wait: bool) -> Chatbox {
         self.commands_wait = wait;
+        self
+    }
+
+    /// Whether the end clears the text's tiles in video memory itself (the
+    /// game's rule `custom_screen.chatbox_end_clears_tiles`).
+    pub fn end_clears_tiles(mut self, clears: bool) -> Chatbox {
+        self.end_clears_tiles = clears;
         self
     }
 
@@ -551,6 +566,12 @@ impl Chatbox {
                     self.halt = 0;
                     self.count = 0;
                     self.next();
+                    // (An end that clears the text's tiles itself, EXE4's
+                    // 0x0805393C, does so next tick, which the frame shows
+                    // before the box's first step: from now, as drawn.)
+                    if self.end_clears_tiles && !self.hidden && self.script.op(self.at) == Op::End {
+                        self.look.text = None;
+                    }
                 }
                 false
             }
@@ -561,6 +582,9 @@ impl Chatbox {
                     // chatbox_8041090: the text is cleared, the portrait
                     // fades out, then the box closes step by step.
                     self.look.cleared = true;
+                    if self.end_clears_tiles {
+                        self.look.text = None;
+                    }
                     self.fading_out = true;
                     if self.portrait {
                         return false;
@@ -660,6 +684,28 @@ mod tests {
             assert_eq!(closes(script, press(keys::A, first - 1)), None, "{breaks} breaks");
             assert_eq!(closes(script, press(keys::A, first)), Some(first + 4), "{breaks} breaks");
             assert_eq!(closes(script, press(keys::SELECT, first + 9)), Some(first + 13));
+        }
+    }
+
+    /// An end that clears the text's tiles itself (EXE4's) shows the text
+    /// gone from the tick the wait for a key is answered, a tick before the
+    /// box's first closing step; one that clears its buffers only (EXE6's)
+    /// with that step.
+    #[test]
+    fn an_end_that_clears_the_tiles_shows_the_text_gone_from_the_answer() {
+        for clears in [false, true] {
+            let mut c = Chatbox::new(Script::Description { breaks: 0 }).end_clears_tiles(clears);
+            for _ in 0..6 {
+                c.update(0, 0);
+            }
+            assert!(c.look().text.is_some() && c.shows_contents());
+            // The key answers the wait; the box is still open.
+            c.update(keys::A, keys::A);
+            assert!(c.shows_contents());
+            assert_eq!(c.look().text.is_none(), clears, "end clears the tiles: {clears}");
+            // The end's first tick: the box's first closing step.
+            c.update(0, 0);
+            assert!(!c.shows_contents());
         }
     }
 

@@ -93,4 +93,6 @@ return {
     frame_counts_first = false,
     -- The description and L's message are the screen's own states, as EXE6's: they draw only the emblem.
     description_in_choosing = false,
+    -- The chatbox's end clears the text's buffers only, as EXE6's: the text goes with the box's first closing step.
+    chatbox_end_clears_tiles = false,
 }
