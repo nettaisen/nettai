@@ -434,6 +434,10 @@ local status = {
         -- The weakness mark shows for the damage of the element the navi is weak to (0x080133CE, the table at
         -- 0x08013408), as EXE5's.
         weakness_mark = "weak_element_damage",
+        -- A navi runs through a pause until it takes control (0x08010A88 clears its header flag 0x04, and the object
+        -- loop skips it while paused from then on); its status block has no pause handler, and runs its action
+        -- (0x08013C2A).
+        paused_navi = "stops_at_control",
     },
 }
 

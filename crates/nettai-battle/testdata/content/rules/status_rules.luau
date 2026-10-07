@@ -44,4 +44,6 @@ return {
     -- The weakness mark shows over the last hit's multiplier, on a tick with
     -- damage.
     weakness_mark = "last_hit_multiplier",
+    -- While paused a navi runs its pause handler in place of its action.
+    paused_navi = "pause_handler",
 }

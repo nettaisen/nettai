@@ -20,4 +20,6 @@ return {
     -- plays a semitone higher and 282/256 as fast.
     low_hp_music = true,
     navi_win_banner = "link_battle",
+    -- The intro (`sub_80091F0`) returns after its init.
+    intro_steps_on_init = false,
 }

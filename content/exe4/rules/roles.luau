@@ -30,13 +30,28 @@ local roles: RolesSpec = {
     },
     sounds = {
         appear = asset.sound("appear"),
+        -- What the custom screen can't pick or take back (0x08020386, 0x08020634).
+        refused = asset.sound("refused"),
+        -- The custom screen's, which its player hears (docs/design/exe4-map.md §5): the window slides in (0x0801E24E);
+        -- the cursor moves (0x0802049C); a pick, OK, a pick taken back (0x080203A0 by 0x080204B8, 0x0802063E); R's
+        -- description opens (0x080203C0; its close, SELECT's hiding and L's message play none); a dark chip under the
+        -- cursor, every 61 ticks (0x0801E4A6); the Program Advance animation's chips of the recipe and the Program
+        -- Advance (0x0801E74E, 0x0801E83A).
         custom_open = asset.sound("custom-open"),
+        custom_cursor = asset.sound("custom-cursor"),
+        custom_pick = asset.sound("custom-pick"),
+        custom_ok = asset.sound("custom-ok"),
+        custom_back = asset.sound("custom-back"),
+        custom_description = asset.sound("description-open"),
+        custom_shade = asset.sound("dark-hover"),
+        program_advance_part = asset.sound("program-advance-part"),
+        program_advance = asset.sound("program-advance"),
     },
     music = {
         link_battle = asset.sound("netbattle"),
     },
     banners = {
-        round_start = asset.banner("battle-start"),
+        round_start = asset.banner("battle-number-start"),
         turn_start = asset.banner("turn-start"),
         win = asset.banner("enemy-deleted"),
     },
