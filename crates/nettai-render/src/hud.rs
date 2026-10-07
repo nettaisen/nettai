@@ -962,7 +962,12 @@ fn icon_parts<'a>(
     let f = nettai_battle::kinds::common::facing(o.alliance, o.flip);
     // Attach point 3 of the navi's sprite (player NameIDs 0x1A0..=0x1C3).
     let (ax, ay) = if b.content.identity(o.identity).class.is_player() {
-        let p = b.content.attach_point(o.identity, 3);
+        let Some(p) = b.content.try_attach_point(o.identity, 3) else {
+            // (EXE4 has no attach points: its icons' own place, 0x08014860
+            // by 0x0800B9E4, isn't drawn yet.)
+            problems.note(format!("identity {} has no attach point 3: its chip icons aren't drawn", b.content.identity(o.identity).key));
+            return;
+        };
         (p.x as i32, p.y as i32)
     } else {
         (8, 48)
