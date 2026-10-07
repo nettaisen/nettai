@@ -7,7 +7,10 @@
 --
 -- Each game makes its own kind (`visual.make`): EXE6's is blown away when wind pops the barrier (`sub_80E0C74`'s
 -- popped branch, `sub_80E0D38`) and comes back up only on a navi that isn't bubbled (`sub_80E0CAA`); EXE5's has
--- neither (0x080E0C38, 0x080E0C5C: no blown action, no bubble status).
+-- neither (0x080E0C38, 0x080E0C5C: no blown action, no bubble status). EXE4's (effect #7, 0x080E2418) is EXE5's but
+-- for what its `make` states besides: no test of its navi's being on the field, its place by its navi's offsets
+-- rather than an attach point, no longer running while paused once the fight is on, its sprite stepped paused or
+-- not, and its spawn taking its navi's side alone.
 
 local element = require("@exelib/element")
 
@@ -26,6 +29,18 @@ export type Spec = {
     id: string,
     -- EXE6's: blown away when popped, and back up only on a navi that isn't bubbled.
     blows: boolean,
+    -- Hidden while its navi is off the field (and hidden again after its action); none: true (EXE4's 0x080E24A4
+    -- tests neither).
+    hides_off_field: boolean?,
+    -- Where it sits on its navi, its offset in pixels: none, the look's attach point (EXE6's, EXE5's); EXE4's by its
+    -- navi's number (0x080E2572, 0x080E2558 for an aura).
+    offset: ((owner: Object, b: Barrier) -> (number, number))?,
+    -- Once the fight is on it no longer runs while paused (EXE4's 0x080E24B6).
+    stops_running_paused_in_fight: boolean?,
+    -- Its sprite steps while the fight is on and paused too (EXE4's 0x080144BC); none: it doesn't (`sub_80E0AD4`).
+    steps_paused: boolean?,
+    -- Its spawn takes its navi's side alone, not its facing (EXE4's 0x080E2622).
+    side_only: boolean?,
 }
 
 export type Visual = {
@@ -59,9 +74,9 @@ local function unlink(me: Object)
     end
 end
 
--- Seen unless the viewer is blind to its side, shown with its navi, and its navi on the field; `hide_only`: only
--- the hiding half (the update's second pass).
-local function visibility(me: Object, owner: Object, hide_only: boolean)
+-- Seen unless the viewer is blind to its side, shown with its navi, and (`field_check`) its navi on the field;
+-- `hide_only`: only the hiding half (the update's second pass).
+local function visibility(me: Object, owner: Object, hide_only: boolean, field_check: boolean)
     if not hide_only then
         me.visible = true
     end
@@ -69,7 +84,7 @@ local function visibility(me: Object, owner: Object, hide_only: boolean)
     if not (me.state :: State).shown then
         me.visible = false
     end
-    if not field.valid(owner.panel_x, owner.panel_y) then
+    if field_check and not field.valid(owner.panel_x, owner.panel_y) then
         me.visible = false
     end
 end
@@ -120,6 +135,7 @@ end
 
 function visual.make(spec: Spec): Visual
     local blows = spec.blows
+    local field_check = spec.hides_off_field ~= false
 
     -- `sub_80E0C74`: up while the navi links it and its barrier holds HP; down when it doesn't; (EXE6's) blown away
     -- when popped.
@@ -173,13 +189,21 @@ function visual.make(spec: Spec): Visual
     -- pixels up the field and lower; its action; visibility's hiding half again.
     local function tick(me: Object)
         local owner = owner_of(me)
-        visibility(me, owner, false)
+        visibility(me, owner, false, field_check)
+        if spec.stops_running_paused_in_fight and battle.fighting() then
+            me.run_while_paused = false
+        end
         local b = (me.state :: State).barrier
         if not (blows and me.action == BLOWN) then
             local p = owner.pos
             me.pos = Vec3.new(p.x, p.y - 0x20000, p.z - 0x20000)
         end
-        local ax, ay = owner:attach_point(b.look.attach_point)
+        local ax, ay
+        if spec.offset then
+            ax, ay = spec.offset(owner, b)
+        else
+            ax, ay = owner:attach_point(b.look.attach_point)
+        end
         local p = me.pos
         me.pos = Vec3.new(p.x + ax * 0x10000, p.y, p.z + ay * 0x10000)
         local a = me.action
@@ -192,8 +216,8 @@ function visual.make(spec: Spec): Visual
         else
             error(string.format("a barrier's visual's action %#x reads past off_80E0C68", a))
         end
-        if me.active then
-            visibility(me, owner, true)
+        if me.active and field_check then
+            visibility(me, owner, true, field_check)
         end
     end
 
@@ -243,7 +267,7 @@ function visual.make(spec: Spec): Visual
             if not me.active then
                 return
             end
-            if not (battle.fighting() and battle.paused()) then
+            if spec.steps_paused or not (battle.fighting() and battle.paused()) then
                 me:update_sprite_even_paused()
             end
         end,
@@ -256,7 +280,10 @@ function visual.make(spec: Spec): Visual
         if not o then
             return nil
         end
-        o.alliance, o.flip = navi.alliance, navi.flip
+        o.alliance = navi.alliance
+        if not spec.side_only then
+            o.flip = navi.flip
+        end
         o.related1 = navi
         navi.barrier_visual = o
         o.run_while_paused = true

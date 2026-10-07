@@ -1,7 +1,7 @@
 --!strict
 -- The bombs' and seeds' throw, as EXE5 and EXE6 share it (EXE6's action 0x12,
--- `sub_80EB628`; EXE5's 0x12), of a game's `ThrowLook` (its sound and
--- attachment kind):
+-- `sub_80EB628`; EXE5's 0x12; EXE4's 0x09, 0x080EB3FE), of a game's
+-- `ThrowLook` (its sound, attachment kind or hold, and release):
 -- the navi winds up with the thing in hand (an attachment), throws it on
 -- the tenth tick (it leaves from 4 pixels ahead, 48 up), and stands for 11
 -- more, then 6 ticks of recovery. Each chip composes its own
@@ -48,6 +48,16 @@ function throw.damage_word(me: Object): number
     return int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
 end
 
+-- Where a game's thrown thing leaves from: ahead of the navi, or right of it
+-- (`look.releases_right`, EXE4's).
+local function release_point(me: Object, look: ThrowLook): Vec3
+    if not look.releases_right then
+        return throw.release_point(me)
+    end
+    local p = me.pos
+    return Vec3.new(p.x + RELEASE_AHEAD, p.y, p.z + RELEASE_UP)
+end
+
 -- A chip's throw, of a game's `look`.
 function throw.action(spec: ThrowSpec, look: ThrowLook): Action
     local SOUND = look.sound
@@ -56,14 +66,19 @@ function throw.action(spec: ThrowSpec, look: ThrowLook): Action
         if me.step_init == 0 then
             me:set_animation(ANIM_THROW)
             me:open_counter_window()
-            attachment.attach(look.attachment, me, spec.held, "related", { anim = spec.held_anim, palette_add = spec.held_palette })
+            local hold = look.hold
+            if hold then
+                hold(me, spec.held, spec.held_anim or 0)
+            else
+                attachment.attach(look.attachment, me, spec.held, "related", { anim = spec.held_anim, palette_add = spec.held_palette })
+            end
             battle.play_sound(SOUND)
             me:set_status("using_action", true)
             s.timer = 0
             me.step_init = 4
         end
         if s.timer == RELEASE_TICK then
-            spec.thrower.throw(me, throw.release_point(me), throw.damage_word(me))
+            spec.thrower.throw(me, release_point(me, look), throw.damage_word(me))
             -- Let go of what it held.
             me.related1 = nil
             me.overlay = nil

@@ -1,7 +1,9 @@
 --!strict
 -- The swords' slash, as EXE5 and EXE6 share it (EXE6's action 0x13,
 -- `sub_80EB776`; EXE5's 0x13, the same code but for a step sword's
--- afterimage and the elemental swords' slash palettes): the navi
+-- afterimage and the elemental swords' slash palettes; EXE4's 0x0A,
+-- 0x080EB51E, but for its blade, the swing and the recovery: its
+-- `SlashGame`): the navi
 -- holds a blade and slashes the panels ahead, one hit on the 10th tick of
 -- the swing, and an effect that draws the slash. Each chip composes its own
 -- (`slash.action { blade = ..., hit = ..., effect = ..., sound = ... }`,
@@ -71,6 +73,25 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
     -- The blade's animation (`sub_80EBAE8`, or the spec's game's own).
     local blade_anim = spec.blade_anim or rules.blade_anim or parts.blade_anim
     local in_place = rules.stays
+    local refreshes_overlay = rules.refreshes_form_overlay ~= false
+    local clears_moving = rules.recovery_clears_moving ~= false
+    -- How the navi holds the blade (`sub_80B8E30`, or the game's own).
+    local function hold(me: Object)
+        local own = rules.hold
+        if own then
+            own(me, spec.blade, blade_anim(me))
+        else
+            parts.hold(attachment, me, spec.blade, parts.blade_palette(me), blade_anim(me))
+        end
+    end
+    -- Let go of the blade: the related slot, and the overlay's too where the recovery clears the moving flag.
+    local function drop(me: Object)
+        if clears_moving then
+            parts.drop(me)
+        else
+            me.related1 = nil
+        end
+    end
     local function stays(me: Object): boolean
         return in_place ~= nil and in_place(me.alliance)
     end
@@ -207,10 +228,12 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
     local function swing(me: Object, s: State)
         if me.step_init == 0 then
             me:set_animation(5)
-            me:refresh_form_overlay()
+            if refreshes_overlay then
+                me:refresh_form_overlay()
+            end
             me:open_counter_window()
             battle.play_sound(spec.sound)
-            parts.hold(attachment, me, spec.blade, parts.blade_palette(me), blade_anim(me))
+            hold(me)
             me:set_status("using_action", true)
             s.timer = 0x15
             -- (nullsub_12 is passed the panel ahead and the hit region.)
@@ -245,7 +268,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
         me.attack_count = hits
         if hits > 0 then
             -- The next swing: a fresh blade.
-            parts.drop(me)
+            drop(me)
             me.step_init = 0
             return
         end
@@ -273,7 +296,9 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
     -- `sub_80EBBE2`: 6 ticks, then back to idle.
     local function recover(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_status("moving", false)
+            if clears_moving then
+                me:set_status("moving", false)
+            end
             s.timer = 5
             me.step_init = 4
         end
@@ -282,7 +307,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
         if t >= 0 then
             return
         end
-        parts.drop(me)
+        drop(me)
         me:exit_attack()
     end
 
