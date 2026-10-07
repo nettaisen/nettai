@@ -8,4 +8,4 @@
 
 [at_defaults]
 exe6 = ["hp", "reg_up", "sun", "level", "sp_times"]
-exe5 = ["hp", "reg_up", "level", "sp_times", "auto_battle_records"]
+exe5 = ["hp", "reg_up", "sun", "level", "sp_times", "auto_battle_records"]

@@ -319,7 +319,7 @@ mod tests {
         let m = nettai_match::pick::live(&six, "exe6", 9, None).unwrap();
         let mut side = m.sides[0].clone();
         side.set_fact(&six, "hp", &[Fact::Value(Value::Int(600))]).unwrap();
-        side.set_fact(&six, "sun", &[Fact::Value(Value::Bool(true))]).unwrap();
+        side.set_fact(&six, "sun", &[Fact::Value(Value::Bool(false))]).unwrap();
         let before = side.clone();
         let reset = as_built(&six, "exe6", &mut side);
         assert!(reset.contains(&"hp".to_string()) && reset.contains(&"sun".to_string()), "{reset:?}");
