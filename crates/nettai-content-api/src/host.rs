@@ -92,17 +92,6 @@ pub struct DimmingChipSpec {
     pub bonus: u16,
 }
 
-/// What a navi chip's navi is spawned with (the registers
-/// `sub_80E1880` passes to `off_802CD5C[subtype]`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct NaviChipSpec {
-    /// Where the navi appears (the user's panel when the chip was used).
-    pub panel: PanelPos,
-    pub element: u8,
-    /// The damage word with the bonus added.
-    pub damage: u32,
-}
-
 /// What an instant chip's effect runs with (the registers `sub_80EC39C`
 /// passes to `off_80EC3F0[subtype]`: the user's panel and Z, and its
 /// attack).
@@ -130,9 +119,8 @@ pub struct PlaceSpec {
     /// Which of the kind's variants the stage names (a record of the
     /// kind's: a rock's).
     pub variant: Option<crate::RecordHandle>,
-    /// The entry's raw argument (what a spawner that ignores it leaves in
-    /// a register: the Guardian statue's).
-    pub argument: u8,
+    /// The HP the entry gives it, if it states one.
+    pub hp: Option<u16>,
 }
 
 /// A call of a hook, with its arguments.
@@ -140,18 +128,16 @@ pub struct PlaceSpec {
 pub enum HookCall {
     /// `setup(navi)`: returns the action it starts (an action definition).
     Weapon { navi: ObjectRef },
-    /// `dimming_chip(user, spec)`: returns the controller, or nil.
+    /// `dimming_chip(user, spec)`: returns the controller, or nil (a cut-in
+    /// chip's `dimming`, a handed-off chip's `navi`).
     DimmingChip { user: ObjectRef, spec: DimmingChipSpec },
-    /// `navi_chip(user, controller, spec)`: returns the navi, or nil. The
-    /// navi calls `navi_chip.navi_left(controller)` when it is done.
-    NaviChip { user: ObjectRef, controller: ObjectRef, spec: NaviChipSpec },
     /// `instant_chip(user, spec)`: its result is unused.
     InstantChip { user: ObjectRef, spec: InstantChipSpec },
     /// A kind's `place(spec)`: returns what it placed, or nil.
     Place { spec: PlaceSpec },
-    /// A kind's `navi_left(controller)`: the navi chip's navi an object of
-    /// the kind brought (EXE5's DethPhnx: the last navi chip's) is done. Its
-    /// result is unused.
+    /// A kind's `navi_left(controller)`: what an object of the kind brought
+    /// (a navi chip's navi, EXE5's DethPhnx's the last navi chip's) is done.
+    /// Its result is unused.
     NaviLeft { controller: ObjectRef },
     /// A role hook the rules call with a navi (the roles' `hooks`):
     /// its result is unused.
@@ -190,7 +176,7 @@ pub enum HookCall {
     /// A hook of a panel type's (its rules' `panels.types.<name>.<hook>`):
     /// what the type does where the engine meets it, with the body it
     /// meets there (docs/design/rules-in-luau.md, "Panels into Luau").
-    Panel { body: ObjectRef, call: PanelCall },
+    Panel(PanelCall),
 }
 
 /// Which hook of a panel type's is called: where the engine meets the type,
@@ -226,12 +212,33 @@ pub enum PanelHook {
     /// ice: an aqua attack freezes the body and the panel turns normal). Its
     /// result is unused.
     Hit,
+    /// `tick(x, y)`: each panel update (`sub_800C380`), for a panel of the
+    /// type that isn't missing, broken or cracked (EXE6's volcano erupts,
+    /// EXE4's pitfall crumbles); a type without one that expires counts down
+    /// its `expires`. Its result is unused.
+    Tick,
+    /// `changed(x, y)`: the panel became the type (`_object_setPanelType`,
+    /// EXE4's 0x08009DC4: the pitfall counts at once). Its result is unused.
+    Changed,
+    /// `start(x, y)`: the round's field starts with the panel of the type
+    /// (EXE4's 0x08009120: a stage's pitfall waits, armed). Its result is
+    /// unused.
+    Start,
 }
 
 impl PanelHook {
     /// Every hook, in order.
-    pub const ALL: [PanelHook; 6] =
-        [PanelHook::Burn, PanelHook::Stand, PanelHook::Rest, PanelHook::MoveEnd, PanelHook::Slide, PanelHook::Hit];
+    pub const ALL: [PanelHook; 9] = [
+        PanelHook::Burn,
+        PanelHook::Stand,
+        PanelHook::Rest,
+        PanelHook::MoveEnd,
+        PanelHook::Slide,
+        PanelHook::Hit,
+        PanelHook::Tick,
+        PanelHook::Changed,
+        PanelHook::Start,
+    ];
 
     /// The hook's name in a panel type's table.
     pub fn name(self) -> &'static str {
@@ -242,19 +249,26 @@ impl PanelHook {
             PanelHook::MoveEnd => "move_end",
             PanelHook::Slide => "slide",
             PanelHook::Hit => "hit",
+            PanelHook::Tick => "tick",
+            PanelHook::Changed => "changed",
+            PanelHook::Start => "start",
         }
     }
 }
 
-/// A panel hook's call, with its arguments past the body.
+/// A panel hook's call, with its arguments: the body it meets, or the
+/// panel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PanelCall {
-    Burn { player: bool },
-    Stand,
-    Rest,
-    MoveEnd,
-    Slide { how: SlideHow },
-    Hit { element: u8 },
+    Burn { body: ObjectRef, player: bool },
+    Stand { body: ObjectRef },
+    Rest { body: ObjectRef },
+    MoveEnd { body: ObjectRef },
+    Slide { body: ObjectRef, how: SlideHow },
+    Hit { body: ObjectRef, element: u8 },
+    Tick { x: u8, y: u8 },
+    Changed { x: u8, y: u8 },
+    Start { x: u8, y: u8 },
 }
 
 impl PanelCall {
@@ -262,11 +276,14 @@ impl PanelCall {
     pub fn hook(self) -> PanelHook {
         match self {
             PanelCall::Burn { .. } => PanelHook::Burn,
-            PanelCall::Stand => PanelHook::Stand,
-            PanelCall::Rest => PanelHook::Rest,
-            PanelCall::MoveEnd => PanelHook::MoveEnd,
+            PanelCall::Stand { .. } => PanelHook::Stand,
+            PanelCall::Rest { .. } => PanelHook::Rest,
+            PanelCall::MoveEnd { .. } => PanelHook::MoveEnd,
             PanelCall::Slide { .. } => PanelHook::Slide,
             PanelCall::Hit { .. } => PanelHook::Hit,
+            PanelCall::Tick { .. } => PanelHook::Tick,
+            PanelCall::Changed { .. } => PanelHook::Changed,
+            PanelCall::Start { .. } => PanelHook::Start,
         }
     }
 }

@@ -468,6 +468,8 @@ local status = {
         -- Its idle (MegaMan's, 0x080EEB38) stands the navi (animation 0) on each tick past its first phase
         -- (0x080EEBAC), the 10 ticks after a reaction's end: a drag's kept pose (`drag`) holds those ticks.
         idle_stands = true,
+        -- (No `link_body_damage`: EXE4 has no counterpart of EXE6's `sub_80142B0` or `sub_80142C2`, so a navi's body
+        -- hits for its object's zeroed damage, in a link battle too: the lab's WhitWeb webs take none from it.)
     },
 }
 

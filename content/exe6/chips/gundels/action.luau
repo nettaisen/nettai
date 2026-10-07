@@ -12,7 +12,6 @@
 local attachment = require("../../objects/attachment")
 local beam = require("./beam")
 local collision = require("../../rules/collision")
-local regions = require("@exelib/regions")
 
 local action = {}
 
@@ -61,7 +60,7 @@ end
 
 -- A chip's GunDelSol.
 function action.action(spec: GunDelSolSpec): Action
-    local region = if spec.wide then regions.wide_long else regions.wide
+    local region = spec.region
 
     -- `sub_80EDB14`: the gun comes out; 6 ticks later the beam lights up.
     local function wind_up(me: Object, s: State)

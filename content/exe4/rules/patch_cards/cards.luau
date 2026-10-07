@@ -59,6 +59,11 @@ function cards.full_synchro(): PatchCardEffect
     return effect { kind = "full_synchro" }
 end
 
+-- All Guard (+0x28 = 1: the rules' stat `all_guard`, which raises the navi's guard as its abilities reset).
+function cards.all_guard(): PatchCardEffect
+    return effect { kind = "all_guard" }
+end
+
 -- MegaMan's color (+0x27: the rules' stat `color`, which his palette reads).
 function cards.color(n: number): PatchCardEffect
     return effect { kind = "color", amount = n }
@@ -67,6 +72,24 @@ end
 -- The panel a step leaves (+0x1B: EXE4's panel type, 1 broken; `effects.panel_trail`).
 function cards.panel_trail(panel: number): PatchCardEffect
     return effect { kind = "panel_trail", amount = panel }
+end
+
+-- A pair's half (Charge FullCustom's, 103 and 104; Triple Supporter's and All Guard's): `effects` apply only while
+-- the card `card` (its key), the other half, sits in slot `slot` (the slots, the toolkit's +0x70) and the stat the
+-- first sets doesn't hold its value yet (0x08042758: each half's handler tests both, so of the two halves the one
+-- that runs first does it all, its bugs and custom changes too).
+function cards.pair(slot: number, card: string, effects: { PatchCardEffect }): PatchCardEffect
+    return effect { kind = "pair", pair = { slot = slot, card = card, effects = effects } }
+end
+
+-- Whether `stats` already holds what effect `e` sets (a pair's test of its first effect).
+function cards.holds(stats: Navi, e: PatchCardEffect): boolean
+    if e.kind == "charged_shot" then
+        return stats.charge_shot_weapon == e.weapon
+    elseif e.kind == "all_guard" then
+        return stats.all_guard == true
+    end
+    error(string.format("patch card effect %q: no pair tests it", tostring(e.kind)))
 end
 
 -- A bug's count raised (0x080476E0), or cleared (0x080476EC): the bug by its name (`what`).
@@ -103,6 +126,8 @@ function cards.apply(stats: Navi, e: PatchCardEffect, work: PatchCardWork, count
         stats.back_special_weapon = e.weapon
     elseif k == "full_synchro" then
         stats.full_synchro_start = true
+    elseif k == "all_guard" then
+        stats.all_guard = true
     elseif k == "color" then
         stats.color = n
     elseif k == "panel_trail" then

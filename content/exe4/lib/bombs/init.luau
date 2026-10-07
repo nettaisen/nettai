@@ -16,32 +16,22 @@ local bombs = {}
 
 local SPRITE = asset.sprite("bomb")
 
--- What a navi holds while throwing a bomb (attachment row 4, 0x080CD524: 0c-02 in palette 0; DarkBomb's row 0x11,
--- palette 3).
+-- What a navi holds while throwing a bomb (attachment row 4, 0x080CD524: 0c-02 in palette 0).
 bombs.held = attachment.look { sprite = SPRITE, palette = 0 }
-bombs.held_dark = attachment.look { sprite = SPRITE, palette = 3 }
 
 -- A bomb variant (a row of 0x080CE088).
 bombs.variant = bomb.variant
 
--- The effect rows the bomb shows (0x080E1698): a blast's explosion (row 0, DarkBomb's row 0x2B in palette 1), the
--- splash in a hole (row 1), the puff when the battle ends (row 0x15).
-local EXPLOSION = asset.sprite("explosion")
-bombs.effects = {
-    explosion = new.effect { sprite = EXPLOSION, anim = 0, palette = 0 },
-    dark_explosion = new.effect { sprite = EXPLOSION, anim = 0, palette = 1 },
-    splash = new.effect { sprite = asset.sprite("small-puff"), anim = 0, palette = 0 },
-    puff = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
-}
-
+-- The bomb's look: the effect rows it shows (0x080E1698): a blast's explosion (row 0, unless its variant has its own:
+-- 0x080CE277), the splash in a hole (row 1), the puff when the battle ends (row 0x15).
 local made = bomb.make {
     id = "bomb",
     sprite = SPRITE,
     -- 0x080CE216.
     hit_sound = asset.sound("hit-bomb-1"),
-    splash = bombs.effects.splash,
-    explosion = bombs.effects.explosion,
-    puff = bombs.effects.puff,
+    splash = new.effect { sprite = asset.sprite("small-puff"), anim = 0, palette = 0 },
+    explosion = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 },
+    puff = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
 }
 
 -- A thrower that throws a bomb of `variant` (0x080CE2B8), null-element.

@@ -65,10 +65,17 @@ fn battles_run_the_content_scripts() {
             "chrgeman/navi",
             "colorpt/controller",
             "colorpt/point",
+            "count-ex/controller",
+            "count-sp/controller",
+            "count/controller",
             "count/lance",
             "count/navi",
             "crakshot/shot",
+            "delecswd/glow",
+            "django/controller",
             "django/navi",
+            "django2/controller",
+            "django3/controller",
             "dolthdr/doll",
             "dolthdr/thunder-column",
             "dragon-body",
@@ -98,6 +105,7 @@ fn battles_run_the_content_scripts() {
             "eraseman/beam",
             "eraseman/mark",
             "eraseman/navi",
+            "eruption",
             "falling-rock",
             "falling-rock/chip",
             "falzar/controller",
@@ -110,7 +118,6 @@ fn battles_run_the_content_scripts() {
             "flmhook/hook",
             "flshbom/bomb",
             "flying-shot",
-            "follow-effect",
             "forms/cross-merge",
             "gauge-speed",
             "golmhit/golem",
@@ -184,6 +191,18 @@ fn battles_run_the_content_scripts() {
             "tengucross-beast/whirlwind",
             "tenguman/navi",
             "tenguman/tornado",
+            "test/blast/controller",
+            "test/charge/controller",
+            "test/elec/controller",
+            "test/elements/controller",
+            "test/eraser/controller",
+            "test/heat/controller",
+            "test/shooter/controller",
+            "test/slash/controller",
+            "test/spout/controller",
+            "test/sun-moon/controller",
+            "test/tengu/controller",
+            "test/tomahawk/controller",
             "test/worn",
             "thunder/ball",
             "timebom/controller",
@@ -592,7 +611,7 @@ fn the_link_navis_chips_play_and_roll_back() {
     }
     for kind in [
         "heatman/flame",
-        "follow-effect",
+        "delecswd/glow",
         "slashman/riding-hit",
         "eraseman/beam",
         "chargeman/volcano-rock",
@@ -1402,9 +1421,9 @@ fn panels_break_poison_and_blink() {
     assert!(!b.break_panel(empty.0 as u8, empty.1 as u8), "a broken panel isn't solid");
     assert!(b.break_panel(occupied.0 as u8, occupied.1 as u8));
     assert_eq!(kind(&b, occupied), crate::content::testing::panel("cracked"));
-    assert!(b.poison_panel(1, 3));
+    assert!(b.overwrite_panel(1, 3, crate::content::testing::panel("poison"), None));
     assert_eq!(kind(&b, (1, 3)), crate::content::testing::panel("poison"));
-    assert!(!b.poison_panel(empty.0 as u8, empty.1 as u8));
+    assert!(!b.overwrite_panel(empty.0 as u8, empty.1 as u8, crate::content::testing::panel("poison"), None));
     b.blink_panel(4, 2, crate::content::testing::panel("holy"), 0);
     let p = b.field.panel(4, 2).unwrap();
     assert_eq!((p.kind, p.blink), (crate::content::testing::panel("normal"), Some((crate::content::testing::panel("holy"), 0))));

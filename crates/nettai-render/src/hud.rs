@@ -1,6 +1,6 @@
 //! The battle HUD: the player's HP box, the custom gauge and the chip name
-//! on the HUD layer (priority 1); the mugshot, the opponent's HP, the chip
-//! icons over the navis and the banners as sprites.
+//! on the HUD layer (the game's priority: 1, EXE4's 0); the mugshot, the
+//! opponent's HP, the chip icons over the navis and the banners as sprites.
 //!
 //! The rolling numbers are presentation state the engine doesn't keep, so
 //! `HudState` follows them tick by tick (`sub_801C840`, `sub_801C168`).

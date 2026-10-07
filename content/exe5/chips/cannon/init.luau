@@ -2,8 +2,14 @@
 -- Cannon, HiCannon and M-Cannon: the cannon series (each chip's own comment above its definition).
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local attachment = require("../objects/attachment")
 local shooter = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
+
+-- Their cannons (the attachment table's rows 0 to 2: 0c-01 in palettes 0, 1 and 2), at the navi's attach point 7.
+local CANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 0, attach_point = 7 }
+local HICANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 1, attach_point = 7 }
+local M_CANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 2, attach_point = 7 }
 
 -- Cannon (EXE5 chip 0x001): EXE6's cannon (@exelib/cannon, the original's action 0x14; EXE5's the same code), firing
 -- EXE5's cannon shot.
@@ -19,7 +25,7 @@ local cannon: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shooter.action { arm = shooter.arms.cannon, shot = variants.cannon },
+    action = shooter.action { arm = CANNON_ARM, shot = variants.cannon },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -37,7 +43,7 @@ local hicannon: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shooter.action { arm = shooter.arms.hicannon, shot = variants.cannon },
+    action = shooter.action { arm = HICANNON_ARM, shot = variants.cannon },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -55,7 +61,7 @@ local m_cannon: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shooter.action { arm = shooter.arms.m_cannon, shot = variants.cannon },
+    action = shooter.action { arm = M_CANNON_ARM, shot = variants.cannon },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 

@@ -5,7 +5,9 @@
 # positions the comparison skips (register garbage the spawner leaves until the
 # kind's init places it), and the header-flag bits it skips (`open_bus_flags`: bits
 # the spawner reads from the console's open bus, on which the two consoles can
-# disagree). The engine's own kinds are `engine/...`.
+# disagree). The engine's own kinds are `engine/...`. The navi chips' controllers (each chip's own; the original's one
+# effect object #0x10, `sub_80E17E8`, for them all) are written by bn6battle-verify's
+# tools/content/navi_chip_kinds.py from the chips' ids: run it, rather than editing their section.
 
 "engine/player" = { pool = "actor", index = 0x00 }
 "colonel/navi" = { pool = "actor", index = 0x01 }
@@ -65,7 +67,7 @@
 "batcan/shot" = { pool = "attack", index = 0x01 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "flame" = { pool = "attack", index = 0x04 }
-"engine/eruption" = { pool = "attack", index = 0x07 }
+"eruption" = { pool = "attack", index = 0x07 }
 "bomb" = { pool = "attack", index = 0x08 }
 "panel-strike" = { pool = "attack", index = 0x09 }
 "flying-shot" = { pool = "attack", index = 0x0B }
@@ -202,7 +204,78 @@
 "falling-rock/chip" = { pool = "effect", index = 0x09 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "engine/target-marker" = { pool = "effect", index = 0x0F }
-"engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
+# begin: the navi chips' controllers (tools/content/navi_chip_kinds.py writes these)
+"bass/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"bassanly/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"bighook/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"blastman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"blastmn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"blastmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"chrgeman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"chrgemn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"chrgemn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"colonel/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"colonel-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"colonel-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"count/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"count-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"count-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"crcusman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"crcusmn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"crcusmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"crosover/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"crossdiv/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"darkness/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"deltaray/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"diveman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"diveman-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"diveman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"django/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"django2/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"django3/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"dustman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"dustman-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"dustman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"elecman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"elecman-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"elecman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"elmntman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"elmntmn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"elmntmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"eraseman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"erasemn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"erasemn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"grndman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"grndman-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"grndman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"heatman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"heatman-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"heatman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"judgeman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"judgemn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"judgemn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"mstrcros/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"protoman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"protomn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"protomn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"roll/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"roll2/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"roll3/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"slashman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"slashmn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"slashmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"spoutman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"spoutmn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"spoutmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"sunmoon/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tenguman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tengumn-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tengumn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tmhkman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tmhkman-ex/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tmhkman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"twinldrs/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+# end: the navi chips' controllers
 "vdoll/sparkles" = { pool = "effect", index = 0x11, scratch_position = true }
 "rising-bubble" = { pool = "effect", index = 0x14 }
 "dust-storm-mote" = { pool = "effect", index = 0x19 }
@@ -223,7 +296,10 @@
 "spoutman/pillar" = { pool = "effect", index = 0x2D, scratch_z_fraction = true }
 "spoutman/mark" = { pool = "effect", index = 0x2E }
 "barriers/controller" = { pool = "effect", index = 0x2F, scratch_position = true }
-"follow-effect" = { pool = "effect", index = 0x31 }
+# The follow effect (effect #0x31, `sub_80E3D68`): one object in the original, its look and routine by its first
+# parameter; here each user's own kind: DeltaRay's bursts (look 4) and ElecMan's glow in DElecSwd (look 7).
+"deltaray/burst" = { pool = "effect", index = 0x31 }
+"delecswd/glow" = { pool = "effect", index = 0x31 }
 "tomahawkman/axe" = { pool = "effect", index = 0x32 }
 "anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
 "meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }

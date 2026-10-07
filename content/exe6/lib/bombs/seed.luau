@@ -20,18 +20,15 @@ local seed = {}
 -- `sub_8011504`: sprite `bomb`, animation 9, with a ground shadow.
 local SPRITE = asset.sprite("bomb")
 
--- What grows on each panel: a sprout (poison, ice) or a green one (grass)
--- (effects 0x3B, 0x3C).
-seed.sprout = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 }
-seed.green_sprout = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 8 }
-
 -- What the navi holds while throwing a seed: the bomb's sprite in the
 -- seed's colors (the original's attachment rows 0x24, 0x25, 0x26).
 function seed.held(palette: number): AttachmentLook
     return attachment.look { sprite = SPRITE, palette = palette }
 end
 
--- A seed variant.
+-- A seed variant, each chip's own: its panel, what grows on each panel
+-- (PoisSeed's and IceSeed's sprout, effect 0x3B; GrasSeed's green one,
+-- 0x3C), its sound and palette.
 seed.variant = common.variant
 
 seed.kind = common.make_kind("seed", {

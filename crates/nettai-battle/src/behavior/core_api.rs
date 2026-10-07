@@ -1424,6 +1424,26 @@ impl CoreApi for Battle {
         self.field.is_solid(p.x, p.y)
     }
 
+    fn panel_timer(&self, p: PanelPos) -> u16 {
+        self.field.panel(p.x, p.y).map_or(0, |p| p.timer)
+    }
+
+    fn set_panel_timer(&mut self, p: PanelPos, ticks: u16) {
+        if let Some(p) = self.field.panel_mut(p.x, p.y) {
+            p.timer = ticks;
+        }
+    }
+
+    fn field_cycle(&self) -> u32 {
+        self.field.cycle
+    }
+
+    fn panel_body_grounded(&self, p: PanelPos) -> bool {
+        use crate::field::pflags;
+        let f = self.field.flags(p.x, p.y);
+        f & pflags::BODY != 0 && f & pflags::FLOATING == 0
+    }
+
     fn highlight_panel(&mut self, p: PanelPos) {
         common::highlight_panel(self, p.x, p.y);
     }
@@ -1519,8 +1539,8 @@ impl CoreApi for Battle {
     }
 
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    fn poison_panel(&mut self, p: PanelPos) -> bool {
-        Battle::poison_panel(self, p.x, p.y)
+    fn overwrite_panel(&mut self, p: PanelPos, kind: u8, sound: Option<u16>) -> bool {
+        Battle::overwrite_panel(self, p.x, p.y, PanelType(kind), sound.map(SoundId))
     }
 
     fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8) {
@@ -1573,7 +1593,7 @@ impl CoreApi for Battle {
             A::Idle => NaviAction::Engine("idle"),
             A::Engine(E::Move) => NaviAction::Engine("move"),
             A::Engine(E::DimmingChip) => NaviAction::Engine("dimming_chip"),
-            A::Engine(E::NaviChip) => NaviAction::Engine("navi_chip"),
+            A::Engine(E::HandOffChip) => NaviAction::Engine("hand_off_chip"),
             A::Engine(E::InstantChip) => NaviAction::Engine("instant_chip"),
             A::Engine(E::FormChange) => NaviAction::Engine("form_change"),
             A::Content(h) => NaviAction::Content(h.0),
@@ -2809,22 +2829,48 @@ impl CoreApi for Battle {
 
     // ---- Services ------------------------------------------------------------
 
-    fn dimming(&mut self, o: ObjectRef, step: DimmingStep, chip: Option<ChipHandle>) {
+    fn dimming(&mut self, o: ObjectRef, step: DimmingStep) {
         use crate::dimming as d;
-        // A controller's chip field: none is the zeroed field's.
-        let chip = self.chip_from_api("a dimming step's chip", chip).unwrap_or_else(|e| panic!("{e}"));
         match step {
             DimmingStep::Begin => d::begin(self, o),
             DimmingStep::DimScreen => d::dim_screen(self, o),
             DimmingStep::ShowTelop => d::show_telop(self, o),
             DimmingStep::ShowHiddenTelop => d::show_hidden_telop(self, o),
-            DimmingStep::CheckAntiNavi => d::check_anti_navi(self, o, chip),
-            DimmingStep::ShowNaviTelop => d::show_navi_telop(self, o, chip),
             DimmingStep::UndimScreen => d::undim_screen(self, o),
             DimmingStep::FadeToBlack => d::fade_to_black(self, o),
             DimmingStep::FadeFromBlack => d::fade_from_black(self, o),
             DimmingStep::Finish => d::end(self, o),
         }
+    }
+
+    fn dimming_telop_running(&mut self, o: ObjectRef, chip: Option<ChipHandle>) -> bool {
+        // A controller's chip field: none is the zeroed field's.
+        let chip = self.chip_from_api("a telop's chip", chip).unwrap_or_else(|e| panic!("{e}"));
+        crate::dimming::telop_running(self, o, chip)
+    }
+
+    fn dimming_user(&self, side: u8) -> Option<ObjectRef> {
+        crate::dimming::user(self, side)
+    }
+
+    fn dimming_run(&mut self, side: u8) {
+        crate::dimming::run(self, side);
+    }
+
+    fn dimming_chip_telop(&mut self, side: u8, chip: Option<ChipHandle>) {
+        crate::dimming::chip_telop(self, side, chip);
+    }
+
+    fn dimming_telop_done(&self) -> bool {
+        crate::dimming::telop_done(self)
+    }
+
+    fn dimming_turn(&mut self, o: ObjectRef) {
+        crate::dimming::turn(self, o);
+    }
+
+    fn trap_mark(&mut self, o: ObjectRef) -> i32 {
+        kinds::heal::trap_mark(self, o)
     }
 
     fn start_dimming(
@@ -2881,17 +2927,17 @@ impl CoreApi for Battle {
         Battle::clear_emotion_window_glitch(self);
     }
 
-    fn navi_chip_left(&mut self, controller: ObjectRef) {
-        kinds::navi_chip::navi_left(self, controller);
-    }
-
-    fn last_navi_chip(&self) -> Option<(ChipHandle, u8, u32)> {
-        self.last_navi_chip.map(|l| (l.chip, l.element, l.damage))
+    fn navi_left(&mut self, controller: ObjectRef) {
+        kinds::navi_left(self, controller);
     }
 
     fn navi_warp(&mut self, user: ObjectRef, out: bool) {
         use kinds::navi_warp::{Warp, spawn};
         spawn(self, user, if out { Warp::Out } else { Warp::In });
+    }
+
+    fn spring_anti_recovery(&mut self, user: ObjectRef, damage: u32, names_trap: bool) -> Option<ObjectRef> {
+        kinds::heal::spring_anti_recovery_on(self, user, damage, names_trap)
     }
 
     // ---- Obstacles ----------------------------------------------------------------------

@@ -15,6 +15,26 @@
 "projectile" = { pool = "attack", index = 0x00 }
 "attachment" = { pool = "attack", index = 0x02 }
 "bomb" = { pool = "attack", index = 0x08 }
+# EnergBom's and MegEnBom's energy burst (0x080CF3B8).
+"energbom/burst" = { pool = "attack", index = 0x11 }
+# The Anti chips' controller (0x080E514E), AntiFire to AntiWood's trap (0x080D7260) and counterattack (0x080E5226),
+# and the counterattack's bursts (0x080E4A9C): their positions the spawners' registers.
+"trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
+"anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
+"anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
+"panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
+# The Thunders' thunder ball (0x080D2156).
+"thunder/ball" = { pool = "attack", index = 0x2A }
+# Ball's cannonball (0x080D3A3C).
+"ball/ball" = { pool = "attack", index = 0x35 }
+# Geyser's bomb (0x080D5B44) and its water (0x080D5C30: its position the registers, which its look states).
+"geyser/bomb" = { pool = "attack", index = 0x42 }
+"geyser/water" = { pool = "attack", index = 0x43 }
+# The Binders' binder (0x080D2748).
+"binder/binder" = { pool = "attack", index = 0x2D }
+# The SeekBoms' bomb (0x080DEED6) and the sparkles it bursts in (0x080E33D4: no sprite, its position the registers).
+"seekbom/bomb" = { pool = "attack", index = 0x8D }
+"sparkles" = { pool = "effect", index = 0x11, scratch_position = true }
 "bullet" = { pool = "attack", index = 0x12 }
 "lance" = { pool = "attack", index = 0x4F }
 "panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
@@ -33,6 +53,79 @@
 "flag" = { pool = "attack", index = 0x9C }
 # The gear stages' gears (the actor lists' entry type 5, 0x080068C0).
 "gear" = { pool = "attack", index = 0x76 }
+# The Meteors' meteor (0x080D877C), its panel marker (0x080E5EEA) and their dropper (action 0x20's variant 0x11,
+# 0x080EAE6C).
+"meteor" = { pool = "attack", index = 0x56, scratch_position = true }
+"meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
+"meteors/dropper" = { pool = "effect", index = 0x81, scratch_position = true }
+# The Boomers' boomerang (action 0x20's variant 2, 0x080D3430).
+"boomer/boomerang" = { pool = "attack", index = 0x32, scratch_position = true }
+# The towers' controllers (action 0x20's variant 0x0C, 0x080DF98C: one object, AquaUp's, GreenWd's and LigtNin's),
+# their towers (0x080DF7D0: one object, AquaUp's and GreenWd's) and lightning (0x080DF108).
+"aquaup/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"greenwd/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"ligtnin/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"aquaup/tower" = { pool = "attack", index = 0x92, scratch_position = true }
+"greenwd/tower" = { pool = "attack", index = 0x92, scratch_position = true }
+"lightning" = { pool = "attack", index = 0x8E, scratch_position = true }
+# The Counters' strike (action 0x20's variant 0, 0x080CFDE4).
+"counter/strike" = { pool = "attack", index = 0x17, scratch_position = true }
+# MokoRus's Molokos (action 0x20's variant 1, 0x080D250C).
+"mokorus/moloko" = { pool = "attack", index = 0x2C, scratch_position = true }
+# SidBmbo's bamboo (action 0x20's variant 5, 0x080D5DBA).
+"sidbmbo/bamboo" = { pool = "attack", index = 0x44, scratch_position = true }
+# The WhitWebs' webs (action 0x20's variants 8 to 10, 0x080D4E9C).
+"whitweb/web" = { pool = "attack", index = 0x3D, scratch_position = true }
+# The navi chips (the dimming chips' navi variants): the user's warp (0x080E2D26's effect #0x0C, 0x080E2C24) and each
+# navi's controller and objects.
+"navi-chip-warp" = { pool = "effect", index = 0x0C }
+# Roll's chips (action 0x0C's variant 0x14, 0x080E5516): each chip's controller (the content's own; the original's one
+# object, effect #0x2D, its palette and the like by the chip's first parameter), Roll and her heart.
+"roll/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
+"roll-sp/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
+"roll-ds/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
+"roll/navi" = { pool = "actor", index = 0x2C }
+"roll/heart" = { pool = "attack", index = 0x4E }
+# SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
+# 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
+# them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the
+# like by its first), which each maps to; and their navis.
+"serchman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"srchmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"srchmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"thunman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"thunmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"thunmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protoman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protom-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protom-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"deltaray/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"metalman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"metlmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"metlmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"junkman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"junkmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"junkmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protoman/navi" = { pool = "actor", index = 0x3C }
+"deltaray/navi" = { pool = "actor", index = 0x3D }
+"serchman/navi" = { pool = "actor", index = 0x31 }
+"serchman/scope" = { pool = "effect", index = 0x43 }
+"serchman/shot" = { pool = "attack", index = 0x57 }
+"thunman/navi" = { pool = "actor", index = 0x37 }
+"thunman/thunder" = { pool = "attack", index = 0x71 }
+"metalman/navi" = { pool = "actor", index = 0x40 }
+"junkman/navi" = { pool = "actor", index = 0x48 }
+"junkman/poltergeist" = { pool = "effect", index = 0x73 }
+# The follow effect (effect #0x31, 0x080E58B4): one object in the original, its look and routine by its first
+# parameter; here each user's own kind: DeltaRay's bursts (look 4) and MetalMan's fist (look 5).
+"deltaray/burst" = { pool = "effect", index = 0x31 }
+"metalman/fist" = { pool = "effect", index = 0x31 }
+# The Elem chips' flame (action 0x60, 0x080CE49C).
+"elem/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+# The wind stages' wind (the actor lists' entry type 6, 0x080068DE: effect 0x41, 0x080E6820) and the gusts it blows
+# (0x080D6724).
+"wind" = { pool = "effect", index = 0x41, scratch_position = true }
+"gust" = { pool = "attack", index = 0x49, scratch_position = true }
 # Each soul's image at its change (effect 0x13, 0x080E361C: rules/souls/image), spawned at the change's registers
 # (0x080EBB20), which its first tick overwrites.
 "rollsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }

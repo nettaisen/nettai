@@ -23,7 +23,7 @@ local chip: Chip = {
     action = flick.action {
         kind = puck.kind,
         -- The row 2 of 0x080CA3A4: 10 steps.
-        puck = puck.variants.airhoc,
+        puck = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
         down = true,
     },
     auto_battle = { class = "to_front" },

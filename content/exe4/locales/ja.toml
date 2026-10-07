@@ -61,6 +61,80 @@ language = "ja"
 "bub-v" = { name = "バブルブイ", description = "ヒットすると\nななめおく2マスに\nゆうばくする" }
 "bublside" = { name = "バブルサイド", description = "ヒットすると\n上下の2マスに\nゆうばくする" }
 "navi-20" = { name = "ナビ+20", description = "ナビチップの\nあとにえらぶと\n攻撃力を+20!" }
+"meteors1" = { name = "メテオレイン1", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
+"meteors2" = { name = "メテオレイン2", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
+"meteors3" = { name = "メテオレイン3", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
+"boomer1" = { name = "ブーメラン1", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"boomer2" = { name = "ブーメラン2", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"boomer3" = { name = "ブーメラン3", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"repair" = { name = "リペア-", description = "キューブなどの\nおきもののHPを\nかいふくさせる" }
+"fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
+"ligtnin1" = { name = "ライトニング1", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"ligtnin2" = { name = "ライトニング2", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"ligtnin3" = { name = "ライトニング3", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"aquaup1" = { name = "アクアアッパー1", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"aquaup2" = { name = "アクアアッパー2", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"aquaup3" = { name = "アクアアッパー3", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"greenwd1" = { name = "グリーンウッド1", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"greenwd2" = { name = "グリーンウッド2", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"greenwd3" = { name = "グリーンウッド3", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"counter1" = { name = "カウンター1", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"counter2" = { name = "カウンター2", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"counter3" = { name = "カウンター3", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"mokorus1" = { name = "モコラッシュ1", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"mokorus2" = { name = "モコラッシュ2", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"mokorus3" = { name = "モコラッシュ3", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"sidbmbo1" = { name = "サイドバンブー1", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
+"sidbmbo2" = { name = "サイドバンブー2", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
+"sidbmbo3" = { name = "サイドバンブー3", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
+"whitweb1" = { name = "ホワイトウェブ1", description = "てきエリアの上の\nれつにくものすを\n発生させる" }
+"whitweb2" = { name = "ホワイトウェブ2", description = "てきエリアのまん中\nれつにくものすを\n発生させる" }
+"whitweb3" = { name = "ホワイトウェブ3", description = "てきエリアの下の\nれつにくものすを\n発生させる" }
+"roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"roll-sp" = { name = "ロールSP", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"roll-ds" = { name = "ロールDS", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"protoman" = { name = "ブルース", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"protom-sp" = { name = "ブルースSP", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"protom-ds" = { name = "ブルースDS", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
+"elemflar" = { name = "エレメントフレア", description = "よこ3マスの攻撃\nマグマの上だと\nパワーアップ!" }
+"elemice" = { name = "エレメントアイス", description = "よこ3マスの攻撃\nこおりの上だと\nパワーアップ!" }
+"elemleaf" = { name = "エレメントリーフ", description = "よこ3マスの攻撃\nくさむらの上だと\nパワーアップ!" }
+"elemsand" = { name = "エレメントサンド", description = "よこ3マスの攻撃\nアリジゴクの上だと\nパワーアップ!" }
+"elemdark" = { name = "エレメントダーク", description = "あんこくチップ!\nどくぬまの上だと\nパワーアップ!" }
+"serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"srchmn-sp" = { name = "サーチマンSP", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"srchmn-ds" = { name = "サーチマンDS", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"thunman" = { name = "サンダーマン", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
+"thunmn-sp" = { name = "サンダーマンSP", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
+"thunmn-ds" = { name = "サンダーマンDS", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
+"metalman" = { name = "メタルマン", description = "目の前の1マスに\nこうてつのコブシを\nふりおろす!" }
+"metlmn-sp" = { name = "メタルマンSP", description = "目の前の1マスに\nこうてつのコブシを\nふりおろす!" }
+"metlmn-ds" = { name = "メタルマンDS", description = "目の前の1マスに\nこうてつのコブシを\nふりおろす!" }
+"junkman" = { name = "ジャンクマン", description = "フィールド上の\nぶったいをうかせて\nてきにぶつける!" }
+"junkmn-sp" = { name = "ジャンクマンSP", description = "フィールド上の\nぶったいをうかせて\nてきにぶつける!" }
+"junkmn-ds" = { name = "ジャンクマンDS", description = "フィールド上の\nぶったいをうかせて\nてきにぶつける!" }
+"energbom" = { name = "エナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
+"megenbom" = { name = "メガエナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
+"binder1" = { name = "バウンドノート1", description = "1マスおきにはねる\nおんぷを2マス前に\nなげつける!" }
+"binder2" = { name = "バウンドノート2", description = "1マスおきにはねる\nおんぷを2マス前に\nなげつける!" }
+"binder3" = { name = "バウンドノート3", description = "1マスおきにはねる\nおんぷを2マス前に\nなげつける!" }
+"seekbom1" = { name = "サーチボム1", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
+"seekbom2" = { name = "サーチボム2", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
+"seekbom3" = { name = "サーチボム3", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
+"ball" = { name = "ホウガン", description = "3マス前に\nホウガンをなげる!\nパネルはかい攻撃!" }
+"geyser" = { name = "カンケツセン", description = "3マス前になげつけ\nあなマスにおちると\n水がふきだす!" }
+"thunder1" = { name = "サンダーボール1", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"thunder2" = { name = "サンダーボール2", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"thunder3" = { name = "サンダーボール3", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"antifire" = { name = "カキゲンキン", description = "てきにワナをはる\n炎の攻撃をだすと\n自分がダメージ!" }
+"antiwatr" = { name = "ダイコウズイ", description = "てきにワナをはる\n水の攻撃をだすと\n自分がダメージ!" }
+"antielec" = { name = "ヒライシン", description = "てきにワナをはる\n電気の攻撃をだすと\n自分がダメージ!" }
+"antiwood" = { name = "マヨイノモリ", description = "てきにワナをはる\n木の攻撃をだすと\n自分がダメージ!" }
+"antinavi" = { name = "ナビスカウト", description = "てきにワナをはる\nよびだしたナビを\nねがえらせる" }
+"antidmg" = { name = "カワリミ", description = "てきにワナをはる\n攻撃にあたると\nしゅりけん攻撃!" }
+"antiswrd" = { name = "シラハドリ", description = "てきにワナをはる\nソード攻撃をうけ\nながしてはんげき!" }
+"antirecv" = { name = "バッドメディスン", description = "てきにワナをはる\nてきのリカバリーが\nぎゃくにダメージに" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
@@ -155,6 +229,13 @@ language = "ja"
 "017-custom2" = { name = "カスタム2" }
 "018-megafolder2" = { name = "メガフォルダ2" }
 "019-buster-attack-10" = { name = "バスター攻撃力10" }
+"021-charge-shot-switch" = { name = "チャージ武器を変更" }
+"022-charge-shot-switch" = { name = "チャージ武器を変更" }
+"023-charge-shot-switch" = { name = "チャージ武器を変更" }
+"024-charge-shot-switch" = { name = "チャージ武器を変更" }
+"025-charge-shot-switch" = { name = "チャージ武器を変更" }
+"026-charge-shot-switch" = { name = "チャージ武器を変更" }
+"027-charge-shot-switch" = { name = "チャージ武器を変更" }
 "028-pet-menu-color-change" = { name = "PET画面カラー変更" }
 "029-pet-menu-color-change" = { name = "PET画面カラー変更" }
 "030-pet-menu-color-change" = { name = "PET画面カラー変更" }
@@ -166,10 +247,14 @@ language = "ja"
 "036-max-hp-up" = { name = "マックスHPを強化" }
 "037-max-hp-up" = { name = "マックスHPを強化" }
 "038-max-hp-up" = { name = "マックスHPを強化" }
+"039-b-left-ability-activation" = { name = "B+左で技発動" }
+"042-b-left-ability-activation" = { name = "B+左で技発動" }
 "045-default-full-synchro" = { name = "デフォルトフルシンクロ" }
 "046-first-barrier200" = { name = "ファーストバリア200" }
+"048-weapon-change" = { name = "ウェポンチェンジ" }
 "049-buster-attack-15" = { name = "バスター攻撃力15" }
 "050-gigafolder1" = { name = "ギガフォルダ1" }
+"058-charge-shot-switch" = { name = "チャージ武器を変更" }
 "059-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "060-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "061-max-hp-up" = { name = "マックスHPを強化" }
@@ -179,7 +264,18 @@ language = "ja"
 "065-max-hp-up" = { name = "マックスHPを強化" }
 "066-max-hp-up" = { name = "マックスHPを強化" }
 "067-max-hp-up" = { name = "マックスHPを強化" }
+"068-b-left-ability-activation" = { name = "B+左で技発動" }
+"069-b-left-ability-activation" = { name = "B+左で技発動" }
+"072-b-left-ability-activation" = { name = "B+左で技発動" }
+"073-b-left-ability-activation" = { name = "B+左で技発動" }
+"076-all-guard-1-2" = { name = "オールガード1/2" }
+"077-all-guard-2-2" = { name = "オールガード1/2" }
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }
+"083-charge-shot-switch" = { name = "チャージ武器を変更" }
+"084-charge-shot-switch" = { name = "チャージ武器を変更" }
+"085-charge-shot-switch" = { name = "チャージ武器を変更" }
+"086-charge-shot-switch" = { name = "チャージ武器を変更" }
+"087-charge-shot-switch" = { name = "チャージ武器を変更" }
 "088-pet-menu-color-change" = { name = "PET画面カラー変更" }
 "089-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "090-megaman-color-change" = { name = "ロックマンカラーを変更" }
@@ -194,8 +290,18 @@ language = "ja"
 "099-max-hp-up" = { name = "マックスHPを強化" }
 "100-max-hp-up" = { name = "マックスHPを強化" }
 "101-max-hp-up" = { name = "マックスHPを強化" }
+"103-fullcustom-charge-1-2" = { name = "チャージフルカスタム1/2" }
+"104-fullcustom-charge-2-2" = { name = "チャージフルカスタム2/2" }
 "105-panel-change" = { name = "パネルチェンジ" }
 "106-weapon-change" = { name = "ウェポンチェンジ" }
+"107-weapon-change" = { name = "ウェポンチェンジ" }
 "109-megafolder3" = { name = "メガフォルダ3" }
 "110-custom3" = { name = "カスタム3" }
 "111-gigafolder1" = { name = "ギガフォルダ1" }
+"112-b-left-ability-activation" = { name = "B+左で技発動" }
+"114-charge-shot-switch" = { name = "チャージ武器を変更" }
+"116-charge-shot-switch" = { name = "チャージ武器を変更" }
+"117-charge-shot-switch" = { name = "チャージ武器を変更" }
+"119-charge-shot-switch" = { name = "チャージ武器を変更" }
+"120-charge-shot-switch" = { name = "チャージ武器を変更" }
+"133-weapon-change" = { name = "ウェポンチェンジ" }
