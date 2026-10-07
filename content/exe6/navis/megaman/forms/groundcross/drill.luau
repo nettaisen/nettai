@@ -10,6 +10,7 @@
 local attachment = require("../../../../objects/attachment")
 local drill_object = require("../../../../chips/drilarm/drill")
 local lockon = require("../../../../rules/lockon")
+local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 local weapon = require("../../../../lib/weapon")
 
@@ -85,23 +86,6 @@ local function enemy_ahead(me: Object): number
     end
 end
 
--- `object_getClosestPanelMatchingRowFiltered`: from the far column of
--- `side`'s opponent toward `side`'s, the first panel of row `y` that meets
--- `rule` (column 0 if none).
-local function closest(side: number, y: number, rule: { number }): number
-    local x = 6 - 5 * side
-    local step = 2 * side - 1
-    while true do
-        if field.check(x, y, rule[1], rule[2]) then
-            return x
-        end
-        x += step
-        if not field.valid(x, y) then
-            return 0
-        end
-    end
-end
-
 -- `sub_80EF004`: once still, burrow: on the 3rd tick a puff of dust and
 -- the body leaves the field; after 30, come up by the target.
 local function burrow(me: Object, s: State)
@@ -137,7 +121,7 @@ local function burrow(me: Object, s: State)
         if rule == nil then
             error(string.format("side %d reads past byte_80EF0A4 (sub_80EF004)", me.alliance))
         end
-        x = closest(bit32.bxor(me.alliance, 1), y, rule)
+        x = panels.closest_in_row(bit32.bxor(me.alliance, 1), y, rule[1], rule[2])
     end
     me.panel_x, me.panel_y = lockon.panel(me, x, y, LOCKON)
     me:set_coordinates_from_panel()

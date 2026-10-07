@@ -233,6 +233,7 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
                 map_height: h,
                 palette,
                 scroll,
+                speeding: None,
                 anims,
             })
         })
