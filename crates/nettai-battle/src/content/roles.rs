@@ -151,8 +151,10 @@ impl KindRole {
     }
 }
 
-/// The status effects the rules inflict themselves, by role.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// The status effects the rules inflict themselves, by role (in a rule
+/// section, by its name: `damage_word_paralysis`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StatusRole {
     /// What a damage word's paralysis bit (0x4000) makes its hits carry
     /// (`sub_8019F44`).
