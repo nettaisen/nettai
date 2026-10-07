@@ -5,13 +5,13 @@
 -- each one an entry of exe4-map.md §18, which lists what is still to port (the NaviCust, the patch cards, the souls, the
 -- custom screen's own states, the chips).
 
-local custom = require("@self/custom")
 local dark_chips = require("@self/dark_chips")
 local fresh_stats = require("@self/fresh_stats")
 local light_dark = require("@self/light_dark")
 local patch_cards = require("@self/patch_cards")
 local navicust = require("@self/navicust")
 local save = require("@self/save")
+local souls = require("@self/souls")
 
 local rules: Rules = {
     -- EXE4's own stats (NaviStats bytes the engine's stats don't hold): BustPack's weapon level (+0x0B, which the
@@ -63,10 +63,10 @@ local rules: Rules = {
     },
     -- What a side keeps through a round: the dark chips' (./dark_chips).
     state = dark_chips.state,
-    -- The custom screen's: the hand's size (./custom); the dark chips' offer as it deals and what is sent of them
+    -- The custom screen's: the hand's size (./souls/custom); the dark chips' offer as it deals and what is sent of them
     -- (./dark_chips).
     custom = {
-        hand_size = custom.hand_size,
+        hand_size = souls.custom.hand_size,
         deal = dark_chips.deal,
         chip_picked = dark_chips.chip_picked,
         chip_taken_back = dark_chips.chip_taken_back,
