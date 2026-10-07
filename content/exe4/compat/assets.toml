@@ -81,6 +81,7 @@ custom-cursor = 0x07d  # the custom screen's cursor moving (0x0802049C, 0x080206
 custom-pick = 0x07e  # a chip picked on the custom screen (0x080203A0, from 0x080204B8)
 custom-back = 0x07f  # a pick taken back on the custom screen (0x080203A0, 0x0802066E, from 0x080204B8)
 custom-ok = 0x080  # OK on the custom screen (0x0802063E)
+gauge-full = 0x081  # the custom gauge full as it fills (0x080147F4), or filled at once (0x080159D0)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
 program-advance = 0x097  # the Program Advance animation's Program Advance (0x0801E83A)
 appear = 0x0b0  # the navis' appearance as a round starts (the lab's flow/buster-duel, frame 148)
