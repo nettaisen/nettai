@@ -2180,8 +2180,8 @@ impl Battle {
 
     /// `sub_801EB18(chip, damage, bonus)` on the other player's console:
     /// `side` used `chip`, whose name (with the attack's damage word and
-    /// bonus, for a chip whose damage shows) that console shows for a
-    /// second.
+    /// bonus, for a chip whose damage shows) that console shows for the
+    /// rules' `effects.used_chip_ticks`.
     pub(crate) fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
         let shows_damage = self.content.chip(chip).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0;
         let (damage, bonus) = if shows_damage { (damage, bonus) } else { (0, 0) };
@@ -2190,7 +2190,7 @@ impl Battle {
             damage: damage & 0x7FF,
             doubled: damage & 0x8000 != 0,
             bonus: bonus & !0x7800,
-            ticks: crate::hud::UsedChip::SHOWN_TICKS,
+            ticks: self.game_rules().effects.used_chip_ticks,
         });
     }
 
