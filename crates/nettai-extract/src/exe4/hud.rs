@@ -130,6 +130,12 @@ const CHATBOX_PALETTE: u32 = 0x0875_62A8;
 const CHATBOX_TEXT_PALETTE: u32 = 0x0869_F4BC;
 const CHATBOX_BOXES: u32 = 0x0804_E384;
 const CHATBOX_ARROW: u32 = 0x0868_D8DC;
+/// Where the chatbox's text starts (0x0804E3B4's +0x18, +0x19: 0x3F, 0x6D;
+/// EXE6's 0x33, 0x6C). The portrait's place is EXE6's.
+const CHATBOX_TEXT: (u8, u8) = (0x3F, 0x6D);
+/// The key-wait arrow's place (0x0804E3B4's +0x1A, +0x1B), EXE6's message
+/// box's.
+const CHATBOX_ARROW_AT: (u8, u8) = (0xE2, 0x8D);
 
 /// A palette (the hardware ignores bit 15 of a color).
 pub(crate) fn palette(rom: &Rom, a: u32) -> Palette {
@@ -323,6 +329,9 @@ pub fn hud(
             // holding banner's hold, 0x08014AA8, until the banner is gone,
             // 0x08014ABE.)
             judge_from_hold: true,
+            chatbox_text: CHATBOX_TEXT,
+            // (A description shows in the message box: its arrow's place.)
+            chatbox_arrows: [CHATBOX_ARROW_AT; 2],
             telop: Some(telop(rom)),
         },
         language: String::new(),
