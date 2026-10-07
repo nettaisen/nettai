@@ -159,10 +159,11 @@ fn bundle() -> Bundle {
             text_palette: palette(54),
         },
         // A layout of its own (EXE4's: "PAUSE" a row lower, the HP numbers
-        // at priority 1, telops laid out in code).
+        // at priority 1 under the HUD's 0, telops laid out in code).
         layout: HudLayout {
             pause: (100, 64),
             hp_number_priority: 1,
+            hud_priority: 0,
             message: (8, 2, 14),
             judge_from_hold: true,
             chatbox_text: (0x3F, 0x6D),
