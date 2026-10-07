@@ -14,9 +14,21 @@ for i = 0, 31 do
 end
 
 return {
-    -- A push reads the first of bits 2 to 5 of the hits' modifier, toward
-    -- the navi's front; the 0x80 bit picks the last five rows.
-    push_reading = "toward_front",
+    -- A push reads the first of bits 2 to 5 of the hits' final modifier,
+    -- toward the navi's front; the 0x80 bit picks the last five rows. An
+    -- obstacle's push reads the same bits from its own four rows, toward
+    -- the pusher.
+    push_reading = {
+        reads = "final",
+        bits = 4,
+        shift = { bit = 0x80, rows = 5 },
+        obstacle_rows = {
+            { dx = -1, dy = 0, panels = 6 },
+            { dx = 1, dy = 0, panels = 6 },
+            { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
+        },
+    },
     -- A FloatShoe body meets only collision types with the 0x80 self bit;
     -- the flag 0x80000000 is a bubble, on which an elec hit counts once
     -- more; a guard breaks to types with 0x2; its sea gives elec no bonus.

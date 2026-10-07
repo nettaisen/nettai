@@ -2568,7 +2568,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `effects.damage_word` | `exe6`, `exe5` | `paralysis_and_bugs`, `statuses_and_bug`; since EXE4's port data: the damage's mask and the flag bits in order (each a status by role, a hit modifier, a bug code, whether it stops) |
   | `effects.palette_flash` | `exe6`, `exe5` | `mode_runs_through_pause`, `pause_holds` |
   | `effects.obstacle_actions` | `exe6`, `exe5` | `own_from_8`, `own_from_6` |
-  | `reactions.push_reading` | `exe6`, `exe5` | `toward_front`, `by_hitter_flip` |
+  | `reactions.push_reading` | `exe6`, `exe5` | `toward_front`, `by_hitter_flip`; since EXE4's port data: which modifier it `reads` (`final`, `by_hitter_flip`), how many `bits` from bit 2, a `shift` bit, an obstacle's rows |
   | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to`, `elec_bonus_on_sea` |
   | `reactions.obstacle_slide_bounds` | part of `push_reading` | a setting of its own |
   | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
@@ -2577,13 +2577,16 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `status.emotions` | `exe6`, `exe5` | split since (below): `status.emotion`'s seven rules and `effects.full_synchro_aura`'s three |
 
 - **Still a bundle under one name** (each a whole routine of one game, named for its most visible difference):
-  `retype` (what is set, the dimmed mark, a bug code's high byte), `palette_flash` (the pause, and for variant 1 the dimming), `push_reading` (a navi's push and an
-  obstacle's), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets),
+  `retype` (what is set, the dimmed mark, a bug code's high byte), `palette_flash` (the pause, and for variant 1 the dimming), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets),
   `hp_loss` (the gauge, asking the rules at 0 HP, how a hit shows), `form_break` (which forms break, and the break's
   animation, overlay and collision region).
 - **`damage_word` is data since EXE4's port** (EXE4 decodes neither game's way: 14 bits of damage and one flag):
   the damage's mask and the flag bits in the order the game reads them, each a status by its role, a hit modifier,
   a bug code (its high byte the target lookup's row offset where so) and whether the reading stops there.
+- **`push_reading` is data since EXE4's port** (EXE4 reads six bits, its pushes up and down among them): which
+  modifier it reads (the final one, or EXE5's by the hitters' flip), how many bits from bit 2 (the first set picks
+  the row; none, the row past them), a shift bit (EXE6's 0x80, five rows on) and an obstacle's rows (EXE6's
+  `byte_800F604`, once Rust's).
 - **`status.emotions` had no honest short name** as one rule: it picked one of two whole emotion models. It has
   since been split into what it switched, each named for what it does ("`status.emotions`, split", below); no rule
   is named for a game now.

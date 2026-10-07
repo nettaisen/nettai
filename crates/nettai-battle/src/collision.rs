@@ -128,7 +128,7 @@ pub struct CollisionData {
     /// The hit modifiers of the hits it took by the hitter's flip (EXE5's
     /// +0x18 and +0x19, 0x08016AA6: an unflipped hitter's, of either side,
     /// and a flipped one's), which a push that reads by the hitter's flip
-    /// takes (`PushReading::ByHitterFlip`, EXE5's); EXE6's keeps them unread.
+    /// takes (`PushSource::ByHitterFlip`, EXE5's); EXE6's keeps them unread.
     pub hit_mod_by_side: [u8; 2],
     /// The status its hits carry, and the one the hits it took landed.
     pub status_base: Option<StatusHandle>,
