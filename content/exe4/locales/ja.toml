@@ -33,12 +33,15 @@ language = "ja"
 "hp-400" = { name = "HP+400", description = "マックスHPが\n400ふえる!" }
 "hp-50" = { name = "HP+50", description = "マックスHPが\n50ふえる!" }
 "hp-500" = { name = "HP+500", description = "マックスHPが\n500ふえる!" }
+"hubbatc" = { name = "サイトバッチ", description = "せんざいのうりょくを\n100%ひきだす\nキケンなプログラム" }
 "humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLボタンで\nはなしてみてください" }
 "jungle" = { name = "ジャングルランド", description = "ジャングルのかおりを\nほうしゅつして木属性\nウイルスをひきつける" }
 "megfldr1" = { name = "メガフォルダ1", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+1" }
 "megfldr2" = { name = "メガフォルダ2", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+2" }
 "oilbody" = { name = "オイルボディ", description = "炎属性ウイルスが\n大スキなオイルをぬり\nねらわれやすくなる!" }
+"reflect" = { name = "リフレクト", description = "B+左のコマンドで\n攻撃をはねかえす\nリフレクト!" }
 "rush" = { name = "ラッシュサポート", description = "たいせんせんよう!\nきえたあいてのニオイ\nをかぎつけとびかかる" }
+"shield" = { name = "シールド", description = "B+左のコマンドで\nほとんどの攻撃を\nふせぐシールド!" }
 "sneakrun" = { name = "シノビダッシュ", description = "自分よりよわいてきと\nであわなくなる!" }
 "soulclen" = { name = "ソウルクリーナー", description = "おのれのあくぎょうを\nくいあらためるための\nしゅぎょうプログラム" }
 "speed-1" = { name = "ラピッド+1", description = "ロックバスターの\n連射力が1アップ!" }

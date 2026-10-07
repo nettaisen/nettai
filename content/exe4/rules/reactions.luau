@@ -25,13 +25,15 @@ return {
     },
     -- The hit test (0x08012AFC): no FloatShoe test, no body under a sea (EXE4 has none), a guard breaks to types with
     -- 0x1002 (0x08012B8C) and turns aside what lacks 0x0C004000 (the engine's 0x0C005000, which a type with 0x1000
-    -- never reaches), and an untouchable body is tested with an invulnerable one, after its guard (0x08012BDC).
+    -- never reaches), and an untouchable body is tested with an invulnerable one, after its guard (0x08012BDC); a hit
+    -- turned aside marks the guard byte with 1, whatever its direction (0x08012BA6).
     hit_test = {
         float_shoe_needs_self_bit = false,
         bubbled_as_submerged = false,
         elec_reaches_submerged = false,
         guard_breaks_to = 0x1002,
         guard_before_untouchable = true,
+        guard_marks_direction = false,
     },
     -- A move's direction in the collision record (0x0800AF90, from 0x08012D9A): up, down, left or right whatever the
     -- side, across before up and down, no other.
@@ -75,4 +77,7 @@ return {
     -- A deleted player's object lets go of its collision data, is freed and counts one actor fewer, all at once
     -- (0x0801052C); its reservations stay as they are.
     dead_player = "freed",
+    -- An attack's end (0x0800CA28) hands no lockout on: its weapons and chips set them as they start (Reflect's
+    -- routine the B+Left special's cooldown, 0x0800CFC4).
+    attack_end_lockouts = false,
 }
