@@ -155,9 +155,6 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
         .iter()
         .map(|c| format!("missing {c}: unavailable assets use generated placeholders"))
         .collect::<Vec<_>>();
-    if game == Game::Exe4 {
-        warnings.push(exe4::NOT_YET.into());
-    }
     let mut graphics = match game {
         Game::Exe4 => exe4::graphics::bundle(
             &exe4::rom::Roms {

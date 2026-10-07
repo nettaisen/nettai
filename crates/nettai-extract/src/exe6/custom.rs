@@ -101,6 +101,8 @@ const LAYOUT: CustomLayout = CustomLayout {
     name_bar: 0x1D6,
     form_names: 0x139,
     slot_blank: 1,
+    detail_blank: 8,
+    empty_palette: None,
     ok_cursor: CursorPlace {
         x: 0x58 + 3,
         y: 0x70 - 2,
@@ -402,6 +404,9 @@ pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
             })
             .collect(),
         languages: Vec::new(),
+        element_sprite: None,
+        cursor_palette: None,
+        window_emblem: None,
     }
 }
 
