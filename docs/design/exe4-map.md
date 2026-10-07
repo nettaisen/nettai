@@ -1094,7 +1094,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     a recording with a support stops at its setup.
 55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
     bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
-    RNG1 never moves in the fight).
+    RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
 56. **The Mod Cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
     group): the cards' content, their handlers (0x08041E8C), the setup's `mod_cards`, exe4-compat's from a recording's
     slots (a recording with a card on stops at its setup until then).

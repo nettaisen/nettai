@@ -63,4 +63,6 @@ return {
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out", bounces = false },
     -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
     rng1_per_frame = false,
+    -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
+    bug_flicker = false,
 }
