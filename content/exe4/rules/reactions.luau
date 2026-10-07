@@ -32,6 +32,9 @@ return {
         guard_breaks_to = 0x1002,
         elec_bonus_on_sea = false,
     },
+    -- A move's direction in the collision record (0x0800AF90, from 0x08012D9A): up, down, left or right whatever the
+    -- side, across before up and down, no other.
+    move_direction = "absolute",
     -- An obstacle's slide keeps no bounds (0x0801145C, EXE5's code).
     obstacle_slide_bounds = false,
     -- An attack's end zeroes the AI data's request halfword (0x0800CA4A): a gap; nothing more cleared meanwhile.

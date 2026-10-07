@@ -37,6 +37,9 @@ return {
         guard_breaks_to = 0x1002,
         elec_bonus_on_sea = true,
     },
+    -- A move's direction in the collision record (0x0800CC92, EXE6's `sub_800E994`): up, down, back or forward by
+    -- the side, other for a move of two panels or more right or down.
+    move_direction = "by_side",
     -- An obstacle's slide keeps no bounds: it goes anywhere open (0x08014894).
     obstacle_slide_bounds = false,
     push = {
