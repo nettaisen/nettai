@@ -529,6 +529,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (lib/swords, lib/bombs, chips/vulcan/vulcan, lib/spawners and lib/plus, each on @exelib), composed from its
   variant's rows; nothing of its own.
 
+**The chips wave** (the rest of the chips, family by family, the same way):
+
+- **Spreader, HeatShot, Bubbler** (with Heat-V, HeatSide, Bub-V and BublSide: action 0x1E's variants 0 to 2,
+  `chips/spreader/spreader`, DrkSpred's family on @exelib/spreadr): each variant's gun (attachment rows 0x0A, 6 and
+  0x0E), the tick it fires past and its height (0x080EC814's rows), and the chip's bullet row (objects/bullet: 3, 8 to
+  10, 4 to 6); nothing of their own.
+
 **For the next steps:**
 
 - **Extraction** (`nettai-extract exe4`): as built, §14.
