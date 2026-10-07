@@ -22,9 +22,10 @@ local drksword: Chip = {
     hit_param = 50,
     lockout = 0,
     flags = { "has_damage", "dark", "variable_damage" },
-    action = swords.action {
+    action = swords.slash {
         id = "drksword/action",
-        hit = { region = regions.wide_long, hits = collision.hits_navis, is = collision.collision_11, hit_mod = 3 },
+        blade = swords.blade,
+        hit = { region = regions.wide_long, collision = { hits = collision.hits_navis, is = collision.collision_11 }, hit_mod = 3 },
         effect = swords.effects.dark,
         sound = swords.swing,
     },
