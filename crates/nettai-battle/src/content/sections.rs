@@ -176,6 +176,7 @@ struct StatusSection {
     form_break: super::FormBreak,
     weakness_hit_breaks_form: bool,
     weakness_mark: super::rules::WeaknessMark,
+    paused_navi: super::rules::PausedNavi,
 }
 
 /// The `fresh_stats` section but its weapon (`mode9_a`, a definition) and
@@ -291,6 +292,7 @@ impl Stated {
                 form_break: r.form_break,
                 weakness_hit_breaks_form: r.weakness_hit_breaks_form,
                 weakness_mark: r.weakness_mark,
+                paused_navi: r.paused_navi,
             }),
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
@@ -336,6 +338,7 @@ impl Stated {
             form_break: status.form_break,
             weakness_hit_breaks_form: status.weakness_hit_breaks_form,
             weakness_mark: status.weakness_mark,
+            paused_navi: status.paused_navi,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
                 no_charge_drive: status.no_charge_drive,

@@ -574,8 +574,8 @@ impl Screen {
         if let Phase::ProgramAdvance { anim } = &mut self.phase {
             anim.fade = anim.fade.saturating_sub(1);
         }
-        self.look.fade.step();
-        self.look.window_fade.step();
+        self.look.fade.step(crate::content::FadeClear::AtTarget);
+        self.look.window_fade.step(crate::content::FadeClear::AtTarget);
         request
     }
 
@@ -792,7 +792,7 @@ impl Screen {
                     return;
                 }
                 let id = view.library.program_advance_banner(pa.len != 0);
-                self.hud.start(id, view.library.banner_holds(id));
+                self.hud.start(id, view.library.banner_holds(id), view.library.banner_steps());
                 next(anim, S::BannerIn);
             }
             S::BannerIn => {
