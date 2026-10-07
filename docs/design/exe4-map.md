@@ -523,6 +523,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   front-most panel across the rows, 0x0800A1E4; the user's from the far edge, 0x0800A1AE) and the shot sparing the
   other side's back column (`spares`, 0x080CF0A6); the dimming, its telop and the controller's phases are the engine's
   and @exelib/dimming's, as EXE5's.
+- **Sword, WideSwrd** (with LongSwrd, WideBlde, LongBlde: action 0x0A's variants 0 to 4), **MiniBomb** (action
+  0x09's variant 0, bomb variant 0), **Vulcan1** (with Vulcan2 and 3: action 0x1F's variants 0 to 2) and **Atk+10**
+  (with Atk+30: action 0x20's variant 4, a plus chip, `modifier = "attack_plus"`): each a chip of group A's families
+  (lib/swords, lib/bombs, chips/vulcan/vulcan, lib/spawners and lib/plus, each on @exelib), composed from its
+  variant's rows; nothing of its own.
 
 **For the next steps:**
 

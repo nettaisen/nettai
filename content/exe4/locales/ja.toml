@@ -30,6 +30,17 @@ language = "ja"
 "drkrecov" = { name = "ダークリカバリー", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
 "panlgrab" = { name = "パネルスチール", description = "前方のてきエリアの\n1マスを 自分の\nエリアにぬりかえる" }
 "areagrab" = { name = "エリアスチール", description = "てきエリアの左はし\nたて1れつを自分の\nエリアにぬりかえる" }
+"sword" = { name = "ソード", description = "目の前のてきを\nきりつける!\n攻撃はんいは1マス" }
+"wideswrd" = { name = "ワイドソード", description = "目の前のてきを\nきりつける!\nはんいはたて3マス" }
+"longswrd" = { name = "ロングソード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
+"wideblde" = { name = "ワイドブレード", description = "目の前のてきを\nきりつける!\nはんいはたて3マス" }
+"longblde" = { name = "ロングブレード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
+"minibomb" = { name = "ミニボム", description = "3マス前におちる\nボムをなげつける" }
+"vulcan1" = { name = "バルカン1", description = "3れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"vulcan2" = { name = "バルカン2", description = "5れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"vulcan3" = { name = "バルカン3", description = "7れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"atk-10" = { name = "アタック+10", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+10できる" }
+"atk-30" = { name = "アタック+30", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+30できる" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
