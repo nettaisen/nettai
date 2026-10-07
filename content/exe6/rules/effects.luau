@@ -53,6 +53,13 @@ return {
     -- The held button raises a hold request and charges to full (`sub_8012FC8`, `sub_8012EBC`): A then B, pressing the
     -- other switching; L and R turn the navi, or with a full gauge ask for the custom screen; B then back (by facing).
     charge = "hold_flags",
+    -- A held direction steps by the first of up, down, right, left held (`sub_800FA54`); confused, up and down swap,
+    -- right and left (`byte_800FAA4`); the idle starts the step whether or not it can go (`sub_80F0354`).
+    steps = {
+        keys = { "up", "down", "right", "left" },
+        confused = { up = "down", down = "up", left = "right", right = "left" },
+        idle_checks_target = false,
+    },
     -- A screen fade toward clear ends on the step whose level reaches its target (`sub_8006366`).
     fade_clear = "at_target",
     -- A banner (`sub_801CE28`) slides in for 5 ticks, holds 0x30, slides out for 5; one that holds until let go has

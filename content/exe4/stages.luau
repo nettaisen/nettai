@@ -332,9 +332,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-37"] = {
         layout = {
-            "cracked sea cracked cracked sea cracked",
-            "sea sea sea sea sea sea",
-            "cracked sea cracked cracked sea cracked",
+            "cracked metal cracked cracked metal cracked",
+            "metal metal metal metal metal metal",
+            "cracked metal cracked cracked metal cracked",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -345,9 +345,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-38"] = {
         layout = {
-            "cracked sea cracked cracked sea cracked",
-            "sea sea sea sea sea sea",
-            "cracked sea cracked cracked sea cracked",
+            "cracked metal cracked cracked metal cracked",
+            "metal metal metal metal metal metal",
+            "cracked metal cracked cracked metal cracked",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -358,9 +358,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-39"] = {
         layout = {
-            "grass grass metal metal grass grass",
-            "grass metal metal metal metal grass",
-            "grass grass metal metal grass grass",
+            "grass grass pitfall pitfall grass grass",
+            "grass pitfall pitfall pitfall pitfall grass",
+            "grass grass pitfall pitfall grass grass",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -371,9 +371,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-40"] = {
         layout = {
-            "grass grass metal metal grass grass",
-            "grass metal metal metal metal grass",
-            "grass grass metal metal grass grass",
+            "grass grass pitfall pitfall grass grass",
+            "grass pitfall pitfall pitfall pitfall grass",
+            "grass grass pitfall pitfall grass grass",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -384,9 +384,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-41"] = {
         layout = {
-            "metal grass metal metal grass metal",
+            "pitfall grass pitfall pitfall grass pitfall",
             "grass grass grass grass grass grass",
-            "metal grass metal metal grass metal",
+            "pitfall grass pitfall pitfall grass pitfall",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -397,9 +397,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-42"] = {
         layout = {
-            "metal grass metal metal grass metal",
+            "pitfall grass pitfall pitfall grass pitfall",
             "grass grass grass grass grass grass",
-            "metal grass metal metal grass metal",
+            "pitfall grass pitfall pitfall grass pitfall",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -410,9 +410,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-43"] = {
         layout = {
-            "metal metal grass grass metal metal",
+            "pitfall pitfall grass grass pitfall pitfall",
             "grass grass grass grass grass grass",
-            "metal metal grass grass metal metal",
+            "pitfall pitfall grass grass pitfall pitfall",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -423,9 +423,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-44"] = {
         layout = {
-            "metal metal grass grass metal metal",
+            "pitfall pitfall grass grass pitfall pitfall",
             "grass grass grass grass grass grass",
-            "metal metal grass grass metal metal",
+            "pitfall pitfall grass grass pitfall pitfall",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -774,9 +774,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-71"] = {
         layout = {
-            "metal metal metal metal metal metal",
-            "metal grass metal metal grass metal",
-            "metal metal metal metal metal metal",
+            "pitfall pitfall pitfall pitfall pitfall pitfall",
+            "pitfall grass pitfall pitfall grass pitfall",
+            "pitfall pitfall pitfall pitfall pitfall pitfall",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
@@ -787,9 +787,9 @@ local stages: { [string]: StageDef } = {
     },
     ["netbattle-72"] = {
         layout = {
-            "metal metal metal metal metal metal",
-            "metal grass metal metal grass metal",
-            "metal metal metal metal metal metal",
+            "pitfall pitfall pitfall pitfall pitfall pitfall",
+            "pitfall grass pitfall pitfall grass pitfall",
+            "pitfall pitfall pitfall pitfall pitfall pitfall",
         },
         panel_pattern = 0x38,
         background = asset.background("comp"),
