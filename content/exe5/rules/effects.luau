@@ -15,7 +15,18 @@ return {
     shake = "battle_rng",
     spark_steps_at_start = false,
     retype = "is_alone",
-    damage_word = "statuses_and_bug",
+    -- Its damage words (0x080165EC): the damage the low 11 bits, doubled with 0x8000; then 0x4000 the paralysis (status
+    -- byte 0x10) without a flinch and no more, else 0x2000 the confusion (0x20) and no more, else 0x1000 the blindness
+    -- (0x30); then 0x800 bug code 0x18 with high byte 0x11.
+    damage_word = {
+        damage = 0x7FF,
+        flags = {
+            { bit = 0x4000, status = "damage_word_paralysis", hit_modifier = 0, stop = true },
+            { bit = 0x2000, status = "damage_word_confusion", stop = true },
+            { bit = 0x1000, status = "damage_word_blindness" },
+            { bit = 0x800, bug = 0x1118 },
+        },
+    },
     palette_flash = "pause_holds",
     -- Presentation: its flash is a palette transform in slot 9 (0x080E104C), before the fade system's (slots 18 on), so
     -- a dimming darkens the white it put in the stage's palettes: a flash under a dimming is white a quarter down.

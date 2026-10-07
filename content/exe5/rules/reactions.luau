@@ -11,7 +11,20 @@
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
 return {
-    push_reading = "by_hitter_flip",
+    -- A push reads the first of bits 2 to 5 of the unflipped hitters' modifier, else the flipped ones' with the
+    -- direction reversed (0x0800C9D8); an obstacle's the same from its own rows (0x0800D4B0, the table at 0x0800D53B:
+    -- EXE6's four and a fifth of nothing).
+    push_reading = {
+        reads = "by_hitter_flip",
+        bits = 4,
+        obstacle_rows = {
+            { dx = -1, dy = 0, panels = 6 },
+            { dx = 1, dy = 0, panels = 6 },
+            { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
+            { dx = 0, dy = 0, panels = 0 },
+        },
+    },
     -- The hit test (0x0801691C), where games differ: a FloatShoe body is hit by all (EXE5's collision types have no
     -- 0x80 self bit); the flag 0x80000000 is a body under the sea's surface, tested as a submerged one, and elec
     -- reaches either; a guard breaks to types with 0x1002 (so its own turn-aside mask, 0x0C004000, is the engine's

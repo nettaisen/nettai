@@ -399,3 +399,60 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
+
+## 15. EXE4's rules (as read)
+
+What EXE4's rule sections say, each from the routine that decides it (Red Sun US's address; EXE5's or EXE6's
+counterpart where the map pairs one). Where EXE4 decodes neither game's way, the engine's rule became data (rather
+than a third named choice): the damage word and the push reading so far, each with EXE6's and EXE5's sections
+restating theirs the same.
+
+- **pools**: 8 actors, 32 attacks, 32 effects (§3.1).
+- **fresh_stats**: the Regular memory 4 (a new game's: the save's 0x2148 is the Regular memory less 4, which
+  0x0802D570 works out from the key items, RegUp1 + 2 RegUp2 + 3 RegUp3; 50 at most); the custom level 5 and the mood
+  0x99 (a new block's, 0x0800D6BE).
+- **flow**:
+  - `result_words` 37: a custom screen's result is the hand's 0x50 bytes and NaviStats' 0x40, 0x25 words
+    (0x080088EA; EXE5's 49, EXE6's 50);
+  - `sequencer_before_custom` false and `escape_check` false: EXE6's `sub_8008452`/`sub_8008492` and
+    `sub_800AAD6` are absent (EXE4 has no turn-start transformation sequencer and no Cross);
+  - `result_wait` 102, 65 when the battle's flags (0x08007EEC's table by battle mode) have 2 (0x08007252, as
+    EXE5's);
+  - `intro_from_black` false: the intro's fade (0x080E1EBC) reads the BattleState (EXE5's reads a register the open
+    bus fills);
+  - `low_hp_music` false: EXE6's switch, `sub_8009158`, is absent, and EXE4 queues no tempo request (§3.4);
+  - `navi_win_banner`: the win (0x08007252) shows the winner navi's banner (0x08008534) when event flag 0x1187 is
+    set (0x080406A4), which the main subsystem 0x080406B0 sets as it starts and a game's load clears; else banner 8,
+    0x18 on the judge's ruling; mode 0x44 its own song and banner. Read as every link battle (EXE6's `link_battle`):
+    to confirm (§16).
+- **chip_use**: a dimming chip's action (0x0C, 0x080EB9EA) is EXE5's dimming handler and leaves the action on the
+  frame it runs (`leave_on_use`); AntiNavi's sparkle (0x0800815C) is EXE5's, the panel's center 16 up; no mixed
+  modifiers (EXE4 has no capsules).
+- **effects**: the shake (0x08025FE0) draws from RNG2 and holds while paused without dimming (EXE5's
+  `battle_rng`); a hit spark (EXE5's 0x080E0870, the same code), afterimages and overlays (the same code) as EXE5's;
+  the retype (0x08012ED0) EXE5's, storing what it hits to the row number plus 0x5C (`is_alone`); the palette
+  flash (0x080E2A34) EXE5's hold, in palette slot 9 (`before_fades`, the fades' slots to confirm); the sprite frame
+  load (IWRAM 0x0300632C) EXE5's code; the obstacles' actions from 6 (the player's table, 0x080EAEFC: six framework
+  states, entry, take control, deletion, flinch, paralysis, drag, then the kind's own); the Full Synchro aura
+  (0x080CD180) EXE5's. **The damage word** (0x08012860) is EXE4's own: the damage the low 14 bits, 0x8000 doubling,
+  and 0x4000 status 0x12 without a flinch, nothing else.
+- **reactions**: the slide and drag speeds 0xA0000 and 0x80000 (0x0801077C, 0x080111E8: EXE5's); **the push**
+  (0x0800ACAA, an obstacle's 0x0800B1C0) reads the final modifier's bits 2 to 7: back, forward, a panel back, a
+  panel forward, up, down (0x0800ACDC, an obstacle's copy 0x0800B218), times the front (0x0800AB88) or the pusher's
+  side (its hit flags 0xA2000000 and 0x51000000, as EXE5's). EXE4's ice slide table isn't EXE5's nor where its
+  routine's was: to read.
+- **The collision record** EXE4's shared routines use (the retype, the damage word, the push): the hit modifier at
+  +0x0C, the final modifier at +0x0D, the status at +0x0E, the damage at +0x1E, the hit flags at +0x54 (and +0x80, kept
+  while dimmed), what it is at +0x58, what it hits at +0x5C (EXE5's +0x0E, +0x0F, +0x10, +0x2E, +0x68, +0x30, +0x34).
+- **panels** (to read): EXE4 has 12 panel types, their flag words at 0x0800A3A8: 0 0x18000, 1 0x14000, 2 0x10010,
+  3 0x10050, 4 0x10110, 5 0x30010, 6 0x10410, 7 0x10810, 8 0x11010, 9 0x12010, 10 0x10210, 11 0x10010 (its type 5,
+  Tango's metal, has EXE5's sea's flags; its type 10 EXE5's metal's).
+
+## 16. To confirm by recording
+
+Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
+
+- The win banner: a link battle's KO win shows the winner navi's banner (event flag 0x1187 set in the netbattle's
+  subsystem, §15 flow).
+- The palette flash before the fades: EXE4's fade slots (§15 effects).
+- The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
