@@ -16,7 +16,8 @@ return {
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
         holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
-        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire" },
+        -- A fire hit counts once more on a body standing on grass (`applyHeatOnGrassDamage_300766c`).
+        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire", doubles = "fire" },
         ice = { flags = 0x00010810, trail_sound = asset.sound("freeze") },
         volcano = { flags = 0x00011010, trail_sound = asset.sound("panel-volcano"), cleared_by = "aqua" },
         road_up = {
