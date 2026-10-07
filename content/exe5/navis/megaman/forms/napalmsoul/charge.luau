@@ -7,6 +7,7 @@
 
 local bullet = require("../../../../objects/bullet")
 local bullets = require("@exelib/bullet")
+local regions = require("@exelib/regions")
 
 local charge = {}
 
@@ -22,6 +23,12 @@ local SHOTS = 3
 -- The bullets' heights, by a draw's low two bits (pixels).
 local HEIGHTS = { [0] = 8, 16, 24, 32 }
 local SOUND = asset.sound("col-army-2")
+-- The bullets (rows 0x11 and 0x12, the last one's; EXE6's ColArmy's and ColForce's with their statuses): the panel
+-- found and the one behind it, staggering (the last flinching), the hit shown once at the bullet (effect 0x58: EXE5's
+-- own vulcan hit, its animation 1).
+local HIT = new.effect { sprite = asset.sprite("vulcan-hit"), anim = 1, palette = 0 }
+local SHOT = bullet.variant { region = regions.long, hit_mod = 1, effect = HIT, single = true }
+local LAST_SHOT = bullet.variant { region = regions.long, hit_mod = 3, effect = HIT, single = true }
 local RAISE_ANIM, FIRE_ANIM = 16, 17
 local RAISE_TICKS, BETWEEN, RECOVER_TICKS = 1, 10, 10
 
@@ -55,7 +62,7 @@ local function fire(me: Object, s: State)
         return
     end
     s.timer = BETWEEN
-    local variant = if s.shots > 1 then bullet.variants.napalm else bullet.variants.napalm_last
+    local variant = if s.shots > 1 then SHOT else LAST_SHOT
     local z = HEIGHTS[bit32.band(battle.rng_positive(), 3)] * 0x1_0000
     local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
     bullets.fire(bullet.kind, me, me.panel_x + me.facing, me.panel_y, z, variant, me.attack_element, damage)
