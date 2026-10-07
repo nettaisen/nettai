@@ -250,7 +250,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
             ai_mut(b, r).primed = false;
             b.sound(BONUS_SOUND);
         }
-        Some(Boost::Grass) => {
+        Some(Boost::Panel) => {
             let p = b.objects.get(r).panel;
             b.set_panel_type(p.x, p.y, b.game_rules().panels.roles.normal);
             b.sound(BONUS_SOUND);
@@ -583,9 +583,9 @@ enum Boost {
     NullDoubled,
     /// A primed form's (spent by the use: EXE5's GyroSoul).
     Primed,
-    /// A form's chips on grass (the use turns it normal: EXE5's
-    /// TomahawkSoul).
-    Grass,
+    /// A form's chips on its panel type (the use turns the panel normal:
+    /// EXE5's TomahawkSoul on grass).
+    Panel,
 }
 
 /// `sub_8012A38`: whether the use doubles the chip's damage. A primed
@@ -603,7 +603,7 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16
             Some(EmotionRole::FullSynchro) => Some(Boost::FullSynchro),
             Some(EmotionRole::Angry) => Some(Boost::Anger),
             _ if charge_doubles(b, r, chip, charge) => Some(Boost::Charged),
-            _ if grass_doubles(b, r, cd) => Some(Boost::Grass),
+            _ if panel_doubles(b, r, cd) => Some(Boost::Panel),
             _ if null_doubles(b, r, chip) => Some(Boost::NullDoubled),
             _ => None,
         }
@@ -636,14 +636,12 @@ fn primed_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
     deals_damage(cd.flags) && priming.doubles.iter().any(|&rule| chip_matches(rule, cd))
 }
 
-/// EXE5's 0x0801032A: a form with `grass_doubles` (TomahawkSoul) standing
-/// on grass doubles the chips it names (not dimming chips).
-fn grass_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
-    let Some(rule) = form_of(b, r).grass_doubles else { return false };
+/// EXE5's 0x0801032A: a form with `panel_doubles` (TomahawkSoul) standing
+/// on its panel type (grass) doubles the chips it names (not dimming chips).
+fn panel_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
+    let Some(rule) = form_of(b, r).panel_doubles else { return false };
     let p = b.objects.get(r).panel;
-    b.field.panel(p.x, p.y).is_some_and(|panel| b.game_rules().panels.is_named(panel.kind, "grass"))
-        && deals_damage(cd.flags)
-        && chip_matches(rule, cd)
+    b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == rule.panel) && deals_damage(cd.flags) && chip_matches(rule.chips, cd)
 }
 
 /// `sub_8012ABC`: a form with `doubles_null` (Beast Over) doubles its

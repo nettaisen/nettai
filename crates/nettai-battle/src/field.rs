@@ -795,21 +795,24 @@ impl Battle {
         true
     }
 
-    /// `object_panel_setPoison`: a solid panel turns to poison.
-    pub fn poison_panel(&mut self, x: u8, y: u8) -> bool {
+    /// `object_panel_setPoison` and its kind: a solid panel becomes type `t`
+    /// in place, its flags word keeping the bits the type mask doesn't own
+    /// and taking the type's own (the original's 0x114 for poison), no type
+    /// change's hooks, with `sound`. Whether it was solid.
+    pub fn overwrite_panel(&mut self, x: u8, y: u8, t: PanelType, sound: Option<SoundId>) -> bool {
         let rules = &self.content.rules().panels;
         let mask = rules.type_mask;
-        let poison = rules.named("poison").expect("the game's poison panel");
-        // (The type's own bits, those the mask owns: the original's 0x114.)
-        let bits = rules.type_flags(poison) & mask;
+        let bits = rules.type_flags(t) & mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         if p.flags & pflags::SOLID == 0 {
             return false;
         }
         p.flags = (p.flags & !mask) | bits;
-        p.kind = poison;
-        p.display_kind = poison;
-        self.sound(SoundRole::PanelPoison);
+        p.kind = t;
+        p.display_kind = t;
+        if let Some(s) = sound {
+            self.play_sound(s);
+        }
         true
     }
 
@@ -921,7 +924,7 @@ mod tests {
             b.set_panel_type(2, 2, panel("normal"));
             b.field.panels[1][2].flags |= 0x20000 | 0x0800_0000;
             b.field.panels[2][2].flags |= 0x20000;
-            assert!(b.crack_panel(2, 1) && b.poison_panel(2, 2));
+            assert!(b.crack_panel(2, 1) && b.overwrite_panel(2, 2, panel("poison"), None));
             (b.field.panels[1][2].flags, b.field.panels[2][2].flags)
         };
         let cracked = |extra: u32| extra | 0x0800_0000 | pflags::CRACKED | pflags::SOLID | 3;
