@@ -7,16 +7,6 @@
 -- numbering, its netbattle 0; EXE4's records have no effects word nor EXE6's panel pattern, so each states EXE5's
 -- netbattle's (0x88C, 0x38: no turning, each navi facing its side). A record's numbers are compat's.
 -- Waiting (EXE4's obstacles and panels to port):
---   netbattle-21 (layout 0x20, actors 0x080fc61f): actor kinds 3
---   netbattle-22 (layout 0x20, actors 0x080fc630): actor kinds 3
---   netbattle-25 (layout 0x25, actors 0x080fc641): actor kinds 3
---   netbattle-26 (layout 0x25, actors 0x080fc652): actor kinds 3
---   netbattle-27 (layout 0x25, actors 0x080fc663): actor kinds 3
---   netbattle-28 (layout 0x25, actors 0x080fc674): actor kinds 3
---   netbattle-29 (layout 0x26, actors 0x080fc685): actor kinds 3
---   netbattle-30 (layout 0x26, actors 0x080fc696): actor kinds 3
---   netbattle-31 (layout 0x26, actors 0x080fc6a7): actor kinds 3
---   netbattle-32 (layout 0x26, actors 0x080fc6b8): actor kinds 3
 --   netbattle-33 (layout 0x30, actors 0x080fc6c9): actor kinds 5
 --   netbattle-34 (layout 0x30, actors 0x080fc6da): actor kinds 5
 --   netbattle-35 (layout 0x31, actors 0x080fc6c9): actor kinds 5
@@ -42,6 +32,8 @@
 --   netbattle-95 (layout 0x81, actors 0x080fc7b7): actor kinds 6
 --   netbattle-96 (layout 0x81, actors 0x080fc7c8): actor kinds 6
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
+
+local boulder = require("./objects/boulder")
 
 local stages: { [string]: StageDef } = {
     ["netbattle-1"] = {
@@ -304,6 +296,42 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
+    ["netbattle-21"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "grass grass grass grass grass grass",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = boulder.kind, x = 2, y = 2 },
+            { place = boulder.kind, x = 5, y = 2 },
+        },
+    },
+    ["netbattle-22"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "grass grass grass grass grass grass",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = boulder.kind, x = 5, y = 2 },
+            { place = boulder.kind, x = 2, y = 2 },
+        },
+    },
     ["netbattle-23"] = {
         layout = {
             "normal normal grass grass normal normal",
@@ -329,6 +357,150 @@ local stages: { [string]: StageDef } = {
         battle_number = 0,
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-25"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "normal normal normal normal normal normal",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = boulder.kind, x = 2, y = 1 },
+            { place = boulder.kind, x = 5, y = 3 },
+        },
+    },
+    ["netbattle-26"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "normal normal normal normal normal normal",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = boulder.kind, x = 5, y = 3 },
+            { place = boulder.kind, x = 2, y = 1 },
+        },
+    },
+    ["netbattle-27"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "normal normal normal normal normal normal",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = boulder.kind, x = 2, y = 3 },
+            { place = boulder.kind, x = 5, y = 1 },
+        },
+    },
+    ["netbattle-28"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "normal normal normal normal normal normal",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = boulder.kind, x = 5, y = 1 },
+            { place = boulder.kind, x = 2, y = 3 },
+        },
+    },
+    ["netbattle-29"] = {
+        layout = {
+            "normal grass normal normal grass normal",
+            "grass normal grass grass normal grass",
+            "normal grass normal normal grass normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = boulder.kind, x = 3, y = 1 },
+            { place = boulder.kind, x = 4, y = 3 },
+        },
+    },
+    ["netbattle-30"] = {
+        layout = {
+            "normal grass normal normal grass normal",
+            "grass normal grass grass normal grass",
+            "normal grass normal normal grass normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = boulder.kind, x = 4, y = 3 },
+            { place = boulder.kind, x = 3, y = 1 },
+        },
+    },
+    ["netbattle-31"] = {
+        layout = {
+            "normal grass normal normal grass normal",
+            "grass normal grass grass normal grass",
+            "normal grass normal normal grass normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = boulder.kind, x = 3, y = 3 },
+            { place = boulder.kind, x = 4, y = 1 },
+        },
+    },
+    ["netbattle-32"] = {
+        layout = {
+            "normal grass normal normal grass normal",
+            "grass normal grass grass normal grass",
+            "normal grass normal normal grass normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 5, y = 2 },
+            { place = "navi", side = 0, x = 2, y = 2 },
+            { place = boulder.kind, x = 4, y = 1 },
+            { place = boulder.kind, x = 3, y = 3 },
+        },
     },
     ["netbattle-37"] = {
         layout = {
