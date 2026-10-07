@@ -64,4 +64,9 @@ return {
     -- icon (the chip record's +0x20), each next one two pixels up and two left: sprites of priority 1 in the field's layer,
     -- the first in the depth bucket of the icons' count and each next one a bucket lower. EXE4 has no attach points.
     chip_icons = "navi_offset",
+    -- The other player's console names a chip a player used (0x0800C7A8 to 0x080164B4) as a banner of the second block
+    -- (0x02037CF0) that shows without sliding (its table's state 3, 0x08016508): drawn the tick it is laid out, through
+    -- its hold of 30 (0x080149CE) and the tick it lets go of its sprites (0x080149E6), 32 frames (the count includes the
+    -- tick it starts on, as EXE6's 0x3C does).
+    used_chip_ticks = 33,
 }

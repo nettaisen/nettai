@@ -227,6 +227,11 @@ pub struct EffectsRules {
     /// Where and which chip icons the HUD stacks over a navi.
     /// Presentation: the renderer's.
     pub chip_icons: ChipIcons,
+    /// The ticks the other player's console names a chip a player used,
+    /// the tick it starts on counted (`Battle::used_chip_for`: EXE6's
+    /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
+    /// of the second block that shows without sliding, 33).
+    pub used_chip_ticks: u8,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the
