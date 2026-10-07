@@ -642,8 +642,7 @@ impl Side {
     /// level gives it (`levels`: EXE6's MegaMan and link navis, a navi
     /// code's; `story`: EXE5's team navis; EXE5's MegaMan has neither).
     pub fn takes_level(&self, content: &Content) -> bool {
-        let navi = content.navi(self.navi(content));
-        navi.levels.is_some() || navi.story.is_some()
+        content.navi(self.navi(content)).last_level().is_some()
     }
 }
 
