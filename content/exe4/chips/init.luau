@@ -32,4 +32,17 @@ return merge {
     require("@self/spreader"),
     require("@self/sword"),
     require("@self/vulcan"),
+    -- A navi chip's chips, with its navi.
+    require("./navis/megaman/forms/aquasoul/chip"),
+    require("./navis/megaman/forms/firesoul/chip"),
+    require("./navis/megaman/forms/gutssoul/chip"),
+    require("./navis/megaman/forms/junksoul/chip"),
+    require("./navis/megaman/forms/metalsoul/chip"),
+    require("./navis/megaman/forms/numbersoul/chip"),
+    require("./navis/megaman/forms/protosoul/chip"),
+    require("./navis/megaman/forms/rollsoul/chip"),
+    require("./navis/megaman/forms/searchsoul/chip"),
+    require("./navis/megaman/forms/thundersoul/chip"),
+    require("./navis/megaman/forms/windsoul/chip"),
+    require("./navis/megaman/forms/woodsoul/chip"),
 }

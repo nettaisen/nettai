@@ -28,6 +28,18 @@ language = "en"
 "drkspred" = { name = "DrkSpred", description = "DARKCHIP\nCREATED\nBY DESIRE" }
 "drkstage" = { name = "DrkStage", description = "DARKCHIP\nCREATED\nBY DESIRE" }
 "drkrecov" = { name = "DrkRecov", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"rollsoul" = { name = "RollSoul", description = "RollSoul" }
+"gutssoul" = { name = "GutsSoul", description = "GutsSoul" }
+"windsoul" = { name = "WindSoul", description = "WindSoul" }
+"srchsoul" = { name = "SrchSoul", description = "SrchSoul" }
+"firesoul" = { name = "FireSoul", description = "FireSoul" }
+"thunsoul" = { name = "ThunSoul", description = "ThunSoul" }
+"protsoul" = { name = "ProtSoul", description = "ProtSoul" }
+"numsoul" = { name = "NumSoul", description = "NumSoul" }
+"metlsoul" = { name = "MetlSoul", description = "MetlSoul" }
+"junksoul" = { name = "JunkSoul", description = "JunkSoul" }
+"aquasoul" = { name = "AquaSoul", description = "AquaSoul" }
+"woodsoul" = { name = "WoodSoul", description = "WoodSoul" }
 "panlgrab" = { name = "PanlGrab", description = "Steals 1\nenemy\nsquare!" }
 "areagrab" = { name = "AreaGrab", description = "Steals\nleft edge\nfrom enmy" }
 "sword" = { name = "Sword", description = "Cuts enmy\nin front!\nRange: 1" }
