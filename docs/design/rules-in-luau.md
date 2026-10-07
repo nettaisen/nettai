@@ -2609,6 +2609,8 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   EXE4's 20) and whether a player burns while the battle is dimmed (`players_while_dimmed`: EXE4's);
   `grass_heal_slows_at`: the HP at or below which grass heals a wood body on the 180-tick count (EXE6's and EXE5's 9;
   EXE4's none).
+- **`status.timers_while_paused`, since EXE4's port**: whether a navi's status timers count while the battle is paused
+  (EXE4's 0x0800AE58, before its navi takes control) or hold (EXE6's `sub_800E730`, EXE5's).
 - **`effects.destroy`, since EXE4's port**: what an object's destroy does with its collision before freeing it:
   `frees` it as it is (EXE6's, after releasing what marked reservations hold; EXE5's), or `unregisters` it first
   (EXE4's: `object_removeCollisionData`, its panels refreshed and its hits and clearings resolved on them).
