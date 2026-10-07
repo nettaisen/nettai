@@ -1074,6 +1074,8 @@ pub struct Rules {
     /// How a navi's status block runs its reactions (rule section
     /// `status`).
     pub reactions: Reactions,
+    /// How a navi's reaction actions run (rule section `status`).
+    pub reaction_actions: ReactionActions,
     /// A side's emotions where games differ (rule section `status`'s
     /// `emotion`): how one is read off the navi, what holds a mood, how
     /// anger leaves it.
@@ -1242,6 +1244,34 @@ pub enum Reactions {
     /// (0x08017084 unless its flag2 bit, the engine's 0x4000), and resets
     /// nothing else.
     FlashTimerFirst,
+}
+
+/// How a navi's reaction actions run, flinch, paralysis (and freeze and
+/// bubble) and drag (the status section's `reaction_actions`), where games
+/// differ beyond their hooks and requests.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReactionActions {
+    /// EXE6's (`sub_80174FE`, `sub_80175B8`, `sub_80178D4`, `sub_8017A38`;
+    /// EXE5's alike, 0x08014132 on): each marks the action in use (flag
+    /// 0x400000) and leaves it at its end; a flinch and a paralysis snap the
+    /// body to its panel, on the ground, unless it slides; each counts a
+    /// reaction (the side's stat 3) and lets go of the navi's overlay link;
+    /// the drag takes the paralyzed pose (2) or SuperArmor's (0) where they
+    /// hold, else the flinch's, puts the body on the panel's ground line,
+    /// and at its end clears the slide, the paralysis and the drag's own
+    /// states, the pose back to standing, or turns to a paralysis that
+    /// outlasts it. (EXE5's drag has no paralyzed pose, 0x08014304: a
+    /// difference no recording has shown.)
+    Marked,
+    /// EXE4's (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks
+    /// the action in use or lets go of the overlay link; the flinch keeps
+    /// the body's height as it snaps it, and the paralysis snaps it, at its
+    /// height, sliding or not, and counts no reaction; the drag takes the
+    /// flinch's pose, keeps the height, counts no reaction, and at its end
+    /// clears the drag alone and goes to idle in the pose it had, paralyzed
+    /// or not.
+    Plain,
 }
 
 /// What reserving a panel does to its holder (the panels section's
