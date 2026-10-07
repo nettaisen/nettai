@@ -173,21 +173,15 @@ pub enum StatusRole {
     /// What an aqua hit gives a body standing on ice (`sub_801A0E0`'s
     /// freeze).
     IceFreeze,
-    /// The NaviCust on-hit bug's statuses (`sub_8013F1E`, bug levels 1 and
-    /// 2).
-    HitBugBlind,
-    HitBugConfuse,
 }
 
 impl StatusRole {
-    pub const ALL: [StatusRole; 7] = [
+    pub const ALL: [StatusRole; 5] = [
         StatusRole::DamageWordParalysis,
         StatusRole::DamageWordConfusion,
         StatusRole::DamageWordBlindness,
         StatusRole::CounterParalysis,
         StatusRole::IceFreeze,
-        StatusRole::HitBugBlind,
-        StatusRole::HitBugConfuse,
     ];
 
     /// Its name in `rules/roles.luau`'s `statuses`.
@@ -198,8 +192,6 @@ impl StatusRole {
             StatusRole::DamageWordBlindness => "damage_word_blindness",
             StatusRole::CounterParalysis => "counter_paralysis",
             StatusRole::IceFreeze => "ice_freeze",
-            StatusRole::HitBugBlind => "hit_bug_blind",
-            StatusRole::HitBugConfuse => "hit_bug_confuse",
         }
     }
 
@@ -275,8 +267,6 @@ definition_roles! {
         Eruption = "eruption",
         /// A thrown obstacle's landing's (`sub_8018002`).
         ThrownObstacle = "thrown_obstacle",
-        /// A navi's programs uninstalled (`sub_80140EE`).
-        Uninstall = "uninstall",
         /// A panel's burn (EXE5's lava, the sparks' row 1: 0x08016D80). Only
         /// a game whose panels burn needs it.
         PanelBurn = "panel_burn",

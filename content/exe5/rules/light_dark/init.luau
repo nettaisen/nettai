@@ -261,12 +261,13 @@ local HIT_FLAG_SPARES_LIGHT = 0x400
 local HP_DRAIN_1 = 0x0118
 local DARK_DRAIN, LIGHT_DRAIN = 0xFD, 0xFC
 
--- 0x0801103E's light and dark part.
-local function navi_bug(_side: number, navi: Object): boolean?
+-- 0x0801103E's light and dark part: "spared" (nothing follows, not even the weapons' reload), or nil (the NaviCust's
+-- bugs follow: rules/navicust/bugs).
+local function navi_bug(_side: number, navi: Object): "spared"?
     local c = navi.collision
     local v = value()
     if bit32.btest(c.hit_flags, HIT_FLAG_SPARES_LIGHT) and v >= 1000 then
-        return true
+        return "spared"
     end
     local code = bit32.band(c.inflicted_bugs, 0xFF)
     if code == DARK_DRAIN or code == LIGHT_DRAIN then
