@@ -1522,7 +1522,7 @@ them.
     (exe5-compat's `Compat::form_number`, `form`), which a recording's setup (each version's six souls, by the
     save's flags) and the save import read. MegaMan lists his souls in that order (navis/megaman/init.luau's
     `forms.souls.form_list`): the order of the soul button's icons in a pack, by which the frontend takes a soul's icon
-    (nettai-render's `soul_place`; nettai-match's `megamans_souls_are_in_the_order_of_their_numbers` holds the
+    (nettai-render's `offer_icon`; nettai-match's `megamans_souls_are_in_the_order_of_their_numbers` holds the
     list to compat's numbers).
 - **The soul button** (the souls module's button `soul`, rules/souls/custom.luau: EXE5's layout's slot 11,
   0x08023C54, 0x08024B28, 0x08024972): shown for MegaMan with souls, outside battle flag 0x40, with the save's

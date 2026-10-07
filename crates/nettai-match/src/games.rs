@@ -461,7 +461,8 @@ fn a_dark_side_starts_dark() {
     assert_eq!(at(Some(1000)), (190, "normal".to_string()));
     // The face a mood of 0 shows: the base form's dark one.
     let base = content.base_form_for(crate::ids::navi(&content, "exe5", "megaman").unwrap());
-    let face = content.form(base).mugshot.unwrap().of("worn_out");
+    let emotions = &content.rules().emotion;
+    let face = content.form(base).mugshot.as_ref().unwrap().shown(emotions, emotions.by_name("worn_out").unwrap(), false);
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "megaman-dark"), Some(face.0));
 }
 

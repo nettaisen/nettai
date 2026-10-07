@@ -202,8 +202,8 @@ fn own(seed: u8) -> VersionPictures {
                 ..ButtonPictures::default()
             },
         )],
-        cross_names: tiles(36, seed + 4),
-        cross_palettes: vec![palette(seed as u16 + 5), palette(seed as u16 + 6)],
+        form_names: tiles(36, seed + 4),
+        form_name_palettes: vec![palette(seed as u16 + 5), palette(seed as u16 + 6)],
     }
 }
 
@@ -224,7 +224,7 @@ fn custom() -> CustomScreen {
             slots: 0xE1,
             column_icons: 0x125,
             name_bar: 0x1D6,
-            cross_names: 0x139,
+            form_names: 0x139,
             slot_blank: 1,
             ok_cursor: cursor(0),
         },
@@ -282,8 +282,8 @@ fn custom() -> CustomScreen {
         name_bar: tiles(4, 43),
         window_maps: vec![map(0), map(1)],
         window_patches: PatchList { first_tile: 0x9B, patches: vec![patch(2, 1, 8, 2, true), patch(2, 3, 7, 6, false)] },
-        cross_maps: vec![map(2), map(3), map(4)],
-        cross_patches: PatchList { first_tile: 0xE1, patches: vec![patch(1, 13, 2, 2, false)] },
+        form_list_maps: vec![map(2), map(3), map(4)],
+        form_list_patches: PatchList { first_tile: 0xE1, patches: vec![patch(1, 13, 2, 2, false)] },
         frame_palettes: (50..54).map(palette).collect(),
         icon_palette: palette(55),
         gray_palette: palette(56),
@@ -302,8 +302,8 @@ fn custom() -> CustomScreen {
         empty_icon: tiles(4, 74),
         versioned: Versioned { base: own(63), base_version: "falzar".into(), versions: vec![("gregar".into(), own(90))] },
         cursor: tiles(2, 78),
-        cross_cursor: tiles(4, 84),
-        cross_cursor_palette: palette(85),
+        form_list_cursor: tiles(4, 84),
+        form_list_cursor_palette: palette(85),
         emblems: vec![
             Emblem { navi: "megaman".into(), tiles: tiles(4, 79), palette: palette(80) },
             Emblem { navi: "heatman".into(), tiles: tiles(4, 83), palette: palette(81) },
@@ -314,7 +314,7 @@ fn custom() -> CustomScreen {
             "ja".into(),
             CustomLettering {
                 pictures: SlotPictures { ok: picture(91), ok_picked: picture(92), other: picture(95) },
-                cross_names: vec![("falzar".into(), tiles(36, 96)), ("gregar".into(), tiles(36, 97))],
+                form_names: vec![("falzar".into(), tiles(36, 96)), ("gregar".into(), tiles(36, 97))],
                 // The soul button's label in this language (its three
                 // states), and the re-deal button's picture.
                 buttons: vec![

@@ -90,16 +90,16 @@ graphics/
   custom/
     custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
     codes.png  elements.png  digits.png  slot-codes.png  empty-icon.png
-    cursor.png  cross-cursor.png  regular.png
+    cursor.png  form-list-cursor.png  regular.png
     chip-art/CHIP.png  emblems/NAVI.png  pictures/NAME.png
     buttons/BUTTON.png  pictures/BUTTON.png  buttons/BUTTON-icons.png
     (a button by the name its content registers it under: redeal, scrap, soul)
-    cross-names-V.png  buttons/BUTTON-V.png  pictures/BUTTON-V.png
+    form-names-V.png  buttons/BUTTON-V.png  pictures/BUTTON-V.png
     (V: falzar, gregar; a version's own look of a button: beast_out)
     (an EXE5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
-    custom/pictures/NAME-L.png  cross-names-V-L.png
+    custom/pictures/NAME-L.png  form-names-V-L.png
 sound/
   sound.toml                         mixer, music players, song table size
   samples.toml                       per sample: file, exact rate, loop start, stamp
@@ -316,7 +316,8 @@ hold.
 The reader takes the format as the extractors write it today, and nothing older: every file's version is the
 format's own (a pack of another is refused, with a note to extract it again), `panel_types`, the custom screen
 (with its `layout`, its game's own: no pack leaves it to another game's), the warning marker, the chatbox and the
-dialogue font are required, and so are the manifest's `game` and the asset index.
+dialogue font are required, and so are the manifest's `game` and the asset index. (`custom.json`'s version 2 named
+the form list window's pictures for it, where 1 named them for EXE6's Cross window: `cross_maps`, `cross-names-V`.)
 
 **Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
 JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
@@ -374,11 +375,12 @@ chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
 the element brings, each navi's emblem (`emblems/NAVI.png`, 2x2 tiles,
 under the navi's key) its own palette, which is the cursor's and the
 Regular chip's frame's too while that navi's console has the screen up,
-`cross-cursor.png`
-the Cross window's cursor (its corner and its edge, two frames) with sprite
-palette 14. `custom.json` holds the window's maps (15x20, without and with
-the Cross tab) and the Cross window's (three opening steps, then the window
-with one to five Crosses), their patch lists (a block of consecutive tile
+`form-list-cursor.png`
+the form list window's cursor (EXE6's Cross window's: its corner and its
+edge, two frames) with sprite palette 14. `custom.json` holds the window's
+maps (15x20, without and with the form list's tab) and the form list
+window's (`form_list_maps`: three opening steps, then the window with one
+to five forms; `form_list_patches`), their patch lists (a block of consecutive tile
 numbers at a cell, row or column first, in a palette), the three palettes
 no image owns as color lists, and the Program
 Advance animation's three sets of name colors; each chip's picture by
@@ -454,16 +456,16 @@ own, read at the addresses the same code points at there (exe6-extract's
 (exe6-extract's `jp`):
 
 - **What differs by version** is two assets, each named with its version:
-  `cross-names-falzar` and `cross-names-gregar` (nettai-assets
+  `form-names-falzar` and `form-names-gregar` (nettai-assets
   `Versioned`, whose halves the names find; an asset no version has its
   own of has no suffix). On the custom screen these are the Beast Out
   button, the version's Beast's (`buttons/beast_out-V`, four sets of 4x2:
   selectable, unavailable, battle mode 1's, the hidden slot's), with its
   picture in the chip window (`pictures/beast_out-V`, which the BeastOut
-  chip shows too) and the Cross window's
+  chip shows too) and the form list window's (the Cross window's)
   names, 9x2 tiles each, the five on the cursor's row then on the others',
   with background palette 10 for the Cross under the cursor
-  (`cross-names-V`). `custom.json` lists the base's (`own`, its version in
+  (`form-names-V`; the layout's `form_names` places them). `custom.json` lists the base's (`own`, its version in
   `base_version`) and the others' (`versions`). A console shows its
   version's, except a Cross's name, which is the Cross's own game's.
 - **Gregar's own faces**: the Falzar ROM has none for Gregar's Crosses,
@@ -504,8 +506,8 @@ others), "Cstmzing..." as wide as its words (`waiting-ja.png`: カスタム中�
 seven tiles where the US's are eight) and the gauge (`gauge-ja.png`, its "L
 or R"); `custom.json`'s `languages.ja` the chip window's pictures for OK,
 the re-deal and scrap (`pictures/ok-ja.png`...: "chip data transmission"
-in Japanese), the Cross window's names by version
-(`cross-names-falzar-ja.png`, `cross-names-gregar-ja.png`) and, under
+in Japanese), the form list window's names by version
+(`form-names-falzar-ja.png`, `form-names-gregar-ja.png`) and, under
 `buttons`, a named button's tiles where they say something
 (`buttons/soul-ja.png`: EXE5's soul button, "uni son" for "UNITE"). They
 come from the Japanese ROMs (exe6-extract's and exe5-extract's

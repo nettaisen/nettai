@@ -1476,6 +1476,10 @@ pub trait CoreApi {
     /// `side`'s navi by its variant name (EXE5's Hub Style in a link battle,
     /// 0x0801AE3A).
     fn set_name_variant(&mut self, side: u8, variant: bool);
+    /// Presentation: whether side `side`'s emotion window shows its count
+    /// (its navi's stat of the role `window_count`: EXE6's Beast Out turns),
+    /// else its empty box.
+    fn set_window_count(&mut self, side: u8, shown: bool);
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);

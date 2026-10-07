@@ -45,9 +45,9 @@ pub struct CustomLettering {
     /// The chip window's pictures for the slots that are neither chips
     /// nor buttons (OK's).
     pub pictures: SlotPictures,
-    /// The Cross window's names (`VersionPictures::cross_names`) by game
+    /// The form list window's names (`VersionPictures::form_names`) by game
     /// version; a version not listed keeps the pack's own.
-    pub cross_names: Vec<(String, Tiles)>,
+    pub form_names: Vec<(String, Tiles)>,
     /// The named buttons that say something, by the button's name (in the
     /// names' order, as a pack keeps them); a button not listed keeps the
     /// pack's own.
@@ -111,14 +111,14 @@ impl CustomScreen {
         let Some(k) = self.languages.iter().position(|(l, _)| l == to) else { return false };
         let (_, mut l) = self.languages.remove(k);
         std::mem::swap(&mut self.pictures, &mut l.pictures);
-        for (version, names) in &mut l.cross_names {
+        for (version, names) in &mut l.form_names {
             let own = if *version == self.versioned.base_version {
                 Some(&mut self.versioned.base)
             } else {
                 self.versioned.versions.iter_mut().find(|(v, _)| v == version).map(|(_, p)| p)
             };
             if let Some(p) = own {
-                std::mem::swap(&mut p.cross_names, names);
+                std::mem::swap(&mut p.form_names, names);
             }
         }
         for (name, own) in &mut l.buttons {
@@ -193,12 +193,12 @@ mod tests {
         let mut custom = CustomScreen {
             window_tiles: tiles(1, 1),
             pictures: SlotPictures { ok: Picture { tiles: tiles(1, 42), palette: [0; 16] }, ..Default::default() },
-            versioned: Versioned::new("falzar", VersionPictures { cross_names: tiles(1, 18), ..Default::default() }),
+            versioned: Versioned::new("falzar", VersionPictures { form_names: tiles(1, 18), ..Default::default() }),
             languages: vec![(
                 "ja".into(),
                 CustomLettering {
                     pictures: SlotPictures { ok: Picture { tiles: tiles(2, 42), palette: [0; 16] }, ..Default::default() },
-                    cross_names: vec![("falzar".into(), tiles(2, 18)), ("gregar".into(), tiles(3, 18))],
+                    form_names: vec![("falzar".into(), tiles(2, 18)), ("gregar".into(), tiles(3, 18))],
                     buttons: vec![
                         ("soul".into(), ButtonLettering { tiles: Some(tiles(2, 18)), picture: None }),
                         ("redeal".into(), ButtonLettering { tiles: None, picture: Some(Picture { tiles: tiles(2, 42), palette: [3; 16] }) }),
@@ -221,7 +221,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        custom.versioned.versions.push(("gregar".into(), VersionPictures { cross_names: tiles(4, 18), ..Default::default() }));
+        custom.versioned.versions.push(("gregar".into(), VersionPictures { form_names: tiles(4, 18), ..Default::default() }));
         let en = Bundle { hud, custom, ..Bundle::default() };
         assert_eq!(en.hud.languages(), ["en", "ja"]);
         let ja = en.clone().in_language("ja").unwrap();
@@ -230,8 +230,8 @@ mod tests {
         assert_eq!((ja.hud.banners[1].x, &ja.hud.banners[1].glyphs), (4, &tiles(2, 2)));
         assert_eq!((ja.hud.waiting.len(), ja.hud.banner_palette), (14, [7; 16]));
         assert_eq!(ja.custom.pictures.ok.tiles, tiles(2, 42));
-        assert_eq!(ja.custom.versioned.base.cross_names, tiles(2, 18));
-        assert_eq!(ja.custom.versioned.get("gregar").cross_names, tiles(3, 18));
+        assert_eq!(ja.custom.versioned.base.form_names, tiles(2, 18));
+        assert_eq!(ja.custom.versioned.get("gregar").form_names, tiles(3, 18));
         assert_eq!((&ja.custom.buttons[0].1.tiles, &ja.custom.buttons[1].1.tiles), (&tiles(2, 18), &tiles(5, 18)), "a button's own label, the others as they are");
         let redeal = &ja.custom.buttons[2].1;
         assert_eq!((&redeal.tiles, &redeal.picture), (&tiles(6, 36), &Picture { tiles: tiles(2, 42), palette: [3; 16] }), "a button's own picture, its tiles as they are");
