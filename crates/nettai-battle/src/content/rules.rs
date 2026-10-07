@@ -334,8 +334,9 @@ pub enum PausedNavi {
     PauseHandler,
     /// It runs through the pause until it takes control, which clears its
     /// header flag 0x04 (EXE4's 0x08010A88), so that the object loop skips
-    /// it then; its status block's tail has no pause handler and runs its
-    /// action (0x08013C2A).
+    /// it then; its status block has no pause test (0x08013A48: the top
+    /// block runs whenever the navi does, its take-control tick too) and
+    /// its tail no pause handler, running its action (0x08013C2A).
     StopsAtControl,
 }
 

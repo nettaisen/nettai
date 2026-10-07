@@ -15,9 +15,13 @@ use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
 
-/// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
+/// `sub_801AF44`, including the action dispatch (`sub_801B9E6`). Its top
+/// block skips a pause but in the entry (EXE6's, EXE5's), or, where the
+/// navi stops for pauses at control (EXE4's 0x08013A48: no pause test),
+/// runs whenever the navi does: its take-control tick in the intro too.
 pub(super) fn update(b: &mut Battle, r: ObjectRef) {
-    if !b.paused || navi_action(b, r) == NaviAction::Entry {
+    let top_while_paused = b.content.rules().paused_navi == crate::content::PausedNavi::StopsAtControl;
+    if !b.paused || navi_action(b, r) == NaviAction::Entry || top_while_paused {
         match apply(b, r) {
             Flow::Tail => {}
             Flow::Dispatch => return dispatch(b, r),
