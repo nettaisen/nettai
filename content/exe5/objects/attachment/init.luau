@@ -25,4 +25,10 @@ function attachment.attach(owner: Object, look: AttachmentLook, which: Slot, opt
     return common.attach(attachment.kind, owner, look, which, options)
 end
 
+-- A shooting chip's `hold` with this kind: by the holder's AI index from `arm_anims` (@exelib/attachment's
+-- `holder`).
+function attachment.holder(arm_anims: { number }, players_only: boolean?): (me: Object, look: AttachmentLook, which: Slot) -> ()
+    return common.holder(attachment.kind, arm_anims, players_only)
+end
+
 return attachment

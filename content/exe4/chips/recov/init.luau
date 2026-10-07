@@ -1,8 +1,9 @@
 --!strict
 -- Recov10, Recov30, Recov50, Recov80, Recov120, Recov150, Recov200 and Recov300 (EXE4 chips 0x06B to 0x072; their
--- records at 0x080197EC + n * 0x2C): the recoveries' action 0x1D (lib/recoveries), its variants 0 to 7.
+-- records at 0x080197EC + n * 0x2C): the recoveries' action 0x1D (lib/recov), its variants 0 to 7, the side's mood
+-- gaining each one's counter byte.
 
-local recoveries = require("../lib/recoveries")
+local recov = require("../lib/recov")
 
 local recov10: Chip = {
     codes = { "A", "L", "N", "*" },
@@ -15,7 +16,7 @@ local recov10: Chip = {
     hit_param = 30,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov10/action", hp = 10 },
+    action = recov.action { id = "recov10/action", hp = 10, mood = 30 },
 }
 
 local recov30: Chip = {
@@ -29,7 +30,7 @@ local recov30: Chip = {
     hit_param = 30,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov30/action", hp = 30 },
+    action = recov.action { id = "recov30/action", hp = 30, mood = 30 },
 }
 
 local recov50: Chip = {
@@ -43,7 +44,7 @@ local recov50: Chip = {
     hit_param = 40,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov50/action", hp = 50 },
+    action = recov.action { id = "recov50/action", hp = 50, mood = 40 },
 }
 
 local recov80: Chip = {
@@ -57,7 +58,7 @@ local recov80: Chip = {
     hit_param = 40,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov80/action", hp = 80 },
+    action = recov.action { id = "recov80/action", hp = 80, mood = 40 },
 }
 
 local recov120: Chip = {
@@ -71,7 +72,7 @@ local recov120: Chip = {
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov120/action", hp = 120 },
+    action = recov.action { id = "recov120/action", hp = 120, mood = 50 },
 }
 
 local recov150: Chip = {
@@ -85,7 +86,7 @@ local recov150: Chip = {
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov150/action", hp = 150 },
+    action = recov.action { id = "recov150/action", hp = 150, mood = 50 },
 }
 
 local recov200: Chip = {
@@ -99,7 +100,7 @@ local recov200: Chip = {
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov200/action", hp = 200 },
+    action = recov.action { id = "recov200/action", hp = 200, mood = 50 },
 }
 
 local recov300: Chip = {
@@ -113,7 +114,7 @@ local recov300: Chip = {
     hit_param = 50,
     lockout = 30,
     flags = { "standard_library", "library" },
-    action = recoveries.action { id = "recov300/action", hp = 300 },
+    action = recov.action { id = "recov300/action", hp = 300, mood = 50 },
 }
 
 return { recov10 = recov10, recov30 = recov30, recov50 = recov50, recov80 = recov80, recov120 = recov120, recov150 = recov150, recov200 = recov200, recov300 = recov300 }

@@ -27,15 +27,14 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
-    action = airshot.action(
-        { shooter = SHOOTER, shot = variants.air },
-        {
-            sound = asset.sound("h-burst"),
-            attachment = attachment.kind,
-            projectiles = projectile,
-            arm_anims = navi_arms.air_shooter,
-        }
-    ),
+    action = airshot.action({ shooter = SHOOTER, shot = variants.air, recovery = 10 }, {
+        sound = asset.sound("h-burst"),
+        -- EXE6's `sub_80EC934`: the shooter by the holder's AI index.
+        hold = attachment.holder(navi_arms.air_shooter),
+        projectiles = projectile,
+        anim = 9,
+        slot = "overlay",
+    }),
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 

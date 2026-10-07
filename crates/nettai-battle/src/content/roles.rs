@@ -715,6 +715,10 @@ impl Roles {
             .unwrap_or_else(|| panic!("the role sprites.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
+    pub fn try_banner(&self, role: BannerRole) -> Option<BannerId> {
+        self.banners.get(&role).copied()
+    }
+
     pub fn banner(&self, role: BannerRole) -> BannerId {
         *self
             .banners

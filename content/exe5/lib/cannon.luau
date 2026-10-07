@@ -27,11 +27,14 @@ local function hub_afterimage(me: Object, flip: number)
     battle.afterimage(me, me.pos, { sprite = HUB_SHADE, anim = 8, flip = flip, lifetime = 0x1E, color_shader = 0x8318 })
 end
 
-local LOOK: ShooterLook = {
+local LOOK: CannonLook = {
     sound = asset.sound("cannon"),
-    attachment = attachment.kind,
+    -- EXE6's `sub_80EBD68`: a player's arm by its AI index, anyone else's the plain one.
+    hold = attachment.holder(navi_arms.cannon, true),
     projectiles = projectile,
-    arm_anims = navi_arms.cannon,
+    -- The navi raises the cannon in its animation 8 and lowers it in 7 (0x080EC14C, as EXE6's).
+    raise_anim = 8,
+    lower_anim = 7,
     more_afterimages = hub_afterimage,
 }
 

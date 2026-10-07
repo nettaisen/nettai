@@ -13,13 +13,14 @@ local RECOVERIES = 5
 -- A chip's recovery of `hp`; `id`, the action's key when no chip
 -- definition holds it; `mood`, what the heal adds to the side's mood
 -- (EXE5's 0x080EC484 adds the use's +0x0A after a heal no AntiRecv turned;
--- EXE6's none).
-function heal.action(spec: { id: string?, hp: number, mood: number? }): Action
+-- EXE4's 0x080EC71A after any, `mood_after_trap`; EXE6's none).
+function heal.action(spec: { id: string?, hp: number, mood: number?, mood_after_trap: boolean? }): Action
     -- `sub_80EC844`. (EXE6 tests the heal's result, whether the trap
-    -- sprang, and ignores it; EXE5 gains no mood when it did.)
+    -- sprang, and ignores it; EXE5 gains no mood when it did; EXE4 tests
+    -- nothing.)
     local function update(me: Object, _s: any)
         local sprang = me:heal(spec.hp, true)
-        if spec.mood and not sprang then
+        if spec.mood and (not sprang or spec.mood_after_trap) then
             battle.gain_mood(me.alliance, spec.mood)
         end
         battle.bump_side_stat(me.alliance, RECOVERIES, 1)
