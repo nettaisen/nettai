@@ -166,6 +166,8 @@ local status = {
         -- While the battle is paused a navi runs its pause handler (form changes, reversions, navi switches) in place
         -- of its action but in its entry (`loc_801B142`), and runs through the pause.
         paused_navi = "pause_handler",
+        -- Its status timers hold while paused (`sub_800E730`'s `battle_isPaused`).
+        timers_while_paused = false,
     },
 }
 

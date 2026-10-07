@@ -798,10 +798,11 @@ fn enter_status_action(b: &mut Battle, r: ObjectRef, action: NaviAction) {
 }
 
 /// `sub_800E730`: the status timers and their requests (§H5). `F2` is
-/// read once at entry. Returns early while paused.
+/// read once at entry. Returns early while paused, unless the game's
+/// timers count then (`status_timers_while_paused`: EXE4's 0x0800AE58).
 fn tick_statuses(b: &mut Battle, r: ObjectRef) {
     let f2 = flag2(b, r);
-    if b.paused {
+    if b.paused && !b.game_rules().status_timers_while_paused {
         return;
     }
     tick_paralysis(b, r, f2);
@@ -1370,6 +1371,30 @@ mod tests {
     use super::*;
     use crate::content::{Content, WeaknessMark, testing};
     use std::sync::Arc;
+
+    /// The status timers hold while the battle is paused (the test
+    /// content's, EXE6's), or count on (`status_timers_while_paused`:
+    /// EXE4's 0x0800AE58).
+    #[test]
+    fn status_timers_count_through_a_pause_where_the_rules_say() {
+        let left = |count: bool| {
+            let mut c: Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            c.rules_mut().status_timers_while_paused = count;
+            let c = Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            testing::on(&mut setup, &c);
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            let r = b.player(1).unwrap();
+            coll_mut(&mut b, r).status_timers[timer::PARALYZE] = 30;
+            b.paused = true;
+            tick_statuses(&mut b, r);
+            coll(&b, r).status_timers[timer::PARALYZE]
+        };
+        assert_eq!((left(false), left(true)), (30, 29));
+    }
 
     /// Whether the weakness mark shows over a navi of `element` under the
     /// rule `mark`, after a tick whose hits left `damage` by element, the

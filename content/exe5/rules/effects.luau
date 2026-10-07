@@ -60,6 +60,7 @@ return {
         keys = { "up", "down", "right", "left" },
         confused = { up = "down", down = "up", left = "right", right = "left" },
         idle_checks_target = false,
+        -- (No move bug of a rules stat: the processing bug, astray steps, is the engine's own.)
     },
     -- A screen fade toward clear ends on the step whose level reaches its target, as EXE6's.
     fade_clear = "at_target",
@@ -71,4 +72,10 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second, as EXE6's.
     used_chip_ticks = 0x3C,
+    -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (0x08019780, EXE6's).
+    bug_flicker = true,
+    -- An object's destroy (0x080138F2) frees its collision as it is.
+    destroy = "frees",
+    -- A pool's objects are drawn in update order, as EXE6's.
+    draw_order = "update_list",
 }

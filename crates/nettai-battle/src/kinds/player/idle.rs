@@ -517,10 +517,7 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
 
 /// `sub_800FA54` (EXE4's 0x0800B4B0): the held direction, its keys read in
 /// the rules' order and taken as the rules' confused keys while confused
-/// (`effects.steps`), none while sliding. With no key held, or sliding, the
-/// keys of the navi's stats' `idle_step_keys` bug in the same order, never
-/// turned (EXE4's 0x0800B4D8: NaviStats +0x0D; every other game's stats
-/// keep none).
+/// (`effects.steps`), none while sliding.
 pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     use crate::content::StepKey;
     let steps = &b.game_rules().effects.steps;
@@ -530,13 +527,15 @@ pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
         StepKey::Left => keys::LEFT,
         StepKey::Right => keys::RIGHT,
     };
-    let held = if flag1(b, r) & f1::SLIDING != 0 { None } else { steps.keys.iter().copied().find(|&k| ai(b, r).pad.held & bit(k) != 0) };
-    let Some(key) = held else {
-        let idle = stats(b, r).bugs.idle_step_keys;
-        if idle == 0xFF {
+    let sliding = flag1(b, r) & f1::SLIDING != 0;
+    let held = if sliding { 0 } else { ai(b, r).pad.held };
+    let Some(&key) = steps.keys.iter().find(|&&k| held & bit(k) != 0) else {
+        // No key held (or sliding): the move bug's keys, as they are.
+        let bug = move_bug(b, r);
+        if bug == 0 || bug == 0xFF {
             return 0;
         }
-        return steps.keys.iter().find(|&&k| idle as u16 & bit(k) != 0).map_or(0, |&k| direction_code(k));
+        return steps.keys.iter().find(|&&k| bug as u16 & bit(k) != 0).map_or(0, |&k| direction_code(k));
     };
     let key = if flag1(b, r) & f1::CONFUSED != 0 {
         let c = steps.confused;
@@ -552,7 +551,7 @@ pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     direction_code(key)
 }
 
-/// The direction codes: 1 up, 2 down, 3 back (left), 4 forward (right).
+/// A key's direction code: 1 up, 2 down, 3 back (left), 4 forward (right).
 fn direction_code(key: crate::content::StepKey) -> u8 {
     use crate::content::StepKey;
     match key {
@@ -560,6 +559,16 @@ fn direction_code(key: crate::content::StepKey) -> u8 {
         StepKey::Down => 2,
         StepKey::Left => 3,
         StepKey::Right => 4,
+    }
+}
+
+/// The navi's move bug (`effects.steps.bug`: its stat), 0 where the game has
+/// none.
+pub(crate) fn move_bug(b: &Battle, r: ObjectRef) -> u8 {
+    let Some(bug) = &b.game_rules().effects.steps.bug else { return 0 };
+    match stats(b, r).game_stat(&b.content, &bug.stat) {
+        Some(nettai_content_api::FieldValue::U8(n)) => n,
+        other => panic!("the move bug's stat {:?} is {other:?}, not a u8 of the rules' stats", bug.stat),
     }
 }
 
