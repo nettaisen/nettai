@@ -89,6 +89,10 @@ struct PlayChoice {
     source: usize,
     seed: u32,
     files: Vec<PathBuf>,
+    /// Your side: 0 the match's (a random one, or the file's); else the
+    /// build `builds[build - 1]` of the game.
+    build: usize,
+    builds: Vec<(String, nettai_match::Side)>,
 }
 
 pub struct App {
@@ -104,6 +108,8 @@ pub struct App {
     attract: Option<Attract>,
     play: PlayChoice,
     pub lobby: crate::lobby::LobbyState,
+    /// The player's builds, and the one open in the creator.
+    pub builds: crate::builds::screen::BuildsState,
     replays: Vec<replays::Entry>,
     replay_rows: Rc<VecModel<ReplayRow>>,
     transition: Option<(Instant, Screen, bool)>,
@@ -123,16 +129,14 @@ pub fn clock_seed() -> u32 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos() ^ d.as_secs() as u32).unwrap_or(1)
 }
 
-/// The folder replays are written to and listed from: `$NETTAI_REPLAYS`,
-/// else `replays`.
+/// The folder replays are written to and listed from.
 pub fn replays_dir() -> PathBuf {
-    std::env::var_os("NETTAI_REPLAYS").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("replays"))
+    crate::paths::replays()
 }
 
-/// The folder match files are listed from: `$NETTAI_MATCHES`, else
-/// `matches`.
+/// The folder match files are listed from.
 pub fn matches_dir() -> PathBuf {
-    std::env::var_os("NETTAI_MATCHES").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("matches"))
+    crate::paths::matches()
 }
 
 /// A game's short name and its number, from its id (`exe6`: EXE6, 6).
@@ -143,7 +147,12 @@ pub fn game_names(id: &str) -> (String, String) {
 
 impl App {
     pub fn new(ui: &AppWindow) -> App {
-        let lang = lang::initial();
+        // The settings kept (`NETTAI_LANG` still names the language).
+        let saved = crate::settings::load();
+        let lang = match (std::env::var_os("NETTAI_LANG"), saved.language.as_deref()) {
+            (None, Some(code)) => lang::LANGUAGES.iter().map(|(c, _)| *c).find(|c| *c == code).unwrap_or_else(lang::initial),
+            _ => lang::initial(),
+        };
         lang::select(lang);
         ui.global::<crate::Theme>().set_tracking(lang::tracking(lang));
         let replay_rows = Rc::new(VecModel::default());
@@ -160,18 +169,42 @@ impl App {
             attract: None,
             play: PlayChoice { seed: clock_seed(), ..PlayChoice::default() },
             lobby: crate::lobby::LobbyState::default(),
+            builds: Default::default(),
             replays: Vec::new(),
             replay_rows,
             transition: None,
-            sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some(),
-            text: TextMode::Font,
-            volume: 8,
-            name: String::new(),
+            sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some() || saved.sharp == Some(true),
+            text: if saved.crisp_text == Some(false) { TextMode::Original } else { TextMode::Font },
+            volume: saved.volume.unwrap_or(8).min(10),
+            name: saved.name.clone().unwrap_or_default(),
             gl: None,
         };
+        let mut app = app;
+        if let Some(on) = saved.menu_sounds {
+            app.sound.menu_sounds = on;
+        }
         app.sound.set_volume(app.volume);
         app.show_settings();
         app
+    }
+
+    /// Keep the settings as they are now (`crate::settings`).
+    pub fn save_settings(&self) {
+        // (The tour's walk changes them as it goes: none are kept.)
+        if std::env::var_os("NETTAI_TOUR").is_some() {
+            return;
+        }
+        let saved = crate::settings::Saved {
+            language: Some(self.lang.to_string()),
+            volume: Some(self.volume),
+            menu_sounds: Some(self.sound.menu_sounds),
+            crisp_text: Some(self.text == TextMode::Font),
+            sharp: Some(self.sharp),
+            name: Some(self.name.clone()),
+        };
+        if let Err(e) = crate::settings::save(&saved) {
+            eprintln!("nettai: the settings aren't kept: {e}");
+        }
     }
 
     pub fn ui(&self) -> AppWindow {
@@ -222,6 +255,8 @@ impl App {
             Screen::Lobby => self.show_lobby(),
             Screen::Replays => self.show_replays(),
             Screen::Settings => self.show_settings(),
+            Screen::Builds => self.show_builds(),
+            Screen::Build => self.enter_build(),
             Screen::Title => {
                 if let Some(a) = &mut self.attract {
                     a.stage.hold();
@@ -256,6 +291,7 @@ impl App {
                     match app.ui().get_screen() {
                         Screen::Replays => app.check_replays(),
                         Screen::Lobby => app.show_lobby(),
+                        Screen::Builds => app.show_builds(),
                         _ => {}
                     }
                 })
@@ -310,9 +346,17 @@ impl App {
             self.sound.use_game(&id, &ready.loaded);
         }
         self.play.files = match_files(&id);
+        self.play.builds = self.games.ready(&id).map(|r| crate::builds::screen::BuildsState::choices(r.content(), &id)).unwrap_or_default();
+        self.play.build = 0;
         self.play.game = Some(id);
         self.play.source = 0;
         self.ui().set_play_chosen(index as i32);
+        self.show_preview();
+    }
+
+    /// Your side in Play: the match's (0), or a build of the game.
+    pub fn play_build(&mut self, build: usize) {
+        self.play.build = build.min(self.play.builds.len());
         self.show_preview();
     }
 
@@ -331,14 +375,24 @@ impl App {
     fn play_match(&self, ready: &Ready) -> Result<(nettai_match::Match, u32), String> {
         let game = self.play.game.as_deref().ok_or("no game is chosen")?;
         let content = ready.content();
-        if self.play.source == 0 {
-            let m = nettai_match::pick::live(content, game, self.play.seed, None)?;
-            return Ok((m, self.play.seed));
+        let (mut m, seed) = if self.play.source == 0 {
+            (nettai_match::pick::live(content, game, self.play.seed, None)?, self.play.seed)
+        } else {
+            let path = &self.play.files[self.play.source - 1];
+            let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let m = nettai_match::parse(content, &text).map_err(|problems| problems.join("\n"))?;
+            let seed = m.seed.unwrap_or(self.play.seed);
+            (m, seed)
+        };
+        // (A build of yours, in place of your side: one that can't play
+        // says why.)
+        if let Some((_, side)) = self.play.build.checked_sub(1).and_then(|b| self.play.builds.get(b)) {
+            m.sides[0] = side.clone();
+            let problems = nettai_match::check_match(content, &m);
+            if !problems.is_empty() {
+                return Err(problems.join("\n"));
+            }
         }
-        let path = &self.play.files[self.play.source - 1];
-        let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let m = nettai_match::parse(content, &text).map_err(|problems| problems.join("\n"))?;
-        let seed = m.seed.unwrap_or(self.play.seed);
         Ok((m, seed))
     }
 
@@ -348,6 +402,11 @@ impl App {
         sources.extend(self.play.files.iter().map(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default().into()));
         ui.set_play_sources(ModelRc::new(VecModel::from(sources)));
         ui.set_play_source_index(self.play.source as i32);
+        let strings = ui.global::<Strings>();
+        let mut builds: Vec<SharedString> = vec![if self.play.source == 0 { strings.invoke_random() } else { strings.invoke_from_the_match() }];
+        builds.extend(self.play.builds.iter().map(|(name, _)| SharedString::from(name.as_str())));
+        ui.set_play_builds(ModelRc::new(VecModel::from(builds)));
+        ui.set_play_build_index(self.play.build as i32);
         let Some(ready) = self.play.game.as_deref().and_then(|g| self.games.ready(g)) else {
             ui.set_play_preview(MatchPreview::default());
             return;
@@ -393,7 +452,7 @@ impl App {
         let driver = LivePlayer::new(nettai_match::Set::of(content, &m, seed));
         let mut player = self.player(ready, Box::new(driver), true);
         // Recorded, to watch again.
-        let recorded = self.recorder(content, &m, seed, game, 0).and_then(|(r, path)| player.record(r).ok().map(|_| path));
+        let recorded = self.recorder(content, &m, seed, game, 0, None).and_then(|(r, path)| player.record(r).ok().map(|_| path));
         let graphics = ready.graphics(self.lang);
         let names = Names::of(content, &graphics);
         let ui = self.ui();
@@ -473,16 +532,29 @@ impl App {
         self.keys.release();
     }
 
-    /// A recorder of the set to a new file in the replays folder.
-    pub fn recorder(&self, content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, game: &str, side: u8) -> Option<(Recorder, PathBuf)> {
+    /// A recorder of the set to a new file in the replays folder, this
+    /// player on `side`, both players' names by side (`names`; none: this
+    /// player's alone).
+    pub fn recorder(
+        &self,
+        content: &std::sync::Arc<nettai_battle::Content>,
+        m: &nettai_match::Match,
+        seed: u32,
+        game: &str,
+        side: u8,
+        names: Option<[String; 2]>,
+    ) -> Option<(Recorder, PathBuf)> {
         let dir = replays_dir();
         std::fs::create_dir_all(&dir).ok()?;
         let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
         let stamp = chrono::DateTime::from_timestamp(when as i64, 0).map(|t| t.with_timezone(&chrono::Local).format("%Y%m%d-%H%M%S").to_string()).unwrap_or_default();
         let path = dir.join(format!("{stamp}-{game}.ntrp"));
         let file = std::fs::File::create(&path).ok()?;
-        let mut names = [String::new(), String::new()];
-        names[side as usize] = self.name.clone();
+        let names = names.unwrap_or_else(|| {
+            let mut names = [String::new(), String::new()];
+            names[side as usize] = self.name.clone();
+            names
+        });
         let info = Info { when, side, names };
         let m = nettai_match::Match { seed: Some(seed), ..m.clone() };
         let r = Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &info).ok()?;
@@ -598,6 +670,8 @@ impl App {
             Screen::Play => self.show_preview(),
             Screen::Replays => self.show_replay_rows(),
             Screen::Lobby => self.show_lobby(),
+            Screen::Builds => self.show_builds(),
+            Screen::Build => self.enter_build(),
             _ => {}
         }
     }
@@ -684,6 +758,23 @@ impl App {
         }
     }
 
+    /// The Builds screen of the first game ready, with a build of a random
+    /// match's side there ("Tour", made again each time).
+    pub fn tour_build(&mut self) {
+        // (`NETTAI_TOUR_GAME`: that game's, where it is ready.)
+        let asked = std::env::var("NETTAI_TOUR_GAME").ok().filter(|g| self.games.ready(g).is_some());
+        let Some(game) = asked.or_else(|| self.first_ready().map(|i| self.games.list[i].id.clone())) else { return };
+        let Some(ready) = self.games.ready(&game) else { return };
+        let content = ready.content();
+        if let Ok(m) = nettai_match::pick::live(content, &game, 5, None) {
+            let path = crate::builds::store::folder(&game).join("tour.toml");
+            let _ = crate::builds::store::write(&path, content, &game, "Tour", &m.sides[0]);
+        }
+        self.builds.game = self.ready_games().iter().position(|g| *g == game).unwrap_or(0);
+        self.builds.editor = None;
+        self.enter(Screen::Builds);
+    }
+
     /// The battle at eight times the speed.
     pub fn tour_fast(&mut self) {
         if let Some(b) = &mut self.battle {
@@ -694,7 +785,10 @@ impl App {
     }
 
     pub fn set_name(&mut self, name: &str) {
-        self.name = name.chars().take(16).collect();
+        // (As the lobby carries it: no control characters, 16 at most.)
+        self.name = name.chars().filter(|c| !c.is_control()).take(nettai_frontend::lobby::NAME_LENGTH).collect();
+        self.lobby_name();
+        self.save_settings();
         let ui = self.ui();
         // (The field keeps its text while it is typed in: a longer one is
         // cut when it's left.)
@@ -782,6 +876,7 @@ impl App {
             4 => self.sharp = !self.sharp,
             _ => {}
         }
+        self.save_settings();
         self.show_settings();
     }
 

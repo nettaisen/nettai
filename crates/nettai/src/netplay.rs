@@ -117,6 +117,8 @@ pub struct Agreeing<L: Link> {
     /// Made once the link knows this player's role.
     lobby: Option<Lobby>,
     timeout: Duration,
+    /// This player's name, said in the lobby.
+    name: String,
 }
 
 impl<L: Link> Agreeing<L> {
@@ -124,7 +126,7 @@ impl<L: Link> Agreeing<L> {
     /// `side`; it fails if nothing comes from the other player for
     /// `timeout` once the lobby is made.
     pub fn new(link: L, content: &Arc<Content>, settings: Settings, side: Side, timeout: Duration) -> Agreeing<L> {
-        Agreeing { link: Some(link), content: content.clone(), settings, side, ready: false, lobby: None, timeout }
+        Agreeing { link: Some(link), content: content.clone(), settings, side, ready: false, lobby: None, timeout, name: String::new() }
     }
 
     /// Propose other settings and side (another game's, on its content):
@@ -160,6 +162,19 @@ impl<L: Link> Agreeing<L> {
     /// Whether the other player has said they are ready.
     pub fn their_ready(&self) -> bool {
         self.lobby.as_ref().is_some_and(Lobby::their_ready)
+    }
+
+    /// Say this player's name to the other.
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
+        if let Some(l) = &mut self.lobby {
+            l.set_name(name);
+        }
+    }
+
+    /// The other player's name, as they said it (shown, not trusted).
+    pub fn their_name(&self) -> Option<&str> {
+        self.lobby.as_ref().and_then(Lobby::their_name)
     }
 
     /// The other player's settings, once they have said them (or why they
@@ -214,6 +229,7 @@ impl<L: Link> Agreeing<L> {
             };
             let mut lobby = Lobby::new(role, &self.content, self.settings.clone(), self.side.clone(), nettai_frontend::lobby::entropy(), self.timeout);
             lobby.set_ready(self.ready);
+            lobby.set_name(&self.name);
             self.lobby = Some(lobby);
         }
         let lobby = self.lobby.as_mut().expect("made above");

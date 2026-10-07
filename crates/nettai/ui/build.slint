@@ -1,0 +1,1759 @@
+// The build creator: one build, laid out in tabs from its game's setup (the
+// app works out what each shows: `crate::builds`). This file draws what it
+// is given and passes on what is pressed: the keys and the pad as
+// navigation actions, the mouse and touch as the row, option or cell they
+// fall on.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, Hints, Hint, Glyph, Input } from "widgets.slint";
+
+export enum TabKind {
+    navi,
+    folder,
+    checklist,
+    grid,
+    entries,
+    times,
+    places,
+    other,
+}
+
+export struct BuildTab {
+    kind: TabKind,
+    // Its setup field, and its title where the window has none for it.
+    key: string,
+    fallback: string,
+    problems: int,
+}
+
+// What a button of an action bar or of a row's strip does.
+export enum BuildAction {
+    chip,
+    regular,
+    tag,
+    clear,
+    up,
+    down,
+    remove,
+    clear-list,
+    default,
+    own,
+    from-save,
+    empty,
+    zero,
+}
+
+export struct ActionButton {
+    action: BuildAction,
+}
+
+export enum RowKind {
+    name,
+    navi,
+    // A fact of the setup: stepped through its values, a flag, a number.
+    choice,
+    flag,
+    number,
+    // A time (mm:ss.cc), of a definition.
+    time,
+    from-save,
+    duplicate,
+    delete,
+    delete-confirm,
+}
+
+export struct FactRow {
+    kind: RowKind,
+    // The field's name (its label).
+    key: string,
+    fallback: string,
+    value: string,
+    note: string,
+    picture: image,
+    on: bool,
+    problem: string,
+}
+
+// A row of a list: a folder's entry, a card, a place, a time.
+export struct EntryRow {
+    number: string,
+    icon: image,
+    name: string,
+    // Its code, its MB, its time.
+    tail: string,
+    // REG, TAG.
+    marks: string,
+    // A card's lines, its bugs apart.
+    lines: string,
+    bugs: string,
+    problem: string,
+    // A list's heading, not a row.
+    heading: bool,
+    empty: bool,
+    // What the game wouldn't write there (a quiet note).
+    note: string,
+}
+
+// One of what can be put in: a chip, a card, a piece.
+export struct PickRow {
+    icon: image,
+    name: string,
+    detail: string,
+    // How many the build holds.
+    held: string,
+    // Its codes, or its colors (`swatches`).
+    options: [string],
+    swatches: [color],
+    lines: string,
+    bugs: string,
+    dark: bool,
+    // It can't be put in (a card the list holds).
+    taken: bool,
+}
+
+export struct CheckTile {
+    face: image,
+    name: string,
+    about: string,
+    on: bool,
+}
+
+export struct FilterChip {
+    key: string,
+    fallback: string,
+    on: bool,
+}
+
+export struct Detail {
+    picture: image,
+    // The chip window's picture (else a face, or a mark).
+    art: bool,
+    title: string,
+    sub: string,
+    text: string,
+    lines: string,
+    bugs: string,
+    problem: string,
+}
+
+export struct StatRow {
+    key: string,
+    value: string,
+}
+
+export struct GridCell {
+    x: int,
+    y: int,
+    // 1 the board, 2 its frame.
+    kind: int,
+    // The command line's row.
+    line: bool,
+}
+
+export struct GridPart {
+    x: int,
+    y: int,
+    color: color,
+    plus: bool,
+    // Its place in the list (the cells of one piece share it).
+    piece: int,
+    bad: bool,
+}
+
+export enum LeftKind {
+    rows,
+    entries,
+    tiles,
+    board,
+}
+
+export enum RightKind {
+    none,
+    summary,
+    browser,
+}
+
+// The window's words for what the app gives as keys.
+export global BuildText {
+    pure public function action(a: BuildAction) -> string {
+        if a == BuildAction.chip {
+            return @tr("CHIP");
+        } else if a == BuildAction.regular {
+            return @tr("REGULAR");
+        } else if a == BuildAction.tag {
+            return @tr("TAG");
+        } else if a == BuildAction.clear {
+            return @tr("CLEAR");
+        } else if a == BuildAction.up {
+            return @tr("MOVE UP");
+        } else if a == BuildAction.down {
+            return @tr("MOVE DOWN");
+        } else if a == BuildAction.remove {
+            return @tr("REMOVE");
+        } else if a == BuildAction.clear-list {
+            return @tr("NONE");
+        } else if a == BuildAction.default {
+            return @tr("DEFAULT");
+        } else if a == BuildAction.own {
+            return @tr("ITS VERSION'S OWN");
+        } else if a == BuildAction.from-save {
+            return @tr("FROM A SAVE…");
+        } else if a == BuildAction.empty {
+            return @tr("EMPTY");
+        } else if a == BuildAction.zero {
+            return "0";
+        }
+        ""
+    }
+
+    // A setup field's name (the games' own words for it), else its name as
+    // the app spells it.
+    pure public function field(key: string, fallback: string) -> string {
+        if key == "crosses" {
+            return @tr("field" => "Crosses");
+        } else if key == "souls" {
+            return @tr("field" => "Souls");
+        } else if key == "patch_cards" {
+            return @tr("field" => "Patch cards");
+        } else if key == "version" {
+            return @tr("field" => "Version");
+        } else if key == "beast_out" {
+            return @tr("field" => "Beast Out");
+        } else if key == "bug_frags" {
+            return @tr("field" => "BugFrags");
+        } else if key == "karma" {
+            return @tr("field" => "Light/dark");
+        } else if key == "chaos_unison" {
+            return @tr("field" => "Chaos Unison");
+        } else if key == "navicust_expansions" {
+            return @tr("field" => "Board");
+        }
+        fallback
+    }
+
+    pure public function tab(t: BuildTab) -> string {
+        if t.kind == TabKind.navi {
+            return @tr("tab" => "NAVI");
+        } else if t.kind == TabKind.folder {
+            return @tr("tab" => "FOLDER");
+        } else if t.kind == TabKind.grid {
+            return @tr("tab" => "NAVICUST");
+        } else if t.kind == TabKind.places {
+            return @tr("tab" => "AUTO BATTLE");
+        }
+        BuildText.field(t.key, t.fallback).to-uppercase()
+    }
+
+    pure public function row(r: FactRow) -> string {
+        if r.kind == RowKind.name {
+            return @tr("NAME");
+        } else if r.kind == RowKind.navi {
+            return @tr("NAVI");
+        } else if r.kind == RowKind.from-save {
+            return @tr("FROM A SAVE…");
+        } else if r.kind == RowKind.duplicate {
+            return @tr("DUPLICATE");
+        } else if r.kind == RowKind.delete {
+            return @tr("DELETE");
+        } else if r.kind == RowKind.delete-confirm {
+            return @tr("DELETE? CONFIRM AGAIN");
+        } else if r.kind == RowKind.time {
+            return r.fallback;
+        }
+        BuildText.field(r.key, r.fallback).to-uppercase()
+    }
+
+    pure public function note(r: FactRow) -> string {
+        if r.kind == RowKind.name {
+            return @tr("Confirm to rename it");
+        } else if r.kind == RowKind.from-save {
+            return @tr("The whole build, from an original save (.sav)");
+        } else if r.kind == RowKind.duplicate {
+            return @tr("A copy, to change apart");
+        }
+        r.note
+    }
+
+    pure public function value(r: FactRow) -> string {
+        if r.kind == RowKind.flag {
+            return r.on ? @tr("flag" => "ON") : @tr("flag" => "OFF");
+        }
+        r.value
+    }
+
+    pure public function filter(f: FilterChip) -> string {
+        if f.key == "search" {
+            return f.fallback == "" ? @tr("SEARCH") : f.fallback;
+        } else if f.key == "all" {
+            return @tr("filter" => "ALL");
+        } else if f.key == "standard" {
+            return @tr("filter" => "STANDARD");
+        } else if f.key == "mega" {
+            return @tr("filter" => "MEGA");
+        } else if f.key == "giga" {
+            return @tr("filter" => "GIGA");
+        } else if f.key == "program_advance" {
+            return @tr("filter" => "PA");
+        } else if f.key == "list" {
+            return @tr("filter" => "FOR THE PLACE");
+        }
+        f.fallback
+    }
+
+    pure public function stat(key: string) -> string {
+        if key == "hp" {
+            return @tr("stat" => "HP");
+        } else if key == "attack" {
+            return @tr("stat" => "Attack");
+        } else if key == "rapid" {
+            return @tr("stat" => "Rapid");
+        } else if key == "charge" {
+            return @tr("stat" => "Charge");
+        } else if key == "custom" {
+            return @tr("stat" => "Custom");
+        } else if key == "mega" {
+            return @tr("stat" => "Mega chips");
+        } else if key == "giga" {
+            return @tr("stat" => "Giga chips");
+        } else if key == "regular" {
+            return @tr("stat" => "Regular memory");
+        } else if key == "abilities" {
+            return @tr("stat" => "Abilities");
+        } else if key == "bug" {
+            return @tr("stat" => "Bug");
+        } else if key == "chips" {
+            return @tr("stat" => "Chips");
+        } else if key == "tags" {
+            return @tr("stat" => "Tag chips");
+        } else if key == "held" {
+            return @tr("stat" => "Chosen");
+        } else if key == "mb" {
+            return @tr("stat" => "In all");
+        } else if key == "places" {
+            return @tr("stat" => "Places");
+        }
+        key
+    }
+
+    // A bug of the NaviCust, by the app's key for it.
+    pure public function bug(key: string) -> string {
+        if key == "processing" {
+            return @tr("bug" => "steps go astray");
+        } else if key == "panel_trail" {
+            return @tr("bug" => "panel trail");
+        } else if key == "buster_blanks" {
+            return @tr("bug" => "blank buster shots");
+        } else if key == "hit_status" {
+            return @tr("bug" => "hits give a status");
+        } else if key == "hp_drain" {
+            return @tr("bug" => "HP drains");
+        } else if key == "custom_drain" {
+            return @tr("bug" => "HP drains in the custom screen");
+        } else if key == "battle_start" {
+            return @tr("bug" => "a status as the battle starts");
+        } else if key == "emotion" {
+            return @tr("bug" => "the emotion swings");
+        } else if key == "hand_shrink" {
+            return @tr("bug" => "the hand shrinks");
+        } else if key == "custom_damage" {
+            return @tr("bug" => "damage as the custom screen opens");
+        } else if key == "support" {
+            return @tr("bug" => "no supports");
+        }
+        key
+    }
+}
+
+// A flickable list that keeps the focused span in sight.
+component Scroll inherits Flickable {
+    // The focused span, in the list (its top and bottom).
+    in property <length> top;
+    in property <length> bottom;
+    in property <bool> follow: true;
+    function reveal() {
+        if !root.follow {
+            return;
+        }
+        if root.top < -root.content-y {
+            root.content-y = -root.top;
+        } else if root.bottom > root.height - root.content-y {
+            root.content-y = min(0px, root.height - root.bottom);
+        }
+    }
+    changed top => {
+        root.reveal();
+    }
+    changed bottom => {
+        root.reveal();
+    }
+    changed height => {
+        root.reveal();
+    }
+}
+
+// A small slanted button, of an action bar or a row's strip.
+component Chip {
+    in property <string> text;
+    in property <bool> focused;
+    in property <bool> on;
+    in property <bool> danger;
+    in property <color> swatch: transparent;
+    callback activate();
+    height: Theme.compact ? 30px : 32px;
+    min-width: max(label.preferred-width + 30px, root.swatch == transparent ? 0px : 34px);
+
+    Slant {
+        lean: 8px;
+        color: root.swatch != transparent ? root.swatch : root.focused ? (root.danger ? Theme.magenta : Theme.cyan) : root.on ? Theme.cyan-deep : Theme.raised;
+        stroke: root.focused ? white : root.on ? Theme.cyan : transparent;
+        stroke-width: root.focused ? 2px : 1px;
+        animate color { duration: Theme.quick; }
+    }
+
+    label := Text {
+        text: root.text;
+        color: root.swatch != transparent ? Theme.ink : root.focused ? Theme.ink : Theme.text;
+        font-size: Theme.label + 1px;
+        font-weight: Theme.black;
+        letter-spacing: 1px * Theme.tracking;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+    }
+}
+
+// A row of buttons: an action bar, a row's strip.
+component ActionBar {
+    in property <[ActionButton]> buttons;
+    in property <int> focused: -1;
+    callback activate(int);
+    height: Theme.compact ? 34px : 38px;
+    HorizontalLayout {
+        alignment: start;
+        spacing: 6px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        for b[i] in root.buttons: Chip {
+            text: BuildText.action(b.action);
+            focused: root.focused == i;
+            danger: b.action == BuildAction.clear || b.action == BuildAction.remove;
+            activate => {
+                root.activate(i);
+            }
+        }
+    }
+}
+
+// A browser's search and its filters.
+component FilterBar {
+    in property <[FilterChip]> filters;
+    in property <int> focused: -1;
+    callback activate(int);
+    height: Theme.compact ? 34px : 38px;
+    HorizontalLayout {
+        alignment: start;
+        spacing: 6px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        for f[i] in root.filters: Chip {
+            text: BuildText.filter(f);
+            focused: root.focused == i;
+            on: f.on;
+            activate => {
+                root.activate(i);
+            }
+        }
+    }
+}
+
+// What the tab says is wrong, over its rows.
+component Notes {
+    in property <[string]> notes;
+    VerticalLayout {
+        spacing: 2px;
+        for n in root.notes: HorizontalLayout {
+            spacing: 6px;
+            Text {
+                text: "!";
+                color: Theme.warn;
+                font-weight: Theme.black;
+                font-size: 13px;
+            }
+
+            Text {
+                text: n;
+                color: Theme.warn;
+                font-size: 12px;
+                wrap: word-wrap;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}
+
+component FactRowView {
+    in property <FactRow> item;
+    in property <bool> focused;
+    callback activate();
+    callback step(int);
+    property <bool> steps: root.item.kind == RowKind.navi || root.item.kind == RowKind.choice || root.item.kind == RowKind.flag || root.item.kind == RowKind.number || root.item.kind == RowKind.time;
+    property <bool> action: root.item.kind == RowKind.from-save || root.item.kind == RowKind.duplicate || root.item.kind == RowKind.delete || root.item.kind == RowKind.delete-confirm;
+    property <bool> danger: root.item.kind == RowKind.delete || root.item.kind == RowKind.delete-confirm;
+    property <length> lean: root.height * 0.25;
+
+    Slant {
+        lean: root.lean;
+        color: root.focused ? (root.danger ? Theme.magenta-deep : Theme.raised) : Theme.panel.with-alpha(0.55);
+        animate color { duration: Theme.quick; }
+    }
+
+    Slant {
+        x: 0;
+        width: root.focused ? 6px + root.lean : 0px;
+        lean: root.lean;
+        color: root.danger ? Theme.magenta : Theme.cyan;
+        animate width { duration: Theme.quick; easing: ease-out-expo; }
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: root.lean + 16px;
+        padding-right: root.lean + 10px;
+        spacing: 12px;
+        if root.item.kind == RowKind.navi: Image {
+            source: root.item.picture;
+            width: 64px;
+            height: 32px;
+            y: (parent.height - self.height) / 2;
+            image-rendering: pixelated;
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: BuildText.row(root.item);
+                // (A time's row is named for its definition, as a name is set.)
+                color: root.danger && root.focused ? white : root.focused ? Theme.cyan : root.action || root.item.kind == RowKind.time ? Theme.text : Theme.text-dim;
+                font-size: root.item.kind == RowKind.time ? Theme.body : root.action ? Theme.label + 3px : Theme.label;
+                font-weight: Theme.bold;
+                letter-spacing: root.item.kind == RowKind.time ? 0px : 2px * Theme.tracking;
+                overflow: elide;
+            }
+
+            if BuildText.note(root.item) != "" || root.item.problem != "": Text {
+                text: root.item.problem != "" ? root.item.problem : BuildText.note(root.item);
+                color: root.item.problem != "" ? Theme.warn : Theme.text-faint;
+                font-size: Theme.label;
+                overflow: elide;
+            }
+        }
+
+        if root.steps: Text {
+            text: "◀";
+            color: root.focused ? Theme.cyan : Theme.text-faint;
+            font-size: 13px;
+            vertical-alignment: center;
+            TouchArea {
+                clicked => {
+                    root.step(-1);
+                }
+            }
+        }
+        if root.steps || root.item.kind == RowKind.name: Text {
+            text: BuildText.value(root.item);
+            color: Theme.text;
+            font-size: Theme.compact ? 16px : 19px;
+            font-weight: Theme.bold;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            overflow: elide;
+            min-width: 60px;
+        }
+        if root.steps: Text {
+            text: "▶";
+            color: root.focused ? Theme.cyan : Theme.text-faint;
+            font-size: 13px;
+            vertical-alignment: center;
+            TouchArea {
+                clicked => {
+                    root.step(1);
+                }
+            }
+        }
+    }
+}
+
+component EntryView {
+    in property <EntryRow> item;
+    in property <bool> focused;
+    in property <bool> active;
+    callback activate();
+    property <bool> tall: root.item.lines != "" || root.item.bugs != "" || root.item.note != "";
+
+    if root.item.heading: Label {
+        x: 4px;
+        y: parent.height - self.height - 4px;
+        text: root.item.name;
+        color: Theme.cyan;
+    }
+
+    if !root.item.heading: Rectangle {
+        Slant {
+            lean: 8px;
+            color: root.focused ? (root.active ? Theme.raised : Theme.panel) : Theme.panel.with-alpha(0.4);
+            stroke: root.focused && root.active ? Theme.cyan : transparent;
+            stroke-width: 2px;
+        }
+
+        TouchArea {
+            clicked => {
+                root.activate();
+            }
+        }
+
+        HorizontalLayout {
+            padding-left: 14px;
+            padding-right: 14px;
+            spacing: 10px;
+            Text {
+                text: root.item.number;
+                width: 20px;
+                color: root.focused ? Theme.cyan : Theme.text-faint;
+                font-size: 11px;
+                font-weight: Theme.bold;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+            }
+
+            Rectangle {
+                width: 32px;
+                Image {
+                    source: root.item.icon;
+                    width: 32px;
+                    height: 32px;
+                    image-rendering: pixelated;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Text {
+                    text: root.item.empty ? @tr("— empty —") : root.item.name;
+                    color: root.item.empty ? Theme.text-faint : root.focused ? white : Theme.text;
+                    font-size: Theme.compact ? 14px : 16px;
+                    font-weight: Theme.bold;
+                    overflow: elide;
+                }
+
+                if root.tall: HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    if root.item.lines != "": Text {
+                        text: root.item.lines;
+                        color: Theme.text-dim;
+                        font-size: 11px;
+                        overflow: elide;
+                    }
+                    if root.item.bugs != "": Text {
+                        text: root.item.bugs;
+                        color: Theme.magenta;
+                        font-size: 11px;
+                        overflow: elide;
+                    }
+                    if root.item.note != "": Text {
+                        text: root.item.note;
+                        color: Theme.text-faint;
+                        font-size: 11px;
+                        font-italic: true;
+                        overflow: elide;
+                    }
+                }
+            }
+
+            if root.item.marks != "": Text {
+                text: root.item.marks;
+                color: Theme.gold;
+                font-size: 11px;
+                font-weight: Theme.black;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+            }
+            Text {
+                text: root.item.tail;
+                color: Theme.text;
+                font-size: Theme.compact ? 14px : 16px;
+                font-weight: Theme.black;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+                min-width: 22px;
+            }
+
+            if root.item.problem != "": Text {
+                text: "!";
+                color: Theme.warn;
+                font-weight: Theme.black;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+component PickView {
+    in property <PickRow> item;
+    in property <bool> focused;
+    in property <bool> active;
+    in property <int> option;
+    callback activate(int);
+
+    Slant {
+        lean: 8px;
+        color: root.focused ? (root.active ? Theme.raised : Theme.panel) : Theme.panel.with-alpha(0.4);
+        stroke: root.focused && root.active ? Theme.cyan : transparent;
+        stroke-width: 2px;
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate(-1);
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 10px;
+        if root.item.icon.width > 0: Rectangle {
+            width: 32px;
+            Image {
+                source: root.item.icon;
+                width: 32px;
+                height: 32px;
+                image-rendering: pixelated;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: root.item.name;
+                    color: root.item.taken ? Theme.text-faint : root.item.dark ? Theme.magenta : root.focused ? white : Theme.text;
+                    font-size: Theme.compact ? 14px : 16px;
+                    font-weight: Theme.bold;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+
+                Text {
+                    text: root.item.held;
+                    color: Theme.ready;
+                    font-size: 12px;
+                    font-weight: Theme.black;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: root.item.detail;
+                    color: Theme.text-dim;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+            }
+
+            if root.item.lines != "" || root.item.bugs != "": HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                if root.item.lines != "": Text {
+                    text: root.item.lines;
+                    color: Theme.text-dim;
+                    font-size: 11px;
+                    overflow: elide;
+                }
+                if root.item.bugs != "": Text {
+                    text: root.item.bugs;
+                    color: Theme.magenta;
+                    font-size: 11px;
+                    overflow: elide;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 4px;
+            alignment: end;
+            for o[i] in root.item.options: Chip {
+                y: (parent.height - self.height) / 2;
+                text: o;
+                swatch: i < root.item.swatches.length ? root.item.swatches[i] : transparent;
+                focused: root.focused && root.active && root.option == i;
+                activate => {
+                    root.activate(i);
+                }
+            }
+        }
+    }
+}
+
+component TileView {
+    in property <CheckTile> tile;
+    in property <bool> focused;
+    callback activate();
+
+    Slant {
+        lean: 12px;
+        color: root.tile.on ? @linear-gradient(135deg, Theme.cyan-deep 0%, Theme.panel 80%) : Theme.panel.with-alpha(0.55);
+        stroke: root.focused ? white : root.tile.on ? Theme.cyan : Theme.line;
+        stroke-width: root.focused ? 2px : 1px;
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 20px;
+        padding-right: 14px;
+        spacing: 12px;
+        Image {
+            source: root.tile.face;
+            width: 96px;
+            height: 48px;
+            y: (parent.height - self.height) / 2;
+            image-rendering: pixelated;
+            opacity: root.tile.on ? 1 : 0.55;
+        }
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Text {
+                text: root.tile.name;
+                color: root.tile.on ? white : Theme.text-dim;
+                font-size: Theme.compact ? 15px : 18px;
+                font-weight: Theme.black;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.tile.about;
+                color: Theme.text-faint;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+
+        Rectangle {
+            width: 22px;
+            Rectangle {
+                width: 18px;
+                height: 18px;
+                border-width: 2px;
+                border-color: root.tile.on ? Theme.cyan : Theme.text-faint;
+                background: root.tile.on ? Theme.cyan : transparent;
+                Text {
+                    text: root.tile.on ? "✓" : "";
+                    color: Theme.ink;
+                    font-weight: Theme.black;
+                    font-size: 13px;
+                }
+            }
+        }
+    }
+}
+
+// The board, its pieces, the piece in hand, the cursor.
+component Board {
+    in property <int> n: 7;
+    in property <[GridCell]> cells;
+    in property <[GridPart]> parts;
+    in property <[GridCell]> ghost;
+    in property <bool> ghost-fits;
+    in property <color> ghost-color;
+    in property <int> cursor-x;
+    in property <int> cursor-y;
+    in property <bool> focused;
+    in property <int> hovered: -1;
+    in property <length> cell: 48px;
+    callback hover(int, int);
+    callback press(int, int, bool);
+    callback wheel(bool);
+    width: root.cell * root.n;
+    height: root.cell * root.n;
+
+    Rectangle {
+        background: Theme.ink.with-alpha(0.6);
+        border-radius: 4px;
+    }
+
+    for c in root.cells: Rectangle {
+        x: c.x * root.cell + 1px;
+        y: c.y * root.cell + 1px;
+        width: root.cell - 2px;
+        height: root.cell - 2px;
+        background: c.kind == 2 ? #1a2448 : c.line ? #2b4a86 : #3a4466;
+        border-radius: 3px;
+        border-width: c.kind == 2 ? 1px : 0px;
+        border-color: #34437a;
+    }
+
+    for p in root.parts: Rectangle {
+        x: p.x * root.cell + 4px;
+        y: p.y * root.cell + 4px;
+        width: root.cell - 8px;
+        height: root.cell - 8px;
+        background: p.color;
+        border-radius: 3px;
+        border-width: p.bad ? 3px : p.piece == root.hovered ? 2px : 0px;
+        border-color: p.bad ? Theme.magenta : white;
+        if p.plus: Text {
+            text: "+";
+            color: white;
+            font-size: root.cell * 0.55;
+            font-weight: Theme.black;
+        }
+    }
+
+    for g in root.ghost: Rectangle {
+        x: g.x * root.cell + 6px;
+        y: g.y * root.cell + 6px;
+        width: root.cell - 12px;
+        height: root.cell - 12px;
+        background: root.ghost-color.with-alpha(root.ghost-fits ? 0.85 : 0.4);
+        border-radius: 3px;
+        border-width: 2.5px;
+        border-color: root.ghost-fits ? Theme.ready : Theme.magenta;
+    }
+
+    if root.focused: Rectangle {
+        x: root.cursor-x * root.cell;
+        y: root.cursor-y * root.cell;
+        width: root.cell;
+        height: root.cell;
+        border-width: 2px;
+        border-color: Theme.cyan;
+        border-radius: 4px;
+    }
+
+    area := TouchArea {
+        property <int> at-x: floor(self.mouse-x / root.cell);
+        property <int> at-y: floor(self.mouse-y / root.cell);
+        mouse-cursor: pointer;
+        moved => {
+            root.hover(self.at-x, self.at-y);
+        }
+        changed has-hover => {
+            if self.has-hover {
+                root.hover(self.at-x, self.at-y);
+            }
+        }
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.down {
+                root.press(self.at-x, self.at-y, e.button == PointerEventButton.right);
+            }
+        }
+        scroll-event(e) => {
+            if e.delta-y != 0 {
+                root.wheel(e.delta-y < 0);
+                return accept;
+            }
+            reject
+        }
+    }
+}
+
+// The focused thing, large: a chip's picture and what it is.
+component DetailCard {
+    in property <Detail> detail;
+    // What to do, while nothing is focused that it shows.
+    in property <string> guide;
+    height: Theme.compact ? 96px : 120px;
+
+    if root.detail.title == "": Text {
+        x: 30px;
+        width: parent.width - 60px;
+        text: root.guide;
+        color: Theme.text-dim;
+        font-size: 13px;
+        wrap: word-wrap;
+        vertical-alignment: center;
+    }
+
+    Slant {
+        lean: 18px;
+        color: Theme.panel.with-alpha(0.7);
+        stroke: Theme.line;
+        stroke-width: 1px;
+    }
+
+    HorizontalLayout {
+        padding-left: 26px;
+        padding-right: 20px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        spacing: 16px;
+        if root.detail.picture.width > 0: Rectangle {
+            width: root.detail.art ? (Theme.compact ? 84px : 112px) : (Theme.compact ? 96px : 128px);
+            Image {
+                source: root.detail.picture;
+                width: parent.width;
+                height: root.detail.art ? parent.width * 48 / 56 : parent.width / 2;
+                image-rendering: pixelated;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.detail.title;
+                color: white;
+                font-size: Theme.compact ? 17px : 21px;
+                font-weight: Theme.black;
+                overflow: elide;
+            }
+
+            if root.detail.sub != "": Label {
+                text: root.detail.sub;
+            }
+            if root.detail.text != "": Text {
+                text: root.detail.text;
+                color: Theme.text-dim;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+            if root.detail.lines != "": Text {
+                text: root.detail.lines;
+                color: Theme.text;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+            if root.detail.bugs != "": Text {
+                text: root.detail.bugs;
+                color: Theme.magenta;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+            if root.detail.problem != "": Text {
+                text: root.detail.problem;
+                color: Theme.warn;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+// The NAVI tab's other side: the navi, what the round starts it with, and
+// everything the rules say of the build.
+component Summary {
+    in property <image> face;
+    in property <string> navi;
+    in property <[StatRow]> stats;
+    in property <[string]> problems;
+    in property <string> stopped;
+
+    Slant {
+        lean: 24px;
+        color: Theme.panel.with-alpha(0.55);
+        stroke: Theme.line;
+        stroke-width: 1px;
+    }
+
+    VerticalLayout {
+        padding: Theme.gap * 1.4;
+        padding-left: Theme.compact ? 24px : 40px;
+        padding-right: Theme.compact ? 20px : 34px;
+        spacing: Theme.gap * 0.8;
+        alignment: start;
+        HorizontalLayout {
+            spacing: 16px;
+            Image {
+                source: root.face;
+                width: 128px;
+                height: 64px;
+                image-rendering: pixelated;
+            }
+
+            Text {
+                text: root.navi;
+                color: white;
+                font-size: Theme.title-size + 6px;
+                font-weight: Theme.black;
+                font-italic: true;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+
+        Label {
+            text: @tr("AS A ROUND STARTS");
+        }
+
+        if root.stopped != "": Text {
+            text: root.stopped;
+            color: Theme.warn;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+        for s in root.stats: HorizontalLayout {
+            spacing: 12px;
+            Text {
+                text: BuildText.stat(s.key);
+                color: Theme.text-dim;
+                font-size: 13px;
+                width: 40%;
+            }
+
+            Text {
+                text: s.key == "bug" ? BuildText.bug(s.value) : s.value;
+                color: s.key == "bug" ? Theme.magenta : Theme.text;
+                font-size: 13px;
+                font-weight: Theme.bold;
+                wrap: word-wrap;
+                horizontal-stretch: 1;
+            }
+        }
+        Rectangle {
+            height: 4px;
+        }
+
+        Label {
+            text: root.problems.length == 0 ? @tr("READY TO PLAY") : @tr("WHAT KEEPS IT FROM PLAYING");
+            color: root.problems.length == 0 ? Theme.ready : Theme.warn;
+        }
+
+        Notes {
+            notes: root.problems;
+        }
+    }
+}
+
+export component BuildScreen {
+    in property <string> name;
+    in property <string> game;
+    in property <int> problem-count;
+    in property <[BuildTab]> tabs;
+    in property <int> tab;
+    in property <LeftKind> left-kind;
+    in property <RightKind> right-kind;
+    // The pane with the keys: 0 the left, 1 the right.
+    in property <int> pane;
+    // The left pane's row (-1: its action bar), the right's (-1: its
+    // filter bar), and the option chosen on the focused one.
+    in property <int> cursor;
+    in property <int> pick;
+    in property <int> option;
+    in property <[FactRow]> rows;
+    in property <[EntryRow]> entries;
+    in property <[CheckTile]> tiles;
+    in property <[PickRow]> picks;
+    in property <[ActionButton]> actions;
+    in property <[ActionButton]> strip;
+    in property <[FilterChip]> filters;
+    in property <[string]> notes;
+    in property <[StatRow]> counts;
+    in property <string> pick-hint;
+    in property <Detail> detail;
+    in property <image> face;
+    in property <string> navi;
+    in property <[StatRow]> stats;
+    in property <string> stopped;
+    in property <[string]> problems;
+    // The board.
+    in property <int> board-n: 7;
+    in property <string> board-size;
+    in property <[GridCell]> cells;
+    in property <[GridPart]> parts;
+    in property <[GridCell]> ghost;
+    in property <bool> ghost-fits;
+    in property <color> ghost-color;
+    in property <int> cell-x;
+    in property <int> cell-y;
+    in property <int> hovered: -1;
+    in property <bool> holding;
+    in property <bool> compresses;
+    in property <string> status;
+    // What is being typed: its label, and the field.
+    in property <bool> editing;
+    in property <string> edit-label;
+    in property <string> edit-hint;
+    in-out property <string> edit-text;
+    // The tiles in a row, as the pane fits them (for the app's up and
+    // down).
+    out property <int> tile-columns: max(1, floor(left.width / (Theme.compact ? 260px : 320px)));
+
+    callback nav(NavAction);
+    callback choose-tab(int);
+    callback point(int, int, int);
+    callback act(int, int, int);
+    callback step(int, int);
+    callback do-action(int);
+    callback do-strip(int);
+    callback do-filter(int);
+    callback grid-hover(int, int);
+    callback grid-press(int, int, bool);
+    callback grid-wheel(bool);
+    callback edited(string);
+    callback edit-done(string);
+
+    property <bool> portrait: Theme.portrait || Theme.window-width < 900px;
+    property <length> row-height: Theme.compact ? 50px : 58px;
+    property <length> entry-height: Theme.compact ? 40px : 44px;
+    property <length> tall-height: Theme.compact ? 52px : 58px;
+    property <bool> tall-entries: root.tabs.length > root.tab && (root.tabs[root.tab].kind == TabKind.entries || root.tabs[root.tab].kind == TabKind.places);
+    property <length> entry-h: root.tall-entries ? root.tall-height : root.entry-height;
+    property <bool> tall-picks: root.tabs.length > root.tab && root.tabs[root.tab].kind == TabKind.entries;
+    property <length> pick-h: root.tall-picks ? root.tall-height : root.entry-height;
+    // On a narrow window one pane is shown, the one with the keys.
+    property <bool> show-left: !root.portrait || root.pane == 0 || root.right-kind == RightKind.none;
+    property <bool> show-right: root.right-kind != RightKind.none && (!root.portrait || root.pane == 1);
+
+    public function edit-focus() {
+        field.focus();
+    }
+
+    public function edit-leave() {
+        field.clear-focus();
+    }
+
+    VerticalLayout {
+        padding-left: Theme.gutter;
+        padding-right: Theme.gutter;
+        padding-top: Theme.gutter * 0.5;
+        spacing: Theme.gap * 0.8;
+
+        // The build's name, its game, and whether it can be played.
+        HorizontalLayout {
+            spacing: 16px;
+            height: Theme.compact ? 56px : 72px;
+            Rectangle {
+                width: Theme.compact ? 34px : 42px;
+                Slant {
+                    y: (parent.height - self.height) / 2;
+                    height: parent.width;
+                    lean: 8px;
+                    color: Theme.raised;
+                }
+
+                Text {
+                    text: "◀";
+                    color: Theme.text-dim;
+                    font-size: 14px;
+                }
+
+                TouchArea {
+                    clicked => {
+                        root.nav(NavAction.back);
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Text {
+                    text: root.name;
+                    color: white;
+                    font-size: Theme.heading * 0.85;
+                    font-weight: Theme.black;
+                    overflow: elide;
+                }
+
+                Label {
+                    text: @tr("{0} · BUILD", root.game);
+                }
+            }
+
+            Rectangle {
+                width: badge.preferred-width + 40px;
+                Slant {
+                    height: 34px;
+                    y: (parent.height - self.height) / 2;
+                    lean: 10px;
+                    color: root.problem-count == 0 ? Theme.ready.with-alpha(0.18) : Theme.warn.with-alpha(0.18);
+                    stroke: root.problem-count == 0 ? Theme.ready : Theme.warn;
+                    stroke-width: 1px;
+                }
+
+                badge := Text {
+                    text: root.problem-count == 0 ? @tr("READY") : @tr("{n} PROBLEM" | "{n} PROBLEMS" % root.problem-count);
+                    color: root.problem-count == 0 ? Theme.ready : Theme.warn;
+                    font-size: Theme.label + 1px;
+                    font-weight: Theme.black;
+                    letter-spacing: 2px * Theme.tracking;
+                }
+            }
+        }
+
+        // The tabs: L and R go through them.
+        HorizontalLayout {
+            spacing: 6px;
+            height: Theme.compact ? 34px : 40px;
+            alignment: start;
+            if !Theme.compact: Glyph {
+                key: "A";
+                button: "L";
+                y: (parent.height - self.height) / 2;
+            }
+            if Theme.compact: Chip {
+                y: (parent.height - self.height) / 2;
+                text: "◀";
+                activate => {
+                    root.nav(NavAction.previous);
+                }
+            }
+            for t[i] in root.tabs: Rectangle {
+                visible: !Theme.compact || i == root.tab;
+                width: Theme.compact && i != root.tab ? 0px : tab-label.preferred-width + 44px;
+                Slant {
+                    lean: 10px;
+                    color: i == root.tab ? Theme.cyan : Theme.panel.with-alpha(0.7);
+                    stroke: i == root.tab ? Theme.cyan : Theme.line;
+                    stroke-width: 1px;
+                }
+
+                tab-label := Text {
+                    text: BuildText.tab(t);
+                    color: i == root.tab ? Theme.ink : Theme.text-dim;
+                    font-size: Theme.label + 1px;
+                    font-weight: Theme.black;
+                    letter-spacing: 1.5px * Theme.tracking;
+                }
+
+                if t.problems > 0: Rectangle {
+                    x: parent.width - 16px;
+                    y: 3px;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 4px;
+                    background: Theme.warn;
+                }
+                TouchArea {
+                    clicked => {
+                        root.choose-tab(i);
+                    }
+                }
+            }
+            if Theme.compact: Chip {
+                y: (parent.height - self.height) / 2;
+                text: "▶";
+                activate => {
+                    root.nav(NavAction.next);
+                }
+            }
+            if !Theme.compact: Glyph {
+                key: "S";
+                button: "R";
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.gap * 1.5;
+            vertical-stretch: 1;
+
+            left := VerticalLayout {
+                visible: root.show-left;
+                preferred-width: 0px;
+                min-width: 0px;
+                max-width: root.show-left ? 100000px : 0px;
+                horizontal-stretch: !root.show-right ? 1 : root.right-kind == RightKind.summary ? 1 : 0.82;
+                spacing: 8px;
+
+                if root.actions.length > 0: ActionBar {
+                    buttons: root.actions;
+                    focused: root.pane == 0 && root.cursor == -1 ? root.option : -1;
+                    activate(i) => {
+                        root.do-action(i);
+                    }
+                }
+                // The counts, a few to a row.
+                if root.counts.length > 0: Rectangle {
+                    property <int> columns: Theme.compact ? 2 : 3;
+                    height: ceil(root.counts.length / self.columns) * 22px;
+                    for s[i] in root.counts: HorizontalLayout {
+                        x: mod(i, parent.columns) * parent.width / parent.columns;
+                        y: floor(i / parent.columns) * 22px;
+                        width: parent.width / parent.columns;
+                        height: 22px;
+                        spacing: 6px;
+                        alignment: start;
+                        Text {
+                            text: BuildText.stat(s.key).to-uppercase();
+                            color: Theme.text-dim;
+                            font-size: Theme.label;
+                            font-weight: Theme.bold;
+                            letter-spacing: 2px * Theme.tracking;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: s.value;
+                            color: Theme.text;
+                            font-weight: Theme.black;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                if root.left-kind == LeftKind.entries && root.entries.length == 0: Text {
+                    text: @tr("Nothing here yet: choose from the list beside it.");
+                    color: Theme.text-faint;
+                    font-size: 13px;
+                    wrap: word-wrap;
+                }
+
+                Notes {
+                    notes: root.notes;
+                }
+
+                if root.left-kind == LeftKind.rows: Scroll {
+                    vertical-stretch: 1;
+                    top: root.cursor * (root.row-height + 6px);
+                    bottom: (root.cursor + 1) * (root.row-height + 6px);
+                    VerticalLayout {
+                        alignment: start;
+                        spacing: 6px;
+                        for r[i] in root.rows: FactRowView {
+                            height: root.row-height;
+                            item: r;
+                            focused: root.pane == 0 && root.cursor == i;
+                            activate => {
+                                root.act(0, i, -1);
+                            }
+                            step(by) => {
+                                root.step(i, by);
+                            }
+                        }
+                    }
+                }
+
+                if root.left-kind == LeftKind.entries: Scroll {
+                    vertical-stretch: 1;
+                    top: root.cursor * (root.entry-h + 3px);
+                    bottom: (root.cursor + 1) * (root.entry-h + 3px) + (root.strip.length > 0 ? 44px : 0px);
+                    VerticalLayout {
+                        alignment: start;
+                        spacing: 3px;
+                        for e[i] in root.entries: VerticalLayout {
+                            EntryView {
+                                height: root.entry-h;
+                                item: e;
+                                focused: root.cursor == i;
+                                active: root.pane == 0;
+                                activate => {
+                                    root.act(0, i, -1);
+                                }
+                            }
+
+                            if root.cursor == i && root.strip.length > 0: ActionBar {
+                                x: 40px;
+                                height: 40px;
+                                buttons: root.strip;
+                                focused: root.option;
+                                activate(k) => {
+                                    root.do-strip(k);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if root.left-kind == LeftKind.tiles: Scroll {
+                    vertical-stretch: 1;
+                    top: floor(max(0, root.cursor) / root.tile-columns) * 86px;
+                    bottom: (floor(max(0, root.cursor) / root.tile-columns) + 1) * 86px;
+                    Rectangle {
+                        y: 0;
+                        height: ceil(root.tiles.length / root.tile-columns) * 86px;
+                        for t[i] in root.tiles: TileView {
+                            x: mod(i, root.tile-columns) * (parent.width / root.tile-columns);
+                            y: floor(i / root.tile-columns) * 86px;
+                            width: parent.width / root.tile-columns - 10px;
+                            height: 76px;
+                            tile: t;
+                            focused: root.pane == 0 && root.cursor == i;
+                            activate => {
+                                root.act(0, i, -1);
+                            }
+                        }
+                    }
+                }
+
+                if root.left-kind == LeftKind.board: VerticalLayout {
+                    spacing: 10px;
+                    vertical-stretch: 1;
+                    // The board's size.
+                    Rectangle {
+                        height: 44px;
+                        Slant {
+                            lean: 10px;
+                            color: root.pane == 0 && root.cursor == -1 ? Theme.raised : Theme.panel.with-alpha(0.55);
+                            stroke: root.pane == 0 && root.cursor == -1 ? Theme.cyan : transparent;
+                            stroke-width: 2px;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 22px;
+                            padding-right: 18px;
+                            spacing: 12px;
+                            Label {
+                                text: @tr("BOARD");
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                                color: root.pane == 0 && root.cursor == -1 ? Theme.cyan : Theme.text-dim;
+                            }
+
+                            Text {
+                                text: "◀";
+                                color: Theme.text-faint;
+                                vertical-alignment: center;
+                                TouchArea {
+                                    clicked => {
+                                        root.step(-1, -1);
+                                    }
+                                }
+                            }
+
+                            Text {
+                                text: root.board-size;
+                                color: Theme.text;
+                                font-weight: Theme.black;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: "▶";
+                                color: Theme.text-faint;
+                                vertical-alignment: center;
+                                TouchArea {
+                                    clicked => {
+                                        root.step(-1, 1);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        vertical-stretch: 1;
+                        board := Board {
+                            x: (parent.width - self.width) / 2;
+                            y: 0;
+                            cell: max(24px, min(60px, floor(min(parent.width, parent.height) / root.board-n / 1px) * 1px));
+                            n: root.board-n;
+                            cells: root.cells;
+                            parts: root.parts;
+                            ghost: root.ghost;
+                            ghost-fits: root.ghost-fits;
+                            ghost-color: root.ghost-color;
+                            cursor-x: root.cell-x;
+                            cursor-y: root.cell-y;
+                            hovered: root.hovered;
+                            focused: root.pane == 0 && root.cursor >= 0;
+                            hover(x, y) => {
+                                root.grid-hover(x, y);
+                            }
+                            press(x, y, right) => {
+                                root.grid-press(x, y, right);
+                            }
+                            wheel(up) => {
+                                root.grid-wheel(up);
+                            }
+                        }
+                    }
+                }
+
+                if root.left-kind != LeftKind.rows && root.pane == 0: Text {
+                    text: root.detail.problem;
+                    color: Theme.warn;
+                    font-size: 12px;
+                    wrap: word-wrap;
+                    visible: root.right-kind == RightKind.none;
+                }
+            }
+
+            if root.show-right && root.right-kind == RightKind.summary: Summary {
+                preferred-width: 0px;
+                min-width: 0px;
+                horizontal-stretch: 1;
+                face: root.face;
+                navi: root.navi;
+                stats: root.stats;
+                problems: root.problems;
+                stopped: root.stopped;
+            }
+
+            if root.show-right && root.right-kind == RightKind.browser: VerticalLayout {
+                preferred-width: 0px;
+                min-width: 0px;
+                horizontal-stretch: 1;
+                spacing: 8px;
+                DetailCard {
+                    detail: root.detail;
+                    guide: root.guide;
+                }
+
+                FilterBar {
+                    filters: root.filters;
+                    focused: root.pane == 1 && root.pick == -1 ? root.option : -1;
+                    activate(i) => {
+                        root.do-filter(i);
+                    }
+                }
+
+                if root.pick-hint != "": Text {
+                    text: root.pick-hint;
+                    color: Theme.text-faint;
+                    font-size: 12px;
+                    overflow: elide;
+                }
+                Scroll {
+                    vertical-stretch: 1;
+                    top: max(0, root.pick) * (root.pick-h + 3px);
+                    bottom: (max(0, root.pick) + 1) * (root.pick-h + 3px);
+                    VerticalLayout {
+                        alignment: start;
+                        spacing: 3px;
+                        for p[i] in root.picks: PickView {
+                            height: root.pick-h;
+                            item: p;
+                            focused: root.pick == i;
+                            active: root.pane == 1;
+                            option: root.option;
+                            activate(o) => {
+                                root.act(1, i, o);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            height: 40px;
+            spacing: 16px;
+            Hints {
+                visible: !Theme.portrait;
+                horizontal-stretch: 1;
+                hints: root.hints;
+            }
+
+            Text {
+                text: root.status;
+                color: Theme.text-dim;
+                font-size: 12px;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+
+    // What is being typed, over the rest.
+    if root.editing: Rectangle {
+        background: Theme.ink.with-alpha(0.6);
+        TouchArea {
+            clicked => {
+                root.nav(NavAction.back);
+            }
+        }
+    }
+    Rectangle {
+        visible: root.editing;
+        x: Theme.gutter;
+        width: parent.width - 2 * Theme.gutter;
+        y: parent.height * 0.3;
+        height: 120px;
+        Slant {
+            lean: 20px;
+            color: Theme.deep;
+            stroke: Theme.cyan;
+            stroke-width: 2px;
+        }
+
+        VerticalLayout {
+            padding-left: 40px;
+            padding-right: 40px;
+            padding-top: 16px;
+            padding-bottom: 16px;
+            spacing: 8px;
+            Label {
+                text: root.edit-label == "name" ? @tr("NAME") : root.edit-label == "search" ? @tr("SEARCH") : root.edit-label;
+                color: Theme.cyan;
+            }
+
+            field := TextInput {
+                text <=> root.edit-text;
+                color: Theme.text;
+                font-size: Theme.compact ? 20px : 26px;
+                font-weight: Theme.bold;
+                single-line: true;
+                selection-background-color: Theme.cyan-deep;
+                selection-foreground-color: white;
+                edited => {
+                    root.edited(self.text);
+                }
+                accepted => {
+                    root.edit-done(self.text);
+                }
+                changed has-focus => {
+                    Input.editing = self.has-focus;
+                }
+            }
+
+            Text {
+                text: root.edit-hint;
+                color: Theme.text-faint;
+                font-size: 12px;
+            }
+        }
+    }
+
+    property <TabKind> kind: root.tabs.length > root.tab ? root.tabs[root.tab].kind : TabKind.navi;
+    property <string> guide: root.kind == TabKind.grid ? @tr("Choose a program, then put it on the board: L and R turn it, C compresses it. A placed one is picked up by pressing it.") : root.kind == TabKind.folder ? @tr("Choose an entry, then a chip in one of its codes: it goes there, and the next entry is chosen.") : root.kind == TabKind.entries ? @tr("Confirm one on the list to add it; one of yours, to move or remove it.") : root.kind == TabKind.places ? @tr("Choose a place, then the chip that goes there.") : "";
+
+    property <[Hint]> hints: root.holding && root.compresses ? [
+        { key: "Enter", button: "A", text: @tr("Put it down") },
+        { key: "A S", button: "L R", text: @tr("Turn") },
+        { key: "C", button: "Y", text: @tr("Compress") },
+        { key: "Esc", button: "B", text: @tr("Put back") },
+    ] : root.holding ? [
+        { key: "Enter", button: "A", text: @tr("Put it down") },
+        { key: "A S", button: "L R", text: @tr("Turn") },
+        { key: "Esc", button: "B", text: @tr("Put back") },
+    ] : root.pane == 1 ? [
+        { key: "↑↓", button: "✚", text: @tr("Choose") },
+        { key: "←→", button: "✚", text: @tr("Code / color") },
+        { key: "Enter", button: "A", text: @tr("Put in") },
+        { key: "Esc", button: "B", text: @tr("Back") },
+    ] : root.kind == TabKind.folder || root.kind == TabKind.entries || root.kind == TabKind.grid || root.kind == TabKind.places ? [
+        { key: "↑↓", button: "✚", text: @tr("Choose") },
+        { key: "Enter", button: "A", text: @tr("Confirm") },
+        { key: "Del", button: "X", text: @tr("Take off") },
+        { key: "A S", button: "L R", text: @tr("Tab") },
+        { key: "Esc", button: "B", text: @tr("Back") },
+    ] : [
+        { key: "↑↓", button: "✚", text: @tr("Choose") },
+        { key: "Enter", button: "A", text: @tr("Confirm") },
+        { key: "A S", button: "L R", text: @tr("Tab") },
+        { key: "Esc", button: "B", text: @tr("Back") },
+    ];
+}
