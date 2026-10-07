@@ -25,12 +25,11 @@ local rules: Rules = {
         -- MegaMan's light/dark value (NaviStats +0x36, ./light_dark).
         karma = "u16",
     },
-    -- A setup that says nothing: what every save brings at its highest.
+    -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value, 500.
     setup_defaults = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
-        -- A light MegaMan's (Tango's light saves').
-        karma = light_dark.LIGHT,
+        karma = 500,
     },
     -- The custom screen's (./custom): the hand's size.
     custom = {
@@ -39,6 +38,8 @@ local rules: Rules = {
     hooks = {
         -- What the save brings to the navi's stats (./save).
         round_setup = save.round_setup,
+        -- Each tick of the navi's intake: a navi that isn't dark closes the hole he stands on (./light_dark).
+        navi_intake = light_dark.navi_intake,
         -- Light and dark MegaMan (./light_dark): his palette.
         navi_palette = light_dark.navi_palette,
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
