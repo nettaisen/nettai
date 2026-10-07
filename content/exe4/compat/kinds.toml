@@ -17,3 +17,6 @@
 # The stages' boulder (the actor lists' entry type 3, 0x08006880) and the debris it breaks into (0x080E621C).
 "boulder" = { pool = "attack", index = 0x6E }
 "rock/debris" = { pool = "effect", index = 0x38 }
+# The flag stages' flags (the actor lists' entry type 7, 0x080068F4: its spawner leaves its position as the panel and
+# the HP until its init places it).
+"flag" = { pool = "attack", index = 0x9C, scratch_position = true }
