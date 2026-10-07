@@ -23,6 +23,7 @@ local hook = require("./flmhook/hook")
 local invisible = require("./invisibl/controller")
 local lockon = require("../rules/lockon")
 local minibomb = require("./minibomb").minibomb
+local navi_chips = require("../lib/navi_chips/chip")
 local plus = require("../lib/instant/plus")
 local poisseed = require("./poisseed").poisseed
 local slashman = require("./slashman/navi")
@@ -96,14 +97,13 @@ local function blade(key: string, n: number, action: Action?): Chip
     })
 end
 
--- A navi chip.
-type Summon = (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
-local function navi_chip(key: string, n: number, damage: number, summon: Summon, fields: { [string]: any }?): Chip
+-- A navi chip, with its own controller (EXE6's lib/navi_chips/chip).
+local function navi_chip(key: string, n: number, damage: number, summon: NaviChipSummon, fields: { [string]: any }?): Chip
     local all: { [string]: any } = {
         flags = { "has_damage", "navi", "library" },
         class = "mega",
         damage = damage,
-        navi = summon,
+        navi = navi_chips.make { id = "test/" .. key .. "/controller", summon = summon },
     }
     for k, v in fields or {} do
         all[k] = v

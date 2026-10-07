@@ -1373,24 +1373,17 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     lib_fn!(lua, navi_chip, "warp", |_, (user, out): (mlua::UserDataRef<Object>, bool)| {
         with(|api, _| Ok(api.navi_warp(user.0, out)))
     });
-    lib_fn!(lua, navi_chip, "spring_anti_recovery", |lua, (user, damage): (mlua::UserDataRef<Object>, LuaValue)| {
-        let damage = int(&damage, "damage")? as u32;
-        let c = with(|api, _| Ok(api.navi_spring_anti_recovery(user.0, damage)))?;
-        object_value(lua, c)
-    });
-    lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
-        with(|api, _| Ok(api.navi_chip_left(c.0)))
-    });
-    lib_fn!(lua, navi_chip, "last", |lua, ()| {
-        let Some((chip, element, damage)) = with(|api, _| Ok(api.last_navi_chip()))? else {
-            return Ok(LuaValue::Nil);
-        };
-        let t = lua.create_table()?;
-        t.raw_set("chip", bound(|b| chip_value(b, Some(chip)))?)?;
-        t.raw_set("element", element)?;
-        t.raw_set("damage", damage)?;
-        Ok(LuaValue::Table(t))
-    });
+    lib_fn!(
+        lua,
+        navi_chip,
+        "spring_anti_recovery",
+        |lua, (user, damage, names_trap): (mlua::UserDataRef<Object>, LuaValue, Option<bool>)| {
+            let damage = int(&damage, "damage")? as u32;
+            let c = with(|api, _| Ok(api.spring_anti_recovery(user.0, damage, names_trap.unwrap_or(false))))?;
+            object_value(lua, c)
+        }
+    );
+    lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| with(|api, _| Ok(api.navi_left(c.0))));
     g.set("navi_chip", navi_chip)?;
 
     let vec3 = lua.create_table()?;
@@ -2038,6 +2031,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.clear_linked(side)))
     });
+    lib_fn!(lua, t, "trap_mark", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.trap_mark(o.0))));
     lib_fn!(lua, t, "clear_bugs", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.clear_bugs(side)))
@@ -2480,23 +2474,33 @@ fn panel_type_arg(name: &mlua::LuaString) -> mlua::Result<u8> {
 fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
     for &step in DimmingStep::ALL {
-        let needs_chip = matches!(step, DimmingStep::CheckAntiNavi | DimmingStep::ShowNaviTelop);
         t.set(
             step.name(),
-            lua.create_function(move |_, (me, chip): (mlua::UserDataRef<Object>, mlua::Variadic<LuaValue>)| {
-                // The chip the controller shows (nil: the zeroed chip
-                // field's), for the steps that read it.
-                let chip = match chip.first() {
-                    Some(c) => bound(|b| chip_arg(b, c, "the dimming's chip"))?,
-                    None if needs_chip => {
-                        return Err(mlua::Error::runtime(format!("dimming.{} needs the chip", step.name())));
-                    }
-                    None => None,
-                };
-                with(|api, _| Ok(api.dimming(me.0, step, chip)))
-            })?,
+            lua.create_function(move |_, me: mlua::UserDataRef<Object>| with(|api, _| Ok(api.dimming(me.0, step))))?,
         )?;
     }
+    lib_fn!(lua, t, "telop_running", |_, (me, chip): (mlua::UserDataRef<Object>, LuaValue)| {
+        // The chip the telop names unless the controller's names one (nil:
+        // the zeroed chip field's).
+        let chip = bound(|b| chip_arg(b, &chip, "dimming.telop_running's chip"))?;
+        with(|api, _| Ok(api.dimming_telop_running(me.0, chip)))
+    });
+    lib_fn!(lua, t, "user", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")?;
+        let u = with(|api, _| Ok(api.dimming_user(side)))?;
+        object_value(lua, u)
+    });
+    lib_fn!(lua, t, "run", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")?;
+        with(|api, _| Ok(api.dimming_run(side)))
+    });
+    lib_fn!(lua, t, "chip_telop", |_, (side, chip): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")?;
+        let chip = bound(|b| chip_arg(b, &chip, "dimming.chip_telop's chip"))?;
+        with(|api, _| Ok(api.dimming_chip_telop(side, chip)))
+    });
+    lib_fn!(lua, t, "telop_done", |_, ()| with(|api, _| Ok(api.dimming_telop_done())));
+    lib_fn!(lua, t, "turn", |_, me: mlua::UserDataRef<Object>| with(|api, _| Ok(api.dimming_turn(me.0))));
     lib_fn!(
         lua,
         t,
@@ -2707,14 +2711,6 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             t.raw_set("bonus", spec.bonus)?;
             vec![obj(user)?, LuaValue::Table(t)]
         }
-        HookCall::NaviChip { user, controller, spec } => {
-            let t = lua.create_table()?;
-            t.raw_set("panel_x", spec.panel.x)?;
-            t.raw_set("panel_y", spec.panel.y)?;
-            t.raw_set("element", spec.element)?;
-            t.raw_set("damage", spec.damage)?;
-            vec![obj(user)?, obj(controller)?, LuaValue::Table(t)]
-        }
         HookCall::InstantChip { user, spec } => {
             let t = lua.create_table()?;
             t.raw_set("panel_x", spec.panel.x)?;
@@ -2799,7 +2795,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 v.type_name()
             ))),
         },
-        HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::Place { .. } => {
+        HookCall::DimmingChip { .. } | HookCall::Place { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
         // A navi's role hook may hand back an object (`navi_deleted`'s).

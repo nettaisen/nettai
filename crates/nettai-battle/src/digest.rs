@@ -198,7 +198,6 @@ impl Hash for Battle {
             navi_hit_counts,
             linked,
             dimming,
-            last_navi_chip,
             rules,
             sound: _,
             outcome,
@@ -236,7 +235,6 @@ impl Hash for Battle {
         navi_hit_counts.hash(h);
         linked.hash(h);
         dimming.hash(h);
-        last_navi_chip.hash(h);
         rules.hash(h);
         // An engine error's message is left out: it is for people, and a
         // content runtime's can quote addresses.

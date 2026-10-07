@@ -309,5 +309,18 @@ Each with what it was and what it is now.
   `conversion_call`, the rule `effects.obstacle_conversion` and the role `KindRole::ConvertedObstacle` are gone. A Luau
   call per obstacle reaction while a side is armed.
 
+- **D1.** The navi chip controller is content (2026-10-07). Each EXE6 and EXE5 navi chip makes its own controller
+  (`navi = navi_chips.make { id, summon, course, ... }`, @exelib/navi_chips/chip, on @exelib/navi_chips/controller,
+  which EXE4's navi chips and EXE5's Phoenix and DethPhnx were already on), its course data (`PLAIN`, `USER_STAYS`,
+  `USER_RETURNED`); compat maps every chip's controller to the original's one object, effect #0x10 (kinds.toml, written
+  by bn6battle-verify's tools/content/navi_chip_kinds.py). AntiNavi's check and turn and the navi chip's name went
+  to Luau on generic dimming steps (`dimming.telop_running`, `run`, `chip_telop`, `telop_done`, `turn`,
+  `battle.trap_mark`); AntiRecv's spring on Roll's chips is the chip's hook's (`navi_chip.spring_anti_recovery`), and
+  the last navi chip used is EXE5's rules' state (rules/api, for DethPhnx). kinds/navi_chip.rs, `EngineKind::NaviChip`,
+  `Battle::last_navi_chip`, `HookCall::NaviChip`, `NaviChipSpec`, dimming.rs's `check_anti_navi` and `show_navi_telop`,
+  and the chip traits `heals`, `user_stays`, `navi_returns_user`, `navi_slot` and `not_navi_slot` are gone; action
+  0x1B (EXE5's 0x41) is the engine's generic hand-off of a chip to its controller (`EngineAction::HandOffChip`,
+  `engine/hand-off-chip`, `ChipUsage::HandOff`, which the content's `navi` usage names).
+
 The [stated rule](#the-line) still holds as the goal: when B1–B9, C1–C10 and the rest are done, Rust knows no
 "beast", no "cross", no "soul" and no "exe5".

@@ -4,6 +4,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local bignoise = require("@self/bignoise")
+local navi_chips = require("../lib/navi_chips/chip")
 local recipe_pulsar3 = require("./pulsar").pulsar3
 local recipe_shademn_ds = require("./shademan")["shademn-ds"]
 local recipe_shademn_sp = require("./shademan")["shademn-sp"]
@@ -27,7 +28,10 @@ local chip: Chip = {
         { order = 34, sequence = { recipe_pulsar3, recipe_pulsar3, recipe_shademn_sp } },
         { order = 35, sequence = { recipe_pulsar3, recipe_pulsar3, recipe_shademn_ds } },
     },
-    navi = bignoise.summon,
+    navi = navi_chips.make {
+        id = "bignoise/controller",
+        summon = bignoise.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 

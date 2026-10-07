@@ -1320,7 +1320,7 @@ fn cut_in(b: &mut Battle, r: ObjectRef) {
     let (action, a) = super::chip_use::prepare_detached(b, r);
     let controller = match action {
         NaviAction::Engine(super::EngineAction::DimmingChip) => actions::dimming_chip::spawn_controller(b, r, &a),
-        NaviAction::Engine(super::EngineAction::NaviChip) => actions::navi_chip::spawn_controller(b, r, &a),
+        NaviAction::Engine(super::EngineAction::HandOffChip) => actions::hand_off_chip::spawn_controller(b, r, &a),
         _ => return,
     };
     let side = b.objects.get(r).alliance;

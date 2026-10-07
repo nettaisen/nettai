@@ -11,9 +11,11 @@
 -- Not reached: the palette flash it would show with each fire when bit 19 of its update's r7 is set (0x080BFF2E),
 -- which holds its list node's address, an EWRAM address under 0x02040000.
 
+local api = require("../../rules/api")
 local controllers = require("../phoenix/controllers")
 local fire = require("./fire")
 local collision = require("../../rules/collision")
+local navi_chips = require("../../lib/navi_chips/chip")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 
@@ -211,7 +213,7 @@ local function fade_out(me: Object)
     me.visible = false
     me.sprite.alpha = nil
     local user = me.related1 :: Object
-    if user.hp ~= 0 and navi_chip.last() then
+    if user.hp ~= 0 and api.last_navi_chip() then
         me:set_action(0x18)
     else
         leave(me)
@@ -248,11 +250,11 @@ local function bring_again(me: Object)
         end)
     elseif phase == 4 then
         if me.phase_init == 0 then
-            local last = navi_chip.last()
+            local last = api.last_navi_chip()
             if not last then
                 error("DethPhnx brings the last navi chip's navi, but none was used")
             end
-            local bring = last.chip.navi :: (Object, Object, NaviChipSpec) -> Object?
+            local bring = (last.chip.navi :: NaviChip).summon
             local navi = bring(user, me, {
                 panel_x = user.panel_x,
                 panel_y = user.panel_y,
@@ -271,8 +273,8 @@ local function bring_again(me: Object)
         end)
     elseif phase == 0xC then
         if me.phase_init == 0 then
-            local last = navi_chip.last()
-            if last and table.find(last.chip.traits or {}, "navi_returns_user") then
+            local last = api.last_navi_chip()
+            if last and (last.chip.navi :: NaviChip).course == navi_chips.USER_RETURNED then
                 return leave(me)
             end
             navi_chip.warp(user, false)

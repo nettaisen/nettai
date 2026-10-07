@@ -5,6 +5,7 @@
 local meteors = require("./meteors").meteors
 local atk = require("./atk-30")["atk-30"]
 local uninstll = require("./uninstll").uninstll
+local navi_chips = require("../lib/navi_chips/chip")
 local sun = require("@self/sun")
 
 local chip: Chip = {
@@ -20,7 +21,10 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
     program_advances = { { order = 8, sequence = { meteors, atk, uninstll } } },
-    navi = sun.summon,
+    navi = navi_chips.make {
+        id = "sunmoon/controller",
+        summon = sun.summon,
+    },
 }
 
 return { sunmoon = chip }

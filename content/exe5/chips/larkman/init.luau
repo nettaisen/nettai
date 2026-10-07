@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
 
 -- LarkMan (EXE5 chip 0x110): LarkMan cuts in and sends his swoop round the field (./navi).
@@ -19,7 +20,10 @@ local larkman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "larkman/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -39,7 +43,10 @@ local larkman_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "larkman-sp/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -58,7 +65,10 @@ local larkman_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
     megaman = "dark",
-    navi = navi.summon_dark,
+    navi = navi_chips.make {
+        id = "larkman-ds/controller",
+        summon = navi.summon_dark,
+    },
     auto_battle = { class = "at_once" },
 }
 

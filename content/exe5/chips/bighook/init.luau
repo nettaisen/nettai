@@ -3,6 +3,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local hook = require("@self/hook")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "G" },
@@ -19,8 +20,11 @@ local chip: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     -- (Its user stays on the field while the hook strikes: 0x080E1910, navi 26.)
-    traits = { "user_stays" },
-    navi = hook.summon,
+    navi = navi_chips.make {
+        id = "bighook/controller",
+        summon = hook.summon,
+        course = navi_chips.USER_STAYS,
+    },
     auto_battle = { class = "at_once" },
 }
 
