@@ -765,14 +765,23 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
 **The decode and the replay** are exe4-compat's (`codec`: the 0x40-byte NaviStats by its fields, the panels, the chip
 blocks, the link record of §18 item 23; `trace`, feature `trace`: the lines, their decode, a round's setup in the
 engine's terms, the buttons fed, the comparison, `run_round`), as exe5-compat's are EXE5's. A round's stage is the
-settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance
-from Red Sun US's); its background the record's +5; its stats the recorded block over the navi's fresh stats, an
-unported field (supports, a panel trail, Full Synchro or an aura at the start, a color, All Guard) a need that stops
-the setup. The compat tables kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the
-framework's states, which are EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and
-records.toml (navis, weapon routines, souls, auras by number) are written by hand as the replays reach them.
-The verification workspace's trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over data/traces/lab-exe4;
-nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
+settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance from
+Red Sun US's); its background the record's +5; its stats, where the recording carries the saves' NaviCusts, those and
+its patch cards compiled by the rules (§8) and checked against the recorded block, else the recorded block over the
+navi's fresh stats; an unported field (supports, a color, All Guard) a need that stops the setup. The compat tables
+kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the framework's states, which are
+EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and records.toml (navis, weapon
+routines, souls, auras by number) are written by hand as the replays reach them. The verification workspace's
+trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over data/traces/lab-exe4; nettai-tool plays an EXE4
+recording (`Exe4TracePlayer`).
+
+**Known deviations** (the workspace's trace-tests `deviations.rs`, `Set::Exe4Lab`, as EXE6's lab has its own): a
+recording the engine departs from on purpose matches every frame up to its deviation, and the frames after it aren't
+compared. `modcards/017-custom2`, `modcards/105-panel-change` and `modcards/110-custom3`, frame 274: nettai has no link
+cable, and the replay feeds the custom screen's OK as the fight saw it, the cable's delay (4 ticks) after the
+original's screen took it, so the side's selection status (BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4
+ticks longer, and the custom HP-drain bug, which counts only while it is set (0x0800C194), drains a point the original
+doesn't. No link latency goes into the engine (the user's word); a recording with another cause is no deviation.
 
 ## 18. Engine gaps (must close)
 
