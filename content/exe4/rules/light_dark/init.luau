@@ -5,7 +5,7 @@
 --
 -- - **The starting mood** (MegaMan's round setup, 0x0800D872: in a netbattle, battle type 0x46 and on, whatever the
 --   mood was; 0x0800F56A): under 470 0 (a dark MegaMan's: his emotion worn out); with the save's Full Synchro at the
---   start (NaviStats +0x1F, a Mod Card's) 0xFF; from 1000 190; else the value / 20 + 128 (a fresh save's 500: 0x99).
+--   start (NaviStats +0x1F, a patch card's) 0xFF; from 1000 190; else the value / 20 + 128 (a fresh save's 500: 0x99).
 --   (Its branch for a value under 500, 64, follows the test under 470 and is never taken.)
 -- - **A dark MegaMan clears holy panels** (0x080132E6, from the navi's intake every tick of the fight, unless his
 --   NaviStats +0x26 is 2: only a story's other navi, 0x08041100, has it): when the panel he stands on is holy and the
@@ -17,7 +17,7 @@
 -- - **His palette** (0x0800C08E each tick from the player's update, 0x080EAEEC, and as he is set up, 0x080107DE;
 --   0x0800BFFE picks it): a player whose param is set 1; in soul 15 1; in any other soul 0; else 4 in Full Synchro
 --   (mood 0xFF), else by the value's tier (0x0800C052: from 1000 4, from 500 0, from 470 3, else 2); then 5 more for
---   each step of his color (NaviStats +0x27, a Mod Card's, which no stats here carry yet: exe4-compat refuses one).
+--   each step of his color (NaviStats +0x27, a patch card's, which no stats here carry yet: exe4-compat refuses one).
 --   Presentation: the sprite's palette. (Another navi's palette is 0x0800B95E's table: EXE4's content has MegaMan
 --   alone. No player the engine spawns has a param, and no soul is ported yet.) Tango's light saves hold 1000, its
 --   dark ones 460.
@@ -29,7 +29,7 @@ export type Setup = {
     -- 500 (0x0800D6BE, 0x0800D6CA), the setup's default. (A match's side's `karma`, which nettai-match writes by this
     -- field's name.)
     karma: number,
-    -- The save's Full Synchro at the start (NaviStats +0x1F: Mod Card 45's), none by default.
+    -- The save's Full Synchro at the start (NaviStats +0x1F: patch card 45's), none by default.
     full_synchro_start: boolean,
 }
 

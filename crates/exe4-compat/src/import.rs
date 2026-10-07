@@ -2,11 +2,11 @@
 //! one navi an EXE4 save operates), its equipped folder with its Regular chip,
 //! the NaviCust's programs as placed, what the save brings to the stats (the
 //! base HP and the Regular memory), and from MegaMan's NaviStats block his
-//! light/dark value and the Full Synchro at the start. The Mod Cards aren't
-//! ported yet (docs/design/exe4-map.md §18): a card switched on is said and
-//! left out. The import is the compat boundary's: a save is the original's
-//! bytes, and a side its game's facts (nettai's build creator picks the
-//! game's import: `builds::import`).
+//! light/dark value and the Full Synchro at the start, and the patch cards
+//! switched on (a card whose effects aren't ported yet, docs/design/
+//! exe4-map.md §18, said and left out). The import is the compat
+//! boundary's: a save is the original's bytes, and a side its game's facts
+//! (nettai's build creator picks the game's import: `builds::import`).
 
 use crate::save::Save;
 use nettai_battle::content::{ChipCode, Content};
@@ -72,10 +72,18 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
         Ok(programs) => state(side, "navicust_programs", &programs),
         Err(e) => notes.push(format!("the save's NaviCust is left out: {e}")),
     }
-    // (The Mod Cards: not ported yet.)
-    let on: Vec<String> = save.mod_cards().iter().flatten().filter(|c| c.on).map(|c| format!("{:#04x}", c.id)).collect();
-    if !on.is_empty() {
-        notes.push(format!("the save's Mod Cards ({}) are left out: EXE4's Mod Cards aren't ported yet", on.join(", ")));
+    // Its patch cards switched on, by slot (a card whose effects wait is said
+    // and left out).
+    let slots: Vec<Option<u8>> = save.patch_cards().iter().map(|c| c.filter(|c| c.on).map(|c| c.id)).collect();
+    match crate::setup::patch_cards(content, compat, &slots) {
+        Ok((cards, waiting)) => {
+            state(side, "patch_cards", &cards);
+            if !waiting.is_empty() {
+                let numbers: Vec<String> = waiting.iter().map(|n| n.to_string()).collect();
+                notes.push(format!("the save's patch cards {} are left out: their effects aren't ported yet", numbers.join(", ")));
+            }
+        }
+        Err(e) => notes.push(format!("the save's patch cards are left out: {e}")),
     }
     // What the save brings to the stats: the base HP, the Regular memory.
     state(side, "hp", &[Fact::Value(Value::Int(save.base_max_hp() as i64))]);
@@ -93,7 +101,9 @@ mod tests {
     /// A raw image: the game's name; its second folder equipped, a Cannon A
     /// then an AirShot (a chip EXE4's content hasn't yet, left empty) and
     /// its Regular chip the first; AirShoes (program 12, in blue, its one color) on
-    /// the command line's left end; Mod Card 0x10 on; MegaMan's block with
+    /// the command line's left end; patch card 16 (Panel Change) on in slot 0
+    /// and card 12 (Buster Patch, whose B button waits) in slot 1, card 1 off
+    /// in slot 2; MegaMan's block with
     /// the dark value 460; a base HP of 760 and a Regular memory of 10.
     fn image() -> Vec<u8> {
         let mut img = vec![0; crate::save::IMAGE_SIZE];
@@ -109,8 +119,8 @@ mod tests {
         img[0x2148] = 6;
         img[0x21CA..0x21CC].copy_from_slice(&760u16.to_le_bytes());
         img[0x4564..0x4564 + 6].copy_from_slice(&[12 << 2, 0, 0, 2, 0, 0]);
-        img[0x464C..0x464C + 6].copy_from_slice(&[0x10, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
-        img[0x4653..0x4653 + 6].fill(0xFF);
+        img[0x464C..0x464C + 7].copy_from_slice(&[16, 12, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+        img[0x4653..0x4653 + 7].copy_from_slice(&[0xFF, 0xFF, 1, 0xFF, 0xFF, 0xFF, 0xFF]);
         img[0x4E60 + 0x36..0x4E60 + 0x38].copy_from_slice(&460u16.to_le_bytes());
         img
     }
@@ -133,11 +143,13 @@ mod tests {
             (programs.len(), field("x"), field("y"), field("color")),
             (1, Some(Stated::Number(1)), Some(Stated::Number(3)), Some(Stated::Variant(Some("blue".into()))))
         );
+        let Some(Stated::List(cards)) = get("patch_cards") else { panic!("{:?}", get("patch_cards")) };
+        assert_eq!(cards.len(), 1, "{cards:?}");
         assert_eq!(
             notes,
             [
                 "the save's folder holds chip numbers exe4 has no chip for (0x004): their entries are left empty",
-                "the save's Mod Cards (0x10) are left out: EXE4's Mod Cards aren't ported yet",
+                "the save's patch cards 12 are left out: their effects aren't ported yet",
             ]
         );
     }
