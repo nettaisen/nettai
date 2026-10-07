@@ -420,7 +420,7 @@ restating theirs the same.
     EXE5's);
   - `intro_from_black` false: the intro's fade (0x080E1EBC) reads the BattleState (EXE5's reads a register the open
     bus fills);
-  - `low_hp_music` false: EXE6's `sub_8009158` and its tempo and pitch control are absent;
+  - `low_hp_music` false: EXE6's switch, `sub_8009158`, is absent, and EXE4 queues no tempo request (§3.4);
   - `navi_win_banner`: the win (0x08007252) shows the winner navi's banner (0x08008534) when event flag 0x1187 is
     set (0x080406A4), which the main subsystem 0x080406B0 sets as it starts and a game's load clears; else banner 8,
     0x18 on the judge's ruling; mode 0x44 its own song and banner. Read as every link battle (EXE6's `link_battle`):
