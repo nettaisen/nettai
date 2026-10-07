@@ -14,7 +14,7 @@ use nettai_content_api::{Block, ChipHandle, FieldType, FieldValue, FormHandle, H
 use crate::battle::Battle;
 use crate::content::{Content, PlayerFact, ViewFields};
 use crate::custom::PlayerSetup;
-use crate::custom::screen::CROSSES;
+use crate::custom::screen::FORM_LIST_ENTRIES;
 
 /// What a side's rules did with a hit's NaviCust bug (`navi_bug`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -257,12 +257,12 @@ impl<'a> SetupFact<'a> {
 /// cursor, and the place chosen.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct FormList {
-    pub offered: [u8; CROSSES],
+    pub offered: [u8; FORM_LIST_ENTRIES],
     /// The forms offered: the player's form list's at the places offered
     /// (none: no form there).
-    pub forms: [Option<FormHandle>; CROSSES],
+    pub forms: [Option<FormHandle>; FORM_LIST_ENTRIES],
     pub count: u8,
-    pub marked: [bool; CROSSES],
+    pub marked: [bool; FORM_LIST_ENTRIES],
     pub cursor: u8,
     pub chosen: Option<u8>,
 }
@@ -329,7 +329,7 @@ impl Battle {
         };
         let (offered, marked) = (schema.place_of(f.offered), schema.place_of(f.marked));
         let player = self.fact(side, PlayerFact::FormList);
-        for k in 0..CROSSES {
+        for k in 0..FORM_LIST_ENTRIES {
             list.offered[k] = offered.elem(k).map_or(0, |p| byte(state.get_at(p)));
             list.forms[k] = player.as_ref().and_then(|f| f.form(list.offered[k] as usize));
             list.marked[k] = marked.elem(k).is_some_and(|p| flag(state.get_at(p)));
@@ -1059,10 +1059,15 @@ mod tests {
         window_refused(
             "mark = \"u8\"",
             "offer_flight",
-            &["window `w` has the view `offer_flight`", "the state field `unite_step` (a u8): the rules' state has none"],
+            &["window `w` has the view `offer_flight`", "the state field of the role `offer_flight.step` (a u8): the rules' state has none"],
         );
-        window_refused("unite_step = \"bool\", unite_count = \"u8\"", "offer_flight", &["the state field `unite_step` as a u8: it is Bool"]);
-        let content = window_patched("unite_step = \"u8\", unite_count = \"u8\"", "offer_flight").expect("a view with its fields");
+        // (By its role, never by a game's name for it.)
+        window_refused("unite_step = \"u8\", unite_count = \"u8\"", "offer_flight", &["the role `offer_flight.step` (a u8): the rules' state has none"]);
+        let roled = |step: &str| {
+            format!("flight_step = schema.role(\"offer_flight.step\", \"{step}\"), flight_count = schema.role(\"offer_flight.count\", \"u8\")")
+        };
+        window_refused(&roled("bool"), "offer_flight", &["the state field of the role `offer_flight.step` (`flight_step`) as a u8: it is Bool"]);
+        let content = window_patched(&roled("u8"), "offer_flight").expect("a view with its fields");
         let rules = content.defs.rules().expect("the rules");
         assert_eq!(content.defs.window(window_named(&content, "w").expect("the window")).view, Some(WindowView::OfferFlight));
         assert!(rules.views.offer_flight.is_some() && rules.views.form_list.is_none());
@@ -1074,7 +1079,7 @@ mod tests {
             )
         };
         refused(buttons, &button("soul"), &["button `b`: `view` is \"soul\"", "form_offer, chip_picture"]);
-        refused(buttons, &button("form_offer"), &["button `b` has the view `form_offer`", "the state field `offer` (a form)"]);
+        refused(buttons, &button("form_offer"), &["button `b` has the view `form_offer`", "the state field of the role `form_offer.form` (a form)"]);
         let content = patched(buttons, &button("chip_picture")).expect("a view that shows no field");
         assert_eq!(content.defs.button(button_named(&content, "b").expect("the button")).view, Some(ButtonView::ChipPicture));
         // A fact: the setup field that declares its role (`schema.role`),
