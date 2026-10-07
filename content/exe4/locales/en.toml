@@ -49,6 +49,23 @@ language = "en"
 "bub-v" = { name = "Bub-V", description = "Explodes\n2 diag.\nsquares" }
 "bublside" = { name = "BublSide", description = "Explodes\nup,down\non hit" }
 "navi-20" = { name = "Navi+20", description = "+20 for\nselected\nNavi chip" }
+"meteors1" = { name = "Meteors1", description = "Fires 5\nMeteors\nat enemy" }
+"meteors2" = { name = "Meteors2", description = "Fires 5\nMeteors\nat enemy" }
+"meteors3" = { name = "Meteors3", description = "Fires 5\nMeteors\nat enemy" }
+"boomer1" = { name = "Boomer1", description = "Boomerang\nencircles\nfield" }
+"boomer2" = { name = "Boomer2", description = "Boomerang\nencircles\nfield" }
+"boomer3" = { name = "Boomer3", description = "Boomerang\nencircles\nfield" }
+"repair" = { name = "Repair", description = "Recovers\nHP of \nitems" }
+"fullcust" = { name = "FullCust", description = "CustGauge\ninstantly\nrefills" }
+"ligtnin1" = { name = "Ligtnin1", description = "Thunder\nstrikes\nobstacles" }
+"ligtnin2" = { name = "Ligtnin2", description = "Thunder\nstrikes\nobstacles" }
+"ligtnin3" = { name = "Ligtnin3", description = "Thunder\nstrikes\nobstacles" }
+"aquaup1" = { name = "AquaUp1", description = "Raises\nAquaTowrs\nfrm crack" }
+"aquaup2" = { name = "AquaUp2", description = "Raises\nAquaTowrs\nfrm crack" }
+"aquaup3" = { name = "AquaUp3", description = "Raises\nAquaTowrs\nfrm crack" }
+"greenwd1" = { name = "GreenWd1", description = "Raises\nWoodTowrs\nfrm grass" }
+"greenwd2" = { name = "GreenWd2", description = "Raises\nWoodTowrs\nfrm grass" }
+"greenwd3" = { name = "GreenWd3", description = "Raises\nWoodTowrs\nfrm grass" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -143,6 +160,12 @@ language = "en"
 "017-custom2" = { name = "Custom2" }
 "018-megafolder2" = { name = "MegaFolder2" }
 "019-buster-attack-10" = { name = "Buster Attack 10" }
+"021-charge-shot-switch" = { name = "Charge Shot Switch" }
+"022-charge-shot-switch" = { name = "Charge Shot Switch" }
+"023-charge-shot-switch" = { name = "Charge Shot Switch" }
+"024-charge-shot-switch" = { name = "Charge Shot Switch" }
+"026-charge-shot-switch" = { name = "Charge Shot Switch" }
+"027-charge-shot-switch" = { name = "Charge Shot Switch" }
 "028-pet-menu-color-change" = { name = "PET Menu Color Change" }
 "029-pet-menu-color-change" = { name = "PET Menu Color Change" }
 "030-pet-menu-color-change" = { name = "PET Menu Color Change" }
@@ -154,10 +177,14 @@ language = "en"
 "036-max-hp-up" = { name = "Max HP Up" }
 "037-max-hp-up" = { name = "Max HP Up" }
 "038-max-hp-up" = { name = "Max HP Up" }
+"039-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
+"048-weapon-change" = { name = "Weapon Change" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }
+"058-charge-shot-switch" = { name = "Charge Shot Switch" }
 "059-megaman-color-change" = { name = "MegaMan Color Change" }
 "060-megaman-color-change" = { name = "MegaMan Color Change" }
 "061-max-hp-up" = { name = "Max HP Up" }
@@ -167,7 +194,13 @@ language = "en"
 "065-max-hp-up" = { name = "Max HP Up" }
 "066-max-hp-up" = { name = "Max HP Up" }
 "067-max-hp-up" = { name = "Max HP Up" }
+"069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "078-first-life-aura" = { name = "First Life Aura" }
+"085-charge-shot-switch" = { name = "Charge Shot Switch" }
+"086-charge-shot-switch" = { name = "Charge Shot Switch" }
+"087-charge-shot-switch" = { name = "Charge Shot Switch" }
 "088-pet-menu-color-change" = { name = "PET Menu Color Change" }
 "089-megaman-color-change" = { name = "MegaMan Color Change" }
 "090-megaman-color-change" = { name = "MegaMan Color Change" }
@@ -182,8 +215,15 @@ language = "en"
 "099-max-hp-up" = { name = "Max HP Up" }
 "100-max-hp-up" = { name = "Max HP Up" }
 "101-max-hp-up" = { name = "Max HP Up" }
+"103-fullcustom-charge-1-2" = { name = "FullCustom Charge 1/2" }
+"104-fullcustom-charge-2-2" = { name = "FullCustom Charge 2/2" }
 "105-panel-change" = { name = "Panel Change" }
 "106-weapon-change" = { name = "Weapon Change" }
+"107-weapon-change" = { name = "Weapon Change" }
 "109-megafolder3" = { name = "MegaFolder3" }
 "110-custom3" = { name = "Custom3" }
 "111-gigafolder1" = { name = "GigaFolder1" }
+"112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"119-charge-shot-switch" = { name = "Charge Shot Switch" }
+"120-charge-shot-switch" = { name = "Charge Shot Switch" }
+"133-weapon-change" = { name = "Weapon Change" }
