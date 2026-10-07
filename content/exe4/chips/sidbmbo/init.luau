@@ -1,7 +1,7 @@
 --!strict
 -- SidBmbo1, SidBmbo2 and SidBmbo3 (EXE4 chips 0x04E to 0x050; their records at 0x080197EC + n * 0x2C): the spawners'
 -- action 0x20 (lib/spawners), its variant 5, which holds the user 40 ticks: a bamboo swings down three columns ahead
--- (./bamboo), their parameter (0 to 2) its palette.
+-- (./bamboo), in palette 0, 2 or 4 (twice their parameter, 0 to 2).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local bamboo = require("@self/bamboo")
@@ -25,7 +25,7 @@ local sidbmbo1: Chip = {
 }
 
 local sidbmbo2: Chip = {
-    action = spawners.action { id = "sidbmbo2/action", spawn = bamboo.spawner(1), hold = HOLD },
+    action = spawners.action { id = "sidbmbo2/action", spawn = bamboo.spawner(2), hold = HOLD },
     codes = { "H", "O", "S" },
     element = "wood",
     family = "wood",
@@ -39,7 +39,7 @@ local sidbmbo2: Chip = {
 }
 
 local sidbmbo3: Chip = {
-    action = spawners.action { id = "sidbmbo3/action", spawn = bamboo.spawner(2), hold = HOLD },
+    action = spawners.action { id = "sidbmbo3/action", spawn = bamboo.spawner(4), hold = HOLD },
     codes = { "A", "F", "U" },
     element = "wood",
     family = "wood",

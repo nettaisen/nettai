@@ -17,29 +17,14 @@ local elemrage = {}
 
 -- ---- The flame ------------------------------------------------------------------------------------------------------
 
--- EXE5's panel types by number (compat/panels.toml, 0x0800BCF0), for the type a flame leaves.
-local PANEL_TYPES: { [number]: PanelType } = {
-    [0] = "missing",
-    [1] = "broken",
-    [2] = "normal",
-    [3] = "cracked",
-    [4] = "poison",
-    [5] = "magnet",
-    [6] = "grass",
-    [7] = "ice",
-    [8] = "lava",
-    [9] = "holy",
-    [10] = "sea",
-}
-
 export type FlameState = ElemFlameState
 
--- The flame (attack object #0x98, 0x080D99D8): the shared flame (@exelib/elemrage/flame) with EXE5's sprite, panel
--- types and collision types; a spreading flame sends the two beside its next one.
+-- The flame (attack object #0x98, 0x080D99D8): the shared flame (@exelib/elemrage/flame) with EXE5's sprite and
+-- collision types; a spreading flame sends the two beside its next one. (EXE5's flames leave no panel type: ElemRage
+-- and the fire arm set none in Param4's high nibble.)
 local FLAME = flame_common.make_kind {
     id = "elemrage/flame",
     sprite = asset.sprite("rage-flame"),
-    panel_types = PANEL_TYPES,
     spreads = true,
     attack = collision.attack,
     attack_480 = collision.attack_480,

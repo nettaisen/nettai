@@ -26,6 +26,7 @@ return merge {
     require("@self/drkstage"),
     require("@self/drksword"),
     require("@self/drkvulcn"),
+    require("@self/elem"),
     require("@self/fullcust"),
     require("@self/greenwd"),
     require("@self/heatshot"),
