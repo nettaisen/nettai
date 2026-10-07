@@ -94,6 +94,7 @@ return merge {
     require("@self/111_gigafolder1"),
     require("@self/112_b_left_ability_activation"),
     require("@self/116_charge_shot_switch"),
+    require("@self/117_charge_shot_switch"),
     require("@self/119_charge_shot_switch"),
     require("@self/120_charge_shot_switch"),
     require("@self/133_weapon_change"),

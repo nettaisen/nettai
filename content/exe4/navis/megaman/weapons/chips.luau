@@ -8,6 +8,7 @@
 -- The rest wait on their chips (docs/design/exe4-map.md §18 item 57).
 
 local airshot = require("../../../chips/airshot").airshot
+local ball = require("../../../chips/ball").ball
 local bubbler = require("../../../chips/bubbler").bubbler
 local cannon = require("../../../chips/cannon").cannon
 local crakout_chips = require("../../../chips/crakout")
@@ -55,6 +56,7 @@ chips.tripcrak = fires("megaman/tripcrak", crakout_chips.tripcrak, SIXTY) -- 0x4
 chips.longswrd = fires("megaman/longswrd", sword_chips.longswrd, SIXTY) -- 0x49
 chips.fullcust = fires("megaman/fullcust", fullcust, { 90, 90, 90, 90, 90, 180 }) -- 0x4B
 chips.megenbom = fires("megaman/megenbom", energbom_chips.megenbom, SIXTY) -- 0x4F
+chips.ball = fires("megaman/ball", ball, SIXTY) -- 0x50
 chips.wideblde = fires("megaman/wideblde", sword_chips.wideblde, SIXTY) -- 0x52
 chips.longblde = fires("megaman/longblde", sword_chips.longblde, SIXTY) -- 0x53
 chips.repair = fires("megaman/repair", repair, SIXTY) -- 0x5E
