@@ -17,6 +17,8 @@
 "bomb" = { pool = "attack", index = 0x08 }
 "bullet" = { pool = "attack", index = 0x12 }
 "lance" = { pool = "attack", index = 0x4F }
+"panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
+"drkstage/controller" = { pool = "effect", index = 0x6A, scratch_position = true }
 # The stages' boulder (the actor lists' entry type 3, 0x08006880) and the debris it breaks into (0x080E621C).
 "boulder" = { pool = "attack", index = 0x6E }
 "rock/debris" = { pool = "effect", index = 0x38 }
