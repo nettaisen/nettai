@@ -1,17 +1,15 @@
 --!strict
 -- The cannons' action, as EXE5 and EXE6 share it (EXE6's action 0x14,
 -- `sub_80EBC0E`; EXE5's 0x14, the same code): each game makes its own
--- (`cannon.make`: its sound, attachment and projectile). Cannon,
--- HiCannon, M-Cannon and the GigaCans. The navi raises its cannon (an
--- attachment in its first related slot), and on the 17th tick fires a
--- projectile from the panel ahead, 24 pixels up; at the 30th it lowers the
--- cannon (animation 7) and is back to idle 4 ticks later. A GigaCan leaves
--- two afterimages on the 10th tick, of its cannon and of the navi. Each
--- chip composes its own (`cannon.action { arm = ..., shot = ... }`): what
--- it holds and what it fires (docs/design/content-model-v2.md §5.3,
--- docs/engine/shot-chips.md §2).
-
-local attachment = require("./attachment")
+-- (`cannon.make`: its sound, how the navi holds the cannon, and its
+-- projectiles). Cannon, HiCannon, M-Cannon and the GigaCans. The navi
+-- raises its cannon (an attachment in its first related slot), and on the
+-- 17th tick fires a projectile from the panel ahead, 24 pixels up; at the
+-- 30th it lowers the cannon (animation 7) and is back to idle 4 ticks
+-- later. A GigaCan leaves two afterimages on the 10th tick, of its cannon
+-- and of the navi. Each chip composes its own (`cannon.action { arm = ...,
+-- shot = ... }`): what it holds and what it fires
+-- (docs/design/content-model-v2.md §5.3, docs/engine/shot-chips.md §2).
 
 local cannon = {}
 
@@ -40,26 +38,13 @@ local SHOT_Z = 0x18_0000
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8318, 0x1E
 local CANNON_POINT, NAVI_ANIM = 7, 8
 
--- (A game's cannons are a `ShooterLook`: the shot's sound, its attachment
--- kind, the arm's, and its projectiles. The arms themselves are the chips':
--- EXE6's attachment rows 0 to 2, by `byte_80EBD2C`, at the navi's attach
--- point 7.)
+-- (A game's cannons are a `ShooterLook`: the shot's sound, how the navi
+-- holds the arm (EXE6's `sub_80EBD68`: a player's by its AI index, from
+-- `off_80EBD80`, where the link navis HeatMan, GroundMan and DustMan hold
+-- their own, 1; anyone else's the plain one), and its projectiles. The arms
+-- themselves are the chips': EXE6's attachment rows 0 to 2, by
+-- `byte_80EBD2C`, at the navi's attach point 7.)
 type Look = ShooterLook
-
--- `sub_80EBD68`: the arm's animation by who holds it: a player's by its AI
--- index, from its game's table (`look.arm_anims`: EXE6's `off_80EBD80`,
--- where the link navis HeatMan, GroundMan and DustMan hold their own, 1),
--- anyone else's the plain one.
-local function arm_anim(me: Object, look: Look): number
-    if me.actor_type ~= "player" then
-        return 0
-    end
-    local anim = look.arm_anims[me.ai_index + 1]
-    if anim == nil then
-        error(string.format("AI index %d reads past the cannon arms' table (`sub_80EBD68`)", me.ai_index))
-    end
-    return anim
-end
 
 -- The attack's damage word with the Atk+ bonus (`av.u32[8] + av.u16[6]`).
 local function damage_word(me: Object): number
@@ -110,7 +95,7 @@ function cannon.action(spec: CannonSpec, look: Look): Action
             me:set_animation(ANIM_RAISE)
             me:open_counter_window()
             s.timer = 0
-            attachment.attach(look.attachment, me, spec.arm, "related", { anim = arm_anim(me, look) })
+            look.hold(me, spec.arm, "related")
             me:set_status("using_action", true)
             me.step_init = 4
             return

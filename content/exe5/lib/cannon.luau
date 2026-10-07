@@ -29,9 +29,9 @@ end
 
 local LOOK: ShooterLook = {
     sound = asset.sound("cannon"),
-    attachment = attachment.kind,
+    -- EXE6's `sub_80EBD68`: a player's arm by its AI index, anyone else's the plain one.
+    hold = attachment.holder(navi_arms.cannon, true),
     projectiles = projectile,
-    arm_anims = navi_arms.cannon,
     more_afterimages = hub_afterimage,
 }
 
