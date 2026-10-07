@@ -100,18 +100,21 @@ flag.kind = new.kind {
             me:destroy()
         end
     end,
-    -- 0x080068F4: a flag stage's flag (an actor list's entry type 7), its argument's bit 7 its side and the rest its
-    -- HP in eights; running while the battle is paused or dimmed. (0x080E07AA: until its init places it, its position
-    -- is the spawner's registers, the panel and the HP.)
+    -- 0x080068F4: a flag stage's flag (an actor list's entry type 7) of the entry's side and HP; running while the
+    -- battle is paused or dimmed. (0x080E07AA: until its init places it, its position is the spawner's registers, the
+    -- panel and the HP.)
     place = function(spec: PlaceSpec): Object?
-        local hp = bit32.band(spec.argument, 0x7F) * 8
+        local hp = spec.hp
+        if hp == nil then
+            error("a stage's flag needs its `hp`")
+        end
         local o = battle.spawn(flag.kind, Vec3.new(spec.panel_x, spec.panel_y, hp))
         if not o then
             return nil
         end
         o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
         o.hp, o.max_hp = hp, hp
-        o.alliance = bit32.rshift(spec.argument, 7)
+        o.alliance = spec.side
         o.run_while_paused = true
         o.run_while_dimmed = true
         return o

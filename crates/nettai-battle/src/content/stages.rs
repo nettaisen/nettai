@@ -49,9 +49,9 @@ pub struct ActorEntry {
     pub y: u8,
     /// Which of the kind's variants (a record of the kind's: a rock's).
     pub variant: Option<RecordHandle>,
-    /// The entry's raw argument, for a kind whose spawner only leaves it
-    /// in a register (the Guardian statue's).
-    pub argument: u8,
+    /// The HP the entry gives what it places (EXE4's flags' 1000), if it
+    /// states one.
+    pub hp: Option<u16>,
 }
 
 /// What a stage's entry places.
@@ -151,7 +151,15 @@ pub(crate) fn read(
             }
         };
         let (x, y) = (byte(e.field("x"), "x")?, byte(e.field("y"), "y")?);
-        actors.push(ActorEntry { place, side: opt("side")?, x, y, variant, argument: opt("argument")? });
+        let hp = match e.field("hp") {
+            Data::Nil => None,
+            Data::Int(i) => Some(u16::try_from(*i).map_err(|_| at(&format!("`hp` {i} is not a halfword")))?),
+            _ => return Err(at("`hp` is a number")),
+        };
+        if place == Place::Navi && hp.is_some() {
+            return Err(at("a navi has no `hp` of the stage's"));
+        }
+        actors.push(ActorEntry { place, side: opt("side")?, x, y, variant, hp });
     }
 
     Ok(StageData {

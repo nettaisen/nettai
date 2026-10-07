@@ -307,7 +307,7 @@
 "cactbal/ball" = { pool = "attack", index = 0x5E }
 "elcreel/reel" = { pool = "attack", index = 0xA4 }
 "rflectr/shield" = { pool = "attack", index = 0x2B }
-"shock-wave" = { pool = "attack", index = 0x16 }
+"guard/wave" = { pool = "attack", index = 0x16 }
 "crsshld/cross" = { pool = "attack", index = 0xA8 }
 "wavepit/wave" = { pool = "attack", index = 0xA5 }
 "woodnos/wave" = { pool = "attack", index = 0xA6 }

@@ -1,10 +1,10 @@
 --!strict
 -- Thunder's and DarkThnd's shot, as EXE5 and EXE6 share it (EXE6's action
--- 0x1F, `sub_80EC7A6`), of a game's `ThunderShotLook` (its buster and
--- ball's kind): the navi raises the buster arm and, on the second tick,
--- sets a thunder ball (ball.luau) on the panel ahead, 10 pixels up: it
--- homes in on the enemy. The navi holds the pose 5 ticks and recovers for
--- 31.
+-- 0x1F, `sub_80EC7A6`; EXE4's 0x26, 0x080ECE14, raising no arm), of a game's
+-- `ThunderShotLook` (its buster, ball's kind and animation): the navi raises
+-- the buster arm and, on the second tick, sets a thunder ball (ball.luau) on
+-- the panel ahead, 10 pixels up: it homes in on the enemy. The navi holds the
+-- pose 5 ticks and recovers for 31.
 
 local ball = require("./ball")
 
@@ -23,6 +23,8 @@ shoot.STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local SHOOT, RECOVER = 0x0, 0x4
+-- The navi's animation as it shoots (EXE6's and EXE5's).
+local ANIM = 0x0E
 
 function shoot.action(spec: Spec, look: ThunderShotLook): Action
     local buster = look.buster
@@ -30,8 +32,10 @@ function shoot.action(spec: Spec, look: ThunderShotLook): Action
     -- `sub_80EC7C0`: the arm up; the ball on the second tick; 5 ticks.
     local function shooting(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_animation(0x0E)
-            buster.raise_arm(me)
+            me:set_animation(look.anim or ANIM)
+            if buster then
+                buster.raise_arm(me)
+            end
             me:open_counter_window()
             me:set_status("using_action", true)
             me.step_init = 4
@@ -60,8 +64,10 @@ function shoot.action(spec: Spec, look: ThunderShotLook): Action
         local t = s.timer - 1
         s.timer = t
         if t < 0 then
-            me.related1 = nil
-            me.overlay = nil
+            if buster then
+                me.related1 = nil
+                me.overlay = nil
+            end
             me:exit_attack()
         end
     end
