@@ -145,6 +145,9 @@ local status = {
         -- tick (the byte its hit kernel stores: a weakness of either kind, a thaw, elec on a bubble), on a tick with
         -- final damage.
         weakness_mark = "last_hit_multiplier",
+        -- While the battle is paused a navi runs its pause handler (form changes, reversions, navi switches) in place
+        -- of its action but in its entry (`loc_801B142`), and runs through the pause.
+        paused_navi = "pause_handler",
     },
 }
 
