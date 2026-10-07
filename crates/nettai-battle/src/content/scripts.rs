@@ -476,7 +476,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         used_chip_ticks = 0x3C,
         bug_flicker = true,
         panel_trail = "by_chance",
-        status_visual = { place = "attach_point", shadow = true },
+        status_visual = { place = "attach_point" },
         draw_order = "update_list","#,
             ),
             (

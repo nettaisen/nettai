@@ -79,7 +79,7 @@ return {
     panel_trail = "by_chance",
     -- The status visual (effect 6, `sub_80E08FC`) sits at its navi's sprite attach point 5, hidden off the field, and
     -- casts its sprite's shadow.
-    status_visual = { place = "attach_point", shadow = true },
+    status_visual = { place = "attach_point" },
     -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
     draw_order = "update_list",
 }
