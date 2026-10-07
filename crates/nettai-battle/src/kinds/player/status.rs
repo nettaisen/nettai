@@ -665,6 +665,9 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
         }
     } else if rule.holds.is_some() {
         go_on = false;
+    } else if rule.stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
+        // (EXE4's pitfall, 0x080102FC.)
+        go_on = false;
     }
     if go_on {
         let o = b.objects.get_mut(r);

@@ -1,13 +1,15 @@
 --!strict
 -- EXE4's panels: its 12 panel types (0x0800A3A8), the flag bits each adds, and the element whose hits count once
--- more on a body standing on it (the hit kernel's 0x08012CF2: fire on grass, elec on ice); the step rules
--- (0x0800ADF0, a dash's 0x0800C41C: EXE5's values); what the panels do as far as the engine can say it (the panel
--- tick 0x08009740: a broken panel mends after 600 ticks; type 8, lava, turns normal after 960, blinking its last
--- 60). Nearest the engine can say until each is ported (exe4-map.md §18): what each type does to what stands on
--- it and what passes over it, the panel trails' sounds, types 5 and 10 (unread: each under the engine's type with
--- its flags, EXE5's sea's and metal's) and 11 (none: its stages wait), which panels start visible and the front
--- edges (EXE5's: EXE4's tables are to find), the any-side step (EXE5's rows), a broken panel's mend in battle mode
--- 1, and the reservations (EXE5's).
+-- more on a body standing on it (the hit kernel's 0x08012CF2: fire on grass, elec on ice). Type 5 is metal, whose
+-- flag 0x20000 the panel routines refuse to crack or break; 10 SandRing's pitfall, which stops a slide or a drag
+-- unless the body floats (0x080102FC, 0x08010B54) and turns normal 190 ticks after a type change makes it, a
+-- stage's after a grounded body stands on it (0x0800980E); 11 the Hole chip's hole. The step rules (0x0800ADF0, a
+-- dash's 0x0800C41C: EXE5's values); what the panels do as far as the engine can say it (the panel tick
+-- 0x08009740: a broken panel mends after 600 ticks; type 8, lava, turns normal after 960, blinking its last 60).
+-- Nearest the engine can say until each is ported (exe4-map.md §18): what each type does to what stands on it and
+-- what passes over it, the panel trails' sounds, which panels start visible and the front edges (EXE5's: EXE4's
+-- tables are to find), the any-side step (EXE5's rows), a broken panel's mend in battle mode 1, and the
+-- reservations (EXE5's).
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
 
 return {
@@ -17,15 +19,16 @@ return {
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110 },
-        sea = { flags = 0x00030010 },
+        metal = { flags = 0x00030010, unbreakable = true },
         grass = { flags = 0x00010410, doubles = "fire" },
         ice = { flags = 0x00010810, doubles = "elec" },
         lava = { flags = 0x00011010, expires = 960 },
         holy = { flags = 0x00012010 },
-        metal = { flags = 0x00010210 },
+        pitfall = { flags = 0x00010210, stops_slides = true, crumbles = 190 },
+        hole = { flags = 0x00010010 },
     },
     -- EXE4's panel types by its own numbers.
-    numbers = { "missing", "broken", "normal", "cracked", "poison", "sea", "grass", "ice", "lava", "holy", "metal" },
+    numbers = { "missing", "broken", "normal", "cracked", "poison", "metal", "grass", "ice", "lava", "holy", "pitfall", "hole" },
     start_visible = {
         { false, false, false, false, false, false, false, false },
         { false, true, true, true, true, true, true, false },
