@@ -51,6 +51,8 @@ return {
     },
     -- A navi's charge glow (effect 8) comes with it, as EXE6's.
     charge_glow = "with_navi",
+    -- Its buttons charge by hold requests, as EXE6's.
+    charge = "hold_flags",
     -- A screen fade toward clear ends on the step whose level reaches its target, as EXE6's.
     fade_clear = "at_target",
     -- A banner's steps are EXE6's.
