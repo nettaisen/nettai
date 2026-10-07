@@ -666,10 +666,15 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     (link_pick's docs): EXE4 draws RNG2 twice. Shape: `link_pick.rng = { stage = "rng2", background = "rng2" }`.
     Placeholder: `link_pick.stages` leaves out the waiting stages (so the pick's odds differ) and `backgrounds` is
     empty.
-21. **Backgrounds' names.** The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else the map's
-    (0x08085BAC, its table at the literal 0x08085BCC, default 3). Only 0x03 (`comp`) is named; name the rest by the
-    areas that show them (tools/backgrounds/areas.py, as EXE5's and EXE6's) in gen_content.py's BACKGROUNDS. The
-    background 0x17's scroll (0x08001F88) speeds up to 4 pixels a frame: the pack draws it at that speed.
+21. **Done** (backgrounds' names). The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else
+    the map's (0x08085BAC, its table at the literal 0x08085BCC, default 3). The 22 that maps draw are named for their
+    areas, by the menu's names (tools/backgrounds: names.tsv, areas.py exe4; docs/frontend.md §1 has the table). No
+    map draws five, which story battles' settings state; the scripts say which (map script command 0x23 starts a
+    cutscene, cutscene command 0x51 `[record, 1]` a battle by 0x08007BEC). 0x18, 0x19 and 0x1a are the tournament
+    venues' (`stadium`, `air-stadium`, `colosseum`: each the one map whose scripts start its eight records), 0x17
+    Duo's two battles' (`duo`), 0x09 the DarkSoul battle's on CastNBMComp, whose own background is 0x03
+    (`darksoul`). The background 0x17's scroll (0x08001F88) speeds up to 4 pixels a frame: the pack draws it at that
+    speed.
 22. **Done** (banners): the win banner is settled (§16, `never`); the banners' pictures are extracted (§14: the table at
     0x08016C04) and each is named (gen_content.py's BANNERS: EXE6's names for EXE6's records, EXE4's navis' by their
     words); a round's start is `battle-number-start` (0x30), EXE6's name for it.
