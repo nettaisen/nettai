@@ -3,21 +3,21 @@
 //! tick at a time, and takes each tick's picture and sound from the player,
 //! as an app would for its own screen and speaker.
 //!
-//! It checks what it took: every frame against the PNG the desktop program
+//! It checks what it took: every frame against the PNG the command line
 //! wrote for the same match and buttons, byte for byte, and the samples
-//! against a `BattleAudio` it feeds the battle's cues itself (the program's
+//! against a `BattleAudio` it feeds the battle's cues itself (the tool's
 //! headless output has no sound to compare with).
 //!
 //! First save `nettai_match::pick::live(content, "exe6", 7, None)` to
 //! `match.toml` with `nettai_match::write`, then compare the same setup:
 //!
 //! ```text
-//! nettai-demo --match match.toml --mute --headless 100,400,700,900 --out DIR \
+//! nettai-tool --match match.toml --mute --headless 100,400,700,900 --out DIR \
 //!     --keys "$(cargo run -p nettai-frontend --example embed -- --keys)"
 //! cargo run -p nettai-frontend --example embed -- --game exe6 --seed 7 --frames DIR
 //! ```
 //!
-//! The packs are found as the program finds them (`$NETTAI_PACKS`).
+//! The packs are found as the tool finds them (`$NETTAI_PACKS`).
 
 use nettai_audio::BattleAudio;
 use nettai_battle::input::keys;

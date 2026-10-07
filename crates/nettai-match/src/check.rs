@@ -1,5 +1,5 @@
 //! What a match must be to be played: the checks a match file passes when
-//! it loads, a netplay offer when it arrives (`check_side`), and the editor
+//! it loads, a netplay offer when it arrives (`check_side`), and the build creator
 //! shows as they fail. Each problem is said, with where it is.
 //!
 //! - **The rounds**: the content's game, 1 to [`crate::MAX_ROUNDS`] of
@@ -192,7 +192,7 @@ pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
 }
 
 /// [`check_match`]'s problems, each with its side, and the setup field and
-/// entry the rules tie it to (a tool shows it there: the editor's rows).
+/// entry the rules tie it to (a tool shows it there: the build creator's rows).
 pub fn problems(content: &Arc<Content>, m: &Match) -> Vec<Problem> {
     let mut out: Vec<Problem> = check_rounds(content, &m.game, &m.rounds).into_iter().map(|p| Problem::of(None, p)).collect();
     if !out.is_empty() {
