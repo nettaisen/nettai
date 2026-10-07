@@ -5,6 +5,7 @@
 -- does, from the water cannon, low, with the bullet's row 7: a splash over
 -- the 3x3 around the panel it finds, 70 Aqua damage.
 
+local attachment = require("../../objects/attachment")
 local bullet = require("../../objects/bullet")
 local regions = require("@exelib/regions")
 local spreader = require("../../chips/spreadr/action")
@@ -14,7 +15,8 @@ local spreader = require("../../chips/spreadr/action")
 -- (Its compat key maps it to 0x25.)
 local SHOT = spreader.action {
     id = "patch-cards/puffy/charge/action",
-    gun = spreader.guns.water_cannon,
+    -- The water cannon, at the navi's attach point 25.
+    gun = attachment.look { sprite = asset.sprite("water-cannon"), palette = 0, attach_point = 25 },
     z = 0,
     bullet = bullet.variant { region = regions.square, hit_mod = 3, effect = bullet.splash, sound = bullet.splash_sound },
 }
