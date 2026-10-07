@@ -9,7 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::content::{IceRule, PushSource, SlideVector};
+use crate::content::{IceRule, PushSource, ReactionActions, SlideVector};
 use crate::field::{self, PanelType};
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
@@ -146,17 +146,32 @@ fn death_hook(b: &mut Battle, r: ObjectRef) {
 
 // ---- Common reaction entry ---------------------------------------------------------
 
+/// Whether the arena's reaction actions are EXE4's plain ones (the rule
+/// `reaction_actions`).
+fn plain(b: &Battle) -> bool {
+    b.game_rules().reaction_actions == ReactionActions::Plain
+}
+
+/// The flag a reaction action marks the navi with besides its own: the
+/// action in use, unless the reactions are plain.
+fn in_use(b: &Battle) -> u32 {
+    if plain(b) { 0 } else { f1::USING_ACTION }
+}
+
 /// The entry the paralysis, freeze and bubble actions share: using an
 /// action, not guarding, moving, flinching or dragged, charge and state
 /// bits dropped, snapped onto the destination panel (unless sliding),
-/// reaction animation.
+/// reaction animation. (Plain, EXE4's 0x080109FA: not using an action,
+/// snapped sliding or not, at its height.)
 fn enter_reaction(b: &mut Battle, r: ObjectRef, anim: u8) {
-    set_flag1(b, r, f1::USING_ACTION);
+    set_flag1(b, r, in_use(b));
     clear_flag1(b, r, f1::DRAG | f1::FLINCHING | f1::MOVING | f1::GUARD);
     cancel_submerged(b, r);
     ai_mut(b, r).status &= !0x20_005F;
     reset_charge(b, r);
-    if flag1(b, r) & f1::SLIDING == 0 {
+    if plain(b) {
+        snap_to_future_panel(b, r);
+    } else if flag1(b, r) & f1::SLIDING == 0 {
         snap_to_future_panel(b, r);
         b.objects.get_mut(r).pos.z = 0;
     }
@@ -165,12 +180,17 @@ fn enter_reaction(b: &mut Battle, r: ObjectRef, anim: u8) {
     o.anim_loaded = 0xFF;
 }
 
-/// The end of the reaction entry: links dropped, the reaction counted.
-fn finish_reaction_entry(b: &mut Battle, r: ObjectRef) {
+/// The end of the reaction entry: links dropped, the reaction counted
+/// (`counted`; plain, the overlay link kept).
+fn finish_reaction_entry(b: &mut Battle, r: ObjectRef, counted: bool) {
     b.objects.get_mut(r).related[0] = None;
-    ai_mut(b, r).overlay = None;
-    let side = b.objects.get(r).alliance;
-    b.bump_side_stat(side, 3, 1);
+    if !plain(b) {
+        ai_mut(b, r).overlay = None;
+    }
+    if counted {
+        let side = b.objects.get(r).alliance;
+        b.bump_side_stat(side, 3, 1);
+    }
     b.objects.get_mut(r).phase_init = 4;
 }
 
@@ -179,7 +199,7 @@ fn end_reaction(b: &mut Battle, r: ObjectRef) {
     // (EXE6's 0x1000003F, EXE5's 0x1843F: the reactions section's.)
     let clears = b.game_rules().request_clears.paralysis.0;
     ai_mut(b, r).requests &= !(request::ATTACKS | clears);
-    clear_flag1(b, r, f1::USING_ACTION);
+    clear_flag1(b, r, in_use(b));
     let o = b.objects.get_mut(r);
     o.anim = 0;
     set_action(b, r, NaviAction::Idle);
@@ -265,7 +285,7 @@ fn let_go_overlay(b: &mut Battle, r: ObjectRef) {
 pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
         flinch_hook(b, r);
-        set_flag1(b, r, f1::USING_ACTION | f1::FLINCHING);
+        set_flag1(b, r, in_use(b) | f1::FLINCHING);
         clear_paralysis(b, r);
         clear_freeze(b, r);
         clear_bubble(b, r);
@@ -275,13 +295,16 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
         reset_charge(b, r);
         if flag1(b, r) & f1::SLIDING == 0 {
             snap_to_future_panel(b, r);
-            b.objects.get_mut(r).pos.z = 0;
+            // (Plain, EXE4's 0x08010960: at its height.)
+            if !plain(b) {
+                b.objects.get_mut(r).pos.z = 0;
+            }
         }
         let o = b.objects.get_mut(r);
         o.anim = 1;
         o.anim_loaded = 0xFF;
         refresh_form_overlay(b, r);
-        finish_reaction_entry(b, r);
+        finish_reaction_entry(b, r, true);
         b.objects.get_mut(r).timer = 0x17;
     }
     let o = b.objects.get_mut(r);
@@ -290,7 +313,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     if t >= 0 {
         return;
     }
-    clear_flag1(b, r, f1::USING_ACTION | f1::FLINCHING);
+    clear_flag1(b, r, in_use(b) | f1::FLINCHING);
     // (EXE6's 0x1000043F, EXE5's 0x1843F: the reactions section's.)
     let clears = b.game_rules().request_clears.flinch.0;
     ai_mut(b, r).requests &= !(request::ATTACKS | clears);
@@ -321,7 +344,7 @@ pub(super) fn paralysis(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
         paralysis_hook(b, r);
         enter_reaction(b, r, 2);
-        finish_reaction_entry(b, r);
+        finish_reaction_entry(b, r, !plain(b));
     }
     if mash(b, r, timer::PARALYZE, f1::PARALYZED) {
         end_reaction(b, r);
@@ -336,7 +359,7 @@ pub(super) fn freeze(b: &mut Battle, r: ObjectRef) {
         clear_invulnerable(b, r);
         b.sound(crate::content::SoundRole::Freeze);
         enter_reaction(b, r, 2);
-        finish_reaction_entry(b, r);
+        finish_reaction_entry(b, r, !plain(b));
     }
     if mash(b, r, timer::FREEZE, f1::FROZEN) {
         end_reaction(b, r);
@@ -350,7 +373,7 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
         clear_invulnerable(b, r);
         b.sound(crate::content::SoundRole::Bubble);
         enter_reaction(b, r, 2);
-        finish_reaction_entry(b, r);
+        finish_reaction_entry(b, r, !plain(b));
     }
     let popped = mash(b, r, timer::BUBBLE, f1::BUBBLED);
     let t = coll(b, r).status_timers[timer::BUBBLE] as i16 as i32;
@@ -374,14 +397,20 @@ pub(super) fn drag(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_80178D4`.
+/// `sub_80178D4` (plain, EXE4's 0x08010ABC: not using an action, the
+/// flinch's pose, the overlay link kept, at its height, counted not).
 fn start_drag(b: &mut Battle, r: ObjectRef) {
     drag_hook(b, r);
-    set_flag1(b, r, f1::USING_ACTION | f1::DRAG);
+    let plain = plain(b);
+    set_flag1(b, r, in_use(b) | f1::DRAG);
     b.objects.get_mut(r).related[0] = None;
-    ai_mut(b, r).overlay = None;
+    if !plain {
+        ai_mut(b, r).overlay = None;
+    }
     let f = flag1(b, r);
-    let anim = if f & f1::PARALYZED != 0 {
+    let anim = if plain {
+        1
+    } else if f & f1::PARALYZED != 0 {
         2
     } else if f & f1::SUPERARMOR != 0 {
         0
@@ -397,14 +426,17 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     o.panel = o.future_panel;
     super::set_coordinates_from_panel(b, r);
     b.update_collision_panels(r);
-    let o = b.objects.get_mut(r);
-    o.pos.z &= !0xFFFF;
+    if !plain {
+        b.objects.get_mut(r).pos.z &= !0xFFFF;
+    }
     clear_flag1(b, r, f1::SLIDING | f1::FLINCHING | f1::MOVING | f1::GUARD);
     cancel_submerged(b, r);
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
-    let side = b.objects.get(r).alliance;
-    b.bump_side_stat(side, 3, 1);
+    if !plain {
+        let side = b.objects.get(r).alliance;
+        b.bump_side_stat(side, 3, 1);
+    }
     let v = slide_vector(b, r);
     let o = b.objects.get_mut(r);
     o.slide_dx = v.dx as u8;
@@ -482,13 +514,21 @@ pub(crate) fn passed(new: i32, old: i32, target: i32) -> bool {
     if new > old { target > old && target <= new } else { target > new && target <= old }
 }
 
-/// `sub_8017A38`: wait, then back to idle (or to paralysis).
+/// `sub_8017A38`: wait, then back to idle (or to paralysis). (Plain, EXE4's
+/// 0x08010C16: the drag cleared, its requests, and idle, in the pose it
+/// has.)
 fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     let t = o.timer as i32 - 1;
     o.timer = t as u16;
     if t >= 0 {
         return;
+    }
+    if plain(b) {
+        clear_flag1(b, r, f1::DRAG);
+        let clears = b.game_rules().request_clears.drag.0;
+        ai_mut(b, r).requests &= !(request::ATTACKS | clears);
+        return set_action(b, r, NaviAction::Idle);
     }
     if flag1(b, r) & f1::PARALYZED != 0 {
         clear_flag1(b, r, f1::DRAG);
@@ -667,6 +707,35 @@ mod tests {
         assert_eq!(at(0x40), (0, -1, 1));
         assert_eq!(at(0x80), (0, 1, 1));
         assert_eq!(at(0x01), (0, 0, 0), "no bit set: the row past them");
+    }
+
+    /// docs/design/exe4-map.md §18 item 33: plain reaction actions (EXE4's)
+    /// mark no action in use, count no reaction for a paralysis or a drag,
+    /// keep a dragged navi's paralysis to idle in the flinch's pose; marked
+    /// ones (the test content's, EXE6's) do each.
+    #[test]
+    fn plain_reaction_actions_mark_and_count_nothing_more() {
+        let run = |plain: bool| {
+            let (mut b, [_, r]) = fight_with(|rules| {
+                rules.reaction_actions = if plain { ReactionActions::Plain } else { ReactionActions::Marked };
+            });
+            let side = b.objects.get(r).alliance;
+            let counted = |b: &Battle| b.side_stats[side as usize][3];
+            let before = counted(&b);
+            // A paralyzed navi dragged no panel away.
+            set_flag1(&mut b, r, f1::PARALYZED);
+            coll_mut(&mut b, r).hit_mod_final = 0;
+            b.objects.get_mut(r).slide_type = 1;
+            start_drag(&mut b, r);
+            let drag = (b.objects.get(r).anim, flag1(&b, r) & f1::USING_ACTION != 0, counted(&b) - before);
+            // Its end.
+            b.objects.get_mut(r).timer = 0;
+            recover_from_drag(&mut b, r);
+            let end = (super::super::navi_action(&b, r), flag1(&b, r) & f1::PARALYZED != 0);
+            (drag, end)
+        };
+        assert_eq!(run(false), ((2, true, 1), (NaviAction::Paralysis, true)));
+        assert_eq!(run(true), ((1, false, 0), (NaviAction::Idle, true)));
     }
 
     /// docs/design/exe5-map.md §15.2: lava (the test content's burns for 50,

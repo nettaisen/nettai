@@ -18,8 +18,16 @@ pub(super) fn update(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }
-    decode(b, r);
-    accumulate_charge(b, r);
+    match b.game_rules().effects.charge {
+        crate::content::ChargeControls::HoldFlags => {
+            decode(b, r);
+            accumulate_charge(b, r);
+        }
+        crate::content::ChargeControls::PerButton => {
+            decode_per_button(b, r);
+            accumulate_per_button(b, r);
+        }
+    }
 }
 
 /// `sub_800A772`: chips are enabled for this side (intro bit 0x04/0x08)
@@ -297,15 +305,133 @@ fn accumulate_charge(b: &mut Battle, r: ObjectRef) {
         a.charge_level = 0;
     }
     let count = a.charge_counter as u32 + 1;
-    a.charge_counter = count as u8;
+    a.charge_counter = count as u16;
     a.charge_level = if count < 10 {
         0
     } else if count < threshold as u32 {
         1
     } else {
-        a.charge_counter = threshold as u8;
+        a.charge_counter = threshold;
         2
     };
+}
+
+// ---- A charge per button (EXE4's) -----------------------------------------------
+
+/// EXE4's 0x0800BDE0: raise requests from this tick's buttons. Dimmed, only a
+/// dimming chip can cut in (as `decode`'s). Else: the buster on B's release,
+/// unless a buster or charged shot is asked already, charged with a full B
+/// charge from last tick; B then Left within 8 ticks the B+Left special; a
+/// chip on A's press (its release when the chip charges), charged with a
+/// full A charge. (Its souls' own branches, soul 2's B presses and soul
+/// 15's, come with the souls.)
+fn decode_per_button(b: &mut Battle, r: ObjectRef) {
+    let f0 = ai(b, r).requests;
+    if b.is_dimmed() {
+        if !chips_enabled(b, r) || f0 & request::CUT_IN != 0 || next_chip(b, r).is_none() {
+            return;
+        }
+        if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
+            ai_mut(b, r).requests |= request::CUT_IN;
+        }
+        return;
+    }
+    let (pressed, released, source, level) = {
+        let a = ai(b, r);
+        (a.pad.pressed, a.pad.released, a.charge_source, a.charge_level)
+    };
+    if f0 & (request::BUSTER | request::CHARGED_SHOT) == 0 && released & keys::B != 0 {
+        let full = source == 2 && level == 2;
+        ai_mut(b, r).requests |= if full { request::CHARGED_SHOT } else { request::BUSTER };
+    }
+    // (0x0800BE96: the B+Left special, its weapon's.)
+    let a = ai(b, r);
+    if a.back_special.is_some() && a.back_special_cooldown == 0 {
+        let mut window = a.back_special_window;
+        if window != 0 || pressed & keys::B != 0 {
+            if window == 0 {
+                window = 8;
+            }
+            let a = ai_mut(b, r);
+            if pressed & keys::LEFT != 0 {
+                a.requests |= request::BACK_SPECIAL;
+                a.back_special_window = 0;
+            } else {
+                a.back_special_window = window - 1;
+            }
+        }
+    }
+    if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r).is_none() {
+        return;
+    }
+    let edge = if chip_charges_on_a(b, r) { ai(b, r).pad.released } else { pressed };
+    if edge & keys::A == 0 {
+        return;
+    }
+    let full = source == 1 && level == 2;
+    ai_mut(b, r).requests |= if full { request::CHARGED_CHIP } else { request::CHIP };
+}
+
+/// EXE4's 0x0800BBA4 and 0x0800BB50: the charge, by the button held. Not
+/// dimmed: with an attack asked (0x2F) or the navi not to be controlled,
+/// none. Else B held (after A's charge: B pressed) charges B, its count
+/// going on while the navi has a charged shot (0 without); with a chip in
+/// hand, A held (after B's charge: A pressed) charges A, its count going on
+/// while the chip charges (0 if it doesn't); else none. A count is the
+/// source's own (the other's drops to 0) and goes on to 510 (then 511 and
+/// 510 by turns). The level: full at the source's threshold, else 1 from 10
+/// ticks.
+fn accumulate_per_button(b: &mut Battle, r: ObjectRef) {
+    if b.is_dimmed() {
+        return;
+    }
+    let (f, status, held, pressed, source) = {
+        let a = ai(b, r);
+        (a.requests, a.status, a.pad.held, a.pad.pressed, a.charge_source)
+    };
+    let asked = request::BUSTER | request::CHARGED_SHOT | request::CHIP | request::CHARGED_CHIP | request::FORCED_CHARGED_SHOT;
+    if f & asked != 0 || status & status::CONTROLLABLE == 0 {
+        return super::reset_charge_counters(b, r);
+    }
+    let chip = next_chip(b, r).is_some();
+    // 0x0800BBDA: by the source charging last tick.
+    let next = match source {
+        0 if held & keys::B != 0 => 2,
+        1 if pressed & keys::B != 0 => 2,
+        0 | 1 if chip && held & keys::A != 0 => 1,
+        2.. if chip && pressed & keys::A != 0 => 1,
+        2.. if held & keys::B != 0 => 2,
+        _ => return super::reset_charge_counters(b, r),
+    };
+    let counts = if next == 2 { ai(b, r).charge_shot.is_some() } else { chip_charges_on_a(b, r) };
+    let a = ai_mut(b, r);
+    let count = if a.charge_source == next { a.charge_counter } else { 0 };
+    a.charge_source = next;
+    a.charge_counter = match count + 1 {
+        _ if !counts => 0,
+        n if n >> 1 > 255 => 510,
+        n => n,
+    };
+    let threshold = charge_threshold(b, r, next);
+    let a = ai_mut(b, r);
+    a.charge_level = if a.charge_counter >= threshold {
+        2
+    } else if a.charge_counter >= 10 {
+        1
+    } else {
+        0
+    };
+}
+
+/// EXE4's 0x0800BC78: the chip in hand charges on A (by the navi's A charge
+/// and its form's charged chips, as `a_chargeable`'s test, without its
+/// requests and status).
+fn chip_charges_on_a(b: &Battle, r: ObjectRef) -> bool {
+    let a = ai(b, r);
+    if a.a_charge.is_none() && a.alt_a_charge.is_none() {
+        return false;
+    }
+    next_chip(b, r).is_some_and(|chip| chip_charges(b, r, chip))
 }
 
 /// `sub_8012F62`: ticks to a full charge for the charge routine of

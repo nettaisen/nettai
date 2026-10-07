@@ -397,13 +397,29 @@ local status = {
     rules = {
         hp_drain = { periods = "stat", stops_while_paused = false },
         custom_drain = { periods = "stat", status = 0x1 },
+        -- No per-form tick (the player's update, 0x080EAECC, runs none: a soul's is its own, to read with the souls).
         form_tick = false,
+        -- The mercy flash hides the navi while its timer's bit 1 is clear (0x08010430).
         flash_hides_on_clear = true,
+        -- What a navi's status word reads as before its init made its collision data: EXE5's open-bus value, to
+        -- confirm by recording (exe4-map.md §16).
         missing_collision_status = 0xE55EC002,
+        -- Its status block (0x08013A48) is EXE5's order: the flash's timer first, whatever the battle's flags
+        -- (0x080134F6), then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "flash_timer_first",
+        -- Its reaction actions are plain (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks the action in
+        -- use; the flinch and the paralysis keep the height, the paralysis snaps sliding or not and counts no
+        -- reaction; the drag takes the flinch's pose, counts none, and at its end clears itself alone, to idle.
+        reaction_actions = "plain",
+        -- A hit's NaviCust bug is taken (0x0800D9E8) before the HP bug drains (0x0800C164); no no-charge drive.
         bugs_before_drain = true,
         no_charge_drive = false,
-        hp_loss = "hp_alone",
+        -- A player's hit drains its side's gauge with the HP and shows only with HP left; at 0 HP the rules are asked
+        -- after (0x08013A48: 0x0800AB9E, 0x0800EBC8); every other loss takes the HP alone (0x0800AB92).
+        hp_loss = "hit_drains_gauge",
+        -- Every console hears a navi's hit as `hit` (0x6B), a navi in auto battle's (NaviStats +0x26 = 1) as
+        -- `auto_battle_hit` (0x6D): its hit intake, 0x08013A8C.
+        hit_sound = "by_navi",
         -- EXE4's emotions (to read: exe4-map.md §7, §18): EXE5's until then.
         emotion = {
             mood_held = "at_zero",
@@ -419,8 +435,11 @@ local status = {
             },
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
         },
+        -- (A soul's break by a weakness hit: EXE5's until the souls are read.)
         form_break = "any_form",
         weakness_hit_breaks_form = false,
+        -- The weakness mark shows for the damage of the element the navi is weak to (0x080133CE, the table at
+        -- 0x08013408), as EXE5's.
         weakness_mark = "weak_element_damage",
         -- A navi runs through a pause until it takes control (0x08010A88 clears its header flag 0x04, and the object
         -- loop skips it while paused from then on); its status block has no pause handler, and runs its action

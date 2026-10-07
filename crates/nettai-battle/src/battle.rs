@@ -1650,6 +1650,17 @@ impl Battle {
     /// Fighting state 0 (`sub_800840C`): run the transformation sequencer
     /// twice, then count down Beast Out.
     fn fight_setup(&mut self) {
+        // (No sequencer, EXE4's: the turn starts, and its banner on the same
+        // tick, 0x08007064.)
+        if !self.game_rules().flow.sequencer_at_turn_start {
+            for side in 0..2u8 {
+                if self.player(side).is_some() {
+                    self.notify_side(side, RulesHook::TurnStarted);
+                }
+            }
+            self.set_fight_state(fight::START_BANNER);
+            return self.fight_start_banner();
+        }
         if self.fight.init == 0 {
             self.start_transform_sequencer();
             self.fight.init = 4;
