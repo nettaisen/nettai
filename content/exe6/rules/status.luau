@@ -114,7 +114,6 @@ local status = {
         -- (`sub_801A5EE`, while the battle is fighting).
         reactions = "flash_timer_last",
         bugs_before_drain = false,
-        drain_bug_flags = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",
         -- Its emotions (`sub_8015B54`): worn out (exhausted, or a mood of 0) is read before anger, then held tired,

@@ -627,6 +627,14 @@ impl UserData for Object {
             with(|api, _| api.load_form_sprite(this.0, form).map_err(api_error))
         });
         methods.add_method("reset_status", |_, this, ()| with(|api, _| api.reset_status(this.0).map_err(api_error)));
+        methods.add_method("strip_body_programs", |_, this, undershirt: bool| {
+            with(|api, _| api.strip_body_programs(this.0, undershirt).map_err(api_error))
+        });
+        methods.add_method("refresh_form_flags", |_, this, ()| with(|api, _| api.refresh_form_flags(this.0).map_err(api_error)));
+        methods.add_method("take_status", |_, this, status: LuaValue| {
+            let status = nettai_content_api::StatusHandle(bound(|b| def_arg(b, &status, Registry::Status, "take_status"))?);
+            with(|api, _| api.take_status(this.0, status).map_err(api_error))
+        });
         methods.add_method("end_anger", |_, this, ()| with(|api, _| api.end_anger(this.0).map_err(api_error)));
         methods.add_method("form_change_target", |_, this, ()| {
             let form = with(|api, _| Ok(api.form_change_target(this.0)))?;
@@ -2712,10 +2720,21 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | RulesHook::WindowUpdate
                 | RulesHook::CustomKeys
                 | RulesHook::CustomTakeBack
-                | RulesHook::NaviBug
+                | RulesHook::BugMark
                 | RulesHook::HpEmptied,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
+        // What the rules did with a hit's NaviCust bug: nothing of the
+        // stats, edited them, or spared the navi the bug and the reload.
+        HookCall::Rules { hook: RulesHook::NaviBug, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::String(s) => match &*s.to_str()? {
+                "edited" => Ok(Value::Int(1)),
+                "spared" => Ok(Value::Int(2)),
+                other => Err(mlua::Error::runtime(format!("navi_bug returns nil, \"edited\" or \"spared\", not {other:?}"))),
+            },
+            _ => Err(mlua::Error::runtime(format!("navi_bug returns nil, \"edited\" or \"spared\", not a {}", v.type_name()))),
+        },
         // A button's chip.
         HookCall::Rules { hook: RulesHook::ButtonChip, .. } => match bound.def(&v) {
             _ if v.is_nil() => Ok(Value::Nil),

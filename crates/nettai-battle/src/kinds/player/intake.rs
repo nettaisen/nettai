@@ -42,8 +42,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     hp_bug_drain(b, r);
     drop_cursor_trap(b, r);
     anti_damage_traps(b, r);
-    bug_hp_level(b, r);
-    bug_paralyze_blind(b, r);
+    hit_bug(b, r);
     if !bugs_first {
         bug_navicust(b, r);
     }
@@ -114,8 +113,7 @@ pub(super) fn collect_hits_navi(b: &mut Battle, r: ObjectRef) {
     slide_triggers(b, r);
     drop_cursor_trap(b, r);
     anti_damage_traps(b, r);
-    bug_hp_level(b, r);
-    bug_paralyze_blind(b, r);
+    hit_bug(b, r);
     hit_modifier_requests(b, r);
     counter_paralysis(b, r);
     apply_status(b, r);
@@ -498,54 +496,25 @@ fn zero_trapped_hit(b: &mut Battle, r: ObjectRef) {
     c.f2 &= !0x301BE;
 }
 
-/// `sub_801A6B4`: bug codes 0xF4 (and 0xF7 when HP has a decimal 4)
-/// raise the HP-bug level.
-fn bug_hp_level(b: &mut Battle, r: ObjectRef) {
-    let code = coll(b, r).acc.inflicted_bugs as u8;
-    let hit = match code {
-        0xF4 => true,
-        0xF7 => {
-            let has_four = b.objects.get(r).hp.to_string().contains('4');
-            if !has_four {
-                coll_mut(b, r).acc.inflicted_bugs &= 0xFF00;
-            }
-            has_four
-        }
-        _ => false,
-    };
-    if hit {
-        let bugs = &mut stats_mut(b, r).bugs;
-        bugs.hp_drain = (bugs.hp_drain + 1).min(7);
-    }
-}
-
-/// `sub_801A720`: bug code 0xF6 raises two bug levels, paralyzes, and
-/// blinds (except NameIDs 0x173..=0x17E).
-fn bug_paralyze_blind(b: &mut Battle, r: ObjectRef) {
-    if coll(b, r).acc.inflicted_bugs as u8 != 0xF6 {
+/// `sub_801A6B4` and `sub_801A720`: the bugs a hit's code brings any
+/// navi, which its side's rules say (`hit_bug`: EXE6's HP bug codes and its
+/// paralyzing, blinding one), when a hit brought a code.
+fn hit_bug(b: &mut Battle, r: ObjectRef) {
+    if coll(b, r).acc.inflicted_bugs & 0xFF == 0 {
         return;
     }
-    let bugs = &mut stats_mut(b, r).bugs;
-    bugs.hp_drain = (bugs.hp_drain + 2).min(7);
-    bugs.custom_drain = (bugs.custom_drain + 2).min(7);
-    // sub_801A77A
-    set_flag2(b, r, 0x8);
-    coll_mut(b, r).status_timers[timer::PARALYZE] = 150;
-    // (Not the Cybeasts: `bug_blind_immune`.)
-    if !b.content.identity(b.objects.get(r).identity).bug_blind_immune {
-        set_flag2(b, r, 0x20);
-        coll_mut(b, r).status_timers[timer::BLIND] = 1200;
-    }
-    coll_mut(b, r).acc.inflicted_bugs &= 0xFF00;
+    let side = b.objects.get(r).alliance;
+    b.rules_hit_bug(side, r);
 }
 
-/// `sub_8014080` (bug code 0xFB) and `sub_80140EE` (an uninstall, without
-/// `undershirt`): MegaMan's body programs go: SuperArmor, FloatShoe (the
-/// body back on the ground), Undershirt, AirShoe and the B+Back special
-/// (in base form, the navi's too). Link navis keep theirs.
-fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
+/// `sub_8014080` and `sub_80140EE` (an uninstall, without `undershirt`):
+/// MegaMan's body programs go: SuperArmor, FloatShoe (the body back on the
+/// ground), Undershirt, AirShoe and the B+Back special (in base form, the
+/// navi's too). Link navis keep theirs. Whether the navi changes form (a
+/// game's bug codes 0xFB and 0xF8 call it: their rules).
+pub(crate) fn strip_body_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) -> bool {
     if !super::is_megaman(b, r) {
-        return;
+        return false;
     }
     super::clear_flag1(b, r, f1::SUPERARMOR);
     stats_mut(b, r).super_armor = false;
@@ -563,90 +532,39 @@ fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
     if super::in_base_form(b, r) {
         ai_mut(b, r).back_special = None;
     }
+    true
 }
 
-/// `sub_80139F6`: bug codes that edit the NaviCust stats (the code names
-/// the stat byte; a few codes are special); the weapon routines are
-/// reloaded every tick.
+/// `sub_80139F6` (EXE5's 0x0801103E): the navi takes its hit's NaviCust
+/// bug (the code its collision's `inflicted_bugs` holds), which its side's
+/// rules say what it does to (`navi_bug`: a game's table of its codes, a
+/// stat each code below 0x64 names, by name); then, unless they spare it,
+/// its weapon routines are reloaded, and where they edited its stats its
+/// abilities and form flags come back first. The rules are asked on a tick
+/// something hit it (a code, or the hit flags their answer may read: EXE5's
+/// light MegaMan's).
 fn bug_navicust(b: &mut Battle, r: ObjectRef) {
-    // The side's rules first (EXE5's light and dark codes, its skip).
-    let side = b.objects.get(r).alliance;
-    if b.rules_navi_bug(side, r) {
-        return;
-    }
-    let bugs = coll(b, r).acc.inflicted_bugs;
-    let (code, arg) = (bugs as u8, (bugs >> 8) as u8);
-    let mut edited = false;
-    let content = b.content.clone();
-    let flags = b.game_rules().intake.drain_bug_flags;
-    let s = stats_mut(b, r);
-    match code {
-        0 => {}
-        // EXE5's 0x0801103E: the drain bugs' argument by its flags; a level
-        // that wouldn't rise is left, with nothing reloaded.
-        0x18 | 0x19 if flags => {
-            let level = if code == 0x18 { &mut s.bugs.hp_drain } else { &mut s.bugs.custom_drain };
-            let n = arg & 0xF;
-            *level = if arg & 0x10 != 0 {
-                (*level + n).min(7)
-            } else if arg & 0x20 != 0 {
-                level.saturating_sub(n)
-            } else if n > *level {
-                n
-            } else {
-                return;
-            };
-            edited = true;
-        }
-        0x18 => {
-            s.bugs.hp_drain = (s.bugs.hp_drain as u32 + arg as u32).min(7) as u8;
-            edited = true;
-        }
-        0x19 => {
-            s.bugs.custom_drain = (s.bugs.custom_drain as u32 + arg as u32).min(7) as u8;
-            edited = true;
-        }
-        0x54 => {
-            // A byte store of the halfword plus the argument.
-            let low = (s.bugs.custom_damage as u32 + arg as u32) as u8;
-            s.bugs.custom_damage = (s.bugs.custom_damage & 0xFF00) | low as u16;
-            edited = true;
-        }
-        0xFF => {
-            s.bugs.buster_blanks = 4;
-            edited = true;
-        }
-        0xFE => (s.bugs.panel_trail_kind, s.bugs.panel_trail_level) = (4, 4),
-        0xFA => (s.bugs.panel_trail_kind, s.bugs.panel_trail_level) = (4, 2),
-        0xF9 => (s.bugs.panel_trail_kind, s.bugs.panel_trail_level) = (4, 1),
-        0xF5 => (s.bugs.panel_trail_kind, s.bugs.panel_trail_level) = (3, 1),
-        // sub_8014080: MegaMan loses his body programs.
-        0xFB => strip_programs(b, r, true),
-        0xF8 => {
-            // sub_80140EE: the same but Undershirt, then the form's flags
-            // come back (`sub_801469C`); a spark of effect 0xE 16 pixels up
-            // (sub_80E08C4) and sound 0x8E.
-            if super::is_megaman(b, r) {
-                strip_programs(b, r, false);
+    let c = coll(b, r);
+    if c.acc.inflicted_bugs != 0 || c.acc.hit_flags != 0 {
+        let side = b.objects.get(r).alliance;
+        match b.rules_navi_bug(side, r) {
+            crate::rules::NaviBug::Spared => return,
+            crate::rules::NaviBug::Edited => {
+                refresh_abilities(b, r);
                 super::form::refresh_form_flags(b, r);
             }
-            let pos = b.objects.get(r).pos;
-            let at = crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos };
-            let spark = b.roles().spark(SparkRole::Uninstall);
-            crate::kinds::spark::spawn(b, r, at, spark);
-            b.sound(crate::content::SoundRole::Fade);
+            crate::rules::NaviBug::Untouched => {}
         }
-        0x64.. => {}
-        _ => {
-            s.set_byte_by_bug_code(code, arg, &content);
-            edited = true;
-        }
-    }
-    if edited {
-        refresh_abilities(b, r);
-        super::form::refresh_form_flags(b, r);
     }
     reload_base_weapons(b, r);
+}
+
+/// For tests and tools: side `side`'s navi takes bug `bugs` (the code, and its
+/// argument in the high byte) as a hit's ([`bug_navicust`]).
+pub fn take_navi_bug(b: &mut Battle, side: u8, bugs: u16) {
+    let r = b.player(side).expect("the side's navi");
+    coll_mut(b, r).acc.inflicted_bugs = bugs;
+    bug_navicust(b, r);
 }
 
 // ---- Hit results -------------------------------------------------------------------
@@ -686,8 +604,9 @@ fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
     clear_flag2(b, r, 0x6);
 }
 
-/// `sub_8013F1E`: the NaviCust on-hit bug (stat 0x16), once per hit
-/// sequence while damage lands.
+/// `sub_8013F1E`'s gate: once a hit sequence while damage lands, the
+/// side's rules hear of it (`navi_damaged`: the NaviCust's hit bug, the
+/// `hit_status` stat, which may put a status in place of the hit's).
 fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
     if flag2(b, r) & 0x104 == 0 {
         return;
@@ -713,26 +632,22 @@ fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
     } else {
         a.hit_bug_latched = true;
     }
-    match stats(b, r).bugs.hit_status {
-        0 => {}
-        1 => coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::HitBugBlind)),
-        2 => coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::HitBugConfuse)),
-        3 => {
-            let bugs = &mut stats_mut(b, r).bugs;
-            if bugs.hp_drain < 7 {
-                bugs.hp_drain += 1;
-            }
-        }
-        n => panic!("NaviCust hit bug {n} reads past its table"),
-    }
+    let side = b.objects.get(r).alliance;
+    b.rules_navi_damaged(side, r);
 }
 
 /// `sub_801A554`: apply the status the hit carried: set its timer and
 /// raise its request (§4.8).
 fn apply_status(b: &mut Battle, r: ObjectRef) {
-    let Some(s) = coll(b, r).status_final else {
-        return;
-    };
+    if let Some(s) = coll(b, r).status_final {
+        take_status(b, r, s);
+    }
+}
+
+/// [`apply_status`]'s work for status `s`: its timer set and its requests
+/// raised (the rules' `take_status` too: a bug's paralysis and blindness,
+/// `sub_801A77A`).
+pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::StatusHandle) {
     let e = b.content.status(s);
     let c = coll_mut(b, r);
     let t = match e.timer {

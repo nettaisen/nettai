@@ -15,6 +15,7 @@ local fresh_stats = require("@self/fresh_stats")
 local light_dark = require("@self/light_dark")
 local navicust = require("@self/navicust")
 local navicust_board = require("@self/navicust/board")
+local navicust_bugs = require("@self/navicust/bugs")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
 local soldier = require("./objects/soldier")
@@ -263,11 +264,18 @@ local rules: Rules = {
                 auto_battle.block.send()
             end
         end,
-        -- Light and dark MegaMan (./light_dark): his starting mood, palette, a hit's bug, the holy panels a dark
-        -- one clears, the chips each may use and a dark chip's cost.
+        -- Light and dark MegaMan (./light_dark): his starting mood, palette, a hit's bug (its codes first, then the
+        -- NaviCust's: ./navicust/bugs), the holy panels a dark one clears, the chips each may use and a dark chip's
+        -- cost.
         starting_mood = light_dark.starting_mood,
         navi_palette = light_dark.navi_palette,
-        navi_bug = light_dark.navi_bug,
+        navi_bug = function(side: number, navi: Object): ("edited" | "spared")?
+            return light_dark.navi_bug(side, navi) or navicust_bugs.navi_bug(side, navi)
+        end,
+        -- The HP bug's codes, its marker, and the hit bug as damage lands (./navicust/bugs).
+        hit_bug = navicust_bugs.hit_bug,
+        bug_mark = navicust_bugs.bug_mark,
+        navi_damaged = navicust_bugs.navi_damaged,
         navi_intake = light_dark.navi_intake,
         chip_cost = light_dark.chip_cost,
         chip_check = light_dark.chip_check,

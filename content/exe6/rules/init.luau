@@ -15,6 +15,7 @@ local forms = require("@self/forms")
 local fresh_stats = require("@self/fresh_stats")
 local navicust = require("@self/navicust")
 local navicust_board = require("@self/navicust/board")
+local navicust_bugs = require("@self/navicust/bugs")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
 
@@ -250,6 +251,12 @@ local rules: Rules = {
         takeover_requested = beast.takeover_requested,
         takeover = beast.takeover,
         form_reverted = beast.form_reverted,
+        -- The bugs a hit inflicts: the NaviCust's by their codes, the HP bug's, and the hit bug as damage lands
+        -- (./navicust/bugs).
+        navi_bug = navicust_bugs.navi_bug,
+        hit_bug = navicust_bugs.hit_bug,
+        bug_mark = navicust_bugs.bug_mark,
+        navi_damaged = navicust_bugs.navi_damaged,
         -- A dark chip's bug frag, its substitute, and the HP bug its use worsens (./dark_chips).
         chip_substitute = dark_chips.chip_substitute,
         chip_prepared = dark_chips.chip_prepared,

@@ -294,6 +294,9 @@ declare extern type Collision with
     secondary_element: number
     -- The status its hits carry (rules/status), if any.
     status_base: Status?
+    -- The status it takes this window (its hits', a counter's, or one the
+    -- rules put in their place: the NaviCust's hit bug), if any.
+    status_final: Status?
     -- Bug code (low byte) and argument (high byte).
     bugs: number
     -- The bug code and argument the last resolution's hits brought (CollisionData+0x9C, +0x9D), which the navi takes.
@@ -729,6 +732,15 @@ declare extern type Object with
     function load_form_sprite(self, form: FormDef): ()
     -- `sub_80144C0`: the full status reset.
     function reset_status(self): ()
+    -- `sub_8014080` (`sub_80140EE` without `undershirt`): MegaMan's body
+    -- programs go (SuperArmor, FloatShoe, Undershirt, AirShoe, the B+Back
+    -- special); a navi that doesn't change form keeps its. Whether they went.
+    function strip_body_programs(self, undershirt: boolean): boolean
+    -- `sub_801469C`: the form's flags back on the navi.
+    function refresh_form_flags(self): ()
+    -- `sub_801A554`'s work for `status` now: its timer set and its
+    -- requests raised (a bug's paralysis and blindness).
+    function take_status(self, status: Status): ()
     -- Anger ends; the mood is back to 0x80 (EXE5's: a mood of 0 stays).
     function end_anger(self): ()
     -- The form the navi's side asked to change into at this turn's start
@@ -873,8 +885,10 @@ declare extern type Navi with
     charge: number
     mood: number
     -- (`form` is writable too: a game's form change puts the navi in it.)
-    -- The form the navi started the battle in.
+    -- The form the navi started the battle in (writable: a bug code puts
+    -- the base form there), and its base form.
     starting_form: FormDef
+    base_form: FormDef
     -- The Regular chip's MB at most.
     regular_memory: number
     max_base_hp: number
@@ -933,6 +947,24 @@ declare extern type Navi with
     custom_damage: number
     emotion_bug: number
     battle_start_bug: number
+    -- NaviCust bugs: random steps after a move (+0x11), damage at the
+    -- battle's start (+0x3D).
+    auto_step: number
+    starting_damage: number
+    -- The folder the navi brings (+0x2D, 0 to 2), the folders' Regular
+    -- chips (+0x2E, +0x2F) and tag chips (+0x56 to +0x59), entries as the
+    -- save keeps them (0xFF none).
+    folder: number
+    folder_1_regular: number
+    folder_2_regular: number
+    folder_1_tag_a: number
+    folder_1_tag_b: number
+    folder_2_tag_a: number
+    folder_2_tag_b: number
+    -- The weapons of the A button's charge (+0x39) and of battle mode 9's A
+    -- button (+0x44); nil: none.
+    a_charge_weapon: Weapon?
+    mode9_a_weapon: Weapon?
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
     -- Its game's own stats (its rules' `stats`: EXE6's `beast_out_counter`,
@@ -1922,9 +1954,21 @@ export type RulesSpec = {
         -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94); none, the
         -- framework's (EXE6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
-        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E): the rules may change the bug
-        -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped.
-        navi_bug: ((side: number, navi: Object) -> boolean?)?,
+        -- The navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E: `navi.collision.inflicted_bugs`,
+        -- its code and argument): the game's table writes the stat a code names (@exelib/navicust/bugs), and
+        -- answers "edited" (the abilities and form flags come back), nil (nothing of the stats changed) or "spared"
+        -- (the weapons' reload skipped too). Asked on a tick something hit the navi.
+        navi_bug: ((side: number, navi: Object) -> ("edited" | "spared")?)?,
+        -- Any navi (a player's or not) takes the bugs its hit's code brings every navi (`sub_801A6B4`,
+        -- `sub_801A720`: the HP bug's level, paralysis and blindness), before its status and damage; asked when a hit
+        -- brought a code.
+        hit_bug: ((side: number, navi: Object) -> ())?,
+        -- Whether the navi's hit's bug shows the HP bug's marker (`sub_801A4A6`), as its hits' effects show; asked
+        -- when a hit brought a code.
+        bug_mark: ((side: number, navi: Object) -> boolean?)?,
+        -- A player's navi took damage: once a hit sequence (`sub_8013F1E`'s gate), before the hit's status takes;
+        -- the NaviCust's hit bug (`hit_status`) may put its own in its place (`navi.collision.status_final`).
+        navi_damaged: ((side: number, navi: Object) -> ())?,
         -- A loss of HP brought the side's navi to 0, by a game whose HP loss asks (`status.hp_loss = "gauge"`: EXE5's
         -- object_subtractHP, 0x0800C6E0, calling 0x0802C16C): the rules may hold it (EXE5's last stand), and answer
         -- true: the hit shows (white, its sounds: EXE5's applyDamageToPlayer, 0x080185A2); none, it doesn't.
@@ -2586,7 +2630,8 @@ export type IdentitySpec = {
     -- A win over it is quiet: no music or banner, and the end fades to
     -- white (the Cybeasts).
     quiet_win: boolean?,
-    -- The NaviCust bug 0xF6 doesn't blind it (the Cybeasts).
+    -- The NaviCust bug 0xF6 doesn't blind it (the Cybeasts; the rules read
+    -- it: @exelib/navicust/bugs).
     bug_blind_immune: boolean?,
     -- The animation in which the target marker over it isn't raised to its
     -- attach point (Gregar's 0x4F).
@@ -2709,15 +2754,13 @@ export type RolesSpec = {
     -- The statuses the rules inflict themselves: what a damage word's
     -- paralysis bit carries (and, with EXE5's rule `effects.damage_word`,
     -- its confusion and blindness bits), what a counter hit lands, what an
-    -- aqua hit gives a body on ice, and the NaviCust on-hit bug's.
+    -- aqua hit gives a body on ice.
     statuses: {
         damage_word_paralysis: Status?,
         damage_word_confusion: Status?,
         damage_word_blindness: Status?,
         counter_paralysis: Status?,
         ice_freeze: Status?,
-        hit_bug_blind: Status?,
-        hit_bug_confuse: Status?,
     }?,
     -- The one-shot effects the rules show themselves: a navi deleted (and
     -- a cross merged, a navi arriving, a form put on or taken off), HP
@@ -2733,13 +2776,12 @@ export type RolesSpec = {
     }?,
     -- The hit sparks the rules show themselves: a new registration's until
     -- its owner names another, a blocked hit's, an eruption's, a thrown
-    -- obstacle's landing's, an uninstall's.
+    -- obstacle's landing's.
     sparks: {
         plain: Spark?,
         guard: Spark?,
         eruption: Spark?,
         thrown_obstacle: Spark?,
-        uninstall: Spark?,
     }?,
     -- The hit regions the rules register themselves: a registration's own
     -- panel, which every setup gives it.

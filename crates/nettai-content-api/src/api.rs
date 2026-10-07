@@ -415,6 +415,9 @@ named_fields! {
         SecondaryElement = "secondary_element", U8, rw;
         /// The status its hits carry (a status definition), or none.
         StatusBase = "status_base", Ref(Registry::Status, None), rw;
+        /// The status it takes this window (its hits', a counter's, or one
+        /// the rules put in their place: the NaviCust's hit bug), or none.
+        StatusFinal = "status_final", Ref(Registry::Status, None), rw;
         /// Bug code (low byte) and argument (high byte).
         Bugs = "bugs", U16, rw;
         /// The bug code and argument the last resolution's hits brought
@@ -474,8 +477,11 @@ named_fields! {
         Charge = "charge", U8, rw;
         /// Writable: EXE5's dark chips set it (0x080127D6).
         Mood = "mood", U8, rw;
-        /// The form the navi started the battle in.
-        StartingForm = "starting_form", Ref(Registry::Form, None), ro;
+        /// The form the navi started the battle in (writable: a bug code
+        /// puts the base form there).
+        StartingForm = "starting_form", Ref(Registry::Form, None), rw;
+        /// The navi's base form.
+        BaseForm = "base_form", Ref(Registry::Form, None), ro;
         /// The Regular chip's MB at most (+0x09, RegUp's), and the base HP
         /// (+0x3E): the save's, which a game's rules/save writes as the
         /// round is set up.
@@ -490,7 +496,7 @@ named_fields! {
         ChargeShotKind = "charge_shot_kind", Ref(Registry::Record, Some("projectile-variant".into())), rw;
         /// The damage a B+Back special takes from the navi's stats
         /// (NaviStats+0x48).
-        BackSpecialDamage = "back_special_damage", U16, ro;
+        BackSpecialDamage = "back_special_damage", U16, rw;
         /// NaviCust bugs: buster blanks and buster charged shots (of 16).
         BusterBlanks = "buster_blanks", U8, rw;
         BusterCharged = "buster_charged", U8, rw;
@@ -547,6 +553,24 @@ named_fields! {
         CustomDamage = "custom_damage", U16, rw;
         EmotionBug = "emotion_bug", U8, rw;
         BattleStartBug = "battle_start_bug", U8, rw;
+        /// NaviCust bugs: random steps after a move (+0x11), damage at the
+        /// battle's start (+0x3D).
+        AutoStep = "auto_step", U8, rw;
+        StartingDamage = "starting_damage", U8, rw;
+        /// The folder the navi brings (+0x2D, 0 to 2), the folders'
+        /// Regular chips (+0x2E, +0x2F) and tag chips (+0x56 to +0x59),
+        /// entries as the save keeps them (0xFF none).
+        Folder = "folder", U8, rw;
+        Folder1Regular = "folder_1_regular", U8, rw;
+        Folder2Regular = "folder_2_regular", U8, rw;
+        Folder1TagA = "folder_1_tag_a", U8, rw;
+        Folder1TagB = "folder_1_tag_b", U8, rw;
+        Folder2TagA = "folder_2_tag_a", U8, rw;
+        Folder2TagB = "folder_2_tag_b", U8, rw;
+        /// The weapons of the A button's charge (+0x39) and of battle mode
+        /// 9's A button (+0x44); none: no weapon.
+        AChargeWeapon = "a_charge_weapon", Ref(Registry::Weapon, None), rw;
+        Mode9AWeapon = "mode9_a_weapon", Ref(Registry::Weapon, None), rw;
         /// `sub_800FE52`: how many kinds of NaviCust bug the navi has
         /// (astray steps, a panel trail, buster blanks, a hit status,
         /// custom-screen damage, emotion swings, the two HP drains, a
@@ -1817,6 +1841,16 @@ pub trait CoreApi {
     /// hit modifier, region, charge, weapons, the form's flags, element,
     /// body damage).
     fn reset_status(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_8014080` (without `undershirt`, `sub_80140EE`'s): MegaMan's body
+    /// programs go (SuperArmor, FloatShoe, Undershirt, AirShoe, the B+Back
+    /// special); a link navi keeps its. Whether the navi changes form (and
+    /// lost them).
+    fn strip_body_programs(&mut self, o: ObjectRef, undershirt: bool) -> ApiResult<bool>;
+    /// `sub_801469C`: the form's flags back on the navi.
+    fn refresh_form_flags(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_801A554`'s work for a status now: its timer set and its
+    /// requests raised (a bug's paralysis and blindness, `sub_801A77A`).
+    fn take_status(&mut self, o: ObjectRef, status: crate::StatusHandle) -> ApiResult<()>;
     /// Anger ends, and the mood is back to 0x80.
     fn end_anger(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// The form the navi's side asked to change into at this turn's start

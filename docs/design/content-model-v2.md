@@ -600,18 +600,18 @@ mode. The numbers are compat's rules.toml, for `gen-content check` alone. The en
 its made-up modes under the same names (crates/nettai-battle/testdata/content/rules/lockon.luau).
 
 **As built** (step 12, statuses). A status is `StatusEffect` by `StatusHandle` (`Content::status`,
-`Defs::statuses`), with no byte anywhere in the engine: a collision's `status_base` and `status_final`, a
-hitbox's `status` and the content API's `collision.status_base` and `battle.hitbox { status }` hold or take the
-definition (nil: none), and a kind keeps one in a `"status"` state field. What the ruleset inflicts itself are
-roles (`statuses.damage_word_paralysis`, `counter_paralysis`, `ice_freeze`, `hit_bug_blind`,
-`hit_bug_confuse`), and its two tests of the byte's range are traits of the definition: `cancels_flinch` (the
-freezing statuses, the original's 0x50 to 0x55) and `survives_counter` (the bubbling ones, 0x60 to 0x65).
-Content tests a status's own fields where the original tested its byte (FlashBomb's flash has no hit modifier
-when its status's timer is paralysis). rules/status.luau names each group's own entries plainly
-(`paralyze-90`, `confuse-480`, `freeze-150`) and the entries the original reads past a group's end for what
-they read (`confuse-480-past-paralyze`); the bytes are compat's rules.toml. A chip's legacy `sword` marker
-(v1 record data nothing reads) keeps its raw status byte. The engine's test content defines dummy statuses
-under the same names (crates/nettai-battle/testdata/content/rules/status.luau).
+`Defs::statuses`), with no byte anywhere in the engine: a collision's `status_base` and `status_final`, a hitbox's
+`status` and the content API's `collision.status_base` and `battle.hitbox { status }` hold or take the definition
+(nil: none), and a kind keeps one in a `"status"` state field. What the ruleset inflicts itself are roles
+(`statuses.damage_word_paralysis`, `counter_paralysis`, `ice_freeze`; the NaviCust hit bug's are its
+rules/navicust/bugs's since rust-and-luau.md's N2), and its two tests of the byte's range are traits of the
+definition: `cancels_flinch` (the freezing statuses, the original's 0x50 to 0x55) and `survives_counter` (the
+bubbling ones, 0x60 to 0x65). Content tests a status's own fields where the original tested its byte (FlashBomb's
+flash has no hit modifier when its status's timer is paralysis). rules/status.luau names each group's own entries
+plainly (`paralyze-90`, `confuse-480`, `freeze-150`) and the entries the original reads past a group's end for what
+they read (`confuse-480-past-paralyze`); the bytes are compat's rules.toml. A chip's legacy `sword` marker (v1
+record data nothing reads) keeps its raw status byte. The engine's test content defines dummy statuses under the
+same names (crates/nettai-battle/testdata/content/rules/status.luau).
 
 **As built** (step 12, effects, sparks, regions and collision types). They are definitions the engine holds by
 handle (`Defs::effects`, `sparks`, `regions`, `collisions`; `Content::effect`, `spark`, `region`,

@@ -54,11 +54,11 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Beast Out and Beast Over | | 1 | 1 | | 2 |
 | Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | 1 | 1 | 3 | 5 |
-| NaviCust | | 1 | | 2 | 3 |
+| NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
 | The stat block and versions | | | 1 | | 1 |
 | Tools | | | 1 | | 1 |
-| **All** | **1** | **4** | **7** | **5** | **17** |
+| **All** | **1** | **3** | **7** | **5** | **16** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -154,11 +154,6 @@ rename left of EXE5's logic.
 
   *(d)* Per tick or per step on the navi's hot paths, and EXE5's NaviCust has bugs too. Rename to afflictions the
   rules set; they already write them through `NaviStat`.
-- **N2. Inflicting bugs** (`bug_navicust`, `bug_hp_level`, `bug_paralyze_blind`, `strip_programs`,
-  `navicust_hit_bug`, intake.rs:503–730; the hitbox's `bug`, hitbox.rs:22; collision.rs:137, :571, :727–740;
-  `NaviStats::set_byte_by_bug_code`, setup.rs:283–400). These are EXE6's bug codes (0x18, 0xF5 to 0xFE) and its table
-  from code to NaviStats offset. *(b)* A hook `bug_inflicted(side, code, arg)` with EXE6's table from code to stat in
-  its Luau, writing through `NaviStat` (§3.3). About 310 lines. It runs per hit that carries a bug, which is rare.
 - **N3. The abilities in the stat block** (`float_shoes`, `air_shoes`, `undershirt`, `super_armor`,
   `status_guard`, setup.rs:159–162; `apply_ability_flags`, `init_round_state`, player/mod.rs:1008–1090). *(d)* Navi
   mechanics the framework reads per tick: panels, holes, flinching, deletion. Chips and forms give them too. (Their
@@ -241,6 +236,16 @@ Each with what it was and what it is now.
   "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.
   `LastStand`, `last_stand` and `hold_last_stand` are gone; the HP loss is `lose_hp_and_gauge` and
   `apply_damage_shown_by_hp` (X2's names before). A Luau call per navi whose HP reaches 0, only in EXE5.
+- **N2.** The bugs a hit inflicts are each game's rules' (@exelib/navicust/bugs, which a game's
+  rules/navicust/bugs hands its part): `navi_bug` takes the NaviCust code table (a code below 0x64 names a stat byte,
+  written by the stat's name, the game's own by its `stats`' names; the drains add, by EXE5's flags or EXE6's sum;
+  the codes from 0xF5, the game's own bugs), and answers "edited" or "spared"; `hit_bug` the HP bug's codes and the
+  paralyzing, blinding one, for any navi; `bug_mark` the HP bug's marker; `navi_damaged` the hit bug as damage lands.
+  The engine asks them only on a tick a hit landed or brought a code. `set_byte_by_bug_code`, `drain_bug_flags`, the
+  hit bug's status roles, the uninstall's spark role and the identity's `bug_blind_immune` (which the rules read)
+  leave Rust; the API gains `strip_body_programs`, `refresh_form_flags`, `take_status`, the collision's
+  `status_final` and the stats a byte names (`base_form`, `auto_step`, `starting_damage`, the folders', the A
+  weapons). exe6-compat's tests/bug_codes.rs checks EXE6's table byte for byte against the codec.
 - **N4.** NumbrOpn left the framework's hand size (EXE6's rules/cross deals its ten, with ChargeCross's chips; the
   framework's is the custom level and the hand-shrink bug), and ChpShufl's and NumbrOpn's flags are EXE6's own stats
   (V1's way: `chip_shuffle`, `number_open`).
@@ -270,8 +275,7 @@ Each with what it was and what it is now.
   `chip_shuffle`, `number_open`; EXE5's: `sun`, `chip_drops`, `encounters`, `hub_style`, `soul_turn_bonus`. Their
   `NaviStats` fields and `NaviStat`s are gone. `version` is no stat: it is the side's version fact (EXE6's API
   `exe6.version`, which MstrCros reads; exe6-compat writes +0x20 from it). The stats pane lists the game's own by the
-  schema's names (`stats::game_fields`). The bug-code writer refuses those bytes until N2's table writes them by
-  name.
+  schema's names (`stats::game_fields`). A bug code writes them by name (N2: a game's rules/navicust/bugs's `own`).
 - **X1.** The fades by what they do: `FadeMode::{Flash, FlashBack, HalfOut, HalfOutBack}` (content's `flash`,
   `half_out`, ...; were `SoulFlash*`, `BeastOut*`), and D1's. A `fades` rule section stays §3.3's way for a fade of a
   game's own, which none needs yet.

@@ -481,6 +481,18 @@ impl CoreApi for Battle {
             NaviStat::Charge => i(s.charge as i64),
             NaviStat::Mood => i(s.mood as i64),
             NaviStat::StartingForm => Value::Def(Registry::Form, s.starting_form.0),
+            NaviStat::BaseForm => Value::Def(Registry::Form, self.content.base_form_for(s.navi).0),
+            NaviStat::AutoStep => i(s.bugs.auto_step as i64),
+            NaviStat::StartingDamage => i(s.bugs.starting_damage as i64),
+            NaviStat::Folder => i(s.folder as i64),
+            NaviStat::Folder1Regular => i(s.folder_reg[0] as i64),
+            NaviStat::Folder2Regular => i(s.folder_reg[1] as i64),
+            NaviStat::Folder1TagA => i(s.folder_tags[0][0] as i64),
+            NaviStat::Folder1TagB => i(s.folder_tags[0][1] as i64),
+            NaviStat::Folder2TagA => i(s.folder_tags[1][0] as i64),
+            NaviStat::Folder2TagB => i(s.folder_tags[1][1] as i64),
+            NaviStat::AChargeWeapon => weapon(s.weapons.a_charge),
+            NaviStat::Mode9AWeapon => weapon(s.weapons.mode9_a),
             NaviStat::RegularMemory => i(s.reg_up as i64),
             NaviStat::MaxBaseHp => i(s.max_base_hp as i64),
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
@@ -540,7 +552,7 @@ impl CoreApi for Battle {
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
         let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
         let weapon = match stat {
-            NaviStat::ChargeShotWeapon | NaviStat::BackSpecialWeapon | NaviStat::BusterWeapon => {
+            NaviStat::ChargeShotWeapon | NaviStat::BackSpecialWeapon | NaviStat::BusterWeapon | NaviStat::AChargeWeapon | NaviStat::Mode9AWeapon => {
                 self.weapon_from_api(stat.name(), v)?
             }
             _ => None,
@@ -610,6 +622,20 @@ impl CoreApi for Battle {
             (NaviStat::Form, v) => return Err(ApiError::Other(format!("form: {v:?} is not a form"))),
             (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
             (NaviStat::ChargeShotWeapon, FieldValue::Ref(_)) => s.weapons.charge_shot = weapon,
+            (NaviStat::AChargeWeapon, FieldValue::Ref(_)) => s.weapons.a_charge = weapon,
+            (NaviStat::Mode9AWeapon, FieldValue::Ref(_)) => s.weapons.mode9_a = weapon,
+            (NaviStat::StartingForm, FieldValue::Ref(Some((Registry::Form, h)))) => s.starting_form = nettai_content_api::FormHandle(h),
+            (NaviStat::StartingForm, v) => return Err(ApiError::Other(format!("starting_form: {v:?} is not a form"))),
+            (NaviStat::BackSpecialDamage, FieldValue::U16(x)) => s.weapons.back_special_damage = x,
+            (NaviStat::AutoStep, FieldValue::U8(x)) => s.bugs.auto_step = x,
+            (NaviStat::StartingDamage, FieldValue::U8(x)) => s.bugs.starting_damage = x,
+            (NaviStat::Folder, FieldValue::U8(x)) => s.folder = x,
+            (NaviStat::Folder1Regular, FieldValue::U8(x)) => s.folder_reg[0] = x,
+            (NaviStat::Folder2Regular, FieldValue::U8(x)) => s.folder_reg[1] = x,
+            (NaviStat::Folder1TagA, FieldValue::U8(x)) => s.folder_tags[0][0] = x,
+            (NaviStat::Folder1TagB, FieldValue::U8(x)) => s.folder_tags[0][1] = x,
+            (NaviStat::Folder2TagA, FieldValue::U8(x)) => s.folder_tags[1][0] = x,
+            (NaviStat::Folder2TagB, FieldValue::U8(x)) => s.folder_tags[1][1] = x,
             (NaviStat::BackSpecialWeapon, FieldValue::Ref(_)) => s.weapons.back_special = weapon,
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
@@ -2189,6 +2215,23 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn strip_body_programs(&mut self, o: ObjectRef, undershirt: bool) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::strip_body_programs(self, o, undershirt))
+    }
+
+    fn refresh_form_flags(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::form::refresh_form_flags(self, o);
+        Ok(())
+    }
+
+    fn take_status(&mut self, o: ObjectRef, status: nettai_content_api::StatusHandle) -> ApiResult<()> {
+        self.collision_of(o)?;
+        kinds::player::take_status(self, o, status);
+        Ok(())
+    }
+
     fn reset_status(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         kinds::player::reset_status(self, o);
@@ -2503,12 +2546,13 @@ impl CoreApi for Battle {
         let def = |registry, h: Option<u16>| Ok(h.map_or(Value::Nil, |h| Value::Def(registry, h)));
         match f {
             CollisionField::StatusBase => return def(Registry::Status, c.status_base.map(|h| h.0)),
+            CollisionField::StatusFinal => return def(Registry::Status, c.status_final.map(|h| h.0)),
             CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
             CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
             _ => {}
         }
         Ok(Value::Int(match f {
-            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase => unreachable!("handled above"),
+            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase | CollisionField::StatusFinal => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::Element => c.element as i64,
@@ -2556,6 +2600,7 @@ impl CoreApi for Battle {
         // none.
         let defined = match f {
             CollisionField::StatusBase => Some((Registry::Status, self.content.defs.statuses.len())),
+            CollisionField::StatusFinal => Some((Registry::Status, self.content.defs.statuses.len())),
             CollisionField::Region => Some((Registry::Region, self.content.defs.regions.len())),
             CollisionField::HitEffect => Some((Registry::Spark, self.content.defs.sparks.len())),
             _ => None,
@@ -2569,6 +2614,7 @@ impl CoreApi for Battle {
             let c = self.collision_of_mut(o)?;
             match f {
                 CollisionField::StatusBase => c.status_base = h.map(nettai_content_api::StatusHandle),
+                CollisionField::StatusFinal => c.status_final = h.map(nettai_content_api::StatusHandle),
                 CollisionField::Region => c.region = h.map(RegionHandle),
                 _ => c.hit_effect = h.map(SparkHandle),
             }
@@ -2577,7 +2623,7 @@ impl CoreApi for Battle {
         let c = self.collision_of_mut(o)?;
         let x = int(v);
         match f {
-            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase => unreachable!("handled above"),
+            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase | CollisionField::StatusFinal => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::Element => c.element = x as u8,

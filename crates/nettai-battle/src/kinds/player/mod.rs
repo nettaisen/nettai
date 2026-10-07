@@ -88,6 +88,9 @@ mod status;
 pub(crate) use status::end_anger;
 
 pub(crate) use reactions::passed;
+pub(crate) use intake::strip_body_programs;
+pub use intake::take_navi_bug;
+pub(crate) use intake::take_status;
 
 use crate::content::MoodHeld;
 use nettai_content_api::IdentityHandle;
