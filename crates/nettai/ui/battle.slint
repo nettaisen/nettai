@@ -307,8 +307,11 @@ export component BattleScreen {
             horizontal-stretch: 1;
         }
 
-        // (Netplay's connection, between the navis.)
+        // (Netplay's connection, between the navis: its column fixed, so the
+        // navis' names stay put as its figures change.)
         Text {
+            width: root.kind == BattleKind.netplay ? min(parent.width * 0.5, 360px) : 40px;
+            overflow: elide;
             text: root.kind == BattleKind.netplay ? root.net-line : @tr("versus" => "VS");
             color: Theme.text-dim;
             font-weight: root.kind == BattleKind.netplay ? Theme.regular : Theme.black;
@@ -332,6 +335,9 @@ export component BattleScreen {
     // banners); its link down, across the top.
     property <string> net-line: (root.connection.ping < 0 ? @tr("ping —") : @tr("ping {0}", Format.ms(root.connection.ping))) + "   " + @tr("delay {0}", root.connection.delay) + "   " + @tr("rollback {0} (max {1})", root.connection.rollback, root.connection.max-rollback);
     if root.kind == BattleKind.netplay && root.wide: Text {
+        // (A fixed width, right-aligned: its left edge stays put.)
+        width: 520px;
+        horizontal-alignment: right;
         x: root.width - self.width - Theme.gap;
         y: 6px;
         text: root.net-line;
@@ -368,11 +374,15 @@ export component BattleScreen {
             vertical-alignment: center;
         }
 
+        // (The transport's texts in columns of their own: the bar's length
+        // the same whatever they say.)
         Text {
+            width: 96px;
             text: @tr("Round {0}", root.playback.round);
             color: Theme.text;
             font-weight: Theme.bold;
             vertical-alignment: center;
+            overflow: elide;
         }
 
         Rectangle {
@@ -393,22 +403,28 @@ export component BattleScreen {
         }
 
         Text {
+            width: 120px;
             text: Format.clock(root.playback.played / 59.7275) + " / " + Format.clock(root.playback.total / 59.7275);
             color: Theme.text-dim;
             vertical-alignment: center;
+            horizontal-alignment: right;
         }
 
         Text {
+            width: 52px;
             text: Format.speed(root.playback.speed);
             color: root.playback.speed == 1 ? Theme.text-dim : Theme.gold;
             font-weight: Theme.bold;
             vertical-alignment: center;
+            horizontal-alignment: center;
         }
 
         Text {
+            width: 120px;
             text: root.playback.side == 0 ? @tr("side" => "Left console") : @tr("side" => "Right console");
             color: Theme.text-dim;
             vertical-alignment: center;
+            overflow: elide;
         }
     }
 

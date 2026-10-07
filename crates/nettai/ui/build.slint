@@ -567,7 +567,8 @@ component FactRowView {
                 overflow: elide;
             }
 
-            if BuildText.note(root.item) != "" || root.item.problem != "": Text {
+            // (Its line kept, empty or not: the name stays put.)
+            Text {
                 text: root.item.problem != "" ? root.item.problem : BuildText.note(root.item);
                 color: root.item.problem != "" ? Theme.warn : Theme.text-faint;
                 font-size: Theme.label;
@@ -698,26 +699,32 @@ component EntryView {
                 }
             }
 
-            if root.item.marks != "": Text {
+            // (The marks, the tail and the problem's mark in columns of their
+            // own: the name's room the same whatever they say.)
+            Text {
+                width: 44px;
                 text: root.item.marks;
                 color: Theme.gold;
                 font-size: 11px;
                 font-weight: Theme.black;
                 letter-spacing: 1px;
                 vertical-alignment: center;
+                horizontal-alignment: right;
             }
+
             Text {
+                width: Theme.compact ? 48px : 60px;
                 text: root.item.tail;
                 color: Theme.text;
                 font-size: Theme.compact ? 14px : 16px;
                 font-weight: Theme.black;
                 vertical-alignment: center;
                 horizontal-alignment: right;
-                min-width: 22px;
             }
 
-            if root.item.problem != "": Text {
-                text: "!";
+            Text {
+                width: 10px;
+                text: root.item.problem != "" ? "!" : "";
                 color: Theme.warn;
                 font-weight: Theme.black;
                 vertical-alignment: center;
@@ -1596,12 +1603,15 @@ export component BuildScreen {
                     }
                 }
 
-                if root.left-kind != LeftKind.rows && root.pane == 0: Text {
-                    text: root.detail.problem;
+                // (Its lines kept whichever pane has the keys: the list above
+                // stays the same height.)
+                if root.left-kind != LeftKind.rows && root.right-kind == RightKind.none: Text {
+                    height: 32px;
+                    text: root.pane == 0 ? root.detail.problem : "";
                     color: Theme.warn;
                     font-size: 12px;
                     wrap: word-wrap;
-                    visible: root.right-kind == RightKind.none;
+                    overflow: elide;
                 }
             }
 
@@ -1634,7 +1644,9 @@ export component BuildScreen {
                     }
                 }
 
-                if root.pick-hint != "": Text {
+                // (Its line kept, empty or not.)
+                Text {
+                    height: 16px;
                     text: root.pick-hint;
                     color: Theme.text-faint;
                     font-size: 12px;
