@@ -1448,6 +1448,9 @@ pub trait CoreApi {
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
+    /// The chip at `i` of a side's hand, if any (the hand from its first
+    /// chip, used ones too).
+    fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle>;
     /// EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
     /// its cursor to the first empty slot.
     fn hand_left(&self, side: u8) -> u8;

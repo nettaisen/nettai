@@ -2234,6 +2234,11 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
         with(|api, _| Ok(api.hand_chip_damages(side, i)))
     });
+    lib_fn!(lua, t, "hand_chip", |_, (side, i): (LuaValue, LuaValue)| {
+        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
+        let chip = with(|api, _| Ok(api.hand_chip(side, i)))?;
+        bound(|b| chip_value(b, chip))
+    });
     lib_fn!(lua, t, "hand_left", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.hand_left(side)))

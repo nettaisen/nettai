@@ -1140,6 +1140,10 @@ impl CoreApi for Battle {
         chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
     }
 
+    fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle> {
+        self.hands[side as usize & 1].ids.get(i as usize).copied().flatten()
+    }
+
     fn linked(&self, side: u8) -> LinkedChip {
         let r = self.linked[side as usize & 1];
         LinkedChip { chip: r.chip, bonus: r.bonus, damage: r.damage, owner: r.owner, object: r.object }

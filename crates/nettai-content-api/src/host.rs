@@ -215,6 +215,11 @@ pub enum RulesHook {
     /// `custom_requested(side)`: a custom screen was asked for in the
     /// middle of the fight (`sub_8008452`), before the reversions.
     CustomRequested,
+    /// `custom_result(side)`: both results are in and each hand with chips
+    /// is installed (`sub_800B3D8`), the tick before the fight resumes, each
+    /// side in turn: EXE4's dark chips cost their user as its hand takes
+    /// them (0x0801EA1E). Its result is unused.
+    CustomResult,
     /// `custom_closed(side)`: both results are in and the fight resumes
     /// (`sub_8009338`).
     CustomClosed,
@@ -431,6 +436,7 @@ impl RulesHook {
             RulesHook::TurnCheck => "turn_check",
             RulesHook::TurnStarted => "turn_started",
             RulesHook::CustomRequested => "custom_requested",
+            RulesHook::CustomResult => "custom_result",
             RulesHook::CustomClosed => "custom_closed",
             RulesHook::FolderCheck => "folder_check",
             RulesHook::Validate => "validate",
@@ -473,13 +479,14 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 45] = [
+    pub const ALL: [RulesHook; 46] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
         RulesHook::TurnCheck,
         RulesHook::TurnStarted,
         RulesHook::CustomRequested,
+        RulesHook::CustomResult,
         RulesHook::CustomClosed,
         RulesHook::FolderCheck,
         RulesHook::NaviIntake,
