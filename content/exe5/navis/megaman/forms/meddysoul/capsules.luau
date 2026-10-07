@@ -179,9 +179,9 @@ local custom_screen: SoulCustom = {
     state = {
         capsule_1 = "chip",
         capsule_2 = "chip",
-        mix_capsule = "u8",
-        mix_step = "u8",
-        mix_count = "u8",
+        mix_capsule = schema.role("chip_flight.button", "u8"),
+        mix_step = schema.role("chip_flight.step", "u8"),
+        mix_count = schema.role("chip_flight.count", "u8"),
     },
     buttons = { capsule_1 = button(1), capsule_2 = button(2) },
     windows = { capsule = window },

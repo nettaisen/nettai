@@ -29,8 +29,9 @@ pub const OK_SLOT: u8 = 10;
 pub const SPECIAL_SLOT: u8 = 11;
 /// Chips (and Beast Out) a player can pick per screen.
 pub const MAX_SELECTIONS: usize = 5;
-/// Crosses a version has.
-pub const CROSSES: usize = 5;
+/// The entries a form list's window shows at most (EXE6's Cross window:
+/// a version's five Crosses).
+pub const FORM_LIST_ENTRIES: usize = 5;
 
 /// The code a selection that isn't allowed takes, with the invalid chip
 /// (the "error" chip, `Library::invalid_chip`).
