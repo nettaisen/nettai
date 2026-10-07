@@ -849,3 +849,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (content/exe4/rules/deletion.luau; the engine's own where the role is unfilled: EXE6, EXE5); the flow/ko recordings
     match through the deletion. Open: the deletion of a navi in auto battle or of another navi (0x08010D4C: effect object
     0x11 and a 90-tick explosion), which EXE4's content doesn't reach (its players are MegaMan, by a player).
+52. **The dead player's object.** EXE4's destroy state (0x0801052C) lets go of the collision data, frees the object and
+    counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
+    slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
+    of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
