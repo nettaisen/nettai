@@ -1467,6 +1467,15 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
     shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
     `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
+62. **The sprite tile copy queue's 96 and the tile cap** (low priority: netbattles rarely reach them). A sprite whose
+    frame's tiles change (the sprite draw, IWRAM 0x03005C00) reserves its VRAM tiles (0x03005FD4: past 0x2FF tiles,
+    0x2CF in mode 8, the sprite isn't drawn: its flag 0x10) and queues one copy (0x0800087C) on a queue of 96 entries
+    (0x0200D120, its count 0x0200B134), which the main loop drains after the VBlank wait (0x08000808, called at
+    0x080002C8). A copy past the 96th is dropped, not deferred, and the sprite's last uploaded frame (its +0x24)
+    advances anyway, so it shows stale tiles until its frame changes again. nettai's renderer models neither (it draws
+    each frame's tiles as they are); EXE5's and EXE6's counterparts to check when someone takes it. (What the towers'
+    frame compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
+    display, tearing, which is left.)
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
