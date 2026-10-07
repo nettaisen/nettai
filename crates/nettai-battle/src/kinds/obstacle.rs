@@ -1083,16 +1083,16 @@ fn step_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
         return;
     }
     b.unreserve_panel(r, fp.x, fp.y);
-    let aqua = b.collision.get(collision(b, r)).element == 2;
+    // The type's `slide`: ice's one panel further, EXE4's pitfall's stop
+    // (0x080106B8 and its kin).
     let under = b.field.panel(fp.x, fp.y).map(|p| p.kind);
-    if !aqua && under.is_some_and(|k| b.game_rules().panels.is_named(k, "ice")) {
-        let o = b.objects.get_mut(r);
-        o.phase_init = o.phase_init.wrapping_add(1);
-    } else if under.is_some_and(|k| b.game_rules().panels.rule(k).stops_slides)
-        && f1_of(b, r) & f1::FLOATSHOE == 0
-    {
-        // (EXE4's pitfall stops it: 0x080106B8 and its kin.)
-        b.objects.get_mut(r).phase_init = 0;
+    match under.and_then(|k| b.panel_slide(k, r, nettai_content_api::SlideHow::Obstacle)) {
+        Some(nettai_content_api::SlideAnswer::On) => {
+            let o = b.objects.get_mut(r);
+            o.phase_init = o.phase_init.wrapping_add(1);
+        }
+        Some(nettai_content_api::SlideAnswer::Stop) => b.objects.get_mut(r).phase_init = 0,
+        Some(nettai_content_api::SlideAnswer::Carry) | None => {}
     }
     let o = b.objects.get_mut(r);
     let left = o.phase_init as i32 - 1;

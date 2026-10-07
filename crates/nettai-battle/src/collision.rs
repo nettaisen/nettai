@@ -670,7 +670,7 @@ impl Battle {
         let e = s.element;
         let Some(p) = self.field.panel(x, y) else { return };
         // (EXE6: fire on grass, aqua on volcano, wood on roads; EXE5's
-        // 0x08016D14 the same with lava and metal.)
+        // 0x08016D14 the same with lava and magnet.)
         let cleared_by = self.content.rules().panels.rule(p.kind).cleared_by;
         if cleared_by == Some(e) {
             self.set_panel_type(x, y, self.content.rules().panels.roles.normal);
