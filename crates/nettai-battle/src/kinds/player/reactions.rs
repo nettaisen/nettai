@@ -793,7 +793,7 @@ mod tests {
         b.set_panel_type(5, 2, PanelType::Lava);
         let sparks = |b: &Battle| b.objects.in_order().filter(|&o| b.local_kind_key(o).contains("spark")).count();
         let before = sparks(&b);
-        crate::kinds::common::panel_burn(&mut b, r);
+        crate::kinds::common::panel_burn(&mut b, r, true);
         assert_eq!(coll(&b, r).acc.element_damage[1], 50);
         assert_eq!(coll(&b, r).hit_mod_final & 3, 3, "a hit");
         assert_eq!(b.field.panels[2][5].kind, PanelType::Normal);
@@ -801,7 +801,7 @@ mod tests {
         // A navi of fire stands on it.
         b.set_panel_type(5, 2, PanelType::Lava);
         coll_mut(&mut b, r).element = 1;
-        crate::kinds::common::panel_burn(&mut b, r);
+        crate::kinds::common::panel_burn(&mut b, r, true);
         assert_eq!(b.field.panels[2][5].kind, PanelType::Lava);
     }
 

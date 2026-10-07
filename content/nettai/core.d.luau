@@ -2613,6 +2613,10 @@ export type IdentitySpec = {
     -- The animation in which the target marker over it isn't raised to its
     -- attach point (Gregar's 0x4F).
     marker_flat_anim: number?,
+    -- Where the HUD stacks the chip icons over it ({ x, y } from its place on
+    -- the screen, y down), where the rules' `effects.chip_icons` is
+    -- "navi_offset" (EXE4's table by navi number).
+    chip_icons_at: { number }?,
     -- The ice block that fits it (none: small).
     ice: ("small" | "medium" | "large")?,
     -- What it is as a navi no player controls (actor type navi, which a

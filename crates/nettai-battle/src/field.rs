@@ -700,13 +700,14 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
+        let mask = self.content.rules().panels.type_mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 {
             return false;
         }
         if f & pflags::CRACKED == 0 {
-            p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
+            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | 3;
             p.kind = PanelType::Cracked;
             p.display_kind = PanelType::Cracked;
             self.sound(SoundRole::PanelCrack);
@@ -715,7 +716,7 @@ impl Battle {
         if f & pflags::OCCUPIED != 0 {
             return false;
         }
-        p.flags = (f & !0x3F5F) | 1;
+        p.flags = (f & !mask) | 1;
         p.kind = PanelType::Broken;
         p.display_kind = PanelType::Broken;
         self.sound(SoundRole::PanelCrack);
@@ -728,12 +729,13 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
+        let mask = self.content.rules().panels.type_mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 || f & pflags::OCCUPIED != 0 {
             return false;
         }
-        p.flags = (f & !0x3F5F) | 1;
+        p.flags = (f & !mask) | 1;
         p.kind = PanelType::Broken;
         p.display_kind = PanelType::Broken;
         self.sound(SoundRole::PanelCrack);
@@ -747,6 +749,7 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
+        let mask = self.content.rules().panels.type_mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 {
@@ -754,11 +757,11 @@ impl Battle {
         }
         let broke = f & 0x0F08_0080 == 0;
         if broke {
-            p.flags = (f & !0x3F5F) | 1;
+            p.flags = (f & !mask) | 1;
             p.kind = PanelType::Broken;
             p.display_kind = PanelType::Broken;
         } else {
-            p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
+            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | 3;
             p.kind = PanelType::Cracked;
             p.display_kind = PanelType::Cracked;
         }
@@ -781,17 +784,18 @@ impl Battle {
         if self.unbreakable(x, y) {
             return false;
         }
+        let mask = self.content.rules().panels.type_mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 {
             return false;
         }
         if f & pflags::OCCUPIED == 0 {
-            p.flags = (f & !0x3F5F) | 1;
+            p.flags = (f & !mask) | 1;
             p.kind = PanelType::Broken;
             p.display_kind = PanelType::Broken;
         } else {
-            p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
+            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | 3;
             p.kind = PanelType::Cracked;
             p.display_kind = PanelType::Cracked;
         }
@@ -804,11 +808,12 @@ impl Battle {
 
     /// `object_panel_setPoison`: a solid panel turns to poison.
     pub fn poison_panel(&mut self, x: u8, y: u8) -> bool {
+        let mask = self.content.rules().panels.type_mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         if p.flags & pflags::SOLID == 0 {
             return false;
         }
-        p.flags = (p.flags & !0x3F5F) | 0x114;
+        p.flags = (p.flags & !mask) | 0x114;
         p.kind = PanelType::Poison;
         p.display_kind = PanelType::Poison;
         self.sound(SoundRole::PanelPoison);
@@ -904,6 +909,31 @@ mod tests {
         b.tick_panels();
         b.tick_panels();
         assert_eq!(b.field.panels[2][2].display_kind, PanelType::Normal);
+    }
+
+    /// A crack, a break and poison clear the type's bits the game's
+    /// `type_mask` names: EXE6's 0x3F5F leaves a 0x20000 bit, EXE5's and
+    /// EXE4's 0x23F5F (their sea's, their metal's) clears it; a crack keeps
+    /// the solidity and sets the crack bit.
+    #[test]
+    fn a_crack_clears_the_games_type_bits() {
+        use super::{PanelType, pflags};
+        let run = |mask: u32| {
+            let mut b = Battle::new(scenario::setup(), scenario::content());
+            let mut c = (*b.content).clone();
+            c.rules_mut().panels.type_mask = mask;
+            b.content = std::sync::Arc::new(c);
+            b.set_panel_type(2, 1, PanelType::Normal);
+            b.set_panel_type(2, 2, PanelType::Normal);
+            b.field.panels[1][2].flags |= 0x20000 | 0x0800_0000;
+            b.field.panels[2][2].flags |= 0x20000;
+            assert!(b.crack_panel(2, 1) && b.poison_panel(2, 2));
+            (b.field.panels[1][2].flags, b.field.panels[2][2].flags)
+        };
+        let cracked = |extra: u32| extra | 0x0800_0000 | pflags::CRACKED | pflags::SOLID | 3;
+        // (The first stood on, cracked; the second poisoned.)
+        assert_eq!(run(0x3F5F), (cracked(0x20000 | 0x10000), 0x20000 | 0x10000 | 0x114));
+        assert_eq!(run(0x23F5F), (cracked(0x10000), 0x10000 | 0x114));
     }
 
     /// The content API names the panel types as the engine's content does

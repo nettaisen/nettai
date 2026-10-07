@@ -67,4 +67,8 @@ return {
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
     -- Each console's RNG1 advances once a frame after the battle's, as EXE6's.
     rng1_per_frame = true,
+    -- The chip icons over a navi are EXE6's (its attach point 3).
+    chip_icons = "attach_point",
+    -- The other player's console names a chip a player used for a second, as EXE6's.
+    used_chip_ticks = 0x3C,
 }
