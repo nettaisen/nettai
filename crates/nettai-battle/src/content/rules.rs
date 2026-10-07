@@ -197,6 +197,11 @@ pub struct EffectsRules {
     pub fade_clear: FadeClear,
     /// A banner's steps (`hud::Banner`).
     pub banner: BannerSteps,
+    /// Each console's RNG1 advances once a frame, after the battle's (EXE6's
+    /// main loop, `main_`'s `GetRNG1` after the subsystem; EXE5's). EXE4's
+    /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
+    /// draws it.
+    pub rng1_per_frame: bool,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
