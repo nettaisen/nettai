@@ -11,12 +11,12 @@ use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud};
 use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
-use nettai_assets::{Bundle, Hud, MapEntry, Palette, Tiles};
+use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, Tiles};
 use nettai_battle::Battle;
 use nettai_battle::actor::status;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use nettai_battle::battle::{fight, mode, top};
-use nettai_battle::content::ChipFlags;
+use nettai_battle::content::{ChipFlags, ChipIcons};
 use nettai_battle::kinds::player::{Emotion, EmotionRole, emotion, emotion_role};
 use nettai_content_api::FormHandle;
 use nettai_content_api::ChipHandle;
@@ -575,7 +575,7 @@ pub fn draw<'a>(
             if d == 10 {
                 continue;
             }
-            group.push(glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, 2, None));
+            group.push(glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, hud.layout.hp_number_priority, None));
         }
         list.insert_at(FIELD_LAYER, HP_BUCKET, group);
     }
@@ -603,8 +603,11 @@ pub fn draw<'a>(
         // (The banner's own pack's HUD draws it, by its number there.)
         let (bucket, name) = match b.telop_for(local) {
             Some(telop) => {
-                let layout = crate::lookups::telop(packs, &b.content, id, problems);
-                (NAME_BUCKET, layout.and_then(|(h, layout, _)| telop_parts(b, h, layout, telop, &mut group, text, problems)))
+                let style = match &hud.layout.telop {
+                    Some(look) => Some(TelopStyle::own(hud, look, telop.remote)),
+                    None => crate::lookups::telop(packs, &b.content, id, problems).map(|(h, layout, _)| TelopStyle::banner(h, layout)),
+                };
+                (NAME_BUCKET, style.and_then(|style| telop_parts(b, style, telop, &mut group, text, problems)))
             }
             None => {
                 if let Some((h, layout, number)) = crate::lookups::banner(packs, &b.content, id, problems) {
@@ -617,18 +620,26 @@ pub fn draw<'a>(
     }
     if let Some(used) = b.used_chip_for(local) {
         let mut group = Vec::new();
-        // (In the place of the other player's telop.)
-        let remote = b.roles().banner(nettai_battle::content::BannerRole::TelopRemote);
-        if let Some((_, layout, _)) = crate::lookups::telop(packs, &b.content, remote, problems) {
-            let name = used_chip_parts(b, hud, layout, used, &mut group, text, problems);
+        // (In the place of the other player's telop: the game's own, or its
+        // telop banner's.)
+        let style = match &hud.layout.telop {
+            Some(look) => Some(TelopStyle::own(hud, look, true)),
+            None => {
+                let remote = b.roles().banner(nettai_battle::content::BannerRole::TelopRemote);
+                crate::lookups::telop(packs, &b.content, remote, problems).map(|(_, layout, _)| TelopStyle::banner(hud, layout))
+            }
+        };
+        if let Some(style) = style {
+            let name = used_chip_parts(b, style, used, &mut group, text, problems);
             insert_named(list, text, NAME_BUCKET, group, name);
         }
     }
     // "PAUSE" in the middle while a player holds the battle (`sub_801C9E4`:
-    // a 32x16 and an 8x16 sprite at (100, 63), in the opponents' HP
-    // digits' palette).
+    // a 32x16 and an 8x16 sprite at its place, EXE6's (100, 63), in the
+    // opponents' HP digits' palette).
     if b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
-        let group = (0..5).map(|k| glyph(&hud.pause, k, hud.enemy_palette, 100 + 8 * k as i32, 63, 0, None)).collect();
+        let (x, y) = (hud.layout.pause.0 as i32, hud.layout.pause.1 as i32);
+        let group = (0..5).map(|k| glyph(&hud.pause, k, hud.enemy_palette, x + 8 * k as i32, y, 0, None)).collect();
         list.insert_at(FRONT_LAYER, NAME_BUCKET, group);
     }
     warning_parts(b, hud, &view, list, problems);
@@ -698,11 +709,13 @@ fn put(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, tx: i32, ty: i3
 
 /// `put` at a pixel position.
 fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i32) {
-    let tile = if e.tile >= hud.gauge_first_tile {
-        hud.gauge_tiles.get((e.tile - hud.gauge_first_tile) as usize)
-    } else {
-        e.tile.checked_sub(hud.first_tile).and_then(|i| hud.tiles.get(i as usize))
-    };
+    // (The gauge's tiles follow the HUD layer's in EXE6's and EXE5's VRAM,
+    // and come before them in EXE4's: a tile is the block's it falls in.)
+    let tile = e
+        .tile
+        .checked_sub(hud.gauge_first_tile)
+        .and_then(|i| hud.gauge_tiles.get(i as usize))
+        .or_else(|| e.tile.checked_sub(hud.first_tile).and_then(|i| hud.tiles.get(i as usize)));
     if let Some(t) = tile {
         layer.draw_tile(t, pal, x, y, e.hflip, e.vflip);
     }
@@ -943,6 +956,9 @@ fn icon_parts<'a>(
     problems: &mut Problems,
 ) {
     let o = b.objects.get(r);
+    if b.game_rules().effects.chip_icons == ChipIcons::NaviOffset {
+        return own_icon_parts(b, packs, r, view, list, problems);
+    }
     let vanished = o.actor.is_some_and(|a| b.actors.get(a).status & status::VANISHED != 0);
     if o.chips_held == 0 || vanished || !b.chip_hud_for(o.alliance).icons {
         return;
@@ -963,8 +979,6 @@ fn icon_parts<'a>(
     // Attach point 3 of the navi's sprite (player NameIDs 0x1A0..=0x1C3).
     let (ax, ay) = if b.content.identity(o.identity).class.is_player() {
         let Some(p) = b.content.try_attach_point(o.identity, 3) else {
-            // (EXE4 has no attach points: its icons' own place, 0x08014860
-            // by 0x0800B9E4, isn't drawn yet.)
             problems.note(format!("identity {} has no attach point 3: its chip icons aren't drawn", b.content.identity(o.identity).key));
             return;
         };
@@ -987,6 +1001,55 @@ fn icon_parts<'a>(
         list.insert_at(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, vec![icon]);
     }
 }
+
+/// The chip icons over the local navi where each chip shows its own
+/// (`ChipIcons::NaviOffset`: EXE4's 0x08014860 places them and loads each
+/// icon, 0x08015000 draws them): while the icons show, at the navi's
+/// identity's `chip_icons_at` from its place on the screen (none while
+/// its place is off it), each chip in the hand from the next one on by
+/// its own icon, the next one in front and each after it two pixels up
+/// and two left, a bucket further back. (A Double Soul's soul chip as the
+/// next one, EXE4's chips 0x160 to 0x16F, shows no icon of its own there:
+/// no content has one yet, docs/design/exe4-map.md §18.)
+fn own_icon_parts<'a>(
+    b: &Battle,
+    packs: &crate::packs::Packs<'a>,
+    r: ObjectRef,
+    view: &View,
+    list: &mut SpriteList<'a>,
+    problems: &mut Problems,
+) {
+    let o = b.objects.get(r);
+    let side = o.alliance;
+    if side != b.setup.local_side || !b.chip_hud_for(side).icons {
+        return;
+    }
+    let p = project_hud((o.pos.x, o.pos.y, o.pos.z), view);
+    if !on_screen(p) {
+        return;
+    }
+    let identity = b.content.identity(o.identity);
+    let Some((dx, dy)) = identity.chip_icons_at else {
+        problems.note(format!("identity {} has no `chip_icons_at`: its chip icons aren't drawn", identity.key));
+        return;
+    };
+    let hand = &b.hands[side as usize];
+    let chips: Vec<ChipHandle> = hand.ids.iter().skip(hand.cursor as usize).map_while(|c| *c).collect();
+    let count = chips.len();
+    let (x0, y0) = (p.x + dx as i32, p.y + dy as i32);
+    for (k, &chip) in chips.iter().enumerate() {
+        let Some((tiles, palette)) = crate::lookups::chip_icon(packs, &b.content, chip, problems) else { continue };
+        let (x, y) = (x0 - 2 * k as i32, y0 - 2 * k as i32);
+        if crate::lookups::other_versions_icon(packs, b, chip) {
+            problems.known(x, y, 16, 16, crate::lookups::OTHER_VERSIONS_ART);
+        }
+        let icon = SpritePart { priority: OWN_ICON_PRIORITY, ..block(tiles, 16, 16, *palette, x, y) };
+        list.insert_at(FIELD_LAYER, count - k, vec![icon]);
+    }
+}
+
+/// The priority of `own_icon_parts`' sprites (EXE4's 0x08015000: 1).
+const OWN_ICON_PRIORITY: u8 = 1;
 
 /// The banner's five 32x16 sprites (as 8x16 glyphs) with its vertical
 /// squash: grow over 5 frames, hold, shrink (`sub_801CE28`).
@@ -1036,20 +1099,64 @@ fn banner_scale(b: &Battle) -> i32 {
     scale * 4
 }
 
+/// How a telop is laid out and drawn: the place its glyphs are centered
+/// from (as fifteen glyphs), its palette, the HUD whose font writes the
+/// chip's name, and the glyphs of its numbers (the digits from `digit`,
+/// '+', the two of "x2").
+#[derive(Clone, Copy)]
+struct TelopStyle<'a> {
+    hud: &'a Hud,
+    at: (u8, u8),
+    palette: Palette,
+    numbers: &'a Tiles,
+    digit: usize,
+    plus: usize,
+    times: usize,
+}
+
+impl<'a> TelopStyle<'a> {
+    /// A telop banner's (EXE6's `sub_801E95C`): at the banner's place, in
+    /// the HP box's palette, with the HUD layer's damage digits and signs.
+    fn banner(hud: &'a Hud, layout: &nettai_assets::BannerLayout) -> TelopStyle<'a> {
+        TelopStyle {
+            hud,
+            at: (layout.x, layout.y),
+            palette: hud.hp_palettes[0],
+            numbers: &hud.tiles,
+            digit: DAMAGE_DIGIT,
+            plus: PLUS_GLYPH,
+            times: TIMES_GLYPH,
+        }
+    }
+
+    /// The game's own (`HudLayout::telop`: EXE4's 0x0801650C), on its
+    /// user's console or on the other player's (`remote`).
+    fn own(hud: &'a Hud, look: &'a TelopLook, remote: bool) -> TelopStyle<'a> {
+        TelopStyle {
+            hud,
+            at: look.places[remote as usize],
+            palette: look.palette,
+            numbers: &look.glyphs,
+            digit: 0,
+            plus: TelopLook::PLUS,
+            times: TelopLook::TIMES,
+        }
+    }
+}
+
 /// A telop (`sub_801E95C` lays it out, `sub_801CF9E` draws it): the chip's
 /// name in the font's glyphs, then for a chip whose damage shows the
 /// damage, "+bonus" and "x2", centered in the viewer's half of the screen,
 /// with the banners' squash.
-#[allow(clippy::too_many_arguments)]
 fn telop_parts<'a>(
     b: &Battle,
-    hud: &'a Hud,
-    layout: &nettai_assets::BannerLayout,
+    style: TelopStyle<'a>,
     telop: ShownTelop,
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
     problems: &mut Problems,
 ) -> Option<TextItem> {
+    let hud = style.hud;
     let name = match telop.name {
         TelopName::Chip(chip) => {
             let words = text.strings.chip_name(&b.content, chip);
@@ -1062,25 +1169,24 @@ fn telop_parts<'a>(
         }
     };
     let numbers = (telop.damage, telop.bonus, telop.doubled);
-    name_parts(hud, layout, name, numbers, telop.remote, Some(banner_scale(b)), out, text)
+    name_parts(style, name, numbers, telop.remote, Some(banner_scale(b)), out, text)
 }
 
 /// The chip the other player just used (`sub_801EB18` lays it out as a
-/// telop on the right, `sub_801D1F6` draws it): its name and numbers,
-/// without the banners' squash, in `layout`, the other player's telop's
-/// place.
+/// telop on the right, `sub_801D1F6` draws it; EXE4's 0x080164B4, a banner
+/// of the second block shown without sliding): its name and numbers,
+/// without the banners' squash, in the other player's telop's place.
 fn used_chip_parts<'a>(
     b: &Battle,
-    hud: &'a Hud,
-    layout: &nettai_assets::BannerLayout,
+    style: TelopStyle<'a>,
     used: nettai_battle::hud::UsedChip,
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
     problems: &mut Problems,
 ) -> Option<TextItem> {
     let words = text.strings.chip_name(&b.content, used.chip);
-    let name = (words, name_glyphs(b, hud, words, used.chip, problems));
-    name_parts(hud, layout, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
+    let name = (words, name_glyphs(b, style.hud, words, used.chip, problems));
+    name_parts(style, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
 }
 
 /// Two blank tiles: the part that stands in for a glyph the text layer
@@ -1089,14 +1195,13 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 
 /// A chip's name (its words and the font's glyphs for them) with its
 /// numbers (damage, bonus, doubled) as `sub_801E95C` lays them out from a
-/// telop banner's place: centered as fifteen glyphs are; the other player's
-/// (`remote`) moves over for the "x2". In the font mode the name is a text
-/// item in the cells its glyphs take, returned, and blank parts stand in
-/// for the glyphs.
+/// telop's place (`style`): centered as fifteen glyphs are; the other
+/// player's (`remote`) moves over for the "x2". In the font mode the name
+/// is a text item in the cells its glyphs take, returned, and blank parts
+/// stand in for the glyphs.
 #[allow(clippy::too_many_arguments)]
 fn name_parts<'a>(
-    hud: &'a Hud,
-    layout: &nettai_assets::BannerLayout,
+    style: TelopStyle<'a>,
     (words, name): (&str, Vec<u16>),
     (damage, bonus, doubled): (u16, u16, bool),
     remote: bool,
@@ -1104,21 +1209,22 @@ fn name_parts<'a>(
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
 ) -> Option<TextItem> {
-    // Glyph d of the HUD layer's damage digits, '+' before a bonus.
-    let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| DAMAGE_DIGIT + (c - b'0') as usize).collect() };
+    let hud = style.hud;
+    // Glyph d of the damage digits, '+' before a bonus.
+    let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| style.digit + (c - b'0') as usize).collect() };
     let (damage, bonus, doubled) = match damage {
         0 => (Vec::new(), Vec::new(), false),
-        d => (digits(d), if bonus != 0 { std::iter::once(PLUS_GLYPH).chain(digits(bonus)).collect() } else { Vec::new() }, doubled),
+        d => (digits(d), if bonus != 0 { std::iter::once(style.plus).chain(digits(bonus)).collect() } else { Vec::new() }, doubled),
     };
     let font = !words.is_empty() && text.takes(words);
     let cells = if font { fonts::box_cells(hud, words, name.len(), 8) } else { name.len() };
     let width = (cells + damage.len() + bonus.len()) as i32;
-    let mut x = (layout.x as i32 + (15 - width) * 4) & 0xFF;
+    let mut x = (style.at.0 as i32 + (15 - width) * 4) & 0xFF;
     if remote && doubled {
         x = (x - 16) & 0xFF;
     }
-    let y = layout.y as i32;
-    let pal = hud.hp_palettes[0];
+    let y = style.at.1 as i32;
+    let pal = style.palette;
     let item = font.then(|| {
         let item = TextItem::new(words, Role::Cell, Rect::new(x, y, 8 * cells as i32, 16), pal[1], Some(pal[2]));
         TextItem { align: Align::Center, vscale, ..item }
@@ -1131,12 +1237,12 @@ fn name_parts<'a>(
     }
     x = after;
     for g in damage.into_iter().chain(bonus) {
-        out.push(glyph(&hud.tiles, g, pal, x, y, 0, vscale));
+        out.push(glyph(style.numbers, g, pal, x, y, 0, vscale));
         x += 8;
     }
     if doubled {
-        out.push(glyph(&hud.tiles, TIMES_GLYPH, pal, x, y, 0, vscale));
-        out.push(glyph(&hud.tiles, TIMES_GLYPH + 1, pal, x + 8, y, 0, vscale));
+        out.push(glyph(style.numbers, style.times, pal, x, y, 0, vscale));
+        out.push(glyph(style.numbers, style.times + 1, pal, x + 8, y, 0, vscale));
     }
     item
 }
@@ -1203,7 +1309,7 @@ mod tests {
         // Its user's console: "SunGun3" "120" "+10" is 13 glyphs, centered as
         // 15 are, then "x2".
         let mut parts = Vec::new();
-        telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
         let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
         assert_eq!(xs, (0..15).map(|i| 8 + 8 * i).collect::<Vec<u16>>());
         assert!(parts.iter().all(|p| p.y == 32 && p.priority == 0 && p.vscale.is_some()));
@@ -1216,7 +1322,7 @@ mod tests {
         assert_eq!(after, [digit(1), digit(2), digit(0), signs[0], digit(1), digit(0), signs[1], signs[2]]);
         // The other player's console: on the right, moved over for the "x2".
         let mut parts = Vec::new();
-        telop_parts(&b, &hud, &hud.banners[0x50 / 4], b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x50 / 4]), b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts[0].x, 120 + 8 - 16);
         assert!(problems.is_empty(), "{:?}", problems.lines());
     }
@@ -1231,12 +1337,12 @@ mod tests {
         let hud = hud();
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        telop_parts(&b, &hud, &hud.banners[0x50 / 4], b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x50 / 4]), b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), [glyph_of('?'); 4]);
         // Four glyphs centered as fifteen are, from the right banner's place.
         assert_eq!(parts[0].x, 120 + 44);
         let mut parts = Vec::new();
-        telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts.len(), 7, "its user sees the name");
     }
 
@@ -1252,7 +1358,7 @@ mod tests {
         let text = TextSink::new(crate::textlayer::TextMode::Font, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        let item = telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &text, &mut problems).unwrap();
+        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems).unwrap();
         // The same parts where the original's go (so the sprite limit
         // counts the same), the name's blank; the item in the name's cells.
         let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
@@ -1264,7 +1370,7 @@ mod tests {
         assert_eq!((item.face, item.shadow), (hud.hp_palettes[0][1], Some(hud.hp_palettes[0][2])));
         // In the original mode there is none.
         let mut parts = Vec::new();
-        assert!(telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems).is_none());
+        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems).is_none());
     }
 
     #[test]
@@ -1281,7 +1387,7 @@ mod tests {
         let text = TextSink::original().with_language(Some(&strings));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
         assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), "Sol".chars().map(glyph_of).collect::<Vec<_>>());
         // Centered as fifteen glyphs are: the translation's three.
         assert_eq!(parts[0].x, 6 * 8);
@@ -1290,7 +1396,7 @@ mod tests {
         let empty = nettai_content::locale::parse("language = \"xx\"\n", "xx.toml").unwrap();
         let text = TextSink::original().with_language(Some(&empty));
         let mut parts = Vec::new();
-        telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
         assert_eq!(parts.len(), 7);
         assert_eq!(text.strings.take_missing(), [format!("chips.{key}.name")]);
     }
