@@ -264,8 +264,6 @@ definition_roles! {
         Plain = "plain",
         /// A blocked hit's (`object_spawnHiteffect`).
         Guard = "guard",
-        /// An eruption's hits' (a volcano panel's, `sub_80E1DA0`).
-        Eruption = "eruption",
         /// A thrown obstacle's landing's (`sub_8018002`).
         ThrownObstacle = "thrown_obstacle",
     }
@@ -290,9 +288,6 @@ definition_roles! {
         FloatingNavi = "floating_navi",
         /// What a navi's body reacts to.
         NaviTarget = "navi_target",
-        /// An eruption (a volcano panel's), and what it reaches.
-        Eruption = "eruption",
-        EruptionTarget = "eruption_target",
         /// A thrown obstacle's landing, and what it reaches.
         ThrownObstacle = "thrown_obstacle",
         ThrownObstacleTarget = "thrown_obstacle_target",
@@ -305,8 +300,6 @@ definition_roles! {
     SoundRole {
         /// A panel cracks or breaks.
         PanelCrack = "panel_crack",
-        /// A panel turns to poison (`sub_800C9CE`).
-        PanelPoison = "panel_poison",
         /// A player's own navi is hit (what its player hears), and the
         /// custom-HP bug's damage (`sub_8013FD0`).
         OwnHit = "own_hit",
@@ -456,8 +449,6 @@ definition_roles! {
         /// The mark over a navi a hit told something about ("!!", the HP
         /// bug's).
         HitMarker = "hit_marker",
-        /// A volcano panel's eruption.
-        Eruption = "eruption",
         /// The target marker (EXE6's Beast forms' lock-on marker).
         TargetMarker = "target_marker",
     }
@@ -509,10 +500,15 @@ pub enum HookRole {
     /// object 0x11, `sub_80E1A6A`, for 90 ticks), which the deletion's end
     /// ends (`sub_80E1A86`).
     NaviDeleted,
+    /// `(navi)`: `sub_801390C` has taken the navi's guard and
+    /// untouchability down: what its stats raise again (EXE4's All Guard,
+    /// NaviStats +0x28: the guard, 0x0800D8E4).
+    AbilitiesReset,
 }
 
 impl HookRole {
-    pub const ALL: [HookRole; 3] = [HookRole::FirstBarrier, HookRole::Encased, HookRole::NaviDeleted];
+    pub const ALL: [HookRole; 4] =
+        [HookRole::FirstBarrier, HookRole::Encased, HookRole::NaviDeleted, HookRole::AbilitiesReset];
 
     /// Its name in `rules/roles.luau`'s `hooks`.
     pub fn name(self) -> &'static str {
@@ -520,6 +516,7 @@ impl HookRole {
             HookRole::FirstBarrier => "first_barrier",
             HookRole::Encased => "encased",
             HookRole::NaviDeleted => "navi_deleted",
+            HookRole::AbilitiesReset => "abilities_reset",
         }
     }
 

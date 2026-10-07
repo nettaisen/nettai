@@ -10,7 +10,6 @@ pub mod bubble_visual;
 pub mod charge_glow;
 pub mod common;
 pub mod effect;
-pub mod eruption;
 pub mod form_overlay;
 pub mod full_synchro_aura;
 pub mod heal;
@@ -20,7 +19,6 @@ pub mod ice_visual;
 pub mod idle_overlay;
 pub mod intro;
 pub mod target_marker;
-pub mod navi_chip;
 pub mod navi_warp;
 pub mod obstacle;
 pub mod palette_flash;
@@ -50,7 +48,6 @@ pub enum Vars {
     TargetMarker(target_marker::Vars),
     PaletteFlash(palette_flash::Vars),
     BodyOverlay(body_overlay::Vars),
-    NaviChip(navi_chip::Vars),
     NaviWarp(navi_warp::Vars),
     StatusVisual(status_visual::Vars),
     IdleOverlay(idle_overlay::Vars),
@@ -81,9 +78,7 @@ impl Vars {
             EngineKind::Burst => Vars::Burst(Default::default()),
             EngineKind::Player
             | EngineKind::BubbleVisual
-            | EngineKind::NaviChip
             | EngineKind::NaviWarp
-            | EngineKind::Eruption
             | EngineKind::StatusVisual
             | EngineKind::IceVisual
             | EngineKind::HitMarker => Vars::None,
@@ -136,16 +131,14 @@ pub enum EngineKind {
     IdleOverlay,
     FullSynchroAura,
     Burst,
-    NaviChip,
     NaviWarp,
-    Eruption,
     StatusVisual,
 }
 
 /// The engine's kinds: their keys (`engine/...`) and pools. (The object
 /// slots they fill in the original, which the traces compare, are the
 /// validator's, by key.)
-pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 21] = [
+pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 19] = [
     (EngineKind::Player, "engine/player", Pool::Actor),
     (EngineKind::Intro, "engine/intro", Pool::Effect),
     (EngineKind::ChargeGlow, "engine/charge-glow", Pool::Effect),
@@ -163,9 +156,7 @@ pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 21] = [
     (EngineKind::IdleOverlay, "engine/idle-overlay", Pool::Actor),
     (EngineKind::FullSynchroAura, "engine/full-synchro-aura", Pool::Actor),
     (EngineKind::Burst, "engine/burst", Pool::Effect),
-    (EngineKind::NaviChip, "engine/navi-chip", Pool::Effect),
     (EngineKind::NaviWarp, "engine/navi-warp", Pool::Actor),
-    (EngineKind::Eruption, "engine/eruption", Pool::Attack),
     (EngineKind::StatusVisual, "engine/status-visual", Pool::Effect),
 ];
 
@@ -193,11 +184,25 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             EngineKind::IdleOverlay => idle_overlay::update(b, r),
             EngineKind::FullSynchroAura => full_synchro_aura::update(b, r),
             EngineKind::Burst => burst::update(b, r),
-            EngineKind::NaviChip => navi_chip::update(b, r),
             EngineKind::NaviWarp => navi_warp::update(b, r),
-            EngineKind::Eruption => eruption::update(b, r),
             EngineKind::StatusVisual => status_visual::update(b, r),
         },
+    }
+}
+
+/// What a controller brought is done (`sub_80BADE4` and the like write 0
+/// through the pointer they were given): the controller's kind's
+/// `navi_left`.
+pub fn navi_left(b: &mut Battle, controller: ObjectRef) {
+    let kind = b.objects.get(controller).kind;
+    match b.content.defs.kind(kind).navi_left {
+        Some(hook) => {
+            crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::NaviLeft { controller });
+        }
+        None => panic!(
+            "what a controller brought left, but the controller is a {}, which has no `navi_left`",
+            b.content.defs.kind(kind).key
+        ),
     }
 }
 
@@ -399,6 +404,10 @@ fn counted(b: &Battle, side: u8, of: &crate::content::Counted) -> usize {
         C::OwnPanels(t) => (1..=3u8)
             .flat_map(|y| (1..=6u8).map(move |x| (x, y)))
             .filter(|&(x, y)| b.field.panel(x, y).is_some_and(|p| p.kind == t && p.alliance == side))
+            .count(),
+        C::Panels(t) => (1..=3u8)
+            .flat_map(|y| (1..=6u8).map(move |x| (x, y)))
+            .filter(|&(x, y)| b.field.panel(x, y).is_some_and(|p| p.kind == t))
             .count(),
         // 0x0800E994: the turn byte less one, compared unsigned.
         C::TurnsBefore => (b.round.turn as u32).wrapping_sub(1) as usize,

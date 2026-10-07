@@ -1,16 +1,14 @@
 --!strict
 -- The Reflectors' guard (the original's action 0x2B, `sub_80ED13E`; see
 -- chips.md §3.3): the navi holds up a shield (shield.luau) and guards for
--- its ticks. The first hit the guard blocks from the front sends a
--- counterattack: a wave back along the row (shot.luau, the Reflectors')
--- with the chip's damage, or the buster's projectile (the NaviCust
--- Reflect's); a hit that breaks guards takes the shield down (the guard
--- with it). The NaviCust Shield's guard heeds nothing it blocks.
+-- its ticks. The first hit the guard blocks from the front sends its
+-- user's counterattack (`counter`): the Reflectors' wave back along the row
+-- (init.luau) with the chip's damage, or the NaviCust Reflect's buster
+-- shot (navis/megaman/weapons/shield); a hit that breaks guards takes the
+-- shield down (the guard with it). The NaviCust Shield's guard heeds
+-- nothing it blocks.
 
-local projectile = require("../../lib/projectile")
 local shield = require("./shield")
-local shot = require("./shot")
-local variants = require("../../objects/projectile/variants")
 
 local guard = {}
 
@@ -26,13 +24,6 @@ guard.STATE = { timer = "u16" }
 local SHIELD_POINT = 6
 -- A hit that breaks guards (the collision's hit flag 2).
 local BREAKS_GUARD = 0x2
--- The wave's height, and its sound.
-local WAVE_Z = 0x10_0000
-local WAVE_SOUND = asset.sound("wave")
--- The NaviCust Reflect's shot: the charged shot's projectile
--- (`sub_80C4FFE`) at this height. (The game passes the literal 2 its flag
--- test loaded as the shot's element, which the shot's init replaces.)
-local SHOT_Z = 0x14_0000
 
 -- The Beast forms whose head overlay mirrors the navi's animation: those
 -- that wear a beast's head (the Falzar beast's, its Crosses' and Beast
@@ -67,13 +58,10 @@ end
 function guard.action(spec: ReflectorGuard): Action
     -- The counterattack, one panel ahead (`loc_80ED1DC`).
     local function counter(me: Object)
-        local x, y = me.panel_x + me.facing, me.panel_y
-        local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        if spec.counter == "wave" then
-            shot.spawn(me, x, y, WAVE_Z, damage)
-            battle.play_sound(WAVE_SOUND)
-        elseif spec.counter == "shot" then
-            projectile.spawn(me, x, y, { variant = variants.charged, damage = damage, z = SHOT_Z })
+        local send = spec.counter
+        if send then
+            local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
+            send(me, me.panel_x + me.facing, me.panel_y, damage)
         end
     end
 

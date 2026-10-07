@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
 
 -- SerchMan (EXE5 chip 0x0e6): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
@@ -20,7 +21,10 @@ local serchman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "serchman/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -41,7 +45,10 @@ local serchmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon_sp,
+    navi = navi_chips.make {
+        id = "serchmn-sp/controller",
+        summon = navi.summon_sp,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -61,7 +68,10 @@ local serchmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
     megaman = "dark",
-    navi = navi.summon_dark,
+    navi = navi_chips.make {
+        id = "serchmn-ds/controller",
+        summon = navi.summon_dark,
+    },
     auto_battle = { class = "at_once" },
 }
 

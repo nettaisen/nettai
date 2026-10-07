@@ -10,7 +10,7 @@
 pub mod navi_switch;
 pub mod instant;
 pub mod movement;
-pub mod navi_chip;
+pub mod hand_off_chip;
 pub mod reactive;
 pub mod dimming_chip;
 #[cfg(test)]
@@ -53,7 +53,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
         A::Content(h) => crate::behavior::run_action(b, h, r),
         A::Engine(E::Move) => movement::update(b, r),
         A::Engine(E::DimmingChip) => dimming_chip::update(b, r),
-        A::Engine(E::NaviChip) => navi_chip::update(b, r),
+        A::Engine(E::HandOffChip) => hand_off_chip::update(b, r),
         // (Unpaused, the form change's CurAction is the instant chips'.)
         A::Engine(E::InstantChip | E::FormChange) => instant::update(b, r),
         state => unreachable!("{state:?} is not an attack"),

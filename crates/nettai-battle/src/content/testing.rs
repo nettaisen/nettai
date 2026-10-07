@@ -1329,6 +1329,8 @@ pub fn scripts() -> Scripts {
                 // The navi chips' navis: each navi and his kinds, which
                 // the test navi chips summon.
                 ("lib/navi_chips/navi", "lib/navi_chips/navi"),
+                // (Each test navi chip's own controller.)
+                ("lib/navi_chips/chip", "lib/navi_chips/chip"),
                 ("chips/elmntman/navi", "chips/elmntman/navi"),
                 ("chips/elmntman/meteor", "chips/elmntman/meteor"),
                 ("chips/elmntman/ice", "chips/elmntman/ice"),
@@ -1363,7 +1365,6 @@ pub fn scripts() -> Scripts {
                 // The link navis' own chips (whose actions the test link
                 // chips run) and their kinds.
                 ("lib/link_chips", "lib/link_chips"),
-                ("objects/follow_effect/init", "objects/follow_effect/init"),
                 ("navis/heatman/chip", "navis/heatman/chip"),
                 ("navis/elecman/chip", "navis/elecman/chip"),
                 ("navis/slashman/chip", "navis/slashman/chip"),

@@ -7,6 +7,7 @@ local aquandl_chips = require("./aquandl")
 local elcpuls_chips = require("./elcpuls")
 local rskyhny_chips = require("./rskyhny")
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -23,7 +24,10 @@ local chip: Chip = {
     program_advances = {
         { order = 12, sequence = { firehit_chips.firehit3, aquandl_chips.aquandl3, elcpuls_chips.elcpuls3, rskyhny_chips.rskyhny3 } },
     },
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "mstrcros/controller",
+        summon = navi.summon,
+    },
 }
 
 return { mstrcros = chip }

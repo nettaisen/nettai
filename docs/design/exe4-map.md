@@ -587,10 +587,96 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 - **Spreader, HeatShot, Bubbler** (with Heat-V, HeatSide, Bub-V and BublSide: action 0x1E's variants 0 to 2,
   `chips/spreader/spreader`, DrkSpred's family on @exelib/spreadr): each variant's gun (attachment rows 0x0A, 6 and
-  0x0E), the tick it fires past and its height (0x080EC814's rows), and the chip's bullet row (objects/bullet: 3, 8 to
-  10, 4 to 6); nothing of their own.
+  0x0E), the tick it fires past and its height (0x080EC814's rows), and the chip's bullet (the bullet's rows 3, 8 to
+  10, 4 to 6), each chip's own; nothing of their own.
 - **Navi+20** (action 0x20's variant 4, its parameter 1: the Navi+ bonus, `modifier = "navi_plus"`): lib/plus, as
   Atk+10's.
+- **Meteors1** (with Meteors2 and 3: action 0x20's variant 0x11, `chips/meteors`): the spawner and its dropper
+  (effect object 0x81) are EXE5's code that no EXE5 chip uses (0x080E9DA2, 0x080E9D04), ported here; the target's
+  panel is found with @exelib/panels' `closest_in_row`. The meteor and its marker are @exelib/meteors' with EXE4's
+  look, which states two differences: the hit is set on the meteor's panel whether it bursts there or not
+  (`hit_on = "landing"`), and the marker is left side 0 (`marker_takes_side = false`).
+- **Boomer1** (with Boomer2 and 3: action 0x20's variant 2, `chips/boomer`): @exelib/boomer's boomerang, which is
+  EXE5's code with EXE4's constants (its sound, 0xAB) and EXE5's variant rows; thrown from the back column by the side
+  alone (EXE4 objects have no flip).
+- **FullCust** (action 0x20's variant 7) and **Repair** (its variant 0x0B): EXE5's routines (FullCust's 0x080096C4,
+  0x0800E26C) as spawners, on the engine's gauge and its field object registry; FullCust's branch for a navi whose
+  NaviStats +0x26 is 2 (a story's other navi) has no netbattle navi to take it.
+- **AquaUp1, GreenWd1, Ligtnin1** (with their 2 and 3: action 0x20's variant 0x0C, their parameter 0, 1, 2,
+  `lib/towers`): EXE4's own. A controller (attack object 0x93; each chip's own with its strike, which the parameter
+  picks in the original) sweeps the columns from the user's back one, a column every 11 ticks, raising an aqua tower
+  from each cracked panel of the other side's holding its navi, a wood tower from each grass one (objects/tower, attack
+  0x92's rows 0 and 1: each chip's own with its look), or striking a lightning onto each panel holding an
+  obstacle (objects/lightning, attack 0x8E: EXE5's unused code; its eight hits around and its ring of sparks). The
+  lightning waits on RockCube's recordings (the lab's ligtnin*/obstacle). The towers' frames differ from mGBA's on a
+  few ticks where mGBA shows the tower's previous frame or a mix of two (big sprites: the original's display falling
+  a frame behind, not its state).
+- **Counter1** (with Counter2 and 3: action 0x20's variant 0, `chips/counter`): EXE4's own spawner and EXE5's unused
+  strike (attack 0x17, EXE5's 0x080DF93C's code): a strike with a hitbox on each navi of the local console's list
+  (BattleState +0x44, from the other side's place: three entries for a user of side 0, one for side 1) whose counter
+  window is open.
+- **MokoRus1** (with 2 and 3: action 0x20's variant 1, `chips/mokorus`): EXE4's own. Three Molokos (attack 0x2C), one
+  a row (the rows shuffled with RNG2: @exelib/panels' `shuffle`), 10 ticks apart, charge from 140 pixels behind the
+  field's middle, in the chip's palette (twice its parameter).
+- **SidBmbo1** (with 2 and 3: action 0x20's variant 5, which holds the user 40 ticks, `chips/sidbmbo`): EXE4's own
+  bamboo (attack 0x44) swings down three columns ahead, its two hitboxes on rows 1 and 2.
+- **WhitWeb1** (with 2 and 3: action 0x20's variants 8 to 10, `chips/whitweb`): webs (attack 0x3D, EXE5's
+  0x080CCC08's code) on the other side's panels of row 1, 2 or 3, bodies with 1 HP that catch the other side's navi.
+  They showed that EXE4's navi body hits for nothing in a link battle (`status.link_body_damage`: EXE4 has neither of
+  EXE6's stores of 10).
+- **ElemFlar, ElemIce, ElemLeaf, ElemSand, ElemDark** (action 0x60's variants 0 to 4, `chips/elem`): EXE4's own action
+  with EXE5's ElemRage flame (attack 9), now @exelib/elemrage/flame: on the chip's panel the flames run five and
+  paralyze (no spreading to the rows beside, which EXE5's does); each chip states its panel, its flames' palette and,
+  ElemDark's, the poison its raging flames leave (the flame's `leaves`, the panel type Param4's high nibble names:
+  the lab's panels/elemdark-poison). ElemDark's sound recordings differ only on the custom screen (a music volume
+  change the engine makes and the game doesn't, frame 290: the custom screen's).
+- **The throws** (action 0x09, `lib/bombs`: EXE6's throw on @exelib/bombs/throw): each variant's thrower
+  (0x080EB4C4) and what the navi holds (0x080EB4EC: an attachment row and its animation). Variants 0 to 2 (MiniBomb,
+  EnergBom and MegEnBom, DarkBomb) all throw the bomb (attack 8, @exelib/bombs/bomb) of the row their parameter names
+  (0x080CE088, with its blast region at 0x080CE270 and explosion at 0x080CE277), each chip's own. **EnergBom,
+  MegEnBom** (`chips/energbom`): bomb row 2 blasts nothing and leaves an energy burst (attack 0x11, @exelib/energbom's,
+  EXE6's code with EXE4's sprite and sound 0xBD). (Row 1's landing spawns 0x080CE58E's object, which no chip throws.)
+  **Binder1** (with 2 and 3: variant 3, `chips/binder`): EXE4's own binder (attack 0x2D) hops along the row two
+  panels a hop (in place over the other side's navi after its first landing), aimed by `sub_8001330` (EXE4's
+  lib/trajectory over its sine table), hitting each panel it lands on; it goes on a hole, halfway through its fourth
+  hop, or past the field's sides. Its element is the byte its thrower stores from the register holding the release
+  point's Y (none for a navi at rest).
+  **SeekBom1** (with 2 and 3: variant 9, `chips/seekbom`): EXE4's own seeking bomb (attack 0x8D), aimed by its
+  thrower at the other side's navi ahead nearest in columns (between equally near ones it compares the row itself with
+  the nearest row distance so far: kept), flies 40 ticks and bursts where it lands in EXE4's sparkles (effect 0x11,
+  objects/sparkles: @exelib/vdoll/sparkles whose look `stays` where its object was as they started, 0x080E3348).
+  **Ball** (variant 4, `chips/ball`): EXE5's CannBall's cannonball (attack 0x35), now @exelib/cannball/ball, with
+  EXE4's look. **Geyser** (variant 5, `chips/geyser`): EXE5's Geyser bomb and water (attacks 0x42 and 0x43), now
+  @exelib/geyser/geyser, with EXE4's look; EXE4's splash on solid ground also takes the throw's Atk+ bonus (the
+  spawn's +0x64, which EXE5's stores and never reads: `splash_bonus`). The water keeps its spawn's registers as its
+  position, its height the battle state's address (the battle-over test's r3): its hits' sparks show far above the
+  field (`water_height`; the lab's panels/geyser-hole and geyser-atk10).
+- **Thunder1** (with 2 and 3: action 0x26, `chips/thunder`): @exelib/thunder's shot and ball (EXE6's code) with EXE4's
+  look: the shot raises no arm and shows the navi's animation 0x12; the ball (attack 0x2A) is never big or fast, an
+  attack with hit modifier 0, sound 0xAD, and finds its target from its side's back column toward the other side
+  (0x080D21D4), not from where it is. Their parameters: 5, 7 or 9 panels, paralysis for 90, 120 or 150 ticks.
+- **The Anti chips** (the dimming chips' action 0x0C, its variant 0x13, `chips/anti`): the trap chips' controller
+  (lib/traps: @exelib/traps/controller, EXE6's code) makes the chip its user's side's defensive chip. AntiFire to
+  AntiWood (parameters 0 to 3) set the shared ElemTrap trap (lib/traps/anti_trap: @exelib/elemtrap, EXE5's code)
+  watching their element; sprung, its counterattack (@exelib/elemtrap/strike) strikes with EXE5's table but where
+  EXE4's look says: the other side's navi's panels only, then that side's mood to 1, and bursts (objects/panel_bursts)
+  over that side's area alone. AntiNavi, AntiDmg, AntiSwrd and AntiRecv (4 to 7) set only the record (their springs:
+  see §18 item 90).
+
+- **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
+  controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
+  DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter: in the content each
+  chip's own controller, each mapped to its navi's object in compat/kinds.toml): @exelib/navi_chips/controller (EXE5's
+  Phoenix's and DethPhnx's controllers are the same code), its course EXE4's (content/exe4/lib/navi_chips: the user
+  warping out, the navi, a wait, the user warping back in, in four shapes), the user's warp EXE4's own effect #0x0C
+  (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first parameter is the navi's level (0, an SP's
+  3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a variant times 0, 2 or 3) and the like (Roll's
+  mood, SearchMan's sweep): in the content each chip states those. The SP chips' damage goes by the side's deletion time
+  (rules/sp_chips, formulas 1 to 22), the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count
+  formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
+  #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
+  by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
+  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle).
 
 **For the next steps:**
 
@@ -706,7 +792,9 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     stripes and "L or R" go by +0x18. "BUSY..." runs the same counter (update 13, 0x08014ADC: +1 & 63 a tick, from 63
     at its start, 0x080166F0) until the exchange is done (0x0801E9B6). Drawn as EXE6's.
   - 2 **the HP numbers under objects** (0x08014EB8; rolled by update 2, 0x08014800: an eighth plus 2): one color,
-    at priority 1 (the pack's `layout.hp_number_priority`).
+    at priority 1 (the pack's `layout.hp_number_priority`), under the HUD's BG3 at priority 0 (the battle's video
+    init's table at 0x08006AD4: BG3CNT 0x1F00, then 0x1F08; EXE6's is 1): the custom screen covers a flag's number
+    there (the pack's `layout.hud_priority`; the screen's cursor and element icon are sprites at priority 0).
   - 3 **the chip icons**, over the local navi alone. Update 3 (0x08014860) places them at its place on the screen
     plus the per-navi offset 0x0800B9E4 (which 0x08015B24 keeps at +0x1B, +0x1C): navi 0, MegaMan, (0, -55); 1 to
     12, the souls in navi order, (0, -67), (-8, -59), (-12, -84), (0, -64), (3, -72), (-4, -72), (-1, -62),
@@ -836,6 +924,8 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
+- Roll's chips against an armed AntiRecv (the spawner's own spring, 0x080E5554: the counterattack three times half
+  the chip's damage word, its dimming with no cut-in): no recording has Roll used into AntiRecv yet.
 - Settled: panels through a pause and a dimming (§18 item 13, a95f's `panels/` recordings). Poison doesn't drain
   through a pause (`poison-pause`: the player doesn't run paused); a player landing on lava burns the tick after
   it lands even while the battle is dimmed (`lava-dimming-33`, RockCube's dimming: the burn at 418, its flinch at
@@ -1198,9 +1288,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 18. **Battle type.** A netbattle record's +4 (0x46; the battle state's +0x0F, 0x48 in the lab's) is EXE4's battle type,
     its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
-19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
-    5, 6, 7, 0x080FC138's actor lists: 0x08006754's table at 0x08006778 spawns each). Port the obstacles, then generate
-    them (gen_rules.py's `STAGE_ACTORS`: a kind's module and its entry's argument).
+19. **Done: the stages that waited** (the records with obstacles: actor kinds 3, 5, 6 and 7 of 0x080FC138's actor
+    lists, which 0x08006754's table at 0x08006778 spawns). gen_rules.py's `STAGE_ACTORS` names each kind's module and
+    `STAGE_ENTRIES` what its spawner reads of the entry, as named fields (no raw argument: the gears' first byte, 25,
+    nothing reads); every one of the 96 link records is a stage now, and stages.luau's header lists none waiting.
     - **Done: kind 3, the boulder** (records 20, 21, 24 to 31; content/exe4/objects/boulder). Attack object #0x6E
       (0x080DB0EC), EXE6's code (`sub_80D2290`, @exelib/boulder) but for its init writing no NameID, its tick taking
       hits never pushed (0x080139A0) and reacting by 0x08014058 (EXE6's `sub_801B4D4` but for its crushing hits,
@@ -1214,8 +1305,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       EXE6's code (`sub_80D8C5C`, which no EXE6 stage places) but for its sheet (10-32), its NameID (0xFD; its HP
       number's) and its HP check (0x080E07CE: a burning panel first, 0x0801309E, the object call `burn_on_panel`; a
       holy panel's halving of the total, rounding up; the hit's sound 0xC8). Each side's in its back corner (the
-      entry's argument: bit 7 the side, the rest the HP in eights: 0x7D and 0xFD, 1000), its HP numbered. Its HP out
-      (unless time is up: `battle_isBattleOver`'s Z flag, `battle.time_up`), sound 0x6F and its side loses the round
+      entry's first byte: bit 7 the side, the rest the HP in eights, 0x7D and 0xFD, 1000; gen_rules writes them as
+      the stage entry's named `side` and `hp`), its HP numbered. Its HP out (unless time is up: `battle_isBattleOver`'s
+      Z flag, `battle.time_up`), sound 0x6F and its side loses the round
       (0x080E0842, EXE6's `sub_80D8DEE`: the side's actor count, BS+4, to 0 and the round's time-up byte to 1, the call
       `battle.lose_round`; it also sets battle flag 8, which nothing in EXE4 reads: 0x08007A8C's 28 callers test 1, 2
       and 0x10). The lab's stages/lava-middle-close, typeA-row, ice-columns and holes-diagonal-b (null, stand, walk)
@@ -1234,16 +1326,36 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       actor's 0x080C7C74, which aren't. The lab's stages/type5 and type5-row (null, stand, walk), panels/type5-stand-on
       and stages/type5/gears-roll and gears-hit (a95f's: navis out of its row for 900 ticks, the gears bouncing between
       the edge and the center line; then one runs into side 0) replay every frame.
-    - Kind 6, effect #0x41 (records 88 to 95, 0x080E6820: off the field, spawning an attack by turns). To port.
+    - **Done: kind 6, the wind** (records 88 to 95; content/exe4/objects/wind and objects/gust). Effect object #0x41
+      (0x080E6820, EXE6's `sub_80E5244` by its place, the navis' AI wind no EXE6 stage places), spawned by 0x080068DE
+      through 0x080E6932: its first parameter the entry's first byte (every record's 0), its side the entry's second
+      (gen_rules writes `side`; the entry has no panel), its third 1, not running while dimmed, its position the
+      registers. Unseen, it plays sound 0x121 (`wind`) as it starts, then (phase 0, 0x080E687C) while its side has no
+      registered wind (BS+0x88 + 4 * side, `battle.wind`: a stage's waits) counts its row down by turns from 3 (+0x6C:
+      2, 1, 3, ...), takes the other side's first panel of the row from the far edge (0x080E6950:
+      `object_getClosestPanelMatchingRowFiltered` for the other side with 0x080E69AC's {0x20, 0} / {0, 0x20}; none
+      where a neutral object, panel flag 0x800000, stands; a first parameter walks it on along the side's forward to
+      the panel before a neutral object or the edge) and blows a gust there, then waits 12 ticks (phase 4): a gust
+      every 13 ticks. Its two gust slots (+0x60, +0x61) would hold it with both full, but EXE4's gust spawner
+      (0x080D68AC) sets a slot with a word store, which the ARM aligns down: the first slot becomes 1 and the second 0
+      whichever it names, so while the first gust is out each next one tracks the second slot, reads 0 at its first
+      update and ends unseen. The gust is attack #0x49 (0x080D6724): @exelib/gust in EXE5's look (no hit stops it,
+      0x080D6842 tests against 0; any first parameter pushes weaker, 0x080D67BA) with flip 0 (EXE4's flip,
+      0x0800ACA6, is the side; its speed's sign is the side's alone, 0x080D679E), the spawner EXE4's own (a byte
+      side, no test for a missing tracker, the word store). Its third parameter 0 (0x080E68F8: the side's wind,
+      registered as a navi's, which its end clears; callers 0x0800E108, 0x0802252E, 0x0802254C, 0x080C3374 and
+      0x080F08A4 to 0x080F0E00) is ported in the kind; that spawner waits for its callers. The lab's
+      stages/type5-ring, poison-middle, poison-row and holy-inner-top (null, stand, walk, aqua, fire) replay every
+      frame (elec and wood wait for Thunder1 and ElemLeaf), and type5-ring/stand, poison-row/walk and
+      holy-inner-top/aqua compare every fight frame pixel for pixel, gusts and all (frontend-compare/exe4.txt).
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
     battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
     set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
     24, by their names), `first_round_stages` (a random match is a triple battle's: every round among the first 0x60).
     No RNG field: nettai picks a match's places before the battle with its own generator (docs/frontend.md §2), so
     only the odds are the game's, which the lists state. a95f's sweep (1,000 seeds, tools/chiplab/gen_exe4.py
-    `STAGES`) drew from all 96 records: no panel type 11; its obstacles are the four of item 19 (the boulder #0x6E, #0x76, #0x9C, effect #0x41).
-    So `stages` must list all 96 records, each working: the 34 waiting ones (actor kinds 3, 5, 6 and 7) wait for
-    those four obstacles (item 19); until then the list leaves them out and the odds differ.
+    `STAGES`) drew from all 96 records: no panel type 11; its obstacles are the four of item 19 (the boulder #0x6E, the
+    gear #0x76, the flag #0x9C, the wind, effect #0x41). `stages` lists all 96 records, so the odds are the game's.
 21. **Done** (backgrounds' names). The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else
     the map's (0x08085BAC, its table at the literal 0x08085BCC, default 3). The 22 that maps draw are named for their
     areas, by the menu's names (tools/backgrounds: names.tsv, areas.py exe4; docs/frontend.md §1 has the table). No
@@ -1428,10 +1540,20 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     modcards/ recordings whose cards are ported compile as recorded (exe4_navicust) and replay. The cards that wait,
     each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
     chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); the pairs, each half applying when the
-    other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item
-    60), Charge FullCustom (103, 104: the charged shot FullCustom, item 57).
+    other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54); All Guard (76, 77: +0x28, item
+    60) and Charge FullCustom (103, 104: the charged shot FullCustom, item 57) are in.
 57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
-    buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
+    buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
+    that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
+    (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
+    `WEAPONS`; the 24 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
+    only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
+    Guard's too: item 60). Waiting:
+    the routines of chips still to port (0x37 CopyDmg, 0x38 WideSht1, 0x42 Hole, 0x43 WideSht2, 0x44 SandRing, 0x4C
+    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
+    the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
+    others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
@@ -1447,12 +1569,24 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     which the reset clears too: **done**, the rules' stat `color`, which the cards write and rules/light_dark's palette
     reads (5 more a step of it, 0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090.
     Cards 76 and 77 (All Guard) set +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up
-    from the start, so it turns aside every hit that doesn't break guards, 0x08012B84).
+    from the start, so it turns aside every hit that doesn't break guards, 0x08012B84): **done**, the rules' stat
+    `all_guard`, which the pair's half writes (`cards.pair`, item 57) and the role hook `abilities_reset` reads: the
+    engine's `sub_801390C` (EXE4's 0x0800D8C2, the init's and a form change's) takes the guard down, the hook raises it
+    again; the lab's modcards/076.
 61. **Done: the idle stands the navi** (from AirShot's replays). MegaMan's idle (0x080EEB38) puts animation 0 on each
     tick past its first phase (0x080EEB7C: 0x080EEBAC), the 10 ticks after a reaction's end; EXE6's (`sub_80F0354`)
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
     shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
     `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
+62. **The sprite tile copy queue's 96 and the tile cap** (low priority: netbattles rarely reach them). A sprite whose
+    frame's tiles change (the sprite draw, IWRAM 0x03005C00) reserves its VRAM tiles (0x03005FD4: past 0x2FF tiles,
+    0x2CF in mode 8, the sprite isn't drawn: its flag 0x10) and queues one copy (0x0800087C) on a queue of 96 entries
+    (0x0200D120, its count 0x0200B134), which the main loop drains after the VBlank wait (0x08000808, called at
+    0x080002C8). A copy past the 96th is dropped, not deferred, and the sprite's last uploaded frame (its +0x24)
+    advances anyway, so it shows stale tiles until its frame changes again. nettai's renderer models neither (it draws
+    each frame's tiles as they are); EXE5's and EXE6's counterparts to check when someone takes it. (What the towers'
+    frame compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
+    display, tearing, which is left.)
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
@@ -1488,13 +1622,24 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     #d6d6d6 where mGBA has #fff729, #ded6d6, #ffffff), Roll and RollSP's not. Not the dark flag (the DS chips have
     none) nor the frame palette (EXE4's pack has one). B saw ElemDark's screen duck the music as the dark chip hover
     does (chips/0x0d5-elemdark, frame 290): likely the same cause. To find.
-76. **A telop leaves the other player's used-chip name** (B, chips/0x08e-antielec/sprung: mGBA shows "Thunder 140"
-    until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block (0x08016454)
-    and leaves the second block alone; EXE6's clears the name at every telop's start (`sub_801BED6(0x10000)`, the
-    engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
+76. **A telop leaves the other player's used-chip name** (B's, item 90; chips/0x08e-antielec/sprung: mGBA shows
+    "Thunder 140" until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block
+    (0x08016454) and leaves the second block alone; EXE6's clears the name at every telop's start
+    (`sub_801BED6(0x10000)`, the engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
 77. **The chips' own looks out of the shared libraries** (the brief's no-lookup-tables rule): lib/cannon's `arms`,
     lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants`: a maker each, every chip
     stating its own. Queued.
+90. **The Anti chips' springs** (group B). The traps are set (chips/anti); what springs them:
+    - AntiNavi (0x08008F80, EXE5's `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the
+      navi chips', with no block of chip numbers) wants the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle
+      0x0800815C: effect row 0x48, sound 0x10D);
+    - AntiDmg and AntiSwrd: EXE4's intake test (0x08023048) is its own: AntiDmg catches a hit of any damage (EXE5's and
+      EXE6's of 10 or more), AntiSwrd any sword hit (flag 0x2000, without EXE6's 0x20000 exclusion), no heat trap, no
+      BodyGrd; the counters are actions 0x38 (AntiDmg's, a shuriken: attack 0x5C) and its AntiSwrd counterpart;
+    - AntiRecv: the role `kinds.anti_recovery`.
+    A telop doesn't take the other player's used-chip name off the screen in EXE4 (item 71: the user's telop goes on
+    the banner block, the name stays on the second; EXE6's `sub_801BED6(0x10000)` clears it): the lab's
+    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine.
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's
@@ -1523,3 +1668,17 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
       effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
       The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
       EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
+
+### 18.8 The chips (group F)
+
+150. **A navi chip's user hidden and shown** (from Roll's warps). EXE4's 0x080E2D56 and 0x080E2DCC (EXE6's
+    `sub_80E1352`, `sub_80E13DC`, similar) set no "vanished" mark (EXE6's `sub_8010312(0x100000)`), find the barrier
+    visual at the object's +0x50, hide the HUD's chip icons by task 8, and show the user back whatever the viewer's
+    blindness or a submerge (EXE6's tests `sub_800EB6C` and the submerged bit). The engine's `dimming.hide_user` and
+    `show_user` are EXE6's; Roll's recordings match (nothing in them reads the mark, and no viewer is blind). Shape: a
+    `chip_use` rule for the user's vanish (EXE6's and EXE5's marks and tests, EXE4's none), with a recording of a blind
+    viewer or a Reflector through a navi chip to confirm.
+151. **What the poltergeist leaves** (JunkMan's, @exelib/poltergeist). EXE4's 0x080EA16C and 0x0800B3E8 take every
+    field object but attack objects #0x4C and #0x8C and effect object #0x6E, tested by kind (EXE5's by NameID); the
+    engine asks the identity (`throwable`). None of the three is ported: whoever ports one gives its identity
+    `throwable = false`. JunkMan's throws themselves wait on RockCube (the lab's junkman*/obstacle).

@@ -195,31 +195,9 @@ impl ChipTraits {
     /// SlashCross charges it though its family isn't Sword (`sub_8013236`:
     /// the elemental swords).
     pub const ELEMENT_SWORD: u16 = 0x08;
-    /// AntiNavi turns it back though it has no `navi` flag (the navi
-    /// chips' block of the chip table, `sub_800BDB2`: the US games' records
-    /// of Django's chips, which lack it; EXE6's content takes the Japanese
-    /// games', which have it, so no EXE6 chip has this).
-    pub const NAVI_SLOT: u16 = 0x10;
-    /// Its navi heals: the other side's armed AntiRecv springs instead of
-    /// it coming (`sub_80E192C`: Roll's chips).
-    pub const HEALS: u16 = 0x20;
-    /// Its user stays on the field while its navi acts: the navi chip's
-    /// controller warps it neither out nor back in (`sub_80E1830`: BigHook,
-    /// the original's navi 0x17).
-    pub const USER_STAYS: u16 = 0x40;
-    /// Its navi brings the user back itself: the controller warps the
-    /// user out and not back in (`sub_80E18F8`: Roll's chips, the
-    /// original's navi 0).
-    pub const NAVI_RETURNS_USER: u16 = 0x80;
     /// It goes with any selection, and the selection's code and chip rules
     /// leave it out (`sub_8028E4C`, `sub_8028EC8`: EXE6's BeastOut chip).
     pub const GOES_WITH_ANY: u16 = 0x100;
-    /// AntiNavi lets it through, and it isn't kept as the last navi chip
-    /// used, though it has the `navi` flag: it is past the navi chips'
-    /// block of the chip table (`sub_800BDB2`, `sub_80E1880`: chips 0xDD to
-    /// 0x118; EXE5's version navi chips, Bass, BassAnly, Phoenix and
-    /// DethPhnx, have the flag).
-    pub const NOT_NAVI_SLOT: u16 = 0x200;
     /// The custom screen's chip window shows "???" for its damage on a
     /// copy of code A, and its damage on any other: the original compares
     /// the whole chip word, number and code, with the chip's number, so
@@ -236,12 +214,7 @@ impl ChipTraits {
         (0x02, "aura_bonus"),
         (0x04, "no_cut_in"),
         (0x08, "element_sword"),
-        (0x10, "navi_slot"),
-        (0x20, "heals"),
-        (0x40, "user_stays"),
-        (0x80, "navi_returns_user"),
         (0x100, "goes_with_any"),
-        (0x200, "not_navi_slot"),
         (0x400, "hides_damage_as_a"),
         (0x800, "no_icon_when_next"),
     ];
@@ -250,13 +223,6 @@ impl ChipTraits {
         self.0 & bit != 0
     }
 
-    /// In the navi chips' block of the chip table (`sub_800BDB2`'s and
-    /// `sub_80E1880`'s chips 0xDD to 0x118), which the content tells by the
-    /// chip's `navi` flag and these traits: AntiNavi turns it back, and the
-    /// navi chip controller keeps it as the last navi chip used.
-    pub fn in_navi_block(self, flags: ChipFlags) -> bool {
-        (flags.has(ChipFlags::NAVI) && !self.has(Self::NOT_NAVI_SLOT)) || self.has(Self::NAVI_SLOT)
-    }
 }
 
 serde_flags!(ChipTraits, u16);
@@ -339,6 +305,10 @@ pub enum Counted {
     /// The field's panels of this type the side owns
     /// (`object_dead_getPanelsTypeAllianceCount`).
     OwnPanels(crate::field::PanelType),
+    /// The field's panels of this type, whichever side owns them
+    /// (`object_dead_getPanelsTypeAllianceCount` for each side: EXE4's DS
+    /// navi chips, 0x08019518, by the field's holes).
+    Panels(crate::field::PanelType),
     /// The turns before this one: the turn number less one, as unsigned
     /// (turn 0 counts as the most).
     TurnsBefore,

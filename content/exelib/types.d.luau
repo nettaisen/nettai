@@ -155,8 +155,9 @@ export type VulcanLook = {
     fire_anim: number,
 }
 
--- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
--- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
+-- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at its
+-- level (the chip's `level`, capped at 3: Static's the navi's kinds of NaviCust bug, DarkTorn's its side's statistic 3;
+-- `panels` by level, { dx, dy } from the panel two ahead, dx toward the navi's front; `tornadoes`, by level, over
 -- `tornado`: tornadoes that differ by level, EXE5's Static's); and the fan it holds, with an addition to its palette.
 export type TornadoBlow = {
     -- The action's key when no chip definition holds it.
@@ -167,7 +168,7 @@ export type TornadoBlow = {
     tornado_kind: Kind?,
     single: TornadoSpec?,
     spread: {
-        by: "bug_kinds" | "side_stat",
+        level: (me: Object) -> number,
         panels: { [number]: { { number } } },
         tornado: TornadoSpec,
         tornadoes: { [number]: TornadoSpec }?,
@@ -181,8 +182,9 @@ export type TornadoBlowLook = { attachment: Kind, tornado: Kind }
 -- `kind`, a ball kind of its own (none: the game's).
 export type ThunderShot = { id: string?, ball: ThunderBall, kind: Kind? }
 
--- A game's thunder shots (@exelib/thunder/shoot): its buster (the arm) and its ball's kind.
-export type ThunderShotLook = { buster: Buster, ball: Kind }
+-- A game's thunder shots (@exelib/thunder/shoot): its buster (the arm it raises; none: EXE4's raises none), its
+-- ball's kind, and the navi's animation as it shoots (none: EXE6's and EXE5's 0x0E; EXE4's 0x12).
+export type ThunderShotLook = { buster: Buster?, ball: Kind, anim: number? }
 
 -- How a falling meteor's panel marker blinks (@exelib/meteors/marker; EXE6's `byte_80E4334`, by the original's first
 -- parameter): its lifetime, its blink period, the ticks lit each period, and how much each period shrinks the next
@@ -235,6 +237,18 @@ export type ProtoManKind = {
     attachment: Kind,
     target: CollisionType,
     self_type: CollisionType,
+    -- EXE4's (nil: EXE6's and EXE5's). His spawner (0x080C721A) keeps neither his user, nor its facing, nor the element,
+    -- and his height is his side, which his init keeps.
+    summoned_alone: boolean?,
+    -- What a panel he lands on must be free of, by his side (0x0F80_0000 for both), and whether his user's panel counts
+    -- as free anyway (true).
+    occupied: { [number]: number }?,
+    user_panel_free: boolean?,
+    -- His slash (0x080C713E, 0x080C71AA): the sword, the hit and its effect as it starts (EXE6's and EXE5's hit 10
+    -- ticks in), the sword away as it ends (theirs at his blink out and as he goes).
+    slash_at_once: boolean?,
+    -- How he holds his sword (none: @exelib/attachment's `attachment` kind).
+    attach: ((owner: Object, look: AttachmentLook, which: Slot, options: AttachmentOptions?) -> Object?)?,
 }
 
 -- A game's MegaMan's shots (@exelib/megaman): the action's key, its buster parts, its projectiles, its attachment
@@ -457,11 +471,6 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
 
--- A follow effect's look (@exelib/follow_effect): a row of a game's looks and its routine.
-export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed"
-
-export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
-
 -- BassAnly's dark ball (@exelib/bassanly/shot): its level (0 to 3: its
 -- speeds), its slant (-1 up, 1 down), and how it homes.
 export type DarkBallHoming = "none" | "diagonal" | "seeking"
@@ -675,6 +684,9 @@ export type PatchCardEffect = {
     -- The group its card screen lists it in, as the effect's constructor says: "parameter" (a stat's change) or
     -- "ability" (the rest, the bugs among them).
     group: ("parameter" | "ability")?,
+    -- A pair's half (EXE4's, kind "pair"): its `effects`, which apply only while the card `card` (its key) sits in
+    -- slot `slot`.
+    pair: { slot: number, card: string, effects: { PatchCardEffect } }?,
 }
 
 -- What a game's patch cards' application (@exelib/patch_cards/apply) reads of the game: its kinds in the order they
@@ -1238,14 +1250,16 @@ export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: num
 export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug: number? }
 
 -- A game's thunder ball (chips/thunder/ball, `make_kind`): its sprite and
--- animation small and big (fast, or DarkThnd's 12 panels), its collision
--- type (a 12-panel one's, if another), hit modifier and spark, its sound
--- (a 12-panel one's, if another).
+-- animation small and big (fast, or DarkThnd's 12 panels; none: a game
+-- whose ball is never big, EXE4's), its collision type (a 12-panel one's,
+-- if another), hit modifier and spark, its sound (a 12-panel one's, if
+-- another), and its own search for its target (none: `sub_80C95EC`'s,
+-- EXE6's and EXE5's).
 export type ThunderBallLook = {
     sprite: SpriteAsset,
     small_anim: number,
-    big_sprite: SpriteAsset,
-    big_anim: number,
+    big_sprite: SpriteAsset?,
+    big_anim: number?,
     is: CollisionType,
     dark_is: CollisionType?,
     target: CollisionType,
@@ -1253,6 +1267,7 @@ export type ThunderBallLook = {
     spark: Spark,
     sound: Sound,
     dark_sound: Sound?,
+    find_target: ((me: Object) -> (number, number))?,
 }
 
 -- ElemTrap's counterattack by element (chips/elemtrap/strike): its sound,
@@ -1260,8 +1275,20 @@ export type ThunderBallLook = {
 export type ElemTrapStrike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
 
 -- A game's counterattack (`strike.make_kind`): its strikes by element
--- (null to wood), and what its hits are and reach.
-export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType, bursts: Kind }
+-- (null to wood), what its hits are and reach, its bursts' kind; the panels
+-- it strikes (none: `byte_80E36E4`'s mask over the field, EXE6's and EXE5's;
+-- EXE4's the other side's navi's panels, 0x080E5244), a step after the hits
+-- (EXE4's sets the other side's mood to 1, 0x0800F4DE), and where its bursts
+-- go (none: the whole field; EXE4's the other side's area, 0x080E531F).
+export type ElemTrapStrikeLook = {
+    strikes: { [number]: ElemTrapStrike },
+    self_type: CollisionType,
+    target: CollisionType,
+    bursts: Kind,
+    targets: ((me: Object) -> { { x: number, y: number } })?,
+    after: ((me: Object) -> ())?,
+    bursts_over: ((me: Object) -> Region)?,
+}
 
 -- A game's trap (chips/elemtrap/trap, `trap.make_kind`): what springs it
 -- (fire to wood's first hit, or one element's: the one it is set with),
@@ -1375,6 +1402,12 @@ export type MeteorLook = {
     -- Its landing's burst, and its panel marker's kind.
     burst: Effect,
     marker: Kind,
+    -- Where its hit is set as it lands: only where it bursts (EXE5's and EXE6's), or on its panel either way (EXE4's
+    -- 0x080D873A).
+    hit_on: "burst" | "landing",
+    -- Whether its marker takes its side (EXE5's and EXE6's spawn sets it); EXE4's sets none, leaving side 0
+    -- (0x080E5EEA).
+    marker_takes_side: boolean,
 }
 
 -- How a game's drill is: its hit's spark, what the first and second are
@@ -1585,6 +1618,78 @@ export type LockonDef = {
 }
 export type Lockon = LockonDef
 
+-- What a navi chip's navi is spawned with (@exelib/navi_chips/chip: the registers `sub_80E1880` passes to
+-- `off_802CD5C[subtype]`): the controller's panel and element, and the damage word with the bonus.
+export type NaviChipSpec = {
+    panel_x: number,
+    panel_y: number,
+    element: number,
+    damage: number,
+}
+
+-- An EXE6 or EXE5 navi chip's navi (@exelib/navi_chips/chip): for `user`, reporting to `controller`, as `spec` says.
+export type NaviChipSummon = (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+
+-- What an EXE6 or EXE5 navi chip's `navi` is (@exelib/navi_chips/chip): its controller's spawner (`hook`), its
+-- navi's summon and its course, which EXE5's DethPhnx reads, and the rest of its spec.
+export type NaviChip = {
+    kind: Kind,
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+    summon: NaviChipSummon,
+    course: { NaviChipStep },
+    navi_block: boolean?,
+    heals: boolean?,
+}
+
+-- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
+-- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
+-- after the navi), the controller's state, and what a game's `make` hands back.
+export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
+export type NaviChipShortCourse = { out: number, after: number }
+export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean }
+export type NaviChipController = {
+    kind: Kind,
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+}
+
+-- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the
+-- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), its flags (Param4's low nibble: 1 runs while
+-- dimmed; 4 paralyzes, hit modifier 1, its hit back 12 ticks after one; 8 its self type row 0x25) and the panel type
+-- it leaves (the panel type Param4's high nibble names; none, or as its state holds it "none", leaves none); its
+-- palette (EXE5's +0x0D, EXE4's +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
+export type ElemFlameState = {
+    count: number,
+    spread: boolean,
+    ticks: number,
+    offset: number,
+    flags: number,
+    leaves: PanelType?,
+    palette: number,
+    hit: boolean,
+    sent: boolean,
+}
+
+-- A game's element flame: its key, sprite, the panel types its flames may leave (EXE4's ElemDark's poison; none, they
+-- leave none), whether a spreading flame sends the two beside its next one (EXE5's; EXE4's none), its self types (an
+-- attack, or row 0x25 with Param4's bit 8), what it hits, and its spark by element.
+export type ElemFlameLook = {
+    id: string,
+    sprite: SpriteAsset,
+    leaves: { PanelType }?,
+    spreads: boolean,
+    attack: CollisionType,
+    attack_480: CollisionType,
+    hits: CollisionType,
+    spark: (element: number) -> Spark,
+}
+
+-- A game's element flame kind and its spawn: a flame on (x, y) with its state, the element, height and damage word,
+-- of `owner`'s side and facing, of no owner; running while dimmed with Param4's bit 0.
+export type ElemFlame = {
+    kind: Kind,
+    spawn: (owner: Object, x: number, y: number, element: number, z: number, s: ElemFlameState, damage: number) -> Object?,
+}
+
 -- A soul's navi's image as MegaMan unites with it (@exelib/souls/image: EXE5's actor object 0x2A, EXE4's effect object
 -- 0x13; a soul's form's `image`): the navi's sprite, and what the image puts on as it comes in and takes off as it goes
 -- (EXE5's 0x0800EDBC's and 0x0800EEBE's routines by soul: GyroMan's propeller, NapalmMan's cannon, Colonel's cape,
@@ -1594,3 +1699,42 @@ export type SoulImage = {
     put_on: ((image: Object) -> ())?,
     take_off: ((image: Object) -> ())?,
 }
+
+-- A game's cannonball (@exelib/cannball/ball): its kind's key, its sprite, the puff it ends in off solid ground and
+-- the impact where it lands, the crack's sound, and its collision types (what it is and what it hits).
+export type CannonballLook = {
+    id: string,
+    sprite: SpriteAsset,
+    puff: Effect,
+    impact: Effect,
+    crack: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+}
+
+-- A game's cannonball kind, and a thrower of it at the panel three ahead of the user.
+export type Cannonball = { kind: Kind, thrower: () -> Thrower }
+
+-- A game's Geyser (@exelib/geyser/geyser): its bomb's and water's kind keys, the bomb's and the geyser's sprites, the
+-- splash (on solid ground and where the water lands) and its sound, the eruption's sound, its hits' collision types
+-- (what they are, what they hit) and spark, whether the splash on solid ground takes the throw's Atk+ bonus (EXE4's
+-- 0x080D5AA4 reads the spawn's +0x64; none: EXE5's, which stores it and never reads it), and its water's height: the
+-- register the geyser's update leaves for the water's spawn, the battle state's address (the battle-over test's r3:
+-- EXE5's 0x02034A90, EXE4's 0x02035810), at which the water's hits land and their sparks show, far above the field.
+export type GeyserLook = {
+    id: string,
+    water_id: string,
+    bomb: SpriteAsset,
+    geyser: SpriteAsset,
+    splash: Effect,
+    splash_sound: Sound,
+    erupt: Sound,
+    attack: CollisionType,
+    hits: CollisionType,
+    spark: Spark,
+    splash_bonus: boolean?,
+    water_height: number,
+}
+
+-- A game's Geyser kinds (the bomb and its water), and a thrower of the bomb at the panel three ahead of the user.
+export type GeyserBomb = { kind: Kind, water: Kind, thrower: () -> Thrower }

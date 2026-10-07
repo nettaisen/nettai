@@ -17,23 +17,37 @@
 
 local anti_damage = require("@exelib/navicust/anti-damage")
 local guard = require("../../../lib/guard")
+local operation_battle = require("../../../lib/operation_battle")
 
 local guards = {}
 
 local TICKS = 0x14
 local LOCKOUT = 40
 
+local REFLECTOR = asset.sprite("reflector-shield")
+-- What the Shield program puts into the gauge.
+local SHIELD_GAUGE = 0x580
+
+-- The Shield program's counter: 0x580 into the side's gauge.
+local function into_gauge(me: Object, x: number, y: number, damage: number): boolean
+    battle.add_side_gauge(me.alliance, SHIELD_GAUGE)
+    return false
+end
+
 local SHIELD = guard.action {
     id = "megaman/shield/action",
     ticks = TICKS,
-    look = guard.looks.navicust_shield,
-    counter = { kind = "gauge" },
+    -- Row 2 of 0x080CA1F0.
+    look = guard.look { sprite = REFLECTOR, anim = 4, fade_anim = 5, fade_ticks = 0xE, palette = 0 },
+    counter = into_gauge,
+    heeds = operation_battle,
 }
 local REFLECT = guard.action {
     id = "megaman/reflect/action",
     ticks = TICKS,
-    look = guard.looks.navicust_reflect,
-    counter = { kind = "shot" },
+    -- Row 1 of 0x080CA1F0.
+    look = guard.look { sprite = REFLECTOR, anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },
+    counter = guard.reflect,
 }
 
 local function raise(navi: Object, damage: number)

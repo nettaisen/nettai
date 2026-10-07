@@ -17,7 +17,6 @@
 local attachment = require("../../objects/attachment")
 local beam = require("@exelib/gundels/beam")
 local collision = require("../../rules/collision")
-local regions = require("@exelib/regions")
 local operation_battle = require("../../lib/operation_battle")
 
 local gundels = {}
@@ -31,26 +30,18 @@ export type State = {
 gundels.STATE = { timer = "u16" }
 
 -- What a chip's GunDelSol holds and fires: its gun, how long it fires at most, the beam in the shade and in the
--- sun, and whether its hits cover the column past the target's too (GunDelEX's).
+-- sun (its look, of 0x080EDDB8, and palette), and its hits' region (the column two panels ahead; GunDelEX's and the
+-- column past it).
 export type Spec = {
     id: string?,
     gun: AttachmentLook,
     firing_ticks: number,
     beam: SunBeamLook,
     beam_in_sun: SunBeamLook,
-    wide: boolean?,
+    region: Region,
 }
 
 gundels.beam_kind = beam.make_kind("gundels/beam", asset.sound("sun-beam"))
-
--- The beams' looks (0x080EDDB8): GunDelSol's, and GunDelEX's wider one, in the shade and in the sun.
-local PLAIN, WIDE = asset.sprite("sun-beam"), asset.sprite("sun-beam-ex")
-gundels.beams = {
-    plain = { sprite = PLAIN, palette = 0 },
-    plain_in_sun = { sprite = PLAIN, palette = 2 },
-    wide = { sprite = WIDE, palette = 0 },
-    wide_in_sun = { sprite = WIDE, palette = 3 },
-}
 
 -- The phases, on the attack's step.
 local WIND_UP, FIRING, RECOVER = 0x0, 0x4, 0x8
@@ -101,7 +92,7 @@ end
 
 -- A chip's GunDelSol.
 function gundels.action(spec: Spec): Action
-    local region = if spec.wide then regions.wide_long else regions.wide
+    local region = spec.region
 
     -- 0x080EDCEC (`sub_80EDB14`): the gun comes out; 6 ticks later the beam lights up, if A is still held.
     local function wind_up(me: Object, s: State)

@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 -- Roll (EXE5 chip 0x0dd): Roll whips the enemy navi ahead and heals her user with a heart (./navi).
 local roll: Chip = {
@@ -19,8 +20,12 @@ local roll: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     -- (AntiRecv springs on her heal; she brings her user back herself.)
-    traits = { "heals", "navi_returns_user" },
-    navi = navi.summon { rounds = 1, palette = 0, level = 0 },
+    navi = navi_chips.make {
+        id = "roll/controller",
+        summon = navi.summon { rounds = 1, palette = 0, level = 0 },
+        course = navi_chips.USER_RETURNED,
+        heals = true,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -40,8 +45,12 @@ local roll_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     -- (AntiRecv springs on her heal; she brings her user back herself.)
-    traits = { "heals", "navi_returns_user" },
-    navi = navi.summon { rounds = 1, palette = 0, level = 3 },
+    navi = navi_chips.make {
+        id = "roll-sp/controller",
+        summon = navi.summon { rounds = 1, palette = 0, level = 3 },
+        course = navi_chips.USER_RETURNED,
+        heals = true,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -61,8 +70,12 @@ local roll_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     -- (AntiRecv springs on her heal; she brings her user back herself.)
-    traits = { "heals", "navi_returns_user" },
-    navi = navi.summon { rounds = 1, palette = 1, level = 4, ribbon_palette = 1 },
+    navi = navi_chips.make {
+        id = "roll-ds/controller",
+        summon = navi.summon { rounds = 1, palette = 1, level = 4, ribbon_palette = 1 },
+        course = navi_chips.USER_RETURNED,
+        heals = true,
+    },
     auto_battle = { class = "at_once" },
 }
 

@@ -34,6 +34,9 @@ local rules: Rules = {
         -- MegaMan's color (+0x27: 0, or patch cards 59, 60, 89, 90's 1 to 4, ./patch_cards; the reset clears it),
         -- which his palette reads (./light_dark).
         color = "u8",
+        -- All Guard (+0x28: the pair of patch cards 76 and 77, ./patch_cards; the reset clears it), which raises the
+        -- navi's guard whenever its abilities are reset (./roles' `abilities_reset`, 0x0800D8E4).
+        all_guard = "bool",
     },
     -- What a player brings (nettai-match from a match's side, exe4-compat from a recording): a side's facts.
     setup = {
@@ -61,6 +64,9 @@ local rules: Rules = {
         }, 25),
         -- Their patch cards (./patch_cards): each card switched on and the slot it is in (a save's 0x464C, by slot).
         patch_cards = schema.list({ card = "patch_cards", slot = "u8" }, patch_cards.SLOTS),
+        -- How long the save took to delete each SP navi (./sp_chips: a battle's copy at 0x02037C80), by its SP chip,
+        -- in frames; one not stated, deleted in no time.
+        sp_times = schema.list({ chip = "chip", frames = "u16" }, 22),
         -- The game's version: the souls it can have (./souls). No default: a side states it, or the round doesn't
         -- start. The versions come in the original's order (Red Sun, then Blue Moon), which tools go by.
         version = { "redsun", "bluemoon" },
@@ -81,11 +87,15 @@ local rules: Rules = {
     },
     state = state,
     -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of.
+    -- An SP navi chip's damage by its deletion-time step (./sp_chips).
     -- What a soul's form says for Double Soul (./souls; a soul is named by its form's id, the original's number for it,
     -- NaviStats +0x24, is compat's): the family of the chips given up for it (0x08020008's table) and its turns
     -- (0x080180A8's: 3 every one), its chip (which OK puts in the hand for it, its use the soul's change:
     -- ./souls/change), and its navi's image at the change (./souls/image, a `SoulImage`).
     extends = {
+        chip = {
+            sp = "u16[11]",
+        },
         form = {
             soul = {
                 family = {

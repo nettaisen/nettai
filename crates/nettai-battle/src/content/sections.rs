@@ -58,11 +58,11 @@ struct PanelTypeSection {
     #[serde(default)]
     doubles: Option<String>,
     #[serde(default)]
+    damage_shift: u8,
+    #[serde(default)]
     unbreakable: bool,
     #[serde(default)]
     traps: bool,
-    #[serde(default)]
-    crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
     carries_by_move: Option<Vec<Vec<SlideStep>>>,
@@ -111,6 +111,8 @@ struct PanelsSection {
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
     type_mask: u32,
+    #[serde(default)]
+    cycle: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -345,6 +347,7 @@ struct StatusSection {
     paused_navi: super::rules::PausedNavi,
     timers_while_paused: bool,
     idle_stands: bool,
+    link_body_damage: Option<super::rules::LinkBodyDamage>,
 }
 
 /// The `fresh_stats` section but its weapon (`mode9_a`, a definition) and
@@ -465,6 +468,7 @@ impl Stated {
                 paused_navi: r.paused_navi,
                 timers_while_paused: r.status_timers_while_paused,
                 idle_stands: r.idle_stands,
+                link_body_damage: r.link_body_damage,
             }),
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
@@ -517,6 +521,7 @@ impl Stated {
             paused_navi: status.paused_navi,
             status_timers_while_paused: status.timers_while_paused,
             idle_stands: status.idle_stands,
+            link_body_damage: status.link_body_damage,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
                 no_charge_drive: status.no_charge_drive,
@@ -682,9 +687,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         carries_by_move,
                         cleared_by,
                         doubles,
+                        damage_shift: rule.damage_shift,
                         unbreakable: rule.unbreakable,
                         traps: rule.traps,
-                        crumbles: rule.crumbles,
                     });
                 }
                 if types.len() > 16 {
@@ -709,6 +714,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 let names = s.numbers.clone();
                 stated.panels = Some(PanelRules {
                     types,
+                    cycle: s.cycle,
                     names,
                     roles,
                     start_visible: s.start_visible,

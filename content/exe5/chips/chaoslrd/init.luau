@@ -7,6 +7,7 @@
 -- saves, as a gift chip's in EXE6.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "X" },
@@ -21,7 +22,10 @@ local chip: Chip = {
     flags = { "dimming", "has_damage" },
     slot_in_limit = 1,
     art_palette = { 0x0000, 0x773A, 0x5AB9, 0x657F, 0x587A, 0x0173, 0x127A, 0x1D9B, 0x0099, 0x0031, 0x0D0D, 0x18C8, 0x1C25, 0x556F, 0x34C6, 0x76A6 },
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "chaoslrd/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 

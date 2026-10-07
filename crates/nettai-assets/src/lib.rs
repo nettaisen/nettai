@@ -456,6 +456,12 @@ pub struct HudLayout {
     /// The priority the HP numbers under objects are drawn at (EXE6's
     /// `sub_801C202`: 2; EXE4's 0x08014EB8: 1).
     pub hp_number_priority: u8,
+    /// The priority of the HUD's layer, BG3: the HP box, the gauge and
+    /// the custom screen (EXE6's 1; EXE4's 0, 0x08006AD4's BG3CNT 0x1F00,
+    /// so the custom screen covers the HP numbers' priority 1 there). The
+    /// custom screen's sprites (its cursors, the element, the emblem, the
+    /// chips flying) are drawn at it too: EXE4's cursor and element at 0.
+    pub hud_priority: u8,
     /// Where a message ("COUNTER HIT!") is laid: its first column and its
     /// row, and how many glyphs wide (EXE6's `sub_801E270`: from column 7,
     /// row 2, 17; EXE4's 0x08015FE8: from column 8, row 2, 14).
@@ -485,6 +491,7 @@ impl Default for HudLayout {
         HudLayout {
             pause: (100, 63),
             hp_number_priority: 2,
+            hud_priority: 1,
             message: (7, 2, 17),
             judge_from_hold: false,
             chatbox_text: (0x33, 0x6C),

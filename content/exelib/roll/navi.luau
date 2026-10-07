@@ -1,24 +1,31 @@
 --!strict
--- Roll, the navi of the Roll chips, as EXE6 and EXE5 share her (the original's actor object #0x2C: EXE6's `sub_80C07BC`,
--- EXE5's 0x080C06A4, the same code but for the parts each game passes), brought by their navi chip controller. She
--- fades in over her user's panel; warps up and down in front of the nearest enemy navi ahead (`sub_80C0C9A`); whips
--- it three times (a hit region 10 ticks apart, with her ribbon out); warps up and away; warps her user back in
--- herself; and drops a heart on her user's panel (the game's heart) that heals three times her damage. Then she
--- goes, and the controller moves on. With no enemy navi ahead she leaves at once. (The controller skips the user's
--- warp back in for her: she brings it herself.) See docs/engine/chips.md §3.6.20.
+-- Roll, the navi of the Roll chips, as EXE6 and EXE5 share her (the original's actor object #0x2C: EXE6's
+-- `sub_80C07BC`, EXE5's 0x080C06A4, the same code but for the parts each game passes), brought by their navi chip
+-- controller. She fades in over her user's panel; warps up and down in front of the nearest enemy navi ahead
+-- (`sub_80C0C9A`); whips it three times (a hit region 10 ticks apart, with her ribbon out); warps up and away; warps
+-- her user back in herself; and drops a heart on her user's panel (the game's heart) that heals three times her damage.
+-- Then she goes, and the controller moves on. With no enemy navi ahead she leaves at once. (The controller skips the
+-- user's warp back in for her: she brings it herself.) See docs/engine/chips.md §3.6.20.
 --
 -- Each game makes its own kind (`roll.make`): her sprite and sounds, her warp's sparkle, her ribbon, her heart, and
 -- the controller's address her position takes; and EXE5's additions: what more she does as she appears, how she
 -- finds her target in the own-gauges mode, and what more she does as her heart drops.
+--
+-- EXE4's Roll (its actor #0x2C, 0x080C151C) is this code with EXE4's differences as the spec's: her vanish's and
+-- wind-up's animations; her spawner (0x080C1B30), which keeps neither her user nor its facing, her height its side;
+-- her init keeping that height; her ribbon in her first related slot; what her landing panel must be free of, by
+-- side, her user's panel no exception; her user warped back in by side (0x080E2D26); her heart on her side's navi's
+-- panel, healing three times the damage's low 14 bits; and her palette by her level (0x0800B950), a summon's.
 
 local panels = require("../panels")
 local regions = require("../regions")
+local slot = require("../slot")
 
 -- What a chip summons her with (the chips' first parameter picks them): her whip's rounds of three hits (1; 3 for
 -- the parameter 5, which no chip has) and her palette (EXE6's Roll3's, EXE5's RollDS's is 1); EXE5's: the parameter
 -- (the chip's level: 0, 3 for SP, 4 for DS), which its additions read, and what her ribbon's palette adds (RollDS's
--- 1).
-export type Summon = { rounds: number, palette: number, level: number?, ribbon_palette: number? }
+-- 1); EXE4's: what her heart adds to her side's mood (its spec's `heart_dropped` reads it).
+export type Summon = { rounds: number, palette: number, level: number?, ribbon_palette: number?, mood: number? }
 
 export type Spec = {
     -- The kind's id.
@@ -49,6 +56,24 @@ export type Spec = {
     appeared: ((me: Object) -> ())?,
     tracked_target: ((me: Object) -> (number, number))?,
     heart_dropped: ((me: Object) -> ())?,
+    -- EXE4's (nil: EXE6's and EXE5's). Her vanish's animation (2) and her whip's wind-up animation (3).
+    vanish_anim: number?,
+    wind_up_anim: number?,
+    -- Her spawner keeps neither her user (related1) nor its facing, and her height is her side (the spawner's r3,
+    -- which her init keeps): EXE4's 0x080C1B30.
+    summoned_alone: boolean?,
+    -- Where her ribbon is kept ("held", ExtraVars+0x0C; EXE4's "related", +0x4C).
+    ribbon_slot: Slot?,
+    -- What a panel she lands on must be free of, by her side (0x0F80_0000 for both), and whether her user's panel
+    -- counts as free anyway (true).
+    occupied: { [number]: number }?,
+    user_panel_free: boolean?,
+    -- Her user warping back in (EXE6's and EXE5's: her related1's, `sub_80E1332`).
+    recall: ((me: Object) -> ())?,
+    -- Her heart: who it is for and where it drops (EXE6's and EXE5's: her user, on its panel when the chip was used;
+    -- nil, none), and the bits of her damage it heals three times (0x7FF; doubled with 0x8000 set).
+    heart_at: ((me: Object) -> (Object?, number, number))?,
+    heal_mask: number?,
 }
 
 export type Roll = {
@@ -80,6 +105,8 @@ export type State = {
     -- EXE5's: her chip's level (Param1) and what her ribbon's palette adds.
     level: number,
     ribbon_palette: number,
+    -- EXE4's: what her heart adds to her side's mood (her chip's).
+    mood: number,
 }
 
 local roll = {}
@@ -90,7 +117,7 @@ local FADE_GRAY = 0x1F
 -- What she looks for (`off_80C0D90`: an enemy navi's body), and what a
 -- panel she lands on must be free of (as words).
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
-local OCCUPIED = 0x0F80_0000
+local OCCUPIED = { [0] = 0x0F80_0000, 0x0F80_0000 }
 
 -- How high she warps (Z's whole part), and how fast (16.16).
 local WARP_HEIGHT = 0xA0
@@ -100,12 +127,13 @@ local WARP_SPEED = 0xF_0000
 -- (on a free panel, or her user's), nearest column first. Its tie-break
 -- compares the candidate's row with the best's row distance, as the game
 -- does. 0 if none.
-local function target(me: Object): (number, number)
+local function target(me: Object, spec: Spec): (number, number)
     local found = panels.filtered_except(me, ENEMY_NAVI[me.alliance], 0)
     if #found == 0 then
         return 0, 0
     end
-    local user = me.related1 :: Object
+    local occupied = (spec.occupied or OCCUPIED)[me.alliance]
+    local user_panel_free = spec.user_panel_free ~= false
     local right = bit32.bxor(me.alliance, me.flip) == 0
     local candidates = {}
     for _, p in found do
@@ -113,7 +141,8 @@ local function target(me: Object): (number, number)
         local ahead = if right then x > me.panel_x else me.panel_x > x
         if ahead then
             local lx = x - me.facing
-            if (lx == user.panel_x and y == user.panel_y) or field.check(lx, y, 0, OCCUPIED) then
+            local user = if user_panel_free then me.related1 :: Object else nil
+            if (user and lx == user.panel_x and y == user.panel_y) or field.check(lx, y, 0, occupied) then
                 table.insert(candidates, { lx, y })
             end
         end
@@ -231,7 +260,7 @@ function roll.make(spec: Spec): Roll
         if spec.tracked_target and battle.own_gauges() then
             x, y = spec.tracked_target(me)
         else
-            x, y = target(me)
+            x, y = target(me, spec)
         end
         if x == 0 then
             me:set_action(0xC)
@@ -242,11 +271,12 @@ function roll.make(spec: Spec): Roll
         me.phase, me.phase_init = 4, 0
     end
 
-    -- `sub_80C0956` / `sub_80C0B90`: animation 2, her warp's sound; 5 ticks, then
-    -- hidden (true).
+    -- `sub_80C0956` / `sub_80C0B90`: animation 2 (EXE4's 4), her warp's sound; 5
+    -- ticks, then hidden (true).
+    local vanish_anim = spec.vanish_anim or 2
     local function vanish(me: Object): boolean
         if me.phase_init == 0 then
-            me.anim, me.anim_loaded = 2, 0
+            me.anim, me.anim_loaded = vanish_anim, 0
             battle.play_sound(spec.warp)
             me.timer = 5
             me.phase_init = 4
@@ -342,15 +372,18 @@ function roll.make(spec: Spec): Roll
     end
 
     -- Action 8 (`sub_80C0A4C`): the whipping.
-    -- `sub_80C0A6C`: animation 3; 9 ticks.
+    -- `sub_80C0A6C`: animation 3 (EXE4's 10); 9 ticks.
+    local wind_up_anim = spec.wind_up_anim or 3
     local function wind_up(me: Object)
         if me.phase_init == 0 then
-            me.anim = 3
+            me.anim = wind_up_anim
         end
         if countdown(me, 9) then
             me.phase, me.phase_init = 4, 0
         end
     end
+
+    local ribbon_slot: Slot = spec.ribbon_slot or "held"
 
     -- `sub_80C0A90`: her ribbon out; a hit on the panel ahead every 10 ticks,
     -- three to a round (a round, or as many as her chip gives), the whip swishing
@@ -362,7 +395,7 @@ function roll.make(spec: Spec): Roll
             local ribbon = spec.attach(
                 me,
                 spec.ribbon,
-                "held",
+                ribbon_slot,
                 { anim = spec.ribbon_anim, while_dimmed = true, palette_add = s.ribbon_palette }
             )
             if ribbon then
@@ -406,8 +439,8 @@ function roll.make(spec: Spec): Roll
     -- `sub_80C0B4A`: her ribbon away (its slot cleared); 10 ticks.
     local function rest(me: Object)
         if me.phase_init == 0 then
-            me.anim = 0;
-            (me.state :: State).held = nil
+            me.anim = 0
+            slot.fill(me, ribbon_slot, nil)
         end
         if countdown(me, 0xA) then
             me:set_action(0xC)
@@ -431,24 +464,40 @@ function roll.make(spec: Spec): Roll
     -- `sub_80C0C20`: 10 ticks, then her user warps back in.
     local function recall(me: Object)
         if countdown(me, 0xA) then
-            navi_chip.warp(me.related1 :: Object, false)
+            if spec.recall then
+                spec.recall(me)
+            else
+                navi_chip.warp(me.related1 :: Object, false)
+            end
             me.phase, me.phase_init = 4, 0
         end
     end
 
-    -- `sub_80E199A`: the heal: three times her damage (with its double flag,
-    -- six).
+    -- `sub_80E199A`: the heal: three times her damage's low 11 bits (EXE4's 14),
+    -- doubled first with its double flag.
+    local heal_mask = spec.heal_mask or 0x7FF
     local function heal_amount(damage: number): number
-        local d = bit32.band(damage, 0x87FF)
-        local n = if bit32.band(d, 0x8000) ~= 0 then bit32.band(d, 0x7FFF) * 2 else bit32.band(d, 0x7FFF)
+        local n = bit32.band(damage, heal_mask)
+        if bit32.btest(damage, 0x8000) then
+            n *= 2
+        end
         return n * 3
     end
+
+    -- Her heart's user and panel: her user's, on its panel when the chip was used.
+    local function home(me: Object): (Object?, number, number)
+        local s = me.state :: State
+        return me.related1, s.home_x, s.home_y
+    end
+    local heart_at = spec.heart_at or home
 
     -- `sub_80C0C48`: her heart on her user's panel; 90 ticks, then she goes.
     local function drop_heart(me: Object)
         if me.phase_init == 0 then
-            local s = me.state :: State
-            spec.heart(me.related1 :: Object, s.home_x, s.home_y, heal_amount(me.damage))
+            local user, x, y = heart_at(me)
+            if user then
+                spec.heart(user, x, y, heal_amount(me.damage))
+            end
             if spec.heart_dropped then
                 spec.heart_dropped(me)
             end
@@ -494,8 +543,10 @@ function roll.make(spec: Spec): Roll
         me.anim_loaded = 0
         sprite:set_animation(0)
         me:set_coordinates_from_panel()
-        local p = me.pos
-        me.pos = Vec3.new(p.x, p.y, 0)
+        if not spec.summoned_alone then
+            local p = me.pos
+            me.pos = Vec3.new(p.x, p.y, 0)
+        end
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         sprite.palette = (me.state :: State).palette
         sprite.color_shader = 0x7FFF
@@ -529,6 +580,7 @@ function roll.make(spec: Spec): Roll
             target_y = "u8",
             level = "u8",
             ribbon_palette = "u8",
+            mood = "u8",
         },
         -- `sub_80C07BC`.
         update = function(me: Object)
@@ -548,21 +600,29 @@ function roll.make(spec: Spec): Roll
     -- element.)
     local function summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
         return function(user: Object, controller: Object, nspec: NaviChipSpec): Object?
-            local o = battle.spawn(kind, Vec3.new(nspec.panel_y, nspec.element, spec.spawner_address))
+            local alone = spec.summoned_alone == true
+            local z = if alone then user.alliance else spec.spawner_address
+            local o = battle.spawn(kind, Vec3.new(nspec.panel_y, nspec.element, z))
             if not o then
                 return nil
             end
             o.panel_x, o.panel_y = nspec.panel_x, nspec.panel_y
             local s = o.state :: State
             s.home_x, s.home_y = nspec.panel_x, nspec.panel_y
-            o.alliance, o.flip = user.alliance, user.flip
+            o.alliance = user.alliance
+            if not alone then
+                o.flip = user.flip
+            end
             o:set_damage_word(nspec.damage)
-            o.related1 = user
+            if not alone then
+                o.related1 = user
+            end
             s.controller = controller
             s.whip_rounds = args.rounds
             s.palette = args.palette
             s.level = args.level or 0
             s.ribbon_palette = args.ribbon_palette or 0
+            s.mood = args.mood or 0
             return o
         end
     end

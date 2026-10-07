@@ -23,8 +23,22 @@
 "bub-v/action" = 0x1E
 "bublside/action" = 0x1E
 # The throws' (the chips' action 0x09, 0x080EB3FE).
+"ball/action" = 0x09
+"binder1/action" = 0x09
+"binder2/action" = 0x09
+"binder3/action" = 0x09
 "darkbomb/action" = 0x09
+"geyser/action" = 0x09
+"energbom/action" = 0x09
+"megenbom/action" = 0x09
 "minibomb/action" = 0x09
+"seekbom1/action" = 0x09
+"seekbom2/action" = 0x09
+"seekbom3/action" = 0x09
+# The Thunders' (the chips' action 0x26, 0x080ECE14).
+"thunder1/action" = 0x26
+"thunder2/action" = 0x26
+"thunder3/action" = 0x26
 # The swords' (the chips' action 0x0A, 0x080EB51E).
 "drksword/action" = 0x0A
 "sword/action" = 0x0A
@@ -50,6 +64,40 @@
 "atk-10/action" = 0x20
 "atk-30/action" = 0x20
 "navi-20/action" = 0x20
+"meteors1/action" = 0x20
+"meteors2/action" = 0x20
+"meteors3/action" = 0x20
+"boomer1/action" = 0x20
+"boomer2/action" = 0x20
+"boomer3/action" = 0x20
+"repair/action" = 0x20
+"fullcust/action" = 0x20
+"ligtnin1/action" = 0x20
+"ligtnin2/action" = 0x20
+"ligtnin3/action" = 0x20
+"aquaup1/action" = 0x20
+"aquaup2/action" = 0x20
+"aquaup3/action" = 0x20
+"greenwd1/action" = 0x20
+"greenwd2/action" = 0x20
+"greenwd3/action" = 0x20
+"counter1/action" = 0x20
+"counter2/action" = 0x20
+"counter3/action" = 0x20
+"mokorus1/action" = 0x20
+"mokorus2/action" = 0x20
+"mokorus3/action" = 0x20
+"sidbmbo1/action" = 0x20
+"sidbmbo2/action" = 0x20
+"sidbmbo3/action" = 0x20
+"whitweb1/action" = 0x20
+"whitweb2/action" = 0x20
+"whitweb3/action" = 0x20
+"elemflar/action" = 0x60
+"elemice/action" = 0x60
+"elemleaf/action" = 0x60
+"elemsand/action" = 0x60
+"elemdark/action" = 0x60
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D

@@ -28,8 +28,18 @@ function patch_cards.run(side: number, stats: Navi, work: PatchCardWork, counts:
     for slot = patch_cards.SLOTS - 1, 0, -1 do
         local card = slots[slot]
         if card ~= nil then
-            for _, e in card.effects do
-                cards.apply(stats, e, work, counts)
+            for _, e in card.effects :: { PatchCardEffect } do
+                local pair = e.pair
+                if pair == nil then
+                    cards.apply(stats, e, work, counts)
+                else
+                    local other = slots[pair.slot]
+                    if other ~= nil and other.id == pair.card and not cards.holds(stats, pair.effects[1]) then
+                        for _, inner in pair.effects do
+                            cards.apply(stats, inner, work, counts)
+                        end
+                    end
+                end
             end
             stats.max_hp = bit32.band(stats.max_base_hp + work.hp, 0xFFFF)
         end

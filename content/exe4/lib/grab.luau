@@ -31,29 +31,14 @@ local function closest_of_side(side: number, y: number): number
     return panels.closest_in_row(side, y, own.require, own.forbid)
 end
 
--- 0x0800A1E4: AreaGrab's column, the other side's panels' front-most across the rows (each row's closest of that side
--- from its far edge): the least of them for a user of side 0, the greatest for side 1; none without one.
+-- 0x0800A1E4 (@exelib/panels' `front_most`): AreaGrab's column, the other side's panels' front-most across the rows
+-- (each row's closest of that side from its far edge): the least of them for a user of side 0, the greatest for side
+-- 1; none without one.
 local function column(me: Object): number?
     local other = bit32.bxor(me.alliance, 1)
-    local found: { number } = {}
-    for y = 1, 3 do
-        local x = closest_of_side(other, y)
-        if x ~= 0 then
-            table.insert(found, x)
-        end
-    end
-    if #found == 0 then
-        return nil
-    end
-    local x = found[1]
-    for i = 2, #found do
-        if other == 0 then
-            x = math.max(x, found[i])
-        else
-            x = math.min(x, found[i])
-        end
-    end
-    return x
+    local own = OWN[other]
+    local x = panels.front_most(other, own.require, own.forbid)
+    return if x ~= 0 then x else nil
 end
 
 -- 0x080E1FB6: PanelGrab's panel, the one past the user's side's front in the user's row, if it is on the field.

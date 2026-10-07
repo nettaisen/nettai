@@ -9,7 +9,6 @@
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
-local follow_effect = require("./follow_effect")
 
 return common.make {
     id = "deltaray/navi",
@@ -32,9 +31,8 @@ return common.make {
     self_type = collision.slash,
     target = collision.hits_navis,
     finish_anim = 0x11,
-    burst = function(owner: Object, pos: Vec3, flip: number): Object?
-        return follow_effect.spawn(owner, pos, follow_effect.looks.burst, flip)
-    end,
+    -- His bursts (the follow effect's look 4, 0x080E3E3C, which isn't shown as he is).
+    burst = { id = "deltaray/burst", sprite = asset.sprite("follow-effect"), copies_visibility = false },
     flashes = false,
     candidate_x = common.plus_one,
     tracks = true,
