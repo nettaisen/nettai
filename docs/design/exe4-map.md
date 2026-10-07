@@ -358,7 +358,7 @@ Double Soul button and its window (the selection's states 0xC and 0x10).
   DrkVulcn: 720 ticks of confusion (status 0x21). DrkLance: the custom drain (+0x0F: 6, else 4 up to 6, else 3).
   DrkSpred: the panel trail, poison (+0x1B = 4). DrkStage: the custom level one less, down to 2. DrkRecov: the custom
   drain as DrkLance's and the HP drain (+0x0E: 10, else 6 up to 10, else 3). The mood: none (a mood of 0 stays).
-- **The chips**: on the families group A wrote with every branch (lib/cannons 0x0B, lib/swords 0x0A, lib/bombs 0x09,
+- **The chips**: on the families group A wrote with every branch (lib/cannon 0x0B on @exelib/cannon, lib/swords 0x0A, lib/bombs 0x09,
   lib/vulcans 0x1F, lib/spreaders 0x1E, lib/recov 0x1D (on @exelib/recov/heal), lib/spawners 0x20 with chips/lance/lance (on @exelib/lance), and the dimming
   action 0x0C with DrkStage's controller, effect #0x6A, and the panel changer, effect #0x1F), each chip composing its
   variant's rows. DrkStage is EXE4's first dimming chip: its telop runs as banner 0 (the roles' `telop`, item 71).
@@ -1347,7 +1347,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
-    from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannons). Wire
+    from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
     them with the souls (item 25).
 71. **The telops' two blocks.** EXE4 lays the user's telop on the banner block (0x08016454, HUD task 0x100) and the
     other player's on the second block (0x080164B4, task 0x8000), each in the banners' steps; the engine runs both on
