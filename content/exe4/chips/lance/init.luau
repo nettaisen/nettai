@@ -1,0 +1,27 @@
+--!strict
+-- Lance (EXE4 chip 0x051): the spawners' action 0x20, its variant 6: three lances in the far column (objects/lance),
+-- its parameters' first byte 0, their first palette.
+
+local lance = require("../objects/lance")
+local spawners = require("../lib/spawners")
+
+local chip: Chip = {
+    codes = { "A", "G", "R", "*" },
+    element = "wood",
+    family = "wood",
+    class = "standard",
+    rarity = 3,
+    mb = 42,
+    damage = 130,
+    hit_param = 50,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    action = spawners.action {
+        id = "lance/action",
+        spawn = function(user: Object, element: number, damage: number)
+            lance.thrust(user, element, 0, damage)
+        end,
+    },
+}
+
+return { lance = chip }

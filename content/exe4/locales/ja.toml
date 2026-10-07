@@ -7,6 +7,7 @@ language = "ja"
 "cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"lance" = { name = "バンブーランス", description = "てきエリアの右はし\nたてれつにとつぜん\nたけやりが発生!" }
 "recov10" = { name = "リカバリー10", description = "HPを10\nかいふくする" }
 "recov30" = { name = "リカバリー30", description = "HPを30\nかいふくする" }
 "recov50" = { name = "リカバリー50", description = "HPを50\nかいふくする" }
