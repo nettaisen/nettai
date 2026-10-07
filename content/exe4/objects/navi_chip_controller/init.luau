@@ -7,6 +7,7 @@
 -- `controller.hook_for(level, which)`.
 
 local deltaray = require("../chips/deltaray/navi")
+local junkman = require("../chips/junkman/navi")
 local metalman = require("../chips/metalman/navi")
 local navi_chips = require("../lib/navi_chips")
 local protoman = require("../chips/protoman/navi")
@@ -20,6 +21,7 @@ local NAVIS: { [number]: (controller: Object, user: Object, damage: number) -> O
     [8] = protoman.spawn,
     [0xC] = deltaray.spawn,
     [0x10] = metalman.spawn,
+    [0x14] = junkman.spawn,
 }
 
 -- 0x080E6AA6: the navi the chip's third parameter names.

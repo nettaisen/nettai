@@ -194,6 +194,9 @@ mega = [
     "metalman",
     "metlmn-sp",
     "metlmn-ds",
+    "junkman",
+    "junkmn-sp",
+    "junkmn-ds",
 ]
 giga = [
     "deltaray",

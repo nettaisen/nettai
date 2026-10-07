@@ -82,6 +82,9 @@ language = "en"
 "metalman" = { name = "MetalMan", description = "Iron fist\ncrushes\n1sq ahead" }
 "metlmn-sp" = { name = "MetlMnSP", description = "Iron fist\ncrushes\n1sq ahead" }
 "metlmn-ds" = { name = "MetlMnDS", description = "Iron fist\ncrushes\n1sq ahead" }
+"junkman" = { name = "JunkMan", description = "Throw any\nobjects\non field" }
+"junkmn-sp" = { name = "JunkMnSP", description = "Throw any\nobjects\non field" }
+"junkmn-ds" = { name = "JunkMnDS", description = "Throw any\nobjects\non field" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

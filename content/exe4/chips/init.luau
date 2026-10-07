@@ -29,6 +29,7 @@ return merge {
     require("@self/greenwd"),
     require("@self/heatshot"),
     require("@self/invalid"),
+    require("@self/junkman"),
     require("@self/lance"),
     require("@self/ligtnin"),
     require("@self/metalman"),

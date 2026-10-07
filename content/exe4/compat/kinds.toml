@@ -62,5 +62,7 @@
 "thunman/navi" = { pool = "actor", index = 0x37 }
 "thunman/thunder" = { pool = "attack", index = 0x71 }
 "metalman/navi" = { pool = "actor", index = 0x40 }
+"junkman/navi" = { pool = "actor", index = 0x48 }
+"junkman/poltergeist" = { pool = "effect", index = 0x73 }
 # The follow effect (0x080E5B34): DeltaRay's burst.
 "follow-effect" = { pool = "effect", index = 0x31 }
