@@ -91,4 +91,10 @@ return {
     cursor_after_leaving = true,
     -- The frame (the cursor's blink) counts after what the choosing draws, as EXE6's.
     frame_counts_first = false,
+    -- The description and L's message are the screen's own states, as EXE6's: they draw only the emblem.
+    description_in_choosing = false,
+    -- The chatbox's end clears the text's buffers only, as EXE6's: the text goes with the box's first closing step.
+    chatbox_end_clears_tiles = false,
+    -- The interpreter goes on after a character, as EXE6's: its delay counts down on its own tick.
+    chatbox_character_ends_tick = false,
 }
