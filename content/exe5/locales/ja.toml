@@ -392,6 +392,30 @@ language = "ja"
 "toadsoul" = { name = "トードソウル" }
 "tomahawksoul" = { name = "トマホークソウル" }
 
+[backgrounds]
+"acdc-area" = { name = "秋原エリア" }
+"comp" = { name = "電脳" }
+"comp-alt" = { name = "電脳 (別色)" }
+"dexs-hp" = { name = "デカオのHP" }
+"drill-comp" = { name = "さくがんきの電脳" }
+"end-area" = { name = "エンドエリア" }
+"factory-comp" = { name = "ファクトリーの電脳" }
+"gargcastle-hp" = { name = "シャチホコ城のHP" }
+"gargoyle-comp" = { name = "シャチホコの電脳" }
+"lans-hp" = { name = "熱斗のHP" }
+"main-comp" = { name = "メインシステムの電脳" }
+"mayls-hp" = { name = "メイルのHP" }
+"nebula-area" = { name = "ネビュラホールエリア" }
+"nebulagray" = { name = "ネビュラグレイ" }
+"oran-area" = { name = "オラン島エリア" }
+"scilab-area" = { name = "科学省エリア" }
+"scilab-hp" = { name = "科学省のHP" }
+"ship-comp" = { name = "ごうかきゃくせんの電脳" }
+"soulserv-comp" = { name = "ココロサーバーの電脳" }
+"undernet" = { name = "ウラインターネット" }
+"visionburst" = { name = "パストビジョン" }
+"yais-hp" = { name = "やいとのHP" }
+
 [navicust_programs]
 "airshoes" = { name = "エアシューズ", description = "パネルのないマスでも\nいどうできる!" }
 "antidmg" = { name = "カワリミマジック", description = "B+左のコマンドで\n攻撃をうけたふりして\nしゅりけんをなげる!" }
