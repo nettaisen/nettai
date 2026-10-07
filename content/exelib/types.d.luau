@@ -71,6 +71,15 @@ export type ShooterLook = {
     more_afterimages: ((me: Object, flip: number) -> ())?,
 }
 
+-- A game's cannons (@exelib/cannon): a shooter's look and the navi's animations as it raises the cannon and lowers it
+-- (EXE6's and EXE5's 8 and 7; EXE4's 9 and 8); a GigaCan's afterimages in place of the two (EXE4's 0x080EB8BE: the
+-- navi's first, its cannon where the navi stands, then a soul's part), by the navi's flip.
+export type CannonLook = ShooterLook & {
+    raise_anim: number,
+    lower_anim: number,
+    afterimages: ((me: Object, spec: CannonSpec, flip: number) -> ())?,
+}
+
 -- A game's throw (@exelib/bombs/throw): the wind-up's sound, and its attachment kind (what the navi holds).
 export type ThrowLook = { sound: Sound, attachment: Kind }
 
