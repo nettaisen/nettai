@@ -6,7 +6,7 @@
 -- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local bullet = require("../objects/bullet")
-local vulcans = require("../lib/vulcans")
+local vulcan = require("./vulcan/vulcan")
 
 local drkvulcn: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -19,9 +19,9 @@ local drkvulcn: Chip = {
     hit_param = 2,
     lockout = 0,
     flags = { "has_damage", "dark" },
-    action = vulcans.action {
+    action = vulcan.action {
         id = "drkvulcn/action",
-        gun = vulcans.dark_gun,
+        gun = vulcan.guns.dark,
         shots = 24,
         shot = bullet.variants.dark_vulcan,
     },
