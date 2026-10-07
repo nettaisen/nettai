@@ -79,6 +79,15 @@ pub struct Part {
     pub compressed: bool,
 }
 
+/// A NaviCust list as the save keeps it (25 entries of 8 bytes: the part id,
+/// 0 none; its column, row, rotation and compression flag at +2 to +5).
+pub fn parts(list: &[u8]) -> [Option<Part>; NAVICUST_PARTS] {
+    std::array::from_fn(|i| {
+        let p = &list[8 * i..8 * i + 8];
+        (p[0] != 0).then_some(Part { id: p[0], column: p[2], row: p[3], rotation: p[4], compressed: p[5] != 0 })
+    })
+}
+
 /// A Mod Card slot's card and whether it is on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ModCard {
@@ -185,10 +194,7 @@ impl Save {
 
     /// The NaviCust's list (an entry with no part: none).
     pub fn navicust(&self) -> [Option<Part>; NAVICUST_PARTS] {
-        std::array::from_fn(|i| {
-            let p = &self.image[NAVICUST + 8 * i..NAVICUST + 8 * i + 8];
-            (p[0] != 0).then_some(Part { id: p[0], column: p[2], row: p[3], rotation: p[4], compressed: p[5] != 0 })
-        })
+        parts(&self.image[NAVICUST..NAVICUST + 8 * NAVICUST_PARTS])
     }
 
     /// The NaviCust's grid, row by row: a cell's part, by its entry in the

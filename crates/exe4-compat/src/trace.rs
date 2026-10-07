@@ -635,6 +635,17 @@ impl Round {
             return Err("the content has no rules (EXE4's)".into());
         }
         let local = d.local();
+        // A recording with its NaviCusts has the rules compile them (rules/navicust) over the stats the reload
+        // starts from; the Mod Cards aren't ported yet (exe4-map.md §18), so a recording with one on is refused.
+        if let Some(cards) = &self.setup.mod_cards {
+            for (side, c) in cards.iter().enumerate() {
+                if let Some(&n) = unhex(&c.on)?.iter().find(|&&n| n != 0xFF) {
+                    return Err(format!("side {side}'s Mod Card {n}: not ported yet (docs/design/exe4-map.md §18)"));
+                }
+            }
+        }
+        let compiled = self.setup.navicusts.is_some();
+        let side_stats = |side: usize| if compiled { reset(content, compat, &d.navi_stats[side]) } else { navi_stats(content, compat, &d.navi_stats[side]) };
         let players = [0usize, 1].map(|side| -> Result<PlayerSetup, String> {
             let regular = match self.setup.regular_flags {
                 Some(r) => r[side] != 0,
@@ -654,7 +665,7 @@ impl Round {
                 },
                 rules: None,
             };
-            let stats = navi_stats(content, compat, &d.navi_stats[side])?;
+            let stats = side_stats(side)?;
             player.set_fact(content, "navi", &[Fact::Value(Value::Def(Registry::Navi, stats.navi.0))])?;
             // What the save brings to the stats (EXE4's rules/save): the base
             // HP, which the rules write into the HP.
@@ -663,13 +674,22 @@ impl Round {
             // (EXE4's rules/light_dark: the starting mood).
             player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
             player.set_fact(content, "full_synchro_start", &[Fact::Value(Value::Bool(d.navi_stats[side].full_synchro))])?;
+            // His save's NaviCust, which the rules compile (rules/navicust).
+            if let Some(n) = &self.setup.navicusts {
+                let list = unhex(&n[side].parts)?;
+                if list.len() != 8 * crate::save::NAVICUST_PARTS {
+                    return Err(format!("side {side}'s NaviCust list has {} bytes", list.len()));
+                }
+                let programs = crate::setup::navicust(content, compat, &crate::save::parts(&list))?;
+                player.set_fact(content, "navicust_programs", &programs)?;
+            }
             Ok(player)
         });
         let [p0, p1] = players;
         Ok(RoundSetup {
             content: content.hash(),
             settings,
-            navi_stats: [navi_stats(content, compat, &d.navi_stats[0])?, navi_stats(content, compat, &d.navi_stats[1])?],
+            navi_stats: [side_stats(0)?, side_stats(1)?],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
             score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
@@ -750,6 +770,12 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         }
     }
     stats.mood = s.mood;
+    stats.super_armor = s.super_armor;
+    stats.float_shoes = s.float_shoes;
+    stats.air_shoes = s.air_shoes;
+    stats.undershirt = s.undershirt;
+    stats.set_game_stat(content, "weapon_level", Value::Int(s.weapon_level as i64))?;
+    stats.set_game_stat(content, "move_bug", Value::Int(s.move_bug as i64))?;
     stats.attack = s.attack;
     stats.rapid = s.rapid;
     stats.charge = s.charge;
@@ -769,6 +795,94 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.weapons.buster = Some(weapon(s.buster_weapon)?);
     stats.weapons.charge_shot = Some(weapon(s.charged_weapon)?);
     stats.weapons.back_special = s.back_special.map(weapon).transpose()?;
+    Ok(stats)
+}
+
+/// What the NaviCust and the Mod Cards compile into a side's stats (rules/navicust), as EXE4's block's bytes say
+/// them: the abilities (+0x01 to +0x04), the buster's levels and blanks (+0x05 to +0x08), the weapon level and the
+/// move bug (+0x0B, +0x0D), the drains (+0x0E, +0x0F), the custom level and chip limits (+0x12 to +0x14), the supports
+/// (+0x18), the panel trail (+0x1B), the max HP (+0x32).
+fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
+    let game = |name: &str| match s.game_stat(&b.content, name) {
+        Some(nettai_content_api::FieldValue::U8(n)) => n,
+        _ => 0,
+    };
+    let supports = match s.support {
+        None => 0xFF,
+        Some(n) => (n.rush as u8) | (n.beat as u8) << 1 | (n.tango as u8) << 2,
+    };
+    compiled_bytes(
+        [
+            s.super_armor as u8,
+            s.float_shoes as u8,
+            s.air_shoes as u8,
+            s.undershirt as u8,
+            s.attack,
+            s.rapid,
+            s.charge,
+            s.bugs.buster_blanks,
+            game("weapon_level"),
+            game("move_bug"),
+            s.bugs.hp_drain,
+            s.bugs.custom_drain,
+            s.custom_level,
+            s.mega_level,
+            s.giga_level,
+            supports,
+            s.bugs.panel_trail_kind,
+        ],
+        s.max_hp,
+    )
+}
+
+/// [`compiled`] of a recorded block.
+fn compiled_of(s: &NaviStats) -> String {
+    let b = &s.raw;
+    compiled_bytes(
+        [b[0x01], b[0x02], b[0x03], b[0x04], b[0x05], b[0x06], b[0x07], b[0x08], b[0x0B], b[0x0D], b[0x0E], b[0x0F], b[0x12], b[0x13], b[0x14], b[0x18], b[0x1B]],
+        s.max_hp,
+    )
+}
+
+fn compiled_bytes(v: [u8; 17], max_hp: u16) -> String {
+    const NAMES: [&str; 17] = [
+        "super armor",
+        "float shoes",
+        "air shoes",
+        "undershirt",
+        "attack",
+        "rapid",
+        "charge",
+        "blanks",
+        "weapon level",
+        "move bug",
+        "hp drain",
+        "custom drain",
+        "custom",
+        "mega",
+        "giga",
+        "supports",
+        "panel trail",
+    ];
+    let mut out: Vec<String> = NAMES.iter().zip(v).map(|(n, v)| format!("{n} {v:#04x}")).collect();
+    out.push(format!("max hp {max_hp}"));
+    out.join(", ")
+}
+
+/// A side's stats as EXE4's reload starts from them (0x08036CC0: the navi's
+/// fresh stats, keeping the mood and the light/dark value), with the save's
+/// HP and what the battle's start writes after the PET (the move lag's
+/// column, +0x25): what the rules compile a NaviCust over
+/// (rules/navicust), so that the round's stats are the compile's.
+pub fn reset(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
+    let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
+    let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
+    let mut stats = EngineNaviStats::fresh(navi, content).ok_or_else(|| format!("{navi_key} has no fresh stats"))?;
+    stats.mood = s.mood;
+    stats.navi_variant = s.move_lag_column;
+    stats.max_base_hp = s.max_base_hp;
+    stats.hp = s.hp;
+    stats.max_hp = s.max_base_hp;
     Ok(stats)
 }
 
@@ -830,6 +944,14 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
         let theirs = unhex(&banner.banner).ok().and_then(|x| x.get(1).copied());
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
         check("banner number", show(ours), show(theirs));
+    }
+    // What the NaviCust and the Mod Cards compile into each side's stats, where the frame has the blocks.
+    if let Some(blocks) = &f.navi_stats {
+        for (side, hex) in blocks.iter().enumerate() {
+            let Ok(raw) = unhex(hex) else { continue };
+            let Ok(raw) = <[u8; crate::codec::NAVI_STATS]>::try_from(raw.as_slice()) else { continue };
+            check(&format!("side {side}'s compiled stats"), compiled(b, &b.stats[side]), compiled_of(&crate::codec::navi_stats(&raw)));
+        }
     }
     // (A panel type the game numbers: its number in the rules' list.)
     let numbers = &b.content.rules().panels.numbers;
@@ -992,6 +1114,22 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             return replay;
         }
     };
+    // What the rules compiled from the recording's NaviCusts (rules/navicust), against the stats the console's
+    // reload left (the setup's blocks).
+    if round.setup.navicusts.is_some()
+        && let Ok(d) = decode_setup(&round.setup)
+    {
+        let differences: Vec<String> = (0..2)
+            .filter_map(|side| {
+                let (ours, theirs) = (compiled(&b, &b.stats[side]), compiled_of(&d.navi_stats[side]));
+                (ours != theirs).then(|| format!("side {side}'s compiled stats: ours {ours} theirs {theirs}"))
+            })
+            .collect();
+        if !differences.is_empty() {
+            replay.stopped = Some(Stop::Differs { frame: round.setup.frame, differences });
+            return replay;
+        }
+    }
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
