@@ -2611,9 +2611,6 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   EXE4's none).
 - **`status.timers_while_paused`, since EXE4's port**: whether a navi's status timers count while the battle is paused
   (EXE4's 0x0800AE58, before its navi takes control) or hold (EXE6's `sub_800E730`, EXE5's).
-- **`effects.destroy`, since EXE4's port**: what an object's destroy does with its collision before freeing it:
-  `frees` it as it is (EXE6's, after releasing what marked reservations hold; EXE5's), or `unregisters` it first
-  (EXE4's: `object_removeCollisionData`, its panels refreshed and its hits and clearings resolved on them).
 - **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
   poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
   EXE4's 0x23F5F (their sea's and metal's 0x20000 too).

@@ -964,11 +964,11 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       the one constant whatever the battle's mode (`mend = { normal = 600, battle_mode_1 = 600 }`, now asserted).
     - **Reservations:** EXE4's `object_reservePanel` (0x080143A8) marks the panel alone (no header flag 0x20 on the
       holder, as EXE5's), `reservations = "unmarked"`.
-    - **The destroy** (found here): EXE4's `object_genericDestroy` (0x080D8C58) unregisters the object's collision
-      (`object_removeCollisionData`, 0x080129FC: its panels refreshed, its hits and the panels it clears resolved on
-      them) before freeing it, where EXE6's releases its reservations and EXE5's (0x080138F2) frees it as it is
-      (its registrations stale on the panels until the slot is next registered). The rule `effects.destroy`
-      (`frees`, EXE6's and EXE5's; `unregisters`, EXE4's).
+    - **The destroy:** EXE4's objects end in 0x08010560 (the collision freed, then the object: EXE5's 0x080138F2's
+      steps; the state tables of over a hundred kinds hold it, the boulder's and the flag's among them), which releases
+      no reservation. The routine matched to EXE6's `object_genericDestroy`, 0x080D8C58, which unregisters the
+      collision first (`object_removeCollisionData`, 0x080129FC), is one kind's own (EXE6's `sub_80CFC08`'s
+      counterpart, 0x080D8BC8: its state table 0x080D8BDC), to port with it.
 
 ### 18.3 Flow, stages and the link
 
