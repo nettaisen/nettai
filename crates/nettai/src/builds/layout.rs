@@ -19,14 +19,17 @@
 //!
 //! The facts a build in the app never states are left out ([`at_defaults`]:
 //! what a save brings to the navi's stats, the SP navi times, the auto
-//! battle data's records): every build plays at the most its game allows,
-//! and states only what a player chooses ([`as_built`]).
+//! battle data's records, Chaos Unison): every build plays at the most its
+//! game allows, and states only what a player chooses ([`as_built`]). A
+//! fact stated as a preset ([`presets`]: EXE5's light or dark MegaMan) is a
+//! row of its presets, and the facts they set besides are left out too.
 
-use crate::builds::{auto, grid};
+use crate::builds::{auto, grid, presets};
 use nettai_battle::content::{Content, PlayerFact};
 use nettai_content_api::{Data, FieldType, Registry};
 use nettai_match::Side;
 use nettai_match::facts::{self, Field};
+use std::collections::BTreeMap;
 
 /// A tab of a build, by what it shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -61,11 +64,15 @@ impl Tab {
         }
     }
 
-    /// The setup fields it shows (their problems are its).
+    /// The setup fields it shows (their problems are its; a preset's row's,
+    /// those of the facts its presets set too).
     pub fn fields(&self, content: &Content, rows: &[String]) -> Vec<String> {
         let role = |r: PlayerFact| content.defs.fact_name(r).map(str::to_string);
         match self {
-            Tab::Navi => role(PlayerFact::Navi).into_iter().chain(rows.iter().cloned()).collect(),
+            Tab::Navi => {
+                let set = rows.iter().flat_map(|r| presets::others(content.game(), r));
+                role(PlayerFact::Navi).into_iter().chain(rows.iter().cloned()).chain(set).collect()
+            }
             Tab::Folder => [PlayerFact::Folder, PlayerFact::RegularChip, PlayerFact::TagChips].into_iter().filter_map(role).collect(),
             Tab::Grid => vec![grid::SIZE_FIELD.into(), grid::PIECES_FIELD.into()],
             Tab::Places => vec![auto::PLACES_FIELD.into()],
@@ -83,36 +90,54 @@ pub fn modules(content: &std::sync::Arc<Content>, game: &str, names: &[&str]) ->
     names.iter().map(|n| battle.as_ref().and_then(|b| b.module_data(&format!("{game}:{n}"))).and_then(Result::ok)).collect()
 }
 
-/// The facts a build in the app never states, by game: the app's own list
-/// (`crates/nettai/builds.toml`).
-fn listed_at_defaults(game: &str) -> Vec<String> {
-    #[derive(serde::Deserialize)]
-    struct Config {
-        at_defaults: std::collections::HashMap<String, Vec<String>>,
-    }
+/// The app's own data on its builds, by game (`crates/nettai/builds.toml`):
+/// the facts a build never states, and those it states as presets.
+#[derive(serde::Deserialize)]
+pub struct Config {
+    at_defaults: BTreeMap<String, Vec<String>>,
+    #[serde(default)]
+    pub presets: BTreeMap<String, BTreeMap<String, Vec<presets::Preset>>>,
+}
+
+pub fn config() -> &'static Config {
     static CONFIG: std::sync::OnceLock<Config> = std::sync::OnceLock::new();
-    let config = CONFIG.get_or_init(|| toml::from_str(include_str!("../../builds.toml")).expect("builds.toml reads"));
-    config.at_defaults.get(game).cloned().unwrap_or_default()
+    CONFIG.get_or_init(|| toml::from_str(include_str!("../../builds.toml")).expect("builds.toml reads"))
 }
 
 /// Whether fact `name` is one a build in the app never states, always the
 /// rules' default: the engine's level and base HP, and the facts the app
 /// lists for the game (`builds.toml`: the rest of what a save brings to the
-/// navi's stats, the SP navi times, the auto battle data's records).
+/// navi's stats, the SP navi times, the auto battle data's records), where
+/// no preset sets it ([`presets`]: EXE5's base HP, with its light or dark
+/// MegaMan).
 pub fn at_defaults(content: &Content, game: &str, name: &str) -> bool {
-    matches!(facts::role_of(content, name), Some(PlayerFact::Level | PlayerFact::BaseHp)) || listed_at_defaults(game).iter().any(|f| f == name)
+    let listed = config().at_defaults.get(game).is_some_and(|l| l.iter().any(|f| f == name));
+    (matches!(facts::role_of(content, name), Some(PlayerFact::Level | PlayerFact::BaseHp)) || listed) && !presets::set_by_another(game, name)
 }
 
-/// Whether a player states the fact in the creator.
+/// Whether a player states the fact in the creator (one stated as a preset
+/// among them, those its presets set besides not).
 pub fn stated_by_player(content: &Content, game: &str, name: &str) -> bool {
-    !at_defaults(content, game, name)
+    !at_defaults(content, game, name) && !presets::set_by_another(game, name)
+}
+
+/// What setting a side to what a build in the app is changed.
+#[derive(Clone, Debug, Default)]
+pub struct Built {
+    /// The facts set to the rules' defaults, by name (a place of the auto
+    /// battle data that pointed at a record emptied, a level stated).
+    pub reset: Vec<String>,
+    /// The facts set to a preset's.
+    pub taken: Vec<presets::Taken>,
+    /// Whether any fact changed.
+    pub changed: bool,
 }
 
 /// Set the side to what a build in the app is: its facts at defaults the
-/// rules' defaults, a navi that must have a level at its last, and, where
-/// the auto battle data's records are at defaults, no place pointing at
-/// one. The facts that changed, by name.
-pub fn as_built(content: &Content, game: &str, side: &mut Side) -> Vec<String> {
+/// rules' defaults, a navi that must have a level at its last, where the
+/// auto battle data's records are at defaults no place pointing at one, and
+/// each fact stated as a preset the preset its value is on the side of.
+pub fn as_built(content: &Content, game: &str, side: &mut Side) -> Built {
     let before = side.clone();
     for f in facts::fields(content) {
         if at_defaults(content, game, f.name) {
@@ -131,11 +156,14 @@ pub fn as_built(content: &Content, game: &str, side: &mut Side) -> Vec<String> {
         let last = n.levels.as_ref().map(|l| l.by_level.len().saturating_sub(1) as u8).or_else(|| nettai_match::story::max_level(content, navi));
         let _ = side.set_level(content, last.or(Some(0)));
     }
-    facts::fields(content)
+    let taken = presets::settle(content, game, side);
+    let changed: Vec<String> = facts::fields(content)
         .into_iter()
         .filter(|f| before.facts.get(content, f.name) != side.facts.get(content, f.name))
         .map(|f| f.name.to_string())
-        .collect()
+        .collect();
+    let preset = |name: &str| presets::of(game, name).is_some() || presets::set_by_another(game, name);
+    Built { changed: !changed.is_empty(), reset: changed.into_iter().filter(|n| !preset(n)).collect(), taken }
 }
 
 /// The type of a list's element, else the type itself.
@@ -321,11 +349,11 @@ mod tests {
         side.set_fact(&six, "hp", &[Fact::Value(Value::Int(600))]).unwrap();
         side.set_fact(&six, "sun", &[Fact::Value(Value::Bool(false))]).unwrap();
         let before = side.clone();
-        let reset = as_built(&six, "exe6", &mut side);
+        let reset = as_built(&six, "exe6", &mut side).reset;
         assert!(reset.contains(&"hp".to_string()) && reset.contains(&"sun".to_string()), "{reset:?}");
         assert!(side.facts.is_default(&six, "hp") && side.facts.is_default(&six, "sun"));
         assert_eq!(side.folder(&six), before.folder(&six));
-        assert!(as_built(&six, "exe6", &mut side).is_empty(), "once is enough");
+        assert!(!as_built(&six, "exe6", &mut side).changed, "once is enough");
         let protoman = nettai_match::ids::navi(&six, "exe6", "protoman").unwrap();
         crate::builds::edit::switch_navi(&six, &mut side, protoman);
         side.set_level(&six, None).unwrap();
