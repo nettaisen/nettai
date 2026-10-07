@@ -30,12 +30,13 @@ local form: FormDef = {
     sprite = asset.sprite("colonelsoul"),
     element = "null",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x3A (0x0800FA98): DrkSonic (chip 0xC6), the charge table's row 0x3A.
+    chaos = { weapon = chaos.weapon(drksonic, { 40, 60, 90, 120, 150, 60 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
-        -- Routine 0x3A (0x0800FA98): DrkSonic (chip 0xC6), the charge table's row 0x3A.
-        chaos = chaos.weapon(drksonic, { 40, 60, 90, 120, 150, 60 }),
     },
     -- 0x08011C44: the damage words (0x08011C50: 40 and 10 more per point of buster Attack plus one for the sword's
     -- soldier, 10 and 2 more for the gun's, each paralyzing with counter byte 0x94; 0x080CABF8), then the side armed

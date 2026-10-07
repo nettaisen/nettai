@@ -12,6 +12,7 @@ local dark_survival = require("@self/emotion/dark_survival")
 local emotion = require("@self/emotion")
 local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
+local chaos_charge = require("@self/souls/chaos_charge")
 local light_dark = require("@self/light_dark")
 local navicust = require("@self/navicust")
 local navicust_board = require("@self/navicust/board")
@@ -72,6 +73,12 @@ local state: StateSchema = {
     -- What the souls' additions to the custom screen keep of one screen: each soul's fields, in its folder
     -- (navis/megaman/forms/<soul>), which ./souls/custom gathers.
     screen = souls.custom.screen,
+    -- Chaos Unison's charge (./souls/chaos_charge): AIData +0x6C, the chaos level; +0x1C and +0x1F, the cycle's counter
+    -- and window; the release's outcome as it was released.
+    chaos_level = "u8",
+    chaos_counter = "u8",
+    chaos_window = "u8",
+    chaos_success = "bool",
 }
 
 local rules: Rules = {
@@ -232,6 +239,8 @@ local rules: Rules = {
             steps_behind = "bool",
             var_sword_waits = "bool",
             emerge_shake = "bool",
+            -- A soul's Chaos Unison: the weapon its charge fires, and its own row of the cycle (./souls/chaos_charge).
+            chaos = { weapon = "weapon", cycle = "u8" },
         },
     },
     -- Its own actions, which reach its state: a soul's change and revert (./souls), Dark MegaMan's leave
@@ -286,9 +295,13 @@ local rules: Rules = {
         countered = emotion.countered,
         -- Each navi's tick: the swing bug, then a driven navi's time (./auto_battle).
         navi_tick = function(side: number, navi: Object)
+            chaos_charge.navi_tick(side, navi)
             emotion.navi_tick(side, navi)
             auto_battle.navi_tick(side, navi)
         end,
+        -- Chaos Unison's charge released, and taken from idle (./souls/chaos_charge).
+        charge_released = chaos_charge.charge_released,
+        release_taken = chaos_charge.release_taken,
         -- Soul Unison's turns (./souls): the turn's request read (ColonelSoul's arm chip), the revert when they run
         -- out, the count down as a custom screen is asked for.
         turn_opened = souls.custom.turn_opened,

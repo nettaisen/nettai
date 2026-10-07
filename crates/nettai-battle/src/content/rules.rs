@@ -339,7 +339,8 @@ pub enum OverlayRestart {
 }
 
 /// Requests an end clears, in a content file a list of their names: the
-/// anti-sword trigger, the mode-9 A press, the Chaos Unison releases.
+/// anti-sword trigger, the mode-9 A press, the rules' own B charge's release
+/// (EXE5's Chaos Unison releases).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RequestSet(pub u32);
 
@@ -347,8 +348,7 @@ impl RequestSet {
     pub const NAMES: &'static [(u32, &'static str)] = &[
         (crate::actor::request::ANTI_SWORD_TRIGGERED, "anti_sword_triggered"),
         (crate::actor::request::MODE9_A, "mode9_a"),
-        (crate::actor::request::CHAOS_SUCCESS, "chaos_success"),
-        (crate::actor::request::CHAOS_FAILURE, "chaos_failure"),
+        (crate::actor::request::RULES_RELEASE, "rules_release"),
     ];
 }
 
@@ -643,12 +643,6 @@ pub struct Rules {
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open
     /// panels ahead (0..=5).
     pub buster_recovery: Vec<[u8; 6]>,
-    /// EXE5's Chaos Unison cycle (0x08010650, rule section `buster`), a row
-    /// by the chaos level (at most 2): its period and three bounds. While
-    /// the B charge is full a counter runs through the period; under the
-    /// first bound a release succeeds (the window 2), then 1 under the
-    /// second, 0 under the third, 1 past it. None: no game's cycle.
-    pub chaos_cycle: Vec<[u8; 4]>,
     /// What a link battle picks at random (the section `link_pick`; none
     /// stated: nothing).
     pub link_pick: LinkPick,

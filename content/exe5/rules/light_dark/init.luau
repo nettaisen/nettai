@@ -158,8 +158,8 @@ local function palette(side: number, navi: Object): number?
     elseif navi:navi_state("no_charge") then
         p, hub = 1, false
     elseif in_soul then
-        -- A soul's: 2 while its Chaos Unison charge is armed.
-        return if navi.chaos_armed then 2 else 0
+        -- A soul's: 2 while its Chaos Unison charge is armed (the rules' own B charge: ../souls/chaos_charge).
+        return if navi.b_charge_time ~= nil then 2 else 0
     elseif stats.mood == 0xFF then
         p = 4
     elseif stats.mood == 0 then
@@ -288,6 +288,8 @@ function light_dark.round_setup(side: number)
     local hub = battle.navi(side).hub_style ~= 0
     battle.set_face_variant(side, hub)
     battle.set_name_variant(side, hub and battle.link())
+    -- A soul's Chaos Unison look while its charge is armed (0x080125F6: the face's palette 11 on, ../souls/chaos_charge).
+    battle.set_face_variant(side, true, "charged")
 end
 
 -- 0x08010EC8: MegaMan's starting mood.

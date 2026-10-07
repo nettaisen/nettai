@@ -463,10 +463,11 @@ pub(crate) fn lose_hp_and_gauge(b: &mut Battle, r: ObjectRef, amount: u16) -> bo
 }
 
 /// Presentation: whether side `side`'s emotion window shows its form's
-/// second set of faces: while its navi's Chaos Unison charge is armed
-/// (`face_chaos`), or by the side's rules (`face_hub`).
+/// second set of faces, as the side's rules ask: while its navi's rules' B
+/// charge is armed, whatever its form (`face_charged`), or in the base form
+/// (`face_hub`).
 pub fn shows_face_variant(b: &Battle, side: u8) -> bool {
-    face_chaos(b, side) || face_hub(b, side)
+    face_charged(b, side) || face_hub(b, side)
 }
 
 /// Presentation: the second set for the side's base form when its rules
@@ -478,12 +479,13 @@ pub fn face_hub(b: &Battle, side: u8) -> bool {
     b.looks[side as usize & 1].face_variant && form_of(b, p).base
 }
 
-/// Presentation: the second set while the side's navi's Chaos Unison charge
-/// is armed (EXE5's 0x080125F6, AIData +0x12: the face's palette 11 on, a
-/// soul's Chaos Unison look), whichever picture the window shows: the
-/// original reads it as it draws (0x08019704).
-pub fn face_chaos(b: &Battle, side: u8) -> bool {
-    b.player(side).is_some_and(|p| ai(b, p).chaos.armed)
+/// Presentation: the second set while the side's navi's rules' B charge is
+/// armed, where its rules ask (`SideLooks::face_variant_charged`: EXE5's
+/// 0x080125F6, AIData +0x12, the face's palette 11 on, a soul's Chaos
+/// Unison look), whichever picture the window shows: the original reads it
+/// as it draws (0x08019704).
+pub fn face_charged(b: &Battle, side: u8) -> bool {
+    b.looks[side as usize & 1].face_variant_charged && b.player(side).is_some_and(|p| ai(b, p).b_charge_time.is_some())
 }
 
 /// Whether a navi's mood is held (`sub_8015BEC`'s test): held tired or
@@ -622,6 +624,7 @@ pub(crate) fn exit_attack_state(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801171C`: leave the current attack for the idle action. A move
 /// (kind 4) keeps pending requests and the charge.
+
 pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
     // What else the end clears of the requests is its game's (EXE6's
     // 0x1000003F, EXE5's 0x1803F: the reactions section's).
@@ -633,9 +636,9 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
         match kind {
             2 => a.lockout = a.attack.lockout,
             3 => a.back_special_cooldown = a.attack.lockout,
-            // EXE5's chaos failure disarms the Chaos Unison charge
-            // (0x0800F2D0).
-            idle::CHAOS_FAILURE_KIND => a.chaos.armed = false,
+            // (EXE5's 0x0800F2D0 drops its Chaos Unison charge at the end
+            // of its failure, slot 6: the failure's revert dropped it with
+            // its status reset already, rules/souls/chaos.)
             _ => {}
         }
         a.buffered_move = 0;
@@ -1120,7 +1123,6 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         a.a_charge = w.a_charge;
         a.back_special = w.back_special;
         a.alt_a_charge = None;
-        a.chaos.weapon = None;
     } else {
         let w = content.form(s.form).weapons;
         a.mode9_a = w.mode9_a;
@@ -1129,10 +1131,10 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         set_charge_shot_routine(a, w.charge_shot, &content);
         a.back_special = w.back_special;
         a.alt_a_charge = w.alt_a_charge;
-        a.chaos.weapon = w.chaos;
     }
-    // EXE5's load (0x0800DCD8) disarms a Chaos Unison charge.
-    a.chaos.armed = false;
+    // The load drops the rules' own B charge (EXE5's 0x0800DCD8 disarms its
+    // Chaos Unison charge).
+    (a.b_charge_time, a.b_charge_glow, a.b_charge_anim) = (None, None, None);
 }
 
 /// `sub_800FF5E`: reload the base form's weapon bytes (after a NaviCust
@@ -1287,9 +1289,9 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).look.palette = palette;
         return;
     }
-    let (base, mood_palette, soul, form_palette) = {
+    let (base, mood_palette, form_palette) = {
         let form = form_of(b, r);
-        (form.base, form.traits.has(FormTraits::MOOD_PALETTE), form.soul.is_some(), form.palette)
+        (form.base, form.traits.has(FormTraits::MOOD_PALETTE), form.palette)
     };
     let no_charge = ai(b, r).status & crate::actor::status::NO_CHARGE != 0;
     let full_synchro = emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro;
@@ -1310,10 +1312,6 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         } else if mood_palette {
             // (EXE6's Beast Out.)
             by_mood
-        } else if soul && ai(b, r).chaos.armed {
-            // EXE5's soul (0x0800DDCA): palette 2 while its Chaos Unison
-            // charge is armed.
-            2
         } else {
             // `byte_80203EA`: a Cross's palette (the bytes after the
             // Crosses', a Cross in Beast Out's, are 0).
