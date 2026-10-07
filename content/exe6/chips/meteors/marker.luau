@@ -14,7 +14,7 @@ marker.kind = common.make_kind("meteors/marker")
 -- `sub_80E43F6`: a marker of `look` highlighting `region` on (x, y), of
 -- `owner`'s side.
 function marker.spawn(owner: Object, x: number, y: number, look: MeteorMarkerLook, region: Region?): Object?
-    return common.spawn(marker.kind, owner, x, y, look, region)
+    return common.spawn(marker.kind, owner.alliance, x, y, look, region)
 end
 
 return marker

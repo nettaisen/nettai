@@ -452,9 +452,10 @@ export component SheetView {
                 }
             }
 
-            // (Its place kept, marked or not.)
+            // (At the line's end, where there is one: the build's start
+            // stays where it is.)
             Rectangle {
-                width: Theme.compact ? 116px : 150px;
+                width: root.sheet.navi != "" ? (Theme.compact ? 116px : 150px) : 0px;
                 NaviMark {
                     width: parent.width;
                     y: (parent.height - self.height) / 2;

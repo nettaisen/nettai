@@ -109,16 +109,16 @@ function marker.make_kind(id: string): Kind
 end
 
 -- `sub_80E43F6`: a marker (of `kind`, a game's) of `look` highlighting
--- `region` on (x, y), of `owner`'s side. (Its Z is the spawner's register,
--- which nothing reads.)
-function marker.spawn(kind: Kind, owner: Object, x: number, y: number, look: MarkerLook, region: Region?): Object?
+-- `region` on (x, y), of `side` (its spawner's owner's; EXE4's sets none,
+-- leaving 0). (Its Z is the spawner's register, which nothing reads.)
+function marker.spawn(kind: Kind, side: number, x: number, y: number, look: MarkerLook, region: Region?): Object?
     local o = battle.spawn(kind, Vec3.new(x, y, 0))
     if not o then
         return nil
     end
     local s = o.state :: State
     s.look, s.region = look, region
-    o.alliance = owner.alliance
+    o.alliance = side
     return o
 end
 

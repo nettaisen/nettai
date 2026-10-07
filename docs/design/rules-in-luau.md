@@ -3304,3 +3304,21 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
   (its `status_final`, `statuses.freeze_150`) and the panel turns normal (exelib's `panel_types.freezes(status)`).
   EXE5's and EXE4's ice have none.
 - **Gone from Rust**: the status role `ice_freeze` (EXE6's roles, the test content's, the test pack's).
+
+### Panels into Luau, step 5: a type's `tick`, `changed` and `start`; the eruption is EXE6's content (2026-10-07, branch exe4-engine)
+
+- **The hooks** (each with the panel, `x, y`): `tick` where the panel update (`sub_800C380`) meets a type that isn't
+  missing, broken or cracked (after the mend count's reset; a type without one that `expires` counts down as
+  before); `changed` where `_object_setPanelType` makes the type (after an `expires` type's count is set); `start`
+  for each panel as the round's field starts (before the init's refresh and panel update).
+- **EXE6's volcano** erupts by its `tick`: when the field's cycle (the panels' new `cycle`, 0x8C, counted down each
+  panel update; none for EXE5 and EXE4) comes to its side's count (0x8C on columns 1 to 3, 0x46 past them), it
+  spawns the eruption, attack object #7, now content/exe6/objects/eruption (`sub_80C5A34`, its own sprite, collision
+  types and spark). Gone from Rust: `EngineKind::Eruption` and kinds/eruption.rs, the roles `sparks.eruption`,
+  `collision.eruption`, `collision.eruption_target`, `sprites.eruption`; compat's kind is `eruption`.
+- **EXE4's pitfall** crumbles by its hooks (exelib's `panel_types.crumbles(190)`): `changed` counts 190 at once,
+  `start` arms a stage's (0x8000 | 190), `tick` waits while armed for a grounded body and counts down to normal.
+  Gone from Rust: a type's `crumbles`, `CRUMBLE_ARMED`; a panel's `expire_timer` and `crumble_timer` are its one
+  `timer`.
+- **API**: `field.timer`, `field.set_timer`, `field.cycle`, `field.grounded_body` (a body on the panel, none
+  floating). A hook's call carries its own arguments now (`HookCall::Panel(PanelCall)`).

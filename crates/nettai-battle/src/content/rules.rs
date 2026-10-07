@@ -1579,6 +1579,9 @@ impl Rules {
 pub struct PanelRules {
     /// The game's panel types, by number (`PanelType`): what each is.
     pub types: Vec<PanelTypeRule>,
+    /// The field's cycle's period (EXE6's 0x8C, `sub_800BFC4`: its volcanos
+    /// erupt by it); none, no cycle (EXE5's and EXE4's).
+    pub cycle: Option<u32>,
     /// Each type's name, by number (the section's `numbers`).
     pub names: Vec<String>,
     /// The types the engine's own code needs (the section's `roles`).
@@ -1832,11 +1835,6 @@ pub struct PanelTypeRule {
     /// its `object_canMove`, 0x0800AD2A, and its kin 0x0800AD54,
     /// 0x0800AD7E).
     pub traps: bool,
-    /// It turns normal after these ticks (EXE4's pitfall, 190: 0x0800980E),
-    /// counted at once when a type change makes it (0x08009DC4), and on a
-    /// stage's from the tick a grounded body stands on it (0x08009120 arms
-    /// every panel).
-    pub crumbles: Option<u16>,
 }
 
 /// A panel's slide (EXE5's magnet): by the direction the body last moved

@@ -184,6 +184,30 @@ pub struct CustomScreenLayout {
     /// the cursor a frame further on); else after them (EXE6's
     /// `sub_8026CCC`). Presentation.
     pub frame_counts_first: bool,
+    /// R's description and L's message are states of the choosing (EXE4's
+    /// selection states 0x18 and 0x1C, 0x0801E430): each of their ticks
+    /// draws the last turns' block and counts the frame as the choosing does
+    /// (0x0801E3D8), and the tick one sees its chatbox closed goes back to
+    /// the state it came from and draws it (the Regular chip's frame and the
+    /// cursor: 0x08020A0A, 0x0801E412); else they are the screen's own
+    /// states, which draw only the emblem (EXE6's `sub_8026E4C`).
+    /// Presentation.
+    pub description_in_choosing: bool,
+    /// The chatbox's end clears the text's sprite tiles in video memory
+    /// itself (EXE4's 0x0805393C zero-fills 0x06015700 with the buffers),
+    /// which shows a frame before the box's first closing step, drawn
+    /// through buffers: as drawn, the text is gone from the tick the wait
+    /// for a key is answered; else it clears only the buffers the tiles are
+    /// copied from (EXE6's and EXE5's `chatbox_8045F60`), and the text goes
+    /// with the box's first step. Presentation.
+    pub chatbox_end_clears_tiles: bool,
+    /// A character the chatbox prints ends the tick's printing (EXE4's
+    /// interpreter goes on only while rushing, at print speed 0 or after a
+    /// command that says so: 0x0804E1B2), so the next character's delay
+    /// counts down from the tick after: a character every speed + 1 ticks;
+    /// else the interpreter goes on, and that delay counts down on the
+    /// character's own tick (EXE6's and EXE5's). Presentation.
+    pub chatbox_character_ends_tick: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -353,6 +377,9 @@ impl Default for CustomScreenLayout {
             fades_clear_at_ok: false,
             cursor_after_leaving: true,
             frame_counts_first: false,
+            description_in_choosing: false,
+            chatbox_end_clears_tiles: false,
+            chatbox_character_ends_tick: false,
         }
     }
 }
