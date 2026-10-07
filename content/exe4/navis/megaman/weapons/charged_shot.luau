@@ -67,7 +67,7 @@ end
 
 charged_shot.action = new.action {
     id = "megaman/charged-shot/action",
-    state = { timer = "u16" },
+    state = { timer = "i16" },
     update = function(me: Object, s: State)
         local step = me.step
         if step == SHOOT then

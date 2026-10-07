@@ -26,6 +26,7 @@ local NAVI_NUMBER = 0
 local SHOT_SOUND = asset.sound("buster-shot")
 local BLANK_SOUND = asset.sound("buster-blank")
 
+-- (The timer is a signed halfword: the recovery counts it down past 0, `bge`.)
 type State = { timer: number }
 
 -- 0x080EB334.
@@ -80,7 +81,7 @@ end
 
 buster.shot = new.action {
     id = "megaman/buster/shot",
-    state = { timer = "u16" },
+    state = { timer = "i16" },
     update = function(me: Object, s: State)
         local step = me.step
         if step == SHOOT then

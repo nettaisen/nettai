@@ -62,7 +62,7 @@ end
 
 local action = new.action {
     id = "cannon/action",
-    state = { timer = "u16" },
+    state = { timer = "i16" },
     update = function(me: Object, s: State)
         local step = me.step
         if step == SHOOT then
