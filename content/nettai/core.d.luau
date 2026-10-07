@@ -2175,23 +2175,9 @@ export type ChipSpec = {
 }
 export type Chip = ChipSpec
 
--- A chip family and an element, by name.
-export type ChipFamily =
-    "fire"
-    | "aqua"
-    | "elec"
-    | "wood"
-    | "plus"
-    | "sword"
-    | "cursor"
-    | "summon"
-    | "wind"
-    | "break"
-    | "null"
-    | "program_advance"
-    | "special"
-    | "recovery"
-    | "invisible"
+-- A chip family, by name: one of its game's (its rules' `elements.families`).
+export type ChipFamily = string
+-- An element, by name.
 export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- The chips a navi's or a form's rule is about: an element's, or a
 -- family's.

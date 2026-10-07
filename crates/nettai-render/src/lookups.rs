@@ -234,7 +234,7 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
         }
         // (A family past the elements with colors shows none: the
         // original's.)
-        let family = data.family as usize;
+        let family = data.family.0 as usize;
         let has_icon = family < a.element_colors.len() || a.element_sprite.is_some();
         if has_icon && a.elements.len() < 4 * (family + 1) {
             problems.note(format!("chip {key:?}: the custom screen has no icon for its element ({family})"));
