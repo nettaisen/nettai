@@ -86,4 +86,7 @@ return {
     gauge_empties_at_open = true,
     -- OK leaves the fade records running until the screens close (0x08022DC0 calls EXE6's `sub_80062EC`).
     fades_clear_at_ok = false,
+    -- The tick a key leaves the choosing still draws the cursor and the last turns' block (0x08022FE4 draws after
+    -- its keys, as EXE6's `sub_8026CCC`).
+    cursor_after_leaving = true,
 }
