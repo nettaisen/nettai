@@ -13,7 +13,7 @@
 //! (`lockon`, `banners`) and a table
 //! that is empty without it (`elements`, `buster`, `math`,
 //! `custom_screen`); in a section, a list or an attribute of one entry
-//! that is none unless stated (a panel type's `burn`, `chaos_cycle`).
+//! that is none unless stated (a panel type's `burn`).
 //! Content whose rules are Rust tables (`Content::base_rules`: a tool's
 //! decode of a ROM, a test's content of a few modules) states them there,
 //! and its rules' sections replace those. (The engine's test content
@@ -151,9 +151,6 @@ struct CustomScreenSection {
 struct BusterSection {
     recovery: Vec<[u8; 6]>,
     empty_hand: EmptyHandChip,
-    /// (No rows: the game has no cycle.)
-    #[serde(default)]
-    chaos_cycle: Vec<[u8; 4]>,
 }
 
 #[derive(Deserialize)]
@@ -279,7 +276,7 @@ impl Stated {
             sine: Some(r.sine.clone()),
             pools: Some(r.pools),
             custom_screen: Some(r.custom_screen.clone()),
-            buster: Some(BusterSection { recovery: r.buster_recovery.clone(), empty_hand: r.empty_hand, chaos_cycle: r.chaos_cycle.clone() }),
+            buster: Some(BusterSection { recovery: r.buster_recovery.clone(), empty_hand: r.empty_hand }),
             holding_banners: Some(r.holding_banners.clone()),
             status: Some(StatusSection {
                 hp_bug_periods: r.hp_bug_periods,
@@ -324,7 +321,7 @@ impl Stated {
         let status = self.status.ok_or_else(|| missing("status"))?;
         panels.types.resize(PanelType::ALL.len(), PanelTypeRule::default());
         let (element_weakness, family_elements) = self.elements.unwrap_or_default();
-        let buster = self.buster.unwrap_or(BusterSection { recovery: Vec::new(), empty_hand: EmptyHandChip::default(), chaos_cycle: Vec::new() });
+        let buster = self.buster.unwrap_or(BusterSection { recovery: Vec::new(), empty_hand: EmptyHandChip::default() });
         Ok(Rules {
             element_weakness,
             family_elements,
@@ -346,7 +343,6 @@ impl Stated {
             },
             empty_hand: buster.empty_hand,
             buster_recovery: buster.recovery,
-            chaos_cycle: buster.chaos_cycle,
             // (Its stages are `link`'s to resolve.)
             link_pick: super::rules::LinkPick {
                 stages: Vec::new(),

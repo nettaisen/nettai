@@ -157,4 +157,8 @@ export type Exe5FormFields = {
     steps_behind: boolean?,
     var_sword_waits: boolean?,
     emerge_shake: boolean?,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon its charge
+    -- fires, and its own row of the charge's cycle (MeddySoul's; none: the
+    -- chaos level's, at most 2).
+    chaos: { weapon: Weapon, cycle: number? }?,
 }

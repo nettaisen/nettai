@@ -339,11 +339,15 @@ named_fields! {
         /// EXE5's AIData+0x3C: DarkPlus's tint (0 none), which picks the
         /// navi's status shader.
         PlusTint = "plus_tint", U16, rw;
-        /// EXE5's Chaos Unison charge: armed (AIData+0x12; the chaos
-        /// change arms it, a weapons' load and the failure's end disarm
-        /// it) and its level (AIData+0x6C: releases that succeeded, at
-        /// most 4).
-        ChaosArmed = "chaos_armed", Bool, rw;
+        /// A B charge the side's rules arm in place of the charged shot's
+        /// (EXE5's Chaos Unison charge, AIData+0x12): the ticks to a full
+        /// charge (in place of the charged shot's by the Charge stat), the
+        /// glow it shows (seen and heard by its side alone) and the glow's
+        /// animation once full. Nil: no such charge (the weapons' load
+        /// drops them all); armed while the time is set.
+        BChargeTime = "b_charge_time", OptionalU8, rw;
+        BChargeGlow = "b_charge_glow", FieldType::Asset(crate::AssetKind::Sprite), rw;
+        BChargeAnim = "b_charge_anim", OptionalU8, rw;
         /// EXE5's priming (AIData+0x0D): a form's `priming` chip used, its
         /// next doubling waiting.
         Primed = "primed", Bool, rw;
@@ -351,7 +355,6 @@ named_fields! {
         /// ColonelSoul's arm chip, which its charged shot's routine 0x13
         /// fires, 0x0800F7D8; none: 0xFFFF).
         WeaponChip = "weapon_chip", Ref(Registry::Chip, None), rw;
-        ChaosLevel = "chaos_level", U8, rw;
         /// EXE5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
         /// counted down in the intake while the navi has the no-charge
         /// state, asking for the stun strike at 0; 0xFFFF holds), and the
@@ -1480,8 +1483,10 @@ pub trait CoreApi {
     fn sword_pick(&self, side: u8) -> u8;
     fn set_sword_pick(&mut self, side: u8, pick: u8);
     /// Presentation: whether side `side`'s emotion window shows its form's
-    /// second set of faces (`variant`; EXE5's Hub Style).
-    fn set_face_variant(&mut self, side: u8, variant: bool);
+    /// second set of faces (`variant`): in the base form (EXE5's Hub
+    /// Style), or with `charged` while its navi's rules' B charge is armed,
+    /// whatever its form (EXE5's Chaos Unison look).
+    fn set_face_variant(&mut self, side: u8, variant: bool, charged: bool);
     /// Presentation: whether the custom screen's enemy names show side
     /// `side`'s navi by its variant name (EXE5's Hub Style in a link battle,
     /// 0x0801AE3A).

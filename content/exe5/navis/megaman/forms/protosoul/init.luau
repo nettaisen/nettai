@@ -25,12 +25,13 @@ local form: FormDef = {
     sprite = asset.sprite("protosoul"),
     element = "null",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires.
+    chaos = { weapon = chaos.weapon },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         back_special = back.weapon,
         a_charge = charged_chip.weapon,
-        chaos = chaos.weapon,
     },
     charged_chips = { { family = "sword", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },

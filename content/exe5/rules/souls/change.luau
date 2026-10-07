@@ -17,6 +17,7 @@
 --   cycles, and its release in the window fires the soul's chaos weapon, out of it the chaos failure, ./chaos).
 -- - 0x10 (0x08012196): 21 ticks, then the change is done and he idles.
 
+local chaos_charge = require("./chaos_charge")
 local effects = require("../../lib/effects")
 local hooks = require("./hooks")
 local image = require("./image")
@@ -122,16 +123,16 @@ local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
     set_step(me, if chaos then CHAOS else SETTLE)
 end
 
--- 0x0801216C: Chaos Unison's 10 ticks, the chaos level back to 0; then the chaos charge is armed.
+-- 0x0801216C: Chaos Unison's 10 ticks, the chaos level back to 0; then the chaos charge is armed (./chaos_charge).
 local function chaos_step(me: Object, s: State)
     if me.step_init == 0 then
-        me.chaos_level = 0
+        chaos_charge.reset_level()
         s.timer = 0
         me.step_init = 4
     end
     s.timer += 1
     if s.timer >= 10 then
-        me.chaos_armed = true
+        chaos_charge.arm(me)
         set_step(me, SETTLE)
     end
 end

@@ -1191,8 +1191,13 @@ impl CoreApi for Battle {
         self.sides[side as usize & 1].sword_pick = pick;
     }
 
-    fn set_face_variant(&mut self, side: u8, variant: bool) {
-        self.looks[side as usize & 1].face_variant = variant;
+    fn set_face_variant(&mut self, side: u8, variant: bool, charged: bool) {
+        let looks = &mut self.looks[side as usize & 1];
+        if charged {
+            looks.face_variant_charged = variant;
+        } else {
+            looks.face_variant = variant;
+        }
     }
 
     fn set_name_variant(&mut self, side: u8, variant: bool) {
@@ -1887,10 +1892,11 @@ impl CoreApi for Battle {
             ActorField::Tired => Value::Bool(a.tired),
             ActorField::BarrierVisual => a.barrier_visual.into(),
             ActorField::PlusTint => i(a.plus_tint as i64),
-            ActorField::ChaosArmed => Value::Bool(a.chaos.armed),
+            ActorField::BChargeTime => a.b_charge_time.map_or(Value::Nil, |t| i(t as i64)),
+            ActorField::BChargeGlow => a.b_charge_glow.map_or(Value::Nil, |s| Value::Asset(nettai_content_api::AssetKind::Sprite, s.0)),
+            ActorField::BChargeAnim => a.b_charge_anim.map_or(Value::Nil, |n| i(n as i64)),
             ActorField::Primed => Value::Bool(a.primed),
             ActorField::WeaponChip => a.weapon_chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
-            ActorField::ChaosLevel => i(a.chaos.level as i64),
             ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
             ActorField::InAutoBattle => Value::Bool(a.in_auto_battle),
         })
@@ -1967,10 +1973,11 @@ impl CoreApi for Battle {
             (ActorField::Tired, FieldValue::Bool(x)) => a.tired = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
-            (ActorField::ChaosArmed, FieldValue::Bool(x)) => a.chaos.armed = x,
+            (ActorField::BChargeTime, FieldValue::OptionalU8(x)) => a.b_charge_time = x,
+            (ActorField::BChargeGlow, FieldValue::Asset(_, h)) => a.b_charge_glow = h.map(SpriteId),
+            (ActorField::BChargeAnim, FieldValue::OptionalU8(x)) => a.b_charge_anim = x,
             (ActorField::Primed, FieldValue::Bool(x)) => a.primed = x,
             (ActorField::WeaponChip, FieldValue::Ref(_)) => a.weapon_chip = weapon_chip,
-            (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
             (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
             (ActorField::InAutoBattle, FieldValue::Bool(x)) => a.in_auto_battle = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
