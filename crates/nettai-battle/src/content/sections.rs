@@ -122,6 +122,7 @@ struct ReactionsSection {
     slide_speed: super::rules::SlideSpeed,
     overlay_restart: super::rules::OverlayRestart,
     stance_counter: super::rules::StanceCounter,
+    dead_player: super::rules::DeadPlayer,
     request_clears: super::rules::RequestClears,
 }
 
@@ -417,6 +418,7 @@ impl Stated {
                 slide_speed: r.slide_speed,
                 overlay_restart: r.overlay_restart,
                 stance_counter: r.stance_counter,
+                dead_player: r.dead_player,
                 request_clears: r.request_clears,
             }),
             sine: Some(r.sine.clone()),
@@ -515,6 +517,7 @@ impl Stated {
             slide_speed: reactions.slide_speed,
             overlay_restart: reactions.overlay_restart,
             stance_counter: reactions.stance_counter,
+            dead_player: reactions.dead_player,
             request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
             flow,
