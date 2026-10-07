@@ -98,7 +98,7 @@ mod tests {
     use nettai_match::testing::exe4_content;
 
     /// A raw image: the game's name; its second folder equipped, a Cannon A
-    /// then an AirShot (a chip EXE4's content hasn't yet, left empty) and
+    /// then chip number 0x1FF (which no EXE4 chip has, left empty) and
     /// its Regular chip the first; AirShoes (program 12, in blue, its one color) on
     /// the command line's left end; patch card 16 (Panel Change) on in slot 0
     /// and card 12 (Buster Patch, whose B button waits) in slot 1, card 1 off
@@ -110,7 +110,7 @@ mod tests {
         img[0x2132] = 1;
         let folder = 0x262C + 2 * 30;
         img[folder..folder + 2].copy_from_slice(&1u16.to_le_bytes());
-        img[folder + 2..folder + 4].copy_from_slice(&4u16.to_le_bytes());
+        img[folder + 2..folder + 4].copy_from_slice(&0x1FFu16.to_le_bytes());
         for i in 2..30 {
             img[folder + 2 * i..folder + 2 * i + 2].copy_from_slice(&[0xFF, 0xFF]);
         }
@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(
             notes,
             [
-                "the save's folder holds chip numbers exe4 has no chip for (0x004): their entries are left empty",
+                "the save's folder holds chip numbers exe4 has no chip for (0x1ff): their entries are left empty",
                 "the save's patch cards 12 are left out: their effects aren't ported yet",
             ]
         );
