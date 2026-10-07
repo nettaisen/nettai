@@ -1311,7 +1311,8 @@ game does, and shows what they make.
 cleared. Under 470 a dark MegaMan (mood 0, the dark face and palette, dark
 chips usable in a link battle, no soul button); 499 or under clears holy
 panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
-light templates). Like EXE6's `version`, `crosses` and `beast_out` (S6c's
+light templates; a build in nettai is one of Tango's two, light or dark:
+docs/app.md §8). Like EXE6's `version`, `crosses` and `beast_out` (S6c's
 facts), the round's setup writes it into the rules' setup, where they declare
 the field (`PlayerSetup::set_fact`): EXE5's light and dark module's
 `karma`. A game whose rules take none refuses one other than 500.
