@@ -64,7 +64,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 let Some(chip) = chip else {
                     panic!("a charged use of the empty hand without a charge routine needs its family byte (sub_800FB54)");
                 };
-                charge = b.content.chip(chip).family as u8;
+                charge = b.content.chip(chip).family.0;
             }
             // These forms' charged chips are the chip with a bonus.
             Some(Some(ChargedChip::Bonus)) => charge = 1,
@@ -274,7 +274,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         damage |= 0x0800;
     }
     // sub_8012C4A
-    if deals_damage(cd.flags) && cd.family == ChipFamily::Null && form_of(b, r).traits.has(crate::content::FormTraits::ERASES) {
+    if deals_damage(cd.flags) && non_elemental(b, cd.family) && form_of(b, r).traits.has(crate::content::FormTraits::ERASES) {
         damage |= damage_flags::ERASE_CROSS;
     }
     ai_mut(b, r).attack.damage = damage;
@@ -500,7 +500,7 @@ fn form_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) ->
         (counts && cd.family == bonus.family && now).then_some(bonus.damage)
     });
     let beast_bonus = || {
-        (form.null_bonus != 0 && deals_damage(cd.flags) && cd.family == ChipFamily::Null && super::battle_mode(b) != 1)
+        (form.null_bonus != 0 && deals_damage(cd.flags) && non_elemental(b, cd.family) && super::battle_mode(b) != 1)
             .then_some(form.null_bonus)
     };
     if let Some(bonus) = form_bonus.or_else(beast_bonus) {
@@ -653,7 +653,14 @@ fn null_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
         return false;
     }
     let cd = entry_record(&b.content, chip);
-    deals_damage(cd.flags) && cd.family == ChipFamily::Null
+    deals_damage(cd.flags) && non_elemental(b, cd.family)
+}
+
+/// Whether `family` is the game's non-elemental family (the rules'
+/// `elements.non_elemental`), which the forms' rules on non-elemental chips
+/// mean.
+fn non_elemental(b: &Battle, family: ChipFamily) -> bool {
+    family == b.game_rules().chip_families.non_elemental
 }
 
 /// The heal some uses give (`sub_800E2FC(heal, 0)`): the NaviCust

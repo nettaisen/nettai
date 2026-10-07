@@ -570,7 +570,79 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the original hides them); the cursor on OK
   after it is pressed (the original hides it). Since drawn: MegaMan's colors (his palette by his light/dark value,
   rules/light_dark: the setups' 1000 draws row 4, 0x0821B854), the intro's fade (by its levels), Cannon's
-  description.
+  description, the HP box (below).
+- **The fight HUD as ported** (group E). The HUD block is 0x020363F0. Its draw tasks run from the mask at +0x4C
+  (0x08014D10, table 0x08014D34), its update tasks from the mask at +0x48 (0x080146A8, table 0x080146CC). A piece
+  is shown by setting both bits: the starters' table 0x08015E9C (0x08015E78) and the stoppers' table 0x08015BC4
+  (0x08015B9E). Each piece, by its draw bit:
+  - 0 **the HP box** (0x08014D98; rolled by update 0 at 0x0801472C, EXE6's roll: an eighth plus 4, held 15 ticks,
+    the low color at a quarter, the alarm 0x82 every 45 ticks): drawn. EXE4 loads the gauge's tiles (from 0x80)
+    before the HUD layer's (from 0x130); the renderer took the HP box's tiles for the gauge's.
+  - 1 **the custom gauge** (0x08014E14; filled by update 1, 0x080147BA): EXE6's code with the counter at +0x18 and
+    the value at +0x24. It skips its drawing from the 15th turn of a link battle (0x08007E4E). The full gauge's
+    stripes and "L or R" go by +0x18. "BUSY..." runs the same counter (update 13, 0x08014ADC: +1 & 63 a tick, from 63
+    at its start, 0x080166F0) until the exchange is done (0x0801E9B6). Drawn as EXE6's.
+  - 2 **the HP numbers under objects** (0x08014EB8; rolled by update 2, 0x08014800: an eighth plus 2): one color,
+    at priority 1 (the pack's `layout.hp_number_priority`).
+  - 3 **the chip icons**, over the local navi alone. Update 3 (0x08014860) places them at its place on the screen
+    plus the per-navi offset 0x0800B9E4 (which 0x08015B24 keeps at +0x1B, +0x1C): navi 0, MegaMan, (0, -55); 1 to
+    12, the souls in navi order, (0, -67), (-8, -59), (-12, -84), (0, -64), (3, -72), (-4, -72), (-1, -62),
+    (-5, -70), (-5, -79), (4, -60), (-6, -60), (-9, -77). It loads each chip's own icon, from the next chip on.
+    Draw 3 (0x08015000) draws them two pixels up and left each, at priority 1 in depth buckets from the count down
+    (`effects.chip_icons = "navi_offset"`, the identity's `chip_icons_at`). A soul chip as the next chip (0x160 to
+    0x16F) shows no icon of its own: the stack starts at the second. Not ported until Double Soul's chips exist.
+  - 4 **the chip name and damage** at row 18 (0x08015078): EXE6's layout (the damage after the name's glyphs, "+"
+    and the two bonuses' sum, "×2" when 0x0800F49C says 2 or 3 of the navi's +0x16). Whether the damage shows is
+    the chip's +9 bit 2 (update 4, 0x080148D8).
+  - 5 and 8 **the banner and the user's telop** on the banner block 0x02037CE0. 15 is **the other player's telop**
+    on the second block 0x02037CF0. Both are laid out by 0x0801650C from x 0 or 120, at y 32, in the palette
+    0x08750E80 (the pack's `layout.telop`). A navi's chip use names the chip on the other console as a banner that
+    never slides (0x0800C7A8, state 3): `effects.used_chip_ticks` 33.
+  - 6 **the messages** (0x08015FE8; 60 ticks, update 6): "COUNTER HIT!" (text line 14) from column 8 of row 2, 14
+    glyphs wide (the pack's `layout.message`). A message also stops "????" (draw 10) until a custom screen starts it
+    again (0x0801E1D6); EXE6's comes back when the message goes. Not ported: no defensive chip is ported yet.
+  - 10 **"????"** for a defensive chip, at columns 6 and 26 (0x08015266): EXE6's.
+  - 12 **"PAUSE"** at (100, 64), a row lower than EXE6's (the pack's `layout.pause`).
+  - 13 **"BUSY..."** at column 22, row 4 (0x08015624): on a console whose screen has sent its result, also while the
+    other player picks on a second screen it opened with L (both consoles are in the custom screen's sub-state then).
+    23 **"PLAN-B..."** in the same place (0x080158D8) is not a netbattle's: 0x08016AE8 starts it from 0x08021138, a
+    state of the system at 0x0203BC90 (0x08020F64, from the flow at 0x0800784C), which the levels gauge (16) and the
+    column marker (22) belong to: controller 2's (§18 item 49). The lab's custom/plan-b (side 1 opens a second
+    screen, side 0 traced) never sets draw bit 23.
+  - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
+  - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
+    "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
+    the holding banner's hold (0x08014AA8) until the banner is gone (0x08014ABE: the pack's `layout.judge_from_hold`).
+    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 130).
+  - Not in a netbattle: 7 and 19, the turn timer's seconds over "CUSTOM" (0x08016362 from the fight's timer
+    0x08008066, and its blinking from 0x080169DA, for battle kind 0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
+    code); 16, 17 and 22, the gauge in three colors, its sprite and the column marker of controller 2 (0x08016842
+    from 0x08007846, 0x08016878 from 0x08022A08, 0x0801589A; §18 item 49).
+
+  Compared with the lab's mGBA shots (verify `tools/frontend-compare`, recordings under the exe4-hud verify
+  worktree's data/verify/exe4-presentation). Every fight frame is pixel-exact in custom/cannon, describe, pause,
+  three-picks, flow/ko-side0, ko-double, ko-bluemoon, emotions/counter and full-synchro-hit. Together they cover
+  the HP box (its colors through ko-side0's deletion), the custom gauge filling, the HP numbers, the chip icons
+  (one and three chips), the chip name, damage and "×2", "PAUSE", "COUNTER HIT!" and the other player's used chip
+  (emotions/counter, frames 410 to 441). So is every fight frame of flow/ko-cannon (a deletion's explosion and the
+  Cannon's hit spark share a depth bucket: EXE4 draws each pool by slot, 0x08003BA0, 0x08003ED4, 0x08004180, where
+  EXE6 walks the update lists: `effects.draw_order`), flow/buster, buster-tap, flinch-moving, flinch-shooting, move,
+  move-edge, move-held, custom/back, back-all, hand-of-seven, same-chip, run-message, run-message-b, run-message-ok,
+  and, with group B's charge glow fix (69fb65ad6), flow/charge, charge-held, charge-move, buster-side1,
+  buster-attack-max, buster-charge-max, buster-speed-max, buster-hold, flinch-charging. Every stage the content plays
+  (33 of the lab's 46 stages/*/stand: cracked, grass, holes, holy, ice, lava, normal, poison, type 5, type A, in
+  their layouts) is pixel-exact but for the full gauge's 4-frame shift below: the field, its panels by type and their
+  palette cycles. The other 13 wait on their obstacles (§18 item 19).
+  Two pieces show 4 frames late: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the full
+  gauge's stripes and "L or R". That is by design, not a replay fault: the engine's custom screen is part of the
+  shared simulation and acts on the link-delayed input every console has, where the original's local screen takes
+  its own joypad at once. The OK reaches it 4 frames later (Round::screen_late), so the counter they run on starts
+  4 frames later, in live play too. Compared 4 frames apart (verify tools/frontend-compare/offset-compare.py), the
+  full gauge's cells are exact on all 10,509 full-gauge frames of flow/no-time-limit.
+  The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
+  only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
+  clears the text a tick before the box closes and draws the cursor a frame sooner (group A's).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -635,9 +707,12 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
-- Panels through a pause and a dimming (§18 item 13): a navi on poison loses HP while the battle is paused, a wood
-  navi on grass heals then, and a player on lava burns while the battle is dimmed (as EXE4's code reads; a lab
-  scenario on `poison-middle` or `lava-middle-close` with a pause, and a dimming chip over lava, would show it).
+- Settled: panels through a pause and a dimming (§18 item 13, a95f's `panels/` recordings). Poison doesn't drain
+  through a pause (`poison-pause`: the player doesn't run paused); a player landing on lava burns the tick after
+  it lands even while the battle is dimmed (`lava-dimming-33`, RockCube's dimming: the burn at 418, its flinch at
+  565 as the dimming ends; `-32` and `-34` the dimming before the landing and after the burn), not while it blinks
+  (`lava-blinking`: the burn on the tick f1's 0x200 clears). The lava ones wait for their stage (layout 0x71,
+  §18 item 19) and RockCube.
 
 ## 17. The recordings
 
@@ -901,12 +976,13 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       player's has no dimming test (any body's has). A panel type's `burn` is a table now: `damage`, `spared_by`,
       `mood`, `players_while_dimmed` (EXE5's `{ damage = 50, spared_by = 0x88000206 }`).
     - **Poison and grass** (0x08012FF2, EXE6's `sub_801A186`): the same tests (poison's 0x08000028 immunity, the grass
-      test reading the status word after an immune body, as EXE6's), but no pause test, and grass heals a wood body on
-      the battle's 20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less). The rule
-      `panels.standing` (`stops_while_paused`, `slow_heal_at`: EXE6's and EXE5's true and 9, EXE4's false and none).
-      EXE4's player intake runs while paused (only the fight's flag 1 gates it, 0x08013858), so its poison drains and
-      its grass heals through a pause (§16). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the
-      whole byte too): EXE4's objects have no high nibble.
+      test reading the status word after an immune body, as EXE6's), and grass heals a wood body on the battle's
+      20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less): the rule
+      `panels.grass_heal_slows_at` (theirs 9, EXE4's none). It has no pause test, but EXE4's player never runs paused
+      once in control (its header flag 0x04 cleared, `paused_navi = "stops_at_control"`): a95f's
+      `panels/poison-pause` holds its HP through a START pause, the drain due at the pause landing the tick after it
+      (and replays every frame). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the whole byte
+      too): EXE4's objects have no high nibble.
     - **What passes over a panel** (0x08013058, from the collision's removal, 0x08012A50): grass of fire and lava of
       aqua turn normal (`cleared_by`, EXE5's 0x08016D14 less its metal of wood), unless the hitbox has 0x0C000000. It
       has no pause test (EXE5's and EXE6's have): no hitbox is removed while paused (frozen objects), so no rule.
@@ -921,16 +997,36 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       not the crack routine), sounding 0x124 for poison onto a panel that wasn't (and 0x95 when the type change's
       return, the panel's occupants' collision bits, is 3: never with the navi's own body on it); EXE6's trail (a
       NaviCust bug, a chance by level) isn't it: to port with the Mod Cards.
-14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
-    find EXE4's drawing of them. Placeholder: EXE5's grids. The any-side step rows are EXE5's too.
-15. **Battle mode 1's mend** and **reservations**: EXE5's until read.
+14. **Done** (start-visible panels and front edges). EXE4 keeps no grids: its field's init (0x08009120) marks all 40
+    panels visible (0x08009186: 0x40 into each flags byte at 0x02037B36), its drawing (0x080092AC) draws each valid
+    panel (x 1 to 6, y 1 to 3) while visible, and the front edges under row 3 alone (0x0800937A), each by its row-3
+    panel's visibility (0x080094C4, else 0x080094FC blanks it), as the engine draws a panel's `front_edge` with it.
+    Stated: `start_visible` all true (what the engine reads of it, the valid panels', is EXE5's grid), `front_edges`
+    row 3, written by gen_rules.py from that code. The any-side step: EXE4 has no `sub_800E680` (EXE5 neither), so its
+    rows are EXE6's, for EXE6's code (a chip's) in an EXE4 arena.
+15. **Done** (battle mode 1's mend and the reservations).
+    - **The mend:** 600 ticks in every battle: the field's init (0x08009132) and the panel tick (0x0800976C) store
+      the one constant whatever the battle's mode (`mend = { normal = 600, battle_mode_1 = 600 }`, now asserted).
+    - **Reservations:** EXE4's `object_reservePanel` (0x080143A8) marks the panel alone (no header flag 0x20 on the
+      holder, as EXE5's), `reservations = "unmarked"`.
+    - **The destroy** (found here): EXE4's `object_genericDestroy` (0x080D8C58) unregisters the object's collision
+      (`object_removeCollisionData`, 0x080129FC: its panels refreshed, its hits and the panels it clears resolved on
+      them) before freeing it, where EXE6's releases its reservations and EXE5's (0x080138F2) frees it as it is
+      (its registrations stale on the panels until the slot is next registered). The rule `effects.destroy`
+      (`frees`, EXE6's and EXE5's; `unregisters`, EXE4's).
 
 ### 18.3 Flow, stages and the link
 
 16. **No time limit, no double KO** (the lab's first batch): nothing ends a netbattle's stand-off, and when both navis
     are deleted on the same tick side 1's shot resolves first and side 1 survives. The engine's link battle has the
     judge's ruling (round result 7) and a draw. Shape: flow rules `time_limit: false` and the KO order as data.
-    Placeholder: the engine's.
+    Placeholder: the engine's. Read since (group A): a netbattle has a time limit from its 15th turn, as EXE6's. The
+    fight's timer runs only in a battle of type 0x46 and on whose BattleState +8 (the custom screens so far) is 15 or
+    more (0x08007E4E); it counts the fighting machine's +0x0A down, and under 60 sets BattleState +0x0B (0x08008066),
+    which the round's result reads as the time-out, 7 (0x080079D6), the fighting machine's state 0x14: TIME UP for 60
+    ticks (0x08007378), then the judge (0x0800739E, 0x08021F94: the numbers rolled on RNG2, its banner 0x28 and the
+    HUD's element 0x200 with both damages, 0x080163C8 and 0x080152EA). The lab's flow/no-time-limit stands three
+    minutes in its first turn, which this doesn't reach. The judge's banner is the judge's layout in the pack.
 17. **The fight-live test.** The fight runs while the fighting machine's first byte is 4 and BattleState +3 is 4; for
     one tick as the custom screen closes the machine still reads 4. Pause sets fight[0] to 0x18. To compare with the
     engine's fight states in step 5.
@@ -989,8 +1085,12 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 27. **The projectile** (0x080CD354, 0x080CD3D4) runs @exelib's EXE5 code with EXE4's rows; its tick is 0.89 alike and
     its rows 10 and 11 set a status (0x08013212): compare the code and port the difference.
 28. **The attack's +6 halfword** adds to the cannon's damage (0x080EB984); the engine's chip use doesn't set it.
-29. **Cannon's family** (+0x0B, 0x0B) and **what 0x0800BA66 does** as action 0x0B starts. Placeholder: `family =
-    "null"`.
+29. **Done: Cannon's family** and **what 0x0800BA66 does** as action 0x0B starts (group A). The engine's chip family
+    is the icon family, EXE4's +0x07 (the families are each game's data: EXE4's rules' `elements.families`, by that
+    byte: fire 0, aqua 1, elec 2, wood 3, recovery 4, plus 5, sword 6, invisible 7, break 8, summon 9, wind 10, metal
+    11, null 12, program advance 14, the souls' chips 15, `special`; 13 none). Cannon's is 12, null; its +0x0B, 0x0B,
+    is its action (`cannon/action`). Double Soul's table 0x08020008 reads the same byte as a soul's kind (gen_rules.py
+    holds the families to it). 0x0800BA66 opens the counter window (§7).
 30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
     neither, the lab's first batch's. **Done:** the NaviCust (§8: rules/navicust, the setup's `navicust_programs`,
     exe4-compat's from a recording's list, the replays comparing the stats it compiles) and the save import (§12); the
@@ -1113,3 +1213,31 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `sub_80E08FC`): its sprites by row (0x080E22B8: 14-0B confusion, 14-09 blindness), its sound 0xAE every 60 ticks
     (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
     routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
+110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
+    EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
+    return while paused: a navi's run before it takes control (it runs paused until then, item 42's
+    `stops_at_control`) counts them, so the move bug's start confusion (NaviStats +0x0D = 0xFF) spawns its visual on
+    the intro's first tick (`navicust/bug-humor`, `bug-undersht`). The rule `status.timers_while_paused` (EXE4 true;
+    EXE6, EXE5 false); the visual's own EXE4 differences (its sound, offset and role) are group A's.
+
+### 18.7 The HUD
+
+The fight HUD as read and ported is §14's "The fight HUD as ported". What it still waits on:
+
+130. **HUD pieces that wait on content** (group E). Port each with what reaches it:
+    - a soul chip (0x160 to 0x16F) as the next chip shows no icon of its own, and the stack starts at the second
+      (0x08015000), with Double Soul's chips;
+    - a message stops "????" until the next custom screen starts it (0x08015FE8 stops draw bit 10), with the
+      defensive chips;
+    - a dimming chip's telop: the user's on the banner block (0x08016454), the other player's on the second block in
+      state 0 (0x08008C40), both sliding and squashing as banners do. The renderer draws them from Hud.layout.telop;
+      the engine's telop for EXE4 comes with the first dimming chip;
+    - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
+      seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
+      item 16 reads EXE4's. With it, the damage judge: its numbers' values (0x0801642C, 0x08016408) and a recording
+      to compare;
+    - the warning marker (0x0800843E: a 16x16 sprite at tile 0x360, its second frame at bit 3 of the frame counter, in
+      palette 13; 0x08008424 also sounds 0x79 every 16 frames), with the chips that show it: the gauge chips'
+      effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
+      The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
+      EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.

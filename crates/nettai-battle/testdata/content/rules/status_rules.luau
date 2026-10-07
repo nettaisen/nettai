@@ -58,4 +58,6 @@ return {
     weakness_mark = "last_hit_multiplier",
     -- While paused a navi runs its pause handler in place of its action.
     paused_navi = "pause_handler",
+    -- The status timers hold while paused.
+    timers_while_paused = false,
 }

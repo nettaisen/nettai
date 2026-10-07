@@ -68,6 +68,15 @@ return {
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
     -- Each console's RNG1 advances once a frame after the battle's (`main_`'s `GetRNG1`).
     rng1_per_frame = true,
+    -- The chip icons over a navi (`sub_801C082`): over its sprite's attach point 3, the next chip's icon once for every
+    -- chip held, each next one two pixels up and away from where the console faces, in front of the field's objects.
+    chip_icons = "attach_point",
+    -- The other player's console names a chip a player used for a second (`sub_801EB18`).
+    used_chip_ticks = 0x3C,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (`sub_801CC94`).
     bug_flicker = true,
+    -- An object's destroy (`object_genericDestroy`) releases what it holds and frees its collision as it is.
+    destroy = "frees",
+    -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
+    draw_order = "update_list",
 }

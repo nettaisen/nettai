@@ -940,7 +940,7 @@ impl Window {
         let cw = v.screen.look.chip_window;
         // Palette 11's colors from 10 are the last chip's element's.
         if let Some(c) = cw.last_chip {
-            let family = v.b.content.chip(c.id).family as usize;
+            let family = v.b.content.chip(c.id).family.0 as usize;
             if let Some(colors) = a.element_colors.get(family) {
                 self.palettes[11][10..].copy_from_slice(colors);
             }
@@ -1022,7 +1022,7 @@ impl Window {
         self.palettes[9] = self.frame_palette(v, Some(c), problems);
         let code = c.code.0.min(NO_CODE) as usize;
         self.tiles.put_part(self.layout.code, &a.codes, 2 * code, 2);
-        let family = data.family as usize;
+        let family = data.family.0 as usize;
         if family < a.element_colors.len() {
             self.tiles.put_part(self.layout.element, &a.elements, 4 * family, 4);
         }
@@ -1544,11 +1544,17 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<SpritePart<'a>> {
     let e = a.element_sprite?;
     let s = v.screen;
-    if !matches!(s.slots[s.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) || place.scroll > ELEMENT_SHOWN_TO {
+    // (Not before the window is on the layer: the opening's first tick,
+    // which draws none of it, shows none.)
+    let window_out = place.from >= place.to;
+    if !matches!(s.slots[s.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_))
+        || place.scroll > ELEMENT_SHOWN_TO
+        || window_out
+    {
         return None;
     }
     let c = s.look.chip_window.last_chip?;
-    let family = v.b.content.chip(c.id).family as usize;
+    let family = v.b.content.chip(c.id).family.0 as usize;
     if a.elements.len() < 4 * (family + 1) {
         return None;
     }

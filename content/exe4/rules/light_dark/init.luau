@@ -26,7 +26,8 @@ local megaman = require("../navis/megaman").megaman
 
 export type Setup = {
     -- The save's light/dark value, its karma (NaviStats +0x36): 0 to 1000; the default block's and a fresh save's
-    -- 500 (0x0800D6BE, 0x0800D6CA), the setup's default. (A match's side's `karma`, which nettai-match writes by this field's name.)
+    -- 500 (0x0800D6BE, 0x0800D6CA), the setup's default. (A match's side's `karma`, which nettai-match writes by this
+    -- field's name.)
     karma: number,
     -- The save's Full Synchro at the start (NaviStats +0x1F: Mod Card 45's), none by default.
     full_synchro_start: boolean,

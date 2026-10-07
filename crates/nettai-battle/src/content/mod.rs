@@ -251,10 +251,12 @@ impl Content {
         check_support(&self.scripts, &definitions)?;
         // The rule sections into the rules' typed tables.
         sections::build(self, &definitions)?;
-        self.defs = Defs::build(self, definitions)?;
+        // (The definitions name chip families: the game's, its rules'.)
+        let families = self.rules.as_ref().map(|r| r.chip_families.clone()).unwrap_or_default();
+        self.defs = chips::reading_families(&families, || Defs::build(self, definitions))?;
         // (The rules' references to definitions, which have their handles
         // now.)
-        sections::link(self)?;
+        chips::reading_families(&families, || sections::link(self))?;
         // (The forms' faces, keyed by the rules' emotions.)
         navis::check_faces(self)?;
         self.count_strings();

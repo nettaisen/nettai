@@ -1200,7 +1200,9 @@ EXE6 stays byte-identical; EXE5's side is unit tests and asm citations, and the 
   EXE5's obstacle push (0x08017AD8) isn't ported.
 - **Optional roles (item 4).** `statuses.ice_freeze` and `hooks.encased` may be absent: no freeze, nothing
   encased.
-- **Families (item 5).** `ChipFamily::Recovery` and `Invisible`, appended.
+- **Families (item 5).** `ChipFamily::Recovery` and `Invisible`, appended. (Since: each game's families are its
+  rules' data, `elements.families` and `non_elemental`, and `ChipFamily` a number of its game's; EXE5's keep these
+  numbers.)
 - **The mood (item 6), changed from the answer first given** (the coordinator approved the change): EXE5's mood byte
   is the engine's mood (`NaviStats::mood`), so instead of an `exe5:mood` system with hooks there is
   `battle.gain_mood(side, n)` (EXE5's 0x08012802: 0 and 0xFF stay, 254 at most) and `battle.lose_mood(side, n)`
@@ -2602,11 +2604,16 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - **A panel type's `doubles`, since EXE4's port** (was the hit test's `elec_bonus_on_sea`): the element whose hits
   count once more, as null damage, on a body standing on it: fire on grass in all three games, and EXE5's elec on
   its sea, EXE4's elec on ice (0x08012CF2).
-- **A panel type's `burn` is a table, and `panels.standing`, since EXE4's port**: the burn's `damage`, the status bits
-  that spare a body (`spared_by`: EXE5's 0x88000206, EXE4's 0x206), what it wears off the mood (`mood`: EXE4's 20)
-  and whether a player burns while the battle is dimmed (`players_while_dimmed`: EXE4's); `standing`: whether
-  poison's drain and grass's heal hold while paused (`stops_while_paused`: EXE6's and EXE5's) and the HP at or below
-  which grass heals on the 180-tick count (`slow_heal_at`: their 9; EXE4's none).
+- **A panel type's `burn` is a table, and `panels.grass_heal_slows_at`, since EXE4's port**: the burn's `damage`, the
+  status bits that spare a body (`spared_by`: EXE5's 0x88000206, EXE4's 0x206), what it wears off the mood (`mood`:
+  EXE4's 20) and whether a player burns while the battle is dimmed (`players_while_dimmed`: EXE4's);
+  `grass_heal_slows_at`: the HP at or below which grass heals a wood body on the 180-tick count (EXE6's and EXE5's 9;
+  EXE4's none).
+- **`status.timers_while_paused`, since EXE4's port**: whether a navi's status timers count while the battle is paused
+  (EXE4's 0x0800AE58, before its navi takes control) or hold (EXE6's `sub_800E730`, EXE5's).
+- **`effects.destroy`, since EXE4's port**: what an object's destroy does with its collision before freeing it:
+  `frees` it as it is (EXE6's, after releasing what marked reservations hold; EXE5's), or `unregisters` it first
+  (EXE4's: `object_removeCollisionData`, its panels refreshed and its hits and clearings resolved on them).
 - **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
   poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
   EXE4's 0x23F5F (their sea's and metal's 0x20000 too).

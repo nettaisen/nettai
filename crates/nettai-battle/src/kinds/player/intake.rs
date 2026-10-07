@@ -288,12 +288,12 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801A186`: poison panels hurt 1 HP every 7 ticks (through
 /// element 5), and a panel that drains a body's element (EXE5's sea, fire
-/// bodies: 0x08016C7E) the same; wood navis on grass heal. (The panel
-/// rules' `standing`: EXE4's, 0x08012FF2, run on while paused and heal on
-/// the 20-tick count at any HP.)
+/// bodies: 0x08016C7E) the same; wood navis on grass heal. (EXE4's,
+/// 0x08012FF2, has no pause test: its player stops for pauses once in
+/// control, the rules' `paused_navi`, so it never runs paused. It heals on
+/// the 20-tick count at any HP: the panel rules' `grass_heal_slows_at`.)
 fn standing_effects(b: &mut Battle, r: ObjectRef) {
-    let rule = b.game_rules().panels.standing;
-    if b.is_dimmed() || (b.paused && rule.stops_while_paused) || coll(b, r).region.is_none() {
+    if b.is_dimmed() || b.paused || coll(b, r).region.is_none() {
         return;
     }
     let p = coll(b, r).panel;
@@ -322,7 +322,7 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     if !on_grass || b.objects.get(r).element & 0xF != 4 {
         return;
     }
-    let slow = rule.slow_heal_at.is_some_and(|at| b.objects.get(r).hp <= at);
+    let slow = b.game_rules().panels.grass_heal_slows_at.is_some_and(|at| b.objects.get(r).hp <= at);
     let cycle = if slow { b.round.cycle180 } else { b.round.cycle20 };
     if cycle == 0 {
         add_hp(b, r, 1);
@@ -982,32 +982,15 @@ mod tests {
         assert_eq!(run(None, false, true, 0), (50, 0, false));
     }
 
-    /// docs/design/exe4-map.md §18 item 13: EXE4's poison drains and grass
-    /// heals while paused, grass on the 20-tick count at any HP (`standing`);
-    /// EXE6's (the test content's) hold, and heal at 9 HP or less on the
-    /// 180-tick count.
+    /// docs/design/exe4-map.md §18 item 13: EXE4's grass heals on the
+    /// 20-tick count at any HP (`grass_heal_slows_at` none); EXE6's (the
+    /// test content's) on the 180-tick count at 9 HP or less.
     #[test]
-    fn standing_effects_are_the_games() {
-        use crate::content::StandingRule;
-        let exe4 = StandingRule { stops_while_paused: false, slow_heal_at: None };
-        let poisoned = |rule: Option<StandingRule>| {
+    fn grass_heals_by_the_games_count() {
+        let healed = |exe4: bool| {
             let (mut b, r) = fight_with(|rules| {
-                if let Some(rule) = rule {
-                    rules.panels.standing = rule;
-                }
-            });
-            let p = coll(&b, r).panel;
-            b.set_panel_type(p.x, p.y, PanelType::Poison);
-            b.paused = true;
-            coll_mut(&mut b, r).poison_timer = 0;
-            standing_effects(&mut b, r);
-            coll(&b, r).acc.element_damage[5]
-        };
-        assert_eq!((poisoned(Some(exe4)), poisoned(None)), (1, 0));
-        let healed = |rule: Option<StandingRule>| {
-            let (mut b, r) = fight_with(|rules| {
-                if let Some(rule) = rule {
-                    rules.panels.standing = rule;
+                if exe4 {
+                    rules.panels.grass_heal_slows_at = None;
                 }
             });
             let p = coll(&b, r).panel;
@@ -1019,6 +1002,6 @@ mod tests {
             standing_effects(&mut b, r);
             b.objects.get(r).hp
         };
-        assert_eq!((healed(Some(exe4)), healed(None)), (6, 5), "at 5 HP: EXE4's 20-tick count, EXE6's 180");
+        assert_eq!((healed(true), healed(false)), (6, 5), "at 5 HP: EXE4's 20-tick count, EXE6's 180");
     }
 }
