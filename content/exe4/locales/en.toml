@@ -76,6 +76,9 @@ language = "en"
 "serchman" = { name = "SerchMan", description = "Stop site\nand fire\n5 shots" }
 "srchmn-sp" = { name = "SrchMnSP", description = "Stop site\nand fire\n5 shots" }
 "srchmn-ds" = { name = "SrchMnDS", description = "Stop site\nand fire\n5 shots" }
+"thunman" = { name = "ThunMan", description = "Lightning\nstrikes\n3sq ahead" }
+"thunmn-sp" = { name = "ThunMnSP", description = "Lightning\nstrikes\n3sq ahead" }
+"thunmn-ds" = { name = "ThunMnDS", description = "Lightning\nstrikes\n3sq ahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

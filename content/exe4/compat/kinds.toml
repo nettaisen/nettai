@@ -59,5 +59,7 @@
 "serchman/navi" = { pool = "actor", index = 0x31 }
 "serchman/scope" = { pool = "effect", index = 0x43 }
 "serchman/shot" = { pool = "attack", index = 0x57 }
+"thunman/navi" = { pool = "actor", index = 0x37 }
+"thunman/thunder" = { pool = "attack", index = 0x71 }
 # The follow effect (0x080E5B34): DeltaRay's burst.
 "follow-effect" = { pool = "effect", index = 0x31 }
