@@ -197,6 +197,8 @@ language = "en"
 "069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"076-all-guard-1-2" = { name = "All Guard 1/2" }
+"077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
 "086-charge-shot-switch" = { name = "Charge Shot Switch" }
