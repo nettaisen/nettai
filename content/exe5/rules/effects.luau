@@ -49,4 +49,10 @@ return {
         steps_while_paused = true,
         stops_at_a_pause_in_the_fight = true,
     },
+    -- A navi's charge glow (effect 8) comes with it, as EXE6's.
+    charge_glow = "with_navi",
+    -- A screen fade toward clear ends on the step whose level reaches its target, as EXE6's.
+    fade_clear = "at_target",
+    -- A banner's steps are EXE6's.
+    banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more" },
 }

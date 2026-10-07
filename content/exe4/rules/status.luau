@@ -419,6 +419,10 @@ local status = {
         form_break = "any_form",
         weakness_hit_breaks_form = false,
         weakness_mark = "weak_element_damage",
+        -- A navi runs through a pause until it takes control (0x08010A88 clears its header flag 0x04, and the object
+        -- loop skips it while paused from then on); its status block has no pause handler, and runs its action
+        -- (0x08013C2A).
+        paused_navi = "stops_at_control",
     },
 }
 

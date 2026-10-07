@@ -31,8 +31,9 @@ impl CustomGauge {
     }
 }
 
-/// A banner's life: slide in 5 ticks, hold 0x30, slide out 5, then clear.
-/// Flow code waits on banners, so their lifetime is simulation state.
+/// A banner's life: slide in, hold, slide out, then clear, each step's
+/// ticks its game's (`BannerSteps`: EXE6's 5, 0x30 and 5). Flow code waits
+/// on banners, so their lifetime is simulation state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Banner {
     pub active: bool,
@@ -41,6 +42,9 @@ pub struct Banner {
     pub timer: u8,
     /// Stays up until removed instead of sliding out.
     pub holds: bool,
+    /// Its steps' ticks, its game's (the rules' `effects.banner`); none
+    /// before a banner first shows.
+    pub steps: Option<crate::content::BannerSteps>,
     /// Which banner is showing (presentation only).
     pub id: Option<BannerId>,
     /// A telop's text (presentation only).
@@ -210,12 +214,13 @@ pub enum BannerStatus {
 
 impl Banner {
     /// Start a banner unless one is showing; `holds`: it stays up until
-    /// removed (`Rules::banner_holds`). Returns false if one was showing.
-    pub fn start(&mut self, id: BannerId, holds: bool) -> bool {
+    /// removed (`Rules::banner_holds`); `steps`: its steps' ticks (the
+    /// rules' `effects.banner`). Returns false if one was showing.
+    pub fn start(&mut self, id: BannerId, holds: bool, steps: crate::content::BannerSteps) -> bool {
         if self.active {
             return false;
         }
-        *self = Banner { active: true, step: 0, timer: 0, holds, id: Some(id), telop: None };
+        *self = Banner { active: true, step: 0, timer: 0, holds, steps: Some(steps), id: Some(id), telop: None };
         true
     }
 
@@ -229,33 +234,42 @@ impl Banner {
         }
     }
 
-    /// `sub_801E780`: let a holding banner go: it holds three more ticks,
-    /// then slides out.
+    /// Let a holding banner go: EXE6's `sub_801E780` holds it three more
+    /// ticks, then slides it out; EXE4's 0x0801616C slides it out at once
+    /// (`BannerSteps::release`).
     pub fn release(&mut self) {
-        if self.holds {
-            self.timer = 0x2D;
-        }
-    }
-
-    /// One tick of the banner task (`sub_801CE28`).
-    pub fn tick(&mut self) {
-        if !self.active {
-            return;
-        }
-        let next = self.timer.wrapping_add(1);
-        if !(next == 5 && self.step == 4 && self.holds) {
-            self.timer = next;
-        }
-        match self.step {
-            0 if self.timer >= 5 => {
-                self.step = 4;
-                self.timer = 0;
-            }
-            4 if self.timer >= 0x30 => {
+        let Some(steps) = self.steps.filter(|_| self.holds) else { return };
+        match steps.release {
+            crate::content::BannerRelease::HoldsThreeMore => self.timer = steps.hold.wrapping_sub(3),
+            crate::content::BannerRelease::SlidesOut => {
                 self.step = 8;
                 self.timer = 0;
             }
-            8 if self.timer >= 5 => self.step = 0xC,
+        }
+    }
+
+    /// One tick of the banner task (EXE6's `sub_801CE28`, EXE4's
+    /// 0x08014904): the timer counts (EXE6's stops at 5 while a holding
+    /// banner holds), then its step's ticks.
+    pub fn tick(&mut self) {
+        let Some(s) = self.steps.filter(|_| self.active) else { return };
+        let next = self.timer.wrapping_add(1);
+        let freezes = s.release == crate::content::BannerRelease::HoldsThreeMore;
+        if !(freezes && next == 5 && self.step == 4 && self.holds) {
+            self.timer = next;
+        }
+        match self.step {
+            0 if self.timer >= s.slide_in => {
+                self.step = 4;
+                self.timer = 0;
+            }
+            // (A holding banner holds: EXE6's frozen timer, EXE4's step
+            // that doesn't count it.)
+            4 if self.timer >= s.hold && !(self.holds && !freezes) => {
+                self.step = 8;
+                self.timer = 0;
+            }
+            8 if self.timer >= s.slide_out => self.step = 0xC,
             0xC => self.active = false,
             _ => {}
         }
