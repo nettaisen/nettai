@@ -16,6 +16,20 @@ use crate::content::{Content, PlayerFact, ViewFields};
 use crate::custom::PlayerSetup;
 use crate::custom::screen::CROSSES;
 
+/// What a side's rules did with a hit's NaviCust bug (`navi_bug`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum NaviBug {
+    /// Nothing of the navi's stats changed (no bug, or one that leaves
+    /// none: a panel trail, the uninstalls): its weapons are reloaded.
+    Untouched,
+    /// They edited its stats: its abilities and form flags come back, and
+    /// its weapons are reloaded.
+    Edited,
+    /// They spared it the bug and the reload (EXE5's light MegaMan, a drain
+    /// that wouldn't rise).
+    Spared,
+}
+
 /// A side's rules in a battle: the game's rules' state of the side (none:
 /// the content has no rules).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -568,10 +582,30 @@ impl Battle {
         self.rules_ask(side, RulesHook::NaviPalette, Some(navi))
     }
 
-    /// The rules' `navi_bug(side, navi)`: whether they answered true (the
-    /// bug and the weapons' reload skipped).
-    pub(crate) fn rules_navi_bug(&mut self, side: u8, navi: ObjectRef) -> bool {
-        self.call_rules(side, RulesHook::NaviBug, Some(navi), None, None) == Some(Value::Bool(true))
+    /// The rules' `navi_bug(side, navi)`: what they did with the navi's
+    /// hit's NaviCust bug ([`NaviBug`]; no answer: untouched).
+    pub(crate) fn rules_navi_bug(&mut self, side: u8, navi: ObjectRef) -> NaviBug {
+        match self.call_rules(side, RulesHook::NaviBug, Some(navi), None, None) {
+            Some(Value::Int(1)) => NaviBug::Edited,
+            Some(Value::Int(2)) => NaviBug::Spared,
+            _ => NaviBug::Untouched,
+        }
+    }
+
+    /// The rules' `hit_bug(side, navi)`.
+    pub(crate) fn rules_hit_bug(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::HitBug, Some(navi), None, None);
+    }
+
+    /// The rules' `bug_mark(side, navi)`: whether they answered true (the
+    /// marker shows).
+    pub(crate) fn rules_bug_mark(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::BugMark, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
+    /// The rules' `navi_damaged(side, navi)`.
+    pub(crate) fn rules_navi_damaged(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::NaviDamaged, Some(navi), None, None);
     }
 
     /// The rules' `hp_emptied(side, navi)`: whether they answered true (the

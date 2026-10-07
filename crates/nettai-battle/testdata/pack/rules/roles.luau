@@ -44,8 +44,6 @@ return {
         damage_word_paralysis = statuses.paralyze_90,
         counter_paralysis = statuses.paralyze_150,
         ice_freeze = statuses.freeze_150,
-        hit_bug_blind = statuses.blind_1200,
-        hit_bug_confuse = statuses.confuse_960,
     },
     effects = defined.effects,
     sparks = defined.sparks,

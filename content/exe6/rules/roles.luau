@@ -94,9 +94,6 @@ local roles: RolesSpec = {
         counter_paralysis = statuses.paralyze_150,
         -- What an aqua hit gives a body standing on ice.
         ice_freeze = statuses.freeze_150,
-        -- The NaviCust on-hit bug's, by its level.
-        hit_bug_blind = statuses.blind_1200,
-        hit_bug_confuse = statuses.confuse_960,
     },
     effects = {
         -- A navi deleted (its two explosions), a cross merged into MegaMan,
@@ -125,8 +122,6 @@ local roles: RolesSpec = {
         eruption = sparks.fire,
         -- A thrown obstacle's landing's (`sub_80180EC`: the hit region's Param2 0, the plain spark).
         thrown_obstacle = sparks.plain,
-        -- A navi's programs uninstalled.
-        uninstall = sparks.uninstall,
     },
     regions = {
         -- A registration's own panel, which every setup gives it.

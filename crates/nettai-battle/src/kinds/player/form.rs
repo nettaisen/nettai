@@ -237,7 +237,7 @@ pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
 /// `sub_801469C`: after a NaviCust edit (a bug code, an uninstall) the
 /// form's flags come back (`off_80146B8`): its `navicust_refresh`, or what
 /// `apply_form_flags` gave without the lock-on marker.
-pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
     let effects = form_of(b, r).refresh_effects();
     apply_effects(b, r, effects);
 }

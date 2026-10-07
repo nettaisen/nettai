@@ -244,9 +244,14 @@ fn weakness_effect(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A4A6`: an HP-bug hit shows its marker.
+/// `sub_801A4A6`: a hit's bug shows the HP bug's marker where its side's
+/// rules say (`bug_mark`: EXE6's HP bug codes), when a hit brought a code.
 fn bug_effect(b: &mut Battle, r: ObjectRef) {
-    if matches!(coll(b, r).acc.inflicted_bugs as u8, 0xF4 | 0xF7) {
+    if coll(b, r).acc.inflicted_bugs & 0xFF == 0 {
+        return;
+    }
+    let side = b.objects.get(r).alliance;
+    if b.rules_bug_mark(side, r) {
         spawn_marker(b, r, crate::kinds::hit_marker::Mark::Bug);
     }
 }

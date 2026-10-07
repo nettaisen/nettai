@@ -78,9 +78,6 @@ local roles: RolesSpec = {
         damage_word_confusion = statuses.confuse_480,
         damage_word_blindness = statuses.blind_480,
         counter_paralysis = statuses.paralyze_150,
-        -- The NaviCust on-hit bug's, by its level (0x32, 0x22).
-        hit_bug_blind = statuses.blind_1200,
-        hit_bug_confuse = statuses.confuse_960,
     },
     sparks = {
         -- EXE5's hit sparks (lib/sparks: EXE6's rows with EXE5's sprites): a new registration's, a blocked hit's,

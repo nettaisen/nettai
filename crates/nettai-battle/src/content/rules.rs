@@ -434,12 +434,6 @@ pub struct IntakeRules {
     /// 0x080178EC, calls 0x0801103E before 0x0800DFEC); EXE6's after, so a
     /// drain bug's first drain comes a tick later.
     pub bugs_before_drain: bool,
-    /// A drain bug's argument (codes 0x18 and 0x19) goes by its flags
-    /// (EXE5's 0x0801103E): with bit 4 it adds its low four bits (to at most
-    /// 7), with bit 5 it subtracts them (to at least 0), else it raises the
-    /// level to them (no lower level changes, and nothing is reloaded).
-    /// EXE6's adds the argument (to at most 7).
-    pub drain_bug_flags: bool,
     /// EXE5's no-charge drive (DarkInvs, 0x080E2318): a navi with the
     /// no-charge state counts its drive's ticks down at the intake's end
     /// (0x0800DBE0) and asks for the stun strike when they run out (EXE5's
