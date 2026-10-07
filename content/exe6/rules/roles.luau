@@ -116,8 +116,6 @@ local roles: RolesSpec = {
         plain = sparks.plain,
         -- A blocked hit's.
         guard = sparks.guard,
-        -- An eruption's hits' (a volcano panel's).
-        eruption = sparks.fire,
         -- A thrown obstacle's landing's (`sub_80180EC`: the hit region's Param2 0, the plain spark).
         thrown_obstacle = sparks.plain,
     },
@@ -130,9 +128,6 @@ local roles: RolesSpec = {
         navi = collision.navi,
         floating_navi = collision.floating_navi,
         navi_target = collision.navi_target,
-        -- An eruption (a volcano panel's), and what it reaches.
-        eruption = collision.hitbox,
-        eruption_target = collision.hits_both_sides,
         -- A thrown obstacle's landing, and what it reaches.
         thrown_obstacle = collision.breaking,
         thrown_obstacle_target = collision.hits_navis,
@@ -238,8 +233,7 @@ local roles: RolesSpec = {
         -- The mark over a navi a hit told something about ("!!", the HP
         -- bug's).
         hit_marker = asset.sprite("hit-marker"),
-        -- A volcano panel's eruption; the Beast forms' lock-on marker.
-        eruption = asset.sprite("eruption"),
+        -- The Beast forms' lock-on marker.
         target_marker = asset.sprite("lockon-marker"),
     },
     banners = {

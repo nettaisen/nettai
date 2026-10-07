@@ -92,7 +92,6 @@ burst = 0x68
 # routines name each by.
 [sparks]
 plain = 0x00
-eruption = 0x01
 # (`sub_80180EC`'s word 0x06050001: its byte 1, 0, is the spark; bytes 2 and 3 are
 # the collision types below.)
 thrown_obstacle = 0x00
@@ -111,8 +110,6 @@ navi_target = 0x02
 thrown_obstacle_target = 0x05
 thrown_obstacle = 0x06
 floating_navi = 0x10
-eruption_target = 0x2A
-eruption = 0x48
 
 # The roles `sounds` of rules/roles.luau: the sound (the song table's entry) the original's routines
 # name each by.
@@ -177,7 +174,6 @@ winner = 0x01F
 target_marker = "0c-09"
 bubble = "0c-20"
 immobilized = "10-00"
-eruption = "10-24"
 hit_marker = "14-07"
 charge_glow = "14-08"
 blindness = "14-09"
