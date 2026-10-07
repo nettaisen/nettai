@@ -2548,8 +2548,9 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
     `banners` (none hold);
   - a table that is empty without its section: `elements` (no weakness, no family adds an element), `buster`,
     `math`, `custom_screen`;
-  - in a section: `family_elements`, the buster's `chaos_cycle` (no rows: no cycle), the custom screen's
-    `redeal_kept` (none listed: a re-deal keeps none), `sp_chips.slots`, `banners.holding`;
+  - in a section: `family_elements`, the buster's `chaos_cycle` (no rows: no cycle; since rust-and-luau.md's S1,
+    EXE5's Luau), the custom screen's `redeal_kept` (none listed: a re-deal keeps none), `sp_chips.slots`,
+    `banners.holding`;
   - an attribute of one entry: a panel type's `road_slide`, `trail_sound`, `expires`, `burn`, `drains`, `holds`,
     `submerges`, `slide`, `cleared_by`; a status's `cancels_flinch` and `survives_counter`; a lock-on mode's
     offsets and flags (`LockonRule::Stay`: the navi's own panel); `BoardCell::Off`;

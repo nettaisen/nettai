@@ -865,7 +865,7 @@ fn mugshot_parts<'a>(
         &b.content,
         face.form,
         face.emotion,
-        face.hub || nettai_battle::kinds::player::face_chaos(b, side as u8),
+        face.hub || nettai_battle::kinds::player::face_charged(b, side as u8),
         problems,
     ) else { return };
     // (The white of a change to Full Synchro: `byte_801CD80`.)

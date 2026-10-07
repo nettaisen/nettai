@@ -17,7 +17,7 @@ local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
 local form: FormDef = {
-    soul = { family = "recovery", chaos_cycle = 2 },
+    soul = { family = "recovery" },
     change = soul_change.action,
     revert = soul_revert.action,
     -- Meddy's image as MegaMan unites with her (rules/souls/image).
@@ -27,12 +27,14 @@ local form: FormDef = {
     sprite = asset.sprite("meddysoul"),
     element = "null",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x36 (0x0800FA70): DrkRecov (chip 0xC2), the charge table's row 0x36; its charge cycles in the cycle's
+    -- row 2 whatever the chaos level (0x080106BC).
+    chaos = { weapon = chaos.weapon(drkrecov, { 70, 90, 110, 130, 150, 70 }), cycle = 2 },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
-        -- Routine 0x36 (0x0800FA70): DrkRecov (chip 0xC2), the charge table's row 0x36.
-        chaos = chaos.weapon(drkrecov, { 70, 90, 110, 130, 150, 70 }),
     },
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its

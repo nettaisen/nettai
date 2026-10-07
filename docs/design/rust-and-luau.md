@@ -55,10 +55,10 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | 1 | 1 | 3 | 5 |
 | NaviCust | | | | 2 | 2 |
-| Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
+| Souls and Chaos Unison | 1 | | 1 | | 2 |
 | The stat block and versions | | | 1 | | 1 |
 | Tools | | | 1 | | 1 |
-| **All** | **1** | **2** | **7** | **5** | **15** |
+| **All** | **1** | **1** | **7** | **5** | **14** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -150,17 +150,6 @@ rename left of EXE5's logic.
   functions' `navicust` names went in step 1: N6.)
 ### Souls and Chaos Unison (EXE5)
 
-- **S1. Chaos Unison in the navi framework**:
-  - `ChaosCharge` (actor.rs:393, :416);
-  - its window cycling every tick while armed (`chaos_cycle`, input.rs:31; the `chaos_cycle` rule, rules.rs:671);
-  - the charge's release (input.rs:284, :354), `chaos_success` and `chaos_failure` (idle.rs:160–305);
-  - the glow (charge_glow.rs:99–161; `SpriteRole::ChargeGlowChaos`);
-  - the palette (player/mod.rs:1347);
-  - `ActorField::{ChaosArmed, ChaosLevel}` and `ActionRole::ChaosFailure`.
-
-  *(b)* EXE5's souls system: a `navi_tick` while armed (§2.1 rule 4 allows per-tick Luau while a state is active), a
-  charge-release hook, and the glow's sprite as a look the rules push. About 150 lines. It costs one call per tick
-  for an armed navi, and none in a plain fight.
 - **S2. Soul data in the engine's records**: `SoulData` and `FormData::soul` (navis.rs:284, :305), `NaviForms::souls`
   (navis.rs:213; defs.rs:1526), which Chaos Unison's Rust (S1) reads. *(a)* With S1's move: the soul list as a form
   list like `by_version`, the soul's data as EXE5's form extension (`SystemDef::extends`). (The transform record's
@@ -254,6 +243,18 @@ Each with what it was and what it is now.
   rules/navicust/board.luau, which the editor reads as data.
 - **N6.** `clear_bugs`, `init_round_state`, `reset_abilities`, `refresh_abilities`, `apply_ability_flags`,
   `low_hp_support`, and the form's `ability_refresh` (was `navicust_refresh`).
+- **S1.** Chaos Unison is EXE5's Luau (rules/souls/chaos_charge): the level, the cycle's counter and window and a
+  release's outcome are its rules' state, the cycle runs in its `navi_tick` (next to the input, as 0x080105F8),
+  the table is its own, and a soul's weapon and row are its form's `chaos` (an extension). The engine keeps a
+  generic rules' B charge, which the rules push and the weapons' load drops: `b_charge_time` (the time to a full
+  B charge in place of the charged shot's), `b_charge_glow` (the glow, seen and heard by its side alone) and
+  `b_charge_anim` (its full animation). A full charge released while it is armed asks the rules
+  (`charge_released`) and raises one request, `rules_release`, which idle hands them (`release_taken`) where the
+  original's 0x080F034E and 0x080F0382 run. The palette and the face are EXE5's (its `navi_palette`;
+  `battle.set_face_variant(side, true, "charged")`). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
+  ChaosLevel}`, the `chaos_cycle` rule, `request::CHAOS_*`, `FormWeapons::chaos`, `SoulData::chaos_cycle`,
+  `ActionRole::ChaosFailure`, `SpriteRole::ChargeGlowChaos`, the palette's branch and the end-of-kind-6 disarm
+  (the failure's revert drops the charge with its status reset first: the EXE5 lab's 29 failures end disarmed).
 - **S2, its record's names.** `TransformRequest::alternate`, `form_change_terms`, `custom_set_form`'s `alternate`
   and `Screen::form_alternate` (were `chaos`, `form_change_soul`, `form_chaos`).
 - **T1.** The save importers are the compat crates' (the user: "import code should move out of nettai-match i think

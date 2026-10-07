@@ -12,11 +12,4 @@ return {
         { 2, 3, 4, 5, 6, 7 },
     },
     empty_hand = { null_family = false, fire = false, flags = {} },
-    -- Chaos Unison's cycle (0x08010650), a row by the chaos level (at most 2): the period, then the bounds of its
-    -- windows: a release succeeds under the first (21, 12, 9 ticks into a full charge), fails past it.
-    chaos_cycle = {
-        { 42, 21, 12, 42 },
-        { 36, 12, 9, 36 },
-        { 27, 9, 9, 27 },
-    },
 }

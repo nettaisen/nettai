@@ -1,6 +1,6 @@
 --!strict
--- EXE5's Chaos Unison failure (action 0x39, 0x080EE63C; the role `actions.chaos_failure`, which the engine starts
--- when an armed charge is released out of the chaos cycle's window: the navi uninterruptible, `set_attack` slot 6).
+-- EXE5's Chaos Unison failure (action 0x39, 0x080EE63C), which ./chaos_charge starts when an armed charge is
+-- released out of the chaos cycle's window (the navi uninterruptible, `set_attack` slot 6).
 -- The battle dims (battle flag 4 alone, once no dimming runs), MegaMan flashes white every other pair of ticks
 -- while he crouches (animation 12, 6 ticks) and fades (animation 1 and the fade sound, 25 ticks), and on the fade's
 -- seventeenth tick the Dark MegaMen across from him leave (rules/auto_battle) and a new one comes onto a solid,

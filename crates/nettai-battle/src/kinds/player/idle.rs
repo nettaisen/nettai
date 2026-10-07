@@ -155,12 +155,14 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         let kind = if sticky { 2 } else { 1 };
         return set_attack(b, r, action, kind);
     }
-    // EXE5's Chaos Unison releases (0x080F034E, 0x080F0382).
-    if f & request::CHAOS_SUCCESS != 0 {
-        return chaos_success(b, r);
-    }
-    if f & request::CHAOS_FAILURE != 0 {
-        return chaos_failure(b, r);
+    // The rules' own B charge released (EXE5's Chaos Unison releases,
+    // 0x080F034E and 0x080F0382): the navi leaves idle, and its side's
+    // rules start what it does (`release_taken`).
+    if f & request::RULES_RELEASE != 0 {
+        leave_idle(b, r);
+        let side = b.objects.get(r).alliance;
+        b.rules_release_taken(side, r);
+        return;
     }
     if ai(b, r).requests & request::BACK_SPECIAL != 0 {
         leave_idle(b, r);
@@ -272,35 +274,6 @@ fn select_special(b: &mut Battle, r: ObjectRef) {
     }
     super::reset_select_special(s);
     ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
-}
-
-/// EXE5's 0x080F034E: a Chaos Unison charge released in its window: the
-/// chaos level rises (at most 4) and the soul's chaos weapon fires
-/// (0x0800F338: the side's statistic 0 counts it), an attack of kind 5
-/// (the charge stays armed).
-fn chaos_success(b: &mut Battle, r: ObjectRef) {
-    leave_idle(b, r);
-    let a = ai_mut(b, r);
-    a.chaos.level = (a.chaos.level + 1).min(4);
-    let side = b.objects.get(r).alliance;
-    b.bump_side_stat(side, 0, 1);
-    let weapon = ai(b, r).chaos.weapon;
-    let action = weapon_slot_routine(b, r, weapon);
-    set_attack(b, r, action, CHAOS_WEAPON_KIND);
-}
-
-/// The attack kinds of the chaos releases (EXE5's `set_attack` slots 5 and
-/// 6): the failure's end disarms the charge (`end_attack`).
-pub(crate) const CHAOS_WEAPON_KIND: u8 = 5;
-pub(crate) const CHAOS_FAILURE_KIND: u8 = 6;
-
-/// EXE5's 0x080F0382: released out of the window: uninterruptible, the
-/// chaos failure (EXE5's action 0x39, the role `chaos_failure`).
-fn chaos_failure(b: &mut Battle, r: ObjectRef) {
-    ai_mut(b, r).status |= status::UNINTERRUPTIBLE;
-    leave_idle(b, r);
-    let failure = super::role_action(b, crate::content::ActionRole::ChaosFailure);
-    set_attack(b, r, failure, CHAOS_FAILURE_KIND);
 }
 
 /// `sub_8010660`: in link battles the NaviCust support Tango (stat 0x0D

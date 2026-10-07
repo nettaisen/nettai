@@ -56,14 +56,10 @@ pub enum ActionRole {
     /// (`sub_801B9E6`): EXE6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
     /// attack runs as it is.
     Wrapper,
-    /// EXE5's Chaos Unison charge released out of its window (0x39): the
-    /// battle dims, a Dark MegaMan comes for the other side, and the navi
-    /// is back in its base form.
-    ChaosFailure,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 13] = [
+    pub const ALL: [ActionRole; 12] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -76,7 +72,6 @@ impl ActionRole {
         ActionRole::Ungrounded,
         ActionRole::Glowless,
         ActionRole::Wrapper,
-        ActionRole::ChaosFailure,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -94,7 +89,6 @@ impl ActionRole {
             ActionRole::Ungrounded => "ungrounded",
             ActionRole::Glowless => "glowless",
             ActionRole::Wrapper => "wrapper",
-            ActionRole::ChaosFailure => "chaos_failure",
         }
     }
 
@@ -423,9 +417,6 @@ definition_roles! {
         /// (`sub_80E0F2E`).
         ChargeGlow = "charge_glow",
         ChargeGlowA = "charge_glow_a",
-        /// EXE5's: the glow of an armed Chaos Unison charge (0x080E0EA4),
-        /// whose animation shows the chaos cycle's window.
-        ChargeGlowChaos = "charge_glow_chaos",
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura",
         /// The status visuals over a navi: confusion's stars, blindness,

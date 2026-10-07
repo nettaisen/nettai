@@ -27,13 +27,14 @@ local form: FormDef = {
     sprite = asset.sprite("knightsoul"),
     element = "null",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x38 (0x0800FA84): DarkDril (chip 0xC4), the charge table's row 0x38.
+    chaos = { weapon = chaos.weapon(darkdril, { 40, 60, 90, 120, 150, 40 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x12 (the charged chip is the chip with the bonus), the charge table's row 0x12.
         a_charge = charged_chips.routine({ 80, 80, 80, 80, 80, 120 }),
-        -- Routine 0x38 (0x0800FA84): DarkDril (chip 0xC4), the charge table's row 0x38.
-        chaos = chaos.weapon(darkdril, { 40, 60, 90, 120, 150, 40 }),
     },
     charged_chips = { { family = "break", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },

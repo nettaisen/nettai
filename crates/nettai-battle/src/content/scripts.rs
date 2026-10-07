@@ -583,7 +583,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((f.stats, f.mode9_a), (Default::default(), None), "none stated: none of the game's own, no weapon");
         assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType::Normal), None), "its own numbers, no others");
         // What it may leave out reads as nothing, for every game.
-        assert!(r.chaos_cycle.is_empty() && r.holding_banners.is_empty());
+        assert!(r.holding_banners.is_empty());
         assert!(r.sine.is_empty() && r.buster_recovery.is_empty());
         assert_eq!(r.element_weakness, [[0; 6]; 6]);
         // A section left out is a load error that names it.
