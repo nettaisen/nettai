@@ -978,6 +978,24 @@ pub struct IntakeRules {
     pub hit_sound: HitSound,
     /// How a navi's barrier takes the tick's hits (`sub_801A802`).
     pub barrier: BarrierTick,
+    /// What a side's defensive chip catches (`sub_802CEF4`).
+    pub anti_traps: AntiTraps,
+}
+
+/// What a side's defensive chip catches (`IntakeRules::anti_traps`: EXE6's
+/// `sub_802CEF4`, EXE5's 0x08029A60, EXE4's 0x08023048).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AntiTraps {
+    /// AntiDmg catches a hit of at least this much damage (EXE6's 10;
+    /// EXE5's and EXE4's any, 1: they test the elements' damage for none).
+    pub damage_min: u16,
+    /// With the trap the navi's own status arms, a hit under the least is
+    /// swallowed all the same (EXE6's; EXE5's arms AntiDmg's own test).
+    pub armed_swallows_below: bool,
+    /// A sword's hit (hit flags 0x2000) with any of these flags isn't
+    /// AntiSwrd's (EXE6's 0x20000; EXE5's and EXE4's none).
+    pub sword_spares: u32,
 }
 
 /// How a navi's barrier takes the tick's hits (`IntakeRules::barrier`:
