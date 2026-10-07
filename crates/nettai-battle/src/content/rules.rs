@@ -933,6 +933,33 @@ pub struct IntakeRules {
     pub hp_loss: HpLoss,
     /// What a navi's hit sounds like, on each console.
     pub hit_sound: HitSound,
+    /// How a navi's barrier takes the tick's hits (`sub_801A802`).
+    pub barrier: BarrierTick,
+}
+
+/// How a navi's barrier takes the tick's hits (`IntakeRules::barrier`:
+/// EXE6's `sub_801A802`, EXE5's, EXE4's 0x08012DF8).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BarrierTick {
+    /// It stands still while the battle is paused (EXE6's, EXE5's). EXE4's
+    /// runs whenever its navi does: in the intro's pause, until the navi
+    /// takes control (`status.paused_navi`), its timer counts.
+    pub stops_while_paused: bool,
+    /// What wind does to it.
+    pub wind: BarrierWind,
+}
+
+/// What wind (the raw elements' 0x20) does to a barrier.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BarrierWind {
+    /// Pops it (EXE6's, EXE5's), as do the raw hit flags 0xA20: popped, it
+    /// absorbs every hit until its visual clears it.
+    Pops,
+    /// Takes it away at once (EXE4's: no popped barrier, and no hit flag
+    /// does it); the hit is absorbed all the same.
+    TakesAway,
 }
 
 /// What a navi's hit sounds like, on each console (`IntakeRules::hit_sound`).
