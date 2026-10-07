@@ -263,7 +263,7 @@ impl Stated {
             panels: Some(r.panels.clone()),
             reactions: Some(ReactionsSection {
                 push: r.push_vectors,
-                push_reading: r.push_reading,
+                push_reading: r.push_reading.clone(),
                 hit_test: r.hit_test,
                 obstacle_slide_bounds: r.obstacle_slide_bounds,
                 ice: r.ice_vectors,
@@ -295,7 +295,7 @@ impl Stated {
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
             link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages, backgrounds: r.link_pick.backgrounds.clone() }),
-            effects: Some(r.effects),
+            effects: Some(r.effects.clone()),
             fresh_stats: Some(r.fresh_stats),
         }
     }
