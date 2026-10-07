@@ -293,11 +293,11 @@ struct View<'a> {
     side: u8,
     screen: &'a Screen,
     assets: &'a CustomScreen,
-    /// The pictures of the Beast the navi goes into (`beast_pictures`):
-    /// the console's version's, unless the player's Crosses put the navi in
-    /// the other game's Cross. A button's look is this version's own, if it
-    /// has one.
-    beast: &'a VersionPictures,
+    /// The version pictures the side's buttons draw (`button_pictures`): the
+    /// player's version's, unless its navi is in a form of another version
+    /// (EXE6's Beast Out button: the other game's Cross's Beast). A button's
+    /// look is this version's own, if it has one.
+    buttons: &'a VersionPictures,
     /// The navi's emblem's palette (`lookups::emblem`; zeros: it has no
     /// emblem), which is sprite palette 11: the cursor's and the Regular
     /// chip's frame's too (`sub_802812C`).
@@ -350,7 +350,7 @@ impl<'a> View<'a> {
     /// that chip's slot whatever its name.
     fn button_look(&self, button: nettai_battle::content::ButtonHandle) -> Option<ButtonLook<'a>> {
         let d = self.b.content.defs.button(button);
-        let pack = crate::lookups::button_of(self.assets, self.beast, &d.name)?;
+        let pack = crate::lookups::button_of(self.assets, self.buttons, &d.name)?;
         Some(ButtonLook { pack, count: pack.width as usize * pack.height as usize * d.cells.max(1) as usize })
     }
 
@@ -361,7 +361,7 @@ impl<'a> View<'a> {
     /// in, 0x080240D8).
     fn hidden_special(&self) -> Option<(&'a ButtonPictures, usize)> {
         self.b.content.defs.buttons.iter().filter(|d| d.slot == SPECIAL_SLOT).find_map(|d| {
-            let pack = crate::lookups::button_of(self.assets, self.beast, &d.name)?;
+            let pack = crate::lookups::button_of(self.assets, self.buttons, &d.name)?;
             Some((pack, pack.hidden? as usize))
         })
     }
@@ -384,7 +384,7 @@ fn window_view(b: &Battle, screen: &Screen) -> Option<WindowView> {
 /// button's name, the key of its look).
 fn view_look<'a>(v: &View<'a>, view: ButtonView) -> Option<&'a ButtonPictures> {
     let d = v.b.content.defs.buttons.iter().find(|d| d.view == Some(view))?;
-    crate::lookups::button_of(v.assets, v.beast, &d.name)
+    crate::lookups::button_of(v.assets, v.buttons, &d.name)
 }
 
 /// The icon of the soul EXE5's soul button offers or gave, if the special
@@ -569,14 +569,13 @@ pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, for
     Some((a.versioned.get(version), number))
 }
 
-/// The pictures of the Beast a side's navi goes into, or is in: the
-/// Beast Out button, its picture in the chip window and the BeastOut
-/// chip's. They are its version's (EXE6's rules/beast's rule): a form
-/// that isn't the base form goes into its own version's Beast (the form's
-/// `version`: another's than the player's when their Crosses hold one of
-/// its), and the base form into the player's (docs/engine/custom-screen.md
-/// §4.1).
-pub fn beast_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
+/// The version pictures a side's buttons draw (a button's look, its picture
+/// in the chip window, its chip's): those of its navi's form's version when
+/// the form isn't the base form and has one (another's than the player's
+/// when their Crosses hold one of its), else the player's version's. (EXE6's
+/// Beast Out button: the Beast its navi goes into, or is in; rules/beast's
+/// rule, docs/engine/custom-screen.md §4.1.)
+pub fn button_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
     let side = side & 1;
     let form = b.content.form(b.stats[side as usize].form);
     let version = match form.version.as_deref() {
@@ -1086,7 +1085,7 @@ impl Window {
                         }
                         self.tiles.fill(at + 4, 2, self.layout.slot_blank);
                         at += 6;
-                    } else if crate::lookups::button(a, v.beast, &v.b.content, button, problems).is_some()
+                    } else if crate::lookups::button(a, v.buttons, &v.b.content, button, problems).is_some()
                         && let Some(look) = v.button_look(button)
                     {
                         // (The slots after it start past its tiles; the
@@ -1547,7 +1546,7 @@ pub fn draw<'a>(
         side,
         screen,
         assets: a,
-        beast: beast_pictures(b, a, side),
+        buttons: button_pictures(b, a, side),
         emblem_palette,
         hud: &assets.hud,
         packs: packs.clone(),
