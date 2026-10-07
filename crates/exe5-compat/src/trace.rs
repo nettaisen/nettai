@@ -823,7 +823,10 @@ impl Round {
                 };
                 let souls: Vec<nettai_battle::rules::Fact> = (0..content.defs.forms.len() as u16)
                     .map(nettai_content_api::FormHandle)
-                    .filter(|&f| content.form(f).soul.is_some() && has(f))
+                    // (A soul: a form with EXE5's `soul`, its rules' extension.)
+                    .filter(|&f| {
+                        content.defs.extension(nettai_content_api::Registry::Form, &content.defs.form(f).key, "soul").is_some() && has(f)
+                    })
                     .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
                     .collect();
                 p.set_fact(content, "souls", &souls)?;

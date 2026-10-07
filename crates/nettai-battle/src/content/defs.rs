@@ -1513,11 +1513,10 @@ impl Defs {
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,
                 forms @ Data::Map(_) => {
-                    // The forms a form list offers, by version: each set of
-                    // the table that lists them (`form_list`: EXE6's Crosses;
-                    // the rest of a set is its game's: EXE6's Beast Out and
-                    // Beast Over).
-                    let mut by_version = Vec::new();
+                    // The forms each set of the table lists (`form_list`:
+                    // EXE6's Crosses by version, EXE5's souls; the rest of a
+                    // set is its game's: EXE6's Beast Out and Beast Over).
+                    let mut lists = Vec::new();
                     if let Data::Map(sets) = forms {
                         for (version, set) in sets {
                             let Data::List(items) = set.field("form_list") else { continue };
@@ -1526,19 +1525,10 @@ impl Defs {
                                 .iter()
                                 .map(|v| form_ref(d, v, &format!("forms.{version}.form_list")).map(|f| f.expect("a form")))
                                 .collect::<Result<Vec<_>, _>>()?;
-                            by_version.push((version, listed));
+                            lists.push((version, listed));
                         }
                     }
-                    let souls = match forms.field("souls") {
-                        Data::Nil => Vec::new(),
-                        Data::List(items) => items
-                            .iter()
-                            .map(|v| form_ref(d, v, "forms.souls").map(|f| f.expect("a form")))
-                            .collect::<Result<_, _>>()?,
-                        Data::Map(m) if m.is_empty() => Vec::new(),
-                        other => return Err(what(d, format!("forms.souls is {other:?}, not a list of forms"))),
-                    };
-                    Some(super::NaviForms { souls, by_version })
+                    Some(super::NaviForms { lists })
                 }
                 other => return Err(what(d, format!("`forms` is {other:?}, not the forms by game"))),
             };

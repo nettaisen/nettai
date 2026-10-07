@@ -202,25 +202,24 @@ impl NaviTraits {
 serde_flags!(NaviTraits, u8);
 
 /// A navi's forms (`forms`): that it has any says the navi changes form
-/// (MegaMan: where the original asks whether a navi is MegaMan), and its
-/// souls are EXE5's Soul Unison's. What else the table holds is its game's
-/// (EXE6's sets by game, `gregar` and `falzar`: its Crosses, Beast Out and
-/// Beast Over, which EXE6's rules and exe6-compat's `forms` read).
+/// (MegaMan: where the original asks whether a navi is MegaMan). The table
+/// is its game's, sets by name (EXE6's by game, `gregar` and `falzar`: its
+/// Crosses, Beast Out and Beast Over, which EXE6's rules and exe6-compat's
+/// `forms` read; EXE5's `souls`, Soul Unison's), and a set's `form_list`
+/// the forms it lists, in order.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviForms {
-    /// The souls the custom screen's soul button offers (each a form with
-    /// its [`SoulData`]).
-    pub souls: Vec<FormHandle>,
-    /// The forms its form list offers, by version of its game, in the
-    /// list's order (the table's `<version>.form_list`: EXE6's Crosses). A
-    /// frontend numbers a version's pictures of them by it.
-    pub by_version: Vec<(String, Vec<FormHandle>)>,
+    /// The sets' form lists, by the set's name (a version's: EXE6's Crosses,
+    /// which its form list offers a player of that version; EXE5's souls,
+    /// which its soul button offers). A frontend numbers a set's pictures
+    /// of them by it.
+    pub lists: Vec<(String, Vec<FormHandle>)>,
 }
 
 impl NaviForms {
-    /// The forms the form list offers a player of `version`, in order.
-    pub fn listed(&self, version: &str) -> &[FormHandle] {
-        self.by_version.iter().find(|(v, _)| v == version).map_or(&[], |(_, forms)| forms)
+    /// The forms the set named `set` lists, in order.
+    pub fn listed(&self, set: &str) -> &[FormHandle] {
+        self.lists.iter().find(|(v, _)| v == set).map_or(&[], |(_, forms)| forms)
     }
 }
 
@@ -276,15 +275,6 @@ pub enum ChipMatch {
     Family(ChipFamily),
 }
 
-/// A soul on EXE5's custom screen: the family of the chip given up for it
-/// (0x08024BE0's table). A soul is named by its form's key; the original's
-/// number for it (NaviStats +0x2C) is compat's (exe5-compat's `forms`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SoulData {
-    pub family: ChipFamily,
-}
-
 /// One of MegaMan's forms. (What a game's rules say of their game's
 /// forms, EXE6's kinds of form among it, is their extension:
 /// `SystemDef::extends`.)
@@ -295,9 +285,6 @@ pub struct FormData {
     /// change form, and what a revert takes them back to (one a game).
     #[serde(default)]
     pub base: bool,
-    /// A soul's family (EXE5's Soul Unison: the form is a soul).
-    #[serde(default)]
-    pub soul: Option<SoulData>,
     pub sprite: SpriteId,
     pub element: Element,
     #[serde(default)]
@@ -851,9 +838,6 @@ pub(crate) fn read_form(
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
     let o = super::reader::fields(d, r, &skip)?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
-    if form.base && form.soul.is_some() {
-        return Err(super::reader::err(d, "a base form is no soul"));
-    }
     Ok(form)
 }
 
