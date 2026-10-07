@@ -61,7 +61,6 @@ return {
         guard = spark(),
         eruption = spark(),
         thrown_obstacle = spark(),
-        uninstall = spark(),
         panel_burn = spark(),
     },
     regions = {

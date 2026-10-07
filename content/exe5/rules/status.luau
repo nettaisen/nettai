@@ -408,7 +408,6 @@ local status = {
         -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "flash_timer_first",
         bugs_before_drain = true,
-        drain_bug_flags = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the rules (the
         -- auto battle AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).

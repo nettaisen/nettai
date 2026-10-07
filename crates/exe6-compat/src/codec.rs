@@ -767,64 +767,6 @@ mod tests {
         assert_eq!(navi_stats(&navi_stats_bytes(&s, &ids), &ids), s);
     }
 
-    /// A bug code sets the stat byte it names: the engine's setter does
-    /// what setting that byte of the game's block does, and refuses the
-    /// bytes the engine doesn't model.
-    #[test]
-    fn bug_codes_set_the_byte_they_name() {
-        let ids = ids();
-        let base = navi_stats(&bytes(MACHGUN_P0), &ids);
-        let mut problems = Vec::new();
-        std::panic::set_hook(Box::new(|_| {}));
-        for offset in 1..0x64u8 {
-            let values: &[u8] = if offset == 0x08 { &[0, 1, 2] } else { &[0, 1, 2, 0x7F, 0xFF] };
-            // A byte that names content by the original's number (a navi,
-            // a form, a weapon, a shot program) decodes only where the
-            // content has it.
-            let decoded = |v: u8| {
-                std::panic::catch_unwind(|| {
-                    let mut raw = bytes(MACHGUN_P0);
-                    raw[offset as usize] = v;
-                    navi_stats(&raw, &Ids::new(content(), Compat::exe6_for(content())))
-                })
-                .ok()
-            };
-            // (A value that doesn't decode is read as naming content: the
-            // byte is modeled.)
-            let modeled = values.iter().any(|&v| decoded(v).is_none_or(|d| d != base));
-            // The engine has no numbers for weapons, shot programs, first
-            // barriers, forms or navis: a bug code can only clear those
-            // bytes (a form's to the base form), and can't write a navi's.
-            let by_handle = |v: u8| match offset {
-                0x04 | 0x05 | 0x07 | 0x39 | 0x44 => v != 0xFF,
-                0x06 | 0x4D | 0x4F | 0x17 | 0x2C => v != 0,
-                0x29 => true,
-                _ => false,
-            };
-            // (A byte of EXE6's own stats, its rules' `stats`: the engine's
-            // setter has no name for it and refuses it.)
-            let own = GAME_STATS.iter().any(|&(_, at, _)| at == offset as usize);
-            for &value in values {
-                let result = std::panic::catch_unwind(move || {
-                    let mut s = base;
-                    s.set_byte_by_bug_code(offset, value, content());
-                    s
-                });
-                match (result, decoded(value)) {
-                    (Ok(s), Some(d)) if modeled && s != d => problems.push(format!("{offset:#x} = {value:#x}: {s:?}")),
-                    (Ok(_), _) if !modeled => problems.push(format!("{offset:#x} isn't modeled but is accepted")),
-                    (Ok(_), _) if by_handle(value) => problems.push(format!("{offset:#x} = {value:#x} names content by number but is accepted")),
-                    (Err(_), Some(_)) if modeled && !by_handle(value) && !own => {
-                        problems.push(format!("{offset:#x} = {value:#x} is modeled but refused"))
-                    }
-                    _ => {}
-                }
-            }
-        }
-        let _ = std::panic::take_hook();
-        assert!(problems.is_empty(), "{problems:#?}");
-    }
-
     #[test]
     fn hands_round_trip() {
         let ids = ids();

@@ -2353,8 +2353,8 @@ hit there with its damage, self type 0x30, modifier 3 (sound 0x111 every 8 ticks
 
 Lab (scratch, the PA chip put straight in the folder): the opponent a row up and both a column forward match every
 frame; on a hit the replay stopped at the uninstall's reaction (`sub_80140EE`, the navi framework's). That reaction
-(hit reaction 0xF8, `sub_80139F6` → `sub_80140EE`; field-collision-damage.md) is now ported (kinds/player/intake.rs
-`strip_programs` and the form's NaviCust refresh, `form::refresh_form_flags`) and verified by the lab's uninstall
+(hit reaction 0xF8, `sub_80139F6` → `sub_80140EE`; field-collision-damage.md) is now ported (EXE6's
+rules/navicust/bugs: the object's `strip_body_programs` and `refresh_form_flags`) and verified by the lab's uninstall
 scenarios (`chips/0x0b9-uninstll/folded` and its variants, docs/engine/unverified.md).
 
 #### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)

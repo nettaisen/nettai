@@ -97,7 +97,6 @@ eruption = 0x01
 # the collision types below.)
 thrown_obstacle = 0x00
 guard = 0x08
-uninstall = 0x0E
 
 # The roles `regions` of rules/roles.luau: the hit region (`PanelOffsetListsPointerTable`) the original's
 # routines name each by.

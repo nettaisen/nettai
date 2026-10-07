@@ -173,7 +173,6 @@ struct StatusSection {
     missing_collision_status: u32,
     reactions: super::rules::Reactions,
     bugs_before_drain: bool,
-    drain_bug_flags: bool,
     no_charge_drive: bool,
     hp_loss: super::rules::HpLoss,
     emotion: super::rules::EmotionRules,
@@ -298,7 +297,6 @@ impl Stated {
                 missing_collision_status: r.missing_collision_status.0,
                 reactions: r.reactions,
                 bugs_before_drain: r.intake.bugs_before_drain,
-                drain_bug_flags: r.intake.drain_bug_flags,
                 no_charge_drive: r.intake.no_charge_drive,
                 hp_loss: r.intake.hp_loss,
                 emotion: r.emotion,
@@ -353,7 +351,6 @@ impl Stated {
             weakness_mark: status.weakness_mark,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
-                drain_bug_flags: status.drain_bug_flags,
                 no_charge_drive: status.no_charge_drive,
                 hp_loss: status.hp_loss,
             },

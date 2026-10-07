@@ -291,13 +291,30 @@ pub enum RulesHook {
     /// `sub_801002C`, EXE5's 0x0800DD94: rules/light_dark's). The
     /// first part that answers decides; none, the framework's (EXE6's).
     NaviPalette,
-    /// `navi_bug(side, navi)`: before the navi takes its hit's NaviCust bug
-    /// (`sub_80139F6`, EXE5's 0x0801103E): the rules may change the bug
-    /// (the collision's `inflicted_bugs`: EXE5's rules/light_dark turns
-    /// its codes 0xFD and 0xFC into an HP drain or none), or answer true:
-    /// the bug and the weapons' reload are skipped (EXE5's, for hit flag
-    /// 0x400 on a light/dark value of 1000 or more). The first part that
-    /// answers true decides.
+    /// `hit_bug(side, navi)`: any navi (a player's or not) takes the bugs
+    /// its hit's code brings every navi (EXE6's `sub_801A6B4` and
+    /// `sub_801A720`: the HP bug's level up, and paralysis and blindness),
+    /// before its status and damage; asked only when a hit brought a code.
+    /// Its result is unused.
+    HitBug,
+    /// `bug_mark(side, navi)`: whether the navi's hit's bug shows the HP
+    /// bug's marker (`sub_801A4A6`), asked as its hits' effects show and
+    /// only when a hit brought a code.
+    BugMark,
+    /// `navi_damaged(side, navi)`: a player's navi took damage: once a hit
+    /// sequence (`sub_8013F1E`'s gate: the hit flags, a damage, the latch
+    /// its flinch holds), before the hit's status takes; the NaviCust's hit
+    /// bug (the `hit_status` stat) puts its status there or raises the HP
+    /// bug. Its result is unused.
+    NaviDamaged,
+    /// `navi_bug(side, navi)`: the navi takes its hit's NaviCust bug
+    /// (`sub_80139F6`, EXE5's 0x0801103E: the collision's `inflicted_bugs`,
+    /// its code and argument): the game's table of its codes, which writes
+    /// the stat a code names, and answers "edited" (its abilities and form
+    /// flags come back), nil (nothing of the stats changed), or "spared"
+    /// (nothing at all: EXE5's for hit flag 0x400 on a light/dark value of
+    /// 1000 or more, and a drain that wouldn't rise); but "spared", its
+    /// weapons are reloaded after.
     NaviBug,
     /// `hp_emptied(side, navi)`: a loss of HP brought the side's navi (an
     /// object with actor data) to 0, by a game whose HP loss asks
@@ -419,6 +436,9 @@ impl RulesHook {
             RulesHook::StartingMood => "starting_mood",
             RulesHook::NaviPalette => "navi_palette",
             RulesHook::NaviBug => "navi_bug",
+            RulesHook::HitBug => "hit_bug",
+            RulesHook::BugMark => "bug_mark",
+            RulesHook::NaviDamaged => "navi_damaged",
             RulesHook::HpEmptied => "hp_emptied",
             RulesHook::ObstacleReaction => "obstacle_reaction",
             RulesHook::CustomHandSize => "custom.hand_size",
@@ -439,7 +459,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 40] = [
+    pub const ALL: [RulesHook; 43] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -463,6 +483,9 @@ impl RulesHook {
         RulesHook::StartingMood,
         RulesHook::NaviPalette,
         RulesHook::NaviBug,
+        RulesHook::HitBug,
+        RulesHook::BugMark,
+        RulesHook::NaviDamaged,
         RulesHook::HpEmptied,
         RulesHook::ObstacleReaction,
         RulesHook::CustomHandSize,
