@@ -374,7 +374,7 @@ impl Round {
             for (field, value) in [
                 ("hp", Value::Int(s.max_base_hp as i64)),
                 ("reg_up", Value::Int(s.reg_up as i64)),
-                ("sun", Value::Bool(s.sun)),
+                ("sun", Value::Bool(s.game_stat(content, "sun") == Some(nettai_content_api::FieldValue::Bool(true)))),
             ] {
                 player.set_fact(content, field, &[nettai_battle::rules::Fact::Value(value)]).unwrap_or_else(|e| panic!("the save's {field}: {e}"));
             }
@@ -444,8 +444,17 @@ impl Round {
             if self.stats_before_cards(side).is_none() {
                 continue;
             }
-            let ours = codec::navi_stats_bytes(&b.stats[side], &ids);
+            let mut ours = codec::navi_stats_bytes(&b.stats[side], &ids);
             let theirs = codec::navi_stats_bytes(&navi_stats(&self.setup.navi_stats[side], &ids), &ids);
+            // (The version byte, +0x20, is the side's version fact's place
+            // among those the rules declare: the battle's start sets it.)
+            let recorded: [u8; 0x64] = unhex(&self.setup.navi_stats[side]).try_into().expect("a 0x64-byte navi stats block");
+            let place = b.fact(side as u8, nettai_battle::content::PlayerFact::Version).filter(|f| f.stated()).and_then(|f| match f.value() {
+                nettai_content_api::FieldValue::Enum(i) => Some(i),
+                _ => None,
+            });
+            ours[0x20] = place.unwrap_or(0);
+            let theirs = { let mut t = theirs; t[0x20] = recorded[0x20]; t };
             for i in 0..0x64 {
                 if ours[i] != theirs[i] {
                     d.push(format!("side {side}'s stats after its patch cards, +{i:#04x}: ours {:#04x} theirs {:#04x}", ours[i], theirs[i]));
@@ -1010,7 +1019,7 @@ fn screen_emotion(stats: &NaviStats, content: &Content, beast_over_before: bool)
     let kind = crate::forms::kind(content, stats.form);
     if stats.mood == 0 || (beast_over_before && kind != Some(crate::forms::Kind::BeastOver)) {
         Emotion::WornOut
-    } else if stats.beast_out_counter == 0 && !kind.is_some_and(crate::forms::Kind::is_beast) {
+    } else if stats.game_stat(content, "beast_out_counter") == Some(nettai_content_api::FieldValue::U8(0)) && !kind.is_some_and(crate::forms::Kind::is_beast) {
         Emotion::Tired
     } else {
         Emotion::Normal

@@ -581,7 +581,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
         let f = r.fresh_stats;
         assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
-        assert_eq!((f.beast_out_counter, f.mode9_a), (0, None), "none stated: no Beast Out turns, no weapon");
+        assert_eq!((f.stats, f.mode9_a), (Default::default(), None), "none stated: none of the game's own, no weapon");
         assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType::Normal), None), "its own numbers, no others");
         // What it may leave out reads as nothing, for every game.
         assert!(r.lockon.column_shifts.is_empty() && r.chaos_cycle.is_empty() && r.holding_banners.is_empty());

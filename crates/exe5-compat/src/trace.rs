@@ -995,7 +995,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     };
     let r = &s.raw;
     let base = content.base_form_for(navi);
-    Ok(EngineNaviStats {
+    let mut stats = EngineNaviStats {
         attack: s.attack,
         rapid: s.rapid,
         charge: s.charge,
@@ -1013,11 +1013,6 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         air_shoes: s.air_shoes,
         undershirt: s.undershirt,
         super_armor: s.super_armor,
-        version: 0,
-        beast_out_counter: 0,
-        sun: r[0x22] != 0,
-        chip_drops: r[0x26],
-        encounters: r[0x28],
         navi,
         navi_variant: s.navi_variant,
         form: base,
@@ -1028,10 +1023,6 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         max_hp: s.max_hp,
         chip_recovery: u16::from_le_bytes([r[0x50], r[0x51]]),
         folder_tags: [[0xFF, 0xFF], [0xFF, 0xFF]],
-        chip_shuffle: false,
-        number_open: false,
-        hub_style: s.hub_style,
-        soul_turn_bonus: r[0x32] as i8,
         weapons: NaviWeapons {
             buster: weapon(r[0x04])?,
             charge_shot: weapon(r[0x05])?,
@@ -1057,7 +1048,21 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
             custom_damage: u16::from_le_bytes([r[0x54], r[0x55]]),
             ..Default::default()
         },
-    })
+        game: Default::default(),
+    };
+    // EXE5's own stats (its rules' `stats`), by name: the sun (+0x22), the
+    // drops' and encounters' NaviCust effects (+0x26, +0x28), Hub Style
+    // (+0x4C) and the soul's extra turns (+0x32, signed).
+    for (name, v) in [
+        ("sun", nettai_content_api::Value::Bool(r[0x22] != 0)),
+        ("chip_drops", nettai_content_api::Value::Int(r[0x26] as i64)),
+        ("encounters", nettai_content_api::Value::Int(r[0x28] as i64)),
+        ("hub_style", nettai_content_api::Value::Int(s.hub_style as i64)),
+        ("soul_turn_bonus", nettai_content_api::Value::Int(r[0x32] as i8 as i64)),
+    ] {
+        stats.set_game_stat(content, name, v).map_err(|e| format!("EXE5's stat {name}: {e}"))?;
+    }
+    Ok(stats)
 }
 
 /// The stats EXE5's reset leaves of `recorded`, which a NaviCust is compiled
@@ -1083,9 +1088,15 @@ pub fn reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNavi
         folder: recorded.folder,
         folder_reg: recorded.folder_reg,
         reg_up: recorded.reg_up,
-        sun: recorded.sun,
         navi_variant: recorded.navi_variant,
+        // (The sun: the game's own stat, below.)
         ..fresh
+    })
+    .map(|mut s| {
+        if let Some(nettai_content_api::FieldValue::Bool(sun)) = recorded.game_stat(content, "sun") {
+            s.set_game_stat(content, "sun", nettai_content_api::Value::Bool(sun)).expect("EXE5's sun");
+        }
+        s
     })
 }
 

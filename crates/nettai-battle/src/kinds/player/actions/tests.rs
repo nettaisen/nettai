@@ -21,6 +21,11 @@ fn megaman() -> NaviStats {
 }
 
 /// The same, changed by `f`.
+/// The navi's Beast Out turns (the test content's own stat, EXE6's).
+fn beast_out_turns(s: &mut NaviStats, n: u8) {
+    s.set_game_stat(&testing::content(), "beast_out_counter", nettai_content_api::Value::Int(n as i64)).expect("the test content's stats");
+}
+
 fn megaman_with(f: impl FnOnce(&mut NaviStats)) -> NaviStats {
     let mut s = megaman_stats();
     f(&mut s);
@@ -28,12 +33,11 @@ fn megaman_with(f: impl FnOnce(&mut NaviStats)) -> NaviStats {
 }
 
 fn megaman_stats() -> NaviStats {
-    NaviStats {
+    let mut s = NaviStats {
         hp: 1000,
         max_hp: 1000,
         max_base_hp: 1000,
         mood: 0x80,
-        sun: true,
         weapons: NaviWeapons {
             buster: testing::weapon("megaman/buster"),
             charge_shot: testing::weapon("megaman/charged-shot"),
@@ -43,7 +47,10 @@ fn megaman_stats() -> NaviStats {
             ..Default::default()
         },
         ..testing::megaman_on(&testing::content())
-    }
+    };
+    // (Fighting in the sun: the test content's own stat, EXE6's.)
+    s.set_game_stat(&testing::content(), "sun", nettai_content_api::Value::Bool(true)).expect("the test content's stats");
+    s
 }
 
 /// Two navis idle and fighting: side 0 at (2,2), side 1 at (5,2) (side 1
@@ -622,7 +629,7 @@ fn a_counter_hit_takes_no_mood() {
     let slash = |in_window: bool| {
         // Navis with Beast Out turns left: a spent one can't reach Full
         // Synchro.
-        let (mut b, p0, p1) = fight_with(megaman_with(|s| s.beast_out_counter = 3));
+        let (mut b, p0, p1) = fight_with(megaman_with(|s| beast_out_turns(s, 3)));
         b.stats[1].mood = 0xFF;
         use_chip(&mut b, p0, p1, testing::STEP_BLADE);
         let c = b.objects.get(p1).collision.unwrap();
@@ -1911,7 +1918,7 @@ fn the_plus_chips_content_defines_raise_their_bonus() {
 #[test]
 fn buster_up_and_sync_trigger_change_the_navi() {
     // (A navi whose Beast Out is spent keeps its mood.)
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.beast_out_counter = 3));
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| beast_out_turns(s, 3)));
     let attack = b.stats[0].attack;
     let buster_up = b.content.defs.chip_by_key(testing::BUSTER_UP).unwrap();
     use_instant_chip_handle(&mut b, p0, p1, buster_up);

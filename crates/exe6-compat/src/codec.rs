@@ -296,7 +296,7 @@ impl<'a> Ids<'a> {
 pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
     let u16at = |i: usize| u16::from_le_bytes([b[i], b[i + 1]]);
     let flag = |i: usize| b[i] != 0;
-    NaviStats {
+    let mut s = NaviStats {
         attack: b[0x01],
         rapid: b[0x02],
         charge: b[0x03],
@@ -323,11 +323,6 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         air_shoes: flag(0x1C),
         undershirt: flag(0x1D),
         super_armor: flag(0x23),
-        version: b[0x20],
-        beast_out_counter: b[0x21],
-        sun: flag(0x22),
-        chip_drops: b[0x26],
-        encounters: b[0x28],
         navi: ids.navi(b[0x29]),
         navi_variant: b[0x2B],
         form: ids.form(b[0x2C]),
@@ -338,10 +333,6 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         max_hp: u16at(0x42),
         chip_recovery: u16at(0x50),
         folder_tags: [[b[0x56], b[0x57]], [b[0x58], b[0x59]]],
-        chip_shuffle: flag(0x60),
-        number_open: b[0x61] == 1,
-        hub_style: 0,
-        soul_turn_bonus: 0,
         weapons: NaviWeapons {
             buster: ids.weapon(b[0x04]),
             charge_shot: ids.weapon(b[0x05]),
@@ -369,8 +360,42 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
             custom_damage: u16at(0x54),
             hand_shrink_turn: b[0x63],
         },
+        game: Default::default(),
+    };
+    // EXE6's own stats (its rules' `stats`), by name ([`GAME_STATS`]).
+    for &(name, at, kind) in GAME_STATS {
+        let v = match kind {
+            Byte::Number => Value::Int(b[at] as i64),
+            Byte::Flag => Value::Bool(b[at] != 0),
+            // (The game tests the byte for 1: NumbrOpn's.)
+            Byte::One => Value::Bool(b[at] == 1),
+        };
+        s.set_game_stat(ids.content, name, v).unwrap_or_else(|e| panic!("EXE6's stat {name}: {e}"));
     }
+    s
 }
+
+/// How a byte of the block is a stat of EXE6's own.
+#[derive(Clone, Copy)]
+enum Byte {
+    Number,
+    Flag,
+    /// A flag the game tests for 1.
+    One,
+}
+
+/// EXE6's own stats (its rules' `stats`) by their bytes in the block: the
+/// Beast Out turns, the sun, the drops' and encounters' NaviCust effects,
+/// ChpShufl and NumbrOpn. (+0x20, the version byte, is the side's version
+/// fact's place: the console's own, which a battle's start sets.)
+const GAME_STATS: &[(&str, usize, Byte)] = &[
+    ("beast_out_counter", 0x21, Byte::Number),
+    ("sun", 0x22, Byte::Flag),
+    ("chip_drops", 0x26, Byte::Number),
+    ("encounters", 0x28, Byte::Number),
+    ("chip_shuffle", 0x60, Byte::Flag),
+    ("number_open", 0x61, Byte::One),
+];
 
 /// The game's 0x64-byte NaviStats block of the modeled fields (the other
 /// bytes are zero).
@@ -397,11 +422,6 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x1C] = s.air_shoes as u8;
     b[0x1D] = s.undershirt as u8;
     b[0x23] = s.super_armor as u8;
-    b[0x20] = s.version;
-    b[0x21] = s.beast_out_counter;
-    b[0x22] = s.sun as u8;
-    b[0x26] = s.chip_drops;
-    b[0x28] = s.encounters;
     b[0x29] = ids.navi_number(s.navi);
     b[0x2B] = s.navi_variant;
     b[0x2C] = ids.form_number(s.form);
@@ -416,8 +436,6 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x57] = s.folder_tags[0][1];
     b[0x58] = s.folder_tags[1][0];
     b[0x59] = s.folder_tags[1][1];
-    b[0x60] = s.chip_shuffle as u8;
-    b[0x61] = s.number_open as u8;
     let w = &s.weapons;
     b[0x04] = ids.weapon_number(w.buster);
     b[0x05] = ids.weapon_number(w.charge_shot);
@@ -443,6 +461,13 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x52] = g.status_immunity as u8;
     put16(&mut b, 0x54, g.custom_damage);
     b[0x63] = g.hand_shrink_turn;
+    for &(name, at, _) in GAME_STATS {
+        b[at] = match s.game_stat(ids.content, name) {
+            Some(nettai_content_api::FieldValue::U8(n)) => n,
+            Some(nettai_content_api::FieldValue::Bool(on)) => on as u8,
+            other => panic!("EXE6's stat {name}: {other:?}"),
+        };
+    }
     b
 }
 
@@ -732,7 +757,7 @@ mod tests {
         assert_eq!(s.mood, 0x80);
         assert_eq!(s.support, Some(Supports::default()));
         assert_eq!((s.weapons.buster, s.weapons.charge_shot, s.weapons.back_special), (ids.weapon(0), ids.weapon(1), None));
-        assert_eq!(s.beast_out_counter, 3);
+        assert_eq!(s.game_stat(ids.content, "beast_out_counter"), Some(nettai_content_api::FieldValue::U8(3)));
     }
 
     #[test]
@@ -776,6 +801,9 @@ mod tests {
                 0x29 => true,
                 _ => false,
             };
+            // (A byte of EXE6's own stats, its rules' `stats`: the engine's
+            // setter has no name for it and refuses it.)
+            let own = GAME_STATS.iter().any(|&(_, at, _)| at == offset as usize);
             for &value in values {
                 let result = std::panic::catch_unwind(move || {
                     let mut s = base;
@@ -786,7 +814,7 @@ mod tests {
                     (Ok(s), Some(d)) if modeled && s != d => problems.push(format!("{offset:#x} = {value:#x}: {s:?}")),
                     (Ok(_), _) if !modeled => problems.push(format!("{offset:#x} isn't modeled but is accepted")),
                     (Ok(_), _) if by_handle(value) => problems.push(format!("{offset:#x} = {value:#x} names content by number but is accepted")),
-                    (Err(_), Some(_)) if modeled && !by_handle(value) => {
+                    (Err(_), Some(_)) if modeled && !by_handle(value) && !own => {
                         problems.push(format!("{offset:#x} = {value:#x} is modeled but refused"))
                     }
                     _ => {}
