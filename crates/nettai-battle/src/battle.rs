@@ -580,6 +580,9 @@ pub struct SideLooks {
     /// (EXE5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the face;
     /// `battle.set_face_variant`, `kinds::player::shows_face_variant`).
     pub face_variant: bool,
+    /// And whatever its form while its navi's rules' B charge is armed
+    /// (EXE5's Chaos Unison look, 0x080125F6: `face_charged`).
+    pub face_variant_charged: bool,
     /// The custom screen's enemy names show the side's navi by its variant
     /// name (EXE5's Hub Style in a link battle: 0x0801AE3A's NameID 0xEA;
     /// `battle.set_name_variant`).
@@ -2344,7 +2347,7 @@ mod tests {
     fn a_sides_looks_outlast_the_players_init() {
         let c = testing::content();
         let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c)), c);
-        let looks = SideLooks { face_variant: true, name_variant: true };
+        let looks = SideLooks { face_variant: true, face_variant_charged: false, name_variant: true };
         b.looks = [looks; 2];
         b.sides[1].sword_pick = 3;
         b.spawn_actors();

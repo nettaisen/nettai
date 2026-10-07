@@ -18,7 +18,6 @@ local beat = require("../chips/beat").beat
 local charged_shot = require("../navis/megaman/weapons/charged_shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local dive_ripple = require("../objects/dive_ripple/ripple")
-local chaos = require("./souls/chaos")
 local drive_end = require("../chips/darkinvs/drive_end")
 local dark_survival = require("./emotion/dark_survival")
 local invalid = require("../chips/invalid").invalid
@@ -42,8 +41,6 @@ local roles: RolesSpec = {
         -- booms, lib/swords).
         anti_damage_counter = antidmg_counter.action,
         anti_sword_counter = swords.anti_sword_counter,
-        -- A Chaos Unison charge released out of its window (EXE5's action 0x39: ./souls/chaos): Dark MegaMan comes.
-        chaos_failure = chaos.failure,
         -- The request 0x80000's action (EXE5's 0x49): the end of DarkInvs's no-charge drive, which its timer's end asks
         -- for (rules/status's `no_charge_drive`; chips/darkinvs/drive_end). EXE6's is its stun strike.
         stun_strike = drive_end.action,
@@ -179,11 +176,10 @@ local roles: RolesSpec = {
         loser = asset.sound("loser"),
     },
     sprites = {
-        -- The charge glow of a B charge; of an A charge (14-15); of an armed Chaos Unison charge (14-1C), its
-        -- animation the chaos cycle's window (0x080E0EA4).
+        -- The charge glow of a B charge; of an A charge (14-15). (An armed Chaos Unison charge's, 14-1C, is
+        -- ./souls/chaos_charge's.)
         charge_glow = asset.sprite("charge-glow"),
         charge_glow_a = asset.sprite("charge-glow-a"),
-        charge_glow_chaos = asset.sprite("chaos-charge-glow"),
         -- The status visuals over a navi (0x080E08EC, EXE6's `byte_80E08E4`): confusion's stars and blindness (EXE6's
         -- numbers) and the immobilized one (10-2d, EXE6's 10-00).
         confusion = asset.sprite("confusion"),

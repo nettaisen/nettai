@@ -28,13 +28,14 @@ local form: FormDef = {
     sprite = asset.sprite("napalmsoul"),
     element = "fire",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x37 (0x0800FA7A): DarkMetr (chip 0xC3), the charge table's row 0x37.
+    chaos = { weapon = chaos.weapon(darkmetr, { 70, 90, 110, 130, 150, 40 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x27 (0x0800F520, empty: the charged chip is the chip with the bonus), the charge table's row 0x27.
         a_charge = charged_chips.routine({ 120, 120, 120, 120, 120, 80 }),
-        -- Routine 0x37 (0x0800FA7A): DarkMetr (chip 0xC3), the charge table's row 0x37.
-        chaos = chaos.weapon(darkmetr, { 70, 90, 110, 130, 150, 40 }),
     },
     chip_bonus = { family = "fire", damage = 40, dimming_chips = true, uncharged = true },
     charged_chips = { { family = "fire", damaging = false, plain = true } },

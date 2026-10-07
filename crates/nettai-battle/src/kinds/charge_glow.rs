@@ -11,7 +11,7 @@ pub struct Vars {
     /// Other effects can hide the glow.
     pub enabled: bool,
     /// The glow sprite loaded (none yet at first).
-    pub sprite: Option<SpriteRole>,
+    pub sprite: Option<nettai_content_api::SpriteId>,
     /// The owner's charge level this tick and last tick.
     pub level: u8,
     pub previous_level: u8,
@@ -96,30 +96,38 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let panel = b.objects.get(owner).panel;
     let visible = vars(b, r).enabled && crate::field::is_valid(panel.x, panel.y);
     let source = b.actors.get(actor).charge_source;
-    let chaos = b.actors.get(actor).chaos;
+    let (time, glow, full_anim) = {
+        let a = b.actors.get(actor);
+        (a.b_charge_time, a.b_charge_glow, a.b_charge_anim)
+    };
+    let armed = time.is_some();
     // Seen by a viewer who sees the owner's side (`sub_800EB6C`), and on
     // its owner's console only unless the B button charges (source 2) for
-    // anything but an armed Chaos Unison charge (EXE5's 0x080E0DE6).
+    // anything but the rules' own B charge (EXE5's armed Chaos Unison
+    // charge, 0x080E0DE6).
     let shown_to = |b: &Battle, viewer: u8| match source {
         0 => false,
-        2 if !chaos.armed => b.sees(viewer, alliance),
+        2 if !armed => b.sees(viewer, alliance),
         _ => viewer == alliance & 1 && b.sees(viewer, alliance),
     };
     let shown = [0u8, 1].map(|viewer| visible && shown_to(b, viewer));
     b.set_visible_by_viewer(r, shown);
-    select_sprite(b, r, source, chaos.armed);
+    select_sprite(b, r, source, glow);
     let level = b.actors.get(actor).charge_level;
     let v = vars(b, r);
     v.previous_level = v.level;
     v.level = level;
-    // A full armed Chaos Unison charge shows its cycle's window (EXE5's
-    // 0x080E0E10): animation 2 + the window.
-    let anim = if level == 2 && source == 2 && chaos.armed { chaos.window + 2 } else { level };
+    // A full rules' B charge shows the animation they push (EXE5's armed
+    // Chaos Unison charge, 0x080E0E10: 2 + the cycle's window).
+    let anim = match full_anim {
+        Some(anim) if level == 2 && source == 2 => anim,
+        _ => level,
+    };
     b.objects.get_mut(r).anim = anim;
     if anim == 0 {
         b.objects.get_mut(r).set_visible(false);
     }
-    charge_sound(b, r, alliance, source, chaos.armed);
+    charge_sound(b, r, alliance, source, armed);
     let (dx, mut dz) = crate::kinds::player::attach_point(b, owner, 0);
     // A navi whose animation lifts the glow (EXE5's GyroMan's in the air,
     // 0x080E0E58).
@@ -134,16 +142,16 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80E0F5E`: the charge sounds, as the charge starts and as it
 /// completes; only the charging navi's player hears a charge unless it
-/// comes from source 2 (and isn't an armed Chaos Unison charge: EXE5's
-/// 0x080E0EEC).
-fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8, chaos: bool) {
+/// comes from source 2 (and isn't the rules' own B charge: EXE5's armed
+/// Chaos Unison charge, 0x080E0EEC).
+fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8, armed: bool) {
     let v = vars(b, r);
     let id = match (v.level, v.previous_level) {
         (1, 0) => SoundRole::BusterCharge,
         (2, 1) => SoundRole::BusterCharged,
         _ => return,
     };
-    if source == 2 && !chaos {
+    if source == 2 && !armed {
         b.sound(id);
     } else {
         b.sound_for(alliance, id);
@@ -151,23 +159,21 @@ fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8, chaos: b
 }
 
 /// `sub_80E0F2E`: the A charge glows differently from the B charge, and
-/// an armed Chaos Unison charge differently again (EXE5's 0x080E0EA4).
+/// the rules' own B charge as they say (`glow`: EXE5's armed Chaos Unison
+/// charge, 0x080E0EA4).
 /// (EXE5 also lifts the glow 16 pixels for its navi of NameID 0x182 in
 /// animations 18 and 20, 0x080E0E58: no navi here has that record.)
-fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8, chaos: bool) {
-    let wanted = if source == 1 {
-        SpriteRole::ChargeGlowA
-    } else if chaos {
-        SpriteRole::ChargeGlowChaos
-    } else {
-        SpriteRole::ChargeGlow
+fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8, glow: Option<nettai_content_api::SpriteId>) {
+    let wanted = match glow {
+        _ if source == 1 => b.roles().sprite(SpriteRole::ChargeGlowA),
+        Some(glow) => glow,
+        None => b.roles().sprite(SpriteRole::ChargeGlow),
     };
     if vars(b, r).sprite == Some(wanted) {
         return;
     }
     vars(b, r).sprite = Some(wanted);
-    let sprite = b.roles().sprite(wanted);
-    b.objects.sprite_mut(r).load(sprite);
+    b.objects.sprite_mut(r).load(wanted);
     b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.anim_loaded = 0xFF;
