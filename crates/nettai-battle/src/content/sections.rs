@@ -193,6 +193,7 @@ struct CustomScreenSection {
     gauge_empties_at_open: bool,
     fades_clear_at_ok: bool,
     cursor_after_leaving: bool,
+    frame_counts_first: bool,
 }
 
 #[derive(Deserialize)]
@@ -759,6 +760,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     gauge_empties_at_open: s.gauge_empties_at_open,
                     fades_clear_at_ok: s.fades_clear_at_ok,
                     cursor_after_leaving: s.cursor_after_leaving,
+                    frame_counts_first: s.frame_counts_first,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,
