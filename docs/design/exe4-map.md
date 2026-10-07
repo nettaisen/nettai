@@ -204,7 +204,7 @@ Everything moved again. Read (R) or confirmed by Tango (T):
 | the banner | 0x02036840 | 0x02036ED0 | 0x02037CE0 | R: its fields as EXE6's (+0x00, +0x07, +0x08), 0x08016188 |
 | the HUD's block (EXE6's 0x02035280) | 0x02035280 | | 0x020363F0 | R: the custom gauge at **+0x24**, its rate +0x26 (EXE6 +0x20, +0x22: 0x080168BE, 0x0801592C), the HUD's task mask at **+0x48** (EXE6 +0x40: 0x080146A8) |
 | the battle folder | 0x0203CDB0 | 0x0203C830 | 0x0203BE80 | R: 30 chips, 0x3C bytes (0x08007AE8 copies 60 bytes), NaviStats after it |
-| the panels | 0x02039AE0 | 0x0203A100 | 0x0203AC70 | R: 0x20 bytes an entry, as EXE6's (`_object_getPanelDataOffset`, the same code, 0x0800A3D8) |
+| the panels | 0x02039AE0 | 0x0203A100 | 0x0203AC70 | R: 0x20 bytes an entry, as EXE6's (`_object_getPanelDataOffset`, the same code, 0x0800A3D8); the type at **+0** and the owner at +1 (EXE6's +2, +3), seen on a running console |
 | the fighting machine | 0x0203CA70 | 0x0203C5D0 | 0x0203BCB0 | R |
 | NaviStats | 0x0203CE00 | 0x0203C880 | 0x0203BEC0 | R |
 | the link struct | 0x0203F7D8 | 0x0203F244 | 0x0203F6D4 | R; its status at +1 (0x08017B88) |
@@ -228,6 +228,17 @@ What the oracle reads besides (R; oracle-trace's `EXE4`):
 - **The save** is the RAM from 0x02000000, the region from 0x2130 to 0x5E20 moved by the shift word at 0x1550
   (§12): the NaviCust's parts at 0x4564 and its grid at 0x4540, the Mod Cards' slots at 0x464C (on) and 0x4653
   (off), the color bar at 0x190 (outside the region).
+
+**On running consoles** (the chip lab's EXE4 base, Red Sun against Blue Moon, Tango's primer): the hooks trace
+every battle frame from the battle's first; BattleState's state byte is 0 before the round (its sub-state counting
+the intro: 4, 8, 0xC), then **4** for the round, its sub-state 0 (the entry), 4 (the start's banner), **8** the
+custom screen, **0xC** the fight; the fighting machine's first byte is **4** while the fight runs with inputs live
+(EXE6's 8); a navi standing idle is in state 4, action **6** (EXE6's 8; EXE5's 6); BattleState's **+0x44** points at
+the local player's navi and **+0x48** at the other's (EXE6 keeps alive lists by alliance at +0x80); the custom gauge
+(0x02036414) fills from 0 to 0x4000 (0x5A0 a second; the rate field beside it holds 0x20); the panels' types and owners are as the stage shows
+(grass at the edges, lava in the middle, each side's). The setup line's NaviStats are the compiled stats: a save's
+base HP (0x21CA) and its Mod Cards reach them (a Mod Card's +200 max HP, 1000 to 1200), the save's stats block itself
+is rebuilt as it loads.
 
 **The hooks** (R; oracle-trace's `RED_SUN_HOOKS` and the others, checked against the four ROMs by its
 tests/hooks.rs). The battle runs as the main loop's **subsystem 8**: the frame routine, 0x08006B14 (EXE6's
@@ -260,6 +271,17 @@ screen's helpers (185 of EXE5's 552 custom-screen routines the same, many of the
 **EXE4's own:** the three state handlers (0x0801E110, 0x0801E210, 0x0801E180; the first, R, is no shape of EXE5's: it
 tests the screen's +0x06, asks 0x0801FEE4 for a cursor position and reads that slot's byte at the screen's +0x21 +
 2 × (row × 5 + column)) and what they run;
+
+**The screen's block** (0x02036440; R, and seen on running consoles as the chip lab drives it): +0 its state (0, 4
+running, 8 done), +1 the running state's sub-state (the table 0x0801E228: 0 opening, **4** the chip selection, 8
+closing, 0x18 waiting for the other player), +2 the selection's own (the table 0x0801E430: **4** the cursor on the
+chips, **8** on OK, 0x18 a chip's description), the cursor's column and row at **+0x0A** and **+0x0B**, the chips
+selected at **+0x12**, and from **+0x20** the slots, a halfword each, row by row, five a row: the chip's byte offset in
+the battle folder (0x0203BE80), then its flags (1 dealt, 2 selected, 4 not selectable now: another code or kind than
+the picks'). Its selection's keys (0x08020350): A picks, B takes the last back, R describes, START puts the cursor on
+OK, RIGHT from a row's last chip too, UP and DOWN change rows. The hand dealt is the battle folder's first chips (the
+folder shuffled, a chip taken out of it as the screen closes); the chip blocks (0x02035CB0) take the picks as the
+fight starts.
 none of EXE5's custom-screen logic that matters for a netbattle is found: what can be picked (`sub_8028E32`), OK's
 hand builder (`sub_8029110`), the keys (`sub_8028B74`), the dark chip's cursor (`sub_802806C`), the soul button's
 offer (0x08024B28) and its family table (0x08024BE0): all absent in both maps.
