@@ -15,6 +15,10 @@
 [forms]
 "base" = 0
 
-# The auras a battle starts with by number (NaviStats +0x21, Mod Card 0x21: 2 Barrier100, 3 Barrier200, 6 LifeAura;
-# 0 none), those the content has.
+# The auras a battle starts with by number (NaviStats +0x21: FstBarr's 1; Mod Card 0x21's 2 Barrier100, 3 Barrier200,
+# 6 LifeAura; 0 none), those the content has (content/exe4/lib/barriers).
 [barriers]
+"barrier/10" = 1
+"barrier/100" = 2
+"barrier/200" = 3
+"barrier/life-aura" = 6
