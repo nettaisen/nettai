@@ -10,11 +10,16 @@ local barriers = require("../lib/barriers")
 local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
 local deletion = require("./deletion")
+local invalid = require("../chips/invalid").invalid
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
 
 local roles: RolesSpec = {
+    chips = {
+        -- What a pick the custom screen refuses counts as (EXE4's chip 0x184, past the named ones: chips/invalid).
+        invalid = invalid,
+    },
     statuses = {
         -- What a damage word's paralysis bit makes its hits carry (0x08012860: status byte 0x12); a counter hit's
         -- paralysis, the same (0x0800B08E: the hit flags' 0x40 sets status byte 0x12).

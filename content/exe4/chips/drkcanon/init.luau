@@ -4,6 +4,7 @@
 -- Its damage is the HP its user has lost, at most 999 (its power 1046: damage formula 46, 0x080195AE), worked out
 -- again every tick it waits in the hand (flag 0x80). Its cost: the charged shot becomes weapon routine 0x21
 -- (rules/dark_chips).
+-- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cannon = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")

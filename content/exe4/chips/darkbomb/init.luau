@@ -4,6 +4,7 @@
 -- parameter +0x10): thrown, hitting navis with modifier 3, in palette 3, blasting the 3x3 around where it lands
 -- (region 0x0F) with the dark explosion (effect row 0x2B). Its cost: MegaMan steps left with no key held
 -- (rules/dark_chips).
+-- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local bombs = require("../lib/bombs")
 local collision = require("../rules/collision")

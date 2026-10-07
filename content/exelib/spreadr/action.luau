@@ -1,14 +1,15 @@
 --!strict
 -- The Spreaders' action, as EXE5 and EXE6 share it (EXE6's action 0x25,
--- `sub_80ECBB0`, of a game's `SpreaderLook`: its sound, attachment kind and
--- bullets' kind;
+-- `sub_80ECBB0`; EXE4's 0x1E, 0x080EC760), of a game's `SpreaderLook`: its
+-- sound, how the navi holds the gun, its bullets' kind and the navi's
+-- animation;
 -- docs/engine/shot-chips.md §5): the navi raises its gun and on the second
 -- tick fires a bullet (@exelib/bullet) from the panel ahead, which bursts
 -- where it finds something; 21 ticks of recovery. SpoutCross's charged
 -- shot fires its own bullet from its water cannon the same way.
 
-local attachment = require("../attachment")
 local bullet = require("../bullet")
+local slot = require("../slot")
 
 local spreader = {}
 
@@ -23,29 +24,17 @@ spreader.STATE = { timer = "u16" }
 -- The phases, on the attack's step.
 local FIRE, RECOVER = 0x0, 0x4
 
-local ANIM = 0xB
 -- The bullet leaves once the count passes this; the recovery's ticks.
 local FIRE_AFTER, RECOVER_TICKS = 1, 0x14
-
--- `sub_80ECC86`: the gun's animation by the holder's AI index, from its
--- game's table (`look.gun_anims`: EXE6's `off_80ECC94`, where the link
--- navis HeatMan, GroundMan and DustMan hold their own, 2).
-local function gun_anim(me: Object, look: SpreaderLook): number
-    local anim = look.gun_anims[me.ai_index + 1]
-    if anim == nil then
-        error(string.format("AI index %d reads past the spreaders' table (`sub_80ECC86`)", me.ai_index))
-    end
-    return anim
-end
 
 -- A chip's spreader (a `SpreaderSpec`), of a game's `look`.
 function spreader.action(spec: SpreaderSpec, look: SpreaderLook): Action
     -- `sub_80ECBCC`: raise the gun; on the second tick, the bullet.
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_animation(ANIM)
+            me:set_animation(look.anim)
             me:open_counter_window()
-            attachment.attach(look.attachment, me, spec.gun, "overlay", { anim = gun_anim(me, look) })
+            look.hold(me, spec.gun, look.slot)
             me:set_status("using_action", true)
             me.step_init = 4
             s.timer = 0
@@ -55,7 +44,7 @@ function spreader.action(spec: SpreaderSpec, look: SpreaderLook): Action
         if t <= (spec.fire_after or FIRE_AFTER) then
             return
         end
-        local gun = me.overlay
+        local gun = slot.held(me, look.slot)
         if gun then
             gun.anim += 1
         end
