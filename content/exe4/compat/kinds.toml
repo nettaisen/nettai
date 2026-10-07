@@ -20,6 +20,7 @@
 "boulder" = { pool = "attack", index = 0x6E }
 "rock/debris" = { pool = "effect", index = 0x38 }
 "guard-shield" = { pool = "attack", index = 0x2B }
-# The flag stages' flags (the actor lists' entry type 7, 0x080068F4: its spawner leaves its position as the panel and
-# the HP until its init places it).
-"flag" = { pool = "attack", index = 0x9C, scratch_position = true }
+# The flag stages' flags (the actor lists' entry type 7, 0x080068F4).
+"flag" = { pool = "attack", index = 0x9C }
+# The gear stages' gears (the actor lists' entry type 5, 0x080068C0).
+"gear" = { pool = "attack", index = 0x76 }
