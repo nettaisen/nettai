@@ -6,7 +6,7 @@
 -- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local bullet = require("../objects/bullet")
-local spreaders = require("../lib/spreaders")
+local spreader = require("./spreader/spreader")
 
 local drkspred: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -19,9 +19,9 @@ local drkspred: Chip = {
     hit_param = 50,
     lockout = 0,
     flags = { "has_damage", "dark" },
-    action = spreaders.action {
+    action = spreader.action {
         id = "drkspred/action",
-        gun = spreaders.dark_gun,
+        gun = spreader.guns.dark,
         delay = 1,
         z = 0x10,
         shot = bullet.variants.dark_burst,
