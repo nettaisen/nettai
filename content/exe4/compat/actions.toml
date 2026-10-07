@@ -30,6 +30,9 @@
 "energbom/action" = 0x09
 "megenbom/action" = 0x09
 "minibomb/action" = 0x09
+"seekbom1/action" = 0x09
+"seekbom2/action" = 0x09
+"seekbom3/action" = 0x09
 # The swords' (the chips' action 0x0A, 0x080EB51E).
 "drksword/action" = 0x0A
 "sword/action" = 0x0A

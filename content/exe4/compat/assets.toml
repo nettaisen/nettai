@@ -96,6 +96,7 @@ web = "10-1c"  # the WhitWebs' web: attack 0x3D's init (0x080D4D74)
 satellite-beam = "10-1f"
 satellite-flare = "10-21"
 search-scope = "10-22"  # SearchMan's scope: effect #0x43's init (0x080E6B66)
+seek-bomb = "10-24"  # the SeekBoms' bomb: attack 0x8D's init (0x080DED8C)
 heart = "10-26"
 boulder = "10-31"  # the stages' boulder: attack object #0x6E's init (0x080DB114), the actor lists' entry type 3
 flag = "10-32"  # the flag stages' flag: attack object #0x9C's init (0x080E06D4), the actor lists' entry type 7

@@ -107,6 +107,9 @@ language = "en"
 "binder1" = { name = "Binder1", description = "Fires a\nsonic\nblast" }
 "binder2" = { name = "Binder2", description = "Fires a\nsonic\nblast" }
 "binder3" = { name = "Binder3", description = "Fires a\nsonic\nblast" }
+"seekbom1" = { name = "SeekBom1", description = "Throws a\nbomb at\nthe enemy" }
+"seekbom2" = { name = "SeekBom2", description = "Throws a\nbomb at\nthe enemy" }
+"seekbom3" = { name = "SeekBom3", description = "Throws a\nbomb at\nthe enemy" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
