@@ -395,6 +395,31 @@ language = "ja"
 "tengucross" = { description = "風チップの攻撃力が+10!\nエアシューズがON!\nB+左でスイコミ!" }
 "tomahawkcross" = { description = "木チップタメうちで攻撃力✕2\nマヒやこんらんなどにならない\nステータスガード!" }
 
+# The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
+# tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
+[backgrounds]
+"acdc-area" = { name = "秋原エリア" }
+"acdc-hp" = { name = "秋原町のHP" }
+"aquarium-comp" = { name = "すいぞくかんの電脳" }
+"aquarium-hp" = { name = "すいぞくかんのHP" }
+"central-area" = { name = "セントラルエリア" }
+"comp" = { name = "電脳" }
+"comp-alt" = { name = "電脳 (別色)" }
+"copybot-comp" = { name = "コピーロイドの電脳" }
+"graveyard" = { name = "グレイブヤード" }
+"green-area" = { name = "グリーンエリア" }
+"green-hp" = { name = "グリーンのHP" }
+"judgetree-comp" = { name = "しんぱんの木の電脳" }
+"lans-hp" = { name = "熱斗のHP" }
+"mr-weather-comp" = { name = "ウェザーくんの電脳" }
+"mr-weather-comp-storm" = { name = "ウェザーくんの電脳 (台風)" }
+"robot-control-comp" = { name = "ロボせいぎょPCの電脳" }
+"seaside-area" = { name = "シーサイドエリア" }
+"sky-area" = { name = "スカイエリア" }
+"sky-hp" = { name = "スカイのHP" }
+"underground" = { name = "アンダーグラウンド" }
+"undernet" = { name = "ウラインターネット" }
+
 [patch_cards]
 "airman" = { name = "エアーマン" }
 "amonicul" = { name = "アモナキュール" }

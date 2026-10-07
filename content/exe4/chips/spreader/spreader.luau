@@ -16,9 +16,11 @@ local spreader = {}
 local NAVI_NUMBER = 0
 
 local GUN = asset.sprite("spreader")
--- The guns (attachment rows 0x0A and 0x32: 0c-19 in palettes 0 and 3).
+-- The guns (attachment rows 0x0A and 0x32: 0c-19 in palettes 0 and 3; row 6: 0c-0d; row 0x0E: 0c-1c).
 spreader.guns = {
     spreader = attachment.look { sprite = GUN, palette = 0 },
+    heatshot = attachment.look { sprite = asset.sprite("heatshot"), palette = 0 },
+    bubbler = attachment.look { sprite = asset.sprite("bubbler"), palette = 0 },
     dark = attachment.look { sprite = GUN, palette = 3 },
 }
 

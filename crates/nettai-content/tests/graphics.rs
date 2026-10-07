@@ -74,6 +74,7 @@ fn bundle() -> Bundle {
         map_height: 4,
         palette: Some(palette(9)),
         scroll: (-8, 4),
+        speeding: Some(Speeding { step: (0, 0x400), top: (0, 0x4_0000), from_battle: true }),
         anims: vec![
             GfxAnim {
                 target: AnimTarget::Tiles { first: 2, count: 3 },

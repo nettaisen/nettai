@@ -89,4 +89,6 @@ return {
     -- The tick a key leaves the choosing still draws the cursor and the last turns' block (0x08022FE4 draws after
     -- its keys, as EXE6's `sub_8026CCC`).
     cursor_after_leaving = true,
+    -- The frame (the cursor's blink) counts after what the choosing draws, as EXE6's.
+    frame_counts_first = false,
 }
