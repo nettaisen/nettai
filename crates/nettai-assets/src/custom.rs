@@ -84,12 +84,13 @@ pub struct VersionPictures {
     /// The buttons the version has its own look of, by name (EXE6's
     /// "beast_out": the version's Beast).
     pub buttons: Vec<(String, ButtonPictures)>,
-    /// The Cross window's names (9x2 each): the version's five Crosses on
-    /// the cursor's row, then on the others' (`dword_86E7DCC`).
-    pub cross_names: Tiles,
-    /// Background palette 10 in the Cross window: the Cross under the
-    /// cursor's, then a used one's (`dword_86E944C`).
-    pub cross_palettes: Vec<Palette>,
+    /// The form list window's names (9x2 each): the version's forms on the
+    /// cursor's row, then on the others' (EXE6's Cross window's five
+    /// Crosses, `dword_86E7DCC`).
+    pub form_names: Tiles,
+    /// Background palette 10 in the form list window: the form under the
+    /// cursor's, then a used one's (EXE6's, `dword_86E944C`).
+    pub form_name_palettes: Vec<Palette>,
 }
 
 impl VersionPictures {
@@ -122,9 +123,9 @@ pub struct CustomLayout {
     /// button's 3x2 in EXE5), then the picked column's icons.
     pub slots: u16,
     pub column_icons: u16,
-    /// The enemy names' bar, and the Cross window's names.
+    /// The enemy names' bar, and the form list window's names.
     pub name_bar: u16,
-    pub cross_names: u16,
+    pub form_names: u16,
     /// The color a hidden slot's tiles and a slot's blank code are filled
     /// with (EXE6's `byte_802A700`: 1).
     pub slot_blank: u8,
@@ -219,10 +220,10 @@ pub struct CustomScreen {
     /// The window's map (15x20): without and with the Cross tab.
     pub window_maps: Vec<Vec<MapEntry>>,
     pub window_patches: PatchList,
-    /// The Cross window's maps: its opening steps, then the window with
-    /// one to five Crosses; and its patches.
-    pub cross_maps: Vec<Vec<MapEntry>>,
-    pub cross_patches: PatchList,
+    /// The form list window's maps: its opening steps, then the window
+    /// with one to five forms (EXE6's Cross window); and its patches.
+    pub form_list_maps: Vec<Vec<MapEntry>>,
+    pub form_list_patches: PatchList,
     // ---- Background palettes.
     /// The window's palette (9) by the chip under the cursor: standard,
     /// mega, giga, dark.
@@ -253,11 +254,11 @@ pub struct CustomScreen {
     // ---- Sprites.
     /// The cursor's corner (two frames, 8x8 each).
     pub cursor: Tiles,
-    /// The Cross window's cursor: its corner and its edge, in two frames
+    /// The form list window's cursor: its corner and its edge, in two frames
     /// (8x8 each; `dword_86E57FC`, sprite tile 0x392), and its palette
     /// (sprite palette 14, the battle's).
-    pub cross_cursor: Tiles,
-    pub cross_cursor_palette: Palette,
+    pub form_list_cursor: Tiles,
+    pub form_list_cursor_palette: Palette,
     /// The navis' emblems, by navi key.
     pub emblems: Vec<Emblem>,
     /// The Regular chip's frame (two frames of 4x4).

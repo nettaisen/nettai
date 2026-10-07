@@ -17,7 +17,7 @@ pub use custom::{
 /// an EXE6 pack's "falzar"), and other versions' that differ, by version name
 /// ("gregar", from the second ROM). A console of a version shows its own,
 /// else the base's. In a pack each is its own asset, named with its
-/// version (`cross-names-falzar`, `cross-names-gregar`); one that no other
+/// version (`form-names-falzar`, `form-names-gregar`); one that no other
 /// version has its own of is named without.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Versioned<T> {
