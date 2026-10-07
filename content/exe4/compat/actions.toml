@@ -1,0 +1,12 @@
+# EXE4's navi action numbers (a navi's CurAction, +9, which the recordings compare) past the framework's states (0
+# entry, 1 take control, 2 deletion, 3 flinch, 4 paralysis, 5 drag, 6 idle: the player's state table, 0x080EAEFC), by
+# key: the engine's own actions, content's and the chips' (a chip's by its action's key). Written by hand from the
+# EXE4 recordings and code: edit it when content is renamed or added.
+
+"engine/move" = 0x07
+# The buster's shot (0x080EB316).
+"megaman/buster/shot" = 0x08
+# The Cannon chip's use (the chips' action 0x0B, 0x080EB894).
+"cannon/action" = 0x0B
+# The charged shot.
+"megaman/charged-shot/action" = 0x24
