@@ -252,11 +252,15 @@ impl<'a> SetupFact<'a> {
 /// A form list as the rules keep it for their window (the window views
 /// `form_list_opening`, `form_list`, `form_list_closing` and `form_chosen`,
 /// [`Battle::form_list`]): the places of the forms offered among the
-/// player's (which form a place holds is the game's rule), how many, which
-/// entries are marked, the entry under the cursor, and the place chosen.
+/// player's form list (the setup's field of the role `form_list`), the
+/// forms there, how many, which entries are marked, the entry under the
+/// cursor, and the place chosen.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct FormList {
     pub offered: [u8; CROSSES],
+    /// The forms offered: the player's form list's at the places offered
+    /// (none: no form there).
+    pub forms: [Option<FormHandle>; CROSSES],
     pub count: u8,
     pub marked: [bool; CROSSES],
     pub cursor: u8,
@@ -324,8 +328,10 @@ impl Battle {
             ..FormList::default()
         };
         let (offered, marked) = (schema.place_of(f.offered), schema.place_of(f.marked));
+        let player = self.fact(side, PlayerFact::FormList);
         for k in 0..CROSSES {
             list.offered[k] = offered.elem(k).map_or(0, |p| byte(state.get_at(p)));
+            list.forms[k] = player.as_ref().and_then(|f| f.form(list.offered[k] as usize));
             list.marked[k] = marked.elem(k).is_some_and(|p| flag(state.get_at(p)));
         }
         Some(list)

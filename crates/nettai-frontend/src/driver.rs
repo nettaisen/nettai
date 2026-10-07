@@ -614,7 +614,7 @@ mod tests {
                     // (The window up, past its first tick, which reads no
                     // keys.)
                     Phase::Window { window, tick: 1.. } if b.content.defs.window(window).name == "cross_window" && w.chosen.is_none() => {
-                        let under_cursor = nettai_render::custom::cross_at(b, 0, w.offered[w.cursor as usize]);
+                        let under_cursor = w.forms[w.cursor as usize];
                         assert_eq!((w.count, under_cursor), (1, Some(heat)));
                         if tick % 2 == 1 { keys::A } else { 0 }
                     }
