@@ -251,7 +251,16 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     add(200, Box::new(|_, _| {
         let _ = slint::quit_event_loop();
     }));
-    run(ui.as_weak(), app.clone(), Rc::new(steps), 0);
+    when_loaded(ui.as_weak(), app.clone(), Rc::new(steps), 0);
+}
+
+/// Walk once the tour's game has loaded (`NETTAI_TOUR_GAME`'s, else any:
+/// a game still loading is passed over), or after a minute.
+fn when_loaded(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, steps: Rc<Vec<Step>>, waited: u32) {
+    if app.borrow().tour_ready() || waited >= 120 {
+        return run(ui, app, steps, 0);
+    }
+    Timer::single_shot(Duration::from_millis(500), move || when_loaded(ui, app, steps, waited + 1));
 }
 
 /// Where a tab of the creator's picture goes: by the tab, the language and

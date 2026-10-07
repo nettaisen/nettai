@@ -89,8 +89,10 @@ component PlayerCard {
                 min-width: 0px;
             }
 
+            // (At the line's end, where there is one: the build's start
+            // stays where it is.)
             NaviMark {
-                width: Theme.compact ? 110px : 150px;
+                width: root.peer.present && root.peer.navi != "" ? (Theme.compact ? 110px : 150px) : 0px;
                 navi: root.peer.present ? root.peer.navi : "";
             }
         }
