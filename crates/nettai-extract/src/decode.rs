@@ -189,12 +189,16 @@ pub struct FieldAddresses {
     pub palette_buffer: u32,
 }
 pub fn field(rom: &Rom, a: FieldAddresses, panel_types: Vec<u8>) -> Field {
-    let tiles = Tiles::from_4bpp(&rom.lz77(a.tiles).expect("the field's tiles"));
-    let palettes = palettes_from_bytes(rom.bytes(a.palettes, 0x100));
-    let block = |a: u32| -> [MapEntry; 15] { map_entries(rom, a, 15).try_into().unwrap() };
-    let edge = |a: u32| -> [MapEntry; 5] { map_entries(rom, a, 5).try_into().unwrap() };
+    let palette_anims = palette_anims(rom, a.palette_anims, a.palette_buffer);
+    field_with(rom, a, panel_types, palette_anims)
+}
+
+/// The panel palette animations of a list in EXE6's and EXE5's form
+/// (`sub_800C192`'s): a word list of records, each its frame count, timer
+/// slot and destination, then a palette and a duration a frame.
+pub fn palette_anims(rom: &Rom, list: u32, palette_buffer: u32) -> Vec<PaletteAnim> {
     let mut palette_anims = Vec::new();
-    let mut e = a.palette_anims;
+    let mut e = list;
     loop {
         let p = rom.u32(e);
         if p == 0 {
@@ -216,12 +220,22 @@ pub fn field(rom: &Rom, a: FieldAddresses, panel_types: Vec<u8>) -> Field {
         // `sub_800BF88`).
         let initial_timer = 0xE - (timer_slot.saturating_sub(3) / 2);
         palette_anims.push(PaletteAnim {
-            slot: ((dest - a.palette_buffer) / 32) as u8,
+            slot: ((dest - palette_buffer) / 32) as u8,
             frames,
             initial_timer,
         });
         e += 4;
     }
+    palette_anims
+}
+
+/// The field at `a` (its `palette_anims` unread), with these panel palette
+/// animations.
+pub fn field_with(rom: &Rom, a: FieldAddresses, panel_types: Vec<u8>, palette_anims: Vec<PaletteAnim>) -> Field {
+    let tiles = Tiles::from_4bpp(&rom.lz77(a.tiles).expect("the field's tiles"));
+    let palettes = palettes_from_bytes(rom.bytes(a.palettes, 0x100));
+    let block = |a: u32| -> [MapEntry; 15] { map_entries(rom, a, 15).try_into().unwrap() };
+    let edge = |a: u32| -> [MapEntry; 5] { map_entries(rom, a, 5).try_into().unwrap() };
     Field {
         tiles,
         first_tile: (0x1460 / 32) as u16,
