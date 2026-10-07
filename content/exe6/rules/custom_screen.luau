@@ -85,4 +85,6 @@ return {
     -- The tick a key leaves the choosing still draws the cursor and the last turns' block (`sub_8026CCC` draws
     -- after its keys).
     cursor_after_leaving = true,
+    -- The frame (the cursor's blink) counts after what the choosing draws (`sub_8026CCC`).
+    frame_counts_first = false,
 }

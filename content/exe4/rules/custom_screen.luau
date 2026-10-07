@@ -190,4 +190,7 @@ return {
     -- The choosing state draws what its selection's state is after the keys (0x0801E412: the table 0x0801E454):
     -- the tick a key leaves the choosing draws no cursor, and OK and SELECT take the last turns' block off.
     cursor_after_leaving = false,
+    -- It draws the last turns' block and counts its frame before its keys (0x0801E3DA, 0x0801E3DE): the cursor blinks
+    -- a frame further on.
+    frame_counts_first = true,
 }
