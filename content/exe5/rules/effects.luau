@@ -67,4 +67,6 @@ return {
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
     -- Each console's RNG1 advances once a frame after the battle's, as EXE6's.
     rng1_per_frame = true,
+    -- An object's destroy (0x080138F2) frees its collision as it is.
+    destroy = "frees",
 }

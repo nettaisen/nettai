@@ -897,9 +897,23 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       not the crack routine), sounding 0x124 for poison onto a panel that wasn't (and 0x95 when the type change's
       return, the panel's occupants' collision bits, is 3: never with the navi's own body on it); EXE6's trail (a
       NaviCust bug, a chance by level) isn't it: to port with the Mod Cards.
-14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
-    find EXE4's drawing of them. Placeholder: EXE5's grids. The any-side step rows are EXE5's too.
-15. **Battle mode 1's mend** and **reservations**: EXE5's until read.
+14. **Done** (start-visible panels and front edges). EXE4 keeps no grids: its field's init (0x08009120) marks all 40
+    panels visible (0x08009186: 0x40 into each flags byte at 0x02037B36), its drawing (0x080092AC) draws each valid
+    panel (x 1 to 6, y 1 to 3) while visible, and the front edges under row 3 alone (0x0800937A), each by its row-3
+    panel's visibility (0x080094C4, else 0x080094FC blanks it), as the engine draws a panel's `front_edge` with it.
+    Stated: `start_visible` all true (what the engine reads of it, the valid panels', is EXE5's grid), `front_edges`
+    row 3, written by gen_rules.py from that code. The any-side step: EXE4 has no `sub_800E680` (EXE5 neither), so its
+    rows are EXE6's, for EXE6's code (a chip's) in an EXE4 arena.
+15. **Done** (battle mode 1's mend and the reservations).
+    - **The mend:** 600 ticks in every battle: the field's init (0x08009132) and the panel tick (0x0800976C) store
+      the one constant whatever the battle's mode (`mend = { normal = 600, battle_mode_1 = 600 }`, now asserted).
+    - **Reservations:** EXE4's `object_reservePanel` (0x080143A8) marks the panel alone (no header flag 0x20 on the
+      holder, as EXE5's), `reservations = "unmarked"`.
+    - **The destroy** (found here): EXE4's `object_genericDestroy` (0x080D8C58) unregisters the object's collision
+      (`object_removeCollisionData`, 0x080129FC: its panels refreshed, its hits and the panels it clears resolved on
+      them) before freeing it, where EXE6's releases its reservations and EXE5's (0x080138F2) frees it as it is
+      (its registrations stale on the panels until the slot is next registered). The rule `effects.destroy`
+      (`frees`, EXE6's and EXE5's; `unregisters`, EXE4's).
 
 ### 18.3 Flow, stages and the link
 
