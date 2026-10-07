@@ -1,0 +1,11 @@
+# The app's builds (docs/app.md §8): the facts a build made in the app never states.
+#
+# Every build in the app plays at the most its game allows, and states only what a player chooses: these facts are
+# always the rules' defaults (the most HP and Regular memory, the sun, a navi's last level, every SP navi deleted in
+# no time, the auto battle data's pattern records as nothing learned). The creator neither shows nor edits them; a
+# build read from a file or made from a save is set to them, and the import says so. The facts of the engine's
+# level and base HP roles are among them in any game; these are the rest, by game, each by its setup field's name.
+
+[at_defaults]
+exe6 = ["hp", "reg_up", "sun", "level", "sp_times"]
+exe5 = ["hp", "reg_up", "sun", "level", "sp_times", "auto_battle_records"]

@@ -15,6 +15,11 @@ export enum NavAction {
     // The shoulder buttons: the previous and next tab or page.
     previous,
     next,
+    // Y, C: what a screen offers besides (the creator: compress the piece
+    // in hand).
+    alternate,
+    // X, Delete: take the focused thing off (a folder's chip, a piece).
+    remove,
 }
 
 export enum Screen {
@@ -24,6 +29,8 @@ export enum Screen {
     lobby,
     replays,
     settings,
+    builds,
+    build,
 }
 
 // What a menu sound is for (the game's own custom screen sounds, through its
