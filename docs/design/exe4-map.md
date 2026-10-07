@@ -616,10 +616,18 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      decides whether the B+Left ability's is the engine's chip lockout or its back special's (kind 3).
    - EXE4's exits zero no buffered move (EXE6's AIData +0x1A) and no special source (+0x1B): nothing in EXE4 sets
      either while the engine's movement is EXE6's (item 24, group B's).
-7. **Statuses.** The status table 0x08018550 is generated (4 groups of 4); the status rules are EXE5's but for the
-   HP bug: 0x0800C164 reads NaviStats +0x0E as the period itself (no table), and the custom gauge drain 0x0800C194.
-   Shape: `status.hp_bug_periods` becomes `hp_bug = { periods = [...] } | { period_is_byte = true }`. Placeholder:
-   EXE5's `hp_bug_periods`, `reactions = "flash_timer_first"`, `hp_loss = "hp_alone"`, the rest EXE5's.
+7. **Statuses.** The status table 0x08018550 is generated (4 groups of 4). The status rules, each read from EXE4's
+   routine:
+   - **Done: the drains.** The NaviCust's HP bug (0x0800C164) reads NaviStats +0x0E as the period itself (no table)
+     and drains through a pause (EXE6's `sub_8010230` reads a period by level and holds while paused); the custom
+     screen's (0x0800C194) reads +0x0F as the period, and runs while the side's status (BattleState +0x14) has bit 0,
+     its selection running (EXE6's `sub_80102AC` by level, while it has bit 0 or 2, the screen up). The rules
+     `status.hp_drain` (`periods`: eight by level, or `"stat"`; `stops_while_paused`) and `status.custom_drain`
+     (`periods`, `status`'s bits); `hp_bug_periods` and the engine's own custom table are gone. The engine's status
+     byte has bit 0 where the side's screen says so (`custom::Side::selecting`; EXE6's and EXE5's never do, their
+     traces compare the byte): EXE4's screen (group A's) sets it while its selection runs (in the lab's
+     `custom/cannon` from frame 273 until OK).
+   - To read: `reactions = "flash_timer_first"`, `hp_loss = "hp_alone"`, the rest EXE5's (the placeholders).
 8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
 9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
 10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.
