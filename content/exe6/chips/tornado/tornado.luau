@@ -1,7 +1,8 @@
 --!strict
 -- A tornado (the original's attack object #0x31, `sub_80C9F78`): the
--- shared tornado (@exelib/tornado/tornado), EXE6's kind, look and variants:
--- Tornado's and Static's. A plain tornado on a volcano, grass or ice panel
+-- shared tornado (@exelib/tornado/tornado), EXE6's kind and look; each
+-- chip states its variant (`tornado.variant`: Tornado's and Static's,
+-- chips/tornado/init.luau). A plain tornado on a volcano, grass or ice panel
 -- takes the panel's variant instead, turns the panel normal and doubles its
 -- damage.
 
@@ -18,20 +19,12 @@ local variant = tornado.variant
 -- A tornado kind (`id`) of `look`.
 tornado.make_kind = common.make_kind
 
--- The variants (`byte_80CA064`'s rows 0 to 7): the plain one (1), the ones
--- it takes on grass (0), volcano (4) and ice (6), Static's (2), the one
--- that carries the HP bug (3: bug 0x54, argument 5, `sub_801A4D0`), and
--- two no spawner gives: row 5 and row 7, which re-arms every tick.
-tornado.variants = {
-    grass = variant { palette = 1, rearm = 4 },
-    plain = variant { palette = 0, rearm = 4, plain = true },
-    static = variant { palette = 3, rearm = 4 },
-    hp_bug = variant { palette = 3, rearm = 4, bug = 0x54 + 5 * 0x100 },
-    volcano = variant { palette = 4, rearm = 4 },
-    row5 = variant { palette = 2, rearm = 4 },
-    ice = variant { palette = 5, rearm = 4 },
-    row7 = variant { palette = 0, rearm = 0 },
-}
+-- The variants a plain one takes on grass, volcano and ice
+-- (`byte_80CA064`'s rows 0, 4 and 6). (The chips' are their own: Tornado's
+-- plain one, row 1, and Static's, row 2. No spawner gives rows 3, 5 and 7.)
+local GRASS = variant { palette = 1, rearm = 4 }
+local VOLCANO = variant { palette = 4, rearm = 4 }
+local ICE = variant { palette = 5, rearm = 4 }
 
 -- EXE6's look: its sprite and sound; what a plain tornado becomes on a panel
 -- of these types (`byte_80CA25C`), the doubling, what it is (row 0x12,
@@ -40,9 +33,9 @@ local EXE6: TornadoLook = {
     sprite = asset.sprite("tornado"),
     sound = asset.sound("aqua-surge"),
     panel_variants = {
-        volcano = tornado.variants.volcano,
-        grass = tornado.variants.grass,
-        ice = tornado.variants.ice,
+        volcano = VOLCANO,
+        grass = GRASS,
+        ice = ICE,
     },
     doubles_on_panel = true,
     is = collision.pushing,
