@@ -55,10 +55,10 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | | 1 | 3 | 4 |
 | NaviCust | | | | 2 | 2 |
-| Souls and Chaos Unison | | | 1 | | 1 |
+| Souls and Chaos Unison | | | | | |
 | The stat block and versions | | | | | |
 | Tools | | | 1 | | 1 |
-| **All** | | | **5** | **5** | **10** |
+| **All** | | | **4** | **5** | **9** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -138,9 +138,6 @@ rename left of EXE5's logic.
 ### Souls and Chaos Unison (EXE5)
 
 
-- **S3. The renderer's soul icons and flights** (`soul_icon`, `soul_place`, `soul_flight`, `soul_palette_row`,
-  `CHAOS_ICON`, render custom.rs:393–505; they read MegaMan's `souls` form list, `NaviForms::listed("souls")`). *(c)* The form offer view's icon (§4.8's
-  `offer`, `offer_chaos`). Rename to the view.
 
 ### The stat block and versions
 
@@ -261,6 +258,11 @@ Each with what it was and what it is now.
   `SoulData`, `FormData::soul`, `NaviForms::souls` and the "a base form is no soul" check leave Rust; exe5-compat,
   the app's builds view and the demo read a soul's family from the extension (`Defs::extension`), the renderer's
   icons (S3) the list `souls`.
+- **S3.** The renderer's soul icons are the `form_offer` view's: `offered_icon`, `offer_icon`, `offered_flight`,
+  `icon_palette_row`, `OTHER_VERSIONS_ICON`. An offer's icon is the offered form's place in the navi's form list
+  that holds it (`NaviForms::holding`), from 1, the alternate's (`offer_chaos`) the one after the list's, so neither
+  the list's name (`souls`) nor Chaos Unison's 13 is the renderer's; the icon palette's row is the form's version
+  run in that list.
 - **T1.** The save importers are the compat crates' (the user: "import code should move out of nettai-match i think
   and into compat"): `exe6_compat::import` and `exe5_compat::import` each give a whole side by field name, from the
   save's decoded bytes; nettai-match depends on no compat crate, and the caller (nettai-demo's `save_import`) imports
