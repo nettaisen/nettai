@@ -6,6 +6,9 @@
 -- for EXE4's definitions (docs/design/exe4-map.md §18); the content check lists them as unfilled, and a battle stops at
 -- the first it needs.
 
+local anti_damage = require("../chips/anti/counter")
+local anti_recovery = require("../chips/anti/recovery")
+local anti_sword = require("../chips/anti/sword")
 local barriers = require("../lib/barriers")
 local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
@@ -41,10 +44,16 @@ local roles: RolesSpec = {
     actions = {
         -- A player's deletion (action 2, 0x08010850).
         deletion = deletion.action,
+        -- AntiDmg's counter (action 0x38, 0x080ED972), which its trap's catch starts.
+        anti_damage_counter = anti_damage.action,
+        -- AntiSwrd's counter (action 0x39, 0x080EDA68), which its trap's catch starts.
+        anti_sword_counter = anti_sword.action,
     },
     kinds = {
         -- The glow a navi's charge brings (effect object 5, 0x080E215C; the navi's tail spawns it, 0x0800BD88).
         charge_glow = charge_glow.kind,
+        -- AntiRecv's counterattack (effect object 0x2C, 0x080E538C), which a recovery springs (0x080E5436).
+        anti_recovery = anti_recovery.kind,
     },
     sounds = {
         appear = asset.sound("appear"),
@@ -85,10 +94,14 @@ local roles: RolesSpec = {
         guard = asset.sound("guard"),
         -- HP recovered (the heal, 0x0800ABCA: 0x9A).
         recovery = asset.sound("heal"),
+        -- A trap springs (the trap's mark, 0x0800815C: 0x10D).
+        cut_in = asset.sound("dimming-sparkle"),
     },
     effects = {
         -- HP recovered (the heal, 0x0800ABCA: effect row 7, 0x080E16B4).
         recovery = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
+        -- A sprung trap's mark (0x0800815C: effect row 0x48, 14-05's animation 7): AntiNavi's over the turned chip.
+        trap_mark = new.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 },
     },
     hooks = {
         -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the patch cards' aura): the

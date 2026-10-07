@@ -1558,17 +1558,20 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
     1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
     harness question (raised with the coordinator), not the engine's.
-90. **The Anti chips' springs** (group B). The traps are set (chips/anti); what springs them:
-    - AntiNavi (0x08008F80, EXE5's `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the
-      navi chips', with no block of chip numbers) wants the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle
-      0x0800815C: effect row 0x48, sound 0x10D);
-    - AntiDmg and AntiSwrd: EXE4's intake test (0x08023048) is its own: AntiDmg catches a hit of any damage (EXE5's and
-      EXE6's of 10 or more), AntiSwrd any sword hit (flag 0x2000, without EXE6's 0x20000 exclusion), no heat trap, no
-      BodyGrd; the counters are actions 0x38 (AntiDmg's, a shuriken: attack 0x5C) and its AntiSwrd counterpart;
-    - AntiRecv: the role `kinds.anti_recovery`.
+90. **Done: the Anti chips' springs** (group B, chips/anti). AntiNavi springs as EXE5's (0x08008F80, EXE5's
+    `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the navi chips', with no block of
+    chip numbers): the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle 0x0800815C: effect row 0x48, sound
+    0x10D). AntiDmg's and AntiSwrd's catch (0x08023048) is EXE5's, not EXE6's (`status.intake.anti_traps`: AntiDmg
+    any damage, AntiSwrd any sword hit), and its counter runs from the next tick (0x0800C780, a stance's catch and a
+    trap's alike: `reactions.trap_counter`). AntiDmg's counter (action 0x38, @exelib/antidmg/counter) keeps the navi's
+    move, throws at a random one of the other player navi's panels whatever the variant, and dives BodyGrd's shuriken
+    (attack 0x5C, @exelib/bodygrd/shuriken); AntiSwrd's (action 0x39, @exelib/antiswrd/counter, plain as EXE5's) holds
+    EXE4's own blade and throws booms (attack 0x58, objects/sonic_boom) all of hit modifier 1. AntiRecv's
+    counterattack (effect 0x2C, @exelib/antirecv/controller) takes no mood (the role `kinds.anti_recovery`). AntiWood's
+    spring waits on WoodPwdr (the lab's chips/0x08f-antiwood/sprung), AntiMagc on its stance (weapon routine 0x27).
     A telop doesn't take the other player's used-chip name off the screen in EXE4 (item 71: the user's telop goes on
     the banner block, the name stays on the second; EXE6's `sub_801BED6(0x10000)` clears it): the lab's
-    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine.
+    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine (group A's).
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's
