@@ -8,8 +8,8 @@
 -- identity: a player (the actor table 0x08003A24's kind 0).
 --
 -- Not yet (docs/design/exe4-map.md §18): his element and its weakness, the buster's own bonus (EXE4's buster is Attack
--- + 1 whatever the navi), his attach points, his souls (the soul's sprite and weapons, 0x080184F0) and the rest of
--- his identity (actor record, AI index, aura).
+-- + 1 whatever the navi), his souls (the soul's sprite and weapons, 0x080184F0) and the rest of his identity (actor
+-- record, AI index, aura).
 
 local buster = require("@self/weapons/buster")
 local charged_shot = require("@self/weapons/charged_shot")
@@ -40,6 +40,8 @@ local navi: NaviDef = {
         ai_index = 0,
         -- The Full Synchro aura's animation (0x080CD180, EXE5's code: its owner's AI index).
         aura_anim = 0,
+        -- The chip icons over him, from his place on the screen: navi 0's of 0x0800B9E4 (rules/effects' `chip_icons`).
+        chip_icons_at = { 0, -55 },
     },
 }
 
