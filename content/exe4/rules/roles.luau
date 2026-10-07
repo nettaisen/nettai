@@ -14,8 +14,10 @@ local statuses = require("./status")
 
 local roles: RolesSpec = {
     statuses = {
-        -- What a damage word's paralysis bit makes its hits carry (0x08012860: status byte 0x12).
+        -- What a damage word's paralysis bit makes its hits carry (0x08012860: status byte 0x12); a counter hit's
+        -- paralysis, the same (0x0800B08E: the hit flags' 0x40 sets status byte 0x12).
         damage_word_paralysis = statuses.paralyze_150,
+        counter_paralysis = statuses.paralyze_150,
     },
     sparks = {
         plain = sparks.plain,
@@ -38,6 +40,9 @@ local roles: RolesSpec = {
         -- The custom gauge fills (0x080147F4); the HP box's alarm (0x0801475E).
         gauge_full = asset.sound("gauge-full"),
         low_hp = asset.sound("low-hp"),
+        -- A counter hit (0x08013410); a chip's Full Synchro boost (0x0800D54E).
+        counter_hit = asset.sound("counter-hit"),
+        damage_bonus = asset.sound("damage-bonus"),
         -- A panel cracks or breaks (0x08009AEC); a panel turns to poison (0x08009D68).
         panel_crack = asset.sound("panel-crack"),
         panel_poison = asset.sound("panel-poison"),
@@ -60,6 +65,10 @@ local roles: RolesSpec = {
         -- The fight's: a navi's hit, every console's (0x08013A96: 0x6B), a navi in auto battle's (0x6D).
         hit = asset.sound("hit"),
         auto_battle_hit = asset.sound("auto-battle-hit"),
+    },
+    sprites = {
+        -- The Full Synchro aura (actor object 0x5E, 0x080CD1A8: 14-16, EXE5's and EXE6's numbers too).
+        full_synchro_aura = asset.sprite("full-synchro-aura"),
     },
     music = {
         link_battle = asset.sound("netbattle"),
