@@ -475,6 +475,48 @@ restating theirs the same.
 Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 
 - The win banner: a link battle's KO win shows the winner navi's banner (event flag 0x1187 set in the netbattle's
-  subsystem, §15 flow).
+  subsystem, §15 flow). The lab's `flow/buster-duel` (§17) shows otherwise on Tango's netbattle: the winner's console
+  shows banner 4, "ENEMY DELETED" (the banner block's +1 from frame 1057), the loser's banner 8, "MEGAMAN DELETED"
+  (`flow/buster-duel-bluemoon`, frame 1056).
 - The palette flash before the fades: EXE4's fade slots (§15 effects).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
+
+## 17. The recordings
+
+The chip lab's EXE4 recordings (the verification workspace's `tools/chiplab/library-exe4`, recorded into its main
+checkout's `data/traces/lab-exe4`, the index in `index.jsonl`), each a trace (`NAME.jsonl`) and its sound calls
+(`NAME.snd`):
+
+| Scenario | Base | Frames | What |
+|---|---|---|---|
+| `flow/buster-duel` | `exe4`: US Red Sun on side 0, traced, against US Blue Moon | 1,189 | the first custom screen confirmed with nothing picked; both shoot the buster from their start panels (1 damage a shot), side 0 twenty times, side 1 twelve; side 1 (20 HP: the save's base HP) deleted at frame 1000; the KO's banners and the round's end (BattleState's sub-state 0x14 from 1158, its state 8 from 1175) |
+| `flow/buster-duel-bluemoon` | `exe4-bluemoon`: the same, traced on side 1's Blue Moon console | 1,188 | the same fight on the loser's console (its own low-HP alarm, 0x82, three times more) |
+| `custom/cannon` | `exe4` | 565 | side 0 picks a Cannon A (a folder of Cannon A), uses it (side 1 1000 to 960), then a buster shot |
+
+**The format** is oracle-trace's (the verification workspace's `crates/oracle-trace`): JSON lines, a `setup` line as
+the round's fight starts (BattleState's state byte 4), an `exchange` line when the NaviStats blocks change, and a
+frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (oracle-trace's `EXE4` layout):
+
+- **setup:** `"game":"exe4"`; `settings_ptr` and `settings` (BattleState+0x3C's 0x10 bytes); `navi_stats` (both blocks,
+  0x40 bytes each, §3.3, as the PET compiled them: a side's HP its save's base HP, its Mod Cards applied); `folder`
+  (the traced console's battle folder, 30 chips, 0x3C bytes, a halfword each: the id, the code index << 9) and
+  `folders` (both, by side); `battle_state` (0xF0 bytes); `rng1`, `rng2`; `joypad_phases` (each console's joypad beat,
+  0 to 4); `game_versions` (`redsun`, `bluemoon`); `frame_counter` (the console's frame counter, the toolkit's +0x24);
+  `navicusts` (each side's save's NaviCust: `parts`, the 25 parts of 8 bytes at save 0x4564; `grid`, the 5x5 grid at
+  0x4540; `color_bar`, 6 bytes at 0x190) and `mod_cards` (each side's save's six slots: `on` at 0x464C, `off` at
+  0x4653, a card's number or 0xFF); `game_regions`. **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
+  chip flags) come only when the traced console is side 1: side 0's console runs its frame before side 1's in a tick,
+  so the other console's last capture is a frame behind when side 0's setup line is written (EXE5's side-0 recordings
+  lack them for the same reason). A decode reads them when present and doesn't expect them on a side-0 recording.
+- **exchange:** `navi_stats` alone (EXE4 has no transform records).
+- **frame:** `state` (BattleState's first four bytes); no `frames` and `ticks` (EXE4's BattleState doesn't count
+  them); `link` (the link struct's status byte), `rng1`, `rng2`; `bs` (BattleState, 0xF0 bytes), `fight` (the fighting
+  machine, 0xC bytes: its first byte 4 while the fight runs, 8 after the KO), `gauge` and `gauge_rate`, `paused` (the
+  game state's +9, read through the toolkit's pointer), `hud_tasks`, `banner` (the banner block 0x02037CE0's 0x10
+  bytes: its +1 the banner, 0x0C the turn's start, 4 "ENEMY DELETED", 8 "MEGAMAN DELETED"); `input` (each player's
+  held, pressed and released); `objects` in update order (type, index, flags, params, state, panel, alliance, `flip`:
+  the record's +0x17, which EXE4's code reads where EXE6's reads +0x0E, §3.1; hp, max HP, position, timer, animation,
+  status); `panels` (the 6x3 field's type and owner, the panel's +0 and +1); `chip_blocks` (both, 0x50 bytes).
+- **sounds:** a line per call each battle frame queued (the frame, the m4a call, its arguments): EXE4's queue holds
+  SongNumStart, MPlayAllStop, VolumeControl (the m4a players by EXE6's numbering, EXE4's 0x1210 further), FadeOut,
+  SongNumStop, ImmInit and FadeIn (§3.4).
