@@ -2929,6 +2929,10 @@ export type RolesSpec = {
         -- what sparkles over it while it flashes, which its deletion's end
         -- ends.
         navi_deleted: ((navi: Object) -> Object?)?,
+        -- `sub_801390C` has taken the navi's guard and untouchability down
+        -- (its init, a form change): what its stats raise again (EXE4's
+        -- All Guard, NaviStats +0x28: the guard, 0x0800D8E4).
+        abilities_reset: ((navi: Object) -> ())?,
     }?,
 }
 

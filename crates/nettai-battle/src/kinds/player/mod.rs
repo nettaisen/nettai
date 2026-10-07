@@ -1017,6 +1017,11 @@ fn reset_abilities(b: &mut Battle, r: ObjectRef) {
     // off_8013CA8 is 0x08000001: a guard left up (an action the custom
     // screen's form change cut short) comes down with it.
     clear_flag1(b, r, f1::UNTOUCHABLE | f1::GUARD);
+    // What the navi's stats raise again (EXE4's All Guard: the role hook
+    // `abilities_reset`).
+    if let Some(hook) = b.roles().try_hook(crate::content::HookRole::AbilitiesReset) {
+        crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
+    }
     clear_invulnerable(b, r);
     // sub_80E5410: the linked object's state word becomes 8 (it frees
     // itself at its next update) and its first extra variable 0, and the
