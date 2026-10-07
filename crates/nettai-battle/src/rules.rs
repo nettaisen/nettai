@@ -280,6 +280,16 @@ impl Battle {
         Some(SetupFact { schema, block: self.setup.players[side as usize & 1].rules.as_ref()?, index })
     }
 
+    /// Side `side`'s navi's stat of its game's own that has `role` (the
+    /// rules' `stats`), if the game has one.
+    pub fn stat(&self, side: u8, role: crate::content::StatRole) -> Option<nettai_content_api::FieldValue> {
+        let defs = &self.content.defs;
+        let index = defs.stat_field(role)?;
+        let rules = defs.rules()?;
+        let game = &self.stats[side as usize & 1].game;
+        (game.id() == rules.stats).then(|| game.get(defs.schema(rules.stats), index))
+    }
+
     /// The rules' state of side `side`, if their windows' and buttons' views
     /// show a view's fields (`pick`, of their `ViewFields`), with them and
     /// the state's layout.
@@ -1063,12 +1073,9 @@ mod tests {
             Battle::new(s, content)
         }
 
-        /// Side `side`'s stats as the setup gives them, with the version
-        /// byte the version fact writes (`testing::VERSION`).
+        /// Side `side`'s stats as the setup gives them.
         fn setup_stats(side: usize) -> NaviStats {
-            let mut stats = scenario::setup().navi_stats[side];
-            stats.version = 1;
-            stats
+            scenario::setup().navi_stats[side]
         }
 
         #[test]
@@ -1112,10 +1119,11 @@ mod tests {
 
         #[test]
         fn abilities_choices_and_chip_shuffle() {
+            let content = scenario::content();
             let b = with_cards(&["test-abilities"], |s| {
                 s.support = Some(Supports::default());
                 s.float_shoes = true;
-                s.number_open = true;
+                s.set_game_stat(&content, "number_open", Value::Bool(true)).unwrap();
             });
             let s = &b.stats[0];
             let content = &b.content;
@@ -1124,7 +1132,12 @@ mod tests {
             assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged-confusing"));
             assert_eq!(s.support, Some(Supports { rush: true, ..Supports::default() }));
             assert_eq!(s.gauge_speed, GaugeSpeed::Fast);
-            assert!(s.chip_shuffle && !s.number_open, "ChpShufl turns NumbrOpn off");
+            let stat = |name: &str| s.game_stat(content, name);
+            assert_eq!(
+                (stat("chip_shuffle"), stat("number_open")),
+                (Some(FieldValue::Bool(true)), Some(FieldValue::Bool(false))),
+                "ChpShufl turns NumbrOpn off"
+            );
             assert!(!b.consoles[0].emotion_window_glitch, "no bug");
         }
 

@@ -99,7 +99,12 @@ impl Face {
             picture: f.mugshot.and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(emotion, variant))),
             own: f.base,
             full_synchro: emotion == Emotion::FullSynchro,
-            count: b.stats[side as usize].beast_out_counter,
+            // (The count the emotion window's box shows: a stat of the
+            // game's own, by its role: EXE6's Beast Out turns.)
+            count: match b.stat(side, nettai_battle::content::StatRole::WindowCount) {
+                Some(nettai_content_api::FieldValue::U8(n)) => n,
+                _ => 0,
+            },
             form,
             emotion,
             hub,

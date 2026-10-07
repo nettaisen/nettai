@@ -951,6 +951,9 @@ pub enum StateOf {
     Rules(RulesCtx),
     /// A side's player's setup of the rules (`rules.setup()`): read-only.
     Setup(RulesCtx),
+    /// A side's navi's stats of its game's own (the rules' `stats`: the
+    /// names `battle.navi(side)` has beside the engine's).
+    Stats(u8),
 }
 
 impl State {
@@ -980,6 +983,7 @@ impl State {
                     &mut view
                 }
                 StateOf::Rules(c) => api.rules_state_mut(c.side).map_err(api_error)?,
+                StateOf::Stats(side) => api.navi_game_stats_mut(side).map_err(api_error)?,
                 StateOf::Setup(_) if write => {
                     return Err(mlua::Error::runtime(format!(
                         "setup field `{key}`: a player's setup is read-only in battle"
@@ -1231,7 +1235,8 @@ impl UserData for StatePart {
     }
 }
 
-/// A side's navi stats (`battle.navi(side)`).
+/// A side's navi stats (`battle.navi(side)`): the engine's by their names,
+/// and its game's own (the rules' `stats`) by theirs, as a state's fields.
 #[derive(Clone, Copy)]
 pub struct Navi(u8);
 
@@ -1249,6 +1254,22 @@ impl UserData for Navi {
                 });
             }
         }
+    }
+
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        // (A name the engine's stats haven't: the game's own.)
+        methods.add_meta_method(MetaMethod::Index, |lua, this, key: mlua::LuaString| {
+            let key = key.to_str()?;
+            let got = State(StateOf::Stats(this.0)).with_state(&key, false, |s, schema, i| {
+                let ty = schema.field(i).ty.clone();
+                Ok((s.get(schema, i).load(), ty))
+            })?;
+            from_api(lua, got.0, &got.1)
+        });
+        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (mlua::LuaString, LuaValue)| {
+            let key = key.to_str()?;
+            State(StateOf::Stats(this.0)).with_state(&key, true, |s, schema, i| assign(s, schema.place(i), v, &format!("stat `{}`", &*key)))
+        });
     }
 }
 

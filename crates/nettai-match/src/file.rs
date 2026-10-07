@@ -672,10 +672,11 @@ mod tests {
         for s in &mut none.sides {
             s.set_fact(&six, "version", &[Fact::Name("falzar")]).unwrap();
         }
-        // (The navi's version byte, NaviStats+0x20, is the version's place
-        // among those the rules declare: the battle's start sets it.)
+        // (The navi's version is the side's version fact, which the round
+        // carries: NaviStats+0x20 is compat's to write from it.)
         let b = crate::check::start(&six, &none).unwrap();
-        assert_eq!((b.stats[0].version, b.stats[1].version), (1, 1));
+        let version = |side: u8| b.fact(side, nettai_battle::content::PlayerFact::Version).and_then(|f| f.name().map(str::to_string));
+        assert_eq!((version(0), version(1)), (Some("falzar".to_string()), Some("falzar".to_string())));
         assert!(!write(&six, &none).contains("crosses"));
         // (And a side's own of its version, as a tool fills them in: the
         // version's five.)
@@ -701,7 +702,7 @@ mod tests {
         has(crate::check_match(&five, &odd), "right: the side's facts aren't exe5's rules'");
         // (The round an EXE5 match starts brings its players no version.)
         let b = crate::check::start(&five, &m).unwrap();
-        assert!(b.fact(0, nettai_battle::content::PlayerFact::Version).is_none() && b.stats[0].version == 0);
+        assert!(b.fact(0, nettai_battle::content::PlayerFact::Version).is_none());
     }
 
     /// What a file can get wrong is said, with where it is.

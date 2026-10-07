@@ -261,7 +261,7 @@ mod tests {
         assert_eq!((s.level(&content), s.version(&content)), (Some(7), Some("gregar")));
         // (His round's stats: his level's, of the save's game.)
         let b = nettai_match::check::start(&content, &m).unwrap();
-        assert_eq!((b.stats[1].version, b.stats[1].max_hp), (0, 1230));
+        assert_eq!(b.stats[1].max_hp, 1230);
         assert_eq!(notes, ["the save operates a link navi without its navi code: the side keeps its level"]);
         assert!(import_file(&content, &mut m.sides[1], b"not a save").is_err());
     }

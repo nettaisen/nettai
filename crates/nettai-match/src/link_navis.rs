@@ -109,7 +109,7 @@ mod tests {
         s.set_fact(&content, "hp", &[Fact::Value(Value::Int(1234))]).unwrap();
         let st = started(&content, &m);
         let fresh = NaviStats::fresh(m.sides[1].navi(&content), &content).unwrap();
-        assert_eq!((st.reg_up, st.sun), (45, false));
+        assert_eq!((st.reg_up, st.game_stat(&content, "sun")), (45, Some(nettai_content_api::FieldValue::Bool(false))));
         assert_eq!((st.custom_level, st.mega_level, st.giga_level), (fresh.custom_level, fresh.mega_level, fresh.giga_level));
         assert_eq!((st.max_base_hp, st.max_hp, st.hp), (800, 900, 900));
     }

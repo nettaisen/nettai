@@ -1,7 +1,8 @@
 //! A round's navi stats by name, for a tool to show (the editor's stats
 //! pane): each stat's name, what it means, and its value in the stats a
 //! round starts with (`check::round_stats`: what the side's rules built on
-//! the navi's fresh stats). A side states none of them: what a save brings
+//! the navi's fresh stats); the engine's ([`FIELDS`]), then the game's own
+//! ([`game_fields`], by their schema's names). A side states none of them: what a save brings
 //! to them is its game's facts (EXE6's `hp`, `reg_up`, `sun`), and the rest
 //! is derived as the round is set up.
 //!
@@ -118,13 +119,10 @@ pub const FIELDS: &[Field] = &[
     int!("regular_memory", 255, "the Regular chip's MB at most", |s| s.reg_up),
     int!("mood", 255, "the emotion (0 worn out, 0x80 normal, 0xFF Full Synchro)", |s| s.mood),
     int!("element", 255, "the base form's element byte", |s| s.element),
-    int!("beast_out_counter", 255, "Beast Out turns", |s| s.beast_out_counter),
-    flag!("sun", "fighting outdoors in the sun (some chips hit harder)", |s| s.sun),
     flag!("super_armor", "SuprArmr: no flinching", |s| s.super_armor),
     flag!("float_shoes", "FlotShoe: panels don't act on the navi", |s| s.float_shoes),
     flag!("air_shoes", "AirShoes: the navi stands over holes", |s| s.air_shoes),
     flag!("undershirt", "UnderSht: a hit that would delete leaves 1 HP", |s| s.undershirt),
-    int!("hub_style", 2, "EXE5's Hub Style (its patch card 111: 1 Team ProtoMan's, 2 Team Colonel's)", |s| s.hub_style),
     flag!("status_guard", "statuses don't take", |s| s.bugs.status_immunity),
     record!("first_barrier", "barrier", "the barrier the navi enters with", |s| s.first_barrier),
     Field {
@@ -140,8 +138,6 @@ pub const FIELDS: &[Field] = &[
         get: |s| Value::Supports(s.support),
     },
     int!("chip_recovery", 0xFFFF, "HP healed per chip used", |s| s.chip_recovery),
-    flag!("chip_shuffle", "ChpShufl: the custom screen re-deals", |s| s.chip_shuffle),
-    flag!("number_open", "NumbrOpn: the custom screen deals 10", |s| s.number_open),
     weapon!("buster", "the B button's weapon", |s| s.weapons.buster),
     weapon!("charged_shot", "the charged shot", |s| s.weapons.charge_shot),
     weapon!("back_special", "the B+Back special", |s| s.weapons.back_special),
@@ -153,8 +149,6 @@ pub const FIELDS: &[Field] = &[
     int!("navi_variant", 255, "the navi's variant (its move lag)", |s| s.navi_variant),
     form!("form", "the form the navi is in", |s| s.form),
     form!("starting_form", "the form the battle starts in", |s| s.starting_form),
-    int!("chip_drops", 255, "the NaviCust's collector bug and Collect (no netbattle reads it)", |s| s.chip_drops),
-    int!("encounters", 255, "the NaviCust's encounter bug (no netbattle reads it)", |s| s.encounters),
     int!("folder", 255, "the folder the navi brings (0-2)", |s| s.folder),
     int!("folder_1_regular", 255, "the first folder's Regular chip in the save (0xFF none)", |s| s.folder_reg[0]),
     int!("folder_2_regular", 255, "the second folder's Regular chip in the save (0xFF none)", |s| s.folder_reg[1]),
@@ -182,6 +176,31 @@ pub const FIELDS: &[Field] = &[
 /// The field with this name.
 pub fn field(name: &str) -> Option<&'static Field> {
     FIELDS.iter().find(|f| f.name == name)
+}
+
+/// The stats of the game's own (its rules' `stats`, `NaviStats::game`), by
+/// their names in the schema's order, after [`FIELDS`] (EXE6's Beast Out
+/// turns and ChpShufl, EXE5's Hub Style, ...): each a number or a flag.
+pub fn game_fields(content: &Content, s: &NaviStats) -> Vec<(String, Value)> {
+    let Some(rules) = content.defs.rules() else { return Vec::new() };
+    let schema = content.defs.schema(rules.stats);
+    if s.game.id() != rules.stats {
+        return Vec::new();
+    }
+    use nettai_content_api::FieldValue as F;
+    (0..schema.fields().len())
+        .filter_map(|i| {
+            let v = match s.game.get(schema, i) {
+                F::Bool(b) => Value::Bool(b),
+                F::U8(n) => Value::Int(n as u32),
+                F::I8(n) => Value::Int(n as u8 as u32),
+                F::U16(n) => Value::Int(n as u32),
+                F::U32(n) => Value::Int(n),
+                _ => return None,
+            };
+            Some((schema.field(i).name.clone(), v))
+        })
+        .collect()
 }
 
 /// A value as a match file writes it.

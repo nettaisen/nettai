@@ -455,11 +455,10 @@ named_fields! {
 }
 
 named_fields! {
-    /// A side's navi stats that content reads (and the few it changes).
+    /// A side's navi stats that content reads (and the few it changes): the
+    /// engine's. (A game's own, its rules' `stats`, are read and written by
+    /// their names: [`CoreApi::navi_game_stats_mut`].)
     pub enum NaviStat {
-        /// Fighting in the sun (+0x22, the save's; writable: a game's save
-        /// part writes it as the round is set up).
-        Sun = "sun", Bool, rw;
         /// The form and the navi, as their definitions.
         /// Writable: a game's form change puts the navi in its form.
         Form = "form", Ref(Registry::Form, None), rw;
@@ -475,13 +474,8 @@ named_fields! {
         Charge = "charge", U8, rw;
         /// Writable: EXE5's dark chips set it (0x080127D6).
         Mood = "mood", U8, rw;
-        /// The Beast Out turns left (writable: EXE6's rules/beast spends
-        /// them).
-        BeastOutCounter = "beast_out_counter", U8, rw;
         /// The form the navi started the battle in.
         StartingForm = "starting_form", Ref(Registry::Form, None), ro;
-        /// The navi's game: 0 Gregar, 1 Falzar.
-        Version = "version", U8, ro;
         /// The Regular chip's MB at most (+0x09, RegUp's), and the base HP
         /// (+0x3E): the save's, which a game's rules/save writes as the
         /// round is set up.
@@ -518,9 +512,6 @@ named_fields! {
         FloatShoes = "float_shoes", Bool, rw;
         AirShoes = "air_shoes", Bool, rw;
         Undershirt = "undershirt", Bool, rw;
-        /// EXE5's Hub Style (+0x4C), which its patch card 111 sets: 1 Team
-        /// ProtoMan's, 2 Team Colonel's; 0 none.
-        HubStyle = "hub_style", U8, rw;
         // Written by the patch cards at the round's start (rules/
         // patch-cards.luau), with the writable ones above.
         /// HP when the round starts, and its maximum (+0x40, +0x42).
@@ -556,24 +547,11 @@ named_fields! {
         CustomDamage = "custom_damage", U16, rw;
         EmotionBug = "emotion_bug", U8, rw;
         BattleStartBug = "battle_start_bug", U8, rw;
-        /// NaviCust ChpShufl and NumbrOpn (+0x60, +0x61).
-        ChipShuffle = "chip_shuffle", Bool, rw;
-        NumberOpen = "number_open", Bool, rw;
-        /// What the NaviCust does to chip drops (+0x26: 1 its collector
-        /// bug, bit 2 Collect) and random encounters (+0x28: 1 its
-        /// encounter bug): no netbattle reads them; the patch cards' bug
-        /// count does. Writable: a game's NaviCust rules set them.
-        ChipDrops = "chip_drops", U8, rw;
-        Encounters = "encounters", U8, rw;
         /// `sub_800FE52`: how many kinds of NaviCust bug the navi has
         /// (astray steps, a panel trail, buster blanks, a hit status,
         /// custom-screen damage, emotion swings, the two HP drains, a
         /// battle-start hook, a shrinking hand).
         BugKinds = "bug_kinds", U8, ro;
-        /// EXE5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1's
-        /// 1), which the custom screen adds to a soul's three (signed).
-        /// Writable: EXE5's NaviCust rules set it.
-        SoulTurnBonus = "soul_turn_bonus", I8, rw;
     }
 }
 
@@ -1697,6 +1675,9 @@ pub trait CoreApi {
     /// The side's player's setup of the rules: what the player brought,
     /// read-only in battle.
     fn rules_setup(&self, side: u8) -> ApiResult<&Block>;
+    /// Side `side`'s navi's stats of its game's own (the rules' `stats`):
+    /// one block in the navi's stats, by the rules' schema.
+    fn navi_game_stats_mut(&mut self, side: u8) -> ApiResult<&mut crate::SmallBlock>;
     /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
     fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
     /// `sub_801BD3C`: the one-shot effect `look` on each field panel of

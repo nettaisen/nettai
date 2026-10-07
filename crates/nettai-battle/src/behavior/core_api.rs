@@ -472,7 +472,6 @@ impl CoreApi for Battle {
         let weapon = |w: Option<WeaponHandle>| w.map_or(Value::Nil, |h| Value::Def(Registry::Weapon, h.0));
         let record = |r: Option<nettai_content_api::RecordHandle>| r.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0));
         match stat {
-            NaviStat::Sun => Value::Bool(s.sun),
             NaviStat::Form => Value::Def(Registry::Form, s.form.0),
             NaviStat::Navi => Value::Def(Registry::Navi, s.navi.0),
             NaviStat::NaviVariant => i(s.navi_variant as i64),
@@ -481,9 +480,7 @@ impl CoreApi for Battle {
             NaviStat::Rapid => i(s.rapid as i64),
             NaviStat::Charge => i(s.charge as i64),
             NaviStat::Mood => i(s.mood as i64),
-            NaviStat::BeastOutCounter => i(s.beast_out_counter as i64),
             NaviStat::StartingForm => Value::Def(Registry::Form, s.starting_form.0),
-            NaviStat::Version => i(s.version as i64),
             NaviStat::RegularMemory => i(s.reg_up as i64),
             NaviStat::MaxBaseHp => i(s.max_base_hp as i64),
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
@@ -502,7 +499,6 @@ impl CoreApi for Battle {
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
-            NaviStat::HubStyle => i(s.hub_style as i64),
             NaviStat::Hp => i(s.hp as i64),
             NaviStat::MaxHp => i(s.max_hp as i64),
             NaviStat::MegaLevel => i(s.mega_level as i64),
@@ -522,11 +518,6 @@ impl CoreApi for Battle {
             NaviStat::CustomDamage => i(s.bugs.custom_damage as i64),
             NaviStat::EmotionBug => i(s.bugs.emotion as i64),
             NaviStat::BattleStartBug => i(s.bugs.battle_start as i64),
-            NaviStat::ChipShuffle => Value::Bool(s.chip_shuffle),
-            NaviStat::NumberOpen => Value::Bool(s.number_open),
-            NaviStat::ChipDrops => i(s.chip_drops as i64),
-            NaviStat::Encounters => i(s.encounters as i64),
-            NaviStat::SoulTurnBonus => i(s.soul_turn_bonus as i64),
             NaviStat::BugKinds => {
                 let b = &s.bugs;
                 let kinds = [
@@ -574,7 +565,6 @@ impl CoreApi for Battle {
             }
         };
         match (stat, v) {
-            (NaviStat::Sun, FieldValue::Bool(x)) => s.sun = x,
             (NaviStat::NaviVariant, FieldValue::U8(x)) => s.navi_variant = x,
             (NaviStat::RegularMemory, FieldValue::U8(x)) => s.reg_up = x,
             (NaviStat::MaxBaseHp, FieldValue::U16(x)) => s.max_base_hp = x,
@@ -612,13 +602,10 @@ impl CoreApi for Battle {
             (NaviStat::CustomDamage, FieldValue::U16(x)) => s.bugs.custom_damage = x,
             (NaviStat::EmotionBug, FieldValue::U8(x)) => s.bugs.emotion = x,
             (NaviStat::BattleStartBug, FieldValue::U8(x)) => s.bugs.battle_start = x,
-            (NaviStat::ChipShuffle, FieldValue::Bool(x)) => s.chip_shuffle = x,
-            (NaviStat::NumberOpen, FieldValue::Bool(x)) => s.number_open = x,
             (NaviStat::Attack, FieldValue::U8(x)) => s.attack = x,
             (NaviStat::Rapid, FieldValue::U8(x)) => s.rapid = x,
             (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
             (NaviStat::CustomLevel, FieldValue::U8(x)) => s.custom_level = x,
-            (NaviStat::BeastOutCounter, FieldValue::U8(x)) => s.beast_out_counter = x,
             (NaviStat::Form, FieldValue::Ref(Some((Registry::Form, h)))) => s.form = nettai_content_api::FormHandle(h),
             (NaviStat::Form, v) => return Err(ApiError::Other(format!("form: {v:?} is not a form"))),
             (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
@@ -627,15 +614,11 @@ impl CoreApi for Battle {
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
             (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
-            (NaviStat::HubStyle, FieldValue::U8(x)) => s.hub_style = x,
             // The support bug: none (the byte 0xFF); cleared, none set.
             (NaviStat::SupportBug, FieldValue::Bool(true)) => s.support = None,
             (NaviStat::SupportBug, FieldValue::Bool(false)) => {
                 s.support.get_or_insert_with(crate::setup::Supports::default);
             }
-            (NaviStat::ChipDrops, FieldValue::U8(x)) => s.chip_drops = x,
-            (NaviStat::Encounters, FieldValue::U8(x)) => s.encounters = x,
-            (NaviStat::SoulTurnBonus, FieldValue::I8(x)) => s.soul_turn_bonus = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1719,6 +1702,15 @@ impl CoreApi for Battle {
             .get(side as usize)
             .and_then(|p| p.rules.as_ref())
             .ok_or_else(|| ApiError::Other(format!("side {side}'s player brings no setup of the rules")))
+    }
+
+    fn navi_game_stats_mut(&mut self, side: u8) -> ApiResult<&mut nettai_content_api::SmallBlock> {
+        let id = self.content.defs.rules().map(|r| r.stats).unwrap_or_default();
+        let game = &mut self.stats[side as usize & 1].game;
+        if game.id() != id {
+            return Err(ApiError::Other(format!("side {side}'s navi's stats aren't of its game's rules' `stats`")));
+        }
+        Ok(game)
     }
 
     fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
