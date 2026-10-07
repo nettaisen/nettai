@@ -69,7 +69,8 @@ fn exe6_compat_reads() {
 }
 
 /// Two definitions with one of the original's numbers: reading compat
-/// refuses it (several actions may share a number; nothing else).
+/// refuses it (several actions may share a number, and several kinds a slot
+/// when they agree on it; nothing else).
 #[test]
 fn a_number_belongs_to_one_definition() {
     let file = |name: &str| std::fs::read_to_string(format!("{}/../../content/exe6/compat/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap();
@@ -85,6 +86,11 @@ fn a_number_belongs_to_one_definition() {
             Ok(_) => panic!("{name}: a second definition of a number read"),
         }
     }
+    // (Several kinds on one slot: the users of one of the original's
+    // objects, each with its own kind, as alike as the slot.)
+    let twin = file("kinds.toml") + "\n[\"rock-twin\"]\npool = \"attack\"\nindex = 0x59\nactor_list_entry = 8\n";
+    let c = Compat::exe6_with("kinds.toml", &twin).expect("a kind as alike as its slot's other");
+    assert_eq!(c.kind_at(Pool::Attack, 0x59).map(|(k, _)| k), Some("rock-twin"));
     // (Several actions on one number are the original's own: the chips of
     // one action handler.)
     let c = Compat::exe6();
