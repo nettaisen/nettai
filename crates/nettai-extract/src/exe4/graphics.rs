@@ -1,9 +1,9 @@
 //! EXE4's graphics: the battle sprites, the chips' pictures and icons, the
-//! fonts and the HUD's text lines, in the pack's typed form (nettai-assets).
-//! The routines that read them are EXE6's or EXE5's, the same or nearly
-//! (docs/design/exe4-map.md §3); the addresses are where their literals
-//! point in each ROM (rom.rs). What isn't extracted yet is the placeholder
-//! pass's (`super::NOT_YET`).
+//! fonts and the HUD's text lines, the field, the backgrounds, in the
+//! pack's typed form (nettai-assets); the HUD's and the custom screen's in
+//! hud.rs and custom.rs. The routines that read them are EXE6's or EXE5's,
+//! the same or nearly (docs/design/exe4-map.md §3), or EXE4's own (§14); the
+//! addresses are where their literals point in each ROM (rom.rs).
 
 use crate::decode::{BackgroundDescriptor, background_picture_by, gfx_anims, tiles};
 use crate::exe4::rom::{Addresses, RED_SUN, Rom, Roms, Version};
@@ -68,13 +68,11 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     };
     hud.languages.push((LANGUAGE.to_string(), lettering));
     hud.language = BASE_LANGUAGE.into();
-    let mut custom = crate::placeholders::custom();
-    custom.chip_art = chip_art(roms, names);
-    // (The custom screen is a placeholder yet, its Japanese lettering too.)
-    custom.languages.push((
-        LANGUAGE.to_string(),
-        CustomLettering { pictures: crate::placeholders::slot_pictures(), ..Default::default() },
-    ));
+    // The custom screen (exe4/custom.rs), Red Sun US's; its Japanese
+    // lettering a Japanese ROM's.
+    let mut custom = super::custom::custom(roms, chip_art(roms, names));
+    let lettering = super::custom::lettering(roms, &custom);
+    custom.languages.push((LANGUAGE.to_string(), lettering));
     // The backgrounds are the same in the four ROMs but for where they are.
     let backgrounds = roms.any().map(|(rom, a)| backgrounds(rom, a)).unwrap_or_default();
     // The field, the HUD's and the custom screen's art are Red Sun US's (the

@@ -208,7 +208,10 @@ pub struct EffectsRules {
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
-/// slides out; and how a banner that holds until let go is let go.
+/// slides out; and how a banner that holds until let go is let go. Sliding
+/// in, it unsquashes in a line from its first tick to its last, and
+/// squashes so sliding out (the frontend's: EXE6's `sub_801CE28` by 0x20 a
+/// tick over 5, EXE4's 0x08014994 by 0x10 over 9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BannerSteps {
@@ -216,6 +219,9 @@ pub struct BannerSteps {
     pub hold: u8,
     pub slide_out: u8,
     pub release: BannerRelease,
+    /// It bounces as its hold starts and as it ends, squashed a little
+    /// for two ticks each (EXE6's `sub_801CE28`; EXE4's holds still).
+    pub bounces: bool,
 }
 
 /// How a holding banner is let go (`hud::Banner::release`).
