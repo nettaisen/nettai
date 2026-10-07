@@ -465,7 +465,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         afterimages_wear_overlays = true,
         load_sets_part_palette = true,
         obstacle_actions = "own_from_6",
-        full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false },
+        full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false, spawn_runs_while_paused = false },
         charge_glow = "with_navi",
         charge = "hold_flags",
         steps = { keys = { "up", "down", "right", "left" }, confused = { up = "down", down = "up", left = "right", right = "left" }, idle_checks_target = false },
@@ -515,7 +515,9 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         step = step,
         dash_step = step,
         any_side_step = step,
-        reservations = "unmarked","#,
+        reservations = "unmarked",
+        type_mask = 0x3F5F,
+        standing = { stops_while_paused = true },"#,
             ),
             (
                 "pools",
@@ -550,11 +552,12 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         missing_collision_status = 7,
         reactions = "flash_timer_first",
         reaction_actions = "marked",
+        drag = { poses = { otherwise = 1 }, ending = "stands" },
         bugs_before_drain = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",
         hit_sound = "by_console",
-        emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" } },
+        emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "hitter_gains", full_synchro_spent = 0x99, anger_boost_sound = false },
         form_break = "marked_forms",
         weakness_hit_breaks_form = true,
         weakness_mark = "weak_element_damage",
@@ -616,10 +619,11 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((r.weakness_hit_breaks_form, r.weakness_mark), (true, WeaknessMark::WeakElementDamage));
         let m = &r.emotion;
         assert_eq!((m.mood_held, m.anger_end, m.names.clone()), (MoodHeld::AtZero, AngerEnd::ResetsMood, vec!["normal".to_string(), "worn_out".into(), "worried".into()]));
+        assert_eq!((m.hit_mood, m.full_synchro_spent, m.anger_boost_sound), (crate::content::HitMood::HitterGains, 0x99, false));
         let worried = crate::content::EmotionWhen { mood_below: Some(40), in_form: Some(false), ..Default::default() };
         assert_eq!((m.order.len(), m.order[1].when.clone(), m.role(crate::content::Emotion(1)), m.role(crate::content::Emotion(0))), (3, vec![worried], Some(crate::content::EmotionRole::WornOut), None));
         let aura = r.effects.full_synchro_aura;
-        assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight), (true, true, false));
+        assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight, aura.spawn_runs_while_paused), (true, true, false, false));
         assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0), (false, true, 7));
         assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
         let f = r.fresh_stats;
@@ -646,7 +650,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 95, "every field of every section");
+        assert_eq!(fields, 98, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

@@ -39,7 +39,10 @@ pub fn spawn(b: &mut Battle, navi: ObjectRef) -> Option<ObjectRef> {
     o.alliance = alliance;
     o.flip = flip;
     o.related[0] = Some(navi);
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    if rules(b).spawn_runs_while_paused {
+        b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED;
+    }
+    let o = b.objects.get_mut(r);
     o.vars = crate::kinds::Vars::FullSynchroAura(Vars { shown: true });
     set_link(b, navi, Some(r));
     Some(r)

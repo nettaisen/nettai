@@ -350,7 +350,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
         return;
     }
     // (EXE5's lava burns first: 0x08017A18 and its variants.)
-    common::panel_burn(b, r);
+    common::panel_burn(b, r, false);
     if push == Push::AnyHit {
         match b.game_rules().push_reading.reads {
             PushSource::Final => push_on_any_hit(b, c),

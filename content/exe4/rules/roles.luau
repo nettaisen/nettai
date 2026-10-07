@@ -15,8 +15,10 @@ local statuses = require("./status")
 
 local roles: RolesSpec = {
     statuses = {
-        -- What a damage word's paralysis bit makes its hits carry (0x08012860: status byte 0x12).
+        -- What a damage word's paralysis bit makes its hits carry (0x08012860: status byte 0x12); a counter hit's
+        -- paralysis, the same (0x0800B08E: the hit flags' 0x40 sets status byte 0x12).
         damage_word_paralysis = statuses.paralyze_150,
+        counter_paralysis = statuses.paralyze_150,
     },
     sparks = {
         plain = sparks.plain,
@@ -40,8 +42,15 @@ local roles: RolesSpec = {
     },
     sounds = {
         appear = asset.sound("appear"),
-        -- The custom gauge fills (0x080147F4).
+        -- The custom gauge fills (0x080147F4); the HP box's alarm (0x0801475E).
         gauge_full = asset.sound("gauge-full"),
+        low_hp = asset.sound("low-hp"),
+        -- A counter hit (0x08013410); a chip's Full Synchro boost (0x0800D54E).
+        counter_hit = asset.sound("counter-hit"),
+        damage_bonus = asset.sound("damage-bonus"),
+        -- A panel cracks or breaks (0x08009AEC); a panel turns to poison (0x08009D68).
+        panel_crack = asset.sound("panel-crack"),
+        panel_poison = asset.sound("panel-poison"),
         -- What the custom screen can't pick or take back (0x08020386, 0x08020634).
         refused = asset.sound("refused"),
         -- The custom screen's, which its player hears (docs/design/exe4-map.md §5): the window slides in (0x0801E24E);
@@ -62,6 +71,10 @@ local roles: RolesSpec = {
         hit = asset.sound("hit"),
         auto_battle_hit = asset.sound("auto-battle-hit"),
     },
+    sprites = {
+        -- The Full Synchro aura (actor object 0x5E, 0x080CD1A8: 14-16, EXE5's and EXE6's numbers too).
+        full_synchro_aura = asset.sprite("full-synchro-aura"),
+    },
     music = {
         link_battle = asset.sound("netbattle"),
         -- The round's end (0x080071F8): the winner's, a special battle's (battle flag 2); a netbattle's loser's
@@ -71,9 +84,21 @@ local roles: RolesSpec = {
         loser = asset.sound("loser"),
     },
     banners = {
+        -- A round's start, a turn's (a netbattle's: 0x080070BA), the final turns' (0x08007094).
         round_start = asset.banner("battle-number-start"),
         turn_start = asset.banner("turn-start"),
+        final_turn = asset.banner("final-turn"),
+        -- A draw (0x0800730C); a win's, and a win and a loss on the judge's ruling (0x08007220, 0x080072C8); the
+        -- damage judge's (0x080163EE).
+        draw = asset.banner("draw"),
         win = asset.banner("enemy-deleted"),
+        win_judged = asset.banner("you-win"),
+        lose_judged = asset.banner("you-lose"),
+        judge = asset.banner("hit-damage-judge"),
+        -- A Program Advance, and a selection that makes none (0x0801E696: no netbattle's screen shows the second).
+        program_advance = asset.banner("program-advance"),
+        program_advance_empty = asset.banner("program-advance-empty"),
+        -- (No telop: EXE4's banners have none, `telop` and `telop_remote` aren't EXE4's.)
     },
 }
 

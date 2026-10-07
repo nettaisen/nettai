@@ -117,9 +117,12 @@ local status = {
         -- A navi's status block runs a drag, the slides and a flinch, then the mercy flash's timer
         -- (`sub_801A5EE`, while the battle is fighting).
         reactions = "flash_timer_last",
-        -- Its reaction actions mark the action in use, ground and count, and the drag takes the paralyzed or
-        -- SuperArmor pose and turns to a paralysis that outlasts it (`sub_80174FE`, `sub_80175B8`, `sub_80178D4`).
+        -- Its reaction actions mark the action in use, ground and count (`sub_80174FE`, `sub_80175B8`,
+        -- `sub_80178D4`).
         reaction_actions = "marked",
+        -- A drag takes the paralyzed pose, else SuperArmor's, else the flinch's (`sub_80178D4`); at its end a
+        -- paralysis that outlasts it goes on, else the navi stands (`sub_8017A38`).
+        drag = { poses = { paralyzed = 2, super_armor = 0, otherwise = 1 }, ending = "resumes_paralysis" },
         bugs_before_drain = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",
@@ -146,6 +149,12 @@ local status = {
             -- its palette and aura besides); a worn-out navi's buster deals 1; worn out or tired, anger doesn't
             -- start.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },
+            -- A hit's counter byte wears the receiver's mood; a counter hit marks the counter (0x8000) and wears none,
+            -- and the counterer's rules hear it (`sub_801A200`: ./emotion). A chip's use leaves Full Synchro at 0x80,
+            -- and plays the boost's sound for anger's too (`sub_80127C0` after `sub_8012A38`).
+            hit_mood = "counter_mark",
+            full_synchro_spent = 0x80,
+            anger_boost_sound = true,
         },
         form_break = "marked_forms",
         -- A damaging weakness hit asks for that break (`sub_801A506`, a step of its status routine).

@@ -7,7 +7,7 @@
 //! hasn't refused as any unknown name is.
 
 use crate::facts::Stated;
-use crate::testing::{exe5_content, exe6_content};
+use crate::testing::{exe4_content, exe5_content, exe6_content};
 use crate::{Match, check_match};
 use nettai_battle::content::Content;
 use nettai_battle::rules::Fact;
@@ -288,6 +288,45 @@ fn a_exe5_match_plays() {
     let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let used = play(&content, &m, 900);
     assert!(used.iter().all(|u| !u.is_empty() && u.iter().all(|k| crate::ids::in_game(&content, "exe5", k))), "{used:?}");
+}
+
+/// EXE4's karma (content/exe4/rules/light_dark, docs/design/exe4-map.md
+/// §18 item 12): a navi whose value is above 499 (a light one's, and the
+/// default 500) closes the hole he stands on, each tick of the fight (his
+/// update's intake); a dark one's doesn't. (Every panel of side 0's the stage has is a hole, wherever its
+/// navi stands.)
+#[test]
+fn a_exe4_navi_of_light_closes_a_hole() {
+    use nettai_battle::Battle;
+    use nettai_battle::battle::battle_flags;
+    use nettai_battle::field::PanelType;
+    let content = exe4_content();
+    let holes_closed = |karma: Option<i64>| {
+        let mut m = crate::pick::live(&content, "exe4", 3, None).unwrap();
+        if let Some(k) = karma {
+            m.sides[0].set_fact(&content, "karma", &number(k)).unwrap();
+        }
+        let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
+        let navi = (0..600)
+            .find_map(|_| {
+                b.tick(&Default::default(), Default::default());
+                b.player(0).filter(|&r| b.objects.get(r).collision.is_some())
+            })
+            .expect("side 0's navi, with its collision data");
+        let holes = |b: &Battle| b.field.panels.iter().flatten().filter(|p| p.kind == PanelType::Hole).count();
+        for y in 1..=3 {
+            for x in 1..=3 {
+                b.set_panel_type(x, y, PanelType::Hole);
+            }
+        }
+        let before = holes(&b);
+        b.round.flags |= battle_flags::FIGHTING;
+        nettai_battle::kinds::player::update(&mut b, navi);
+        before - holes(&b)
+    };
+    assert_eq!(holes_closed(Some(1000)), 1, "the light navi's");
+    assert_eq!(holes_closed(None), 1, "the default, 500");
+    assert_eq!(holes_closed(Some(499)), 0, "a dark one's");
 }
 
 /// What a match is, in words: each side's navi and the facts it states,

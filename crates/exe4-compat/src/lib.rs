@@ -339,6 +339,8 @@ fn engine_panel(name: &str) -> Option<PanelType> {
         "metal" => PanelType::Metal,
         "lava" => PanelType::Lava,
         "sea" => PanelType::Sea,
+        "pitfall" => PanelType::Pitfall,
+        "hole" => PanelType::Hole,
         _ => return None,
     })
 }
@@ -551,10 +553,11 @@ mod tests {
         assert_eq!((c.text.first_control, c.text.glyphs.len()), (0xE4, 0x70));
         assert_eq!(c.text.jp.glyphs.len(), 0xE4);
         assert!(!c.text.jp.dialogue_glyphs.is_empty());
-        // Twelve panel types, the last none of content's yet.
+        // Twelve panel types: 5 metal, 10 SandRing's pitfall, 11 the Hole
+        // chip's hole.
         assert_eq!(c.panels.len(), 12);
         assert_eq!(c.panel_type(8), Ok(Some(PanelType::Lava)));
-        assert_eq!(c.panel_type(11), Ok(None));
+        assert_eq!((c.panel_type(5), c.panel_type(10), c.panel_type(11)), (Ok(Some(PanelType::Metal)), Ok(Some(PanelType::Pitfall)), Ok(Some(PanelType::Hole))));
         assert_eq!(c.status(0x10).as_deref(), Some("paralyze-90"));
         assert_eq!((c.navi_key(0), c.form(0), c.weapon(0).as_deref()), (Some("megaman"), Some("base"), Ok("megaman/buster")));
         assert_eq!(c.kind("engine/player"), Some((Pool::Actor, 0)));
