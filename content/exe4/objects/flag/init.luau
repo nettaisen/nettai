@@ -73,7 +73,8 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.visible = true
     me.element = 0
-    sprite:set_flip(me.flip)
+    -- (`sprite_setFlip(object_getFlip())`: EXE4's flip, 0x0800ACA6, is the object's side: side 1's flag points left.)
+    sprite:set_flip(me.alliance)
     battle.show_hp(me, {})
     if not me:create_collision() then
         me:free()

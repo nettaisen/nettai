@@ -542,8 +542,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 - **Spreader, HeatShot, Bubbler** (with Heat-V, HeatSide, Bub-V and BublSide: action 0x1E's variants 0 to 2,
   `chips/spreader/spreader`, DrkSpred's family on @exelib/spreadr): each variant's gun (attachment rows 0x0A, 6 and
-  0x0E), the tick it fires past and its height (0x080EC814's rows), and the chip's bullet row (objects/bullet: 3, 8 to
-  10, 4 to 6); nothing of their own.
+  0x0E), the tick it fires past and its height (0x080EC814's rows), and the chip's bullet (the bullet's rows 3, 8 to
+  10, 4 to 6), each chip's own; nothing of their own.
 - **Navi+20** (action 0x20's variant 4, its parameter 1: the Navi+ bonus, `modifier = "navi_plus"`): lib/plus, as
   Atk+10's.
 - **Meteors1** (with Meteors2 and 3: action 0x20's variant 0x11, `chips/meteors`): the spawner and its dropper
@@ -558,9 +558,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   0x0800E26C) as spawners, on the engine's gauge and its field object registry; FullCust's branch for a navi whose
   NaviStats +0x26 is 2 (a story's other navi) has no netbattle navi to take it.
 - **AquaUp1, GreenWd1, Ligtnin1** (with their 2 and 3: action 0x20's variant 0x0C, their parameter 0, 1, 2,
-  `lib/towers`): EXE4's own. A controller (attack object 0x93) sweeps the columns from the user's back one, a column
-  every 11 ticks, raising an aqua tower from each cracked panel of the other side's holding its navi, a wood tower from
-  each grass one (objects/tower, attack 0x92's rows 0 and 1), or striking a lightning onto each panel holding an
+  `lib/towers`): EXE4's own. A controller (attack object 0x93; each chip's own with its strike, which the parameter
+  picks in the original) sweeps the columns from the user's back one, a column every 11 ticks, raising an aqua tower
+  from each cracked panel of the other side's holding its navi, a wood tower from each grass one (objects/tower, attack
+  0x92's rows 0 and 1: each chip's own with its look), or striking a lightning onto each panel holding an
   obstacle (objects/lightning, attack 0x8E: EXE5's unused code; its eight hits around and its ring of sparks). The
   lightning waits on RockCube's recordings (the lab's ligtnin*/obstacle). The towers' frames differ from mGBA's on a
   few ticks where mGBA shows the tower's previous frame or a mix of two (big sprites: the original's display falling
@@ -571,13 +572,19 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   window is open.
 - **MokoRus1** (with 2 and 3: action 0x20's variant 1, `chips/mokorus`): EXE4's own. Three Molokos (attack 0x2C), one
   a row (the rows shuffled with RNG2: @exelib/panels' `shuffle`), 10 ticks apart, charge from 140 pixels behind the
-  field's middle; the chip's parameter is their palette.
+  field's middle, in the chip's palette (twice its parameter).
 - **SidBmbo1** (with 2 and 3: action 0x20's variant 5, which holds the user 40 ticks, `chips/sidbmbo`): EXE4's own
   bamboo (attack 0x44) swings down three columns ahead, its two hitboxes on rows 1 and 2.
 - **WhitWeb1** (with 2 and 3: action 0x20's variants 8 to 10, `chips/whitweb`): webs (attack 0x3D, EXE5's
   0x080CCC08's code) on the other side's panels of row 1, 2 or 3, bodies with 1 HP that catch the other side's navi.
   They showed that EXE4's navi body hits for nothing in a link battle (`status.link_body_damage`: EXE4 has neither of
   EXE6's stores of 10).
+- **ElemFlar, ElemIce, ElemLeaf, ElemSand, ElemDark** (action 0x60's variants 0 to 4, `chips/elem`): EXE4's own action
+  with EXE5's ElemRage flame (attack 9), now @exelib/elemrage/flame: on the chip's panel the flames run five and
+  paralyze (no spreading to the rows beside, which EXE5's does); each chip states its panel, its flames' palette and,
+  ElemDark's, the poison its raging flames leave (the flame's `leaves`, the panel type Param4's high nibble names:
+  the lab's panels/elemdark-poison). ElemDark's sound recordings differ only on the custom screen (a music volume
+  change the engine makes and the game doesn't, frame 290: the custom screen's).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -708,7 +715,9 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     stripes and "L or R" go by +0x18. "BUSY..." runs the same counter (update 13, 0x08014ADC: +1 & 63 a tick, from 63
     at its start, 0x080166F0) until the exchange is done (0x0801E9B6). Drawn as EXE6's.
   - 2 **the HP numbers under objects** (0x08014EB8; rolled by update 2, 0x08014800: an eighth plus 2): one color,
-    at priority 1 (the pack's `layout.hp_number_priority`).
+    at priority 1 (the pack's `layout.hp_number_priority`), under the HUD's BG3 at priority 0 (the battle's video
+    init's table at 0x08006AD4: BG3CNT 0x1F00, then 0x1F08; EXE6's is 1): the custom screen covers a flag's number
+    there (the pack's `layout.hud_priority`; the screen's cursor and element icon are sprites at priority 0).
   - 3 **the chip icons**, over the local navi alone. Update 3 (0x08014860) places them at its place on the screen
     plus the per-navi offset 0x0800B9E4 (which 0x08015B24 keeps at +0x1B, +0x1C): navi 0, MegaMan, (0, -55); 1 to
     12, the souls in navi order, (0, -67), (-8, -59), (-12, -84), (0, -64), (3, -72), (-4, -72), (-1, -62),
