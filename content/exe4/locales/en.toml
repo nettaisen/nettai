@@ -25,6 +25,7 @@ language = "en"
 "custom2" = { name = "Custom2", description = "Can pick\n2 more\nchips!" }
 "fish" = { name = "Fish", description = "Attracts\nAqua\nviruses!" }
 "flotshoe" = { name = "FlotShoe", description = "No effect\nfrm panel\ntype!" }
+"fstbarr" = { name = "FstBarr", description = "Barrier\nactivated\nfrm start" }
 "gigfldr1" = { name = "GigFldr1", description = "1 more\nGigaChip\nin folder" }
 "hp-100" = { name = "HP+100", description = "MAX HP\n+100!" }
 "hp-200" = { name = "HP+200", description = "MAX HP\n+200!" }
