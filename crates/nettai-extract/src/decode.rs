@@ -3,6 +3,61 @@ use crate::rom::Rom;
 use nettai_assets::*;
 use std::collections::HashMap;
 
+/// A BG1 scroll callback that speeds up, read from its code (EXE5's
+/// 0x080019EC, EXE4's the scrollers' +0xB8): it loads its counter, takes
+/// `movs r3, #a; lsls r3, r3, #b` from it, holds it at `movs r3, #c; lsls
+/// r3, r3, #d; negs r3, r3`, stores it, and adds the counter's arithmetic
+/// shift right 16 to BG1's offset (`ldrh r3, [r1, #o]; adds r3, r3, r2`:
+/// the picture moves the counter's way) or takes it away (`subs`: the
+/// other way); +0x10 the x offset, +0x12 the y. One that first asks for a
+/// battle flag (`push {lr}; bl ...; movs r1, #flag; tst r0, r1; beq`) is
+/// `from_battle` (EXE5's flag 0x40, which the battle's intro sets on the
+/// battle's first frame); any other flag, or other code, is none.
+pub fn speeding_scroll(rom: &Rom, at: u32) -> Option<Speeding> {
+    let op = |i: u32| rom.u16(at + 2 * i);
+    let movs = |o: u16, rd: u16| (o >> 11 == 0b00100 && (o >> 8) & 7 == rd).then_some((o & 0xFF) as i32);
+    let lsls = |o: u16, rd: u16| (o >> 11 == 0 && o & 7 == rd && (o >> 3) & 7 == rd).then_some(((o >> 6) & 31) as u32);
+    // (The flag test: push {lr}, a bl's two halves, movs r1, #flag, tst r0, r1, beq.)
+    let from_battle = op(0) == 0xB500;
+    let mut i = 0;
+    if from_battle {
+        if op(1) >> 11 != 0b11110 || op(2) >> 11 != 0b11111 || movs(op(3), 1) != Some(0x40) || op(4) != 0x4208 || op(5) >> 8 != 0xD0 {
+            return None;
+        }
+        i = 6;
+    }
+    // ldr r1, [pc, #n] (the counter); ldr r2, [r1, #0].
+    if op(i) >> 8 != 0x49 || op(i + 1) != 0x680A {
+        return None;
+    }
+    let step = movs(op(i + 2), 3)? << lsls(op(i + 3), 3)?;
+    // subs r2, r2, r3; then the top, negated.
+    if op(i + 4) != 0x1AD2 {
+        return None;
+    }
+    let top = movs(op(i + 5), 3)? << lsls(op(i + 6), 3)?;
+    if op(i + 7) != 0x425B {
+        return None;
+    }
+    // cmp r2, r3; bge; adds r2, r3, #0; str r2, [r1, #0]; asrs r2, r2, #16;
+    // mov r1, sl; ldr r1, [r1, #8] (the render info); then BG1's offset.
+    let (load, change) = (op(i + 15), op(i + 16));
+    if load >> 11 != 0b10001 || load & 0x3F != (1 << 3) | 3 || op(i + 12) != 0x1412 {
+        return None;
+    }
+    let sign = match change {
+        0x189B => -1, // adds r3, r3, r2: the counter's way, which falls
+        0x1A9B => 1,  // subs r3, r3, r2
+        _ => return None,
+    };
+    let (step, top) = (sign * step, sign * top);
+    match ((load >> 6) & 31) * 2 {
+        0x10 => Some(Speeding { step: (step, 0), top: (top, 0), from_battle }),
+        0x12 => Some(Speeding { step: (0, step), top: (0, top), from_battle }),
+        _ => None,
+    }
+}
+
 pub fn gfx_anims(rom: &Rom, list: u32, palette_buffer: u32) -> Vec<GfxAnim> {
     let mut out = Vec::new();
     if list == 0 || !rom.contains(list) {
