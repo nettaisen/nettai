@@ -170,6 +170,7 @@ panel-change = 0x107  # panels changing: the panel changer's (0x080E447A) but in
 delta-ray-burst = 0x108  # DeltaRay's burst as he finishes (0x080F2F96)
 counter-hit = 0x10a  # a counter hit (0x08013410: 0x0801342A)
 aqua-tower = 0x120  # AquaUp's aqua tower rising: attack 0x92's row 0 (0x080DF674)
+wind = 0x121  # a wind starting to blow: effect 0x41's init (0x080E6846), the wind stages' (records 88 to 95)
 panel-poison = 0x124  # a panel turned to poison (0x08009D68: 0x08009D8C)
 barrier = 0x125  # a barrier's visual coming up, and back up (effect 7: 0x080E2496, 0x080E25E4)
 mark = 0x12f  # DeltaRay's mark on his target (0x080C7494)

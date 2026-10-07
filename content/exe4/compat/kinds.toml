@@ -58,3 +58,7 @@
 "deltaray/navi" = { pool = "actor", index = 0x3D }
 # The follow effect (0x080E5B34): DeltaRay's burst.
 "follow-effect" = { pool = "effect", index = 0x31 }
+# The wind stages' wind (the actor lists' entry type 6, 0x080068DE: effect 0x41, 0x080E6820) and the gusts it blows
+# (0x080D6724).
+"wind" = { pool = "effect", index = 0x41, scratch_position = true }
+"gust" = { pool = "attack", index = 0x49, scratch_position = true }

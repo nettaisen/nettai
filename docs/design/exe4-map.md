@@ -1185,9 +1185,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 18. **Battle type.** A netbattle record's +4 (0x46; the battle state's +0x0F, 0x48 in the lab's) is EXE4's battle type,
     its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
-19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
-    5, 6, 7, 0x080FC138's actor lists: 0x08006754's table at 0x08006778 spawns each). Port the obstacles, then generate
-    them (gen_rules.py's `STAGE_ACTORS`: a kind's module and its entry's argument).
+19. **Done: the stages that waited** (the records with obstacles: actor kinds 3, 5, 6 and 7 of 0x080FC138's actor
+    lists, which 0x08006754's table at 0x08006778 spawns). gen_rules.py's `STAGE_ACTORS` names each kind's module;
+    every one of the 96 link records is a stage now, and stages.luau's header lists none waiting.
     - **Done: kind 3, the boulder** (records 20, 21, 24 to 31; content/exe4/objects/boulder). Attack object #0x6E
       (0x080DB0EC), EXE6's code (`sub_80D2290`, @exelib/boulder) but for its init writing no NameID, its tick taking
       hits never pushed (0x080139A0) and reacting by 0x08014058 (EXE6's `sub_801B4D4` but for its crushing hits,
@@ -1221,16 +1221,36 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       actor's 0x080C7C74, which aren't. The lab's stages/type5 and type5-row (null, stand, walk), panels/type5-stand-on
       and stages/type5/gears-roll and gears-hit (a95f's: navis out of its row for 900 ticks, the gears bouncing between
       the edge and the center line; then one runs into side 0) replay every frame.
-    - Kind 6, effect #0x41 (records 88 to 95, 0x080E6820: off the field, spawning an attack by turns). To port.
+    - **Done: kind 6, the wind** (records 88 to 95; content/exe4/objects/wind and objects/gust). Effect object #0x41
+      (0x080E6820, EXE6's `sub_80E5244` by its place, the navis' AI wind no EXE6 stage places), spawned by 0x080068DE
+      through 0x080E6932: its first parameter the entry's first byte (every record's 0), its side the entry's second
+      (gen_rules writes `side`; the entry has no panel), its third 1, not running while dimmed, its position the
+      registers. Unseen, it plays sound 0x121 (`wind`) as it starts, then (phase 0, 0x080E687C) while its side has no
+      registered wind (BS+0x88 + 4 * side, `battle.wind`: a stage's waits) counts its row down by turns from 3 (+0x6C:
+      2, 1, 3, ...), takes the other side's first panel of the row from the far edge (0x080E6950:
+      `object_getClosestPanelMatchingRowFiltered` for the other side with 0x080E69AC's {0x20, 0} / {0, 0x20}; none
+      where a neutral object, panel flag 0x800000, stands; a first parameter walks it on along the side's forward to
+      the panel before a neutral object or the edge) and blows a gust there, then waits 12 ticks (phase 4): a gust
+      every 13 ticks. Its two gust slots (+0x60, +0x61) would hold it with both full, but EXE4's gust spawner
+      (0x080D68AC) sets a slot with a word store, which the ARM aligns down: the first slot becomes 1 and the second 0
+      whichever it names, so while the first gust is out each next one tracks the second slot, reads 0 at its first
+      update and ends unseen. The gust is attack #0x49 (0x080D6724): @exelib/gust in EXE5's look (no hit stops it,
+      0x080D6842 tests against 0; any first parameter pushes weaker, 0x080D67BA) with flip 0 (EXE4's flip,
+      0x0800ACA6, is the side; its speed's sign is the side's alone, 0x080D679E), the spawner EXE4's own (a byte
+      side, no test for a missing tracker, the word store). Its third parameter 0 (0x080E68F8: the side's wind,
+      registered as a navi's, which its end clears; callers 0x0800E108, 0x0802252E, 0x0802254C, 0x080C3374 and
+      0x080F08A4 to 0x080F0E00) is ported in the kind; that spawner waits for its callers. The lab's
+      stages/type5-ring, poison-middle, poison-row and holy-inner-top (null, stand, walk, aqua, fire) replay every
+      frame (elec and wood wait for Thunder1 and ElemLeaf), and type5-ring/stand, poison-row/walk and
+      holy-inner-top/aqua compare every fight frame pixel for pixel, gusts and all (frontend-compare/exe4.txt).
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
     battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
     set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
     24, by their names), `first_round_stages` (a random match is a triple battle's: every round among the first 0x60).
     No RNG field: nettai picks a match's places before the battle with its own generator (docs/frontend.md §2), so
     only the odds are the game's, which the lists state. a95f's sweep (1,000 seeds, tools/chiplab/gen_exe4.py
-    `STAGES`) drew from all 96 records: no panel type 11; its obstacles are the four of item 19 (the boulder #0x6E, #0x76, #0x9C, effect #0x41).
-    So `stages` must list all 96 records, each working: the 34 waiting ones (actor kinds 3, 5, 6 and 7) wait for
-    those four obstacles (item 19); until then the list leaves them out and the odds differ.
+    `STAGES`) drew from all 96 records: no panel type 11; its obstacles are the four of item 19 (the boulder #0x6E, the
+    gear #0x76, the flag #0x9C, the wind, effect #0x41). `stages` lists all 96 records, so the odds are the game's.
 21. **Done** (backgrounds' names). The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else
     the map's (0x08085BAC, its table at the literal 0x08085BCC, default 3). The 22 that maps draw are named for their
     areas, by the menu's names (tools/backgrounds: names.tsv, areas.py exe4; docs/frontend.md §1 has the table). No
