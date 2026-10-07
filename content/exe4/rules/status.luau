@@ -407,6 +407,10 @@ local status = {
         -- Its status block (0x08013A48) is EXE5's order: the flash's timer first, whatever the battle's flags
         -- (0x080134F6), then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "flash_timer_first",
+        -- Its reaction actions are plain (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks the action in
+        -- use; the flinch and the paralysis keep the height, the paralysis snaps sliding or not and counts no
+        -- reaction; the drag takes the flinch's pose, counts none, and at its end clears itself alone, to idle.
+        reaction_actions = "plain",
         -- A hit's NaviCust bug is taken (0x0800D9E8) before the HP bug drains (0x0800C164); no no-charge drive.
         bugs_before_drain = true,
         no_charge_drive = false,

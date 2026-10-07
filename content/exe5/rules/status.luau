@@ -411,6 +411,8 @@ local status = {
         -- Its status block (0x08017CC8 on) runs the flash's timer first, whatever the battle's flags (0x080173C4),
         -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "flash_timer_first",
+        -- Its reaction actions mark the action in use, ground and count (0x08014132 on), as EXE6's.
+        reaction_actions = "marked",
         bugs_before_drain = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the rules (the
