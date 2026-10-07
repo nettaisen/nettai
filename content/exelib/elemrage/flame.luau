@@ -3,8 +3,9 @@
 -- EXE4's #9, 0x080CE2D8, the Elem chips': the same code but for its constants and the spread): a flame on its panel
 -- that, when its animation first ends, hits its panel and sends the next one ahead until its count (Param1's low seven
 -- bits) is spent, and stands its time (Param2). Each game makes its kind (`flame.make_kind`) with its look: its
--- sprite, its game's panel types by number (Param4's high nibble names one to leave), its collision types and spark,
--- and whether a flame with Param1's bit 7 also sends the two beside (EXE5's; EXE4's keeps the bit and sends none).
+-- sprite, the panel types its flames may leave (Param4's high nibble names one: the flame's `leaves`), its collision
+-- types and spark, and whether a flame with Param1's bit 7 also sends the two beside (EXE5's; EXE4's keeps the bit and
+-- sends none).
 
 local regions = require("../regions")
 
@@ -12,6 +13,9 @@ local flame = {}
 
 type State = ElemFlameState
 type Look = ElemFlameLook
+
+-- A flame that leaves no panel type, as its state holds it (Param4's high nibble 0).
+local NONE = "none"
 
 -- A game's flame of `look`.
 function flame.make_kind(look: Look): ElemFlame
@@ -39,6 +43,7 @@ function flame.make_kind(look: Look): ElemFlame
                         ticks = s.ticks,
                         offset = s.offset,
                         flags = flags,
+                        leaves = s.leaves,
                         palette = s.palette,
                         hit = false,
                         sent = false,
@@ -50,7 +55,7 @@ function flame.make_kind(look: Look): ElemFlame
                     o.related1 = me.related1
                 end
                 if s.spread and look.spreads then
-                    -- (The ones beside, above then below, without Param4's bit 2.)
+                    -- (The ones beside, above then below, without Param4's bit 2; the high nibble kept.)
                     for _, dy in { -1, 1 } do
                         local q = spawn_flame(me, x, y + dy, me.element, me.pos.z, next_flame(bit32.band(s.flags, bit32.bnot(4)), false), damage)
                         if q then
@@ -71,15 +76,8 @@ function flame.make_kind(look: Look): ElemFlame
         c:remove()
         me:hit_spark()
         local s = me.state :: State
-        if me.timer == 3 then
-            local kind = bit32.rshift(s.flags, 4)
-            if kind ~= 0 then
-                local t = look.panel_types[kind]
-                if not t then
-                    error(string.format("%s: panel type %d is past its game's types", look.id, kind))
-                end
-                field.set_type(me.panel_x, me.panel_y, t)
-            end
+        if me.timer == 3 and s.leaves ~= NONE then
+            field.set_type(me.panel_x, me.panel_y, s.leaves :: PanelType)
         end
         local t = me.timer - 1
         me.timer = int.u16(t)
@@ -152,6 +150,10 @@ function flame.make_kind(look: Look): ElemFlame
         tick(me)
     end
 
+    local leaves = { NONE }
+    for _, t in look.leaves or {} do
+        table.insert(leaves, t)
+    end
     local kind = new.kind {
         id = look.id,
         pool = "attack",
@@ -161,12 +163,13 @@ function flame.make_kind(look: Look): ElemFlame
             ticks = "u8",
             offset = "i8",
             flags = "u8",
+            leaves = leaves,
             palette = "u8",
             hit = "bool",
             sent = "bool",
         },
         -- EXE5's 0x080D99D8, EXE4's 0x080CE2D8: by its lifecycle, then a sprite step (while dimmed too and whatever
-        -- its collision holds, with any of Param4's flags: the game tests the whole byte).
+        -- its collision holds, with any of Param4's flags or a panel type to leave: the game tests the whole byte).
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -180,7 +183,8 @@ function flame.make_kind(look: Look): ElemFlame
                 me:free()
                 return
             end
-            if (me.state :: State).flags ~= 0 then
+            local s = me.state :: State
+            if s.flags ~= 0 or s.leaves ~= NONE then
                 me:update_sprite_while_dimmed()
             else
                 me:update_sprite()
@@ -201,6 +205,7 @@ function flame.make_kind(look: Look): ElemFlame
         o.related1 = nil
         local t = o.state :: State
         t.count, t.spread, t.ticks, t.offset, t.flags, t.palette = s.count, s.spread, s.ticks, s.offset, s.flags, s.palette
+        t.leaves = s.leaves or NONE
         if bit32.btest(s.flags, 1) then
             o.run_while_dimmed = true
         end
