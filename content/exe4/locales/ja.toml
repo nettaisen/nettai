@@ -75,6 +75,9 @@ language = "ja"
 "sidbmbo1" = { name = "サイドバンブー1", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
 "sidbmbo2" = { name = "サイドバンブー2", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
 "sidbmbo3" = { name = "サイドバンブー3", description = "3マス前方のれつの\n上のくうかんから\n2マスのたけやり!" }
+"whitweb1" = { name = "ホワイトウェブ1", description = "てきエリアの上の\nれつにくものすを\n発生させる" }
+"whitweb2" = { name = "ホワイトウェブ2", description = "てきエリアのまん中\nれつにくものすを\n発生させる" }
+"whitweb3" = { name = "ホワイトウェブ3", description = "てきエリアの下の\nれつにくものすを\n発生させる" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
