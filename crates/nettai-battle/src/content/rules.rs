@@ -1460,6 +1460,12 @@ pub struct Rules {
     /// while the battle is paused (rule section `status`): EXE4's
     /// (0x0800AE58, no pause test); EXE6's and EXE5's (0x0800CB50) hold.
     pub status_timers_while_paused: bool,
+    /// The idle stands its navi (animation 0) on each tick past its first
+    /// phase, the 10 ticks after a reaction's end (rule section `status`):
+    /// EXE4's (0x080EEB7C: 0x080EEBAC), so a pose a reaction keeps (EXE4's
+    /// drag's, `DragEnding::KeepsPose`) holds those ticks and no more;
+    /// EXE6's (`sub_80F0354`) and EXE5's (0x080F027A) leave the pose.
+    pub idle_stands: bool,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,

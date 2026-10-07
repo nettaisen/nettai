@@ -464,6 +464,9 @@ local status = {
         -- Its status timers count while paused (0x0800AE58 has no pause test): before it takes control, through the
         -- round's first paused ticks.
         timers_while_paused = true,
+        -- Its idle (MegaMan's, 0x080EEB38) stands the navi (animation 0) on each tick past its first phase
+        -- (0x080EEBAC), the 10 ticks after a reaction's end: a drag's kept pose (`drag`) holds those ticks.
+        idle_stands = true,
     },
 }
 
