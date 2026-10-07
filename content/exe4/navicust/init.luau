@@ -9,6 +9,7 @@ local merge = require("@exelib/merge")
 return merge {
     -- NaviCust programs.
     require("@self/airshoes"),
+    require("@self/antimagc"),
     require("@self/attack-1"),
     require("@self/attckmax"),
     require("@self/battery"),
