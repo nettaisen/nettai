@@ -8,7 +8,33 @@
 # Sprites: "cc-ii", the category's byte offset in the sprite list (0x0802793C) and the index.
 [sprites]
 megaman = "00-00"
+rollsoul = "00-01"  # MegaMan's sprite in soul 1 (0x0800B90A: his entry plus the soul)
+gutssoul = "00-02"  # MegaMan's sprite in soul 2 (0x0800B90A: his entry plus the soul)
+windsoul = "00-03"  # MegaMan's sprite in soul 3 (0x0800B90A: his entry plus the soul)
+searchsoul = "00-04"  # MegaMan's sprite in soul 4 (0x0800B90A: his entry plus the soul)
+firesoul = "00-05"  # MegaMan's sprite in soul 5 (0x0800B90A: his entry plus the soul)
+thundersoul = "00-06"  # MegaMan's sprite in soul 6 (0x0800B90A: his entry plus the soul)
+protosoul = "00-07"  # MegaMan's sprite in soul 7 (0x0800B90A: his entry plus the soul)
+numbersoul = "00-08"  # MegaMan's sprite in soul 8 (0x0800B90A: his entry plus the soul)
+metalsoul = "00-09"  # MegaMan's sprite in soul 9 (0x0800B90A: his entry plus the soul)
+junksoul = "00-0a"  # MegaMan's sprite in soul 10 (0x0800B90A: his entry plus the soul)
+aquasoul = "00-0b"  # MegaMan's sprite in soul 11 (0x0800B90A: his entry plus the soul)
+woodsoul = "00-0c"  # MegaMan's sprite in soul 12 (0x0800B90A: his entry plus the soul)
 instrument = "04-08"
+healnavi = "08-00"  # navi 14's sprite (0x0800B90A: 0x08017F98's entry 14; its win banner by 0x08008524)
+roll = "08-01"  # navi 1's sprite (0x0800B90A: 0x08017F98's entry 1; its win banner by 0x08008524)
+gutsman = "08-02"  # navi 2's sprite (0x0800B90A: 0x08017F98's entry 2; its win banner by 0x08008524)
+windman = "08-03"  # navi 3's sprite (0x0800B90A: 0x08017F98's entry 3; its win banner by 0x08008524)
+searchman = "08-04"  # navi 4's sprite (0x0800B90A: 0x08017F98's entry 4; its win banner by 0x08008524)
+fireman = "08-05"  # navi 5's sprite (0x0800B90A: 0x08017F98's entry 5; its win banner by 0x08008524)
+thunderman = "08-06"  # navi 6's sprite (0x0800B90A: 0x08017F98's entry 6; its win banner by 0x08008524)
+protoman = "08-07"  # navi 7's sprite (0x0800B90A: 0x08017F98's entry 7; its win banner by 0x08008524)
+numberman = "08-08"  # navi 8's sprite (0x0800B90A: 0x08017F98's entry 8; its win banner by 0x08008524)
+metalman = "08-09"  # navi 9's sprite (0x0800B90A: 0x08017F98's entry 9; its win banner by 0x08008524)
+junkman = "08-0a"  # navi 10's sprite (0x0800B90A: 0x08017F98's entry 10; its win banner by 0x08008524)
+aquaman = "08-0b"  # navi 11's sprite (0x0800B90A: 0x08017F98's entry 11; its win banner by 0x08008524)
+woodman = "08-0c"  # navi 12's sprite (0x0800B90A: 0x08017F98's entry 12; its win banner by 0x08008524)
+normalnavi = "08-0d"  # navi 13's sprite (0x0800B90A: 0x08017F98's entry 13; its win banner by 0x08008524)
 cannon = "0c-01"  # the Cannon held: attachment row 0 (0x080CD524), action 0x0B's variant 0 (0x080EB894)
 bomb = "0c-02"
 muzzle-flash = "0c-06"  # the buster's flash: attachment row 0x10 (0x080CD524), 0x080EB396
