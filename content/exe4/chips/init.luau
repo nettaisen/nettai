@@ -8,4 +8,5 @@ local merge = require("@exelib/merge")
 return merge {
     -- Chips: a module defining one, or a series module defining several.
     require("@self/cannon"),
+    require("@self/recov"),
 }

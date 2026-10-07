@@ -79,6 +79,12 @@ local roles: RolesSpec = {
         auto_battle_hit = asset.sound("auto-battle-hit"),
         -- A hit turned aside (the guard's spark, 0x0800B0F6: 0x6E).
         guard = asset.sound("guard"),
+        -- HP recovered (the heal, 0x0800ABCA: 0x9A).
+        recovery = asset.sound("heal"),
+    },
+    effects = {
+        -- HP recovered (the heal, 0x0800ABCA: effect row 7, 0x080E16B4).
+        recovery = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
     },
     hooks = {
         -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the Mod Cards' aura): the
