@@ -435,7 +435,10 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
   2x2 box beside it (`mugshots/NAME-box.png`: EXE5's MegaMan, dark MegaMan
   and Team Colonel's faces), by mugshot number; `no_count_box` says the
   game has no box without a count (EXE5's souls' faces show their turns
-  left: `counts.png`, by count).
+  left: `counts.png`, by count). Its `layout` (EXE4's) says "PAUSE"'s place,
+  the HP numbers' priority and the HUD layer's (`hud_priority`: EXE4's BG3
+  is 0, EXE6's 1), a message's place, the damage judge's timing, the
+  chatbox's text and arrows, and the telops' own look.
 - `custom.json`: `layout` (every pack says its game's) puts the
   window's parts at the game's tile numbers (the chip's name, picture,
   code, element and digits, the slots, the column's icons and cells, the

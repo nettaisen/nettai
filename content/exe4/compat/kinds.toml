@@ -68,13 +68,33 @@
 # The navi chips (the dimming chips' navi variants): the user's warp (0x080E2D26's effect #0x0C, 0x080E2C24) and each
 # navi's controller and objects.
 "navi-chip-warp" = { pool = "effect", index = 0x0C }
-# Roll's chips (action 0x0C's variant 0x14, 0x080E5516): her controller, Roll and her heart.
+# Roll's chips (action 0x0C's variant 0x14, 0x080E5516): each chip's controller (the content's own; the original's one
+# object, effect #0x2D, its palette and the like by the chip's first parameter), Roll and her heart.
 "roll/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
+"roll-sp/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
+"roll-ds/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "roll/heart" = { pool = "attack", index = 0x4E }
-# The navi chip controller SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips share (action
-# 0x0C's variants 0x20, 0x23, 0x2F, 0x32, 0x3C and 0x40, 0x080E6B22), and their navis.
-"navi-chip-controller" = { pool = "effect", index = 0x42, scratch_position = true }
+# SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
+# 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
+# them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the
+# like by its first), which each maps to; and their navis.
+"serchman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"srchmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"srchmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"thunman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"thunmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"thunmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protoman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protom-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protom-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"deltaray/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"metalman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"metlmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"metlmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"junkman/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"junkmn-sp/controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"junkmn-ds/controller" = { pool = "effect", index = 0x42, scratch_position = true }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "deltaray/navi" = { pool = "actor", index = 0x3D }
 "serchman/navi" = { pool = "actor", index = 0x31 }
@@ -85,8 +105,10 @@
 "metalman/navi" = { pool = "actor", index = 0x40 }
 "junkman/navi" = { pool = "actor", index = 0x48 }
 "junkman/poltergeist" = { pool = "effect", index = 0x73 }
-# The follow effect (0x080E5B34): DeltaRay's burst.
-"follow-effect" = { pool = "effect", index = 0x31 }
+# The follow effect (effect #0x31, 0x080E58B4): one object in the original, its look and routine by its first
+# parameter; here each user's own kind: DeltaRay's bursts (look 4) and MetalMan's fist (look 5).
+"deltaray/burst" = { pool = "effect", index = 0x31 }
+"metalman/fist" = { pool = "effect", index = 0x31 }
 # The Elem chips' flame (action 0x60, 0x080CE49C).
 "elem/flame" = { pool = "attack", index = 0x09, scratch_position = true }
 # The wind stages' wind (the actor lists' entry type 6, 0x080068DE: effect 0x41, 0x080E6820) and the gusts it blows

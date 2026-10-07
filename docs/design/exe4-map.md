@@ -603,19 +603,20 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   **Ball** (variant 4, `chips/ball`): EXE5's CannBall's cannonball (attack 0x35), now @exelib/cannball/ball, with
   EXE4's look.
 
-- **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
-  navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
-  DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter):
-  @exelib/navi_chips/controller (EXE5's Phoenix's and DethPhnx's controllers are the same code), its course EXE4's
-  (content/exe4/lib/navi_chips: the user warping out, the navi, a wait, the user warping back in, in four shapes), the
-  user's warp EXE4's own effect #0x0C (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first
-  parameter is the navi's level (0, an SP's 3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a
-  variant times 0, 2 or 3). The SP chips' damage goes by the side's deletion time (rules/sp_chips, formulas 1 to 22),
-  the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count formula's `panels`). Roll (actor #0x2C)
-  is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor #0x48) raises EXE5's Poltrgst's poltergeist
-  (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles by kind (attack objects #0x4C and #0x8C,
-  effect object #0x6E, 0x0800B3E8): their identities state `throwable = false` when they are ported. Its throws wait on
-  RockCube (the lab's junkman*/obstacle).
+- **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
+  controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
+  DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter: in the content each
+  chip's own controller, each mapped to its navi's object in compat/kinds.toml): @exelib/navi_chips/controller (EXE5's
+  Phoenix's and DethPhnx's controllers are the same code), its course EXE4's (content/exe4/lib/navi_chips: the user
+  warping out, the navi, a wait, the user warping back in, in four shapes), the user's warp EXE4's own effect #0x0C
+  (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first parameter is the navi's level (0, an SP's
+  3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a variant times 0, 2 or 3) and the like (Roll's
+  mood, SearchMan's sweep): in the content each chip states those. The SP chips' damage goes by the side's deletion time
+  (rules/sp_chips, formulas 1 to 22), the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count
+  formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
+  #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
+  by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
+  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle).
 
 **For the next steps:**
 
@@ -731,7 +732,9 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     stripes and "L or R" go by +0x18. "BUSY..." runs the same counter (update 13, 0x08014ADC: +1 & 63 a tick, from 63
     at its start, 0x080166F0) until the exchange is done (0x0801E9B6). Drawn as EXE6's.
   - 2 **the HP numbers under objects** (0x08014EB8; rolled by update 2, 0x08014800: an eighth plus 2): one color,
-    at priority 1 (the pack's `layout.hp_number_priority`).
+    at priority 1 (the pack's `layout.hp_number_priority`), under the HUD's BG3 at priority 0 (the battle's video
+    init's table at 0x08006AD4: BG3CNT 0x1F00, then 0x1F08; EXE6's is 1): the custom screen covers a flag's number
+    there (the pack's `layout.hud_priority`; the screen's cursor and element icon are sprites at priority 0).
   - 3 **the chip icons**, over the local navi alone. Update 3 (0x08014860) places them at its place on the screen
     plus the per-navi offset 0x0800B9E4 (which 0x08015B24 keeps at +0x1B, +0x1C): navi 0, MegaMan, (0, -55); 1 to
     12, the souls in navi order, (0, -67), (-8, -59), (-12, -84), (0, -64), (3, -72), (-4, -72), (-1, -62),
@@ -1226,8 +1229,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
 19. **Done: the stages that waited** (the records with obstacles: actor kinds 3, 5, 6 and 7 of 0x080FC138's actor
-    lists, which 0x08006754's table at 0x08006778 spawns). gen_rules.py's `STAGE_ACTORS` names each kind's module;
-    every one of the 96 link records is a stage now, and stages.luau's header lists none waiting.
+    lists, which 0x08006754's table at 0x08006778 spawns). gen_rules.py's `STAGE_ACTORS` names each kind's module and
+    `STAGE_ENTRIES` what its spawner reads of the entry, as named fields (no raw argument: the gears' first byte, 25,
+    nothing reads); every one of the 96 link records is a stage now, and stages.luau's header lists none waiting.
     - **Done: kind 3, the boulder** (records 20, 21, 24 to 31; content/exe4/objects/boulder). Attack object #0x6E
       (0x080DB0EC), EXE6's code (`sub_80D2290`, @exelib/boulder) but for its init writing no NameID, its tick taking
       hits never pushed (0x080139A0) and reacting by 0x08014058 (EXE6's `sub_801B4D4` but for its crushing hits,
@@ -1241,8 +1245,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       EXE6's code (`sub_80D8C5C`, which no EXE6 stage places) but for its sheet (10-32), its NameID (0xFD; its HP
       number's) and its HP check (0x080E07CE: a burning panel first, 0x0801309E, the object call `burn_on_panel`; a
       holy panel's halving of the total, rounding up; the hit's sound 0xC8). Each side's in its back corner (the
-      entry's argument: bit 7 the side, the rest the HP in eights: 0x7D and 0xFD, 1000), its HP numbered. Its HP out
-      (unless time is up: `battle_isBattleOver`'s Z flag, `battle.time_up`), sound 0x6F and its side loses the round
+      entry's first byte: bit 7 the side, the rest the HP in eights, 0x7D and 0xFD, 1000; gen_rules writes them as
+      the stage entry's named `side` and `hp`), its HP numbered. Its HP out (unless time is up: `battle_isBattleOver`'s
+      Z flag, `battle.time_up`), sound 0x6F and its side loses the round
       (0x080E0842, EXE6's `sub_80D8DEE`: the side's actor count, BS+4, to 0 and the round's time-up byte to 1, the call
       `battle.lose_round`; it also sets battle flag 8, which nothing in EXE4 reads: 0x08007A8C's 28 callers test 1, 2
       and 0x10). The lab's stages/lava-middle-close, typeA-row, ice-columns and holes-diagonal-b (null, stand, walk)

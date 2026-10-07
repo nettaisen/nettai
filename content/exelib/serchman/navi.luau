@@ -5,8 +5,9 @@
 -- until it locks on; then five shots (./shot) on that panel, 10 ticks apart, the last powered if his user pressed B
 -- with the lock; he lowers his rifle, and goes.
 --
--- Each game makes his kind (`navi.make`): his sprite, sounds and palettes by level, his rifle's animations, his scope
--- and shot; and EXE4's differences: his spawner (0x080C37D4) keeps neither his user, nor its facing, nor the element,
+-- Each game makes his kind (`navi.make`): his sprite, sounds, his rifle's animations, his scope and shot; each chip
+-- summons him with its own palette and its scope's sweep (`summon`: the original's by the chip's level, its Param1);
+-- and EXE4's differences: his spawner (0x080C37D4) keeps neither his user, nor its facing, nor the element,
 -- his height his side; his scope reads his side's navi's presses.
 
 local navi_chips = require("../navi_chips/navi")
@@ -14,8 +15,9 @@ local navi_chips = require("../navi_chips/navi")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x64).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS): his palette, his scope's speed.
-    level: number,
+    -- His chip's palette, and his scope's sweep (its ticks a panel).
+    palette: number,
+    sweep: number,
     -- The gray of his color shader, fading in (+0x19).
     gray: number,
     -- His scope's lock was powered (+5), his shots left (+6), this one's fired (+7).
@@ -29,20 +31,21 @@ export type Spec = {
     sprite: SpriteAsset,
     appear_sound: Sound,
     shot_sound: Sound,
-    -- His palette by the chip's level.
-    palettes: { [number]: number },
     -- His rifle up (EXE5's 16, EXE4's 15) and a shot's animation (EXE5's 17, EXE4's 10; started from its first frame).
     aim_anim: number,
     shot_anim: number,
-    scope: { spawn: (searchman: Object, user: Object, level: number, sight: boolean?) -> Object? },
+    scope: { spawn: (searchman: Object, user: Object, sweep: number, sight: boolean?) -> Object? },
     shot: { spawn: (searchman: Object, x: number, y: number, powered: boolean) -> Object? },
     -- EXE4's spawner (nil: EXE5's, `navi_chips.spawn`).
     summoned_alone: boolean?,
 }
 
+-- What a chip summons him with: his palette and his scope's sweep.
+export type Summon = { palette: number, sweep: number }
+
 export type SearchMan = {
     kind: Kind,
-    summon_at: (level: number) -> (user: Object, controller: Object, spec: NaviChipSpec) -> Object?,
+    summon: (args: Summon) -> (user: Object, controller: Object, spec: NaviChipSpec) -> Object?,
 }
 
 local navi = {}
@@ -105,7 +108,7 @@ function navi.make(spec: Spec): SearchMan
             s.powered = false
             me.future_panel_x, me.future_panel_y = 0, 0
             local user = if spec.summoned_alone then battle.player(me.alliance) else me.related1
-            spec.scope.spawn(me, user :: Object, s.level)
+            spec.scope.spawn(me, user :: Object, s.sweep)
             me.phase_init = 4
             return
         end
@@ -203,7 +206,7 @@ function navi.make(spec: Spec): SearchMan
         me.sprite.color_shader = (me.state :: State).gray * 0x421
     end
 
-    -- 0x080C11F8: on his panel with his shadow, his palette by the level, faded out (gray 0x7FFF shader).
+    -- 0x080C11F8: on his panel with his shadow, in his chip's palette, faded out (gray 0x7FFF shader).
     local function init(me: Object)
         local s = me.state :: State
         local sprite = me.sprite
@@ -217,7 +220,7 @@ function navi.make(spec: Spec): SearchMan
             me.pos = Vec3.new(p.x, p.y, 0)
         end
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-        sprite.palette = spec.palettes[s.level] or 0
+        sprite.palette = s.palette
         sprite.color_shader = 0x7FFF
         me.visible = true
         me:set_lifecycle("update")
@@ -229,7 +232,8 @@ function navi.make(spec: Spec): SearchMan
         pool = "actor",
         state = {
             controller = "object",
-            level = "u8",
+            palette = "u8",
+            sweep = "u8",
             gray = "u8",
             powered = "bool",
             shots = "u8",
@@ -253,8 +257,8 @@ function navi.make(spec: Spec): SearchMan
         end,
     }
 
-    -- 0x080C1458 (EXE4's 0x080C37D4): SearchMan for `user`, reporting to `controller`, of a chip of `level`.
-    local function summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    -- 0x080C1458 (EXE4's 0x080C37D4): SearchMan for `user`, reporting to `controller`, as a chip summons him.
+    local function summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
         return function(user: Object, controller: Object, nspec: NaviChipSpec): Object?
             local o: Object?
             if spec.summoned_alone then
@@ -272,12 +276,12 @@ function navi.make(spec: Spec): SearchMan
             end
             local s = o.state :: State
             s.controller = controller
-            s.level = level
+            s.palette, s.sweep = args.palette, args.sweep
             return o
         end
     end
 
-    return { kind = kind, summon_at = summon_at }
+    return { kind = kind, summon = summon }
 end
 
 return navi
