@@ -52,6 +52,9 @@ language = "ja"
 "meteors1" = { name = "メテオレイン1", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
 "meteors2" = { name = "メテオレイン2", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
 "meteors3" = { name = "メテオレイン3", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
+"boomer1" = { name = "ブーメラン1", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"boomer2" = { name = "ブーメラン2", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"boomer3" = { name = "ブーメラン3", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
