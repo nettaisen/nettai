@@ -60,7 +60,6 @@ local roles: RolesSpec = {
         damage_bonus = asset.sound("damage-bonus"),
         -- A panel cracks or breaks (0x08009AEC); a panel turns to poison (0x08009D68).
         panel_crack = asset.sound("panel-crack"),
-        panel_poison = asset.sound("panel-poison"),
         -- What the custom screen can't pick or take back (0x08020386, 0x08020634).
         refused = asset.sound("refused"),
         -- The custom screen's, which its player hears (docs/design/exe4-map.md §5): the window slides in (0x0801E24E);

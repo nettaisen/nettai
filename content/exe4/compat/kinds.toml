@@ -52,3 +52,17 @@
 "sidbmbo/bamboo" = { pool = "attack", index = 0x44, scratch_position = true }
 # The WhitWebs' webs (action 0x20's variants 8 to 10, 0x080D4E9C).
 "whitweb/web" = { pool = "attack", index = 0x3D, scratch_position = true }
+# The navi chips (the dimming chips' navi variants): the user's warp (0x080E2D26's effect #0x0C, 0x080E2C24) and each
+# navi's controller and objects.
+"navi-chip-warp" = { pool = "effect", index = 0x0C }
+# Roll's chips (action 0x0C's variant 0x14, 0x080E5516): her controller, Roll and her heart.
+"roll/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
+"roll/navi" = { pool = "actor", index = 0x2C }
+"roll/heart" = { pool = "attack", index = 0x4E }
+# The navi chip controller SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips share (action
+# 0x0C's variants 0x20, 0x23, 0x2F, 0x32, 0x3C and 0x40, 0x080E6B22), and their navis.
+"navi-chip-controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protoman/navi" = { pool = "actor", index = 0x3C }
+"deltaray/navi" = { pool = "actor", index = 0x3D }
+# The follow effect (0x080E5B34): DeltaRay's burst.
+"follow-effect" = { pool = "effect", index = 0x31 }

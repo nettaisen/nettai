@@ -193,6 +193,15 @@ standard = [
 mega = [
     "fullcust",
     "atk-30",
+    "roll",
+    "roll-sp",
+    "roll-ds",
+    "protoman",
+    "protom-sp",
+    "protom-ds",
+]
+giga = [
+    "deltaray",
 ]
 secret = [
     "meteors1",
