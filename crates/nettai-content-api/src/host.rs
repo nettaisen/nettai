@@ -133,6 +133,8 @@ pub struct PlaceSpec {
     /// The entry's raw argument (what a spawner that ignores it leaves in
     /// a register: the Guardian statue's).
     pub argument: u8,
+    /// The HP the entry gives it, if it states one.
+    pub hp: Option<u16>,
 }
 
 /// A call of a hook, with its arguments.

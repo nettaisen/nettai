@@ -139,17 +139,15 @@ wind.kind = new.kind {
             me:free()
         end
     end,
-    -- 0x080068DE, 0x080E6932: a wind stage's wind (an actor list's entry type 6, whose second byte is its side and
-    -- third nothing reads: it has no panel), the entry's argument its first parameter; not running while dimmed. (Its
-    -- position is the spawner's registers.)
+    -- 0x080068DE, 0x080E6932: a wind stage's wind (an actor list's entry type 6) of the entry's side (it has no
+    -- panel); its first parameter the entry's first byte, 0 in every record (it pushes, seen); not running while
+    -- dimmed. (Its position is the spawner's registers.)
     place = function(spec: PlaceSpec): Object?
         local o = battle.spawn(wind.kind, Vec3.zero)
         if not o then
             return nil
         end
         local s = state(o)
-        s.pulls = bit32.btest(spec.argument, 1)
-        s.unseen = bit32.btest(spec.argument, 0x80)
         s.waits = true
         o.alliance = spec.side
         o.run_while_dimmed = false
