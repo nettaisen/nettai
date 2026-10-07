@@ -60,7 +60,7 @@ local SHOTS, SHOT_TICKS = 0xC, 0xA
 -- Django's sun beam (GunDelSol's, chips/gundels/beam: its plain look), 80
 -- pixels ahead of him, and its drain on the target's column: element 5, 3
 -- damage, under it for 120 ticks.
-local BEAM: SunBeam = { sprite = sun_beam.sprites.plain, palette = 0 }
+local BEAM: SunBeam = { sprite = asset.sprite("sun-beam"), palette = 0 }
 local DRAIN_ELEMENT, DRAIN_DAMAGE, DRAIN_TICKS = 5, 3, 0x78
 
 -- The slashes: a plain one, or half of an X when the other stands in

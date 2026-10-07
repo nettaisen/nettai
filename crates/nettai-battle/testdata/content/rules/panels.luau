@@ -10,6 +10,7 @@
 -- Poison drains a body standing on it, and grass heals a wood body, at 9
 -- HP or less on the 180-tick count.
 
+local eruption = require("../objects/eruption")
 local panel_types = require("@exelib/panel_types")
 local statuses = require("./status")
 
@@ -63,7 +64,7 @@ return {
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110, stand = panel_types.poison },
-        holy = { flags = 0x00012010 },
+        holy = { flags = 0x00012010, damage_shift = 1 },
         grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire", stand = panel_types.grass(9) },
         ice = {
             flags = 0x00010810,
@@ -71,7 +72,7 @@ return {
             slide = panel_types.ice,
             hit = panel_types.freezes(statuses.freeze_150),
         },
-        volcano = { flags = 0x00011010, cleared_by = "aqua" },
+        volcano = { flags = 0x00011010, cleared_by = "aqua", tick = eruption.volcano },
         road_up = road(0, -1),
         road_down = road(0, 1),
         road_left = road(-1, 0),
@@ -137,4 +138,6 @@ return {
     reservations = "marked",
     -- The flags' bits a type owns, which a crack, a break or poison clears.
     type_mask = 0x00003F5F,
+    -- The field's cycle, which the volcanos erupt by.
+    cycle = 0x8C,
 }

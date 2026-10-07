@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
 
 -- TmhwkMan (EXE5 chip 0x0fb): TomahawkMan cuts in and brings his tomahawk down on the two columns ahead (./navi).
@@ -20,7 +21,10 @@ local tmhwkman: Chip = {
     extra_flags = { 1 },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "tmhwkman/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
@@ -42,7 +46,10 @@ local tmhwkmn_sp: Chip = {
     extra_flags = { 1 },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon_sp,
+    navi = navi_chips.make {
+        id = "tmhwkmn-sp/controller",
+        summon = navi.summon_sp,
+    },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
@@ -62,7 +69,10 @@ local tmhwkmn_ds: Chip = {
     extra_flags = { 1 },
     slot_in_limit = 1,
     megaman = "dark",
-    navi = navi.summon_dark,
+    navi = navi_chips.make {
+        id = "tmhwkmn-ds/controller",
+        summon = navi.summon_dark,
+    },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 

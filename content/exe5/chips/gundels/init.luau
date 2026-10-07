@@ -3,6 +3,14 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local gundels = require("@self/gundels")
+local regions = require("@exelib/regions")
+
+-- GunDelS1-3's beam (0x080EDDB8's first look) in the shade and in the sun.
+local BEAM: SunBeamLook = { sprite = asset.sprite("sun-beam"), palette = 0 }
+local BEAM_IN_SUN: SunBeamLook = { sprite = asset.sprite("sun-beam"), palette = 2 }
+-- GunDelEX's wider one.
+local WIDE_BEAM: SunBeamLook = { sprite = asset.sprite("sun-beam-ex"), palette = 0 }
+local WIDE_BEAM_IN_SUN: SunBeamLook = { sprite = asset.sprite("sun-beam-ex"), palette = 3 }
 
 -- GunDelS1 (EXE5 chip 0x020): a sun beam that drains the column two panels ahead while A is held, more in the sun, for
 -- at most 60 ticks: EXE5's GunDelSol (chips/gundels/gundels; EXE6's code but for holding A, its collision row and its firing
@@ -23,8 +31,9 @@ local gundels1: Chip = {
     action = gundels.action {
         gun = gundels.gun(0),
         firing_ticks = 60,
-        beam = gundels.beams.plain,
-        beam_in_sun = gundels.beams.plain_in_sun,
+        beam = BEAM,
+        beam_in_sun = BEAM_IN_SUN,
+        region = regions.wide,
     },
     auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
@@ -48,8 +57,9 @@ local gundels2: Chip = {
     action = gundels.action {
         gun = gundels.gun(3),
         firing_ticks = 90,
-        beam = gundels.beams.plain,
-        beam_in_sun = gundels.beams.plain_in_sun,
+        beam = BEAM,
+        beam_in_sun = BEAM_IN_SUN,
+        region = regions.wide,
     },
     auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
@@ -73,8 +83,9 @@ local gundels3: Chip = {
     action = gundels.action {
         gun = gundels.gun(6),
         firing_ticks = 120,
-        beam = gundels.beams.plain,
-        beam_in_sun = gundels.beams.plain_in_sun,
+        beam = BEAM,
+        beam_in_sun = BEAM_IN_SUN,
+        region = regions.wide,
     },
     auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
@@ -99,9 +110,9 @@ local gundelex: Chip = {
     action = gundels.action {
         gun = gundels.gun(9),
         firing_ticks = 120,
-        beam = gundels.beams.wide,
-        beam_in_sun = gundels.beams.wide_in_sun,
-        wide = true,
+        beam = WIDE_BEAM,
+        beam_in_sun = WIDE_BEAM_IN_SUN,
+        region = regions.wide_long,
     },
     auto_battle = { class = "into_reach", range = "columns_two_and_three" },
 }

@@ -46,8 +46,8 @@ pub enum EngineAction {
     Move,
     /// A dimming chip's use (`dimming_chip`).
     DimmingChip,
-    /// A navi chip's use (`navi_chip`).
-    NaviChip,
+    /// A chip handed off to its controller (`hand_off_chip`).
+    HandOffChip,
     /// An instant chip's use (`instant`).
     InstantChip,
     /// A form change, a revert or a navi switch while paused
@@ -60,7 +60,7 @@ impl EngineAction {
     pub const ALL: [EngineAction; 5] = [
         EngineAction::Move,
         EngineAction::DimmingChip,
-        EngineAction::NaviChip,
+        EngineAction::HandOffChip,
         EngineAction::InstantChip,
         EngineAction::FormChange,
     ];
@@ -70,7 +70,7 @@ impl EngineAction {
         match self {
             EngineAction::Move => "engine/move",
             EngineAction::DimmingChip => "engine/dimming-chip",
-            EngineAction::NaviChip => "engine/navi-chip",
+            EngineAction::HandOffChip => "engine/hand-off-chip",
             EngineAction::InstantChip => "engine/instant-chip",
             EngineAction::FormChange => "engine/form-change",
         }

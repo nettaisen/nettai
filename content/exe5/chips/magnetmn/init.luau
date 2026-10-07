@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
 
 -- MagnetMn (EXE5 chip 0x0e9): MagnetMan cuts in and sends two magnets sliding along his row to meet at the first enemy
@@ -20,7 +21,10 @@ local magnetmn: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "magnetmn/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -41,7 +45,10 @@ local magntmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon_sp,
+    navi = navi_chips.make {
+        id = "magntmn-sp/controller",
+        summon = navi.summon_sp,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -61,7 +68,10 @@ local magntmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
     megaman = "dark",
-    navi = navi.summon_dark,
+    navi = navi_chips.make {
+        id = "magntmn-ds/controller",
+        summon = navi.summon_dark,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 

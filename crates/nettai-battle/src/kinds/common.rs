@@ -51,7 +51,7 @@ pub fn panel_burn(b: &mut Battle, r: ObjectRef, player: bool) {
     let Some(c) = b.objects.get(r).collision else { return };
     let p = b.collision.get(c).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    b.call_panel(kind, r, nettai_content_api::PanelCall::Burn { player });
+    b.call_panel(kind, nettai_content_api::PanelCall::Burn { body: r, player });
 }
 
 /// `sub_800E258`: the panel a field position is over (x 1..=6 and y
@@ -128,15 +128,16 @@ pub fn set_action(b: &mut Battle, r: ObjectRef, action: u8) {
 }
 
 /// `object_calculateFinalDamage2`: total this tick's damage by element
-/// (halved, rounding up, on a holy panel) into `final_damage`.
+/// (divided, rounding up, by the shift of the panel's type: holy's
+/// halving) into `final_damage`.
 pub fn total_damage(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
-    let holy = b.field.panel(o.panel.x, o.panel.y).is_some_and(|p| b.content.rules().panels.is_named(p.kind, "holy")) as u32;
+    let k = b.field.panel(o.panel.x, o.panel.y).map_or(0, |p| b.content.rules().panels.rule(p.kind).damage_shift as u32);
     let c = o.collision.expect("object with collision data");
     let acc = &mut b.collision.get_mut(c).acc;
     let mut total = 0u32;
     for d in &mut acc.element_damage[..5] {
-        let v = (*d as u32 + holy) >> holy;
+        let v = (*d as u32 + (1 << k) - 1) >> k;
         *d = v as u16;
         total += v;
     }
@@ -197,13 +198,24 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_updateSpriteTimestop`: like `update_sprite`, but it also steps
-/// while dimmed and whatever the object's collision says.
+/// while dimmed and whatever the object's collision says. A newly requested
+/// animation is loaded and stepped, or, by the game's
+/// `effects.dimmed_update_steps_on_load` (EXE4's), loaded alone.
 pub fn update_sprite_while_dimmed(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }
     let o = b.objects.get(r);
     if o.flags & flags::ACTIVE == 0 {
+        return;
+    }
+    if !b.game_rules().effects.dimmed_update_steps_on_load
+        && o.flags & flags::NO_SPRITE_UPDATE == 0
+        && o.anim != o.anim_loaded
+    {
+        let anim = o.anim;
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
+        b.objects.get_mut(r).anim_loaded = anim;
         return;
     }
     step_sprite(b, r);

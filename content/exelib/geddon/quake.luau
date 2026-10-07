@@ -37,7 +37,8 @@ export type Look = {
     -- bubble kind, palette 1).
     puff: Effect,
     bubble: Kind,
-    sounds: { puff: Sound, bubble: Sound },
+    -- The sounds: the puff's, the bubble's, and a panel turning to poison's (`object_panel_setPoison`'s).
+    sounds: { puff: Sound, bubble: Sound, poison: Sound },
 }
 
 export type Quake = {
@@ -56,14 +57,14 @@ local PERIOD = 8
 local BUBBLE_PALETTE = 1
 
 -- The panel routine (`byte_80E2588` +0x14): whether the panel changed.
--- Each plays its own sound when it does.
-local function change_panel(change: Change, x: number, y: number): boolean
+-- Each plays its own sound when it does (poison's the look's).
+local function change_panel(look: Look, change: Change, x: number, y: number): boolean
     if change == "crack" then
         return field.crack(x, y)
     elseif change == "break" then
         return field.break_panel(x, y)
     end
-    return field.poison(x, y)
+    return field.overwrite(x, y, "poison", look.sounds.poison)
 end
 
 function quake.make(look: Look): Quake
@@ -85,7 +86,7 @@ function quake.make(look: Look): Quake
         end
         local p = s.list[s.count + 1]
         local x, y = panels.x(p), panels.y(p)
-        if not change_panel(s.change, x, y) then
+        if not change_panel(look, s.change, x, y) then
             return
         end
         local cx, cy = field.center(x, y)

@@ -168,9 +168,11 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     }
     let dimmed = b.is_dimmed();
     let action = super::navi_action(b, r);
-    let holy = {
+    // (A type that divides the damage on it divides what a barrier absorbs:
+    // holy's halving.)
+    let shift = {
         let c = coll(b, r);
-        c.barrier != 0 && b.game_rules().panels.is_named(panel_kind(b, c.panel), "holy")
+        if c.barrier != 0 { b.game_rules().panels.rule(panel_kind(b, c.panel)).damage_shift as u32 } else { 0 }
     };
     let c = coll_mut(b, r);
     let mut barrier = c.barrier;
@@ -262,9 +264,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let mut sum: u32 = c.acc.raw_element_damage[..5].iter().map(|&d| d as u32).sum();
-    if holy {
-        sum = (sum + 1) >> 1;
-    }
+    sum = (sum + (1 << shift) - 1) >> shift;
     if sum >= c.barrier_threshold as u32 {
         let left = c.barrier_hp as i32 - sum as i32;
         c.barrier_hp = left as u8;
@@ -298,7 +298,7 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     }
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    if b.call_panel(t, r, nettai_content_api::PanelCall::Stand).is_none() {
+    if b.call_panel(t, nettai_content_api::PanelCall::Stand { body: r }).is_none() {
         coll_mut(b, r).standing_count = 0;
     }
 }
@@ -321,7 +321,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
             return;
         }
         let kind = panel_kind(b, coll(b, r).panel);
-        if b.call_panel(kind, r, nettai_content_api::PanelCall::Rest) == Some(nettai_content_api::Value::Bool(true)) {
+        if b.call_panel(kind, nettai_content_api::PanelCall::Rest { body: r }) == Some(nettai_content_api::Value::Bool(true)) {
             return;
         }
         if f & f1::MOVE_COMPLETE == 0 {
@@ -331,7 +331,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     super::clear_flag1(b, r, f1::MOVE_COMPLETE);
     let p = coll(b, r).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    b.call_panel(kind, r, nettai_content_api::PanelCall::MoveEnd);
+    b.call_panel(kind, nettai_content_api::PanelCall::MoveEnd { body: r });
 }
 
 // ---- NaviCust bugs and traps ------------------------------------------------------
@@ -645,12 +645,11 @@ fn drain_credit(b: &mut Battle, r: ObjectRef) {
     o.drain_heal_credits = o.drain_heal_credits.wrapping_add(hits as u8);
 }
 
-/// `object_calculateFinalDamage1`: sum the element damage (halved,
-/// rounding up, per element on a holy panel under the object), through
-/// the side's damage-carry record.
+/// `object_calculateFinalDamage1`: sum the element damage (divided,
+/// rounding up, per element by the shift of the panel's type under the
+/// object: holy's halving), through the side's damage-carry record.
 fn final_damage(b: &mut Battle, r: ObjectRef) {
-    let holy = b.game_rules().panels.is_named(panel_kind(b, b.objects.get(r).panel), "holy");
-    let k = holy as u32;
+    let k = b.game_rules().panels.rule(panel_kind(b, b.objects.get(r).panel)).damage_shift as u32;
     let c = coll_mut(b, r);
     let mut sum = 0u32;
     for d in &mut c.acc.element_damage[..5] {

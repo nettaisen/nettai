@@ -5,6 +5,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("./larkman/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local recipe_katana1 = require("./katana").katana1
 local recipe_larkman_ds = require("./larkman")["larkman-ds"]
 local recipe_larkman_sp = require("./larkman")["larkman-sp"]
@@ -28,7 +29,10 @@ local chip: Chip = {
         { order = 28, sequence = { recipe_katana1, recipe_katana1, recipe_larkman_sp } },
         { order = 29, sequence = { recipe_katana1, recipe_katana1, recipe_larkman_ds } },
     },
-    navi = navi.summon_wild,
+    navi = navi_chips.make {
+        id = "wildbird/controller",
+        summon = navi.summon_wild,
+    },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 

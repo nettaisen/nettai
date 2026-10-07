@@ -60,7 +60,6 @@ local roles: RolesSpec = {
         damage_bonus = asset.sound("damage-bonus"),
         -- A panel cracks or breaks (0x08009AEC); a panel turns to poison (0x08009D68).
         panel_crack = asset.sound("panel-crack"),
-        panel_poison = asset.sound("panel-poison"),
         -- What the custom screen can't pick or take back (0x08020386, 0x08020634).
         refused = asset.sound("refused"),
         -- The custom screen's, which its player hears (docs/design/exe4-map.md §5): the window slides in (0x0801E24E);
@@ -98,6 +97,14 @@ local roles: RolesSpec = {
             local barrier = battle.navi(navi.alliance).first_barrier
             if barrier then
                 barriers.raise(navi, barrier)
+            end
+        end,
+        -- All Guard (0x0800D8E4: NaviStats +0x28 at 1, the rules' stat `all_guard`): as the navi's abilities reset
+        -- (its init, 0x0800D8C2), the guard the reset took down goes up again: every hit that doesn't break guards is
+        -- turned aside (0x08012B84).
+        abilities_reset = function(navi: Object)
+            if battle.navi(navi.alliance).all_guard then
+                navi:set_status("guard", true)
             end
         end,
     },

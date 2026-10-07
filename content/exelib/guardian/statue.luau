@@ -386,14 +386,15 @@ function statue.make(look: Look): Statue
             end
         end,
         -- `sub_800751C`: a stage's statue (an actor list's entry type 9), on its panel's side, striking for 200.
-        -- The entry's argument only reaches the position the spawner leaves before its init.
+        -- The entry's third byte only reaches the position the spawner leaves before its init, and every record's is
+        -- 0.
         place = function(spec: PlaceSpec): Object?
             local x, y = spec.panel_x, spec.panel_y
             local panel = field.panel(x, y)
             if not panel then
                 error(string.format("a stage places a Guardian statue off the field at (%d, %d)", x, y))
             end
-            return spawn(nil, x, y, look.stage_damage or STAGE_DAMAGE, Vec3.new(y, panel.alliance, spec.argument))
+            return spawn(nil, x, y, look.stage_damage or STAGE_DAMAGE, Vec3.new(y, panel.alliance, 0))
         end,
     }
 

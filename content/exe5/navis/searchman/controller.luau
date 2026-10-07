@@ -34,7 +34,7 @@ local function aim(me: Object)
     if me.phase_init == 0 then
         me.phase_init = 4
         me.future_panel_x = 0
-        scope.spawn(me, me.related1 :: Object, 0, true)
+        scope.spawn(me, me.related1 :: Object, 6, true)
         return
     end
     if me.future_panel_x ~= 0 then

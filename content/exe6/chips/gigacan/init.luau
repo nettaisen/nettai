@@ -6,10 +6,17 @@
 -- afterimages as it charges (the original's action 0x14 with subtypes 4 to
 -- 6; lib/cannon.luau).
 
+local attachment = require("../objects/attachment")
 local cannon = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
 local cannon_chips = require("./cannon")
 local lockon = require("../rules/lockon")
+
+-- Their cannons (the original's attachment rows 0 to 2: the cannon in
+-- palettes 0, 1 and 2, the Cannons'), at the navi's attach point 7.
+local GIGACAN1_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 0, attach_point = 7 }
+local GIGACAN2_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 1, attach_point = 7 }
+local GIGACAN3_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 2, attach_point = 7 }
 
 local function giga(id: string, arm: AttachmentLook): Action
     return cannon.action { id = id, arm = arm, shot = variants.gigacan, afterimages = true }
@@ -29,7 +36,7 @@ local gigacan1: Chip = {
     beast = { lockon = lockon.cannon },
     slot_in_limit = 1,
     program_advances = { { order = 13, code_run = { chip = cannon_chips.cannon, count = 3 } } },
-    action = giga("gigacan1/action", cannon.arms.cannon),
+    action = giga("gigacan1/action", GIGACAN1_ARM),
 }
 
 local gigacan2: Chip = {
@@ -46,7 +53,7 @@ local gigacan2: Chip = {
     beast = { lockon = lockon.cannon },
     slot_in_limit = 1,
     program_advances = { { order = 14, code_run = { chip = cannon_chips.hicannon, count = 3 } } },
-    action = giga("gigacan2/action", cannon.arms.hicannon),
+    action = giga("gigacan2/action", GIGACAN2_ARM),
 }
 
 local gigacan3: Chip = {
@@ -63,7 +70,7 @@ local gigacan3: Chip = {
     beast = { lockon = lockon.cannon },
     slot_in_limit = 1,
     program_advances = { { order = 15, code_run = { chip = cannon_chips["m-cannon"], count = 3 } } },
-    action = giga("gigacan3/action", cannon.arms.m_cannon),
+    action = giga("gigacan3/action", GIGACAN3_ARM),
 }
 
 return { gigacan1 = gigacan1, gigacan2 = gigacan2, gigacan3 = gigacan3 }

@@ -8,7 +8,7 @@
 -- docs/engine/standard-chips.md, "Action 0x0A".
 
 local collision = require("../../rules/collision")
-local follow_effect = require("../../objects/follow_effect")
+local follow_effect = require("@exelib/follow_effect")
 local link = require("../../lib/link_chips")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
@@ -29,9 +29,31 @@ local ANIM_SLIDE, ANIM_SLASH, ANIM_RETURN = 0x10, 0x11, 3
 local SPEED = 0x5_0000
 local SOUND = asset.sound("sword-swing")
 
+-- DElecSwd (his action 0xA), which his glow lasts through.
+local action: Action
+
 -- His glow: the follow effect's look 7, riding on him while he slides and
--- slashes; it shows the slash's animation once he slashes.
-local GLOW = follow_effect.look { sprite = asset.sprite("elec-sword"), anim = 0xF, palette = 0, behavior = "riding" }
+-- slashes (`sub_80E3F2A`: while dimmed it stands still, HP 1 holding its
+-- sprite, and doesn't look; it goes once he leaves DElecSwd); shown as he
+-- is. It shows the slash's animation once he slashes.
+local GLOW = follow_effect.make {
+    id = "delecswd/glow",
+    sprite = asset.sprite("elec-sword"),
+    anim = 0xF,
+    palette = 0,
+    copies_visibility = true,
+    update = function(me: Object)
+        local owner = me.related1 :: Object
+        me.hp = 1
+        if not battle.dimmed() then
+            me.hp = 0
+            if owner:navi_action() ~= action then
+                me:set_lifecycle("destroy")
+            end
+        end
+        me.pos = owner.pos
+    end,
+}
 local GLOW_SLASH_ANIM = 0x10
 
 -- What stops him (`sub_80F0BD2`): on the next panel, another body of
@@ -77,7 +99,7 @@ local function slide(me: Object, s: State)
         me:set_status("using_action", true)
         me.vel = Vec3.new(me.facing * SPEED, me.vel.y, me.vel.z)
         local cx, cy = field.center(me.panel_x, me.panel_y)
-        s.glow = follow_effect.spawn(me, Vec3.new(cx, cy, 0), GLOW, me.alliance)
+        s.glow = GLOW.spawn(me, Vec3.new(cx, cy, 0), me.alliance)
         if stop_here(me) then
             me:set_panel_from_coordinates()
             link.go(me, SLASH)
@@ -170,6 +192,15 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [SLIDE] = slide, [SLASH] = slash, [RETURN] = return_home, [RECOVER] = recover }
 
+-- `sub_80F09B8` (`off_80F09CC`).
+action = new.action {
+    id = "delecswd/action",
+    state = STATE,
+    update = function(me: Object, s: State)
+        link.run(me, s, PHASES, "DElecSwd (sub_80F09B8)")
+    end,
+}
+
 local chip: Chip = {
     codes = { "E" },
     element = "elec",
@@ -182,14 +213,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 3,
-    -- `sub_80F09B8` (`off_80F09CC`).
-    action = new.action {
-        id = "delecswd/action",
-        state = STATE,
-        update = function(me: Object, s: State)
-            link.run(me, s, PHASES, "DElecSwd (sub_80F09B8)")
-        end,
-    },
+    action = action,
 }
 
 return { delecswd = chip }

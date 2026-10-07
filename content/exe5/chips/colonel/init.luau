@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
 
 -- Colonel (EXE5 chip 0x0f5): Colonel cuts in and divides the screen with a diagonal slash on the first enemy navi ahead
@@ -21,7 +22,10 @@ local colonel: Chip = {
     extra_flags = { 1 },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "colonel/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -43,7 +47,10 @@ local colonel_sp: Chip = {
     extra_flags = { 1 },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon_sp,
+    navi = navi_chips.make {
+        id = "colonel-sp/controller",
+        summon = navi.summon_sp,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -63,7 +70,10 @@ local colonel_ds: Chip = {
     extra_flags = { 1 },
     slot_in_limit = 1,
     megaman = "dark",
-    navi = navi.summon_dark,
+    navi = navi_chips.make {
+        id = "colonel-ds/controller",
+        summon = navi.summon_dark,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 

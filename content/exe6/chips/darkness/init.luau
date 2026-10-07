@@ -6,6 +6,7 @@ local vdoll = require("./vdoll").vdoll
 local bass = require("./bass").bass
 local bassanly = require("./bassanly").bassanly
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -23,7 +24,10 @@ local chip: Chip = {
         { order = 6, sequence = { vdoll, vdoll, bass } },
         { order = 7, sequence = { vdoll, vdoll, bassanly } },
     },
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "darkness/controller",
+        summon = navi.summon,
+    },
 }
 
 return { darkness = chip }

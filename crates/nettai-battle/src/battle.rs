@@ -495,10 +495,6 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Per side: its dimming (`byte_203CF00`).
     pub dimming: [crate::dimming::DimmingRecord; 2],
-    /// The last navi chip used, of either side (`byte_203C960`, EXE5's
-    /// 0x0203C430; cleared as the battle starts, `sub_800B75A`): EXE5's
-    /// DethPhnx brings its navi again; nothing in EXE6 reads it.
-    pub last_navi_chip: Option<crate::kinds::navi_chip::LastNaviChip>,
     /// Per side: the player's rules, its rules and its systems' state
     /// (docs/design/rules-in-luau.md).
     pub rules: [crate::rules::SideRules; 2],
@@ -789,7 +785,6 @@ impl Battle {
             navi_hit_counts: [[0; 4]; 2],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),
-            last_navi_chip: None,
             rules,
             sound: [Vec::new(), Vec::new()],
             outcome: None,
@@ -836,8 +831,9 @@ impl Battle {
         // Then what the content gives each side for the round (its navi's
         // and the chips' functions of the side: what its level gives it).
         b.given = crate::given::Given::ask(&mut b);
-        // Init's last steps: refresh every panel, then one unpaused panel
-        // update.
+        // Init's last steps: the panels' types' starts, refresh every panel,
+        // then one unpaused panel update.
+        b.start_panels();
         b.field.refresh_all(&b.content.rules().panels, &b.collision);
         b.tick_panels();
         b
@@ -1300,7 +1296,7 @@ impl Battle {
             if let Place::Kind(kind) = entry.place {
                 let hook = content.defs.kind(kind).place.expect("a stage places kinds with a `place` (checked at load)");
                 let panel = PanelPos { x: entry.x, y: entry.y };
-                let spec = PlaceSpec { panel, side: entry.side, variant: entry.variant, argument: entry.argument };
+                let spec = PlaceSpec { panel, side: entry.side, variant: entry.variant, hp: entry.hp };
                 crate::behavior::call_hook(self, hook, HookCall::Place { spec });
                 continue;
             }
