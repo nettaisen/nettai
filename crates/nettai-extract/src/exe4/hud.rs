@@ -105,6 +105,10 @@ const WARNING_PALETTE: u32 = 0x0870_C3A0;
 /// 0xE730: 1).
 const PAUSE_AT: (u8, u8) = (100, 64);
 const HP_NUMBER_PRIORITY: u8 = 1;
+/// The HUD's layer's priority: BG3's (the battle's video init's table at
+/// 0x08006AD4: BG3CNT 0x1F00, priority 0; the custom screen's 0x1F08 too),
+/// over the HP numbers where the custom screen is.
+const HUD_PRIORITY: u8 = 0;
 /// A message (0x08015FE8: "COUNTER HIT!", text line 14, rendered 14 glyphs
 /// wide by 0x080162CC): its map from column 8 of row 2, 14 columns wide.
 const MESSAGE_AT: (u8, u8, u8) = (8, 2, 14);
@@ -333,6 +337,7 @@ pub fn hud(
         layout: HudLayout {
             pause: PAUSE_AT,
             hp_number_priority: HP_NUMBER_PRIORITY,
+            hud_priority: HUD_PRIORITY,
             message: MESSAGE_AT,
             // (The damage judge's numbers, task 9 from 0x080163C8: from its
             // holding banner's hold, 0x08014AA8, until the banner is gone,
