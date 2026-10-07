@@ -2,7 +2,7 @@
 -- EXE5's ElemRage (action 0x56, 0x080EFCD0): EXE5's own. The navi raises its claw (the attachment table's row 0x34,
 -- 0c-33, its animation 1) and sends a flame (attack object #0x98, 0x080D99D8) along its row from the panel ahead, at
 -- its attach point 20; each flame, when its animation first ends, sends the next one ahead until the record's count
--- (its first parameter, 3) is spent, and stands its time (the second, 30 ticks). On lava, sea, ice, grass or metal
+-- (its first parameter, 3) is spent, and stands its time (the second, 30 ticks). On lava, sea, ice, grass or magnet
 -- the navi takes that panel's element (0x080EFDE4: fire, aqua, aqua, wood, elec) and palette for the flames, which
 -- then also spread to the rows beside and paralyze, and its own panel turns back to normal (the panel changer's row
 -- 11). Its roar sounds every 16 ticks; 31 ticks in, 6 more, and it is back to idle.
@@ -25,7 +25,7 @@ local PANEL_TYPES: { [number]: PanelType } = {
     [2] = "normal",
     [3] = "cracked",
     [4] = "poison",
-    [5] = "metal",
+    [5] = "magnet",
     [6] = "grass",
     [7] = "ice",
     [8] = "lava",
@@ -256,7 +256,7 @@ local RAGES: { [string]: { element: number, palette: number } } = {
     sea = { element = 2, palette = 1 },
     ice = { element = 2, palette = 1 },
     grass = { element = 4, palette = 2 },
-    metal = { element = 3, palette = 3 },
+    magnet = { element = 3, palette = 3 },
 }
 local NONE = { element = 0, palette = 4 }
 local CLAW = attachment.look { sprite = asset.sprite("rage-claw"), palette = 0, attach_point = 0x16 }

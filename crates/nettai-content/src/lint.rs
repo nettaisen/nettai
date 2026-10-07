@@ -44,16 +44,11 @@ pub fn definitions(c: &Content, r: &mut Report) {
                 r.warn(&file, format!("the role {group}.{name} is not filled"));
             }
         };
-        // (The panels' splash is needed only by a game whose own panels hold:
-        // EXE5's sea.)
-        let own = &c.rules().panels.types[..];
-        let needs_splash = own.iter().any(|t| t.holds.is_some());
         for role in StatusRole::ALL {
             unfilled("statuses", role.name(), roles.statuses.contains_key(&role));
         }
         for &role in EffectRole::ALL {
-            let needed = role != EffectRole::PanelSplash || needs_splash;
-            unfilled("effects", role.name(), !needed || roles.effects.contains_key(&role));
+            unfilled("effects", role.name(), roles.effects.contains_key(&role));
         }
         for &role in SparkRole::ALL {
             unfilled("sparks", role.name(), roles.sparks.contains_key(&role));

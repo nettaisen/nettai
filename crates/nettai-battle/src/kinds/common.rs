@@ -51,9 +51,7 @@ pub fn panel_burn(b: &mut Battle, r: ObjectRef, player: bool) {
     let Some(c) = b.objects.get(r).collision else { return };
     let p = b.collision.get(c).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    let Some(f) = b.panel_hook(kind, nettai_content_api::PanelHook::Burn) else { return };
-    let call = nettai_content_api::HookCall::Panel { hook: nettai_content_api::PanelHook::Burn, body: r, player };
-    crate::behavior::call_hook(b, f, call);
+    b.call_panel(kind, r, nettai_content_api::PanelCall::Burn { player });
 }
 
 /// `sub_800E258`: the panel a field position is over (x 1..=6 and y
