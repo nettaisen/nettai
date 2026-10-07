@@ -235,6 +235,18 @@ export type ProtoManKind = {
     attachment: Kind,
     target: CollisionType,
     self_type: CollisionType,
+    -- EXE4's (nil: EXE6's and EXE5's). His spawner (0x080C721A) keeps neither his user, nor its facing, nor the element,
+    -- and his height is his side, which his init keeps.
+    summoned_alone: boolean?,
+    -- What a panel he lands on must be free of, by his side (0x0F80_0000 for both), and whether his user's panel counts
+    -- as free anyway (true).
+    occupied: { [number]: number }?,
+    user_panel_free: boolean?,
+    -- His slash (0x080C713E, 0x080C71AA): the sword, the hit and its effect as it starts (EXE6's and EXE5's hit 10
+    -- ticks in), the sword away as it ends (theirs at his blink out and as he goes).
+    slash_at_once: boolean?,
+    -- How he holds his sword (none: @exelib/attachment's `attachment` kind).
+    attach: ((owner: Object, look: AttachmentLook, which: Slot, options: AttachmentOptions?) -> Object?)?,
 }
 
 -- A game's MegaMan's shots (@exelib/megaman): the action's key, its buster parts, its projectiles, its attachment
@@ -1593,3 +1605,15 @@ export type LockonDef = {
     prefers_middle_row: boolean?,
 }
 export type Lockon = LockonDef
+
+-- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
+-- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
+-- after the navi), the controller's state, and what a game's `make` hands back.
+export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
+export type NaviChipShortCourse = { out: number, after: number }
+export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean, level: number, which: number }
+export type NaviChipController = {
+    kind: Kind,
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+    hook_for: (level: number, which: number?) -> (user: Object, spec: DimmingChipSpec) -> Object?,
+}

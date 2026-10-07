@@ -110,7 +110,6 @@ local roles: RolesSpec = {
     sounds = {
         -- A panel cracks or breaks; a panel turns to poison.
         panel_crack = asset.sound("panel-crack"),
-        panel_poison = asset.sound("panel-poison"),
         -- A navi hit, as its own player hears it and as the other does; an object taking damage; a
         -- blocked hit; a counter hit; a navi deleted.
         own_hit = asset.sound("own-hit"),

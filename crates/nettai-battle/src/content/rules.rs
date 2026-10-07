@@ -216,6 +216,12 @@ pub struct EffectsRules {
     /// which doesn't step as it starts, shows its first frame in its
     /// palette 0). Presentation: `Look::part_palette`.
     pub load_sets_part_palette: bool,
+    /// A sprite updated through the dimming (`object_updateSpriteTimestop`)
+    /// steps on the tick it loads a newly requested animation (EXE6's
+    /// `sub_801BBF4`, EXE5's); EXE4's (0x08014446) only loads it, stepping
+    /// from the next tick (its `object_updateSprite`, 0x080143FC, steps as
+    /// EXE6's does).
+    pub dimmed_update_steps_on_load: bool,
     /// How the game's obstacles number their action tables.
     pub obstacle_actions: ObstacleActions,
     /// The Full Synchro aura where games differ.
@@ -1589,6 +1595,9 @@ impl Rules {
 pub struct PanelRules {
     /// The game's panel types, by number (`PanelType`): what each is.
     pub types: Vec<PanelTypeRule>,
+    /// The field's cycle's period (EXE6's 0x8C, `sub_800BFC4`: its volcanos
+    /// erupt by it); none, no cycle (EXE5's and EXE4's).
+    pub cycle: Option<u32>,
     /// Each type's name, by number (the section's `numbers`).
     pub names: Vec<String>,
     /// The types the engine's own code needs (the section's `roles`).
@@ -1773,13 +1782,6 @@ impl PanelRules {
         self.names.get(t.0 as usize).map_or("(none of the game's)", String::as_str)
     }
 
-    /// Whether type `t` is the one the game names `name`. (Where the
-    /// engine's code still tests a type of a game's by name, until the
-    /// type's behavior is its rules': docs/design/rules-in-luau.md.)
-    pub fn is_named(&self, t: PanelType, name: &str) -> bool {
-        self.names.get(t.0 as usize).is_some_and(|n| n == name)
-    }
-
     /// The flag bits a panel type contributes to a panel's flags word,
     /// with the type itself in the low nibble: the game's number of it
     /// (EXE5's holy is its 9, EXE6's its 5), which is what the original's
@@ -1835,6 +1837,11 @@ pub struct PanelTypeRule {
     /// fire on grass; EXE5's 0x08016AF6 elec on its sea too, EXE4's
     /// 0x08012CF2 elec on ice).
     pub doubles: Option<u8>,
+    /// The shift that divides the damage a body standing on it takes, by
+    /// element, rounding up (holy's 1, halving: `object_calculateFinalDamage1`
+    /// and `object_calculateFinalDamage2`; a barrier's absorbing too,
+    /// `sub_801A802`).
+    pub damage_shift: u8,
     /// Nothing cracks or breaks it (EXE4's metal: its flag 0x20000, which
     /// the panel routines refuse).
     pub unbreakable: bool,
@@ -1842,11 +1849,6 @@ pub struct PanelTypeRule {
     /// its `object_canMove`, 0x0800AD2A, and its kin 0x0800AD54,
     /// 0x0800AD7E).
     pub traps: bool,
-    /// It turns normal after these ticks (EXE4's pitfall, 190: 0x0800980E),
-    /// counted at once when a type change makes it (0x08009DC4), and on a
-    /// stage's from the tick a grounded body stands on it (0x08009120 arms
-    /// every panel).
-    pub crumbles: Option<u16>,
 }
 
 /// A panel's slide (EXE5's magnet): by the direction the body last moved

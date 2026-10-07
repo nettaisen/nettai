@@ -78,6 +78,13 @@ language = "en"
 "whitweb1" = { name = "WhitWeb1", description = "Stretches\nweb over\nenmy area" }
 "whitweb2" = { name = "WhitWeb2", description = "Stretches\nweb on\nenmy area" }
 "whitweb3" = { name = "WhitWeb3", description = "Stretches\nweb under\nenmy area" }
+"roll" = { name = "Roll", description = "Attcks an\nenmy,then\nheals you" }
+"roll-sp" = { name = "RollSP", description = "Attcks an\nenmy,then\nheals you" }
+"roll-ds" = { name = "RollDS", description = "Attcks an\nenmy,then\nheals you" }
+"protoman" = { name = "ProtoMan", description = "Rush up\nto enemy\nand slice" }
+"protom-sp" = { name = "ProtoMSP", description = "Rush up\nto enemy\nand slice" }
+"protom-ds" = { name = "ProtoMDS", description = "Rush up\nto enemy\nand slice" }
+"deltaray" = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
