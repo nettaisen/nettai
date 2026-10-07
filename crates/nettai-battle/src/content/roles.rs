@@ -258,10 +258,6 @@ definition_roles! {
         /// One of the burst's (`sub_80E7D0C`; EXE6's around a navi going
         /// Beast Over).
         Burst = "burst",
-        /// The splash of a body held by a panel at a move's end (EXE5's sea,
-        /// effect 0x63: 0x0801715E). Only a game whose panels hold needs
-        /// it.
-        PanelSplash = "panel_splash",
     }
 }
 
