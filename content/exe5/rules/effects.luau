@@ -76,4 +76,6 @@ return {
     bug_flicker = true,
     -- An object's destroy (0x080138F2) frees its collision as it is.
     destroy = "frees",
+    -- A pool's objects are drawn in update order, as EXE6's.
+    draw_order = "update_list",
 }

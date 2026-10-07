@@ -475,7 +475,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         chip_icons = "attach_point",
         used_chip_ticks = 0x3C,
         bug_flicker = true,
-        destroy = "frees","#,
+        destroy = "frees",
+        draw_order = "update_list","#,
             ),
             (
                 "flow",
