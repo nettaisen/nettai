@@ -18,7 +18,7 @@ local cornsht1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
     slot_in_limit = 3,
-    action = cornsht.actions.cornsht1,
+    action = cornsht.action("cornsht1/action"),
 }
 
 local cornsht2: Chip = {
@@ -34,7 +34,7 @@ local cornsht2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
     slot_in_limit = 3,
-    action = cornsht.actions.cornsht2,
+    action = cornsht.action("cornsht2/action"),
 }
 
 local cornsht3: Chip = {
@@ -50,7 +50,7 @@ local cornsht3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
     slot_in_limit = 3,
-    action = cornsht.actions.cornsht3,
+    action = cornsht.action("cornsht3/action"),
 }
 
 return { cornsht1 = cornsht1, cornsht2 = cornsht2, cornsht3 = cornsht3 }
