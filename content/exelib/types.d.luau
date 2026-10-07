@@ -58,17 +58,26 @@ export type Projectiles = {
     fire: (navi: Object, s: ProjectileShot) -> number,
 }
 
--- A game's shooting chips (@exelib/cannon, @exelib/airshot): the shot's sound, the attachment kind (what the navi
--- holds) and its projectiles.
+-- A game's shooting chips (@exelib/cannon, @exelib/airshot): the shot's sound, how the navi holds what it fires and
+-- its projectiles.
 export type ShooterLook = {
     sound: Sound,
-    attachment: Kind,
+    -- The navi holds `look` in slot `slot`: EXE6's and EXE5's @exelib/attachment kind, its animation by the holder's
+    -- AI index from the action's table (`attachment.holder`); EXE4's own attachment kind (0x080CD6E0), its animation
+    -- the navi's number (NaviStats +0x23).
+    hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
     projectiles: Projectiles,
-    -- The animation of what the navi holds by its AI index, from 0 (the game's table for the action: a navi a player
-    -- operates may hold its own).
-    arm_anims: { number },
     -- A cannon's afterimages after its two (@exelib/cannon; EXE5's Hub Style shade), by the navi's flip.
     more_afterimages: ((me: Object, flip: number) -> ())?,
+}
+
+-- A game's cannons (@exelib/cannon): a shooter's look and the navi's animations as it raises the cannon and lowers it
+-- (EXE6's and EXE5's 8 and 7; EXE4's 9 and 8); a GigaCan's afterimages in place of the two (EXE4's 0x080EB8BE: the
+-- navi's first, its cannon where the navi stands, then a soul's part), by the navi's flip.
+export type CannonLook = ShooterLook & {
+    raise_anim: number,
+    lower_anim: number,
+    afterimages: ((me: Object, spec: CannonSpec, flip: number) -> ())?,
 }
 
 -- A game's throw (@exelib/bombs/throw): the wind-up's sound, and its attachment kind (what the navi holds).
@@ -828,7 +837,14 @@ export type AirShotSpec = {
     id: string?,
     shooter: AttachmentLook,
     shot: ProjectileVariant,
+    -- The recovery's count (ticks less one): EXE6's and EXE5's 10 (`sub_80EC90E`); EXE4's the attack's variant, 30
+    -- when that isn't 0 (0x080ECC02: AirShot's variant 0, 0).
+    recovery: number,
 }
+
+-- A game's AirShot (@exelib/airshot): its shooter's look, the navi's animation as it fires (EXE6's and EXE5's 9,
+-- EXE4's 12) and the slot the shooter takes (EXE6's and EXE5's overlay, EXE4's related).
+export type AirShotLook = ShooterLook & { anim: number, slot: Slot }
 
 -- A wide wave (chips/widesht/wave.luau, the original's attack #0x3B by
 -- kind): its speed (16.16 pixels a tick); whether it goes through what it
@@ -1289,9 +1305,17 @@ export type LanceHit = {
     bug_arg: number?,
 }
 
--- How a game's lance looks and hits: its sprite, its sound, and its hit by
--- its palette (Param1).
-export type LanceLook = { sprite: SpriteAsset, sound: Sound, hits: { [number]: LanceHit } }
+-- How a game's lance looks and hits: its sprite, its sound, and either its
+-- hit on its seventh tick by its palette (Param1: EXE6's, EXE5's `hits`) or
+-- an attack the whole time it shows (EXE4's `attack`).
+export type LanceLook = { sprite: SpriteAsset, sound: Sound, hits: { [number]: LanceHit }?, attack: LanceAttack? }
+
+-- A lance that is an attack the whole time it shows (EXE4's, 0x080D73F8):
+-- its collision registration from its init, what it is and hits and its
+-- hit modifier, and its spark by its element; each tick its hits resolve
+-- and spark, its first that lands ends its region, and its panel shows
+-- highlighted while the region stands.
+export type LanceAttack = { is: CollisionType, hits: CollisionType, hit_mod: number, spark: (element: number) -> Spark }
 
 -- A row (`byte_80CF3AC`): what it is and reaches and its hit modifier; the
 -- camera shake it lands with (0 none, else the magnitude, 15 ticks); what

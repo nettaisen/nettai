@@ -23,11 +23,14 @@ cannon.arms = {
     m_cannon = attachment.look { sprite = CANNON, palette = 2, attach_point = 7 },
 }
 
-local LOOK: ShooterLook = {
+local LOOK: CannonLook = {
     sound = asset.sound("cannon"),
-    attachment = attachment.kind,
+    -- `sub_80EBD68`: a player's arm by its AI index (`off_80EBD80`), anyone else's the plain one.
+    hold = attachment.holder(navi_arms.cannon, true),
     projectiles = projectile,
-    arm_anims = navi_arms.cannon,
+    -- The navi raises the cannon in its animation 8 and lowers it in 7 (`sub_80EBC28`, `sub_80EBD3C`).
+    raise_anim = 8,
+    lower_anim = 7,
 }
 
 -- A chip's cannon.
