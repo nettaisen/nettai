@@ -90,6 +90,11 @@ pub struct Side {
     /// The status bit the player's console sends: its custom screen is
     /// open (BattleState+0x11 bit 2).
     pub in_custom: bool,
+    /// The status bit 0 the player's console sends while its selection
+    /// runs: EXE4's screen's (BattleState +0x14, from the selection's start
+    /// until OK), which its custom screen's HP bug reads (the rule
+    /// `custom_drain`); EXE6's and EXE5's screens send none.
+    pub selecting: bool,
     /// The hand and transformation built at OK, sent after the window
     /// slides out (None: no chips picked).
     pub built: Option<(Option<ChipHand>, TransformRequest)>,
@@ -109,6 +114,7 @@ impl Side {
             class_uses: ClassCounts::default(),
             screen: None,
             in_custom: false,
+            selecting: false,
             built: None,
             sent: None,
             emotion: Emotion::default(),
@@ -328,8 +334,13 @@ impl Side {
             }
             None => {}
         }
-        if matches!(screen.phase, Phase::Closing { tick: 1 }) {
-            // The slide-out's first tick clears the status bit.
+        // The slide-out's first tick clears the status bit, or the send does
+        // (EXE4's 0x0801E986).
+        let cleared = match ctx.library.layout().status_until {
+            crate::content::StatusUntil::Closing => matches!(screen.phase, Phase::Closing { tick: 1 }),
+            crate::content::StatusUntil::Sending => request == Some(Request::Send),
+        };
+        if cleared {
             self.in_custom = false;
         }
         self.screen = Some(screen);
@@ -498,16 +509,14 @@ impl Battle {
             if let Some(screen) = &s.screen {
                 for call in screen.look.drawn.calls() {
                     match call {
-                        // (The dark chip hover's is EXE5's alone.)
-                        look::ScreenCall::Sound(look::ScreenSound::Shade) => {
-                            if let Some(id) = self.roles().try_sound(crate::content::SoundRole::CustomShade) {
-                                self.play_sound_for(side, id);
-                            }
-                        }
                         look::ScreenCall::Sound(look::ScreenSound::Rules(id)) => self.play_sound_for(side, id),
+                        // (A sound some game hasn't, the hover's among them,
+                        // plays none there: `SoundRole::optional`.)
                         look::ScreenCall::Sound(sound) => self.sound_for(side, sound.role().expect("a screen sound of a role")),
                         look::ScreenCall::Volume { music, screen } => {
-                            self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
+                            let [m, s] = self.content.rules().custom_screen.hover.players;
+                            self.play_sound_for(side, crate::sound::SoundCue::Volume { player: m, volume: music });
+                            self.play_sound_for(side, crate::sound::SoundCue::Volume { player: s, volume: screen });
                         }
                     }
                 }

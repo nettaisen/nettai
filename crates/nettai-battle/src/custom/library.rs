@@ -57,6 +57,8 @@ pub trait Library {
     fn banner_holds(&self, id: BannerId) -> bool;
     /// A banner's steps (the rules' `effects.banner`).
     fn banner_steps(&self) -> crate::content::BannerSteps;
+    /// When a screen fade toward clear ends (the rules' `effects.fade_clear`).
+    fn fade_clear(&self) -> crate::content::FadeClear;
     /// The banner of a Program Advance (`made`), or of a selection that
     /// makes none.
     fn program_advance_banner(&self, made: bool) -> BannerId;
@@ -129,6 +131,10 @@ impl Library for Content {
 
     fn banner_steps(&self) -> crate::content::BannerSteps {
         self.rules().effects.banner
+    }
+
+    fn fade_clear(&self) -> crate::content::FadeClear {
+        self.rules().effects.fade_clear
     }
 
     fn program_advance_banner(&self, made: bool) -> BannerId {
@@ -259,6 +265,9 @@ pub(crate) mod testing {
         }
         fn banner_steps(&self) -> crate::content::BannerSteps {
             crate::content::BannerSteps { slide_in: 5, hold: 0x30, slide_out: 5, release: crate::content::BannerRelease::HoldsThreeMore }
+        }
+        fn fade_clear(&self) -> crate::content::FadeClear {
+            crate::content::FadeClear::AtTarget
         }
         fn program_advance_banner(&self, made: bool) -> BannerId {
             BannerId(if made { 0x24 } else { 0x34 })

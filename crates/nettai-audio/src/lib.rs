@@ -82,8 +82,6 @@ pub use output::{AudioOut, MAX_RATE_SHIFT, Output, OutputError, OutputStats, RES
 
 /// The music player EXE6's background music plays on.
 pub const MUSIC_PLAYER: PlayerId = PlayerId(31);
-/// The player the custom screen balances against the music.
-pub const CUSTOM_SCREEN_PLAYER: PlayerId = PlayerId(22);
 /// Sound calls the game queues per frame (`sound_8000808` drops the rest).
 pub const QUEUE_LIMIT: usize = 32;
 /// Output rate, Hz.
@@ -175,17 +173,8 @@ impl SoundCalls {
                 out.push(Request::Pitch { player: MUSIC_PLAYER, tracks: 0xFFFF, pitch });
                 out.push(Request::Tempo { player: MUSIC_PLAYER, tempo });
             }
-            // sub_802A3CC.
-            SoundCue::RestoreVolume => {
-                for player in [MUSIC_PLAYER, CUSTOM_SCREEN_PLAYER] {
-                    out.push(Request::Volume { player, tracks: 0xFFFF, volume: 0x100 });
-                }
-            }
-            // sub_802A30C, sub_802A362.
-            SoundCue::ScreenVolume { music, screen } => {
-                out.push(Request::Volume { player: MUSIC_PLAYER, tracks: 0xFFFF, volume: music });
-                out.push(Request::Volume { player: CUSTOM_SCREEN_PLAYER, tracks: 0xFFFF, volume: screen });
-            }
+            // sub_8000642: m4aMPlayVolumeControl on all of its tracks.
+            SoundCue::Volume { player, volume } => out.push(Request::Volume { player: PlayerId(player), tracks: 0xFFFF, volume }),
         }
     }
 }
@@ -203,7 +192,7 @@ impl SoundCalls {
             SoundCue::Pinch(on) => self.requests(SoundCue::Pinch(!on), out),
             // A later change replaced it already; the custom screen's
             // volume can't be taken back.
-            SoundCue::Music(_) | SoundCue::StopMusic | SoundCue::RestoreVolume | SoundCue::ScreenVolume { .. } => {}
+            SoundCue::Music(_) | SoundCue::StopMusic | SoundCue::Volume { .. } => {}
         }
     }
 

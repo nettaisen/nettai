@@ -103,7 +103,11 @@ local status = {
     -- HP alone. Its emotions are `sub_8015B54`'s and `sub_8015BEC`'s, and the weakness request breaks a Cross or a
     -- Beast to what it breaks to (`sub_8015766`).
     rules = {
-        hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 },
+        -- The NaviCust's HP bug drains a point every so many ticks by its level (`sub_8010230`, `byte_80102A4`), held
+        -- while the battle is paused; the custom screen's while the side's screen is up (`sub_80102AC`: the status's
+        -- bits 5, `byte_80102F8`).
+        hp_drain = { periods = { 0, 40, 35, 30, 25, 20, 15, 10 }, stops_while_paused = true },
+        custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = 0x5 },
         form_tick = true,
         -- The mercy flash hides the navi while its timer's bit 1 is set (`sub_8016934`).
         flash_hides_on_clear = false,

@@ -401,6 +401,23 @@ definition_roles! {
     }
 }
 
+impl SoundRole {
+    /// A sound some game hasn't: a game that leaves the role unfilled plays
+    /// none there (EXE6's screen plays no hover sound; EXE4's pause, SELECT's
+    /// hiding, L's message and a description's close play none: 0x080078F4,
+    /// 0x0801E59C, 0x080205C6, 0x080209F8).
+    pub fn optional(self) -> bool {
+        matches!(
+            self,
+            SoundRole::Pause
+                | SoundRole::CustomShade
+                | SoundRole::CustomHide
+                | SoundRole::CustomRunMessage
+                | SoundRole::CustomDescriptionClose
+        )
+    }
+}
+
 definition_roles! {
     /// The music the rules start themselves, by role (`music`): sound
     /// assets. (A stage's music is its own.)

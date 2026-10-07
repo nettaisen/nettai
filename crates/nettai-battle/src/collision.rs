@@ -482,13 +482,14 @@ impl Battle {
         {
             return;
         }
-        // The receiver's state against the hitter's type.
+        // The receiver's state against the hitter's type (EXE4's leaves its
+        // untouchable state to the invulnerable test, after the guard).
         let f = rd.f1;
         let hs = hd.self_flags;
         if (f & 0x202 != 0 && hs & 0x4 == 0)
             || (f & submerged != 0 && hs & 0x1008 == 0 && !elec(hd.element))
             || (f & 0x0080_0000 != 0 && hs & 0x3000 == 0)
-            || f & f1::UNTOUCHABLE != 0
+            || (!test.guard_before_untouchable && f & f1::UNTOUCHABLE != 0)
             || (self_bit && f & 0x20 != 0 && hs & 0x80 == 0)
         {
             return;
@@ -517,7 +518,7 @@ impl Battle {
         if (rs & 0x0010_0000 != 0 && hs & 0x8000 != 0) || (rs & 0x8000 != 0 && hs & 0x0010_0000 != 0) {
             return;
         }
-        if rd.f1 & f1::INVULNERABLE != 0 {
+        if rd.f1 & f1::INVULNERABLE != 0 || (test.guard_before_untouchable && rd.f1 & f1::UNTOUCHABLE != 0) {
             return;
         }
         let rm = self.collision.get_mut(r);
@@ -770,6 +771,30 @@ mod tests {
         assert!(!guarded(breaks_to_1002, 0x8000_5000));
         assert!(guarded(breaks_to_2, 0x8000_0000));
         assert!(guarded(breaks_to_1002, 0x8000_0000));
+    }
+
+    /// docs/design/exe4-map.md §18 item 5: EXE4's kernel tests an untouchable
+    /// receiver with the invulnerable one, after its guard, which still turns
+    /// a hit aside; EXE6's before (no hit at all). Neither damages it.
+    #[test]
+    fn an_untouchable_guard_turns_hits_aside_where_the_rules_say() {
+        let outcome = |after: bool| {
+            let (mut b, [h, r]) = fight(HitTest { guard_before_untouchable: after, ..tests()[1] });
+            b.collision.get_mut(r).f1 |= f1::GUARD | f1::UNTOUCHABLE;
+            b.collision.get_mut(h).self_flags = 0x8000_0000;
+            b.collision.get_mut(h).f1 = 0;
+            b.resolve_hit(r, h);
+            (b.collision.get(h).acc.hit_flags & 1 != 0, b.collision.get(r).acc.hit_flags & 0x2_0000 != 0)
+        };
+        assert_eq!(outcome(false), (false, false));
+        assert_eq!(outcome(true), (true, true));
+        // Without a guard, untouchable either way.
+        let (mut b, [h, r]) = fight(HitTest { guard_before_untouchable: true, ..tests()[1] });
+        b.collision.get_mut(r).f1 |= f1::UNTOUCHABLE;
+        b.collision.get_mut(h).self_flags = 0x8000_0000;
+        b.collision.get_mut(h).f1 = 0;
+        b.resolve_hit(r, h);
+        assert_eq!(b.collision.get(r).acc.hit_flags, 0);
     }
 
     /// docs/design/exe4-map.md §18 item 4: a hit counts once more on a body

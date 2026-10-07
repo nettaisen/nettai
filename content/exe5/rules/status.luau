@@ -396,7 +396,11 @@ local status = {
     -- hit's NaviCust bug (0x0801103E) before the HP bug drains (0x0800DFEC), and a drain bug's argument goes by its
     -- flags (bit 4 adds, bit 5 subtracts, else it raises the level).
     rules = {
-        hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 },
+        -- The NaviCust's HP bug drains a point every so many ticks by its level (0x0800DFEC, EXE6's), held while the
+        -- battle is paused; the custom screen's while the side's screen is up (0x0800E034: the status's bits 5, the
+        -- table at 0x0800E084, EXE6's values).
+        hp_drain = { periods = { 0, 40, 35, 30, 25, 20, 15, 10 }, stops_while_paused = true },
+        custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = 0x5 },
         form_tick = false,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x080137B6; EXE6's while it is set).
         flash_hides_on_clear = true,
