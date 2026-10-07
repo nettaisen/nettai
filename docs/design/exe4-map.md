@@ -487,6 +487,8 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   (`flow/buster-duel-bluemoon`, frame 1056): event flag 0x1187 isn't a netbattle's. The flow states `never` (a new
   choice of `navi_win_banner`, EXE6's and EXE5's unchanged).
 - The palette flash before the fades: EXE4's fade slots (§15 effects).
+- `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
+  first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
 
 ## 17. The recordings
@@ -616,8 +618,8 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      decides whether the B+Left ability's is the engine's chip lockout or its back special's (kind 3).
    - EXE4's exits zero no buffered move (EXE6's AIData +0x1A) and no special source (+0x1B): nothing in EXE4 sets
      either while the engine's movement is EXE6's (item 24, group B's).
-7. **Statuses.** The status table 0x08018550 is generated (4 groups of 4). The status rules, each read from EXE4's
-   routine:
+7. **Done: statuses.** The status table 0x08018550 is generated (4 groups of 4). The status rules, each read from
+   EXE4's routine:
    - **Done: the drains.** The NaviCust's HP bug (0x0800C164) reads NaviStats +0x0E as the period itself (no table)
      and drains through a pause (EXE6's `sub_8010230` reads a period by level and holds while paused); the custom
      screen's (0x0800C194) reads +0x0F as the period, and runs while the side's status (BattleState +0x14) has bit 0,
@@ -636,7 +638,27 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      netbattle's never is: the roles' `own_hit` and `hit` both 0x6B (group A's role fill). Unported: 0x0800EE4C
      after the sound records the hit navi's panel into the hitter's side's records (0x02037A90, 0x02037C60), which
      nothing read so far reads.
-   - To read: `reactions = "flash_timer_first"`, the rest EXE5's (the placeholders).
+   - **Read, as stated:** the status block (0x08013A48) is EXE5's order (`reactions = "flash_timer_first"`): the
+     flash's timer first, whatever the battle's flags (0x080134F6), then the slides, the drag (keeping a paralysis a
+     counter just made: its flag2 0x8000, the engine's 0x4000) and the flinch; the mercy flash hides the navi while
+     its timer's bit 1 is clear (0x08010430, `flash_hides_on_clear`); a hit's bug is taken (0x0800D9E8) before the HP
+     bug drains (`bugs_before_drain`); the weakness mark tests the damage of the element the navi is weak to
+     (0x080133CE, the table 0x08013408: `weak_element_damage`; the mark's place, a table by the object's +0x0F
+     through 0x08011878, is the drawing's); no per-form tick (the player's update, 0x080EAECC); no no-charge drive.
+   - **No freeze in EXE4.** Its hit kernel has no aqua-on-ice freeze and no thaw (item 5), and the lab shows none:
+     `ice/aqua` and `status/freeze` (Bubbler on a navi on ice) start no reaction. Its flag1 0x10000 is action 13's
+     (below), not a freeze.
+   - **The status block's extras, the engine's requests:** a pending special (0x0800B8B0: request 0x1000, which the
+     last stand asks for, sets AIData +0x10 to 15; any other value there but 0 and 0xFF) starts action 13 (0x080EBA70:
+     the battle dimmed, flag1 0x10000 while it runs), and while flag1 0x10000 is set the block goes straight to the
+     action. That is the engine's `volley` request and its status (`action_requests`: the roles' `volley`, EXE5's
+     last stand's), which EXE4's `hp_emptied` hook asks for with the dark chips (group A); AIData +0x10's other
+     values (a soul's change, likely) are the souls'.
+   - The hit's bug (0x0800D9E8): NaviStats' byte by the code (collision +0x48) gets its argument (+0x49), 0xFF by
+     0x0804770C; the rules' `navi_bug` hook, to write with the first EXE4 chip that carries a code (the damage word
+     has none).
+   - With others: the emotions (item 8, group A); a soul's break by a weakness hit (`form_break`,
+     `weakness_hit_breaks_form`: EXE5's until the souls are read).
 8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
 9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
 10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.
