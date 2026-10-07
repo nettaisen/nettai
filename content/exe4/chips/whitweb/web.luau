@@ -1,6 +1,6 @@
 --!strict
 -- The WhitWebs' webs (attack object 0x3D, 0x080D4D30: EXE5's 0x080CCC08's code but for its constants and look), which
--- the spawners' variants 8 to 10 put out (0x080D4EC4, its level 1 to 3): one on each of the other side's panels of row
+-- the spawners' variants 8 to 10 put out (0x080D4EC4, its row 1 to 3): one on each of the other side's panels of row
 -- 1, 2 or 3 (0x0800A10E: the row's panels of the other side's, the last first), running while dimmed (its header flag
 -- 0x10). A web (10-1C, turned to its side, its shadow drawn with it; its sound 0xF7) is a body with 1 HP that hits the
 -- other side's (modifier 1, the wood spark) for 120 ticks, its animation 1 once animation 0 has played: it goes once it
@@ -127,12 +127,12 @@ local function row_of(y: number, require: number, forbid: number): { { number } 
     return list
 end
 
--- 0x080D4EC4, the spawners' variants 8 to 10: a web on each of the other side's panels of row `level`, the last first,
+-- 0x080D4EC4, the spawners' variants 8 to 10: a web on each of the other side's panels of row `row`, the last first,
 -- with the attack's element and damage word. (Its position is the registers until its init places it.)
-function web.spawner(level: number): (user: Object, element: number, damage: number) -> ()
+function web.spawner(row: number): (user: Object, element: number, damage: number) -> ()
     return function(user: Object, element: number, damage: number)
         local f = OTHER_SIDE[user.alliance]
-        local list = row_of(level, f.require, f.forbid)
+        local list = row_of(row, f.require, f.forbid)
         for i = #list, 1, -1 do
             local x, y = list[i][1], list[i][2]
             local o = battle.spawn(web.kind, Vec3.new(y, element, user.pos.z))
