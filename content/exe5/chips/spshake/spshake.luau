@@ -4,9 +4,9 @@
 -- panel), hitting what it touches; after a hit it ends once it is on a body's panel again (unless it paralyzes:
 -- then its hit comes back on the next panel). It goes off the field's columns.
 --
--- Its parameters (the record's): Param1 the speed (1.5, 2.25, 3 pixels a tick: 0x080D30D4), Param2 set (hits
--- paralyze 90 ticks with no modifier: no chip has it), Param3 the palette. Its element is elec whatever the chip's
--- (the action passes 3).
+-- Its parameters (the record's), each chip's own wave (`spshake.wave`): Param1 the speed (a row of 0x080D30D4: 1.5,
+-- 2.25, 3 pixels a tick), Param2 set (hits paralyze 90 ticks with no modifier: ShakPar's), Param3 the palette. Its
+-- element is elec whatever the chip's (the action passes 3).
 
 local armshot = require("../../lib/armshot")
 local collision = require("../../rules/collision")
@@ -35,12 +35,6 @@ local ELEC = 3
 -- The sine: 24 pixels, one swing over 80 pixels (two panels) of travel; it starts at the middle of the turn.
 local AMPLITUDE, SWING, START = 24, 0x50_0000, 0x8000
 local BODIES = 0x0F800000
-
-spshake.waves = {
-    [1] = { speed = 0x1_8000, paralyzes = false, palette = 0 },
-    [2] = { speed = 0x2_4000, paralyzes = false, palette = 6 },
-    [3] = { speed = 0x3_0000, paralyzes = false, palette = 0x0C },
-}
 
 local function finish(me: Object)
     me.collision:set_region(nil)
@@ -153,19 +147,9 @@ spshake.kind = new.kind {
     end,
 }
 
-for k, w in spshake.waves do
-    spshake.waves[k] = new.record("shake-wave", w)
-end
-
--- A wave by its parameters (ShakPar's: chips/shakpar/shakpar): Param1 the speed's row of 0x080D30D4, Param2 whether it
--- paralyzes, Param3 its palette.
-local SPEEDS = { [0] = 0x1_8000, [1] = 0x2_4000, [2] = 0x3_0000 }
-function spshake.wave(speed: number, paralyzes: boolean, palette: number): Wave
-    local v = SPEEDS[speed]
-    if not v then
-        error(string.format("the SpShake wave's speed %d reads past 0x080D30D4", speed))
-    end
-    return new.record("shake-wave", { speed = v, paralyzes = paralyzes, palette = palette })
+-- A chip's wave: its speed (16.16 a tick), whether it paralyzes, its palette.
+function spshake.wave(w: Wave): Wave
+    return new.record("shake-wave", w)
 end
 
 -- 0x080D319E: a wave of `wave` on (x, y) with `element` (the SpShakes' action passes elec) and the damage word.

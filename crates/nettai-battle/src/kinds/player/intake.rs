@@ -366,7 +366,8 @@ fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_802CEF4`: anti-damage traps (and the heat trap) swallow the hit
-/// and raise a trap request (§4.3).
+/// and raise a trap request (§4.3), as the game's rules say what each
+/// catches (`intake.anti_traps`).
 fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     if ai(b, r).status & crate::actor::status::HEAT_TRAP != 0 && coll(b, r).acc.element_damage[1] == 0 {
@@ -381,10 +382,11 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     // The trap the side's defensive-chip record holds.
     use crate::content::Trap;
     let chip = b.linked_trap(side as u8);
-    let (trap, min) = if let Some(trap @ (Trap::AntiDamage | Trap::BodyGuard)) = chip {
-        (trap, 10)
+    let rules = b.game_rules().intake.anti_traps;
+    let (trap, min, swallows_below) = if let Some(trap @ (Trap::AntiDamage | Trap::BodyGuard)) = chip {
+        (trap, rules.damage_min as u32, false)
     } else if ai(b, r).status & crate::actor::status::TRAP_ARMED != 0 {
-        (Trap::AntiDamage, 1)
+        (Trap::AntiDamage, 1, rules.armed_swallows_below)
     } else {
         if chip == Some(Trap::AntiSword) {
             use crate::actor::request::ANTI_SWORD_TRIGGERED;
@@ -393,7 +395,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
                 return;
             }
             let ffc = coll(b, r).acc.hit_flags;
-            if ffc & 0x2000 != 0 && ffc & 0x2_0000 == 0 {
+            if ffc & 0x2000 != 0 && ffc & rules.sword_spares == 0 {
                 ai_mut(b, r).requests |= ANTI_SWORD_TRIGGERED;
                 zero_trapped_hit(b, r);
             }
@@ -409,7 +411,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     }
     let sum: u32 = coll(b, r).acc.element_damage[..5].iter().map(|&d| d as u32).sum();
     if sum < min {
-        if min == 1 {
+        if swallows_below {
             zero_trapped_hit(b, r);
         }
         return;
