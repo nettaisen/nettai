@@ -305,8 +305,13 @@ pub fn form_face<'a>(
 
 /// A navi's emblem on the custom screen: the pack's under the navi's key
 /// (`CustomScreen::emblems`), its tiles and its palette. None: the pack has
-/// none for the navi (nothing is drawn, and the cursor has no colors).
+/// none for the navi (nothing is drawn, and the cursor has no colors), or
+/// the screen has an emblem of its own and its cursor its own colors
+/// (EXE4's `window_emblem` and `cursor_palette`), and draws no navi's.
 pub fn emblem<'a>(a: &'a CustomScreen, c: &Content, navi: NaviHandle, problems: &mut Problems) -> Option<&'a Emblem> {
+    if a.window_emblem.is_some() && a.cursor_palette.is_some() {
+        return None;
+    }
     let key = &c.defs.navi(navi).key;
     let found = a.emblem(key).filter(|e| e.tiles.len() >= 4);
     if problems.lookup(Lookup::Emblem(navi)) && found.is_none() {
