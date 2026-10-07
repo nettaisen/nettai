@@ -260,6 +260,47 @@ rules' `backgrounds`).
   table's pictures, which are a link battle's.
 - 0x1B and 0x1C are not among a link battle's, and no recording has shown them: their drawing isn't compared.
 
+**EXE4** has 27. Its routine is 0x08085BAC (the table at 0x08085BD0; a real-world map's 0x03), the menu's names
+0x0802DEB0's (a group's first name number plus the map number, into the archive at 0x086E8770), and a battle's
+settings state the background in their byte 5. A link battle draws one of 0x0803AA6C's table (0x0803AAA4: all but
+0x0a, 0x11 and 0x17), its `link_pick` rules' `backgrounds`. No map draws five of them, which story battles'
+settings state; the map scripts say where those battles are (a map's script starts a cutscene, the cutscene the
+battle: docs/design/exe4-map.md §18 item 21). Three are the tournament venues', each named for the one map whose
+scripts start its eight battles (`stadium`, `air-stadium`, `colosseum`); two are named for their battles, as EXE5's
+`nebulagray` (`duo`, and `darksoul`: LaserMan's possessed navi on CastNBMComp, a map that draws `comp`).
+
+<!-- backgrounds:exe4 -->
+| Number | Name | The maps that draw it (the menu's names; map group:numbers) | Named from | Also | Was (its picture) |
+|---|---|---|---|---|---|
+| 0x00 | `eltwr-comp` | ElTwrComp1, 2 (0x80:0, 1) | the menu | 4 battle settings state it; a link battle | unnamed |
+| 0x01 | `toyrobo-comp` | ToyRoboComp1, 2, 3 (0x81:0, 1, 2) | the menu | 4 battle settings state it; a link battle | unnamed |
+| 0x02 | `lans-hp` | Lan's HP (0x88:0) | the menu | a link battle | unnamed |
+| 0x03 | `comp` | MicrowvComp (0x8c:0); StereoComp (0x8c:1); HotdogComp (0x8c:2); DomeNBMComp (0x8c:3); CyberTopComp (0x8c:4); LCD Comp (0x8c:5); CastNBMComp (0x8c:6); StatueComp (0x8c:7); NupopoComp (0x8c:8); ComputerComp (0x8c:9); ToyComp (0x8c:10); ColoNBMComp (0x8c:11); LionComp (0x8c:12); DogHousComp (0x8c:13); GameComp (0x8c:14); VendMchComp (0x8c:15); CardComp (0x8d:0); WaterComp (0x8d:1); Ticket Comp (0x8d:2); StandComp (0x8d:3); AntComp1, 2, 3, 4 (0x8d:4, 5, 6, 7); BuddhaComp (0x8d:8); GoddessComp (0x8d:9); HeroComp (0x8d:10); CookComp (0x8d:11); WtrGodComp1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 (0x8e:0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15); the default: every real-world map | **no one area: the default, which the comps without their own draw** | 75 battle settings state it; a link battle | unnamed |
+| 0x04 | `acdc-area` | ACDC Area1, 2, 3 (0x90:0, 1, 2) | the menu | 6 battle settings state it; a link battle | unnamed |
+| 0x05 | `town-area` | Town Area1, 2, 3, 4 (0x91:0, 1, 2, 3) | the menu | 14 battle settings state it; a link battle | unnamed |
+| 0x06 | `park-area` | Park Area1, 2, 3 (0x92:0, 1, 2) | the menu | 7 battle settings state it; a link battle | unnamed |
+| 0x07 | `yumland-area` | YumLand Area (0x93:0) | the menu | 2 battle settings state it (0x080fad08, 0x080fad14); a link battle | unnamed |
+| 0x08 | `undernet` | Undernet1, 2, 3, 4, 5, 6 (0x94:0, 1, 2, 3, 4, 5) | the menu | 42 battle settings state it; a link battle | unnamed |
+| 0x09 | `darksoul` | none | **the battles that state it: no map draws it** | 2 battle settings state it (0x080fabb8, 0x080fabc4); a link battle | unnamed |
+| 0x0a | `meteor-comp` | MeteorComp1, 2, 3, 4 (0x82:0, 1, 2, 3); ControlArea (0x82:4) | the menu | 2 battle settings state it (0x080fad44, 0x080fad50) | unnamed |
+| 0x0b | `mayls-hp` | Mayl's HP (0x88:1) | the menu | a link battle | unnamed |
+| 0x0c | `dexs-hp` | Dex's HP (0x88:2) | the menu | a link battle | unnamed |
+| 0x0d | `yais-hp` | Yai's HP (0x88:3) | the menu | a link battle | unnamed |
+| 0x0e | `hotel-hp` | Hotel HP (0x88:4) | the menu | a link battle | unnamed |
+| 0x0f | `castillo-hp` | Castillo HP (0x88:5) | the menu | a link battle | unnamed |
+| 0x10 | `jomonelec-hp` | JomonElec HP (0x88:6) | the menu | a link battle | unnamed |
+| 0x11 | `black-earth` | BlackEarth1, 2 (0x94:6, 7) | the menu | 7 battle settings state it | unnamed |
+| 0x12 | `toyrobo-comp4` | ToyRoboComp4 (0x81:3) | the menu | 6 battle settings state it; a link battle | unnamed |
+| 0x13 | `netopia-area` | Netopia Area (0x93:1) | the menu | 5 battle settings state it; a link battle | unnamed |
+| 0x14 | `netfrica-area` | NetFricaArea (0x93:2) | the menu | 4 battle settings state it; a link battle | unnamed |
+| 0x15 | `sharo-area` | Sharo Area (0x93:3) | the menu | 1 battle settings state it (0x080fad2c); a link battle | unnamed |
+| 0x16 | `spacectr-hp` | SpaceCtr HP (0x88:7) | the menu | a link battle | unnamed |
+| 0x17 | `duo` | none | **the battles that state it: no map draws it** | 2 battle settings state it (0x080fad5c, 0x080fad68) | unnamed |
+| 0x18 | `stadium` | none | **the venue's map: its scripts start the battles that state it** | 8 battle settings state it; a link battle | unnamed |
+| 0x19 | `air-stadium` | none | **the venue's map: its scripts start the battles that state it** | 8 battle settings state it; a link battle | unnamed |
+| 0x1a | `colosseum` | none | **the venue's map: its scripts start the battles that state it** | 8 battle settings state it; a link battle | unnamed |
+<!-- /backgrounds:exe4 -->
+
 ## 2. Playing
 
 How a player plays is the hosts': nettai's screens, keys and pad (docs/app.md
