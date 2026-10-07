@@ -1103,9 +1103,16 @@ mod tests {
         assert!(defaultless.own.check(&emotions).unwrap_err().contains("no face for \"normal\""));
     }
 
+    /// Families a game might have, as its definitions are read with them
+    /// (`super::super::reading_families`).
+    fn families() -> super::super::ChipFamilies {
+        let families = ["wood", "sword", "null"].iter().enumerate().map(|(i, n)| (n.to_string(), ChipFamily(i as u8))).collect();
+        super::super::ChipFamilies { families, non_elemental: ChipFamily(2) }
+    }
+
     #[test]
     fn a_navis_charged_chips_say_whether_they_must_be_damaging() {
-        let read = |json: &str| serde_json::from_str::<NaviChargedChips>(json);
+        let read = |json: &str| super::super::reading_families(&families(), || serde_json::from_str::<NaviChargedChips>(json));
         // EXE6's link navis: their family's damaging chips (from a level:
         // their `when`, a function of the side).
         let exe6 = read(r#"{ "family": "wood", "damaging": true }"#).unwrap();
@@ -1121,7 +1128,7 @@ mod tests {
 
     #[test]
     fn a_forms_charged_chips_say_whether_they_must_be_damaging() {
-        let read = |json: &str| serde_json::from_str::<ChargedChips>(json);
+        let read = |json: &str| super::super::reading_families(&families(), || serde_json::from_str::<ChargedChips>(json));
         // A Cross's: its family's damaging chips (SlashCross's the element
         // swords too); Beast Out's any Null chip.
         let cross = read(r#"{ "family": "sword", "damaging": true, "element_swords": true }"#).unwrap();
@@ -1131,5 +1138,8 @@ mod tests {
         // Left out, the rule doesn't load, and the error names the field.
         let error = read(r#"{ "family": "wood" }"#).unwrap_err().to_string();
         assert!(error.contains("missing field `damaging`"), "{error}");
+        // A family is one of its game's.
+        let error = read(r#"{ "family": "metal", "damaging": true }"#).unwrap_err().to_string();
+        assert!(error.contains("\"metal\" is none of its game's chip families (wood, sword, null)"), "{error}");
     }
 }
