@@ -12,23 +12,29 @@ use nettai_match::Side;
 /// about it; or why the file gives none.
 pub fn side_of_save(content: &Content, game: &str, file: &[u8]) -> Result<(Side, Vec<String>), String> {
     let mut side = Side::fresh(content, game)?;
-    let mut notes = match game {
-        exe6_compat::ROOT => exe6_compat::import::import(content, &mut side, &read(game, file, exe6_compat::import::read)?)?,
-        exe5_compat::ROOT => exe5_compat::import::import(content, game, &mut side, &read(game, file, exe5_compat::import::read)?),
-        exe4_compat::ROOT => exe4_compat::import::import(content, game, &mut side, &read(game, file, exe4_compat::import::read)?),
+    // (The save's version, where its game's rules state none: EXE5's team,
+    // which names its preset. EXE6's is its `version` fact.)
+    let (mut notes, version) = match game {
+        exe6_compat::ROOT => (exe6_compat::import::import(content, &mut side, &read(game, file, exe6_compat::import::read)?)?, None),
+        exe5_compat::ROOT => {
+            let save = read(game, file, exe5_compat::import::read)?;
+            (exe5_compat::import::import(content, game, &mut side, &save), Some(save.version().name()))
+        }
+        exe4_compat::ROOT => (exe4_compat::import::import(content, game, &mut side, &read(game, file, exe4_compat::import::read)?), None),
         other => return Err(format!("{other} has no save import")),
     };
     // (What a build in the app never states is the rules' defaults: a save's
     // HP, Regular memory, times and patterns are none of a build's. What it
-    // states as a preset is the preset on its side: EXE5's light/dark value.)
-    notes.extend(built(content, game, &mut side));
+    // states as a preset is the preset it is on: EXE5's light/dark value;
+    // the save's version, with its whole form list.)
+    notes.extend(built(content, game, &mut side, version));
     Ok((side, notes))
 }
 
-/// The side set to what a build in the app is (`layout::as_built`), and
-/// what that changed, said.
-fn built(content: &Content, game: &str, side: &mut Side) -> Vec<String> {
-    let built = crate::builds::layout::as_built(content, game, side);
+/// The side set to what a build in the app is (`layout::as_built`; a save's
+/// `version` naming its preset), and what that changed, said.
+fn built(content: &Content, game: &str, side: &mut Side, version: Option<&str>) -> Vec<String> {
+    let built = crate::builds::layout::as_built_with(content, game, side, version);
     let mut notes: Vec<String> = built.taken.iter().map(|t| format!("{}, as every build in the app", t.said())).collect();
     if !built.reset.is_empty() {
         notes.push(format!("set to the defaults, as every build in the app: {}", built.reset.join(", ")));
@@ -48,7 +54,7 @@ pub fn auto_battle_of_save(content: &Content, game: &str, file: &[u8], side: &mu
         exe5_compat::ROOT => exe5_compat::import::auto_battle_of_save(content, game, file, side)?,
         other => return Err(format!("{other}'s saves keep no auto battle data")),
     };
-    notes.extend(built(content, game, side));
+    notes.extend(built(content, game, side, None));
     Ok(notes)
 }
 
@@ -75,6 +81,10 @@ mod tests {
         let (side, notes) = side_of_save(&five, "exe5", &image).unwrap();
         assert_eq!((side.facts.get(&five, "karma"), side.facts.get(&five, "hp")), (Some(Stated::Number(0)), Some(Stated::Number(997))));
         assert!(notes.iter().any(|n| n == "karma 100 is dark's: the dark preset (hp 997, karma 0), as every build in the app"), "{notes:?}");
+        // (A Team ProtoMan save with no souls: its team's six, as every build.)
+        let team: Vec<String> = side.facts.get(&five, "souls").unwrap().defs().iter().map(|&h| five.defs.form(nettai_content_api::FormHandle(h)).key.clone()).collect();
+        assert_eq!(team, ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"]);
+        assert!(notes.iter().any(|n| n == "souls none is protoman's: the protoman preset (souls: 6), as every build in the app"), "{notes:?}");
         let six = exe6_content();
         let e = side_of_save(&six, "exe6", &image).unwrap_err();
         assert!(e.starts_with("not a save of exe6"), "{e}");

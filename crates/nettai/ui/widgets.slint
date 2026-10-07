@@ -651,3 +651,32 @@ export component Versus {
         }
     }
 }
+
+// A build's navi where it isn't the game's own: a format of its own, marked
+// in gold so the other player knows (nothing for the game's own navi).
+export component NaviMark {
+    in property <string> navi;
+    height: 24px;
+    visible: root.navi != "";
+    Slant {
+        width: parent.width;
+        height: parent.height;
+        lean: 6px;
+        color: Theme.gold.with-alpha(0.16);
+        stroke: Theme.gold;
+        stroke-width: 1px;
+    }
+
+    Text {
+        x: 12px;
+        width: parent.width - 20px;
+        height: parent.height;
+        text: @tr("NAVI · {0}", root.navi);
+        color: Theme.gold;
+        font-size: 11px;
+        font-weight: Theme.black;
+        letter-spacing: 1px * Theme.tracking;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
