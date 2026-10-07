@@ -148,7 +148,10 @@ fn decode_turn(b: &mut Battle, r: ObjectRef) -> bool {
     let pressed = ai(b, r).pad.pressed;
     let lr = keys::L | keys::R;
     if ai(b, r).status & status::CAN_TURN == 0 {
-        if b.round.flags & battle_flags::GAUGE_FULL != 0 && pressed & lr != 0 {
+        // (A game whose fight reads the keys itself asks nothing here: the
+        // flow's `custom_request`.)
+        let asks = b.game_rules().flow.custom_request == crate::content::CustomRequest::NaviInput;
+        if asks && b.round.flags & battle_flags::GAUGE_FULL != 0 && pressed & lr != 0 {
             b.set_flags(battle_flags::CUSTOM_REQUESTED);
             return true;
         }

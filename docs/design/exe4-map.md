@@ -300,6 +300,44 @@ soul a battle (?). **Dark chips** (T, K): never in a folder, offered only in bat
 MegaMan is worried (?); a chip with the dark flag (+0x09 bit 5). How the offer is drawn, which slot it takes and what
 using one does (the dark state, no Double Soul afterwards: ?) are EXE4's own code, to read.
 
+**As ported** (group A, the engine's custom/screen.rs on EXE4's rules; §18 item 31). The engine runs one screen for
+every game; what EXE4's code does otherwise is its rule section `custom_screen` (written by tools/exe4/gen_rules.py
+from the ROM and its code, read routine by routine):
+
+- **The block's states as the engine's phases.** The running state's sub-states: 0 the slide in (`Phase::Opening`,
+  10 ticks, the open sound 0x7A on the first), 4 choosing, 8 the slide out (`Closing`), 0xC SELECT's hiding
+  (`Hidden`: no sound, no emblem drawn on the return), 0x10 the Program Advance animation (`ProgramAdvance`: EXE6's
+  steps, its fade back a step longer by `effects.fade_clear`), 0x18 the send and the wait (`Sending`; 0x14, the escape
+  chatbox, no netbattle reaches). The selection's states inside choosing: 0 the settle tick (`Settling`: the state it
+  was in put back, no key read, value 1 of the status set), 4 the chips, 8 OK and 0xC the button under it (the
+  engine's cursor on slot 10 or 11), 0x10 the soul's animation and 0x14 SearchSoul's shuffle (the rules' windows),
+  0x18 R's description (`Description`), 0x1C L's message (`RunMessage`, its script run with the key).
+- **The keys and moves** (`slots`): each place reads its own keys in its own order (the chips' 0x08020350, OK's
+  0x08020620, the button's 0x08020728) and moves to the first slot of a list that holds something (0x080204C0,
+  0x08020518, 0x08020568, 0x0802070C, 0x080207F4). Slots 8 and 9, the dark chips' places, show no frame without a
+  chip.
+- **Picks** (0x0801F73C): a chip that counts as the invalid chip is refused (`invalid_picks`), the dark chips' code 27
+  is one `*` doesn't stand for (`special_codes`). **OK's hand** (0x0801F034): no Program Advance record, no Regular
+  mark on it, the entries past the selection cleared, a modifier's mark kept (`program_advances`,
+  `modifier_passes_regular`). The hand is the custom level, uncapped (rules/custom: `hand_size`, 0x0801DC8E).
+- **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
+  (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
+- **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
+  0x08007A2E); it stays full until each console's send (`gauge_empties_at_open`, `Battle::gauge_for`).
+- **The dark chip hover** (0x0801E478, `hover`): only while choosing; an 11-tick ramp with a volume call every other
+  tick (players 31 and 9, the table 0x0801E584); its sound 0x100 on the tick after the shade settles and every 61;
+  OK clears the fades at once (`fades_clear_at_ok`); the close sets players 9 and 31 back (`restore_players`).
+- **Drawing** (presentation): the tick a key leaves the choosing draws what its new state draws, no cursor
+  (`cursor_after_leaving`, 0x0801E412).
+- **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape.
+- **Sounds** (named for their code in gen_content.py's BY_USE): open 0x7A, cursor 0x7D, pick 0x7E, back 0x7F, OK 0x80,
+  refused 0x69, description 0x66, the hover 0x100, the Program Advance's parts 0x79 and its result 0x97, the gauge full
+  0x81; the hide, the description's close, L's message and the pause play none (optional roles).
+
+Checked against the chip lab's custom/ recordings (every one whose chips the content has matches every frame and
+every sound call; with exe4-compat's harness comparing the gauge as the recording console holds it). Not yet: the
+Double Soul button and its window (the selection's states 0xC and 0x10), the dark chip offer (§18, group A's step 4).
+
 ## 6. Transformations
 
 EXE5's and EXE6's turn-start transformation sequencer (`sub_801483C`, `sub_80148CC`, `sub_8014944`, `sub_8014A00`,
@@ -421,9 +459,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   name, and a sprite or sound EXE4's code loads where EXE5's or EXE6's same code loads a named one (the place votes
   of tools/exe5/assetmap.py over both maps; a pair the same but for constants votes only where the asset's number is
   the same: such pairs in the object code are often other objects on one skeleton, and would have named an EXE4
-  sound EXE6's Beast Over burst). The rest (175 sprites, 387 sounds) are written under their numbers
-  (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's extraction.txt (`unnamed:`), to name by what loads them
-  as the port reads EXE4's own code.
+  sound EXE6's Beast Over burst). Then what EXE4's own code says (gen_content.py's BY_USE): the assets the ported
+  content uses, each by the code that loads it; the navis' sprites by navi number (0x0800B90A's table 0x08017F98:
+  navis 1 to 14, Roll to HealNavi, named by their win banners, 0x08008524) and MegaMan's in each soul by soul
+  number (RollSoul to WoodSoul, the navis' order: the chip names' list from MegaSoul has them so). The rest (142
+  sprites, 368 sounds: the story navis' 0x0E to 0x19, the viruses', the chips' objects and effects, and the sounds
+  of what isn't ported) are written under their numbers (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's
+  extraction.txt (`unnamed:`), to name by what loads them as the port reads EXE4's own code (the verification
+  workspace's tools/exe4/assetloads.py lists each one's loads).
 - **The field** (R, Red Sun US's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
   its transfer list 0x08006A68: background palettes 1 to 8), the panel blocks (0x080093FC: 6 * type + 3 * owner + row
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
@@ -815,8 +858,14 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 ### 18.4 MegaMan, his weapons, the objects
 
 24. **The move that cuts a recovery short.** The buster's and the charged shot's recoveries (0x080EB3D8, 0x080ECCCC)
-    use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208; the engine's `can_move`, `held_direction`,
-    `step_target` and `start_move` are EXE6's (`sub_800FA54` differs at 0.45). Placeholder: the engine's.
+    use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
+    **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
+    confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
+    recordings match. Open: with no key held (or sliding) 0x0800B4B0 steps by NaviStats +0x0D (bits 0x10 to 0x80, the
+    keys; 0 and 0xFF none), which a dark chip or Mod Card bug sets (the lab's dark/, modcards/ and navicust/ recordings
+    carry 0x10, 0x20, 0xFF), with step 2's NaviCust. The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
+    1, as the engine's; by the +0x25 column (12 to 8) for param 2, and 20 under event flag 0x1187: neither is a
+    netbattle's.
 25. **The buster bonus, element, weakness and souls.** EXE4's buster is Attack + 1 (0x0800CC2E) for every navi:
     `buster_bonus = 0`. MegaMan's element, attach points, the souls (0x080184F0 by soul: the weapons; the sprite's index
     plus the soul, 0x0800B90A), the emotion window's faces. Placeholders: `element = "null"`, no forms but `base`.
@@ -833,13 +882,16 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 ### 18.5 Roles and the custom screen
 
 31. **The custom screen** is EXE4's own (§5: its states, no ADD button, the description on R is the selection's state
-    0x18); the engine runs EXE6's. Its sounds wait: a round stops at tick 149 on `sounds.custom_pick`.
+    0x18). **Done** but for Double Soul's button and window (group A): §5's "As ported" lists the rules that say it
+    (`custom_screen`'s keys and moves, settle tick, picks, hand, status, hover, gauge, drawing; flow
+    `custom_request`), checked on the lab's custom/ recordings, frame and sound.
 32. **Roles not filled** (the content check lists them): every sound but `appear` and `custom_open`, the music but
     `link_battle`, the effects (deletion, recovery, the cut-in flash), sprites (charge glow, statuses), banners but
     `round_start`, `turn_start` and `win`, the kinds and actions EXE5's roles name. Name each EXE4 asset for the code
-    that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 1 problem
-    with the pack: MegaMan has no emblem (the custom screen's extraction, §14). The banners, the faces (MegaMan's
-    `forms`, so his faces are his base form's `mugshot`) and the warning marker are in.
+    that uses it (gen_content.py's BY_USE, with the address; tools/exe4/assetloads.py lists where each unnamed one is
+    loaded) and fill the role. EXE4's content audit lists no problem with the pack (the custom screen's emblem is the
+    window's own, §14). The banners, the faces (MegaMan's `forms`, so his faces are his base form's `mugshot`), the
+    warning marker, the navis' sprites and MegaMan's souls' are in.
 
 ### 18.6 Found by the replays
 
@@ -888,3 +940,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x0802E070's +0x11) and the B count runs only under request 0x80. No netbattle sets it; the engine has none.
 50. **The levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an attack
     (0x0800BE48, 0x0800BE8E, 0x0800BF10); what reads them is to find (the engine keeps none).
+51. **A player's deletion.** EXE4's (action 2, 0x08010850) is its own, not EXE6's `sub_80173F4`: the hurt animation
+    as it starts (EXE6's with the explosions); the alive count alone (0x080079C6), never the alive lists; no chip count,
+    charge glow link or tracking let go; its second related and barrier byte at the start, AIData +0x60 with the
+    explosions; no aura or overlay links; no death hook at the end. **Done:** the role `actions.deletion`
+    (content/exe4/rules/deletion.luau; the engine's own where the role is unfilled: EXE6, EXE5); the flow/ko recordings
+    match through the deletion. Open: the deletion of a navi in auto battle or of another navi (0x08010D4C: effect object
+    0x11 and a 90-tick explosion), which EXE4's content doesn't reach (its players are MegaMan, by a player).
+52. **The dead player's object.** EXE4's destroy state (0x0801052C) lets go of the collision data, frees the object and
+    counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
+    slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
+    of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
