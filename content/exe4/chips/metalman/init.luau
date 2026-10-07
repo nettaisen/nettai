@@ -1,8 +1,9 @@
 --!strict
 -- MetalMan, MetlMnSP and MetlMnDS (EXE4 chips 0x0F5 to 0x0F7): navi chips, the dimming chips' action 0x0C, its variant
--- 0x3C: their controller (./navi) brings MetalMan, whose user aims his punch while the battle is dimmed; the chip's
--- first parameter is his level (0, 3, 4), which picks his palette. MetlMnSP's damage goes by how fast its user deleted
--- MetalMan SP (rules/sp_chips: formula 9, the table's row 8), MetlMnDS's by the field's holes (formula 31).
+-- 0x3C: their controller (./navi) brings MetalMan, whose user aims his punch while the battle is dimmed; each chip
+-- states his palette (0x0800B950 by its first parameter, its level 0, 3 or 4: two palettes a variant, times 0, 2 or 3).
+-- MetlMnSP's damage goes by how fast its user deleted MetalMan SP (rules/sp_chips: formula 9, the table's row 8),
+-- MetlMnDS's by the field's holes (formula 31).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local navi = require("@self/navi")
@@ -23,7 +24,7 @@ local metalman: Chip = {
     hit_param = 178,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    dimming = navi.hook_for(0),
+    dimming = navi.controller { id = "metalman/controller", palette = 0 }.hook,
 }
 
 local metlmn_sp: Chip = {
@@ -38,7 +39,7 @@ local metlmn_sp: Chip = {
     hit_param = 178,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    dimming = navi.hook_for(3),
+    dimming = navi.controller { id = "metlmn-sp/controller", palette = 4 }.hook,
 }
 
 local metlmn_ds: Chip = {
@@ -52,7 +53,7 @@ local metlmn_ds: Chip = {
     hit_param = 178,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
-    dimming = navi.hook_for(4),
+    dimming = navi.controller { id = "metlmn-ds/controller", palette = 6 }.hook,
 }
 
 return { metalman = metalman, ["metlmn-sp"] = metlmn_sp, ["metlmn-ds"] = metlmn_ds }

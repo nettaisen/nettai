@@ -579,19 +579,20 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   They showed that EXE4's navi body hits for nothing in a link battle (`status.link_body_damage`: EXE4 has neither of
   EXE6's stores of 10).
 
-- **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
-  navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
+- **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
+  controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
   DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter: in the content each
-  navi's own controller, each mapped to #0x42 in compat/kinds.toml): @exelib/navi_chips/controller (EXE5's Phoenix's and DethPhnx's controllers are the same code), its course EXE4's
-  (content/exe4/lib/navi_chips: the user warping out, the navi, a wait, the user warping back in, in four shapes), the
-  user's warp EXE4's own effect #0x0C (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first
-  parameter is the navi's level (0, an SP's 3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a
-  variant times 0, 2 or 3). The SP chips' damage goes by the side's deletion time (rules/sp_chips, formulas 1 to 22),
-  the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count formula's `panels`). Roll (actor #0x2C)
-  is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor #0x48) raises EXE5's Poltrgst's poltergeist
-  (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles by kind (attack objects #0x4C and #0x8C,
-  effect object #0x6E, 0x0800B3E8): their identities state `throwable = false` when they are ported. Its throws wait on
-  RockCube (the lab's junkman*/obstacle).
+  chip's own controller, each mapped to its navi's object in compat/kinds.toml): @exelib/navi_chips/controller (EXE5's
+  Phoenix's and DethPhnx's controllers are the same code), its course EXE4's (content/exe4/lib/navi_chips: the user
+  warping out, the navi, a wait, the user warping back in, in four shapes), the user's warp EXE4's own effect #0x0C
+  (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first parameter is the navi's level (0, an SP's
+  3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a variant times 0, 2 or 3) and the like (Roll's
+  mood, SearchMan's sweep): in the content each chip states those. The SP chips' damage goes by the side's deletion time
+  (rules/sp_chips, formulas 1 to 22), the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count
+  formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
+  #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
+  by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
+  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle).
 
 **For the next steps:**
 
