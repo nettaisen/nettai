@@ -8,7 +8,7 @@ use exe6_compat::Compat;
 use exe6_compat::trace::{self, Frame, Round};
 use nettai_battle::content::Content;
 use nettai_battle::Battle;
-use nettai_frontend::driver::{Driver, Step};
+use nettai_frontend::driver::{Driver, FeedShift, Step};
 use std::sync::Arc;
 
 /// Replays one round of a golden trace.
@@ -94,6 +94,11 @@ impl Driver for TracePlayer {
         TracePlayer::frame_range(self)
     }
 
+    fn feed_shift(&self) -> FeedShift {
+        let round = &self.round;
+        self.current().map_or_else(FeedShift::default, |f| feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()))
+    }
+
     fn position(&self) -> String {
         match self.current() {
             Some(f) => format!("round {} frame {}", self.round_number, f.frame),
@@ -160,6 +165,18 @@ pub fn trace_game(path: &std::path::Path) -> Result<String, String> {
         return stated.setup.game.ok_or_else(|| exe6_compat::trace::NO_GAME.to_string());
     }
     Err("it has no setup line".into())
+}
+
+/// A driver's [`FeedShift`] on frame `frame` from its harness's OK ticks: the
+/// recording console's side's OK on the screen open then (`local_ok`), its
+/// first of the round (`first_local_ok`), and the cable's delay.
+fn feed_shift(frame: u32, ok: Option<u32>, first_ok: Option<u32>, delay: u8) -> FeedShift {
+    let d = delay as u32;
+    FeedShift {
+        held: ok.is_some_and(|ok| (ok..ok + d).contains(&frame)),
+        late: if ok.is_some_and(|ok| frame >= ok + d) { d } else { 0 },
+        hud_late: if first_ok.is_some_and(|ok| frame >= ok + d) { d } else { 0 },
+    }
 }
 
 // ---- EXE5's recordings -------------------------------------------------------
@@ -245,6 +262,11 @@ impl Driver for Exe5TracePlayer {
     fn frame_range(&self) -> Option<(u32, u32)> {
         let f = |i: usize| self.round.frames[self.frames[i]].frame;
         (!self.frames.is_empty()).then(|| (f(0), f(self.frames.len() - 1)))
+    }
+
+    fn feed_shift(&self) -> FeedShift {
+        let round = &self.round;
+        self.current().map_or_else(FeedShift::default, |f| feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()))
     }
 
     fn position(&self) -> String {
@@ -334,6 +356,11 @@ impl Driver for Exe4TracePlayer {
     fn frame_range(&self) -> Option<(u32, u32)> {
         let f = |i: usize| self.round.frames[self.frames[i]].frame;
         (!self.frames.is_empty()).then(|| (f(0), f(self.frames.len() - 1)))
+    }
+
+    fn feed_shift(&self) -> FeedShift {
+        let round = &self.round;
+        self.current().map_or_else(FeedShift::default, |f| feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()))
     }
 
     fn position(&self) -> String {
