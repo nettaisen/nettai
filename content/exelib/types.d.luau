@@ -89,9 +89,16 @@ export type CannonLook = ShooterLook & {
     afterimages: ((me: Object, spec: CannonSpec, flip: number) -> ())?,
 }
 
--- A game's throw (@exelib/bombs/throw): the wind-up's sound, and its attachment kind (what the navi holds).
-export type ThrowLook = { sound: Sound, attachment: Kind }
-
+-- A game's throw (@exelib/bombs/throw): the wind-up's sound; its attachment kind (what the navi holds) or how the
+-- navi holds it, in its related slot in animation `anim` (EXE4's own attachment, and nothing in hand for a navi of
+-- number 5 or 10); and whether the thrown thing leaves 4 pixels right of the navi whichever way it faces (EXE4's
+-- 0x080EB47A; none: ahead of it, EXE6's and EXE5's).
+export type ThrowLook = {
+    sound: Sound,
+    attachment: Kind,
+    hold: ((me: Object, held: AttachmentLook, anim: number) -> ())?,
+    releases_right: boolean?,
+}
 
 -- A game's thrown bomb (@exelib/bombs/bomb): its kind's key, its sprite, its landing's sound, the splash in a hole,
 -- the explosion over its blast and the puff when the battle ends.
