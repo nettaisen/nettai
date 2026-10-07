@@ -345,14 +345,25 @@ impl Battle {
             FieldValue::Ref(Some((nettai_content_api::Registry::Form, h))) => Some(FormHandle(h)),
             _ => None,
         };
-        Some(Offer { form, alternate: flag(state.get_at(schema.place_of(f.alternate))) })
+        Some(Offer { form, alternate: f.alternate.is_some_and(|a| flag(state.get_at(schema.place_of(a)))) })
     }
 
     /// The turns left in the form side `side`'s button that offers a form
-    /// gave (the rules' `turns`), which the emotion window counts.
+    /// gave (the rules' `turns`), which the emotion window counts. Turns
+    /// counted up toward a limit (`turn_limit`: EXE4's, 0x08016A20) are its
+    /// limit less them: none for a limit past 0x7F or turns past it, 5 (the
+    /// count's highest) while none are counted (0xFF). None: rules whose
+    /// offer keeps no turns.
     pub fn form_turns(&self, side: u8) -> Option<u8> {
         let (f, schema, state) = self.view_state(side, |v| v.offer)?;
-        Some(byte(state.get_at(schema.place_of(f.turns))))
+        let turns = byte(state.get_at(schema.place_of(f.turns?)));
+        let Some(limit) = f.turn_limit else { return Some(turns) };
+        let limit = byte(state.get_at(schema.place_of(limit)));
+        match (limit as i8, turns) {
+            (l, _) if l < 0 => None,
+            (_, 0xFF) => Some(5),
+            (l, t) => (l as u8).checked_sub(t),
+        }
     }
 
     /// Where the flight of the form on offer is (the window view
@@ -544,6 +555,7 @@ impl Battle {
             RulesHook::ButtonPressed => d.pressed,
             RulesHook::ButtonTakenBack => d.taken_back.expect("a button's taken_back, asked only when it has one"),
             RulesHook::ButtonChip => d.chip.expect("a button's chip, asked only when it has one"),
+            RulesHook::ButtonHandChip => d.hand_chip.expect("a button's hand chip, asked only when it has one"),
             h => panic!("{h:?} is no button's function"),
         };
         let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None };

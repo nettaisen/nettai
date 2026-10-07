@@ -403,9 +403,11 @@ fn offered_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
 
 /// An offer's icon among its button's: the offered form's place in the
 /// side's navi's form list that holds it, from 1 (the list is in the icons'
-/// order: EXE5's souls, the original's soul numbers), and the form's
-/// alternate (`offer_chaos`) the one after the list's; 0, the empty icon,
-/// for no form or one none of the navi's lists holds.
+/// order: EXE5's souls, the original's soul numbers; a navi's lists by
+/// version as one list in the versions' order, EXE4's souls: Red Sun's six,
+/// then Blue Moon's), and the form's alternate (`offer_chaos`) the one after
+/// the list's; 0, the empty icon, for no form or one none of the navi's
+/// lists holds.
 fn offer_icon(b: &Battle, side: u8, offer: nettai_battle::rules::Offer) -> usize {
     match form_place(b, side, offer.form) {
         Some((_, len)) if offer.alternate => len + 1,
@@ -416,10 +418,27 @@ fn offer_icon(b: &Battle, side: u8, offer: nettai_battle::rules::Offer) -> usize
 
 /// Where `form` is among side `side`'s navi's forms: its place in the
 /// first of the navi's form lists that holds it (from 0), and the list's
-/// length.
+/// length; where every list is a version's (EXE4's souls), its place in
+/// them all, one after another in the versions' order, and their lengths'
+/// sum.
 fn form_place(b: &Battle, side: u8, form: Option<FormHandle>) -> Option<(usize, usize)> {
     let navi = b.stats[side as usize & 1].navi;
-    let (place, list) = b.content.navi(navi).forms.as_ref()?.holding(form?)?;
+    let forms = b.content.navi(navi).forms.as_ref()?;
+    let form = form?;
+    let versions = b.content.defs.versions();
+    if !forms.lists.is_empty() && forms.lists.iter().all(|(name, _)| versions.contains(name)) {
+        let total = forms.lists.iter().map(|(_, l)| l.len()).sum();
+        let mut before = 0;
+        for version in versions {
+            let listed = forms.listed(version);
+            if let Some(place) = listed.iter().position(|&f| f == form) {
+                return Some((before + place, total));
+            }
+            before += listed.len();
+        }
+        return None;
+    }
+    let (place, list) = forms.holding(form)?;
     Some((place, list.len()))
 }
 
@@ -430,7 +449,10 @@ fn form_place(b: &Battle, side: u8, form: Option<FormHandle>) -> Option<(usize, 
 /// x 0x60), drawn from the tick after it is loaded (0x08023360) through the
 /// white flashes, rising 2 pixels a tick for 8 ticks onto the first cell
 /// (0x0802337A), whitened by its flash (fades 0x34 and 0x30, the sprite
-/// palette's), until the form takes the first cell (0x080233E0).
+/// palette's), until the form takes the first cell (0x080233E0). A screen
+/// whose windows are states of the choosing draws a state's sprites after
+/// its step, the icon from the tick it is loaded on (EXE4's soul choice,
+/// 0x08020DE2: steps 4 to 0x14).
 fn offered_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let (tiles, first) = offered_icon(v)?;
     let form = v.b.offer(v.side)?.form;
@@ -499,8 +521,9 @@ fn capsule_flight<'a>(v: &View<'a>, packs: &crate::packs::Packs<'a>, problems: &
 /// it is a known difference.
 fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Option<FormHandle>, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let screen = v.screen;
+    let after_step = v.b.content.rules().custom_screen.states_in_choosing;
     let rise = match at.step {
-        4 if at.count > 0 => 0,
+        4 if at.count > 0 || after_step => 0,
         8 => 2 * at.count as i32,
         12 | 16 | 20 => 16,
         _ => return None,

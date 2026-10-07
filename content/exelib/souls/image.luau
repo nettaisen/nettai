@@ -54,6 +54,12 @@ export type Spec = {
     -- It runs while the battle is paused (EXE5's 0x080C0524 sets it; EXE4's runs while dimmed, as its pool's objects
     -- start).
     runs_while_paused: boolean,
+    -- Its sprite's priority, where the game's isn't its sprite's own: EXE4's 0 as it comes, in front of the HUD's
+    -- sprites (the chip icons over MegaMan, priority 1: its parts' OAM entries as the image blinks, a RAM dump of the
+    -- chip lab's souls/roll/unison at frame 502), and 2 as it fades out (0x080E3776), behind them. None: EXE5's, its
+    -- sprite's own throughout.
+    priority: number?,
+    fade_priority: number?,
 }
 
 export type Image = {
@@ -125,6 +131,9 @@ function image.make(spec: Spec): Image
     local function fade(me: Object)
         if me.phase_init == 0 then
             place(me, 0, 0)
+            if spec.fade_priority ~= nil then
+                me.sprite.priority = spec.fade_priority
+            end
             me.timer = 8
             me.phase_init = 4
         end
@@ -166,6 +175,9 @@ function image.make(spec: Spec): Image
         sprite:set_animation(0)
         me:update_sprite()
         sprite.palette = 0
+        if spec.priority ~= nil then
+            sprite.priority = spec.priority
+        end
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         me.visible = true
         battle.play_sound(spec.sound)

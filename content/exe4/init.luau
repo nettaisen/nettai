@@ -8,7 +8,7 @@
 return {
     chips = require("@self/chips"),
     navis = require("@self/navis"),
-    forms = require("@self/navis/megaman/forms/base"),
+    forms = require("@self/navis/megaman/forms"),
     stages = require("@self/stages"),
     patch_cards = require("@self/patch_cards"),
     navicust_programs = require("@self/navicust"),
