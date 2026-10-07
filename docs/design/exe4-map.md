@@ -895,11 +895,12 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    others `anti_sword_triggered`). EXE4 has no kind byte for the exit (EXE6's `sub_801171C` reads the attack's
    +0x1C): each action calls one of three routines, which map onto the engine's kinds, so no rule:
    - 0x0800CA4A, bare (animation 0, idle, the attack's step): the move's (0x080EB252, 0x080EB314), EXE6's kind 4;
-   - 0x0800CA28, the requests, the charge and the action in use cleared too: the buster's (0x080EB3D6, 0x080EB3F0)
-     and the charged shot's (0x080ECCCC), many chips', EXE6's kind 1;
-   - 0x0800C9FC, that and AIData +0x3A from the attack's +5 (its lockout): the chips' (Cannon's 0x080EB9E8) and
-     action 9's (0x080EB51C, likely the B+Left ability), EXE6's kind 2. One field for both: the idle that reads it
-     decides whether the B+Left ability's is the engine's chip lockout or its back special's (kind 3).
+   - 0x0800CA28, the requests, the charge and the action in use cleared too: the buster's recovery (0x080EB3D2,
+     0x080EB3EC) and the charged shot's recovery's end (0x080ECCC8), and the other navis' and souls' actions; the
+     lockouts left as they are (`exit_attack(true)`);
+   - 0x0800C9FC, that and AIData +0x3A (the chip lockout) from the attack's +5 (its lockout) whatever the attack's
+     kind, a 0 clearing it: the chips' and weapons' (65 callers: Cannon's 0x080EB9E8, the charged shot's move cut
+     0x080ECCE0, ...). The rule `reactions.attack_end_lockout` ("chip_lockout"; EXE6's and EXE5's "by_kind").
    - EXE4's exits zero no buffered move (EXE6's AIData +0x1A) and no special source (+0x1B): nothing in EXE4 sets
      either while the engine's movement is EXE6's (item 24, group B's).
 7. **Done: statuses.** The status table 0x08018550 is generated (4 groups of 4). The status rules, each read from
@@ -1306,7 +1307,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     EXE4's guard (action 0x25, 0x080ECCF2: content/exe4/lib/guard; the shield, attack 0x2B, 0x080D2224:
     content/exe4/objects/shield, EXE6's but one sheet, 14 fade ticks for every row, running while dimmed and not while
     paused, animating then too, and no test of its owner's having vanished), Shield countering nothing, Reflect the
-    charged shot's projectile; Reflect's routine sets the B+Left cooldown as it starts (`reactions.attack_end_lockouts`)
+    charged shot's projectile; Reflect's routine sets the B+Left cooldown as it starts (`reactions.attack_end_lockout`)
     and a turned-aside hit marks the guard byte with 1 (`reactions.hit_test.guard_marks_direction`); the guard's sound
     (0x6E) is the roles' `sounds.guard`. HubBatc has its definition. The lab's navicust/shield, reflect and hubbatc
     match, sounds too. Open: AntiMagc (routine 0x27: its stance, action 0x72 at 0x080EE9EE, arms the AntiDmg chip's
