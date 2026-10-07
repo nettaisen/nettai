@@ -62,6 +62,8 @@ return merge {
     require("@self/069_b_left_ability_activation"),
     require("@self/072_b_left_ability_activation"),
     require("@self/073_b_left_ability_activation"),
+    require("@self/076_all_guard_1_2"),
+    require("@self/077_all_guard_2_2"),
     require("@self/078_first_life_aura"),
     require("@self/085_charge_shot_switch"),
     require("@self/086_charge_shot_switch"),
