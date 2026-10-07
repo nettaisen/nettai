@@ -100,6 +100,7 @@ local rules: Rules = {
         end,
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
+    banners = require("@self/banners"),
     buster = require("@self/buster"),
     chip_use = require("@self/chip_use"),
     custom_screen = require("@self/custom_screen"),
