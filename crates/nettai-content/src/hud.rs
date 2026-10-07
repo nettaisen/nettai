@@ -14,7 +14,7 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLettering, MapEntry, NaviMugshot, Palette, Tiles};
+use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLayout, HudLettering, MapEntry, NaviMugshot, Palette, TelopLook, Tiles};
 use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -81,6 +81,10 @@ pub struct HudDoc {
     pub dialogue_font: DialogueFontDoc,
     /// The chatbox.
     pub chatbox: ChatboxDoc,
+    /// Where the HUD's code puts its pieces, where games differ (left
+    /// out: EXE6's, `nettai_assets::HudLayout`'s default).
+    #[serde(default, skip_serializing_if = "HudLayoutDoc::is_default")]
+    pub layout: HudLayoutDoc,
     /// The language the fonts, the text lines and the pictures with words
     /// are in (none: `nettai_assets::BASE_LANGUAGE`), and the other
     /// languages' lettering, by language.
@@ -88,6 +92,53 @@ pub struct HudDoc {
     pub language: String,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub languages: BTreeMap<String, HudLanguageDoc>,
+}
+
+/// `nettai_assets::HudLayout`: "PAUSE"'s place, the HP numbers' priority,
+/// a message's place and width, when the judge's numbers show, and the
+/// telops' own look (where they are laid out from on the user's
+/// console and on the other's, and their glyphs after the name with their
+/// palette).
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct HudLayoutDoc {
+    pub pause: [u8; 2],
+    pub hp_number_priority: u8,
+    /// [column, row, glyphs].
+    pub message: [u8; 3],
+    pub judge_from_hold: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub telop: Option<TelopDoc>,
+}
+
+impl Default for HudLayoutDoc {
+    fn default() -> Self {
+        let d = nettai_assets::HudLayout::default();
+        let (column, row, width) = d.message;
+        HudLayoutDoc {
+            pause: [d.pause.0, d.pause.1],
+            hp_number_priority: d.hp_number_priority,
+            message: [column, row, width],
+            judge_from_hold: d.judge_from_hold,
+            telop: None,
+        }
+    }
+}
+
+impl HudLayoutDoc {
+    fn is_default(&self) -> bool {
+        *self == HudLayoutDoc::default()
+    }
+}
+
+/// `nettai_assets::TelopLook`.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TelopDoc {
+    pub places: [[u8; 2]; 2],
+    /// The damage digits 0 to 9, '+', '×' and '2', with the telops'
+    /// palette.
+    pub glyphs: TileImage,
 }
 
 /// Another language's lettering of the HUD: its own files, named with the
@@ -313,6 +364,16 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             HudLanguageDoc { font, font_chars: l.font_chars.clone(), dialogue_font, texts: l.texts.clone(), banners, waiting, gauge },
         );
     }
+    let layout = HudLayoutDoc {
+        pause: [h.layout.pause.0, h.layout.pause.1],
+        hp_number_priority: h.layout.hp_number_priority,
+        message: [h.layout.message.0, h.layout.message.1, h.layout.message.2],
+        judge_from_hold: h.layout.judge_from_hold,
+        telop: h.layout.telop.as_ref().map(|t| TelopDoc {
+            places: t.places.map(|(x, y)| [x, y]),
+            glyphs: image("telop-glyphs.png", &t.glyphs, GLYPHS(TelopLook::GLYPHS as u32), &[t.palette], 1),
+        }),
+    };
     let dialogue_font = {
         let file = "dialogue-font.png".to_string();
         files.push((file.clone(), dialogue_image(&h.dialogue_font).to_png()));
@@ -353,6 +414,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         warning,
         dialogue_font,
         chatbox,
+        layout,
         language: h.language.clone(),
         languages,
     };
@@ -470,6 +532,24 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             Chatbox { tiles, palette: palette[0], boxes, arrow, text_palette: text_palette[0] }
         }
     };
+    let telop = match &doc.layout.telop {
+        Some(t) => {
+            let (glyphs, palette) = img(&t.glyphs, report)?;
+            if glyphs.len() != 2 * TelopLook::GLYPHS {
+                report.error(&name, format!("{} has {} glyphs, not the telop's {}", t.glyphs.file, glyphs.len() / 2, TelopLook::GLYPHS));
+                return None;
+            }
+            Some(TelopLook { places: t.places.map(|[x, y]| (x, y)), glyphs, palette: palette[0] })
+        }
+        None => None,
+    };
+    let layout = HudLayout {
+        pause: (doc.layout.pause[0], doc.layout.pause[1]),
+        hp_number_priority: doc.layout.hp_number_priority,
+        message: (doc.layout.message[0], doc.layout.message[1], doc.layout.message[2]),
+        judge_from_hold: doc.layout.judge_from_hold,
+        telop,
+    };
     Some(Hud {
         tiles,
         first_tile: doc.first_tile,
@@ -504,6 +584,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         warning_palette: warning_pal[0],
         dialogue_font,
         chatbox,
+        layout,
         language: doc.language.clone(),
         languages: import_languages(dir, prefix, &doc, report)?,
     })
