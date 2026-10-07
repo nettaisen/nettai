@@ -690,8 +690,10 @@ declare extern type Object with
     -- `sub_8011450`: restart the form overlay with the navi after an
     -- animation change.
     function refresh_form_overlay(self): ()
-    -- `object_exitAttackState`: back to idle with animation 0.
-    function exit_attack(self): ()
+    -- `object_exitAttackState`: back to idle with animation 0, the attack's
+    -- lockout handed on by the rules (`reactions.attack_end_lockout`); with
+    -- `keeps_lockout`, none handed on (EXE4's 0x0800CA28).
+    function exit_attack(self, keeps_lockout: boolean?): ()
 
     -- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5).
     -- The invulnerability ends (its timer and flag).

@@ -77,7 +77,8 @@ return {
     -- A deleted player's object lets go of its collision data, is freed and counts one actor fewer, all at once
     -- (0x0801052C); its reservations stay as they are.
     dead_player = "freed",
-    -- An attack's end (0x0800CA28) hands no lockout on: its weapons and chips set them as they start (Reflect's
-    -- routine the B+Left special's cooldown, 0x0800CFC4).
-    attack_end_lockouts = false,
+    -- An attack's end (0x0800C9FC, its chips' and weapons' own) hands its lockout byte (+5) on to the chip lockout
+    -- (AIData +0x3A) whatever the attack's kind, a 0 clearing it; the buster's and the charged shot's recovery end
+    -- (0x0800CA28) hands none on (`exit_attack(true)`).
+    attack_end_lockout = "chip_lockout",
 }
