@@ -2720,6 +2720,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         HookCall::Panel { body, call: PanelCall::Slide { how } } => {
             vec![obj(body)?, LuaValue::String(lua.create_string(how.name())?)]
         }
+        HookCall::Panel { body, call: PanelCall::Hit { element } } => vec![obj(body)?, LuaValue::Integer(mlua::Integer::from(element))],
         HookCall::Given { side, chip } => {
             let chip = match chip {
                 Some(c) => LuaValue::Table(bound.def_value(Registry::Chip, c.0)?),

@@ -1042,7 +1042,9 @@ impl CoreApi for Battle {
 
     fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()> {
         let folder = self.custom.sides[side as usize & 1].folder;
-        self.custom_screen_mut(side)?.look.draw_regular(folder.regular_pending);
+        // (Drawn after the tick's count where the choosing counts first.)
+        let counted = self.content.rules().custom_screen.frame_counts_first;
+        self.custom_screen_mut(side)?.look.draw_regular(folder.regular_pending, counted);
         Ok(())
     }
 

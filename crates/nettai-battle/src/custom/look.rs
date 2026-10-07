@@ -438,12 +438,14 @@ impl ScreenLook {
     }
 
     /// `sub_802899C`: the Regular chip's frame while the folder still has
-    /// its Regular chip, its tiles changed every 8 frames.
-    pub(crate) fn draw_regular(&mut self, regular_pending: bool) {
+    /// its Regular chip, its tiles changed every 8 frames: on a tick whose
+    /// frame, before it counts on, is a multiple of 8 (`counted`: this
+    /// tick's count is done, EXE4's 0x0801EF12 testing 1).
+    pub(crate) fn draw_regular(&mut self, regular_pending: bool, counted: bool) {
         if !regular_pending {
             return;
         }
-        if self.frame & 7 == 0 {
+        if self.frame.wrapping_sub(counted as u32) & 7 == 0 {
             self.regular_frame = ((self.frame >> 3) & 1) as u8;
         }
         self.drawn.regular = true;

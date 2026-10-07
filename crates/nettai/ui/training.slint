@@ -42,6 +42,8 @@ export struct RoundCard {
 
 export struct MatchPreview {
     ready: bool,
+    // Each side by its build (yours, the opponent's), its `-sub` its navi
+    // where it isn't the game's own.
     left: string,
     left-sub: string,
     right: string,
@@ -105,9 +107,9 @@ component Preview {
                 }
                 if root.chosen: Versus {
                     left-name: root.preview.left;
-                    left-sub: @tr("YOU");
+                    left-sub: root.preview.left-sub != "" ? @tr("YOU") + "  ·  " + @tr("NAVI · {0}", root.preview.left-sub) : @tr("YOU");
                     right-name: root.preview.right;
-                    right-sub: TrainingText.opponent(root.behavior).to-uppercase();
+                    right-sub: TrainingText.opponent(root.behavior).to-uppercase() + (root.preview.right-sub != "" ? "  ·  " + @tr("NAVI · {0}", root.preview.right-sub) : "");
                 }
 
                 // (Its line kept, empty or not.)
@@ -186,6 +188,7 @@ export component TrainingScreen {
     in property <GameState> game-state;
     in property <string> build;
     in property <int> build-index;
+    in property <string> build-version;
     in property <string> build-navi;
     in property <bool> can-act;
     // A game is chosen and ready.
@@ -293,6 +296,7 @@ export component TrainingScreen {
             game-state: root.game-state;
             build: root.build;
             build-index: root.build-index;
+            build-version: root.build-version;
             build-navi: root.build-navi;
             can-act: root.can-act;
             cursor: root.keys && root.cursor <= 2 ? root.cursor : -1;
@@ -351,9 +355,9 @@ export component TrainingScreen {
 
         if Theme.portrait: Versus {
             left-name: root.preview.left;
-            left-sub: @tr("YOU");
+            left-sub: root.preview.left-sub != "" ? @tr("YOU") + "  ·  " + @tr("NAVI · {0}", root.preview.left-sub) : @tr("YOU");
             right-name: root.preview.right;
-            right-sub: TrainingText.opponent(root.behavior).to-uppercase();
+            right-sub: TrainingText.opponent(root.behavior).to-uppercase() + (root.preview.right-sub != "" ? "  ·  " + @tr("NAVI · {0}", root.preview.right-sub) : "");
         }
 
         Band {

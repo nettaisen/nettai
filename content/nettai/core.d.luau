@@ -2781,7 +2781,6 @@ export type RolesSpec = {
         damage_word_confusion: Status?,
         damage_word_blindness: Status?,
         counter_paralysis: Status?,
-        ice_freeze: Status?,
     }?,
     -- The one-shot effects the rules show themselves: a navi deleted (and
     -- a cross merged, a navi arriving, a form put on or taken off), HP

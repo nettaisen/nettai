@@ -136,8 +136,14 @@ pub struct Built {
 /// Set the side to what a build in the app is: its facts at defaults the
 /// rules' defaults, a navi that must have a level at its last, where the
 /// auto battle data's records are at defaults no place pointing at one, and
-/// each fact stated as a preset the preset its value is on the side of.
+/// each fact stated as a preset the preset it is on.
 pub fn as_built(content: &Content, game: &str, side: &mut Side) -> Built {
+    as_built_with(content, game, side, None)
+}
+
+/// [`as_built`], `hint` (a save's version or team) naming the preset where
+/// one has that name.
+pub fn as_built_with(content: &Content, game: &str, side: &mut Side, hint: Option<&str>) -> Built {
     let before = side.clone();
     for f in facts::fields(content) {
         if at_defaults(content, game, f.name) {
@@ -154,7 +160,7 @@ pub fn as_built(content: &Content, game: &str, side: &mut Side) -> Built {
     {
         let _ = side.set_level(content, nettai_match::play_level(content, navi).or(Some(0)));
     }
-    let taken = presets::settle(content, game, side);
+    let taken = presets::settle(content, game, side, hint);
     let changed: Vec<String> = facts::fields(content)
         .into_iter()
         .filter(|f| before.facts.get(content, f.name) != side.facts.get(content, f.name))
@@ -261,6 +267,12 @@ pub fn layout(content: &Content, game: &str, side: &Side, grid: Option<&grid::Gr
             }
             continue;
         }
+        // (A fact stated as one of its presets is a row of them, whatever
+        // its type: EXE5's souls, its team's.)
+        if presets::of(game, f.name).is_some() {
+            rows.push(f.name.to_string());
+            continue;
+        }
         if is_checklist(&f) {
             if facts::offered(content, game, side, &f).is_some_and(|o| !o.is_empty()) {
                 tabs.push(Tab::Checklist(f.name.to_string()));
@@ -321,13 +333,15 @@ mod tests {
             let keys: Vec<&str> = l.tabs.iter().map(Tab::key).collect();
             let rows: Vec<&str> = l.rows.iter().map(String::as_str).collect();
             match game {
+                // (The Crosses and the souls are their version's and team's
+                // presets': no tab of their own.)
                 "exe6" => {
-                    assert_eq!(keys, ["navi", "folder", "crosses", "navicust_programs", "patch_cards"]);
+                    assert_eq!(keys, ["navi", "folder", "navicust_programs", "patch_cards"]);
                     assert_eq!(rows, ["beast_out", "bug_frags", "version"]);
                 }
                 _ => {
-                    assert_eq!(keys, ["navi", "folder", "souls", "navicust_programs", "patch_cards", "auto_battle_places"]);
-                    assert_eq!(rows, ["karma"]);
+                    assert_eq!(keys, ["navi", "folder", "navicust_programs", "patch_cards", "auto_battle_places"]);
+                    assert_eq!(rows, ["karma", "souls"]);
                 }
             }
             assert!(matches!(&l.tabs.iter().find(|t| t.key() == "patch_cards"), Some(Tab::Entries { total: Some(t), .. }) if t == "mb"));
