@@ -643,7 +643,7 @@ EXE5's stages (the settings record stays raw).
   obstacle family is EXE6's summon); EXE5's damage formulas (its own table: compat keeps the row); +0x16 (EXE6's extra
   flags byte: EXE5's bits unread, written as numbers) and +0x17 (EXE6's lock-on mode: EXE5's byte, mostly 0x10,
   unread); a version's own record (Team Colonel's differences).
-- *Panels:* metal (type 5: EXE6's road flag, its look a plate, its behavior unread) and sea (type 10, flag
+- *Panels:* magnet (type 5: EXE6's road flag, its look a plate, its behavior unread) and sea (type 10, flag
   0x20000); the panel record's 0x24 bytes (the lava and sea timers the panel setter starts, at +0x10 and +0x14).
 - *Pools:* the actors' 16 slots (the engine's `object::SLOTS` is one number, 32).
 - *NaviStats:* the light/dark value (+0x44); the weapon bytes' EXE5 meaning (+0x04, +0x05, +0x07, +0x39: EXE6's
@@ -996,7 +996,7 @@ ProtoMan's ROM; Team Colonel's tables are the same. Each file names its sources.
 | custom-screen.luau | the slot grid and the neighbor fix-up's lists | EXE6's |
 | status.luau | 64 statuses: paralysis, confusion, blindness, immobilization by level (0x0801CEC4); the HP bug's periods | no freeze, no bubble; the timers 2 bytes further in the collision record |
 | collision.luau | 77 of EXE6's collision types by their rows (0x0801636C) | 80 rows to EXE6's 89; no 0x80 self bit; row 0x3D gives its sides' bits |
-| panels.luau | the 11 panel types (unregistered data, §15.2) | metal and sea; no roads |
+| panels.luau | the 11 panel types (unregistered data, §15.2) | magnet and sea; no roads |
 
 content/exe5/compat gains `assets.toml` (§15.4) and `rules.toml` (the statuses' bytes, 0x10 to 0x4F); exe5-compat
 reads both (`Compat::assets`, `sprite_names`, `status`), and exe5-extract names the pack's assets from them. The
@@ -1013,7 +1013,7 @@ the Cross and Beast Out sounds, the custom screen's Cross window, re-deal and sc
 ### 15.2 The field
 
 EXE5's 11 panel types (0x0800BCF0): missing, broken, normal, cracked, poison (EXE6's flags), 5 (flag word 0x10210,
-EXE6's road panels', a plate's look: compat calls it metal), grass, ice, lava (EXE6's volcano flags), holy, sea
+EXE6's road panels', its look a plate: the magnet panel), grass, ice, lava (EXE6's volcano flags), holy, sea
 (0x30010). The trail sounds (0x080113A0) are EXE6's for the shared types, `immobilizer` for type 5, `sand-worm`'s
 song for sea. Start grid and front edges, step and dash-step rules are EXE6's; EXE5 has no either-side step rule.
 What the panels do (EXE6's `sub_800C380`, EXE5's 0x0800A998, and the routines named):
@@ -1035,8 +1035,8 @@ What the panels do (EXE6's `sub_800C380`, EXE5's 0x0800A998, and the routines na
   order the move's direction picks (0x0800C8A8's branch, the tables at 0x0800C920 and 0x0800C9C0), not a road's
   fixed direction: after a move forward, down first (then forward, up, back); after a move up, forward first;
   after a move down, back first. Recorded (the chip lab's `stages/panel5-row/slide-*`, the middle row's inner
-  four metal): forward from (1,2) onto (2,2) slides down to (2,3); down from (2,1) onto (2,2) slides back to
-  (1,2); up from (2,3) onto (2,2) slides forward to (3,2), and from there (metal again) down to (3,3). A slide
+  four magnet): forward from (1,2) onto (2,2) slides down to (2,3); down from (2,1) onto (2,2) slides back to
+  (1,2); up from (2,3) onto (2,2) slides forward to (3,2), and from there (magnet again) down to (3,3). A slide
   step up or down covers the 24 pixels in 3 ticks (8 a tick);
 - conversions (0x08016D14, EXE6's `sub_3007708` moved out of IWRAM): fire on grass, aqua on lava, element 4 on
   type 5 turn the panel normal (EXE6's roads take element 4 too);
@@ -1199,15 +1199,15 @@ engine's custom screen (§15.3 item 13).
 What the setups need most: Recov10 (108: EXE5's recovery family, §15.3 item 5), WideSht1 (18), BlkBomb and Thunder
 (15 each), HolyDrem (12), Sword (11), then the chips each scenario tests.
 
-With the chips of §15.6's third batch, EXE5's metal, lava and sea stages and the rules work's P1a (its custom screen
-end, item 13; the families; the panel types), on 2026-10-02 (1,380 recordings: the lab's and four metal slides):
+With the chips of §15.6's third batch, EXE5's magnet, lava and sea stages and the rules work's P1a (its custom screen
+end, item 13; the families; the panel types), on 2026-10-02 (1,380 recordings: the lab's and four magnet slides):
 252 replay, 1,128 stop at their setup; 24 match every frame and 79,701 of the 948,097 battle frames match. 191 of
 the 228 that differ stop at frame 426, the fight's first tick, on the panels: Team Colonel's MegaMan is dark (his
 save's light/dark value 0) and stands on the default stage's holy middle row, which EXE5 turns Normal under him
 (§6.1, item 14). The rest: a spark a tick short (18, item 16), the camera shake's draws (7, item 15), a custom
 screen opened a tick late (12, item 18). With those four built in a scratch copy of the engine (not committed: the
 rules work's), 228 recordings match every frame and 115,999 frames match; the 24 that still differ are HolyDrem's
-(item 18), DrkRecov's (its dark chip cost, unread: §6), the souls' (not ported) and the metal slides' speed
+(item 18), DrkRecov's (its dark chip cost, unread: §6), the souls' (not ported) and the magnet slides' speed
 (item 17).
 
 ### 15.6 The chips (in progress)
@@ -1427,7 +1427,7 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
   last, record 95, is netbattle-94), its layout (0x0800BD6C) and its actor list; the lab's
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
   actor list, music, mode and panel pattern. Those with obstacles (actor types 3, 8, 9: EXE5's boulder, rock and
-  statue aren't ported) are listed as waiting; those with metal, sea or lava panels are stages since the rules
+  statue aren't ported) are listed as waiting; those with magnet, sea or lava panels are stages since the rules
   work's P1a (68 stages). The backgrounds are named for their areas (docs/frontend.md §1: no EXE6 background has their tiles). The
   actor lists' addresses are Team ProtoMan's US ROM's; the other three ROMs have the same list, each its actor
   lists a constant away (compat/games.toml, as EXE6's: Team Colonel +0xE8, the Japanese Team ProtoMan −0x3E4 and
@@ -1490,9 +1490,9 @@ them.
    (`sub_3006730`) takes it: a spark's first frame shows in its palette 0 (an elec spark blue-white, not yellow),
    as does any sprite drawn after a frame load and before its next step (the effects section's
    `load_sets_part_palette`, `Look::part_palette`; presentation).
-17. **The metal slide's speed** (§15.2): a step up or down covers its 24 pixels in 3 ticks (8 a tick); the
+17. **The magnet slide's speed** (§15.2): a step up or down covers its 24 pixels in 3 ticks (8 a tick); the
    engine's slide moves 6. Its order by the move's direction is the tables', as recorded. A navi's slide and drag
-   both go 8 a tick in depth in EXE5 (0x0801361E, 0x080143A8). A slide arriving on metal goes on as on EXE6's roads
+   both go 8 a tick in depth in EXE5 (0x0801361E, 0x080143A8). A slide arriving on magnet goes on as on EXE6's roads
    (0x08013564), and one arriving on sea ends.
 18. **A custom screen asked for in the fight** (L or R with a full gauge) opens a tick after EXE5's does: EXE5's
    state 0x20 (0x08007774) opens the screen itself once the reversions are done, where EXE6 goes through state 0x24
@@ -2757,7 +2757,7 @@ first frame for MegaMan and the team navis alike); a MegaMan starting a round in
 way, earlier in the engine's init than in the original's.
 
 **Found with GyroMan.** A panel's flags word holds the panel's type in its low nibble by the game's own number of it
-(EXE5's holy is 9, its metal 5): the engine's word holds the game's number too (the panels section's `numbers`), since
+(EXE5's holy is 9, its magnet 5): the engine's word holds the game's number too (the panels section's `numbers`), since
 Airforce reads the word's low byte. A bomb of the GyroMan chips and GyroSoul's tornado end at the battle's end by
 their state byte alone, their action and phase kept (0x080C7D5C, 0x080C8238), as GyroMan's strike does.
 

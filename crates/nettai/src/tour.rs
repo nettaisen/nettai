@@ -50,10 +50,31 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
                 add(900, shot(&dir, tag("builds")));
                 add(100, Box::new(|_, app| app.borrow_mut().builds_activate(2)));
                 add(900, shot(&dir, tag("build-navi")));
-                // (Its first fact a step on: EXE5's dark MegaMan, with his face.)
-                add(100, Box::new(|_, app| app.borrow_mut().build_step(2, 1)));
+                // (Its first fact a step on: EXE5's dark MegaMan, with his face.
+                // The name is row 0, the facts after it.)
+                add(100, Box::new(|_, app| app.borrow_mut().build_step(1, 1)));
                 add(700, shot(&dir, tag("build-navi-stepped")));
-                add(100, Box::new(|_, app| app.borrow_mut().build_step(2, -1)));
+                add(100, Box::new(|_, app| app.borrow_mut().build_step(1, -1)));
+                // (Its version a step on, and back: EXE6's other version with
+                // its Crosses, EXE5's other team with its souls.)
+                let version_row = |app: &Rc<RefCell<App>>| {
+                    let app = app.borrow();
+                    let e = app.builds.editor.as_ref()?;
+                    let fact = crate::builds::presets::version_fact(&e.game)?;
+                    e.rows.iter().position(|r| *r == crate::builds::screen::RowSpec::Preset(fact.clone())).map(|i| i as i32)
+                };
+                add(100, Box::new(move |_, app| {
+                    if let Some(i) = version_row(app) {
+                        app.borrow_mut().build_step(i, 1);
+                    }
+                }));
+                add(700, shot(&dir, tag("build-version-stepped")));
+                add(100, Box::new(move |_, app| {
+                    if let Some(i) = version_row(app) {
+                        app.borrow_mut().build_step(i, -1);
+                    }
+                }));
+                add(500, shot(&dir, tag("build-version-back")));
                 for t in 1..8 {
                     add(100, Box::new(move |_, app| app.borrow_mut().build_tab(t)));
                     add(500, Box::new(move |ui, app| {
@@ -112,6 +133,34 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
                     app.play_leave();
                     app.play_mode(0);
                 }));
+                // A build of another navi than the game's own, marked as such:
+                // the creator, the builds' list, Training's versus, Play's
+                // sheet and card. (The tour's build is made again at the
+                // next language's walk.)
+                add(100, Box::new(|_, app| {
+                    let mut app = app.borrow_mut();
+                    app.tour_build();
+                    app.builds_activate(2);
+                    let navi = app.builds.editor.as_ref().and_then(|e| e.rows.iter().position(|r| *r == crate::builds::screen::RowSpec::Navi));
+                    if let Some(i) = navi {
+                        app.build_step(i as i32, 1);
+                    }
+                }));
+                add(900, shot(&dir, tag("build-other-navi")));
+                add(100, Box::new(|_, app| app.borrow_mut().go(Screen::Builds)));
+                add(900, shot(&dir, tag("builds-other-navi")));
+                add(100, Box::new(|ui, app| {
+                    let mut app = app.borrow_mut();
+                    app.tour_select();
+                    app.enter(Screen::Training);
+                    ui.set_training_cursor(1);
+                }));
+                add(900, shot(&dir, tag("training-other-navi")));
+                add(100, Box::new(|ui, app| {
+                    app.borrow_mut().enter(Screen::Play);
+                    ui.set_play_cursor(1);
+                }));
+                add(900, shot(&dir, tag("play-other-navi")));
                 if only.is_some() {
                     continue;
                 }
@@ -202,7 +251,16 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     add(200, Box::new(|_, _| {
         let _ = slint::quit_event_loop();
     }));
-    run(ui.as_weak(), app.clone(), Rc::new(steps), 0);
+    when_loaded(ui.as_weak(), app.clone(), Rc::new(steps), 0);
+}
+
+/// Walk once the tour's game has loaded (`NETTAI_TOUR_GAME`'s, else any:
+/// a game still loading is passed over), or after a minute.
+fn when_loaded(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, steps: Rc<Vec<Step>>, waited: u32) {
+    if app.borrow().tour_ready() || waited >= 120 {
+        return run(ui, app, steps, 0);
+    }
+    Timer::single_shot(Duration::from_millis(500), move || when_loaded(ui, app, steps, waited + 1));
 }
 
 /// Where a tab of the creator's picture goes: by the tab, the language and

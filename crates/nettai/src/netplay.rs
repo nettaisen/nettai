@@ -119,6 +119,9 @@ pub struct Agreeing<L: Link> {
     timeout: Duration,
     /// This player's name, said in the lobby.
     name: String,
+    /// The build this player brings, as the app labels it (its name, its
+    /// version), said in the lobby.
+    build: (String, String),
 }
 
 impl<L: Link> Agreeing<L> {
@@ -126,7 +129,7 @@ impl<L: Link> Agreeing<L> {
     /// `side`; it fails if nothing comes from the other player for
     /// `timeout` once the lobby is made.
     pub fn new(link: L, content: &Arc<Content>, settings: Settings, side: Side, timeout: Duration) -> Agreeing<L> {
-        Agreeing { link: Some(link), content: content.clone(), settings, side, ready: false, lobby: None, timeout, name: String::new() }
+        Agreeing { link: Some(link), content: content.clone(), settings, side, ready: false, lobby: None, timeout, name: String::new(), build: Default::default() }
     }
 
     /// Propose other settings and side (another game's, on its content):
@@ -144,6 +147,8 @@ impl<L: Link> Agreeing<L> {
         }
         if let Some(l) = &mut self.lobby {
             l.propose(settings);
+            // (The side too: the one revealed is the one brought now.)
+            l.set_side(self.side.clone());
             l.set_ready(false);
         }
     }
@@ -172,9 +177,30 @@ impl<L: Link> Agreeing<L> {
         }
     }
 
+    /// Say the build this player brings (its name, its version) to the
+    /// other.
+    pub fn set_build(&mut self, name: &str, version: &str) {
+        self.build = (name.to_string(), version.to_string());
+        if let Some(l) = &mut self.lobby {
+            l.set_build(name, version);
+        }
+    }
+
+    /// The build the other player brings, as they said it (shown, not
+    /// trusted).
+    pub fn their_build(&self) -> Option<(&str, &str)> {
+        self.lobby.as_ref().and_then(Lobby::their_build)
+    }
+
     /// The other player's name, as they said it (shown, not trusted).
     pub fn their_name(&self) -> Option<&str> {
         self.lobby.as_ref().and_then(Lobby::their_name)
+    }
+
+    /// The navi the other player's side plays, by its name, as they said
+    /// it (shown before the match).
+    pub fn their_navi(&self) -> Option<&str> {
+        self.lobby.as_ref().and_then(Lobby::their_navi)
     }
 
     /// The other player's settings, once they have said them (or why they
@@ -230,6 +256,7 @@ impl<L: Link> Agreeing<L> {
             let mut lobby = Lobby::new(role, &self.content, self.settings.clone(), self.side.clone(), nettai_frontend::lobby::entropy(), self.timeout);
             lobby.set_ready(self.ready);
             lobby.set_name(&self.name);
+            lobby.set_build(&self.build.0, &self.build.1);
             self.lobby = Some(lobby);
         }
         let lobby = self.lobby.as_mut().expect("made above");

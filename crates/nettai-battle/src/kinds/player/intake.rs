@@ -285,71 +285,43 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
 
 // ---- Panels ------------------------------------------------------------------
 
-/// `sub_801A186`: poison panels hurt 1 HP every 7 ticks (through
-/// element 5), and a panel that drains a body's element (EXE5's sea, fire
-/// bodies: 0x08016C7E) the same; wood navis on grass heal. (EXE4's,
-/// 0x08012FF2, has no pause test: its player stops for pauses once in
-/// control, the rules' `paused_navi`, so it never runs paused. It heals on
-/// the 20-tick count at any HP: the panel rules' `grass_heal_slows_at`.)
+/// `sub_801A186`: the standing effects: the panel under the body does what
+/// its type does to a body standing on it (its `stand`: poison's drain, a
+/// drain of a body's element, EXE5's sea's, grass's heal); a type without
+/// one zeroes the body's standing count. Not while dimmed or paused, nor
+/// for a body without a region. (EXE4's, 0x08012FF2, has no pause test: its
+/// player stops for pauses once in control, the rules' `paused_navi`, so it
+/// never runs paused.)
 fn standing_effects(b: &mut Battle, r: ObjectRef) {
     if b.is_dimmed() || b.paused || coll(b, r).region.is_none() {
         return;
     }
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    let f = flag1(b, r);
-    let drains = b.game_rules().panels.rule(t).drains;
-    let on_grass;
-    let panels = &b.game_rules().panels;
-    let grass = panels.named("grass");
-    if panels.is_named(t, "poison") || drains.is_some_and(|e| e == coll(b, r).element) {
-        if f & (f1::UNTOUCHABLE | f1::FLOATSHOE | f1::INVULNERABLE) == 0 {
-            let c = coll_mut(b, r);
-            let v = c.poison_timer as i32 - 1;
-            c.poison_timer = v as u8;
-            if v < 0 {
-                c.poison_timer = 6;
-                c.acc.element_damage[5] = c.acc.element_damage[5].wrapping_add(1);
-            }
-            return;
-        }
-        // Immune: the game's grass test then compares the status flags
-        // word, not the panel type, against the grass type.
-        on_grass = grass.is_some_and(|g| f == g.0 as u32);
-    } else {
-        on_grass = grass == Some(t);
-    }
-    coll_mut(b, r).poison_timer = 0;
-    if !on_grass || b.objects.get(r).element & 0xF != 4 {
-        return;
-    }
-    let slow = b.game_rules().panels.grass_heal_slows_at.is_some_and(|at| b.objects.get(r).hp <= at);
-    let cycle = if slow { b.round.cycle180 } else { b.round.cycle20 };
-    if cycle == 0 {
-        add_hp(b, r, 1);
+    if b.call_panel(t, r, nettai_content_api::PanelCall::Stand).is_none() {
+        coll_mut(b, r).standing_count = 0;
     }
 }
 
-/// `sub_801A36A`: start road slides, and what ice does at the end of a
-/// move (consuming MOVE_COMPLETE): a slide, or EXE4's push (the rule `ice`).
+/// `sub_801A36A`: what the panel under a navi does to it at rest (its
+/// type's `rest`: EXE6's roads carry it) and at a move's end (consuming
+/// MOVE_COMPLETE, or as its slide cooldown runs out: the type's `move_end`:
+/// ice's slide or EXE4's push, EXE5's magnet's slide and sea's hold). The
+/// cooldown counts down outside pauses and the dimming.
 fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let mut cooldown_ended = false;
-    if !b.paused && !b.is_dimmed() && ai(b, r).road_cooldown != 0 {
+    if !b.paused && !b.is_dimmed() && ai(b, r).slide_cooldown != 0 {
         let a = ai_mut(b, r);
-        a.road_cooldown -= 1;
-        cooldown_ended = a.road_cooldown == 0;
+        a.slide_cooldown -= 1;
+        cooldown_ended = a.slide_cooldown == 0;
     }
     if !cooldown_ended {
         let f = flag1(b, r);
         if f & (f1::DRAG | f1::MOVING) != 0 {
             return;
         }
-        if b.game_rules().panels.is_road(panel_kind(b, coll(b, r).panel)) {
-            // sub_801A400
-            if ai(b, r).road_cooldown == 0 && f & 0x24 == 0 {
-                set_flag2(b, r, 0x10);
-                b.objects.get_mut(r).slide_type = 3;
-            }
+        let kind = panel_kind(b, coll(b, r).panel);
+        if b.call_panel(kind, r, nettai_content_api::PanelCall::Rest) == Some(nettai_content_api::Value::Bool(true)) {
             return;
         }
         if f & f1::MOVE_COMPLETE == 0 {
@@ -359,67 +331,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     super::clear_flag1(b, r, f1::MOVE_COMPLETE);
     let p = coll(b, r).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    // EXE5's panels at a move's end (0x0801715E, after its own flag test):
-    // metal slides the body, sea holds it.
-    let rule = *b.game_rules().panels.rule(kind);
-    if (rule.slide.is_some() || rule.holds.is_some()) && flag1(b, r) & 0x0010_0040 == 0 {
-        if rule.slide.is_some() {
-            return metal_slide(b, r);
-        }
-        if let Some(ticks) = rule.holds {
-            return panel_hold(b, r, ticks);
-        }
-    }
-    if !b.game_rules().panels.is_named(kind, "ice") {
-        return;
-    }
-    // sub_801A3DA (EXE4's 0x0801335A)
-    let f = flag1(b, r);
-    if coll(b, r).element != 2 && f & 0x24 == 0 && f & f1::AFFECTED_BY_ICE != 0 {
-        match b.game_rules().ice {
-            crate::content::IceRule::Slide(_) => {
-                set_flag2(b, r, 0x10);
-                b.objects.get_mut(r).slide_type = 2;
-            }
-            // EXE4's: a push bit by side and direction into the final
-            // modifier, which the hit modifiers' requests read below.
-            crate::content::IceRule::Push(bits) => {
-                let side = b.objects.get(r).alliance as usize & 1;
-                let c = coll_mut(b, r);
-                c.hit_mod_final |= bits[side].get(c.direction as usize).copied().unwrap_or(0);
-            }
-        }
-    }
-}
-
-/// EXE5's 0x08017216: a move's end on metal slides the body (slide type
-/// 3), unless it slid within the cooldown, is floating or slide-proof
-/// (flags 0x24), or is a navi whose form stands on metal (EXE5's MagnetSoul).
-fn metal_slide(b: &mut Battle, r: ObjectRef) {
-    if ai(b, r).road_cooldown != 0 || flag1(b, r) & 0x24 != 0 {
-        return;
-    }
-    if form_of(b, r).traits.has(crate::content::FormTraits::STANDS_ON_METAL) {
-        return;
-    }
-    set_flag2(b, r, 0x10);
-    b.objects.get_mut(r).slide_type = 3;
-}
-
-/// EXE5's 0x080171C2: a move's end on a panel that holds (sea) holds the
-/// body there for `ticks` (immobilized: EXE6's `sub_800EB18`) with a splash
-/// (the arena's effect `panel_splash`), unless it floats, dives or is of
-/// aqua.
-fn panel_hold(b: &mut Battle, r: ObjectRef, ticks: u16) {
-    let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
-    if flag1(b, r) & f1::FLOATSHOE != 0 || dives || b.objects.get(r).element == 2 {
-        return;
-    }
-    coll_mut(b, r).status_timers[crate::collision::timer::IMMOBILIZE] = ticks;
-    super::set_flag1(b, r, f1::IMMOBILIZED);
-    let pos = b.objects.get(r).pos;
-    let look = b.roles().effect(crate::content::EffectRole::PanelSplash);
-    crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
+    b.call_panel(kind, r, nettai_content_api::PanelCall::MoveEnd);
 }
 
 // ---- NaviCust bugs and traps ------------------------------------------------------
@@ -830,17 +742,14 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::content::{Content, IceRule, testing};
+    use crate::content::{Content, testing};
     use std::sync::Arc;
 
-    /// A fight on the test content whose ice does `ice`: the battle and side
-    /// 1's navi (at (5, 2)), standing on ice at a move's end, the move's
-    /// direction `direction`.
-    fn on_ice(ice: IceRule, direction: u8) -> (Battle, ObjectRef) {
-        let mut c: Content = testing::build();
-        c.define().unwrap_or_else(|e| panic!("{e}"));
-        c.rules_mut().ice = ice;
-        let c = Arc::new(c);
+    /// A fight on the test content: the battle and side 1's navi (at (5,
+    /// 2)), standing on ice at a move's end, the move's direction
+    /// `direction`.
+    fn on_ice(direction: u8) -> (Battle, ObjectRef) {
+        let c = testing::content();
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
         crate::content::testing::on(&mut setup, &c);
         let mut b = Battle::new(setup, c);
@@ -856,26 +765,20 @@ mod tests {
         (b, r)
     }
 
-    /// docs/design/exe4-map.md §18 item 1: EXE4's ice is a push (0x0801335A):
-    /// a move's end on it ORs the push bit of the side and the direction into
-    /// the final modifier, and starts no ice slide; EXE6's slides.
+    /// The test content's ice (EXE6's: its `move_end`, exelib's
+    /// `panel_types.ice_slides`): a move's end on it requests a slide by
+    /// the rows (slide type 2), the move's end taken; an aqua body stays.
+    /// (EXE4's ice pushes: nettai-match's games tests.)
     #[test]
-    fn ice_pushes_or_slides_by_the_rule() {
-        let push = IceRule::Push([[0, 0x40, 0x80, 0x20, 0x10], [0, 0x40, 0x80, 0x10, 0x20]]);
-        let (mut b, r) = on_ice(push, 3);
-        slide_triggers(&mut b, r);
-        assert_eq!(coll(&b, r).hit_mod_final, 0x10, "side 1's move left: its push forward");
-        assert_eq!((flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0), "no ice slide");
-        assert_eq!(flag1(&b, r) & f1::MOVE_COMPLETE, 0, "the move's end is taken");
-        // An aqua body stays.
-        let (mut b, r) = on_ice(push, 1);
-        coll_mut(&mut b, r).element = 2;
-        slide_triggers(&mut b, r);
-        assert_eq!(coll(&b, r).hit_mod_final, 0);
-        // The test content's ice (EXE6's) slides.
-        let (mut b, r) = on_ice(testing::rules().ice, 3);
+    fn ice_slides_by_its_rules() {
+        let (mut b, r) = on_ice(3);
         slide_triggers(&mut b, r);
         assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0x10, 2));
+        assert_eq!(flag1(&b, r) & f1::MOVE_COMPLETE, 0, "the move's end is taken");
+        let (mut b, r) = on_ice(1);
+        coll_mut(&mut b, r).element = 2;
+        slide_triggers(&mut b, r);
+        assert_eq!((flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0), "an aqua body");
     }
 
     /// docs/design/exe4-map.md §18 item 7: the HP bug drains by the rule:
@@ -885,7 +788,7 @@ mod tests {
     fn the_hp_bug_drains_by_the_rule() {
         use crate::content::{DrainPeriods, HpDrainRule, StatIsPeriod};
         let lost = |rule: Option<HpDrainRule>, paused: bool| {
-            let (mut b, r) = on_ice(testing::rules().ice, 0);
+            let (mut b, r) = on_ice(0);
             if let Some(rule) = rule {
                 let mut c = (*b.content).clone();
                 c.rules_mut().hp_drain = rule;
@@ -914,7 +817,7 @@ mod tests {
     #[test]
     fn a_push_drags_by_the_rules_bit() {
         let requests = |exe4: bool, hm: u8| {
-            let (mut b, r) = on_ice(testing::rules().ice, 0);
+            let (mut b, r) = on_ice(0);
             if exe4 {
                 let mut c: Content = testing::build();
                 c.define().unwrap_or_else(|e| panic!("{e}"));
@@ -954,58 +857,54 @@ mod tests {
         (b, r)
     }
 
-    /// docs/design/exe4-map.md §18 item 13: EXE4's lava (`burn`) burns a
-    /// player while the battle is dimmed, wears 20 off its mood, and spares
-    /// only the bits it names; another body waits out the dimming. The test
-    /// content's (EXE5's) burns no one dimmed and wears no mood.
+    /// The test content's lava (exelib's `panel_types.burn`, as EXE5's)
+    /// burns no one while the battle is dimmed, spares a bubbled body, and
+    /// burns another for 50 in fire, wearing no mood, the panel turning
+    /// normal. (EXE4's burns a player dimmed too: nettai-match's games
+    /// tests.)
     #[test]
-    fn a_burn_is_the_games() {
-        use crate::content::BurnRule;
-        let exe4 = BurnRule { damage: 50, spared_by: 0x206, mood: 20, players_while_dimmed: true };
-        let run = |burn: Option<BurnRule>, dimmed: bool, player: bool, status: u32| {
-            let (mut b, r) = fight_with(|rules| {
-                if let Some(burn) = burn {
-                    rules.panels.types[crate::content::testing::panel("lava").0 as usize].burn = Some(burn);
-                }
-            });
+    fn lava_burns_by_its_rules() {
+        let run = |dimmed: bool, status: u32| {
+            let (mut b, r) = fight_with(|_| {});
             let p = coll(&b, r).panel;
-            b.set_panel_type(p.x, p.y, crate::content::testing::panel("lava"));
+            let lava = crate::content::testing::panel("lava");
+            b.set_panel_type(p.x, p.y, lava);
             if dimmed {
                 b.round.flags |= battle_flags::DIMMED;
             }
             super::super::set_flag1(&mut b, r, status);
-            crate::kinds::common::panel_burn(&mut b, r, player);
+            crate::kinds::common::panel_burn(&mut b, r, true);
             let c = coll(&b, r);
-            (c.acc.element_damage[1], c.acc.mood_damage, b.field.panels[p.y as usize][p.x as usize].kind == crate::content::testing::panel("lava"))
+            (c.acc.element_damage[1], c.acc.mood_damage, b.field.panels[p.y as usize][p.x as usize].kind == lava)
         };
-        assert_eq!(run(Some(exe4), true, true, 0), (50, 20, false), "EXE4's player, dimmed");
-        assert_eq!(run(Some(exe4), true, false, 0), (0, 0, true), "another body waits");
-        assert_eq!(run(Some(exe4), false, true, 0x8000_0000), (50, 20, false), "EXE5's 0x80000000 spares none");
-        assert_eq!(run(None, true, true, 0), (0, 0, true), "EXE5's waits");
-        assert_eq!(run(None, false, true, 0x8000_0000), (0, 0, true));
-        assert_eq!(run(None, false, true, 0), (50, 0, false));
+        assert_eq!(run(true, 0), (0, 0, true), "none while dimmed");
+        assert_eq!(run(false, 0x8000_0000), (0, 0, true), "a bubbled body spared");
+        assert_eq!(run(false, 0), (50, 0, false));
     }
 
-    /// docs/design/exe4-map.md §18 item 13: EXE4's grass heals on the
-    /// 20-tick count at any HP (`grass_heal_slows_at` none); EXE6's (the
-    /// test content's) on the 180-tick count at 9 HP or less.
+    /// The test content's grass (`panel_types.grass(9)`, EXE6's) heals a
+    /// wood body at 9 HP or less on the 180-tick count, a stronger one on
+    /// the 20-tick count; poison drains a point every seventh tick.
     #[test]
-    fn grass_heals_by_the_games_count() {
-        let healed = |exe4: bool| {
-            let (mut b, r) = fight_with(|rules| {
-                if exe4 {
-                    rules.panels.grass_heal_slows_at = None;
-                }
-            });
+    fn grass_heals_and_poison_drains_by_their_rules() {
+        let stand = |kind: &str, hp: u16| {
+            let (mut b, r) = fight_with(|_| {});
             let p = coll(&b, r).panel;
-            b.set_panel_type(p.x, p.y, crate::content::testing::panel("grass"));
+            b.set_panel_type(p.x, p.y, crate::content::testing::panel(kind));
             let o = b.objects.get_mut(r);
             o.element = 4;
-            (o.hp, o.max_hp) = (5, 100);
+            (o.hp, o.max_hp) = (hp, 100);
             (b.round.cycle20, b.round.cycle180) = (0, 1);
-            standing_effects(&mut b, r);
-            b.objects.get(r).hp
+            let mut drained = Vec::new();
+            for _ in 0..8 {
+                standing_effects(&mut b, r);
+                drained.push(coll(&b, r).acc.element_damage[5]);
+            }
+            (b.objects.get(r).hp, drained, coll(&b, r).standing_count)
         };
-        assert_eq!((healed(true), healed(false)), (6, 5), "at 5 HP: EXE4's 20-tick count, EXE6's 180");
+        assert_eq!(stand("grass", 5).0, 5, "at 5 HP: the 180-tick count");
+        assert_eq!(stand("grass", 50).0, 58, "at 50: the 20-tick count, which stays 0 here");
+        let (_, drained, count) = stand("poison", 50);
+        assert_eq!((drained, count), (vec![1, 1, 1, 1, 1, 1, 1, 2], 6));
     }
 }

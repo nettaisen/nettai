@@ -334,8 +334,9 @@ pub enum PausedNavi {
     PauseHandler,
     /// It runs through the pause until it takes control, which clears its
     /// header flag 0x04 (EXE4's 0x08010A88), so that the object loop skips
-    /// it then; its status block's tail has no pause handler and runs its
-    /// action (0x08013C2A).
+    /// it then; its status block has no pause test (0x08013A48: the top
+    /// block runs whenever the navi does, its take-control tick too) and
+    /// its tail no pause handler, running its action (0x08013C2A).
     StopsAtControl,
 }
 
@@ -558,7 +559,7 @@ pub enum ShakeRule {
     BattleRng,
 }
 
-/// The speed of a navi's slides (ice, roads, EXE5's metal: `sub_8016730`)
+/// The speed of a navi's slides (ice, roads, EXE5's magnet: `sub_8016730`)
 /// and drags (a push: `sub_80178D4`), 16.16 pixels a tick across and in
 /// depth (EXE6's 10 pixels across and 6 in depth; EXE5's 10 and 8,
 /// 0x0801361E and 0x080143A8).
@@ -571,7 +572,7 @@ pub struct SlideSpeed {
 
 /// How a move's direction goes into the collision record
 /// (`object_updateCollisionPanels`: the reactions section's
-/// `move_direction`), which an ice slide or push, EXE5's metal slide and
+/// `move_direction`), which an ice slide or push, EXE5's magnet slide and
 /// content reading the record's direction read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -620,26 +621,6 @@ impl MoveDirection {
             },
         }
     }
-}
-
-/// What a body's move that ends on ice does (the reactions section's
-/// `ice`: EXE6's `sub_801A3DA`, EXE5's 0x080171F0, EXE4's 0x0801335A), unless
-/// the body is of aqua, floats or is submerged (flags 0x24) or isn't
-/// affected by ice; by the direction of the move (the collision record's,
-/// as `MoveDirection` puts it).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum IceRule {
-    /// It slides (slide type 2), a row by direction (none, up, down, back,
-    /// forward, other; `dx` toward the body's front): EXE6's `byte_800E4E8`,
-    /// EXE5's 0x0800C988.
-    Slide([SlideVector; 6]),
-    /// A push bit by the body's side and the direction is ORed into its
-    /// collision's final modifier, which the intake reads after: a slide by
-    /// the push's row, or a drag with a hit's drag bit (EXE4's, the table at
-    /// 0x080133B4, five directions a side). A direction past a side's row
-    /// pushes nothing.
-    Push([[u8; 5]; 2]),
 }
 
 /// The rule section `fresh_stats`: what a navi's stats hold when they are
@@ -1503,8 +1484,11 @@ pub struct Rules {
     /// `byte_8017F24`); else an obstacle slides anywhere open (EXE5's
     /// 0x08014894 keeps no bounds).
     pub obstacle_slide_bounds: bool,
-    /// What a move that ends on ice does (the reactions section's).
-    pub ice: IceRule,
+    /// The slide a panel's move end starts by rows (slide type 2, by the
+    /// direction of the move: none, up, down, back, forward, other; `dx`
+    /// toward the body's front): EXE6's `byte_800E4E8`, EXE5's 0x0800C988
+    /// (ice's); none in a game whose ice pushes (EXE4's).
+    pub slide_rows: Option<[SlideVector; 6]>,
     /// How a move's direction goes into the collision record (the
     /// reactions section's).
     pub move_direction: MoveDirection,
@@ -1516,13 +1500,10 @@ pub struct Rules {
     pub stance_counter: StanceCounter,
     /// What a deleted player's object does (the reactions section's).
     pub dead_player: DeadPlayer,
-    /// An attack's end hands its lockout on (`sub_801171C`: a chip's, an
-    /// attack of kind 2, to the chip lockout; the B+Back special's, kind
-    /// 3, to its cooldown): EXE6's, EXE5's. EXE4's end (0x0800CA28) hands
-    /// none on: its weapons and chips set the lockouts as they start
-    /// (Reflect's routine the special's cooldown, AIData +0x1A, 0x0800CFC4).
-    /// (The reactions section's.)
-    pub attack_end_lockouts: bool,
+    /// What an attack's end hands its lockout on to (the reactions
+    /// section's): see [`AttackEndLockout`]. (An end a navi's action asks to
+    /// keep the lockout, EXE4's 0x0800CA28, hands none on.)
+    pub attack_end_lockout: AttackEndLockout,
     /// What the ends of a navi's actions clear of its requests (the
     /// reactions section's).
     pub request_clears: RequestClears,
@@ -1617,11 +1598,6 @@ pub struct PanelRules {
     /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
     /// 0x20000 too). A crack keeps the solidity and the crack bit.
     pub type_mask: u32,
-    /// At this HP or less a wood body on grass heals on the battle's
-    /// 180-tick count instead of its 20-tick one (EXE6's `sub_801A186` and
-    /// EXE5's 0x08016C7E: 9; EXE4's 0x08012FF2 none, the 20-tick count at
-    /// any HP).
-    pub grass_heal_slows_at: Option<u16>,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the
@@ -1666,24 +1642,17 @@ pub enum ReactionActions {
     Plain,
 }
 
-/// A burning panel's (a panel type's `burn`): a grounded body not of fire
-/// standing on it takes `damage` in fire, shifted by its weakness to fire,
-/// as a hit, unless its status word has a bit of `spared_by` (or its 0x09:
-/// then only the panel turns normal).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct BurnRule {
-    pub damage: u16,
-    /// EXE5's 0x88000206, EXE4's 0x206.
-    pub spared_by: u32,
-    /// What the burn wears off the mood besides (EXE4's 20, its +0x36; EXE5's
-    /// none).
-    #[serde(default)]
-    pub mood: u16,
-    /// A player burns while the battle is dimmed too (EXE4's 0x08013128,
-    /// which has no dimming test; every other body's waits, as EXE5's).
-    #[serde(default)]
-    pub players_while_dimmed: bool,
+/// What an attack's end hands its lockout (the attack's +5) on to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AttackEndLockout {
+    /// EXE6's and EXE5's (`sub_801171C`, 0x0800F2D0): by the attack's kind,
+    /// a chip's (kind 2) to the chip lockout, the B+Back special's (kind 3)
+    /// to its cooldown, any other's to none.
+    ByKind,
+    /// EXE4's (0x0800C9FC, its chips' and weapons' end): to the chip
+    /// lockout (AIData +0x3A) whatever the kind, a 0 clearing it.
+    ChipLockout,
 }
 
 /// A drag's pose and its end (the status section's `drag`).
@@ -1804,25 +1773,15 @@ impl PanelRules {
         t.0 as u32 | self.rule(t).flags
     }
 
-    /// Where a road panel carries a navi.
-    pub fn road_slide(&self, t: PanelType) -> Option<SlideVector> {
-        self.rule(t).road_slide
-    }
-
-    /// Whether type `t` carries a navi (a road).
-    pub fn is_road(&self, t: PanelType) -> bool {
-        self.road_slide(t).is_some()
-    }
-
-    /// Type `t` as the right-hand console draws it: a road carrying across
+    /// Type `t` as the right-hand console draws it: a type carrying across
     /// the field is the one carrying the other way (EXE6's left and right
     /// roads swap), any other type itself.
     pub fn mirrored(&self, t: PanelType) -> PanelType {
-        match self.road_slide(t) {
+        match self.rule(t).carries {
             Some(v) if v.dx != 0 => self
                 .types
                 .iter()
-                .position(|r| r.road_slide.is_some_and(|w| w.dx == -v.dx && w.dy == v.dy))
+                .position(|r| r.carries.is_some_and(|w| w.dx == -v.dx && w.dy == v.dy))
                 .map_or(t, |i| PanelType(i as u8)),
             _ => t,
         }
@@ -1835,8 +1794,9 @@ impl PanelRules {
 pub struct PanelTypeRule {
     /// Flag bits the type adds to a panel's flags word.
     pub flags: u32,
-    /// For roads: where they carry a navi.
-    pub road_slide: Option<SlideVector>,
+    /// Where it carries a navi's slide of type 3 (EXE6's roads), when its
+    /// `slide` says "carry".
+    pub carries: Option<SlideVector>,
     /// The sound a NaviCust panel trail makes turning a panel into the
     /// type (`byte_8013D44`; none: silent).
     pub trail_sound: Option<crate::sound::SoundId>,
@@ -1844,25 +1804,15 @@ pub struct PanelTypeRule {
     /// last 60 (EXE6's roads 0x708, `sub_800C380`; EXE5's lava and sea 960,
     /// 0x0800A998).
     pub expires: Option<u16>,
-    /// What it does to a grounded body standing on it as it turns normal
-    /// (EXE5's lava, 0x08016D80 and 0x08016E18; EXE4's, 0x0801309E and
-    /// 0x08013128).
-    pub burn: Option<BurnRule>,
-    /// The element of the bodies it drains as poison drains any (EXE5's
-    /// sea: fire, 0x08016C7E).
-    pub drains: Option<u8>,
-    /// Ticks a body that ends a move on it is held there, with a splash
-    /// (EXE5's sea, 0x0801715E).
-    pub holds: Option<u16>,
     /// A body that can dive (its AI's flag 0x20) is submerged while on it,
     /// and no body is submerged off it (EXE5's sea, 0x08017030).
     pub submerges: bool,
-    /// A move's end on it starts a slide (slide type 3), tried in turn by
-    /// the direction of the move (EXE5's metal, 0x08017216, 0x0800C8A8).
-    pub slide: Option<PanelSlide>,
+    /// Where it carries a navi's slide of type 3 by the direction of the
+    /// move, tried in turn (EXE5's magnet, 0x0800C8A8), when it does.
+    pub carries_by_move: Option<PanelSlide>,
     /// The element of the hitboxes that turn it normal as they pass over
     /// it (`sub_3007708`: fire grass, aqua the volcano, wood roads; EXE5's
-    /// 0x08016D14: and aqua lava, wood metal).
+    /// 0x08016D14: and aqua lava, wood magnet).
     pub cleared_by: Option<u8>,
     /// The element whose hits count once more, as null damage, on a body
     /// standing on it (the hit kernel's `applyHeatOnGrassDamage_300766c`:
@@ -1872,10 +1822,6 @@ pub struct PanelTypeRule {
     /// Nothing cracks or breaks it (EXE4's metal: its flag 0x20000, which
     /// the panel routines refuse).
     pub unbreakable: bool,
-    /// A slide or a drag that reaches it stops there unless the body floats
-    /// (EXE4's pitfall: 0x080102FC, 0x08010B54; an obstacle's slides,
-    /// 0x080106B8 and its kin).
-    pub stops_slides: bool,
     /// A body standing on it can't move unless it floats (EXE4's pitfall:
     /// its `object_canMove`, 0x0800AD2A, and its kin 0x0800AD54,
     /// 0x0800AD7E).
@@ -1887,7 +1833,7 @@ pub struct PanelTypeRule {
     pub crumbles: Option<u16>,
 }
 
-/// A panel's slide (EXE5's metal): by the direction the body last moved
+/// A panel's slide (EXE5's magnet): by the direction the body last moved
 /// (`CollisionData::direction`: none, up, down, back, forward, other),
 /// the steps tried in turn, `dx` toward the body's front; the first one
 /// the body can slide to is the slide, a panel at a time.

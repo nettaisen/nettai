@@ -840,3 +840,79 @@ fn a_match_names_its_rules_link_battle_stages() {
         assert_eq!(by_effects.len(), n, "{game}");
     }
 }
+
+/// EXE4's lava burns a player while the battle is dimmed (0x08013128 has no
+/// dimming test), wearing 20 off its mood; its grass heals a wood body every
+/// 20 ticks at any HP (0x08012FF2): its rules/panels.luau's hooks.
+#[test]
+fn exe4s_lava_and_grass_are_its_own() {
+    use nettai_battle::Battle;
+    use nettai_battle::battle::battle_flags;
+    let content = exe4_content();
+    let panels = &content.rules().panels;
+    let (lava, grass) = (panels.named("lava").expect("EXE4's lava"), panels.named("grass").expect("EXE4's grass"));
+    let battle = || {
+        let m = crate::pick::live(&content, "exe4", 3, None).unwrap();
+        let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
+        let navi = (0..600)
+            .find_map(|_| {
+                b.tick(&Default::default(), Default::default());
+                b.player(0).filter(|&r| b.objects.get(r).collision.is_some())
+            })
+            .expect("side 0's navi, with its collision data");
+        (b, navi)
+    };
+    let (mut b, navi) = battle();
+    let p = b.objects.get(navi).panel;
+    b.set_panel_type(p.x, p.y, lava);
+    b.round.flags |= battle_flags::DIMMED;
+    nettai_battle::kinds::common::panel_burn(&mut b, navi, true);
+    let c = b.collision.get(b.objects.get(navi).collision.unwrap());
+    assert_eq!((c.acc.element_damage[1], c.acc.mood_damage), (50, 20), "a player burns while dimmed");
+    assert_eq!(b.field.panel(p.x, p.y).unwrap().kind, panels.roles.normal);
+
+    let (mut b, navi) = battle();
+    let p = b.objects.get(navi).panel;
+    b.set_panel_type(p.x, p.y, grass);
+    let o = b.objects.get_mut(navi);
+    o.element = 4;
+    (o.hp, o.max_hp) = (5, 100);
+    (b.round.cycle20, b.round.cycle180) = (0, 1);
+    // (The fight on: the standing effects wait out a pause.)
+    b.round.flags |= battle_flags::FIGHTING;
+    b.paused = false;
+    nettai_battle::kinds::player::update(&mut b, navi);
+    assert_eq!(b.objects.get(navi).hp, 6, "at 5 HP, on the 20-tick count");
+}
+
+/// EXE4's ice pushes (0x0801335A): a move's end on it ORs the push bit of
+/// the navi's side and the move's direction into its final hit modifier,
+/// which the intake reads after as a push (slide type 1); it starts no slide
+/// by rows (EXE4's reactions have none).
+#[test]
+fn exe4s_ice_pushes() {
+    use nettai_battle::Battle;
+    use nettai_battle::battle::battle_flags;
+    let content = exe4_content();
+    let ice = content.rules().panels.named("ice").expect("EXE4's ice");
+    assert_eq!(content.rules().slide_rows, None);
+    let m = crate::pick::live(&content, "exe4", 3, None).unwrap();
+    let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
+    let navi = (0..600)
+        .find_map(|_| {
+            b.tick(&Default::default(), Default::default());
+            b.player(0).filter(|&r| b.objects.get(r).collision.is_some())
+        })
+        .expect("side 0's navi, with its collision data");
+    let p = b.objects.get(navi).panel;
+    b.set_panel_type(p.x, p.y, ice);
+    let c = b.objects.get(navi).collision.unwrap();
+    let d = b.collision.get_mut(c);
+    d.f1 |= nettai_battle::collision::f1::AFFECTED_BY_ICE | nettai_battle::collision::f1::MOVE_COMPLETE;
+    // (Side 0's move forward: its push 0x10, a push forward.)
+    d.direction = 4;
+    b.round.flags |= battle_flags::FIGHTING;
+    b.paused = false;
+    nettai_battle::kinds::player::update(&mut b, navi);
+    assert_eq!(b.objects.get(navi).slide_type, 1, "a push's slide");
+}

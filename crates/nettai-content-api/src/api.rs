@@ -116,6 +116,10 @@ pub struct BarrierSpec {
 /// A navi's drag reaction steps by name (BattleObject+0x0D: the game's 0,
 /// 4, 8).
 pub const DRAG_STEPS: [&str; 3] = ["start", "slide", "recover"];
+/// A navi's slide types (BattleObject+0x0E): none, a push's, by the arena's
+/// rows and the move's direction (ice's), the panel's own carry (a road's,
+/// EXE5's magnet's).
+pub const SLIDE_TYPES: [&str; 4] = ["none", "push", "rows", "panel"];
 
 fn enum_type(names: &[&str]) -> FieldType {
     FieldType::Enum(names.iter().map(|s| s.to_string()).collect())
@@ -212,6 +216,9 @@ named_fields! {
         NoSpriteUpdate = "no_sprite_update", Bool, rw;
         /// A navi's drag reaction step (BattleObject+0x0D).
         DragStep = "drag_step", enum_type(&DRAG_STEPS), rw;
+        /// A navi's slide type ([`SLIDE_TYPES`]), which its slide request
+        /// starts.
+        SlideType = "slide_type", enum_type(&SLIDE_TYPES), rw;
         /// It holds a panel reservation (released when it is destroyed).
         HoldsReservation = "holds_reservation", Bool, rw;
     }
@@ -288,6 +295,9 @@ named_fields! {
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;
+        /// The ticks before a panel may carry the navi again (its slide of
+        /// type 3's end sets 5; `sub_801A36A` counts it down).
+        SlideCooldown = "slide_cooldown", U16, ro;
         /// The target marker (EXE6's Beast Out lock-on marker).
         TargetMarker = "target_marker", Object, rw;
         /// The charge glow.
@@ -405,6 +415,10 @@ named_fields! {
         HitModBase = "hit_mod_base", U8, rw;
         /// The damage it deals (the object's damage at setup).
         SelfDamage = "self_damage", U16, rw;
+        /// What a panel type counts while the body stands on it (+0x1C:
+        /// poison's drain, `sub_801A186`); the standing effects zero it on a
+        /// type that has no `stand`.
+        StandingCount = "standing_count", U8, rw;
         /// The counter byte (CollisionData+0x07: bits 0-6 counter
         /// strength, bit 7 can't counter), which setup takes from the
         /// damage word's high half.
@@ -1193,6 +1207,26 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
+    /// The battle's count of fight ticks modulo `period` (20 or 180: the
+    /// round's two counts), which grass heals by.
+    fn cycle(&self, period: u8) -> u8;
+    /// The shift a hit of element `hitter` takes against a body of element
+    /// `receiver` (the rules' `elements.weakness`).
+    fn weakness(&self, receiver: u8, hitter: u8) -> u8;
+    /// Add `amount` to `o`'s damage this window in `element` (0 to 4, 5 the
+    /// sixth slot), and to its raw damage too where `raw` (what barriers
+    /// and traps see).
+    fn add_damage(&mut self, o: ObjectRef, element: u8, amount: u16, raw: bool);
+    /// Add to `o`'s mood damage this window.
+    fn add_mood_damage(&mut self, o: ObjectRef, amount: u16);
+    /// Set hit modifier bits on `o` this window, both sides' too.
+    fn add_hit_mod(&mut self, o: ObjectRef, bits: u8);
+    /// Set hit modifier bits on `o` this window, the final modifier's alone
+    /// (EXE4's ice's push).
+    fn add_final_hit_mod(&mut self, o: ObjectRef, bits: u8);
+    /// Whether the form of `o`'s side has the trait named `name` (a form
+    /// definition's `traits`).
+    fn form_trait(&self, o: ObjectRef, name: &str) -> ApiResult<bool>;
     /// `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
     /// count (what the fight's result reads) to 0 and the round's time-up
     /// byte set. (It also sets battle flag 8, which nothing in EXE4 reads.)
@@ -1806,8 +1840,10 @@ pub trait CoreApi {
     /// `sub_8011450`: restart the navi's form overlay with it after an
     /// animation change.
     fn refresh_form_overlay(&mut self, o: ObjectRef);
-    /// `object_exitAttackState`: back to the idle action with animation 0.
-    fn exit_attack(&mut self, o: ObjectRef);
+    /// `object_exitAttackState`: back to the idle action with animation 0,
+    /// the attack's lockout handed on by the rules; with `keeps_lockout`,
+    /// none handed on (EXE4's 0x0800CA28).
+    fn exit_attack(&mut self, o: ObjectRef, keeps_lockout: bool);
 
     // ---- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5) ----
 

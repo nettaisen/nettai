@@ -65,21 +65,14 @@ pub struct Setup {
     pub regular_flags: Option<[u8; 2]>,
     /// Both consoles' NaviCusts and patch cards as their saves hold them:
     /// what the PET compiled into the recorded stats.
-    #[serde(default)]
-    pub navicusts: Option<[NaviCustSetup; 2]>,
-    #[serde(default)]
-    pub patch_cards: Option<[PatchCardsSetup; 2]>,
+    pub navicusts: [NaviCustSetup; 2],
+    pub patch_cards: [PatchCardsSetup; 2],
     /// Both sides' regions ("us" or "jp").
     pub game_regions: [String; 2],
     /// The background the battle shows by the loader's first choice
     /// (0x08085430): the game state's +0x0F (where the link pick's
     /// background goes), 0xFF none (then the settings record's +5).
-    /// Recordings older than the field have none: they replay with the
-    /// settings record's, which is no lab console's (presentation alone:
-    /// nothing in the simulation reads the background), so a frame
-    /// comparison takes recordings that have it.
-    #[serde(default)]
-    pub background: Option<u8>,
+    pub background: u8,
 }
 
 /// A console's NaviCust as its save holds it, in a setup line.
@@ -124,16 +117,13 @@ pub struct Object {
     pub pos: [i32; 3],
     pub timer: u16,
     pub anim: u8,
+    /// The collision record's hit flags (+0x54): what hit it this tick.
     pub status: u32,
-    /// The collision record's status word (+0x64, the engine's `f1`), in
-    /// recordings from verify exe4-oracle 021aea61 on.
-    #[serde(default)]
-    pub f1: Option<u32>,
+    /// The collision record's status word (+0x64, the engine's `f1`).
+    pub f1: u32,
     /// The sprite block's palette (+4), its palette's other half (+5) and
-    /// its palette pointer (+0x34): what 0x0800295C draws the object in, in
-    /// recordings from verify exe4-oracle d6fb7060 on.
-    #[serde(default)]
-    pub sprite: Option<[u32; 3]>,
+    /// its palette pointer (+0x34): what 0x0800295C draws the object in.
+    pub sprite: [u32; 3],
 }
 
 /// One battle frame. (EXE4's BattleState counts no frames or ticks: the
@@ -153,10 +143,8 @@ pub struct Frame {
     pub paused: u8,
     pub hud_tasks: u32,
     pub banner: String,
-    /// Both sides' battle NaviStats this frame (hex), in recordings from
-    /// verify exe4-oracle d6fb7060 on.
-    #[serde(default)]
-    pub navi_stats: Option<[String; 2]>,
+    /// Both sides' battle NaviStats this frame (hex).
+    pub navi_stats: [String; 2],
     pub input: [[u16; 3]; 2],
     pub objects: Vec<Object>,
     pub panels: Vec<[u8; 2]>,
@@ -290,20 +278,16 @@ pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
     }
     folder_entries(&unhex(&s.folder)?)?;
     let folders = [folder_entries(&unhex(&s.folders[0])?)?, folder_entries(&unhex(&s.folders[1])?)?];
-    if let Some(n) = &s.navicusts {
-        for c in n {
-            let (parts, grid, bar) = (unhex(&c.parts)?, unhex(&c.grid)?, unhex(&c.color_bar)?);
-            if parts.len() != crate::save::NAVICUST_PARTS * 8 || grid.len() != 0x24 || bar.len() != 6 {
-                return Err(format!("a NaviCust of {:#x}, {:#x} and {:#x} bytes", parts.len(), grid.len(), bar.len()));
-            }
+    for c in &s.navicusts {
+        let (parts, grid, bar) = (unhex(&c.parts)?, unhex(&c.grid)?, unhex(&c.color_bar)?);
+        if parts.len() != crate::save::NAVICUST_PARTS * 8 || grid.len() != 0x24 || bar.len() != 6 {
+            return Err(format!("a NaviCust of {:#x}, {:#x} and {:#x} bytes", parts.len(), grid.len(), bar.len()));
         }
     }
-    if let Some(m) = &s.patch_cards {
-        for c in m {
-            // (The recorder takes the PET's six slots; the reload reads a seventh, which no console fills.)
-            if unhex(&c.on)?.len() != RECORDED_PATCH_CARD_SLOTS || unhex(&c.off)?.len() != RECORDED_PATCH_CARD_SLOTS {
-                return Err("patch card slots that aren't six".into());
-            }
+    for c in &s.patch_cards {
+        // (The recorder takes the PET's six slots; the reload reads a seventh, which no console fills.)
+        if unhex(&c.on)?.len() != RECORDED_PATCH_CARD_SLOTS || unhex(&c.off)?.len() != RECORDED_PATCH_CARD_SLOTS {
+            return Err("patch card slots that aren't six".into());
         }
     }
     Ok(DecodedSetup {
@@ -391,10 +375,6 @@ pub struct Round {
     pub setup: Setup,
     pub exchanges: Vec<Exchange>,
     pub frames: Vec<Frame>,
-    /// Whether its objects' `status` is their collision's hit flags (the
-    /// collision record's +0x54): some object's is not 0. The lab's first
-    /// recordings read EXE6's place, +0x3C, which EXE4 leaves 0.
-    pub carries_status: bool,
 }
 
 /// A recording's rounds: a setup line starts one; exchanges before the
@@ -406,7 +386,7 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> Result<Vec<Round>, String> {
     for line in read(path)? {
         match line {
             Line::Setup(s) => {
-                rounds.push(Round { setup: *s, exchanges: std::mem::take(&mut pending), frames: Vec::new(), carries_status: false })
+                rounds.push(Round { setup: *s, exchanges: std::mem::take(&mut pending), frames: Vec::new() })
             }
             Line::Exchange(e) => match rounds.last_mut() {
                 Some(r) => r.exchanges.push(e),
@@ -414,7 +394,6 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> Result<Vec<Round>, String> {
             },
             Line::Frame(f) => {
                 if let Some(r) = rounds.last_mut() {
-                    r.carries_status |= f.objects.iter().any(|o| o.status != 0);
                     r.frames.push(*f);
                 }
             }
@@ -657,7 +636,7 @@ impl Round {
         // (The background loader, 0x08085430: the game state's +0x0F, else,
         // where it is 0xFF, the settings record's +5: every netbattle
         // record's is 3.)
-        let number = match self.setup.background.unwrap_or(0xFF) {
+        let number = match self.setup.background {
             0xFF => st[5],
             n => n,
         };
@@ -675,27 +654,18 @@ impl Round {
             return Err("the content has no rules (EXE4's)".into());
         }
         let local = d.local();
-        // A recording with its NaviCusts has the rules compile them and its patch cards (rules/navicust,
-        // rules/patch_cards) over the stats the reload starts from; one with a card whose effects wait (exe4-map.md
-        // §18) is refused.
+        // The rules compile each side's NaviCust and patch cards (rules/navicust, rules/patch_cards) over the stats
+        // the reload starts from; a card whose effects wait (exe4-map.md §18) is refused.
         let mut cards: [Vec<Fact>; 2] = [Vec::new(), Vec::new()];
-        if let Some(on) = &self.setup.patch_cards {
-            for (side, c) in on.iter().enumerate() {
-                let slots: Vec<Option<u8>> = unhex(&c.on)?.into_iter().map(|n| (n != 0xFF).then_some(n)).collect();
-                let (facts, waiting) = crate::setup::patch_cards(content, compat, &slots)?;
-                if let Some(n) = waiting.first() {
-                    return Err(format!("side {side}'s patch card {n}: not ported yet (docs/design/exe4-map.md §18)"));
-                }
-                // (The compile starts from the reload's reset, which needs the NaviCust: a recording without
-                // one has its stats as they were compiled, cards and all.)
-                if !facts.is_empty() && self.setup.navicusts.is_none() {
-                    return Err(format!("side {side}'s patch cards without its NaviCust: the recording can't be compiled"));
-                }
-                cards[side] = facts;
+        for (side, c) in self.setup.patch_cards.iter().enumerate() {
+            let slots: Vec<Option<u8>> = unhex(&c.on)?.into_iter().map(|n| (n != 0xFF).then_some(n)).collect();
+            let (facts, waiting) = crate::setup::patch_cards(content, compat, &slots)?;
+            if let Some(n) = waiting.first() {
+                return Err(format!("side {side}'s patch card {n}: not ported yet (docs/design/exe4-map.md §18)"));
             }
+            cards[side] = facts;
         }
-        let compiled = self.setup.navicusts.is_some();
-        let side_stats = |side: usize| if compiled { reset(content, compat, &d.navi_stats[side]) } else { navi_stats(content, compat, &d.navi_stats[side]) };
+        let side_stats = |side: usize| reset(content, compat, &d.navi_stats[side]);
         let players = [0usize, 1].map(|side| -> Result<PlayerSetup, String> {
             let regular = match self.setup.regular_flags {
                 Some(r) => r[side] != 0,
@@ -724,14 +694,12 @@ impl Round {
             // starting mood).
             player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
             // His save's NaviCust, which the rules compile (rules/navicust).
-            if let Some(n) = &self.setup.navicusts {
-                let list = unhex(&n[side].parts)?;
-                if list.len() != 8 * crate::save::NAVICUST_PARTS {
-                    return Err(format!("side {side}'s NaviCust list has {} bytes", list.len()));
-                }
-                let programs = crate::setup::navicust(content, compat, &crate::save::parts(&list))?;
-                player.set_fact(content, "navicust_programs", &programs)?;
+            let list = unhex(&self.setup.navicusts[side].parts)?;
+            if list.len() != 8 * crate::save::NAVICUST_PARTS {
+                return Err(format!("side {side}'s NaviCust list has {} bytes", list.len()));
             }
+            let programs = crate::setup::navicust(content, compat, &crate::save::parts(&list))?;
+            player.set_fact(content, "navicust_programs", &programs)?;
             // And its patch cards (rules/patch_cards).
             player.set_fact(content, "patch_cards", &cards[side])?;
             Ok(player)
@@ -962,16 +930,13 @@ const RECORDED_PATCH_CARD_SLOTS: usize = 6;
 /// pool and kind (EXE4's numbers, through compat's kinds.toml), header
 /// flags, state, action (a navi's by EXE4's numbers: `Compat::navi_action`),
 /// phase and its init byte, panel, side, element (the recording's +0x17),
-/// HP, position, timer, animation, and with `status` its collision's hit
-/// flags: what hit it this tick (the collision record's +0x54, EXE5's
-/// +0x68, the engine's `acc.hit_flags`). (The lab's first recordings read
-/// the word at EXE6's place in the collision record, +0x3C, where EXE4's
-/// keeps none, always 0; later ones its +0x54, exe4-map.md §15, §17:
-/// [`Round::carries_status`].) Where the recording has them, its status
-/// word (+0x64, the engine's `f1`) and its sprite's palette (the sprite
-/// block's +4).
-pub fn compare(b: &Battle, f: &Frame, compat: &Compat, status: bool) -> Vec<String> {
-    compare_with(b, f, f, compat, status)
+/// HP, position, timer, animation, its collision's hit flags: what hit it
+/// this tick (the collision record's +0x54, EXE5's +0x68, the engine's
+/// `acc.hit_flags`), its status word (+0x64, the engine's `f1`) and its
+/// sprite's palette (the sprite block's +4); and both sides' stats as the
+/// NaviCust and the patch cards compile them.
+pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
+    compare_with(b, f, f, compat)
 }
 
 /// [`compare`] on the `i`th of a round's `frames`, the engine having been fed
@@ -983,11 +948,11 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let f = frames[i];
     let late = round.screen_late(i, frames);
     let banner = if late > 0 { round.frame(f.frame - late).unwrap_or(f) } else { f };
-    compare_with(b, f, banner, compat, round.carries_status)
+    compare_with(b, f, banner, compat)
 }
 
 /// [`compare`], the banner compared with `banner`'s.
-fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: bool) -> Vec<String> {
+fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
         if ours != theirs {
@@ -1021,13 +986,11 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
         check("banner number", show(ours), show(theirs));
     }
-    // What the NaviCust and the patch cards compile into each side's stats, where the frame has the blocks.
-    if let Some(blocks) = &f.navi_stats {
-        for (side, hex) in blocks.iter().enumerate() {
-            let Ok(raw) = unhex(hex) else { continue };
-            let Ok(raw) = <[u8; crate::codec::NAVI_STATS]>::try_from(raw.as_slice()) else { continue };
-            check(&format!("side {side}'s compiled stats"), compiled(b, &b.stats[side]), compiled_of(&crate::codec::navi_stats(&raw)));
-        }
+    // What the NaviCust and the patch cards compile into each side's stats.
+    for (side, hex) in f.navi_stats.iter().enumerate() {
+        let Ok(raw) = unhex(hex) else { continue };
+        let Ok(raw) = <[u8; crate::codec::NAVI_STATS]>::try_from(raw.as_slice()) else { continue };
+        check(&format!("side {side}'s compiled stats"), compiled(b, &b.stats[side]), compiled_of(&crate::codec::navi_stats(&raw)));
     }
     // (A panel type is the game's number of it.)
     let panels: Vec<String> = (1..=3)
@@ -1058,9 +1021,6 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
         }
     };
     type Fields = Vec<(&'static str, String)>;
-    // (A recording has each of these for every object or none.)
-    let has_f1 = f.objects.first().is_some_and(|o| o.f1.is_some());
-    let has_sprite = f.objects.first().is_some_and(|o| o.sprite.is_some());
     let ours: Vec<Fields> = b
         .objects
         .in_order()
@@ -1078,10 +1038,9 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
                 Ok(n) => format!("{n:#04x}"),
                 Err(e) => format!("? ({e})"),
             };
-            let flags = if status { format!("{:#x}", x.collision.map(|c| b.collision.get(c).acc.hit_flags).unwrap_or(0)) } else { "-".into() };
-            // (What the recording has: its status word, its sprite's palette.)
-            let f1 = if has_f1 { format!("{:#x}", x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0)) } else { "-".into() };
-            let palette = if has_sprite { b.objects.sprite(o).look.palette.to_string() } else { "-".into() };
+            let flags = format!("{:#x}", x.collision.map(|c| b.collision.get(c).acc.hit_flags).unwrap_or(0));
+            let f1 = format!("{:#x}", x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0));
+            let palette = b.objects.sprite(o).look.palette.to_string();
             vec![
                 ("kind", kind),
                 ("flags", format!("{:#04x}", x.flags)),
@@ -1124,9 +1083,9 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
                 ("pos", pos(o.pos, garbage, xy, zf)),
                 ("timer", o.timer.to_string()),
                 ("anim", o.anim.to_string()),
-                ("status", if status { format!("{:#x}", o.status) } else { "-".into() }),
-                ("f1", o.f1.map_or("-".into(), |v| format!("{v:#x}"))),
-                ("palette", o.sprite.map_or("-".into(), |v| v[0].to_string())),
+                ("status", format!("{:#x}", o.status)),
+                ("f1", format!("{:#x}", o.f1)),
+                ("palette", o.sprite[0].to_string()),
             ]
         })
         .collect();
@@ -1188,9 +1147,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     };
     // What the rules compiled from the recording's NaviCusts (rules/navicust), against the stats the console's
     // reload left (the setup's blocks).
-    if round.setup.navicusts.is_some()
-        && let Ok(d) = decode_setup(&round.setup)
-    {
+    if let Ok(d) = decode_setup(&round.setup) {
         let differences: Vec<String> = (0..2)
             .filter_map(|side| {
                 let (ours, theirs) = (compiled(&b, &b.stats[side]), compiled_of(&d.navi_stats[side]));

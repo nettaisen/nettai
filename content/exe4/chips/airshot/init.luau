@@ -17,7 +17,7 @@ local chip: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    action = airshot.action { id = "airshot/action", shooter = airshot.shooter, shot = variants.air },
+    action = airshot.action { id = "airshot/action", shooter = airshot.shooter, shot = variants.air, recovery = 0 },
 }
 
 return { airshot = chip }

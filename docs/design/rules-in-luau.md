@@ -1188,9 +1188,9 @@ EXE6 stays byte-identical; EXE5's side is unit tests and asm citations, and the 
   `panel_burn`; in the navi's and the obstacles' intake, first, as EXE5's 0x080178EC and 0x08017A18 have it),
   `drains` (sea: fire bodies, as poison drains any), `holds` (sea: 20 ticks immobilized at a move's end, with the
   arena's effect `panel_splash`), `submerges` (sea: a body that dives, the actor's status 0x20, is submerged on it
-  and none off it), `slide` (metal: by the direction of the move, the steps tried in turn, EXE5's tables at
+  and none off it), `slide` (magnet: by the direction of the move, the steps tried in turn, EXE5's tables at
   0x0800C920 and 0x0800C9C0; a form with `stands_on_metal`, EXE5's soul 5, doesn't slide), `cleared_by` (the
-  element whose hitboxes turn the type normal: fire grass, aqua the volcano and lava, wood roads and metal; EXE6's
+  element whose hitboxes turn the type normal: fire grass, aqua the volcano and lava, wood roads and magnet; EXE6's
   conversions now read it). Per game `mend` (EXE6 0x258 and 0x1E0 in battle mode 1, EXE5 600 in both). EXE5's panels
   section is registered with its own types; exe5-compat maps EXE5's 5, 8 and 10 to them.
 - **Push (item 2).** `reactions.push_reading = "by_hitter_flip"` (named `"exe5"` until the rules were named for
@@ -1259,7 +1259,7 @@ below: each game states them).
   a tick longer.
 - **Slides (item 17).** The `reactions` section's `slide_speed`, the arena's: a navi's slide (`sub_8016730`) and
   drag (`sub_80178D4`) go 8 pixels a tick in depth in EXE5 (0x0801361E, 0x080143A8), 6 in EXE6. Arriving on a panel
-  whose type has a `slide` rule (EXE5's metal) is as arriving on EXE6's roads (EXE5's 0x08013564 tests type 5 where
+  whose type has a `slide` rule (EXE5's magnet) is as arriving on EXE6's roads (EXE5's 0x08013564 tests type 5 where
   EXE6 tests 9 to 12). A type that `holds` (EXE5's sea) ends the slide.
 - **What a navi wears restarting.** The `reactions` section's `overlay_restart`, the navi's game's: an animation
   change, a flinch and a drag restart what a navi wears (`sub_8011450`, `sub_80F06CE`). EXE6's restart
@@ -1649,7 +1649,7 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 - **A pack says which panel types its field draws.**
   - `nettai_assets::Field::panel_types`: each type's engine number, in the order of its blocks.
   - field.json's `panel_types` lists them by the engine's names (docs/design/asset-formats.md §4).
-  - exe6-extract writes EXE6's 13 in the engine's order. exe5-extract writes EXE5's 11 in EXE5's order (metal 5,
+  - exe6-extract writes EXE6's 13 in the engine's order. exe5-extract writes EXE5's 11 in EXE5's order (magnet 5,
     lava 8, holy 9, sea 10: content/exe5/compat/panels.toml).
   - A field may have one highlight or two. EXE5 draws its one highlight block for both, so its pack keeps that
     block twice.
@@ -1683,16 +1683,16 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 
   `the_field_is_audited_for_the_panel_types_its_game_names` covers the static audit, and
   `an_older_field_without_panel_types_still_loads` covers a field.json from before `panel_types`.
-- **Seen.** An EXE6 arena (exe6:netbattle-35) drawn headless with EXE5's sea, lava and metal set on six panels and
+- **Seen.** An EXE6 arena (exe6:netbattle-35) drawn headless with EXE5's sea, lava and magnet set on six panels and
   both highlights shown:
-  - on an EXE5 pack extracted again: EXE5's own sea, lava and metal, with EXE6's highlights;
+  - on an EXE5 pack extracted again: EXE5's own sea, lava and magnet, with EXE6's highlights;
   - on an EXE5 pack from before `panel_types`: the six panels as tinted normal panels, said by the lookups.
 
   This needs EXE5's folder loaded beside EXE6's. A scratch program loaded it the way verify's trace-tests
   (`exe5_content`) do, leaving out EXE5's chips without a use; the frontend leaves EXE5's folder out until those chips
   are written.
 - **Packs.** An EXE5 pack needs extracting again for its field to draw. Before that, an EXE5 arena draws EXE6's
-  panels for the types both games name (as it drew EXE6's whole field before this) and tints its metal, lava and
+  panels for the types both games name (as it drew EXE6's whole field before this) and tints its magnet, lava and
   sea. An EXE6 pack loads as it is; extracting it again adds only the list.
 - **Gates** (merged with main e1c69bdf):
   - the build without warnings (all targets);
@@ -2590,7 +2590,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   the row; none, the row past them), a shift bit (EXE6's 0x80, five rows on) and an obstacle's rows (EXE6's
   `byte_800F604`, once Rust's).
 - **`reactions.move_direction`, since EXE4's port**: how a move's direction goes into the collision record
-  (`object_updateCollisionPanels`), which ice, EXE5's metal and content reading the record read. `by_side` (EXE6's
+  (`object_updateCollisionPanels`), which ice, EXE5's magnet and content reading the record read. `by_side` (EXE6's
   `sub_800E994`, EXE5's the same: back and forward by the side, other for two panels or more right or down or a
   diagonal move) or `absolute` (EXE4's 0x0800AF90: left and right whatever the side, across before up and down,
   never other).
@@ -3255,3 +3255,52 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
   the right-hand console's road mirror is the road carrying the other way (by the types' `road_slide`).
 - **Until their steps**, the engine's code that still tests a type of a game's asks by name
   (`PanelRules::is_named`: poison, holy, grass, ice, volcano); each later step removes its names.
+
+### Panels into Luau, step 2: a panel type's `burn` and `stand` (2026-10-07, branch exe4-engine)
+
+- **The hooks** are functions in a type's table (`panels.types.<name>.burn`, `.stand`), which the rules' definition
+  holds by the type's number (`RulesDef::panel_hook`; the panels section's reader skips them). The engine calls one
+  where it tested the type: `burn(body, player)` at the start of a navi's hit intake and in an object's
+  `burn_on_panel` (`kinds::common::panel_burn`); `stand(body)` where the standing effects run (`sub_801A186`: not
+  paused or dimmed, the body with a region), and a type without `stand` zeroes the body's standing count. A type
+  without the hook costs no call.
+- **What they do is content's**: content/exelib/panel_types.luau has poison's drain (a point every seventh tick
+  through the sixth damage slot, unless the body is untouchable, floats or is invulnerable), `drains(element)`
+  (EXE5's sea), `grass(slows_at)` (EXE6's and EXE5's 9; EXE4's none) and `burn { damage, spared_by, mood,
+  players_while_dimmed, spark }` (EXE5's and EXE4's lava, their spared statuses by name). Each game's
+  rules/panels.luau gives its types these. Gone from Rust: `BurnRule`, a type's `burn` and `drains`, the panels'
+  `grass_heal_slows_at`, the spark role `panel_burn`; `poison_timer` is the body's `standing_count`.
+- **The API they use**: the collision's `standing_count`, `add_damage(element, amount, raw)`, `add_mood_damage`,
+  `add_hit_mod`; `battle.cycle(20 | 180)` and `battle.weakness(receiver, hitter)`.
+- **The original's quirk** in poison's drain (an immune body's grass test reads its status word against grass's
+  number, 6, which a word with an immunity flag never is) is unreachable: an immune body's count goes to 0, as the
+  original's does.
+
+### Panels into Luau, step 3: `rest`, `move_end` and `slide`; EXE5's magnet (2026-10-07, branch exe4-engine)
+
+- **The hooks**: `rest(body) -> boolean` where `sub_801A36A` first tests a navi at rest (EXE6's roads carry it: true,
+  the move's end waits); `move_end(body)` once the move-complete flag is taken or the slide cooldown runs out (ice's
+  slide by rows, EXE4's ice's push into the final hit modifier, EXE5's magnet's slide, EXE5's sea's hold with its
+  splash); `slide(body, how) -> "on" | "carry" | "stop" | nil` as a navi's slide (`sub_8016730`), its drag or an
+  obstacle's slide reaches the type (ice: a panel further unless of aqua; roads and EXE5's magnet: carry, not floating
+  or submerged; EXE5's sea: stops a slide; EXE4's pitfall: stops all three unless floating). Their code is
+  content/exelib/panel_types.luau's; each game's rules/panels.luau gives its types theirs.
+- **What stays the machine's**: the slide types (1 a push's, 2 by rows, 3 a panel's carry: the object's `slide_type`
+  "push", "rows", "panel"), the carry's cooldown (the navi's `slide_cooldown`), the vectors by data (the reactions'
+  `slide_rows`, EXE6's and EXE5's ice rows, none for EXE4; a type's `carries`, a road's way, and `carries_by_move`,
+  EXE5's magnet's tries).
+- **Gone from Rust**: `IceRule`, a type's `holds` and `stops_slides`, `road_slide` and `slide` (as `carries` and
+  `carries_by_move`), the effect role `panel_splash` (EXE5's sea names its splash). New API: the object's
+  `slide_type`, the navi's `slide_cooldown`, `me:form_trait(name)`, `collision:add_final_hit_mod`.
+- **EXE5's type 5 is "magnet"** (the user: "metal" panels in EXE5 are magnet panels): its rules, compat table,
+  stages, chips, generators and pack field name it so, and the form trait is `stands_on_magnet`. EXE4's type 5 stays
+  "metal", its unbreakable plate.
+
+### Panels into Luau, step 4: a type's `hit` (2026-10-07, branch exe4-engine)
+
+- **The hook** `hit(body, element)`: the hit kernel's point where an object that isn't a body (an attack, of
+  `element`) touches a body that isn't invulnerable, the object's hit flags' bit 0 clear (`hs` a body's, `rs` not)
+  calls the type of the panel under the body. EXE6's ice (and the test content's): an aqua attack freezes the body
+  (its `status_final`, `statuses.freeze_150`) and the panel turns normal (exelib's `panel_types.freezes(status)`).
+  EXE5's and EXE4's ice have none.
+- **Gone from Rust**: the status role `ice_freeze` (EXE6's roles, the test content's, the test pack's).

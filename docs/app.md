@@ -145,7 +145,7 @@ follows it, its own look kept:
 | top bar: Play, Replays; Patches, Settings | top bar: PLAY, TRAINING, REPLAYS; BUILDS, SETTINGS (`shell.slint`'s `TopBar`) |
 | welcome (nickname, language, ROMs) | welcome (your name, language, the games found; the demo battle beside them) |
 | loadout strip: family, save, patch | selector strip: GAME, YOUR BUILD, EDIT or NEW BUILD (`Strip`), Play's and Training's alike |
-| the save's viewer | the build's sheet: its navi, its folder in its 30 places, what a round starts it with, the rest it states (`SheetView`) |
+| the save's viewer | the build's sheet: its name and version, its folder in its 30 places, what a round starts it with, the rest it states (`SheetView`) |
 | link code and FIGHT, then the lobby band | the link (ROOM or DIRECT, its code or address) and FIGHT, then the room (its code, READY, LEAVE) (`Band`) |
 | the lobby dot on Play | the room stays open on other tabs; PLAY carries a dot |
 | Replays: filters, list, detail | REPLAYS: the game filter, the list, the detail pane |
@@ -260,8 +260,9 @@ by those names. The first language is the system's (`sys-locale`, by its primary
   in the preview, the replays and the battle's banners;
 - the battle's own drawing switches too (`Player::set_language`).
 
-A language the content has no table for shows the content's own names. Stage and background names have no display
-names in the content, so they are shown by their names in it.
+A language the content has no table for shows the content's own names. A background shows its locales' name (the
+preview's arenas: `Names::background`, its area's as the game's menus name it, docs/frontend.md §1); a stage has no
+display name in the content, so it is shown by its name in it.
 
 **Adding a language** is adding its catalog. With gettext's tools and Slint's extractor
 (`cargo install slint-tr-extractor`):
@@ -305,7 +306,11 @@ datagrams of `nettai_frontend::lobby`):
    they chose (§8), else a random side of the game.
 2. Each player's name goes with their lobby state (protocol version 4): it is shown on the other's card and kept
    in the replay's names, never taken for who they are; its control characters are dropped and it is cut to 16
-   characters (`lobby::player_name`).
+   characters (`lobby::player_name`). With it go the navi their side plays, by its name, and their build's label,
+   its name and version (protocol version 5; cut to 40 characters, shown and never taken for the side, which only
+   the handshake's Reveal brings). Each card leads with the player, then their build and its version; a navi other
+   than the game's own is marked on it (gold, NAVI · its name), so the other player knows before the match.
+   Changing the build while linked says the new one, and the side revealed is the one brought at agreement.
 3. Readiness is each player's toggle, and each sees the other's. Changing the game or the build clears both.
 4. Once both are ready on the same settings, the match is agreed and the battle is a `NetPlayer` over the link
    (`netplay::Framed`: the link as the library's `Channel`, frames told from the lobby's datagrams by their first
@@ -485,27 +490,33 @@ one (`nettai_match::file::side_toml`, read back by `resolve_side`: the same name
     version = "falzar"
     folder = [ ... ]
 
-The **Builds** tab lists a game's builds (L and R go through the games), each with its navi's face, its folder's
-count and whether it can play (or what the rules say first), above NEW BUILD and FROM A SAVE…. A save can also be
+The **Builds** tab lists a game's builds (L and R go through the games), each with its navi's face, its version,
+its folder's count and whether it can play (or what the rules say first), above NEW BUILD and FROM A SAVE….
+**Navis.** A build is MegaMan's (the game's navi that changes form, `nettai_match::first_navi`) unless its player
+chooses another: a new build is his, and another navi is a format of its own (the user: navis are "a non-standard
+format that is supported but not major"), supported but never first. No screen leads with the navi: the sheet,
+the lobby's cards, the builds' cards and Training's versus lead with the build's name and version, and mark a
+navi other than the game's own (`builds::view::odd_navi`; `NaviMark`, gold, NAVI · its name), nothing for
+MegaMan. A save can also be
 dropped on the window. Builds are chosen in the selector strip, Play's and Training's (its EDIT opens the chosen
 one in the creator, its NEW BUILD makes one), as Tango's saves are in its loadout strip.
 
 **The creator** (`crate::builds`) lays a build out from its game's rules' setup schema alone (`builds::layout`;
 the rules declare no views), a tab for each kind of fact:
 
-- **NAVI:** the build's name, the navi (by its face), and each fact of one value: a flag, a number, an enum's
-  variants (EXE6's version, Beast Out, bug frags), or a fact's presets (EXE5's light or dark MegaMan, with the face
-  the round starts him with: below). Then FROM A SAVE…,
-  DUPLICATE and DELETE (confirmed twice). Beside them, what the round starts the navi with (HP, the buster, the
-  custom screen, the Mega and Giga limits, the Regular memory, the abilities and the NaviCust's bugs) and every
-  problem the rules see.
+- **BUILD:** the build's name; each fact of one value: a flag, a number, an enum's variants (Beast Out, bug
+  frags), or a fact's presets (EXE6's version, EXE5's team and its light or dark MegaMan, with the face the round
+  starts him with: below); then the navi (by its face; another than MegaMan is a format of its own), FROM A
+  SAVE…, DUPLICATE and DELETE (confirmed twice). Beside them, the build's name and version (another navi marked),
+  what the round starts its navi with (HP, the buster, the custom screen, the Mega and Giga limits, the Regular
+  memory, the abilities and the NaviCust's bugs) and every problem the rules see.
 - **FOLDER** (the engine's folder facts): its 30 entries with their codes and the Regular and tag marks; the
   counts against the limits the round's stats give; a chip's picture as the chip window shows it. The browser
   offers the chips the side's rules let a folder hold (`folders::pool`), in the library's order, by class and
   searched; a chip's code puts it in the entry, and the next entry is chosen.
-- **A few definitions** (`form[5]`, `form[16]`: EXE6's Crosses, EXE5's souls): a checklist of faces, of what
-  `facts::offered` offers, up to the list's room, with NONE, DEFAULT and ITS VERSION'S OWN. Choosing a version
-  states its own Crosses where none are stated.
+- **A few definitions** (a `form[n]` list a preset doesn't set): a checklist of faces, of what `facts::offered`
+  offers, up to the list's room, with NONE, DEFAULT and ITS VERSION'S OWN. EXE6's Crosses and EXE5's souls are no
+  checklist: their version's or team's preset sets them whole (below).
 - **The placement grid** (the NaviCust: `builds::grid`, chosen by its data's names and shape): the board by its
   size, its frame and its command line, the pieces in their colors and plus marks, outlined where the rules say
   something of one. A piece is taken from the list in one of its colors and held over the board, lit where it
@@ -543,7 +554,23 @@ dark one's his dark face); the base HP is no row of its own. A team navi's base 
 HP is its story's: `edit::without_forms`). A build whose value is another (made new, read from a file, made from
 a save) takes the preset on its side of the game's line, 470 (content/exe5/rules/light_dark's `LIGHT_CHIPS`): a
 new build's 500 is light's, and a save's import says which it took ("karma 100 is dark's: the dark preset (hp 997,
-karma 0)").
+karma 0)"). EXE4's are its light and dark MegaMan too, as Tango's EXE4 templates have them: 1000 and 1000, or 460
+and 997, on the game's line of 500 (content/exe4/rules/light_dark's `DARK_AT_MOST`, 499).
+
+The **version** is a preset too (the user: "for save files in nettai, you should have them choose between gregar
+and falzar/team colonel vs team protoman and it should fix the crosses/souls to be for the right game instead of
+allowing players to toggle them and mix and match"). EXE6's VERSION row is GREGAR or FALZAR, each with MegaMan's
+five Crosses of that version (`{ forms_of = "gregar" }`: his form list of that name in the content); EXE5's TEAM
+row is TEAM PROTOMAN or TEAM COLONEL, each with that version's six souls (EXE5's rules have no version, so its
+souls are its team: named in builds.toml, held to exe5-compat's soul flags by a test). Neither list is a row or a
+tab of its own, and the row's note names the forms it gives. A link navi has no Crosses (MegaMan's lists); an
+EXE5 team navi keeps its team's souls stated (they are MegaMan's, which it never uses), so its build keeps a team. A build read from a
+file takes its version's preset (EXE6's by its version, EXE5's the team its souls share the most with), and a
+mixed list is that version's whole set again; a save's version names its own (an EXE5 save's team, from its
+version, whatever souls it holds), and its import says so ("souls none is protoman's: the protoman preset (souls:
+6)"). An EXE6 build states no version until its player chooses one (EXE6's rules assume none: its round doesn't
+start without one). The sheet, the strip and the cards show the version by the preset's name. EXE4's setup states
+no version yet; its Red Sun and Blue Moon would be one more such entry (`[[presets.exe4.version]]`).
 
 **From a save** (`builds::import`): each game's compat crate reads its own saves (`exe6_compat::import`,
 `exe5_compat::import`); a save of another game is refused.

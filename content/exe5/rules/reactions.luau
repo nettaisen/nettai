@@ -55,17 +55,15 @@ return {
         { dx = 0, dy = 0, panels = 0 },
         { dx = 0, dy = 0, panels = 0 },
     },
-    -- A move's end on ice slides a body (0x080171F0), by the direction of the move (0x0800C988): none, up, down,
-    -- back, forward, other.
-    ice = {
-        slide = {
-            { dx = 0, dy = 0, panels = 0 },
-            { dx = 0, dy = -1, panels = 1 },
-            { dx = 0, dy = 1, panels = 1 },
-            { dx = -1, dy = 0, panels = 1 },
-            { dx = 1, dy = 0, panels = 1 },
-            { dx = 0, dy = 0, panels = 0 },
-        },
+    -- The slide a move's end on ice starts (0x080171F0), by the direction of the move (0x0800C988): none, up,
+    -- down, back, forward, other.
+    slide_rows = {
+        { dx = 0, dy = 0, panels = 0 },
+        { dx = 0, dy = -1, panels = 1 },
+        { dx = 0, dy = 1, panels = 1 },
+        { dx = -1, dy = 0, panels = 1 },
+        { dx = 1, dy = 0, panels = 1 },
+        { dx = 0, dy = 0, panels = 0 },
     },
     bubble_bob = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },
@@ -74,7 +72,7 @@ return {
     -- A deleted player's object stays in its slot, as EXE6's.
     dead_player = "kept",
     -- An attack's end hands its lockout on, as EXE6's (0x0800F2D0).
-    attack_end_lockouts = true,
+    attack_end_lockout = "by_kind",
     -- What the ends of a navi's actions clear of its requests besides the attacks' six: the Chaos Unison releases,
     -- at an attack's end (0x0800F2DA: 0x1803F); at a paralysis's, a flinch's and a drag's (0x080142A6, 0x080141D0,
     -- 0x080144E0: 0x1843F) the anti-sword trigger too. (A navi's own requests, GyroMan's take-off and landing,

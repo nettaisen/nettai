@@ -358,6 +358,54 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
+    fn cycle(&self, period: u8) -> u8 {
+        match period {
+            20 => self.round.cycle20,
+            180 => self.round.cycle180,
+            _ => panic!("battle.cycle({period}): the battle counts 20 and 180"),
+        }
+    }
+
+    fn weakness(&self, receiver: u8, hitter: u8) -> u8 {
+        let row = self.game_rules().element_weakness.get(receiver as usize);
+        row.and_then(|r| r.get(hitter as usize)).copied().unwrap_or_else(|| panic!("no weakness of element {receiver} to {hitter}"))
+    }
+
+    fn add_damage(&mut self, o: ObjectRef, element: u8, amount: u16, raw: bool) {
+        let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_damage: {o:?} has no collision data"));
+        let acc = &mut self.collision.get_mut(c).acc;
+        let e = element as usize;
+        assert!(e < acc.element_damage.len(), "add_damage: element {element}");
+        acc.element_damage[e] = acc.element_damage[e].wrapping_add(amount);
+        if raw {
+            acc.raw_element_damage[e] = acc.raw_element_damage[e].wrapping_add(amount);
+        }
+    }
+
+    fn add_mood_damage(&mut self, o: ObjectRef, amount: u16) {
+        let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_mood_damage: {o:?} has no collision data"));
+        let acc = &mut self.collision.get_mut(c).acc;
+        acc.mood_damage = acc.mood_damage.wrapping_add(amount);
+    }
+
+    fn add_final_hit_mod(&mut self, o: ObjectRef, bits: u8) {
+        let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_final_hit_mod: {o:?} has no collision data"));
+        self.collision.get_mut(c).hit_mod_final |= bits;
+    }
+
+    fn form_trait(&self, o: ObjectRef, name: &str) -> ApiResult<bool> {
+        let bit = crate::content::FormTraits::named(name).ok_or_else(|| ApiError::Other(format!("no form trait is named {name:?}")))?;
+        Ok(kinds::player::form_of(self, o).traits.has(bit))
+    }
+
+    fn add_hit_mod(&mut self, o: ObjectRef, bits: u8) {
+        let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_hit_mod: {o:?} has no collision data"));
+        let d = self.collision.get_mut(c);
+        d.hit_mod_final |= bits;
+        d.hit_mod_by_side[0] |= bits;
+        d.hit_mod_by_side[1] |= bits;
+    }
+
     fn lose_round(&mut self, side: u8) {
         self.round.actor_count[side as usize & 1] = 0;
         self.round.time_up = 1;
@@ -1621,6 +1669,7 @@ impl CoreApi for Battle {
                 crate::object::DragStep::Slide => 1,
                 crate::object::DragStep::Recover => 2,
             }),
+            ObjectField::SlideType => i(ob.slide_type as i64),
             ObjectField::Active
             | ObjectField::Visible
             | ObjectField::RunWhilePaused
@@ -1682,6 +1731,7 @@ impl CoreApi for Battle {
                 use crate::object::DragStep;
                 ob.drag_step = [DragStep::Start, DragStep::Slide, DragStep::Recover][i as usize]
             }
+            (ObjectField::SlideType, FieldValue::Enum(i)) => ob.slide_type = i as u8,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1927,6 +1977,7 @@ impl CoreApi for Battle {
             ActorField::AttackCount => i(at.count as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
+            ActorField::SlideCooldown => i(a.slide_cooldown as i64),
             ActorField::TargetMarker => a.target_marker.into(),
             ActorField::ChargeGlow => a.charge_glow.into(),
             ActorField::FullSynchroAura => a.full_synchro_aura.into(),
@@ -2164,8 +2215,12 @@ impl CoreApi for Battle {
         kinds::player::refresh_form_overlay(self, o);
     }
 
-    fn exit_attack(&mut self, o: ObjectRef) {
-        kinds::player::exit_attack_state(self, o);
+    fn exit_attack(&mut self, o: ObjectRef, keeps_lockout: bool) {
+        if keeps_lockout {
+            kinds::player::exit_attack_state_keeping_lockout(self, o);
+        } else {
+            kinds::player::exit_attack_state(self, o);
+        }
     }
 
     fn clear_invulnerable(&mut self, o: ObjectRef) -> ApiResult<()> {
@@ -2599,6 +2654,7 @@ impl CoreApi for Battle {
             CollisionField::InflictedBugs => c.acc.inflicted_bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
+            CollisionField::StandingCount => c.standing_count as i64,
             CollisionField::CounterByte => c.counter_byte as i64,
             CollisionField::CounterTimer => c.counter_timer as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
@@ -2670,6 +2726,7 @@ impl CoreApi for Battle {
             CollisionField::InflictedBugs => c.acc.inflicted_bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
+            CollisionField::StandingCount => c.standing_count = x as u8,
             CollisionField::CounterByte => c.counter_byte = x as u8,
             CollisionField::HitFlags => c.acc.hit_flags = x as u32,
             CollisionField::FinalDamage

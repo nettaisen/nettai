@@ -179,6 +179,16 @@ export type NaviStateFlag =
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
+-- A navi's slide type: none, a push's, by the arena's rows and the move's
+-- direction (the rules' `reactions.slide_rows`: ice's), the panel's own carry
+-- (a type's `carries` or `carries_by_move`: a road's, EXE5's magnet's).
+export type SlideType = "none" | "push" | "rows" | "panel"
+-- What reaches a panel in a panel type's `slide`: a navi's slide, its drag,
+-- an obstacle's slide.
+export type SlideHow = "slide" | "drag" | "obstacle"
+-- A panel type's `slide`'s answer: one panel further, carried the type's way
+-- (a navi's slide), stopped.
+export type SlideAnswer = "on" | "carry" | "stop"
 -- What other objects ask of a field object (an obstacle).
 export type ObstacleFlag =
     "destroy"
@@ -290,6 +300,9 @@ declare extern type Collision with
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
+    -- What a panel type counts while the body stands on it (poison's drain,
+    -- `sub_801A186`); the standing effects zero it on a type with no `stand`.
+    standing_count: number
     -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
     -- which setup takes from the damage word's high half.
     counter_byte: number
@@ -328,6 +341,15 @@ declare extern type Collision with
     -- `sub_801A4DC`: the objects whose collisions hit it this window, in
     -- slot order.
     function hit_by(self): { Object }
+    -- Add to the damage taken this window in an element (0 to 4, 5 the
+    -- sixth slot), and to the raw damage barriers and traps see where `raw`.
+    function add_damage(self, element: number, amount: number, raw: boolean): ()
+    -- Add to the mood damage taken this window.
+    function add_mood_damage(self, amount: number): ()
+    -- Set hit modifier bits this window, both sides' too.
+    function add_hit_mod(self, bits: number): ()
+    -- Set hit modifier bits this window, the final modifier's alone.
+    function add_final_hit_mod(self, bits: number): ()
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -392,6 +414,8 @@ declare extern type Object with
     no_sprite_update: boolean
     -- A navi's drag reaction step (the byte other kinds use otherwise).
     drag_step: DragStep
+    -- A navi's slide type, which its slide request starts.
+    slide_type: SlideType
     -- It holds a panel reservation (released when it is destroyed).
     holds_reservation: boolean
     sprite: Sprite
@@ -464,6 +488,8 @@ declare extern type Object with
     -- The actor data (read-only unless noted).
     actor_type: ActorType
     ai_index: number
+    -- The ticks before a panel may carry the navi again (read-only).
+    slide_cooldown: number
     -- The sprite overlay attached for the current attack (writable).
     overlay: Object?
     -- Writable links: the target marker (EXE6's Beast Out lock-on marker),
@@ -666,6 +692,8 @@ declare extern type Object with
     function set_request(self, flag: Request, on: boolean): ()
     function navi_state(self, flag: NaviStateFlag): boolean
     function set_navi_state(self, flag: NaviStateFlag, on: boolean): ()
+    -- Whether its side's form has the trait (a form definition's `traits`).
+    function form_trait(self, name: FormTrait): boolean
     -- The buttons, and the record kept while the battle is dimmed.
     function held(self, key: Key): boolean
     function pressed(self, key: Key): boolean
@@ -690,8 +718,10 @@ declare extern type Object with
     -- `sub_8011450`: restart the form overlay with the navi after an
     -- animation change.
     function refresh_form_overlay(self): ()
-    -- `object_exitAttackState`: back to idle with animation 0.
-    function exit_attack(self): ()
+    -- `object_exitAttackState`: back to idle with animation 0, the attack's
+    -- lockout handed on by the rules (`reactions.attack_end_lockout`); with
+    -- `keeps_lockout`, none handed on (EXE4's 0x0800CA28).
+    function exit_attack(self, keeps_lockout: boolean?): ()
 
     -- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5).
     -- The invulnerability ends (its timer and flag).
@@ -1120,6 +1150,12 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
+    -- The battle's count of fight ticks modulo `period` (20 or 180), which
+    -- grass heals by.
+    cycle: (period: number) -> number,
+    -- The shift a hit of element `hitter` takes against a body of element
+    -- `receiver` (the rules' `elements.weakness`).
+    weakness: (receiver: number, hitter: number) -> number,
     -- `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
     -- count (what the fight's result reads) to 0 and the round's time-up
     -- byte set (and battle flag 8, which nothing in EXE4 reads).
@@ -2358,7 +2394,7 @@ export type FormEffect =
 --     (EraseCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (EXE5's MagnetSoul);
+--   stands_on_magnet: a magnet panel doesn't slide the navi (EXE5's MagnetSoul);
 --   controlled: the side's rules' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
@@ -2376,7 +2412,7 @@ export type FormTrait =
     "status_immune"
     | "erases"
     | "special_holds_buster"
-    | "stands_on_metal"
+    | "stands_on_magnet"
     | "controlled"
     | "shows_target_marker"
     | "afterimages_stay"
@@ -2745,7 +2781,6 @@ export type RolesSpec = {
         damage_word_confusion: Status?,
         damage_word_blindness: Status?,
         counter_paralysis: Status?,
-        ice_freeze: Status?,
     }?,
     -- The one-shot effects the rules show themselves: a navi deleted (and
     -- a cross merged, a navi arriving, a form put on or taken off), HP

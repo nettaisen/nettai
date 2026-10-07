@@ -12,24 +12,36 @@
 -- `sub_800E680` is absent): its rows here are EXE6's, for EXE6's code in an EXE4 arena.
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
 
+local panel_types = require("@exelib/panel_types")
+local sparks = require("../lib/sparks")
+
+-- Lava's burn (0x08013128, 0x0801309E: hit effect 1, jittered by 15, from 0x080E2140).
+local LAVA_BURN = panel_types.burn {
+    damage = 50,
+    spared_by = { "invisible", "submerged", "flashing" },
+    mood = 20,
+    players_while_dimmed = true,
+    spark = sparks.fire,
+}
+
 return {
     types = {
         missing = { flags = 0x00018000 },
         broken = { flags = 0x00014000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
+        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison"), stand = panel_types.poison },
         metal = { flags = 0x00030010, unbreakable = true },
-        grass = { flags = 0x00010410, doubles = "fire", cleared_by = "fire" },
-        ice = { flags = 0x00010810, doubles = "elec" },
-        lava = {
-            flags = 0x00011010,
-            expires = 960,
-            burn = { damage = 50, spared_by = 0x206, mood = 20, players_while_dimmed = true },
-            cleared_by = "aqua",
+        grass = { flags = 0x00010410, doubles = "fire", stand = panel_types.grass(nil), cleared_by = "fire" },
+        ice = {
+            flags = 0x00010810,
+            doubles = "elec",
+            move_end = panel_types.ice_pushes({ { 0x00, 0x40, 0x80, 0x20, 0x10 }, { 0x00, 0x40, 0x80, 0x10, 0x20 } }),
+            slide = panel_types.ice,
         },
+        lava = { flags = 0x00011010, expires = 960, burn = LAVA_BURN, cleared_by = "aqua" },
         holy = { flags = 0x00012010 },
-        pitfall = { flags = 0x00010210, stops_slides = true, traps = true, crumbles = 190 },
+        pitfall = { flags = 0x00010210, traps = true, crumbles = 190, slide = panel_types.pitfall },
         hole = { flags = 0x00010010 },
     },
     -- EXE4's panel types by its own numbers.
