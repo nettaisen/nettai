@@ -1326,6 +1326,16 @@ fn charged_slash(b: &Battle, r: ObjectRef) -> (nettai_content_api::RecordHandle,
     (nettai_content_api::RecordHandle(h), dash)
 }
 
+/// The lock-on mode a charged slash names (its record's `lockon`), by key:
+/// the Beast Out rush's for it.
+fn slash_lockon(b: &Battle, slash: nettai_content_api::RecordHandle) -> String {
+    use nettai_content_api::{Data, Registry};
+    match b.content.defs.definitions.of(Registry::Record)[slash.0 as usize].spec.field("lockon") {
+        Data::Ref(Registry::Record, key) => key.clone(),
+        other => panic!("the charged slash names no lock-on mode: {other:?}"),
+    }
+}
+
 #[test]
 fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     // The charged shot's own slash: no dash, and the Beast rush would lock
@@ -1334,8 +1344,7 @@ fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     start_weapon_as(&mut b, p0, "slashcross/charge", 2);
     let (own, dash) = charged_slash(&b, p0);
     assert!(!dash);
-    let widesht = b.content.defs.lockon_by_key("widesht");
-    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, widesht);
+    assert_eq!(slash_lockon(&b, own), "widesht");
 
     // A chip content defines: StepSwrd's slash names its charged slash (the
     // wide sword's) and steps, so the charge dashes two panels in first.
@@ -1347,8 +1356,7 @@ fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     assert_eq!(ai_mut(&mut b, p0).attack.chip, Some(stepswrd));
     let (wide, dash) = charged_slash(&b, p0);
     assert!(dash && wide != own);
-    let widesht = b.content.defs.lockon_by_key("widesht");
-    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, widesht);
+    assert_eq!(slash_lockon(&b, wide), "widesht");
     // The chip's damage (160), not the charged shot's.
     assert_eq!(ai_mut(&mut b, p0).attack.damage, 160);
     let mut t = 0;

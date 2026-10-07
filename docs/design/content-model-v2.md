@@ -598,6 +598,7 @@ chip names are `beast-claw` and `beast-lunge`. The rule section keeps what the m
 and the clear-path condition); the charged sword's table by variant went, since each charged slash names its
 mode. The numbers are compat's rules.toml, for `gen-content check` alone. The engine's test content defines
 its made-up modes under the same names (crates/nettai-battle/testdata/content/rules/lockon.luau).
+(Since rust-and-luau.md's B2 the engine reads no lock-on mode: the search is EXE6's Luau, rules/lockon_search.)
 
 **As built** (step 12, statuses). A status is `StatusEffect` by `StatusHandle` (`Content::status`,
 `Defs::statuses`), with no byte anywhere in the engine: a collision's `status_base` and `status_final`, a hitbox's

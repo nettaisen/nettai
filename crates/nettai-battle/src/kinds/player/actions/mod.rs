@@ -9,7 +9,6 @@
 
 pub mod navi_switch;
 pub mod instant;
-pub mod lockon;
 pub mod movement;
 pub mod navi_chip;
 pub mod reactive;
