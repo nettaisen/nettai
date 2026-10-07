@@ -287,7 +287,7 @@ impl Stated {
                 bugs_before_drain: r.intake.bugs_before_drain,
                 no_charge_drive: r.intake.no_charge_drive,
                 hp_loss: r.intake.hp_loss,
-                emotion: r.emotion,
+                emotion: r.emotion.clone(),
                 form_break: r.form_break,
                 weakness_hit_breaks_form: r.weakness_hit_breaks_form,
                 weakness_mark: r.weakness_mark,

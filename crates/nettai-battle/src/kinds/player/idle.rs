@@ -7,7 +7,7 @@
 
 use super::actions::movement::{self, MoveKind};
 use super::{
-    Emotion, ai, ai_mut, switch_protected, emotion, exit_attack_state, flag1, form_of,
+    EmotionRole, ai, ai_mut, switch_protected, emotion_role, exit_attack_state, flag1, form_of,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
@@ -353,7 +353,7 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
 pub(crate) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
     let s = stats(b, r);
     let mut d = s.attack as u16 + b.content.navi(s.navi).buster_bonus as u16;
-    if emotion(b, b.objects.get(r).alliance) == Emotion::WornOut {
+    if emotion_role(b, b.objects.get(r).alliance) == Some(EmotionRole::WornOut) {
         d = 1;
     } else {
         d += b.content.form(s.form).buster_bonus as u16;

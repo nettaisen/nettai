@@ -111,7 +111,7 @@ impl Side {
             in_custom: false,
             built: None,
             sent: None,
-            emotion: Emotion::Normal,
+            emotion: Emotion::default(),
         }
     }
 }
@@ -423,13 +423,14 @@ impl Battle {
         Context { emotion: crate::kinds::player::emotion(self, side), ..self.custom_context_without_emotion(side, library) }
     }
 
-    /// [`Battle::custom_context`] with the emotion left normal, for a
+    /// [`Battle::custom_context`] with the emotion left the default (the
+    /// game's normal), for a
     /// caller that has the screen's own.
     fn custom_context_without_emotion<'a>(&self, side: u8, library: &'a dyn Library) -> Context<'a> {
         Context {
             library,
             stats: self.stats[side as usize],
-            emotion: Emotion::Normal,
+            emotion: Emotion::default(),
             turn: self.round.turn,
             own_gauges: self.round.flags & battle_flags::OWN_GAUGES != 0,
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,

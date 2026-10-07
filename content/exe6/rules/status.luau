@@ -123,10 +123,20 @@ local status = {
         emotion = {
             mood_held = "tired_or_exhausted",
             anger_end = "resets_mood",
-            plain_in_battle_mode_1 = false,
-            normal_in_a_form = false,
-            anger_before_worn_out = false,
-            tired_and_exhausted = true,
+            -- Its emotions in the order `sub_8015B54` reads them (the first that holds is the side's): worn out (a mood
+            -- of 0, or exhausted after Beast Over: AIData +0x33), angry (+0x34), held tired (+0x32), Full Synchro (a
+            -- mood of 0xFF), else normal.
+            order = {
+                { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } },
+                { emotion = "angry", when = { { angry = true } } },
+                { emotion = "tired", when = { { tired = true } } },
+                { emotion = "full_synchro", when = { { mood = 0xFF } } },
+                { emotion = "normal" },
+            },
+            -- What the framework does by them: Full Synchro and anger double the next damaging chip (Full Synchro
+            -- its palette and aura besides); a worn-out navi's buster deals 1; worn out or tired, anger doesn't
+            -- start.
+            roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },
         },
         form_break = "marked_forms",
         -- A damaging weakness hit asks for that break (`sub_801A506`, a step of its status routine).

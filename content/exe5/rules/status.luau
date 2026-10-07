@@ -426,11 +426,19 @@ local status = {
         emotion = {
             mood_held = "at_zero",
             anger_end = "through_setter",
-            plain_in_battle_mode_1 = true,
-            normal_in_a_form = true,
-            anger_before_worn_out = true,
-            tired_and_exhausted = false,
-            worried_below = 65,
+            -- In that order: the first case that holds is the side's emotion.
+            order = {
+                { emotion = "full_synchro", when = { { battle_mode = 1, mood = 0xFF } } },
+                { emotion = "normal", when = { { battle_mode = 1 }, { in_form = true } } },
+                { emotion = "angry", when = { { angry = true } } },
+                { emotion = "worn_out", when = { { mood = 0 } } },
+                { emotion = "full_synchro", when = { { mood = 0xFF } } },
+                { emotion = "worried", when = { { mood_below = 65 } } },
+                { emotion = "normal" },
+            },
+            -- What the framework does by them: Full Synchro and anger double the next damaging chip (Full Synchro
+            -- its palette and aura besides); a worn-out navi's buster deals 1, and anger doesn't start.
+            roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
         },
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
         form_break = "any_form",
