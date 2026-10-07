@@ -430,6 +430,9 @@ local status = {
         hit_sound = "by_console",
         -- A barrier stands still while paused; wind, or the hit flags 0xA20, pop it (EXE6's code).
         barrier = { stops_while_paused = true, wind = "pops" },
+        -- Its defensive chips (0x08029A60): AntiDmg, or the trap the navi's status arms, catches a hit of any damage
+        -- (one of none passes); AntiSwrd any sword's hit (the hit flags 0x2000).
+        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
         -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi
         -- in a soul reads as normal (the soul's own face), then anger is read before a mood of 0 (a dark MegaMan's,
         -- worn out), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.
