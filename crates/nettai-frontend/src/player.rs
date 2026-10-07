@@ -533,7 +533,7 @@ mod tests {
             first_tile: 0xA3,
             palettes,
             first_palette: 1,
-            panel_types: (0..13).collect(),
+            panel_types: nettai_battle::content::testing::content().rules().panels.names[..13].to_vec(),
             panels: (0..13 * 6).map(|_| block).collect(),
             front_edges: [[MapEntry::default(); 5]; 2],
             highlights: vec![[MapEntry::default(); 15]; 2],

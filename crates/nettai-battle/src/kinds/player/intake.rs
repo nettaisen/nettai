@@ -10,7 +10,6 @@ use super::{
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, timer};
 use crate::content::{EffectRole, SparkRole, StatusRole, StatusTimer};
-use crate::field::PanelType;
 use crate::object::{ObjectRef, Vec3};
 
 /// `sub_801AC6C`.
@@ -171,7 +170,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     let action = super::navi_action(b, r);
     let holy = {
         let c = coll(b, r);
-        c.barrier != 0 && panel_kind(b, c.panel) == PanelType::Holy
+        c.barrier != 0 && b.game_rules().panels.is_named(panel_kind(b, c.panel), "holy")
     };
     let c = coll_mut(b, r);
     let mut barrier = c.barrier;
@@ -299,9 +298,11 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     let f = flag1(b, r);
-    let drains = b.game_rules().panels.types[t as usize].drains;
+    let drains = b.game_rules().panels.rule(t).drains;
     let on_grass;
-    if t == PanelType::Poison || drains.is_some_and(|e| e == coll(b, r).element) {
+    let panels = &b.game_rules().panels;
+    let grass = panels.named("grass");
+    if panels.is_named(t, "poison") || drains.is_some_and(|e| e == coll(b, r).element) {
         if f & (f1::UNTOUCHABLE | f1::FLOATSHOE | f1::INVULNERABLE) == 0 {
             let c = coll_mut(b, r);
             let v = c.poison_timer as i32 - 1;
@@ -314,9 +315,9 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
         }
         // Immune: the game's grass test then compares the status flags
         // word, not the panel type, against the grass type.
-        on_grass = f == PanelType::Grass as u32;
+        on_grass = grass.is_some_and(|g| f == g.0 as u32);
     } else {
-        on_grass = t == PanelType::Grass;
+        on_grass = grass == Some(t);
     }
     coll_mut(b, r).poison_timer = 0;
     if !on_grass || b.objects.get(r).element & 0xF != 4 {
@@ -343,7 +344,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
         if f & (f1::DRAG | f1::MOVING) != 0 {
             return;
         }
-        if panel_kind(b, coll(b, r).panel).is_road() {
+        if b.game_rules().panels.is_road(panel_kind(b, coll(b, r).panel)) {
             // sub_801A400
             if ai(b, r).road_cooldown == 0 && f & 0x24 == 0 {
                 set_flag2(b, r, 0x10);
@@ -360,7 +361,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     // EXE5's panels at a move's end (0x0801715E, after its own flag test):
     // metal slides the body, sea holds it.
-    let rule = b.game_rules().panels.types[kind as usize];
+    let rule = *b.game_rules().panels.rule(kind);
     if (rule.slide.is_some() || rule.holds.is_some()) && flag1(b, r) & 0x0010_0040 == 0 {
         if rule.slide.is_some() {
             return metal_slide(b, r);
@@ -369,7 +370,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
             return panel_hold(b, r, ticks);
         }
     }
-    if kind != PanelType::Ice {
+    if !b.game_rules().panels.is_named(kind, "ice") {
         return;
     }
     // sub_801A3DA (EXE4's 0x0801335A)
@@ -736,7 +737,7 @@ fn drain_credit(b: &mut Battle, r: ObjectRef) {
 /// rounding up, per element on a holy panel under the object), through
 /// the side's damage-carry record.
 fn final_damage(b: &mut Battle, r: ObjectRef) {
-    let holy = panel_kind(b, b.objects.get(r).panel) == PanelType::Holy;
+    let holy = b.game_rules().panels.is_named(panel_kind(b, b.objects.get(r).panel), "holy");
     let k = holy as u32;
     let c = coll_mut(b, r);
     let mut sum = 0u32;
@@ -844,7 +845,7 @@ mod tests {
         b.run_objects();
         b.round.flags |= battle_flags::FIGHTING;
         let r = b.player(1).unwrap();
-        b.set_panel_type(5, 2, PanelType::Ice);
+        b.set_panel_type(5, 2, crate::content::testing::panel("ice"));
         super::super::set_flag1(&mut b, r, f1::AFFECTED_BY_ICE | f1::MOVE_COMPLETE);
         let c = coll_mut(&mut b, r);
         c.direction = direction;
@@ -961,18 +962,18 @@ mod tests {
         let run = |burn: Option<BurnRule>, dimmed: bool, player: bool, status: u32| {
             let (mut b, r) = fight_with(|rules| {
                 if let Some(burn) = burn {
-                    rules.panels.types[PanelType::Lava as usize].burn = Some(burn);
+                    rules.panels.types[crate::content::testing::panel("lava").0 as usize].burn = Some(burn);
                 }
             });
             let p = coll(&b, r).panel;
-            b.set_panel_type(p.x, p.y, PanelType::Lava);
+            b.set_panel_type(p.x, p.y, crate::content::testing::panel("lava"));
             if dimmed {
                 b.round.flags |= battle_flags::DIMMED;
             }
             super::super::set_flag1(&mut b, r, status);
             crate::kinds::common::panel_burn(&mut b, r, player);
             let c = coll(&b, r);
-            (c.acc.element_damage[1], c.acc.mood_damage, b.field.panels[p.y as usize][p.x as usize].kind == PanelType::Lava)
+            (c.acc.element_damage[1], c.acc.mood_damage, b.field.panels[p.y as usize][p.x as usize].kind == crate::content::testing::panel("lava"))
         };
         assert_eq!(run(Some(exe4), true, true, 0), (50, 20, false), "EXE4's player, dimmed");
         assert_eq!(run(Some(exe4), true, false, 0), (0, 0, true), "another body waits");
@@ -994,7 +995,7 @@ mod tests {
                 }
             });
             let p = coll(&b, r).panel;
-            b.set_panel_type(p.x, p.y, PanelType::Grass);
+            b.set_panel_type(p.x, p.y, crate::content::testing::panel("grass"));
             let o = b.objects.get_mut(r);
             o.element = 4;
             (o.hp, o.max_hp) = (5, 100);

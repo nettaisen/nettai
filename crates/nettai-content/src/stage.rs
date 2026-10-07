@@ -18,7 +18,6 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::tiles::{self, Layout, TileImage};
 use nettai_assets::{AnimTarget, Background, Field, GfxAnim, GfxAnimFrame, MapEntry, Palette, PaletteAnim, Tiles};
-use nettai_battle::field::PanelType;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -77,9 +76,9 @@ pub struct FieldDoc {
     /// the first row and how many.
     pub palette_rows: [u8; 2],
     pub palette_anims: Vec<PaletteAnimDoc>,
-    /// The panel types the field draws, by the engine's names, in the
+    /// The panel types the field draws, by their game's names, in the
     /// order of their blocks (docs/design/rules-in-luau.md §7.4).
-    pub panel_types: Vec<PanelType>,
+    pub panel_types: Vec<String>,
     /// 5x3 blocks by 6 * the type's place in `panel_types` + 3 * owner +
     /// row - 1.
     pub panels: Vec<Vec<String>>,
@@ -135,7 +134,7 @@ pub fn export_field(f: &Field) -> Vec<(String, Vec<u8>)> {
                 frames: a.frames.iter().map(|(p, t)| PaletteFrameDoc { ticks: *t, colors: tiles::palette_text(p) }).collect(),
             })
             .collect(),
-        panel_types: f.panel_types.iter().filter_map(|&t| PanelType::ALL.get(t as usize).copied()).collect(),
+        panel_types: f.panel_types.clone(),
         panels: f.panels.iter().map(|b| texts(b)).collect(),
         front_edges: f.front_edges.iter().map(|b| texts(b)).collect(),
         highlights: f.highlights.iter().map(|b| texts(b)).collect(),
@@ -181,7 +180,7 @@ pub fn import_field(dir: &Path, prefix: &str, report: &mut Report) -> Option<Fie
         report.error(&name, format!("{} panel types need {} blocks, not {}", doc.panel_types.len(), 6 * doc.panel_types.len(), panels.len()));
         return None;
     }
-    let panel_types: Vec<u8> = doc.panel_types.iter().map(|&t| t as u8).collect();
+    let panel_types = doc.panel_types.clone();
     let palette_anims = doc
         .palette_anims
         .iter()

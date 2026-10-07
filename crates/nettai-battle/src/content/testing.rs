@@ -160,6 +160,12 @@ pub fn stage_music() -> crate::sound::SoundId {
 /// Where the navi holds a gun.
 pub const GUN_POINT: AttachPoint = AttachPoint { x: 20, y: 16 };
 
+/// The test content's panel type named `name` (its rules' `panels.numbers`:
+/// EXE6's thirteen, then metal, lava and sea).
+pub fn panel(name: &str) -> crate::field::PanelType {
+    content().rules().panels.named(name).unwrap_or_else(|| panic!("the test content has no panel type {name:?}"))
+}
+
 /// The content set, shared (defined once per process: the define phase
 /// runs every module).
 pub fn content() -> Arc<Content> {

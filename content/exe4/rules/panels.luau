@@ -34,6 +34,10 @@ return {
     },
     -- EXE4's panel types by its own numbers.
     numbers = { "missing", "broken", "normal", "cracked", "poison", "metal", "grass", "ice", "lava", "holy", "pitfall", "hole" },
+    -- The types the engine's own code needs: the missing panel, which no type change reaches; what a break and a
+    -- crack make (0x08009AEC and its kin: 1 and 3); the normal panel, what a mend, an expiry and a clearing leave
+    -- (0x08009740, 0x08013058: 2).
+    roles = { missing = "missing", broken = "broken", cracked = "cracked", normal = "normal" },
     start_visible = {
         { true, true, true, true, true, true, true, true },
         { true, true, true, true, true, true, true, true },
