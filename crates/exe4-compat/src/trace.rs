@@ -659,8 +659,10 @@ impl Round {
             // What the save brings to the stats (EXE4's rules/save): the base
             // HP, which the rules write into the HP.
             player.set_fact(content, "hp", &[Fact::Value(Value::Int(d.navi_stats[side].max_base_hp as i64))])?;
-            // His light/dark value (NaviStats +0x36: the rules' light_dark).
+            // MegaMan's light/dark value and the Full Synchro at the start
+            // (EXE4's rules/light_dark: the starting mood).
             player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
+            player.set_fact(content, "full_synchro_start", &[Fact::Value(Value::Bool(d.navi_stats[side].full_synchro))])?;
             Ok(player)
         });
         let [p0, p1] = players;
@@ -719,9 +721,10 @@ fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)
 /// mood, the buster's levels and blank count, the weapons by compat
 /// (records.toml), the bugs' drains, the custom level and chip limits, the
 /// move lag's column (the engine's navi variant), the soul (the form), the
-/// aura, the HP. A block that holds what the port can't say yet (supports,
-/// a panel trail, Full Synchro at the start, a color, All Guard: Mod Cards
-/// to come) is an error, which `Round::needs` lists.
+/// aura, the HP. (The Full Synchro at the start is the rules' setup's:
+/// EXE4's rules/light_dark.) A block that holds what the port can't say yet
+/// (supports, a panel trail, a color, All Guard: Mod Cards to come) is an
+/// error, which `Round::needs` lists.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
@@ -739,7 +742,6 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     for (what, set) in [
         ("supports (+0x18)", s.supports != 0),
         ("a panel trail (+0x1B)", s.panel_trail.is_some()),
-        ("Full Synchro at the start (+0x1F)", s.full_synchro),
         ("a color (+0x27)", s.color != 0),
         ("All Guard (+0x28)", s.all_guard),
     ] {
