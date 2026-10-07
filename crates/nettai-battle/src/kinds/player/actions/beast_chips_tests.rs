@@ -60,7 +60,7 @@ fn tick(b: &mut Battle, p: [ObjectRef; 2], held: u16) {
     ai_mut(b, p[1]).pad.update(keys::PRESENT);
     b.run_objects();
     b.banner.tick();
-    b.fade.step();
+    b.fade.step(crate::content::FadeClear::AtTarget);
 }
 
 /// Side 0 uses `chip` from idle (the first in its hand), and the ticks run

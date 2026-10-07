@@ -189,6 +189,10 @@ fn show_hp_number(b: &mut Battle, r: ObjectRef) {
 /// Action 1, `sub_8017888`: hand over to the idle controller (spawning
 /// the Beast Out lock-on marker in the own-gauges mode).
 pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
+    // (EXE4's, 0x08010A88: from here the navi stops for pauses.)
+    if b.content.rules().paused_navi == crate::content::PausedNavi::StopsAtControl {
+        b.objects.get_mut(r).flags &= !crate::object::flags::RUN_WHILE_PAUSED;
+    }
     if own_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).target_marker.is_none() {
         crate::kinds::target_marker::spawn(b, r);
     }

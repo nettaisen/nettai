@@ -927,8 +927,8 @@ fn the_dark_hover_sets_its_volumes_before_it_sounds() {
     let tick = |look: &mut ScreenLook, on_dark: bool| {
         look.drawn = Default::default();
         look.hover(Some(on_dark), &rules);
-        look.fade.step();
-        look.window_fade.step();
+        look.fade.step(crate::content::FadeClear::AtTarget);
+        look.window_fade.step(crate::content::FadeClear::AtTarget);
         look.drawn.calls().collect::<Vec<_>>()
     };
     // Off a dark chip for 60 ticks: nothing asked.
