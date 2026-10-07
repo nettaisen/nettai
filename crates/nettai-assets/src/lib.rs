@@ -265,7 +265,49 @@ pub struct Background {
     pub palette: Option<Palette>,
     /// Scroll per frame in 1/16 pixel (the game's scroll counters).
     pub scroll: (i32, i32),
+    /// Or a scroll that speeds up ([`Speeding`]); with it, `scroll` is
+    /// none.
+    pub speeding: Option<Speeding>,
     pub anims: Vec<GfxAnim>,
+}
+
+/// A scroll that speeds up (a BG1 callback that takes a step from its
+/// counter each frame, to a top, and moves the picture by the counter's
+/// whole pixels: EXE5's 0x080019EC, EXE4's the scrollers' +0xB8): on its
+/// `k`th frame its speed is `k * step`, at most `top` (its sign `step`'s),
+/// both in 1/65536 pixel a frame, and the picture moves by the speed's whole
+/// pixels, a part of one counting whole (the game's arithmetic shift of a
+/// counter that falls). Its frames are the background's own from its load,
+/// or with `from_battle` the battle's from its first (EXE5's moves the
+/// picture only while battle flag 0x40 is set, which the battle's intro sets
+/// on the battle's first frame, 0x080E06A0).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Speeding {
+    pub step: (i32, i32),
+    pub top: (i32, i32),
+    pub from_battle: bool,
+}
+
+impl Speeding {
+    /// How far the picture has moved by the end of its `k`th frame (the
+    /// first frame's 1), on each axis.
+    pub fn offset(&self, k: u32) -> (i32, i32) {
+        fn axis(step: i32, top: i32, k: u32) -> i32 {
+            if step == 0 {
+                return 0;
+            }
+            let (s, t, k) = (step.unsigned_abs() as u64, top.unsigned_abs() as u64, k as u64);
+            // A frame's move: its speed's whole pixels, a part counting whole.
+            let moved = |i: u64| (i * s).min(t).div_ceil(0x1_0000);
+            // (From the frame the speed reaches the top, the same each frame.)
+            let full = t.div_ceil(s);
+            let total = (1..=k.min(full)).map(moved).sum::<u64>() + k.saturating_sub(full) * t.div_ceil(0x1_0000);
+            // (Wrapped to the counter's width: a picture repeats long before.)
+            let total = (total & 0xFFFF_FFFF) as u32 as i32;
+            if step < 0 { total.wrapping_neg() } else { total }
+        }
+        (axis(self.step.0, self.top.0, k), axis(self.step.1, self.top.1, k))
+    }
 }
 
 /// A graphics animation: tiles or palettes replaced on a schedule, or the
@@ -675,5 +717,23 @@ mod tests {
     fn map_entries_decode() {
         let e = MapEntry::from_gba(0x54A7);
         assert_eq!(e, MapEntry { tile: 0xA7, hflip: true, vflip: false, palette: 5 });
+    }
+
+    /// EXE5's nebulagray (0x1B) as the original draws it: its BG1 offset
+    /// on the battle's kth frame, read off the chip lab's frame shots of
+    /// backgrounds/0x1b and 0x1b-turns (the frame 141 + k): a pixel a frame
+    /// for 64 frames, then 2, 3 and from frame 193 on 4 a frame, through
+    /// the custom screen and the pause.
+    #[test]
+    fn a_speeding_scroll_moves_as_nebulagray_does() {
+        let s = Speeding { step: (0, 0x400), top: (0, 0x4_0000), from_battle: true };
+        let y = |k: u32| s.offset(k).1 & 0xFF;
+        let shots = [(19, 19), (59, 59), (109, 154), (159, 29), (209, 196), (215, 220), (279, 220), (759, 92), (1129, 36)];
+        for (k, vofs) in shots {
+            assert_eq!(y(k), vofs, "frame {k}");
+        }
+        assert_eq!(s.offset(0), (0, 0));
+        assert_eq!(s.offset(256), (0, 640));
+        assert_eq!(s.offset(257).1 - s.offset(256).1, 4);
     }
 }

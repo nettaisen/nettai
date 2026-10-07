@@ -512,10 +512,50 @@ impl Round {
     pub fn screen_late(&self, i: usize, frames: &[&Frame]) -> u32 {
         let d = self.link_delay() as u32;
         let frame = frames[i].frame;
-        match self.screen_opened(frame).and_then(|o| self.screen_ok(o, decode_setup(&self.setup).map_or(0, |d| d.battle_state[0x0D] as usize & 1))) {
+        match self.local_ok(frame) {
             Some(ok) if frame >= ok + d => d,
             _ => 0,
         }
+    }
+
+    /// The recording console's side (its setup's BattleState +0x0D).
+    fn local_side(&self) -> usize {
+        decode_setup(&self.setup).map_or(0, |d| d.battle_state[0x0D] as usize & 1)
+    }
+
+    /// The recording console's side's OK on the custom screen open on frame
+    /// `frame`, if the side has pressed it by the screen's end (none while
+    /// the fight runs): the frame the original's screen took it, which the
+    /// replay feeds the engine's `link_delay` frames later ([`Round::fed`]).
+    /// For the frame comparison's known shift: from it until the engine's
+    /// screen takes it, that screen holds the OK back; then it runs
+    /// `link_delay` frames behind the original's until the fight resumes
+    /// ([`Round::screen_late`]).
+    pub fn local_ok(&self, frame: u32) -> Option<u32> {
+        self.screen_opened(frame).and_then(|o| self.screen_ok(o, self.local_side()))
+    }
+
+    /// The recording console's side's first OK of the round ([`Round::local_ok`]
+    /// of its first screen it pressed OK on): from `link_delay` frames
+    /// after it on, what counts from that side's send (the HUD's full
+    /// gauge's stripes, which "waiting" sets) runs that many frames behind
+    /// the original's, to the round's end.
+    pub fn first_local_ok(&self) -> Option<u32> {
+        let custom = |f: &Frame| f.state[0] == 4 && f.state[1] == 8;
+        let mut i = 0;
+        while i < self.frames.len() {
+            if custom(&self.frames[i]) {
+                if let Some(ok) = self.screen_ok(i, self.local_side()) {
+                    return Some(ok);
+                }
+                while i < self.frames.len() && custom(&self.frames[i]) {
+                    i += 1;
+                }
+                continue;
+            }
+            i += 1;
+        }
+        None
     }
 
     /// The index of frame `number` in the round's frames.
@@ -692,11 +732,13 @@ impl Round {
         let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
         let (version, japanese) = d.traced_rom();
         let stage = compat.stage(st[0], actor_list, version, japanese).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
-        let pack = content.assets.pack(crate::ROOT).expect("needs saw the pack");
+        // (The background by its name in compat: a liberation's map's number
+        // is its area's background, which the pack has under the area's
+        // first number.)
         let background = nettai_battle::content::BackgroundId(
-            content
-                .assets
-                .number_handle(nettai_content_api::AssetKind::Background, pack, st[4] as u16)
+            compat
+                .background(st[4])
+                .and_then(|name| content.assets.handle(nettai_content_api::AssetKind::Background, name))
                 .ok_or_else(|| format!("EXE5's pack has no background {:#04x}", st[4]))?,
         );
         let settings = nettai_battle::BattleSettings { stage, background, effects: u32::from_le_bytes([st[8], st[9], st[10], st[11]]) };
