@@ -405,6 +405,10 @@ named_fields! {
         HitModBase = "hit_mod_base", U8, rw;
         /// The damage it deals (the object's damage at setup).
         SelfDamage = "self_damage", U16, rw;
+        /// What a panel type counts while the body stands on it (+0x1C:
+        /// poison's drain, `sub_801A186`); the standing effects zero it on a
+        /// type that has no `stand`.
+        StandingCount = "standing_count", U8, rw;
         /// The counter byte (CollisionData+0x07: bits 0-6 counter
         /// strength, bit 7 can't counter), which setup takes from the
         /// damage word's high half.
@@ -1193,6 +1197,20 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
+    /// The battle's count of fight ticks modulo `period` (20 or 180: the
+    /// round's two counts), which grass heals by.
+    fn cycle(&self, period: u8) -> u8;
+    /// The shift a hit of element `hitter` takes against a body of element
+    /// `receiver` (the rules' `elements.weakness`).
+    fn weakness(&self, receiver: u8, hitter: u8) -> u8;
+    /// Add `amount` to `o`'s damage this window in `element` (0 to 4, 5 the
+    /// sixth slot), and to its raw damage too where `raw` (what barriers
+    /// and traps see).
+    fn add_damage(&mut self, o: ObjectRef, element: u8, amount: u16, raw: bool);
+    /// Add to `o`'s mood damage this window.
+    fn add_mood_damage(&mut self, o: ObjectRef, amount: u16);
+    /// Set hit modifier bits on `o` this window, both sides' too.
+    fn add_hit_mod(&mut self, o: ObjectRef, bits: u8);
     /// `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
     /// count (what the fight's result reads) to 0 and the round's time-up
     /// byte set. (It also sets battle flag 8, which nothing in EXE4 reads.)

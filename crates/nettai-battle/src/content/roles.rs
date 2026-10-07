@@ -277,9 +277,6 @@ definition_roles! {
         Eruption = "eruption",
         /// A thrown obstacle's landing's (`sub_8018002`).
         ThrownObstacle = "thrown_obstacle",
-        /// A panel's burn (EXE5's lava, the sparks' row 1: 0x08016D80). Only
-        /// a game whose panels burn needs it.
-        PanelBurn = "panel_burn",
     }
 }
 
@@ -716,6 +713,10 @@ impl Roles {
             .sprites
             .get(&role)
             .unwrap_or_else(|| panic!("the role sprites.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
+    }
+
+    pub fn try_banner(&self, role: BannerRole) -> Option<BannerId> {
+        self.banners.get(&role).copied()
     }
 
     pub fn banner(&self, role: BannerRole) -> BannerId {
