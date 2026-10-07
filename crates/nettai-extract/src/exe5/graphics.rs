@@ -48,9 +48,8 @@ const BACKGROUND_COUNT: u32 = 29;
 const BACKGROUND_SCROLL: u32 = 0x0808_C32C;
 const BACKGROUND_ANIMS: u32 = 0x0808_C96C;
 /// The scroll callbacks and their counters' steps (1/16 pixel a frame): the
-/// same code as EXE6's `BGScrollCB_*`. EXE5's own at 0x080019EC follows the
-/// joypad (a background the player scrolls) and 0x08001A24 does nothing;
-/// both are drawn still.
+/// same code as EXE6's `BGScrollCB_*`. 0x08001A24 does nothing (drawn
+/// still); EXE5's own at 0x080019EC is [`SPEEDING`].
 const SCROLLERS: [(u32, (i32, i32)); 5] = [
     (0x0800_1936, (-8, -4)), // EXE6 BGScrollCB_BG1Diagonal3to2Scroll
     (0x0800_196E, (0, -4)),  // BGScrollCB_BG1UpScroll
@@ -58,6 +57,13 @@ const SCROLLERS: [(u32, (i32, i32)); 5] = [
     (0x0800_19B6, (8, 0)),   // a fast right scroll (EXE6 has a slow one)
     (0x0800_19C8, (-8, 0)),  // BGScrollCB_BG1FastLeftScroll
 ];
+/// EXE5's own BG1 callback (nebulagray's, 0x1B): while battle flag 0x40 is
+/// set (BattleState+0x5C, which the battle's intro sets on its first frame,
+/// 0x080E06A0) it takes 0x400 from its counter (0x0200A728, which the
+/// battle's init clears, 0x0808C2B8), to -0x40000, and moves BG1 down by the
+/// counter's arithmetic shift right 16 (BG1VOFS minus it): a speed rising
+/// by 1/64 pixel a frame to 4 pixels a frame, each frame's move rounded up.
+const SPEEDING: (u32, Speeding) = (0x0800_19EC, Speeding { step: (0, 0x400), top: (0, 0x4_0000) });
 
 /// The chip records (0x2C bytes, as EXE6's): +0x20 the icon, +0x24 the
 /// picture, +0x28 its palette. Team Colonel's table is 4 bytes lower.
@@ -235,7 +241,35 @@ fn field(rom: &Rom) -> Field {
 
 // ---- Backgrounds -------------------------------------------------------------------
 
+/// The backgrounds by number, one picture a background: where compat's
+/// assets.toml makes several numbers one background (a liberation's map's
+/// number and its area's), the pack has the first's, and the others must be
+/// the same (their load data, their scroll callbacks and their animations),
+/// or the extraction fails.
 fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
+    let mut out = pictures(rom);
+    let raw = |id: u32| {
+        let d = rom.u32(BACKGROUNDS + 4 * id);
+        let load: Vec<u32> = (0..7).map(|i| rom.u32(d + 4 * i)).collect();
+        let scroll: Vec<u32> = (0..4).map(|i| rom.u32(BACKGROUND_SCROLL + 16 * id + 4 * i)).collect();
+        (load, scroll)
+    };
+    for (name, numbers) in &exe5_compat::Compat::exe5().assets.backgrounds {
+        let (&first, others) = numbers.all().split_first().expect("compat checks a background has a number");
+        for &n in others {
+            assert!(
+                raw(n as u32) == raw(first as u32) && out.get(n as usize) == out.get(first as usize),
+                "background {name}: {n:#04x} isn't {first:#04x}'s picture again (its load data, scroll or animations differ)"
+            );
+            out[n as usize] = None;
+        }
+    }
+    out
+}
+
+/// Each background number's picture as its load data, scroll callback and
+/// animations make it.
+fn pictures(rom: &Rom) -> Vec<Option<Background>> {
     (0..BACKGROUND_COUNT)
         .map(|id| {
             let (tiles, first_tile, map, map_width, map_height, palette) =
@@ -246,6 +280,7 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
                 .find(|(a, _)| *a == cb)
                 .map(|(_, v)| *v)
                 .unwrap_or((0, 0));
+            let speeding = (cb == SPEEDING.0).then_some(SPEEDING.1);
             let anims = gfx_anims(rom, rom.u32(BACKGROUND_ANIMS + 4 * id), PALETTE_BUFFER);
             Some(Background {
                 tiles,
@@ -255,6 +290,7 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
                 map_height,
                 palette,
                 scroll,
+                speeding,
                 anims,
             })
         })
