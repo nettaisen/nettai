@@ -1,0 +1,855 @@
+--!strict
+-- EXE4's netbattle stages: the battle settings records its netbattles take (the first 96 of 0x080FC138's 12-byte
+-- records, by the pick 0x0803AA6C), each distinct one a stage: its panel layout (+1, 0x0800A424) and its actor list
+-- (+8: 4-byte entries, a side or argument, x, y, the kind; 0 a navi). Every record's background is 3 (comp) and its
+-- battle type 0x46 (+4, which the battle state's +0x0F takes: 0x48 in the lab's netbattles; its battle flags go by
+-- it), EXE4's own numbering. Nearest the engine can say (exe4-map.md §18): the engine's battle mode is EXE6's
+-- numbering, its netbattle 0; EXE4's records have no effects word nor EXE6's panel pattern, so each states EXE5's
+-- netbattle's (0x88C, 0x38: no turning, each navi facing its side). A record's numbers are compat's.
+-- Waiting (EXE4's obstacles and panels to port):
+--   netbattle-21 (layout 0x20, actors 0x080fc61f): actor kinds 3
+--   netbattle-22 (layout 0x20, actors 0x080fc630): actor kinds 3
+--   netbattle-25 (layout 0x25, actors 0x080fc641): actor kinds 3
+--   netbattle-26 (layout 0x25, actors 0x080fc652): actor kinds 3
+--   netbattle-27 (layout 0x25, actors 0x080fc663): actor kinds 3
+--   netbattle-28 (layout 0x25, actors 0x080fc674): actor kinds 3
+--   netbattle-29 (layout 0x26, actors 0x080fc685): actor kinds 3
+--   netbattle-30 (layout 0x26, actors 0x080fc696): actor kinds 3
+--   netbattle-31 (layout 0x26, actors 0x080fc6a7): actor kinds 3
+--   netbattle-32 (layout 0x26, actors 0x080fc6b8): actor kinds 3
+--   netbattle-33 (layout 0x30, actors 0x080fc6c9): actor kinds 5
+--   netbattle-34 (layout 0x30, actors 0x080fc6da): actor kinds 5
+--   netbattle-35 (layout 0x31, actors 0x080fc6c9): actor kinds 5
+--   netbattle-36 (layout 0x31, actors 0x080fc6da): actor kinds 5
+--   netbattle-77 (layout 0x71, actors 0x080fc6eb): actor kinds 7
+--   netbattle-78 (layout 0x71, actors 0x080fc6fc): actor kinds 7
+--   netbattle-79 (layout 0x71, actors 0x080fc70d): actor kinds 7
+--   netbattle-80 (layout 0x71, actors 0x080fc71e): actor kinds 7
+--   netbattle-81 (layout 0x4b, actors 0x080fc72f): actor kinds 7
+--   netbattle-82 (layout 0x4b, actors 0x080fc740): actor kinds 7
+--   netbattle-83 (layout 0x4b, actors 0x080fc751): actor kinds 7
+--   netbattle-84 (layout 0x4b, actors 0x080fc762): actor kinds 7
+--   netbattle-85 (layout 0x54, actors 0x080fc773): actor kinds 7
+--   netbattle-86 (layout 0x54, actors 0x080fc784): actor kinds 7
+--   netbattle-87 (layout 0x1d, actors 0x080fc773): actor kinds 7
+--   netbattle-88 (layout 0x1d, actors 0x080fc784): actor kinds 7
+--   netbattle-89 (layout 0x32, actors 0x080fc795): actor kinds 6
+--   netbattle-90 (layout 0x32, actors 0x080fc7a6): actor kinds 6
+--   netbattle-91 (layout 0x66, actors 0x080fc795): actor kinds 6
+--   netbattle-92 (layout 0x66, actors 0x080fc7a6): actor kinds 6
+--   netbattle-93 (layout 0x6a, actors 0x080fc7b7): actor kinds 6
+--   netbattle-94 (layout 0x6a, actors 0x080fc7c8): actor kinds 6
+--   netbattle-95 (layout 0x81, actors 0x080fc7b7): actor kinds 6
+--   netbattle-96 (layout 0x81, actors 0x080fc7c8): actor kinds 6
+-- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
+
+local stages: { [string]: StageDef } = {
+    ["netbattle-1"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "normal normal normal normal normal normal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-2"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "normal normal normal normal normal normal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-3"] = {
+        layout = {
+            "normal cracked normal normal cracked normal",
+            "normal normal normal normal normal normal",
+            "normal cracked normal normal cracked normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-4"] = {
+        layout = {
+            "normal cracked normal normal cracked normal",
+            "normal normal normal normal normal normal",
+            "normal cracked normal normal cracked normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-5"] = {
+        layout = {
+            "normal cracked cracked cracked cracked normal",
+            "normal normal normal normal normal normal",
+            "cracked cracked normal normal cracked cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-6"] = {
+        layout = {
+            "normal cracked cracked cracked cracked normal",
+            "normal normal normal normal normal normal",
+            "cracked cracked normal normal cracked cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-7"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "cracked cracked cracked cracked cracked cracked",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 1 }, { place = "navi", side = 1, x = 5, y = 1 } },
+    },
+    ["netbattle-8"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "cracked cracked cracked cracked cracked cracked",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 1 }, { place = "navi", side = 0, x = 2, y = 1 } },
+    },
+    ["netbattle-9"] = {
+        layout = {
+            "cracked cracked normal normal cracked cracked",
+            "normal normal normal normal normal normal",
+            "cracked cracked normal normal cracked cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-10"] = {
+        layout = {
+            "cracked cracked normal normal cracked cracked",
+            "normal normal normal normal normal normal",
+            "cracked cracked normal normal cracked cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-11"] = {
+        layout = {
+            "missing normal normal normal normal missing",
+            "normal normal normal normal normal normal",
+            "missing normal normal normal normal missing",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-12"] = {
+        layout = {
+            "missing normal normal normal normal missing",
+            "normal normal normal normal normal normal",
+            "missing normal normal normal normal missing",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-13"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "normal missing normal normal missing normal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    ["netbattle-14"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "normal missing normal normal missing normal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    ["netbattle-15"] = {
+        layout = {
+            "normal normal missing missing normal normal",
+            "normal normal normal normal normal normal",
+            "normal normal missing missing normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-16"] = {
+        layout = {
+            "normal normal missing missing normal normal",
+            "normal normal normal normal normal normal",
+            "normal normal missing missing normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-17"] = {
+        layout = {
+            "normal missing normal normal missing normal",
+            "normal normal normal normal normal normal",
+            "normal missing normal normal missing normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-18"] = {
+        layout = {
+            "normal missing normal normal missing normal",
+            "normal normal normal normal normal normal",
+            "normal missing normal normal missing normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-19"] = {
+        layout = {
+            "normal normal missing missing normal normal",
+            "normal normal normal normal normal normal",
+            "missing normal normal normal normal missing",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-20"] = {
+        layout = {
+            "normal normal missing missing normal normal",
+            "normal normal normal normal normal normal",
+            "missing normal normal normal normal missing",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-23"] = {
+        layout = {
+            "normal normal grass grass normal normal",
+            "normal grass grass grass grass normal",
+            "normal normal grass grass normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-24"] = {
+        layout = {
+            "normal normal grass grass normal normal",
+            "normal grass grass grass grass normal",
+            "normal normal grass grass normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-37"] = {
+        layout = {
+            "cracked sea cracked cracked sea cracked",
+            "sea sea sea sea sea sea",
+            "cracked sea cracked cracked sea cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-38"] = {
+        layout = {
+            "cracked sea cracked cracked sea cracked",
+            "sea sea sea sea sea sea",
+            "cracked sea cracked cracked sea cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-39"] = {
+        layout = {
+            "grass grass metal metal grass grass",
+            "grass metal metal metal metal grass",
+            "grass grass metal metal grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    ["netbattle-40"] = {
+        layout = {
+            "grass grass metal metal grass grass",
+            "grass metal metal metal metal grass",
+            "grass grass metal metal grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    ["netbattle-41"] = {
+        layout = {
+            "metal grass metal metal grass metal",
+            "grass grass grass grass grass grass",
+            "metal grass metal metal grass metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-42"] = {
+        layout = {
+            "metal grass metal metal grass metal",
+            "grass grass grass grass grass grass",
+            "metal grass metal metal grass metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-43"] = {
+        layout = {
+            "metal metal grass grass metal metal",
+            "grass grass grass grass grass grass",
+            "metal metal grass grass metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-44"] = {
+        layout = {
+            "metal metal grass grass metal metal",
+            "grass grass grass grass grass grass",
+            "metal metal grass grass metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-45"] = {
+        layout = {
+            "normal ice ice ice ice normal",
+            "normal ice ice ice ice normal",
+            "normal ice ice ice ice normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-46"] = {
+        layout = {
+            "normal ice ice ice ice normal",
+            "normal ice ice ice ice normal",
+            "normal ice ice ice ice normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-47"] = {
+        layout = {
+            "missing ice ice ice ice ice",
+            "ice ice ice ice ice ice",
+            "ice ice ice ice ice missing",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-48"] = {
+        layout = {
+            "missing ice ice ice ice ice",
+            "ice ice ice ice ice ice",
+            "ice ice ice ice ice missing",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-49"] = {
+        layout = {
+            "ice ice ice ice ice missing",
+            "ice ice ice ice ice ice",
+            "missing ice ice ice ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-50"] = {
+        layout = {
+            "ice ice ice ice ice missing",
+            "ice ice ice ice ice ice",
+            "missing ice ice ice ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-51"] = {
+        layout = {
+            "ice ice ice missing ice ice",
+            "ice ice ice ice ice ice",
+            "ice ice missing ice ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-52"] = {
+        layout = {
+            "ice ice ice missing ice ice",
+            "ice ice ice ice ice ice",
+            "ice ice missing ice ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-53"] = {
+        layout = {
+            "ice ice missing ice ice ice",
+            "ice ice ice ice ice ice",
+            "ice ice ice missing ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-54"] = {
+        layout = {
+            "ice ice missing ice ice ice",
+            "ice ice ice ice ice ice",
+            "ice ice ice missing ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-55"] = {
+        layout = {
+            "normal normal poison poison normal normal",
+            "normal normal poison poison normal normal",
+            "normal normal poison poison normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-56"] = {
+        layout = {
+            "normal normal poison poison normal normal",
+            "normal normal poison poison normal normal",
+            "normal normal poison poison normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-57"] = {
+        layout = {
+            "normal poison poison poison poison normal",
+            "normal poison poison poison poison normal",
+            "normal poison poison poison poison normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    ["netbattle-58"] = {
+        layout = {
+            "normal poison poison poison poison normal",
+            "normal poison poison poison poison normal",
+            "normal poison poison poison poison normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    ["netbattle-59"] = {
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass lava lava lava lava grass",
+            "grass grass lava lava grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    ["netbattle-60"] = {
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass lava lava lava lava grass",
+            "grass grass lava lava grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    ["netbattle-61"] = {
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass grass lava lava grass grass",
+            "lava grass grass grass grass lava",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-62"] = {
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass grass lava lava grass grass",
+            "lava grass grass grass grass lava",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-63"] = {
+        layout = {
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-64"] = {
+        layout = {
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-65"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "holy holy holy holy holy holy",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-66"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "holy holy holy holy holy holy",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-67"] = {
+        layout = {
+            "normal holy normal normal holy normal",
+            "normal holy normal normal holy normal",
+            "normal holy normal normal holy normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-68"] = {
+        layout = {
+            "normal holy normal normal holy normal",
+            "normal holy normal normal holy normal",
+            "normal holy normal normal holy normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-69"] = {
+        layout = {
+            "cracked cracked cracked cracked cracked cracked",
+            "cracked cracked cracked cracked cracked cracked",
+            "cracked cracked cracked cracked cracked cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-70"] = {
+        layout = {
+            "cracked cracked cracked cracked cracked cracked",
+            "cracked cracked cracked cracked cracked cracked",
+            "cracked cracked cracked cracked cracked cracked",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-71"] = {
+        layout = {
+            "metal metal metal metal metal metal",
+            "metal grass metal metal grass metal",
+            "metal metal metal metal metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-72"] = {
+        layout = {
+            "metal metal metal metal metal metal",
+            "metal grass metal metal grass metal",
+            "metal metal metal metal metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    ["netbattle-73"] = {
+        layout = {
+            "ice ice ice ice ice ice",
+            "ice missing ice ice missing ice",
+            "ice ice ice ice ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    ["netbattle-74"] = {
+        layout = {
+            "ice ice ice ice ice ice",
+            "ice missing ice ice missing ice",
+            "ice ice ice ice ice ice",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    ["netbattle-75"] = {
+        layout = {
+            "poison poison poison poison poison poison",
+            "poison normal poison poison normal poison",
+            "poison poison poison poison poison poison",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    ["netbattle-76"] = {
+        layout = {
+            "poison poison poison poison poison poison",
+            "poison normal poison poison normal poison",
+            "poison poison poison poison poison poison",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+}
+
+return stages
