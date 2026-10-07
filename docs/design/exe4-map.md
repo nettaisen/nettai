@@ -661,8 +661,20 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      `weakness_hit_breaks_form`: EXE5's until the souls are read).
 8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
 9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
-10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.
-11. **Overlay restart.** Placeholder: `reactions.overlay_restart = "reload"` (EXE5's code at 0x080CC61A; confirm).
+10. **Done: the stance counter.** EXE4's stance is AntiMagc's B+Left ability (NaviStats +0x0C = 0x27; action 114,
+    0x080EE9EE: 13 ticks, registered as AntiDmg's trap, chip 145, through 0x08022FDE); a hit caught in it raises the
+    anti-damage or anti-sword request, and the stance's next step starts the counter (0x0800C780: action 56 for
+    anti-damage, 57 else) and returns: it runs from the next tick, `stance_counter = "next_tick"` (EXE6's; EXE5's
+    runs at once). The lab's `stance/` (a95f's): AntiMagc against a Cannon, the buster and a Sword, early, on side
+    1, and traced on Blue Moon; Shield's and Reflect's (action 37) too. Their actions (114, 56, 57, 37) are the
+    B+Left programs', to port with them; EXE4's counter starter is its own (AIData +0x10's flags 16, no stance
+    lockout or variant: EXE6's `sub_80105F2` keeps both).
+11. **Done: the overlay restart.** What a navi wears restarts by 0x080CC61A (EXE5's 0x080C374E: the animation
+    reloads at its next step), `overlay_restart = "reload"`, called by the per-navi flinch and drag hooks (by
+    NaviStats +0x23: 0x0800DC9C, MegaMan's restarting AIData +0x48's object; 0x0800DD82, MegaMan's none, navi 5's its
+    +0x60) — the identities' `overlay_hooks`, to state with what MegaMan wears in a soul (the souls wave). The lab's
+    `overlay/aqua` and `overlay/proto` (a95f's: a soul flinched, dragged and shooting, with and without Full Synchro)
+    check it once souls play.
 33. **EXE4's reaction actions and its slide** (found by group C; the player's action table, 0x080EAEFC, entries 2 to
     5). Each is its own beside the engine's (EXE6's, which EXE5 shares where its labs pass):
     - the drag (0x08010A9C, its start 0x08010ABC): DRAG alone (not the action in use), always animation 1 (EXE6's 2
