@@ -33,3 +33,8 @@
 "flag" = { pool = "attack", index = 0x9C }
 # The gear stages' gears (the actor lists' entry type 5, 0x080068C0).
 "gear" = { pool = "attack", index = 0x76 }
+# The Meteors' meteor (0x080D877C), its panel marker (0x080E5EEA) and their dropper (action 0x20's variant 0x11,
+# 0x080EAE6C).
+"meteor" = { pool = "attack", index = 0x56, scratch_position = true }
+"meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
+"meteors/dropper" = { pool = "effect", index = 0x81, scratch_position = true }

@@ -152,3 +152,8 @@ standard = [
 mega = [
     "atk-30",
 ]
+secret = [
+    "meteors1",
+    "meteors2",
+    "meteors3",
+]
