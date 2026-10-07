@@ -514,6 +514,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (0x1BA, the break's 0x1A9: 0x08009D04), and a spawner (0x080CFF1A) that places a crack on every panel of the
   pattern where EXE5's keeps to the field (no recording yet reaches a crack off the field: TripCrak from the top or
   bottom row).
+- **AreaGrab** (and PanlGrab: the dimming chips' action 0x0C, its variant 0, `lib/grab`): @exelib/grab (EXE6's and
+  EXE5's controller and shot) with EXE4's finders as the controller's `column` and `panel` (the other side's
+  front-most panel across the rows, 0x0800A1E4; the user's from the far edge, 0x0800A1AE) and the shot sparing the
+  other side's back column (`spares`, 0x080CF0A6); the dimming, its telop and the controller's phases are the engine's
+  and @exelib/dimming's, as EXE5's.
 
 **For the next steps:**
 
