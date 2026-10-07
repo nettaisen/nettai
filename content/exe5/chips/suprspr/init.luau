@@ -7,8 +7,12 @@ local recipe_widesht1 = require("./widesht").widesht1
 local recipe_widesht2 = require("./widesht").widesht2
 local recipe_widesht3 = require("./widesht").widesht3
 local recipe_wideswrd = require("./wideswrd").wideswrd
-local wave = require("./widesht/variants")
 local widesht = require("./widesht/wave")
+
+-- Their waves, which go through: SuprSpr1's (kind 6), SuprSpr2's (kind 7) and SuprSpr3's (kind 8), each faster.
+local WAVE1 = widesht.wide(0x6_0000, true)
+local WAVE2 = widesht.wide(0x6_8000, true)
+local WAVE3 = widesht.wide(0x7_0000, true)
 
 -- SuprSpr1 (EXE5 chip 0x149): the Program Advance of WideSht1, WideSht1 and WideSht1 with one code: the navi raises its
 -- wide shooter and sends three waves over a column of three, 14 ticks apart, that go through what they hit, the last
@@ -33,7 +37,7 @@ local suprspr1: Chip = {
         { order = 3, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht1 }, operation_battle_only = true },
         { order = 39, code_run = { chip = recipe_widesht1, count = 3 } },
     },
-    action = widesht.action { wave = wave.super, waves = 3, z = 0 },
+    action = widesht.action { wave = WAVE1, waves = 3, z = 0 },
     auto_battle = { class = "at_once" },
 }
 
@@ -60,7 +64,7 @@ local suprspr2: Chip = {
         { order = 4, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht2 }, operation_battle_only = true },
         { order = 40, code_run = { chip = recipe_widesht2, count = 3 } },
     },
-    action = widesht.action { wave = wave.super2, waves = 3, z = 0 },
+    action = widesht.action { wave = WAVE2, waves = 3, z = 0 },
     auto_battle = { class = "at_once" },
 }
 
@@ -87,7 +91,7 @@ local suprspr3: Chip = {
         { order = 5, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht3 }, operation_battle_only = true },
         { order = 41, code_run = { chip = recipe_widesht3, count = 3 } },
     },
-    action = widesht.action { wave = wave.super3, waves = 3, z = 0 },
+    action = widesht.action { wave = WAVE3, waves = 3, z = 0 },
     auto_battle = { class = "at_once" },
 }
 

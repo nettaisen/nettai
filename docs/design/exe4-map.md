@@ -336,9 +336,10 @@ from the ROM and its code, read routine by routine):
   (`cursor_after_leaving`, 0x0801E412). The choosing tick draws the last turns' block and counts its frame before
   its keys (`frame_counts_first`, 0x0801E3DA, 0x0801E3DE): the cursor blinks a frame further on than EXE6's, and the
   Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0. R's
-  description and L's message are states of the choosing (`description_in_choosing`: the selection's 0x18 and 0x1C):
-  their ticks draw the last turns' block and count the frame, and the tick one sees its chatbox closed goes back to
-  the state it came from and draws its cursor (0x08020A0A, 0x0801E412).
+  description, L's message and the rules' windows are states of the choosing (`states_in_choosing`: the selection's
+  0x18, 0x1C and 0x10): their ticks draw the last turns' block and count the frame, a window's sprites after its step
+  (the soul's choice's icon from the tick it loads, 0x08020DE2), and the tick one goes back draws the state it goes
+  back to, its cursor (0x08020A0A, 0x0802095E, 0x0801E412).
 - **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape, its
   portrait `megaman-portrait` (F4 00 40: the mugshot table 0x08028038's 0x40); a character ends the tick's printing
   (`chatbox_character_ends_tick`, 0x0804E1B2: a character every third tick, where EXE6's interpreter goes on and
@@ -349,8 +350,27 @@ from the ROM and its code, read routine by routine):
   0x81; the hide, the description's close, L's message and the pause play none (optional roles).
 
 Checked against the chip lab's custom/ recordings (every one whose chips the content has matches every frame and
-every sound call; with exe4-compat's harness comparing the gauge as the recording console holds it). Not yet: the
-Double Soul button and its window (the selection's states 0xC and 0x10).
+every sound call; with exe4-compat's harness comparing the gauge as the recording console holds it).
+
+**Double Soul's part** (group A, rules/souls/custom; §6 and item 73):
+
+- **The UNITE button** in slot 11 under OK (the selection's state 0xC, its keys 0x08020728), the screen's +0x0C: on the
+  screen as it opens (0x0801E0B4) with Double Soul (event flag 0x14: the setup's `double_soul`) unless the navi is
+  worried or worn out (emotions 1 and 5), else its place shows the window (the look's `hidden`) and OK's DOWN goes
+  nowhere. Its look (0x0801FF14): lit while the last pick offers a soul, gray while it doesn't and once one is given.
+- **The offer** (0x0801FF84, the screen's +0x0D, after each pick and take-back): asked only before a soul is given and
+  while the navi's soul turns count (AIData +0x18 not 0xFF); the last pick, not the Regular chip, of a family a soul
+  of MegaMan's is for (0x08020008: the soul's form's `soul.family`), a soul the save has (its version's flag,
+  0x08020018: the setup's `souls`) and not given this round (0x0203BF88, which the battle's start zeroes).
+- **A on it** (0x0801F8BC): with a soul on offer OK's sound (0x80) and the soul's choice; else refused (0x69). **The
+  soul's choice** (the selection's state 0x10, 0x08020814, the window `double_soul`, EXE5's soul window's steps): the
+  soul's chip's icon (chip 0x160 + the soul, 0x0802084E) flies up over the picks (16 ticks, then 8 up 2 pixels a
+  tick), the flash (fades 0x34 and 0x30 with sound 0x79), the whitening (fade 4), then white the soul takes the given
+  chip's place first in the picks, the button is picked, the screen clears (fade 0, sound 0x97); each step after the
+  flash waits for its fade. Taking the soul back (B with it last) puts the chip back (0x0801F8FC).
+- **OK** (0x0801F034): the given chip leaves the folder (an offered dark chip counts sent: rules/dark_chips), the soul's
+  chip goes first in the hand (the button's `hand_chip`: the form's `chip`, code A), the soul is given this round
+  (0x0801F1FE) and is the turn's form (`custom.set_form`).
 
 **The dark chips** (group A; rules/dark_chips, the chips' own modules):
 
@@ -385,8 +405,33 @@ and drkrecov match through the chip's use and the next turn and stop at the scre
 
 EXE5's and EXE6's turn-start transformation sequencer (`sub_801483C`, `sub_80148CC`, `sub_8014944`, `sub_8014A00`,
 the transform records' copy `sub_80147E4`) and the transform record's writer (`sub_8015952`) have no counterpart in
-EXE4 in either map. So Double Soul's change is EXE4's own path: the engine's turn-start sequencer (the rules'
-transformations) can carry it, but its order of events is to read from EXE4's code, not to assume from EXE5's.
+EXE4 in either map. So Double Soul's change is EXE4's own path.
+
+**As ported** (group A, rules/souls; item 73). A soul is a form of MegaMan's, his lists by version (`redsun`, `bluemoon`:
+the setup's `version` and its `souls`, the engine's form list); each soul's folder holds its form and its chip
+(navis/megaman/forms/<soul>/chip: chips 0x161 to 0x16C), whose use is the soul's own change (rules/souls/change's
+maker; compat names them all action 0x0D, their images all effect 0x13).
+
+- **The ask** (0x0800B658, each tick of the intake but a dimmed one: the rules' `navi_intake`): held (flag 0x10000)
+  nothing; a chip of the special family (15) next in the hand asks for the change (the engine's form change request;
+  its soul, 0x0800B924's chip less 0x160, is the turn's form, which OK gave); in a soul whose turns are over the revert
+  (+0x44's 0x40).
+- **The change** (action 0x0D, 0x080EBA44), as the fight runs: the status routine starts it (0x08013B14) the first
+  unpaused tick after the turn's banner, and runs it whatever else while it holds the navi (0x08013AFC: the engine's
+  unpaused form change, a game whose flow has no `sequencer_at_turn_start`). It dims the battle itself; its steps
+  are in rules/souls/change: the flash and sound 0x129, the fade 0x44 and the HUD hidden, the image (./image, 60
+  ticks, its second flash and sound 0x158 at 10), MegaMan in the soul (sprite 00-01 + the soul, the form; the chip
+  icons over him stay by his navi, 0x0800B9C0), the fade 0x40 and the HUD back, the status reset (the soul's turns:
+  its form's `soul.turns`, 3 every one; the emotion window counts down the turns left, 0x08016A20), 20 ticks, the
+  lockout 2 its start set (0x08013B1C) handed on, the hand on past the soul's chip.
+- **The turns** (AIData +0x18, ./turns): each custom screen asked for counts one (0x0800BA20); at 3 the intake asks
+  for the revert, which his idle starts (0x080EEBB4: the engine's idle, the form's `revert`): **the revert** (action
+  0x11, 0x080EBE90), one tick: sound 0x159, the flash, his base form, the status reset.
+- **The statuses' end** the change runs (0x08013218) clears EXE4's four statuses (the reactions' `status_end`), not the
+  flag 0x10000 that holds him.
+
+What each soul does besides (its status routine 0x0800E0A0, its charged shot, B+Left, the image's parts, WindSoul's
+change object, FireSoul's and NumberSoul's overlays) is item 74.
 
 ## 7. Emotions
 
@@ -610,6 +655,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   look: the shot raises no arm and shows the navi's animation 0x12; the ball (attack 0x2A) is never big or fast, an
   attack with hit modifier 0, sound 0xAD, and finds its target from its side's back column toward the other side
   (0x080D21D4), not from where it is. Their parameters: 5, 7 or 9 panels, paralysis for 90, 120 or 150 ticks.
+- **The Anti chips** (the dimming chips' action 0x0C, its variant 0x13, `chips/anti`): the trap chips' controller
+  (lib/traps: @exelib/traps/controller, EXE6's code) makes the chip its user's side's defensive chip. AntiFire to
+  AntiWood (parameters 0 to 3) set the shared ElemTrap trap (lib/traps/anti_trap: @exelib/elemtrap, EXE5's code)
+  watching their element; sprung, its counterattack (@exelib/elemtrap/strike) strikes with EXE5's table but where
+  EXE4's look says: the other side's navi's panels only, then that side's mood to 1, and bursts (objects/panel_bursts)
+  over that side's area alone. AntiNavi, AntiDmg, AntiSwrd and AntiRecv (4 to 7) set only the record (their springs:
+  see §18 item 90).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -807,7 +859,7 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
   text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
   zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
-  on the tick the screen sees the box closed (`description_in_choosing`).
+  on the tick the screen sees the box closed (`states_in_choosing`).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -1551,6 +1603,43 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
     1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
     harness question (raised with the coordinator), not the engine's.
+73. **Done: Double Soul** (group A; §5's Double Soul part, §6): the UNITE button, its offer and the soul's choice,
+    OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's version,
+    souls and Double Soul (exe4-compat from a recording's version and a save's event flags; the app's version preset).
+    Checked: the lab's souls/roll, guts and proto (unison, side1, turns) match every state through the change, and
+    stop at the souls' charged shots (item 74); souls/refused's refusal. Frame comparisons (souls/roll, guts and proto
+    unison, souls/refused): the UNITE button, the soul's choice and every custom screen frame exact but the late OK's
+    known shift; the change exact, its HUD too (the chip name through it, the soul chip's icon left out, the emotion
+    window's soul face and its turns), to the charged shots. The revert is checked by state only once the charged
+    shots let turns recordings run to it (item 74).
+74. **The souls' abilities** (with item 25's weapons and item 48's buttons): each soul's status routine (0x0800E0A0 by
+    soul, from the status reset), its charged shot and B+Left, its chip charges (0x0800BC78), the image's parts
+    (0x080E36AC: WindMan's 0x34, FireMan's 0x12, NumberMan's 0x14, AquaMan's 0x13), WindSoul's change object (0x5A,
+    0x080D8C94), FireSoul's and NumberSoul's overlays (0x08018068), NumberSoul's hand of ten (0x0801DC92). The lab's
+    souls/<soul>/hit and side1 recordings, and fire, aqua, wind's unison (their changes' first differences).
+75. **DS chips' code and damage on the custom screen** (F's frame comparisons, chips/0x0df-rollds and the other DS
+    chips, frames 269 to 283): the engine draws the chip window's code and damage dimmed (#d6ce29, #b5b5b5,
+    #d6d6d6 where mGBA has #fff729, #ded6d6, #ffffff), Roll and RollSP's not. Not the dark flag (the DS chips have
+    none) nor the frame palette (EXE4's pack has one). B saw ElemDark's screen duck the music as the dark chip hover
+    does (chips/0x0d5-elemdark, frame 290): likely the same cause. To find.
+76. **A telop leaves the other player's used-chip name** (B, chips/0x08e-antielec/sprung: mGBA shows "Thunder 140"
+    until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block (0x08016454)
+    and leaves the second block alone; EXE6's clears the name at every telop's start (`sub_801BED6(0x10000)`, the
+    engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
+77. **The chips' own looks out of the shared libraries** (the brief's no-lookup-tables rule): lib/cannon's `arms`,
+    lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants`: a maker each, every chip
+    stating its own. Queued.
+90. **The Anti chips' springs** (group B). The traps are set (chips/anti); what springs them:
+    - AntiNavi (0x08008F80, EXE5's `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the
+      navi chips', with no block of chip numbers) wants the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle
+      0x0800815C: effect row 0x48, sound 0x10D);
+    - AntiDmg and AntiSwrd: EXE4's intake test (0x08023048) is its own: AntiDmg catches a hit of any damage (EXE5's and
+      EXE6's of 10 or more), AntiSwrd any sword hit (flag 0x2000, without EXE6's 0x20000 exclusion), no heat trap, no
+      BodyGrd; the counters are actions 0x38 (AntiDmg's, a shuriken: attack 0x5C) and its AntiSwrd counterpart;
+    - AntiRecv: the role `kinds.anti_recovery`.
+    A telop doesn't take the other player's used-chip name off the screen in EXE4 (item 71: the user's telop goes on
+    the banner block, the name stays on the second; EXE6's `sub_801BED6(0x10000)` clears it): the lab's
+    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine.
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's

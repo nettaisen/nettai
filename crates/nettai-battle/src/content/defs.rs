@@ -447,6 +447,9 @@ pub struct ButtonDef {
     pub taken_back: Option<FnId>,
     /// The chip it shows (`chip`), if it shows one.
     pub chip: Option<FnId>,
+    /// The chip it puts in the hand in its place when picked at OK
+    /// (`hand_chip`), if it puts one.
+    pub hand_chip: Option<FnId>,
 }
 
 /// A custom-screen window of the rules' (docs/design/rules-in-luau.md
@@ -651,6 +654,19 @@ impl Defs {
         let field = self.fact_field(fact)?;
         let rules = self.rules()?;
         Some(self.schema(rules.setup).field(field).name.as_str())
+    }
+
+    /// The versions a side of the game states one of, by the names its
+    /// rules declare, in their order: the names of the engine's version
+    /// fact (`PlayerFact::Version`, an enum of the rules' setup: EXE6's
+    /// "gregar" and "falzar", EXE4's "redsun" and "bluemoon", the
+    /// original's order). None: the rules take no version.
+    pub fn versions(&self) -> &[String] {
+        let (Some(field), Some(rules)) = (self.fact_field(PlayerFact::Version), self.rules()) else { return &[] };
+        match &self.schema(rules.setup).field(field).ty {
+            nettai_content_api::FieldType::Enum(names) => names,
+            _ => &[],
+        }
     }
 
     /// The game's roles.
@@ -1876,8 +1892,10 @@ impl Defs {
                         let Data::Map(fields) = spec else { return Err(at("a table of its place and functions")) };
                         for (f, _) in fields {
                             let f = f.to_string();
-                            if !["slot", "cells", "uses", "right", "left", "view", "shown", "state", "pressed", "taken_back", "chip"].contains(&f.as_str()) {
-                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, view, shown, state, pressed, taken_back, chip)")));
+                            if !["slot", "cells", "uses", "right", "left", "view", "shown", "state", "pressed", "taken_back", "chip", "hand_chip"].contains(&f.as_str()) {
+                                return Err(at(&format!(
+                                    "`{f}` is no field of a button (slot, cells, uses, right, left, view, shown, state, pressed, taken_back, chip, hand_chip)"
+                                )));
                             }
                         }
                         let view = match spec.field("view") {
@@ -1906,6 +1924,7 @@ impl Defs {
                         let pressed = func("pressed", true)?.expect("needed");
                         let taken_back = func("taken_back", false)?;
                         let chip = func("chip", false)?;
+                        let hand_chip = func("hand_chip", false)?;
                         let slot = byte("slot")?.ok_or_else(|| at("`slot` is missing"))?;
                         let cells = byte("cells")?.unwrap_or(1);
                         if !(1..=2).contains(&cells) {
@@ -1913,7 +1932,7 @@ impl Defs {
                         }
                         let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
                         own_buttons.push(ButtonHandle((buttons.len()) as u16));
-                        buttons.push(ButtonDef { name: name.clone(), view, slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
+                        buttons.push(ButtonDef { name: name.clone(), view, slot, cells, uses, right, left, shown, state, pressed, taken_back, chip, hand_chip });
                     }
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),

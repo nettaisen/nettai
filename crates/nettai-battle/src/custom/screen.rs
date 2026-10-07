@@ -796,8 +796,8 @@ impl Screen {
                 // chatbox runs after the screen, each tick. The emblem is
                 // drawn every tick (`sub_8026E4C`). (A description that is
                 // a state of the choosing, EXE4's, runs the choosing's tick
-                // around it: the rule `description_in_choosing`.)
-                let in_choosing = window.is_none() && view.library.layout().description_in_choosing;
+                // around it: the rule `states_in_choosing`.)
+                let in_choosing = window.is_none() && view.library.layout().states_in_choosing;
                 if in_choosing {
                     self.count_choosing_frame();
                 }
@@ -820,7 +820,7 @@ impl Screen {
                 None
             }
             Phase::RunMessage { chatbox } => {
-                let in_choosing = view.library.layout().description_in_choosing;
+                let in_choosing = view.library.layout().states_in_choosing;
                 if in_choosing {
                     self.count_choosing_frame();
                 }
@@ -838,12 +838,30 @@ impl Screen {
             Phase::Window { window, tick } => {
                 // The rules' window (EXE6's Beast Out, `sub_802770C`): its
                 // update, then back to choosing when it is done (unless it
-                // moved the screen on itself).
+                // moved the screen on itself). (A window that is a state of
+                // the choosing, EXE4's Double Soul's choice, runs the
+                // choosing's tick around it: the last turns' block and the
+                // frame first, then the emblem and the Regular chip's frame,
+                // and the tick it gives way the cursor of the choosing:
+                // 0x0801E3D8, 0x0802095E. Its view's sprites are the
+                // frontend's, from its state.)
+                let in_choosing = view.library.layout().states_in_choosing;
+                if in_choosing {
+                    self.count_choosing_frame();
+                }
                 let tick = tick.saturating_add(1);
                 self.phase = Phase::Window { window, tick };
                 let stays = extras.window_update(self, folder, console, joy, window);
                 if !stays && self.phase == (Phase::Window { window, tick }) {
                     self.phase = Phase::Choosing;
+                }
+                if in_choosing {
+                    self.look.draw_emblem(0);
+                    if self.phase == Phase::Choosing {
+                        self.draw_choosing_return(folder);
+                    } else {
+                        self.look.draw_regular(folder.regular_pending, true);
+                    }
                 }
                 None
             }

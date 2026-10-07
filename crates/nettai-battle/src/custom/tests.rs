@@ -81,6 +81,10 @@ impl Extras for TestButtons {
 
     fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
 
+    fn button_hand_chip(&mut self, _: &Screen, _: crate::content::ButtonHandle) -> Option<ChipHandle> {
+        None
+    }
+
     fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
 
     fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}

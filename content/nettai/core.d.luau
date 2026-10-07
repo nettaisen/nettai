@@ -1123,7 +1123,7 @@ declare battle: {
     -- dimmed stand still.
     dimmed: () -> boolean,
     -- Battle flag 4 alone, with none of a dimming's machinery (EXE5's chaos
-    -- failure).
+    -- failure, EXE4's soul change).
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
@@ -1847,6 +1847,10 @@ export type ButtonSpec = {
     -- As the screen lays it out: the chip it shows, if any (EXE5's capsules:
     -- the chip window shows the chip for it, and R describes it).
     chip: ((side: number) -> Chip?)?,
+    -- At OK while it is picked: the chip it puts in the hand in its place, in
+    -- code A, if any (EXE4's soul button: the soul's chip, which changes the
+    -- navi as the turn starts).
+    hand_chip: ((side: number) -> Chip?)?,
 }
 -- A custom-screen window of the rules (§4.4): its update, each tick it is up
 -- (`custom.window_tick` counts them from 1): whether it stays up.
@@ -2203,7 +2207,8 @@ export type ChipSpec = {
     -- counts it), "goes_with_any" (it goes with any selection on the custom
     -- screen, and leaves the selection's rules alone: EXE6's BeastOut chip),
     -- "hides_damage_as_a" (the custom screen shows its damage as "???" on a
-    -- copy of code A).
+    -- copy of code A), "no_icon_when_next" (next in the hand it shows no icon
+    -- over its user: EXE4's souls' chips).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
