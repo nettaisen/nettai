@@ -467,9 +467,10 @@ pub struct HudLayout {
     /// row 2, 17; EXE4's 0x08015FE8: from column 8, row 2, 14).
     pub message: (u8, u8, u8),
     /// The damage judge's numbers show from its banner's hold until the
-    /// banner is gone (EXE4's task 9: 0x08014AA8 waits for the holding
-    /// banner, 0x08014ABE ends with it); otherwise while the banner slides
-    /// in and holds (EXE6's `sub_801D048`).
+    /// judge lets the banner go (EXE4's task 9: 0x08014AA8 waits for the
+    /// holding banner; the release, 0x080163B6, slides the banner out and
+    /// clears them, its state 8, 0x0801544C); otherwise while the banner
+    /// slides in and holds (EXE6's `sub_801D048`).
     pub judge_from_hold: bool,
     /// Where the chatbox's text starts (its sprites' top left:
     /// `chatbox_runScript`'s text place, EXE6's (0x33, 0x6C); EXE4's

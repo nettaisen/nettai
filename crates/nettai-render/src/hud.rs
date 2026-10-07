@@ -487,8 +487,9 @@ pub fn draw<'a>(
     // right one starting at column 17), until the banner slides out.
     // (The banner's layout is its pack's, by its number there; the
     // banner's lookup is the banner's own, below.)
-    // (The pack says when: EXE4's from the banner's hold until it is gone.)
-    let judge_shown = if hud.layout.judge_from_hold { b.banner.step >= 4 } else { b.banner.step < 8 };
+    // (The pack says when: EXE4's only from the banner's hold, until its
+    // release slides it out.)
+    let judge_shown = if hud.layout.judge_from_hold { b.banner.step == 4 } else { b.banner.step < 8 };
     if b.banner_for(local).is_some_and(|id| crate::lookups::is_judge(packs, &b.content, id)) && judge_shown {
         let pal = &hud.hp_palettes[0];
         let j = &b.fight.judge;
