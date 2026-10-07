@@ -676,13 +676,18 @@ fn set_invulnerable(b: &mut Battle, r: ObjectRef, ticks: u16) {
     set_flag1(b, r, f1::INVULNERABLE);
 }
 
-/// `sub_801A264`: the statuses end: their flags, requests and timers.
+/// `sub_801A264`: the statuses end: their flags, requests and timers, the
+/// game's (its reactions' `status_end`: EXE4's 0x08013218 has no freeze or
+/// bubble).
 pub(crate) fn clear_statuses(b: &mut Battle, r: ObjectRef) {
-    clear_flag1(b, r, 0x8001_E800);
-    clear_flag2(b, r, 0x3_00E8);
+    let end = b.game_rules().status_end;
+    clear_flag1(b, r, end.flags.0);
+    clear_flag2(b, r, end.requests);
     let c = coll_mut(b, r);
-    for t in [timer::PARALYZE, timer::CONFUSE, timer::BLIND, timer::IMMOBILIZE, timer::FREEZE, timer::BUBBLE] {
-        c.status_timers[t] = 0;
+    for (t, timer) in c.status_timers.iter_mut().enumerate() {
+        if end.timers.0 & (1 << t) != 0 {
+            *timer = 0;
+        }
     }
 }
 
