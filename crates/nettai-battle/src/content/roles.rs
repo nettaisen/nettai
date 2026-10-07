@@ -277,9 +277,6 @@ definition_roles! {
         Eruption = "eruption",
         /// A thrown obstacle's landing's (`sub_8018002`).
         ThrownObstacle = "thrown_obstacle",
-        /// A panel's burn (EXE5's lava, the sparks' row 1: 0x08016D80). Only
-        /// a game whose panels burn needs it.
-        PanelBurn = "panel_burn",
     }
 }
 

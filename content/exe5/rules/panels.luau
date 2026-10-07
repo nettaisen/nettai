@@ -10,14 +10,26 @@
 -- battle; lava and sea turn normal after 960 ticks (blinking in the last 60, each its own timer, which a panel's
 -- new type sets: 0x0800B2AE); no panel erupts. A grounded body not of fire on lava burns for 50 (shifted by its
 -- weakness to fire) and the panel turns normal (0x08016D80, 0x08016E18); sea drains a fire body as poison drains
--- any (0x08016C7E, EXE6's `sub_801A186`), holds a body that ends a move on it for 20 ticks with a splash
+-- any (0x08016C7E, EXE6's `sub_801A186`; grass heals a wood body, at 9 HP or less on the 180-tick count, as
+-- EXE6's), holds a body that ends a move on it for 20 ticks with a splash
 -- (0x0801715E) and submerges what can dive (0x08017030); a move's end on metal starts a slide, tried in turn by
 -- the direction of the move (0x08017216, the tables at 0x0800C920 and 0x0800C9C0: dx toward the front). A hitbox
 -- of fire turns grass normal as it passes over, of aqua lava, of wood metal (0x08016D14).
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
+local panel_types = require("@exelib/panel_types")
+local sparks = require("../lib/sparks")
+
 -- The steps a metal slide tries: forward, back, up, down.
 local F, B, U, D = { dx = 1, dy = 0 }, { dx = -1, dy = 0 }, { dx = 0, dy = -1 }, { dx = 0, dy = 1 }
+
+-- Lava's burn (0x08016D80, 0x08016E18): a body invisible, submerged, flashing, untouchable or bubbled is spared
+-- (0x88000206); the sparks' row 1, the fire spark.
+local LAVA_BURN = panel_types.burn {
+    damage = 50,
+    spared_by = { "invisible", "submerged", "flashing", "untouchable", "bubbled" },
+    spark = sparks.fire,
+}
 
 return {
     types = {
@@ -25,7 +37,7 @@ return {
         broken = { flags = 0x00014000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
+        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison"), stand = panel_types.poison },
         metal = {
             flags = 0x00010210,
             trail_sound = asset.sound("immobilizer"),
@@ -34,13 +46,19 @@ return {
             slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
         },
         -- A fire hit counts once more on a body standing on grass, an elec one on the sea (0x08016AF6).
-        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire", doubles = "fire" },
+        grass = {
+            flags = 0x00010410,
+            trail_sound = asset.sound("grass"),
+            cleared_by = "fire",
+            doubles = "fire",
+            stand = panel_types.grass(9),
+        },
         ice = { flags = 0x00010810, trail_sound = asset.sound("freeze") },
         lava = {
             flags = 0x00011010,
             trail_sound = asset.sound("panel-volcano"),
             expires = 960,
-            burn = { damage = 50, spared_by = 0x88000206 },
+            burn = LAVA_BURN,
             cleared_by = "aqua",
         },
         holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
@@ -48,7 +66,7 @@ return {
             flags = 0x00030010,
             trail_sound = asset.sound("sand-worm"),
             expires = 960,
-            drains = "fire",
+            stand = panel_types.drains("fire"),
             holds = 20,
             submerges = true,
             doubles = "elec",
@@ -112,6 +130,4 @@ return {
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x0800AFF8 and its kin), the sea's
     -- 0x20000 among them.
     type_mask = 0x00023F5F,
-    -- At 9 HP or less grass heals a wood body on the 180-tick count (0x08016C7E, EXE6's).
-    grass_heal_slows_at = 9,
 }
