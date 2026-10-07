@@ -51,7 +51,7 @@ local roles: RolesSpec = {
         link_battle = asset.sound("netbattle"),
     },
     banners = {
-        round_start = asset.banner("battle-start"),
+        round_start = asset.banner("battle-number-start"),
         turn_start = asset.banner("turn-start"),
         win = asset.banner("enemy-deleted"),
     },

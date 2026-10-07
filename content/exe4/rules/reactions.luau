@@ -24,14 +24,12 @@ return {
         },
     },
     -- The hit test (0x08012AFC): no FloatShoe test, no body under a sea (EXE4 has none), a guard breaks to types with
-    -- 0x1002 (0x08012F24) and turns aside what lacks 0x0C004000; an elec hit counts once more on ice, a fire one on
-    -- grass (0x08012CF2: elec on ice a gap, the engine's bonus being the sea's).
+    -- 0x1002 (0x08012F24) and turns aside what lacks 0x0C004000.
     hit_test = {
         float_shoe_needs_self_bit = false,
         bubbled_as_submerged = false,
         elec_reaches_submerged = false,
         guard_breaks_to = 0x1002,
-        elec_bonus_on_sea = false,
     },
     -- A move's direction in the collision record (0x0800AF90, from 0x08012D9A): up, down, left or right whatever the
     -- side, across before up and down, no other.

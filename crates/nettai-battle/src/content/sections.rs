@@ -59,6 +59,9 @@ struct PanelTypeSection {
     /// An element by name.
     #[serde(default)]
     cleared_by: Option<String>,
+    /// An element by name.
+    #[serde(default)]
+    doubles: Option<String>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
     slide: Option<Vec<Vec<SlideStep>>>,
@@ -590,6 +593,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     };
                     let drains = element("drains", &rule.drains)?;
                     let cleared_by = element("cleared_by", &rule.cleared_by)?;
+                    let doubles = element("doubles", &rule.doubles)?;
                     let slide = match &rule.slide {
                         Some(by_direction) => {
                             if by_direction.len() != 6 || by_direction.iter().any(|tries| tries.len() > 4) {
@@ -618,6 +622,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         submerges: rule.submerges,
                         slide,
                         cleared_by,
+                        doubles,
                         named: true,
                     };
                 }
