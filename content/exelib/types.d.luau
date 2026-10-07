@@ -27,6 +27,15 @@ export type SlashGame = {
     stays: ((side: number) -> boolean)?,
     -- The game's step (EXE5's by the attack's charge: lib/swords); none: EXE6's, by the chip's `step`.
     steps: SlashSteps?,
+    -- How the navi holds the blade in its related slot, in animation `anim` (none: @exelib/attachment's kind with
+    -- the blade's palette, EXE6's and EXE5's; EXE4's own attachment).
+    hold: ((me: Object, blade: AttachmentLook, anim: number) -> ())?,
+    -- The swing restarts a form's overlay with the navi (`sub_8011450`: EXE6's, EXE5's; none: true); EXE4's swing
+    -- (0x080EB5FA) calls nothing of the kind.
+    refreshes_form_overlay: boolean?,
+    -- The recovery clears the navi's moving flag and lets go of the overlay's too (EXE6's `sub_80EBBE2`, EXE5's;
+    -- none: true); EXE4's (0x080EB832) lets go of the blade alone.
+    recovery_clears_moving: boolean?,
 }
 
 -- A game's buster parts (@exelib/buster): the muzzle flash a shot leaves, the buster arm, an enemy navi's arm, the
@@ -82,6 +91,7 @@ export type CannonLook = ShooterLook & {
 
 -- A game's throw (@exelib/bombs/throw): the wind-up's sound, and its attachment kind (what the navi holds).
 export type ThrowLook = { sound: Sound, attachment: Kind }
+
 
 -- A game's thrown bomb (@exelib/bombs/bomb): its kind's key, its sprite, its landing's sound, the splash in a hole,
 -- the explosion over its blast and the puff when the battle ends.
