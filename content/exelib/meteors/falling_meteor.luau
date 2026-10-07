@@ -58,7 +58,9 @@ function falling_meteor.make_kind(id: string, look: MeteorLook): Kind
         me.action = 4
     end
 
-    -- `sub_80CF4E6`: fall; on the panel, burst if it is solid or holds a body.
+    -- `sub_80CF4E6`: fall; on the panel, burst if it is solid or holds a body,
+    -- its hit on the panel then (or either way, with the look's `hit_on`
+    -- "landing": EXE4's 0x080D86DC).
     local function fall(me: Object)
         local t = me.timer - 1
         me.timer = t
@@ -76,6 +78,8 @@ function falling_meteor.make_kind(id: string, look: MeteorLook): Kind
             if shake ~= 0 then
                 battle.shake_camera(shake, SHAKE_TICKS)
             end
+            me.collision:set_region(regions.single)
+        elseif look.hit_on == "landing" then
             me.collision:set_region(regions.single)
         end
         me.action = 8
@@ -144,7 +148,8 @@ function falling_meteor.make_kind(id: string, look: MeteorLook): Kind
             me.collision.bugs = row.bug + bit32.lshift(row.bug_arg or 0, 8)
         end
         me.collision:present()
-        marker.spawn(look.marker, me, me.panel_x, me.panel_y, marker.meteor, regions.single)
+        local side = if look.marker_takes_side then me.alliance else 0
+        marker.spawn(look.marker, side, me.panel_x, me.panel_y, marker.meteor, regions.single)
         me.lifecycle = "update"
     end
 

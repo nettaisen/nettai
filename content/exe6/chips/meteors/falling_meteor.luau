@@ -26,6 +26,8 @@ falling_meteor.kind = common.make_kind("meteors/falling-meteor", {
     spark = sparks.of_element,
     burst = effects.burst,
     marker = marker.kind,
+    hit_on = "burst",
+    marker_takes_side = true,
 })
 
 -- EXE6's meteor of `row`.
