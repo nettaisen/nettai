@@ -168,8 +168,8 @@ fn set_animation(b: &mut Battle, r: ObjectRef, anim: u8) {
 /// `sub_80EB088`.
 fn begin(b: &mut Battle, r: ObjectRef) {
     clear_flag1(b, r, f1::USING_ACTION);
-    // object_canMove
-    if flag1(b, r) & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) != 0 {
+    // object_canMove (EXE4's, 0x0800AD2A: nor trapped by its panel)
+    if flag1(b, r) & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) != 0 || b.trapped(r) {
         return leave(b, r);
     }
     ai_mut(b, r).attack.marker = 0;

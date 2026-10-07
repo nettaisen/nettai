@@ -1748,8 +1748,13 @@ pub struct PanelTypeRule {
     /// the panel routines refuse).
     pub unbreakable: bool,
     /// A slide or a drag that reaches it stops there unless the body floats
-    /// (EXE4's pitfall: 0x080102FC, 0x08010B54).
+    /// (EXE4's pitfall: 0x080102FC, 0x08010B54; an obstacle's slides,
+    /// 0x080106B8 and its kin).
     pub stops_slides: bool,
+    /// A body standing on it can't move unless it floats (EXE4's pitfall:
+    /// its `object_canMove`, 0x0800AD2A, and its kin 0x0800AD54,
+    /// 0x0800AD7E).
+    pub traps: bool,
     /// It turns normal after these ticks (EXE4's pitfall, 190: 0x0800980E),
     /// counted at once when a type change makes it (0x08009DC4), and on a
     /// stage's from the tick a grounded body stands on it (0x08009120 arms

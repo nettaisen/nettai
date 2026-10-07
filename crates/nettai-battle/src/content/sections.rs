@@ -71,6 +71,8 @@ struct PanelTypeSection {
     #[serde(default)]
     stops_slides: bool,
     #[serde(default)]
+    traps: bool,
+    #[serde(default)]
     crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
@@ -671,6 +673,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         doubles,
                         unbreakable: rule.unbreakable,
                         stops_slides: rule.stops_slides,
+                        traps: rule.traps,
                         crumbles: rule.crumbles,
                         named: true,
                     };
