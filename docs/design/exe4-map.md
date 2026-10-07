@@ -799,8 +799,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     which charge (+9) and its level, sounds 0x71 as it starts and 0x72 at the full charge, sits at a per-navi offset,
     0x080E2274, and frees itself when the charge goes). The charge itself counts per source (+0x0A, +0x0B levels;
     +0x30, +0x32 counters; 0x0800BDAA clears them), not EXE6's one counter. **Done:** the init's part,
-    `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4). Open: the charge's counting and the glow
-    kind (MegaMan's, §18.4).
+    `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4); the counting (item 47); the glow, the role
+    `kinds.charge_glow` (content/exe4/objects/charge_glow), which the navi's tail spawns as the charge gets a level.
+    Its per-navi offset is MegaMan's (none) alone: EXE4's content has no other navi. Unported: the tail's color
+    shader before it (0x0800BB18: AIData +0x2C in 1 to 90, a shader from 0x0800BB40 by the battle timer; what sets
+    +0x2C is to find).
 40. **The intro's first tick.** EXE4's intro (0x08007464) goes on from its init to the HUD's setup on the same tick
     (state [4,0,4,4] after the round's first tick). **Done:** `flow.intro_steps_on_init`. (Its init's one RNG2 draw is
     the actors' spawn's last call, 0x080F576C, where EXE6's is `sub_8014178`'s: the same draw.)
