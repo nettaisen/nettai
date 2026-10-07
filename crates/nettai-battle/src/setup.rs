@@ -88,12 +88,6 @@ pub struct NaviWeapons {
 pub struct NaviCustBugs {
     /// +0x11: random repeat steps after a move.
     pub auto_step: u8,
-    /// The keys the navi steps by when none is held, or while sliding
-    /// (EXE4's NaviStats +0x0D, which DrkSword's and DarkBomb's costs and a
-    /// Mod Card's bug set: the joypad's direction bits, 0x10 to 0x80, read
-    /// in the rules' order of keys and never turned by confusion; 0 and
-    /// 0xFF none).
-    pub idle_step_keys: u8,
     /// +0x12: what a step leaves on the panel behind (1 break, 3 crack...).
     pub panel_trail_kind: u8,
     /// +0x13: how often a step leaves it (0 = never).

@@ -345,8 +345,6 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         },
         bugs: NaviCustBugs {
             auto_step: b[0x11],
-            // (EXE6's stats have no keys to step by with none held.)
-            idle_step_keys: 0,
             panel_trail_kind: b[0x12],
             panel_trail_level: b[0x13],
             buster_blanks: b[0x14],
