@@ -18,6 +18,7 @@
 "custom2" = 3
 "fish" = 16
 "flotshoe" = 11
+"fstbarr" = 7
 "gigfldr1" = 6
 "hp-100" = 42
 "hp-200" = 43
@@ -56,6 +57,7 @@
 "custom2" = [3]
 "fish" = [1]
 "flotshoe" = [3]
+"fstbarr" = [3]
 "gigfldr1" = [0]
 "hp-100" = [0, 1, 2]
 "hp-200" = [0, 1, 2]
