@@ -166,6 +166,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     status_shader(b, r);
     update_visibility(b, r);
     counter_shader(b, r);
+    charge_brings_glow(b, r);
     dive_ripple(b, r);
     if flag1(b, r) & f1::DEAD != 0 {
         return dispatch(b, r);
@@ -182,6 +183,29 @@ fn tail(b: &mut Battle, r: ObjectRef) {
         return while_dimmed(b, r);
     }
     dispatch(b, r);
+}
+
+/// Where the rules say a charge brings its own glow (EXE4's 0x0800BD88): with
+/// the navi's glow link empty and its charge at a level, the role's glow, on
+/// the navi's side, the navi its first related, linked and shown.
+fn charge_brings_glow(b: &mut Battle, r: ObjectRef) {
+    if b.content.rules().effects.charge_glow != crate::content::ChargeGlow::WithCharge {
+        return;
+    }
+    let a = ai(b, r);
+    if a.charge_glow.is_some() || a.charge_level == 0 {
+        return;
+    }
+    let kind = b.roles().kind(crate::content::KindRole::ChargeGlow);
+    let e = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
+    if let Some(e) = e {
+        let alliance = b.objects.get(r).alliance;
+        let o = b.objects.get_mut(e);
+        o.alliance = alliance;
+        o.related[0] = Some(r);
+        crate::behavior::set_state_field(b, e, "shown", nettai_content_api::Value::Bool(true));
+    }
+    ai_mut(b, r).charge_glow = e;
 }
 
 /// `sub_801B9E6`: run the current action (§12.0 action table).
