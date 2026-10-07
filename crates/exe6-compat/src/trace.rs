@@ -1017,13 +1017,14 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
 /// the NaviCust emotion bug's swings to tired, which need the fight.
 fn screen_emotion(stats: &NaviStats, content: &Content, beast_over_before: bool) -> Emotion {
     let kind = crate::forms::kind(content, stats.form);
-    if stats.mood == 0 || (beast_over_before && kind != Some(crate::forms::Kind::BeastOver)) {
-        Emotion::WornOut
+    let name = if stats.mood == 0 || (beast_over_before && kind != Some(crate::forms::Kind::BeastOver)) {
+        "worn_out"
     } else if stats.game_stat(content, "beast_out_counter") == Some(nettai_content_api::FieldValue::U8(0)) && !kind.is_some_and(crate::forms::Kind::is_beast) {
-        Emotion::Tired
+        "tired"
     } else {
-        Emotion::Normal
-    }
+        "normal"
+    };
+    content.rules().emotion.by_name(name).unwrap_or_else(|| panic!("EXE6's emotions have no {name}"))
 }
 
 /// One player's custom screen checked against a trace.

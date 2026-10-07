@@ -508,14 +508,15 @@ pub enum WeaknessMark {
     WeakElementDamage,
 }
 
-/// A side's emotions where games differ (the status section's `emotion`):
-/// how the emotion is read off the navi (`kinds::player::emotion`: EXE6's
-/// `sub_8015B54`, EXE5's 0x0801270C), what holds a mood and how anger
-/// leaves it. Read in this order: battle mode 1's plain reading, a form's
-/// normal, then anger and worn out (a mood of 0, or exhausted) in the
-/// game's order, tired, Full Synchro (a mood of 0xFF), worried, normal.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// A side's emotions, each game's own (the status section's `emotion`):
+/// their names, in the order the game reads them off its navi (the first
+/// case that holds is the side's emotion: EXE6's `sub_8015B54`, EXE5's
+/// 0x0801270C), over facts of the framework's ([`EmotionWhen`]); what each
+/// is to the framework ([`EmotionRole`]); what holds a mood and how anger
+/// leaves it. (A derivation, read on each read: nothing is kept in step,
+/// rules-in-luau.md §4.6.)
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(try_from = "EmotionSection")]
 pub struct EmotionRules {
     /// What holds a side's mood against the setter (`sub_8015BEC`, EXE5's
     /// 0x080127D6).
@@ -523,22 +524,183 @@ pub struct EmotionRules {
     /// How the end of anger leaves the mood (`sub_80143A6`, EXE5's
     /// 0x08011A94).
     pub anger_end: AngerEnd,
-    /// In battle mode 1 a side is in Full Synchro (a mood of 0xFF) or
-    /// normal, whatever else (EXE5's 0x080127C0).
-    pub plain_in_battle_mode_1: bool,
-    /// Out of its base form a navi reads as normal (EXE5's: in a soul, the
-    /// soul's own face, which nothing doubles or ends).
-    pub normal_in_a_form: bool,
-    /// Anger is read before worn out (EXE5's: an angry navi at a mood of 0
-    /// is angry); else worn out first (EXE6's).
-    pub anger_before_worn_out: bool,
-    /// The navi's held states are read: exhausted is worn out, and held
-    /// tired its own emotion (EXE6's AIData +0x33 and +0x32); else neither
-    /// (EXE5's routine reads no such byte).
-    pub tired_and_exhausted: bool,
-    /// A mood under this is worried (EXE5's 65); none stated: no mood is.
+    /// The emotions' names, by [`Emotion`]: the order's last case's first
+    /// (`Emotion(0)`, the default: what no other case's holds), then as the
+    /// order first names them.
+    pub names: Vec<String>,
+    /// The order: each case's emotion, and when it holds (any of its
+    /// alternatives; none: always, as the last case does).
+    pub order: Vec<EmotionCase>,
+    /// What each emotion is to the framework, by [`Emotion`].
+    pub roles: Vec<Option<EmotionRole>>,
+}
+
+/// A side's emotion: one of its game's ([`EmotionRules::names`]); the
+/// default, `Emotion(0)`, the one when nothing else holds (EXE6's and
+/// EXE5's normal).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Emotion(pub u8);
+
+/// A case of the emotions' order.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct EmotionCase {
+    pub emotion: Emotion,
+    pub when: Vec<EmotionWhen>,
+}
+
+/// An alternative of a case: facts of the framework's, each of which must
+/// hold (those left out: whatever).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmotionWhen {
+    /// The side's mood is this (0xFF: Full Synchro's), or under this.
     #[serde(default)]
-    pub worried_below: Option<u8>,
+    pub mood: Option<u8>,
+    #[serde(default)]
+    pub mood_below: Option<u8>,
+    /// Its navi is angry (its anger's ticks run), held tired, exhausted
+    /// (after Beast Over), or out of its base form.
+    #[serde(default)]
+    pub angry: Option<bool>,
+    #[serde(default)]
+    pub tired: Option<bool>,
+    #[serde(default)]
+    pub exhausted: Option<bool>,
+    #[serde(default)]
+    pub in_form: Option<bool>,
+    /// The battle's mode is this.
+    #[serde(default)]
+    pub battle_mode: Option<u8>,
+}
+
+/// The facts the emotions' order reads of a side.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EmotionFacts {
+    pub mood: u8,
+    pub angry: bool,
+    pub tired: bool,
+    pub exhausted: bool,
+    pub in_form: bool,
+    pub battle_mode: u8,
+}
+
+impl EmotionWhen {
+    fn holds(&self, f: &EmotionFacts) -> bool {
+        let is = |want: Option<bool>, fact: bool| want.is_none_or(|w| w == fact);
+        self.mood.is_none_or(|m| f.mood == m)
+            && self.mood_below.is_none_or(|m| f.mood < m)
+            && is(self.angry, f.angry)
+            && is(self.tired, f.tired)
+            && is(self.exhausted, f.exhausted)
+            && is(self.in_form, f.in_form)
+            && self.battle_mode.is_none_or(|m| f.battle_mode == m)
+    }
+}
+
+/// What an emotion is to the framework's behaviors.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EmotionRole {
+    /// Full Synchro: the next damaging chip doubles (and is spent), the
+    /// navi takes the mood's palette and its aura, and the opponent's
+    /// counter window flashes on a console that sees it.
+    FullSynchro,
+    /// Anger: the next damaging chip doubles.
+    Angry,
+    /// Worn out: the buster deals 1, and anger doesn't start.
+    WornOut,
+    /// Tired: anger doesn't start.
+    Tired,
+}
+
+impl EmotionRules {
+    /// The side's emotion for `facts`: the first case that holds.
+    pub fn of(&self, facts: &EmotionFacts) -> Emotion {
+        self.order.iter().find(|c| c.when.is_empty() || c.when.iter().any(|w| w.holds(facts))).map_or(self.fallback(), |c| c.emotion)
+    }
+
+    /// The emotion when nothing else holds (the order's last case's).
+    pub fn fallback(&self) -> Emotion {
+        Emotion(0)
+    }
+
+    pub fn name(&self, e: Emotion) -> &str {
+        self.names.get(e.0 as usize).map_or("", String::as_str)
+    }
+
+    pub fn by_name(&self, name: &str) -> Option<Emotion> {
+        self.names.iter().position(|n| n == name).map(|i| Emotion(i as u8))
+    }
+
+    pub fn role(&self, e: Emotion) -> Option<EmotionRole> {
+        self.roles.get(e.0 as usize).copied().flatten()
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EmotionSection {
+    mood_held: MoodHeld,
+    anger_end: AngerEnd,
+    order: Vec<EmotionCaseSpec>,
+    #[serde(default)]
+    roles: std::collections::BTreeMap<String, EmotionRole>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EmotionCaseSpec {
+    emotion: String,
+    #[serde(default)]
+    when: Vec<EmotionWhen>,
+}
+
+impl TryFrom<EmotionSection> for EmotionRules {
+    type Error = String;
+
+    fn try_from(s: EmotionSection) -> Result<EmotionRules, String> {
+        let order = s.order.into_iter().map(|c| (c.emotion, c.when)).collect();
+        EmotionRules::new(s.mood_held, s.anger_end, order, s.roles.into_iter().collect())
+    }
+}
+
+impl EmotionRules {
+    /// The rules of a section: its order (each case's emotion by name, and
+    /// when it holds) and its roles, by name.
+    pub fn new(
+        mood_held: MoodHeld,
+        anger_end: AngerEnd,
+        cases: Vec<(String, Vec<EmotionWhen>)>,
+        roles_by_name: Vec<(String, EmotionRole)>,
+    ) -> Result<EmotionRules, String> {
+        let mut names: Vec<String> = cases.last().map(|c| c.0.clone()).into_iter().collect();
+        let mut order = Vec::new();
+        for (emotion, when) in cases {
+            let i = match names.iter().position(|n| *n == emotion) {
+                Some(i) => i,
+                None => {
+                    names.push(emotion);
+                    names.len() - 1
+                }
+            };
+            order.push(EmotionCase { emotion: Emotion(i as u8), when });
+        }
+        match order.last() {
+            None => return Err("the emotions' order names none".into()),
+            Some(c) if !c.when.is_empty() => {
+                return Err(format!("the emotions' order ends with `{}` when it holds: its last case holds always", names[c.emotion.0 as usize]));
+            }
+            Some(_) => {}
+        }
+        let mut roles = vec![None; names.len()];
+        for (name, role) in roles_by_name {
+            let Some(i) = names.iter().position(|n| *n == name) else {
+                return Err(format!("roles: `{name}` is no emotion of the order's"));
+            };
+            roles[i] = Some(role);
+        }
+        Ok(EmotionRules { mood_held, anger_end, names, order, roles })
+    }
 }
 
 /// What holds a side's mood against the setter (`EmotionRules::mood_held`).
