@@ -153,11 +153,20 @@ fn map(rom: &Rom, a: u32, n: u32) -> Vec<MapEntry> {
     (0..n).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect()
 }
 
+/// The damage judge's banner (number 0x28, which 0x080163EE shows as it
+/// turns on the HUD's element 0x200: 0x080152EA draws "VS" at column 14,
+/// row 5, the one side's damage in columns 9 to 12 and the other's from
+/// column 17, as EXE6's `sub_801D048` does): the judge's layout, which adds
+/// the two numbers (`nettai_assets::BannerLayout::kind` 4). Its record's
+/// own kind byte, 2 (held until removed), says nothing of them.
+const JUDGE_BANNER: u32 = 0x28 / 4;
+const JUDGE_KIND: u8 = 4;
+
 /// Banner `id` (the banner block's number / 4) of the table at `table`.
 pub(crate) fn banner(rom: &Rom, table: u32, id: u32) -> BannerLayout {
     let p = rom.u32(table + 4 * id);
     let place = rom.u16(p);
-    let kind = rom.u8(p + 2);
+    let kind = if id == JUDGE_BANNER { JUDGE_KIND } else { rom.u8(p + 2) };
     let mut glyphs = Tiles::default();
     for g in 0..20 {
         let t = tiles(rom, rom.u32(p + 4 + 4 * g), 0x40);

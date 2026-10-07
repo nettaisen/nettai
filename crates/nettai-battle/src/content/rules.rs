@@ -1011,6 +1011,40 @@ pub enum HitMood {
     HitterGains,
 }
 
+/// A game's chip families (rule section `elements`: `families`, each name
+/// with its number, and `non_elemental`): the numbers its chip records hold
+/// and its pack's custom-screen icons are by (EXE6's own; EXE5's as its
+/// pack has the icons, EXE6's numbers with its recovery and invisible
+/// after them; EXE4's own, its record's +0x07).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ChipFamilies {
+    /// Each family's name and number, by number.
+    pub families: Vec<(String, ChipFamily)>,
+    /// The family of a chip that names none, and the one the rules on
+    /// non-elemental chips mean (EXE6's Beast and Cross forms: a Cross's
+    /// erasing, a Beast's bonus and Beast Over's doubling of the family's
+    /// damaging chips, the empty hand's family byte, the Beast forms'
+    /// other A charge).
+    pub non_elemental: ChipFamily,
+}
+
+impl ChipFamilies {
+    /// The family named `name`.
+    pub fn by_name(&self, name: &str) -> Option<ChipFamily> {
+        self.families.iter().find(|(n, _)| n == name).map(|&(_, f)| f)
+    }
+
+    /// The families' names, by number.
+    pub fn names(&self) -> Vec<&str> {
+        self.families.iter().map(|(n, _)| n.as_str()).collect()
+    }
+
+    /// Family `family`'s name, if the game has it.
+    pub fn name(&self, family: ChipFamily) -> Option<&str> {
+        self.families.iter().find(|&&(_, f)| f == family).map(|(n, _)| n.as_str())
+    }
+}
+
 /// A side's emotion: one of its game's ([`EmotionRules::names`]); the
 /// default, `Emotion(0)`, the one when nothing else holds (EXE6's and
 /// EXE5's normal).
@@ -1247,9 +1281,11 @@ pub struct Rules {
     /// hitter's (0 null, 1 fire, 2 aqua, 3 elec, 4 wood, 5 the drain
     /// element).
     pub element_weakness: [[u8; 6]; 6],
+    /// The game's chip families (rule section `elements`).
+    pub chip_families: ChipFamilies,
     /// The secondary elements each chip family adds to its attacks, by
-    /// family.
-    pub family_elements: [SecondaryElements; 15],
+    /// family (a family past them adds none).
+    pub family_elements: Vec<SecondaryElements>,
     pub panels: PanelRules,
     /// Banners that stay up until removed.
     pub holding_banners: Vec<BannerId>,
@@ -1392,7 +1428,7 @@ impl Rules {
 
     /// The secondary elements a chip family adds.
     pub fn family_elements(&self, family: ChipFamily) -> SecondaryElements {
-        self.family_elements[family as usize]
+        self.family_elements.get(family.0 as usize).copied().unwrap_or_default()
     }
 
     /// Ticks of recovery after a buster shot at a Rapid stat with `open`

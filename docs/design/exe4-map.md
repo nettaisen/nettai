@@ -581,7 +581,7 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
     "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
     the holding banner's hold (0x08014AA8) until the banner is gone (0x08014ABE: the pack's `layout.judge_from_hold`).
-    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 53).
+    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 130).
   - Not in a netbattle: 7 and 19, the turn timer's seconds over "CUSTOM" (0x08016362 from the fight's timer
     0x08008066, and its blinking from 0x080169DA, for battle kind 0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
     code); 16, 17 and 22, the gauge in three colors, its sprite and the column marker of controller 2 (0x08016842
@@ -957,7 +957,13 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 16. **No time limit, no double KO** (the lab's first batch): nothing ends a netbattle's stand-off, and when both navis
     are deleted on the same tick side 1's shot resolves first and side 1 survives. The engine's link battle has the
     judge's ruling (round result 7) and a draw. Shape: flow rules `time_limit: false` and the KO order as data.
-    Placeholder: the engine's.
+    Placeholder: the engine's. Read since (group A): a netbattle has a time limit from its 15th turn, as EXE6's. The
+    fight's timer runs only in a battle of type 0x46 and on whose BattleState +8 (the custom screens so far) is 15 or
+    more (0x08007E4E); it counts the fighting machine's +0x0A down, and under 60 sets BattleState +0x0B (0x08008066),
+    which the round's result reads as the time-out, 7 (0x080079D6), the fighting machine's state 0x14: TIME UP for 60
+    ticks (0x08007378), then the judge (0x0800739E, 0x08021F94: the numbers rolled on RNG2, its banner 0x28 and the
+    HUD's element 0x200 with both damages, 0x080163C8 and 0x080152EA). The lab's flow/no-time-limit stands three
+    minutes in its first turn, which this doesn't reach. The judge's banner is the judge's layout in the pack.
 17. **The fight-live test.** The fight runs while the fighting machine's first byte is 4 and BattleState +3 is 4; for
     one tick as the custom screen closes the machine still reads 4. Pause sets fight[0] to 0x18. To compare with the
     engine's fight states in step 5.
@@ -1015,8 +1021,12 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 27. **The projectile** (0x080CD354, 0x080CD3D4) runs @exelib's EXE5 code with EXE4's rows; its tick is 0.89 alike and
     its rows 10 and 11 set a status (0x08013212): compare the code and port the difference.
 28. **The attack's +6 halfword** adds to the cannon's damage (0x080EB984); the engine's chip use doesn't set it.
-29. **Cannon's family** (+0x0B, 0x0B) and **what 0x0800BA66 does** as action 0x0B starts. Placeholder: `family =
-    "null"`.
+29. **Done: Cannon's family** and **what 0x0800BA66 does** as action 0x0B starts (group A). The engine's chip family
+    is the icon family, EXE4's +0x07 (the families are each game's data: EXE4's rules' `elements.families`, by that
+    byte: fire 0, aqua 1, elec 2, wood 3, recovery 4, plus 5, sword 6, invisible 7, break 8, summon 9, wind 10, metal
+    11, null 12, program advance 14, the souls' chips 15, `special`; 13 none). Cannon's is 12, null; its +0x0B, 0x0B,
+    is its action (`cannon/action`). Double Soul's table 0x08020008 reads the same byte as a soul's kind (gen_rules.py
+    holds the families to it). 0x0800BA66 opens the counter window (§7).
 30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
     neither, the lab's first batch's.
 
@@ -1111,7 +1121,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 
 The fight HUD as read and ported is §14's "The fight HUD as ported". What it still waits on:
 
-53. **HUD pieces that wait on content** (group E). Port each with what reaches it:
+130. **HUD pieces that wait on content** (group E). Port each with what reaches it:
     - a soul chip (0x160 to 0x16F) as the next chip shows no icon of its own, and the stack starts at the second
       (0x08015000), with Double Soul's chips;
     - a message stops "????" until the next custom screen starts it (0x08015FE8 stops draw bit 10), with the
