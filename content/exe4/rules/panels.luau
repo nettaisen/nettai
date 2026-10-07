@@ -75,4 +75,7 @@ return {
     },
     mend = { normal = 600, battle_mode_1 = 600 },
     reservations = "unmarked",
+    -- The flags' bits a type owns, which a crack, a break or poison clears (0x08009AEC and its kin), metal's
+    -- 0x20000 among them.
+    type_mask = 0x00023F5F,
 }

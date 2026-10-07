@@ -1359,6 +1359,12 @@ pub struct PanelRules {
     pub numbers: Vec<PanelType>,
     /// Whether a reservation marks its holder (`Reservations`).
     pub reservations: Reservations,
+    /// The flags word's bits a panel's type owns (its number, solidity, its
+    /// crack and the types' own flags), which a crack, a break or poison
+    /// clears before it sets its own: EXE6's 0x3F5F (`object_crackPanel`
+    /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
+    /// 0x20000 too). A crack keeps the solidity and the crack bit.
+    pub type_mask: u32,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the

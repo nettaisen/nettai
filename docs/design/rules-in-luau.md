@@ -2602,6 +2602,9 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - **A panel type's `doubles`, since EXE4's port** (was the hit test's `elec_bonus_on_sea`): the element whose hits
   count once more, as null damage, on a body standing on it: fire on grass in all three games, and EXE5's elec on
   its sea, EXE4's elec on ice (0x08012CF2).
+- **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
+  poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
+  EXE4's 0x23F5F (their sea's and metal's 0x20000 too).
 - **A panel type's `unbreakable`, `stops_slides` and `crumbles`, since EXE4's port**: nothing cracks or breaks it
   (EXE4's metal, its flag 0x20000); a slide or a drag stops on it unless the body floats (EXE4's pitfall); it turns
   normal after its ticks (EXE4's pitfall, 190), counted at once when a type change makes it, and on a stage's from

@@ -826,6 +826,11 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       and NaviStats +0x26's 2, which skips it, is only a story's other navi's (0x08041100). exe4-compat's recordings
       state no karma yet: the default, 500 (group B's: the NaviStats' +0x36).
     No netbattle stage has type 11; the stages with 10 are generated now.
+    - **The panel routines' masks** (group A's reading): EXE4's eight (0x08009AEC to 0x08009D68) clear 0x23F5F
+      before the type they set (0x23F0F for a crack, which keeps the solidity and the crack bit), as EXE5's do
+      (0x0800AFF8 on; its sea has 0x20000); EXE6's clear 0x3F5F. The rule `panels.type_mask` (EXE6's 0x3F5F, EXE5's
+      and EXE4's 0x23F5F): the engine cleared EXE6's in every game, so an EXE5 sea panel cracked or poisoned kept
+      its 0x20000 until its next refresh.
 13. **What each panel does.** Lava (8) turns normal after 960 (stated); its burn, poison's drain, grass, ice (item 1),
     holy, and the panel trails' sounds are EXE5's or none. Placeholder: `panels.types` flags (and lava's `expires`).
 14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;

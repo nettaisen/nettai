@@ -113,4 +113,6 @@ return {
     -- A reservation marks its holder (`object_reservePanel` sets its header flag 0x20), and the holder's destroy
     -- releases what it holds (`sub_801BB78`, from `object_genericDestroy` and the navis' end).
     reservations = "marked",
+    -- The flags' bits a type owns, which a crack, a break or poison clears (`object_crackPanel` and its kin: 0x3F5F).
+    type_mask = 0x00003F5F,
 }
