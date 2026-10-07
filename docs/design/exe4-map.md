@@ -966,6 +966,11 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       and NaviStats +0x26's 2, which skips it, is only a story's other navi's (0x08041100). exe4-compat's recordings
       state no karma yet: the default, 500 (group B's: the NaviStats' +0x36).
     No netbattle stage has type 11; the stages with 10 are generated now.
+    - **The pitfall traps** (found by the lab's stages/typeA-row/walk): EXE4's `object_canMove` and its kin (0x0800AD2A,
+      0x0800AD54, 0x0800AD7E) also refuse a body standing on a pitfall, unless it floats (`cmp r1, #10`, then flag
+      0x20): the move's start (0x080EB20E) goes back to idle. The rule `traps` (the engine's move start and the
+      content's `can_move`). An obstacle's slides stop on a pitfall too (0x080106B8, 0x080110B8 test the float flag;
+      0x08011250, 0x080113C8, 0x08011532 don't, which no obstacle has): `stops_slides` in the obstacle slide.
     - **The panel routines' masks** (group A's reading): EXE4's eight (0x08009AEC to 0x08009D68) clear 0x23F5F
       before the type they set (0x23F0F for a crack, which keeps the solidity and the crack bit), as EXE5's do
       (0x0800AFF8 on; its sea has 0x20000); EXE6's clear 0x3F5F. The rule `panels.type_mask` (EXE6's 0x3F5F, EXE5's
@@ -1048,11 +1053,31 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       effect 1), its end 0x08010560, and the damage it is thrown for (100). Its hit sound is the roles'
       `sounds.damage` (0xC8). The lab's stages/grass, grass-rows-a/b and grass-checks-a/b (null, stand, walk) replay
       every frame; their chip scenarios wait for Bubbler, Thunder1, HeatShot and ElemLeaf.
-    - Kind 7, the flag (records 76 to 87): attack object #0x9C (0x080E06AC, EXE6's `sub_80D8C5C`, no EXE6 stage's),
-      each side's in its back corner (the entry's argument: bit 7 the side, the rest the HP in eights); its HP out,
-      its side's alive count goes to 0 and the battle's time-up byte to 1 (0x080E0842: the round lost), with battle
-      flag 8. Kind 5, a gear (records 32 to 35: attack object #0x76, 0x080DBD94, HP 50, moving along its row); kind
-      6, effect #0x41 (records 88 to 95, 0x080E6820: off the field, spawning an attack by turns). To port.
+    - **Done: kind 7, the flag** (records 76 to 87; content/exe4/objects/flag). Attack object #0x9C (0x080E06AC),
+      EXE6's code (`sub_80D8C5C`, which no EXE6 stage places) but for its sheet (10-32), its NameID (0xFD; its HP
+      number's) and its HP check (0x080E07CE: a burning panel first, 0x0801309E, the object call `burn_on_panel`; a
+      holy panel's halving of the total, rounding up; the hit's sound 0xC8). Each side's in its back corner (the
+      entry's argument: bit 7 the side, the rest the HP in eights: 0x7D and 0xFD, 1000), its HP numbered. Its HP out
+      (unless time is up: `battle_isBattleOver`'s Z flag, `battle.time_up`), sound 0x6F and its side loses the round
+      (0x080E0842, EXE6's `sub_80D8DEE`: the side's actor count, BS+4, to 0 and the round's time-up byte to 1, the call
+      `battle.lose_round`; it also sets battle flag 8, which nothing in EXE4 reads: 0x08007A8C's 28 callers test 1, 2
+      and 0x10). The lab's stages/lava-middle-close, typeA-row, ice-columns and holes-diagonal-b (null, stand, walk)
+      and panels/lava-blinking replay every frame, and so does stages/lava-middle-close/flag-break (side 1's flag
+      broken by 25 Cannons, through the round's end into round 2's fight; `lose_round` zeroes the side's actor count,
+      BS+4, which the fight's result reads, not its alive count, BS+0x12).
+    - **Done: kind 5, the gear** (records 32 to 35; content/exe4/objects/gear). Attack object #0x76 (0x080DBD94, EXE6's
+      `sub_80D385C` by its place), its sheet 10-33, 50 HP, guarded (its status bit 0), hitting for 20 (0x080068C0's
+      damage word 0x00940014) what it runs into, on its panel's side for the other side (its mode 0, the stages'), at
+      half a pixel a tick: past its panel's center it checks the next panel, else the one under where it is going
+      (`sub_800E258`, the BIOS's signed divisions), and turns back from one off the field, not solid, with a body (other than a
+      navi's: 0x03800000) or of the other side (0x080DBF5E); sound 0x149 as it starts. Its reaction is 0x0801427A (EXE6's
+      `sub_801B878` without LilBoiler's eruption test: destroyed by any touch, the HP as it is; none of EXE4's six
+      reactions reads the removal request), its end an explosion and 0x6F (0x080DBF24). Its modes 1 (a lifetime and its
+      side's registry) and 2 (other collision rows, a spawner's slot) are ported for effect #0x49 (0x080E7244) and an
+      actor's 0x080C7C74, which aren't. The lab's stages/type5 and type5-row (null, stand, walk), panels/type5-stand-on
+      and stages/type5/gears-roll and gears-hit (a95f's: navis out of its row for 900 ticks, the gears bouncing between
+      the edge and the center line; then one runs into side 0) replay every frame.
+    - Kind 6, effect #0x41 (records 88 to 95, 0x080E6820: off the field, spawning an attack by turns). To port.
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
     battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
     set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
@@ -1088,7 +1113,8 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 24. **The move that cuts a recovery short.** The buster's and the charged shot's recoveries (0x080EB3D8, 0x080ECCCC)
     use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
     **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
-    confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
+    confused keys, 0x0800B550, EXE6's swaps; the idle starting only a step that can go), which `held_direction` and
+    the idle read; the flow/move
     recordings match. **Done** too: the move bug, NaviStats +0x0D (`effects.steps.bug`, the rules' stat `move_bug`,
     which the NaviCust's bugs write and a dark chip's or Mod Card's will): with no key held (or sliding) 0x0800B4B0
     steps by its keys (bits 0x10 to 0x80; 0 and 0xFF none), and at 0xFF the init confuses the navi for 720 ticks

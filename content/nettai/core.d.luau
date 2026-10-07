@@ -633,6 +633,10 @@ declare extern type Object with
     -- `sub_800A142` (EXE4's 0x080079C6): one fewer alive navi on its side,
     -- the alive lists kept.
     function drop_alive_count(self): ()
+    -- A panel that burns (its type's `burn`) burns it, an object not a
+    -- player's (held while the battle is dimmed): EXE5's 0x08016D80, EXE4's
+    -- 0x0801309E.
+    function burn_on_panel(self): ()
     -- Its collision's barrier byte cleared (`sub_801A7F4`'s store).
     function drop_barrier(self): ()
     -- A navi no player controls leaves (EXE5's 0x08104306): no HP, the
@@ -1135,6 +1139,10 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
+    -- `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
+    -- count (what the fight's result reads) to 0 and the round's time-up
+    -- byte set (and battle flag 8, which nothing in EXE4 reads).
+    lose_round: (side: number) -> (),
     -- `sub_800ED90` and its record's flags: the chip `user` would use next
     -- deals damage (a player's at its hand's cursor; another object's own).
     next_chip_damages: (user: Object) -> boolean,
