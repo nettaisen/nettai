@@ -9,4 +9,14 @@ return merge {
     -- Chips: a module defining one, or a series module defining several.
     require("@self/airshot"),
     require("@self/cannon"),
+    require("@self/darkbomb"),
+    require("@self/drkcanon"),
+    require("@self/drklance"),
+    require("@self/drkrecov"),
+    require("@self/drkspred"),
+    require("@self/drkstage"),
+    require("@self/drksword"),
+    require("@self/drkvulcn"),
+    require("@self/lance"),
+    require("@self/recov"),
 }

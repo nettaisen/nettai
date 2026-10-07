@@ -6,6 +6,25 @@ language = "en"
 [chips]
 "cannon" = { name = "Cannon", description = "Cannon to\nattack\n1 enemy" }
 "airshot" = { name = "AirShot", description = "Knocks\nenemy\nback 1" }
+"hicannon" = { name = "HiCannon", description = "Cannon to\nattack\n1 enemy" }
+"m-cannon" = { name = "M-Cannon", description = "Cannon to\nattack\n1 enemy" }
+"lance" = { name = "Lance", description = "Lances\nthrough\nback line" }
+"recov10" = { name = "Recov10", description = "Recovers\n10HP" }
+"recov30" = { name = "Recov30", description = "Recovers\n30HP" }
+"recov50" = { name = "Recov50", description = "Recovers\n50HP" }
+"recov80" = { name = "Recov80", description = "Recovers\n80HP" }
+"recov120" = { name = "Recov120", description = "Recovers\n120HP" }
+"recov150" = { name = "Recov150", description = "Recovers\n150HP" }
+"recov200" = { name = "Recov200", description = "Recovers\n200HP" }
+"recov300" = { name = "Recov300", description = "Recovers\n300HP" }
+"drkcanon" = { name = "DrkCanon", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drksword" = { name = "DrkSword", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"darkbomb" = { name = "DarkBomb", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkvulcn" = { name = "DrkVulcn", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drklance" = { name = "DrkLance", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkspred" = { name = "DrkSpred", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkstage" = { name = "DrkStage", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkrecov" = { name = "DrkRecov", description = "DARKCHIP\nCREATED\nBY DESIRE" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
