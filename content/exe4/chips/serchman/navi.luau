@@ -1,6 +1,6 @@
 --!strict
--- SearchMan, the navi of EXE4's SearchMan chips (EXE4's actor object #0x31, 0x080C355C), and their controller, which
--- brings him: @exelib/serchman/navi with EXE4's look (his sprite, 08-04, in his chip's palette, 0x0800B950: two
+-- SearchMan, the navi of EXE4's SearchMan chips (EXE4's actor object #0x31, 0x080C355C), and each chip's controller,
+-- which brings him: @exelib/serchman/navi with EXE4's look (his sprite, 08-04, in his chip's palette, 0x0800B950: two
 -- palettes a variant; his rifle up in animation 15 and a shot in 10; the shot's sound 0xBB) and his spawner
 -- (0x080C37D4: neither his user, nor its facing, nor the element; his height his side); his scope (./scope) reads his
 -- side's navi's presses.
@@ -10,19 +10,11 @@ local navi_chips = require("../../lib/navi_chips")
 local scope = require("./scope")
 local shot = require("./shot")
 
--- His palettes a variant (0x0800B9B1's entry 4).
-local PALETTES = 2
-
 local searchman = common.make {
     id = "serchman/navi",
     sprite = asset.sprite("searchman"),
     appear_sound = asset.sound("appear"),
     shot_sound = asset.sound("vulcan"),
-    palettes = {
-        [0] = navi_chips.palette(PALETTES, 0),
-        [3] = navi_chips.palette(PALETTES, 3),
-        [4] = navi_chips.palette(PALETTES, 4),
-    },
     aim_anim = 15,
     shot_anim = 10,
     scope = scope,
@@ -30,28 +22,19 @@ local searchman = common.make {
     summoned_alone = true,
 }
 
-local summons: { [number]: (user: Object, controller: Object, spec: NaviChipSpec) -> Object? } =
-    { [0] = searchman.summon_at(0), [3] = searchman.summon_at(3), [4] = searchman.summon_at(4) }
+-- What each SearchMan chip states for its own controller: the controller's id (the original's effect object #0x42,
+-- 0x080E6A18, for all six navis' chips: compat maps each to it), his palette (0x0800B950 by the chip's level: two
+-- palettes a variant) and his scope's sweep (0x080E6C78 by the level: 6 ticks a panel, the SP's and DS's 4).
+export type ChipSpec = { id: string, palette: number, sweep: number }
 
--- 0x080C37D4: SearchMan for the controller's user, with the damage plus the bonus, of the chip's level.
-local function spawn(controller: Object, user: Object, damage: number): Object?
-    local level = (controller.state :: NaviChipControllerState).level
-    local summon = summons[level]
-    if not summon then
-        error(string.format("SearchMan's controller has a level %d no chip gives", level))
+-- A SearchMan chip's controller: the user warps out, SearchMan, the user warps back in.
+local function controller(chip: ChipSpec): NaviChipController
+    local summon = searchman.summon { palette = chip.palette, sweep = chip.sweep }
+    -- 0x080C37D4: SearchMan for the controller's user, with the damage plus the bonus.
+    local function spawn(c: Object, user: Object, damage: number): Object?
+        return summon(user, c, { panel_x = c.panel_x, panel_y = c.panel_y, element = c.element, damage = damage })
     end
-    return summon(
-        user,
-        controller,
-        { panel_x = controller.panel_x, panel_y = controller.panel_y, element = controller.element, damage = damage }
-    )
+    return navi_chips.controller { id = chip.id, name = "SearchMan", spawn = spawn, steps = navi_chips.SHARED }
 end
 
--- His chips' navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
--- chips: compat/kinds.toml maps each one's to it): the user warps out, SearchMan, the user warps back in.
-return navi_chips.controller {
-    id = "serchman/controller",
-    name = "SearchMan",
-    spawn = spawn,
-    steps = navi_chips.SHARED,
-}
+return { controller = controller }

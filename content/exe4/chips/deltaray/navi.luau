@@ -14,9 +14,6 @@ local common = require("@exelib/deltaray/navi")
 local follow_effect = require("../../objects/follow_effect")
 local navi_chips = require("../../lib/navi_chips")
 
--- His palettes a variant (0x0800B9B1's entry 7, ProtoMan's).
-local PALETTES = 2
-
 -- 0x080CD6E0, as his strike asks (attachment row 3, his sword's animation, animating while dimmed).
 local function attach(owner: Object, look: AttachmentLook, which: Slot, options: AttachmentOptions?): Object?
     local anim = if options then options.anim or 0 else 0
@@ -57,22 +54,19 @@ local deltaray = common.make {
     strike_at_once = true,
 }
 
-local summon = deltaray.summon { palette = navi_chips.palette(PALETTES, 0) }
+-- What the DeltaRay chip states for its controller: the controller's id (the original's effect object #0x42,
+-- 0x080E6A18, for all six navis' chips: compat maps each to it) and his palette (0x0800B950 by the chip's level, 0:
+-- ProtoMan's two palettes a variant).
+export type ChipSpec = { id: string, palette: number }
 
--- 0x080C76CE: DeltaRay for the controller's user, with the damage plus the bonus. (The chip's level is 0.)
-local function spawn(controller: Object, user: Object, damage: number): Object?
-    return summon(
-        user,
-        controller,
-        { panel_x = controller.panel_x, panel_y = controller.panel_y, element = controller.element, damage = damage }
-    )
+-- The DeltaRay chip's controller: the user warps out, DeltaRay, the user warps back in.
+local function controller(chip: ChipSpec): NaviChipController
+    local summon = deltaray.summon { palette = chip.palette }
+    -- 0x080C76CE: DeltaRay for the controller's user, with the damage plus the bonus.
+    local function spawn(c: Object, user: Object, damage: number): Object?
+        return summon(user, c, { panel_x = c.panel_x, panel_y = c.panel_y, element = c.element, damage = damage })
+    end
+    return navi_chips.controller { id = chip.id, name = "DeltaRay", spawn = spawn, steps = navi_chips.SHARED }
 end
 
--- His chip's navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
--- chips: compat/kinds.toml maps each one's to it): the user warps out, DeltaRay, the user warps back in.
-return navi_chips.controller {
-    id = "deltaray/controller",
-    name = "DeltaRay",
-    spawn = spawn,
-    steps = navi_chips.SHARED,
-}
+return { controller = controller }
