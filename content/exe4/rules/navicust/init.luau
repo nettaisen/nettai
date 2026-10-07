@@ -4,7 +4,7 @@
 -- grid) is compiled into MegaMan's stats, as the PET's reload does (0x08035130). EXE4's own routines, which EXE5's
 -- and EXE6's (@exelib/navicust/compile) grew from and differ from in most steps: the neighbors met by the shapes
 -- uncompressed, a program on the line skipped by its part (not an exclusive group), the colors bringing two bugs, the
--- bugs run twice around the Mod Cards, BugStop's dropped counts, the HP left as it was. Its 5x5 board is in the middle
+-- bugs run twice around the patch cards, BugStop's dropped counts, the HP left as it was. Its 5x5 board is in the middle
 -- of the engine's 7x7 grid, its command line the third row (the engine's fourth); no frame and no expansions.
 --
 -- 1. The analysis (0x08047344): the bugs counted by the bug each program brings: a plus part on the command line
@@ -19,12 +19,13 @@
 --    HP programs add up, and the maximum is the base and them (0x08042FD0).
 -- 4. The bugs (0x08042A94): unless BugStop (+0x1D) is on, which drops the counts instead (0x080477DC), each bug at its
 --    count's level, 1 to 3 (0x08047694), by the table 0x08042B18.
--- 5. The Mod Cards (0x08041E50, then each card from the last slot to the first: 0x08041E6A), which raise the stats,
---    the HP programs' sum (the maximum again with it) and the bugs' counts (./mod_cards: `cards`).
+-- 5. The patch cards (0x08041E50, then each card from the last slot to the first: 0x08041E6A), which raise the stats,
+--    the HP programs' sum (the maximum again with it) and the bugs' counts, or clear one (../patch_cards).
 -- 6. The bugs again, all of them, whatever BugStop (0x08042A58).
 --
 -- The PET leaves the HP (+0x30) as it was, the save's: the HP programs raise the maximum alone.
 
+local patch_cards = require("./patch_cards")
 local programs = require("@self/programs")
 
 -- HubBatc (program 23), which bugs itself.
@@ -45,10 +46,6 @@ local BOARD = {
 
 -- What a program's handler and a bug's routine work on besides the stats: the HP programs' sum, BugStop.
 export type Work = { hp: number, bug_stop: boolean }
-
--- What the Mod Cards do between the bugs' passes (./mod_cards): the side's cards applied to its stats, `count`
--- raising a bug's count.
-export type Cards = (side: number, stats: Navi, work: Work, count: (bug: string, n: number) -> ()) -> ()
 
 local function filled(rows: { string }, x: number, y: number): boolean
     return string.sub(rows[y + 1], x + 1, x + 1) == "#"
@@ -190,9 +187,9 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
 -- The setup's programs as placed parts.
 type Placed = { program: NaviCustProgram, color: string, x: number, y: number, rotation: number, compressed: boolean }
 
--- `round_setup`: `side`'s NaviCust compiled into its stats, and its Mod Cards (`cards`) applied, if its navi is
--- MegaMan (the navi that changes form: the PET compiles its own navi's).
-local function run(side: number, cards: Cards?)
+-- `round_setup`: `side`'s NaviCust compiled into its stats, and its patch cards applied, if its navi is MegaMan (the navi
+-- that changes form: the PET compiles its own navi's).
+local function run(side: number)
     local parts = rules.setup_of(side).navicust_programs :: { Placed }
     local stats = battle.navi(side)
     if stats.navi.forms == nil then
@@ -336,12 +333,15 @@ local function run(side: number, cards: Cards?)
         bugs()
     end
 
-    -- 5. The Mod Cards, then 6. the bugs again.
-    if cards ~= nil then
-        cards(side, stats, work, function(bug: string, n: number)
+    -- 5. The patch cards, then 6. the bugs again.
+    patch_cards.run(side, stats, work, {
+        add = function(bug: string, n: number)
             count(bug, n)
-        end)
-    end
+        end,
+        clear = function(bug: string)
+            counts[bug] = nil
+        end,
+    })
     bugs()
 end
 

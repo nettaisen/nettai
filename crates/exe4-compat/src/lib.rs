@@ -289,6 +289,16 @@ pub struct Compat {
     pub panels: BTreeMap<u8, PanelEntry>,
     /// navicust.toml: the NaviCust programs' numbers and colored variants.
     pub navicust: NaviCustNumbers,
+    /// patch-cards.toml: the patch cards' numbers, by key (those the content has).
+    pub patch_cards: PatchCardNumbers,
+}
+
+/// EXE4's patch cards (patch-cards.toml): each card's number, the number a save's
+/// slots hold, by key.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+pub struct PatchCardNumbers {
+    #[serde(default)]
+    pub cards: BTreeMap<String, u8>,
 }
 
 /// EXE4's NaviCust programs (navicust.toml): each program's number (a part
@@ -311,7 +321,7 @@ const EXE4_STATES: [nettai_battle::kinds::player::NaviAction; 7] = {
 };
 
 /// The files of a compat folder.
-pub const FILES: [&str; 11] = [
+pub const FILES: [&str; 12] = [
     "chips.toml",
     "assets.toml",
     "text.toml",
@@ -323,10 +333,11 @@ pub const FILES: [&str; 11] = [
     "records.toml",
     "panels.toml",
     "navicust.toml",
+    "patch-cards.toml",
 ];
 
 /// This repository's compat (content/exe4/compat), built in.
-const EXE4: [(&str, &str); 11] = [
+const EXE4: [(&str, &str); 12] = [
     ("chips.toml", include_str!("../../../content/exe4/compat/chips.toml")),
     ("assets.toml", include_str!("../../../content/exe4/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/exe4/compat/text.toml")),
@@ -338,6 +349,7 @@ const EXE4: [(&str, &str); 11] = [
     ("records.toml", include_str!("../../../content/exe4/compat/records.toml")),
     ("panels.toml", include_str!("../../../content/exe4/compat/panels.toml")),
     ("navicust.toml", include_str!("../../../content/exe4/compat/navicust.toml")),
+    ("patch-cards.toml", include_str!("../../../content/exe4/compat/patch-cards.toml")),
 ];
 
 /// The engine's panel type of an engine panel name as panels.toml writes
@@ -449,7 +461,14 @@ impl Compat {
             panels.insert(n, p);
         }
         let navicust: NaviCustNumbers = toml::from_str(&text("navicust.toml")?).map_err(|e| format!("navicust.toml: {e}"))?;
-        Ok(Compat { chips, chip_keys, assets, text: text_file, rules, stages, games, kinds, actions, records, panels, navicust })
+        let patch_cards: PatchCardNumbers = toml::from_str(&text("patch-cards.toml")?).map_err(|e| format!("patch-cards.toml: {e}"))?;
+        Ok(Compat { chips, chip_keys, assets, text: text_file, rules, stages, games, kinds, actions, records, panels, navicust, patch_cards })
+    }
+
+    /// A patch card's key by its number; none for a card the content hasn't
+    /// (one whose effects wait: docs/design/exe4-map.md §18 items 56 to 58).
+    pub fn patch_card(&self, n: u8) -> Option<&str> {
+        self.patch_cards.cards.iter().find(|(_, v)| **v == n).map(|(k, _)| k.as_str())
     }
 
     /// A save's NaviCust part (its id: 4 x the program's number + the

@@ -2,7 +2,7 @@
 -- MegaMan's buster in EXE4 (`megaman/buster`): the original's weapon routine 0 (0x0800CC2E: Attack + 1 damage, every
 -- attack variable 0) and the shot it starts (action 8, 0x080EB316), EXE4's own: no arm is raised (animation 0x12), and
 -- on the shot's second tick a draw of the battle's RNG2 decides whether it fires: a draw of 1 to 16 no greater than
--- the navi's blank count (NaviStats +0x08, the NaviCust's and Mod Cards' bug) clicks (sound 0x1C0) and fires nothing;
+-- the navi's blank count (NaviStats +0x08, the NaviCust's and patch cards' bug) clicks (sound 0x1C0) and fires nothing;
 -- else the shot (sound 0x6A), the plain projectile from the panel in front, and the muzzle flash in the navi's first
 -- related slot (attachment row 0x10, its animation the navi's number). After five ticks, the recovery the shot
 -- counted (a blank waits the last shot's), which a move may cut short.

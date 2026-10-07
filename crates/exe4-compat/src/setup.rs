@@ -1,5 +1,6 @@
 //! What a save or a recording states of a player as EXE4's rules' setup
-//! facts (content/exe4/rules/init.luau): its NaviCust's programs.
+//! facts (content/exe4/rules/init.luau): its NaviCust's programs, its Mod
+//! Cards.
 
 use crate::Compat;
 use crate::save::Part;
@@ -35,4 +36,25 @@ pub fn navicust<'c>(content: &'c Content, compat: &Compat, parts: &[Option<Part>
         ]));
     }
     Ok(out)
+}
+
+/// A save's patch card slots switched on (by slot: a card's number, none for an
+/// empty slot) as the setup's `patch_cards`: each card and its slot. The
+/// numbers of cards the content hasn't (their effects wait) come back apart.
+pub fn patch_cards<'c>(content: &'c Content, compat: &Compat, slots: &[Option<u8>]) -> Result<(Vec<Fact<'c>>, Vec<u8>), String> {
+    let mut out = Vec::new();
+    let mut waiting = Vec::new();
+    for (slot, n) in slots.iter().enumerate() {
+        let Some(n) = *n else { continue };
+        let Some(key) = compat.patch_card(n) else {
+            waiting.push(n);
+            continue;
+        };
+        let card = content.defs.entry_in("patch_cards", key).ok_or_else(|| format!("the content has no patch card {key}"))?;
+        out.push(Fact::Record(vec![
+            ("card", Fact::Value(Value::Def(Registry::Entry, card.0))),
+            ("slot", Fact::Value(Value::Int(slot as i64))),
+        ]));
+    }
+    Ok((out, waiting))
 }
