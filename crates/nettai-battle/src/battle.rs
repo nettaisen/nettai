@@ -885,6 +885,15 @@ impl Battle {
         self.banner.start(id, self.content.rules().banner_holds(id), self.content.rules().effects.banner)
     }
 
+    /// Start a telop's banner: the role's (`telop_banner`), or none of its
+    /// own where the game has none (EXE4's), which shows as banners do.
+    pub(crate) fn start_telop_banner(&mut self, id: Option<BannerId>) -> bool {
+        match id {
+            Some(id) => self.start_banner(id),
+            None => self.banner.start_as(None, false, self.content.rules().effects.banner),
+        }
+    }
+
     pub fn is_dimmed(&self) -> bool {
         self.round.flags & battle_flags::DIMMED != 0
     }

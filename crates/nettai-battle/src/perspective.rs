@@ -167,11 +167,13 @@ impl Battle {
             return Some(id);
         }
         let (telop, remote_telop) = (telop_banner(self, false), telop_banner(self, true));
-        if id == telop {
-            return Some(remote_telop);
-        }
-        if id == remote_telop {
-            return Some(telop);
+        if let (Some(telop), Some(remote_telop)) = (telop, remote_telop) {
+            if id == telop {
+                return Some(remote_telop);
+            }
+            if id == remote_telop {
+                return Some(telop);
+            }
         }
         // (A result's banner is each console's own: its win's or its
         // loss's, as its own routine picks it.)
@@ -235,7 +237,7 @@ mod tests {
     #[test]
     fn each_viewer_sees_its_own_name_and_result_banners() {
         let mut b = battle();
-        let (telop, remote_telop) = (telop_banner(&b, false), telop_banner(&b, true));
+        let (telop, remote_telop) = (telop_banner(&b, false).unwrap(), telop_banner(&b, true).unwrap());
         b.start_banner(telop);
         assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(telop), Some(remote_telop)));
         b.banner = Default::default();
