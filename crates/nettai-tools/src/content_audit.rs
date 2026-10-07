@@ -279,7 +279,13 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     }
     // The forms a window lists (EXE6's Crosses: the ones a navi lists
     // among a version's): each one's name and colors, and its description.
+    // (Rules without the form list's window list none: EXE4's souls, which
+    // its navi lists by version too.)
+    let form_window = c.defs.rules().is_some_and(|r| r.views.form_list.is_some());
     for n in 0..c.defs.navis.len() {
+        if !form_window {
+            break;
+        }
         let navi = NaviHandle(n as u16);
         for i in 0..c.defs.forms.len() {
             let form = FormHandle(i as u16);

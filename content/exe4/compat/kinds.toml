@@ -126,3 +126,17 @@
 # (0x080D6724).
 "wind" = { pool = "effect", index = 0x41, scratch_position = true }
 "gust" = { pool = "attack", index = 0x49, scratch_position = true }
+# Each soul's image at its change (effect 0x13, 0x080E361C: rules/souls/image), spawned at the change's registers
+# (0x080EBB20), which its first tick overwrites.
+"rollsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"gutssoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"windsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"srchsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"firesoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"thunsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"protsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"numsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"metlsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"junksoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"aquasoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"woodsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }

@@ -258,12 +258,16 @@ pub struct FormListFields {
 /// `form_offer`), each the field of its role: the form on offer, none for
 /// no offer (`form_offer.form`, a form), whether the offer is the form's
 /// alternate (`form_offer.alternate`, a bool), and the turns left in the
-/// form it gave (`form_offer.turns`), which the emotion window counts.
+/// form it gave (`form_offer.turns`), which the emotion window counts, or
+/// with a limit (`form_offer.turn_limit`, a u8) the turns counted up toward
+/// it. The last three are for rules that have them: EXE4's Double Soul has
+/// no alternate soul, and counts its turns up (AIData +0x18 and +0x19).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct OfferFields {
     pub form: FieldPath,
-    pub alternate: FieldPath,
-    pub turns: FieldPath,
+    pub alternate: Option<FieldPath>,
+    pub turns: Option<FieldPath>,
+    pub turn_limit: Option<FieldPath>,
 }
 
 /// A flight's fields in the rules' state, each the field of its role: its
@@ -335,14 +339,10 @@ impl ViewFields {
         let mut fields = ViewFields::default();
         // (A field by its role, the state's own or one of its records': the
         // one of the role there is.)
-        let find = |who: &str, view: &str, role: &str, want: Want| -> Result<FieldPath, String> {
+        // (A role the view may go without: none, if the state has none.)
+        let find_some = |who: &str, view: &str, role: &str, want: Want| -> Result<Option<FieldPath>, String> {
             let found = state.find_role(role).map_err(|e| format!("{who} has the view `{view}`, which shows the state field of the role `{role}`: {e}"))?;
-            let Some(path) = found else {
-                return Err(format!(
-                    "{who} has the view `{view}`, which shows the state field of the role `{role}` ({}): the rules' state has none (`schema.role(\"{role}\", T)`)",
-                    want.says()
-                ));
-            };
+            let Some(path) = found else { return Ok(None) };
             let ty = state.place_of(path).ty();
             if !want.fits(ty) {
                 return Err(format!(
@@ -351,7 +351,15 @@ impl ViewFields {
                     want.says()
                 ));
             }
-            Ok(path)
+            Ok(Some(path))
+        };
+        let find = |who: &str, view: &str, role: &str, want: Want| -> Result<FieldPath, String> {
+            find_some(who, view, role, want)?.ok_or_else(|| {
+                format!(
+                    "{who} has the view `{view}`, which shows the state field of the role `{role}` ({}): the rules' state has none (`schema.role(\"{role}\", T)`)",
+                    want.says()
+                )
+            })
         };
         for (name, view) in windows {
             let who = format!("window `{name}`");
@@ -386,8 +394,9 @@ impl ViewFields {
                 ButtonView::FormOffer => {
                     fields.offer = Some(OfferFields {
                         form: find(&who, view.name(), "form_offer.form", Want::Form)?,
-                        alternate: find(&who, view.name(), "form_offer.alternate", Want::Bool)?,
-                        turns: find(&who, view.name(), "form_offer.turns", Want::U8)?,
+                        alternate: find_some(&who, view.name(), "form_offer.alternate", Want::Bool)?,
+                        turns: find_some(&who, view.name(), "form_offer.turns", Want::U8)?,
+                        turn_limit: find_some(&who, view.name(), "form_offer.turn_limit", Want::U8)?,
                     });
                 }
                 // (It shows a picture, nothing the rules keep.)
