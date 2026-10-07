@@ -43,14 +43,14 @@ return {
     -- full; the buster on B's release; B then Left (whichever way the navi faces) for the B+Left special; L and R
     -- are no navi's.
     charge = "per_button",
-    -- A held direction steps by the first of right, left, up, down held (0x0800B4B0); confused, down steps left, up
-    -- right, left down, right up (0x0800B550); the idle starts a step only toward a panel the navi may step to
-    -- (0x080EEC82). The move bug (NaviStats +0x0D, the stat `move_bug`: ./navicust's) confuses the navi for 720
-    -- ticks as the round starts at 0xFF (0x0800D8B0); else, with no key held (or sliding), its keys step it
-    -- (0x0800B4DA: 0x10 right, 0x20 left).
+    -- A held direction steps by the first of right, left, up, down held (0x0800B4B0); confused, up and down are
+    -- swapped, and right and left (0x0800B550: 1, 0, 3, 2 by the keys' index, down 0 to right 3, as EXE6's); the idle
+    -- starts a step only toward a panel the navi may step to (0x080EEC82). The move bug (NaviStats +0x0D, the stat
+    -- `move_bug`: ./navicust's) confuses the navi for 720 ticks as the round starts at 0xFF (0x0800D8B0); else, with
+    -- no key held (or sliding), its keys step it (0x0800B4DA: 0x10 right, 0x20 left).
     steps = {
         keys = { "right", "left", "up", "down" },
-        confused = { up = "right", down = "left", left = "down", right = "up" },
+        confused = { up = "down", down = "up", left = "right", right = "left" },
         idle_checks_target = true,
         bug = { stat = "move_bug", confused = 720 },
     },
