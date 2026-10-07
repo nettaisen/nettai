@@ -59,6 +59,7 @@ return {
         keys = { "up", "down", "right", "left" },
         confused = { up = "down", down = "up", left = "right", right = "left" },
         idle_checks_target = false,
+        -- (No move bug of a rules stat: the processing bug, astray steps, is the engine's own.)
     },
     -- A screen fade toward clear ends on the step whose level reaches its target (`sub_8006366`).
     fade_clear = "at_target",

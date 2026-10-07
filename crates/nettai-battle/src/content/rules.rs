@@ -324,6 +324,25 @@ pub struct StepControls {
     /// `sub_80F0354`) a held direction starts the step, which, blocked,
     /// leaves for idle at once (its phase from the start).
     pub idle_checks_target: bool,
+    /// A move bug: a stat of the rules' (`stats`) that the NaviCust's and
+    /// the Mod Cards' bugs write, and what it does (EXE4's NaviStats
+    /// +0x0D). EXE6's and EXE5's have none (theirs, the processing bug,
+    /// is the engine's own).
+    #[serde(default)]
+    pub bug: Option<StepBug>,
+}
+
+/// A move bug (`StepControls::bug`): the rules' stat `stat` (a `u8`). At
+/// 0xFF the navi is confused for `confused` ticks as the round starts
+/// (EXE4's init, 0x0800D8B0); else its high nibble, in the keys' bits
+/// (0x10 right, 0x20 left, 0x40 up, 0x80 down), is held while the navi
+/// holds no direction key or slides, in the keys' order and never turned
+/// by a confusion (0x0800B4DA): the navi steps on its own.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StepBug {
+    pub stat: String,
+    pub confused: u16,
 }
 
 /// A direction key (`StepControls`).
