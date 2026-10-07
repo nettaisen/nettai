@@ -208,7 +208,7 @@ impl HudState {
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
         if let Some(n) = waiting_ticks(b) {
             self.frame = (n & 0x3F) as u8;
-        } else if gauge_shown(b, self) && b.gauge.value >= FULL && !b.late_turns() {
+        } else if gauge_shown(b, self) && b.gauge_for(b.setup.local_side) >= FULL && !b.late_turns() {
             self.frame = if self.frame + 1 >= 0x70 { 0 } else { self.frame + 1 };
         }
         if let Some(r) = b.player(b.setup.local_side) {
@@ -402,7 +402,8 @@ pub fn draw<'a>(
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
             put(layer, hud, pal, e, 6 + (i as i32 % 18), i as i32 / 18);
         }
-        let g = b.gauge.value;
+        // (The local console's: EXE4's keeps it full until its own send.)
+        let g = b.gauge_for(b.setup.local_side);
         let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
         for i in 0..16u16 {

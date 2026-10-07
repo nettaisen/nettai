@@ -447,7 +447,10 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         modifier_passes_regular = true,
         status_until = "sending",
         hover = { runs = "while_choosing", to_dark = { {}, { music = 0x60, screen = 0xC0 } }, to_clear = { {} }, players = { 31, 9 }, sound = { counts = "while_dark", every = 61 } },
-        restore_players = { 9, 31 },"#,
+        restore_players = { 9, 31 },
+        gauge_empties_at_open = false,
+        fades_clear_at_ok = true,
+        cursor_after_leaving = false,"#,
             ),
             (
                 "effects",
@@ -480,7 +483,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         low_hp_music = true,
         navi_win_banner = "operation_battle",
         intro_steps_on_init = false,
-        sequencer_at_turn_start = true,"#,
+        sequencer_at_turn_start = true,
+        custom_request = "joypads","#,
             ),
             (
                 "fresh_stats",
@@ -589,6 +593,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             Reservations, RetypeRule, ShakeRule, StanceCounter, WeaknessMark,
         };
         assert_eq!((r.flow.result_words, r.flow.escape_check, r.flow.navi_win_banner), (49, false, NaviWinBanner::OperationBattle));
+        assert_eq!(r.flow.custom_request, crate::content::CustomRequest::Joypads);
         assert_eq!(
             (r.effects.shake, r.effects.damage_word.damage, r.effects.damage_word.flags.len(), r.effects.retype, r.effects.obstacle_actions),
             (ShakeRule::BattleRng, 0x7FF, 2, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
@@ -637,7 +642,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 87, "every field of every section");
+        assert_eq!(fields, 91, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
