@@ -3,6 +3,7 @@
 -- vulcans' action 0x1F, its variant 4: the dark gun (attachment row 49) fires 24 shots, bullet row 14 (its parameter
 -- +0x10): the panel found and the one behind it, modifier 1, the dark hit shown once. Its cost: 720 ticks of
 -- confusion (rules/dark_chips).
+-- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local bullet = require("../objects/bullet")
 local vulcans = require("../lib/vulcans")

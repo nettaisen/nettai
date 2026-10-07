@@ -3,6 +3,7 @@
 -- spawners' action 0x20, its variant 6: Lance's three lances (chips/lance/lance), its parameters' first byte 1, their
 -- second palette. Its damage is half the opponent's maximum HP, at most 999 (its power 1050: damage formula 50),
 -- worked out again every tick it waits in the hand (flag 0x80). Its cost: a worse custom drain (rules/dark_chips).
+-- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local lance = require("./lance/lance")
 local spawners = require("../lib/spawners")
