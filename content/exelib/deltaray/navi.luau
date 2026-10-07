@@ -15,7 +15,9 @@
 --
 -- Each game makes his kind (`deltaray.make`: his sprite, sounds, effects,
 -- sword, burst and finish, and where EXE5's code differs: its candidate
--- column, its flashes, its tracking).
+-- column, its flashes, its tracking). EXE4's DeltaRay (its actor #0x3D,
+-- 0x080C7238) is this code with EXE4's differences as the spec's: his
+-- spawner, his search's first column, and his strike all at once.
 
 local regions = require("../regions")
 
@@ -53,6 +55,18 @@ export type Spec = {
     -- EXE5's: in the own-gauges mode he aims at the enemy navi his
     -- side tracks (attack phase 0x1C).
     tracks: boolean,
+    -- EXE4's (nil: EXE6's and EXE5's). His spawner (0x080C76CE) keeps
+    -- neither his user, nor its facing, nor the element, and his height is
+    -- his side, which his init keeps.
+    summoned_alone: boolean?,
+    -- The column his search starts at (EXE6's and EXE5's: the one ahead of
+    -- him; EXE4's 2, or 5 for side 1: 0x080C73D6).
+    first_column: ((me: Object) -> number)?,
+    -- His strike (0x080C753C, ProtoMan's slash 0x080C71AA): the sword, the
+    -- hit, its slash and the swing's sound as it starts (EXE6's and EXE5's
+    -- hit 10 ticks in), his sword away as it ends (theirs as he vanishes,
+    -- goes home, finishes and leaves).
+    strike_at_once: boolean?,
 }
 
 export type State = {
@@ -107,6 +121,15 @@ function deltaray.make(spec: Spec): {
 }
     local function st(me: Object): State
         return me.state :: State
+    end
+
+    local at_once = spec.strike_at_once == true
+
+    -- His sword let go (his first related slot), where his game lets it go.
+    local function let_go(me: Object)
+        if not at_once then
+            me.related1 = nil
+        end
     end
 
     local function next_phase(me: Object, phase: number)
@@ -205,7 +228,7 @@ function deltaray.make(spec: Spec): {
         local s = st(me)
         s.first_found, s.first_x, s.first_y = 0, 0, 0
         local f = me.facing
-        local x = me.panel_x + f
+        local x = if spec.first_column then spec.first_column(me) else me.panel_x + f
         while true do
             for y = 1, 3 do
                 if field.check(x, y, ENEMY_NAVI[me.alliance], 0) then
@@ -298,7 +321,7 @@ function deltaray.make(spec: Spec): {
     -- or the end.
     local function vanish(me: Object)
         if me.phase_init == 0 then
-            me.related1 = nil
+            let_go(me)
             me.anim = 4
             me.timer = 3
             me.phase_init = 4
@@ -348,14 +371,50 @@ function deltaray.make(spec: Spec): {
     -- left (EXE6's with a flash) the hit (a column of three, 16 pixels up) and
     -- the slash on the panel he faces. A press while more than 5 are left
     -- asks for another.
+    -- The hit (a column of three, 16 pixels up) and the slash on the panel
+    -- he faces (EXE6's with a flash).
+    local function hit(me: Object)
+        local s = st(me)
+        if spec.flashes then
+            battle.palette_flash(0, 5, true)
+        end
+        local x, y = me.panel_x + (1 - 2 * s.facing), me.panel_y
+        local box = battle.hitbox(me, {
+            panel_x = x,
+            panel_y = y,
+            element = 0,
+            z = 0x10_0000,
+            region = regions.wide,
+            hit_effect = nil,
+            target = spec.target,
+            self_type = spec.self_type,
+            damage = me.damage,
+            stamina = me.stamina,
+            hit_mod = 3,
+        })
+        if box then
+            box.run_while_dimmed = true
+        end
+        local cx, cy = field.center(x, y)
+        battle.effect(Vec3.new(cx, cy, 0x10_0000), spec.slash, s.facing)
+    end
+
     local function strike(me: Object)
         local s = st(me)
         if me.phase_init == 0 then
             me.anim = 5
             me.anim_loaded = 6
-            spec.attach(me, spec.sword, "related", { anim = spec.sword_anim, while_dimmed = true })
-            battle.play_sound(spec.sounds.swing)
-            me.timer = 0x14
+            local options: AttachmentOptions = { anim = spec.sword_anim, while_dimmed = true }
+            if at_once then
+                me.timer = 0x14
+                spec.attach(me, spec.sword, "related", options)
+                hit(me)
+                battle.play_sound(spec.sounds.swing)
+            else
+                spec.attach(me, spec.sword, "related", options)
+                battle.play_sound(spec.sounds.swing)
+                me.timer = 0x14
+            end
             me.phase_init = 4
             return
         end
@@ -363,33 +422,15 @@ function deltaray.make(spec: Spec): {
         if t > 5 and asked_again(me) then
             s.again = 1
         end
-        if t == 0xA then
-            if spec.flashes then
-                battle.palette_flash(0, 5, true)
-            end
-            local x, y = me.panel_x + (1 - 2 * s.facing), me.panel_y
-            local box = battle.hitbox(me, {
-                panel_x = x,
-                panel_y = y,
-                element = 0,
-                z = 0x10_0000,
-                region = regions.wide,
-                hit_effect = nil,
-                target = spec.target,
-                self_type = spec.self_type,
-                damage = me.damage,
-                stamina = me.stamina,
-                hit_mod = 3,
-            })
-            if box then
-                box.run_while_dimmed = true
-            end
-            local cx, cy = field.center(x, y)
-            battle.effect(Vec3.new(cx, cy, 0x10_0000), spec.slash, s.facing)
+        if not at_once and t == 0xA then
+            hit(me)
         end
         local left = t - 1
         me.timer = left
         if left <= 0 then
+            if at_once then
+                me.related1 = nil
+            end
             next_phase(me, 8)
         end
     end
@@ -397,7 +438,7 @@ function deltaray.make(spec: Spec): {
     -- `sub_80C2E30`: back home (animation 3, facing away), 3 ticks.
     local function home(me: Object)
         if me.phase_init == 0 then
-            me.related1 = nil
+            let_go(me)
             me.anim = 3
             me.sprite:set_flip(bit32.bxor(bit32.bxor(me.alliance, me.flip), 1))
             me.timer = 3
@@ -432,7 +473,7 @@ function deltaray.make(spec: Spec): {
     -- row beside his last corner, 60 ticks (to 0); then the end.
     local function finish(me: Object)
         if me.phase_init == 0 then
-            me.related1 = nil
+            let_go(me)
             me.anim = spec.finish_anim
             me.timer = 0x3C
             local x = me.future_panel_x + (if bit32.bxor(me.alliance, me.flip) ~= 0 then -1 else 1)
@@ -474,7 +515,7 @@ function deltaray.make(spec: Spec): {
         if me.phase == 0 then
             if me.anim ~= 4 then
                 me.anim = 4
-                me.related1 = nil
+                let_go(me)
                 me.timer = 5
                 me.phase = 4
                 return
@@ -514,8 +555,10 @@ function deltaray.make(spec: Spec): {
         me.anim_loaded = 0
         sprite:set_animation(0)
         me:set_coordinates_from_panel()
-        local p = me.pos
-        me.pos = Vec3.new(p.x, p.y, 0)
+        if not spec.summoned_alone then
+            local p = me.pos
+            me.pos = Vec3.new(p.x, p.y, 0)
+        end
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         st(me).home = bit32.bor(me.panel_x, bit32.lshift(me.panel_y, 8))
         sprite.palette = st(me).palette
@@ -568,14 +611,21 @@ function deltaray.make(spec: Spec): {
     -- all of which his init overwrites.)
     local function summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
         return function(user: Object, controller: Object, nspec: NaviChipSpec): Object?
-            local o = battle.spawn(kind, Vec3.zero)
+            local alone = spec.summoned_alone == true
+            local pos = if alone
+                then Vec3.new(nspec.panel_x + nspec.panel_y * 0x100, nspec.element, user.alliance)
+                else Vec3.zero
+            local o = battle.spawn(kind, pos)
             if not o then
                 return nil
             end
             o.panel_x, o.panel_y = nspec.panel_x, nspec.panel_y
-            o.element = nspec.element
-            o.alliance, o.flip = user.alliance, user.flip
-            o.related1 = user
+            o.alliance = user.alliance
+            if not alone then
+                o.element = nspec.element
+                o.flip = user.flip
+                o.related1 = user
+            end
             o:set_damage_word(nspec.damage)
             local s = o.state :: State
             s.controller = controller

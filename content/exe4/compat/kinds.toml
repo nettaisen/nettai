@@ -51,3 +51,10 @@
 "roll/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "roll/heart" = { pool = "attack", index = 0x4E }
+# The navi chip controller SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips share (action
+# 0x0C's variants 0x20, 0x23, 0x2F, 0x32, 0x3C and 0x40, 0x080E6B22), and their navis.
+"navi-chip-controller" = { pool = "effect", index = 0x42, scratch_position = true }
+"protoman/navi" = { pool = "actor", index = 0x3C }
+"deltaray/navi" = { pool = "actor", index = 0x3D }
+# The follow effect (0x080E5B34): DeltaRay's burst.
+"follow-effect" = { pool = "effect", index = 0x31 }
