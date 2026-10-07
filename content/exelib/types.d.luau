@@ -1655,3 +1655,18 @@ export type ElemFlame = {
     kind: Kind,
     spawn: (owner: Object, x: number, y: number, element: number, z: number, s: ElemFlameState, damage: number) -> Object?,
 }
+
+-- A game's cannonball (@exelib/cannball/ball): its kind's key, its sprite, the puff it ends in off solid ground and
+-- the impact where it lands, the crack's sound, and its collision types (what it is and what it hits).
+export type CannonballLook = {
+    id: string,
+    sprite: SpriteAsset,
+    puff: Effect,
+    impact: Effect,
+    crack: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+}
+
+-- A game's cannonball kind, and a thrower of it at the panel three ahead of the user.
+export type Cannonball = { kind: Kind, thrower: () -> Thrower }
