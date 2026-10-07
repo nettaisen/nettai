@@ -52,7 +52,7 @@ return {
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110 },
         holy = { flags = 0x00012010 },
-        grass = { flags = 0x00010410, cleared_by = "fire" },
+        grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire" },
         ice = { flags = 0x00010810 },
         volcano = { flags = 0x00011010, cleared_by = "aqua" },
         road_up = road(0, -1),
