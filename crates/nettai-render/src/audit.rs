@@ -86,6 +86,8 @@ pub enum Lookup {
     Telop(BannerId),
     /// A telop of a chip the engine wasn't told.
     TelopUnknown,
+    /// A telop with no look to draw it in.
+    TelopWithoutLook,
     /// A line of the HUD's text (`Hud::texts`).
     TextLine(u8),
     /// A sound's song, in its pack's sound.
@@ -142,6 +144,7 @@ impl Lookup {
             Lookup::Banner(id) => format!("banner {}", asset(AssetKind::Banner, id.0)),
             Lookup::Telop(id) => format!("telop {}", asset(AssetKind::Banner, id.0)),
             Lookup::TelopUnknown => "telop of an untold chip".into(),
+            Lookup::TelopWithoutLook => "telop without a look".into(),
             Lookup::TextLine(n) => format!("text line {n}"),
             Lookup::Sound(h) => format!("sound {}", asset(AssetKind::Sound, h)),
             Lookup::Graphics(g) => format!("graphics {g:?}"),

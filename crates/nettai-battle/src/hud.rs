@@ -213,10 +213,17 @@ impl Banner {
     /// removed (`Rules::banner_holds`); `steps`: its steps' ticks (the
     /// rules' `effects.banner`). Returns false if one was showing.
     pub fn start(&mut self, id: BannerId, holds: bool, steps: crate::content::BannerSteps) -> bool {
+        self.start_as(Some(id), holds, steps)
+    }
+
+    /// Start a banner of no banner of its own (`id` none: a telop in a
+    /// game whose telop lays the chip's name on the banner block itself,
+    /// EXE4's 0x0801650C), in the same steps; false if one was showing.
+    pub fn start_as(&mut self, id: Option<BannerId>, holds: bool, steps: crate::content::BannerSteps) -> bool {
         if self.active {
             return false;
         }
-        *self = Banner { active: true, step: 0, timer: 0, holds, steps: Some(steps), id: Some(id), telop: None };
+        *self = Banner { active: true, step: 0, timer: 0, holds, steps: Some(steps), id, telop: None };
         true
     }
 
