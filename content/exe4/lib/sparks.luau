@@ -37,4 +37,14 @@ sparks.blast = new.spark { sprite = asset.sprite("explosion"), anim = 0, palette
 -- The erase beams' (0x0C).
 sparks.erase = new.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 2 }
 
+-- 0x08012F7A (EXE6's `sub_801A146`): the spark of an attack of `element`, its whole element byte (EXE4 masks none of
+-- it), hit effects 0 to 5.
+function sparks.of_element(element: number): Spark
+    local s = BY_ELEMENT[element]
+    if not s then
+        error(string.format("0x08012F7A: element %d has no hit spark", element))
+    end
+    return s
+end
+
 return sparks
