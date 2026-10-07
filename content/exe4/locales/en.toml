@@ -112,6 +112,9 @@ language = "en"
 "seekbom3" = { name = "SeekBom3", description = "Throws a\nbomb at\nthe enemy" }
 "ball" = { name = "Ball", description = "Breaks\n3rd panel\nahead" }
 "geyser" = { name = "Geyser", description = "Geyser 3\nsquares\nforward" }
+"thunder1" = { name = "Thunder1", description = "Pralyzing\nelectric\nattack!" }
+"thunder2" = { name = "Thunder2", description = "Pralyzing\nelectric\nattack!" }
+"thunder3" = { name = "Thunder3", description = "Pralyzing\nelectric\nattack!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -210,6 +213,7 @@ language = "en"
 "022-charge-shot-switch" = { name = "Charge Shot Switch" }
 "023-charge-shot-switch" = { name = "Charge Shot Switch" }
 "024-charge-shot-switch" = { name = "Charge Shot Switch" }
+"025-charge-shot-switch" = { name = "Charge Shot Switch" }
 "026-charge-shot-switch" = { name = "Charge Shot Switch" }
 "027-charge-shot-switch" = { name = "Charge Shot Switch" }
 "028-pet-menu-color-change" = { name = "PET Menu Color Change" }
@@ -248,6 +252,7 @@ language = "en"
 "077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
 "083-charge-shot-switch" = { name = "Charge Shot Switch" }
+"084-charge-shot-switch" = { name = "Charge Shot Switch" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
 "086-charge-shot-switch" = { name = "Charge Shot Switch" }
 "087-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -274,6 +279,7 @@ language = "en"
 "110-custom3" = { name = "Custom3" }
 "111-gigafolder1" = { name = "GigaFolder1" }
 "112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"114-charge-shot-switch" = { name = "Charge Shot Switch" }
 "116-charge-shot-switch" = { name = "Charge Shot Switch" }
 "117-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
