@@ -5,10 +5,19 @@
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local bullet = require("../objects/bullet")
+local regions = require("@exelib/regions")
 local vulcan = require("@self/vulcan")
 
+-- Bullet row 12: the panel found and the one behind it, modifier 1, its hit (effect row 0x26) shown once at the bullet.
+local SHOT = bullet.variant {
+    region = regions.long,
+    hit_mod = 1,
+    effect = new.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 0 },
+    single = true,
+}
+
 local function fire(id: string, shots: number): Action
-    return vulcan.action { id = id, gun = vulcan.guns.vulcan, shots = shots, shot = bullet.variants.vulcan }
+    return vulcan.action { id = id, gun = vulcan.guns.vulcan, shots = shots, shot = SHOT }
 end
 
 local vulcan1: Chip = {
