@@ -6,7 +6,8 @@
 -- shows otherwise (presentation, which the frontend reads of a console's own game): its intro fades in from white
 -- on a set's first battle (0x080E1EBC reads the battle state).
 --
--- Not yet (exe4-map.md §18): EXE4's netbattles have no time limit and no double KO.
+-- EXE4's netbattles have EXE6's time limit from the 15th custom screen, its count and its damage judge (exe4-map.md
+-- §18 item 16; the lab's timer/win, loss and draw). Not yet: no double KO.
 
 return {
     result_words = 37,

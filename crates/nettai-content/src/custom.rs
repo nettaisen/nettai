@@ -157,6 +157,9 @@ pub struct EmblemDoc {
 pub struct LayoutDoc {
     pub column_cells: u16,
     pub turn_limit: u16,
+    /// (Left out: 9, EXE6's and EXE5's.)
+    #[serde(default = "turn_limit_palette", skip_serializing_if = "is_turn_limit_palette")]
+    pub turn_limit_palette: u8,
     pub name: u16,
     pub art: u16,
     pub code: u16,
@@ -177,6 +180,14 @@ pub struct LayoutDoc {
 
 fn detail_blank() -> u8 {
     8
+}
+
+fn turn_limit_palette() -> u8 {
+    9
+}
+
+fn is_turn_limit_palette(p: &u8) -> bool {
+    *p == turn_limit_palette()
 }
 
 /// `nettai_assets::CursorPlace`: the place, and each frame's four corners
@@ -204,6 +215,7 @@ impl From<CustomLayout> for LayoutDoc {
         let CustomLayout {
             column_cells,
             turn_limit,
+            turn_limit_palette,
             name,
             art,
             code,
@@ -221,6 +233,7 @@ impl From<CustomLayout> for LayoutDoc {
         LayoutDoc {
             column_cells,
             turn_limit,
+            turn_limit_palette,
             name,
             art,
             code,
@@ -243,6 +256,7 @@ impl From<LayoutDoc> for CustomLayout {
         let LayoutDoc {
             column_cells,
             turn_limit,
+            turn_limit_palette,
             name,
             art,
             code,
@@ -260,6 +274,7 @@ impl From<LayoutDoc> for CustomLayout {
         CustomLayout {
             column_cells,
             turn_limit,
+            turn_limit_palette,
             name,
             art,
             code,
