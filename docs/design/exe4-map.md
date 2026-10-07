@@ -1100,7 +1100,8 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 24. **The move that cuts a recovery short.** The buster's and the charged shot's recoveries (0x080EB3D8, 0x080ECCCC)
     use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
     **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
-    confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
+    confused keys, 0x0800B550, EXE6's swaps; the idle starting only a step that can go), which `held_direction` and
+    the idle read; the flow/move
     recordings match. **Done** too: the move bug, NaviStats +0x0D (`effects.steps.bug`, the rules' stat `move_bug`,
     which the NaviCust's bugs write and a dark chip's or Mod Card's will): with no key held (or sliding) 0x0800B4B0
     steps by its keys (bits 0x10 to 0x80; 0 and 0xFF none), and at 0xFF the init confuses the navi for 720 ticks

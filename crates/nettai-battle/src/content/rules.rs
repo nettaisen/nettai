@@ -372,7 +372,7 @@ pub struct StepControls {
     pub keys: Vec<StepKey>,
     /// What each key steps toward while the navi is confused (EXE6's
     /// `byte_800FAA4`: up and down swapped, right and left; EXE4's
-    /// 0x0800B550: down left, up right, left down, right up).
+    /// 0x0800B550 the same).
     pub confused: ConfusedKeys,
     /// The idle starts a step only toward a panel the navi may step to
     /// (EXE4's idle, 0x080EEC82: 0x0800B4B0 tests the panel); else (EXE6's
