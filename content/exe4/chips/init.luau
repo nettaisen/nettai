@@ -31,6 +31,7 @@ return merge {
     require("@self/invalid"),
     require("@self/lance"),
     require("@self/ligtnin"),
+    require("@self/metalman"),
     require("@self/meteors"),
     require("@self/minibomb"),
     require("@self/navi-20"),

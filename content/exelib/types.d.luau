@@ -470,7 +470,7 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
 
 -- A follow effect's look (@exelib/follow_effect): a row of a game's looks and its routine.
-export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed"
+export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed" | "with_idle_owner"
 
 export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
 
