@@ -354,6 +354,35 @@ helper (0x0801283A) is EXE4's 0x0800F56A with other constants; Full Synchro on a
 similar 0.65 at 0x080131E4. EXE4's emotions (K): normal, Full Synchro, angry, worried, the dark state; their triggers
 and faces are its own table, to read.
 
+**As ported** (group A; the status section's `emotion`, rules/light_dark, the roles):
+
+- **The emotion** (0x0800F49C): 0 normal (a mood of 65 or more), 1 worried (under 65), 2 Full Synchro (0xFF), 3 angry
+  (AIData +0x2E: anger's ticks), 4 in a soul (NaviStats +0x24 not 0 nor 15, its soul in r1), 5 worn out (a mood of 0:
+  the dark MegaMan), read in the order soul, angry, worn out, Full Synchro, worried, normal. Worn out and in a soul
+  keep anger from starting (0x0800C560 also tests NaviStats +0x23, the navi, and the object's +4: MegaMan alone, no
+  other navi plays a netbattle); the buster knows no emotion; the custom screen offers souls to none but 1 and 5
+  (0x0801E0B4) and dark chips to 5 alone in a netbattle (0x0801DE90).
+- **The mood** (NaviStats +0x00): the setters (0x0800F4DE set, 0x0800F4FA raise to 0xFF, 0x0800F51E raise to 0xFE
+  unless 0xFF, 0x0800F546 lower to 1) leave a mood of 0 and do nothing while paused. The starting mood (0x0800D872,
+  0x0800F56A) by the light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F, a Mod Card's):
+  under 470 0, the start 0xFF, from 1000 190, else value / 20 + 128. A hit's counter byte (the hitter's collision +5)
+  raises the hitter's mood and wears the receiver's (0x08012C10, 0x080131E4: `hit_mood = "hitter_gains"`), a counter
+  hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks paralyzed (0x0800C540) asks for it; it sets the mood 0x80
+  and lasts 600 ticks (0x0800C560); its end sets 0x80 through the setter.
+- **Full Synchro**: a chip's boost doubles it, leaves the mood at 0x99 and sounds 0x1BB; anger's boost ends the anger
+  without a sound (0x0800D54E). The aura (actor 0x5E, 0x080CD180, EXE5's code) spawns for a navi in Full Synchro
+  (0x0800D9AE) and waits while paused (0x080CD276 sets no header flag). The window's faces: the base form's mugshots
+  by emotion (group D).
+- **Counters**: Cannon opens a 16-tick window in a netbattle (0x0800BA66); a counter hit paralyzes (status byte 0x12,
+  0x0800B08E), closes the window, shows COUNTER and sounds 0x10A (0x08013410; 0x73 too when the hitter was in Full
+  Synchro, hit flag 0x80, 0x08012CC0).
+- **Light and dark** (rules/light_dark): a dark MegaMan clears the holy panel he stands on (0x080132E6); a navi that
+  isn't dark closes a hole (0x08013318, §18 item 12).
+
+Checked: the lab's emotions/counter, counter-side1, counter-buster, full-synchro-hit and full-synchro-card match every
+frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's battle-over gate and the 0x73 sound
+(presentation).
+
 ## 8. NaviCust and Mod Cards
 
 The NaviCust compile EXE5 and EXE6 share (`sub_813C458`) and its placement checks have no counterpart: EXE4's compile
@@ -753,8 +782,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      has none).
    - With others: the emotions (item 8, group A); a soul's break by a weakness hit (`form_break`,
      `weakness_hit_breaks_form`: EXE5's until the souls are read).
-8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
-9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
+8. **Emotions.** **Done** (group A; §7 "As ported"): EXE4's order, mood rules, Full Synchro and its aura, the
+    starting mood. The worried emotion waits on M-Cannon (the lab's emotions/worried).
+9. **Counter hits.** **Done** (group A; §7): a counter paralyzes (status 0x12), counts 0xFF toward the hitter's mood
+    and wears 0x7F of the receiver's; Cannon opens its counter window.
 10. **Done: the stance counter.** EXE4's stance is AntiMagc's B+Left ability (NaviStats +0x0C = 0x27; action 114,
     0x080EE9EE: 13 ticks, registered as AntiDmg's trap, chip 145, through 0x08022FDE); a hit caught in it raises the
     anti-damage or anti-sword request, and the stance's next step starts the counter (0x0800C780: action 56 for
@@ -827,7 +858,7 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     - **11, `hole`** (the Hole chip's "appears Hole in front", DrkLine's "turns all rows into Holes"): a solid panel
       (normal's flags) that a navi standing on it closes (0x08013318, in the intake before the slide triggers): unless
       the battle is dimmed, a navi whose light/dark value (NaviStats +0x36) is above 499, the default 500 too, sets
-      his collision's panel normal. EXE4's rules' `navi_intake` (rules/light_dark.luau), the setup's `karma`
+      his collision's panel normal. EXE4's rules' `navi_intake` (rules/light_dark), the setup's `karma`
       (default 500). Its check of 0x0800F49C counts for nothing (the `movs r0, #5` before its `beq` sets the flags),
       and NaviStats +0x26's 2, which skips it, is only a story's other navi's (0x08041100). exe4-compat's recordings
       state no karma yet: the default, 500 (group B's: the NaviStats' +0x36).
@@ -951,6 +982,20 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     loaded) and fill the role. EXE4's content audit lists no problem with the pack (the custom screen's emblem is the
     window's own, §14). The banners, the faces (MegaMan's `forms`, so his faces are his base form's `mugshot`), the
     warning marker, the navis' sprites and MegaMan's souls' are in.
+    **Filled so far** (group A, each by its code): the custom screen's sounds (§5), the gauge full 0x81, the low-HP
+    alarm 0x82 (0x0801475E), a panel's crack 0x95 (0x08009AEC) and poison 0x124 (0x08009D68), the music (winner 0x1E,
+    a special battle's 0x18, a netbattle's loser 0x19: 0x080071F8, 0x0800727C), the banners but the telops (final
+    turn 0x10 at 0x08007094, draw 0x1C, the judge's win 0x14, loss 0x18 and its own 0x28, the Program Advance's 0x24
+    and 0x34). Group B fills the fight's sounds and effects its replays reach. **Not EXE4's** (left unfilled, as EXE5
+    leaves EXE6's): the telops; freeze, bubble and ice (no such status: group C), so `statuses.ice_freeze` and the
+    sounds `freeze`, `bubble`, `bubble_pop` and the sprites `ice`, `bubble`; the damage word's confusion and blindness
+    (its only status bit is paralysis: group C); battle mode 9's kinds, the dive ripple, the Crosses' and Beasts'
+    actions; the scrap (DustCross) and the Cross window's cancel (`custom_scrap`, `custom_scrap_done`,
+    `custom_cancel`). **Still to read:** the confusion and blindness visuals (EXE4 has both statuses, its table
+    0x08018550: sprites `confusion`, `blindness`, `immobilized`, the sound `confusion`), `statuses.counter_paralysis`
+    (with the counter hits, item 9), SearchSoul's shuffle sounds (`custom_redeal`, none at its start, 0x0802037A;
+    `custom_redeal_shuffle`, 0x123 every 4 ticks, 0x080209E0: with the souls), the Full Synchro aura (item 8), and the
+    roles of chips not ported yet (the counters, obstacles, eruption, the target marker), which come with the chips.
 
 ### 18.6 Found by the replays
 
