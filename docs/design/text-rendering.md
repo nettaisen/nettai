@@ -862,6 +862,8 @@ character, so a string encodes and decodes the same way and a mark is one charac
 | The bat (`[bat]`, a picture) | 8x16 0xA0 (US), 0x81 (JP) | U+E006 | no |
 | End (`[End]`) | dialogue 0xE0; 8x16 0xC6 (JP) | U+E007 | no |
 | D over S (EXE5's DS navi chips) | EXE5's 8x16 0x9F (US), 0x85 (JP); EXE5's dialogue 0x9F; EXE6's fonts none (an EXE6 match has no EXE5 chip to name) | U+E008 | drawn stacked |
+| V over 2, 3, 4 and 5 (EXE4's) | EXE4's 8x16 and dialogue fonts: 0x94 to 0x97 (JP); V5 alone in the US fonts, 0x5C | U+E009 to U+E00C | not yet: the game's font |
+| A square (`[square]`, EXE4's) | EXE4's dialogue 0x60 (US), E4 2A (JP) | □ U+25A1 | unchecked |
 
 - **Where they are written**: compat/text.toml (`"\uE002"`, as TOML escapes: a Private Use Area character shows as
   nothing in most editors), locales/{en,ja}.toml (`"Count\uE002"`, `"Press Ⓐ\nto burn a..."`), gen-content's
