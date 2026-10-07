@@ -54,7 +54,6 @@ return {
         trap_mark = effect(),
         encased = effect(),
         burst = effect(),
-        panel_splash = effect(),
     },
     sparks = {
         plain = spark(),

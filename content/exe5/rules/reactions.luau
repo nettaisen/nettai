@@ -55,17 +55,15 @@ return {
         { dx = 0, dy = 0, panels = 0 },
         { dx = 0, dy = 0, panels = 0 },
     },
-    -- A move's end on ice slides a body (0x080171F0), by the direction of the move (0x0800C988): none, up, down,
-    -- back, forward, other.
-    ice = {
-        slide = {
-            { dx = 0, dy = 0, panels = 0 },
-            { dx = 0, dy = -1, panels = 1 },
-            { dx = 0, dy = 1, panels = 1 },
-            { dx = -1, dy = 0, panels = 1 },
-            { dx = 1, dy = 0, panels = 1 },
-            { dx = 0, dy = 0, panels = 0 },
-        },
+    -- The slide a move's end on ice starts (0x080171F0), by the direction of the move (0x0800C988): none, up,
+    -- down, back, forward, other.
+    slide_rows = {
+        { dx = 0, dy = 0, panels = 0 },
+        { dx = 0, dy = -1, panels = 1 },
+        { dx = 0, dy = 1, panels = 1 },
+        { dx = -1, dy = 0, panels = 1 },
+        { dx = 1, dy = 0, panels = 1 },
+        { dx = 0, dy = 0, panels = 0 },
     },
     bubble_bob = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },

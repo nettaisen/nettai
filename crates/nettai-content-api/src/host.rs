@@ -190,7 +190,7 @@ pub enum HookCall {
     /// A hook of a panel type's (its rules' `panels.types.<name>.<hook>`):
     /// what the type does where the engine meets it, with the body it
     /// meets there (docs/design/rules-in-luau.md, "Panels into Luau").
-    Panel { hook: PanelHook, body: ObjectRef, player: bool },
+    Panel { body: ObjectRef, call: PanelCall },
 }
 
 /// Which hook of a panel type's is called: where the engine meets the type,
@@ -207,17 +207,100 @@ pub enum PanelHook {
     /// the body has a region: the body stands on the type. (Without the
     /// hook the body's standing count goes to 0.) Its result is unused.
     Stand,
+    /// `rest(body)`: a navi at rest on the type (`sub_801A36A`'s first
+    /// test: not dragged or moving, its slide cooldown not just out): true
+    /// says it handled the body, and the move's end waits (EXE6's roads).
+    Rest,
+    /// `move_end(body)`: a navi's move ended on the type (`sub_801A36A`
+    /// consumed its move-complete flag, or its slide cooldown just ran
+    /// out). Its result is unused.
+    MoveEnd,
+    /// `slide(body, how)`: a slide (a navi's: `sub_8016730`), a drag
+    /// (`sub_80178D4`'s arrival) or an obstacle's slide reaches the type:
+    /// "on" (one panel further), "carry" (a navi's slide is carried the
+    /// type's way: roads, EXE5's magnet), "stop", or nil (as any panel).
+    Slide,
 }
 
 impl PanelHook {
     /// Every hook, in order.
-    pub const ALL: [PanelHook; 2] = [PanelHook::Burn, PanelHook::Stand];
+    pub const ALL: [PanelHook; 5] = [PanelHook::Burn, PanelHook::Stand, PanelHook::Rest, PanelHook::MoveEnd, PanelHook::Slide];
 
     /// The hook's name in a panel type's table.
     pub fn name(self) -> &'static str {
         match self {
             PanelHook::Burn => "burn",
             PanelHook::Stand => "stand",
+            PanelHook::Rest => "rest",
+            PanelHook::MoveEnd => "move_end",
+            PanelHook::Slide => "slide",
+        }
+    }
+}
+
+/// A panel hook's call, with its arguments past the body.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PanelCall {
+    Burn { player: bool },
+    Stand,
+    Rest,
+    MoveEnd,
+    Slide { how: SlideHow },
+}
+
+impl PanelCall {
+    /// The hook it calls.
+    pub fn hook(self) -> PanelHook {
+        match self {
+            PanelCall::Burn { .. } => PanelHook::Burn,
+            PanelCall::Stand => PanelHook::Stand,
+            PanelCall::Rest => PanelHook::Rest,
+            PanelCall::MoveEnd => PanelHook::MoveEnd,
+            PanelCall::Slide { .. } => PanelHook::Slide,
+        }
+    }
+}
+
+/// What reaches a panel in a panel type's `slide`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SlideHow {
+    /// A navi's slide (a push's, ice's, a road's).
+    Slide,
+    /// A navi's drag.
+    Drag,
+    /// An obstacle's slide.
+    Obstacle,
+}
+
+impl SlideHow {
+    pub fn name(self) -> &'static str {
+        match self {
+            SlideHow::Slide => "slide",
+            SlideHow::Drag => "drag",
+            SlideHow::Obstacle => "obstacle",
+        }
+    }
+}
+
+/// A panel type's `slide`'s answer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SlideAnswer {
+    /// One panel further.
+    On,
+    /// Carried the type's way (a navi's slide).
+    Carry,
+    Stop,
+}
+
+impl SlideAnswer {
+    /// Every answer, by the number a hook's result carries (1 up).
+    pub const ALL: [SlideAnswer; 3] = [SlideAnswer::On, SlideAnswer::Carry, SlideAnswer::Stop];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            SlideAnswer::On => "on",
+            SlideAnswer::Carry => "carry",
+            SlideAnswer::Stop => "stop",
         }
     }
 }
