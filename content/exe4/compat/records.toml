@@ -31,6 +31,7 @@
 "megaman/longswrd" = [0x49]
 "megaman/fullcust" = [0x4B]
 "megaman/megenbom" = [0x4F]
+"megaman/ball" = [0x50]
 "megaman/wideblde" = [0x52]
 "megaman/longblde" = [0x53]
 "megaman/repair" = [0x5E]
