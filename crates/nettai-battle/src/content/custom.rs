@@ -18,15 +18,80 @@ pub enum TemplateSlot {
     Hidden,
 }
 
-/// A slot of the starting grid and its neighbors (slot numbers).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// A slot of the starting grid, and how the cursor leaves it.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SlotLayout {
     pub kind: TemplateSlot,
-    /// UP and DOWN both go here.
-    pub vertical: u8,
-    pub left: u8,
-    pub right: u8,
+    pub moves: SlotMoves,
+}
+
+/// How the cursor leaves a slot, as a game's screen says.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SlotMoves {
+    /// Its neighbors (slot numbers), which the screen fixes up as it opens
+    /// where one is absent (`sub_8027F42`'s scans, the layout's lists); UP
+    /// and DOWN both go to `vertical`. The keys are read in the screen's
+    /// order (`sub_8028B74`: the directions, then A, B, START, SELECT, R and
+    /// L).
+    Neighbors { vertical: u8, left: u8, right: u8 },
+    /// The keys the screen reads with the cursor here, in the order it reads
+    /// them (the first one down is the tick's), and for each direction the
+    /// slots it goes to, the first that is there as the key is read (EXE4's
+    /// selection, 0x08020350, and its lists: 0x080204C0 for UP and DOWN by
+    /// column, 0x08020518 and 0x08020568 for RIGHT and LEFT by slot; OK's,
+    /// 0x08020620, and the button's under it, 0x08020728). A direction with
+    /// none there goes nowhere.
+    Candidates { keys: Vec<ScreenKey>, up: Vec<u8>, down: Vec<u8>, left: Vec<u8>, right: Vec<u8> },
+}
+
+impl SlotMoves {
+    /// The neighbors model's neighbors (UP and DOWN, LEFT, RIGHT), for a
+    /// slot that has them.
+    pub fn neighbors(&self) -> Option<(u8, u8, u8)> {
+        match *self {
+            SlotMoves::Neighbors { vertical, left, right } => Some((vertical, left, right)),
+            SlotMoves::Candidates { .. } => None,
+        }
+    }
+}
+
+/// A key the custom screen reads while choosing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScreenKey {
+    A,
+    B,
+    Start,
+    Select,
+    R,
+    L,
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+impl ScreenKey {
+    /// The neighbors model's order (`sub_8028B74`): the directions (UP and
+    /// DOWN to the same slot), then A, B, START, SELECT, R and L.
+    pub const NEIGHBORS_ORDER: [ScreenKey; 10] = [
+        ScreenKey::Up,
+        ScreenKey::Down,
+        ScreenKey::Left,
+        ScreenKey::Right,
+        ScreenKey::A,
+        ScreenKey::B,
+        ScreenKey::Start,
+        ScreenKey::Select,
+        ScreenKey::R,
+        ScreenKey::L,
+    ];
+
+    /// Whether it is a direction (read by its auto-repeat, the others by a
+    /// press).
+    pub fn is_direction(self) -> bool {
+        matches!(self, ScreenKey::Up | ScreenKey::Down | ScreenKey::Left | ScreenKey::Right)
+    }
 }
 
 /// The custom screen's slot grid (`dword_802A7CC`) and the lists its
@@ -68,6 +133,89 @@ pub struct CustomScreenLayout {
     /// The characters of a message that move its speaker's mouth.
     /// Presentation.
     pub talking_characters: TalkingCharacters,
+    /// The tick the window is in (its slide's last), the screen chooses from
+    /// the next and reads its keys at once (EXE6's `sub_8026CCC`); else that
+    /// tick only sets the cursor's state up, reading no key, and the keys
+    /// count from the tick after (EXE4's selection state 0, 0x08020340: it
+    /// puts back the state the cursor was in, and sets the custom screen's
+    /// status bit 1).
+    pub first_choosing_tick_reads_keys: bool,
+    /// L's no-running message starts its chatbox with the key (EXE4's
+    /// 0x080205C6, its state waiting from the next tick, 0x08020A28); else
+    /// on the next tick, with its sound (EXE6's `sub_8026EC8`).
+    pub run_message_at_key: bool,
+    /// What becomes of a pick of a chip that counts as the invalid chip (a
+    /// Mega or Giga chip past the navi's limit, a code the chip hasn't).
+    pub invalid_picks: InvalidPicks,
+    /// How a selection treats the codes outside the alphabet (the invalid
+    /// chip's 0x1B, and 0x1C).
+    pub special_codes: SpecialCodes,
+    /// How OK makes a Program Advance of a selection.
+    pub program_advances: ProgramAdvanceRules,
+    /// A modifier chip folded into the chip before it leaves its Regular
+    /// chip's mark on that chip (EXE4's 0x0801F176: the flags' bit 1 ORed
+    /// in); else the mark goes with the modifier (EXE6's `sub_8029224`).
+    pub modifier_passes_regular: bool,
+    /// Until when a player's console says its custom screen is open (the
+    /// status bits the other console's fight reads).
+    pub status_until: StatusUntil,
+}
+
+/// What becomes of a pick of a chip that counts as the invalid chip
+/// (`getChipID_802A54E`, EXE4's 0x08020306).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InvalidPicks {
+    /// Picked, as the invalid chip (EXE6's `sub_8028CCC`); the selection
+    /// counts each chip as checked.
+    Picked,
+    /// Refused (EXE4's 0x0801F73C: the refusal's sound, nothing picked);
+    /// the selection counts each chip as it is, its own code (0x0801F9E0).
+    Refused,
+}
+
+/// How a selection treats the codes outside the alphabet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpecialCodes {
+    /// 0x1B and 0x1C stand apart (EXE6's `sub_8028E4C`): a pick of one
+    /// constrains no other code, and a chip of one goes with a selection
+    /// that has none of them, or the same one.
+    Apart,
+    /// 0x1B is a code of its own that `*` doesn't stand for (EXE4's
+    /// 0x0801F9E0, the dark chips' code): a chip of it goes with a selection
+    /// of it alone, and a pick of it takes only chips of it (or the same
+    /// chip). 0x1C is a code like the others.
+    Unstarred,
+}
+
+/// How OK makes a Program Advance of a selection (EXE6's `sub_8029520`,
+/// EXE4's 0x0801F390).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProgramAdvanceRules {
+    /// Each forms once a round (EXE6's `sub_8029652`; EXE4 keeps no
+    /// record: one forms whenever its recipe is picked).
+    pub once_a_round: bool,
+    /// The Program Advance is the Regular chip if one of its parts was
+    /// (EXE6's `sub_80292CC`; EXE4's 0x0801F404 clears the flags).
+    pub keeps_regular: bool,
+    /// The entries past the selection's end, once the recipe's parts are
+    /// taken out, are cleared (EXE4's 0x0801F438: no chip, no damage); else
+    /// they keep what they held (EXE6's).
+    pub clears_past_end: bool,
+}
+
+/// Until when a player's console says its custom screen is open.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StatusUntil {
+    /// The window starts sliding out (EXE6's `sub_8026BF4`: status bit 4).
+    Closing,
+    /// The result is sent (EXE4: bit 4 from the screen's opening, 0x08007618,
+    /// to the send, 0x0801E986; bit 1 from the choosing's first tick to OK,
+    /// 0x08020652: the fight reads the two together).
+    Sending,
 }
 
 /// The characters of a message that move its speaker's mouth as they
@@ -99,9 +247,9 @@ impl TalkingCharacters {
 
 impl Default for CustomScreenLayout {
     fn default() -> CustomScreenLayout {
-        let slot = SlotLayout { kind: TemplateSlot::Hidden, vertical: 0, left: 0, right: 0 };
+        let slot = SlotLayout { kind: TemplateSlot::Hidden, moves: SlotMoves::Neighbors { vertical: 0, left: 0, right: 0 } };
         CustomScreenLayout {
-            slots: [slot; 12],
+            slots: std::array::from_fn(|_| slot.clone()),
             left_scan_top: Vec::new(),
             left_scan_bottom: Vec::new(),
             right_scan_top: Vec::new(),
@@ -112,6 +260,13 @@ impl Default for CustomScreenLayout {
             emblem_at_window_return: false,
             chatbox_commands_wait_for_text: false,
             talking_characters: TalkingCharacters::default(),
+            first_choosing_tick_reads_keys: true,
+            run_message_at_key: false,
+            invalid_picks: InvalidPicks::Picked,
+            special_codes: SpecialCodes::Apart,
+            program_advances: ProgramAdvanceRules { once_a_round: true, keeps_regular: true, clears_past_end: false },
+            modifier_passes_regular: false,
+            status_until: StatusUntil::Closing,
         }
     }
 }

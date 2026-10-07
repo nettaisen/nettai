@@ -41,6 +41,7 @@ local rules: Rules = {
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     buster = require("@self/buster"),
     chip_use = require("@self/chip_use"),
+    custom_screen = require("@self/custom_screen"),
     effects = require("@self/effects"),
     elements = require("@self/elements"),
     flow = require("@self/flow"),

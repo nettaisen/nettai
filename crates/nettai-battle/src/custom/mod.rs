@@ -328,8 +328,13 @@ impl Side {
             }
             None => {}
         }
-        if matches!(screen.phase, Phase::Closing { tick: 1 }) {
-            // The slide-out's first tick clears the status bit.
+        // The slide-out's first tick clears the status bit, or the send does
+        // (EXE4's 0x0801E986).
+        let cleared = match ctx.library.layout().status_until {
+            crate::content::StatusUntil::Closing => matches!(screen.phase, Phase::Closing { tick: 1 }),
+            crate::content::StatusUntil::Sending => request == Some(Request::Send),
+        };
+        if cleared {
             self.in_custom = false;
         }
         self.screen = Some(screen);
