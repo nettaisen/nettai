@@ -51,6 +51,11 @@ local roles: RolesSpec = {
     },
     music = {
         link_battle = asset.sound("netbattle"),
+        -- The round's end (0x080071F8): the winner's, a special battle's (battle flag 2); a netbattle's loser's
+        -- (0x0800727C).
+        winner = asset.sound("winner"),
+        winner_special = asset.sound("winner-special"),
+        loser = asset.sound("loser"),
     },
     banners = {
         round_start = asset.banner("battle-number-start"),
