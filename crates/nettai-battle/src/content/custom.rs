@@ -262,11 +262,13 @@ pub struct ProgramAdvanceRules {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatusUntil {
-    /// The window starts sliding out (EXE6's `sub_8026BF4`: status bit 4).
+    /// The window starts sliding out (EXE6's `sub_8026BF4`: status value 4);
+    /// no other bit says the selection runs.
     Closing,
-    /// The result is sent (EXE4: bit 4 from the screen's opening, 0x08007618,
-    /// to the send, 0x0801E986; bit 1 from the choosing's first tick to OK,
-    /// 0x08020652: the fight reads the two together).
+    /// The result is sent (EXE4: value 4 from the screen's opening,
+    /// 0x08007618, to the send, 0x0801E986); and value 1 says the selection
+    /// runs, from its first tick (0x08020348) to OK (0x08020652:
+    /// `custom::Side::selecting`). The fight reads the two together.
     Sending,
 }
 
