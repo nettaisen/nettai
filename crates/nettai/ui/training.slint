@@ -1,18 +1,11 @@
-// Training: you against the computer, offline. Choose the game and the
-// match (a random one, or a match file's), your build and your opponent's,
-// what the opponent does and how long the set is; see who fights where, and
-// fight.
+// Training: you against the computer, offline, in Play's shape. The selector
+// strip chooses the game and your build; the options the match (a random
+// one, or a match file's), your opponent's build, what it does and how long
+// the set is; the preview who fights where; the band at the foot FIGHT.
 
 import { Theme, NavAction, UiSound } from "theme.slint";
-import { Slant, Label, Heading, Hints, Hint, Button, OptionRow, Versus, Input } from "widgets.slint";
-
-export enum GameState {
-    // No asset pack of it is found.
-    no-pack,
-    loading,
-    ready,
-    failed,
-}
+import { Slant, Label, Hints, Hint, Button, OptionRow, Versus, Input } from "widgets.slint";
+import { Strip, Band, GameState, GameCard } from "shell.slint";
 
 // What the opponent does, as the window words it (the order of
 // `nettai_frontend::driver::Opponent::ALL`).
@@ -40,16 +33,6 @@ export global TrainingText {
     }
 }
 
-export struct GameCard {
-    id: string,
-    // Its short name (EXE6), and the larger number on its card.
-    name: string,
-    number: string,
-    state: GameState,
-    // Why it can't be played, in the library's words (a command to run).
-    detail: string,
-}
-
 export struct RoundCard {
     // The arena, drawn as the round opens, if it could be.
     picture: image,
@@ -69,188 +52,8 @@ export struct MatchPreview {
     problem: string,
 }
 
-component GameTile {
-    in property <GameCard> card;
-    in property <bool> chosen;
-    in property <bool> focused;
-    callback activate();
-    callback hover();
-    property <bool> playable: root.card.state == GameState.ready;
-
-    Slant {
-        lean: 22px;
-        color: root.chosen ? @linear-gradient(135deg, Theme.cyan-deep 0%, Theme.panel 75%) : root.focused ? Theme.raised : Theme.panel.with-alpha(0.7);
-        stroke: root.chosen ? Theme.cyan : root.focused ? Theme.line-bright : Theme.line;
-        stroke-width: root.chosen || root.focused ? 2px : 1px;
-    }
-
-    // The game's number, large and faint behind its name.
-    Text {
-        x: parent.width - self.preferred-width - 30px;
-        y: (parent.height - self.preferred-height) / 2;
-        text: root.card.number;
-        color: root.chosen ? Theme.cyan.with-alpha(0.32) : Theme.line-bright.with-alpha(0.5);
-        font-size: parent.height * 0.95;
-        font-weight: Theme.black;
-    }
-
-    VerticalLayout {
-        x: 34px;
-        width: parent.width - 60px;
-        alignment: center;
-        spacing: 4px;
-        Text {
-            text: root.card.name;
-            color: root.playable ? white : Theme.text-dim;
-            font-size: Theme.heading * 0.8;
-            font-weight: Theme.black;
-            font-italic: true;
-        }
-
-        Label {
-            text: root.card.state == GameState.ready ? (root.chosen ? @tr("CHOSEN") : @tr("READY")) : root.card.state == GameState.loading ? @tr("LOADING…") : root.card.state == GameState.no-pack ? @tr("NO ASSET PACK") : @tr("CAN'T LOAD");
-            color: root.card.state == GameState.ready ? (root.chosen ? Theme.cyan : Theme.ready) : root.card.state == GameState.loading ? Theme.text-dim : Theme.warn;
-        }
-    }
-
-    TouchArea {
-        clicked => {
-            root.activate();
-        }
-        changed has-hover => {
-            if self.has-hover {
-                root.hover();
-            }
-        }
-    }
-}
-
-// The choices: the game, the match, both builds, what the opponent does and
-// the rounds.
-component Choices {
-    in property <[GameCard]> games;
-    in property <int> game;
-    in property <[string]> sources;
-    in property <[string]> builds;
-    in property <int> build;
-    in property <[string]> opponents;
-    in property <int> opponent;
-    in property <int> behavior;
-    in property <bool> endless;
-    in property <int> rounds;
-    in property <int> source;
-    in property <string> seed;
-    in property <int> cursor;
-    in property <int> game-cursor;
-    // Focus row `r` (and card `card`), with a cursor sound if it moved.
-    callback point(int, int);
-    callback nav(NavAction);
-
-    VerticalLayout {
-        spacing: Theme.gap * 0.5;
-        alignment: start;
-        Label {
-            text: @tr("GAME");
-            color: root.cursor == 0 ? Theme.cyan : Theme.text-dim;
-        }
-
-        HorizontalLayout {
-            spacing: Theme.gap;
-            height: Theme.compact ? 84px : 112px;
-            for g[i] in root.games: GameTile {
-                card: g;
-                chosen: root.game == i;
-                focused: root.cursor == 0 && root.game-cursor == i;
-                activate => {
-                    root.point(0, i);
-                    root.nav(NavAction.confirm);
-                }
-                hover => {
-                    root.point(0, i);
-                }
-            }
-        }
-
-        if root.games.length > 0 && root.games[root.game-cursor].detail != "" && root.cursor == 0: Text {
-            text: root.games[root.game-cursor].detail;
-            color: Theme.warn;
-            font-size: 12px;
-            wrap: word-wrap;
-        }
-
-        if root.games.length == 0: Text {
-            text: @tr("No games found: the content folder or the packs folder is missing.");
-            color: Theme.warn;
-            wrap: word-wrap;
-        }
-
-        Rectangle {
-            height: 4px;
-        }
-
-        for row in [1, 2, 3, 4, 5]: OptionRow {
-            height: Theme.compact ? 48px : 56px;
-            text: row == 1 ? @tr("MATCH") : row == 2 ? @tr("YOUR BUILD") : row == 3 ? @tr("OPPONENT") : row == 4 ? @tr("IT DOES") : @tr("ROUNDS");
-            value: row == 1 ? (root.sources.length > 0 ? root.sources[root.source] : "—")
-                : row == 2 ? (root.builds.length > 0 ? root.builds[root.build] : "—")
-                : row == 3 ? (root.opponents.length > 0 ? root.opponents[root.opponent] : "—")
-                : row == 4 ? TrainingText.opponent(root.behavior).to-uppercase()
-                : root.endless ? @tr("rounds" => "ENDLESS") : @tr("rounds" => "BEST OF {0}", root.rounds);
-            note: row == 1 ? (root.source == 0 ? @tr("Seed {0} · confirm for another", root.seed) : @tr("A match file from the matches folder"))
-                : row == 2 ? (root.build > 0 ? @tr("One of your builds, in place of your side") : root.source == 0 ? @tr("A random side, from the seed") : @tr("Your side as the match file states it"))
-                : row == 3 ? (root.opponent > 0 ? @tr("One of your builds, in the opponent's place") : root.source == 0 ? @tr("A random side, from the seed") : @tr("The other side as the match file states it"))
-                : row == 4 ? TrainingText.about(root.behavior)
-                : root.endless ? @tr("99 rounds, the most a set has: first to 50 wins") : @tr("A set as the match lists it");
-            focused: root.cursor == row;
-            enabled: root.game >= 0;
-            step(d) => {
-                root.point(row, root.game-cursor);
-                root.nav(d < 0 ? NavAction.left : NavAction.right);
-            }
-            activate => {
-                root.point(row, root.game-cursor);
-                root.nav(row == 1 ? NavAction.confirm : NavAction.right);
-            }
-            hover => {
-                if root.game >= 0 {
-                    root.point(row, root.game-cursor);
-                }
-            }
-        }
-    }
-}
-
-// FIGHT.
-component Fight {
-    in property <int> cursor;
-    in property <int> game-cursor;
-    in property <bool> can-fight;
-    callback point(int, int);
-    callback nav(NavAction);
-
-    HorizontalLayout {
-        alignment: start;
-        Button {
-            text: @tr("FIGHT");
-            primary: true;
-            enabled: root.can-fight;
-            focused: root.cursor == 6;
-            width: 260px;
-            activate => {
-                root.point(6, root.game-cursor);
-                root.nav(NavAction.confirm);
-            }
-            hover => {
-                if root.can-fight {
-                    root.point(6, root.game-cursor);
-                }
-            }
-        }
-    }
-}
-
-// The preview: who fights, and where each round is fought. Its panel is as
-// tall as what it holds.
+// The preview: who fights, and where each round is fought. Its panel fills
+// its place whatever it holds.
 component Preview {
     in property <MatchPreview> preview;
     in property <bool> chosen;
@@ -274,9 +77,9 @@ component Preview {
     property <length> card-height: root.thumb * 2 / 3 + 44px;
 
     VerticalLayout {
-        alignment: start;
+        alignment: stretch;
         Rectangle {
-            height: inner.preferred-height;
+            vertical-stretch: 1;
             Slant {
                 lean: 26px;
                 color: Theme.panel.with-alpha(0.55);
@@ -285,17 +88,19 @@ component Preview {
             }
 
             inner := VerticalLayout {
+                alignment: start;
                 padding: Theme.gap * 1.5;
                 padding-left: Theme.compact ? 24px : 40px;
                 padding-right: Theme.compact ? 24px : 40px;
                 spacing: Theme.gap;
+                // (As tall as the versus that takes its place.)
                 if !root.chosen: Text {
                     text: @tr("Choose a game");
                     color: Theme.text-faint;
                     font-size: Theme.title-size;
                     font-weight: Theme.bold;
                     horizontal-alignment: center;
-                    height: 160px;
+                    height: 96px;
                     vertical-alignment: center;
                 }
                 if root.chosen: Versus {
@@ -305,10 +110,13 @@ component Preview {
                     right-sub: TrainingText.opponent(root.behavior).to-uppercase();
                 }
 
-                if root.chosen && root.preview.problem != "": Text {
-                    text: root.preview.problem;
+                // (Its line kept, empty or not.)
+                Text {
+                    height: 36px;
+                    text: root.chosen ? root.preview.problem : "";
                     color: Theme.warn;
                     wrap: word-wrap;
+                    overflow: elide;
                     font-size: 13px;
                 }
 
@@ -373,16 +181,20 @@ component Preview {
 }
 
 export component TrainingScreen {
-    in property <[GameCard]> games;
-    // The game chosen (none yet: -1; the player chooses, nothing is assumed).
-    in-out property <int> game: -1;
+    // The selection: the game and your build, what the strip says of each.
+    in property <string> game;
+    in property <GameState> game-state;
+    in property <string> build;
+    in property <int> build-index;
+    in property <string> build-navi;
+    in property <bool> can-act;
+    // A game is chosen and ready.
+    in property <bool> chosen;
     // The match: 0 random, then each match file of the game.
     in property <[string]> sources;
     in-out property <int> source;
-    // Your side: 0 a random one (or the match file's), then each build of the game.
-    in property <[string]> builds;
-    in-out property <int> build;
-    // The opponent's side, the same way.
+    // The opponent's side: 0 a random one (or the match file's), then each
+    // build of the game.
     in property <[string]> opponents;
     in-out property <int> opponent;
     // What the opponent does (`TrainingText`), and whether the set goes on
@@ -391,88 +203,81 @@ export component TrainingScreen {
     in-out property <bool> endless;
     in property <int> rounds;
     in property <MatchPreview> preview;
-    // The row focused: 0 the games, 1 the match, 2 your build, 3 the
-    // opponent's, 4 what it does, 5 the rounds, 6 FIGHT.
+    // The row focused: 0 the game, 1 your build, 2 the build's action, 3
+    // the match, 4 the opponent's build, 5 what it does, 6 the rounds, 7
+    // FIGHT.
     in-out property <int> cursor;
-    // The game card focused on the first row.
-    in-out property <int> game-cursor;
-    property <bool> portrait: Theme.portrait;
-    property <bool> can-fight: root.game >= 0 && root.preview.ready && root.preview.problem == "";
+    // The tab has the keys (not the top bar): its focus shows.
+    in property <bool> keys: true;
+    property <bool> can-fight: root.chosen && root.preview.ready && root.preview.problem == "";
 
-    callback choose-game(int);
+    callback step(int, int);
+    callback act();
     callback choose-source(int);
-    callback choose-build(int);
     callback choose-opponent(int);
     callback choose-behavior(int);
     callback choose-endless(bool);
     callback reroll();
     callback fight();
-    callback back();
+    // Up from the first row, or back: the top bar.
+    callback top();
     callback sound(UiSound);
 
     public function nav(a: NavAction) {
         if a == NavAction.back {
             root.sound(UiSound.back);
-            root.back();
-        } else if a == NavAction.up {
-            if root.cursor > 0 {
-                root.cursor -= 1;
-                root.sound(UiSound.cursor);
-            }
-        } else if a == NavAction.down {
-            if root.cursor < 6 && root.game >= 0 {
-                root.cursor += 1;
-                root.sound(UiSound.cursor);
-            }
-        } else if root.cursor == 0 && (a == NavAction.left || a == NavAction.right) {
-            root.game-cursor = mod(root.game-cursor + (a == NavAction.left ? root.games.length - 1 : 1), max(1, root.games.length));
+            root.top();
+        } else if a == NavAction.up && root.cursor == 0 {
+            root.top();
+        } else if a == NavAction.up || a == NavAction.down {
+            root.cursor = max(0, min(7, root.cursor + (a == NavAction.up ? -1 : 1)));
             root.sound(UiSound.cursor);
-        } else if root.cursor == 0 && a == NavAction.confirm {
-            if root.games.length > 0 && root.games[root.game-cursor].state == GameState.ready {
+        } else if (a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next) && root.cursor != 2 && root.cursor != 7 {
+            root.sound(UiSound.cursor);
+            root.step-row(root.cursor, a == NavAction.left || a == NavAction.previous ? -1 : 1);
+        } else if a == NavAction.confirm {
+            if root.cursor == 2 {
+                if root.can-act {
+                    root.sound(UiSound.pick);
+                    root.act();
+                } else {
+                    root.sound(UiSound.refused);
+                }
+            } else if root.cursor == 3 && root.source == 0 {
                 root.sound(UiSound.pick);
-                root.choose-game(root.game-cursor);
-                root.cursor = 1;
+                root.reroll();
+            } else if root.cursor == 7 {
+                if root.can-fight {
+                    root.sound(UiSound.pick);
+                    root.fight();
+                } else {
+                    root.sound(UiSound.refused);
+                }
             } else {
-                root.sound(UiSound.refused);
-            }
-        } else if root.cursor >= 1 && root.cursor <= 5 && (a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next) {
-            root.sound(UiSound.cursor);
-            root.step(root.cursor, a == NavAction.left || a == NavAction.previous ? -1 : 1);
-        } else if root.cursor == 1 && a == NavAction.confirm && root.source == 0 {
-            root.sound(UiSound.pick);
-            root.reroll();
-        } else if root.cursor >= 1 && root.cursor <= 5 && a == NavAction.confirm {
-            root.cursor += 1;
-            root.sound(UiSound.cursor);
-        } else if root.cursor == 6 && a == NavAction.confirm {
-            if root.can-fight {
-                root.sound(UiSound.pick);
-                root.fight();
-            } else {
-                root.sound(UiSound.refused);
+                root.sound(UiSound.cursor);
+                root.step-row(root.cursor, 1);
             }
         }
     }
 
     // Row `row`'s value a step on (`d`: -1 or 1).
-    function step(row: int, d: int) {
-        if row == 1 {
-            root.choose-source(mod(root.source + d + root.sources.length, max(1, root.sources.length)));
-        } else if row == 2 {
-            root.choose-build(mod(root.build + d + root.builds.length, max(1, root.builds.length)));
+    function step-row(row: int, d: int) {
+        if row <= 1 {
+            root.step(row, d);
         } else if row == 3 {
-            root.choose-opponent(mod(root.opponent + d + root.opponents.length, max(1, root.opponents.length)));
+            root.choose-source(mod(root.source + d + root.sources.length, max(1, root.sources.length)));
         } else if row == 4 {
-            root.choose-behavior(mod(root.behavior + d + 4, 4));
+            root.choose-opponent(mod(root.opponent + d + root.opponents.length, max(1, root.opponents.length)));
         } else if row == 5 {
+            root.choose-behavior(mod(root.behavior + d + 4, 4));
+        } else if row == 6 {
             root.choose-endless(!root.endless);
         }
     }
 
-    function point(row: int, card: int) {
-        if root.cursor != row || (row == 0 && root.game-cursor != card) {
+    function point(row: int) {
+        if root.cursor != row {
             root.cursor = row;
-            root.game-cursor = card;
             root.sound(UiSound.cursor);
         }
     }
@@ -480,137 +285,125 @@ export component TrainingScreen {
     VerticalLayout {
         padding-left: Theme.gutter;
         padding-right: Theme.gutter;
-        padding-top: Theme.gutter * 0.6;
+        padding-top: Theme.gap;
         spacing: Theme.gap;
 
-        Heading {
-            text: @tr("heading" => "TRAINING");
-            sub: @tr("OFFLINE · AGAINST THE COMPUTER");
-            back => {
-                root.nav(NavAction.back);
+        Strip {
+            game: root.game;
+            game-state: root.game-state;
+            build: root.build;
+            build-index: root.build-index;
+            build-navi: root.build-navi;
+            can-act: root.can-act;
+            cursor: root.keys && root.cursor <= 2 ? root.cursor : -1;
+            point(r) => {
+                root.point(r);
+            }
+            step(r, d) => {
+                root.sound(UiSound.cursor);
+                root.step(r, d);
+            }
+            act => {
+                root.nav(NavAction.confirm);
             }
         }
 
-        // Side by side, or one over the other on a phone held upright (its
-        // FIGHT at the foot, under the thumb).
-        if !root.portrait: HorizontalLayout {
-            spacing: Theme.gap * 2;
+        HorizontalLayout {
+            spacing: Theme.gap;
             vertical-stretch: 1;
             VerticalLayout {
-                width: (Theme.window-width - 2 * Theme.gutter - Theme.gap * 2) * 0.42;
-                spacing: Theme.gap * 2;
-                Choices {
-                    vertical-stretch: 0;
-                    games: root.games;
-                    game: root.game;
-                    sources: root.sources;
-                    source: root.source;
-                    builds: root.builds;
-                    build: root.build;
-                    opponents: root.opponents;
-                    opponent: root.opponent;
-                    behavior: root.behavior;
-                    endless: root.endless;
-                    rounds: root.rounds;
-                    seed: root.preview.seed;
-                    cursor: root.cursor;
-                    game-cursor: root.game-cursor;
-                    point(r, c) => {
-                        root.point(r, c);
+                horizontal-stretch: 0.67;
+                spacing: Theme.gap * 0.5;
+                alignment: start;
+                for row in [3, 4, 5, 6]: OptionRow {
+                    height: Theme.compact ? 50px : 60px;
+                    text: row == 3 ? @tr("MATCH") : row == 4 ? @tr("OPPONENT") : row == 5 ? @tr("IT DOES") : @tr("ROUNDS");
+                    value: row == 3 ? (root.sources.length > 0 ? root.sources[root.source] : "—")
+                        : row == 4 ? (root.opponents.length > 0 ? root.opponents[root.opponent] : "—")
+                        : row == 5 ? TrainingText.opponent(root.behavior).to-uppercase()
+                        : root.endless ? @tr("rounds" => "ENDLESS") : @tr("rounds" => "BEST OF {0}", root.rounds);
+                    note: row == 3 ? (root.source == 0 ? @tr("Seed {0} · confirm for another", root.preview.seed) : @tr("A match file from the matches folder"))
+                        : row == 4 ? (root.opponent > 0 ? @tr("One of your builds, in the opponent's place") : root.source == 0 ? @tr("A random side, from the seed") : @tr("The other side as the match file states it"))
+                        : row == 5 ? TrainingText.about(root.behavior)
+                        : root.endless ? @tr("99 rounds, the most a set has: first to 50 wins") : @tr("A set as the match lists it");
+                    value-width: Theme.compact ? 120px : 170px;
+                    focused: root.keys && root.cursor == row;
+                    enabled: root.chosen;
+                    step(d) => {
+                        root.point(row);
+                        root.nav(d < 0 ? NavAction.left : NavAction.right);
                     }
-                    nav(a) => {
-                        root.nav(a);
+                    activate => {
+                        root.point(row);
+                        root.nav(NavAction.confirm);
                     }
-                }
-
-                Fight {
-                    vertical-stretch: 0;
-                    cursor: root.cursor;
-                    game-cursor: root.game-cursor;
-                    can-fight: root.can-fight;
-                    point(r, c) => {
-                        root.point(r, c);
-                    }
-                    nav(a) => {
-                        root.nav(a);
-                    }
-                }
-
-                Rectangle {
-                    vertical-stretch: 1;
                 }
             }
 
-            Preview {
+            if !Theme.portrait: Preview {
                 horizontal-stretch: 1;
-                room: (Theme.window-width - 2 * Theme.gutter - Theme.gap * 2) * 0.58;
+                room: (Theme.window-width - 2 * Theme.gutter - Theme.gap) * 0.6;
                 preview: root.preview;
-                chosen: root.game >= 0;
+                chosen: root.chosen;
                 behavior: root.behavior;
             }
         }
-        if root.portrait: VerticalLayout {
-            spacing: Theme.gap * 1.5;
-            vertical-stretch: 1;
-            Choices {
-                games: root.games;
-                game: root.game;
-                sources: root.sources;
-                source: root.source;
-                builds: root.builds;
-                build: root.build;
-                opponents: root.opponents;
-                opponent: root.opponent;
-                behavior: root.behavior;
-                endless: root.endless;
-                rounds: root.rounds;
-                seed: root.preview.seed;
-                cursor: root.cursor;
-                game-cursor: root.game-cursor;
-                point(r, c) => {
-                    root.point(r, c);
-                }
-                nav(a) => {
-                    root.nav(a);
-                }
-            }
 
-            Preview {
-                room: Theme.window-width - 2 * Theme.gutter;
-                preview: root.preview;
-                chosen: root.game >= 0;
-                behavior: root.behavior;
-                arenas: false;
-            }
+        if Theme.portrait: Versus {
+            left-name: root.preview.left;
+            left-sub: @tr("YOU");
+            right-name: root.preview.right;
+            right-sub: TrainingText.opponent(root.behavior).to-uppercase();
+        }
 
-            Rectangle {
-                vertical-stretch: 1;
-            }
+        Band {
+            HorizontalLayout {
+                padding-left: Theme.compact ? 10px : 24px;
+                padding-right: Theme.compact ? 10px : 24px;
+                spacing: Theme.compact ? 8px : 14px;
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    spacing: 2px;
+                    Label {
+                        text: @tr("AGAINST THE COMPUTER · EVERY SET RECORDED");
+                    }
 
-            Fight {
-                cursor: root.cursor;
-                game-cursor: root.game-cursor;
-                can-fight: root.can-fight;
-                point(r, c) => {
-                    root.point(r, c);
+                    Text {
+                        text: root.chosen ? @tr("In the battle, R starts over: the same set again") : @tr("Choose a game");
+                        color: Theme.text-dim;
+                        font-size: 13px;
+                        overflow: elide;
+                    }
                 }
-                nav(a) => {
-                    root.nav(a);
-                }
-            }
 
-            Rectangle {
-                height: Theme.gap;
+                Button {
+                    width: Theme.compact ? 120px : 220px;
+                    y: (parent.height - self.height) / 2;
+                    text: @tr("FIGHT");
+                    primary: true;
+                    enabled: root.can-fight;
+                    focused: root.keys && root.cursor == 7;
+                    activate => {
+                        root.point(7);
+                        root.nav(NavAction.confirm);
+                    }
+                    hover => {
+                        if root.can-fight {
+                            root.point(7);
+                        }
+                    }
+                }
             }
         }
 
         Hints {
-            visible: !root.portrait;
+            visible: !Theme.portrait;
             hints: [
                 { key: "↑↓", button: "✚", text: @tr("Choose") },
                 { key: "←→", button: "✚", text: @tr("Change") },
                 { key: "Enter", button: "A", text: @tr("Confirm") },
-                { key: "Esc", button: "B", text: @tr("Back") },
+                { key: "Esc", button: "B", text: @tr("Tabs") },
             ];
         }
     }

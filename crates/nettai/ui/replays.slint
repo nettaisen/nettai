@@ -1,9 +1,9 @@
-// The replays: the sets recorded, newest first, each played out to tell
-// who won and whether it plays back as it was played; one chosen to watch,
-// from either console.
+// The replays, as Tango's: a filter row (the game), the sets recorded,
+// newest first, each played out to tell who won and whether it plays back as
+// it was played, and the chosen one's detail, to watch from either console.
 
 import { Theme, NavAction, UiSound } from "theme.slint";
-import { Slant, Label, Heading, Hints, Hint, Button, Pip, Versus, Input } from "widgets.slint";
+import { Slant, Label, Hints, Hint, Button, Pip, Versus, Input } from "widgets.slint";
 import { Format } from "format.slint";
 
 export enum ReplayCheck {
@@ -182,29 +182,39 @@ component Row {
 export component ReplaysScreen {
     in property <[ReplayRow]> rows;
     in-out property <int> cursor;
+    // The tab has the keys (not the top bar): its focus shows.
+    in property <bool> keys: true;
     // The console to watch from: 0 left, 1 right.
     in-out property <int> side;
     in property <string> folder;
+    // The game filter: ALL, then each game; the one chosen.
+    in property <[string]> filters;
+    in property <int> filter;
+    // How many sets there are in all (the filter shows some).
+    in property <int> total;
     property <bool> any: root.rows.length > 0;
     property <ReplayRow> chosen: root.any ? root.rows[root.cursor] : { };
     property <length> row-height: Theme.compact ? 62px : 70px;
 
     callback watch(int, int);
-    callback back();
+    callback choose-filter(int);
+    // Up from the first row, or back: the top bar.
+    callback top();
     callback sound(UiSound);
 
     public function nav(a: NavAction) {
         if a == NavAction.back {
             root.sound(UiSound.back);
-            root.back();
+            root.top();
+        } else if a == NavAction.previous || a == NavAction.next {
+            root.sound(UiSound.cursor);
+            root.choose-filter(mod(root.filter + (a == NavAction.previous ? root.filters.length - 1 : 1), max(1, root.filters.length)));
+        } else if a == NavAction.up && root.cursor == 0 {
+            root.top();
         } else if !root.any {
             return;
         } else if a == NavAction.up || a == NavAction.down {
-            root.cursor = mod(root.cursor + (a == NavAction.up ? root.rows.length - 1 : 1), root.rows.length);
-            root.sound(UiSound.cursor);
-            root.show-cursor();
-        } else if a == NavAction.previous || a == NavAction.next {
-            root.cursor = max(0, min(root.rows.length - 1, root.cursor + (a == NavAction.previous ? -6 : 6)));
+            root.cursor = max(0, min(root.rows.length - 1, root.cursor + (a == NavAction.up ? -1 : 1)));
             root.sound(UiSound.cursor);
             root.show-cursor();
         } else if a == NavAction.left || a == NavAction.right {
@@ -233,15 +243,55 @@ export component ReplaysScreen {
     VerticalLayout {
         padding-left: Theme.gutter;
         padding-right: Theme.gutter;
-        padding-top: Theme.gutter * 0.6;
+        padding-top: Theme.gap;
         spacing: Theme.gap;
 
-        Heading {
-            text: @tr("heading" => "REPLAYS");
-            sub: root.any ? @tr("{n} SET RECORDED" | "{n} SETS RECORDED" % root.rows.length) : "";
-            accent: Theme.gold;
-            back => {
-                root.nav(NavAction.back);
+        // The filter: the game; and how many sets are recorded.
+        HorizontalLayout {
+            height: 40px;
+            spacing: 8px;
+            if !Theme.compact: Label {
+                width: self.preferred-width + 8px;
+                text: @tr("GAME");
+                vertical-alignment: center;
+            }
+
+            for f[i] in root.filters: Rectangle {
+                width: Theme.compact ? 64px : 92px;
+                Slant {
+                    lean: 10px;
+                    color: i == root.filter ? Theme.gold : Theme.panel.with-alpha(0.7);
+                    stroke: i == root.filter ? Theme.gold : Theme.line;
+                    stroke-width: 1px;
+                    animate color { duration: Theme.quick; }
+                }
+
+                Text {
+                    text: i == 0 ? @tr("filter" => "ALL") : f;
+                    color: i == root.filter ? Theme.ink : Theme.text-dim;
+                    font-size: Theme.label + 2px;
+                    font-weight: Theme.black;
+                    font-italic: i != 0;
+                }
+
+                TouchArea {
+                    clicked => {
+                        if i != root.filter {
+                            root.sound(UiSound.cursor);
+                            root.choose-filter(i);
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Label {
+                text: @tr("{n} SET RECORDED" | "{n} SETS RECORDED" % root.total);
+                horizontal-alignment: right;
+                vertical-alignment: center;
             }
         }
 
@@ -249,34 +299,33 @@ export component ReplaysScreen {
             spacing: Theme.gap * 2;
             vertical-stretch: 1;
 
-            list := Flickable {
+            Rectangle {
                 horizontal-stretch: 1.4;
-                content-height: root.rows.length * (root.row-height + 8px);
-                for r[i] in root.rows: Row {
-                    y: i * (root.row-height + 8px);
-                    width: parent.width;
-                    entry: r;
-                    focused: root.cursor == i;
-                    activate => {
-                        root.cursor = i;
-                        root.nav(NavAction.confirm);
-                    }
-                    hover => {
-                        if root.cursor != i {
+                list := Flickable {
+                    content-height: root.rows.length * (root.row-height + 8px);
+                    for r[i] in root.rows: Row {
+                        y: i * (root.row-height + 8px);
+                        width: parent.width;
+                        entry: r;
+                        focused: root.keys && root.cursor == i;
+                        activate => {
                             root.cursor = i;
-                            root.sound(UiSound.cursor);
+                            root.nav(NavAction.confirm);
+                        }
+                        hover => {
+                            if root.cursor != i {
+                                root.cursor = i;
+                                root.sound(UiSound.cursor);
+                            }
                         }
                     }
                 }
-            }
 
-            if !root.any: Rectangle {
-                horizontal-stretch: 1;
-                VerticalLayout {
+                if !root.any: VerticalLayout {
                     alignment: center;
                     spacing: 10px;
                     Text {
-                        text: @tr("No replays yet");
+                        text: root.total > 0 ? @tr("No replays of this game") : @tr("No replays yet");
                         color: Theme.text;
                         font-size: Theme.title-size;
                         font-weight: Theme.black;
@@ -292,8 +341,8 @@ export component ReplaysScreen {
                 }
             }
 
-            // The one chosen.
-            if root.any && !Theme.portrait: Rectangle {
+            // The one chosen: its pane always there (empty when there's none).
+            if !Theme.portrait: Rectangle {
                 horizontal-stretch: 1;
                 Slant {
                     lean: 26px;
@@ -302,7 +351,7 @@ export component ReplaysScreen {
                     stroke-width: 1px;
                 }
 
-                VerticalLayout {
+                if root.any: VerticalLayout {
                     padding: Theme.gap * 1.5;
                     padding-left: 44px;
                     padding-right: 44px;
@@ -392,8 +441,9 @@ export component ReplaysScreen {
             hints: [
                 { key: "↑↓", button: "✚", text: @tr("Choose") },
                 { key: "←→", button: "✚", text: @tr("Console") },
+                { key: "A S", button: "L R", text: @tr("Game") },
                 { key: "Enter", button: "A", text: @tr("Watch") },
-                { key: "Esc", button: "B", text: @tr("Back") },
+                { key: "Esc", button: "B", text: @tr("Tabs") },
             ];
         }
     }

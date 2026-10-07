@@ -3,24 +3,24 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: nettai\n"
-"POT-Creation-Date: 2026-10-07 03:05+0000\n"
+"POT-Creation-Date: 2026-10-07 03:54+0000\n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: ui/app.slint:20
+#: ui/app.slint:25
 msgctxt "match"
 msgid "Random"
 msgstr "ランダム"
 
-#: ui/app.slint:25
+#: ui/app.slint:30
 msgctxt "build"
 msgid "The match's"
 msgstr "マッチファイルのもの"
 
-#: ui/app.slint:31
+#: ui/app.slint:36
 msgctxt "language"
 msgid "English"
 msgstr "日本語"
@@ -35,135 +35,134 @@ msgctxt "player"
 msgid "P1"
 msgstr "1P"
 
-#: ui/battle.slint:312 ui/lobby.slint:416 ui/replays.slint:116
-#: ui/widgets.slint:631
+#: ui/battle.slint:315 ui/replays.slint:116 ui/widgets.slint:596
 msgctxt "versus"
 msgid "VS"
 msgstr "VS"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:333
+#: ui/battle.slint:336
 msgid "ping —"
 msgstr "ping —"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:333 ui/lobby.slint:448
+#: ui/battle.slint:336 ui/play.slint:288
 msgid "ping {0}"
 msgstr "ping {0}"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:333
+#: ui/battle.slint:336
 msgid "delay {0}"
 msgstr "ディレイ {0}"
 
 #. banners); its link down, across the top.
-#: ui/battle.slint:333
+#: ui/battle.slint:336
 msgid "rollback {0} (max {1})"
 msgstr "ロールバック {0}（最大 {1}）"
 
-#: ui/battle.slint:351
+#: ui/battle.slint:357
 msgid "Reconnecting… {0}"
 msgstr "再接続中… {0}"
 
-#: ui/battle.slint:351
+#: ui/battle.slint:357
 msgctxt "seconds"
 msgid "{n} s"
 msgid_plural "{n} s"
 msgstr[0] "{n}秒"
 
-#: ui/battle.slint:366
+#: ui/battle.slint:372
 msgid "REPLAY"
 msgstr "リプレイ"
 
-#: ui/battle.slint:372
+#: ui/battle.slint:381
 msgid "Round {0}"
 msgstr "ラウンド{0}"
 
-#: ui/battle.slint:409 ui/replays.slint:353
+#: ui/battle.slint:424 ui/replays.slint:402
 msgctxt "side"
 msgid "Left console"
 msgstr "左側の視点"
 
-#: ui/battle.slint:409 ui/replays.slint:353
+#: ui/battle.slint:424 ui/replays.slint:402
 msgctxt "side"
 msgid "Right console"
 msgstr "右側の視点"
 
-#: ui/battle.slint:421
+#: ui/battle.slint:437
 msgid "Start over"
 msgstr "最初から"
 
-#: ui/battle.slint:545
+#: ui/battle.slint:561
 msgid "STOPPED"
 msgstr "停止"
 
-#: ui/battle.slint:545
+#: ui/battle.slint:561
 msgctxt "result"
 msgid "YOU WIN"
 msgstr "勝利"
 
-#: ui/battle.slint:545
+#: ui/battle.slint:561
 msgctxt "result"
 msgid "YOU LOSE"
 msgstr "敗北"
 
-#: ui/battle.slint:545
+#: ui/battle.slint:561
 msgctxt "result"
 msgid "DRAW"
 msgstr "引き分け"
 
-#: ui/battle.slint:602
+#: ui/battle.slint:618
 msgid "Recorded to {0}"
 msgstr "{0} に記録しました"
 
-#: ui/battle.slint:608
+#: ui/battle.slint:624
 msgid "WATCH AGAIN"
 msgstr "もう一度見る"
 
-#: ui/battle.slint:608
+#: ui/battle.slint:624
 msgid "REMATCH"
 msgstr "再戦"
 
-#: ui/battle.slint:608
+#: ui/battle.slint:624
 msgid "MENU"
 msgstr "メニュー"
 
-#: ui/battle.slint:641
+#: ui/battle.slint:657
 msgid "PAUSED"
 msgstr "ポーズ"
 
-#: ui/battle.slint:654
+#: ui/battle.slint:670
 msgid "RESUME"
 msgstr "再開"
 
-#: ui/battle.slint:654
+#: ui/battle.slint:670
 msgid "QUIT TO MENU"
 msgstr "メニューに戻る"
 
-#: ui/battle.slint:654
+#: ui/battle.slint:670
 msgid "START OVER"
 msgstr "最初から"
 
-#: ui/battle.slint:679
+#: ui/battle.slint:695
 msgid "The battle goes on while you're here: netplay can't pause."
 msgstr "ネット対戦は止められません。バトルは続いています。"
 
-#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764
-#: ui/builds.slint:250 ui/lobby.slint:463 ui/settings.slint:183
-#: ui/title.slint:255
+#: ui/battle.slint:707 ui/build.slint:1771 ui/build.slint:1776
+#: ui/builds.slint:243 ui/play.slint:501 ui/settings.slint:323
+#: ui/training.slint:403
 msgid "Choose"
 msgstr "選択"
 
-#: ui/battle.slint:692 ui/build.slint:1765 ui/build.slint:1771
-#: ui/title.slint:256 ui/training.slint:612
+#: ui/battle.slint:708 ui/build.slint:1777 ui/build.slint:1783
+#: ui/settings.slint:325 ui/training.slint:405
 msgid "Confirm"
 msgstr "決定"
 
-#: ui/battle.slint:693
+#: ui/battle.slint:709
 msgid "Menu"
 msgstr "メニュー"
 
-#: ui/battle.slint:693
+#: ui/battle.slint:709
 msgid "Resume"
 msgstr "再開"
 
@@ -207,7 +206,7 @@ msgstr "初期設定"
 msgid "ITS VERSION'S OWN"
 msgstr "バージョンのもの"
 
-#: ui/build.slint:203 ui/build.slint:256 ui/builds.slint:73
+#: ui/build.slint:203 ui/build.slint:256 ui/builds.slint:74
 msgid "FROM A SAVE…"
 msgstr "セーブから…"
 
@@ -280,7 +279,7 @@ msgctxt "tab"
 msgid "AUTO BATTLE"
 msgstr "オートバトル"
 
-#: ui/build.slint:252 ui/build.slint:1715
+#: ui/build.slint:252 ui/build.slint:1727
 msgid "NAME"
 msgstr "名前"
 
@@ -312,12 +311,12 @@ msgstr "ビルド全体を元のゲームのセーブ（.sav）から"
 msgid "A copy, to change apart"
 msgstr "別に変えられるコピー"
 
-#: ui/build.slint:282
+#: ui/build.slint:282 ui/shell.slint:489
 msgctxt "flag"
 msgid "ON"
 msgstr "オン"
 
-#: ui/build.slint:282
+#: ui/build.slint:282 ui/shell.slint:489
 msgctxt "flag"
 msgid "OFF"
 msgstr "オフ"
@@ -332,11 +331,11 @@ msgctxt "preset"
 msgid "DARK"
 msgstr "闇"
 
-#: ui/build.slint:302 ui/build.slint:1715
+#: ui/build.slint:302 ui/build.slint:1727
 msgid "SEARCH"
 msgstr "検索"
 
-#: ui/build.slint:304
+#: ui/build.slint:304 ui/replays.slint:270
 msgctxt "filter"
 msgid "ALL"
 msgstr "すべて"
@@ -496,45 +495,45 @@ msgctxt "bug"
 msgid "no supports"
 msgstr "サポートなし"
 
-#: ui/build.slint:669
+#: ui/build.slint:670
 msgid "— empty —"
 msgstr "— 空き —"
 
-#: ui/build.slint:1120
+#: ui/build.slint:1127 ui/shell.slint:458
 msgid "AS A ROUND STARTS"
 msgstr "ラウンド開始時"
 
-#: ui/build.slint:1152
+#: ui/build.slint:1159
 msgid "READY TO PLAY"
 msgstr "対戦できます"
 
-#: ui/build.slint:1152
+#: ui/build.slint:1159
 msgid "WHAT KEEPS IT FROM PLAYING"
 msgstr "対戦できない理由"
 
-#: ui/build.slint:1294
+#: ui/build.slint:1301
 msgid "{0} · BUILD"
 msgstr "{0} · ビルド"
 
-#: ui/build.slint:1310 ui/builds.slint:107 ui/lobby.slint:92 ui/lobby.slint:388
-#: ui/training.slint:111
+#: ui/build.slint:1317 ui/builds.slint:108 ui/play.slint:93 ui/play.slint:335
+#: ui/welcome.slint:196
 msgid "READY"
 msgstr "準備OK"
 
-#: ui/build.slint:1310 ui/builds.slint:107
+#: ui/build.slint:1317 ui/builds.slint:108
 msgid "{n} PROBLEM"
 msgid_plural "{n} PROBLEMS"
 msgstr[0] "問題 {n}件"
 
-#: ui/build.slint:1432
+#: ui/build.slint:1439
 msgid "Nothing here yet: choose from the list beside it."
 msgstr "まだ何もありません。横のリストから選んでください。"
 
-#: ui/build.slint:1533
+#: ui/build.slint:1540
 msgid "BOARD"
 msgstr "ボード"
 
-#: ui/build.slint:1747
+#: ui/build.slint:1759
 msgid ""
 "Choose a program, then put it on the board: L and R turn it, C compresses "
 "it. A placed one is picked up by pressing it."
@@ -542,99 +541,93 @@ msgstr ""
 "プログラムを選んでボードに置きます。LとRで回転、Cで圧縮。置いたものは押すと持"
 "ち上げます。"
 
-#: ui/build.slint:1747
+#: ui/build.slint:1759
 msgid ""
 "Choose an entry, then a chip in one of its codes: it goes there, and the "
 "next entry is chosen."
 msgstr "枠を選び、チップをコードで選ぶとそこに入り、次の枠に進みます。"
 
-#: ui/build.slint:1747
+#: ui/build.slint:1759
 msgid "Confirm one on the list to add it; one of yours, to move or remove it."
 msgstr "リストのものを決定で追加。自分のものは決定で移動や削除。"
 
-#: ui/build.slint:1747
+#: ui/build.slint:1759
 msgid "Choose a place, then the chip that goes there."
 msgstr "場所を選び、そこに入れるチップを選びます。"
 
-#: ui/build.slint:1750 ui/build.slint:1755
+#: ui/build.slint:1762 ui/build.slint:1767
 msgid "Put it down"
 msgstr "置く"
 
-#: ui/build.slint:1751 ui/build.slint:1756
+#: ui/build.slint:1763 ui/build.slint:1768
 msgid "Turn"
 msgstr "回転"
 
-#: ui/build.slint:1752
+#: ui/build.slint:1764
 msgid "Compress"
 msgstr "圧縮"
 
-#: ui/build.slint:1753 ui/build.slint:1757
+#: ui/build.slint:1765 ui/build.slint:1769
 msgid "Put back"
 msgstr "戻す"
 
-#: ui/build.slint:1760
+#: ui/build.slint:1772
 msgid "Code / color"
 msgstr "コード / 色"
 
-#: ui/build.slint:1761
+#: ui/build.slint:1773
 msgid "Put in"
 msgstr "入れる"
 
-#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773
-#: ui/lobby.slint:466 ui/replays.slint:396 ui/title.slint:257
-#: ui/training.slint:613
+#: ui/build.slint:1774 ui/build.slint:1780 ui/build.slint:1785
 msgid "Back"
 msgstr "戻る"
 
-#: ui/build.slint:1766
+#: ui/build.slint:1778
 msgid "Take off"
 msgstr "はずす"
 
-#: ui/build.slint:1767 ui/build.slint:1772
+#: ui/build.slint:1779 ui/build.slint:1784
 msgid "Tab"
 msgstr "タブ"
 
-#: ui/builds.slint:73
+#. EDIT a build of yours, or make a NEW BUILD (NEW on a phone).
+#: ui/builds.slint:74 ui/shell.slint:178
 msgid "NEW BUILD"
 msgstr "新しいビルド"
 
-#: ui/builds.slint:81
+#: ui/builds.slint:82
 msgid "Its navi, folder and the rest, from the start"
 msgstr "ナビ、フォルダなどを最初から"
 
-#: ui/builds.slint:81
+#: ui/builds.slint:82
 msgid "An original save (.sav), or drop one on the window"
 msgstr "元のゲームのセーブ（.sav）。ウィンドウにドロップしても"
 
-#: ui/builds.slint:81
+#: ui/builds.slint:82
 msgid "{0}/{1} chips"
 msgstr "チップ {0}/{1}"
 
-#: ui/builds.slint:107
+#: ui/builds.slint:108
 msgid "UNREADABLE"
 msgstr "読めません"
 
-#: ui/builds.slint:139
-msgctxt "heading"
-msgid "BUILDS"
-msgstr "ビルド"
-
-#: ui/builds.slint:140
-msgid "YOUR SIDES, GAME BY GAME"
-msgstr "ゲームごとのあなたの構成"
-
-#: ui/builds.slint:188
+#: ui/builds.slint:181
 msgid "No game is ready yet: a game's asset pack is needed to make its builds."
 msgstr ""
 "まだ準備できたゲームがありません。ビルドを作るにはアセットパックが必要です。"
 
-#: ui/builds.slint:251
+#: ui/builds.slint:244
 msgid "Open"
 msgstr "開く"
 
-#: ui/builds.slint:252
+#: ui/builds.slint:245 ui/replays.slint:444
 msgid "Game"
 msgstr "ゲーム"
+
+#: ui/builds.slint:246 ui/play.slint:504 ui/replays.slint:446
+msgid "Tabs"
+msgstr "タブ"
 
 #: ui/format.slint:8
 msgctxt "clock"
@@ -676,474 +669,565 @@ msgctxt "speed"
 msgid "×1/{0}"
 msgstr "×1/{0}"
 
-#: ui/lobby.slint:52 ui/lobby.slint:367 ui/training.slint:303
+#: ui/play.slint:59 ui/play.slint:330 ui/training.slint:108
 msgid "YOU"
 msgstr "あなた"
 
-#: ui/lobby.slint:52 ui/lobby.slint:367 ui/training.slint:193
+#: ui/play.slint:59 ui/play.slint:330 ui/training.slint:320
 msgid "OPPONENT"
 msgstr "対戦相手"
 
-#: ui/lobby.slint:57 ui/lobby.slint:372
+#: ui/play.slint:64 ui/play.slint:335
 msgid "Player"
 msgstr "プレイヤー"
 
-#. (Three dots, one more each beat.)
-#: ui/lobby.slint:71 ui/lobby.slint:372
+#: ui/play.slint:64 ui/play.slint:335
 msgid "Waiting for a player"
 msgstr "対戦相手を待っています"
 
-#: ui/lobby.slint:92 ui/lobby.slint:388
+#: ui/play.slint:64 ui/play.slint:335
+msgid "No link yet"
+msgstr "未接続"
+
+#: ui/play.slint:93 ui/play.slint:470
 msgid "NOT READY"
 msgstr "準備中"
 
-#: ui/lobby.slint:203
-msgctxt "heading"
-msgid "PLAY"
-msgstr "プレイ"
-
-#: ui/lobby.slint:204
-msgid "ONLINE · ROLLBACK · ROOM CODES OR A DIRECT LINK"
-msgstr "オンライン · ロールバック · ルームコードか直接接続"
-
-#: ui/lobby.slint:224
-msgid ""
-"No signaling server: set NETTAI_SIGNAL to one (ws://127.0.0.1:8787 for "
-"signaling/ run with `npx wrangler dev`)."
-msgstr ""
-"シグナリングサーバーがありません。NETTAI_SIGNAL に設定してください"
-"（signaling/ を `npx wrangler dev` で動かすなら ws://127.0.0.1:8787）。"
-
-#: ui/lobby.slint:244
-msgid "MAKE A ROOM"
-msgstr "ルームを作る"
-
-#: ui/lobby.slint:244
-msgid "JOIN A ROOM"
-msgstr "ルームに入る"
-
-#: ui/lobby.slint:244
-msgid "DIRECT"
-msgstr "直接接続"
-
-#: ui/lobby.slint:272
-msgid "YOUR ROOM'S CODE · CONFIRM TO COPY"
-msgstr "ルームコード · 決定でコピー"
-
-#: ui/lobby.slint:272
-msgid "THE ROOM'S CODE"
-msgstr "ルームコード"
-
-#: ui/lobby.slint:272
-msgid "THE HOST'S ADDRESS · EMPTY: YOU HOST"
-msgstr "ホストのアドレス · 空ならあなたがホスト"
-
-#: ui/lobby.slint:292
-msgid "You host at {0} · click to copy it"
-msgstr "{0} でホストしています · クリックでコピー"
-
-#: ui/lobby.slint:292
-msgid "Enter joins the host at that address"
-msgstr "Enter でそのアドレスのホストに接続"
-
-#: ui/lobby.slint:305 ui/settings.slint:111
-msgid "YOUR NAME"
-msgstr "プレイヤー名"
-
-#: ui/lobby.slint:306 ui/settings.slint:112
-msgid "Type your name"
-msgstr "名前を入力"
-
-#: ui/lobby.slint:322 ui/training.slint:153
-msgid "GAME"
-msgstr "ゲーム"
-
-#: ui/lobby.slint:324
-msgid "Both players play the same game"
-msgstr "二人とも同じゲームで対戦します"
-
-#: ui/lobby.slint:336 ui/training.slint:193
-msgid "YOUR BUILD"
-msgstr "あなたのビルド"
-
-#: ui/lobby.slint:338 ui/training.slint:200 ui/training.slint:201
-msgid "A random side, from the seed"
-msgstr "シードからランダムに"
-
-#: ui/lobby.slint:338
-msgid "One of your builds of the game"
-msgstr "このゲームのあなたのビルド"
-
-#: ui/lobby.slint:442
+#: ui/play.slint:280
 msgid "No link"
 msgstr "未接続"
 
-#: ui/lobby.slint:442
+#: ui/play.slint:280
 msgid "Linked, waiting for the other player"
 msgstr "接続済み、相手を待っています"
 
-#: ui/lobby.slint:442
+#: ui/play.slint:280
 msgid "Connecting…"
 msgstr "接続中…"
 
-#: ui/lobby.slint:442
+#: ui/play.slint:280
 msgid "Connected"
 msgstr "接続完了"
 
-#: ui/lobby.slint:442
+#: ui/play.slint:280
 msgid "Reconnecting…"
 msgstr "再接続中…"
 
-#: ui/lobby.slint:464 ui/settings.slint:184 ui/training.slint:611
+#: ui/play.slint:297
+msgid ""
+"No signaling server: set NETTAI_SIGNAL to one (ws://127.0.0.1:8787 for "
+"signaling/ run with `npx wrangler dev`). A direct link still works."
+msgstr "シグナリングサーバーがありません。NETTAI_SIGNAL に設定してください（signaling/ を `npx wrangler dev` で動かすなら ws://127.0.0.1:8787）。直接接続は使えます。"
+
+#: ui/play.slint:363
+msgid "LINK"
+msgstr "接続"
+
+#: ui/play.slint:370
+msgctxt "link"
+msgid "ROOM"
+msgstr "ルーム"
+
+#: ui/play.slint:370
+msgctxt "link"
+msgid "DIRECT"
+msgstr "直接"
+
+#: ui/play.slint:403
+msgid "ROOM CODE"
+msgstr "ルームコード"
+
+#: ui/play.slint:403
+msgid "ADDRESS"
+msgstr "アドレス"
+
+#: ui/play.slint:403
+msgid "THE ROOM'S CODE · NONE: A NEW ROOM"
+msgstr "ルームコード · 空なら新しいルーム"
+
+#: ui/play.slint:403
+msgid "THE HOST'S ADDRESS · NONE: YOU HOST"
+msgstr "ホストのアドレス · 空ならあなたがホスト"
+
+#: ui/play.slint:423 ui/training.slint:383
+msgid "FIGHT"
+msgstr "バトル開始"
+
+#: ui/play.slint:448
+msgid "THE ROOM · CLICK TO COPY ITS CODE"
+msgstr "ルーム · クリックでコードをコピー"
+
+#: ui/play.slint:448
+msgid "YOU HOST AT · CLICK TO COPY"
+msgstr "ホストのアドレス · クリックでコピー"
+
+#: ui/play.slint:485
+msgid "LEAVE"
+msgstr "退出"
+
+#: ui/play.slint:502 ui/settings.slint:324 ui/training.slint:404
 msgid "Change"
 msgstr "変更"
 
-#: ui/replays.slint:240
-msgctxt "heading"
-msgid "REPLAYS"
-msgstr "リプレイ"
+#: ui/replays.slint:255 ui/shell.slint:192 ui/shell.slint:245
+msgid "GAME"
+msgstr "ゲーム"
 
-#: ui/replays.slint:241
+#: ui/replays.slint:292
 msgid "{n} SET RECORDED"
 msgid_plural "{n} SETS RECORDED"
 msgstr[0] "{n}セット記録済み"
 
-#: ui/replays.slint:279
+#: ui/replays.slint:328
+msgid "No replays of this game"
+msgstr "このゲームのリプレイはありません"
+
+#: ui/replays.slint:328
 msgid "No replays yet"
 msgstr "リプレイはまだありません"
 
-#: ui/replays.slint:287
+#: ui/replays.slint:336
 msgid "Every set you play is recorded to {0}."
 msgstr "遊んだセットはすべて {0} に記録されます。"
 
-#: ui/replays.slint:324
+#: ui/replays.slint:373
 msgid "Not played to its end"
 msgstr "最後まで遊ばれていません"
 
-#: ui/replays.slint:324
+#: ui/replays.slint:373
 msgid "A draw"
 msgstr "引き分け"
 
-#: ui/replays.slint:324
+#: ui/replays.slint:373
 msgid "{0} won"
 msgstr "{0}の勝ち"
 
-#: ui/replays.slint:338
+#: ui/replays.slint:387
 msgid "Checking that it plays back…"
 msgstr "再生を確かめています…"
 
-#: ui/replays.slint:338
+#: ui/replays.slint:387
 msgid "It plays back as it was played."
 msgstr "記録どおりに再生できます。"
 
-#: ui/replays.slint:378
+#: ui/replays.slint:427
 msgid "WATCH"
 msgstr "見る"
 
-#: ui/replays.slint:394
+#: ui/replays.slint:443
 msgid "Console"
 msgstr "視点"
 
-#: ui/replays.slint:395
+#: ui/replays.slint:445
 msgid "Watch"
 msgstr "見る"
 
-#: ui/settings.slint:75
-msgctxt "heading"
-msgid "SETTINGS"
-msgstr "設定"
+#: ui/settings.slint:44
+msgctxt "section"
+msgid "GENERAL"
+msgstr "一般"
 
-#: ui/settings.slint:88
-msgid "LANGUAGE"
-msgstr "言語"
-
-#: ui/settings.slint:88
-msgid "The menus, and the battle's names and words"
-msgstr "メニューと、バトルの名前や言葉"
-
-#: ui/settings.slint:89
-msgid "VOLUME"
-msgstr "音量"
-
-#: ui/settings.slint:89 ui/settings.slint:90
-msgid "Off"
-msgstr "オフ"
-
-#: ui/settings.slint:90
-msgid "MENU SOUNDS"
-msgstr "メニューの効果音"
-
-#: ui/settings.slint:90
-msgid "On"
-msgstr "オン"
-
-#: ui/settings.slint:90
-msgid "The game's own cursor sounds"
-msgstr "ゲームのカーソル音"
-
-#: ui/settings.slint:91
-msgid "BATTLE TEXT"
-msgstr "バトルの文字"
-
-#: ui/settings.slint:91
-msgid "Crisp"
-msgstr "くっきり"
-
-#: ui/settings.slint:91
-msgid "Original"
-msgstr "オリジナル"
-
-#: ui/settings.slint:91
-msgid "Names and messages drawn at the window's resolution"
-msgstr "名前やメッセージをウィンドウの解像度で描きます"
-
-#: ui/settings.slint:91
-msgid "The game's own lettering"
-msgstr "ゲームのドット文字"
-
-#: ui/settings.slint:92
-msgid "PICTURE"
+#: ui/settings.slint:44
+msgctxt "section"
+msgid "GRAPHICS"
 msgstr "画面"
 
-#: ui/settings.slint:92
-msgid "Display's pixels"
-msgstr "ディスプレイの解像度"
+#: ui/settings.slint:44
+msgctxt "section"
+msgid "AUDIO"
+msgstr "サウンド"
 
-#: ui/settings.slint:92
-msgid "Window's pixels"
-msgstr "ウィンドウの解像度"
-
-#: ui/settings.slint:92
-msgid "Text sharper at the display's own density, at a cost"
-msgstr "文字がより鮮明に（負荷が増えます）"
-
-#: ui/settings.slint:148
+#: ui/settings.slint:44
+msgctxt "section"
 msgid "CONTROLS"
 msgstr "操作"
 
-#: ui/settings.slint:152
+#: ui/settings.slint:44
+msgctxt "section"
+msgid "ABOUT"
+msgstr "情報"
+
+#: ui/settings.slint:229 ui/welcome.slint:150
+msgid "YOUR NAME"
+msgstr "プレイヤー名"
+
+#: ui/settings.slint:230 ui/welcome.slint:151
+msgid "Type your name"
+msgstr "名前を入力"
+
+#: ui/settings.slint:249 ui/welcome.slint:167
+msgid "LANGUAGE"
+msgstr "言語"
+
+#: ui/settings.slint:249
+msgid "VOLUME"
+msgstr "音量"
+
+#: ui/settings.slint:249
+msgid "MENU SOUNDS"
+msgstr "メニューの効果音"
+
+#: ui/settings.slint:249
+msgid "BATTLE TEXT"
+msgstr "バトルの文字"
+
+#: ui/settings.slint:249
+msgid "PICTURE"
+msgstr "画面"
+
+#: ui/settings.slint:250
+msgid "Off"
+msgstr "オフ"
+
+#: ui/settings.slint:250
+msgid "On"
+msgstr "オン"
+
+#: ui/settings.slint:250
+msgid "Crisp"
+msgstr "くっきり"
+
+#: ui/settings.slint:250
+msgid "Original"
+msgstr "オリジナル"
+
+#: ui/settings.slint:250
+msgid "Display's pixels"
+msgstr "ディスプレイの解像度"
+
+#: ui/settings.slint:250
+msgid "Window's pixels"
+msgstr "ウィンドウの解像度"
+
+#: ui/settings.slint:251 ui/welcome.slint:169
+msgid "The menus, and the battle's names and words"
+msgstr "メニューと、バトルの名前や言葉"
+
+#: ui/settings.slint:251
+msgid "The battle's and the menus' sound"
+msgstr "バトルとメニューの音量"
+
+#: ui/settings.slint:251
+msgid "The game's own cursor sounds"
+msgstr "ゲームのカーソル音"
+
+#: ui/settings.slint:251
+msgid "Names and messages drawn at the window's resolution"
+msgstr "名前やメッセージをウィンドウの解像度で描きます"
+
+#: ui/settings.slint:251
+msgid "The game's own lettering"
+msgstr "ゲームのドット文字"
+
+#: ui/settings.slint:251
+msgid "Text sharper at the display's own density, at a cost"
+msgstr "文字がより鮮明に（負荷が増えます）"
+
+#: ui/settings.slint:268
+msgid "CONTROLS"
+msgstr "操作"
+
+#: ui/settings.slint:272
 msgid "Move"
 msgstr "移動"
 
-#: ui/settings.slint:153
+#: ui/settings.slint:273
 msgid "A: chips, pick"
 msgstr "A：チップ・決定"
 
-#: ui/settings.slint:154
+#: ui/settings.slint:274
 msgid "B: buster (hold to charge), take back"
 msgstr "B：バスター（長押しでチャージ）・取り消し"
 
-#: ui/settings.slint:155
+#: ui/settings.slint:275
 msgid "L and R"
 msgstr "L と R"
 
-#: ui/settings.slint:156
+#: ui/settings.slint:276
 msgid "START: to OK"
 msgstr "START：OKへ"
 
-#: ui/settings.slint:157
+#: ui/settings.slint:277
 msgid "SELECT"
 msgstr "SELECT"
 
-#: ui/settings.slint:158
+#: ui/settings.slint:278
 msgid "Pause"
 msgstr "ポーズ"
 
-#: ui/title.slint:50
-msgid "BATTLE NETWORK · ROLLBACK NETPLAY"
-msgstr "バトルネットワーク · ロールバック対戦"
+#: ui/settings.slint:279
+msgid "Training: start over"
+msgstr "トレーニング：最初から"
 
-#: ui/title.slint:80
-msgctxt "menu"
+#: ui/shell.slint:131
+msgctxt "tab"
 msgid "PLAY"
 msgstr "プレイ"
 
-#: ui/title.slint:80
-msgid "Online: another player, by a room code or a direct link"
-msgstr "オンライン：ルームコードか直接接続でほかのプレイヤーと対戦"
-
-#: ui/title.slint:81
-msgctxt "menu"
+#: ui/shell.slint:132
+msgctxt "tab"
 msgid "TRAINING"
 msgstr "トレーニング"
 
-#: ui/title.slint:81
-msgid "Offline: you against the computer"
-msgstr "オフライン：コンピューターと対戦"
-
-#: ui/title.slint:82
-msgctxt "menu"
-msgid "BUILDS"
-msgstr "ビルド"
-
-#: ui/title.slint:82
-msgid "Your navi, folder, NaviCust and patch cards"
-msgstr "ナビ、フォルダ、ナビカス、改造カード"
-
-#: ui/title.slint:83
-msgctxt "menu"
+#: ui/shell.slint:133
+msgctxt "tab"
 msgid "REPLAYS"
 msgstr "リプレイ"
 
-#: ui/title.slint:83
-msgid "Watch the sets you've recorded"
-msgstr "記録したセットを見る"
+#: ui/shell.slint:149
+msgctxt "tab"
+msgid "BUILDS"
+msgstr "ビルド"
 
-#: ui/title.slint:84
-msgctxt "menu"
+#: ui/shell.slint:150
+msgctxt "tab"
 msgid "SETTINGS"
 msgstr "設定"
 
-#: ui/title.slint:84
-msgid "Language, sound and controls"
-msgstr "言語・サウンド・操作"
+#: ui/shell.slint:175
+msgid "No game found"
+msgstr "ゲームが見つかりません"
 
-#: ui/title.slint:85
-msgctxt "menu"
-msgid "QUIT"
-msgstr "終了"
+#: ui/shell.slint:175
+msgid "Ready to play"
+msgstr "プレイできます"
 
-#: ui/title.slint:124
-msgid "PRESS START"
-msgstr "PRESS START"
+#: ui/shell.slint:175 ui/welcome.slint:196
+msgid "LOADING…"
+msgstr "読み込み中…"
 
-#: ui/title.slint:241
-msgid "DEMO · {0}"
-msgstr "デモ · {0}"
+#: ui/shell.slint:175 ui/welcome.slint:196
+msgid "NO ASSET PACK"
+msgstr "アセットパックなし"
 
-#: ui/training.slint:22
+#: ui/shell.slint:175 ui/welcome.slint:196
+msgid "CAN'T LOAD"
+msgstr "読み込めません"
+
+#: ui/shell.slint:176 ui/training.slint:326
+msgid "A random side, from the seed"
+msgstr "シードからランダムに"
+
+#. EDIT a build of yours, or make a NEW BUILD (NEW on a phone).
+#: ui/shell.slint:178
+msgid "EDIT"
+msgstr "編集"
+
+#. EDIT a build of yours, or make a NEW BUILD (NEW on a phone).
+#: ui/shell.slint:178
+msgctxt "build"
+msgid "NEW"
+msgstr "新規"
+
+#: ui/shell.slint:210 ui/shell.slint:275
+msgid "YOUR BUILD"
+msgstr "あなたのビルド"
+
+#: ui/shell.slint:502
+msgid "FOLDER"
+msgstr "フォルダ"
+
+#: ui/training.slint:15
 msgctxt "opponent"
 msgid "Dummy"
 msgstr "ダミー"
 
-#: ui/training.slint:24
+#: ui/training.slint:17
 msgctxt "opponent"
 msgid "Mover"
 msgstr "ムーバー"
 
-#: ui/training.slint:26
+#: ui/training.slint:19
 msgctxt "opponent"
 msgid "Masher"
 msgstr "マッシャー"
 
-#: ui/training.slint:28
+#: ui/training.slint:21
 msgid "Stand-in"
 msgstr "練習相手"
 
-#: ui/training.slint:33
+#: ui/training.slint:26
 msgid "Stands still and picks no chip"
 msgstr "動かず、チップも選ばない"
 
-#: ui/training.slint:35
+#: ui/training.slint:28
 msgid "Moves about at random, never attacks"
 msgstr "ランダムに動き回り、攻撃しない"
 
-#: ui/training.slint:37
+#: ui/training.slint:30
 msgid "Moves, shoots and uses its chips at random"
 msgstr "ランダムに動き、撃ち、チップを使う"
 
-#: ui/training.slint:39
+#: ui/training.slint:32
 msgid "Stands still and picks its first chip"
 msgstr "動かず、最初のチップを選ぶ"
 
-#: ui/training.slint:111
-msgid "CHOSEN"
-msgstr "選択中"
+#: ui/training.slint:98 ui/training.slint:373
+msgid "Choose a game"
+msgstr "ゲームを選んでください"
 
-#: ui/training.slint:111
-msgid "LOADING…"
-msgstr "読み込み中…"
+#: ui/training.slint:124
+msgid "THE ARENAS"
+msgstr "ステージ"
 
-#: ui/training.slint:111
-msgid "NO ASSET PACK"
-msgstr "アセットパックなし"
+#: ui/training.slint:154
+msgid "ROUND {0}"
+msgstr "ラウンド{0}"
 
-#: ui/training.slint:111
-msgid "CAN'T LOAD"
-msgstr "読み込めません"
-
-#: ui/training.slint:182
-msgid "No games found: the content folder or the packs folder is missing."
-msgstr "ゲームが見つかりません。コンテンツかパックのフォルダがありません。"
-
-#: ui/training.slint:193
+#: ui/training.slint:320
 msgid "MATCH"
 msgstr "マッチ"
 
-#: ui/training.slint:193
+#: ui/training.slint:320
 msgid "IT DOES"
 msgstr "行動"
 
-#: ui/training.slint:193
+#: ui/training.slint:320
 msgid "ROUNDS"
 msgstr "ラウンド"
 
-#: ui/training.slint:198
+#: ui/training.slint:324
 msgctxt "rounds"
 msgid "ENDLESS"
 msgstr "エンドレス"
 
-#: ui/training.slint:198
+#: ui/training.slint:324
 msgctxt "rounds"
 msgid "BEST OF {0}"
 msgstr "{0}本勝負"
 
-#: ui/training.slint:199
+#: ui/training.slint:325
 msgid "Seed {0} · confirm for another"
 msgstr "シード {0} · 決定で別の組み合わせ"
 
-#: ui/training.slint:199
+#: ui/training.slint:325
 msgid "A match file from the matches folder"
 msgstr "matches フォルダのマッチファイル"
 
-#: ui/training.slint:200
-msgid "One of your builds, in place of your side"
-msgstr "あなたの構成をビルドで"
-
-#: ui/training.slint:200
-msgid "Your side as the match file states it"
-msgstr "マッチファイルにある構成"
-
-#: ui/training.slint:201
+#: ui/training.slint:326
 msgid "One of your builds, in the opponent's place"
 msgstr "対戦相手の構成をビルドで"
 
-#: ui/training.slint:201
+#: ui/training.slint:326
 msgid "The other side as the match file states it"
 msgstr "マッチファイルにある相手の構成"
 
-#: ui/training.slint:203
+#: ui/training.slint:328
 msgid "99 rounds, the most a set has: first to 50 wins"
 msgstr "1セット最大の99ラウンド、先に50勝"
 
-#: ui/training.slint:203
+#: ui/training.slint:328
 msgid "A set as the match lists it"
 msgstr "マッチファイルにあるラウンド数"
 
-#: ui/training.slint:234
-msgid "FIGHT"
-msgstr "バトル開始"
+#: ui/training.slint:369
+msgid "AGAINST THE COMPUTER · EVERY SET RECORDED"
+msgstr "コンピューターと対戦 · すべて記録"
 
-#: ui/training.slint:293
-msgid "Choose a game"
-msgstr "ゲームを選んでください"
+#: ui/training.slint:373
+msgid "In the battle, R starts over: the same set again"
+msgstr "バトル中は R で最初から（同じセットをもう一度）"
 
-#: ui/training.slint:316
-msgid "THE ARENAS"
-msgstr "ステージ"
+#: ui/welcome.slint:52
+msgid "BATTLE NETWORK · ROLLBACK NETPLAY"
+msgstr "バトルネットワーク · ロールバック対戦"
 
-#: ui/training.slint:346
-msgid "ROUND {0}"
-msgstr "ラウンド{0}"
+#: ui/welcome.slint:136
+msgid "WELCOME"
+msgstr "ようこそ"
 
-#: ui/training.slint:487
-msgctxt "heading"
-msgid "TRAINING"
-msgstr "トレーニング"
+#: ui/welcome.slint:144
+msgid "Your name shows to the other player, and in your replays."
+msgstr "名前は対戦相手とリプレイに表示されます。"
 
-#: ui/training.slint:488
-msgid "OFFLINE · AGAINST THE COMPUTER"
-msgstr "オフライン · コンピューターと対戦"
+#: ui/welcome.slint:208
+msgid "CONTINUE"
+msgstr "はじめる"
+
+#: ui/welcome.slint:283
+msgid "DEMO · {0}"
+msgstr "デモ · {0}"
+
+#~ msgid "YOUR SIDES, GAME BY GAME"
+#~ msgstr "ゲームごとのあなたの構成"
+
+#~ msgid "ONLINE · ROLLBACK · ROOM CODES OR A DIRECT LINK"
+#~ msgstr "オンライン · ロールバック · ルームコードか直接接続"
+
+#~ msgid "MAKE A ROOM"
+#~ msgstr "ルームを作る"
+
+#~ msgid "JOIN A ROOM"
+#~ msgstr "ルームに入る"
+
+#~ msgid "You host at {0} · click to copy it"
+#~ msgstr "{0} でホストしています · クリックでコピー"
+
+#~ msgid "Enter joins the host at that address"
+#~ msgstr "Enter でそのアドレスのホストに接続"
+
+#~ msgid "Both players play the same game"
+#~ msgstr "二人とも同じゲームで対戦します"
+
+#~ msgid "One of your builds of the game"
+#~ msgstr "このゲームのあなたのビルド"
+
+#~ msgctxt "menu"
+#~ msgid "PLAY"
+#~ msgstr "プレイ"
+
+#~ msgid "Online: another player, by a room code or a direct link"
+#~ msgstr "オンライン：ルームコードか直接接続でほかのプレイヤーと対戦"
+
+#~ msgid "Offline: you against the computer"
+#~ msgstr "オフライン：コンピューターと対戦"
+
+#~ msgctxt "menu"
+#~ msgid "BUILDS"
+#~ msgstr "ビルド"
+
+#~ msgid "Your navi, folder, NaviCust and patch cards"
+#~ msgstr "ナビ、フォルダ、ナビカス、改造カード"
+
+#~ msgctxt "menu"
+#~ msgid "REPLAYS"
+#~ msgstr "リプレイ"
+
+#~ msgid "Watch the sets you've recorded"
+#~ msgstr "記録したセットを見る"
+
+#~ msgctxt "menu"
+#~ msgid "SETTINGS"
+#~ msgstr "設定"
+
+#~ msgid "Language, sound and controls"
+#~ msgstr "言語・サウンド・操作"
+
+#~ msgctxt "menu"
+#~ msgid "QUIT"
+#~ msgstr "終了"
+
+#~ msgid "PRESS START"
+#~ msgstr "PRESS START"
+
+#~ msgid "CHOSEN"
+#~ msgstr "選択中"
+
+#~ msgid "No games found: the content folder or the packs folder is missing."
+#~ msgstr "ゲームが見つかりません。コンテンツかパックのフォルダがありません。"
+
+#~ msgid "One of your builds, in place of your side"
+#~ msgstr "あなたの構成をビルドで"
+
+#~ msgid "Your side as the match file states it"
+#~ msgstr "マッチファイルにある構成"
+
+#~ msgctxt "heading"
+#~ msgid "TRAINING"
+#~ msgstr "トレーニング"
+
+#~ msgid "OFFLINE · AGAINST THE COMPUTER"
+#~ msgstr "オフライン · コンピューターと対戦"
 
 #~ msgctxt "heading"
 #~ msgid "NETPLAY"
