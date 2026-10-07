@@ -562,6 +562,9 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   strike (attack 0x17, EXE5's 0x080DF93C's code): a strike with a hitbox on each navi of the local console's list
   (BattleState +0x44, from the other side's place: three entries for a user of side 0, one for side 1) whose counter
   window is open.
+- **MokoRus1** (with 2 and 3: action 0x20's variant 1, `chips/mokorus`): EXE4's own. Three Molokos (attack 0x2C), one
+  a row (the rows shuffled with RNG2: @exelib/panels' `shuffle`), 10 ticks apart, charge from 140 pixels behind the
+  field's middle; the chip's parameter is their palette.
 
 **For the next steps:**
 
