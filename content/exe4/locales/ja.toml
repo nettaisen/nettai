@@ -73,6 +73,9 @@ language = "ja"
 "protom-sp" = { name = "ブルースSP", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 "protom-ds" = { name = "ブルースDS", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 "deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
+"serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"srchmn-sp" = { name = "サーチマンSP", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"srchmn-ds" = { name = "サーチマンDS", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

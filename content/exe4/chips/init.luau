@@ -39,6 +39,7 @@ return merge {
     require("@self/recov"),
     require("@self/repair"),
     require("@self/roll"),
+    require("@self/serchman"),
     require("@self/spreader"),
     require("@self/sword"),
     require("@self/vulcan"),
