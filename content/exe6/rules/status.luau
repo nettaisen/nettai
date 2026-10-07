@@ -174,6 +174,9 @@ local status = {
         timers_while_paused = false,
         -- Its idle (`sub_80F0354`) leaves the navi's pose.
         idle_stands = false,
+        -- In a link battle a navi's body hits for 10: its damage as it is set up (`sub_80142B0`), set again on its
+        -- collision as its status resets (`sub_80142C2`).
+        link_body_damage = { damage = 10, again_at_reset = true },
     },
 }
 

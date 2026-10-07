@@ -64,4 +64,6 @@ return {
     timers_while_paused = false,
     -- The idle leaves the navi's pose.
     idle_stands = false,
+    -- A link battle's navi body hits for 10, set again as its status resets.
+    link_body_damage = { damage = 10, again_at_reset = true },
 }
