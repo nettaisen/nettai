@@ -1216,9 +1216,9 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
-    /// `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its alive
-    /// count to 0 and the round's time-up byte set. (It also sets battle
-    /// flag 8, which nothing reads.)
+    /// `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
+    /// count (what the fight's result reads) to 0 and the round's time-up
+    /// byte set. (It also sets battle flag 8, which nothing in EXE4 reads.)
     fn lose_round(&mut self, side: u8);
     /// `sub_800ED90` and the chip record's flags (bit 1): the chip `user`
     /// would use next deals damage (a player's at its hand's cursor, whose

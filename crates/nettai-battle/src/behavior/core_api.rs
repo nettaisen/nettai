@@ -359,7 +359,7 @@ impl CoreApi for Battle {
     }
 
     fn lose_round(&mut self, side: u8) {
-        self.round.alive[side as usize & 1] = 0;
+        self.round.actor_count[side as usize & 1] = 0;
         self.round.time_up = 1;
     }
 
