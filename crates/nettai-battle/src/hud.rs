@@ -170,8 +170,9 @@ impl HpNumber {
 }
 
 /// A chip a player just used, as the other player's console names it for
-/// a second (`sub_801EB18`; HUD task bit 16): any chip but a cut-in chip,
-/// whose telop both see. Presentation only; what a player is shown is
+/// the rules' `effects.used_chip_ticks` (`sub_801EB18`; HUD task bit 16):
+/// any chip but a cut-in chip, whose telop both see. Presentation only;
+/// what a player is shown is
 /// [`Battle::used_chip_for`](crate::Battle::used_chip_for).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UsedChip {
@@ -182,13 +183,8 @@ pub struct UsedChip {
     pub doubled: bool,
     /// The bonus shown as "+N" after the damage (0: none shown).
     pub bonus: u16,
-    /// HUD ticks left of its `SHOWN_TICKS`.
+    /// HUD ticks left of its showing.
     pub ticks: u8,
-}
-
-impl UsedChip {
-    /// How long the name shows.
-    pub const SHOWN_TICKS: u8 = 0x3C;
 }
 
 /// Who sees "????" for a telop's chip (`sub_800BBA8`, the trap chips).

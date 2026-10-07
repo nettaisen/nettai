@@ -395,11 +395,64 @@ pub struct Hud {
     pub dialogue_font: DialogueFont,
     /// The chatbox's box and key-wait arrow.
     pub chatbox: Chatbox,
+    /// Where the HUD's code puts its pieces, where games differ.
+    pub layout: HudLayout,
     /// The language the lettering above is in (the fonts, the text lines,
     /// the banners' and "Cstmzing..."'s words; empty: `BASE_LANGUAGE`),
     /// and the other languages' the pack has (`lettering`).
     pub language: String,
     pub languages: Vec<(String, HudLettering)>,
+}
+
+/// Where the HUD's code puts its pieces, where games differ (the default:
+/// EXE6's, which EXE5's are).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HudLayout {
+    /// "PAUSE"'s place (its first glyph's x and y: EXE6's `sub_801C9E4`
+    /// (100, 63); EXE4's 0x0801554C (100, 64)).
+    pub pause: (u8, u8),
+    /// The priority the HP numbers under objects are drawn at (EXE6's
+    /// `sub_801C202`: 2; EXE4's 0x08014EB8: 1).
+    pub hp_number_priority: u8,
+    /// Where a message ("COUNTER HIT!") is laid: its first column and its
+    /// row, and how many glyphs wide (EXE6's `sub_801E270`: from column 7,
+    /// row 2, 17; EXE4's 0x08015FE8: from column 8, row 2, 14).
+    pub message: (u8, u8, u8),
+    /// The damage judge's numbers show from its banner's hold until the
+    /// banner is gone (EXE4's task 9: 0x08014AA8 waits for the holding
+    /// banner, 0x08014ABE ends with it); otherwise while the banner slides
+    /// in and holds (EXE6's `sub_801D048`).
+    pub judge_from_hold: bool,
+    /// The telops' own look, where the game lays a telop out in its code
+    /// rather than from a banner record of its table (EXE4's 0x0801650C);
+    /// none: the telop banners' places, in the HP box's palette (EXE6's).
+    pub telop: Option<TelopLook>,
+}
+
+impl Default for HudLayout {
+    fn default() -> Self {
+        HudLayout { pause: (100, 63), hp_number_priority: 2, message: (7, 2, 17), judge_from_hold: false, telop: None }
+    }
+}
+
+/// A telop laid out by the game's code (`HudLayout::telop`): where it is
+/// laid out from on its user's console and on the other player's (x, y:
+/// fifteen glyphs centered from there), and the glyphs it draws after the
+/// chip's name, which the game loads for it, in its own palette.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TelopLook {
+    pub places: [(u8, u8); 2],
+    /// The damage digits 0 to 9, '+', then the '×' and the '2' of a
+    /// doubled chip (8x16 glyphs).
+    pub glyphs: Tiles,
+    pub palette: Palette,
+}
+
+impl TelopLook {
+    /// Its glyphs: the digits from 0, then '+', then '×' and '2'.
+    pub const PLUS: usize = 10;
+    pub const TIMES: usize = 11;
+    pub const GLYPHS: usize = 13;
 }
 
 /// The chatbox's graphics (`chatbox_runScript`'s transfers): the box's
