@@ -72,4 +72,6 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second (`sub_801EB18`).
     used_chip_ticks = 0x3C,
+    -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
+    draw_order = "update_list",
 }
