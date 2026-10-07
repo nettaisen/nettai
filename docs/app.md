@@ -6,16 +6,19 @@ desktop (built and measured on macOS). §6 records what the web build needs and 
 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
 the command line with no window, for frames, audits and checks (docs/tools.md). nettai-demo, the first desktop
-host, is retired (§10). nettai wraps the battle in the screens a player sees:
+host, is retired (§10). nettai wraps the battle in the screens a player sees, in Tango's shape (the user: "you
+should mirror how the tango ui does it in a lot of ways so it's more familiar"; §2):
 
-- a title screen, with a battle playing itself on its monitor;
-- PLAY, online play: the netplay lobby, rooms through nettai-rtc or a direct link, with your build (§4);
-- TRAINING, you against the computer, offline: the game, a random match or a match file, your build and the
-  opponent's, what the opponent does and how long the set is, and a preview of who fights in which arenas;
+- the first run's welcome: your name, the language and the games found, with a battle playing itself beside them;
+- a top bar of tabs: PLAY, TRAINING and REPLAYS; BUILDS and SETTINGS, the occasional ones, at its right;
+- PLAY, online play, as Tango's Play tab: the selector strip (the game and your build), the build's sheet, both
+  players' cards, and the band at the foot that makes the link and is then the room (§4);
+- TRAINING, you against the computer, offline, in the same shape: the strip, the match, your opponent's build,
+  what it does and how long the set is, a preview of who fights in which arenas, FIGHT in its band;
 - the battle;
+- the replays, filtered by game: every set played is recorded;
 - the builds: a player's sides, game by game, made in the build creator (§8);
-- the replays: every set played is recorded;
-- settings, kept between runs (§9).
+- the settings, in a section sidebar, kept between runs (§9).
 
 Every screen is navigated alike by the keyboard, a gamepad, the mouse and touch. The app's own strings are in
 catalogs, one for each language; the content's names come from its locales.
@@ -39,7 +42,7 @@ netplay, `$NETTAI_SIGNAL` names the signaling server (§4). Some variables are f
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
 | `NETTAI_RENDERER=femtovg\|software` | Picks Slint's renderer. |
-| `NETTAI_TOUR=<folder>` | Walks every screen in each language, at a desktop's size and at a phone's, and writes each to a PNG (`NETTAI_TOUR_LANGS=en,ja,pseudo` picks the languages; `NETTAI_TOUR_ONLY=builds` walks the builds, Play's build and the direct lobby alone, of `NETTAI_TOUR_GAME=<game>`). Nothing it changes is kept in the settings. |
+| `NETTAI_TOUR=<folder>` | Walks every screen in each language, at a desktop's size and at a phone's, and writes each to a PNG (`NETTAI_TOUR_LANGS=en,ja,pseudo` picks the languages; `NETTAI_TOUR_ONLY=builds` walks the builds, the strip's build and Play's band (a direct link, hosting) alone, of `NETTAI_TOUR_GAME=<game>`). The backdrop holds still, and some shots come in pairs a state apart (`play`, `play-focus`; `training`, `training-focus`; `settings`, `settings-focus`; `replays`, `replays-filtered`) for a comparison of what moved. Nothing it changes is kept in the settings. |
 
 ## 1. The battle in a Slint window
 
@@ -126,10 +129,50 @@ The visual direction is "cyber arena", built from Slint's shapes alone (no stand
 - **Color:** cyan for player one and focus, magenta for player two and the versus, gold for the main action and
   wins.
 - **Type:** Murecho throughout, with its black weight for display.
-- **Motion:** focus bars slide out, and screens change behind a diagonal wipe in the players' colors.
+- **Motion:** focus bars slide out; a battle comes and goes behind a diagonal wipe in the players' colors (a tab
+  is shown at once).
+
+**Tango's shape.** Tango (tango/src: `app/view.rs`, `tabs/`, `ui/`) has no title or menu screen: a top bar over a
+body, PLAY and REPLAYS as labeled tabs at its left and PATCHES and SETTINGS as icon tabs at its right; a welcome on
+the first run until a nickname is set; a Play tab that is one view in bands (the loadout strip of game, save and
+patch pickers with the save's actions, the save's viewer filling the body, and a bottom band of the link code and
+FIGHT that becomes the lobby once a connection starts, the save still shown above it); Replays as filters, a list
+and a detail; Settings as a section sidebar and its pane; one control height and one pane gap throughout. nettai
+follows it, its own look kept:
+
+| Tango | nettai |
+|---|---|
+| top bar: Play, Replays; Patches, Settings | top bar: PLAY, TRAINING, REPLAYS; BUILDS, SETTINGS (`shell.slint`'s `TopBar`) |
+| welcome (nickname, language, ROMs) | welcome (your name, language, the games found; the demo battle beside them) |
+| loadout strip: family, save, patch | selector strip: GAME, YOUR BUILD, EDIT or NEW BUILD (`Strip`), Play's and Training's alike |
+| the save's viewer | the build's sheet: its navi, its folder in its 30 places, what a round starts it with, the rest it states (`SheetView`) |
+| link code and FIGHT, then the lobby band | the link (ROOM or DIRECT, its code or address) and FIGHT, then the room (its code, READY, LEAVE) (`Band`) |
+| the lobby dot on Play | the room stays open on other tabs; PLAY carries a dot |
+| Replays: filters, list, detail | REPLAYS: the game filter, the list, the detail pane |
+| Settings: sidebar and pane | SETTINGS: GENERAL, GRAPHICS, AUDIO, CONTROLS, ABOUT |
+| save management | BUILDS (the list, the creator); the strip's EDIT and NEW BUILD |
 
 Each screen keeps its own cursor and takes navigation actions (`NavAction`: up, down, left, right, confirm, back,
-previous, next) from the window's keys, the gamepad, or a click or tap, which focuses and activates.
+previous, next) from the window's keys, the gamepad, or a click or tap, which focuses and activates. Up from a
+tab's first row, or back, gives the keys to the top bar, where left and right go through the tabs (each shown at
+once) and down or confirm gives them back; while the bar has them, the tab shows no focus.
+
+**Nothing moves by itself.** The user found the app's layout thrashing; each element keeps its size whatever it
+shows:
+
+- an option's value has a column of its own (`OptionRow::value-width`), so its arrows stay put whatever it says;
+- a note, a problem or a hint keeps its line when it says nothing (option rows, the creator's fact rows, the
+  creator's problem and pick hint lines, the training preview's problem line, the screens' headings);
+- the creator's entry marks (REG, TAG), tails (a code, an MB) and problem marks have columns;
+- the battle's net line has a fixed column between the navis (and a fixed, right-aligned one at the top right),
+  and a replay's transport (the round, the clock, the speed, the console) has columns, so its bar keeps its
+  length;
+- the ready mark has one width, READY or NOT READY; the link's line and the problem's lines are always there;
+- a pane is always there, empty or not (the replays' detail; the training preview fills its place; its versus and
+  "choose a game" are as tall); the sheet holds its 30 places and its stat rows before a game has loaded;
+- focus and hover change color and outline alone, never size; an animation moves a bar over, never the layout.
+
+The tour checks it: its pairs of shots, compared, differ only in colors where the focus went.
 
 - **Text fields** are Slint's `TextInput`, so the desktop's IME composes into them (winit's IME events; Slint
   shows the preedit). Up, down and Esc still leave a field: the window's `FocusScope` captures them while one
@@ -137,19 +180,25 @@ previous, next) from the window's keys, the gamepad, or a click or tap, which fo
 - **Responsive layout:** the window sets `Theme.compact` (small) and `Theme.portrait` (held upright) as its size
   changes. Layouts follow these imperatively-set values, never the window's own size, so they don't size the
   window.
-- **On a phone held upright:** the battle draws an on-screen pad under the picture, Training puts FIGHT at the
-  foot (and shows no arenas: its choices take the height), and the lobby shows the two players in a line.
+- **On a phone held upright:** the battle draws an on-screen pad under the picture; the strip is two rows (the
+  game and its action, the build); Play and Training put their band at the foot, Training shows the versus
+  without arenas, and the settings' sections run across the top.
 
 The screens:
 
-- **Title.** The demo battle is a random set of a loaded game, with the stand-in's custom screen pressed on
-  both sides and the left navi fighting.
+- **Welcome**, the first run's (no name yet): your name, the language, each game found (ready, loading, or what
+  it needs), CONTINUE. The demo battle beside it is a random set of a loaded game, with the stand-in's custom
+  screen pressed on both sides and the left navi fighting. A name is needed to go on; after it, the app opens on
+  Play.
+- **The selection** (Play's and Training's strip, the app's as Tango's loadout is): the game (the first ready
+  until one is chosen) and the build (none of yours: a random side, or a match file's; else one of yours of the
+  game). EDIT opens it in the creator, NEW BUILD makes one; the creator goes back to the tab it was opened from.
 - **Play** is online play (the user: "play should be online play and the single player play should be some kind of
-  training mode instead under training"): the lobby, §4. It is the menu's first entry.
-- **Training** is you against the computer, offline, every set recorded as any other. No game is assumed: the
-  player chooses one. The match is a random one (from a seed; confirm for another) or a match file of the matches
-  folder. YOUR BUILD puts one of their builds of the game in place of their side, and OPPONENT one in place of the
-  other side (a build that can't play says why). IT DOES is what the opponent does, its buttons alone, as a
+  training mode instead under training"): the tab the app opens on, §4.
+- **Training** is you against the computer, offline, every set recorded as any other. The match is a random one
+  (from a seed; confirm for another) or a match file of the matches folder. YOUR BUILD (the strip's) puts one of
+  your builds of the game in place of your side, and OPPONENT one in place of the other side (a build that can't
+  play says why). IT DOES is what the opponent does, its buttons alone, as a
   player's are (`nettai_frontend::driver::Opponent`, recorded with the set):
   - **Stand-in**: stands still; its custom screen picks the first chip it can and presses OK.
   - **Dummy**: stands still and picks no chip.
@@ -172,21 +221,22 @@ The screens:
 - **The battle.** The pause has resume, start over and quit (the language is Settings' alone). The result has the score, the replay
   file it was recorded to, rematch and menu. A replay has its transport, and netplay its connection line and
   "reconnecting (N s)".
-- **The lobby** (Play): §4.
-- **Replays.** Newest first, each row with:
+- **Replays.** The game filter (ALL, or a game; L and R) and how many sets are recorded; newest first, each row
+  with:
   - the date in local time;
   - the navis, by the content's names;
   - the round pips;
   - the length;
   - whether it reproduces: ✓, or the difference;
-  - watch from either console.
-- **Settings.** The language, the volume, the menu sounds, the battle's text (crisp, or the game's own),
-  the picture's density and the player's name, kept between runs (§9).
+  - watch from either console, in the detail pane beside the list.
+- **Settings**, in a section sidebar: GENERAL (your name, the language), GRAPHICS (the battle's text, crisp or the
+  game's own; the picture's density), AUDIO (the volume, the menu sounds), CONTROLS (the keys and the pad's
+  buttons), ABOUT (the version, where things are kept, the signaling server). Kept between runs (§9).
 
 ## 3. Languages
 
 **Every string of the app's own goes through Slint's `@tr`**, with a context where one word means two things
-(`"heading" => "PLAY"`, `"menu" => "PLAY"`) and plurals where a count shows (`"{n} round" | "{n} rounds" % n`).
+(`"tab" => "PLAY"`, `"link" => "ROOM"`) and plurals where a count shows (`"{n} round" | "{n} rounds" % n`).
 
 The few strings the Rust side shows are functions of a global in the same catalog (`Strings`: "Random", "Stand-in").
 Numbers, times and dates are formatted by the catalog's patterns (`format.slint`): a translation orders and words
@@ -235,15 +285,18 @@ beside Murecho, and fontique falls back to it by coverage.
 
 ## 4. Netplay (Play)
 
-The lobby meets the other player in a room of nettai-rtc's signaling server, by the room's code, or over a
-direct link:
+Play is Tango's Play tab: the strip's game and build are what this player brings, the sheet shows it, both
+players' cards face each other beside it, and the band at the foot makes the link when FIGHT is pressed
+(`lobby.rs`):
 
-- **Making a room** enters a new one at once. Its code (six letters and digits, none that read as another) is
-  shown in large type and copied to the clipboard on confirm.
-- **Joining** enters the room as soon as its six letters are typed.
-- **Direct**: with no address typed, this player hosts on UDP port 47474 (`Link::host`), and the screen shows
-  the address to give the other player (this machine's on its network; click to copy). An address typed
-  (`host:port`) is joined once it is confirmed (`Link::join`). No signaling server is needed.
+- **A room** of nettai-rtc's signaling server: its code typed (six letters and digits) joins it; none makes a new
+  room (its code, none of its letters read as another, is shown in large type in the band; a click copies it).
+- **Direct**: an address typed (`host:port`) is joined (`Link::join`); none hosts on UDP port 47474
+  (`Link::host`), and the band shows the address to give the other player (this machine's on its network; a
+  click copies it). No signaling server is needed.
+
+Once linked, the band is the room's: its code (or the address), READY and LEAVE. The room stays open while
+another tab is shown (the bar marks PLAY with a dot), and the match starts on whichever tab when both are ready.
 
 In a room, the first in it hosts. The library's lobby and handshake run over the link (`netplay::Agreeing`, the
 datagrams of `nettai_frontend::lobby`):
@@ -432,9 +485,10 @@ one (`nettai_match::file::side_toml`, read back by `resolve_side`: the same name
     version = "falzar"
     folder = [ ... ]
 
-The **Builds** screen lists a game's builds (L and R go through the games), each with its navi's face, its folder's
+The **Builds** tab lists a game's builds (L and R go through the games), each with its navi's face, its folder's
 count and whether it can play (or what the rules say first), above NEW BUILD and FROM A SAVE…. A save can also be
-dropped on the window. Builds are chosen in Training and in Play's lobby (§4).
+dropped on the window. Builds are chosen in the selector strip, Play's and Training's (its EDIT opens the chosen
+one in the creator, its NEW BUILD makes one), as Tango's saves are in its loadout strip.
 
 **The creator** (`crate::builds`) lays a build out from its game's rules' setup schema alone (`builds::layout`;
 the rules declare no views), a tab for each kind of fact:
@@ -498,7 +552,8 @@ karma 0)").
 
 `settings.toml` in the data folder keeps the language, the volume, the menu sounds, the battle's text, the
 picture's density and the player's name, written as each changes and read as the app starts
-(`crate::settings`). `$NETTAI_LANG` still names the first language; the tour keeps nothing.
+(`crate::settings`). A run with no name kept is a first run: it opens on the welcome. `$NETTAI_LANG` still names
+the first language; the tour keeps nothing.
 
 ## 10. Retiring nettai-demo
 
