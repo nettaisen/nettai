@@ -105,4 +105,7 @@ return {
     -- A reservation doesn't mark its holder (0x0801865C sets the panel's alone), and a destroyed holder's stay
     -- (EXE5's destroys, 0x080138B6 and 0x080138F2, release none).
     reservations = "unmarked",
+    -- The flags' bits a type owns, which a crack, a break or poison clears (0x0800AFF8 and its kin), the sea's
+    -- 0x20000 among them.
+    type_mask = 0x00023F5F,
 }

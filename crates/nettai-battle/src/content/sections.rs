@@ -113,6 +113,7 @@ struct PanelsSection {
     dash_step: StepSection,
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
+    type_mask: u32,
 }
 
 #[derive(Deserialize)]
@@ -678,6 +679,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
                     numbers,
                     reservations: s.reservations,
+                    type_mask: s.type_mask,
                 });
             }
             "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),
