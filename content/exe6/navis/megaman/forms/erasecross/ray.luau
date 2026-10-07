@@ -10,20 +10,29 @@
 -- the latter; MstrCros's EraseCross's until its navi shuts it
 -- (`erase_ray.shut`).
 
+local collision = require("../../../../rules/collision")
+local regions = require("@exelib/regions")
+local sparks = require("../../../../lib/sparks")
 local thunder_column = require("../../../../chips/dolthdr/column")
 
 local erase_ray = {}
 
--- A ray: how far ahead of its panel's center it appears
+-- A ray, its user's: how far ahead of its panel's center it appears
 -- (`byte_80D8EA4`), 16.16; how long it lasts at most (none: until it
 -- shuts); and whether its spawner shuts it, rather than its navi leaving
 -- the action it fired it in.
 export type Ray = { ahead: number, ticks: number?, held: boolean? }
 
-erase_ray.rays = {
-    cross = { ahead = 0x3C_0000, ticks = 70 } :: Ray,
-    beast = { ahead = 0x46_0000 } :: Ray,
-    held = { ahead = 0x3C_0000, held = true } :: Ray,
+-- The columns it lays: DolThdr's thunder column's pulling variant
+-- (`byte_80D6914`'s row 1), piercing, on its panel, staggering.
+local PULL = thunder_column.variant {
+    collision = { is = collision.piercing, hits = collision.hits_navis },
+    spark = sparks.plain,
+    region = regions.single,
+    hit_mod = 3,
+    status = nil,
+    bug = 0,
+    bug_arg = 0,
 }
 
 export type State = {
@@ -55,7 +64,7 @@ local MAX_ZONES = 5
 -- runs while dimmed.
 local function lay(me: Object, x: number, slot: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local z = thunder_column.spawn(me, x, me.panel_y, me.element, thunder_column.pull, damage, me, slot + 1)
+    local z = thunder_column.spawn(me, x, me.panel_y, me.element, PULL, damage, me, slot + 1)
     if z then
         z.run_while_dimmed = me.run_while_dimmed
         z.timer = me.timer
