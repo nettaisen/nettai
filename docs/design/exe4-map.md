@@ -510,11 +510,11 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   from 0xC0 to 0x40 over the slide's 9 ticks, a line, as EXE6's over its 5; no bounce in the hold: the rules'
   `effects.banner.bounces`); the custom screen as it opens, while picking and on OK (the window, the chip window and
   OK's pictures, the slots' palettes, the picked column, the element sprite, the window's emblem). What still
-  differs is not the drawing's: the HP box (the intro doesn't show it yet); MegaMan's colors (the original draws
-  him in his sprite's palette row 4, 0x0821B854, with the normal face, where the base form says row 0); the UNITE
-  button (content/exe4 registers no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the
-  original hides them); the cursor on OK after it is pressed (the original hides it); the chatbox's description
-  (content/exe4's Cannon has none).
+  differs is not the drawing's: the HP box (the intro doesn't show it yet); the UNITE button (content/exe4 registers
+  no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the original hides them); the cursor on OK
+  after it is pressed (the original hides it). Since drawn: MegaMan's colors (his palette by his light/dark value,
+  rules/light_dark: the setups' 1000 draws row 4, 0x0821B854), the intro's fade (by its levels), Cannon's
+  description.
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).

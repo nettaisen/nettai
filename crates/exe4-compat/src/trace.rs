@@ -646,6 +646,8 @@ impl Round {
             // What the save brings to the stats (EXE4's rules/save): the base
             // HP, which the rules write into the HP.
             player.set_fact(content, "hp", &[Fact::Value(Value::Int(d.navi_stats[side].max_base_hp as i64))])?;
+            // His light/dark value (NaviStats +0x36: the rules' light_dark).
+            player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
             Ok(player)
         });
         let [p0, p1] = players;
