@@ -128,6 +128,8 @@ local status = {
         hp_loss = "hp_alone",
         -- A player hears its own navi's hit as `own_hit`, another's as `hit` (`applyDamageToPlayer_801ba12`).
         hit_sound = "by_console",
+        -- A barrier (`sub_801A802`) stands still while paused; wind, or the hit flags 0xA20, pop it.
+        barrier = { stops_while_paused = true, wind = "pops" },
         -- Its emotions (`sub_8015B54`): worn out (exhausted, or a mood of 0) is read before anger, then held tired,
         -- Full Synchro (a mood of 0xFF), else normal, the same in every battle mode and every form; no mood is
         -- worried. A navi held tired or exhausted holds its mood against the setter (`sub_8015BEC`), and anger's

@@ -163,7 +163,8 @@ fn set_barrier_hp16(c: &mut CollisionData, v: u16) {
 /// `sub_801A802`: barriers and auras absorb this tick's hits (fed by the
 /// raw channel), wear down, time out and regrow (§4.2).
 fn barrier(b: &mut Battle, r: ObjectRef) {
-    if b.paused {
+    let rule = b.game_rules().intake.barrier;
+    if b.paused && rule.stops_while_paused {
         return;
     }
     let dimmed = b.is_dimmed();
@@ -178,12 +179,21 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let regrowing = matches!(barrier, 8 | 0xA) && barrier_hp16(c) == 0;
-    if !regrowing && (c.acc.raw_elements & 0x20 != 0 || c.acc.raw_hit_flags & 0xA20 != 0) {
-        // Popped (wind): absorbs everything until its visual clears it.
-        barrier = 0x10;
-        c.barrier = 0x10;
-        set_barrier_hp16(c, 0);
-        c.barrier_saved_hmf = c.hit_mod_final;
+    match rule.wind {
+        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & 0x20 != 0 || c.acc.raw_hit_flags & 0xA20 != 0) => {
+            // Popped (wind): absorbs everything until its visual clears it.
+            barrier = 0x10;
+            c.barrier = 0x10;
+            set_barrier_hp16(c, 0);
+            c.barrier_saved_hmf = c.hit_mod_final;
+        }
+        crate::content::BarrierWind::TakesAway if !regrowing && c.acc.raw_elements & 0x20 != 0 => {
+            // Gone at once (EXE4's 0x08012E1E); the rest of the tick goes on
+            // by the type it had.
+            c.barrier = 0;
+            set_barrier_hp16(c, 0);
+        }
+        _ => {}
     }
     match barrier {
         8 => {
