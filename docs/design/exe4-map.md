@@ -565,6 +565,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 - **MokoRus1** (with 2 and 3: action 0x20's variant 1, `chips/mokorus`): EXE4's own. Three Molokos (attack 0x2C), one
   a row (the rows shuffled with RNG2: @exelib/panels' `shuffle`), 10 ticks apart, charge from 140 pixels behind the
   field's middle; the chip's parameter is their palette.
+- **SidBmbo1** (with 2 and 3: action 0x20's variant 5, which holds the user 40 ticks, `chips/sidbmbo`): EXE4's own
+  bamboo (attack 0x44) swings down three columns ahead, its two hitboxes on rows 1 and 2.
 
 **For the next steps:**
 

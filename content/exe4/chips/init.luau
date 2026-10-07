@@ -38,6 +38,7 @@ return merge {
     require("@self/panlgrab"),
     require("@self/recov"),
     require("@self/repair"),
+    require("@self/sidbmbo"),
     require("@self/spreader"),
     require("@self/sword"),
     require("@self/vulcan"),

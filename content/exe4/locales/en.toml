@@ -72,6 +72,9 @@ language = "en"
 "mokorus1" = { name = "MokoRus1", description = "3 Molokos\ncharge\nthe enemy" }
 "mokorus2" = { name = "MokoRus2", description = "3 Molokos\ncharge\nthe enemy" }
 "mokorus3" = { name = "MokoRus3", description = "3 Molokos\ncharge\nthe enemy" }
+"sidbmbo1" = { name = "SidBmbo1", description = "Lance\nattck 3sq\nahead" }
+"sidbmbo2" = { name = "SidBmbo2", description = "Lance\nattck 3sq\nahead" }
+"sidbmbo3" = { name = "SidBmbo3", description = "Lance\nattck 3sq\nahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

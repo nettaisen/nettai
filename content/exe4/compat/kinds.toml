@@ -48,3 +48,5 @@
 "counter/strike" = { pool = "attack", index = 0x17, scratch_position = true }
 # MokoRus's Molokos (action 0x20's variant 1, 0x080D250C).
 "mokorus/moloko" = { pool = "attack", index = 0x2C, scratch_position = true }
+# SidBmbo's bamboo (action 0x20's variant 5, 0x080D5DBA).
+"sidbmbo/bamboo" = { pool = "attack", index = 0x44, scratch_position = true }
