@@ -802,7 +802,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// them: the abilities (+0x01 to +0x04), the buster's levels and blanks (+0x05 to +0x08), the weapon level and the
 /// move bug (+0x0B, +0x0D), the drains (+0x0E, +0x0F), the custom level and chip limits (+0x12 to +0x14), the supports
 /// (+0x18), the panel trail (+0x1B), the max HP (+0x32).
-fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
+pub fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
     let game = |name: &str| match s.game_stat(&b.content, name) {
         Some(nettai_content_api::FieldValue::U8(n)) => n,
         _ => 0,
@@ -836,7 +836,7 @@ fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
 }
 
 /// [`compiled`] of a recorded block.
-fn compiled_of(s: &NaviStats) -> String {
+pub fn compiled_of(s: &NaviStats) -> String {
     let b = &s.raw;
     compiled_bytes(
         [b[0x01], b[0x02], b[0x03], b[0x04], b[0x05], b[0x06], b[0x07], b[0x08], b[0x0B], b[0x0D], b[0x0E], b[0x0F], b[0x12], b[0x13], b[0x14], b[0x18], b[0x1B]],
