@@ -1,6 +1,6 @@
 --!strict
 -- EXE4's lightning (attack object 0x8E, 0x080DEFEC: EXE5's 0x080D8348, which no EXE5 chip uses), which LigtNin's
--- towers' controller (lib/towers) strikes onto a panel holding an obstacle: with its sound (0x143) it hits the
+-- towers' controller (chips/ligtnin) strikes onto a panel holding an obstacle: with its sound (0x143) it hits the
 -- eight panels around it once (region 0x10: an attack hitting navis, modifier 3, no spark), then sparks around them,
 -- one every 2 ticks in its order (0x080DF0F8), each for 3 ticks (effect row 0x6B: 14-05's animation 13), and goes
 -- after the eighth. Unturned, its shadow drawn with it.
