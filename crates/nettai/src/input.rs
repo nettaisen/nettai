@@ -126,6 +126,8 @@ fn nav(b: gilrs::Button) -> Option<NavAction> {
         DPadRight => NavAction::Right,
         South | Start => NavAction::Confirm,
         East | Select => NavAction::Back,
+        North => NavAction::Alternate,
+        West => NavAction::Remove,
         LeftTrigger | LeftTrigger2 => NavAction::Previous,
         RightTrigger | RightTrigger2 => NavAction::Next,
         _ => return None,
