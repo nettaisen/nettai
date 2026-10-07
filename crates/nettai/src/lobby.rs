@@ -153,6 +153,8 @@ impl App {
     /// The Play tab as it stands: the strip, the sheet, the band, the
     /// cards.
     pub fn show_play(&mut self) {
+        // (A build made or renamed in the creator since: read again.)
+        self.refresh_builds();
         self.show_select();
         let ui = self.ui();
         // The sheet: the build brought (a random side's, from the seed).
