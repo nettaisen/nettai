@@ -84,4 +84,6 @@ return {
     restore_players = { 31, 22 },
     -- The custom gauge empties as the screen opens (0x08022C5E), and again at the send.
     gauge_empties_at_open = true,
+    -- OK leaves the fade records running until the screens close (0x08022DC0 calls EXE6's `sub_80062EC`).
+    fades_clear_at_ok = false,
 }
