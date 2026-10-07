@@ -451,8 +451,8 @@ recording's setup.
 
 ## A link navi's stats at its level (link-navis.md)
 
-The PET's reload (`reloadCurNaviBaseStats_8120df0`) gives a link navi its stats from its level; nettai-match's
-`link_navis` is it, and fills a match side's stats. The verification workspace's `trace-tests --test link_navis`
+The PET's reload (`reloadCurNaviBaseStats_8120df0`) gives a link navi its stats from its level; EXE6's rules/save
+(rules/levels) is it, as a round is set up, and nettai-match's `link_navis` tests it. The verification workspace's `trace-tests --test link_navis`
 compares the reload with every chip lab side that has a link navi; gen-content compares the tables with the ROM.
 
 ### Covered

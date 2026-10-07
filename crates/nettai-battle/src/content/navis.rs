@@ -108,13 +108,15 @@ pub struct NaviData {
     #[serde(skip)]
     pub switch_hp: Option<[u16; 2]>,
     /// What the save's reload gives it by its link navi level
-    /// (docs/engine/link-navis.md). Tools fill a side's stats from it
-    /// (nettai-match's `link_navis`); no battle reads it.
+    /// (docs/engine/link-navis.md), which its game's rules apply as a
+    /// round is set up. Tools read its levels' range (`last_level`); no
+    /// battle reads it.
     #[serde(skip)]
     pub levels: Option<NaviLevels>,
-    /// What the story gives it by its level (EXE5's team navis). Tools
-    /// fill a side's stats from it (nettai-match's `story`); no battle
-    /// reads it.
+    /// What the story gives it by its level (EXE5's team navis), which its
+    /// game's rules apply as a round is set up. Tools read its levels'
+    /// range (`last_level`) and its HP at a level (nettai-match's `story`);
+    /// no battle reads it.
     #[serde(skip)]
     pub story: Option<NaviStory>,
 }
@@ -181,6 +183,18 @@ impl NaviData {
     /// weapons and what it wears.
     pub fn changes_form(&self) -> bool {
         self.forms.is_some()
+    }
+
+    /// The last of its levels, by what its definition says a level gives
+    /// it (`levels`: a navi code's, EXE6's link navis' and MegaMan's;
+    /// `story`: the story's progress, EXE5's team navis'); none: a level
+    /// gives it nothing. A tool's view of the navi (a side's level's range).
+    pub fn last_level(&self) -> Option<u8> {
+        match (&self.levels, &self.story) {
+            (Some(levels), _) => Some(levels.by_level.len().saturating_sub(1) as u8),
+            (None, Some(story)) => Some(story.max_level),
+            (None, None) => None,
+        }
     }
 }
 
