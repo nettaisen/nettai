@@ -24,8 +24,6 @@ local roles: RolesSpec = {
     sparks = {
         plain = sparks.plain,
         guard = sparks.guard,
-        -- Lava's burn (0x08013128 and 0x0801309E: hit effect 1, jittered by 15, from 0x080E2140).
-        panel_burn = sparks.fire,
     },
     collision = {
         navi = collision.navi,
