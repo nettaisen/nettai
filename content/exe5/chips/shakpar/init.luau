@@ -11,6 +11,11 @@ local recipe_voltz3 = require("./voltz").voltz3
 local shakpar = require("@self/shakpar")
 local spshake = require("./spshake/spshake")
 
+-- Their waves (Param1 2: 3 pixels a tick, row 2 of 0x080D30D4), which paralyze, in palettes 0, 6 and 12.
+local WAVE1 = spshake.wave { speed = 0x3_0000, paralyzes = true, palette = 0 }
+local WAVE2 = spshake.wave { speed = 0x3_0000, paralyzes = true, palette = 6 }
+local WAVE3 = spshake.wave { speed = 0x3_0000, paralyzes = true, palette = 12 }
+
 -- ShakPar1 (EXE5 chip 0x14c): the Program Advance of two Voltz1s and a SpShake1 (or three SpShake1s of one code): three
 -- SpShake waves along the rows from the back column, 15 ticks apart (chips/shakpar/shakpar, instant effect 22; the record's
 -- parameters: speed row 2, hits that paralyze, palette 0).
@@ -33,7 +38,7 @@ local shakpar1: Chip = {
         { order = 12, sequence = { recipe_voltz1, recipe_voltz1, recipe_spshake1 }, operation_battle_only = true },
         { order = 48, code_run = { chip = recipe_spshake1, count = 3 } },
     },
-    instant = shakpar.instant(spshake.wave(2, true, 0)),
+    instant = shakpar.instant(WAVE1),
     auto_battle = { class = "at_once" },
 }
 
@@ -59,7 +64,7 @@ local shakpar2: Chip = {
         { order = 13, sequence = { recipe_voltz2, recipe_voltz2, recipe_spshake2 }, operation_battle_only = true },
         { order = 49, code_run = { chip = recipe_spshake2, count = 3 } },
     },
-    instant = shakpar.instant(spshake.wave(2, true, 6)),
+    instant = shakpar.instant(WAVE2),
     auto_battle = { class = "at_once" },
 }
 
@@ -85,7 +90,7 @@ local shakpar3: Chip = {
         { order = 14, sequence = { recipe_voltz3, recipe_voltz3, recipe_spshake3 }, operation_battle_only = true },
         { order = 50, code_run = { chip = recipe_spshake3, count = 3 } },
     },
-    instant = shakpar.instant(spshake.wave(2, true, 12)),
+    instant = shakpar.instant(WAVE3),
     auto_battle = { class = "at_once" },
 }
 
