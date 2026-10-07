@@ -318,10 +318,13 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         }
     }
     // (A banner no loaded game's roles name is checked as its pack lays it
-    // out: a telop's layout, which has no glyphs of its own, as a telop.)
+    // out: a telop's layout, which has no glyphs of its own, as a telop. A
+    // pack whose HUD draws telops in its own look, EXE4's, draws its telop
+    // roles' banner as a plain banner when it shows one.)
     let named: HashSet<BannerId> = c.defs.roles().banners.values().copied().collect();
     for id in handles(AssetKind::Banner).map(BannerId) {
-        if telops.contains(&id) || (!named.contains(&id) && lookups::is_telop(packs, c, id)) {
+        let own_telop = packs.banner(c, id).is_some_and(|(hud, _)| hud.layout.telop.is_some());
+        if !own_telop && (telops.contains(&id) || (!named.contains(&id) && lookups::is_telop(packs, c, id))) {
             lookups::telop(packs, c, id, p);
             continue;
         }
