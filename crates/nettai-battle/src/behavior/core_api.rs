@@ -1332,7 +1332,7 @@ impl CoreApi for Battle {
 
     fn panel_info(&self, p: PanelPos) -> Option<PanelInfo> {
         let panel = self.field.panel(p.x, p.y)?;
-        Some(PanelInfo { kind: panel.kind as u8, alliance: panel.alliance, home: panel.home })
+        Some(PanelInfo { kind: panel.kind.0, alliance: panel.alliance, home: panel.home })
     }
 
     fn column_info(&self, x: u8) -> ColumnInfo {
@@ -1350,9 +1350,16 @@ impl CoreApi for Battle {
         Battle::set_panel_alliance(self, p.x, p.y, side);
     }
 
+    fn panel_type_named(&self, name: &str) -> Option<u8> {
+        self.game_rules().panels.named(name).map(|t| t.0)
+    }
+
+    fn panel_type_name(&self, kind: u8) -> String {
+        self.game_rules().panels.name(PanelType(kind)).to_string()
+    }
+
     fn set_panel_type(&mut self, p: PanelPos, kind: u8) {
-        let t = PanelType::ALL.get(kind as usize).copied().unwrap_or_else(|| panic!("panel type {kind} doesn't exist"));
-        Battle::set_panel_type(self, p.x, p.y, t);
+        Battle::set_panel_type(self, p.x, p.y, PanelType(kind));
     }
 
     fn crack_panel(&mut self, p: PanelPos) -> bool {
@@ -1467,8 +1474,7 @@ impl CoreApi for Battle {
     }
 
     fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8) {
-        let t = PanelType::ALL.get(kind as usize).copied().unwrap_or_else(|| panic!("panel type {kind} doesn't exist"));
-        Battle::blink_panel(self, p.x, p.y, t, side);
+        Battle::blink_panel(self, p.x, p.y, PanelType(kind), side);
     }
 
     fn break_empty_panel(&mut self, p: PanelPos) -> bool {

@@ -30,12 +30,10 @@ fn exe5_compat_reads() {
     // The e-Reader cards' chips: their strings and palettes are the save's.
     assert_eq!((built_in.chips["leadraid"].id, built_in.chips["leadraid"].save_slot), (0x137, Some(0)));
     assert_eq!((built_in.chips["chaoslrd"].id, built_in.chips["chaoslrd"].save_slot), (0x138, Some(1)));
-    // EXE5's holy panel is its type 9, the engine's Holy; metal, lava and
-    // sea are EXE5's own types (docs/design/exe5-map.md §15.3 item 1).
-    assert_eq!(built_in.panel_type(9), Ok(Some(PanelType::Holy)));
-    assert_eq!(built_in.panel_type(8), Ok(Some(PanelType::Lava)));
-    assert_eq!(built_in.panel_type(5), Ok(Some(PanelType::Metal)));
-    assert_eq!(built_in.panel_type(10), Ok(Some(PanelType::Sea)));
+    // EXE5's holy panel is its type 9; metal, lava and sea are EXE5's own
+    // types (docs/design/exe5-map.md §15.3 item 1).
+    assert_eq!((built_in.panel_type(9), built_in.panel_name(9)), (Ok(PanelType(9)), Ok("holy")));
+    assert_eq!((built_in.panel_name(8), built_in.panel_name(5), built_in.panel_name(10)), (Ok("lava"), Ok("metal"), Ok("sea")));
     assert!(built_in.panel_type(11).is_err());
     // The assets' names: EXE6's where the asset or its place is EXE6's.
     assert_eq!(built_in.assets.sounds.get("own-hit"), Some(&0x6B));
@@ -112,7 +110,7 @@ fn a_frame_line_decodes() {
     );
     let Line::Frame(f) = trace::parse_line(&line).unwrap() else { panic!("a frame line") };
     let d = trace::decode_frame(Compat::exe5(), &f).unwrap();
-    assert_eq!(d.panels[6].kind, Some(PanelType::Holy));
+    assert_eq!(d.panels[6].kind, PanelType(9));
     assert_eq!(d.panels[3].alliance, 1);
     assert_eq!(d.objects[0].pool, nettai_content_api::Pool::Actor);
 }

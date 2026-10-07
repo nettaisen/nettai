@@ -390,7 +390,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     run_to(&mut b, p, &mut t, 60, 0);
     assert_eq!(b.objects.get(ball).panel, PanelPos { x: 5, y: 2 });
     assert_eq!(b.objects.get(p1).hp, 940);
-    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::field::PanelType::Cracked);
+    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::content::testing::panel("cracked"));
     // The navi idles 35 ticks after the shot.
     run_to(&mut b, p, &mut t, 70, 0);
     assert_eq!(act(&b, p0), IDLE);
@@ -946,14 +946,13 @@ fn until_gone(b: &mut Battle, p: [ObjectRef; 2], shot: ObjectRef) {
 
 #[test]
 fn projectile_kinds_change_the_panel_they_hit() {
-    use crate::field::PanelType;
     // One cracks, one breaks (cracks, with the enemy on it), one lays
     // grass, one a road away from the shooter's side.
     for (row, panel) in [
-        ("shot/charged-cracking", PanelType::Cracked),
-        ("shot/charged-panel-breaking", PanelType::Cracked),
-        ("shot/charged-grass", PanelType::Grass),
-        ("shot/charged-road-back", PanelType::RoadRight),
+        ("shot/charged-cracking", crate::content::testing::panel("cracked")),
+        ("shot/charged-panel-breaking", crate::content::testing::panel("cracked")),
+        ("shot/charged-grass", crate::content::testing::panel("grass")),
+        ("shot/charged-road-back", crate::content::testing::panel("road_right")),
     ] {
         let (mut b, p0, p1) = fight();
         let p = [p0, p1];
@@ -1588,8 +1587,8 @@ fn elec_beast_charge_strikes_lightning_that_cracks_panels() {
         assert!(t < 20, "no lightning");
     }
     // Lightning (Param1 1) cracks its panels, the enemy's too.
-    assert_eq!(b.field.panel(3, 2).unwrap().kind, crate::field::PanelType::Cracked);
-    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::field::PanelType::Cracked);
+    assert_eq!(b.field.panel(3, 2).unwrap().kind, crate::content::testing::panel("cracked"));
+    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::content::testing::panel("cracked"));
     plays_on_the_same(&mut b, p, 5);
     t += 5;
     // 40 damage and 30 per buster Attack point.

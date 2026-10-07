@@ -208,11 +208,11 @@ pub struct Field {
     pub first_palette: u8,
     /// Panel palettes that cycle.
     pub palette_anims: Vec<PaletteAnim>,
-    /// The panel types the field draws, by the engine's number for each
-    /// (`PanelType as u8`), in the order of their blocks in `panels`: EXE6's
-    /// 13 in the engine's order, EXE5's 11 in EXE5's (its metal, lava and sea
-    /// among them). docs/design/rules-in-luau.md §7.4.
-    pub panel_types: Vec<u8>,
+    /// The panel types the field draws, by their names (its game's: the
+    /// rules' `panels.numbers`), in the order of their blocks in `panels`:
+    /// EXE6's 13, EXE5's 11, EXE4's 12, each in its game's order.
+    /// docs/design/rules-in-luau.md §7.4.
+    pub panel_types: Vec<String>,
     /// A panel's 5x3 block by `6 * k + 3 * owner + row - 1`, where `k` is
     /// the type's place in `panel_types` and `row` the field row (1..=3).
     pub panels: Vec<[MapEntry; 15]>,
@@ -225,16 +225,16 @@ pub struct Field {
 }
 
 impl Field {
-    /// Whether the field draws panel type `kind` (the engine's number).
-    pub fn draws(&self, kind: u8) -> bool {
-        self.panel_types.contains(&kind)
+    /// Whether the field draws the panel type named `kind`.
+    pub fn draws(&self, kind: &str) -> bool {
+        self.panel_types.iter().any(|t| t == kind)
     }
 
-    /// The 5x3 block of panel type `kind` (the engine's number) for an
-    /// owner (0 the viewer's) and a row (1..=3), if the field draws the
-    /// type and has the block.
-    pub fn panel(&self, kind: u8, owner: usize, row: u8) -> Option<&[MapEntry; 15]> {
-        let k = self.panel_types.iter().position(|&t| t == kind)?;
+    /// The 5x3 block of the panel type named `kind` for an owner (0 the
+    /// viewer's) and a row (1..=3), if the field draws the type and has the
+    /// block.
+    pub fn panel(&self, kind: &str, owner: usize, row: u8) -> Option<&[MapEntry; 15]> {
+        let k = self.panel_types.iter().position(|t| t == kind)?;
         self.panels.get(6 * k + 3 * owner + (row as usize).checked_sub(1)?)
     }
 }

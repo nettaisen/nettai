@@ -40,7 +40,8 @@ pub enum Art {
 pub struct FieldArt {
     /// The game's pack: the field's own art.
     pub arena: PackId,
-    panels: [Art; PanelType::ALL.len()],
+    /// By the game's panel types' numbers.
+    panels: Vec<Art>,
     highlights: [Art; 2],
 }
 
@@ -50,14 +51,14 @@ impl FieldArt {
     pub fn of(c: &Content, packs: &Packs) -> FieldArt {
         let pack = packs.game_id(c);
         let field = &packs.bundle(pack).field;
-        let panels = PanelType::ALL.map(|t| if field.draws(t as u8) { Art::Field(pack) } else { Art::Tint });
+        let panels = c.rules().panels.names.iter().map(|t| if field.draws(t) { Art::Field(pack) } else { Art::Tint }).collect();
         let highlights = [1, 2].map(|h| if field.highlights.len() >= h { Art::Field(pack) } else { Art::Tint });
         FieldArt { arena: pack, panels, highlights }
     }
 
-    /// Panel type `t`'s art.
+    /// Panel type `t`'s art (a type its game hasn't, tinted).
     pub fn panel(&self, t: PanelType) -> Art {
-        self.panels[t as usize]
+        self.panels.get(t.0 as usize).copied().unwrap_or(Art::Tint)
     }
 
     /// Highlight `h`'s art (1 or 2; a larger number reads as 2, as the
@@ -305,8 +306,9 @@ impl<'a> Stage<'a> {
 /// What panel `p` (in row `y`) shows, with the lookups drawing it makes: a
 /// highlight (a blink, `object_setPanelTypeBlink`, shows before one), else
 /// its block by its displayed type (or its blink's) and owner, from the
-/// viewer's side (a road's direction mirrored on the right-hand console),
-/// each from the field `art` says, or a normal panel tinted.
+/// viewer's side (a road's direction mirrored on the right-hand console: the
+/// road carrying the other way), each from the field `art` says, or a normal
+/// panel tinted.
 fn shown<'f>(
     c: &Content,
     art: &FieldArt,
@@ -320,12 +322,11 @@ fn shown<'f>(
     let owner = (alliance ^ local_side) as usize & 1;
     // A tinted normal panel of the owner's (`what`: the type or highlight
     // no field draws).
+    let normal = c.rules().panels.roles.normal;
     let tinted = |what: u8, problems: &mut Problems| {
         lookups::panel_tint(c, art.arena, what, problems);
-        match art.panel(PanelType::Normal) {
-            Art::Field(from) => {
-                lookups::panel_block(c, field_of(from), from, PanelType::Normal as u8, owner, y, problems).map(|e| (from, e, true))
-            }
+        match art.panel(normal) {
+            Art::Field(from) => lookups::panel_block(c, field_of(from), from, normal, owner, y, problems).map(|e| (from, e, true)),
             Art::Tint => None,
         }
     };
@@ -336,15 +337,11 @@ fn shown<'f>(
         };
     }
     if local_side & 1 == 1 {
-        kind = match kind {
-            PanelType::RoadLeft => PanelType::RoadRight,
-            PanelType::RoadRight => PanelType::RoadLeft,
-            k => k,
-        };
+        kind = c.rules().panels.mirrored(kind);
     }
     match art.panel(kind) {
-        Art::Field(from) => lookups::panel_block(c, field_of(from), from, kind as u8, owner, y, problems).map(|e| (from, e, false)),
-        Art::Tint => tinted(kind as u8, problems),
+        Art::Field(from) => lookups::panel_block(c, field_of(from), from, kind, owner, y, problems).map(|e| (from, e, false)),
+        Art::Tint => tinted(kind.0, problems),
     }
 }
 
@@ -427,7 +424,7 @@ mod tests {
     /// A field of one solid tile (number 0xA3) drawing `types` (a block of
     /// palette slot 1 each, colored `colors[0]`), with `highlights`
     /// highlights (palette slot 2, `colors[1]`).
-    fn field(types: &[PanelType], highlights: usize, colors: [u16; 2]) -> Field {
+    fn field(types: &[&str], highlights: usize, colors: [u16; 2]) -> Field {
         let entry = |palette| MapEntry { tile: 0xA3, hflip: false, vflip: false, palette };
         let palette = |c: u16| std::array::from_fn(|i| if i == 1 { c } else { 0 });
         Field {
@@ -435,28 +432,24 @@ mod tests {
             first_tile: 0xA3,
             palettes: vec![palette(colors[0]), palette(colors[1])],
             first_palette: 1,
-            panel_types: types.iter().map(|&t| t as u8).collect(),
+            panel_types: types.iter().map(|t| t.to_string()).collect(),
             panels: vec![[entry(1); 15]; 6 * types.len()],
             highlights: vec![[entry(2); 15]; highlights],
             ..Field::default()
         }
     }
 
-    /// A battle on the test content, whose game names every panel type
-    /// but the sea, with a field with the panels `types` at (1, 1), (2, 1)
-    /// and (3, 1), and highlight 2 at (1, 2).
-    fn battle(types: [PanelType; 3]) -> Battle {
+    /// A battle on the test content, with a field with the panels `types`
+    /// (by name) at (1, 1), (2, 1) and (3, 1), and highlight 2 at (1, 2).
+    fn battle(types: [&str; 3]) -> Battle {
         let mut c = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        for t in PanelType::ALL {
-            c.rules_mut().panels.types[t as usize].named = t != PanelType::Sea;
-        }
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(100));
         testing::on(&mut setup, &c);
         setup.settings = nettai_battle::BattleSettings::on(&c, c.stage_by_key(testing::LINK_BATTLE));
         let mut b = Battle::new(setup, std::sync::Arc::new(c));
         for (x, t) in (1..=3).zip(types) {
-            b.field.panels[1][x].display_kind = t;
+            b.field.panels[1][x].display_kind = testing::panel(t);
         }
         b.field.panels[2][1].highlight = 2;
         for row in &mut b.field.panels[1..=3] {
@@ -472,17 +465,17 @@ mod tests {
     /// (a match plays one game: nothing is borrowed from another's field).
     #[test]
     fn a_panel_the_field_doesnt_draw_is_a_tinted_normal_panel() {
-        let b = battle([PanelType::Sea, PanelType::Lava, PanelType::Normal]);
+        let b = battle(["sea", "lava", "normal"]);
         let c = &b.content;
         // The field draws every type but the sea and lava, and one
         // highlight.
-        let own_types: Vec<PanelType> = PanelType::ALL.into_iter().filter(|t| !matches!(t, PanelType::Sea | PanelType::Lava)).collect();
+        let own_types: Vec<&str> = c.rules().panels.names.iter().map(String::as_str).filter(|t| !matches!(*t, "sea" | "lava")).collect();
         let a = Bundle { field: field(&own_types, 1, [RED, 0]), ..Bundle::default() };
         let packs = Packs::one(&a);
         let pack = packs.game_id(c);
         let art = FieldArt::of(c, &packs);
-        assert_eq!(art.panel(PanelType::Normal), Art::Field(pack));
-        assert_eq!((art.panel(PanelType::Sea), art.panel(PanelType::Lava)), (Art::Tint, Art::Tint));
+        assert_eq!(art.panel(testing::panel("normal")), Art::Field(pack));
+        assert_eq!((art.panel(testing::panel("sea")), art.panel(testing::panel("lava"))), (Art::Tint, Art::Tint));
         assert_eq!((art.highlight(1), art.highlight(2)), (Art::Field(pack), Art::Tint));
 
         let stage = Stage::new(&packs, c, None, StageClock::default());

@@ -299,8 +299,8 @@ fn a_exe5_match_plays() {
 fn a_exe4_navi_of_light_closes_a_hole() {
     use nettai_battle::Battle;
     use nettai_battle::battle::battle_flags;
-    use nettai_battle::field::PanelType;
     let content = exe4_content();
+    let hole = content.rules().panels.named("hole").expect("EXE4's hole");
     let holes_closed = |karma: Option<i64>| {
         let mut m = crate::pick::live(&content, "exe4", 3, None).unwrap();
         if let Some(k) = karma {
@@ -313,10 +313,10 @@ fn a_exe4_navi_of_light_closes_a_hole() {
                 b.player(0).filter(|&r| b.objects.get(r).collision.is_some())
             })
             .expect("side 0's navi, with its collision data");
-        let holes = |b: &Battle| b.field.panels.iter().flatten().filter(|p| p.kind == PanelType::Hole).count();
+        let holes = |b: &Battle| b.field.panels.iter().flatten().filter(|p| p.kind == hole).count();
         for y in 1..=3 {
             for x in 1..=3 {
-                b.set_panel_type(x, y, PanelType::Hole);
+                b.set_panel_type(x, y, hole);
             }
         }
         let before = holes(&b);

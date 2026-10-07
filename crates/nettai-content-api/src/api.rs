@@ -84,29 +84,6 @@ impl Shadow {
     pub const ALL: [Shadow; 3] = [Shadow::Hidden, Shadow::Ground, Shadow::WithSprite];
 }
 
-/// Panel types by name, in the engine's order (the type number is the
-/// index).
-pub const PANEL_TYPES: [&str; 18] = [
-    "missing",
-    "broken",
-    "normal",
-    "cracked",
-    "poison",
-    "holy",
-    "grass",
-    "ice",
-    "volcano",
-    "road_up",
-    "road_down",
-    "road_left",
-    "road_right",
-    "metal",
-    "lava",
-    "sea",
-    "pitfall",
-    "hole",
-];
-
 /// Actor types by name (an actor record's type).
 pub const ACTOR_TYPES: [&str; 3] = ["virus", "navi", "player"];
 /// A navi's barrier as content sees it (CollisionData+0x06): none, up (any
@@ -1105,7 +1082,7 @@ pub struct AfterimageSpec {
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
-    /// Index into [`PANEL_TYPES`].
+    /// Its type: the game's number of it (`panel_type_name` names it).
     pub kind: u8,
     /// Its owner now, and at the start of the round.
     pub alliance: u8,
@@ -1557,7 +1534,12 @@ pub trait CoreApi {
     fn set_column_timer(&mut self, x: u8, ticks: u16);
     /// `object_setPanelAlliance`.
     fn set_panel_alliance(&mut self, p: PanelPos, side: u8);
-    /// `_object_setPanelType` (an index into [`PANEL_TYPES`]).
+    /// The game's number of the panel type it names `name` (its panel
+    /// rules' `numbers`), if it has one.
+    fn panel_type_named(&self, name: &str) -> Option<u8>;
+    /// The name of the game's panel type numbered `kind`.
+    fn panel_type_name(&self, kind: u8) -> String;
+    /// `_object_setPanelType` (`kind` the game's number of the type).
     fn set_panel_type(&mut self, p: PanelPos, kind: u8);
     /// `object_crackPanel`: crack a solid panel, or break a cracked,
     /// unoccupied one.
@@ -1621,7 +1603,7 @@ pub trait CoreApi {
     /// was solid.
     fn poison_panel(&mut self, p: PanelPos) -> bool;
     /// `object_setPanelTypeBlink`: this frame the panel is drawn as type
-    /// `kind` (an index into [`PANEL_TYPES`]) of side `side` (drawn only).
+    /// `kind` (the game's number of the type) of side `side` (drawn only).
     fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8);
     /// `object_breakPanel_dup1`: break a solid panel, or crack it when
     /// something stands on it; true only when it broke.
