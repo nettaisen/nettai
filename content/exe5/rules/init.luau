@@ -51,16 +51,16 @@ local AI: StateSchema = {
 local state: StateSchema = {
     -- Soul Unison (./souls): AIData +0x0F, the soul's turns left (0xFF: none to count), and Chaos Unison; the turn's
     -- arm chip (the transform record's +6; none: its 0xFFFF).
-    turns = "u8",
+    turns = schema.role("form_offer.turns", "u8"),
     chaos = "bool",
     arm_chip = "chip",
     -- The custom screen's (./souls/custom.luau): the round's souls given, the soul button's offer, the soul's
     -- choice's step.
     souls_used = "u32",
-    offer = "form",
-    offer_chaos = "bool",
-    unite_step = "u8",
-    unite_count = "u8",
+    offer = schema.role("form_offer.form", "form"),
+    offer_chaos = schema.role("form_offer.alternate", "bool"),
+    unite_step = schema.role("offer_flight.step", "u8"),
+    unite_count = schema.role("offer_flight.count", "u8"),
     -- The NaviCust's emotion-swing bug (./emotion): AIData +0x3A (ticks toward the next swing) and +0x0B (the
     -- emotion last swung to) of each navi of the player's kind, by its slot on its side's list of alive actors.
     swing_ticks = "u16[4]",
