@@ -8,7 +8,10 @@
 -- one pixel up and a panel further ahead, and ends its columns early
 -- (their timers to 1) once its user clears that slot.
 
+local collision = require("../../rules/collision")
+local regions = require("@exelib/regions")
 local slot = require("@exelib/slot")
+local sparks = require("../../lib/sparks")
 local thunder_column = require("./column")
 
 local doll = {}
@@ -36,6 +39,18 @@ local function user_slot(me: Object): Slot
     return s.slot
 end
 
+-- Its columns' variant (`byte_80D6914`'s row 0): a plain hit, on its
+-- panel, staggering, with the elec spark.
+local PLAIN = thunder_column.variant {
+    collision = { is = collision.attack, hits = collision.hits_navis },
+    spark = sparks.elec,
+    region = regions.single,
+    hit_mod = 3,
+    status = nil,
+    bug = 0,
+    bug_arg = 0,
+}
+
 -- `sub_80D584E`: on its first tick, a column on each panel of its row
 -- from its own to the edge.
 local function strike(me: Object)
@@ -53,7 +68,7 @@ local function strike(me: Object)
             x,
             me.panel_y,
             me.element,
-            thunder_column.plain,
+            PLAIN,
             me.damage + me.stamina * 0x10000,
             me,
             link
