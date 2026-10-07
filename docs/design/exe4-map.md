@@ -811,11 +811,15 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
 19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
     5, 6, 7: rocks and the others, 0x080FC138's actor lists) and panel type 11. Port the obstacles, then generate them.
-20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one) into the
-    first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). The engine's pick draws RNG1 then RNG2
-    (link_pick's docs): EXE4 draws RNG2 twice. Shape: `link_pick.rng = { stage = "rng2", background = "rng2" }`.
-    Placeholder: `link_pick.stages` leaves out the waiting stages (so the pick's odds differ) and `backgrounds` is
-    empty.
+20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
+    battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
+    set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
+    24, by their names), `first_round_stages` (a random match is a triple battle's: every round among the first 0x60).
+    No RNG field: nettai picks a match's places before the battle with its own generator (docs/frontend.md §2), so
+    only the odds are the game's, which the lists state. a95f's sweep (1,000 seeds, tools/chiplab/gen_exe4.py
+    `STAGES`) drew from all 96 records: no panel type 11, no obstacle but the boulder (attack object #0x6E) and #0x76.
+    So `stages` must list all 96 records, each working: the 34 waiting ones (actor kinds 3, 5, 6 and 7) wait for
+    those two obstacles (item 19); until then the list leaves them out and the odds differ.
 21. **Done** (backgrounds' names). The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else
     the map's (0x08085BAC, its table at the literal 0x08085BCC, default 3). The 22 that maps draw are named for their
     areas, by the menu's names (tools/backgrounds: names.tsv, areas.py exe4; docs/frontend.md §1 has the table). No
