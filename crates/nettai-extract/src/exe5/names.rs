@@ -14,12 +14,9 @@ pub(crate) fn asset_names() -> nettai_content::names::AssetNames {
             .iter()
             .map(|(k, &v)| (v, k.clone()))
             .collect(),
-        backgrounds: c
-            .assets
-            .backgrounds
-            .iter()
-            .map(|(k, &v)| (v, k.clone()))
-            .collect(),
+        // (A background of several numbers under its first: the others are
+        // the same, `graphics::backgrounds`.)
+        backgrounds: c.background_names(),
         mugshots: c
             .assets
             .mugshots
