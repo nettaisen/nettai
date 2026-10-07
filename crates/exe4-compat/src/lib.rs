@@ -5,6 +5,7 @@
 //! - [`Compat`]: the tables, content key to the original's numbers: the
 //!   chips' ids, the names the extractor writes EXE4's assets under, the
 //!   text encodings. [`Compat::exe4`] is this repository's, built in.
+//! - [`save`]: an EXE4 save file, and what a player's setup takes of it.
 //!
 //! The codecs of EXE4's records, the recordings' decode and the save import
 //! come with the port (docs/design/exe4-map.md §13). The verification
@@ -13,6 +14,8 @@
 //! Keys: the tables are keyed by EXE4's ids, local to the game (`cannon`),
 //! as content writes them (docs/design/content-model-v2.md §4.0). The engine
 //! never reads any of it (a test guards it).
+
+pub mod save;
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
