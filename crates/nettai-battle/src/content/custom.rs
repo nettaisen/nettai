@@ -184,15 +184,19 @@ pub struct CustomScreenLayout {
     /// the cursor a frame further on); else after them (EXE6's
     /// `sub_8026CCC`). Presentation.
     pub frame_counts_first: bool,
-    /// R's description and L's message are states of the choosing (EXE4's
-    /// selection states 0x18 and 0x1C, 0x0801E430): each of their ticks
-    /// draws the last turns' block and counts the frame as the choosing does
-    /// (0x0801E3D8), and the tick one sees its chatbox closed goes back to
-    /// the state it came from and draws it (the Regular chip's frame and the
-    /// cursor: 0x08020A0A, 0x0801E412); else they are the screen's own
-    /// states, which draw only the emblem (EXE6's `sub_8026E4C`).
+    /// The screen's other states are states of the choosing (EXE4's
+    /// selection states, 0x0801E430: R's description 0x18, L's message 0x1C
+    /// and the rules' windows, Double Soul's choice 0x10): each of their
+    /// ticks draws the last turns' block and counts the frame as the
+    /// choosing does (0x0801E3D8), draws the emblem and the Regular chip's
+    /// frame after its step and then the state's own sprites (0x0801E3F2,
+    /// 0x0801E41E: a window's view from the tick it starts), and the tick
+    /// one gives way to the state it came from draws that state (its
+    /// cursor: 0x08020A0A, 0x0802095E, 0x0801E412); else they are the
+    /// screen's own states, the description and L's message drawing only
+    /// the emblem (EXE6's `sub_8026E4C`) and a window what it draws itself.
     /// Presentation.
-    pub description_in_choosing: bool,
+    pub states_in_choosing: bool,
     /// The chatbox's end clears the text's sprite tiles in video memory
     /// itself (EXE4's 0x0805393C zero-fills 0x06015700 with the buffers),
     /// which shows a frame before the box's first closing step, drawn
@@ -377,7 +381,7 @@ impl Default for CustomScreenLayout {
             fades_clear_at_ok: false,
             cursor_after_leaving: true,
             frame_counts_first: false,
-            description_in_choosing: false,
+            states_in_choosing: false,
             chatbox_end_clears_tiles: false,
             chatbox_character_ends_tick: false,
         }

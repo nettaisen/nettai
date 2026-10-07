@@ -328,12 +328,7 @@ pub fn no_field(content: &Content, field: &str) -> String {
 /// take no version. Tools go by the order: a version's place is its number
 /// in a navi's stats (`crate::version_byte`).
 pub fn versions(content: &Content) -> &[String] {
-    let defs = &content.defs;
-    let (Some(field), Some(rules)) = (defs.fact_field(PlayerFact::Version), defs.rules()) else { return &[] };
-    match &defs.schema(rules.setup).field(field).ty {
-        FieldType::Enum(names) => names,
-        _ => &[],
-    }
+    content.defs.versions()
 }
 
 /// How many forms a side's form list has room for (the engine's form list

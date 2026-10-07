@@ -100,6 +100,18 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         }
         return;
     }
+    // (A game with no transformation sequencer at a turn's start, EXE4's:
+    // the idle starts a revert asked for, the form's own, 0x080EEBB4.)
+    if !b.game_rules().flow.sequencer_at_turn_start
+        && ai(b, r).requests & request::REVERT_FORM != 0
+        && ai(b, r).status & status::FORM_CHANGE == 0
+        && let Some(revert) = form_of(b, r).revert
+    {
+        ai_mut(b, r).requests &= !request::REVERT_FORM;
+        ai_mut(b, r).status |= status::REVERTING_FORM;
+        leave_idle(b, r);
+        return set_attack(b, r, super::NaviAction::Content(revert), 0);
+    }
     start_specials(b, r);
     let side = b.objects.get(r).alliance as usize;
     // sub_802E4B8: a running special takes the navi over.

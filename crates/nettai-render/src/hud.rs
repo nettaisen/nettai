@@ -53,6 +53,9 @@ pub struct HudState {
     /// previous tick.
     early_window: bool,
     early_fight_ticks: u8,
+    /// The local navi was changing form the previous tick (EXE4's soul
+    /// change as the fight starts, which decides nothing).
+    changing_was: bool,
     mode_was: u8,
     icons_were: bool,
     /// The custom screen showed the form chosen there in the emotion window
@@ -192,14 +195,24 @@ impl HudState {
             let closing = b.round.mode == mode::CUSTOM && icons;
             let banner = fighting
                 && matches!(b.fight.state, fight::CUSTOM_REVERT | fight::CUSTOM_SEQUENCE | fight::SETUP | fight::START_BANNER);
+            // (A navi changing form as the fight starts, EXE4's soul change
+            // from its status routine, decides nothing until it is done:
+            // the task the screen's close started stays on through it and
+            // the tick after, 0x080EBA44; the next tick's decision sets the
+            // window.)
+            let changing = b.player(b.setup.local_side).is_some_and(|r| nettai_battle::kinds::player::changing_form(b, r));
+            let ended = self.changing_was && !changing;
             let undecided = fighting
                 && b.fight.state == fight::FIGHTING
                 && !b.chip_hud_for(b.setup.local_side).window
-                && self.early_fight_ticks < 4;
+                && (self.early_fight_ticks < 4 || changing || ended);
             self.early_window = closing || banner || undecided;
-            if undecided {
+            if ended {
+                self.early_fight_ticks = 4;
+            } else if undecided && !changing {
                 self.early_fight_ticks += 1;
             }
+            self.changing_was = changing;
         }
         (self.mode_was, self.icons_were) = (b.round.mode, icons);
         if crate::custom::screens_open(b) {
@@ -1036,9 +1049,9 @@ fn icon_parts<'a>(
 /// identity's `chip_icons_at` from its place on the screen (none while
 /// its place is off it), each chip in the hand from the next one on by
 /// its own icon, the next one in front and each after it two pixels up
-/// and two left, a bucket further back. (A Double Soul's soul chip as the
-/// next one, EXE4's chips 0x160 to 0x16F, shows no icon of its own there:
-/// no content has one yet, docs/design/exe4-map.md §18.)
+/// and two left, a bucket further back. A next chip that shows no icon
+/// there (its trait `no_icon_when_next`: EXE4's souls' chips, 0x0801502E)
+/// leaves the icons to the chips after it.
 fn own_icon_parts<'a>(
     b: &Battle,
     packs: &crate::packs::Packs<'a>,
@@ -1062,7 +1075,10 @@ fn own_icon_parts<'a>(
         return;
     };
     let hand = &b.hands[side as usize];
-    let chips: Vec<ChipHandle> = hand.ids.iter().skip(hand.cursor as usize).map_while(|c| *c).collect();
+    let mut chips: Vec<ChipHandle> = hand.ids.iter().skip(hand.cursor as usize).map_while(|c| *c).collect();
+    if chips.first().is_some_and(|&c| b.content.chip(c).traits.has(nettai_battle::content::ChipTraits::NO_ICON_WHEN_NEXT)) {
+        chips.remove(0);
+    }
     let count = chips.len();
     let (x0, y0) = (p.x + dx as i32, p.y + dy as i32);
     for (k, &chip) in chips.iter().enumerate() {

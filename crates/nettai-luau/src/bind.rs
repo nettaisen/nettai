@@ -2884,8 +2884,8 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             },
             _ => Err(mlua::Error::runtime(format!("navi_bug returns nil, \"edited\" or \"spared\", not a {}", v.type_name()))),
         },
-        // A button's chip.
-        HookCall::Rules { hook: RulesHook::ButtonChip, .. } => match bound.def(&v) {
+        // A button's chip, and the chip it puts in the hand.
+        HookCall::Rules { hook: RulesHook::ButtonChip | RulesHook::ButtonHandChip, .. } => match bound.def(&v) {
             _ if v.is_nil() => Ok(Value::Nil),
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
             _ => Err(mlua::Error::runtime(format!("a button's chip is nil or a chip definition, not a {}", v.type_name()))),
