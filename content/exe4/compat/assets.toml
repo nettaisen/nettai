@@ -68,6 +68,9 @@ charge-glow-a = "14-15"
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
 netbattle = 0x015  # a netbattle's music, which the fight's setup starts (the lab's flow/buster-duel, frame 130)
+winner-special = 0x018  # the winner's music in a special battle, battle flag 2 (0x080071F8)
+loser = 0x019  # a netbattle's loser's music, battle type 0x46 and on (0x0800727C)
+winner = 0x01e  # the winner's music (0x080071F8)
 description-open = 0x066  # R's description on the custom screen (0x080203C0)
 unselect-68 = 0x068
 refused = 0x069  # what the custom screen can't pick or take back, a soul it can't give (0x08020386, 0x08020634)
