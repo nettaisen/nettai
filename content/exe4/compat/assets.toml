@@ -54,6 +54,7 @@ geyser = "0c-25"
 meta-gel = "0c-26"
 wind-rack = "0c-27"
 swirl = "0c-28"
+lance = "0c-2b"  # the lances: attack 0x4F (0x080D73F8), Lance's and DrkLance's (action 0x20's variant 6)
 gust = "0c-2e"
 shuriken = "0c-2f"
 anubis = "0c-30"
