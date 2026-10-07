@@ -1,9 +1,9 @@
 --!strict
 -- JunkMan, the navi of EXE4's JunkMan chips (EXE4's actor object #0x48, 0x080C95E8: EXE4's own, on the navi chips'
--- template), whom the shared navi chip controller (objects/navi_chip_controller, its entry 0x14) brings. He fades in on
--- his user's panel (and goes if it isn't solid, a tick later), raises the poltergeist (@exelib/poltergeist, EXE4's
--- effect object #0x73: every obstacle on the field thrown at the nearest panel holding the other side's navi in front
--- of it) and waits until it is done; 21 ticks; and goes.
+-- template), and each chip's controller, which brings him. He fades in on his user's panel (and goes if it isn't solid,
+-- a tick later), raises the poltergeist (@exelib/poltergeist, EXE4's effect object #0x73: every obstacle on the field
+-- thrown at the nearest panel holding the other side's navi in front of it) and waits until it is done; 21 ticks; and
+-- goes.
 
 local common = require("@exelib/poltergeist")
 local navi_chips = require("../../lib/navi_chips")
@@ -13,8 +13,8 @@ local junkman = {}
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x64).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS): his palette.
-    level: number,
+    -- His chip's palette.
+    palette: number,
     -- The gray of his color shader, fading in (+0x19).
     gray: number,
     -- The poltergeist is out (+0x0C, the flag it was handed).
@@ -23,8 +23,6 @@ export type State = {
 
 local SPRITE = asset.sprite("junkman")
 local SOUND_APPEAR = asset.sound("appear")
--- His palettes a variant (0x0800B9B1's entry 6).
-local PALETTES = 2
 local FADE_GRAY = 0x1F
 local SOLID = 0x10
 
@@ -146,7 +144,7 @@ local function tick(me: Object)
     me.sprite.color_shader = (me.state :: State).gray * 0x421
 end
 
--- 0x080C9608: on his panel with his shadow, facing his side's way, his palette by the level, faded out; his height the
+-- 0x080C9608: on his panel with his shadow, facing his side's way, in his chip's palette, faded out; his height the
 -- spawner's.
 local function init(me: Object)
     local s = me.state :: State
@@ -157,7 +155,7 @@ local function init(me: Object)
     sprite:set_animation(0)
     me:set_coordinates_from_panel()
     sprite:set_flip(me.alliance)
-    sprite.palette = navi_chips.palette(PALETTES, s.level)
+    sprite.palette = s.palette
     sprite.color_shader = 0x7FFF
     me.visible = true
     me:set_lifecycle("update")
@@ -167,7 +165,7 @@ end
 junkman.kind = new.kind {
     id = "junkman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8", gray = "u8", busy = "bool" },
+    state = { controller = "object", palette = "u8", gray = "u8", busy = "bool" },
     -- 0x080C95E8.
     update = function(me: Object)
         local l = me.lifecycle
@@ -186,9 +184,9 @@ junkman.kind = new.kind {
     end,
 }
 
--- 0x080C97EE: JunkMan for the controller's user, with the damage plus the bonus, of the chip's level. (His position is
--- the spawner's registers: his panel, the element and his side, of which his init keeps the height.)
-function junkman.spawn(controller: Object, user: Object, damage: number): Object?
+-- 0x080C97EE: JunkMan for the controller's user, with the damage plus the bonus, in the chip's palette. (His position
+-- is the spawner's registers: his panel, the element and his side, of which his init keeps the height.)
+function junkman.spawn(controller: Object, user: Object, damage: number, palette: number): Object?
     local x, y = controller.panel_x, controller.panel_y
     local o = battle.spawn(junkman.kind, Vec3.new(x + y * 0x100, controller.element, user.alliance))
     if not o then
@@ -199,8 +197,21 @@ function junkman.spawn(controller: Object, user: Object, damage: number): Object
     o:set_damage_word(damage)
     local s = o.state :: State
     s.controller = controller
-    s.level = (controller.state :: NaviChipControllerState).level
+    s.palette = palette
     return o
 end
 
-return junkman
+-- What each JunkMan chip states for its own controller: the controller's id (the original's effect object #0x42,
+-- 0x080E6A18, for all six navis' chips: compat maps each to it) and his palette (0x0800B950 by the chip's level: two
+-- palettes a variant).
+export type ChipSpec = { id: string, palette: number }
+
+-- A JunkMan chip's controller: the user warps out, JunkMan, the user warps back in.
+local function controller(chip: ChipSpec): NaviChipController
+    local function spawn(c: Object, user: Object, damage: number): Object?
+        return junkman.spawn(c, user, damage, chip.palette)
+    end
+    return navi_chips.controller { id = chip.id, name = "JunkMan", spawn = spawn, steps = navi_chips.SHARED }
+end
+
+return { controller = controller }
