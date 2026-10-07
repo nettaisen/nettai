@@ -92,10 +92,70 @@ buster-blank = 0x1c0  # the buster's blank shot (0x080EB39E)
 [backgrounds]
 comp = 0x03  # the default: a map the picker 0x08085BAC doesn't list (0x08085BC6), every netbattle's settings (0x080FC138's records' +5)
 
-# Banners: the banner block's numbers (0x02037CE0's +1), as the lab's recordings show them (the pictures
-# aren't extracted yet: docs/design/exe4-map.md §18).
+# Banners: the banner block's numbers (0x02037CE0's +1), by the banner table's records (0x08016C04, 0x0801617E): EXE6's
+# names for EXE6's records in EXE6's places (0x00 to 0x38), then EXE4's navis' wins and deletions (the navi banner
+# table 0x08008548's), each named for its words.
 [banners]
+battle-start = 0x00
 enemy-deleted = 0x04  # a netbattle's winner's console (the lab's flow/buster-duel)
-megaman-deleted = 0x08  # a netbattle's loser's console (flow/buster-duel-bluemoon); MegaMan's entry of the navi banner table 0x08008548
+megaman-deleted = 0x08  # a netbattle's loser's console (flow/buster-duel-bluemoon); MegaMan's entry of 0x08008548
 turn-start = 0x0c  # each turn's start (flow/buster-duel, frame 327)
-battle-start = 0x30  # a round's start, before its first custom screen (flow/buster-duel, frame 195)
+final-turn = 0x10
+you-win = 0x14
+you-lose = 0x18
+draw = 0x1c
+battle-number = 0x20
+program-advance = 0x24
+hit-damage-judge = 0x28
+flag-deleted = 0x2c
+battle-number-start = 0x30  # a round's start, before its first custom screen (flow/buster-duel, frame 195)
+program-advance-empty = 0x34
+megaman-win = 0x38
+roll-win = 0x3c
+gutsman-win = 0x40
+windman-win = 0x44
+searchman-win = 0x48
+fireman-win = 0x4c
+thunderman-win = 0x50
+protoman-win = 0x54
+numberman-win = 0x58
+metalman-win = 0x5c
+junkman-win = 0x60
+aquaman-win = 0x64
+woodman-win = 0x68
+normalnavi-win = 0x6c
+healnavi-win = 0x70
+roll-deleted = 0x74
+gutsman-deleted = 0x78
+windman-deleted = 0x7c
+searchman-deleted = 0x80
+fireman-deleted = 0x84
+thunderman-deleted = 0x88
+protoman-deleted = 0x8c
+numberman-deleted = 0x90
+metalman-deleted = 0x94
+junkman-deleted = 0x98
+aquaman-deleted = 0x9c
+woodman-deleted = 0xa0
+
+# Mugshots: the emotion window's faces (0x08014B78), by the number the extractor gives them (its exe4/hud.rs): MegaMan's
+# five (each brings its box) and Red Sun's six souls, in their own palettes (the face table's eleven pictures), then
+# Blue Moon's six souls (Blue Moon's ROM's same table).
+[mugshots]
+megaman = 0x00
+megaman-angry = 0x01
+megaman-worried = 0x02
+megaman-full-synchro = 0x03
+megaman-dark = 0x04
+rollsoul = 0x05
+gutssoul = 0x06
+windsoul = 0x07
+searchsoul = 0x08
+firesoul = 0x09
+thundersoul = 0x0a
+protosoul = 0x0b
+numbersoul = 0x0c
+metalsoul = 0x0d
+junksoul = 0x0e
+aquasoul = 0x0f
+woodsoul = 0x10

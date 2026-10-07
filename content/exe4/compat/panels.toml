@@ -1,0 +1,63 @@
+# EXE4's panel types by number, written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs:
+# the panel flag word each has (the table at 0x0800A3A8) and the engine's panel type it is, by the name
+# content/exe4/rules/panels.luau gives that number (none for type 11: its stages wait). The panel blocks the
+# extractor writes are by these numbers (0x08706640: 6 * type + 3 * owner + row - 1), each drawn as its engine type.
+# What types 5, 10 and 11 are is docs/design/exe4-map.md §18 item 12's.
+
+[types.0]
+name = "missing"
+flags = 0x18000
+engine = "missing"
+
+[types.1]
+name = "broken"
+flags = 0x14000
+engine = "broken"
+
+[types.2]
+name = "normal"
+flags = 0x10010
+engine = "normal"
+
+[types.3]
+name = "cracked"
+flags = 0x10050
+engine = "cracked"
+
+[types.4]
+name = "poison"
+flags = 0x10110
+engine = "poison"
+
+[types.5]
+name = "sea"
+flags = 0x30010
+engine = "sea"
+
+[types.6]
+name = "grass"
+flags = 0x10410
+engine = "grass"
+
+[types.7]
+name = "ice"
+flags = 0x10810
+engine = "ice"
+
+[types.8]
+name = "lava"
+flags = 0x11010
+engine = "lava"
+
+[types.9]
+name = "holy"
+flags = 0x12010
+engine = "holy"
+
+[types.10]
+name = "metal"
+flags = 0x10210
+engine = "metal"
+
+[types.11]
+flags = 0x10010
