@@ -5,6 +5,8 @@ language = "en"
 
 [chips]
 "cannon" = { name = "Cannon", description = "Cannon to\nattack\n1 enemy" }
+"hicannon" = { name = "HiCannon", description = "Cannon to\nattack\n1 enemy" }
+"m-cannon" = { name = "M-Cannon", description = "Cannon to\nattack\n1 enemy" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
