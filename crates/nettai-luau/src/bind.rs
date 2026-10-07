@@ -479,6 +479,7 @@ impl UserData for Object {
         methods.add_method("drop_status_visuals", |_, this, ()| with(|api, _| api.drop_status_visuals(this.0).map_err(api_error)));
         methods.add_method("drop_chip", |_, this, ()| with(|api, _| api.drop_chip(this.0).map_err(api_error)));
         methods.add_method("drop_alive_count", |_, this, ()| with(|api, _| api.drop_alive_count(this.0).map_err(api_error)));
+        methods.add_method("burn_on_panel", |_, this, ()| with(|api, _| api.burn_on_panel(this.0).map_err(api_error)));
         methods.add_method("drop_barrier", |_, this, ()| with(|api, _| api.drop_barrier(this.0).map_err(api_error)));
         methods.add_method("leave", |_, this, ()| with(|api, _| api.leave(this.0).map_err(api_error)));
         methods.add_method("can_stand_any_side", |_, this, (x, y): (LuaValue, LuaValue)| {
@@ -1760,6 +1761,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "lose_round", |_, side: u8| with(|api, _| {
+        api.lose_round(side & 1);
+        Ok(())
+    }));
     lib_fn!(lua, t, "next_chip_damages", |_, user: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.next_chip_damages(user.0)))
     });

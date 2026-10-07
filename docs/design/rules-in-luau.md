@@ -2617,8 +2617,9 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
   poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
   EXE4's 0x23F5F (their sea's and metal's 0x20000 too).
-- **A panel type's `unbreakable`, `stops_slides` and `crumbles`, since EXE4's port**: nothing cracks or breaks it
-  (EXE4's metal, its flag 0x20000); a slide or a drag stops on it unless the body floats (EXE4's pitfall); it turns
+- **A panel type's `unbreakable`, `stops_slides`, `traps` and `crumbles`, since EXE4's port**: nothing cracks or breaks it
+  (EXE4's metal, its flag 0x20000); a slide or a drag (an obstacle's too) stops on it unless the body floats (EXE4's
+  pitfall); a body standing on it can't move unless it floats (`traps`: EXE4's pitfall); it turns
   normal after its ticks (EXE4's pitfall, 190), counted at once when a type change makes it, and on a stage's from
   the tick a grounded body stands on it. The engine's panel types `pitfall` and `hole` are EXE4's (the hole's closing
   is EXE4's rules', its `navi_intake`).
