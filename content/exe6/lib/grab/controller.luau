@@ -8,4 +8,9 @@
 local common = require("@exelib/grab/controller")
 local shot = require("./shot")
 
-return common.make { id = "grab/controller", shot = shot.kind }
+return common.make {
+    id = "grab/controller",
+    shot = shot.kind,
+    column = common.column_to_grab,
+    panel = common.edge_panel,
+}
