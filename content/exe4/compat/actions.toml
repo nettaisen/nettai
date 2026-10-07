@@ -10,12 +10,21 @@
 "megaman/buster/shot" = 0x08
 # The vulcans' (the chips' action 0x1F, 0x080EC842).
 "drkvulcn/action" = 0x1F
+"vulcan1/action" = 0x1F
+"vulcan2/action" = 0x1F
+"vulcan3/action" = 0x1F
 # The spreaders' (the chips' action 0x1E, 0x080EC760).
 "drkspred/action" = 0x1E
 # The throws' (the chips' action 0x09, 0x080EB3FE).
 "darkbomb/action" = 0x09
+"minibomb/action" = 0x09
 # The swords' (the chips' action 0x0A, 0x080EB51E).
 "drksword/action" = 0x0A
+"sword/action" = 0x0A
+"wideswrd/action" = 0x0A
+"longswrd/action" = 0x0A
+"wideblde/action" = 0x0A
+"longblde/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
 "hicannon/action" = 0x0B
@@ -31,6 +40,8 @@
 "lance/action" = 0x20
 "drklance/action" = 0x20
 "invalid/action" = 0x20
+"atk-10/action" = 0x20
+"atk-30/action" = 0x20
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D
