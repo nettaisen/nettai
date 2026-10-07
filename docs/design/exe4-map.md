@@ -603,8 +603,12 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     again (0x0801E1D6); EXE6's comes back when the message goes. Not ported: no defensive chip is ported yet.
   - 10 **"????"** for a defensive chip, at columns 6 and 26 (0x08015266): EXE6's.
   - 12 **"PAUSE"** at (100, 64), a row lower than EXE6's (the pack's `layout.pause`).
-  - 13 **"BUSY..."** at column 22, row 4 (0x08015624); 23 **"PLAN-B..."** in the same place (0x080158D8, started
-    by 0x08016AE8 from 0x08021138, the second screen's).
+  - 13 **"BUSY..."** at column 22, row 4 (0x08015624): on a console whose screen has sent its result, also while the
+    other player picks on a second screen it opened with L (both consoles are in the custom screen's sub-state then).
+    23 **"PLAN-B..."** in the same place (0x080158D8) is not a netbattle's: 0x08016AE8 starts it from 0x08021138, a
+    state of the system at 0x0203BC90 (0x08020F64, from the flow at 0x0800784C), which the levels gauge (16) and the
+    column marker (22) belong to: controller 2's (§18 item 49). The lab's custom/plan-b (side 1 opens a second
+    screen, side 0 traced) never sets draw bit 23.
   - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
   - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
     "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
@@ -620,12 +624,25 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   three-picks, flow/ko-side0, ko-double, ko-bluemoon, emotions/counter and full-synchro-hit. Together they cover
   the HP box (its colors through ko-side0's deletion), the custom gauge filling, the HP numbers, the chip icons
   (one and three chips), the chip name, damage and "×2", "PAUSE", "COUNTER HIT!" and the other player's used chip
-  (emotions/counter, frames 410 to 441). flow/ko-cannon and buster-side1 differ only in an explosion and in the
-  charge glow over the opponent, not the HUD.
-  Two pieces show 4 frames late in a replay: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the
-  full gauge's stripes and "L or R". The replay harness causes it: exe4-compat's screen takes the OK 4 frames late
-  (Round::screen_late), so the counter starts 4 later. Compared 4 frames apart, the full gauge's cells are exact on
-  all 10,509 full-gauge frames of flow/no-time-limit.
+  (emotions/counter, frames 410 to 441). So is every fight frame of flow/ko-cannon (a deletion's explosion and the
+  Cannon's hit spark share a depth bucket: EXE4 draws each pool by slot, 0x08003BA0, 0x08003ED4, 0x08004180, where
+  EXE6 walks the update lists: `effects.draw_order`), flow/buster, buster-tap, flinch-moving, flinch-shooting, move,
+  move-edge, move-held, custom/back, back-all, hand-of-seven, same-chip, run-message, run-message-b, run-message-ok,
+  and, with group B's charge glow fix (69fb65ad6), flow/charge, charge-held, charge-move, buster-side1,
+  buster-attack-max, buster-charge-max, buster-speed-max, buster-hold, flinch-charging. Every stage the content plays
+  (33 of the lab's 46 stages/*/stand: cracked, grass, holes, holy, ice, lava, normal, poison, type 5, type A, in
+  their layouts) is pixel-exact but for the full gauge's 4-frame shift below: the field, its panels by type and their
+  palette cycles. The other 13 wait on their obstacles (§18 item 19).
+  Two pieces show 4 frames late: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the full
+  gauge's stripes and "L or R". That is by design, not a replay fault: the engine's custom screen is part of the
+  shared simulation and acts on the link-delayed input every console has, where the original's local screen takes
+  its own joypad at once. The OK reaches it 4 frames later (Round::screen_late), so the counter they run on starts
+  4 frames later, in live play too. Compared 4 frames apart (verify tools/frontend-compare/offset-compare.py), the
+  full gauge's cells are exact on all 10,509 full-gauge frames of flow/no-time-limit.
+  The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
+  only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
+  clears the text a tick before the box closes and draws the cursor a frame sooner (group A's).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -1213,4 +1230,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
       seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
       item 16 reads EXE4's. With it, the damage judge: its numbers' values (0x0801642C, 0x08016408) and a recording
-      to compare.
+      to compare;
+    - the warning marker (0x0800843E: a 16x16 sprite at tile 0x360, its second frame at bit 3 of the frame counter, in
+      palette 13; 0x08008424 also sounds 0x79 every 16 frames), with the chips that show it: the gauge chips'
+      effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
+      The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
+      EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
