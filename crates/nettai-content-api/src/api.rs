@@ -1824,8 +1824,10 @@ pub trait CoreApi {
     /// `sub_8011450`: restart the navi's form overlay with it after an
     /// animation change.
     fn refresh_form_overlay(&mut self, o: ObjectRef);
-    /// `object_exitAttackState`: back to the idle action with animation 0.
-    fn exit_attack(&mut self, o: ObjectRef);
+    /// `object_exitAttackState`: back to the idle action with animation 0,
+    /// the attack's lockout handed on by the rules; with `keeps_lockout`,
+    /// none handed on (EXE4's 0x0800CA28).
+    fn exit_attack(&mut self, o: ObjectRef, keeps_lockout: bool);
 
     // ---- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5) ----
 

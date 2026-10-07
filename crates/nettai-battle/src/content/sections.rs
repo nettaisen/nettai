@@ -140,7 +140,7 @@ struct ReactionsSection {
     overlay_restart: super::rules::OverlayRestart,
     stance_counter: super::rules::StanceCounter,
     dead_player: super::rules::DeadPlayer,
-    attack_end_lockouts: bool,
+    attack_end_lockout: super::rules::AttackEndLockout,
     request_clears: super::rules::RequestClears,
 }
 
@@ -433,7 +433,7 @@ impl Stated {
                 overlay_restart: r.overlay_restart,
                 stance_counter: r.stance_counter,
                 dead_player: r.dead_player,
-                attack_end_lockouts: r.attack_end_lockouts,
+                attack_end_lockout: r.attack_end_lockout,
                 request_clears: r.request_clears,
             }),
             sine: Some(r.sine.clone()),
@@ -541,7 +541,7 @@ impl Stated {
             overlay_restart: reactions.overlay_restart,
             stance_counter: reactions.stance_counter,
             dead_player: reactions.dead_player,
-            attack_end_lockouts: reactions.attack_end_lockouts,
+            attack_end_lockout: reactions.attack_end_lockout,
             request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
             flow,

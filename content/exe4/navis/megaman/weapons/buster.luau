@@ -64,7 +64,8 @@ local function recover(me: Object, s: State)
     s.timer -= 1
     if s.timer < 0 then
         me.related1 = nil
-        me:exit_attack()
+        -- 0x080EB3D2: the end that keeps the lockouts (0x0800CA28).
+        me:exit_attack(true)
         return
     end
     if not me:can_move() then
@@ -75,7 +76,8 @@ local function recover(me: Object, s: State)
         return
     end
     me.related1 = nil
-    me:exit_attack()
+    -- 0x080EB3EC: so does the move's.
+    me:exit_attack(true)
     me:start_move(dir)
 end
 

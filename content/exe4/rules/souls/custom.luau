@@ -1,5 +1,6 @@
 --!strict
--- EXE4's custom screen as its rules answer the framework's hooks (docs/design/exe4-map.md §5): the hand's size.
+-- Double Soul's part of EXE4's custom screen, as its rules answer the framework's hooks (docs/design/exe4-map.md §5,
+-- as EXE5's rules/souls/custom): the hand's size, which a soul changes (Number Soul's ten, to port with the souls).
 
 local custom = {}
 

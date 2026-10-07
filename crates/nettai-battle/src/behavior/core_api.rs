@@ -2200,8 +2200,12 @@ impl CoreApi for Battle {
         kinds::player::refresh_form_overlay(self, o);
     }
 
-    fn exit_attack(&mut self, o: ObjectRef) {
-        kinds::player::exit_attack_state(self, o);
+    fn exit_attack(&mut self, o: ObjectRef, keeps_lockout: bool) {
+        if keeps_lockout {
+            kinds::player::exit_attack_state_keeping_lockout(self, o);
+        } else {
+            kinds::player::exit_attack_state(self, o);
+        }
     }
 
     fn clear_invulnerable(&mut self, o: ObjectRef) -> ApiResult<()> {

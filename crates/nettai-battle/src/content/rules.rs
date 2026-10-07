@@ -1516,13 +1516,10 @@ pub struct Rules {
     pub stance_counter: StanceCounter,
     /// What a deleted player's object does (the reactions section's).
     pub dead_player: DeadPlayer,
-    /// An attack's end hands its lockout on (`sub_801171C`: a chip's, an
-    /// attack of kind 2, to the chip lockout; the B+Back special's, kind
-    /// 3, to its cooldown): EXE6's, EXE5's. EXE4's end (0x0800CA28) hands
-    /// none on: its weapons and chips set the lockouts as they start
-    /// (Reflect's routine the special's cooldown, AIData +0x1A, 0x0800CFC4).
-    /// (The reactions section's.)
-    pub attack_end_lockouts: bool,
+    /// What an attack's end hands its lockout on to (the reactions
+    /// section's): see [`AttackEndLockout`]. (An end a navi's action asks to
+    /// keep the lockout, EXE4's 0x0800CA28, hands none on.)
+    pub attack_end_lockout: AttackEndLockout,
     /// What the ends of a navi's actions clear of its requests (the
     /// reactions section's).
     pub request_clears: RequestClears,
@@ -1659,6 +1656,19 @@ pub enum ReactionActions {
     /// height and counts no reaction (its pose and its end are the status
     /// section's `drag`).
     Plain,
+}
+
+/// What an attack's end hands its lockout (the attack's +5) on to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AttackEndLockout {
+    /// EXE6's and EXE5's (`sub_801171C`, 0x0800F2D0): by the attack's kind,
+    /// a chip's (kind 2) to the chip lockout, the B+Back special's (kind 3)
+    /// to its cooldown, any other's to none.
+    ByKind,
+    /// EXE4's (0x0800C9FC, its chips' and weapons' end): to the chip
+    /// lockout (AIData +0x3A) whatever the kind, a 0 clearing it.
+    ChipLockout,
 }
 
 /// A drag's pose and its end (the status section's `drag`).
