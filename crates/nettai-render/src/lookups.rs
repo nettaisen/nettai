@@ -487,6 +487,14 @@ fn banner_name(c: &Content, id: BannerId) -> String {
     }
 }
 
+/// A telop with no look to draw it in: its game's pack has no telop look
+/// of its own and its roles name no telop banner.
+pub fn telop_without_look(problems: &mut Problems) {
+    if problems.lookup(Lookup::TelopWithoutLook) {
+        problems.note("a telop has no look: the pack's HUD has no telop look and the roles name no telop banner".into());
+    }
+}
+
 /// A telop that names a chip the engine wasn't told (a dimming content
 /// starts itself without a `telop`).
 pub fn telop_unknown(problems: &mut Problems) {
