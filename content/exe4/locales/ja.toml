@@ -6,6 +6,9 @@ language = "ja"
 [chips]
 "cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "airshot" = { name = "エアシュート", description = "ヒットしたあいてを\n1マスおくへおす\nくうきほう" }
+"crakout" = { name = "クラックアウト", description = "パネルはかい攻撃!\n目の前の1マスを\nけしさってしまう" }
+"dublcrak" = { name = "ダブルクラック", description = "パネルはかい攻撃!\n前のよこ2マスを\nけしさってしまう" }
+"tripcrak" = { name = "トリプルクラック", description = "パネルはかい攻撃!\n前のたて3マスを\nけしさってしまう" }
 "hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "lance" = { name = "バンブーランス", description = "てきエリアの右はし\nたてれつにとつぜん\nたけやりが発生!" }

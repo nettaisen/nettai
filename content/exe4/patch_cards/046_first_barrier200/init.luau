@@ -2,7 +2,7 @@
 -- The patch card First Barrier200 (46, ファーストバリア200).
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
-local cards = require("../rules/patch_cards")
+local cards = require("../rules/patch_cards/cards")
 local barriers = require("../lib/barriers")
 
 local card: PatchCard = {
