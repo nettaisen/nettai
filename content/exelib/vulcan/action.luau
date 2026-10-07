@@ -1,13 +1,13 @@
 --!strict
 -- The Vulcans' action, as EXE5 and EXE6 share it (EXE6's action 0x17,
--- `sub_80EBF10`; EXE5's 0x19, 0x080EC5D0), of a game's `VulcanLook` (its
--- sound, vulcan, attachment kind and bullets' kind;
--- docs/engine/shot-chips.md §4): a burst of bullets (objects/bullet) from
+-- `sub_80EBF10`; EXE5's 0x19, 0x080EC5D0; EXE4's 0x1F, 0x080EC842), of a
+-- game's `VulcanLook` (its sound, vulcan, how the navi holds it, its
+-- bullets' kind and the navi's animations; docs/engine/shot-chips.md §4): a burst of bullets (objects/bullet) from
 -- the panel ahead, one every 11 ticks, each at a height the RNG picks. A
 -- bullet hits the first thing in its row and the panel behind it.
 
-local attachment = require("../attachment")
 local bullet = require("../bullet")
+local slot = require("../slot")
 
 local vulcan = {}
 
@@ -24,7 +24,6 @@ vulcan.STATE = { timer = "u16" }
 -- The phases, on the attack's step.
 local RAISE, FIRE, LOWER = 0x0, 0x4, 0x8
 
-local ANIM_HOLD, ANIM_FIRE = 0xA, 0xD
 -- Ticks between bullets (less one), and of the lowering.
 local INTERVAL, LOWER_TICKS = 10, 0xA
 -- The bullets' heights, by the RNG's draw (`dword_80EBFF0`), 16.16.
@@ -39,9 +38,9 @@ function vulcan.action(spec: VulcanSpec, look: VulcanLook): Action
     -- `sub_80EBF30`: raise the vulcan; 2 ticks.
     local function raise(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_animation(ANIM_HOLD)
+            me:set_animation(look.hold_anim)
             me:open_counter_window()
-            attachment.attach(look.attachment, me, spec.arm or VULCAN, "overlay")
+            look.hold(me, spec.arm or VULCAN, look.slot)
             me:set_status("using_action", true)
             me.step_init = 4
             s.timer = 1
@@ -58,11 +57,11 @@ function vulcan.action(spec: VulcanSpec, look: VulcanLook): Action
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
             me.attack_count = spec.shots
-            local arm = me.overlay
+            local arm = slot.held(me, look.slot)
             if arm then
                 arm.anim += 1
             end
-            me:set_animation(ANIM_FIRE)
+            me:set_animation(look.fire_anim)
             s.timer = 0
             me.step_init = 4
         end
@@ -86,11 +85,11 @@ function vulcan.action(spec: VulcanSpec, look: VulcanLook): Action
     -- `sub_80EBFF4`: lower the vulcan; 11 ticks, then back to idle.
     local function lower(me: Object, s: State)
         if me.step_init == 0 then
-            local arm = me.overlay
+            local arm = slot.held(me, look.slot)
             if arm then
                 arm.anim += 1
             end
-            me:set_animation(ANIM_HOLD)
+            me:set_animation(look.hold_anim)
             s.timer = LOWER_TICKS
             me.step_init = 4
         end
@@ -104,6 +103,7 @@ function vulcan.action(spec: VulcanSpec, look: VulcanLook): Action
     end
 
     return new.action {
+        id = spec.id,
         state = vulcan.STATE,
         args = spec,
         -- `sub_80EBF10`.

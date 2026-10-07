@@ -48,7 +48,7 @@ return {
     dead_player = "kept",
     -- An attack's end hands its lockout on: a chip's to the chip lockout, the B+Back special's to its cooldown
     -- (`sub_801171C`).
-    attack_end_lockouts = true,
+    attack_end_lockout = "by_kind",
     -- What the ends of a navi's actions clear of its requests besides the attacks' six: the mode-9 A press, at an
     -- attack's end (`sub_801171C`: 0x1000003F) and a paralysis's, a freeze's or a bubble's; at a flinch's and a
     -- drag's (0x1000043F) the anti-sword trigger too.

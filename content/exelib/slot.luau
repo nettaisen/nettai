@@ -27,6 +27,18 @@ function slot.occupied(owner: Object, which: Slot): boolean
     return owner.related1 ~= nil
 end
 
+-- What the owner holds in `which`, if anything.
+function slot.held(owner: Object, which: Slot): Object?
+    if which == "overlay" then
+        return owner.overlay
+    elseif which == "held" then
+        return (owner.state :: Holder).held
+    elseif which == "held2" then
+        return (owner.state :: Holder2).held2
+    end
+    return owner.related1
+end
+
 function slot.fill(owner: Object, which: Slot, o: Object?)
     if which == "overlay" then
         owner.overlay = o

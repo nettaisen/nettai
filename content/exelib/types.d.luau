@@ -27,6 +27,15 @@ export type SlashGame = {
     stays: ((side: number) -> boolean)?,
     -- The game's step (EXE5's by the attack's charge: lib/swords); none: EXE6's, by the chip's `step`.
     steps: SlashSteps?,
+    -- How the navi holds the blade in its related slot, in animation `anim` (none: @exelib/attachment's kind with
+    -- the blade's palette, EXE6's and EXE5's; EXE4's own attachment).
+    hold: ((me: Object, blade: AttachmentLook, anim: number) -> ())?,
+    -- The swing restarts a form's overlay with the navi (`sub_8011450`: EXE6's, EXE5's; none: true); EXE4's swing
+    -- (0x080EB5FA) calls nothing of the kind.
+    refreshes_form_overlay: boolean?,
+    -- The recovery clears the navi's moving flag and lets go of the overlay's too (EXE6's `sub_80EBBE2`, EXE5's;
+    -- none: true); EXE4's (0x080EB832) lets go of the blade alone.
+    recovery_clears_moving: boolean?,
 }
 
 -- A game's buster parts (@exelib/buster): the muzzle flash a shot leaves, the buster arm, an enemy navi's arm, the
@@ -80,8 +89,16 @@ export type CannonLook = ShooterLook & {
     afterimages: ((me: Object, spec: CannonSpec, flip: number) -> ())?,
 }
 
--- A game's throw (@exelib/bombs/throw): the wind-up's sound, and its attachment kind (what the navi holds).
-export type ThrowLook = { sound: Sound, attachment: Kind }
+-- A game's throw (@exelib/bombs/throw): the wind-up's sound; its attachment kind (what the navi holds) or how the
+-- navi holds it, in its related slot in animation `anim` (EXE4's own attachment, and nothing in hand for a navi of
+-- number 5 or 10); and whether the thrown thing leaves 4 pixels right of the navi whichever way it faces (EXE4's
+-- 0x080EB47A; none: ahead of it, EXE6's and EXE5's).
+export type ThrowLook = {
+    sound: Sound,
+    attachment: Kind,
+    hold: ((me: Object, held: AttachmentLook, anim: number) -> ())?,
+    releases_right: boolean?,
+}
 
 -- A game's thrown bomb (@exelib/bombs/bomb): its kind's key, its sprite, its landing's sound, the splash in a hole,
 -- the explosion over its blast and the puff when the battle ends.
@@ -115,11 +132,28 @@ export type WideShotSpec = { id: string?, wave: WaveVariant, waves: number, shoo
 
 -- What a chip's vulcan fires (@exelib/vulcan/action): how many bullets, and which; the vulcan the navi holds and the
 -- bullets' kind (none: the game's).
-export type VulcanSpec = { shots: number, bullet: BulletVariant, arm: AttachmentLook?, bullet_kind: Kind? }
+export type VulcanSpec = {
+    -- The action's key when no chip definition holds it (its compat key).
+    id: string?,
+    shots: number,
+    bullet: BulletVariant,
+    arm: AttachmentLook?,
+    bullet_kind: Kind?,
+}
 
--- A game's vulcans (@exelib/vulcan/action): the shot's sound, the vulcan the navi holds, its attachment kind and its
--- bullets' kind.
-export type VulcanLook = { sound: Sound, arm: AttachmentLook, attachment: Kind, bullet_kind: Kind }
+-- A game's vulcans (@exelib/vulcan/action): the shot's sound, the vulcan the navi holds, how it holds it and where
+-- (EXE6's and EXE5's @exelib/attachment kind in the overlay; EXE4's own in the related slot, its animation three
+-- times the navi's number), its bullets' kind, and the navi's animations as it holds the vulcan and as it fires
+-- (EXE6's and EXE5's 0xA and 0xD; EXE4's 13 and 17).
+export type VulcanLook = {
+    sound: Sound,
+    arm: AttachmentLook,
+    hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
+    slot: Slot,
+    bullet_kind: Kind,
+    hold_anim: number,
+    fire_anim: number,
+}
 
 -- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
 -- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
@@ -253,14 +287,16 @@ export type SpreaderSpec = {
     fire_after: number?,
 }
 
--- A game's spreaders (@exelib/spreadr/action): the shot's sound, the attachment kind (the gun's) and its bullets'
--- kind.
+-- A game's spreaders (@exelib/spreadr/action): the shot's sound, how the navi holds the gun and where (EXE6's and
+-- EXE5's @exelib/attachment kind in the overlay, its animation by the holder's AI index from the game's table,
+-- `attachment.holder`; EXE4's own in the related slot, its animation twice the navi's number), its bullets' kind,
+-- and the navi's animation as it fires (EXE6's and EXE5's 0xB; EXE4's 14).
 export type SpreaderLook = {
     sound: Sound,
-    attachment: Kind,
+    hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
+    slot: Slot,
     bullet_kind: Kind,
-    -- The gun's animation by its holder's AI index, from 0 (the game's table).
-    gun_anims: { number },
+    anim: number,
 }
 
 -- A trap chip's object (a "trap" record, @exelib/traps/controller): `set` spawns it for the controller and its user,
