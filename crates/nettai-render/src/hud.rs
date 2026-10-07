@@ -880,7 +880,7 @@ fn mugshot_parts<'a>(
     let tiles = match picture.and_then(|m| face_hud.mugshot_box(m.id)) {
         Some(own) => Some(own),
         None if face_hud.count_box.is_empty() => window_count(b, side as u8).and_then(|n| face_hud.counts.get(n as usize)),
-        None if beast_count_shown(b, side as u8) => hud.counts.get(face.count as usize).or(Some(&hud.count_box)),
+        None if b.looks[side & 1].window_count => hud.counts.get(face.count as usize).or(Some(&hud.count_box)),
         None => Some(&hud.count_box),
     };
     if let Some(tiles) = tiles {
@@ -917,29 +917,6 @@ fn note_true_face(b: &Battle, packs: &crate::packs::Packs, side: usize, owner: O
     let console = crate::custom::console_version(b, packs, b.setup.local_side);
     if owner.is_some_and(|v| v != console) && side == b.setup.local_side as usize & 1 {
         problems.known(x, 18, 48, 16, "the other game's face on this console (the true face)");
-    }
-}
-
-/// `sub_801D814`: whether the emotion window shows the Beast Out count
-/// (else its empty box): always in battle mode 5, never in mode 1, and
-/// otherwise while the console's save has Beast Out (event flag 0xE0:
-/// `PlayerFact::BeastOut`) and
-/// hasn't sealed it (0x163: a navi code received, the setup's level), in a
-/// battle without a gauge for each player (battle flag 0x40) that isn't
-/// random (effects 0x200000).
-fn beast_count_shown(b: &Battle, side: u8) -> bool {
-    use nettai_battle::battle::battle_flags;
-    use nettai_battle::setup::effects;
-    match b.round.mode_copy {
-        5 => true,
-        1 => false,
-        _ => {
-            b.fact(side, nettai_battle::content::PlayerFact::BeastOut).and_then(|f| f.flag()) == Some(true)
-                && !b.fact(side, nettai_battle::content::PlayerFact::Level)
-                    .is_some_and(|f| matches!(f.value(), nettai_content_api::FieldValue::OptionalU8(Some(_))))
-                && b.round.flags & battle_flags::OWN_GAUGES == 0
-                && b.setup.settings.effects & effects::RANDOM == 0
-        }
     }
 }
 
