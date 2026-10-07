@@ -2452,9 +2452,14 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.highlight_panel(p)))
     });
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    lib_fn!(lua, t, "poison", |_, (x, y): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "overwrite", |_, (x, y, kind, sound): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
         let p = panel(x, y)?;
-        with(|api, _| Ok(api.poison_panel(p)))
+        let kind = panel_type_arg(&kind)?;
+        let sound = match sound {
+            LuaValue::Nil => None,
+            s => Some(sound_arg(s)?),
+        };
+        with(|api, _| Ok(api.overwrite_panel(p, kind, sound)))
     });
     lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);

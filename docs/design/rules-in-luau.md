@@ -3322,3 +3322,19 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
   `timer`.
 - **API**: `field.timer`, `field.set_timer`, `field.cycle`, `field.grounded_body` (a body on the panel, none
   floating). A hook's call carries its own arguments now (`HookCall::Panel(PanelCall)`).
+
+### Panels into Luau, step 6: no type of a game's named in Rust (2026-10-07, branch exe4-engine)
+
+- **Holy's halving** is a type's `damage_shift` (holy's 1, every game's): the final damage, an object's total and a
+  barrier's absorbing divide by it, rounding up, by element.
+- **The poison op** is `field.overwrite(x, y, kind, sound)` (`object_panel_setPoison` and its kind): a solid panel
+  becomes the type in place, its flags keeping what the type mask doesn't own and taking the type's own (the
+  original's 0x114 for poison), no type change's hooks, with the sound content names. @exelib/geddon's quake writes
+  "poison" with its look's new `sounds.poison` (EXE6's and EXE5's makers pass "panel-poison"). Gone: `field.poison`,
+  the sound role `panel_poison`.
+- **TomahawkSoul's doubling** on grass is the form's `panel_doubles = { panel = "grass", chips = { family = "wood" } }`
+  (the boost `Panel`, its use turning the panel normal).
+- **Gone**: `PanelRules::is_named`. The engine names no panel type of a game's: it knows the roles (missing, broken,
+  cracked, normal), the types' data (flags, `expires`, `carries`, `carries_by_move`, `doubles`, `cleared_by`,
+  `damage_shift`, `unbreakable`, `traps`, `submerges`, `trail_sound`) and calls their hooks (`burn`, `stand`, `rest`,
+  `move_end`, `slide`, `hit`, `tick`, `changed`, `start`).

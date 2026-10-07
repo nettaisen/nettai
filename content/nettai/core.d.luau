@@ -1445,10 +1445,10 @@ declare field: {
     grounded_body: (x: number, y: number) -> boolean,
     -- Drawn only.
     highlight: (x: number, y: number) -> (),
-    -- Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    -- `object_panel_setPoison`: a solid panel turns to poison; whether it
-    -- was solid.
-    poison: (x: number, y: number) -> boolean,
+    -- `object_panel_setPoison` and its kind: a solid panel becomes the type
+    -- in place (its flags keeping what the type mask doesn't own, taking the
+    -- type's own), no type change's hooks, with `sound`; whether it was solid.
+    overwrite: (x: number, y: number, kind: PanelType, sound: Sound?) -> boolean,
     -- `object_setPanelTypeBlink`: this frame the panel is drawn as `kind`
     -- of `side` (drawn only).
     blink: (x: number, y: number, kind: PanelType, side: number) -> (),
@@ -2501,9 +2501,10 @@ export type FormDef = {
     -- chips), spending it; while it is primed nothing else doubles a chip.
     -- The status reset spends it (EXE5's GyroSoul).
     priming: { by: ChipMatch, sound: Sound, doubles: { ChipMatch } }?,
-    -- The damaging chips (not dimming chips) that deal double while it
-    -- stands on grass, which the use turns normal (EXE5's TomahawkSoul).
-    grass_doubles: ChipMatch?,
+    -- The panel type it doubles on, and the damaging chips (not dimming
+    -- chips) that deal double while it stands on one, which the use turns
+    -- normal (EXE5's TomahawkSoul's Wood chips on grass).
+    panel_doubles: { panel: PanelType, chips: ChipMatch }?,
     -- The ticks a damaging chip (not a dimming chip) used with the panel
     -- ahead not its side's keeps it invulnerable (EXE5's KnightSoul).
     front_guard: number?,
@@ -2838,7 +2839,6 @@ export type RolesSpec = {
     -- is for).
     sounds: {
         panel_crack: Sound?,
-        panel_poison: Sound?,
         own_hit: Sound?,
         hit: Sound?,
         auto_battle_hit: Sound?,

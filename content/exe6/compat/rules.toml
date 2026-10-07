@@ -136,7 +136,6 @@ confusion = 0x088
 recovery = 0x08A
 fade = 0x08E
 gauge_full = 0x08F
-panel_poison = 0x090
 program_advance_part = 0x091
 program_advance = 0x092
 invisible = 0x093
