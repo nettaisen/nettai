@@ -56,5 +56,8 @@
 "navi-chip-controller" = { pool = "effect", index = 0x42, scratch_position = true }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "deltaray/navi" = { pool = "actor", index = 0x3D }
+"serchman/navi" = { pool = "actor", index = 0x31 }
+"serchman/scope" = { pool = "effect", index = 0x43 }
+"serchman/shot" = { pool = "attack", index = 0x57 }
 # The follow effect (0x080E5B34): DeltaRay's burst.
 "follow-effect" = { pool = "effect", index = 0x31 }
