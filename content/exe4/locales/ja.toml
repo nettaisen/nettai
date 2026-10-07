@@ -48,6 +48,7 @@ language = "ja"
 "bubbler" = { name = "バブルショット", description = "ヒットすると\nおくの1マスに\nゆうばくする!" }
 "bub-v" = { name = "バブルブイ", description = "ヒットすると\nななめおく2マスに\nゆうばくする" }
 "bublside" = { name = "バブルサイド", description = "ヒットすると\n上下の2マスに\nゆうばくする" }
+"navi-20" = { name = "ナビ+20", description = "ナビチップの\nあとにえらぶと\n攻撃力を+20!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
