@@ -278,7 +278,7 @@
 "sprites.erase-drop" = "10-4d: navis/megaman/forms/erasecross_beast/erase_drop.luau"
 "sprites.erase-mark" = "10-50: chips/eraseman/mark.luau"
 "sprites.erase-ray" = "10-4c: navis/megaman/forms/erasecross/ray.luau"
-"sprites.eruption" = "10-24: the engine's"
+"sprites.eruption" = "10-24: a volcano panel's eruption (objects/eruption)"
 "sprites.explosion" = "14-00: effect 0x00 in objects/air-spin/air_spin.luau"
 "sprites.falling-rock" = "10-05: objects/falling_rock/init.luau"
 "sprites.falzar-feather" = "0c-67: attack 0xBC, the Falzar chip's feathers (chips/falzar/feather.luau)"
