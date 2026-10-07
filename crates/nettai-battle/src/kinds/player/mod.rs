@@ -393,7 +393,7 @@ pub fn emotion_name(b: &Battle, side: u8) -> &str {
 /// the register r1 the callers read next is left non-zero (EXE5's
 /// `applyDamageToPlayer` takes it for HP left, and shows the hit). An
 /// object without actor data is no navi: not asked, r1 left 0.
-fn hp_emptied(b: &mut Battle, r: ObjectRef) -> bool {
+pub(super) fn hp_emptied(b: &mut Battle, r: ObjectRef) -> bool {
     if b.objects.get(r).actor.is_none() {
         return false;
     }
