@@ -419,7 +419,7 @@ impl SoundRole {
     /// A sound some game hasn't: a game that leaves the role unfilled plays
     /// none there (EXE6's screen plays no hover sound; EXE4's pause, SELECT's
     /// hiding, L's message and a description's close play none: 0x080078F4,
-    /// 0x0801E59C, 0x080205C6, 0x080209F8).
+    /// 0x0801E59C, 0x080205C6, 0x080209F8; nor does its telop: 0x08008C2A).
     pub fn optional(self) -> bool {
         matches!(
             self,
@@ -428,6 +428,7 @@ impl SoundRole {
                 | SoundRole::CustomHide
                 | SoundRole::CustomRunMessage
                 | SoundRole::CustomDescriptionClose
+                | SoundRole::Telop
         )
     }
 }
