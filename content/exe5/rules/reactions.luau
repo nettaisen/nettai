@@ -36,6 +36,7 @@ return {
         elec_reaches_submerged = true,
         guard_breaks_to = 0x1002,
         guard_before_untouchable = false,
+        guard_marks_direction = true,
     },
     -- A move's direction in the collision record (0x0800CC92, EXE6's `sub_800E994`): up, down, back or forward by
     -- the side, other for a move of two panels or more right or down.
@@ -72,6 +73,8 @@ return {
     stance_counter = "at_once",
     -- A deleted player's object stays in its slot, as EXE6's.
     dead_player = "kept",
+    -- An attack's end hands its lockout on, as EXE6's (0x0800F2D0).
+    attack_end_lockouts = true,
     -- What the ends of a navi's actions clear of its requests besides the attacks' six: the Chaos Unison releases,
     -- at an attack's end (0x0800F2DA: 0x1803F); at a paralysis's, a flinch's and a drag's (0x080142A6, 0x080141D0,
     -- 0x080144E0: 0x1843F) the anti-sword trigger too. (A navi's own requests, GyroMan's take-off and landing,

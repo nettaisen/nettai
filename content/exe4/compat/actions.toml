@@ -10,3 +10,6 @@
 "cannon/action" = 0x0B
 # The charged shot.
 "megaman/charged-shot/action" = 0x24
+# The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
+"megaman/shield/action" = 0x25
+"megaman/reflect/action" = 0x25
