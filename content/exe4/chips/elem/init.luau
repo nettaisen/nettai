@@ -1,8 +1,9 @@
 --!strict
 -- ElemFlar, ElemIce, ElemLeaf, ElemSand and ElemDark (EXE4 chips 0x019, 0x01A, 0x07E, 0x080 and 0x0D5; their records at
 -- 0x080197EC + n * 0x2C): action 0x60 (./elem), its variants 0 to 4: three flames along the row for 60 ticks each,
--- five and paralyzing on the variant's panel (their parameters: 3 flames, 60 ticks; ElemDark's flames row 0x25
--- attacks, its flag 8).
+-- five and paralyzing on the chip's panel (their parameters: 3 flames, 60 ticks; ElemDark's flames row 0x25 attacks,
+-- its flag 8). The variants' rows: the panel (0x080EE3EF), the flames' palette (0x080EE3EA) and, ElemDark's, the poison
+-- its raging flames leave (0x080EE3F4).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local elem = require("@self/elem")
@@ -10,7 +11,14 @@ local elem = require("@self/elem")
 local COUNT, TICKS = 3, 60
 
 local elemflar: Chip = {
-    action = elem.action { id = "elemflar/action", variant = elem.variants.flare, count = COUNT, ticks = TICKS, flags = 0 },
+    action = elem.action {
+        id = "elemflar/action",
+        rages_on = "lava",
+        palette = 0,
+        count = COUNT,
+        ticks = TICKS,
+        flags = 0,
+    },
     codes = { "K", "N", "P" },
     element = "fire",
     family = "fire",
@@ -24,7 +32,14 @@ local elemflar: Chip = {
 }
 
 local elemice: Chip = {
-    action = elem.action { id = "elemice/action", variant = elem.variants.ice, count = COUNT, ticks = TICKS, flags = 0 },
+    action = elem.action {
+        id = "elemice/action",
+        rages_on = "ice",
+        palette = 1,
+        count = COUNT,
+        ticks = TICKS,
+        flags = 0,
+    },
     codes = { "H", "Q", "V" },
     element = "aqua",
     family = "aqua",
@@ -38,7 +53,14 @@ local elemice: Chip = {
 }
 
 local elemleaf: Chip = {
-    action = elem.action { id = "elemleaf/action", variant = elem.variants.leaf, count = COUNT, ticks = TICKS, flags = 0 },
+    action = elem.action {
+        id = "elemleaf/action",
+        rages_on = "grass",
+        palette = 2,
+        count = COUNT,
+        ticks = TICKS,
+        flags = 0,
+    },
     codes = { "C", "D", "I" },
     element = "wood",
     family = "wood",
@@ -52,7 +74,14 @@ local elemleaf: Chip = {
 }
 
 local elemsand: Chip = {
-    action = elem.action { id = "elemsand/action", variant = elem.variants.sand, count = COUNT, ticks = TICKS, flags = 0 },
+    action = elem.action {
+        id = "elemsand/action",
+        rages_on = "pitfall",
+        palette = 3,
+        count = COUNT,
+        ticks = TICKS,
+        flags = 0,
+    },
     codes = { "A", "L", "S", "*" },
     element = "null",
     family = "null",
@@ -66,7 +95,15 @@ local elemsand: Chip = {
 }
 
 local elemdark: Chip = {
-    action = elem.action { id = "elemdark/action", variant = elem.variants.dark, count = COUNT, ticks = TICKS, flags = 8 },
+    action = elem.action {
+        id = "elemdark/action",
+        rages_on = "poison",
+        palette = 4,
+        raging_leaves = "poison",
+        count = COUNT,
+        ticks = TICKS,
+        flags = 8,
+    },
     codes = { "E" },
     element = "null",
     family = "null",

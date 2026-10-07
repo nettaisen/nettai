@@ -1,12 +1,13 @@
 --!strict
 -- EXE4's Elem chips' action (0x60, 0x080EE2AE: EXE4's own), its variants 0 to 4 (ElemFlar, ElemIce, ElemLeaf, ElemSand,
--- ElemDark). The navi raises its claw (attachment row 0x2C, 0c-45, its animation three times the navi's number, in the
--- related slot) and sends a flame (attack object 9: @exelib/elemrage/flame, EXE5's ElemRage flame) along its row from
--- the panel ahead, 4 pixels back and 26 up (0x080EE3D0 by the navi's number: MegaMan's). On its variant's panel (lava,
--- ice, grass, sand, poison: 0x080EE3EF) its flames run five panels and paralyze (ElemDark's also leave poison:
--- 0x080EE3F4), and its own panel turns back to normal (the panel changer's row 11). The flames are its variant's
--- palette (0x080EE3EA). Its roar sounds every 16 ticks; 6 ticks in its claw's animation steps on; 30 ticks in, then 6
--- more with the claw stepped again, and it is back to idle.
+-- ElemDark), each chip's own (`elem.action`) with its variant's rows. The navi raises its claw (attachment row 0x2C,
+-- 0c-45, its animation three times the navi's number, in the related slot) and sends a flame (attack object 9:
+-- @exelib/elemrage/flame, EXE5's ElemRage flame) along its row from the panel ahead, 4 pixels back and 26 up
+-- (0x080EE3D0 by the navi's number: MegaMan's). On the chip's panel (lava, ice, grass, sand, poison: 0x080EE3EF) its
+-- flames run five panels and paralyze (each variant's flags 4, 0x080EE3F4; ElemDark's also leave poison, the high
+-- nibble's 4), and its own panel turns back to normal (the panel changer's row 11). The flames are the chip's palette
+-- (0x080EE3EA). Its roar sounds every 16 ticks; 6 ticks in its claw's animation steps on; 30 ticks in, then 6 more
+-- with the claw stepped again, and it is back to idle.
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
@@ -16,27 +17,12 @@ local sparks = require("../../lib/sparks")
 
 local elem = {}
 
--- EXE4's panel types by number (compat/panels.toml, 0x0800A3A8), for the type a flame leaves.
-local PANEL_TYPES: { [number]: PanelType } = {
-    [0] = "missing",
-    [1] = "broken",
-    [2] = "normal",
-    [3] = "cracked",
-    [4] = "poison",
-    [5] = "metal",
-    [6] = "grass",
-    [7] = "ice",
-    [8] = "lava",
-    [9] = "holy",
-    [10] = "pitfall",
-    [11] = "hole",
-}
-
--- The flame (attack object 9, 0x080CE2D8): EXE4's sprite (0c-0e) and panel types; a spreading flame sends none beside.
+-- The flame (attack object 9, 0x080CE2D8): EXE4's sprite (0c-0e); ElemDark's leave poison; a spreading flame sends none
+-- beside.
 local FLAME = flame_common.make_kind {
     id = "elem/flame",
     sprite = asset.sprite("rage-flame"),
-    panel_types = PANEL_TYPES,
+    leaves = { "poison" },
     spreads = false,
     attack = collision.attack,
     attack_480 = collision.attack_480,
@@ -62,19 +48,20 @@ local RESTORE = panel_changer.change {
 }
 local ANIM = 13
 local CLAW_STEP, LAST_TICK, RECOVER_TICKS = 6, 30, 5
--- A raging flame's count (0x080EE2F6).
-local RAGING_COUNT = 5
+-- A raging flame's count (0x080EE2F6) and the flag it takes (0x080EE3F4: 4, paralyzing, each variant's).
+local RAGING_COUNT, RAGING_FLAGS = 5, 4
 
--- A variant's panel, the flags its flames take on it, and their palette.
-export type ElemVariant = { panel: PanelType, flags: number, palette: number }
-
-elem.variants = {
-    flare = { panel = "lava", flags = 4, palette = 0 } :: ElemVariant,
-    ice = { panel = "ice", flags = 4, palette = 1 } :: ElemVariant,
-    leaf = { panel = "grass", flags = 4, palette = 2 } :: ElemVariant,
-    sand = { panel = "pitfall", flags = 4, palette = 3 } :: ElemVariant,
-    -- (Its flames also leave poison: Param4's high nibble 4.)
-    dark = { panel = "poison", flags = 0x44, palette = 4 } :: ElemVariant,
+-- A chip's Elem action: its key, the panel that rages it (0x080EE3EF), its flames' palette (0x080EE3EA) and the panel
+-- type its raging flames leave (0x080EE3F4's high nibble: ElemDark's poison), and its flames' count, time and flags
+-- (the record's parameters +0x10 to +0x13).
+type ElemSpec = {
+    id: string,
+    rages_on: PanelType,
+    palette: number,
+    raging_leaves: PanelType?,
+    count: number,
+    ticks: number,
+    flags: number,
 }
 
 type State = {
@@ -84,18 +71,17 @@ type State = {
     raged: boolean,
 }
 
--- The action of `variant`, its flames' count, time and flags (the record's parameters +0x10 to +0x13).
-function elem.action(spec: { id: string, variant: ElemVariant, count: number, ticks: number, flags: number }): Action
-    local v = spec.variant
-
+function elem.action(spec: ElemSpec): Action
     -- 0x080EE2CC: on its first tick the rage by the panel, the flame out, the claw raised; the roar every 16 ticks;
     -- the claw's step 6 ticks in; on after the 30th.
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
             local count, flags = spec.count, spec.flags
+            local leaves: PanelType? = nil
             local p = field.panel(me.panel_x, me.panel_y)
-            if p and p.kind == v.panel then
-                flags = bit32.bor(flags, v.flags)
+            if p and p.kind == spec.rages_on then
+                flags = bit32.bor(flags, RAGING_FLAGS)
+                leaves = spec.raging_leaves
                 count = RAGING_COUNT
                 panel_changer.spawn(me, me.panel_x, me.panel_y, RESTORE, nil)
             end
@@ -107,7 +93,8 @@ function elem.action(spec: { id: string, variant: ElemVariant, count: number, ti
                 ticks = spec.ticks,
                 offset = OFFSET,
                 flags = flags,
-                palette = v.palette,
+                leaves = leaves,
+                palette = spec.palette,
                 hit = false,
                 sent = false,
             }, damage)
