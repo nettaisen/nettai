@@ -300,8 +300,10 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
 /// keeps 1 HP), then the element-5 damage; at 0 HP request deletion
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
 fn apply_damage(b: &mut Battle, r: ObjectRef) {
-    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Gauge {
-        return apply_damage_shown_by_hp(b, r);
+    match b.game_rules().intake.hp_loss {
+        crate::content::HpLoss::Gauge => return apply_damage_shown_by_hp(b, r),
+        crate::content::HpLoss::HitDrainsGauge => return apply_damage_asking_at_zero(b, r),
+        crate::content::HpLoss::HpAlone => {}
     }
     let mut d = coll(b, r).acc.final_damage;
     let mut dead = false;
@@ -376,6 +378,59 @@ fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
         fell = b.objects.get(r).hp == 0;
     }
     if fell {
+        if switch_protected(b, r) {
+            ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
+        } else {
+            set_flag2(b, r, 1);
+        }
+    }
+    counter_and_mood(b, r);
+}
+
+/// EXE4's damage (its player's status block, 0x08013A48): the hit drains the
+/// side's gauge with the HP (0x0800AB9E: by the loss ×128) and shows (white,
+/// its sound) only with HP left; the element-5 damage takes the HP alone
+/// (0x0800AB92); at 0 HP, from either, the side's rules are asked
+/// (`hp_emptied`, 0x0800EBC8, which hold the navi at 1 HP themselves) and
+/// the navi falls unless they keep it. (Each console hears the hit's sound
+/// as its rules' `own_hit` or `hit`: EXE4's is one sound, 0x6B, for a navi
+/// whose NaviStats +0x26 isn't 1, as a netbattle's never are.) (Unported:
+/// 0x0800EE4C after the sound records the hit navi's panel into the hitter's
+/// side's records at 0x02037A90 and 0x02037C60, which nothing yet reads.)
+fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
+    let mut d = coll(b, r).acc.final_damage;
+    let mut left = true;
+    if d != 0 {
+        let a = ai_mut(b, r);
+        a.total_damage_taken = (a.total_damage_taken as u32 + d as u32).min(0xFFFF) as u16;
+        let hp = b.objects.get(r).hp;
+        if hp > 1 && flag1(b, r) & f1::UNDERSHIRT != 0 && hp <= d {
+            d = hp - 1;
+        }
+        let side = b.objects.get(r).alliance as usize & 1;
+        let s = &mut b.sides[side];
+        s.gauge = (s.gauge as u32).saturating_sub((d as u32) << 7) as u16;
+        let o = b.objects.get_mut(r);
+        o.hp = o.hp.saturating_sub(d);
+        if o.hp != 0 {
+            b.objects.sprite_mut(r).look.white = true;
+            let player = navi_record(b, r).actor_type == ActorType::Player;
+            let alliance = b.objects.get(r).alliance;
+            for side in 0..2 {
+                let own = player && side == alliance;
+                b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
+            }
+        } else {
+            left = false;
+        }
+    }
+    if left {
+        let d5 = coll(b, r).acc.element_damage[5];
+        let o = b.objects.get_mut(r);
+        o.hp = o.hp.saturating_sub(d5);
+        left = o.hp != 0;
+    }
+    if !left && !super::hp_emptied(b, r) {
         if switch_protected(b, r) {
             ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
         } else {
@@ -1322,5 +1377,37 @@ mod tests {
         // accumulator (poison, a panel's drain) any element's.
         assert!(!marked(WeakElementDamage, 0, [10, 10, 10, 10, 10, 0], 0));
         assert!(!marked(WeakElementDamage, 2, [0, 0, 0, 0, 0, 3], 0));
+    }
+
+    /// docs/design/exe4-map.md §18 item 7: EXE4's loss of HP (0x08013A48): a
+    /// hit drains the side's gauge with the HP and shows only with HP left;
+    /// the element-5 damage takes the HP alone; at 0 the navi falls (the test
+    /// content's rules keep none).
+    #[test]
+    fn exe4s_hit_drains_the_gauge_and_shows_with_hp_left() {
+        let after = |hp: u16, damage: u16, poison: u16| {
+            let mut c: Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            c.rules_mut().intake.hp_loss = crate::content::HpLoss::HitDrainsGauge;
+            let c = Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            testing::on(&mut setup, &c);
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            b.round.flags |= battle_flags::FIGHTING;
+            let r = b.player(1).unwrap();
+            b.objects.get_mut(r).hp = hp;
+            b.sides[1].gauge = 0x4000;
+            let hit = coll_mut(&mut b, r);
+            hit.acc.final_damage = damage;
+            hit.acc.element_damage[5] = poison;
+            apply_damage(&mut b, r);
+            (b.objects.get(r).hp, b.sides[1].gauge, b.objects.sprite(r).look.white, flag2(&b, r) & 1 != 0)
+        };
+        assert_eq!(after(100, 10, 0), (90, 0x4000 - 10 * 0x80, true, false));
+        assert_eq!(after(100, 0, 5), (95, 0x4000, false, false), "the element-5 damage drains no gauge");
+        assert_eq!(after(10, 10, 5), (0, 0x4000 - 10 * 0x80, false, true), "no hit shown at 0, no element-5 damage");
+        assert_eq!(after(5, 0, 5), (0, 0x4000, false, true));
     }
 }

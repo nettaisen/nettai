@@ -409,14 +409,15 @@ fn panel_hold(b: &mut Battle, r: ObjectRef, ticks: u16) {
 
 // ---- NaviCust bugs and traps ------------------------------------------------------
 
-/// `sub_8010230`: the NaviCust HP bug drains 1 HP every so many ticks
-/// (never below 1).
+/// `sub_8010230` (EXE4's 0x0800C164): the NaviCust HP bug drains 1 HP
+/// every so many ticks (never below 1), by the rule `hp_drain`: its period
+/// by the bug's level or the stat itself, and whether a pause holds it.
 fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
-    if b.is_dimmed() || b.paused || b.objects.get(r).hp <= 1 {
+    let rule = b.game_rules().hp_drain;
+    if b.is_dimmed() || (rule.stops_while_paused && b.paused) || b.objects.get(r).hp <= 1 {
         return;
     }
-    let level = stats(b, r).bugs.hp_drain as usize;
-    let period = *b.game_rules().hp_bug_periods.get(level).expect("HP bug level");
+    let period = rule.periods.period(stats(b, r).bugs.hp_drain);
     let a = ai_mut(b, r);
     if period != 0 {
         a.hp_drain_counter = a.hp_drain_counter.wrapping_add(1);
@@ -857,6 +858,35 @@ mod tests {
         let (mut b, r) = on_ice(testing::rules().ice, 3);
         slide_triggers(&mut b, r);
         assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0x10, 2));
+    }
+
+    /// docs/design/exe4-map.md §18 item 7: the HP bug drains by the rule:
+    /// EXE6's by level and held while paused, EXE4's every stat ticks
+    /// through a pause.
+    #[test]
+    fn the_hp_bug_drains_by_the_rule() {
+        use crate::content::{DrainPeriods, HpDrainRule, StatIsPeriod};
+        let lost = |rule: Option<HpDrainRule>, paused: bool| {
+            let (mut b, r) = on_ice(testing::rules().ice, 0);
+            if let Some(rule) = rule {
+                let mut c = (*b.content).clone();
+                c.rules_mut().hp_drain = rule;
+                b.content = Arc::new(c);
+            }
+            b.paused = paused;
+            let side = b.objects.get(r).alliance as usize;
+            b.stats[side].bugs.hp_drain = 3;
+            b.objects.get_mut(r).hp = 100;
+            let hp = b.objects.get(r).hp;
+            for _ in 0..60 {
+                hp_bug_drain(&mut b, r);
+            }
+            hp - b.objects.get(r).hp
+        };
+        let exe4 = HpDrainRule { periods: DrainPeriods::Stat(StatIsPeriod::Stat), stops_while_paused: false };
+        assert_eq!(lost(Some(exe4), true), 20, "every third tick, paused or not");
+        assert_eq!(lost(None, false), 60 / 40, "the test content's level 3: 40 ticks");
+        assert_eq!(lost(None, true), 0, "held while paused");
     }
 
     /// docs/design/exe4-map.md §18 items 2 and 3: a push is a drag with the

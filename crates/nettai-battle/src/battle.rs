@@ -949,14 +949,22 @@ impl Battle {
 
     /// Play the sound content gives `role`, heard on both sides; and to
     /// `side`'s player only.
+    /// (A role a game may leave unfilled, `SoundRole::optional`, plays
+    /// nothing unfilled: the game has no such sound.)
     pub fn sound(&mut self, role: SoundRole) {
-        let id = self.roles().sound(role);
-        self.play_sound(id);
+        if let Some(id) = self.role_sound(role) {
+            self.play_sound(id);
+        }
     }
 
     pub fn sound_for(&mut self, side: u8, role: SoundRole) {
-        let id = self.roles().sound(role);
-        self.play_sound_for(side, id);
+        if let Some(id) = self.role_sound(role) {
+            self.play_sound_for(side, id);
+        }
+    }
+
+    fn role_sound(&self, role: SoundRole) -> Option<crate::SoundId> {
+        if role.optional() { self.roles().try_sound(role) } else { Some(self.roles().sound(role)) }
     }
 
     /// The sound calls of the last tick, in the order the game makes them,
@@ -1010,11 +1018,13 @@ impl Battle {
 
     fn tick_running(&mut self, input: &[PlayerTick; 2]) {
         // Both players' buttons, and whether each one's custom screen is
-        // open (status bit 2), reach the fight.
+        // open (status bit 2) and, where its screen says so, its selection
+        // runs (bit 0: EXE4's), reach the fight.
         self.read_joypads(input);
         for p in 0..2 {
             self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
-            self.round.remote_status[p] = if self.custom.sides[p].in_custom { 4 } else { 0 };
+            let side = &self.custom.sides[p];
+            self.round.remote_status[p] = (if side.in_custom { 4 } else { 0 }) | side.selecting as u8;
         }
 
         self.run_mode_handler();
@@ -1368,7 +1378,9 @@ impl Battle {
     /// `sub_8026A6C`: the screens close and the fight resumes.
     fn close_custom_screens(&mut self) {
         self.restart_gauge();
-        self.play_sound(SoundCue::RestoreVolume);
+        for player in self.content.rules().custom_screen.restore_players.clone() {
+            self.play_sound(SoundCue::Volume { player, volume: 0x100 });
+        }
         // `sub_8009338`: each side's rules, for a side with its navi.
         for side in 0..2 {
             if self.player_actor(side).is_some() {
@@ -2224,14 +2236,16 @@ impl Battle {
         crate::kinds::shift_damage_carry(self);
     }
 
-    /// `sub_80102AC`: the NaviCust HP-drain bug, active only while that
-    /// player's custom screen is open.
+    /// `sub_80102AC` (EXE4's 0x0800C194): the custom screen's HP-drain bug,
+    /// active only while that player's status has one of the rule
+    /// `custom_drain`'s bits (EXE6's: its screen is up; EXE4's: its
+    /// selection runs), every period by the bug's level or the stat itself.
     fn custom_hp_drain(&mut self, side: u8) {
-        if self.round.remote_status[side as usize] & 5 == 0 {
+        let rule = self.content.rules().custom_drain;
+        if self.round.remote_status[side as usize] & rule.status == 0 {
             return;
         }
-        const PERIOD: [u8; 8] = [0, 40, 30, 20, 10, 5, 3, 2];
-        let period = PERIOD[(self.stats[side as usize].bugs.custom_drain & 7) as usize];
+        let period = rule.periods.period(self.stats[side as usize].bugs.custom_drain);
         if period == 0 {
             return;
         }
