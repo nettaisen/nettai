@@ -358,6 +358,11 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
+    fn lose_round(&mut self, side: u8) {
+        self.round.alive[side as usize & 1] = 0;
+        self.round.time_up = 1;
+    }
+
     fn next_chip_damages(&self, user: ObjectRef) -> bool {
         use crate::content::ChipFlags;
         let o = self.objects.get(user);
@@ -1421,6 +1426,12 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn burn_on_panel(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of(o)?;
+        crate::kinds::common::panel_burn(self, o, false);
+        Ok(())
+    }
+
     fn drop_alive_count(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         let side = self.objects.get(o).alliance as usize;
@@ -2383,7 +2394,7 @@ impl CoreApi for Battle {
     }
 
     fn can_move(&self, o: ObjectRef) -> bool {
-        self.collision_of(o).is_ok_and(|c| c.f1 & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) == 0)
+        self.collision_of(o).is_ok_and(|c| c.f1 & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) == 0) && !self.trapped(o)
     }
 
     fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
