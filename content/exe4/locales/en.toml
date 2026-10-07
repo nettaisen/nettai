@@ -30,6 +30,9 @@ language = "en"
 "drkrecov" = { name = "DrkRecov", description = "DARKCHIP\nCREATED\nBY DESIRE" }
 "panlgrab" = { name = "PanlGrab", description = "Steals 1\nenemy\nsquare!" }
 "areagrab" = { name = "AreaGrab", description = "Steals\nleft edge\nfrom enmy" }
+"roll" = { name = "Roll", description = "Attcks an\nenmy,then\nheals you" }
+"roll-sp" = { name = "RollSP", description = "Attcks an\nenmy,then\nheals you" }
+"roll-ds" = { name = "RollDS", description = "Attcks an\nenmy,then\nheals you" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

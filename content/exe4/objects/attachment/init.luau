@@ -15,7 +15,7 @@ type State = {
     slot: Slot,
     look: AttachmentLook,
     anim: number,
-    -- Its param's third byte (+6): animates while dimmed too. Every EXE4 attach passes 0 (0x080CD6E0's callers).
+    -- Its param's third byte (+6): animates while dimmed too (Roll's ribbon, 0x080C17EA; the other callers pass 0).
     while_dimmed: boolean,
 }
 
@@ -84,9 +84,9 @@ attachment.kind = new.kind {
     end,
 }
 
--- 0x080CD6E0: attach `look` to `owner` with animation `anim`, stored in `which` (nil if the actor pool is full). It
--- takes the owner's panel and side.
-function attachment.attach(owner: Object, look: AttachmentLook, which: Slot, anim: number): Object?
+-- 0x080CD6E0: attach `look` to `owner` with animation `anim`, stored in `which` (nil if the actor pool is full),
+-- animating while dimmed too with `while_dimmed`. It takes the owner's panel and side.
+function attachment.attach(owner: Object, look: AttachmentLook, which: Slot, anim: number, while_dimmed: boolean?): Object?
     local o = battle.spawn(attachment.kind, Vec3.zero)
     if o then
         o.related1 = owner
@@ -97,7 +97,7 @@ function attachment.attach(owner: Object, look: AttachmentLook, which: Slot, ani
         s.slot = which
         s.look = look
         s.anim = anim
-        s.while_dimmed = false
+        s.while_dimmed = while_dimmed == true
     end
     slot.fill(owner, which, o)
     return o

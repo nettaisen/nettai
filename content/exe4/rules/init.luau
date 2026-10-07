@@ -54,6 +54,9 @@ local rules: Rules = {
         }, 25),
         -- Their patch cards (./patch_cards): each card switched on and the slot it is in (a save's 0x464C, by slot).
         patch_cards = schema.list({ card = "patch_cards", slot = "u8" }, patch_cards.SLOTS),
+        -- How long the save took to delete each SP navi (./sp_chips: a battle's copy at 0x02037C80), by its SP chip,
+        -- in frames; one not stated, deleted in no time.
+        sp_times = schema.list({ chip = "chip", frames = "u16" }, 22),
     },
     -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
     -- the starting mood 0x99).
@@ -102,6 +105,13 @@ local rules: Rules = {
         end,
         -- What rules a folder a tool asks of breaks (./folder).
         folder_check = folder.check,
+    },
+    -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of:
+    -- an SP navi chip's damage by its deletion-time step (./sp_chips).
+    extends = {
+        chip = {
+            sp = "u16[11]",
+        },
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),
