@@ -210,4 +210,16 @@ function panel_types.pitfall(me: Object, _how: SlideHow): SlideAnswer?
     return if me:status("float_shoe") then nil else "stop"
 end
 
+-- EXE6's ice's `hit` (the hit kernel's aqua on ice): an aqua attack touching a body standing on it freezes the body
+-- (`freeze`, its hits' status in their place) and the panel turns normal.
+function panel_types.freezes(freeze: Status): (Object, number) -> ()
+    return function(me: Object, element: number)
+        if element == AQUA then
+            local c = me.collision
+            field.set_type(c.panel_x, c.panel_y, "normal")
+            c.status_final = freeze
+        end
+    end
+end
+
 return panel_types

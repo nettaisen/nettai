@@ -7,7 +7,7 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::content::{Content, DamageWord, Region, RegionRole, SparkRole, StatusRole};
+use crate::content::{Content, DamageWord, Region, RegionRole, SparkRole};
 use crate::field;
 use crate::object::{ObjectRef, PanelPos};
 use nettai_content_api::{CollisionHandle, RegionHandle, SparkHandle, StatusHandle};
@@ -532,19 +532,18 @@ impl Battle {
         if hd.status_base.is_some() {
             rm.status_final = hd.status_base;
         }
-        // Aqua on ice: freeze a body standing on ice (in a game that has
-        // the freeze: the arena's role `statuses.ice_freeze`; EXE5 has none,
-        // docs/design/exe5-map.md §15.3 item 4).
-        if let Some(freeze) = self.roles().try_status(StatusRole::IceFreeze)
-            && rd.element == 2
-            && hs & 0x0C00_0000 != 0
+        // An object that isn't a body (an attack) touching a body that
+        // isn't invulnerable: the type of the panel under the body does what
+        // its `hit` says (EXE6's ice: an aqua attack freezes the body; EXE5
+        // has none, docs/design/exe5-map.md §15.3 item 4).
+        if hs & 0x0C00_0000 != 0
             && rs & 0x0C00_0000 == 0
             && hd.status_timers[timer::INVULNERABLE] == 0
             && rd.acc.hit_flags & 1 == 0
-            && self.field.panel(hd.panel.x, hd.panel.y).is_some_and(|p| self.content.rules().panels.is_named(p.kind, "ice"))
+            && let Some(kind) = self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind)
+            && let Some(body) = hd.parent
         {
-            self.set_panel_type(hd.panel.x, hd.panel.y, self.content.rules().panels.roles.normal);
-            self.collision.get_mut(h).status_final = Some(freeze);
+            self.call_panel(kind, body, nettai_content_api::PanelCall::Hit { element: rd.element });
         }
         let c = hd.counter_byte;
         let rm = self.collision.get_mut(r);

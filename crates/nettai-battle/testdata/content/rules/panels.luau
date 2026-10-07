@@ -11,6 +11,7 @@
 -- HP or less on the 180-tick count.
 
 local panel_types = require("@exelib/panel_types")
+local statuses = require("./status")
 
 -- A magnet panel's slide, by the direction of the move (none, up, down,
 -- back, forward, other): the steps tried in turn, dx toward the front.
@@ -64,7 +65,12 @@ return {
         poison = { flags = 0x00010110, stand = panel_types.poison },
         holy = { flags = 0x00012010 },
         grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire", stand = panel_types.grass(9) },
-        ice = { flags = 0x00010810, move_end = panel_types.ice_slides, slide = panel_types.ice },
+        ice = {
+            flags = 0x00010810,
+            move_end = panel_types.ice_slides,
+            slide = panel_types.ice,
+            hit = panel_types.freezes(statuses.freeze_150),
+        },
         volcano = { flags = 0x00011010, cleared_by = "aqua" },
         road_up = road(0, -1),
         road_down = road(0, 1),
