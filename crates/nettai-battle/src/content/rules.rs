@@ -623,6 +623,21 @@ pub struct RequestClears {
     pub drag: RequestSet,
 }
 
+/// What a deleted player's object does in its destroy state
+/// (`kinds::player`'s `destroy`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeadPlayer {
+    /// EXE6's `sub_8016C4E` (EXE5's alike): its reservations and collision
+    /// data let go and the side's actor count one less, once; the object
+    /// kept in its slot (freed for an actor record that isn't counted).
+    Kept,
+    /// EXE4's 0x0801052C: its collision data let go, the object freed at
+    /// once and the side's actor count one less; its reservations as they
+    /// are.
+    Freed,
+}
+
 /// When the counter a stance's caught hit starts (`sub_80105F2`) runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1226,6 +1241,8 @@ pub struct Rules {
     pub overlay_restart: OverlayRestart,
     /// When a stance's counter runs (the reactions section's).
     pub stance_counter: StanceCounter,
+    /// What a deleted player's object does (the reactions section's).
+    pub dead_player: DeadPlayer,
     /// What the ends of a navi's actions clear of its requests (the
     /// reactions section's).
     pub request_clears: RequestClears,
