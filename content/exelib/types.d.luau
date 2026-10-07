@@ -790,7 +790,13 @@ export type BulletVariant = {
 
 -- How a bullet (objects/bullet) probes and hits: its self type while it
 -- looks, its burst's, and what both reach.
-export type BulletLook = { probe: CollisionType, attack: CollisionType, target: CollisionType }
+export type BulletLook = {
+    probe: CollisionType,
+    attack: CollisionType,
+    target: CollisionType,
+    -- A single burst's effect shows unturned, whichever way the bullet faces (EXE4's).
+    single_unturned: boolean?,
+}
 
 -- A cannon (lib/cannon.luau, the original's action 0x14): the arm the navi
 -- holds, the projectile it fires, and whether it leaves afterimages as it
