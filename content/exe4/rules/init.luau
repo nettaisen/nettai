@@ -87,11 +87,15 @@ local rules: Rules = {
     },
     state = state,
     -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of.
+    -- An SP navi chip's damage by its deletion-time step (./sp_chips).
     -- What a soul's form says for Double Soul (./souls; a soul is named by its form's id, the original's number for it,
     -- NaviStats +0x24, is compat's): the family of the chips given up for it (0x08020008's table) and its turns
     -- (0x080180A8's: 3 every one), its chip (which OK puts in the hand for it, its use the soul's change:
     -- ./souls/change), and its navi's image at the change (./souls/image, a `SoulImage`).
     extends = {
+        chip = {
+            sp = "u16[11]",
+        },
         form = {
             soul = {
                 family = {
@@ -157,13 +161,6 @@ local rules: Rules = {
         end,
         -- What rules a folder a tool asks of breaks (./folder).
         folder_check = folder.check,
-    },
-    -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of:
-    -- an SP navi chip's damage by its deletion-time step (./sp_chips).
-    extends = {
-        chip = {
-            sp = "u16[11]",
-        },
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),
