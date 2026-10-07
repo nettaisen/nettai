@@ -14,10 +14,12 @@ use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
 /// faded in, the custom screen not yet over it.
 const OPENING: u32 = 24;
 
-/// Each round's arena: its picture, its stage and its background (by
-/// their names in the content; it has no display names for them).
+/// Each round's arena: its picture, its stage (by its name in the content;
+/// a stage has no display name) and its background (its name in
+/// `graphics`' language: its area's, as the game's menus name it).
 pub fn pictures(ready: &Ready, graphics: &Graphics, m: &nettai_match::Match, seed: u32) -> Vec<RoundCard> {
     let content = ready.content();
+    let names = crate::games::Names::of(content, graphics);
     let Ok(places) = m.places(content, seed) else { return Vec::new() };
     places
         .into_iter()
@@ -35,8 +37,7 @@ pub fn pictures(ready: &Ready, graphics: &Graphics, m: &nettai_match::Match, see
                 *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
             }
             let stage = nettai_match::ids::local(&content.defs.stage(place.stage).key).to_string();
-            let background = nettai_match::ids::background_name(content, place.background).unwrap_or_default().to_string();
-            RoundCard { picture: Image::from_rgb8(pixels), stage: stage.into(), background: background.into() }
+            RoundCard { picture: Image::from_rgb8(pixels), stage: stage.into(), background: names.background(place.background).into() }
         })
         .collect()
 }

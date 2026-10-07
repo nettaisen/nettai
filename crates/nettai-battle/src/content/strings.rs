@@ -1,6 +1,7 @@
 //! The content's display text (its strings): chip names and descriptions,
 //! navi names and no-running messages, the Crosses' names and descriptions,
-//! patch cards' names, by the definitions' keys. A
+//! patch cards' names, by the definitions' keys; the backgrounds' names, by
+//! their asset names. A
 //! definition holds no display text; a content root's
 //! `locales/<lang>.toml` does, one table a language (the loader, nettai-
 //! content `locale`, reads them). The game's marks are characters: Ⓐ and
@@ -60,6 +61,16 @@ pub struct FormStrings {
     pub description: Option<String>,
 }
 
+/// A background's strings, by its asset name: its name as a player sees it
+/// (a match's places: the app's arenas), the area of the game whose maps
+/// draw it as the game's menus name it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BackgroundStrings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// An entry's strings (of one of the game's collections: a patch card's, a
 /// NaviCust program's): its name, which a menu shows, and its description
 /// where the game has one (a NaviCust program's, as its screen's box shows
@@ -100,6 +111,9 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
+    /// The backgrounds', by their asset names (`lans-hp`).
+    #[serde(default)]
+    pub backgrounds: BTreeMap<String, BackgroundStrings>,
     /// The game's own tables, by name: its collections' entries'
     /// (`[patch_cards]`) and its text tables, which tools show and nothing
     /// in a battle reads (EXE6's and EXE5's `patch_card_effects`: each line a
@@ -124,6 +138,7 @@ impl Strings {
         self.chips.extend(other.chips);
         self.navis.extend(other.navis);
         self.forms.extend(other.forms);
+        self.backgrounds.extend(other.backgrounds);
         for (name, table) in other.tables {
             match (self.tables.get_mut(&name), table) {
                 (Some(Table::Entries(have)), Table::Entries(more)) => have.extend(more),
@@ -145,6 +160,11 @@ impl Strings {
 
     pub fn form(&self, key: &str) -> Option<&FormStrings> {
         self.forms.get(key)
+    }
+
+    /// Background `name`'s (its asset name).
+    pub fn background(&self, name: &str) -> Option<&BackgroundStrings> {
+        self.backgrounds.get(name)
     }
 
     /// Entry `id` of collection `collection`'s strings.

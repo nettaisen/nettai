@@ -392,6 +392,30 @@ language = "en"
 "toadsoul" = { name = "ToadSoul" }
 "tomahawksoul" = { name = "TmhkSoul" }
 
+[backgrounds]
+"acdc-area" = { name = "ACDC Area" }
+"comp" = { name = "Comp" }
+"comp-alt" = { name = "Comp (Alt)" }
+"dexs-hp" = { name = "Dex's HP" }
+"drill-comp" = { name = "DrillComp" }
+"end-area" = { name = "End Area" }
+"factory-comp" = { name = "FactoryComp" }
+"gargcastle-hp" = { name = "GargCastleHP" }
+"gargoyle-comp" = { name = "Gargoyle Comp" }
+"lans-hp" = { name = "Lan's HP" }
+"main-comp" = { name = "MainComp" }
+"mayls-hp" = { name = "Mayl's HP" }
+"nebula-area" = { name = "NebulaArea" }
+"nebulagray" = { name = "NebulaGray" }
+"oran-area" = { name = "Oran Area" }
+"scilab-area" = { name = "SciLab Area" }
+"scilab-hp" = { name = "SciLab HP" }
+"ship-comp" = { name = "ShipComp" }
+"soulserv-comp" = { name = "SoulServComp" }
+"undernet" = { name = "Undernet" }
+"visionburst" = { name = "VisionBurst" }
+"yais-hp" = { name = "Yai's HP" }
+
 [navicust_programs]
 "airshoes" = { name = "AirShoes", description = "Move\novr hole" }
 "antidmg" = { name = "AntiDmg", description = "B+Left=\nThrow a\nstar!" }
