@@ -497,10 +497,11 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 "reactions",
                 r#"
         push = row(10, none),
-        push_reading = { reads = "by_hitter_flip", bits = 4, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
+        push_reading = { reads = "by_hitter_flip", bits = 4, drag_bit = 0x40, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
         hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002, elec_bonus_on_sea = false },
         obstacle_slide_bounds = false,
-        ice = row(6, none),
+        ice = { slide = row(6, none) },
+        move_direction = "by_side",
         bubble_bob = row(32, 0),
         slide_speed = { x = 0x30000, y = 0x20000 },
         overlay_restart = "reload",
@@ -603,7 +604,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 62, "every field of every section");
+        assert_eq!(fields, 63, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
