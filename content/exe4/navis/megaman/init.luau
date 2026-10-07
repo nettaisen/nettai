@@ -42,6 +42,8 @@ local navi: NaviDef = {
         aura_anim = 0,
         -- The chip icons over him, from his place on the screen: navi 0's of 0x0800B9E4 (rules/effects' `chip_icons`).
         chip_icons_at = { 0, -55 },
+        -- His status visual's place: his actor record's +6 and +7 (0x08011888's row 0).
+        status_mark = { 8, 50 },
     },
 }
 

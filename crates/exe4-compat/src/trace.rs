@@ -743,7 +743,7 @@ fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)
 /// move lag's column (the engine's navi variant), the soul (the form), the
 /// aura, the HP. (The Full Synchro at the start is the rules' setup's:
 /// EXE4's rules/light_dark.) A block that holds what the port can't say yet
-/// (supports, a panel trail, a color, All Guard: Mod Cards to come) is an
+/// (supports, a color, All Guard: Mod Cards to come) is an
 /// error, which `Round::needs` lists.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
@@ -761,7 +761,6 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     };
     for (what, set) in [
         ("supports (+0x18)", s.supports != 0),
-        ("a panel trail (+0x1B)", s.panel_trail.is_some()),
         ("a color (+0x27)", s.color != 0),
         ("All Guard (+0x28)", s.all_guard),
     ] {
@@ -790,6 +789,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.hp = s.hp;
     stats.max_hp = s.max_hp;
     stats.bugs.buster_blanks = s.buster_blanks;
+    // (The panel trail: every step, its kind 0xFF none, the rules' `effects.panel_trail`.)
+    stats.bugs.panel_trail_kind = s.panel_trail.unwrap_or(0xFF);
     stats.bugs.hp_drain = s.hp_drain;
     stats.bugs.custom_drain = s.custom_drain;
     stats.weapons.buster = Some(weapon(s.buster_weapon)?);

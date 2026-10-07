@@ -18,7 +18,7 @@ return {
         broken = { flags = 0x00014000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110 },
+        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
         metal = { flags = 0x00030010, unbreakable = true },
         grass = { flags = 0x00010410, doubles = "fire", cleared_by = "fire" },
         ice = { flags = 0x00010810, doubles = "elec" },

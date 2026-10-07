@@ -9,9 +9,14 @@
 "engine/effect" = { pool = "effect", index = 0x00 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "engine/spark" = { pool = "effect", index = 0x04 }
+"engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
 "attachment" = { pool = "attack", index = 0x02 }
 "bomb" = { pool = "attack", index = 0x08 }
+"bullet" = { pool = "attack", index = 0x12 }
+# The stages' boulder (the actor lists' entry type 3, 0x08006880) and the debris it breaks into (0x080E621C).
+"boulder" = { pool = "attack", index = 0x6E }
+"rock/debris" = { pool = "effect", index = 0x38 }
 "guard-shield" = { pool = "attack", index = 0x2B }

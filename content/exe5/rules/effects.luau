@@ -74,6 +74,11 @@ return {
     used_chip_ticks = 0x3C,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (0x08019780, EXE6's).
     bug_flicker = true,
+    -- A step leaves its NaviCust panel trail at a chance of its level in 8, an RNG2 draw, as EXE6's.
+    panel_trail = "by_chance",
+    -- The status visual (effect 6) sits at its navi's sprite attach point 5, hidden off the field, and casts its
+    -- sprite's shadow, as EXE6's.
+    status_visual = { place = "attach_point", shadow = true },
     -- A pool's objects are drawn in update order, as EXE6's.
     draw_order = "update_list",
 }
