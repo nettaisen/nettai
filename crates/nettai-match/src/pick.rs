@@ -418,7 +418,7 @@ mod tests {
                     assert!(forms.listed("gregar").contains(f) || forms.listed("falzar").contains(f));
                 }
                 assert_eq!(b.fact(side as u8, PlayerFact::Version).and_then(|f| f.name()), m.sides[side].version(&content));
-                assert_eq!(b.fact(side as u8, PlayerFact::BeastOut).and_then(|f| f.flag()), Some(true));
+                assert_eq!(m.sides[side].facts.get(&content, "beast_out"), Some(crate::facts::Stated::Flag(true)));
                 // (A picked side states its version and its form list, and
                 // nothing else: the rest is its rules' defaults.)
                 // (Besides its navi and its folder.)

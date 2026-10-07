@@ -90,6 +90,27 @@ beast.takeover_requested = cross_special.requested
 beast.takeover = cross_special.takeover
 -- `sub_80158CC`: outside battle mode 1, reverting spends a Beast Out
 -- and exhausts a Beast Over.
+-- The battle effect of a random battle (effects 0x200000).
+local RANDOM = 0x200000
+
+-- `sub_801D814`: whether the emotion window shows the Beast Out count (else its empty box), which the round's setup
+-- says (`battle.set_window_count`, a presentation): always in battle mode 5, never in mode 1, and otherwise while the
+-- player's save has Beast Out (event flag 0xE0: the setup's `beast_out`) and no navi code sealed it (0x163: the
+-- setup's `level`), in a battle without a gauge for each player (battle flag 0x40) that isn't random.
+function beast.round_setup(side: number)
+    local mode = battle.mode()
+    local setup = rules.setup() :: { beast_out: boolean, level: number? }
+    local shown = mode == 5
+        or (
+            mode ~= 1
+            and setup.beast_out
+            and setup.level == nil
+            and not battle.own_gauges()
+            and not bit32.btest(battle.effects(), RANDOM)
+        )
+    battle.set_window_count(side, shown)
+end
+
 function beast.form_reverted(side: number, navi: Object)
     if battle.mode() == 1 then
         return

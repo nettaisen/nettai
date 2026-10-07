@@ -62,14 +62,16 @@ pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
 /// picture for a tool.
 pub fn form_face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle) -> Option<Image> {
     // (The emotion when nothing else holds: the plain one.)
-    let plain = c.rules().emotion.name(nettai_battle::kinds::player::Emotion::default());
-    face(packs, c, form, plain, false)
+    let (_, face) = crate::lookups::form_face(packs, c, form, nettai_battle::content::Emotion::default(), false, &mut Problems::default());
+    let (tiles, palettes) = face?;
+    image(tiles, 4, 2, palettes.first()?)
 }
 
 /// A form's face in the emotion window for `emotion` (by its name in the
 /// game's rules), of its second set with `variant`, 32x16, in its first
 /// palette: what a round shows of a navi, for a tool.
 pub fn face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle, emotion: &str, variant: bool) -> Option<Image> {
+    let emotion = c.rules().emotion.by_name(emotion)?;
     let (_, face) = crate::lookups::form_face(packs, c, form, emotion, variant, &mut Problems::default());
     let (tiles, palettes) = face?;
     image(tiles, 4, 2, palettes.first()?)
