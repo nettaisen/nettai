@@ -45,7 +45,9 @@ fn version_of(id: u16) -> Option<Version> {
 /// Everything the pack draws with that EXE4's ROMs give so far: `names`
 /// gives the chips their keys and the fonts their characters.
 pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
-    let sprites = roms.any().map(|(rom, a)| sprites(rom, a.sprite_list)).unwrap_or_default();
+    let mut sprites = roms.any().map(|(rom, a)| sprites(rom, a.sprite_list)).unwrap_or_default();
+    sprites.extend(roms.any().map(|(rom, a)| portraits(rom, a.sprite_list, names)).unwrap_or_default());
+    sprites.sort_by_key(|s| (s.category, s.index));
     // The HUD's art is Red Sun US's (exe4/hud.rs); without it the fonts and
     // text lines of a US ROM present, the rest placeholders.
     let mut hud = if roms.redsun.is_present() {
@@ -220,6 +222,27 @@ fn sprites(rom: &Rom, list: u32) -> Vec<SpriteSheet> {
     }
     out.sort_by_key(|s| (s.category, s.index));
     out
+}
+
+/// The portraits' category (the sprite list's byte offset 0x20: the
+/// mugshot table 0x08028038, which 0x080028F2 loads from, EXE6's
+/// `mugshotSpritePtrs`).
+const PORTRAITS: u8 = 0x20;
+
+/// The portraits content names (the chatbox's speakers: a no-running
+/// message's `F4 00 n`, 0x0804F750). The four ROMs have the same pictures:
+/// any one's.
+fn portraits(rom: &Rom, list: u32, names: &AssetNames) -> Vec<SpriteSheet> {
+    let table = rom.u32(list + PORTRAITS as u32);
+    names
+        .sprites
+        .keys()
+        .filter(|(c, _)| *c == PORTRAITS)
+        .filter_map(|&(category, index)| {
+            let data = crate::sprite::archive(rom, rom.u32(table + 4 * index as u32))?;
+            crate::sprite::portrait_sheet(&data, category, index)
+        })
+        .collect()
 }
 
 // ---- The HUD's lettering ------------------------------------------------------------

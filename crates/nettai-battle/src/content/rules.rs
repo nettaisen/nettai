@@ -224,11 +224,73 @@ pub struct EffectsRules {
     /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
     /// draws it.
     pub rng1_per_frame: bool,
+    /// Where and which chip icons the HUD stacks over a navi.
+    /// Presentation: the renderer's.
+    pub chip_icons: ChipIcons,
+    /// The ticks the other player's console names a chip a player used,
+    /// the tick it starts on counted (`Battle::used_chip_for`: EXE6's
+    /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
+    /// of the second block that shows without sliding, 33).
+    pub used_chip_ticks: u8,
     /// Each console's emotion window checks its navi's NaviCust bugs and
     /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
     /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
     /// RNG1 never moves in a bugged navi's fight.
     pub bug_flicker: bool,
+    /// What `object_genericDestroy` does with an object's collision before
+    /// it frees the object.
+    pub destroy: DestroyRule,
+    /// The order the objects of a pool are drawn in. Presentation: the
+    /// renderer's.
+    pub draw_order: DrawOrder,
+}
+
+/// The order a pool's objects are drawn in, each pool in turn (actors,
+/// attacks, effects): it decides which of two parts in the same depth
+/// bucket is in front (the one drawn later).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DrawOrder {
+    /// By the update list (EXE6's `sub_8003E18`, `sub_8004218` and
+    /// `sub_8004510` walk the lists `RunBattleObjectLogic` builds; EXE5's).
+    UpdateList,
+    /// By slot (EXE4's 0x08003BA0, 0x08003ED4 and 0x08004180 walk each
+    /// pool's slots from the first).
+    Slots,
+}
+
+/// The chip icons the HUD stacks over a navi that holds chips (the
+/// renderer's `icon_parts`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChipIcons {
+    /// Over its sprite's attach point 3, the next chip's icon once for
+    /// every chip held (six at most), each next one two pixels up and
+    /// two away from where the console faces, in front of the field's
+    /// objects (EXE6's `sub_801C082`, EXE5's).
+    AttachPoint,
+    /// At its own offset from its place on the screen (its identity's
+    /// `chip_icons_at`: EXE4's table 0x0800B9E4, by navi number, which
+    /// 0x08015B24 keeps), each chip it holds from the next one on by its
+    /// own icon, each next one two pixels up and two left, at priority 1
+    /// in depth buckets from the icons' count down (EXE4's 0x08014860
+    /// and 0x08015000: the local navi's alone).
+    NaviOffset,
+}
+
+/// What `object_genericDestroy` does with an object's collision (the
+/// effects section's `destroy`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DestroyRule {
+    /// Frees it as it is (EXE6's, after releasing what the object holds
+    /// when its reservations mark it; EXE5's 0x080138F2): its registrations
+    /// on the panels stay, stale, until the slot is next registered.
+    Frees,
+    /// Unregisters it first (EXE4's 0x080D8C58: `object_removeCollisionData`,
+    /// 0x080129FC), which refreshes its panels and resolves its hits and the
+    /// panels it clears on them, then frees it.
+    Unregisters,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
@@ -1035,6 +1097,40 @@ pub enum HitMood {
     HitterGains,
 }
 
+/// A game's chip families (rule section `elements`: `families`, each name
+/// with its number, and `non_elemental`): the numbers its chip records hold
+/// and its pack's custom-screen icons are by (EXE6's own; EXE5's as its
+/// pack has the icons, EXE6's numbers with its recovery and invisible
+/// after them; EXE4's own, its record's +0x07).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ChipFamilies {
+    /// Each family's name and number, by number.
+    pub families: Vec<(String, ChipFamily)>,
+    /// The family of a chip that names none, and the one the rules on
+    /// non-elemental chips mean (EXE6's Beast and Cross forms: a Cross's
+    /// erasing, a Beast's bonus and Beast Over's doubling of the family's
+    /// damaging chips, the empty hand's family byte, the Beast forms'
+    /// other A charge).
+    pub non_elemental: ChipFamily,
+}
+
+impl ChipFamilies {
+    /// The family named `name`.
+    pub fn by_name(&self, name: &str) -> Option<ChipFamily> {
+        self.families.iter().find(|(n, _)| n == name).map(|&(_, f)| f)
+    }
+
+    /// The families' names, by number.
+    pub fn names(&self) -> Vec<&str> {
+        self.families.iter().map(|(n, _)| n.as_str()).collect()
+    }
+
+    /// Family `family`'s name, if the game has it.
+    pub fn name(&self, family: ChipFamily) -> Option<&str> {
+        self.families.iter().find(|&&(_, f)| f == family).map(|(n, _)| n.as_str())
+    }
+}
+
 /// A side's emotion: one of its game's ([`EmotionRules::names`]); the
 /// default, `Emotion(0)`, the one when nothing else holds (EXE6's and
 /// EXE5's normal).
@@ -1271,9 +1367,11 @@ pub struct Rules {
     /// hitter's (0 null, 1 fire, 2 aqua, 3 elec, 4 wood, 5 the drain
     /// element).
     pub element_weakness: [[u8; 6]; 6],
+    /// The game's chip families (rule section `elements`).
+    pub chip_families: ChipFamilies,
     /// The secondary elements each chip family adds to its attacks, by
-    /// family.
-    pub family_elements: [SecondaryElements; 15],
+    /// family (a family past them adds none).
+    pub family_elements: Vec<SecondaryElements>,
     pub panels: PanelRules,
     /// Banners that stay up until removed.
     pub holding_banners: Vec<BannerId>,
@@ -1324,6 +1422,10 @@ pub struct Rules {
     /// What a navi does while the battle is paused (rule section
     /// `status`): see [`PausedNavi`].
     pub paused_navi: PausedNavi,
+    /// A navi's status timers (paralysis and the rest, `sub_800E730`) count
+    /// while the battle is paused (rule section `status`): EXE4's
+    /// (0x0800AE58, no pause test); EXE6's and EXE5's (0x0800CB50) hold.
+    pub status_timers_while_paused: bool,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,
@@ -1416,7 +1518,7 @@ impl Rules {
 
     /// The secondary elements a chip family adds.
     pub fn family_elements(&self, family: ChipFamily) -> SecondaryElements {
-        self.family_elements[family as usize]
+        self.family_elements.get(family.0 as usize).copied().unwrap_or_default()
     }
 
     /// Ticks of recovery after a buster shot at a Rapid stat with `open`
@@ -1459,8 +1561,11 @@ pub struct PanelRules {
     /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
     /// 0x20000 too). A crack keeps the solidity and the crack bit.
     pub type_mask: u32,
-    /// What the panel a body stands on does each tick (`StandingRule`).
-    pub standing: StandingRule,
+    /// At this HP or less a wood body on grass heals on the battle's
+    /// 180-tick count instead of its 20-tick one (EXE6's `sub_801A186` and
+    /// EXE5's 0x08016C7E: 9; EXE4's 0x08012FF2 none, the 20-tick count at
+    /// any HP).
+    pub grass_heal_slows_at: Option<u16>,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the
@@ -1523,21 +1628,6 @@ pub struct BurnRule {
     /// which has no dimming test; every other body's waits, as EXE5's).
     #[serde(default)]
     pub players_while_dimmed: bool,
-}
-
-/// What the panel a body stands on does each tick (the panel rules'
-/// `standing`: poison's drain, grass's heal; EXE6's `sub_801A186`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct StandingRule {
-    /// Both hold while the battle is paused (EXE6's, EXE5's 0x08016C7E);
-    /// EXE4's (0x08012FF2) run on.
-    pub stops_while_paused: bool,
-    /// At this HP or less a wood body on grass heals on the battle's
-    /// 180-tick count instead of its 20-tick one (EXE6's and EXE5's 9;
-    /// EXE4's none: always the 20-tick count).
-    #[serde(default)]
-    pub slow_heal_at: Option<u16>,
 }
 
 /// A drag's pose and its end (the status section's `drag`).

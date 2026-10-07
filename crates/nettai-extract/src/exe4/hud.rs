@@ -12,7 +12,7 @@
 
 use crate::exe4::rom::{Addresses, Rom};
 use nettai_assets::{
-    BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, MapEntry, Palette, Tiles, palettes_from_bytes,
+    BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLayout, MapEntry, Palette, TelopLook, Tiles, palettes_from_bytes,
 };
 use nettai_content::names::AssetNames;
 
@@ -100,6 +100,24 @@ pub(crate) const WAITING_BYTES: usize = 0x1C0;
 /// it load (0x080E3FC8's list).
 const WARNING: u32 = 0x0870_B060;
 const WARNING_PALETTE: u32 = 0x0870_C3A0;
+/// "PAUSE"'s place (0x0801554C: its 32x16 sprite at x 100, y 64), and the
+/// priority the HP numbers under objects are drawn at (0x08014EB8's
+/// 0xE730: 1).
+const PAUSE_AT: (u8, u8) = (100, 64);
+const HP_NUMBER_PRIORITY: u8 = 1;
+/// A message (0x08015FE8: "COUNTER HIT!", text line 14, rendered 14 glyphs
+/// wide by 0x080162CC): its map from column 8 of row 2, 14 columns wide.
+const MESSAGE_AT: (u8, u8, u8) = (8, 2, 14);
+/// The telops (0x0801650C, which lays out the user's on the banner block
+/// and the other player's on the second block): fifteen glyphs centered
+/// from x 0 on the user's console and from x 120 on the other's, at y 32;
+/// after the chip's name the HUD layer's damage digits (TELOP_DIGITS' ten
+/// pointers, then a blank and '+') and the font's '×' and '2' (0x08016680's
+/// list), in their own palette (to 0x030027A0, sprite palette 11, which the
+/// banners' shares).
+const TELOP_PLACES: [(u8, u8); 2] = [(0, 32), (120, 32)];
+const TELOP_DIGITS: u32 = 0x0801_7A54;
+const TELOP_PALETTE: u32 = 0x0875_0E80;
 /// The chatbox (0x0804E3B4, `chatbox_runScript`'s counterpart): the box's
 /// twenty tiles (to BG0's tile 0x2AC, which its maps count from) and
 /// palette, the text's palette; the box's maps (0x0804E384: a kind's four
@@ -112,6 +130,12 @@ const CHATBOX_PALETTE: u32 = 0x0875_62A8;
 const CHATBOX_TEXT_PALETTE: u32 = 0x0869_F4BC;
 const CHATBOX_BOXES: u32 = 0x0804_E384;
 const CHATBOX_ARROW: u32 = 0x0868_D8DC;
+/// Where the chatbox's text starts (0x0804E3B4's +0x18, +0x19: 0x3F, 0x6D;
+/// EXE6's 0x33, 0x6C). The portrait's place is EXE6's.
+const CHATBOX_TEXT: (u8, u8) = (0x3F, 0x6D);
+/// The key-wait arrow's place (0x0804E3B4's +0x1A, +0x1B), EXE6's message
+/// box's.
+const CHATBOX_ARROW_AT: (u8, u8) = (0xE2, 0x8D);
 
 /// A palette (the hardware ignores bit 15 of a color).
 pub(crate) fn palette(rom: &Rom, a: u32) -> Palette {
@@ -129,11 +153,20 @@ fn map(rom: &Rom, a: u32, n: u32) -> Vec<MapEntry> {
     (0..n).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect()
 }
 
+/// The damage judge's banner (number 0x28, which 0x080163EE shows as it
+/// turns on the HUD's element 0x200: 0x080152EA draws "VS" at column 14,
+/// row 5, the one side's damage in columns 9 to 12 and the other's from
+/// column 17, as EXE6's `sub_801D048` does): the judge's layout, which adds
+/// the two numbers (`nettai_assets::BannerLayout::kind` 4). Its record's
+/// own kind byte, 2 (held until removed), says nothing of them.
+const JUDGE_BANNER: u32 = 0x28 / 4;
+const JUDGE_KIND: u8 = 4;
+
 /// Banner `id` (the banner block's number / 4) of the table at `table`.
 pub(crate) fn banner(rom: &Rom, table: u32, id: u32) -> BannerLayout {
     let p = rom.u32(table + 4 * id);
     let place = rom.u16(p);
-    let kind = rom.u8(p + 2);
+    let kind = if id == JUDGE_BANNER { JUDGE_KIND } else { rom.u8(p + 2) };
     let mut glyphs = Tiles::default();
     for g in 0..20 {
         let t = tiles(rom, rom.u32(p + 4 + 4 * g), 0x40);
@@ -212,6 +245,24 @@ fn chatbox(rom: &Rom) -> Chatbox {
     }
 }
 
+/// The telops' look (`TELOP_PLACES`): the digits and '+' by the telop's
+/// table (its eleventh pointer the blank, which it draws nothing of), the
+/// font's '×' and '2'.
+fn telop(rom: &Rom) -> TelopLook {
+    let mut glyphs = Tiles::default();
+    let mut push = |a: u32| {
+        let t = tiles(rom, a, 0x40);
+        glyphs.push(t.get(0).unwrap());
+        glyphs.push(t.get(1).unwrap());
+    };
+    for d in (0..10).chain([11]) {
+        push(rom.u32(TELOP_DIGITS + 4 * d));
+    }
+    push(TIMES_GLYPH);
+    push(TWO_GLYPH);
+    TelopLook { places: TELOP_PLACES, glyphs, palette: palette(rom, TELOP_PALETTE) }
+}
+
 /// The HUD's graphics from Red Sun US (`rom`, its addresses `a`; Blue Moon
 /// US's souls' faces from `blue_moon`); `names` the fonts' characters;
 /// `chip_icons` the chips' (graphics.rs); the fonts and the text lines are
@@ -279,6 +330,19 @@ pub fn hud(
         warning_palette: palette(rom, WARNING_PALETTE),
         dialogue_font,
         chatbox: chatbox(rom),
+        layout: HudLayout {
+            pause: PAUSE_AT,
+            hp_number_priority: HP_NUMBER_PRIORITY,
+            message: MESSAGE_AT,
+            // (The damage judge's numbers, task 9 from 0x080163C8: from its
+            // holding banner's hold, 0x08014AA8, until the banner is gone,
+            // 0x08014ABE.)
+            judge_from_hold: true,
+            chatbox_text: CHATBOX_TEXT,
+            // (A description shows in the message box: its arrow's place.)
+            chatbox_arrows: [CHATBOX_ARROW_AT; 2],
+            telop: Some(telop(rom)),
+        },
         language: String::new(),
         languages: Vec::new(),
     }

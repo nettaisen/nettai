@@ -68,6 +68,14 @@ return {
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
     -- Each console's RNG1 advances once a frame after the battle's, as EXE6's.
     rng1_per_frame = true,
+    -- The chip icons over a navi are EXE6's (its attach point 3).
+    chip_icons = "attach_point",
+    -- The other player's console names a chip a player used for a second, as EXE6's.
+    used_chip_ticks = 0x3C,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (0x08019780, EXE6's).
     bug_flicker = true,
+    -- An object's destroy (0x080138F2) frees its collision as it is.
+    destroy = "frees",
+    -- A pool's objects are drawn in update order, as EXE6's.
+    draw_order = "update_list",
 }
