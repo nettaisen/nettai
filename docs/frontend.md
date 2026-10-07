@@ -113,7 +113,9 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   sets), the 5x3 panel blocks by type, owner and row (`byte_86DFA98`),
   highlight blocks and front edges.
 - **Backgrounds** by id (`off_8080F98`): tiles, tile map, palette, scroll
-  speed (`off_8080E34`) and tile/palette animations (`off_8081220`).
+  speed (`off_8080E34`), or a scroll that speeds up from the battle's first
+  frame (`speeding`: EXE5's 0x080019EC, §3), and tile/palette animations
+  (`off_8081220`).
 - **HUD**: the HP box and its digits, gauge tiles and frame, the 8x16 font
   with what each glyph draws, chip icons by chip, the HP digits shown under
   objects, the emotion window's faces and count boxes, the link navis'
@@ -264,8 +266,9 @@ flag): each draws 0x15 until its typhoon virus is beaten, then 0x10.
   second table (0x0808C500, where the usual one is 0x0808C578) when the map is the running mission's (0x08051982)
   and the battle isn't a link battle; the two tables differ for those seven numbers alone. The pack has the usual
   table's pictures, which are a link battle's.
-- 0x1B and 0x1C are not among a link battle's (0x1C's picture is 0x19's, which a link battle draws), and no
-  recording has shown 0x1B: its drawing isn't compared.
+- 0x1B and 0x1C are not among a link battle's (0x1C's picture is 0x19's, which a link battle draws). The chip
+  lab draws 0x1B by patching the link pick's table on both consoles (backgrounds/0x1b, 0x1b-turns): its picture
+  speeds down from the battle's first frame (§3, "Field and background").
 
 **EXE4** has 27. Its routine is 0x08085BAC (the table at 0x08085BD0; a real-world map's 0x03), the menu's names
 0x0802DEB0's (a group's first name number plus the map number, into the archive at 0x086E8770), and a battle's
@@ -532,7 +535,16 @@ enemy names).
 **Field and background** (`stage.rs`): each panel's block by displayed type
 and owner (from the viewer's side), highlights, missing panels, front
 edges, the cycling panel palettes; the background's scroll and tile
-animations. The field is the match's game's pack's: a match is of one game,
+animations. A speeding scroll (EXE5's nebulagray, 0x1B: its BG1 callback
+0x080019EC, `nettai_assets::Speeding`) runs on the battle's ticks, not the
+background's clock: the callback moves the picture only while battle flag
+0x40 is set (BattleState+0x5C), which the battle's intro sets on the
+battle's first frame (0x080E06A0, where EXE6's sets 0x10) and which stays
+set through the custom screen and the pause. The picture moves down a pixel
+a frame for 64 frames, then 2, then 3, and 4 a frame from the 193rd on
+(each frame's move its speed rounded up), as the chip lab's
+backgrounds/0x1b and 0x1b-turns show (the link pick's table patched to 0x1B
+on both consoles). The field is the match's game's pack's: a match is of one game,
 so its field draws its panels. `FieldArt` says, for each panel type and
 highlight, whether the field draws it (field.json's `panel_types`); one it
 doesn't is the owner's normal panel,
