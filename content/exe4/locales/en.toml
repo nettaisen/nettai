@@ -41,6 +41,13 @@ language = "en"
 "vulcan3" = { name = "Vulcan3", description = "7-shot to\npierce 1\npanel!" }
 "atk-10" = { name = "Atk+10", description = "+10 for\nselected\natk chip" }
 "atk-30" = { name = "Atk+30", description = "+30 for\nselected\natk chip" }
+"spreader" = { name = "Spreader", description = "Creates a\nlarge\nexplosion" }
+"heatshot" = { name = "HeatShot", description = "Explodes\n1 square\nbehind" }
+"heat-v" = { name = "Heat-V", description = "Explodes\n2 diag.\nsquares" }
+"heatside" = { name = "HeatSide", description = "Explodes\nup,down\non hit" }
+"bubbler" = { name = "Bubbler", description = "Explodes\n1 square\nbehind" }
+"bub-v" = { name = "Bub-V", description = "Explodes\n2 diag.\nsquares" }
+"bublside" = { name = "BublSide", description = "Explodes\nup,down\non hit" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

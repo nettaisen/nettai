@@ -15,6 +15,13 @@
 "vulcan3/action" = 0x1F
 # The spreaders' (the chips' action 0x1E, 0x080EC760).
 "drkspred/action" = 0x1E
+"spreader/action" = 0x1E
+"heatshot/action" = 0x1E
+"heat-v/action" = 0x1E
+"heatside/action" = 0x1E
+"bubbler/action" = 0x1E
+"bub-v/action" = 0x1E
+"bublside/action" = 0x1E
 # The throws' (the chips' action 0x09, 0x080EB3FE).
 "darkbomb/action" = 0x09
 "minibomb/action" = 0x09
