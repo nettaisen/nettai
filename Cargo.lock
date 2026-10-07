@@ -1530,7 +1530,9 @@ name = "exe4-compat"
 version = "0.1.0"
 dependencies = [
  "nettai-battle",
+ "nettai-content-api",
  "serde",
+ "serde_json",
  "toml 0.8.23",
 ]
 
@@ -3622,6 +3624,7 @@ dependencies = [
 name = "nettai-tools"
 version = "0.1.0"
 dependencies = [
+ "exe4-compat",
  "exe5-compat",
  "exe6-compat",
  "m4a",

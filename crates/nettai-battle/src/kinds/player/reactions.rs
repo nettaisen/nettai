@@ -9,7 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::content::{PushSource, SlideVector};
+use crate::content::{IceRule, PushSource, SlideVector};
 use crate::field::{self, PanelType};
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
@@ -547,7 +547,11 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
                 }
             }
         }
-        2 => facing(*b.game_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
+        2 => match b.game_rules().ice {
+            IceRule::Slide(rows) => facing(*rows.get(coll(b, r).direction as usize).expect("ice slide direction")),
+            // (Ice that pushes starts no ice slide: its push is slide type 1.)
+            IceRule::Push(_) => SlideVector::NONE,
+        },
         3 => {
             let kind = panel_kind(b, o.panel);
             // EXE5's metal (0x0800C8A8): the steps its slide tries by the

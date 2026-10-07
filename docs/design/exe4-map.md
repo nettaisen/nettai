@@ -540,11 +540,25 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
   game state's +9, read through the toolkit's pointer), `hud_tasks`, `banner` (the banner block 0x02037CE0's 0x10
   bytes: its +1 the banner, 0x0C the turn's start, 4 "ENEMY DELETED", 8 "MEGAMAN DELETED"); `input` (each player's
   held, pressed and released); `objects` in update order (type, index, flags, params, state, panel, alliance, `flip`:
-  the record's +0x17, which EXE4's code reads where EXE6's reads +0x0E, §3.1; hp, max HP, position, timer, animation,
-  status); `panels` (the 6x3 field's type and owner, the panel's +0 and +1); `chip_blocks` (both, 0x50 bytes).
+  the record's +0x17, which EXE4's code reads where EXE6's reads +0x0E, §3.1: the object's element, which the replay
+  compares as such; hp, max HP, position, timer, animation, status: the collision record's hit flags, +0x54, in the
+  recordings from oracle-trace's `collision_status`, 0 in the lab's first ones, which read EXE6's +0x3C); `panels`
+  (the 6x3 field's type and owner, the panel's +0 and +1); `chip_blocks` (both, 0x50 bytes, EXE6's layout).
 - **sounds:** a line per call each battle frame queued (the frame, the m4a call, its arguments): EXE4's queue holds
   SongNumStart, MPlayAllStop, VolumeControl (the m4a players by EXE6's numbering, EXE4's 0x1210 further), FadeOut,
   SongNumStop, ImmInit and FadeIn (§3.4).
+
+**The decode and the replay** are exe4-compat's (`codec`: the 0x40-byte NaviStats by its fields, the panels, the chip
+blocks, the link record of §18 item 23; `trace`, feature `trace`: the lines, their decode, a round's setup in the
+engine's terms, the buttons fed, the comparison, `run_round`), as exe5-compat's are EXE5's. A round's stage is the
+settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance
+from Red Sun US's); its background the record's +5; its stats the recorded block over the navi's fresh stats, an
+unported field (supports, a panel trail, Full Synchro or an aura at the start, a color, All Guard) a need that stops
+the setup. The compat tables kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the
+framework's states, which are EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and
+records.toml (navis, weapon routines, souls, auras by number) are written by hand as the replays reach them.
+The verification workspace's trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over data/traces/lab-exe4;
+nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
 
 ## 18. Engine gaps (must close)
 
@@ -558,18 +572,33 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.1 Reactions and the hit
 
-1. **Ice is a push.** 0x0801335A: a body that ends a move on ice (panel type 7) gets a push bit ORed into the
-   collision record's final modifier (+0x0D) from the table at 0x080133B4 by the move's direction (`00 40 80 20 10`
-   for side 0, `00 40 80 10 20` for side 1: none, up, down, back, forward), so the slide that follows is the push's
-   (the push rows at 0x0800ACDC: a panel up, down, back or forward). The engine slides on ice by the reactions' `ice` rows (six
-   `SlideVector`s by direction). Shape: a reactions field `ice: { rows = {...} } | { push_bits = {side0, side1} }`
-   (or `ice_push_bits: [[u8; 5]; 2]?` beside `ice`). Placeholder: `reactions.ice` is six zero rows (no slide).
-2. **The drag is the flinch bit with a push.** The hit intake (around 0x080137FA) takes a drag where the final
-   modifier has the flinch bit (1) and a push bit (2 to 7); the slide (0x08010294) always reads the push (EXE6's and
-   EXE5's drag reads its own direction). Shape: the push reading's rule for drags (`push_reading.drag = "flinch_and_push"`
-   beside EXE6's and EXE5's own). Placeholder: the engine's drag.
-3. **The slide reads the push always.** 0x08010294 (the slide, slide type 1): the vector is the first push bit's row
-   whatever started the slide. Part of item 2's rule.
+1. **Done: ice is a push.** 0x0801335A: a body that ends a move on ice (panel type 7; not of aqua, floating or
+   submerged, flags 0x24, and affected by ice, 0x02000000) gets a push bit ORed into the collision record's final
+   modifier (+0x0D) from the table at 0x080133B4 by its side and the move's direction (`00 40 80 20 10` for side 0,
+   `00 40 80 10 20` for side 1: none, up, down, left, right), so the slide that follows is the push's (the push rows
+   at 0x0800ACDC: a panel up, down, back or forward), and a hit's flinch bit the same tick makes it a drag (item 2).
+   The rule `reactions.ice`: `{ slide = rows }` (EXE6's and EXE5's six rows by direction, slide type 2) or
+   `{ push = { side 0's bits, side 1's } }` (EXE4's, the ROM's table: gen_rules.py reads it). It runs where EXE6's
+   ice does in the intake (before the traps, which absorb it with a hit, as EXE4's 0x08023048 comes after it too);
+   EXE6's test of a drag or a move under way before the move's end (`sub_801A36A`) is not EXE4's, but a move's end
+   comes with neither.
+   - **Done: the move's direction** the table is read by. EXE4's (0x0800AF90, from its `object_updateCollisionPanels`,
+     0x08012D9A) is 0 none, 1 up, 2 down, 3 left and 4 right whatever the side, across before up and down, never
+     EXE6's 5 (other); EXE6's and EXE5's (`sub_800E994`) is back and forward by the side, 5 for a move of two panels
+     or more right or down or a diagonal one. The rule `reactions.move_direction` (`by_side`, `absolute`).
+2. **Done: the drag is the flinch bit with a push.** The hit intake (0x08013858, at 0x080138D2) takes a drag where the
+   final modifier has a push bit (2 to 7, 0xFC) and the flinch bit (1), clearing the flinch request, else a slide
+   unless dragged or moving (0x100040); an obstacle's intake (0x0801393E, 0x080139D8) a push the same way, unless
+   moving. EXE6's and EXE5's push bits are 0x3C, the drag bit 0x40 (`sub_801AEB0`; an obstacle's `sub_801AD9E` tests
+   0x40 alone, which no hit has without a push bit). The rule `reactions.push_reading.drag_bit` (EXE6 and EXE5 0x40,
+   EXE4 0x01), the push bits by `push_reading.bits`.
+3. **Done: the slide reads the push always.** 0x08010294 (the slide) and 0x08010ABC (the drag) call the push reading
+   (0x0800ACAA) whatever started them, and the intake sets no slide type; EXE6's and EXE5's read by the slide type
+   (`sub_800E468`: their drag's `sub_800E45E` passes 1, which the routine overwrites). In EXE4 nothing but a push
+   starts a slide (its ice is a push, item 1; it has no roads and no metal slide), so the engine's slide type 1,
+   which the intake sets with a push's request, reads the same: no rule. (EXE4's reading stores the row even when
+   its first panel is closed, which the slide then tests; EXE6's stores none: nothing reads the row after a failed
+   slide.) Left of EXE4's slide and drag, as their own gaps: item 33.
 4. **Elec on ice.** 0x08012CF2: an elec hit counts once more on ice (panel 7), a fire hit on grass; the engine's bonus
    is elec on the sea (`hit_test.elec_bonus_on_sea`). Shape: `hit_test.element_bonus = { {element, panel}, ... }`
    (EXE6's {elec, sea}... as each states). Placeholder: `elec_bonus_on_sea = false` (EXE4 gives none on ice).
@@ -588,6 +617,20 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
 10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.
 11. **Overlay restart.** Placeholder: `reactions.overlay_restart = "reload"` (EXE5's code at 0x080CC61A; confirm).
+33. **EXE4's reaction actions and its slide** (found by group C; the player's action table, 0x080EAEFC, entries 2 to
+    5). Each is its own beside the engine's (EXE6's, which EXE5 shares where its labs pass):
+    - the drag (0x08010A9C, its start 0x08010ABC): DRAG alone (not the action in use), always animation 1 (EXE6's 2
+      paralyzed, 0 with SuperArmor), no drag hook or overlay refresh, the Z kept, no side stat bumped, and calls
+      0x0800DD82 and 0x08022F2C (unread); its end (0x08010C16) clears DRAG and the requests 0x43F and goes to idle
+      (action 6), with none of EXE6's paralysis turn, flag clears or slide state;
+    - the flinch (0x08010960): FLINCHING alone, 0x08022F2C, the AI status's low seven bits (0x0800C1F2), no freeze or
+      bubble to end; its end clears the requests 0x43F;
+    - the paralysis (0x080109FA): its own entry (0x0800DD14's hook, 0x08022F2C) and its mash (AIData +0x1E);
+    - the slide (0x08010294, 0x080102FC): the collision record's panels and direction each tick (0x08012D9A), no
+      direction at its end, no road cooldown; a type 10 panel stops it unless the body floats (item 12).
+    The status block (0x08013A48) is EXE5's order (`status.reactions = "flash_timer_first"`) but goes straight to the
+    action while flag 0x10000 is set and asks for action 13 by 0x0800B8B0. To port; observable in the lab's `drag/`,
+    `ice/` and `status/` recordings.
 
 ### 18.2 Panels
 
@@ -633,7 +676,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     flag 0x1184 or the mode; +0x36 set to 500 when 0x08006570 says so), then 0x2C bytes from 0x02001610 (+0x4C) and
     0x02007230 (+0x78), 0x10 from the toolkit's +0x64 (+0xA4), the save's +0x20 and +0x24 (+0xB4, +0xB8), 8 bytes from
     0x02035CA0 (+0xBC). 0x080087A8 unpacks the received records (0x0203E390 side 0, 0x0203E490 side 1) into the
-    NaviStats and seeds the battle's RNG2 from side 0's record (0x0203E394).
+    NaviStats and seeds the battle's RNG2 from side 0's record (0x0203E394). **Done:** exe4-compat's
+    `codec::LinkRecord` (the magic checked; the RNG2, the settings record and the NaviStats by their fields, the rest
+    kept whole: nothing in the battle reads it past the unpack).
 
 ### 18.4 MegaMan, his weapons, the objects
 
