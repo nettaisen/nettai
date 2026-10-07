@@ -603,10 +603,19 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    - For others: a guard marks the receiver's +0x26 with 1, not a bit by the hitter's flip (the chips wave: a guard
      chip reading the engine's `guard_dirs`); the counter's mark (0xFF added to +0x38, 0x7F off the mood) and hit
      flag 0x80 by the hitter's side's 0x0800F49C (2: the table at 0x08012CEC) are item 9's (group A).
-6. **Request clears.** 0x0800CA4A (an attack's end) zeroes the AI data's request halfword at +0x70; EXE4's exits
-   0x0800CA28 and 0x0800C9FC (the latter also writes AIData +0x3A from the attack's +5) differ from EXE6's
-   `object_exitAttackState`. Shape: `reactions.request_clears` rows per EXE4's, and the exit's extra write as a rule
-   or the actions' own. Placeholder: empty clears; the buster, charged shot and Cannon call the engine's `exit_attack`.
+6. **Done: request clears.** EXE4's ends: an attack's (0x0800CA28, 0x0800C9FC) clears the six attack requests
+   (0x3F) and nothing more; a paralysis's, a flinch's and a drag's (0x08010A74, 0x080109E6, 0x08010C28) 0x43F, the
+   anti-sword trigger too (0x400, which AntiSwrd's trap sets, 0x0802309C). Stated: `request_clears` (attack none, the
+   others `anti_sword_triggered`). EXE4 has no kind byte for the exit (EXE6's `sub_801171C` reads the attack's
+   +0x1C): each action calls one of three routines, which map onto the engine's kinds, so no rule:
+   - 0x0800CA4A, bare (animation 0, idle, the attack's step): the move's (0x080EB252, 0x080EB314), EXE6's kind 4;
+   - 0x0800CA28, the requests, the charge and the action in use cleared too: the buster's (0x080EB3D6, 0x080EB3F0)
+     and the charged shot's (0x080ECCCC), many chips', EXE6's kind 1;
+   - 0x0800C9FC, that and AIData +0x3A from the attack's +5 (its lockout): the chips' (Cannon's 0x080EB9E8) and
+     action 9's (0x080EB51C, likely the B+Left ability), EXE6's kind 2. One field for both: the idle that reads it
+     decides whether the B+Left ability's is the engine's chip lockout or its back special's (kind 3).
+   - EXE4's exits zero no buffered move (EXE6's AIData +0x1A) and no special source (+0x1B): nothing in EXE4 sets
+     either while the engine's movement is EXE6's (item 24, group B's).
 7. **Statuses.** The status table 0x08018550 is generated (4 groups of 4); the status rules are EXE5's but for the
    HP bug: 0x0800C164 reads NaviStats +0x0E as the period itself (no table), and the custom gauge drain 0x0800C194.
    Shape: `status.hp_bug_periods` becomes `hp_bug = { periods = [...] } | { period_is_byte = true }`. Placeholder:
