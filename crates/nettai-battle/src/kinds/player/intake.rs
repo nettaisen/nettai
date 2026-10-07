@@ -604,36 +604,16 @@ fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
     clear_flag2(b, r, 0x6);
 }
 
-/// `sub_8013F1E`'s gate: once a hit sequence while damage lands, the
-/// side's rules hear of it (`navi_damaged`: the NaviCust's hit bug, the
-/// `hit_status` stat, which may put a status in place of the hit's).
+/// `sub_8013F1E` (EXE5's 0x0801156E): a hit that asks the navi to flinch
+/// or be dragged (the requests 0x104) is the side's rules' to hear of
+/// (`navi_flinched`: the NaviCust's hit bug, the `hit_status` stat, behind
+/// the game's gate, which may put a status in place of the hit's).
 fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
     if flag2(b, r) & 0x104 == 0 {
         return;
     }
-    let c = coll(b, r);
-    if c.acc.hit_flags == 0 {
-        return;
-    }
-    // Three unaligned u32 loads from +0x82: the ARM rotation pairs each
-    // damage slot with its predecessor.
-    let d = &c.acc.element_damage;
-    let word = |lo: u16, hi: u16| lo as u32 | (hi as u32) << 16;
-    let sum = word(d[0], c.acc.final_damage).wrapping_add(word(d[2], d[1])).wrapping_add(word(d[4], d[3]));
-    if sum == 0 {
-        return;
-    }
-    let latched = b.objects.get(r).prevent_anim != 0;
-    let a = ai_mut(b, r);
-    if !latched {
-        a.hit_bug_latched = false;
-    } else if a.hit_bug_latched {
-        return;
-    } else {
-        a.hit_bug_latched = true;
-    }
     let side = b.objects.get(r).alliance;
-    b.rules_navi_damaged(side, r);
+    b.rules_navi_flinched(side, r);
 }
 
 /// `sub_801A554`: apply the status the hit carried: set its timer and

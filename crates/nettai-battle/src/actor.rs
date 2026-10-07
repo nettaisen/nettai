@@ -297,9 +297,6 @@ pub struct ActorData {
     /// Charge counter, level (0 none, 1 charging, 2 full) and source
     /// (0 none, 1 A, 2 B).
     pub charge_counter: u8,
-    /// AIData+0x1C: the NaviCust on-hit bug already fired during this
-    /// hit sequence (`sub_8013F1E`; cleared while `prevent_anim` is 0).
-    pub hit_bug_latched: bool,
     pub charge_level: u8,
     pub charge_source: u8,
     pub total_damage_taken: u16,

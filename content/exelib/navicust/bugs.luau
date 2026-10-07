@@ -1,47 +1,19 @@
 --!strict
--- The bugs a hit inflicts, as EXE5's and EXE6's share them: a hit's bug code (its collision's `bugs`, the low byte)
--- and argument (the high byte) reach the navi it hits (`inflicted_bugs`), and the navi's side's rules say what they
--- do, by these (a game's rules/navicust/bugs hands them its own, `Game`, and its rules' hooks take them):
+-- The NaviCust bugs a hit inflicts, as EXE5's and EXE6's share them: a hit's bug code (its collision's `bugs`, the
+-- low byte) and argument (the high byte) reach the navi it hits (`inflicted_bugs`), and the navi's side's rules say
+-- what they do (a game's rules/navicust/bugs hands these its part, `Game`, and its rules' hooks call them):
 --
--- * `navi_bug`: a player's navi takes the NaviCust bug (EXE6's `sub_80139F6`, EXE5's 0x0801103E). A code below 0x64
---   names a NaviStats byte, which takes the argument (`BYTES`, by the stat's name; a game's own stats by its `own`),
---   but the drains' (0x18, 0x19) and the custom screen's damage's (0x54), which add to theirs; the codes from 0xF5
---   are the game's special bugs (`special`).
--- * `hit_bug`: any navi takes the HP bug's codes (`sub_801A6B4`: 0xF4, and 0xF7 on an HP with a decimal 4) and the
---   paralyzing, blinding one (`sub_801A720`: 0xF6).
--- * `bug_mark`: the HP bug's codes show its marker (`sub_801A4A6`).
--- * `navi_damaged`: as damage lands, the NaviCust's hit bug (the `hit_status` stat, `sub_8013F1E`) puts its status
---   in place of the hit's, or raises the HP bug.
+-- * `navi_bug`: a player's navi takes the NaviCust bug (EXE6's `sub_80139F6`, EXE5's 0x0801103E). The drains' codes
+--   (0x18, 0x19) and the custom screen's damage's (0x54) add to their stats, and the game's own bugs (`specials`)
+--   are their own; any other code names a NaviStats byte, which takes the argument (`BYTES`, by the stat's name; the
+--   game's own stats by its `own`), within the side's block (`block`) and, in EXE5, past it (`past_block`).
+-- * `hit_status_bug`: the NaviCust's hit bug (the `hit_status` stat) puts its status in place of the hit's, or
+--   raises the HP bug (EXE6's `sub_8013F1E`, EXE5's 0x0801156E: a table by the stat), where the game's gate lets it.
 
 local bugs = {}
 
--- A game's part.
-export type Game = {
-    -- Its own stats (its rules' `stats`) by the NaviStats byte a code names: the stat, and how the game reads the
-    -- byte ("flag": any nonzero byte is true; "one": only 1 is; "signed": as `ldrsb` reads it).
-    own: { [number]: { name: string, as: ("byte" | "flag" | "one" | "signed")? } },
-    -- Bytes a code may name that no stat holds, and what they are (EXE6's version, a side's fact).
-    unheld: { [number]: string }?,
-    -- A drain's argument goes by its flags (EXE5's 0x0801103E): with bit 4 the level adds its low four bits (to at
-    -- most 7), with bit 5 it loses them (to at least 0), else it rises to them (a level that wouldn't rise is left,
-    -- the bug spared: nothing reloads). Else the argument adds (EXE6's, to at most 7).
-    drain_by_flags: boolean,
-    -- The codes from 0xF5 the game's routine takes as bugs of their own, and those it writes as any other code's
-    -- byte (EXE5's 0xF5 and 0xF8: no chip gives them, not ported).
-    specials: { [number]: Special },
-    -- The statuses: code 0xF6's paralysis and blindness; the hit bug's blindness and confusion (levels 1 and 2).
-    statuses: { paralyze: Status, blind: Status, hit_blind: Status, hit_confuse: Status },
-}
-
--- A code's own bug: a panel trail (its kind and level); every buster shot a blank (0xFF); MegaMan's body programs
--- gone (0xFB, `sub_8014080`); uninstalled, with a spark and a sound (0xF8, `sub_80140EE`); or a byte past the block
--- that the game writes as any other code's (not ported).
-export type Special =
-    { kind: "panel_trail", trail: number, level: number }
-    | { kind: "blanks" }
-    | { kind: "strip" }
-    | { kind: "uninstall", spark: Spark, sound: Sound }
-    | { kind: "unported" }
+export type Game = NaviCustBugTable
+export type Special = NaviCustBugSpecial
 
 function bugs.panel_trail(trail: number, level: number): Special
     return { kind = "panel_trail", trail = trail, level = level }
@@ -257,11 +229,10 @@ local function navi_bug(game: Game, side: number, navi: Object): ("edited" | "sp
         local d = s.custom_damage
         s.custom_damage = bit32.bor(bit32.band(d, 0xFF00), bit32.band(d + arg, 0xFF))
         return "edited"
-    elseif code >= 0x64 then
-        local special = game.specials[code]
-        if special == nil then
-            return nil
-        elseif special.kind == "blanks" then
+    end
+    local special = game.specials[code]
+    if special ~= nil then
+        if special.kind == "blanks" then
             s.buster_blanks = 4
             return "edited"
         elseif special.kind == "panel_trail" then
@@ -277,49 +248,33 @@ local function navi_bug(game: Game, side: number, navi: Object): ("edited" | "sp
             end
             battle.spark(navi, navi.pos + Vec3.new(0, 0, 0x10_0000), special.spark)
             battle.play_sound(special.sound)
-        else
-            error(string.format("bug code 0x%x: the game writes it as a byte past NaviStats' (not ported)", code))
         end
         return nil
     end
-    write(game, s, code, arg)
+    if code < game.block then
+        write(game, s, code, arg)
+        return "edited"
+    elseif game.past_block == "nothing" then
+        return nil
+    end
+    -- (Past the side's block: side 0's codes up to twice the block are side 1's bytes; the rest no stat holds.)
+    if side == 0 and code < 2 * game.block then
+        write(game, battle.navi(1), code - game.block, arg)
+    end
     return "edited"
 end
 
--- The rules' `hit_bug`.
-local function hit_bug(game: Game, side: number, navi: Object)
-    local c = navi.collision
-    local code = bit32.band(c.inflicted_bugs, 0xFF)
-    local s = battle.navi(side)
-    if code == 0xF4 or code == 0xF7 then
-        -- (0xF7 takes on an HP with a 4 among its decimal digits, else it is gone.)
-        if code == 0xF7 and not string.find(tostring(navi.hp), "4", 1, true) then
-            c.inflicted_bugs = bit32.band(c.inflicted_bugs, 0xFF00)
-        else
-            s.hp_drain = math.min(s.hp_drain + 1, 7)
-        end
-    elseif code == 0xF6 then
-        -- Both drains up two, paralysis and blindness (`sub_801A77A`; not a navi whose identity is
-        -- `bug_blind_immune`, the original's Cybeasts', NameIDs 0x173 to 0x17E), and the code gone.
-        s.hp_drain = math.min(s.hp_drain + 2, 7)
-        s.custom_drain = math.min(s.custom_drain + 2, 7)
-        navi:take_status(game.statuses.paralyze)
-        local identity = navi.identity
-        if not (identity and identity.bug_blind_immune) then
-            navi:take_status(game.statuses.blind)
-        end
-        c.inflicted_bugs = bit32.band(c.inflicted_bugs, 0xFF00)
+-- A game's rules' `navi_bug` for its part.
+function bugs.navi_bug(game: Game): (side: number, navi: Object) -> ("edited" | "spared")?
+    return function(side: number, navi: Object): ("edited" | "spared")?
+        return navi_bug(game, side, navi)
     end
 end
 
--- The rules' `bug_mark`.
-local function bug_mark(_side: number, navi: Object): boolean
-    local code = bit32.band(navi.collision.inflicted_bugs, 0xFF)
-    return code == 0xF4 or code == 0xF7
-end
-
--- The rules' `navi_damaged`: the hit bug by its level.
-local function navi_damaged(game: Game, side: number, navi: Object)
+-- The NaviCust's hit bug by its level (`hit_status`): its status in place of the hit's, or the HP bug up one (to at
+-- most 7). (The table has nothing past level 3: EXE6's `off_8013F70`, EXE5's 0x08011590, which the original would
+-- read on into code.)
+function bugs.hit_status_bug(game: Game, side: number, navi: Object)
     local s = battle.navi(side)
     local level = s.hit_status
     if level == 1 then
@@ -333,22 +288,6 @@ local function navi_damaged(game: Game, side: number, navi: Object)
     elseif level ~= 0 then
         error(string.format("NaviCust hit bug %d reads past its table", level))
     end
-end
-
--- A game's rules' hooks for its bugs.
-function bugs.hooks(game: Game)
-    return {
-        navi_bug = function(side: number, navi: Object): ("edited" | "spared")?
-            return navi_bug(game, side, navi)
-        end,
-        hit_bug = function(side: number, navi: Object)
-            hit_bug(game, side, navi)
-        end,
-        bug_mark = bug_mark,
-        navi_damaged = function(side: number, navi: Object)
-            navi_damaged(game, side, navi)
-        end,
-    }
 end
 
 return bugs
