@@ -860,8 +860,6 @@ end
 -- game's rules/save writes as the round is set up: the sun, the Regular
 -- memory, the base HP and MegaMan's variant).
 declare extern type Navi with
-    -- Fighting in the sun.
-    sun: boolean
     -- The form and the navi, as their definitions.
     form: FormDef
     navi: NaviDef
@@ -874,14 +872,9 @@ declare extern type Navi with
     rapid: number
     charge: number
     mood: number
-    -- Writable: the Beast Out turns left.
-    beast_out_counter: number
     -- (`form` is writable too: a game's form change puts the navi in it.)
     -- The form the navi started the battle in.
     starting_form: FormDef
-    -- The navi's game: 0 Gregar, 1 Falzar (the place of the player's
-    -- version among those the rules declare: a battle's start sets it).
-    version: number
     -- The Regular chip's MB at most.
     regular_memory: number
     max_base_hp: number
@@ -910,8 +903,6 @@ declare extern type Navi with
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
-    -- EXE5's Hub Style (NaviStats +0x4C), which its patch card 111 sets: 1 Team ProtoMan's, 2 Team Colonel's; 0 none.
-    hub_style: number
     -- HP when the round starts, and its maximum.
     hp: number
     max_hp: number
@@ -942,18 +933,12 @@ declare extern type Navi with
     custom_damage: number
     emotion_bug: number
     battle_start_bug: number
-    -- NaviCust ChpShufl and NumbrOpn.
-    chip_shuffle: boolean
-    number_open: boolean
-    -- What the NaviCust does to chip drops (1 its collector bug) and random
-    -- encounters (1 its encounter bug): no netbattle reads them. Writable:
-    -- a game's NaviCust rules set them.
-    chip_drops: number
-    encounters: number
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
-    -- EXE5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1), which the custom screen adds to a soul's three.
-    soul_turn_bonus: number
+    -- Its game's own stats (its rules' `stats`: EXE6's `beast_out_counter`,
+    -- `sun`, `chip_shuffle`, ...; EXE5's `hub_style`, `soul_turn_bonus`,
+    -- ...), read and written by name.
+    [string]: any
 end
 
 -- A one-tick hit region (`battle.hitbox`).
@@ -1800,6 +1785,13 @@ export type RulesSpec = {
     -- The state of each navi no player controls that its `controller`
     -- drives (the navi object's own: an object's state, 64 bytes at most).
     navi_state: StateSchema?,
+    -- A navi's stats of the game's own, beside the engine's (16 bytes at
+    -- most: the stats' every copy carries them): `battle.navi(side)` reads
+    -- and writes them by name, a compat crate maps them to its block's
+    -- bytes, `fresh_stats` gives their fresh values, and a frontend reads
+    -- one by its role (`schema.role("window_count", "u8")`: the count the
+    -- emotion window's box shows).
+    stats: StateSchema?,
     -- What a player's setup that says nothing of a field holds (else zero): a
     -- value of each field given (an enum's by name, a definition's by its
     -- id; an array's or a list's, a list of them from its first element; a

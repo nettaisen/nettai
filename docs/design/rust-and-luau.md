@@ -51,14 +51,14 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 
 | Feature | (a) | (b) | (c) | (d) | All |
 |---|---|---|---|---|---|
-| Beast Out and Beast Over | | 2 | 1 | | 3 |
+| Beast Out and Beast Over | | 1 | 1 | | 2 |
 | Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | 1 | 1 | 3 | 5 |
-| NaviCust | | 2 | | 2 | 4 |
+| NaviCust | | 1 | | 2 | 3 |
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
-| The stat block and versions | | 1 | 1 | | 2 |
+| The stat block and versions | | | 1 | | 1 |
 | Tools | | | 1 | | 1 |
-| **All** | **1** | **7** | **7** | **5** | **20** |
+| **All** | **1** | **4** | **7** | **5** | **17** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -77,13 +77,10 @@ rename left of EXE5's logic.
   Only content asks for it: EXE6's rush, the Beast claw, the lunge and GroundCross's drill. *(b)* An EXE6
   rules/lockon module: the records as plain data, the routine in Luau, `rush_lockon` a field of the rush's state.
   About 190 lines of Rust. It runs once per rush step or attack setup, never per tick.
-- **B3. Beast Out's turns** (`NaviStats::beast_out_counter`, setup.rs:167; the bug-code writer, :359;
-  `fresh_stats.beast_out_counter`, rules.rs:326; `NaviStat::BeastOutCounter`, api.rs:480). *(b)* A field of EXE6's
-  rules state, which rules/beast already spends and rules/emotion reads. The HUD's count becomes a view (B6). Small:
-  read at a turn's start and a custom screen.
-- **B6. The HUD's Beast Out count** (render hud.rs:102, :879; `beast_count_shown`, :926, which reads
-  `PlayerFact::BeastOut`) and that fact role (views.rs:124), which nothing else reads. *(c)* A HUD view the rules fill
-  (a count, and whether it shows). The fact stays EXE6's setup field, with no role.
+- **B6. The HUD's Beast Out count** (`beast_count_shown`, render hud.rs:926, which reads `PlayerFact::BeastOut`) and
+  that fact role (views.rs:124), which nothing else reads. (The count itself is read by its role since B3:
+  `StatRole::WindowCount`.) *(c)* A HUD view the rules fill (whether the count shows). The fact stays EXE6's setup
+  field, with no role.
 ### Crosses and the form framework (EXE6; the form break and the navi switch are both games')
 
 - **C7. The renderer's Cross window**. Pieces:
@@ -166,10 +163,6 @@ rename left of EXE5's logic.
   `status_guard`, setup.rs:159–162; `apply_ability_flags`, `init_round_state`, player/mod.rs:1008–1090). *(d)* Navi
   mechanics the framework reads per tick: panels, holes, flinching, deletion. Chips and forms give them too. (Their
   functions' `navicust` names went in step 1: N6.)
-- **N4. ChpShufl, NumbrOpn and the shrinking hand in the default hand size** (`chip_shuffle`, `number_open`,
-  setup.rs:194–196; `hand_size`, screen.rs:1584–1606). *(b)* EXE6's rules/cross already adds to
-  `custom.hand_size`. NumbrOpn and the bug move into it, and the two flags into EXE6's rules state. Small; once per
-  custom screen.
 ### Souls and Chaos Unison (EXE5)
 
 - **S1. Chaos Unison in the navi framework**:
@@ -194,19 +187,14 @@ rename left of EXE5's logic.
 
 ### The stat block and versions
 
-- **V1. The stat block's other per-game fields** (`NaviStats`, setup.rs): `version` (EXE6's version byte, :165, set
-  at battle.rs:789), `sun` (EXE6's, :169), `chip_drops` and `encounters` (:173), `hub_style` (EXE5's, :202),
-  `soul_turn_bonus` (EXE5's, :207), and their `NaviStat`s. B3 and N4 cover `beast_out_counter`, `chip_shuffle` and
-  `number_open`. They mirror the original's block, which compat and the traces compare. *(b)* Fields of each game's
-  rules state, with compat mapping them to the block's offsets. Small each; read at round setup and a few chip uses.
 - **V2. The version-named renderer helpers** (`beast_pictures`, render custom.rs:578; `version_name`,
   `console_version`, `known_emblem`, :592–640, which read `PlayerFact::Version`). Versions themselves are generic:
   a pack's per-version pictures. *(c)* Rename `beast_pictures` to the button's version pictures; nothing else.
 
 ### Tools (nettai-match)
 
-- **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
-  link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
+- **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name; link_navis.rs; story.rs). The
+  game's own are listed from its rules' `stats` since V1 (`stats::game_fields`). *(c)* The engine's by role.
 
 ### Done
 
@@ -214,6 +202,9 @@ Each with what it was and what it is now.
 
 - **B1.** The `berserk` rule section (`BerserkRules`) is gone. EXE6's rules/berserk.luau is a record of type
   `berserk`, which its berserk controller reads and gen-content checks against the ROM.
+- **B3.** Beast Out's turns are EXE6's own stat `beast_out_counter` (V1's way), 3 fresh (its `fresh_stats`), which
+  rules/beast spends and rules/emotion reads; the HUD reads the count by its role (`StatRole::WindowCount`,
+  `schema.role("window_count", "u8")`), and exe6-compat maps NaviStats+0x21 to it.
 - **B4.** `Library::beast_out_chip` is gone. `ChipRole::BeastOut` is `ChipRole::ButtonChip` (`button_chip`): the chip
   a button's pick stands as in the hand, whose picture is the button's.
 - **B5, and C6's sounds.** `ScreenSound::{BeastOutGregar, BeastOutFalzar, BeastOutFlash, CrossWindowOpen,
@@ -250,6 +241,9 @@ Each with what it was and what it is now.
   "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.
   `LastStand`, `last_stand` and `hold_last_stand` are gone; the HP loss is `lose_hp_and_gauge` and
   `apply_damage_shown_by_hp` (X2's names before). A Luau call per navi whose HP reaches 0, only in EXE5.
+- **N4.** NumbrOpn left the framework's hand size (EXE6's rules/cross deals its ten, with ChargeCross's chips; the
+  framework's is the custom level and the hand-shrink bug), and ChpShufl's and NumbrOpn's flags are EXE6's own stats
+  (V1's way: `chip_shuffle`, `number_open`).
 - **N5** (step c3b). The NaviCust section, `NaviCustRules` and navicust.rs are gone; the board is the game's
   rules/navicust/board.luau, which the editor reads as data.
 - **N6.** `clear_bugs`, `init_round_state`, `reset_abilities`, `refresh_abilities`, `apply_ability_flags`,
@@ -269,6 +263,15 @@ Each with what it was and what it is now.
   field `sp_times`, which tools set and read through the generic facts and compat writes by name
   (`exe6_compat::codec::SP_TIMES`); the editor's times view keys on a list of `{ <definition>, frames }` and titles
   the field `sp_times` by its name. `RegularChip` and `TagChips` stay roles: the battle folder's deal reads them.
+- **V1.** A game's stats of its own are its rules' `stats` (a schema, as `state` and `setup` are): `NaviStats::game`,
+  an inline block of 16 bytes at most (`SmallBlock`, copied with the stats), which Luau reads and writes by name
+  through `battle.navi(side)` (`CoreApi::navi_game_stats_mut`), `fresh_stats` gives fresh values of by name, and the
+  compat codecs map to the block's bytes by name. EXE6's: `beast_out_counter`, `sun`, `chip_drops`, `encounters`,
+  `chip_shuffle`, `number_open`; EXE5's: `sun`, `chip_drops`, `encounters`, `hub_style`, `soul_turn_bonus`. Their
+  `NaviStats` fields and `NaviStat`s are gone. `version` is no stat: it is the side's version fact (EXE6's API
+  `exe6.version`, which MstrCros reads; exe6-compat writes +0x20 from it). The stats pane lists the game's own by the
+  schema's names (`stats::game_fields`). The bug-code writer refuses those bytes until N2's table writes them by
+  name.
 - **X1.** The fades by what they do: `FadeMode::{Flash, FlashBack, HalfOut, HalfOutBack}` (content's `flash`,
   `half_out`, ...; were `SoulFlash*`, `BeastOut*`), and D1's. A `fades` rule section stays §3.3's way for a fade of a
   game's own, which none needs yet.

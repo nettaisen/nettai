@@ -24,6 +24,13 @@ function exe6.spend_bug_frags(side: number, n: number): boolean
     return true
 end
 
+-- The side's game version (its player's setup's `version`): gregar or falzar, which MstrCros picks its Crosses by
+-- (the navi's version byte, NaviStats+0x20, the console's own, which a battle's start sets to the player's).
+function exe6.version(side: number): string?
+    local s = rules.setup_of(side) :: { version: string? }?
+    return if s then s.version else nil
+end
+
 -- The level of the navi code the side's save received (0 to 14), or nil
 -- (event flag 0x163 clear): the save's `level` (rules/save), which the
 -- engine knows nothing of. What a level gives a link navi in battle is

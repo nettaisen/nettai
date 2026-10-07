@@ -931,6 +931,47 @@ impl Block {
     codec_write!();
 }
 
+/// The room of a [`SmallBlock`], in bytes.
+pub const SMALL_BLOCK: usize = 16;
+
+/// A block of a small schema (its fields take [`SMALL_BLOCK`] bytes at
+/// most), kept inline: copied with what holds it, not allocated. A navi's
+/// stats of its game's own (the rules' `stats`: `NaviStats::game`), which
+/// the stats' every copy carries.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SmallBlock {
+    id: StateId,
+    bytes: [u8; SMALL_BLOCK],
+}
+
+impl Default for SmallBlock {
+    /// A block of no fields (no schema's).
+    fn default() -> SmallBlock {
+        SmallBlock { id: StateId::default(), bytes: [0; SMALL_BLOCK] }
+    }
+}
+
+impl std::fmt::Debug for SmallBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "SmallBlock({}: {:02x?})", self.id.0, self.bytes)
+    }
+}
+
+impl SmallBlock {
+    /// A zeroed block of `schema` (`id`'s); none for a schema whose fields
+    /// take more than [`SMALL_BLOCK`] bytes.
+    pub fn new(id: StateId, schema: &Schema) -> Option<SmallBlock> {
+        (schema.size() <= SMALL_BLOCK).then_some(SmallBlock { id, bytes: [0; SMALL_BLOCK] })
+    }
+
+    pub fn id(&self) -> StateId {
+        self.id
+    }
+
+    codec_read!();
+    codec_write!();
+}
+
 // ---- A block's compact form ------------------------------------------------
 //
 // A block's values and nothing else, for a block to travel or be kept (a
@@ -1111,6 +1152,7 @@ macro_rules! fields {
 }
 fields!(StateMut<'_>);
 fields!(Block);
+fields!(SmallBlock);
 
 #[cfg(test)]
 mod tests {
