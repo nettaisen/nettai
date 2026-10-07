@@ -15,6 +15,7 @@ navicust_programs = [
     "fstbarr",
     "shield",
     "reflect",
+    "antimagc",
     "flotshoe",
     "airshoes",
     "undersht",
