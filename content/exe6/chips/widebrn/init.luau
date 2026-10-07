@@ -4,6 +4,7 @@
 -- spreading two panels forward on three rows, cracking the panels it
 -- leaves. The three differ only in their damage.
 
+local attachment = require("../objects/attachment")
 local burn = require("../lib/burner/burn")
 local firebrn_chips = require("./firebrn")
 local lockon = require("../rules/lockon")
@@ -11,7 +12,8 @@ local lockon = require("../rules/lockon")
 local function wide_burn(id: string): Action
     return burn.action {
         id = id,
-        burner = burn.burners.fire,
+        -- The burner (the original's attachment row 0x16).
+        burner = attachment.look { sprite = asset.sprite("burner"), palette = 0, attach_point = 0x14 },
         flame = { ticks = 60, spread = 2, wide = true, cracks = true },
     }
 end
