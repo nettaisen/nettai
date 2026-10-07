@@ -1,12 +1,11 @@
 --!strict
--- MetalMan, the navi of EXE4's MetalMan chips (EXE4's actor object #0x40, 0x080C7D44: EXE4's own), whom the shared navi
--- chip controller (objects/navi_chip_controller, its entry 0x10) brings, with his fist (the follow effect's look 5,
--- objects/follow_effect). He fades in on his user's panel; while the battle is dimmed his user aims his punch: with A
--- held, the d-pad moves a target over the field (highlighted), from his own panel; A let go fixes it. 22 ticks after
--- he came he blinks to the target's column (unless it is his own panel), 3 ticks out, 3 in, a hit of no damage on the
--- target; then, unless that is the field's far edge or holds a body of his side, he winds up (40 ticks) and punches the
--- panel ahead (60 ticks; the hit at 56 left: it breaks a solid panel, with a shake, a flash and a sound); else he waits
--- 61 ticks. Then he goes.
+-- MetalMan, the navi of EXE4's MetalMan chips (EXE4's actor object #0x40, 0x080C7D44: EXE4's own), and their
+-- controller, which brings him, with his fist (the follow effect's look 5, objects/follow_effect). He fades in on his
+-- user's panel; while the battle is dimmed his user aims his punch: with A held, the d-pad moves a target over the
+-- field (highlighted), from his own panel; A let go fixes it. 22 ticks after he came he blinks to the target's column
+-- (unless it is his own panel), 3 ticks out, 3 in, a hit of no damage on the target; then, unless that is the field's
+-- far edge or holds a body of his side, he winds up (40 ticks) and punches the panel ahead (60 ticks; the hit at 56
+-- left: it breaks a solid panel, with a shake, a flash and a sound); else he waits 61 ticks. Then he goes.
 
 local collision = require("../../rules/collision")
 local follow_effect = require("../../objects/follow_effect")
@@ -397,4 +396,11 @@ function metalman.spawn(controller: Object, user: Object, damage: number): Objec
     return o
 end
 
-return metalman
+-- His chips' navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
+-- chips: compat/kinds.toml maps each one's to it): the user warps out, MetalMan, the user warps back in.
+return navi_chips.controller {
+    id = "metalman/controller",
+    name = "MetalMan",
+    spawn = metalman.spawn,
+    steps = navi_chips.SHARED,
+}

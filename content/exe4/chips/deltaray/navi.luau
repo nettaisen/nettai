@@ -1,12 +1,12 @@
 --!strict
--- DeltaRay, the navi of EXE4's DeltaRay chip (EXE4's actor object #0x3D, 0x080C7238), whom the shared navi chip
--- controller (objects/navi_chip_controller, its entry 0xC) brings: EXE6's and EXE5's (@exelib/deltaray/navi; the same
--- code) with EXE4's constants (ProtoMan's sprite 08-07 in the chip's palette, 0x0800B950: two palettes a variant;
--- his sounds; his flash, effect row 3; his mark, row 0x60; his slash, row 0x5E; his sword, attachment row 3, in its
--- animation 7; his finish's animation 15; the follow effect's look 4 for his burst, objects/follow_effect) and its
--- differences: his spawner (0x080C76CE) keeps neither his user, nor its facing, nor the element, his height his side;
--- his search starts at column 2, or 5 for side 1 (0x080C73D6), his first candidate behind the enemy navi (EXE6's);
--- his strike is ProtoMan's slash (0x080C71AA), all at once, his sword away as it ends; no white flashes.
+-- DeltaRay, the navi of EXE4's DeltaRay chip (EXE4's actor object #0x3D, 0x080C7238), and its controller, which brings
+-- him: EXE6's and EXE5's (@exelib/deltaray/navi; the same code) with EXE4's constants (ProtoMan's sprite 08-07 in the
+-- chip's palette, 0x0800B950: two palettes a variant; his sounds; his flash, effect row 3; his mark, row 0x60; his
+-- slash, row 0x5E; his sword, attachment row 3, in its animation 7; his finish's animation 15; the follow effect's look
+-- 4 for his burst, objects/follow_effect) and its differences: his spawner (0x080C76CE) keeps neither his user, nor its
+-- facing, nor the element, his height his side; his search starts at column 2, or 5 for side 1 (0x080C73D6), his first
+-- candidate behind the enemy navi (EXE6's); his strike is ProtoMan's slash (0x080C71AA), all at once, his sword away as
+-- it ends; no white flashes.
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
@@ -68,4 +68,11 @@ local function spawn(controller: Object, user: Object, damage: number): Object?
     )
 end
 
-return { kind = deltaray.kind, spawn = spawn }
+-- His chip's navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
+-- chips: compat/kinds.toml maps each one's to it): the user warps out, DeltaRay, the user warps back in.
+return navi_chips.controller {
+    id = "deltaray/controller",
+    name = "DeltaRay",
+    spawn = spawn,
+    steps = navi_chips.SHARED,
+}

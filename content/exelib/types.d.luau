@@ -1611,9 +1611,9 @@ export type Lockon = LockonDef
 -- after the navi), the controller's state, and what a game's `make` hands back.
 export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
 export type NaviChipShortCourse = { out: number, after: number }
-export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean, level: number, which: number }
+export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean, level: number }
 export type NaviChipController = {
     kind: Kind,
     hook: (user: Object, spec: DimmingChipSpec) -> Object?,
-    hook_for: (level: number, which: number?) -> (user: Object, spec: DimmingChipSpec) -> Object?,
+    hook_for: (level: number) -> (user: Object, spec: DimmingChipSpec) -> Object?,
 }

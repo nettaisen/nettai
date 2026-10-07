@@ -1,9 +1,8 @@
 --!strict
 -- ThunMan, the navi of EXE4's ThunMan chips (EXE4's actor object #0x37, 0x080C5920: EXE4's own, on the navi chips'
--- template SearchMan's is built on), whom the shared navi chip controller (objects/navi_chip_controller, its entry 4)
--- brings. He fades in on his user's panel (and goes if it isn't solid), raises his arms (animation 15) for 31 ticks,
--- then calls a thunderbolt (./thunder) on each row of the column three ahead of him, 21 ticks apart, in his animation
--- 10; lowers them for 31 ticks, and goes.
+-- template SearchMan's is built on), and their controller, which brings him. He fades in on his user's panel (and goes
+-- if it isn't solid), raises his arms (animation 15) for 31 ticks, then calls a thunderbolt (./thunder) on each row of
+-- the column three ahead of him, 21 ticks apart, in his animation 10; lowers them for 31 ticks, and goes.
 
 local navi_chips = require("../../lib/navi_chips")
 local thunder = require("./thunder")
@@ -235,4 +234,11 @@ function thunman.spawn(controller: Object, user: Object, damage: number): Object
     return o
 end
 
-return thunman
+-- His chips' navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
+-- chips: compat/kinds.toml maps each one's to it): the user warps out, ThunMan, the user warps back in.
+return navi_chips.controller {
+    id = "thunman/controller",
+    name = "ThunMan",
+    spawn = thunman.spawn,
+    steps = navi_chips.SHARED,
+}
