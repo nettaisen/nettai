@@ -7,6 +7,10 @@
 --   mood was; 0x0800F56A): under 470 0 (a dark MegaMan's: his emotion worn out); with the save's Full Synchro at the
 --   start (NaviStats +0x1F, a Mod Card's) 0xFF; from 1000 190; else the value / 20 + 128 (a fresh save's 500: 0x99).
 --   (Its branch for a value under 500, 64, follows the test under 470 and is never taken.)
+-- - **A dark MegaMan clears holy panels** (0x080132E6, from the navi's intake every tick of the fight, unless his
+--   NaviStats +0x26 is 2, which no netbattle's is): when the panel he stands on is holy and the value is 499 or less,
+--   the panel turns normal. (Its counterpart for a light MegaMan, 0x08013318, turns panel type 11 normal under a
+--   value over 499: no stage of EXE4's content has type 11.)
 
 export type Setup = {
     -- The save's light/dark value, its karma (NaviStats +0x36): 0 to 1000; a fresh save's 500 (0x0800D6CA), the
@@ -30,10 +34,25 @@ end
 
 local light_dark = {}
 
+-- A value at or below this is a dark MegaMan's for the holy panels (0x08013306: 0x1F3).
+local CLEARS_HOLY = 499
+
 -- 0x0800D872: MegaMan's starting mood.
 function light_dark.starting_mood(_side: number): number?
     local setup = rules.setup() :: Setup
     return starting_mood(setup.karma, setup.full_synchro_start)
+end
+
+-- 0x080132E6: the holy panel under a dark MegaMan turns normal.
+function light_dark.navi_intake(_side: number, navi: Object)
+    if (rules.setup() :: Setup).karma > CLEARS_HOLY then
+        return
+    end
+    local x, y = navi.panel_x, navi.panel_y
+    local p = field.panel(x, y)
+    if p and p.kind == "holy" then
+        field.set_type(x, y, "normal")
+    end
 end
 
 return light_dark

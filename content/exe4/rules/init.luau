@@ -41,8 +41,9 @@ local rules: Rules = {
     hooks = {
         -- What the save brings to the navi's stats (./save).
         round_setup = save.round_setup,
-        -- Light and dark MegaMan (./light_dark): his starting mood.
+        -- Light and dark MegaMan (./light_dark): his starting mood, the holy panels a dark one clears.
         starting_mood = light_dark.starting_mood,
+        navi_intake = light_dark.navi_intake,
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
