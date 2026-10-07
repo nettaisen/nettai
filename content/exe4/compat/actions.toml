@@ -49,6 +49,7 @@
 "invalid/action" = 0x20
 "atk-10/action" = 0x20
 "atk-30/action" = 0x20
+"navi-20/action" = 0x20
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D
