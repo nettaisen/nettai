@@ -161,4 +161,22 @@ function attachment.attach(kind: Kind, owner: Object, look: AttachmentLook, whic
     return o
 end
 
+-- A shooting chip's `hold` (a ShooterLook's) with attachments of `kind`: the navi holds the look in the slot, its
+-- animation by the holder's AI index from `arm_anims` (from 0: the action's table, where a navi a player operates may
+-- hold its own: EXE6's cannon's `off_80EBD80`, its AirShot's `off_80EC944`). With `players_only`, anyone but a player
+-- holds the plain one, 0 (the cannon's `sub_80EBD68`; AirShot's `sub_80EC934` asks no such thing).
+function attachment.holder(kind: Kind, arm_anims: { number }, players_only: boolean?): (me: Object, look: AttachmentLook, which: Slot) -> ()
+    return function(me: Object, look: AttachmentLook, which: Slot)
+        local anim = 0
+        if not players_only or me.actor_type == "player" then
+            local a = arm_anims[me.ai_index + 1]
+            if a == nil then
+                error(string.format("AI index %d reads past the arms' table", me.ai_index))
+            end
+            anim = a
+        end
+        attachment.attach(kind, me, look, which, { anim = anim })
+    end
+end
+
 return attachment

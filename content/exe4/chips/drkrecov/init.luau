@@ -1,9 +1,9 @@
 --!strict
 -- DrkRecov (EXE4 chip 0x0C2): a dark chip, which no folder holds and the custom screen offers (rules/dark_chips). The
--- recoveries' action 0x1D, its variant 8: the navi heals 1000 HP. Its cost: a worse custom drain and an HP drain
--- (rules/dark_chips).
+-- recoveries' action 0x1D (lib/recov), its variant 8: the navi heals 1000 HP (its counter byte 0: no mood). Its cost: a
+-- worse custom drain and an HP drain (rules/dark_chips).
 
-local recoveries = require("../lib/recoveries")
+local recov = require("../lib/recov")
 
 local drkrecov: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -16,7 +16,7 @@ local drkrecov: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "dark" },
-    action = recoveries.action { id = "drkrecov/action", hp = 1000 },
+    action = recov.action { id = "drkrecov/action", hp = 1000, mood = 0 },
 }
 
 return { drkrecov = drkrecov }

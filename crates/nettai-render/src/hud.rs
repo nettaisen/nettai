@@ -602,23 +602,34 @@ pub fn draw<'a>(
         }
         list.insert_at(FRONT_LAYER, 0, group);
     }
-    if let Some(id) = b.banner_for(local) {
+    // (A telop shows whether or not its banner has an id: a game whose telop
+    // has no banner of its own, EXE4's, draws it in its HUD's own look.)
+    let banner = b.banner_for(local);
+    let telop = b.telop_for(local);
+    if banner.is_some() || telop.is_some() {
         let mut group = Vec::new();
         // (The banner's own pack's HUD draws it, by its number there.)
-        let (bucket, name) = match b.telop_for(local) {
-            Some(telop) => {
-                let style = match &hud.layout.telop {
-                    Some(look) => Some(TelopStyle::own(hud, look, telop.remote)),
-                    None => crate::lookups::telop(packs, &b.content, id, problems).map(|(h, layout, _)| TelopStyle::banner(h, layout)),
+        let (bucket, name) = match (telop, banner) {
+            (Some(telop), _) => {
+                let style = match (&hud.layout.telop, banner) {
+                    (Some(look), _) => Some(TelopStyle::own(hud, look, telop.remote)),
+                    (None, Some(id)) => {
+                        crate::lookups::telop(packs, &b.content, id, problems).map(|(h, layout, _)| TelopStyle::banner(h, layout))
+                    }
+                    (None, None) => {
+                        crate::lookups::telop_without_look(problems);
+                        None
+                    }
                 };
                 (NAME_BUCKET, style.and_then(|style| telop_parts(b, style, telop, &mut group, text, problems)))
             }
-            None => {
+            (None, Some(id)) => {
                 if let Some((h, layout, number)) = crate::lookups::banner(packs, &b.content, id, problems) {
                     banner_parts(b, h, layout, number, &mut group);
                 }
                 (0, None)
             }
+            (None, None) => unreachable!("a banner or a telop shows"),
         };
         insert_named(list, text, bucket, group, name);
     }
@@ -628,10 +639,15 @@ pub fn draw<'a>(
         // telop banner's.)
         let style = match &hud.layout.telop {
             Some(look) => Some(TelopStyle::own(hud, look, true)),
-            None => {
-                let remote = b.roles().banner(nettai_battle::content::BannerRole::TelopRemote);
-                crate::lookups::telop(packs, &b.content, remote, problems).map(|(_, layout, _)| TelopStyle::banner(hud, layout))
-            }
+            None => match b.roles().try_banner(nettai_battle::content::BannerRole::TelopRemote) {
+                Some(remote) => {
+                    crate::lookups::telop(packs, &b.content, remote, problems).map(|(_, layout, _)| TelopStyle::banner(hud, layout))
+                }
+                None => {
+                    crate::lookups::telop_without_look(problems);
+                    None
+                }
+            },
         };
         if let Some(style) = style {
             let name = used_chip_parts(b, style, used, &mut group, text, problems);

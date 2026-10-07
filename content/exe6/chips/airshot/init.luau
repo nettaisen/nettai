@@ -15,7 +15,7 @@ local chip: Chip = {
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.cannon },
-    action = airshot.action { shooter = airshot.shooter, shot = variants.air },
+    action = airshot.action { shooter = airshot.shooter, shot = variants.air, recovery = 10 },
 }
 
 return { airshot = chip }
