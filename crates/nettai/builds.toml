@@ -11,13 +11,47 @@
 [at_defaults]
 exe6 = ["hp", "reg_up", "sun", "level", "sp_times"]
 exe5 = ["reg_up", "sun", "level", "sp_times", "auto_battle_records", "chaos_unison"]
+exe4 = ["reg_up"]
 
 # A fact a build states only as one of a few presets, by game and the fact's name: each preset (`choice`, its name)
-# sets the facts under `set` together. The creator offers the presets in the fact's row, the first first, and shows
-# none of the other facts they set. A build whose fact is another value (made new, read from a file, made from a save)
-# takes the preset on its side of the game's line: the last whose `from` the value reaches. A preset's facts that the
+# sets the facts under `set` together, a value as the fact's own (a number, a flag, a variant's name, a list of
+# definitions by name) or `{ forms_of = "<list>" }`, the side's navi's forms listed under that name (none for a navi
+# without such a list). The creator offers the presets in the fact's row (named for `title`, where the fact's own name
+# isn't the row's), the first first, and shows none of the other facts they set. A build read from a file or made
+# from a save takes the preset its fact is on: a number's, the one with the highest `from` it reaches; a variant's,
+# the one that sets it; a list's, the one that shares the most of it (the first of those); a save's version or team
+# names the preset of that name. A version left unstated is none of them (none is assumed). A preset's facts that the
 # side's navi has none of (a base HP where its navi doesn't change form) stay the rules' defaults.
 #
+# The user: "for save files in nettai, you should have them choose between gregar and falzar/team colonel vs team
+# protoman and it should fix the crosses/souls to be for the right game instead of allowing players to toggle them and
+# mix and match". So the version (EXE6) or the team (EXE5) is a build's choice, and its form list is that version's
+# whole set, as max power: no build mixes them.
+#
+# EXE6's version, Gregar or Falzar, with its five Crosses: MegaMan's form list of that version (content/exe6/navis/
+# megaman: his `gregar` and `falzar` lists), none for a link navi.
+[[presets.exe6.version]]
+choice = "gregar"
+set = { version = "gregar", crosses = { forms_of = "gregar" } }
+
+[[presets.exe6.version]]
+choice = "falzar"
+set = { version = "falzar", crosses = { forms_of = "falzar" } }
+
+# EXE5's team, Team ProtoMan or Team Colonel: EXE5's rules have no version (its two play alike), so the team is its
+# souls, the six a save of that version can have (0x08024BF0, the soul button's table: Team ProtoMan's souls 1 to 6,
+# Team Colonel's 7 to 12, by content/exe5/compat/records.toml's numbers; exe5-compat's `Version::soul_flag`, which the
+# app's test holds these to). The content names no soul's team, so they are named here.
+[[presets.exe5.souls]]
+choice = "protoman"
+title = "team"
+set = { souls = ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"] }
+
+[[presets.exe5.souls]]
+choice = "colonel"
+title = "team"
+set = { souls = ["colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul"] }
+
 # EXE5's light and dark MegaMan, as Tango's EXE5 save templates have them (tango-gamesupport-bn5's src/saves/*.raw,
 # light and dark of each team and region alike; MegaMan's NaviStats at the image's 0x52A8): the light/dark value
 # (+0x44) 1000 and the base HP (+0x3E) 1000, or 0 and 997. The line is the game's: a value of 470 or more is a light
@@ -32,3 +66,20 @@ set = { karma = 1000, hp = 1000 }
 choice = "dark"
 from = 0
 set = { karma = 0, hp = 997 }
+
+# EXE4's light and dark MegaMan, as Tango's EXE4 save templates have them (tango-gamesupport-bn4's src/saves/*.raw:
+# the light_hp_1000 and dark_hp_997 ones, every version and region alike; the base HP at the image's 0x21CA, the
+# light/dark value at MegaMan's NaviStats +0x36, 0x4E96): 1000 and 1000, or 460 and 997. The line is the game's: a
+# value of 500 or more is a light MegaMan's, 499 and under a dark one's (content/exe4/rules/light_dark:
+# `DARK_AT_MOST`, the tests at 0x08013306 and 0x08013348). A new build's 500 (the rules' default) is light's. EXE4's
+# setup states no version (Red Sun and Blue Moon play alike: only their navi chips differ, by the folder), so it has
+# no version preset.
+[[presets.exe4.karma]]
+choice = "light"
+from = 500
+set = { karma = 1000, hp = 1000 }
+
+[[presets.exe4.karma]]
+choice = "dark"
+from = 0
+set = { karma = 460, hp = 997 }

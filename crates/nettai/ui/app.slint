@@ -315,6 +315,7 @@ export component AppWindow inherits Window {
             game-state: root.select-game-state;
             build: root.training-source-index > 0 && root.select-build-index == 0 ? Strings.from-the-match() : root.select-build;
             build-index: root.select-build-index;
+            build-version: root.select-build-version;
             build-navi: root.select-build-navi;
             can-act: root.select-can-act;
             y: root.bar-height;
@@ -359,6 +360,7 @@ export component AppWindow inherits Window {
             game-state: root.select-game-state;
             build: root.select-build;
             build-index: root.select-build-index;
+            build-version: root.select-build-version;
             build-navi: root.select-build-navi;
             can-act: root.select-can-act;
             y: root.bar-height;
@@ -574,6 +576,7 @@ export component AppWindow inherits Window {
     in property <string> select-build;
     in property <int> select-build-index;
     in property <string> select-build-navi;
+    in property <string> select-build-version;
     in property <bool> select-can-act;
     in property <Sheet> play-sheet <=> play.sheet;
     in property <bool> training-chosen <=> training.chosen;
@@ -644,6 +647,8 @@ export component AppWindow inherits Window {
     in property <Detail> build-detail <=> build.detail;
     in property <image> build-face <=> build.face;
     in property <string> build-navi <=> build.navi;
+    in property <string> build-title <=> build.title;
+    in property <string> build-version <=> build.version;
     in property <[StatRow]> build-stats <=> build.stats;
     in property <string> build-stopped <=> build.stopped;
     in property <[string]> build-problems <=> build.problems;
