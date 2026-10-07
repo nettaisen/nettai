@@ -29,11 +29,12 @@ return {
     -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (the player's
     -- table, 0x080EAEFC: six framework states; an obstacle's to confirm, exe4-map.md §16).
     obstacle_actions = "own_from_6",
-    -- Its Full Synchro aura (0x080CD180) is EXE5's.
+    -- Its Full Synchro aura (0x080CD180) is EXE5's; its spawn (0x080CD276) leaves it to wait while the battle is paused.
     full_synchro_aura = {
         follows_identity = false,
         steps_while_paused = true,
         stops_at_a_pause_in_the_fight = true,
+        spawn_runs_while_paused = false,
     },
     -- A navi's init spawns no charge glow (0x0801079C): its charge brings its own (0x0800BD88, effect 5 0x080E215C,
     -- which goes with the charge; exe4-map.md §18 item 39).
