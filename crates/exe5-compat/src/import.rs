@@ -397,7 +397,7 @@ mod tests {
         let content = exe5_content();
         let compat = crate::Compat::exe5();
         let megaman = content.defs.navi_by_key("megaman").unwrap();
-        let souls = &content.navi(megaman).forms.as_ref().unwrap().souls;
+        let souls = content.navi(megaman).forms.as_ref().unwrap().listed("souls");
         let numbers: Vec<Option<u8>> = souls.iter().map(|&f| compat.form_number(&content.defs.form(f).key)).collect();
         assert_eq!(numbers, (1..=12).map(Some).collect::<Vec<_>>());
         assert_eq!((compat.form(0), compat.form(7), compat.form(13)), (Some("base"), Some("colonelsoul"), None));

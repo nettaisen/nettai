@@ -245,7 +245,9 @@ impl View<'_> {
                     tile.face = e.kit.pictures.face(FormHandle(h));
                     let form = c.form(FormHandle(h));
                     let mut about: Vec<String> = form.version.iter().map(|v| v.to_uppercase()).collect();
-                    about.extend(form.soul.as_ref().map(|s| format!("{:?}", s.family).to_uppercase()));
+                    // (EXE5's souls: a form's `soul`, its rules' extension.)
+                    let soul = c.defs.extension(nettai_content_api::Registry::Form, &c.defs.form(FormHandle(h)).key, "soul");
+                    about.extend(soul.and_then(|s| s.field("family").str()).map(str::to_uppercase));
                     tile.about = about.join(" · ").into();
                 }
                 tile

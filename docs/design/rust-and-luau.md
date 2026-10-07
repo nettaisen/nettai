@@ -55,10 +55,10 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | | 1 | 3 | 4 |
 | NaviCust | | | | 2 | 2 |
-| Souls and Chaos Unison | 1 | | 1 | | 2 |
+| Souls and Chaos Unison | | | 1 | | 1 |
 | The stat block and versions | | | 1 | | 1 |
 | Tools | | | 1 | | 1 |
-| **All** | **1** | | **7** | **5** | **13** |
+| **All** | | | **7** | **5** | **12** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -141,13 +141,9 @@ rename left of EXE5's logic.
   functions' `navicust` names went in step 1: N6.)
 ### Souls and Chaos Unison (EXE5)
 
-- **S2. Soul data in the engine's records**: `SoulData` and `FormData::soul` (navis.rs:284, :305), `NaviForms::souls`
-  (navis.rs:213; defs.rs:1526), which Chaos Unison's Rust (S1) reads. *(a)* With S1's move: the soul list as a form
-  list like `by_version`, the soul's data as EXE5's form extension (`SystemDef::extends`). (The transform record's
-  names went in step 1: its `alternate`, `form_change_terms`.)
 
 - **S3. The renderer's soul icons and flights** (`soul_icon`, `soul_place`, `soul_flight`, `soul_palette_row`,
-  `CHAOS_ICON`, render custom.rs:393–505; they read `NaviForms::souls`). *(c)* The form offer view's icon (§4.8's
+  `CHAOS_ICON`, render custom.rs:393–505; they read MegaMan's `souls` form list, `NaviForms::listed("souls")`). *(c)* The form offer view's icon (§4.8's
   `offer`, `offer_chaos`). Rename to the view.
 
 ### The stat block and versions
@@ -261,6 +257,12 @@ Each with what it was and what it is now.
   (the failure's revert drops the charge with its status reset first: the EXE5 lab's 29 failures end disarmed).
 - **S2, its record's names.** `TransformRequest::alternate`, `form_change_terms`, `custom_set_form`'s `alternate`
   and `Screen::form_alternate` (were `chaos`, `form_change_soul`, `form_chaos`).
+- **S2.** A soul's data is EXE5's form extension (`soul = { family }`, its rules' `extends.form`), and its list one
+  of the navi's named form lists: `NaviForms::lists` (was `by_version`), a set's `form_list` by the set's name
+  (EXE6's Crosses by version, EXE5's `souls`), which MegaMan's `forms = { souls = { form_list = { ... } } }` states.
+  `SoulData`, `FormData::soul`, `NaviForms::souls` and the "a base form is no soul" check leave Rust; exe5-compat,
+  the app's builds view and the demo read a soul's family from the extension (`Defs::extension`), the renderer's
+  icons (S3) the list `souls`.
 - **T1.** The save importers are the compat crates' (the user: "import code should move out of nettai-match i think
   and into compat"): `exe6_compat::import` and `exe5_compat::import` each give a whole side by field name, from the
   save's decoded bytes; nettai-match depends on no compat crate, and the caller (nettai-demo's `save_import`) imports
