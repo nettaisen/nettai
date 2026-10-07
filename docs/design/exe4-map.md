@@ -804,8 +804,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     which charge (+9) and its level, sounds 0x71 as it starts and 0x72 at the full charge, sits at a per-navi offset,
     0x080E2274, and frees itself when the charge goes). The charge itself counts per source (+0x0A, +0x0B levels;
     +0x30, +0x32 counters; 0x0800BDAA clears them), not EXE6's one counter. **Done:** the init's part,
-    `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4). Open: the charge's counting and the glow
-    kind (MegaMan's, §18.4).
+    `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4); the counting (item 47); the glow, the role
+    `kinds.charge_glow` (content/exe4/objects/charge_glow), which the navi's tail spawns as the charge gets a level.
+    Its per-navi offset is MegaMan's (none) alone: EXE4's content has no other navi. Unported: the tail's color
+    shader before it (0x0800BB18: AIData +0x2C in 1 to 90, a shader from 0x0800BB40 by the battle timer; what sets
+    +0x2C is to find).
 40. **The intro's first tick.** EXE4's intro (0x08007464) goes on from its init to the HUD's setup on the same tick
     (state [4,0,4,4] after the round's first tick). **Done:** `flow.intro_steps_on_init`. (Its init's one RNG2 draw is
     the actors' spawn's last call, 0x080F576C, where EXE6's is `sub_8014178`'s: the same draw.)
@@ -820,3 +823,21 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     banners 0x24, 0x28, 0x34) doesn't count its hold, and let go (0x0801616C) slides out at once. **Done:**
     `effects.banner`. Unread: a state 3 banner (shown without sliding), which no table entry has.
 44. **The HUD's banner task** is the HUD task mask's bit 5 (0x20; EXE6's bit 15): exe4-compat's comparison reads it.
+45. **A hit's sound.** EXE4's hit intake (0x08013A8C) plays 0x6B on every console, 0x6D for a navi in auto battle
+    (NaviStats +0x26 = 1); EXE6's and EXE5's play `own_hit` to the hit navi's player and `hit` to the other. **Done:**
+    `status.intake.hit_sound` (`by_console`: EXE6, EXE5; `by_navi`: EXE4; the role `auto_battle_hit`).
+46. **RNG1 by the frame.** EXE4's main loop (0x080002B0) draws no RNG1 a frame (EXE6's `main_` and EXE5's draw one
+    after the subsystem). **Done:** `effects.rng1_per_frame`.
+47. **The buttons and the charge.** EXE4's decode (0x0800BDE0) and charge (0x0800BBA4, levels 0x0800BB50) are their own:
+    no hold requests; B held charges B, A held with a chip in hand A (the other's press switches); a count goes on past
+    full (to 510); the buster on B's release; B then Left (whatever the facing) within 8 ticks for the B+Left special;
+    L and R are no navi's. **Done:** `effects.charge` (`hold_flags`: EXE6, EXE5; `per_button`: EXE4), the engine's one
+    counter and level standing for EXE4's two (only the charging source's is ever nonzero).
+48. **The souls' buttons** (with the souls, §18.4 item 25): in 0x0800BDE0 soul 2 asks for the charged shot (request
+    0x20) at six B presses each within 10 ticks of the last (AIData +0x11, +0x12), soul 15 decodes neither the buster
+    nor the B+Left special and charges nothing (0x0800BBB2); whether a chip charges on A is 0x0800BC78's test by soul and
+    the chip's +7 and +9 (souls 5, 7, 9, 11), which the engine asks of the form's `charged_chips`.
+49. **Controller 2** (NaviStats +0x26 = 2; 0x0800BF1C, 0x0800BCD4): Right and Left presses move a per-side column
+    (0x0802E070's +0x11) and the B count runs only under request 0x80. No netbattle sets it; the engine has none.
+50. **The levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an attack
+    (0x0800BE48, 0x0800BE8E, 0x0800BF10); what reads them is to find (the engine keeps none).

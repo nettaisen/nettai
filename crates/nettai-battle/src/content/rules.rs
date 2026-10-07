@@ -50,6 +50,11 @@ pub struct FlowRules {
     /// EXE4's intro (0x08007464) goes on from its init on the same tick,
     /// where EXE6's (`sub_80091F0`) and EXE5's return after it.
     pub intro_steps_on_init: bool,
+    /// A turn starts with the transformation sequencer (EXE6's fighting
+    /// state 0, `sub_800840C`, twice, which EXE5 has too): the turn's
+    /// banner a tick after it's through. EXE4 has none: its fighting state
+    /// 0 (0x08007064) is the turn's banner, from the turn's first tick.
+    pub sequencer_at_turn_start: bool,
 }
 
 /// The rule section `link_pick`: what a link battle picks at random with
@@ -188,10 +193,18 @@ pub struct EffectsRules {
     pub full_synchro_aura: AuraRules,
     /// When a navi's charge glow comes.
     pub charge_glow: ChargeGlow,
+    /// How a navi's buttons charge, and ask for the buster, the charged
+    /// shot and chips.
+    pub charge: ChargeControls,
     /// When a screen fade toward clear ends (`Fade::step`).
     pub fade_clear: FadeClear,
     /// A banner's steps (`hud::Banner`).
     pub banner: BannerSteps,
+    /// Each console's RNG1 advances once a frame, after the battle's (EXE6's
+    /// main loop, `main_`'s `GetRNG1` after the subsystem; EXE5's). EXE4's
+    /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
+    /// draws it.
+    pub rng1_per_frame: bool,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
@@ -244,6 +257,28 @@ pub enum PausedNavi {
     /// it then; its status block's tail has no pause handler and runs its
     /// action (0x08013C2A).
     StopsAtControl,
+}
+
+/// How a navi's buttons charge, and ask for the buster, the charged shot and
+/// chips (`EffectsRules::charge`; `kinds::player::input`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChargeControls {
+    /// EXE6's (`sub_8012FC8`, `sub_8012EBC`; EXE5's): the held button
+    /// raises a hold request (A first, then B; pressing the other switches),
+    /// its charge counts to a full charge and stays there; the buster fires
+    /// on B's release (its press without a charged shot); L and R turn, or
+    /// with a full gauge ask for the custom screen; B then back (by the
+    /// navi's facing) with B held asks for the B+Back special.
+    HoldFlags,
+    /// EXE4's (0x0800BDE0, 0x0800BBA4, 0x0800BB50): no hold requests; B
+    /// held charges B, A held with a chip in hand charges A (counting while
+    /// the chip charges), the other's press switching, and a count goes on
+    /// past a full charge (to 510); the buster fires on B's release, unless
+    /// a buster or charged shot is asked already; the navi's buttons
+    /// neither turn it nor ask for the custom screen; B then Left
+    /// (whichever way it faces) within 8 ticks asks for the B+Left special.
+    PerButton,
 }
 
 /// When a navi's charge glow (effect #8, `kinds::charge_glow`) comes.
@@ -730,6 +765,21 @@ pub struct IntakeRules {
     pub no_charge_drive: bool,
     /// How a navi loses HP (`object_subtractHP`, `applyDamageToPlayer`).
     pub hp_loss: HpLoss,
+    /// What a navi's hit sounds like, on each console.
+    pub hit_sound: HitSound,
+}
+
+/// What a navi's hit sounds like, on each console (`IntakeRules::hit_sound`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitSound {
+    /// A player hears the role `own_hit` when their own navi is hit, `hit`
+    /// when another is (EXE6's `applyDamageToPlayer_801ba12`, EXE5's).
+    ByConsole,
+    /// Every console hears the role `hit`, or `auto_battle_hit` for a navi
+    /// in auto battle (EXE4's hit intake, 0x08013A8C: sound 0x6D where the
+    /// navi's NaviStats +0x26 is 1, else 0x6B).
+    ByNavi,
 }
 
 /// How a navi loses HP (`IntakeRules::hp_loss`).

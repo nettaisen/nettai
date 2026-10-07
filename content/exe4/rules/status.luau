@@ -417,6 +417,9 @@ local status = {
         -- A player's hit drains its side's gauge with the HP and shows only with HP left; at 0 HP the rules are asked
         -- after (0x08013A48: 0x0800AB9E, 0x0800EBC8); every other loss takes the HP alone (0x0800AB92).
         hp_loss = "hit_drains_gauge",
+        -- Every console hears a navi's hit as `hit` (0x6B), a navi in auto battle's (NaviStats +0x26 = 1) as
+        -- `auto_battle_hit` (0x6D): its hit intake, 0x08013A8C.
+        hit_sound = "by_navi",
         -- EXE4's emotions (to read: exe4-map.md §7, §18): EXE5's until then.
         emotion = {
             mood_held = "at_zero",

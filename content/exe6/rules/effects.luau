@@ -48,9 +48,14 @@ return {
     },
     -- A navi's charge glow (effect 8, `sub_80E0F02`) comes with it.
     charge_glow = "with_navi",
+    -- The held button raises a hold request and charges to full (`sub_8012FC8`, `sub_8012EBC`): A then B, pressing the
+    -- other switching; L and R turn the navi, or with a full gauge ask for the custom screen; B then back (by facing).
+    charge = "hold_flags",
     -- A screen fade toward clear ends on the step whose level reaches its target (`sub_8006366`).
     fade_clear = "at_target",
     -- A banner (`sub_801CE28`) slides in for 5 ticks, holds 0x30, slides out for 5; one that holds until let go has
     -- its timer stop at 5, and let go (`sub_801E780`) holds three ticks more.
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more" },
+    -- Each console's RNG1 advances once a frame after the battle's (`main_`'s `GetRNG1`).
+    rng1_per_frame = true,
 }
