@@ -413,6 +413,9 @@ local status = {
         reactions = "flash_timer_first",
         -- Its reaction actions mark the action in use, ground and count (0x08014132 on), as EXE6's.
         reaction_actions = "marked",
+        -- A drag takes SuperArmor's pose, else the flinch's, with no paralyzed one (0x08014304); at its end the navi
+        -- stands, whatever the paralysis (0x080144CE).
+        drag = { poses = { super_armor = 0, otherwise = 1 }, ending = "stands" },
         bugs_before_drain = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the rules (the
@@ -447,6 +450,11 @@ local status = {
             -- What the framework does by them: Full Synchro and anger double the next damaging chip (Full Synchro
             -- its palette and aura besides); a worn-out navi's buster deals 1, and anger doesn't start.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
+            -- A counter hit marks the counter and the counterer's rules hear it (0x08016FDC: ./emotion), as EXE6's; a
+            -- chip's use leaves Full Synchro at 0x80 and sounds anger's boost too (after 0x0801026C, as EXE6's).
+            hit_mood = "counter_mark",
+            full_synchro_spent = 0x80,
+            anger_boost_sound = true,
         },
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
         form_break = "any_form",

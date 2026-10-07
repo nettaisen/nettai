@@ -984,6 +984,31 @@ pub struct EmotionRules {
     pub order: Vec<EmotionCase>,
     /// What each emotion is to the framework, by [`Emotion`].
     pub roles: Vec<Option<EmotionRole>>,
+    /// What a hit's counter byte does to the moods.
+    pub hit_mood: HitMood,
+    /// The mood a Full Synchro boost leaves, through the setter (EXE6's and
+    /// EXE5's 0x80; EXE4's 0x99, 0x0800D568).
+    pub full_synchro_spent: u8,
+    /// Anger's boost plays the boost's sound, as Full Synchro's does (EXE6's,
+    /// EXE5's); else none (EXE4's 0x0800D57C ends the anger alone).
+    pub anger_boost_sound: bool,
+}
+
+/// What a hit's counter byte (the hitter's collision +5's low bits) does
+/// to the moods (`EmotionRules::hit_mood`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitMood {
+    /// The byte wears the receiver's mood; a counter hit (in the
+    /// receiver's counter window) marks the counter (0x8000) and wears
+    /// none, and the counterer's side's rules hear it (`countered`): EXE6's
+    /// hit kernel and `sub_801A200`, EXE5's.
+    CounterMark,
+    /// The bytes the receiver takes in a tick raise the other side's mood
+    /// (to 0xFF; a mood of 0 stays), a counter hit's counting 0xFF, and
+    /// wear the receiver's (a counter hit's 0x7F): EXE4's hit kernel
+    /// (0x08012C10) and status routine (0x080131E4). No `countered`.
+    HitterGains,
 }
 
 /// A side's emotion: one of its game's ([`EmotionRules::names`]); the
@@ -1096,6 +1121,9 @@ struct EmotionSection {
     order: Vec<EmotionCaseSpec>,
     #[serde(default)]
     roles: std::collections::BTreeMap<String, EmotionRole>,
+    hit_mood: HitMood,
+    full_synchro_spent: u8,
+    anger_boost_sound: bool,
 }
 
 #[derive(Deserialize)]
@@ -1111,7 +1139,8 @@ impl TryFrom<EmotionSection> for EmotionRules {
 
     fn try_from(s: EmotionSection) -> Result<EmotionRules, String> {
         let order = s.order.into_iter().map(|c| (c.emotion, c.when)).collect();
-        EmotionRules::new(s.mood_held, s.anger_end, order, s.roles.into_iter().collect())
+        let rules = EmotionRules::new(s.mood_held, s.anger_end, order, s.roles.into_iter().collect())?;
+        Ok(EmotionRules { hit_mood: s.hit_mood, full_synchro_spent: s.full_synchro_spent, anger_boost_sound: s.anger_boost_sound, ..rules })
     }
 }
 
@@ -1150,7 +1179,17 @@ impl EmotionRules {
             };
             roles[i] = Some(role);
         }
-        Ok(EmotionRules { mood_held, anger_end, names, order, roles })
+        // (The section states the rest; EXE6's until then.)
+        Ok(EmotionRules {
+            mood_held,
+            anger_end,
+            names,
+            order,
+            roles,
+            hit_mood: HitMood::CounterMark,
+            full_synchro_spent: 0x80,
+            anger_boost_sound: true,
+        })
     }
 }
 
@@ -1193,6 +1232,10 @@ pub struct AuraRules {
     /// (EXE5's: its header flag goes); else it runs through every pause
     /// (EXE6's).
     pub stops_at_a_pause_in_the_fight: bool,
+    /// Its spawn has it run while the battle is paused (EXE6's
+    /// `sub_80C4C12` sets the header flag 0x04); else it waits for the
+    /// battle to run (EXE5's 0x080C46E2, EXE4's 0x080CD276).
+    pub spawn_runs_while_paused: bool,
 }
 
 /// Global rules: element weakness, collision types, panels, banners,
@@ -1233,6 +1276,8 @@ pub struct Rules {
     pub reactions: Reactions,
     /// How a navi's reaction actions run (rule section `status`).
     pub reaction_actions: ReactionActions,
+    /// A drag's pose and its end (rule section `status`).
+    pub drag: DragRule,
     /// A side's emotions where games differ (rule section `status`'s
     /// `emotion`): how one is read off the navi, what holds a mood, how
     /// anger leaves it.
@@ -1384,6 +1429,14 @@ pub struct PanelRules {
     pub numbers: Vec<PanelType>,
     /// Whether a reservation marks its holder (`Reservations`).
     pub reservations: Reservations,
+    /// The flags word's bits a panel's type owns (its number, solidity, its
+    /// crack and the types' own flags), which a crack, a break or poison
+    /// clears before it sets its own: EXE6's 0x3F5F (`object_crackPanel`
+    /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
+    /// 0x20000 too). A crack keeps the solidity and the crack bit.
+    pub type_mask: u32,
+    /// What the panel a body stands on does each tick (`StandingRule`).
+    pub standing: StandingRule,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the
@@ -1416,21 +1469,103 @@ pub enum ReactionActions {
     /// 0x400000) and leaves it at its end; a flinch and a paralysis snap the
     /// body to its panel, on the ground, unless it slides; each counts a
     /// reaction (the side's stat 3) and lets go of the navi's overlay link;
-    /// the drag takes the paralyzed pose (2) or SuperArmor's (0) where they
-    /// hold, else the flinch's, puts the body on the panel's ground line,
-    /// and at its end clears the slide, the paralysis and the drag's own
-    /// states, the pose back to standing, or turns to a paralysis that
-    /// outlasts it. (EXE5's drag has no paralyzed pose, 0x08014304: a
-    /// difference no recording has shown.)
+    /// the drag puts the body on the panel's ground line (its pose and its
+    /// end are the status section's `drag`).
     Marked,
     /// EXE4's (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks
     /// the action in use or lets go of the overlay link; the flinch keeps
     /// the body's height as it snaps it, and the paralysis snaps it, at its
-    /// height, sliding or not, and counts no reaction; the drag takes the
-    /// flinch's pose, keeps the height, counts no reaction, and at its end
-    /// clears the drag alone and goes to idle in the pose it had, paralyzed
-    /// or not.
+    /// height, sliding or not, and counts no reaction; the drag keeps the
+    /// height and counts no reaction (its pose and its end are the status
+    /// section's `drag`).
     Plain,
+}
+
+/// A burning panel's (a panel type's `burn`): a grounded body not of fire
+/// standing on it takes `damage` in fire, shifted by its weakness to fire,
+/// as a hit, unless its status word has a bit of `spared_by` (or its 0x09:
+/// then only the panel turns normal).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BurnRule {
+    pub damage: u16,
+    /// EXE5's 0x88000206, EXE4's 0x206.
+    pub spared_by: u32,
+    /// What the burn wears off the mood besides (EXE4's 20, its +0x36; EXE5's
+    /// none).
+    #[serde(default)]
+    pub mood: u16,
+    /// A player burns while the battle is dimmed too (EXE4's 0x08013128,
+    /// which has no dimming test; every other body's waits, as EXE5's).
+    #[serde(default)]
+    pub players_while_dimmed: bool,
+}
+
+/// What the panel a body stands on does each tick (the panel rules'
+/// `standing`: poison's drain, grass's heal; EXE6's `sub_801A186`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StandingRule {
+    /// Both hold while the battle is paused (EXE6's, EXE5's 0x08016C7E);
+    /// EXE4's (0x08012FF2) run on.
+    pub stops_while_paused: bool,
+    /// At this HP or less a wood body on grass heals on the battle's
+    /// 180-tick count instead of its 20-tick one (EXE6's and EXE5's 9;
+    /// EXE4's none: always the 20-tick count).
+    #[serde(default)]
+    pub slow_heal_at: Option<u16>,
+}
+
+/// A drag's pose and its end (the status section's `drag`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DragRule {
+    pub poses: DragPoses,
+    pub ending: DragEnding,
+}
+
+/// The pose a drag starts in: the first that holds of a paralyzed navi's
+/// and a SuperArmor one's (each a game's, or none), else `otherwise`.
+/// EXE6's `sub_80178D4`: paralyzed 2, SuperArmor 0, else 1; EXE5's
+/// 0x08014304: SuperArmor 0, else 1; EXE4's 0x08010ABC: 1.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DragPoses {
+    #[serde(default)]
+    pub paralyzed: Option<u8>,
+    #[serde(default)]
+    pub super_armor: Option<u8>,
+    pub otherwise: u8,
+}
+
+impl DragPoses {
+    /// The pose for a navi of status word `status`.
+    pub fn pose(&self, status: u32) -> u8 {
+        use crate::collision::f1;
+        match (self.paralyzed, self.super_armor) {
+            (Some(p), _) if status & f1::PARALYZED != 0 => p,
+            (_, Some(s)) if status & f1::SUPERARMOR != 0 => s,
+            _ => self.otherwise,
+        }
+    }
+}
+
+/// What a drag's end does once its ticks are up (each clears the drag, the
+/// action's use where the reaction actions mark it, and the drag's
+/// requests, then idles).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DragEnding {
+    /// EXE6's (`sub_8017A38`): a paralysis that outlasts the drag goes on,
+    /// as the paralysis action; else it also clears the slide and the
+    /// paralysis, the heat trap and a slide request, the slide's state, the
+    /// pose back to standing, the form's overlay refreshed.
+    ResumesParalysis,
+    /// EXE5's (0x080144CE): the pose back to standing, whatever the
+    /// paralysis.
+    Stands,
+    /// EXE4's (0x08010C16): in the pose it has.
+    KeepsPose,
 }
 
 /// What reserving a panel does to its holder (the panels section's
@@ -1488,10 +1623,10 @@ pub struct PanelTypeRule {
     /// last 60 (EXE6's roads 0x708, `sub_800C380`; EXE5's lava and sea 960,
     /// 0x0800A998).
     pub expires: Option<u16>,
-    /// The fire damage a grounded body standing on it takes, shifted by
-    /// its weakness to fire, as the panel turns normal (EXE5's lava,
-    /// 0x08016D80 and 0x08016E18).
-    pub burn: Option<u16>,
+    /// What it does to a grounded body standing on it as it turns normal
+    /// (EXE5's lava, 0x08016D80 and 0x08016E18; EXE4's, 0x0801309E and
+    /// 0x08013128).
+    pub burn: Option<BurnRule>,
     /// The element of the bodies it drains as poison drains any (EXE5's
     /// sea: fire, 0x08016C7E).
     pub drains: Option<u8>,
@@ -1513,6 +1648,17 @@ pub struct PanelTypeRule {
     /// fire on grass; EXE5's 0x08016AF6 elec on its sea too, EXE4's
     /// 0x08012CF2 elec on ice).
     pub doubles: Option<u8>,
+    /// Nothing cracks or breaks it (EXE4's metal: its flag 0x20000, which
+    /// the panel routines refuse).
+    pub unbreakable: bool,
+    /// A slide or a drag that reaches it stops there unless the body floats
+    /// (EXE4's pitfall: 0x080102FC, 0x08010B54).
+    pub stops_slides: bool,
+    /// It turns normal after these ticks (EXE4's pitfall, 190: 0x0800980E),
+    /// counted at once when a type change makes it (0x08009DC4), and on a
+    /// stage's from the tick a grounded body stands on it (0x08009120 arms
+    /// every panel).
+    pub crumbles: Option<u16>,
     /// Whether the game's own section names the type; one it doesn't is
     /// the first other loaded game's that does (docs/design/rules-in-luau.md
     /// §7.4).

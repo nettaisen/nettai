@@ -2556,7 +2556,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
     EXE5's Luau), the custom screen's `redeal_kept` (none listed: a re-deal keeps none), `sp_chips.slots`,
     `banners.holding`;
   - an attribute of one entry: a panel type's `road_slide`, `trail_sound`, `expires`, `burn`, `drains`, `holds`,
-    `submerges`, `slide`, `cleared_by`, `doubles`; a status's `cancels_flinch` and `survives_counter`; a lock-on mode's
+    `submerges`, `slide`, `cleared_by`, `doubles`, `unbreakable`, `stops_slides`, `crumbles`; a status's `cancels_flinch` and `survives_counter`; a lock-on mode's
     offsets and flags (`LockonRule::Stay`: the navi's own panel); `BoardCell::Off`;
   - zeros: `SparkleOffset`, `SlideVector`, `StepRuleSet`, `PanelSlide`, `EmptyHandChip`, `BerserkRules`.
 - **Named for what they do** (the routine addresses stay in the doc comments):
@@ -2577,7 +2577,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `status.emotions` | `exe6`, `exe5` | split since (below): `status.emotion`'s seven rules and `effects.full_synchro_aura`'s three |
 
 - **Still a bundle under one name** (each a whole routine of one game, named for its most visible difference):
-  `retype` (what is set, the dimmed mark, a bug code's high byte), `palette_flash` (the pause, and for variant 1 the dimming), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets), `status.reaction_actions` (since EXE4's port: `marked` or `plain`, whether the reaction actions mark the action in use, ground and count, and the drag's pose and end),
+  `retype` (what is set, the dimmed mark, a bug code's high byte), `palette_flash` (the pause, and for variant 1 the dimming), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets), `status.reaction_actions` (since EXE4's port: `marked` or `plain`, whether the reaction actions mark the action in use, ground and count), `status.drag` (since EXE4's port: the drag's poses, paralyzed, SuperArmor and otherwise, and its `ending`, `resumes_paralysis`, `stands` or `keeps_pose`),
   `hp_loss` (the gauge, asking the rules at 0 HP, how a hit shows), `form_break` (which forms break, and the break's
   animation, overlay and collision region).
 - **`damage_word` is data since EXE4's port** (EXE4 decodes neither game's way: 14 bits of damage and one flag):
@@ -2602,6 +2602,19 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - **A panel type's `doubles`, since EXE4's port** (was the hit test's `elec_bonus_on_sea`): the element whose hits
   count once more, as null damage, on a body standing on it: fire on grass in all three games, and EXE5's elec on
   its sea, EXE4's elec on ice (0x08012CF2).
+- **A panel type's `burn` is a table, and `panels.standing`, since EXE4's port**: the burn's `damage`, the status bits
+  that spare a body (`spared_by`: EXE5's 0x88000206, EXE4's 0x206), what it wears off the mood (`mood`: EXE4's 20)
+  and whether a player burns while the battle is dimmed (`players_while_dimmed`: EXE4's); `standing`: whether
+  poison's drain and grass's heal hold while paused (`stops_while_paused`: EXE6's and EXE5's) and the HP at or below
+  which grass heals on the 180-tick count (`slow_heal_at`: their 9; EXE4's none).
+- **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
+  poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
+  EXE4's 0x23F5F (their sea's and metal's 0x20000 too).
+- **A panel type's `unbreakable`, `stops_slides` and `crumbles`, since EXE4's port**: nothing cracks or breaks it
+  (EXE4's metal, its flag 0x20000); a slide or a drag stops on it unless the body floats (EXE4's pitfall); it turns
+  normal after its ticks (EXE4's pitfall, 190), counted at once when a type change makes it, and on a stage's from
+  the tick a grounded body stands on it. The engine's panel types `pitfall` and `hole` are EXE4's (the hole's closing
+  is EXE4's rules', its `navi_intake`).
 - **`status.hp_drain` and `status.custom_drain`, since EXE4's port** (were `hp_bug_periods` and a Rust table): a
   NaviCust drain bug's period by level (EXE6's and EXE5's tables) or its stat itself (`"stat"`, EXE4's), whether
   a pause holds the HP bug (EXE6's and EXE5's do, EXE4's doesn't), and the status bits the custom screen's bug runs

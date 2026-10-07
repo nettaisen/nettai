@@ -485,10 +485,22 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    // A counter: the counterer's side's rules (EXE6's rules/emotion: Full
-    // Synchro, unless this navi's mood is held).
-    if coll(b, r).acc.counter & 0x8000 != 0 {
-        b.rules_countered(opp, r);
+    match b.game_rules().emotion.hit_mood {
+        // A counter: the counterer's side's rules (EXE6's rules/emotion:
+        // Full Synchro, unless this navi's mood is held).
+        crate::content::HitMood::CounterMark => {
+            if coll(b, r).acc.counter & 0x8000 != 0 {
+                b.rules_countered(opp, r);
+            }
+        }
+        // EXE4's 0x080131F4: what the hits counted raises the other side's
+        // mood (0x0800F4FA).
+        crate::content::HitMood::HitterGains => {
+            let gained = coll(b, r).acc.counter;
+            if gained != 0 {
+                super::raise_mood(b, opp, gained);
+            }
+        }
     }
     let loss = coll(b, r).acc.mood_damage;
     super::lose_mood(b, side, loss);
@@ -664,6 +676,9 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
             }
         }
     } else if rule.holds.is_some() {
+        go_on = false;
+    } else if rule.stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
+        // (EXE4's pitfall, 0x080102FC.)
         go_on = false;
     }
     if go_on {

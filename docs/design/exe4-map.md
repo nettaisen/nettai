@@ -354,6 +354,35 @@ helper (0x0801283A) is EXE4's 0x0800F56A with other constants; Full Synchro on a
 similar 0.65 at 0x080131E4. EXE4's emotions (K): normal, Full Synchro, angry, worried, the dark state; their triggers
 and faces are its own table, to read.
 
+**As ported** (group A; the status section's `emotion`, rules/light_dark, the roles):
+
+- **The emotion** (0x0800F49C): 0 normal (a mood of 65 or more), 1 worried (under 65), 2 Full Synchro (0xFF), 3 angry
+  (AIData +0x2E: anger's ticks), 4 in a soul (NaviStats +0x24 not 0 nor 15, its soul in r1), 5 worn out (a mood of 0:
+  the dark MegaMan), read in the order soul, angry, worn out, Full Synchro, worried, normal. Worn out and in a soul
+  keep anger from starting (0x0800C560 also tests NaviStats +0x23, the navi, and the object's +4: MegaMan alone, no
+  other navi plays a netbattle); the buster knows no emotion; the custom screen offers souls to none but 1 and 5
+  (0x0801E0B4) and dark chips to 5 alone in a netbattle (0x0801DE90).
+- **The mood** (NaviStats +0x00): the setters (0x0800F4DE set, 0x0800F4FA raise to 0xFF, 0x0800F51E raise to 0xFE
+  unless 0xFF, 0x0800F546 lower to 1) leave a mood of 0 and do nothing while paused. The starting mood (0x0800D872,
+  0x0800F56A) by the light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F, a Mod Card's):
+  under 470 0, the start 0xFF, from 1000 190, else value / 20 + 128. A hit's counter byte (the hitter's collision +5)
+  raises the hitter's mood and wears the receiver's (0x08012C10, 0x080131E4: `hit_mood = "hitter_gains"`), a counter
+  hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks paralyzed (0x0800C540) asks for it; it sets the mood 0x80
+  and lasts 600 ticks (0x0800C560); its end sets 0x80 through the setter.
+- **Full Synchro**: a chip's boost doubles it, leaves the mood at 0x99 and sounds 0x1BB; anger's boost ends the anger
+  without a sound (0x0800D54E). The aura (actor 0x5E, 0x080CD180, EXE5's code) spawns for a navi in Full Synchro
+  (0x0800D9AE) and waits while paused (0x080CD276 sets no header flag). The window's faces: the base form's mugshots
+  by emotion (group D).
+- **Counters**: Cannon opens a 16-tick window in a netbattle (0x0800BA66); a counter hit paralyzes (status byte 0x12,
+  0x0800B08E), closes the window, shows COUNTER and sounds 0x10A (0x08013410; 0x73 too when the hitter was in Full
+  Synchro, hit flag 0x80, 0x08012CC0).
+- **Light and dark** (rules/light_dark): a dark MegaMan clears the holy panel he stands on (0x080132E6); a navi that
+  isn't dark closes a hole (0x08013318, §18 item 12).
+
+Checked: the lab's emotions/counter, counter-side1, counter-buster, full-synchro-hit and full-synchro-card match every
+frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's battle-over gate and the 0x73 sound
+(presentation).
+
 ## 8. NaviCust and Mod Cards
 
 The NaviCust compile EXE5 and EXE6 share (`sub_813C458`) and its placement checks have no counterpart: EXE4's compile
@@ -472,9 +501,8 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
   edges by owner (0x080094C4, 0x08706F60), and the panel palettes that cycle (0x08009556, as the field is drawn: six,
   each a frame every 14 ticks from a table of palette pointers, their timers starting at 14, 13, 12, 11, 10 and 9:
-  0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them);
-  type 11 has none yet. What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12 reads what
-  they do).
+  0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them).
+  What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12: `metal`, `pitfall`, `hole`).
 - **The HUD** (R, Red Sun US's; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
   counterpart) and the load list (0x08015A0C): the HUD layer's tiles from 0x130 and the gauge's from 0x80, both in
   EXE6's order; the HP box (6x2, 0x08016B2C) and the gauge frame (18x2 with "CUSTOM", 0x08016B44); the HP box's palettes
@@ -510,11 +538,11 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   from 0xC0 to 0x40 over the slide's 9 ticks, a line, as EXE6's over its 5; no bounce in the hold: the rules'
   `effects.banner.bounces`); the custom screen as it opens, while picking and on OK (the window, the chip window and
   OK's pictures, the slots' palettes, the picked column, the element sprite, the window's emblem). What still
-  differs is not the drawing's: the HP box (the intro doesn't show it yet); MegaMan's colors (the original draws
-  him in his sprite's palette row 4, 0x0821B854, with the normal face, where the base form says row 0); the UNITE
-  button (content/exe4 registers no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the
-  original hides them); the cursor on OK after it is pressed (the original hides it); the chatbox's description
-  (content/exe4's Cannon has none).
+  differs is not the drawing's: the HP box (the intro doesn't show it yet); the UNITE button (content/exe4 registers
+  no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the original hides them); the cursor on OK
+  after it is pressed (the original hides it). Since drawn: MegaMan's colors (his palette by his light/dark value,
+  rules/light_dark: the setups' 1000 draws row 4, 0x0821B854), the intro's fade (by its levels), Cannon's
+  description.
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -579,6 +607,9 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
+- Panels through a pause and a dimming (§18 item 13): a navi on poison loses HP while the battle is paused, a wood
+  navi on grass heals then, and a player on lava burns while the battle is dimmed (as EXE4's code reads; a lab
+  scenario on `poison-middle` or `lava-middle-close` with a pause, and a dimming chip over lava, would show it).
 
 ## 17. The recordings
 
@@ -748,8 +779,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      has none).
    - With others: the emotions (item 8, group A); a soul's break by a weakness hit (`form_break`,
      `weakness_hit_breaks_form`: EXE5's until the souls are read).
-8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
-9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
+8. **Emotions.** **Done** (group A; §7 "As ported"): EXE4's order, mood rules, Full Synchro and its aura, the
+    starting mood. The worried emotion waits on M-Cannon (the lab's emotions/worried).
+9. **Counter hits.** **Done** (group A; §7): a counter paralyzes (status 0x12), counts 0xFF toward the hitter's mood
+    and wears 0x7F of the receiver's; Cannon opens its counter window.
 10. **Done: the stance counter.** EXE4's stance is AntiMagc's B+Left ability (NaviStats +0x0C = 0x27; action 114,
     0x080EE9EE: 13 ticks, registered as AntiDmg's trap, chip 145, through 0x08022FDE); a hit caught in it raises the
     anti-damage or anti-sword request, and the stance's next step starts the counter (0x0800C780: action 56 for
@@ -772,8 +805,25 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       the paralysis snaps it sliding or not and counts no reaction (the side's stat 3); the drag takes the flinch's
       pose (EXE6's 2 paralyzed, 0 with SuperArmor), keeps the height, counts none, and at its end clears the drag alone
       (no slide, paralysis, heat-trap or flag2 0x10 clears) and goes to idle in its pose, paralyzed or not. The rule
-      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is.
-      (EXE5's drag has no paralyzed pose either, 0x08014304: an EXE5 difference no recording has shown, left as it is.)
+      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is;
+      the drag's pose and end are `status.drag` (below).
+    - **Done: the drag's pose and end, each game's** (`status.drag`: `poses`, the first that holds of a paralyzed
+      navi's and a SuperArmor one's, else `otherwise`; `ending`). EXE6's (`sub_80178D4`, `sub_8017A38`): paralyzed
+      2, SuperArmor 0, else 1; at its end a paralysis that outlasts it goes on as the paralysis action, else the
+      slide, the paralysis, the heat trap, a slide request and the slide's state are cleared, the navi stands, its
+      overlay refreshed (`resumes_paralysis`). EXE5's (0x08014304, 0x080144CE): SuperArmor 0, else 1, no paralyzed
+      pose; at its end the drag and its use are cleared, its requests, and the navi stands, whatever the paralysis
+      (`stands`): the engine had EXE6's. EXE4's (0x08010ABC, 0x08010C16): 1, kept to its end (`keeps_pose`). EXE5's
+      paralyzed start is barely reachable: its status block ends a paralysis at a drag's request unless a counter made
+      it that tick (flag2 0x8000), and a counter's own paralysis waits for the drag's end (the lab's
+      `drag/counter-push`, a95f's: the drag starts at 457 without it, the paralysis at 483; with SprArmr,
+      `counter-push-superarmor`, the same); a navi already paralyzed when a counter push lands would show it. Both
+      recordings match every frame, before the rule and after. Read beside it, EXE5's own: its flinch, paralysis and
+      drag starts call 0x0802D644, which resets the side's state block (`sub_802E070`'s) at +0x0B and +0x2E (the mode
+      chips' mode and ticks, which nothing in a battle reads), +0x0F and +0x50 (the SELECT special's, the operation
+      battle's: the user declined that mode), then calls 0x0802FB9C and 0x0802FD50 (EXE6's `sub_802F084`), both
+      unported; its drag start resets the facing (flip 0 and 0x0800D1EA) where turning is off (AIData status 0x400
+      clear: every netbattle's), which leaves a navi facing as it started.
     - Read and the same: the per-navi flinch, paralysis and drag hooks (0x0800DC9C, 0x0800DD14, 0x0800DD82: the
       identities' `overlay_hooks`), the requests their ends clear (item 6), the drag's speed and its step (ice a panel
       more); the slide's start and step (0x08010294, 0x080102FC) as EXE6's (item 3).
@@ -786,13 +836,63 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.2 Panels
 
-12. **Panel types 5, 10 and 11.** 0x0800A3A8's flags: 5 is 0x30010 (EXE5's sea's), 10 is 0x10210 (EXE5's metal's), 11
-    is 0x10010; the panel tick (0x08009740) runs a timer at the panel's +0x12 for type 10 (bit 0x4000: wait while
-    something stands on it, then count down and turn normal). Placeholder: type 5 is the engine's `sea` and 10 its
-    `metal`, flags alone (no drain, hold, submersion or slide); 11 has no number (its layouts' stages wait). Port:
-    read each type's behavior (the panel tick, the step tables, what stands on them) and name each for what it is.
-13. **What each panel does.** Lava (8) turns normal after 960 (stated); its burn, poison's drain, grass, ice (item 1),
-    holy, and the panel trails' sounds are EXE5's or none. Placeholder: `panels.types` flags (and lava's `expires`).
+12. **Done** (panel types 5, 10 and 11). 0x0800A3A8's flags: 5 is 0x30010, 10 is 0x10210, 11 is 0x10010. Each is
+    named for what it is, from what reads it and the chips' words:
+    - **5, `metal`** (the engine's EXE5 metal; a riveted plate): its flag 0x20000 is what the panel routines refuse
+      (0x08009AEC, 0x08009BAC, 0x08009BF0, 0x08009C4C, 0x08009D04: crack, break and their kin), so nothing cracks or
+      breaks it. The rule `panels.types.metal.unbreakable` (EXE5's metal is breakable: no such flag). Two routines
+      skip the test and would crack it: 0x08009B50 (EXE6's `object_crackPanelDup1`, which the engine has no use of)
+      and 0x08009CAC (`object_breakPanel_dup3`, the engine's `break_panel` with dup2, which refuses); poison
+      (0x08009D68) doesn't test it either, as the engine's doesn't. The chips wave reads which routine each EXE4 chip
+      calls (a chip of dup3's on metal is to split off then).
+    - **10, `pitfall`** (SandRing's "opens a pitfall trap"; a sand pit): a slide (0x080102FC) or a drag (0x08010B54)
+      that reaches it stops there unless the body has FloatShoe (f1 0x20; an aqua body's slide on ice reaches the
+      test too), the rule `stops_slides`; and it turns normal by its timer at the panel's +0x12 (the panel tick's
+      0x0800980E): a type change makes it 190 and counts at once (0x08009DC4), a stage's starts armed (bit 15,
+      0x08009120 writes 0x80BE to every panel) and counts from the tick a grounded body (0x0F800000, none floating:
+      0x00100000) stands on it, then normal without a blink. The rule `crumbles = 190`, the panel's
+      `crumble_timer`.
+    - **11, `hole`** (the Hole chip's "appears Hole in front", DrkLine's "turns all rows into Holes"): a solid panel
+      (normal's flags) that a navi standing on it closes (0x08013318, in the intake before the slide triggers): unless
+      the battle is dimmed, a navi whose light/dark value (NaviStats +0x36) is above 499, the default 500 too, sets
+      his collision's panel normal. EXE4's rules' `navi_intake` (rules/light_dark), the setup's `karma`
+      (default 500). Its check of 0x0800F49C counts for nothing (the `movs r0, #5` before its `beq` sets the flags),
+      and NaviStats +0x26's 2, which skips it, is only a story's other navi's (0x08041100). exe4-compat's recordings
+      state no karma yet: the default, 500 (group B's: the NaviStats' +0x36).
+    No netbattle stage has type 11; the stages with 10 are generated now.
+    - **The panel routines' masks** (group A's reading): EXE4's eight (0x08009AEC to 0x08009D68) clear 0x23F5F
+      before the type they set (0x23F0F for a crack, which keeps the solidity and the crack bit), as EXE5's do
+      (0x0800AFF8 on; its sea has 0x20000); EXE6's clear 0x3F5F. The rule `panels.type_mask` (EXE6's 0x3F5F, EXE5's
+      and EXE4's 0x23F5F): the engine cleared EXE6's in every game, so an EXE5 sea panel cracked or poisoned kept
+      its 0x20000 until its next refresh.
+13. **Done** (what each panel does). Read against the engine's (EXE6's, EXE5's lava):
+    - **Lava's burn** (a player's 0x08013128, then any body's 0x0801309E; the player's runs first, so the second finds
+      the panel normal): a grounded body not of fire, without FloatShoe and none of the status bits 0x206 (EXE5's
+      0x88000206), takes 50 in fire shifted by its weakness to fire, unless flagged 0x09, and 20 more off its mood
+      (collision +0x36, the kernel's mood damage: EXE5's has none); the panel turns normal with its burn's spark. The
+      player's has no dimming test (any body's has). A panel type's `burn` is a table now: `damage`, `spared_by`,
+      `mood`, `players_while_dimmed` (EXE5's `{ damage = 50, spared_by = 0x88000206 }`).
+    - **Poison and grass** (0x08012FF2, EXE6's `sub_801A186`): the same tests (poison's 0x08000028 immunity, the grass
+      test reading the status word after an immune body, as EXE6's), but no pause test, and grass heals a wood body on
+      the battle's 20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less). The rule
+      `panels.standing` (`stops_while_paused`, `slow_heal_at`: EXE6's and EXE5's true and 9, EXE4's false and none).
+      EXE4's player intake runs while paused (only the fight's flag 1 gates it, 0x08013858), so its poison drains and
+      its grass heals through a pause (§16). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the
+      whole byte too): EXE4's objects have no high nibble.
+    - **What passes over a panel** (0x08013058, from the collision's removal, 0x08012A50): grass of fire and lava of
+      aqua turn normal (`cleared_by`, EXE5's 0x08016D14 less its metal of wood), unless the hitbox has 0x0C000000. It
+      has no pause test (EXE5's and EXE6's have): no hitbox is removed while paused (frozen objects), so no rule.
+    - **Holy** (9): the final damage halves on it (0x0800AC3A, EXE6's); EXE4's barrier (0x08012DF8) is its own, with no
+      holy test (kinds by +0x04: the barrier chips' port, the chips wave).
+    - **Ice** (7): item 1's push; elec doubles on it (item 4).
+    - Left, the souls' and the Mod Cards': FireSoul (NaviStats +0x24 = 5) on lava heals 50 and clears it, with effect
+      7 at the navi and sound 0x9A (0x080131B8) instead of burning; WoodSoul (+0x24 = 12) heals 1 more on grass while
+      BattleState +0x16 is 0 (0x08012FB6, after poison). The panel trail is the Mod Cards' (NaviStats +0x1B, 0x080EB254,
+      the move's step): every step (no chance, no RNG draw), the panel left unless missing or broken becomes the
+      trail's type by EXE4's number (1 by `object_breakPanel_dup2`, any other by a type change: a crack by type 3,
+      not the crack routine), sounding 0x124 for poison onto a panel that wasn't (and 0x95 when the type change's
+      return, the panel's occupants' collision bits, is 3: never with the navi's own body on it); EXE6's trail (a
+      NaviCust bug, a chance by level) isn't it: to port with the Mod Cards.
 14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
     find EXE4's drawing of them. Placeholder: EXE5's grids. The any-side step rows are EXE5's too.
 15. **Battle mode 1's mend** and **reservations**: EXE5's until read.
@@ -810,16 +910,16 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
 19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
-    5, 6, 7: rocks and the others, 0x080FC138's actor lists) and panel type 11. Port the obstacles, then generate them.
+    5, 6, 7: rocks and the others, 0x080FC138's actor lists). Port the obstacles, then generate them.
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
     battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
     set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
     24, by their names), `first_round_stages` (a random match is a triple battle's: every round among the first 0x60).
     No RNG field: nettai picks a match's places before the battle with its own generator (docs/frontend.md §2), so
     only the odds are the game's, which the lists state. a95f's sweep (1,000 seeds, tools/chiplab/gen_exe4.py
-    `STAGES`) drew from all 96 records: no panel type 11, no obstacle but the boulder (attack object #0x6E) and #0x76.
+    `STAGES`) drew from all 96 records: no panel type 11; its obstacles are the four of item 19 (the boulder #0x6E, #0x76, #0x9C, effect #0x41).
     So `stages` must list all 96 records, each working: the 34 waiting ones (actor kinds 3, 5, 6 and 7) wait for
-    those two obstacles (item 19); until then the list leaves them out and the odds differ.
+    those four obstacles (item 19); until then the list leaves them out and the odds differ.
 21. **Done** (backgrounds' names). The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else
     the map's (0x08085BAC, its table at the literal 0x08085BCC, default 3). The 22 that maps draw are named for their
     areas, by the menu's names (tools/backgrounds: names.tsv, areas.py exe4; docs/frontend.md §1 has the table). No
@@ -878,6 +978,20 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     loaded) and fill the role. EXE4's content audit lists no problem with the pack (the custom screen's emblem is the
     window's own, §14). The banners, the faces (MegaMan's `forms`, so his faces are his base form's `mugshot`), the
     warning marker, the navis' sprites and MegaMan's souls' are in.
+    **Filled so far** (group A, each by its code): the custom screen's sounds (§5), the gauge full 0x81, the low-HP
+    alarm 0x82 (0x0801475E), a panel's crack 0x95 (0x08009AEC) and poison 0x124 (0x08009D68), the music (winner 0x1E,
+    a special battle's 0x18, a netbattle's loser 0x19: 0x080071F8, 0x0800727C), the banners but the telops (final
+    turn 0x10 at 0x08007094, draw 0x1C, the judge's win 0x14, loss 0x18 and its own 0x28, the Program Advance's 0x24
+    and 0x34). Group B fills the fight's sounds and effects its replays reach. **Not EXE4's** (left unfilled, as EXE5
+    leaves EXE6's): the telops; freeze, bubble and ice (no such status: group C), so `statuses.ice_freeze` and the
+    sounds `freeze`, `bubble`, `bubble_pop` and the sprites `ice`, `bubble`; the damage word's confusion and blindness
+    (its only status bit is paralysis: group C); battle mode 9's kinds, the dive ripple, the Crosses' and Beasts'
+    actions; the scrap (DustCross) and the Cross window's cancel (`custom_scrap`, `custom_scrap_done`,
+    `custom_cancel`). **Still to read:** the confusion and blindness visuals (EXE4 has both statuses, its table
+    0x08018550: sprites `confusion`, `blindness`, `immobilized`, the sound `confusion`), `statuses.counter_paralysis`
+    (with the counter hits, item 9), SearchSoul's shuffle sounds (`custom_redeal`, none at its start, 0x0802037A;
+    `custom_redeal_shuffle`, 0x123 every 4 ticks, 0x080209E0: with the souls), the Full Synchro aura (item 8), and the
+    roles of chips not ported yet (the counters, obstacles, eruption, the target marker), which come with the chips.
 
 ### 18.6 Found by the replays
 

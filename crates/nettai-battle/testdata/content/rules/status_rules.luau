@@ -19,6 +19,9 @@ return {
     reactions = "flash_timer_last",
     -- The reaction actions mark the action in use, ground and count.
     reaction_actions = "marked",
+    -- A drag takes the paralyzed pose, else SuperArmor's, else the flinch's;
+    -- a paralysis that outlasts it goes on.
+    drag = { poses = { paralyzed = 2, super_armor = 0, otherwise = 1 }, ending = "resumes_paralysis" },
     -- The HP bug drains before a hit's NaviCust bug is taken; no no-charge
     -- drive; a loss of HP takes the HP alone.
     bugs_before_drain = false,
@@ -40,6 +43,11 @@ return {
             { emotion = "normal" },
         },
         roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },
+        -- A counter marks the counter and the counterer's rules hear it; Full Synchro's boost leaves 0x80, and
+        -- anger's boost sounds too.
+        hit_mood = "counter_mark",
+        full_synchro_spent = 0x80,
+        anger_boost_sound = true,
     },
     -- The weakness request breaks a Cross or a Beast to what it breaks to.
     form_break = "marked_forms",

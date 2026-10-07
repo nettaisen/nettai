@@ -40,11 +40,13 @@ return {
     -- from 8.
     obstacle_actions = "own_from_8",
     -- Its Full Synchro aura (actor object 0x5E, `sub_80C4B18`) takes its navi's identity's animation each tick (a
-    -- Cross's or a Beast's own as the navi changes form), and runs through every pause with its sprite still.
+    -- Cross's or a Beast's own as the navi changes form), and runs through every pause with its sprite still, from
+    -- its spawn (`sub_80C4C12` sets the header flag 0x04).
     full_synchro_aura = {
         follows_identity = true,
         steps_while_paused = false,
         stops_at_a_pause_in_the_fight = false,
+        spawn_runs_while_paused = true,
     },
     -- A navi's charge glow (effect 8, `sub_80E0F02`) comes with it.
     charge_glow = "with_navi",

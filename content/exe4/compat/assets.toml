@@ -91,6 +91,7 @@ vulcan-hit = "14-0f"
 energy-burst = "14-12"
 lightning = "14-14"
 charge-glow-a = "14-15"
+full-synchro-aura = "14-16"  # the Full Synchro aura: actor object 0x5E's init (0x080CD1A8), spawned for a navi in Full Synchro (0x0800D9C8)
 
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
@@ -117,10 +118,15 @@ custom-pick = 0x07e  # a chip picked on the custom screen (0x080203A0, from 0x08
 custom-back = 0x07f  # a pick taken back on the custom screen (0x080203A0, 0x0802066E, from 0x080204B8)
 custom-ok = 0x080  # OK on the custom screen (0x0802063E)
 gauge-full = 0x081  # the custom gauge full as it fills (0x080147F4), or filled at once (0x080159D0)
+low-hp = 0x082  # the HP box's alarm, every 45 ticks the console's navi is at a quarter of its HP or less (0x0801475E)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
+panel-crack = 0x095  # a panel cracked or broken (0x08009AEC: 0x08009B1C, 0x08009B38)
 program-advance = 0x097  # the Program Advance animation's Program Advance (0x0801E83A)
 appear = 0x0b0  # the navis' appearance as a round starts (the lab's flow/buster-duel, frame 148)
 dark-hover = 0x100  # the custom screen's cursor resting on a dark chip, every 61 ticks (0x0801E4A6)
+counter-hit = 0x10a  # a counter hit (0x08013410: 0x0801342A)
+panel-poison = 0x124  # a panel turned to poison (0x08009D68: 0x08009D8C)
+damage-bonus = 0x1bb  # Full Synchro's boost of a chip (0x0800D54E: 0x0800D572)
 buster-blank = 0x1c0  # the buster's blank shot (0x080EB39E)
 
 # Battle backgrounds: the loader's numbers (0x08085430, its descriptors at 0x0808563C: 0x00 to 0x1a), each named

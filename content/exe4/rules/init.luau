@@ -7,6 +7,7 @@
 
 local custom = require("@self/custom")
 local fresh_stats = require("@self/fresh_stats")
+local light_dark = require("@self/light_dark")
 local save = require("@self/save")
 
 local rules: Rules = {
@@ -21,11 +22,17 @@ local rules: Rules = {
         -- What the save brings to the navi's stats (./save): MegaMan's HP and the Regular memory.
         hp = "u16",
         reg_up = "u8",
+        -- MegaMan's light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F): ./light_dark.
+        karma = "u16",
+        full_synchro_start = "bool",
     },
-    -- A setup that says nothing: what every save brings at its highest.
+    -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
+    -- the starting mood 0x99), no Full Synchro at the start.
     setup_defaults = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
+        karma = 500,
+        full_synchro_start = false,
     },
     -- The custom screen's (./custom): the hand's size.
     custom = {
@@ -34,6 +41,12 @@ local rules: Rules = {
     hooks = {
         -- What the save brings to the navi's stats (./save).
         round_setup = save.round_setup,
+        -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, the holy panel a
+        -- dark one clears and the hole a navi that isn't dark closes.
+        starting_mood = light_dark.starting_mood,
+        navi_intake = light_dark.navi_intake,
+        -- Light and dark MegaMan (./light_dark): his palette.
+        navi_palette = light_dark.navi_palette,
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
