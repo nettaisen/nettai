@@ -17,10 +17,11 @@ return {
     -- A push reads the first of bits 2 to 5 of the hits' final modifier,
     -- toward the navi's front; the 0x80 bit picks the last five rows. An
     -- obstacle's push reads the same bits from its own four rows, toward
-    -- the pusher.
+    -- the pusher. A push with 0x40 is a drag (an obstacle's push).
     push_reading = {
         reads = "final",
         bits = 4,
+        drag_bit = 0x40,
         shift = { bit = 0x80, rows = 5 },
         obstacle_rows = {
             { dx = -1, dy = 0, panels = 6 },
@@ -57,12 +58,14 @@ return {
     -- Ice slides by the direction the navi last moved (none, up, down,
     -- back, forward, other).
     ice = {
-        NONE,
-        { dx = 0, dy = -1, panels = 1 },
-        { dx = 0, dy = 1, panels = 1 },
-        { dx = -1, dy = 0, panels = 1 },
-        { dx = 1, dy = 0, panels = 1 },
-        NONE,
+        slide = {
+            NONE,
+            { dx = 0, dy = -1, panels = 1 },
+            { dx = 0, dy = 1, panels = 1 },
+            { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
+            NONE,
+        },
     },
     bubble_bob = bob,
     -- A slide and a drag go 10 pixels a tick across and 6 in depth.
@@ -71,6 +74,8 @@ return {
     overlay_restart = "step",
     -- The counter a stance's caught hit starts runs from the next tick.
     stance_counter = "next_tick",
+    -- A move's direction: up, down, back or forward by the side.
+    move_direction = "by_side",
     -- What the ends of a navi's actions clear of its requests besides the attacks': both games' (the mode-9 A
     -- press and the Chaos Unison releases at an attack's end; the anti-sword trigger at a flinch's and a drag's).
     request_clears = {

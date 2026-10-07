@@ -665,36 +665,17 @@ impl Battle {
     }
 
     /// `object_updateCollisionPanels`: move the anchor to the object's panel
-    /// and record the direction of the move.
+    /// and record the direction of the move, as the game puts it (the
+    /// reactions section's `move_direction`: EXE6's `sub_800E994`, EXE4's
+    /// 0x0800AF90).
     pub fn update_collision_panels(&mut self, obj: ObjectRef) {
         let o = self.objects.get(obj);
         let Some(id) = o.collision else { return };
         let (new, alliance) = (o.panel, o.alliance);
+        let rule = self.content.rules().move_direction;
         let s = self.collision.get_mut(id);
-        s.direction = move_direction(s.panel, new, alliance);
+        s.direction = rule.of(s.panel, new, alliance);
         s.panel = new;
-    }
-}
-
-/// `sub_800E994`: 0 none, 1 up, 2 down, 3 back, 4 forward, 5 other. Only
-/// a move of two panels or more to the right or down is "other" (the
-/// routine tests `>= 2` and nothing below -1): any move left or up along
-/// one axis counts by its sign, so a navi warped two panels back (side 0)
-/// or forward (side 1) has moved back or forward, and slides on ice.
-pub fn move_direction(old: PanelPos, new: PanelPos, alliance: u8) -> u8 {
-    let dx = new.x as i8 - old.x as i8;
-    let dy = new.y as i8 - old.y as i8;
-    if dx >= 2 || dy >= 2 {
-        return 5;
-    }
-    let (back, forward) = if alliance == 0 { (3, 4) } else { (4, 3) };
-    match (dx.signum(), dy.signum()) {
-        (0, 0) => 0,
-        (0, -1) => 1,
-        (0, 1) => 2,
-        (-1, 0) => back,
-        (1, 0) => forward,
-        _ => 5,
     }
 }
 
@@ -789,5 +770,22 @@ mod tests {
         assert!(!guarded(breaks_to_1002, 0x8000_5000));
         assert!(guarded(breaks_to_2, 0x8000_0000));
         assert!(guarded(breaks_to_1002, 0x8000_0000));
+    }
+
+    /// docs/design/exe4-map.md §18 item 1: a move's direction as the game
+    /// puts it. EXE6's and EXE5's by the side (back and forward swap for
+    /// side 1; two panels right is other), EXE4's whatever the side (across
+    /// before up and down, never other).
+    #[test]
+    fn a_moves_direction_is_the_games() {
+        use crate::content::MoveDirection::{Absolute, BySide};
+        let p = |x, y| PanelPos { x, y };
+        let from = p(3, 2);
+        let moves = [p(2, 2), p(4, 2), p(3, 1), p(3, 3), p(5, 2), p(1, 2), p(4, 3), p(3, 2)];
+        let by = |rule: crate::content::MoveDirection, side| moves.map(|to| rule.of(from, to, side));
+        assert_eq!(by(BySide, 0), [3, 4, 1, 2, 5, 3, 5, 0]);
+        assert_eq!(by(BySide, 1), [4, 3, 1, 2, 5, 4, 5, 0]);
+        assert_eq!(by(Absolute, 0), [3, 4, 1, 2, 4, 3, 4, 0]);
+        assert_eq!(by(Absolute, 1), [3, 4, 1, 2, 4, 3, 4, 0]);
     }
 }
