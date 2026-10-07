@@ -14,11 +14,13 @@ local airshot = {}
 -- EXE6's air shooter (the original's attachment row 0x13).
 airshot.shooter = attachment.look { sprite = asset.sprite("air-shooter"), palette = 0, attach_point = 10 }
 
-local LOOK: ShooterLook = {
+local LOOK: AirShotLook = {
     sound = asset.sound("h-burst"),
-    attachment = attachment.kind,
+    -- `sub_80EC934`: the shooter by the holder's AI index (`off_80EC944`).
+    hold = attachment.holder(navi_arms.air_shooter),
     projectiles = projectile,
-    arm_anims = navi_arms.air_shooter,
+    anim = 9,
+    slot = "overlay",
 }
 
 -- An AirShot: what the navi holds and what it fires.

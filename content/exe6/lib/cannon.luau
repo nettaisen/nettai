@@ -25,9 +25,9 @@ cannon.arms = {
 
 local LOOK: ShooterLook = {
     sound = asset.sound("cannon"),
-    attachment = attachment.kind,
+    -- `sub_80EBD68`: a player's arm by its AI index (`off_80EBD80`), anyone else's the plain one.
+    hold = attachment.holder(navi_arms.cannon, true),
     projectiles = projectile,
-    arm_anims = navi_arms.cannon,
 }
 
 -- A chip's cannon.
