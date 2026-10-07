@@ -1434,12 +1434,21 @@ declare field: {
     -- `object_isPanelSolid`: something can stand on it (not missing or
     -- broken).
     solid: (x: number, y: number) -> boolean,
+    -- What the panel's type counts (an `expires` type's ticks left, EXE4's
+    -- pitfall's crumble), and setting it.
+    timer: (x: number, y: number) -> number,
+    set_timer: (x: number, y: number, ticks: number) -> (),
+    -- The field's cycle (the panel rules' `cycle`: EXE6's volcanos erupt by
+    -- it), counted down each panel update; 0 in a game without one.
+    cycle: () -> number,
+    -- A grounded body stands on the panel: a body, none floating.
+    grounded_body: (x: number, y: number) -> boolean,
     -- Drawn only.
     highlight: (x: number, y: number) -> (),
-    -- Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    -- `object_panel_setPoison`: a solid panel turns to poison; whether it
-    -- was solid.
-    poison: (x: number, y: number) -> boolean,
+    -- `object_panel_setPoison` and its kind: a solid panel becomes the type
+    -- in place (its flags keeping what the type mask doesn't own, taking the
+    -- type's own), no type change's hooks, with `sound`; whether it was solid.
+    overwrite: (x: number, y: number, kind: PanelType, sound: Sound?) -> boolean,
     -- `object_setPanelTypeBlink`: this frame the panel is drawn as `kind`
     -- of `side` (drawn only).
     blink: (x: number, y: number, kind: PanelType, side: number) -> (),
@@ -1521,6 +1530,13 @@ declare navi_chip: {
     last: () -> LastNaviChip?,
     -- `sub_80E1332`: the user warps out (`out`) or back in.
     warp: (user: Object, out: boolean) -> (),
+    -- A navi chip's use springs the other side's armed AntiRecv (EXE4's Roll
+    -- chips' spawner, 0x080E5554): the trap's mark over `user`, the other
+    -- side's defensive-chip record spent, and AntiRecv's counterattack (the
+    -- role `kinds.anti_recovery`) against `user` with the damage word
+    -- `damage`, its telop the record's chip: the counterattack (nil: the pool
+    -- is full). The caller starts its dimming.
+    spring_anti_recovery: (user: Object, damage: number) -> Object?,
 }
 
 -- What a stage places a field object with (the original's spawner for
@@ -2144,8 +2160,9 @@ export type DamageFormula =
     | { formula: "count", of: DamageCount, by_count: { number }, operation_battle: number? }
 
 -- What a count formula counts: a side statistic, the side's panels of a
--- type, the turns before this one.
-export type DamageCount = { side_stat: number } | { own_panels: PanelType } | "turns_before"
+-- type, the field's panels of a type (either side's), the turns before this
+-- one.
+export type DamageCount = { side_stat: number } | { own_panels: PanelType } | { panels: PanelType } | "turns_before"
 
 export type ChipSpec = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
@@ -2484,9 +2501,10 @@ export type FormDef = {
     -- chips), spending it; while it is primed nothing else doubles a chip.
     -- The status reset spends it (EXE5's GyroSoul).
     priming: { by: ChipMatch, sound: Sound, doubles: { ChipMatch } }?,
-    -- The damaging chips (not dimming chips) that deal double while it
-    -- stands on grass, which the use turns normal (EXE5's TomahawkSoul).
-    grass_doubles: ChipMatch?,
+    -- The panel type it doubles on, and the damaging chips (not dimming
+    -- chips) that deal double while it stands on one, which the use turns
+    -- normal (EXE5's TomahawkSoul's Wood chips on grass).
+    panel_doubles: { panel: PanelType, chips: ChipMatch }?,
     -- The ticks a damaging chip (not a dimming chip) used with the panel
     -- ahead not its side's keeps it invulnerable (EXE5's KnightSoul).
     front_guard: number?,
@@ -2795,12 +2813,11 @@ export type RolesSpec = {
         burst: Effect?,
     }?,
     -- The hit sparks the rules show themselves: a new registration's until
-    -- its owner names another, a blocked hit's, an eruption's, a thrown
-    -- obstacle's landing's.
+    -- its owner names another, a blocked hit's, a thrown obstacle's
+    -- landing's.
     sparks: {
         plain: Spark?,
         guard: Spark?,
-        eruption: Spark?,
         thrown_obstacle: Spark?,
     }?,
     -- The hit regions the rules register themselves: a registration's own
@@ -2809,14 +2826,12 @@ export type RolesSpec = {
         anchor: Region?,
     }?,
     -- The collision types the rules register themselves: a navi's body
-    -- (floating or not) and what it reacts to, an eruption and a thrown
-    -- obstacle's landing and what they reach.
+    -- (floating or not) and what it reacts to, a thrown obstacle's landing
+    -- and what it reaches.
     collision: {
         navi: CollisionType?,
         floating_navi: CollisionType?,
         navi_target: CollisionType?,
-        eruption: CollisionType?,
-        eruption_target: CollisionType?,
         thrown_obstacle: CollisionType?,
         thrown_obstacle_target: CollisionType?,
     }?,
@@ -2824,7 +2839,6 @@ export type RolesSpec = {
     -- is for).
     sounds: {
         panel_crack: Sound?,
-        panel_poison: Sound?,
         own_hit: Sound?,
         hit: Sound?,
         auto_battle_hit: Sound?,
@@ -2882,7 +2896,7 @@ export type RolesSpec = {
     }?,
     -- The sprites of the engine's own kinds: the charge glows, the Full
     -- Synchro aura, the status visuals, the ice block and the bubble, the
-    -- hit marker, the eruption, the target marker. (The Beast head and the
+    -- hit marker, the target marker. (The Beast head and the
     -- idle overlay are the parts of the identities that wear them.)
     sprites: {
         charge_glow: SpriteAsset?,
@@ -2894,7 +2908,6 @@ export type RolesSpec = {
         ice: SpriteAsset?,
         bubble: SpriteAsset?,
         hit_marker: SpriteAsset?,
-        eruption: SpriteAsset?,
         target_marker: SpriteAsset?,
     }?,
     -- The banners the rules show themselves: a round's start, a turn's, the

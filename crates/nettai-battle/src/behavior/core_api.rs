@@ -1075,7 +1075,7 @@ impl CoreApi for Battle {
             .with_custom_screen(side, |screen, view, _, _, _| {
                 // (Three lines for a form the content has no description of.)
                 let lines = form.map_or(3, |f| view.library.form_description_lines(f));
-                screen.describe_form(&joy, lines, form)
+                screen.describe_form(&joy, lines, form, view.library.layout().chatbox_end_clears_tiles)
             })
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
         if !described {
@@ -1424,6 +1424,26 @@ impl CoreApi for Battle {
         self.field.is_solid(p.x, p.y)
     }
 
+    fn panel_timer(&self, p: PanelPos) -> u16 {
+        self.field.panel(p.x, p.y).map_or(0, |p| p.timer)
+    }
+
+    fn set_panel_timer(&mut self, p: PanelPos, ticks: u16) {
+        if let Some(p) = self.field.panel_mut(p.x, p.y) {
+            p.timer = ticks;
+        }
+    }
+
+    fn field_cycle(&self) -> u32 {
+        self.field.cycle
+    }
+
+    fn panel_body_grounded(&self, p: PanelPos) -> bool {
+        use crate::field::pflags;
+        let f = self.field.flags(p.x, p.y);
+        f & pflags::BODY != 0 && f & pflags::FLOATING == 0
+    }
+
     fn highlight_panel(&mut self, p: PanelPos) {
         common::highlight_panel(self, p.x, p.y);
     }
@@ -1519,8 +1539,8 @@ impl CoreApi for Battle {
     }
 
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    fn poison_panel(&mut self, p: PanelPos) -> bool {
-        Battle::poison_panel(self, p.x, p.y)
+    fn overwrite_panel(&mut self, p: PanelPos, kind: u8, sound: Option<u16>) -> bool {
+        Battle::overwrite_panel(self, p.x, p.y, PanelType(kind), sound.map(SoundId))
     }
 
     fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8) {
@@ -2892,6 +2912,10 @@ impl CoreApi for Battle {
     fn navi_warp(&mut self, user: ObjectRef, out: bool) {
         use kinds::navi_warp::{Warp, spawn};
         spawn(self, user, if out { Warp::Out } else { Warp::In });
+    }
+
+    fn navi_spring_anti_recovery(&mut self, user: ObjectRef, damage: u32) -> Option<ObjectRef> {
+        kinds::navi_chip::spring_anti_recovery_with(self, user, damage)
     }
 
     // ---- Obstacles ----------------------------------------------------------------------

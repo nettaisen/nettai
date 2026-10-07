@@ -1573,6 +1573,17 @@ pub trait CoreApi {
     fn panel_type_named(&self, name: &str) -> Option<u8>;
     /// The name of the game's panel type numbered `kind`.
     fn panel_type_name(&self, kind: u8) -> String;
+    /// Panel `p`'s timer: what its type counts (an `expires` type's ticks
+    /// left; EXE4's pitfall's crumble), and setting it.
+    fn panel_timer(&self, p: PanelPos) -> u16;
+    fn set_panel_timer(&mut self, p: PanelPos, ticks: u16);
+    /// The field's cycle (EXE6's volcanos erupt by it: the panel rules'
+    /// `cycle`, counted down each panel update and back to its period at 0);
+    /// 0 in a game without one.
+    fn field_cycle(&self) -> u32;
+    /// A grounded body stands on panel `p`: one of its flags' bodies, and
+    /// none floating.
+    fn panel_body_grounded(&self, p: PanelPos) -> bool;
     /// `_object_setPanelType` (`kind` the game's number of the type).
     fn set_panel_type(&mut self, p: PanelPos, kind: u8);
     /// `object_crackPanel`: crack a solid panel, or break a cracked,
@@ -1633,9 +1644,10 @@ pub trait CoreApi {
     /// `sub_800E680`: could `o` stand on `p`, whichever side owns it?
     fn can_stand_any_side(&self, o: ObjectRef, p: PanelPos) -> bool;
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    /// `object_panel_setPoison`: a solid panel turns to poison. Whether it
-    /// was solid.
-    fn poison_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_panel_setPoison` and its kind: a solid panel becomes type
+    /// `kind` in place (its flags keeping what the type mask doesn't own),
+    /// with `sound`; whether it was solid.
+    fn overwrite_panel(&mut self, p: PanelPos, kind: u8, sound: Option<u16>) -> bool;
     /// `object_setPanelTypeBlink`: this frame the panel is drawn as type
     /// `kind` (the game's number of the type) of side `side` (drawn only).
     fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8);
@@ -2105,6 +2117,13 @@ pub trait CoreApi {
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
     /// navi warp, actor 0x2D).
     fn navi_warp(&mut self, user: ObjectRef, out: bool);
+    /// A navi chip's use springs the other side's armed AntiRecv (EXE4's
+    /// Roll chips' spawner, 0x080E5554): the trap's mark over `user`
+    /// (`sub_800ABC6`), the other side's defensive-chip record spent
+    /// (`sub_802CEA6`), and AntiRecv's counterattack (the role
+    /// `kinds.anti_recovery`, `sub_80E37D2`) against `user` with the damage
+    /// word `damage`: the counterattack, none when the pool is full.
+    fn navi_spring_anti_recovery(&mut self, user: ObjectRef, damage: u32) -> Option<ObjectRef>;
 
     // ---- Obstacles (the obstacle framework) -------------------------------
 

@@ -1373,6 +1373,11 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     lib_fn!(lua, navi_chip, "warp", |_, (user, out): (mlua::UserDataRef<Object>, bool)| {
         with(|api, _| Ok(api.navi_warp(user.0, out)))
     });
+    lib_fn!(lua, navi_chip, "spring_anti_recovery", |lua, (user, damage): (mlua::UserDataRef<Object>, LuaValue)| {
+        let damage = int(&damage, "damage")? as u32;
+        let c = with(|api, _| Ok(api.navi_spring_anti_recovery(user.0, damage)))?;
+        object_value(lua, c)
+    });
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.navi_chip_left(c.0)))
     });
@@ -2429,14 +2434,32 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.panel_solid(p)))
     });
+    lib_fn!(lua, t, "timer", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.panel_timer(p)))
+    });
+    lib_fn!(lua, t, "set_timer", |_, (x, y, ticks): (LuaValue, LuaValue, LuaValue)| {
+        let (p, ticks) = (panel(x, y)?, u16_arg(ticks, "ticks")?);
+        with(|api, _| Ok(api.set_panel_timer(p, ticks)))
+    });
+    lib_fn!(lua, t, "cycle", |_, ()| with(|api, _| Ok(api.field_cycle())));
+    lib_fn!(lua, t, "grounded_body", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.panel_body_grounded(p)))
+    });
     lib_fn!(lua, t, "highlight", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.highlight_panel(p)))
     });
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    lib_fn!(lua, t, "poison", |_, (x, y): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "overwrite", |_, (x, y, kind, sound): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
         let p = panel(x, y)?;
-        with(|api, _| Ok(api.poison_panel(p)))
+        let kind = panel_type_arg(&kind)?;
+        let sound = match sound {
+            LuaValue::Nil => None,
+            s => Some(sound_arg(s)?),
+        };
+        with(|api, _| Ok(api.overwrite_panel(p, kind, sound)))
     });
     lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
@@ -2714,13 +2737,15 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         }
         HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
         // A panel type's: the body, then `burn`'s whether it is a player's
-        // navi, `slide`'s what reaches the panel.
-        HookCall::Panel { body, call: PanelCall::Burn { player } } => vec![obj(body)?, LuaValue::Boolean(player)],
-        HookCall::Panel { body, call: PanelCall::Stand | PanelCall::Rest | PanelCall::MoveEnd } => vec![obj(body)?],
-        HookCall::Panel { body, call: PanelCall::Slide { how } } => {
-            vec![obj(body)?, LuaValue::String(lua.create_string(how.name())?)]
+        // navi, `slide`'s what reaches the panel, `hit`'s the element; or the
+        // panel.
+        HookCall::Panel(PanelCall::Burn { body, player }) => vec![obj(body)?, LuaValue::Boolean(player)],
+        HookCall::Panel(PanelCall::Stand { body } | PanelCall::Rest { body } | PanelCall::MoveEnd { body }) => vec![obj(body)?],
+        HookCall::Panel(PanelCall::Slide { body, how }) => vec![obj(body)?, LuaValue::String(lua.create_string(how.name())?)],
+        HookCall::Panel(PanelCall::Hit { body, element }) => vec![obj(body)?, LuaValue::Integer(mlua::Integer::from(element))],
+        HookCall::Panel(PanelCall::Tick { x, y } | PanelCall::Changed { x, y } | PanelCall::Start { x, y }) => {
+            vec![LuaValue::Integer(mlua::Integer::from(x)), LuaValue::Integer(mlua::Integer::from(y))]
         }
-        HookCall::Panel { body, call: PanelCall::Hit { element } } => vec![obj(body)?, LuaValue::Integer(mlua::Integer::from(element))],
         HookCall::Given { side, chip } => {
             let chip = match chip {
                 Some(c) => LuaValue::Table(bound.def_value(Registry::Chip, c.0)?),
@@ -2780,13 +2805,13 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         // A navi's role hook may hand back an object (`navi_deleted`'s).
         HookCall::RoleNavi { .. } => Ok(object_arg(&v, "the object a role hook returns")?.map_or(Value::Nil, Value::Object)),
         // A panel type's `rest`: whether it handled the body.
-        HookCall::Panel { call: PanelCall::Rest, .. } => match v {
+        HookCall::Panel(PanelCall::Rest { .. }) => match v {
             LuaValue::Boolean(b) => Ok(Value::Bool(b)),
             LuaValue::Nil => Ok(Value::Bool(false)),
             _ => Err(mlua::Error::runtime(format!("a panel type's `rest` returns whether it handled the body, not a {}", v.type_name()))),
         },
         // Its `slide`: an answer's number (1 up), nil none.
-        HookCall::Panel { call: PanelCall::Slide { .. }, .. } => match &v {
+        HookCall::Panel(PanelCall::Slide { .. }) => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::String(s) => {
                 let s = s.to_str()?;
@@ -2801,7 +2826,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         | HookCall::RoleEncased { .. }
         | HookCall::NaviLeft { .. }
         | HookCall::FormNavi { .. }
-        | HookCall::Panel { .. } => Ok(Value::Nil),
+        | HookCall::Panel(_) => Ok(Value::Nil),
         // What a side is given: a whole number, a flag or nil.
         HookCall::Given { .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),

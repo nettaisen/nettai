@@ -12,7 +12,7 @@ local quakes = quake.make {
     id = "geddon/quake",
     puff = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
     bubble = rising_bubble.kind,
-    sounds = { puff = asset.sound("panel-crack"), bubble = asset.sound("panel-poison") },
+    sounds = { puff = asset.sound("panel-crack"), bubble = asset.sound("panel-poison"), poison = asset.sound("panel-poison") },
 }
 
 return common.make { id = "geddon/controller", name = "Geddon", quake = quakes.spawn, hold_panel = false }

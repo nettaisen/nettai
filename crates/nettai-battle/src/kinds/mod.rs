@@ -10,7 +10,6 @@ pub mod bubble_visual;
 pub mod charge_glow;
 pub mod common;
 pub mod effect;
-pub mod eruption;
 pub mod form_overlay;
 pub mod full_synchro_aura;
 pub mod heal;
@@ -83,7 +82,6 @@ impl Vars {
             | EngineKind::BubbleVisual
             | EngineKind::NaviChip
             | EngineKind::NaviWarp
-            | EngineKind::Eruption
             | EngineKind::StatusVisual
             | EngineKind::IceVisual
             | EngineKind::HitMarker => Vars::None,
@@ -138,14 +136,13 @@ pub enum EngineKind {
     Burst,
     NaviChip,
     NaviWarp,
-    Eruption,
     StatusVisual,
 }
 
 /// The engine's kinds: their keys (`engine/...`) and pools. (The object
 /// slots they fill in the original, which the traces compare, are the
 /// validator's, by key.)
-pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 21] = [
+pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 20] = [
     (EngineKind::Player, "engine/player", Pool::Actor),
     (EngineKind::Intro, "engine/intro", Pool::Effect),
     (EngineKind::ChargeGlow, "engine/charge-glow", Pool::Effect),
@@ -165,7 +162,6 @@ pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 21] = [
     (EngineKind::Burst, "engine/burst", Pool::Effect),
     (EngineKind::NaviChip, "engine/navi-chip", Pool::Effect),
     (EngineKind::NaviWarp, "engine/navi-warp", Pool::Actor),
-    (EngineKind::Eruption, "engine/eruption", Pool::Attack),
     (EngineKind::StatusVisual, "engine/status-visual", Pool::Effect),
 ];
 
@@ -195,7 +191,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             EngineKind::Burst => burst::update(b, r),
             EngineKind::NaviChip => navi_chip::update(b, r),
             EngineKind::NaviWarp => navi_warp::update(b, r),
-            EngineKind::Eruption => eruption::update(b, r),
             EngineKind::StatusVisual => status_visual::update(b, r),
         },
     }
@@ -399,6 +394,10 @@ fn counted(b: &Battle, side: u8, of: &crate::content::Counted) -> usize {
         C::OwnPanels(t) => (1..=3u8)
             .flat_map(|y| (1..=6u8).map(move |x| (x, y)))
             .filter(|&(x, y)| b.field.panel(x, y).is_some_and(|p| p.kind == t && p.alliance == side))
+            .count(),
+        C::Panels(t) => (1..=3u8)
+            .flat_map(|y| (1..=6u8).map(move |x| (x, y)))
+            .filter(|&(x, y)| b.field.panel(x, y).is_some_and(|p| p.kind == t))
             .count(),
         // 0x0800E994: the turn byte less one, compared unsigned.
         C::TurnsBefore => (b.round.turn as u32).wrapping_sub(1) as usize,

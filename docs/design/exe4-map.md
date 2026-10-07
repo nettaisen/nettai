@@ -335,8 +335,15 @@ from the ROM and its code, read routine by routine):
 - **Drawing** (presentation): the tick a key leaves the choosing draws what its new state draws, no cursor
   (`cursor_after_leaving`, 0x0801E412). The choosing tick draws the last turns' block and counts its frame before
   its keys (`frame_counts_first`, 0x0801E3DA, 0x0801E3DE): the cursor blinks a frame further on than EXE6's, and the
-  Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0.
-- **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape.
+  Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0. R's
+  description and L's message are states of the choosing (`description_in_choosing`: the selection's 0x18 and 0x1C):
+  their ticks draw the last turns' block and count the frame, and the tick one sees its chatbox closed goes back to
+  the state it came from and draws its cursor (0x08020A0A, 0x0801E412).
+- **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape, its
+  portrait `megaman-portrait` (F4 00 40: the mugshot table 0x08028038's 0x40); a character ends the tick's printing
+  (`chatbox_character_ends_tick`, 0x0804E1B2: a character every third tick, where EXE6's interpreter goes on and
+  counts the next one's delay down on the same tick). Checked against custom/run-message, run-message-b and
+  run-message-ok: every frame while it is up, its portrait's fades and faces too.
 - **Sounds** (named for their code in gen_content.py's BY_USE): open 0x7A, cursor 0x7D, pick 0x7E, back 0x7F, OK 0x80,
   refused 0x69, description 0x66, the hover 0x100, the Program Advance's parts 0x79 and its result 0x97, the gauge full
   0x81; the hide, the description's close, L's message and the pause play none (optional roles).
@@ -572,6 +579,17 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   They showed that EXE4's navi body hits for nothing in a link battle (`status.link_body_damage`: EXE4 has neither of
   EXE6's stores of 10).
 
+- **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
+  navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
+  DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter):
+  @exelib/navi_chips/controller (EXE5's Phoenix's and DethPhnx's controllers are the same code), its course EXE4's
+  (content/exe4/lib/navi_chips: the user warping out, the navi, a wait, the user warping back in, in four shapes), the
+  user's warp EXE4's own effect #0x0C (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first
+  parameter is the navi's level (0, an SP's 3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a
+  variant times 0, 2 or 3). The SP chips' damage goes by the side's deletion time (rules/sp_chips, formulas 1 to 22),
+  the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count formula's `panels`). Roll (actor #0x2C)
+  is @exelib/roll's, with EXE4's differences as its spec's.
+
 **For the next steps:**
 
 - **Extraction** (`nettai-extract exe4`): as built, §14.
@@ -748,8 +766,10 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   knows the shift itself (§17's known deviations: `shifted.tsv`, "exact at the replay's known shift").
   The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
   only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
-  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
-  clears the text a tick before the box closes and draws the cursor a frame sooner (group A's).
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
+  text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
+  zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
+  on the tick the screen sees the box closed (`description_in_choosing`).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -814,6 +834,8 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
+- Roll's chips against an armed AntiRecv (the spawner's own spring, 0x080E5554: the counterattack three times half
+  the chip's damage word, its dimming with no cut-in): no recording has Roll used into AntiRecv yet.
 - Settled: panels through a pause and a dimming (§18 item 13, a95f's `panels/` recordings). Poison doesn't drain
   through a pause (`poison-pause`: the player doesn't run paused); a player landing on lava burns the tick after
   it lands even while the battle is dimmed (`lava-dimming-33`, RockCube's dimming: the burn at 418, its flinch at
@@ -1489,3 +1511,13 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
       effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
       The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
       EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
+
+### 18.8 The chips (group F)
+
+150. **A navi chip's user hidden and shown** (from Roll's warps). EXE4's 0x080E2D56 and 0x080E2DCC (EXE6's
+    `sub_80E1352`, `sub_80E13DC`, similar) set no "vanished" mark (EXE6's `sub_8010312(0x100000)`), find the barrier
+    visual at the object's +0x50, hide the HUD's chip icons by task 8, and show the user back whatever the viewer's
+    blindness or a submerge (EXE6's tests `sub_800EB6C` and the submerged bit). The engine's `dimming.hide_user` and
+    `show_user` are EXE6's; Roll's recordings match (nothing in them reads the mark, and no viewer is blind). Shape: a
+    `chip_use` rule for the user's vanish (EXE6's and EXE5's marks and tests, EXE4's none), with a recording of a blind
+    viewer or a Reflector through a navi chip to confirm.
