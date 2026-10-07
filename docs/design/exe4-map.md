@@ -824,9 +824,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 32. **Roles not filled** (the content check lists them): every sound but `appear` and `custom_open`, the music but
     `link_battle`, the effects (deletion, recovery, the cut-in flash), sprites (charge glow, statuses), banners but
     `round_start`, `turn_start` and `win`, the kinds and actions EXE5's roles name. Name each EXE4 asset for the code
-    that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 1 problem
-    with the pack: MegaMan has no emblem (the custom screen's extraction, §14). The banners, the faces (MegaMan's
-    `forms`, so his faces are his base form's `mugshot`) and the warning marker are in.
+    that uses it (gen_content.py's BY_USE, with the address; tools/exe4/assetloads.py lists where each unnamed one is
+    loaded) and fill the role. EXE4's content audit lists no problem with the pack (the custom screen's emblem is the
+    window's own, §14). The banners, the faces (MegaMan's `forms`, so his faces are his base form's `mugshot`), the
+    warning marker, the navis' sprites and MegaMan's souls' are in.
 
 ### 18.6 Found by the replays
 
