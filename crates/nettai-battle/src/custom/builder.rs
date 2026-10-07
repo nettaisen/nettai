@@ -108,16 +108,30 @@ pub fn build(
         };
     }
     let mut program_advance = None;
+    let rules = library.layout().program_advances;
     if !picks.is_empty() {
         let chips: Vec<FolderChip> = picks.iter().map(|p| p.chip).collect();
         if let Some((result, start, len)) = find_program_advance(&chips, pa_used, library, own_gauges) {
             // sub_80292CC: the recipe's chips become the Program Advance;
-            // it is the Regular chip if one of them was.
-            let regular = entries[start..start + len].iter().fold(0, |m, e| m | (e.modifiers & modifier_bits::REGULAR));
-            entries[start] = Entry { id: Some(result), damage: damage(result), bonus: 0, modifiers: entries[start].modifiers | regular };
+            // it is the Regular chip if one of them was (EXE4's 0x0801F404
+            // clears its flags: never).
+            let modifiers = if rules.keeps_regular {
+                let regular = entries[start..start + len].iter().fold(0, |m, e| m | (e.modifiers & modifier_bits::REGULAR));
+                entries[start].modifiers | regular
+            } else {
+                0
+            };
+            entries[start] = Entry { id: Some(result), damage: damage(result), bonus: 0, modifiers };
             // The entries after the recipe move up behind it, up to and
-            // with the end marker; what lay past it stays.
+            // with the end marker; what lay past it stays (EXE6's), or is
+            // cleared to the selection's end (EXE4's 0x0801F41E).
             shift_up(&mut entries, start + 1, start + len);
+            if rules.clears_past_end {
+                let end = picks.len() - len + 1;
+                for e in &mut entries[end..=picks.len().min(5)] {
+                    *e = Entry { bonus: e.bonus, ..EMPTY };
+                }
+            }
             program_advance =
                 Some(FormedAdvance { chip: result, picks: picks.len() as u8, start: start as u8, len: len as u8 });
         }
@@ -138,7 +152,8 @@ pub fn build(
 
 /// `sub_8029520`: the first Program Advance in the selection, trying each
 /// start position in turn and the recipes in table order; one already
-/// formed this round is passed over, and one only battle flag 0x40 tries
+/// formed this round is passed over where each forms once a round (EXE4's
+/// 0x0801F390 keeps no record), and one only battle flag 0x40 tries
 /// without it (EXE5's 0x080251DC: its full table with the flag, the
 /// netbattles' without). Returns (result, start, length).
 fn find_program_advance(
@@ -147,6 +162,7 @@ fn find_program_advance(
     library: &dyn Library,
     own_gauges: bool,
 ) -> Option<(ChipHandle, usize, usize)> {
+    let once = library.layout().program_advances.once_a_round;
     for start in 0..chips.len().saturating_sub(2) {
         let rest = &chips[start..];
         for pa in library.program_advances() {
@@ -157,7 +173,7 @@ fn find_program_advance(
             if rest.len() < len || !recipe_matches(&pa.recipe, &rest[..len]) {
                 continue;
             }
-            if used.spend(library.advance_index(pa.result)) {
+            if !once || used.spend(library.advance_index(pa.result)) {
                 return Some((pa.result, start, len));
             }
         }
@@ -222,6 +238,11 @@ fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
             ChipModifier::AttackPlus | ChipModifier::NaviPlus => entries[i - 1].bonus += entries[i].damage,
             ChipModifier::Paralyze => entries[i - 1].modifiers |= modifier_bits::PARALYZE,
             ChipModifier::Uninstall => entries[i - 1].modifiers |= modifier_bits::UNINSTALL,
+        }
+        // (EXE4's 0x0801F17E: the modifier's Regular chip mark stays, on the
+        // chip it folded into.)
+        if library.layout().modifier_passes_regular {
+            entries[i - 1].modifiers |= entries[i].modifiers & modifier_bits::REGULAR;
         }
         shift_up(entries, i, i + 1);
     }

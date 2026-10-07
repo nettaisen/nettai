@@ -71,6 +71,15 @@ pub struct Setup {
     pub mod_cards: Option<[ModCardsSetup; 2]>,
     /// Both sides' regions ("us" or "jp").
     pub game_regions: [String; 2],
+    /// The background the battle shows by the loader's first choice
+    /// (0x08085430): the game state's +0x0F (where the link pick's
+    /// background goes), 0xFF none (then the settings record's +5).
+    /// Recordings older than the field have none: they replay with the
+    /// settings record's, which is no lab console's (presentation alone:
+    /// nothing in the simulation reads the background), so a frame
+    /// comparison takes recordings that have it.
+    #[serde(default)]
+    pub background: Option<u8>,
 }
 
 /// A console's NaviCust as its save holds it, in a setup line.
@@ -588,13 +597,18 @@ impl Round {
         let (version, japanese) = d.traced_rom();
         let stage = compat.stage(layout, actor_list, version, japanese).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
         let pack = content.assets.pack(crate::ROOT).expect("needs saw the pack");
-        // (The background loader, 0x08085430: the game state's +0x0F, else
-        // the settings record's +5: every netbattle record's is 3.)
+        // (The background loader, 0x08085430: the game state's +0x0F, else,
+        // where it is 0xFF, the settings record's +5: every netbattle
+        // record's is 3.)
+        let number = match self.setup.background.unwrap_or(0xFF) {
+            0xFF => st[5],
+            n => n,
+        };
         let background = nettai_battle::content::BackgroundId(
             content
                 .assets
-                .number_handle(nettai_content_api::AssetKind::Background, pack, st[5] as u16)
-                .ok_or_else(|| format!("EXE4's pack has no background {:#04x}", st[5]))?,
+                .number_handle(nettai_content_api::AssetKind::Background, pack, number as u16)
+                .ok_or_else(|| format!("EXE4's pack has no background {number:#04x}"))?,
         );
         // (EXE4's records have no effects word: the stage's own, with what a
         // link battle's match adds, as a match sets a round up.)
@@ -652,6 +666,11 @@ impl Round {
         Ok(Battle::new(setup, content))
     }
 }
+
+/// The banner's bit in EXE4's HUD task mask (the HUD block's +0x48: set
+/// while a banner shows, as the recordings have it from a round's start
+/// banner to a KO's).
+const BANNER_TASK: u32 = 0x20;
 
 /// The chip lab's emulated cable's delay, in ticks.
 const LINK_DELAY: u8 = 4;
@@ -770,9 +789,10 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
     check("rng2", format!("{:#010x}", b.rng.state), format!("{:#010x}", f.rng2));
     check("paused", (b.paused as u8).to_string(), f.paused.to_string());
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
-    // The banner: its task (bit 15 of the HUD's tasks) and, while it shows,
-    // the number the recording console's block holds (its +1).
-    let task = (banner.hud_tasks >> 15) & 1 != 0;
+    // The banner: its task (EXE4's HUD's task mask, +0x48, bit 5; EXE6's
+    // bit 15) and, while it shows, the number the recording console's block
+    // holds (its +1).
+    let task = banner.hud_tasks & BANNER_TASK != 0;
     check("banner", (b.banner.active as u8).to_string(), (task as u8).to_string());
     if let (Some(id), true) = (b.banner_for(r.local_side), task) {
         let ours = match b.telop_for(r.local_side) {
