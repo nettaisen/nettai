@@ -687,6 +687,15 @@ impl Battle {
         self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
     }
 
+    /// Whether object `r` stands trapped: on a panel whose type traps (EXE4's
+    /// pitfall, its `object_canMove`'s 0x0800AD42), not floating.
+    pub fn trapped(&self, r: ObjectRef) -> bool {
+        let o = self.objects.get(r);
+        let Some(p) = self.field.panel(o.panel.x, o.panel.y) else { return false };
+        let floats = o.collision.is_some_and(|c| self.collision.get(c).f1 & crate::collision::f1::FLOATSHOE != 0);
+        self.content.rules().panels.types[p.kind as usize].traps && !floats
+    }
+
     /// Whether nothing cracks or breaks panel (x, y): its type's rule
     /// (EXE4's metal, flag 0x20000, which its routines refuse: 0x08009AEC,
     /// 0x08009BAC, 0x08009BF0, 0x08009C4C, 0x08009D04).
