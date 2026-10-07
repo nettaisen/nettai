@@ -1096,9 +1096,6 @@ pub enum HitMood {
 pub struct StatusVisualRules {
     /// Where it sits on the navi.
     pub place: StatusVisualPlace,
-    /// It casts its sprite's shadow (EXE6's `sub_80E091C`, EXE5's); EXE4's
-    /// none (0x080E2302).
-    pub shadow: bool,
 }
 
 /// Where the status visual sits.
