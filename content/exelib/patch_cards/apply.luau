@@ -71,7 +71,7 @@ function apply.check(installed: { PatchCard }, mb: number, problem: (text: strin
                 break
             end
         end
-        total += c.mb
+        total += c.mb or 0
     end
     if total > mb then
         problem(string.format("the patch cards are %d MB, past %d", total, mb), nil)

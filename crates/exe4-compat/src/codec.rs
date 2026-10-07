@@ -15,7 +15,7 @@ pub const CHIP_BLOCK: usize = 0x50;
 
 /// A side's stats from EXE4's 0x40-byte NaviStats block, each field at
 /// EXE4's offset (exe4-map.md §3.3: the defaults a new block gets,
-/// 0x0800D6BE; the Mod Cards' effects, which set the block's bytes by
+/// 0x0800D6BE; the patch cards' effects, which set the block's bytes by
 /// offset; the paired reads of EXE6's and EXE5's routines). What isn't
 /// read yet stays in `raw`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,7 +35,7 @@ pub struct NaviStats {
     pub rapid: u8,
     pub charge: u8,
     /// +0x08: the buster's blank count (a draw of 1 to 16 no greater than it
-    /// fires nothing: the NaviCust's and Mod Cards' bug).
+    /// fires nothing: the NaviCust's and patch cards' bug).
     pub buster_blanks: u8,
     /// +0x09, +0x0A: the B button's and the charged weapon's routines (the
     /// table at 0x0800CA7C: 0 the buster, 1 the charged shot).
@@ -43,7 +43,7 @@ pub struct NaviStats {
     pub charged_weapon: u8,
     /// +0x0B: BustPack's weapon level (0 to 2), which the charged shot reads.
     pub weapon_level: u8,
-    /// +0x0C: B+Left's routine (Mod Card 0x0C; 0xFF none).
+    /// +0x0C: B+Left's routine (patch card 0x0C; 0xFF none).
     pub back_special: Option<u8>,
     /// +0x0D: the move bug (0xFF confused at the start, 0x10 and 0x20 steps
     /// of its own right and left; 0 none).
@@ -52,36 +52,36 @@ pub struct NaviStats {
     /// +0x18, +0x19).
     pub hp_drain: u8,
     pub custom_drain: u8,
-    /// +0x12: the custom level, the chips dealt (Mod Card 0x12, up to 8).
+    /// +0x12: the custom level, the chips dealt (patch card 0x12, up to 8).
     pub custom_level: u8,
     /// +0x13, +0x14: the Mega and Giga chip limits.
     pub mega_level: u8,
     pub giga_level: u8,
-    /// +0x18: the supports (Mod Card 0x18, Triple Supporter; EXE6's +0x0D),
+    /// +0x18: the supports (patch card 0x18, Triple Supporter; EXE6's +0x0D),
     /// as the block has it: what its bits are is to read.
     pub supports: u8,
-    /// +0x1B: the panel a step leaves (Mod Card 0x1B: 1 broken, 3 cracked, 5
+    /// +0x1B: the panel a step leaves (patch card 0x1B: 1 broken, 3 cracked, 5
     /// metal, 9 holy, EXE4's panel numbers; 0xFF none).
     pub panel_trail: Option<u8>,
-    /// +0x1F: Full Synchro at the round's start (Mod Card 0x1F; EXE6's
+    /// +0x1F: Full Synchro at the round's start (patch card 0x1F; EXE6's
     /// +0x0F).
     pub full_synchro: bool,
-    /// +0x21: the aura the round starts with (Mod Card 0x21: 2 Barrier100, 3
+    /// +0x21: the aura the round starts with (patch card 0x21: 2 Barrier100, 3
     /// Barrier200, 6 LifeAura; 0 none; EXE6's +0x06).
     pub aura: u8,
     /// +0x23: the navi's number (MegaMan's 0).
     pub navi: u8,
-    /// +0x24: the soul a round starts in (Mod Card 0x24; 0 none, his base
+    /// +0x24: the soul a round starts in (patch card 0x24; 0 none, his base
     /// form).
     pub soul: u8,
     /// +0x25: the move lag's column (0x0800C208's table, by the navi).
     pub move_lag_column: u8,
-    /// +0x27: MegaMan's color (Mod Card 0x27).
+    /// +0x27: MegaMan's color (patch card 0x27).
     pub color: u8,
-    /// +0x28: All Guard (Mod Card 0x28).
+    /// +0x28: All Guard (patch card 0x28).
     pub all_guard: bool,
     /// +0x30, +0x32, +0x34: HP, max HP and the base max HP (before the
-    /// NaviCust's and the Mod Cards': the save's 0x21CA).
+    /// NaviCust's and the patch cards': the save's 0x21CA).
     pub hp: u16,
     pub max_hp: u16,
     pub max_base_hp: u16,
