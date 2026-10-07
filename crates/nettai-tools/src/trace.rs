@@ -105,7 +105,8 @@ impl Driver for TracePlayer {
 /// Every round of a trace file, on `content`, each as a driver, with its
 /// round's number: the recording is of the game its setup line states
 /// ([`trace_game`]), which is `content`'s; an EXE6 recording's rounds are
-/// [`TracePlayer`]s, an EXE5 one's [`Exe5TracePlayer`]s. A recording that
+/// [`TracePlayer`]s, an EXE5 one's [`Exe5TracePlayer`]s, an EXE4 one's
+/// [`Exe4TracePlayer`]s. A recording that
 /// states no game, another game than the content's, or a game no player
 /// here replays is refused.
 ///
@@ -125,6 +126,10 @@ pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Ve
         }
         exe5_compat::ROOT => {
             let rounds = Exe5TracePlayer::load(path, content)?;
+            Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
+        }
+        exe4_compat::ROOT => {
+            let rounds = Exe4TracePlayer::load(path, content)?;
             Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
         }
         other => Err(format!("a recording of {other}: no game this frontend replays recordings of")),
@@ -231,6 +236,95 @@ impl Driver for Exe5TracePlayer {
 
     fn check(&self, b: &Battle) -> Vec<String> {
         self.current().map(|f| exe5_compat::trace::compare_at(b, &self.round, &[f], 0, self.compat)).unwrap_or_default()
+    }
+
+    fn console_version(&self) -> Option<&'static str> {
+        Some(self.version)
+    }
+
+    fn frame_range(&self) -> Option<(u32, u32)> {
+        let f = |i: usize| self.round.frames[self.frames[i]].frame;
+        (!self.frames.is_empty()).then(|| (f(0), f(self.frames.len() - 1)))
+    }
+
+    fn position(&self) -> String {
+        match self.current() {
+            Some(f) => format!("round {} frame {}", self.round_number, f.frame),
+            None => format!("round {} start", self.round_number),
+        }
+    }
+}
+
+// ---- EXE4's recordings -------------------------------------------------------
+
+/// Replays one round of an EXE4 recording (the chip lab's EXE4 library, read
+/// by exe4-compat): its setup on EXE4's content, then each battle frame's
+/// buttons.
+pub struct Exe4TracePlayer {
+    round: exe4_compat::trace::Round,
+    content: Arc<Content>,
+    compat: &'static exe4_compat::Compat,
+    /// Indices of the frames the engine simulates.
+    frames: Vec<usize>,
+    pos: usize,
+    pub round_number: usize,
+    /// The recording console's version (its setup line's).
+    version: &'static str,
+}
+
+impl Exe4TracePlayer {
+    /// Every round of an EXE4 recording, on `content`: each round's setup
+    /// must be one the content defines (exe4-compat's `Round::needs`).
+    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<Exe4TracePlayer>, String> {
+        let compat = exe4_compat::Compat::exe4();
+        let mut out = Vec::new();
+        for (i, round) in exe4_compat::trace::rounds(path)?.into_iter().enumerate() {
+            round.round_setup(content, compat).map_err(|e| format!("round {}: {e}", i + 1))?;
+            let d = exe4_compat::trace::decode_setup(&round.setup)?;
+            let version = d.traced_rom().0.name();
+            let start = round.setup.frame;
+            let frames = round
+                .frames
+                .iter()
+                .enumerate()
+                .filter(|(_, f)| f.frame >= start)
+                .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
+                .map(|(i, _)| i)
+                .collect();
+            out.push(Exe4TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version });
+        }
+        Ok(out)
+    }
+
+    fn current(&self) -> Option<&exe4_compat::trace::Frame> {
+        self.pos.checked_sub(1).and_then(|p| self.frames.get(p)).map(|&i| &self.round.frames[i])
+    }
+}
+
+impl Driver for Exe4TracePlayer {
+    fn start(&mut self) -> Battle {
+        self.pos = 0;
+        // (`load` saw the setup define.)
+        self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number))
+    }
+
+    fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
+        let &i = self.frames.get(self.pos)?;
+        // The frame before too: the link's session closes on the tick the
+        // end state moves on.
+        let mut window = Vec::with_capacity(2);
+        if let Some(&h) = self.pos.checked_sub(1).and_then(|p| self.frames.get(p)) {
+            window.push(&self.round.frames[h]);
+        }
+        let at = window.len();
+        window.push(&self.round.frames[i]);
+        let (input, events) = self.round.tick_inputs(at, &window);
+        self.pos += 1;
+        Some(Step { input, events, frame: Some(self.round.frames[i].frame) })
+    }
+
+    fn check(&self, b: &Battle) -> Vec<String> {
+        self.current().map(|f| exe4_compat::trace::compare_at(b, &self.round, &[f], 0, self.compat)).unwrap_or_default()
     }
 
     fn console_version(&self) -> Option<&'static str> {
