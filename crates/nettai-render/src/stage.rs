@@ -95,7 +95,10 @@ pub struct Stage<'a> {
 pub struct StageClock {
     /// Frames the background has scrolled and animated for.
     pub background: u32,
-    /// Times the field has been drawn (panel palettes cycle with it).
+    /// Times the field has been drawn (panel palettes cycle with it): the
+    /// battle's ticks, one a frame from its first (whose intro starts a
+    /// speeding scroll, `nettai_assets::Speeding`), through the custom
+    /// screen and the pause.
     pub field: u32,
 }
 
@@ -155,7 +158,13 @@ impl<'a> Stage<'a> {
             }
             let n = clock.background;
             let counter = |step: i32| (((step.wrapping_mul(n as i32)) as u32 >> 4) & 0xFFFF) as i32;
-            scroll = (counter(bg.scroll.0), counter(bg.scroll.1));
+            // (A speeding scroll from the battle's first frame, its ticks'
+            // count: the background's own clock runs from the round's init,
+            // which a recording starts past.)
+            scroll = match bg.speeding {
+                Some(s) => s.offset(clock.field),
+                None => (counter(bg.scroll.0), counter(bg.scroll.1)),
+            };
             let mut shifts = Vec::new();
             for anim in &bg.anims {
                 let Some(frame) = anim_frame(anim, n) else { continue };

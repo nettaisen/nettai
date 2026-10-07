@@ -196,7 +196,7 @@ fn backgrounds(rom: &Rom, a: &Addresses) -> Vec<Option<Background>> {
             let cb = (rom.u32(a.background_scroll + 16 * id + 4) & !1).wrapping_sub(a.scrollers);
             let scroll = SCROLLERS.iter().find(|(o, _)| *o == cb).map(|(_, v)| *v).unwrap_or((0, 0));
             let anims = gfx_anims(rom, rom.u32(a.background_anims + 4 * id), PALETTE_BUFFER);
-            Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, anims })
+            Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, speeding: None, anims })
         })
         .collect()
 }
