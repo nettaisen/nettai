@@ -9,11 +9,11 @@ the command line with no window, for frames, audits and checks (docs/tools.md). 
 host, is retired (§10). nettai wraps the battle in the screens a player sees:
 
 - a title screen, with a battle playing itself on its monitor;
-- Play: the game, a random match or a match file, your build, and a preview of who fights in which arenas,
-  against the stand-in;
+- PLAY, online play: the netplay lobby, rooms through nettai-rtc or a direct link, with your build (§4);
+- TRAINING, you against the computer, offline: the game, a random match or a match file, your build and the
+  opponent's, what the opponent does and how long the set is, and a preview of who fights in which arenas;
 - the battle;
 - the builds: a player's sides, game by game, made in the build creator (§8);
-- the netplay lobby: rooms through nettai-rtc, or a direct link;
 - the replays: every set played is recorded;
 - settings, kept between runs (§9).
 
@@ -33,7 +33,7 @@ netplay, `$NETTAI_SIGNAL` names the signaling server (§4). Some variables are f
 | Variable | What it does |
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
-| `NETTAI_PLAY=<game>` | Starts straight into a random set of the game. |
+| `NETTAI_TRAINING=<game>` | Starts straight into a random training set of the game, against the stand-in. |
 | `NETTAI_NETPLAY=<game>:<make\|join>:<CODE>`, `<game>:host:`, `<game>:direct:<HOST:PORT>` | Starts straight into that room (or direct link), ready. |
 | `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
@@ -90,13 +90,14 @@ timestamped as they arrive. While the battle has the keys, they don't reach the 
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
 - Esc pauses (Tab does nothing in the battle: in the menus it is the next item, Shift+Tab the one before);
-- in a replay, Space pauses, `-` and `=` change the speed, and `.` steps a frame.
+- in a replay, Space pauses, `-` and `=` change the speed, and `.` steps a frame;
+- in training, R (or F5) starts over: the same set again from its first round.
 
 **The gamepad** is read through gilrs and polled each frame:
 
 - the south button is A, the west (or east) button B, the shoulders L and R, and Start and Select are theirs;
 - the D-pad and the left stick move;
-- the Mode (Guide) button pauses.
+- the Mode (Guide) button pauses, and in training the north button (Y, △) starts over.
 
 In the menus the same presses navigate, and the key hints switch to the pad's buttons once it is used.
 
@@ -136,21 +137,42 @@ previous, next) from the window's keys, the gamepad, or a click or tap, which fo
 - **Responsive layout:** the window sets `Theme.compact` (small) and `Theme.portrait` (held upright) as its size
   changes. Layouts follow these imperatively-set values, never the window's own size, so they don't size the
   window.
-- **On a phone held upright:** the battle draws an on-screen pad under the picture, Play puts FIGHT at the foot,
-  and the lobby shows the two players in a line.
+- **On a phone held upright:** the battle draws an on-screen pad under the picture, Training puts FIGHT at the
+  foot (and shows no arenas: its choices take the height), and the lobby shows the two players in a line.
 
 The screens:
 
 - **Title.** The demo battle is a random set of a loaded game, with the stand-in's custom screen pressed on
   both sides and the left navi fighting.
-- **Play.** No game is assumed: the player chooses one. YOUR BUILD puts one of their builds of it in place of
-  their side (a build that can't play says why). The arenas are each round's field, played alone for 24 ticks
-  and drawn (`arenas.rs`).
+- **Play** is online play (the user: "play should be online play and the single player play should be some kind of
+  training mode instead under training"): the lobby, §4. It is the menu's first entry.
+- **Training** is you against the computer, offline, every set recorded as any other. No game is assumed: the
+  player chooses one. The match is a random one (from a seed; confirm for another) or a match file of the matches
+  folder. YOUR BUILD puts one of their builds of the game in place of their side, and OPPONENT one in place of the
+  other side (a build that can't play says why). IT DOES is what the opponent does, its buttons alone, as a
+  player's are (`nettai_frontend::driver::Opponent`, recorded with the set):
+  - **Stand-in**: stands still; its custom screen picks the first chip it can and presses OK.
+  - **Dummy**: stands still and picks no chip.
+  - **Mover**: moves about the field at random (seeded), never attacks; its custom screen is the stand-in's.
+  - **Masher**: moves, shoots, charges and uses its chips at random (seeded); its custom screen is the
+    stand-in's.
+
+  ROUNDS is the match's (a triple battle's three, or the file's) or ENDLESS: 99 rounds, the most a set has (`MAX_ROUNDS`),
+  which the game decides at 50 wins; its pips count the rounds won, and its preview shows the first three arenas.
+  The arenas are each round's field, played alone for 24 ticks and drawn (`arenas.rs`). In the battle, R, F5 or the
+  pad's north button (and the pause's START OVER) start the set over from its first round with the same draw,
+  recorded anew.
+
+  What training doesn't do, because it would need behavior the engine or the rules don't have: a custom gauge
+  that is always full (no setting or fact makes one; the gauge's speed is a stat the rules build), the round being
+  played started over by itself (a set's later round starts from the rounds before it, and a replay holds a set
+  from its start), and an opponent that fights as the game's own navis do (the engine has no computer navi for a
+  link battle's side).
 - **Builds** and the build creator: §8.
 - **The battle.** The pause has resume, start over and quit (the language is Settings' alone). The result has the score, the replay
   file it was recorded to, rematch and menu. A replay has its transport, and netplay its connection line and
   "reconnecting (N s)".
-- **The lobby.** §4.
+- **The lobby** (Play): §4.
 - **Replays.** Newest first, each row with:
   - the date in local time;
   - the navis, by the content's names;
@@ -211,7 +233,7 @@ script it lacks, Slint falls back to the system's fonts on the desktop. The web 
 may lack one, so such a language needs its font bundled: import a Noto face for the script in `theme.slint`
 beside Murecho, and fontique falls back to it by coverage.
 
-## 4. Netplay
+## 4. Netplay (Play)
 
 The lobby meets the other player in a room of nettai-rtc's signaling server, by the room's code, or over a
 direct link:
@@ -412,7 +434,7 @@ one (`nettai_match::file::side_toml`, read back by `resolve_side`: the same name
 
 The **Builds** screen lists a game's builds (L and R go through the games), each with its navi's face, its folder's
 count and whether it can play (or what the rules say first), above NEW BUILD and FROM A SAVE…. A save can also be
-dropped on the window. Builds are chosen in Play and in the lobby (§4).
+dropped on the window. Builds are chosen in Training and in Play's lobby (§4).
 
 **The creator** (`crate::builds`) lays a build out from its game's rules' setup schema alone (`builds::layout`;
 the rules declare no views), a tab for each kind of fact:
@@ -484,10 +506,10 @@ What nettai-demo does, and where each part goes:
 
 | nettai-demo | Goes to |
 |---|---|
-| Live play against the stand-in, `--match` files, `--record` | nettai: Play (match files, builds) |
-| Netplay (rooms, `--host`/`--join`) | nettai: the lobby (rooms, direct links) |
+| Live play against the stand-in, `--match` files, `--record` | nettai: Training (match files, builds) |
+| Netplay (rooms, `--host`/`--join`) | nettai: Play, the lobby (rooms, direct links) |
 | Replays (`--replay`, watching) | nettai: Replays |
-| The match editor (iced) | nettai: the build creator (a match file is two sides; Play opens match files) |
+| The match editor (iced) | nettai: the build creator (a match file is two sides; Training opens match files) |
 | `--headless` frames (`--png-scale`, `--keys`, `--objects`, `--mark`), headless `--replay` | nettai-tools |
 | The trace replay of the original's recordings (the compat `trace` feature) | nettai-tools |
 | `--audit`, `--audit-content` | nettai-tools |

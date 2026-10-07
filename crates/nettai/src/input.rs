@@ -28,6 +28,8 @@ pub enum BattleKey {
     Slower,
     Faster,
     Step,
+    /// R or F5: training's set again from its start.
+    Restart,
 }
 
 /// The battle's keys: the arrows move, Z is A, X is B, A is L, S is R,
@@ -52,6 +54,7 @@ pub fn battle_key(code: KeyCode) -> Option<BattleKey> {
         KeyCode::Minus => Slower,
         KeyCode::Equal => Faster,
         KeyCode::Period => Step,
+        KeyCode::KeyR | KeyCode::F5 => Restart,
         _ => return None,
     })
 }
@@ -140,6 +143,9 @@ pub struct PadEvents {
     pub nav: Vec<NavAction>,
     /// The pause (the Mode or Guide button) was pressed.
     pub pause: bool,
+    /// Training's start over (the north button, which the battle leaves
+    /// free) was pressed.
+    pub restart: bool,
     /// When the first button press came.
     pub pressed: Option<Instant>,
     /// Anything happened (the hints show the pad's buttons).
@@ -178,6 +184,9 @@ impl Pad {
                     self.held |= gba_button(b);
                     if b == gilrs::Button::Mode {
                         out.pause = true;
+                    }
+                    if b == gilrs::Button::North {
+                        out.restart = true;
                     }
                     out.nav.extend(nav(b));
                 }
