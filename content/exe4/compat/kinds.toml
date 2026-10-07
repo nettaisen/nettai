@@ -17,6 +17,13 @@
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
+# The Thunders' thunder ball (0x080D2156).
+"thunder/ball" = { pool = "attack", index = 0x2A }
+# Ball's cannonball (0x080D3A3C).
+"ball/ball" = { pool = "attack", index = 0x35 }
+# Geyser's bomb (0x080D5B44) and its water (0x080D5C30: its position the registers, which its look states).
+"geyser/bomb" = { pool = "attack", index = 0x42 }
+"geyser/water" = { pool = "attack", index = 0x43 }
 # The Binders' binder (0x080D2748).
 "binder/binder" = { pool = "attack", index = 0x2D }
 # The SeekBoms' bomb (0x080DEED6) and the sparkles it bursts in (0x080E33D4: no sprite, its position the registers).

@@ -14,7 +14,7 @@ local AQUA_TOWER = tower.make {
     sprite = asset.sprite("geyser"),
     steps = { { anim = 0, ticks = 0x0B }, { anim = 1, ticks = 3 }, { anim = 2, ticks = 8 } },
     hit_mod = 3,
-    sound = asset.sound("aqua-tower"),
+    sound = asset.sound("geyser"),
 }
 
 -- 0x080DF8A4: a cracked panel of the other side's holding its navi: an aqua tower, and the panel broken if nothing
