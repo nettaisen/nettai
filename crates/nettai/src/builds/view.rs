@@ -589,7 +589,7 @@ impl App {
         self.ready_games().get(self.builds.game).cloned()
     }
 
-    /// The Builds screen's game's place among all the games (Play's).
+    /// The Builds screen's game's place among all the games (Training's).
     pub fn builds_game_index(&self) -> usize {
         let id = self.builds_game_id();
         self.games.list.iter().position(|e| Some(&e.id) == id.as_ref()).unwrap_or(0)
@@ -1128,7 +1128,7 @@ fn pick_save() -> Option<PathBuf> {
 }
 
 impl BuildsState {
-    /// The builds of a game a player can choose (Play's, the lobby's):
+    /// The builds of a game a player can choose (Training's, the lobby's):
     /// their names and sides, those its game reads.
     pub fn choices(content: &Content, game: &str) -> Vec<(String, Side)> {
         store::list(game)

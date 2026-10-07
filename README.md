@@ -85,10 +85,12 @@ game), and the battle is that game's content on its pack. Then run the app:
     cargo run --release -p nettai
 
 nettai ([docs/app.md](docs/app.md)) is the player's program, navigated by the keyboard, a gamepad, the mouse or
-touch: Play (a game, your build or a random side, against a stand-in that stands still, or a match file from its
-matches folder), the builds and their creator (below), the netplay lobby, the replays of every set played, and the
-settings, kept between runs. In the battle the arrows move, Z is A, X is B, A is L, S is R, Enter is START and
-Backspace is SELECT, and Esc pauses. A match file sets the game, its rounds (one `[[round]]` each: the set is as
+touch: PLAY, online against another player (the netplay lobby, below), with your build; TRAINING, offline against
+the computer (a game, your build and the opponent's or random sides, or a match file from its matches folder; an
+opponent that stands still, picks no chip, moves about or mashes; the match's rounds or an endless set); the builds
+and their creator (below), the replays of every set played, and the settings, kept between runs. In the battle the
+arrows move, Z is A, X is B, A is L, S is R, Enter is START and Backspace is SELECT, and Esc pauses; in training,
+R starts over. A match file sets the game, its rounds (one `[[round]]` each: the set is as
 many rounds, three for the original's best of three), each side's navi, folder, version, forms, patch cards,
 NaviCust and what its save brings to the stats (the rules build the rest); its optional `seed` sets the battle's
 RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/frontend.md) §6).
@@ -99,7 +101,7 @@ and Japanese), bundled under the SIL Open Font License in `crates/nettai-render/
 them in the game's own fonts instead, exactly as the original does
 ([text-rendering.md](docs/design/text-rendering.md) §9).
 
-To play another player, both choose the same game in the lobby and meet in a room of the signaling server by its
+To play another player (PLAY), both choose the same game in the lobby and meet in a room of the signaling server by its
 code (the first in hosts, the left navi), through NATs with a public STUN server; or one hosts and the other joins
 directly, over a LAN, or over the Internet with the host's UDP port 47474 forwarded to the host's machine (nothing
 is exchanged before the connection, so nothing is authenticated). The signaling server is `signaling/`, a
@@ -187,10 +189,10 @@ netplay templates hold), or the auto battle data alone; a save of another game i
 most its game allows: what a save brings to the stats, the navi code's level, the SP navi times, EXE5's auto battle
 records and its Chaos Unison stay at the rules' defaults. EXE5's light/dark value is one of Tango's two presets,
 LIGHT or DARK, each with MegaMan's base HP (1000 and 1000, 0 and 997); a save's is the one on its side of the game's
-line. An import says which of the save's facts it set so. Builds are chosen in Play and in the lobby.
+line. An import says which of the save's facts it set so. Builds are chosen in Training and in Play's lobby.
 
 A whole match file (both sides and the rounds) is written by hand, or by `nettai-tool --match FILE --save-match OUT`
-(the match with its seed), and Play plays one from the app's matches folder.
+(the match with its seed), and Training plays one from the app's matches folder.
 
 ## Docs
 

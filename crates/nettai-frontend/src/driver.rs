@@ -13,6 +13,7 @@ use nettai_battle::input::keys;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
 use nettai_match::{After, Set};
+use nettai_netplay::standin::Masher;
 #[cfg(test)]
 use std::sync::Arc;
 
@@ -211,22 +212,79 @@ pub fn folder_of(content: &Content, chips: &[(&str, u8)]) -> SavedFolder {
     }
 }
 
+/// What the navi the local player fights in live play does: its buttons,
+/// a tick at a time, which are the whole of its input as a player's are
+/// (a recording keeps them). Each is a player's buttons alone: none asks
+/// the engine for anything a player can't do.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Opponent {
+    /// The stand-in: it stands still, and its custom screen picks the
+    /// first chip it can and presses OK ([`bot_buttons`]).
+    #[default]
+    StandIn,
+    /// A dummy: it stands still, and its custom screen picks nothing.
+    Dummy,
+    /// It moves about the field at random (seeded) and never attacks; its
+    /// custom screen is the stand-in's.
+    Mover,
+    /// It presses at random (seeded) what a player fights with: it moves,
+    /// shoots and charges, uses its chips, and presses L and R; its custom
+    /// screen is the stand-in's (`nettai_netplay::standin::Masher`).
+    Masher,
+}
+
+impl Opponent {
+    /// Every opponent, in the order a host offers them.
+    pub const ALL: [Opponent; 4] = [Opponent::StandIn, Opponent::Dummy, Opponent::Mover, Opponent::Masher];
+}
+
 /// Plays a set from the keyboard, round after round to its end: the local
 /// player is the left navi, with their own custom screen; the right navi
-/// stands still, and its custom screen picks the first chip it can and
-/// presses OK.
+/// is an [`Opponent`]'s (by default the stand-in, which stands still, and
+/// whose custom screen picks the first chip it can and presses OK).
 pub struct LivePlayer {
     set: Set,
     /// Ticks played since the start, through every round (a frame's number).
     ticks: u32,
     /// The round being played, from 1.
     round: u8,
+    opponent: Opponent,
+    /// The seed the opponent's random presses start from, and them.
+    seed: u64,
+    masher: Masher,
 }
 
 impl LivePlayer {
     pub fn new(set: Set) -> LivePlayer {
-        LivePlayer { set, ticks: 0, round: 1 }
+        LivePlayer::against(set, Opponent::StandIn, 0)
     }
+
+    /// A set against `opponent`, whose random presses (a mover's, a
+    /// masher's) start from `seed`, the same each time the set starts.
+    pub fn against(set: Set, opponent: Opponent, seed: u64) -> LivePlayer {
+        LivePlayer { set, ticks: 0, round: 1, opponent, seed, masher: masher(opponent, seed) }
+    }
+
+    /// The opponent's buttons on side `side` this tick.
+    fn opponent(&mut self, b: &Battle, side: usize) -> u16 {
+        const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        let fighting = b.round.mode != mode::CUSTOM;
+        match self.opponent {
+            Opponent::StandIn => bot_buttons(b, side, self.ticks),
+            Opponent::Dummy => custom_buttons(b, side, self.ticks, false),
+            Opponent::Mover if fighting => self.masher.buttons() & MOVES,
+            Opponent::Masher if fighting => self.masher.buttons(),
+            Opponent::Mover | Opponent::Masher => bot_buttons(b, side, self.ticks),
+        }
+    }
+}
+
+/// The random presses of `opponent` from `seed`: a masher's with the
+/// buster, a mover's without (its directions alone are taken).
+fn masher(opponent: Opponent, seed: u64) -> Masher {
+    let mut m = Masher::new(seed);
+    m.buster = opponent == Opponent::Masher;
+    m
 }
 
 /// A set's result as its player is told it.
@@ -244,13 +302,19 @@ pub fn result_text(r: BattleResult) -> &'static str {
 /// every other tick. (A host's demo battle presses the left one's custom
 /// screen with them too.)
 pub fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
+    custom_buttons(b, side, tick, true)
+}
+
+/// A custom screen's buttons as [`bot_buttons`] presses them; without
+/// `picks`, straight to OK with no chip.
+fn custom_buttons(b: &Battle, side: usize, tick: u32, picks: bool) -> u16 {
     let s = &b.custom.sides[side];
     let Some(screen) = s.screen.as_ref().filter(|_| b.round.mode == mode::CUSTOM && s.in_custom) else { return 0 };
     if screen.phase != Phase::Choosing || tick % 2 == 0 {
         return 0;
     }
     let here = &screen.slots[screen.cursor as usize];
-    if screen.selected == 0 && matches!(here.kind, SlotKind::Chip { .. }) && here.state == SlotState::Selectable {
+    if picks && screen.selected == 0 && matches!(here.kind, SlotKind::Chip { .. }) && here.state == SlotState::Selectable {
         keys::A
     } else if screen.cursor != custom::screen::OK_SLOT {
         keys::START
@@ -263,13 +327,14 @@ impl Driver for LivePlayer {
     fn start(&mut self) -> Battle {
         self.ticks = 0;
         self.round = 1;
+        self.masher = masher(self.opponent, self.seed);
         self.set.start()
     }
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
         self.ticks += 1;
         let local = b.setup.local_side as usize;
-        let buttons = [0, 1].map(|side| if side == local { keys } else { bot_buttons(b, side, self.ticks) });
+        let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent(b, side) });
         // (The buttons are the whole input, as a netplay peer's are.)
         let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
         Some(Step { input: players, events, frame: Some(self.ticks) })
@@ -410,6 +475,48 @@ mod tests {
         assert_eq!((b.round.turn, b.round.mode), (1, mode::FIGHTING));
         for side in 0..2 {
             assert_eq!(b.hands[side].remaining(), 1, "side {side}");
+        }
+    }
+
+    /// Each opponent through a few custom screens and fights, the local
+    /// player standing still: the stand-in starts the fight with a chip in
+    /// hand and the dummy with none; the mover and the masher leave the
+    /// panel they start on, the stand-in and the dummy never do; a set
+    /// against one started again gets the same presses.
+    #[test]
+    fn each_opponent_plays() {
+        let content = nettai_match::testing::exe6_content();
+        let mut m = nettai_match::pick::live(&content, "exe6", 5, None).unwrap();
+        // (1000 HP each, so the round lasts the test.)
+        for s in &mut m.sides {
+            s.set_fact(&content, "hp", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1000))]).unwrap();
+        }
+        for opponent in Opponent::ALL {
+            let mut live = LivePlayer::against(Set::of(&content, &m, 5), opponent, 9);
+            let mut run = || {
+                let mut b = live.start();
+                let (mut hand, mut start, mut moved, mut presses) = (None, None, false, Vec::new());
+                for tick in 0..1500u32 {
+                    let keys = if b.round.mode == mode::CUSTOM { bot_buttons(&b, 0, tick) } else { 0 };
+                    let step = live.next(&b, keys).unwrap();
+                    presses.push(step.input[1]);
+                    b.tick(&step.input, step.events);
+                    assert!(!b.is_stopped(), "{opponent:?}: tick {tick}");
+                    if b.round.mode == mode::FIGHTING && hand.is_none() {
+                        hand = Some(b.hands[1].remaining());
+                    }
+                    if let Some(p) = b.player(1).filter(|_| b.round.mode == mode::FIGHTING) {
+                        let at = b.objects.get(p).panel;
+                        moved |= start.is_some_and(|s| s != at);
+                        start.get_or_insert(at);
+                    }
+                }
+                (hand, moved, presses)
+            };
+            let (hand, moved, presses) = run();
+            assert_eq!(hand, Some(if opponent == Opponent::Dummy { 0 } else { 1 }), "{opponent:?}");
+            assert_eq!(moved, matches!(opponent, Opponent::Mover | Opponent::Masher), "{opponent:?}");
+            assert_eq!(run().2, presses, "{opponent:?}: the same presses again");
         }
     }
 

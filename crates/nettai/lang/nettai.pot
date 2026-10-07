@@ -2,7 +2,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: nettai VERSION\n"
-"POT-Creation-Date: 2026-10-07 02:38+0000\n"
+"POT-Creation-Date: 2026-10-07 03:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,16 +17,12 @@ msgctxt "match"
 msgid "Random"
 msgstr ""
 
-#: ui/app.slint:24
-msgid "Stand-in"
-msgstr ""
-
-#: ui/app.slint:29
+#: ui/app.slint:25
 msgctxt "build"
 msgid "The match's"
 msgstr ""
 
-#: ui/app.slint:35
+#: ui/app.slint:31
 msgctxt "language"
 msgid "English"
 msgstr ""
@@ -96,77 +92,82 @@ msgctxt "side"
 msgid "Right console"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:421
+msgid "Start over"
+msgstr ""
+
+#: ui/battle.slint:545
 msgid "STOPPED"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:545
 msgctxt "result"
 msgid "YOU WIN"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:545
 msgctxt "result"
 msgid "YOU LOSE"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:545
 msgctxt "result"
 msgid "DRAW"
 msgstr ""
 
-#: ui/battle.slint:592
+#: ui/battle.slint:602
 msgid "Recorded to {0}"
 msgstr ""
 
-#: ui/battle.slint:598
+#: ui/battle.slint:608
 msgid "WATCH AGAIN"
 msgstr ""
 
-#: ui/battle.slint:598
+#: ui/battle.slint:608
 msgid "REMATCH"
 msgstr ""
 
-#: ui/battle.slint:598
+#: ui/battle.slint:608
 msgid "MENU"
 msgstr ""
 
-#: ui/battle.slint:631
+#: ui/battle.slint:641
 msgid "PAUSED"
 msgstr ""
 
-#: ui/battle.slint:644
+#: ui/battle.slint:654
 msgid "RESUME"
 msgstr ""
 
-#: ui/battle.slint:644
+#: ui/battle.slint:654
 msgid "QUIT TO MENU"
 msgstr ""
 
-#: ui/battle.slint:644
+#: ui/battle.slint:654
 msgid "START OVER"
 msgstr ""
 
-#: ui/battle.slint:669
+#: ui/battle.slint:679
 msgid "The battle goes on while you're here: netplay can't pause."
 msgstr ""
 
-#: ui/battle.slint:681 ui/build.slint:1759 ui/build.slint:1764
-#: ui/battle.slint:681 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463 ui/play.slint:551
-#: ui/battle.slint:681 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463 ui/play.slint:551 ui/settings.slint:183 ui/title.slint:255
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463 ui/settings.slint:183 ui/title.slint:255
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463 ui/settings.slint:183 ui/title.slint:255
 msgid "Choose"
 msgstr ""
 
-#: ui/battle.slint:682 ui/build.slint:1765 ui/build.slint:1771
-#: ui/battle.slint:682 ui/build.slint:1765 ui/build.slint:1771 ui/play.slint:553 ui/title.slint:256
+#: ui/battle.slint:692 ui/build.slint:1765 ui/build.slint:1771
+#: ui/battle.slint:692 ui/build.slint:1765 ui/build.slint:1771 ui/title.slint:256 ui/training.slint:612
 msgid "Confirm"
 msgstr ""
 
-#: ui/battle.slint:683
+#: ui/battle.slint:693
 msgid "Menu"
 msgstr ""
 
-#: ui/battle.slint:683
+#: ui/battle.slint:693
 msgid "Resume"
 msgstr ""
 
@@ -520,7 +521,7 @@ msgid "{0} · BUILD"
 msgstr ""
 
 #: ui/build.slint:1310 ui/builds.slint:107 ui/lobby.slint:92
-#: ui/build.slint:1310 ui/builds.slint:107 ui/lobby.slint:92 ui/lobby.slint:388 ui/play.slint:83
+#: ui/build.slint:1310 ui/builds.slint:107 ui/lobby.slint:92 ui/lobby.slint:388 ui/training.slint:111
 msgid "READY"
 msgstr ""
 
@@ -583,8 +584,8 @@ msgid "Put in"
 msgstr ""
 
 #: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773
-#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773 ui/lobby.slint:466 ui/play.slint:554
-#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773 ui/lobby.slint:466 ui/play.slint:554 ui/settings.slint:185 ui/title.slint:257
+#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773 ui/lobby.slint:466 ui/replays.slint:396
+#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773 ui/lobby.slint:466 ui/replays.slint:396 ui/title.slint:257 ui/training.slint:613
 msgid "Back"
 msgstr ""
 
@@ -679,11 +680,11 @@ msgctxt "speed"
 msgid "×1/{0}"
 msgstr ""
 
-#: ui/lobby.slint:52 ui/lobby.slint:367 ui/play.slint:276
+#: ui/lobby.slint:52 ui/lobby.slint:367 ui/training.slint:303
 msgid "YOU"
 msgstr ""
 
-#: ui/lobby.slint:52 ui/lobby.slint:367
+#: ui/lobby.slint:52 ui/lobby.slint:367 ui/training.slint:193
 msgid "OPPONENT"
 msgstr ""
 
@@ -702,11 +703,11 @@ msgstr ""
 
 #: ui/lobby.slint:203
 msgctxt "heading"
-msgid "NETPLAY"
+msgid "PLAY"
 msgstr ""
 
 #: ui/lobby.slint:204
-msgid "ROLLBACK · ROOM CODES OR A DIRECT LINK"
+msgid "ONLINE · ROLLBACK · ROOM CODES OR A DIRECT LINK"
 msgstr ""
 
 #: ui/lobby.slint:224
@@ -755,7 +756,7 @@ msgstr ""
 msgid "Type your name"
 msgstr ""
 
-#: ui/lobby.slint:322 ui/play.slint:119
+#: ui/lobby.slint:322 ui/training.slint:153
 msgid "GAME"
 msgstr ""
 
@@ -763,11 +764,11 @@ msgstr ""
 msgid "Both players play the same game"
 msgstr ""
 
-#: ui/lobby.slint:336 ui/play.slint:179
+#: ui/lobby.slint:336 ui/training.slint:193
 msgid "YOUR BUILD"
 msgstr ""
 
-#: ui/lobby.slint:338 ui/play.slint:181
+#: ui/lobby.slint:338 ui/training.slint:200 ui/training.slint:201
 msgid "A random side, from the seed"
 msgstr ""
 
@@ -795,77 +796,8 @@ msgstr ""
 msgid "Reconnecting…"
 msgstr ""
 
-#: ui/lobby.slint:464 ui/play.slint:552 ui/settings.slint:184
+#: ui/lobby.slint:464 ui/settings.slint:184 ui/training.slint:611
 msgid "Change"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "CHOSEN"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "LOADING…"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "NO ASSET PACK"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "CAN'T LOAD"
-msgstr ""
-
-#: ui/play.slint:148
-msgid "No games found: the content folder or the packs folder is missing."
-msgstr ""
-
-#: ui/play.slint:158
-msgid "MATCH"
-msgstr ""
-
-#: ui/play.slint:160
-msgid "Seed {0} · confirm for another"
-msgstr ""
-
-#: ui/play.slint:160
-msgid "A match file from the matches folder"
-msgstr ""
-
-#: ui/play.slint:181
-msgid "One of your builds, in place of your side"
-msgstr ""
-
-#: ui/play.slint:181
-msgid "Your side as the match file states it"
-msgstr ""
-
-#: ui/play.slint:212
-msgid "FIGHT"
-msgstr ""
-
-#: ui/play.slint:266
-msgid "Choose a game"
-msgstr ""
-
-#: ui/play.slint:278
-msgid "STAND-IN"
-msgstr ""
-
-#: ui/play.slint:289
-msgid "THE ARENAS"
-msgstr ""
-
-#: ui/play.slint:319
-msgid "ROUND {0}"
-msgstr ""
-
-#: ui/play.slint:441
-msgctxt "heading"
-msgid "PLAY"
-msgstr ""
-
-#: ui/play.slint:442
-msgid "OFFLINE · AGAINST THE STAND-IN"
 msgstr ""
 
 #: ui/replays.slint:240
@@ -1030,25 +962,25 @@ msgid "PLAY"
 msgstr ""
 
 #: ui/title.slint:80
-msgid "Fight the stand-in, offline"
+msgid "Online: another player, by a room code or a direct link"
 msgstr ""
 
 #: ui/title.slint:81
+msgctxt "menu"
+msgid "TRAINING"
+msgstr ""
+
+#: ui/title.slint:81
+msgid "Offline: you against the computer"
+msgstr ""
+
+#: ui/title.slint:82
 msgctxt "menu"
 msgid "BUILDS"
 msgstr ""
 
-#: ui/title.slint:81
+#: ui/title.slint:82
 msgid "Your navi, folder, NaviCust and patch cards"
-msgstr ""
-
-#: ui/title.slint:82
-msgctxt "menu"
-msgid "NETPLAY"
-msgstr ""
-
-#: ui/title.slint:82
-msgid "Play another player with a room code"
 msgstr ""
 
 #: ui/title.slint:83
@@ -1080,4 +1012,138 @@ msgstr ""
 
 #: ui/title.slint:241
 msgid "DEMO · {0}"
+msgstr ""
+
+#: ui/training.slint:22
+msgctxt "opponent"
+msgid "Dummy"
+msgstr ""
+
+#: ui/training.slint:24
+msgctxt "opponent"
+msgid "Mover"
+msgstr ""
+
+#: ui/training.slint:26
+msgctxt "opponent"
+msgid "Masher"
+msgstr ""
+
+#: ui/training.slint:28
+msgid "Stand-in"
+msgstr ""
+
+#: ui/training.slint:33
+msgid "Stands still and picks no chip"
+msgstr ""
+
+#: ui/training.slint:35
+msgid "Moves about at random, never attacks"
+msgstr ""
+
+#: ui/training.slint:37
+msgid "Moves, shoots and uses its chips at random"
+msgstr ""
+
+#: ui/training.slint:39
+msgid "Stands still and picks its first chip"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "CHOSEN"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "LOADING…"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "NO ASSET PACK"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "CAN'T LOAD"
+msgstr ""
+
+#: ui/training.slint:182
+msgid "No games found: the content folder or the packs folder is missing."
+msgstr ""
+
+#: ui/training.slint:193
+msgid "MATCH"
+msgstr ""
+
+#: ui/training.slint:193
+msgid "IT DOES"
+msgstr ""
+
+#: ui/training.slint:193
+msgid "ROUNDS"
+msgstr ""
+
+#: ui/training.slint:198
+msgctxt "rounds"
+msgid "ENDLESS"
+msgstr ""
+
+#: ui/training.slint:198
+msgctxt "rounds"
+msgid "BEST OF {0}"
+msgstr ""
+
+#: ui/training.slint:199
+msgid "Seed {0} · confirm for another"
+msgstr ""
+
+#: ui/training.slint:199
+msgid "A match file from the matches folder"
+msgstr ""
+
+#: ui/training.slint:200
+msgid "One of your builds, in place of your side"
+msgstr ""
+
+#: ui/training.slint:200
+msgid "Your side as the match file states it"
+msgstr ""
+
+#: ui/training.slint:201
+msgid "One of your builds, in the opponent's place"
+msgstr ""
+
+#: ui/training.slint:201
+msgid "The other side as the match file states it"
+msgstr ""
+
+#: ui/training.slint:203
+msgid "99 rounds, the most a set has: first to 50 wins"
+msgstr ""
+
+#: ui/training.slint:203
+msgid "A set as the match lists it"
+msgstr ""
+
+#: ui/training.slint:234
+msgid "FIGHT"
+msgstr ""
+
+#: ui/training.slint:293
+msgid "Choose a game"
+msgstr ""
+
+#: ui/training.slint:316
+msgid "THE ARENAS"
+msgstr ""
+
+#: ui/training.slint:346
+msgid "ROUND {0}"
+msgstr ""
+
+#: ui/training.slint:487
+msgctxt "heading"
+msgid "TRAINING"
+msgstr ""
+
+#: ui/training.slint:488
+msgid "OFFLINE · AGAINST THE COMPUTER"
 msgstr ""

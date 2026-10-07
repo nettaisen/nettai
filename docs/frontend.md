@@ -269,10 +269,14 @@ ends or the engine hits something it doesn't implement yet; the first
 difference from the trace's recorded state is reported (`Player::diverged`).
 Frame numbers are the trace's.
 
-**Live play** (a match, docs/app.md's Play or `nettai-tool --match FILE`): you
-are the left navi; the right one stands still, picking its first chip. The
-match sets up the battle (§6), including its game, rounds, each side's navi,
-folder, forms, patch cards, NaviCust and stats.
+**Live play** (a match, docs/app.md's Training or `nettai-tool --match FILE`):
+you are the left navi; the right one is an opponent's (`driver::Opponent`,
+its buttons alone, as a player's are): by default the stand-in, which stands
+still and picks its first chip; a dummy, which picks none; a mover, which
+moves about at random; a masher, which moves, shoots and uses its chips at
+random (a mover's and a masher's presses seeded, from the set's seed in
+nettai). The match sets up the battle (§6), including its game, rounds, each
+side's navi, folder, forms, patch cards, NaviCust and stats.
 
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number
@@ -1034,7 +1038,7 @@ once at the file's top: everything else is a name in that game's namespace
 (`nettai_match::ids`), so a match can't name another game's chip, navi,
 soul, patch card or stage: a name the game hasn't is said as any unknown
 name is ("left: folder entry 3: no chip \"darkthnd\" in exe6"), whether
-another game has it or not. nettai's Play plays one from its matches folder
+another game has it or not. nettai's Training plays one from its matches folder
 (you are its left side; docs/app.md §2), `nettai-tool --match FILE` renders
 one or says its setup and `--save-match FILE` writes the match with its seed
 (docs/tools.md), and a side of one is what nettai's build creator makes (a
@@ -1475,7 +1479,7 @@ the send writes, and the block's last eight bytes, which nothing reads.
 itself and through a match file, to the same places and records, over
 blocks of each awkward shape.
 
-A random match (`nettai_match::pick`, Play's Random) states none: its
+A random match (`nettai_match::pick`, Training's Random) states none: its
 sides have the rules' default, what the game's battle end writes of a player
 it has learned nothing of (empty places, zeroed records). The user: "i don't
 think you need learning right? since the battles are one-off": the data

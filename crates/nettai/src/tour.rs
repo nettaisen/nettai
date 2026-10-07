@@ -47,6 +47,10 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
                 add(900, shot(&dir, tag("builds")));
                 add(100, Box::new(|_, app| app.borrow_mut().builds_activate(2)));
                 add(900, shot(&dir, tag("build-navi")));
+                // (Its first fact a step on: EXE5's dark MegaMan, with his face.)
+                add(100, Box::new(|_, app| app.borrow_mut().build_step(2, 1)));
+                add(700, shot(&dir, tag("build-navi-stepped")));
+                add(100, Box::new(|_, app| app.borrow_mut().build_step(2, -1)));
                 for t in 1..8 {
                     add(100, Box::new(move |_, app| app.borrow_mut().build_tab(t)));
                     add(500, Box::new(move |ui, app| {
@@ -79,16 +83,16 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
                 add(500, shot(&dir, tag("build-grid-held")));
                 add(100, Box::new(|_, app| app.borrow_mut().go(Screen::Builds)));
                 add(900, Box::new(|_, _| {}));
-                // The build chosen in Play, and in the lobby linked directly.
+                // The build chosen in Training, and in the lobby linked directly.
                 add(100, Box::new(|ui, app| {
                     let mut app = app.borrow_mut();
-                    app.enter(Screen::Play);
+                    app.enter(Screen::Training);
                     let game = app.builds_game_index();
-                    app.play_game(game);
-                    app.play_build(1);
-                    ui.set_play_cursor(2);
+                    app.training_game(game);
+                    app.training_build(1);
+                    ui.set_training_cursor(2);
                 }));
-                add(900, shot(&dir, tag("play-build")));
+                add(900, shot(&dir, tag("training-build")));
                 add(100, Box::new(|ui, app| {
                     let mut app = app.borrow_mut();
                     app.enter(Screen::Lobby);
@@ -110,17 +114,30 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
             add(2500, shot(&dir, tag("menu")));
             add(100, Box::new(|ui, app| {
                 ui.set_title_cursor(0);
-                app.borrow_mut().enter(Screen::Play);
+                app.borrow_mut().enter(Screen::Training);
             }));
-            add(500, shot(&dir, tag("play-none")));
+            add(500, shot(&dir, tag("training-none")));
             add(100, Box::new(|ui, app| {
                 let first = app.borrow().first_ready();
                 if let Some(i) = first {
-                    app.borrow_mut().play_game(i);
-                    ui.set_play_cursor(2);
+                    app.borrow_mut().training_game(i);
+                    ui.set_training_cursor(2);
                 }
             }));
-            add(700, shot(&dir, tag("play")));
+            add(700, shot(&dir, tag("training")));
+            // The opponent's choices: a masher, round after round.
+            add(100, Box::new(|ui, app| {
+                let mut app = app.borrow_mut();
+                app.training_behavior(3);
+                app.training_endless(true);
+                ui.set_training_cursor(4);
+            }));
+            add(700, shot(&dir, tag("training-options")));
+            add(100, Box::new(|_, app| {
+                let mut app = app.borrow_mut();
+                app.training_behavior(0);
+                app.training_endless(false);
+            }));
             add(100, Box::new(|_, app| app.borrow_mut().tour_battle()));
             add(200, Box::new(|_, app| app.borrow_mut().enter(Screen::Battle)));
             add(6000, shot(&dir, tag("battle")));
