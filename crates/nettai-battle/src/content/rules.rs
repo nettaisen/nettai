@@ -677,6 +677,21 @@ pub struct IntakeRules {
     pub no_charge_drive: bool,
     /// How a navi loses HP (`object_subtractHP`, `applyDamageToPlayer`).
     pub hp_loss: HpLoss,
+    /// What a navi's hit sounds like, on each console.
+    pub hit_sound: HitSound,
+}
+
+/// What a navi's hit sounds like, on each console (`IntakeRules::hit_sound`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitSound {
+    /// A player hears the role `own_hit` when their own navi is hit, `hit`
+    /// when another is (EXE6's `applyDamageToPlayer_801ba12`, EXE5's).
+    ByConsole,
+    /// Every console hears the role `hit`, or `auto_battle_hit` for a navi
+    /// in auto battle (EXE4's hit intake, 0x08013A8C: sound 0x6D where the
+    /// navi's NaviStats +0x26 is 1, else 0x6B).
+    ByNavi,
 }
 
 /// How a navi loses HP (`IntakeRules::hp_loss`).

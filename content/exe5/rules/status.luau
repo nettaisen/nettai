@@ -417,6 +417,8 @@ local status = {
         -- holds at 1 HP once a battle and asks for his last stand, the roles' `volley`; ./emotion/dark_survival), and
         -- a hit shows (white, its sounds) by their answer, the register that check leaves.
         hp_loss = "gauge",
+        -- A player hears its own navi's hit as `own_hit`, another's as `hit`, as EXE6's.
+        hit_sound = "by_console",
         -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi
         -- in a soul reads as normal (the soul's own face), then anger is read before a mood of 0 (a dark MegaMan's,
         -- worn out), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.

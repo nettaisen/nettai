@@ -31,6 +31,9 @@ local roles: RolesSpec = {
     sounds = {
         appear = asset.sound("appear"),
         custom_open = asset.sound("custom-open"),
+        -- The fight's: a navi's hit, every console's (0x08013A96: 0x6B), a navi in auto battle's (0x6D).
+        hit = asset.sound("hit"),
+        auto_battle_hit = asset.sound("auto-battle-hit"),
     },
     music = {
         link_battle = asset.sound("netbattle"),

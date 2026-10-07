@@ -311,6 +311,9 @@ definition_roles! {
         /// A navi is hit (what the other player hears), and an object
         /// hurt without flinching (`sub_801A29A` mode 2).
         Hit = "hit",
+        /// A navi in auto battle is hit, what every console hears where a
+        /// hit sounds by the navi (`IntakeRules::hit_sound`: EXE4's 0x6D).
+        AutoBattleHit = "auto_battle_hit",
         /// An object takes damage (`sub_801A29A` mode 0), an obstacle hit.
         Damage = "damage",
         /// A blocked hit (`object_spawnHiteffect`), a trap catching one.

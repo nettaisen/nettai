@@ -70,6 +70,8 @@ charge-glow-a = "14-15"
 netbattle = 0x015  # a netbattle's music, which the fight's setup starts (the lab's flow/buster-duel, frame 130)
 unselect-68 = 0x068
 buster-shot = 0x06a  # the buster shot and the charged shot (0x080EB372, 0x080ECC72)
+hit = 0x06b  # a navi's hit: the hit intake (0x08013A96), on every console
+auto-battle-hit = 0x06d  # a navi in auto battle hit (NaviStats +0x26 = 1): the hit intake (0x08013A9A)
 hit-bomb-0 = 0x06f
 hit-bomb-1 = 0x070
 log-in = 0x077

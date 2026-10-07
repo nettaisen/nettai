@@ -20,6 +20,7 @@ return {
     bugs_before_drain = false,
     no_charge_drive = false,
     hp_loss = "hp_alone",
+    hit_sound = "by_console",
     -- Worn out (exhausted, or a mood of 0) before anger, then held tired, Full
     -- Synchro, else normal; a navi held tired or exhausted holds its mood, and
     -- anger's end puts it at 0x80.
