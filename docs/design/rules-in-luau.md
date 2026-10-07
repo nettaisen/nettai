@@ -2468,7 +2468,8 @@ The user: "instead of numbered souls they should be identified by id", and "then
 hand size etc should be colocated with the souls rather than with the rules". Names and places: nothing a
 recording shows changed (exe5-map.md §15.8 holds the layout).
 
-- **A soul is its form's id.** `soul = { family }` has no `number` (`SoulData`), and no module tests one. Where
+- **A soul is its form's id.** `soul = { family }` has no `number` (`SoulData`; since rust-and-luau.md's S2 EXE5's
+  form extension, and the soul list MegaMan's `forms.souls.form_list`), and no module tests one. Where
   the original tests the soul's number, the content reads the form:
   - the buster arm's animation is the form's `buster_arm.anim` (lib/arm read the number as the animation);
   - the souls system extends forms (`extends.form`) with `blade_anim` (lib/swords), `steps_behind`
@@ -2723,7 +2724,8 @@ field `offered`, a fact `version`). It reads typed values now (§4.8):
   found by name in the view's own system at load (`SystemDef::views`); `PlayerFact` (`version`, `beast_out`,
   `cross_list`), found among the ruleset's systems' setups at load (`Defs::fact_field`) and read by
   `Battle::fact(side, PlayerFact)`; the typed reads `Battle::form_list`, `offer`, `form_turns`, `offer_flight` and
-  `chip_flight`; and a navi's forms a form list offers by version (`NaviForms::by_version`, the table's
+  `chip_flight`; and a navi's forms a form list offers by version (`NaviForms::by_version`, since rust-and-luau.md's
+  S2 `NaviForms::lists`, by set; the table's
   `<version>.crosses`), read at load. No state is added: every field read was a system's already.
 - **Content**: `view` on EXE6's Cross window's four windows and its Beast Out button, and on EXE5's soul button,
   its soul's choice and MeddySoul's capsule's mix (a soul's window passes its `view` through the souls system's).
