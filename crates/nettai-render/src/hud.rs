@@ -208,7 +208,7 @@ impl HudState {
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
         if let Some(n) = waiting_ticks(b) {
             self.frame = (n & 0x3F) as u8;
-        } else if gauge_shown(b, self) && b.gauge.value >= FULL && !b.late_turns() {
+        } else if gauge_shown(b, self) && b.gauge_for(b.setup.local_side) >= FULL && !b.late_turns() {
             self.frame = if self.frame + 1 >= 0x70 { 0 } else { self.frame + 1 };
         }
         if let Some(r) = b.player(b.setup.local_side) {
@@ -402,7 +402,8 @@ pub fn draw<'a>(
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
             put(layer, hud, pal, e, 6 + (i as i32 % 18), i as i32 / 18);
         }
-        let g = b.gauge.value;
+        // (The local console's: EXE4's keeps it full until its own send.)
+        let g = b.gauge_for(b.setup.local_side);
         let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
         for i in 0..16u16 {
@@ -1001,18 +1002,31 @@ fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerL
     }
 }
 
-/// A banner's vertical scale this frame (`sub_801CE28`: the texture rows
-/// step by this over 256 per screen row).
+/// A banner's vertical scale this frame (the texture rows step by this
+/// over 256 per screen row): sliding in, from 0xC0 at its first tick to
+/// 0x40 (whole) at its last, a line, and back so sliding out (EXE6's
+/// `sub_801CE28`: 0xE0 less 0x20 a tick, 5 ticks; EXE4's 0x08014994: 0xD0
+/// less 0x10, 9 ticks); holding, whole, but for a game's bounce (EXE6's:
+/// 0x34 and 0x38 at its hold's first two ticks and last two).
 fn banner_scale(b: &Battle) -> i32 {
     let t = b.banner.timer as i32;
+    let steps = b.banner.steps;
+    let slope = |ticks: Option<u8>| 0x80 / (ticks.unwrap_or(5) as i32 - 1).max(1);
     let scale = match b.banner.step {
-        0 => 0xE0 - 0x20 * t,
-        4 => match t {
-            1 | 0x2F => 0x34,
-            2 | 0x2E => 0x38,
-            _ => 0x40,
-        },
-        _ => 0x40 + 0x20 * t,
+        0 => {
+            let n = steps.map_or(5, |s| s.slide_in as i32);
+            0x40 + slope(steps.map(|s| s.slide_in)) * (n - t)
+        }
+        4 if steps.is_none_or(|s| s.bounces) => {
+            let last = steps.map_or(0x30, |s| s.hold as i32);
+            match t {
+                _ if t == 1 || t == last - 1 => 0x34,
+                _ if t == 2 || t == last - 2 => 0x38,
+                _ => 0x40,
+            }
+        }
+        4 => 0x40,
+        _ => 0x40 + slope(steps.map(|s| s.slide_out)) * t,
     };
     scale * 4
 }

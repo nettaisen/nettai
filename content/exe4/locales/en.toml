@@ -1,5 +1,5 @@
-# English: EXE4's strings by definition key. A definition holds no display text. So far MegaMan's and Cannon's names;
-# the rest come with the chips.
+# English: EXE4's strings by definition key. A definition holds no display text. So far MegaMan's and Cannon's names
+# and MegaMan's no-running message; the rest come with the chips.
 
 language = "en"
 
@@ -7,4 +7,4 @@ language = "en"
 "cannon" = { name = "Cannon" }
 
 [navis]
-"megaman" = { name = "MegaMan" }
+"megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

@@ -117,6 +117,9 @@ local status = {
         -- A navi's status block runs a drag, the slides and a flinch, then the mercy flash's timer
         -- (`sub_801A5EE`, while the battle is fighting).
         reactions = "flash_timer_last",
+        -- Its reaction actions mark the action in use, ground and count, and the drag takes the paralyzed or
+        -- SuperArmor pose and turns to a paralysis that outlasts it (`sub_80174FE`, `sub_80175B8`, `sub_80178D4`).
+        reaction_actions = "marked",
         bugs_before_drain = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",

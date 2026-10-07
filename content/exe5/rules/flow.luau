@@ -24,4 +24,7 @@ return {
     intro_steps_on_init = false,
     -- A turn starts with the transformation sequencer (the souls'), as EXE6's.
     sequencer_at_turn_start = true,
+    -- L or R with a full gauge: the navi's input decode asks for the custom screen, which the fight reads the next
+    -- tick, as EXE6's.
+    custom_request = "navi_input",
 }

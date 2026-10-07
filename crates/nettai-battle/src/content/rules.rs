@@ -55,6 +55,23 @@ pub struct FlowRules {
     /// banner a tick after it's through. EXE4 has none: its fighting state
     /// 0 (0x08007064) is the turn's banner, from the turn's first tick.
     pub sequencer_at_turn_start: bool,
+    /// How a player asks for the custom screen with a full gauge.
+    pub custom_request: CustomRequest,
+}
+
+/// How a player asks for the custom screen with a full gauge, L or R.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomRequest {
+    /// The navi's input decode marks the request (EXE6's `sub_8012FC8`
+    /// sets battle flag 0x10), which the fight reads on the next tick
+    /// (`sub_800A1D0`), and the navis' reversions run before the screen.
+    NaviInput,
+    /// The fight reads both players' keys itself (EXE4's 0x08007A2E: L or
+    /// R pressed, the gauge full, not dimmed, the battle not over, not the
+    /// late turns) and asks for the screen on that tick (0x0800718E: no
+    /// reversions); the navi's decode doesn't.
+    Joypads,
 }
 
 /// The rule section `link_pick`: what a link battle picks at random with
@@ -210,7 +227,10 @@ pub struct EffectsRules {
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
-/// slides out; and how a banner that holds until let go is let go.
+/// slides out; and how a banner that holds until let go is let go. Sliding
+/// in, it unsquashes in a line from its first tick to its last, and
+/// squashes so sliding out (the frontend's: EXE6's `sub_801CE28` by 0x20 a
+/// tick over 5, EXE4's 0x08014994 by 0x10 over 9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BannerSteps {
@@ -218,6 +238,9 @@ pub struct BannerSteps {
     pub hold: u8,
     pub slide_out: u8,
     pub release: BannerRelease,
+    /// It bounces as its hold starts and as it ends, squashed a little
+    /// for two ticks each (EXE6's `sub_801CE28`; EXE4's holds still).
+    pub bounces: bool,
 }
 
 /// How a holding banner is let go (`hud::Banner::release`).
@@ -1181,6 +1204,8 @@ pub struct Rules {
     /// How a navi's status block runs its reactions (rule section
     /// `status`).
     pub reactions: Reactions,
+    /// How a navi's reaction actions run (rule section `status`).
+    pub reaction_actions: ReactionActions,
     /// A side's emotions where games differ (rule section `status`'s
     /// `emotion`): how one is read off the navi, what holds a mood, how
     /// anger leaves it.
@@ -1351,6 +1376,34 @@ pub enum Reactions {
     /// (0x08017084 unless its flag2 bit, the engine's 0x4000), and resets
     /// nothing else.
     FlashTimerFirst,
+}
+
+/// How a navi's reaction actions run, flinch, paralysis (and freeze and
+/// bubble) and drag (the status section's `reaction_actions`), where games
+/// differ beyond their hooks and requests.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReactionActions {
+    /// EXE6's (`sub_80174FE`, `sub_80175B8`, `sub_80178D4`, `sub_8017A38`;
+    /// EXE5's alike, 0x08014132 on): each marks the action in use (flag
+    /// 0x400000) and leaves it at its end; a flinch and a paralysis snap the
+    /// body to its panel, on the ground, unless it slides; each counts a
+    /// reaction (the side's stat 3) and lets go of the navi's overlay link;
+    /// the drag takes the paralyzed pose (2) or SuperArmor's (0) where they
+    /// hold, else the flinch's, puts the body on the panel's ground line,
+    /// and at its end clears the slide, the paralysis and the drag's own
+    /// states, the pose back to standing, or turns to a paralysis that
+    /// outlasts it. (EXE5's drag has no paralyzed pose, 0x08014304: a
+    /// difference no recording has shown.)
+    Marked,
+    /// EXE4's (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks
+    /// the action in use or lets go of the overlay link; the flinch keeps
+    /// the body's height as it snaps it, and the paralysis snaps it, at its
+    /// height, sliding or not, and counts no reaction; the drag takes the
+    /// flinch's pose, keeps the height, counts no reaction, and at its end
+    /// clears the drag alone and goes to idle in the pose it had, paralyzed
+    /// or not.
+    Plain,
 }
 
 /// What reserving a panel does to its holder (the panels section's

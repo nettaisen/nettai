@@ -61,8 +61,8 @@ return {
     -- A screen fade toward clear ends on the step whose level reaches its target (`sub_8006366`).
     fade_clear = "at_target",
     -- A banner (`sub_801CE28`) slides in for 5 ticks, holds 0x30, slides out for 5; one that holds until let go has
-    -- its timer stop at 5, and let go (`sub_801E780`) holds three ticks more.
-    banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more" },
+    -- its timer stop at 5, and let go (`sub_801E780`) holds three ticks more. It bounces as its hold starts and ends.
+    banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
     -- Each console's RNG1 advances once a frame after the battle's (`main_`'s `GetRNG1`).
     rng1_per_frame = true,
 }
