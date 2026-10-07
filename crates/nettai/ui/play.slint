@@ -1,0 +1,508 @@
+// Play: online, against another player, in Tango's shape. The selector strip
+// chooses the game and the build you bring, the build's sheet shows it, the
+// two players' cards face each other beside it, and the band at the foot is
+// the link: a room's code (or none, for a new room) or a host's address, and
+// FIGHT; once linked, the room to share, READY and LEAVE. The match starts
+// when both are ready.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, Button, Field, Hints, Hint } from "widgets.slint";
+import { Format } from "format.slint";
+import { Strip, SheetView, Sheet, Band, GameState } from "shell.slint";
+
+export enum LinkState {
+    // No link: none made yet.
+    unavailable,
+    // No signaling server is set.
+    no-server,
+    // The last link ended (`problem` says why).
+    failed,
+    // Linked, waiting for the other player.
+    waiting,
+    connecting,
+    open,
+    reconnecting,
+}
+
+export struct Peer {
+    // Nobody there yet.
+    present: bool,
+    name: string,
+    navi: string,
+    ready: bool,
+}
+
+component PlayerCard {
+    in property <Peer> peer;
+    in property <bool> you;
+    in property <bool> mirrored;
+    // A link is being made (the other card waits for a player).
+    in property <bool> linked;
+    property <color> accent: root.mirrored ? Theme.magenta : Theme.cyan;
+    height: Theme.compact ? 96px : 128px;
+
+    Slant {
+        lean: 22px;
+        color: @linear-gradient(root.mirrored ? 270deg : 90deg, root.accent.with-alpha(root.peer.present ? 0.22 : 0.06) 0%, Theme.panel.with-alpha(0.6) 70%);
+        stroke: root.peer.ready ? Theme.ready : root.peer.present ? root.accent : Theme.line;
+        stroke-width: root.peer.ready ? 2px : 1px;
+        animate stroke { duration: Theme.settle; }
+    }
+
+    VerticalLayout {
+        padding-left: 36px;
+        // (The ready mark's room, always kept.)
+        padding-right: 150px;
+        alignment: center;
+        spacing: 2px;
+        Label {
+            text: root.you ? @tr("YOU") : @tr("OPPONENT");
+            color: root.accent;
+        }
+
+        Text {
+            text: root.peer.present ? (root.peer.name != "" ? root.peer.name : @tr("Player")) : root.linked ? @tr("Waiting for a player") : @tr("No link yet");
+            color: root.peer.present ? white : Theme.text-faint;
+            font-size: Theme.title-size;
+            font-weight: Theme.black;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.peer.present ? root.peer.navi : "";
+            color: Theme.text-dim;
+            font-size: Theme.body;
+            overflow: elide;
+        }
+    }
+
+    // The ready mark: its width the same whatever it says.
+    Rectangle {
+        x: parent.width - self.width - 30px;
+        y: (parent.height - self.height) / 2;
+        width: 112px;
+        height: 30px;
+        opacity: root.peer.present ? 1 : 0;
+        Slant {
+            lean: 8px;
+            color: root.peer.ready ? Theme.ready : Theme.raised;
+            animate color { duration: Theme.quick; }
+        }
+
+        Text {
+            text: root.peer.ready ? @tr("READY") : @tr("NOT READY");
+            color: root.peer.ready ? Theme.ink : Theme.text-dim;
+            font-size: 12px;
+            font-weight: Theme.black;
+            letter-spacing: 1.5px * Theme.tracking;
+            overflow: elide;
+        }
+    }
+}
+
+export component PlayScreen {
+    // The selection: the game and your build, what the strip says of each.
+    in property <string> game;
+    in property <GameState> game-state;
+    in property <string> build;
+    in property <int> build-index;
+    in property <string> build-navi;
+    in property <bool> can-act;
+    in property <Sheet> sheet;
+    // How the link is made: 0 a room (its code typed, or none: a new one),
+    // 1 directly (the host's address typed, or none: you host).
+    in-out property <int> mode;
+    in property <string> code;
+    // A link is being made or is up: the band is the room's.
+    in property <bool> linked;
+    // What the other player is given: the room's code, or the address you
+    // host at.
+    in property <string> room;
+    in property <Peer> me;
+    in property <Peer> them;
+    in property <LinkState> link;
+    in property <int> ping: -1;
+    // Why the last link ended, or what keeps one from being made.
+    in property <string> problem;
+    in-out property <int> cursor;
+    // The tab has the keys (not the top bar): its focus shows.
+    in property <bool> keys: true;
+    // The rows: 0 the game, 1 the build, 2 the build's action; then the
+    // band's: unlinked 3 the way, 4 the code, 5 FIGHT; linked 3 READY, 4
+    // LEAVE.
+    property <int> rows: root.linked ? 5 : 6;
+
+    callback step(int, int);
+    callback act();
+    callback set-mode(int);
+    callback set-code(string);
+    callback fight();
+    callback ready();
+    callback leave();
+    callback copy-code();
+    // Up from the first row, or back: the top bar.
+    callback top();
+    callback sound(UiSound);
+
+    public function nav(a: NavAction) {
+        if a == NavAction.back {
+            if code-field.focused-input {
+                code-field.leave();
+                return;
+            }
+            root.sound(UiSound.back);
+            root.top();
+        } else if a == NavAction.up && root.cursor == 0 {
+            root.top();
+        } else if a == NavAction.up || a == NavAction.down {
+            root.cursor = max(0, min(root.rows - 1, root.cursor + (a == NavAction.up ? -1 : 1)));
+            root.sound(UiSound.cursor);
+            root.follow();
+        } else if a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next {
+            let d = a == NavAction.left || a == NavAction.previous ? -1 : 1;
+            if root.cursor <= 1 {
+                root.sound(UiSound.cursor);
+                root.step(root.cursor, d);
+            } else if root.cursor == 3 && !root.linked {
+                root.sound(UiSound.cursor);
+                root.set-mode(1 - root.mode);
+            }
+        } else if a == NavAction.confirm {
+            if root.cursor <= 1 {
+                root.sound(UiSound.cursor);
+                root.step(root.cursor, 1);
+            } else if root.cursor == 2 {
+                if root.can-act {
+                    root.sound(UiSound.pick);
+                    root.act();
+                } else {
+                    root.sound(UiSound.refused);
+                }
+            } else if root.linked {
+                root.sound(UiSound.pick);
+                if root.cursor == 3 {
+                    root.ready();
+                } else {
+                    root.leave();
+                }
+            } else if root.cursor == 3 {
+                root.sound(UiSound.cursor);
+                root.set-mode(1 - root.mode);
+            } else {
+                root.sound(UiSound.pick);
+                root.fight();
+            }
+        }
+    }
+
+    // The keyboard goes to the code's field while it's the row focused.
+    function follow() {
+        if root.cursor == 4 && !root.linked {
+            code-field.edit();
+        } else {
+            code-field.leave();
+        }
+    }
+
+    function point(row: int) {
+        if root.cursor != row {
+            root.cursor = row;
+            root.sound(UiSound.cursor);
+            root.follow();
+        }
+    }
+
+    VerticalLayout {
+        padding-left: Theme.gutter;
+        padding-right: Theme.gutter;
+        padding-top: Theme.gap;
+        spacing: Theme.gap;
+
+        Strip {
+            game: root.game;
+            game-state: root.game-state;
+            build: root.build;
+            build-index: root.build-index;
+            build-navi: root.build-navi;
+            can-act: root.can-act;
+            cursor: root.keys && root.cursor <= 2 ? root.cursor : -1;
+            point(r) => {
+                root.point(r);
+            }
+            step(r, d) => {
+                root.sound(UiSound.cursor);
+                root.step(r, d);
+            }
+            act => {
+                root.nav(NavAction.confirm);
+            }
+        }
+
+        // The build, and the two players.
+        if !Theme.portrait: HorizontalLayout {
+            spacing: Theme.gap;
+            vertical-stretch: 1;
+            SheetView {
+                width: 58%;
+                sheet: root.sheet;
+            }
+
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: Theme.gap * 0.5;
+                PlayerCard {
+                    peer: root.me;
+                    you: true;
+                    linked: root.linked;
+                }
+
+                PlayerCard {
+                    peer: root.them;
+                    mirrored: true;
+                    linked: root.linked;
+                }
+
+                // The link, and what keeps one: their lines always kept.
+                HorizontalLayout {
+                    spacing: 10px;
+                    height: 26px;
+                    Rectangle {
+                        width: 10px;
+                        height: 10px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 5px;
+                        background: root.link == LinkState.open ? Theme.ready : root.link == LinkState.unavailable || root.link == LinkState.no-server ? Theme.text-faint : Theme.warn;
+                        opacity: root.link == LinkState.connecting || root.link == LinkState.reconnecting ? (mod(animation-tick() / 1ms, 800) < 400 ? 1 : 0.3) : 1;
+                    }
+
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.link == LinkState.unavailable || root.link == LinkState.no-server || root.link == LinkState.failed ? @tr("No link") : root.link == LinkState.waiting ? @tr("Linked, waiting for the other player") : root.link == LinkState.connecting ? @tr("Connecting…") : root.link == LinkState.open ? @tr("Connected") : @tr("Reconnecting…");
+                        color: Theme.text-dim;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+
+                    Text {
+                        width: 90px;
+                        text: root.ping >= 0 ? @tr("ping {0}", Format.ms(root.ping)) : "";
+                        color: Theme.text-faint;
+                        vertical-alignment: center;
+                        horizontal-alignment: right;
+                    }
+                }
+
+                Text {
+                    vertical-stretch: 1;
+                    text: root.link == LinkState.no-server ? @tr("No signaling server: set NETTAI_SIGNAL to one (ws://127.0.0.1:8787 for signaling/ run with `npx wrangler dev`). A direct link still works.") : root.problem;
+                    color: Theme.warn;
+                    font-size: 13px;
+                    wrap: word-wrap;
+                    overflow: elide;
+                }
+            }
+        }
+        if Theme.portrait: VerticalLayout {
+            spacing: Theme.gap * 0.5;
+            vertical-stretch: 1;
+            SheetView {
+                vertical-stretch: 1;
+                sheet: root.sheet;
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                height: 52px;
+                for p[i] in [root.me, root.them]: Rectangle {
+                    horizontal-stretch: 1;
+                    Slant {
+                        lean: 12px;
+                        color: (i == 0 ? Theme.cyan : Theme.magenta).with-alpha(p.present ? 0.18 : 0.06);
+                        stroke: p.ready ? Theme.ready : Theme.line;
+                        stroke-width: 1px;
+                    }
+
+                    VerticalLayout {
+                        padding-left: 20px;
+                        padding-right: 14px;
+                        alignment: center;
+                        Label {
+                            text: i == 0 ? @tr("YOU") : @tr("OPPONENT");
+                            color: i == 0 ? Theme.cyan : Theme.magenta;
+                        }
+
+                        Text {
+                            text: !p.present ? (root.linked ? @tr("Waiting for a player") : @tr("No link yet")) : p.ready ? @tr("READY") : (p.name != "" ? p.name : @tr("Player"));
+                            color: p.ready ? Theme.ready : p.present ? Theme.text : Theme.text-faint;
+                            font-weight: Theme.bold;
+                            overflow: elide;
+                        }
+                    }
+                }
+            }
+        }
+
+        // The link: made here, or the room's once it is.
+        Band {
+            // (Both always there, one shown: the code's field keeps its text.)
+            HorizontalLayout {
+                visible: !root.linked;
+                width: parent.width;
+                height: parent.height;
+                padding-left: Theme.compact ? 10px : 24px;
+                padding-right: Theme.compact ? 10px : 24px;
+                padding-top: Theme.compact ? 4px : 8px;
+                padding-bottom: Theme.compact ? 4px : 8px;
+                spacing: Theme.compact ? 8px : 14px;
+                // The way: a room, or directly.
+                VerticalLayout {
+                    width: Theme.compact ? 96px : 210px;
+                    alignment: center;
+                    spacing: 6px;
+                    Label {
+                        text: @tr("LINK");
+                        color: root.cursor == 3 ? Theme.cyan : Theme.text-dim;
+                    }
+
+                    HorizontalLayout {
+                        height: Theme.compact ? 30px : 36px;
+                        spacing: 4px;
+                        for t[i] in [@tr("link" => "ROOM"), @tr("link" => "DIRECT")]: Rectangle {
+                            horizontal-stretch: 1;
+                            Slant {
+                                lean: 8px;
+                                color: root.mode == i ? (root.cursor == 3 ? Theme.cyan : Theme.cyan-deep) : Theme.panel.with-alpha(0.7);
+                                stroke: root.cursor == 3 ? Theme.cyan : Theme.line;
+                                stroke-width: 1px;
+                                animate color { duration: Theme.quick; }
+                            }
+
+                            Text {
+                                text: t;
+                                color: root.mode == i ? Theme.ink : Theme.text-dim;
+                                font-size: Theme.compact ? 10px : 13px;
+                                font-weight: Theme.black;
+                                overflow: elide;
+                            }
+
+                            TouchArea {
+                                clicked => {
+                                    root.point(3);
+                                    if root.mode != i {
+                                        root.set-mode(i);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                code-field := Field {
+                    horizontal-stretch: 1;
+                    y: (parent.height - self.height) / 2;
+                    text-label: Theme.compact ? (root.mode == 0 ? @tr("ROOM CODE") : @tr("ADDRESS")) : root.mode == 0 ? @tr("THE ROOM'S CODE · NONE: A NEW ROOM") : @tr("THE HOST'S ADDRESS · NONE: YOU HOST");
+                    placeholder: root.mode == 0 ? "ABC123" : "192.168.0.2:47474";
+                    text: root.code;
+                    focused: root.keys && root.cursor == 4;
+                    edited(t) => {
+                        root.set-code(t);
+                    }
+                    hover => {
+                        root.point(4);
+                    }
+                    done => {
+                        root.cursor = 5;
+                        root.follow();
+                        root.fight();
+                    }
+                }
+
+                Button {
+                    width: Theme.compact ? 104px : 220px;
+                    y: (parent.height - self.height) / 2;
+                    text: @tr("FIGHT");
+                    primary: true;
+                    focused: root.keys && root.cursor == 5;
+                    activate => {
+                        root.point(5);
+                        root.nav(NavAction.confirm);
+                    }
+                    hover => {
+                        root.point(5);
+                    }
+                }
+            }
+            HorizontalLayout {
+                visible: root.linked;
+                width: parent.width;
+                height: parent.height;
+                padding-left: Theme.compact ? 10px : 24px;
+                padding-right: Theme.compact ? 10px : 24px;
+                spacing: Theme.compact ? 8px : 14px;
+                // What the other player is given.
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    spacing: 2px;
+                    Label {
+                        text: root.mode == 0 ? @tr("THE ROOM · CLICK TO COPY ITS CODE") : @tr("YOU HOST AT · CLICK TO COPY");
+                    }
+
+                    Text {
+                        text: root.room;
+                        color: white;
+                        font-size: root.mode == 0 ? (Theme.compact ? 24px : 34px) : (Theme.compact ? 16px : 22px);
+                        font-weight: Theme.black;
+                        letter-spacing: root.mode == 0 ? 6px : 0.5px;
+                        overflow: elide;
+                        TouchArea {
+                            clicked => {
+                                root.copy-code();
+                                root.sound(UiSound.pick);
+                            }
+                        }
+                    }
+                }
+
+                Button {
+                    width: Theme.compact ? 112px : 220px;
+                    y: (parent.height - self.height) / 2;
+                    text: root.me.ready ? @tr("NOT READY") : @tr("READY");
+                    primary: !root.me.ready;
+                    focused: root.keys && root.cursor == 3;
+                    activate => {
+                        root.point(3);
+                        root.nav(NavAction.confirm);
+                    }
+                    hover => {
+                        root.point(3);
+                    }
+                }
+
+                Button {
+                    width: Theme.compact ? 88px : 150px;
+                    y: (parent.height - self.height) / 2;
+                    text: @tr("LEAVE");
+                    focused: root.keys && root.cursor == 4;
+                    activate => {
+                        root.point(4);
+                        root.nav(NavAction.confirm);
+                    }
+                    hover => {
+                        root.point(4);
+                    }
+                }
+            }
+        }
+
+        Hints {
+            visible: !Theme.portrait;
+            hints: [
+                { key: "↑↓", button: "✚", text: @tr("Choose") },
+                { key: "←→", button: "✚", text: @tr("Change") },
+                { key: "Enter", button: "A", text: @tr("Confirm") },
+                { key: "Esc", button: "B", text: @tr("Tabs") },
+            ];
+        }
+    }
+}

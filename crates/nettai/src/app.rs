@@ -1,6 +1,7 @@
-//! The app's state and its loop: the screen shown and the wipe between two,
-//! the games, the battle (and the title's demo battle), the menus' screens,
-//! the sound and the hands. The window's rendering is its clock:
+//! The app's state and its loop: the screen shown (the top bar's tabs, the
+//! first run's welcome, the creator, the battle) and the wipe into and out
+//! of a battle, the games and the selection Play and Training share, the
+//! battle (and the welcome's demo battle), the sound and the hands. The window's rendering is its clock:
 //! [`App::frame`] runs before each frame is drawn.
 
 use crate::games::{Games, Names, Ready, State};
@@ -74,7 +75,7 @@ impl Battle {
     }
 }
 
-/// The title's demo battle: a random set of a game, both sides pressing
+/// The welcome's demo battle: a random set of a game, both sides pressing
 /// through their custom screens, the left one fighting.
 struct Attract {
     stage: Stage,
@@ -82,19 +83,27 @@ struct Attract {
     ticks: u32,
 }
 
-/// What the Training screen has chosen.
+/// What the selector strip has chosen, Play's and Training's alike (as
+/// Tango's loadout is the app's): the game, and the build brought.
+#[derive(Default)]
+pub struct Selection {
+    pub game: Option<String>,
+    /// 0 none of the player's (a random side, or a match file's); else
+    /// `builds[build - 1]`.
+    pub build: usize,
+    /// The game's builds: their files, names and sides.
+    pub builds: Vec<(PathBuf, String, nettai_match::Side)>,
+}
+
+/// What the Training screen has chosen besides the selection.
 #[derive(Default)]
 struct TrainingChoice {
-    game: Option<String>,
     /// 0: random (from `seed`); else the match file `files[source - 1]`.
     source: usize,
     seed: u32,
     files: Vec<PathBuf>,
-    /// Your side: 0 the match's (a random one, or the file's); else the
-    /// build `builds[build - 1]` of the game.
-    build: usize,
-    builds: Vec<(String, nettai_match::Side)>,
-    /// The opponent's side, the same way.
+    /// The opponent's side: 0 the match's (a random one, or the file's);
+    /// else the build `builds[opponent_build - 1]` of the selection's.
     opponent_build: usize,
     /// What the opponent does: `Opponent::ALL[opponent]`.
     opponent: usize,
@@ -120,12 +129,18 @@ pub struct App {
     pub touch: u16,
     pub battle: Option<Battle>,
     attract: Option<Attract>,
+    /// The game and the build Play and Training bring.
+    pub select: Selection,
     training: TrainingChoice,
     pub lobby: crate::lobby::LobbyState,
     /// The player's builds, and the one open in the creator.
     pub builds: crate::builds::screen::BuildsState,
     replays: Vec<replays::Entry>,
     replay_rows: Rc<VecModel<ReplayRow>>,
+    /// The replays shown: their places in `replays`, as the filter keeps
+    /// them; the filter (0 all, else the game `games.list[filter - 1]`).
+    replay_shown: Vec<usize>,
+    replays_filter: usize,
     transition: Option<(Instant, Screen, bool)>,
     /// Present the picture at the display's density.
     pub sharp: bool,
@@ -181,11 +196,14 @@ impl App {
             touch: 0,
             battle: None,
             attract: None,
+            select: Selection::default(),
             training: TrainingChoice { seed: clock_seed(), ..TrainingChoice::default() },
             lobby: crate::lobby::LobbyState::default(),
             builds: Default::default(),
             replays: Vec::new(),
             replay_rows,
+            replay_shown: Vec::new(),
+            replays_filter: 0,
             transition: None,
             sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some() || saved.sharp == Some(true),
             text: if saved.crisp_text == Some(false) { TextMode::Original } else { TextMode::Font },
@@ -252,26 +270,25 @@ impl App {
         }
     }
 
-    /// The screen is now `screen`.
+    /// The screen is now `screen`. (A tab chosen in the top bar is entered
+    /// at once; a battle, and the creator, with the wipe: `go`.)
     pub fn enter(&mut self, screen: Screen) {
         let ui = self.ui();
         if ui.get_screen() == Screen::Battle && screen != Screen::Battle {
             self.battle = None;
             ui.set_playing(false);
         }
-        if screen != Screen::Lobby {
-            self.leave_room();
-        }
         ui.set_screen(screen);
         ui.invoke_focus_keys();
         match screen {
+            Screen::Play => self.show_play(),
             Screen::Training => self.show_training(),
-            Screen::Lobby => self.show_lobby(),
             Screen::Replays => self.show_replays(),
             Screen::Settings => self.show_settings(),
             Screen::Builds => self.show_builds(),
             Screen::Build => self.enter_build(),
-            Screen::Title => {
+            Screen::Welcome => {
+                self.show_games();
                 if let Some(a) = &mut self.attract {
                     a.stage.hold();
                     a.stage.stale = true;
@@ -279,6 +296,28 @@ impl App {
             }
             Screen::Battle => ui.set_playing(self.battle.as_ref().is_some_and(Battle::playing)),
         }
+    }
+
+    /// The first screen: the welcome on a first run (no name yet), else
+    /// Play.
+    pub fn start(&mut self) {
+        self.enter(if self.name.trim().is_empty() { Screen::Welcome } else { Screen::Play });
+    }
+
+    /// The welcome's language a step on.
+    pub fn welcome_language(&mut self, by: i32) {
+        self.settings_step(0, by);
+    }
+
+    /// The welcome done: with a name, on to Play.
+    pub fn welcome_done(&mut self) {
+        if self.name.trim().is_empty() {
+            self.sound.play(UiSound::Refused);
+            self.ui().set_welcome_cursor(0);
+            return;
+        }
+        self.save_settings();
+        self.go(Screen::Play);
     }
 
     // ---- The games ------------------------------------------------------
@@ -298,13 +337,14 @@ impl App {
                     app.show_games();
                     // (`NETTAI_TRAINING=<game>`: straight into a random training set of it.)
                     if std::env::var("NETTAI_TRAINING").is_ok_and(|g| g == id) && app.battle.is_none() {
-                        app.training_game(app.games.list.iter().position(|e| e.id == id).unwrap_or(0));
+                        app.select_game(&id);
                         app.training_fight();
                     }
                     app.auto_netplay(&id);
                     match app.ui().get_screen() {
                         Screen::Replays => app.check_replays(),
-                        Screen::Lobby => app.show_lobby(),
+                        Screen::Play => app.show_play(),
+                        Screen::Training => app.show_training(),
                         Screen::Builds => app.show_builds(),
                         _ => {}
                     }
@@ -314,7 +354,7 @@ impl App {
         self.show_games();
     }
 
-    /// The game cards, as the games stand.
+    /// The game cards, as the games stand (the welcome's), and the strip.
     fn show_games(&mut self) {
         let ui = self.ui();
         let cards: Vec<GameCard> = self
@@ -333,6 +373,118 @@ impl App {
             })
             .collect();
         ui.set_games(ModelRc::new(VecModel::from(cards)));
+        if self.select.game.is_none()
+            && let Some(first) = self.games.list.iter().find(|e| matches!(e.state, State::Ready(_))).map(|e| e.id.clone())
+        {
+            // (The first game ready, until the player chooses.)
+            self.select_game(&first);
+        }
+        self.show_select();
+    }
+
+    // ---- The selection (the strip's) ------------------------------------
+
+    /// The selection is game `id`, with none of the player's builds.
+    pub fn select_game(&mut self, id: &str) {
+        self.select.game = Some(id.to_string());
+        self.select.build = 0;
+        self.training.opponent_build = 0;
+        self.training.source = 0;
+        self.training.files = match_files(id);
+        self.refresh_builds();
+        if let Some(ready) = self.games.ready(id) {
+            self.sound.use_game(id, &ready.loaded);
+        }
+    }
+
+    /// The selection's builds read again (one made or edited since), the
+    /// one chosen kept by its file.
+    pub fn refresh_builds(&mut self) {
+        let chosen = self.select.build.checked_sub(1).and_then(|b| self.select.builds.get(b)).map(|(p, _, _)| p.clone());
+        let opponent = self.training.opponent_build.checked_sub(1).and_then(|b| self.select.builds.get(b)).map(|(p, _, _)| p.clone());
+        self.select.builds = match self.select.game.as_deref().and_then(|g| self.games.ready(g).map(|r| (g.to_string(), r))) {
+            Some((g, r)) => crate::builds::screen::BuildsState::choices(r.content(), &g),
+            None => Vec::new(),
+        };
+        let place = |p: Option<PathBuf>, builds: &[(PathBuf, String, nettai_match::Side)]| p.and_then(|p| builds.iter().position(|(q, _, _)| *q == p)).map_or(0, |i| i + 1);
+        self.select.build = place(chosen, &self.select.builds);
+        self.training.opponent_build = place(opponent, &self.select.builds);
+    }
+
+    /// The selection's build's side, if it is one of the player's.
+    pub fn selected_side(&self) -> Option<nettai_match::Side> {
+        self.select.build.checked_sub(1).and_then(|b| self.select.builds.get(b)).map(|(_, _, s)| s.clone())
+    }
+
+    /// The selection's build's name, if it is one of the player's.
+    pub fn selected_name(&self) -> Option<String> {
+        self.select.build.checked_sub(1).and_then(|b| self.select.builds.get(b)).map(|(_, n, _)| n.clone())
+    }
+
+    /// The strip, as the selection is.
+    pub fn show_select(&mut self) {
+        let ui = self.ui();
+        let entry = self.select.game.as_deref().and_then(|g| self.games.list.iter().find(|e| e.id == g));
+        let (name, state) = match entry {
+            Some(e) => (
+                game_names(&e.id).0,
+                match &e.state {
+                    State::NoPack(_) => GameState::NoPack,
+                    State::NotLoaded | State::Loading => GameState::Loading,
+                    State::Ready(_) => GameState::Ready,
+                    State::Failed(_) => GameState::Failed,
+                },
+            ),
+            None => (String::new(), GameState::NoPack),
+        };
+        ui.set_select_game(name.into());
+        ui.set_select_game_state(state);
+        let build = self.selected_name().map_or_else(|| ui.global::<Strings>().invoke_random(), SharedString::from);
+        ui.set_select_build(build);
+        ui.set_select_build_index(self.select.build as i32);
+        let navi = match (self.selected_side(), self.select.game.as_deref().and_then(|g| self.games.ready(g))) {
+            (Some(side), Some(ready)) => {
+                let graphics = ready.graphics(self.lang);
+                Names::of(ready.content(), &graphics).navi(side.navi(ready.content()))
+            }
+            _ => String::new(),
+        };
+        ui.set_select_build_navi(navi.into());
+        ui.set_select_can_act(self.select.game.as_deref().is_some_and(|g| self.games.ready(g).is_some()));
+    }
+
+    /// The strip's game (row 0) or build (row 1) a step on.
+    pub fn select_step(&mut self, row: i32, by: i32) {
+        if row == 0 {
+            let ids: Vec<String> = self.games.list.iter().map(|e| e.id.clone()).collect();
+            if ids.is_empty() {
+                return;
+            }
+            let at = self.select.game.as_ref().and_then(|g| ids.iter().position(|i| i == g)).unwrap_or(0) as i32;
+            let next = ids[(at + by).rem_euclid(ids.len() as i32) as usize].clone();
+            self.select_game(&next);
+        } else {
+            let n = self.select.builds.len() as i32 + 1;
+            self.select.build = (self.select.build as i32 + by).rem_euclid(n) as usize;
+        }
+        self.after_select();
+    }
+
+    /// The strip's action: its build in the creator, or a new build.
+    pub fn select_act(&mut self) {
+        let Some(game) = self.select.game.clone() else { return self.sound.play(UiSound::Refused) };
+        let chosen = self.select.build.checked_sub(1).and_then(|b| self.select.builds.get(b)).cloned();
+        self.edit_selected(&game, chosen);
+    }
+
+    /// After the selection changed: the tab shown again, a room told.
+    fn after_select(&mut self) {
+        self.propose();
+        match self.ui().get_screen() {
+            Screen::Play => self.show_play(),
+            Screen::Training => self.show_training(),
+            _ => self.show_select(),
+        }
     }
 
     /// The games ready to play, by id.
@@ -340,44 +492,17 @@ impl App {
         self.games.list.iter().filter(|e| matches!(e.state, State::Ready(_))).map(|e| e.id.clone()).collect()
     }
 
-    // ---- Play -----------------------------------------------------------
+    // ---- Training -------------------------------------------------------
 
-    fn show_training(&mut self) {
-        self.show_games();
-        let ui = self.ui();
-        let chosen = self.training.game.as_ref().and_then(|g| self.games.list.iter().position(|e| &e.id == g));
-        ui.set_training_chosen(chosen.map_or(-1, |i| i as i32));
-        if chosen.is_none() {
-            ui.set_training_cursor(0);
-        }
-        self.show_preview();
-    }
-
-    pub fn training_game(&mut self, index: usize) {
-        let Some(entry) = self.games.list.get(index) else { return };
-        let id = entry.id.clone();
-        if let Some(ready) = self.games.ready(&id) {
-            self.sound.use_game(&id, &ready.loaded);
-        }
-        self.training.files = match_files(&id);
-        self.training.builds = self.games.ready(&id).map(|r| crate::builds::screen::BuildsState::choices(r.content(), &id)).unwrap_or_default();
-        self.training.build = 0;
-        self.training.opponent_build = 0;
-        self.training.game = Some(id);
-        self.training.source = 0;
-        self.ui().set_training_chosen(index as i32);
-        self.show_preview();
-    }
-
-    /// Your side in Training: the match's (0), or a build of the game.
-    pub fn training_build(&mut self, build: usize) {
-        self.training.build = build.min(self.training.builds.len());
+    pub fn show_training(&mut self) {
+        self.refresh_builds();
+        self.show_select();
         self.show_preview();
     }
 
     /// The opponent's side: the match's (0), or a build of the game.
     pub fn training_opponent(&mut self, build: usize) {
-        self.training.opponent_build = build.min(self.training.builds.len());
+        self.training.opponent_build = build.min(self.select.builds.len());
         self.show_preview();
     }
 
@@ -405,7 +530,7 @@ impl App {
     /// The match the Training screen has chosen, and its seed, or why it
     /// can't be played.
     fn training_match(&self, ready: &Ready) -> Result<(nettai_match::Match, u32), String> {
-        let game = self.training.game.as_deref().ok_or("no game is chosen")?;
+        let game = self.select.game.as_deref().ok_or("no game is chosen")?;
         let content = ready.content();
         let (mut m, seed) = if self.training.source == 0 {
             (nettai_match::pick::live(content, game, self.training.seed, None)?, self.training.seed)
@@ -418,8 +543,8 @@ impl App {
         };
         // (A build of yours, in place of your side or the opponent's: one
         // that can't play says why.)
-        let build = |b: usize| b.checked_sub(1).and_then(|b| self.training.builds.get(b)).map(|(_, side)| side.clone());
-        let built = [build(self.training.build), build(self.training.opponent_build)];
+        let build = |b: usize| b.checked_sub(1).and_then(|b| self.select.builds.get(b)).map(|(_, _, side)| side.clone());
+        let built = [build(self.select.build), build(self.training.opponent_build)];
         for (side, b) in built.iter().enumerate() {
             if let Some(b) = b {
                 m.sides[side] = b.clone();
@@ -450,18 +575,18 @@ impl App {
         ui.set_training_source_index(self.training.source as i32);
         let strings = ui.global::<Strings>();
         let mut builds: Vec<SharedString> = vec![if self.training.source == 0 { strings.invoke_random() } else { strings.invoke_from_the_match() }];
-        builds.extend(self.training.builds.iter().map(|(name, _)| SharedString::from(name.as_str())));
-        ui.set_training_builds(ModelRc::new(VecModel::from(builds.clone())));
-        ui.set_training_build_index(self.training.build as i32);
+        builds.extend(self.select.builds.iter().map(|(_, name, _)| SharedString::from(name.as_str())));
         ui.set_training_opponents(ModelRc::new(VecModel::from(builds)));
         ui.set_training_opponent_index(self.training.opponent_build as i32);
         ui.set_training_behavior_index(self.training.opponent as i32);
         ui.set_training_endless_on(self.training.endless);
         ui.set_training_rounds(nettai_match::TRIPLE_BATTLE as i32);
-        let Some(ready) = self.training.game.as_deref().and_then(|g| self.games.ready(g)) else {
+        let Some(ready) = self.select.game.as_deref().and_then(|g| self.games.ready(g)) else {
+            ui.set_training_chosen(false);
             ui.set_training_preview(MatchPreview::default());
             return;
         };
+        ui.set_training_chosen(true);
         let mut preview = MatchPreview { ready: true, seed: self.training.seed.to_string().into(), ..MatchPreview::default() };
         match self.training_match(&ready) {
             Ok((m, seed)) => {
@@ -485,7 +610,7 @@ impl App {
 
     /// FIGHT: the chosen match against the chosen opponent.
     pub fn training_fight(&mut self) {
-        let Some(game) = self.training.game.clone() else { return };
+        let Some(game) = self.select.game.clone() else { return };
         let Some(ready) = self.games.ready(&game) else { return };
         let Ok((m, seed)) = self.training_match(&ready) else { return };
         self.start_live(&game, &ready, m, seed, self.training_opponent_does());
@@ -535,7 +660,7 @@ impl App {
 
     /// Watch replay `index` of the list from `side`.
     pub fn replays_watch(&mut self, index: usize, side: u8) {
-        let Some(entry) = self.replays.get(index) else { return };
+        let Some(entry) = self.replay_shown.get(index).and_then(|&i| self.replays.get(i)) else { return };
         let Ok(replay) = &entry.replay else { return };
         let game = replay.head.game.clone();
         let Some(ready) = self.games.ready(&game) else {
@@ -693,7 +818,7 @@ impl App {
                 self.start_live(&game, &ready, m, clock_seed(), opponent);
             }
             Some(Battle { kind: Kind::Netplay { .. }, .. }) => {
-                self.go(Screen::Lobby);
+                self.go(Screen::Play);
                 return;
             }
             Some(mut b) => {
@@ -709,8 +834,8 @@ impl App {
     pub fn battle_quit(&mut self) {
         let back = match self.battle.as_ref().map(|b| &b.kind) {
             Some(Kind::Replay { .. }) => Screen::Replays,
-            Some(Kind::Netplay { .. }) => Screen::Lobby,
-            _ => Screen::Title,
+            Some(Kind::Netplay { .. }) => Screen::Play,
+            _ => Screen::Training,
         };
         self.go(back);
     }
@@ -736,11 +861,12 @@ impl App {
         let ui = self.ui();
         self.show_settings();
         match ui.get_screen() {
-            Screen::Training => self.show_preview(),
+            Screen::Training => self.show_training(),
             Screen::Replays => self.show_replay_rows(),
-            Screen::Lobby => self.show_lobby(),
+            Screen::Play => self.show_play(),
             Screen::Builds => self.show_builds(),
             Screen::Build => self.enter_build(),
+            Screen::Welcome => self.show_games(),
             _ => {}
         }
     }
@@ -812,10 +938,9 @@ impl App {
     }
 
     /// A battle the demo's buttons play, against a stand-in of 1 HP (a set
-    /// decided at the first hits): the Training screen's game, a random
-    /// match.
+    /// decided at the first hits): the selection's game, a random match.
     pub fn tour_battle(&mut self) {
-        let Some(game) = self.training.game.clone() else { return };
+        let Some(game) = self.select.game.clone() else { return };
         let Some(ready) = self.games.ready(&game) else { return };
         let content = ready.content();
         let Ok(mut m) = nettai_match::pick::live(content, &game, self.training.seed, None) else { return };
@@ -847,6 +972,22 @@ impl App {
         self.enter(Screen::Builds);
     }
 
+    /// The selection: the Builds screen's game, its first build (the tour's).
+    pub fn tour_select(&mut self) {
+        if let Some(game) = self.builds_game_id() {
+            self.select_game(&game);
+            self.select.build = 1.min(self.select.builds.len());
+        }
+    }
+
+    /// The selection: the first game ready, a random side.
+    pub fn tour_select_random(&mut self) {
+        if let Some(i) = self.first_ready() {
+            let id = self.games.list[i].id.clone();
+            self.select_game(&id);
+        }
+    }
+
     /// The battle at eight times the speed.
     pub fn tour_fast(&mut self) {
         if let Some(b) = &mut self.battle {
@@ -867,9 +1008,9 @@ impl App {
         if !ui.global::<Input>().get_editing() {
             ui.set_name(self.name.as_str().into());
         }
-        let mut me = ui.get_lobby_me();
+        let mut me = ui.get_play_me();
         me.name = self.name.as_str().into();
-        ui.set_lobby_me(me);
+        ui.set_play_me(me);
     }
 
     // ---- The replays ----------------------------------------------------
@@ -878,15 +1019,34 @@ impl App {
         let ui = self.ui();
         ui.set_replays_folder(replays_dir().display().to_string().into());
         self.replays = replays::scan(&replays_dir());
-        let count = self.replays.len() as i32;
-        ui.set_replays_cursor(ui.get_replays_cursor().clamp(0, (count - 1).max(0)));
         self.show_replay_rows();
         self.check_replays();
     }
 
+    /// The replays the filter keeps, as rows; the filter's games.
     fn show_replay_rows(&mut self) {
-        let rows: Vec<ReplayRow> = self.replays.iter().map(|e| replays::row(e, &self.games, self.lang)).collect();
+        let games: Vec<String> = self.games.list.iter().map(|e| e.id.clone()).collect();
+        self.replays_filter = self.replays_filter.min(games.len());
+        let kept = self.replays_filter.checked_sub(1).map(|g| games[g].clone());
+        self.replay_shown = (0..self.replays.len())
+            .filter(|&i| kept.as_ref().is_none_or(|g| self.replays[i].replay.as_ref().is_ok_and(|r| &r.head.game == g)))
+            .collect();
+        let rows: Vec<ReplayRow> = self.replay_shown.iter().map(|&i| replays::row(&self.replays[i], &self.games, self.lang)).collect();
         self.replay_rows.set_vec(rows);
+        let ui = self.ui();
+        let filters: Vec<SharedString> = std::iter::once(SharedString::default()).chain(games.iter().map(|g| SharedString::from(game_names(g).0))).collect();
+        ui.set_replays_filters(ModelRc::new(VecModel::from(filters)));
+        ui.set_replays_filter_index(self.replays_filter as i32);
+        ui.set_replays_total(self.replays.len() as i32);
+        let count = self.replay_shown.len() as i32;
+        ui.set_replays_cursor(ui.get_replays_cursor().clamp(0, (count - 1).max(0)));
+    }
+
+    /// The replays' game filter: 0 all, else a game by its place.
+    pub fn replays_filter(&mut self, filter: usize) {
+        self.replays_filter = filter;
+        self.ui().set_replays_cursor(0);
+        self.show_replay_rows();
     }
 
     /// Play out, on a thread, each replay whose game is loaded and that
@@ -917,8 +1077,10 @@ impl App {
     fn played_out(&mut self, path: &std::path::Path, outcome: Result<nettai_frontend::replay::Outcome, String>) {
         let Some(at) = self.replays.iter().position(|e| e.path == path) else { return };
         self.replays[at].outcome = Some(outcome);
-        if at < self.replay_rows.row_count() {
-            self.replay_rows.set_row_data(at, replays::row(&self.replays[at], &self.games, self.lang));
+        if let Some(row) = self.replay_shown.iter().position(|&i| i == at)
+            && row < self.replay_rows.row_count()
+        {
+            self.replay_rows.set_row_data(row, replays::row(&self.replays[at], &self.games, self.lang));
         }
     }
 
@@ -932,6 +1094,16 @@ impl App {
         ui.set_settings_crisp_text(self.text == TextMode::Font);
         ui.set_settings_sharp(self.sharp);
         ui.set_name(self.name.as_str().into());
+        ui.set_welcome_language_name(lang::name(self.lang).into());
+        // About: where things are kept.
+        let about = [
+            format!("{} · {}", crate::paths::data().display(), "data"),
+            format!("{} · {}", crate::paths::builds().display(), "builds"),
+            format!("{} · {}", replays_dir().display(), "replays"),
+            format!("{} · {}", matches_dir().display(), "matches"),
+            format!("{} · {}", crate::netplay::signal_server().unwrap_or_else(|| "—".into()), "NETTAI_SIGNAL"),
+        ];
+        ui.set_settings_about(ModelRc::new(VecModel::from(about.into_iter().map(SharedString::from).collect::<Vec<_>>())));
     }
 
     /// A setting stepped: its row, and which way.
@@ -1011,19 +1183,16 @@ impl App {
                 self.follow_battle();
                 self.show_connection();
             }
-            Screen::Title => {
+            Screen::Welcome => {
                 nav = pad.nav;
                 self.keys.pressed.clear();
                 self.attract(now, area, factor);
             }
-            Screen::Lobby => {
-                nav = pad.nav;
-                self.keys.pressed.clear();
-                self.poll_lobby(now);
-            }
             _ => {
                 nav = pad.nav;
                 self.keys.pressed.clear();
+                // (A room stays open whichever tab is shown.)
+                self.poll_lobby(now);
             }
         }
         self.sound.frame(now, ticks, &mut samples);
@@ -1100,7 +1269,7 @@ impl App {
         }
     }
 
-    /// The title's demo battle: a random set of a game that is ready, both
+    /// The welcome's demo battle: a random set of a game that is ready, both
     /// sides pressing through their custom screens, the left one fighting;
     /// another when it ends.
     fn attract(&mut self, now: Instant, area: (f32, f32), factor: f32) {

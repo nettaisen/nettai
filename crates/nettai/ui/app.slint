@@ -1,13 +1,18 @@
-// The app's window: every screen, the backdrop behind them, the wipe between
-// them, and the keys that navigate them.
+// The app's window, in Tango's shape: the top bar and its tabs (online play,
+// training, the replays; the builds and the settings), the first run's
+// welcome, the build creator, the battle; the backdrop behind them, the wipe
+// into and out of a battle, and the keys that navigate them. Up from a
+// tab's first row, or back, gives the keys to the bar, where left and right
+// go through the tabs.
 
 import { Theme, NavAction, Screen, UiSound } from "theme.slint";
 import { Backdrop, Input, Slant } from "widgets.slint";
 import { Format } from "format.slint";
-import { TitleScreen } from "title.slint";
+import { WelcomeScreen } from "welcome.slint";
+import { TopBar, Sheet, SheetChip, SheetLine, GameCard, GameState } from "shell.slint";
 import { BattleScreen, BattleKind, Side, Playback, Connection } from "battle.slint";
-import { TrainingScreen, TrainingText, GameCard, GameState, MatchPreview, RoundCard } from "training.slint";
-import { LobbyScreen, LinkState, Peer } from "lobby.slint";
+import { TrainingScreen, TrainingText, MatchPreview, RoundCard } from "training.slint";
+import { PlayScreen, LinkState, Peer } from "play.slint";
 import { ReplaysScreen, ReplayRow, ReplayCheck } from "replays.slint";
 import { SettingsScreen } from "settings.slint";
 import { BuildsScreen, BuildCard } from "builds.slint";
@@ -32,7 +37,7 @@ export global Strings {
     }
 }
 
-export { Theme, NavAction, Screen, UiSound, Input, Format, BattleKind, Side, Playback, Connection, GameCard, GameState, MatchPreview, RoundCard, LinkState, Peer, ReplayRow, ReplayCheck, TrainingText }
+export { Theme, NavAction, Screen, UiSound, Input, Format, BattleKind, Side, Playback, Connection, GameCard, GameState, MatchPreview, RoundCard, LinkState, Peer, ReplayRow, ReplayCheck, TrainingText, Sheet, SheetChip, SheetLine }
 export { BuildCard, BuildTab, TabKind, BuildAction, ActionButton, RowKind, FactRow, EntryRow, PickRow, CheckTile, FilterChip, Detail, StatRow, GridCell, GridPart, LeftKind, RightKind }
 
 export component AppWindow inherits Window {
@@ -47,7 +52,15 @@ export component AppWindow inherits Window {
     default-font-family: Theme.family;
     default-font-size: Theme.body;
 
-    in-out property <Screen> screen: Screen.title;
+    in-out property <Screen> screen: Screen.welcome;
+    // The top bar has the keys.
+    in-out property <bool> bar-focus;
+    // A room is open (the bar marks Play while another tab is shown).
+    in property <bool> room-open;
+    // The tabs, in the bar's order.
+    property <[Screen]> tabs: [Screen.play, Screen.training, Screen.replays, Screen.builds, Screen.settings];
+    property <bool> tabbed: root.screen == Screen.play || root.screen == Screen.training || root.screen == Screen.replays || root.screen == Screen.builds || root.screen == Screen.settings;
+    property <length> bar-height: root.tabbed ? bar.height : 0px;
     // The wipe between two screens, 0 to 1 (the screen changes halfway).
     in property <float> wipe;
     // The picture the host presents (the battle's, or the title's demo),
@@ -55,8 +68,8 @@ export component AppWindow inherits Window {
     in property <image> picture;
     in property <int> scale;
     // Where the picture goes, for the host to present for.
-    out property <length> picture-area-width: root.screen == Screen.battle ? battle.stage-width : title.monitor-width;
-    out property <length> picture-area-height: root.screen == Screen.battle ? battle.stage-height : title.monitor-height;
+    out property <length> picture-area-width: root.screen == Screen.battle ? battle.stage-width : welcome.monitor-width;
+    out property <length> picture-area-height: root.screen == Screen.battle ? battle.stage-height : welcome.monitor-height;
     // While the battle has the keys, the window passes none to the menus.
     in property <bool> playing;
 
@@ -65,14 +78,22 @@ export component AppWindow inherits Window {
 
     // The screens' requests, for the host.
     callback go(Screen);
+    // A tab chosen in the bar: shown at once.
+    callback tab(Screen);
     callback quit();
     callback sound(UiSound);
 
-    callback training-game(int);
+    callback welcome-language(int);
+    callback welcome-done();
+
+    // The selector strip's (Play's and Training's): the game or the build a
+    // step on (0, 1), and the build's action.
+    callback select-step(int, int);
+    callback select-act();
+
     callback training-source(int);
     callback training-reroll();
     callback training-fight();
-    callback training-build(int);
     callback training-opponent(int);
     callback training-behavior(int);
     callback training-endless(bool);
@@ -83,15 +104,15 @@ export component AppWindow inherits Window {
     callback battle-rematch();
     callback battle-touch(int, bool);
 
-    callback lobby-mode(int);
-    callback lobby-code(string);
-    callback lobby-game(int);
-    callback lobby-build(int);
-    callback lobby-code-done();
-    callback lobby-ready();
-    callback lobby-copy();
+    callback play-mode(int);
+    callback play-code(string);
+    callback play-fight();
+    callback play-ready();
+    callback play-leave();
+    callback play-copy();
 
     callback replays-watch(int, int);
+    callback replays-filter(int);
 
     callback settings-step(int, int);
     callback set-name(string);
@@ -120,14 +141,18 @@ export component AppWindow inherits Window {
         if root.wipe > 0 && root.wipe < 1 {
             return;
         }
-        if root.screen == Screen.title {
-            title.nav(a);
+        if root.tabbed && root.bar-focus {
+            root.bar-nav(a);
+            return;
+        }
+        if root.screen == Screen.welcome {
+            welcome.nav(a);
         } else if root.screen == Screen.battle {
             battle.nav(a);
         } else if root.screen == Screen.training {
             training.nav(a);
-        } else if root.screen == Screen.lobby {
-            lobby.nav(a);
+        } else if root.screen == Screen.play {
+            play.nav(a);
         } else if root.screen == Screen.replays {
             replays.nav(a);
         } else if root.screen == Screen.settings {
@@ -137,6 +162,27 @@ export component AppWindow inherits Window {
         } else if root.screen == Screen.build {
             root.build-nav(a);
         }
+    }
+
+    // The bar has the keys: left and right go through the tabs, each shown
+    // at once; down or confirm gives the keys to the tab.
+    function bar-nav(a: NavAction) {
+        let at = root.screen == Screen.play ? 0 : root.screen == Screen.training ? 1 : root.screen == Screen.replays ? 2 : root.screen == Screen.builds ? 3 : 4;
+        if a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next {
+            let to = max(0, min(4, at + (a == NavAction.left || a == NavAction.previous ? -1 : 1)));
+            if to != at {
+                root.sound(UiSound.cursor);
+                root.tab(root.tabs[to]);
+            }
+        } else if a == NavAction.down || a == NavAction.confirm {
+            root.sound(UiSound.cursor);
+            root.bar-focus = false;
+        }
+    }
+
+    // The keys to the bar (up from a tab's first row, or back).
+    function to-bar() {
+        root.bar-focus = true;
     }
 
     // A small window (a phone's) is drawn smaller.
@@ -223,52 +269,71 @@ export component AppWindow inherits Window {
             accept
         }
 
-        title := TitleScreen {
-            visible: root.screen == Screen.title;
+        welcome := WelcomeScreen {
+            visible: root.screen == Screen.welcome;
             width: root.width;
             height: root.height;
             picture: root.picture;
             scale: root.scale;
             version: root.version;
             monitor-game: root.monitor-game;
-            activate(i) => {
-                if i == 0 {
-                    root.go(Screen.lobby);
-                } else if i == 1 {
-                    root.go(Screen.training);
-                } else if i == 2 {
-                    root.go(Screen.builds);
-                } else if i == 3 {
-                    root.go(Screen.replays);
-                } else if i == 4 {
-                    root.go(Screen.settings);
-                } else {
-                    root.quit();
-                }
+            name <=> root.name;
+            set-name(n) => {
+                root.set-name(n);
+            }
+            step-language(d) => {
+                root.welcome-language(d);
+            }
+            done => {
+                root.welcome-done();
             }
             sound(s) => {
                 root.sound(s);
             }
         }
 
-        training := TrainingScreen {
-            visible: root.screen == Screen.training;
+        bar := TopBar {
+            visible: root.tabbed;
+            y: 0;
             width: root.width;
-            height: root.height;
-            back => {
-                root.go(Screen.title);
+            active: root.screen;
+            focused: root.bar-focus;
+            badge: root.room-open;
+            choose(s) => {
+                root.bar-focus = false;
+                if s != root.screen {
+                    root.sound(UiSound.cursor);
+                    root.tab(s);
+                }
             }
-            choose-game(i) => {
-                root.training-game(i);
+        }
+
+        training := TrainingScreen {
+            keys: !root.bar-focus;
+            visible: root.screen == Screen.training;
+            game: root.select-game;
+            game-state: root.select-game-state;
+            build: root.training-source-index > 0 && root.select-build-index == 0 ? Strings.from-the-match() : root.select-build;
+            build-index: root.select-build-index;
+            build-navi: root.select-build-navi;
+            can-act: root.select-can-act;
+            y: root.bar-height;
+            width: root.width;
+            height: root.height - root.bar-height;
+            top => {
+                root.to-bar();
+            }
+            step(r, d) => {
+                root.select-step(r, d);
+            }
+            act => {
+                root.select-act();
             }
             choose-source(i) => {
                 root.training-source(i);
             }
             reroll => {
                 root.training-reroll();
-            }
-            choose-build(b) => {
-                root.training-build(b);
             }
             choose-opponent(b) => {
                 root.training-opponent(b);
@@ -287,37 +352,44 @@ export component AppWindow inherits Window {
             }
         }
 
-        lobby := LobbyScreen {
-            visible: root.screen == Screen.lobby;
-            name <=> root.name;
+        play := PlayScreen {
+            keys: !root.bar-focus;
+            visible: root.screen == Screen.play;
+            game: root.select-game;
+            game-state: root.select-game-state;
+            build: root.select-build;
+            build-index: root.select-build-index;
+            build-navi: root.select-build-navi;
+            can-act: root.select-can-act;
+            y: root.bar-height;
             width: root.width;
-            height: root.height;
-            back => {
-                root.go(Screen.title);
+            height: root.height - root.bar-height;
+            top => {
+                root.to-bar();
+            }
+            step(r, d) => {
+                root.select-step(r, d);
+            }
+            act => {
+                root.select-act();
             }
             set-mode(m) => {
-                root.lobby-mode(m);
+                root.play-mode(m);
             }
             set-code(c) => {
-                root.lobby-code(c);
+                root.play-code(c);
             }
-            set-name(n) => {
-                root.set-name(n);
-            }
-            set-game(g) => {
-                root.lobby-game(g);
-            }
-            set-build(b) => {
-                root.lobby-build(b);
-            }
-            code-done => {
-                root.lobby-code-done();
+            fight => {
+                root.play-fight();
             }
             ready => {
-                root.lobby-ready();
+                root.play-ready();
+            }
+            leave => {
+                root.play-leave();
             }
             copy-code => {
-                root.lobby-copy();
+                root.play-copy();
             }
             sound(s) => {
                 root.sound(s);
@@ -325,14 +397,19 @@ export component AppWindow inherits Window {
         }
 
         replays := ReplaysScreen {
+            keys: !root.bar-focus;
             visible: root.screen == Screen.replays;
+            y: root.bar-height;
             width: root.width;
-            height: root.height;
-            back => {
-                root.go(Screen.title);
+            height: root.height - root.bar-height;
+            top => {
+                root.to-bar();
             }
             watch(i, side) => {
                 root.replays-watch(i, side);
+            }
+            choose-filter(i) => {
+                root.replays-filter(i);
             }
             sound(s) => {
                 root.sound(s);
@@ -342,10 +419,11 @@ export component AppWindow inherits Window {
         settings := SettingsScreen {
             visible: root.screen == Screen.settings;
             name <=> root.name;
+            y: root.bar-height;
             width: root.width;
-            height: root.height;
-            back => {
-                root.go(Screen.title);
+            height: root.height - root.bar-height;
+            top => {
+                root.to-bar();
             }
             step(row, by) => {
                 root.settings-step(row, by);
@@ -360,8 +438,9 @@ export component AppWindow inherits Window {
 
         builds := BuildsScreen {
             visible: root.screen == Screen.builds;
+            y: root.bar-height;
             width: root.width;
-            height: root.height;
+            height: root.height - root.bar-height;
             nav(a) => {
                 root.nav(a);
             }
@@ -486,38 +565,44 @@ export component AppWindow inherits Window {
     in property <string> battle-stopped <=> battle.stopped;
     in property <string> battle-recorded <=> battle.recorded;
     in-out property <int> battle-cursor <=> battle.cursor;
-    in-out property <bool> title-started <=> title.started;
-    in-out property <int> title-cursor <=> title.cursor;
-    in property <[GameCard]> games <=> training.games;
-    in-out property <int> training-chosen <=> training.game;
+    in property <[GameCard]> games <=> welcome.games;
+    in property <string> welcome-language-name <=> welcome.language;
+    in-out property <int> welcome-cursor <=> welcome.cursor;
+    // The selection, as the strip says it (Play's and Training's).
+    in property <string> select-game;
+    in property <GameState> select-game-state;
+    in property <string> select-build;
+    in property <int> select-build-index;
+    in property <string> select-build-navi;
+    in property <bool> select-can-act;
+    in property <Sheet> play-sheet <=> play.sheet;
+    in property <bool> training-chosen <=> training.chosen;
     in property <[string]> training-sources <=> training.sources;
     in-out property <int> training-source-index <=> training.source;
     in property <MatchPreview> training-preview <=> training.preview;
     in-out property <int> training-cursor <=> training.cursor;
-    in-out property <int> lobby-mode-index <=> lobby.mode;
-    in property <string> lobby-code-text <=> lobby.code;
-    in property <[string]> lobby-games <=> lobby.games;
-    in-out property <int> lobby-game-index <=> lobby.game;
-    in property <[string]> lobby-builds <=> lobby.builds;
-    in-out property <int> lobby-build-index <=> lobby.build;
-    in property <string> lobby-direct-address <=> lobby.direct-address;
-    in property <[string]> training-builds <=> training.builds;
-    in-out property <int> training-build-index <=> training.build;
+    in-out property <int> play-mode-index <=> play.mode;
+    in property <string> play-code-text <=> play.code;
+    in property <bool> play-linked <=> play.linked;
+    in property <string> play-room <=> play.room;
     in property <[string]> training-opponents <=> training.opponents;
     in-out property <int> training-opponent-index <=> training.opponent;
     in-out property <int> training-behavior-index <=> training.behavior;
     in-out property <bool> training-endless-on <=> training.endless;
     in property <int> training-rounds <=> training.rounds;
-    in property <Peer> lobby-me <=> lobby.me;
-    in property <Peer> lobby-them <=> lobby.them;
-    in property <LinkState> lobby-link <=> lobby.link;
-    in property <string> lobby-problem <=> lobby.problem;
-    in property <string> lobby-server <=> lobby.server;
-    in-out property <int> lobby-cursor <=> lobby.cursor;
+    in property <Peer> play-me <=> play.me;
+    in property <Peer> play-them <=> play.them;
+    in property <LinkState> play-link <=> play.link;
+    in property <int> play-ping <=> play.ping;
+    in property <string> play-problem <=> play.problem;
+    in-out property <int> play-cursor <=> play.cursor;
     in property <[ReplayRow]> replay-rows <=> replays.rows;
     in-out property <int> replays-cursor <=> replays.cursor;
     in-out property <int> replays-side <=> replays.side;
     in property <string> replays-folder <=> replays.folder;
+    in property <[string]> replays-filters <=> replays.filters;
+    in property <int> replays-filter-index <=> replays.filter;
+    in property <int> replays-total <=> replays.total;
     in-out property <string> name;
     in property <string> settings-language <=> settings.language;
     in property <int> settings-volume <=> settings.volume;
@@ -525,6 +610,9 @@ export component AppWindow inherits Window {
     in property <bool> settings-crisp-text <=> settings.crisp-text;
     in property <bool> settings-sharp <=> settings.sharp;
     in-out property <int> settings-cursor <=> settings.cursor;
+    in-out property <int> settings-section <=> settings.section;
+    in-out property <bool> settings-in-pane <=> settings.in-pane;
+    in property <[string]> settings-about <=> settings.about;
     in property <[string]> builds-games <=> builds.games;
     in property <int> builds-game-index <=> builds.game;
     in property <[BuildCard]> builds-cards <=> builds.cards;
