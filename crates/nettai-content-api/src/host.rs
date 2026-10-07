@@ -535,6 +535,10 @@ pub enum RulesHook {
     /// shows, if any (EXE5's capsules: the chip window shows it, R describes
     /// it).
     ButtonChip,
+    /// A button's `hand_chip(side)`, at OK while it is picked: the chip it
+    /// puts in the hand in its place, if any (EXE4's soul button: the soul's
+    /// chip, which changes the navi as the turn starts).
+    ButtonHandChip,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
     /// base form, its form not yet changed (`sub_80158CC`): EXE6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
@@ -601,11 +605,12 @@ impl RulesHook {
             RulesHook::ButtonState => "button.state",
             RulesHook::ButtonPressed => "button.pressed",
             RulesHook::ButtonChip => "button.chip",
+            RulesHook::ButtonHandChip => "button.hand_chip",
             RulesHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [RulesHook; 46] = [
+    pub const ALL: [RulesHook; 47] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -642,6 +647,7 @@ impl RulesHook {
         RulesHook::ButtonState,
         RulesHook::ButtonPressed,
         RulesHook::ButtonChip,
+        RulesHook::ButtonHandChip,
         RulesHook::CustomOpen,
         RulesHook::CustomDeal,
         RulesHook::CustomConfirmed,
