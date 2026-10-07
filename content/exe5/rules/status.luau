@@ -471,6 +471,8 @@ local status = {
         paused_navi = "pause_handler",
         -- Its status timers hold while paused (0x0800CB50, as EXE6's).
         timers_while_paused = false,
+        -- Its idle (0x080F0254) leaves the navi's pose, as EXE6's.
+        idle_stands = false,
     },
 }
 
