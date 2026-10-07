@@ -33,6 +33,7 @@ return merge {
     require("@self/ligtnin"),
     require("@self/meteors"),
     require("@self/minibomb"),
+    require("@self/mokorus"),
     require("@self/navi-20"),
     require("@self/panlgrab"),
     require("@self/recov"),

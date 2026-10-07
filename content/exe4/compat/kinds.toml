@@ -46,3 +46,5 @@
 "lightning" = { pool = "attack", index = 0x8E, scratch_position = true }
 # The Counters' strike (action 0x20's variant 0, 0x080CFDE4).
 "counter/strike" = { pool = "attack", index = 0x17, scratch_position = true }
+# MokoRus's Molokos (action 0x20's variant 1, 0x080D250C).
+"mokorus/moloko" = { pool = "attack", index = 0x2C, scratch_position = true }
