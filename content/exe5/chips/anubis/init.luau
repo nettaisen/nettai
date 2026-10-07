@@ -5,6 +5,9 @@
 
 local anubis = require("@self/anubis")
 
+-- Its statue (row 0 of 0x080D0858): a drain every 6 ticks, 100 HP.
+local STATUE = anubis.variant { anim = 0, period = 6, hp = 100, version = 2 }
+
 local chip: Chip = {
     codes = { "A" },
     element = "null",
@@ -18,7 +21,7 @@ local chip: Chip = {
     flags = { "dimming", "library" },
     slot_in_limit = 1,
     megaman = "dark",
-    dimming = anubis.controller.hook(anubis.variants.anubis),
+    dimming = anubis.controller.hook(STATUE),
     auto_battle = { class = "landing_ahead" },
 }
 

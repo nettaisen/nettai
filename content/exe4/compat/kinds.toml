@@ -17,6 +17,12 @@
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
+# The Anti chips' controller (0x080E514E), AntiFire to AntiWood's trap (0x080D7260) and counterattack (0x080E5226),
+# and the counterattack's bursts (0x080E4A9C): their positions the spawners' registers.
+"trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
+"anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
+"anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
+"panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
 # The Thunders' thunder ball (0x080D2156).
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
@@ -127,3 +133,17 @@
 # (0x080D6724).
 "wind" = { pool = "effect", index = 0x41, scratch_position = true }
 "gust" = { pool = "attack", index = 0x49, scratch_position = true }
+# Each soul's image at its change (effect 0x13, 0x080E361C: rules/souls/image), spawned at the change's registers
+# (0x080EBB20), which its first tick overwrites.
+"rollsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"gutssoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"windsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"srchsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"firesoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"thunsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"protsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"numsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"metlsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"junksoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"aquasoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"woodsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
