@@ -544,8 +544,13 @@ fn set_barrier_visual_shown(b: &mut Battle, user: ObjectRef, on: bool) {
 /// The charge glow (AIData+0x58) is hidden and shown with its navi
 /// (`sub_80E0F22`, `sub_80E0F28`).
 fn set_charge_glow(b: &mut Battle, user: ObjectRef, on: bool) {
-    if let Some(glow) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).charge_glow) {
+    let Some(glow) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).charge_glow) else { return };
+    // (A glow the rules' charge brings is a content kind, shown by its
+    // `shown`: EXE4's, 0x080E22AC and 0x080E22B2.)
+    if matches!(b.objects.get(glow).vars, crate::kinds::Vars::ChargeGlow(_)) {
         crate::kinds::charge_glow::set_enabled(b, glow, on);
+    } else if crate::behavior::has_state_field(b, glow, "shown") {
+        crate::behavior::set_state_field(b, glow, "shown", nettai_content_api::Value::Bool(on));
     }
 }
 

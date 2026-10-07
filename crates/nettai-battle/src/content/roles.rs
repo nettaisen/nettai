@@ -120,10 +120,16 @@ pub enum KindRole {
     /// #0x3E, 0x080E4B64), which the navi's status tick keeps
     /// (0x0800DEB2): the engine gives it the body as its first related.
     DiveRipple,
+    /// The charge glow a navi's charge brings, where the rules say a charge
+    /// brings its own (`effects.charge_glow = with_charge`: EXE4's effect
+    /// object 5, 0x080E215C, which the navi's tail spawns, 0x0800BD88): the
+    /// engine gives it the navi as its first related and its side, links it
+    /// (`charge_glow`) and shows it (its state's `shown`).
+    ChargeGlow,
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 7] = [
+    pub const ALL: [KindRole; 8] = [
         KindRole::AbsorbedObstacle,
         KindRole::FallingRock,
         KindRole::Support,
@@ -131,6 +137,7 @@ impl KindRole {
         KindRole::Mode9Attack,
         KindRole::Mode9Actor,
         KindRole::DiveRipple,
+        KindRole::ChargeGlow,
     ];
 
     /// Its name in `rules/roles.luau`'s `kinds`.
@@ -143,6 +150,7 @@ impl KindRole {
             KindRole::Support => "support",
             KindRole::AntiRecovery => "anti_recovery",
             KindRole::DiveRipple => "dive_ripple",
+            KindRole::ChargeGlow => "charge_glow",
         }
     }
 
@@ -311,6 +319,9 @@ definition_roles! {
         /// A navi is hit (what the other player hears), and an object
         /// hurt without flinching (`sub_801A29A` mode 2).
         Hit = "hit",
+        /// A navi in auto battle is hit, what every console hears where a
+        /// hit sounds by the navi (`IntakeRules::hit_sound`: EXE4's 0x6D).
+        AutoBattleHit = "auto_battle_hit",
         /// An object takes damage (`sub_801A29A` mode 0), an obstacle hit.
         Damage = "damage",
         /// A blocked hit (`object_spawnHiteffect`), a trap catching one.

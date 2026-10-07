@@ -7,5 +7,6 @@
 "engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
 "engine/effect" = { pool = "effect", index = 0x00 }
 "engine/spark" = { pool = "effect", index = 0x04 }
+"charge-glow" = { pool = "effect", index = 0x05 }
 "projectile" = { pool = "attack", index = 0x00 }
 "attachment" = { pool = "attack", index = 0x02 }

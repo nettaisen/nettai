@@ -166,6 +166,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     status_shader(b, r);
     update_visibility(b, r);
     counter_shader(b, r);
+    charge_brings_glow(b, r);
     dive_ripple(b, r);
     if flag1(b, r) & f1::DEAD != 0 {
         return dispatch(b, r);
@@ -182,6 +183,29 @@ fn tail(b: &mut Battle, r: ObjectRef) {
         return while_dimmed(b, r);
     }
     dispatch(b, r);
+}
+
+/// Where the rules say a charge brings its own glow (EXE4's 0x0800BD88): with
+/// the navi's glow link empty and its charge at a level, the role's glow, on
+/// the navi's side, the navi its first related, linked and shown.
+fn charge_brings_glow(b: &mut Battle, r: ObjectRef) {
+    if b.content.rules().effects.charge_glow != crate::content::ChargeGlow::WithCharge {
+        return;
+    }
+    let a = ai(b, r);
+    if a.charge_glow.is_some() || a.charge_level == 0 {
+        return;
+    }
+    let kind = b.roles().kind(crate::content::KindRole::ChargeGlow);
+    let e = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
+    if let Some(e) = e {
+        let alliance = b.objects.get(r).alliance;
+        let o = b.objects.get_mut(e);
+        o.alliance = alliance;
+        o.related[0] = Some(r);
+        crate::behavior::set_state_field(b, e, "shown", nettai_content_api::Value::Bool(true));
+    }
+    ai_mut(b, r).charge_glow = e;
 }
 
 /// `sub_801B9E6`: run the current action (§12.0 action table).
@@ -296,6 +320,28 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// The sounds of navi `r`'s hit, as the rules' `intake.hit_sound` says: a
+/// player hears their own navi's as `own_hit` and another's as `hit`
+/// (EXE6's, EXE5's); or every console hears `hit`, or `auto_battle_hit` for
+/// a navi in auto battle (EXE4's 0x08013A8C).
+fn hit_sounds(b: &mut Battle, r: ObjectRef) {
+    use crate::content::{HitSound, SoundRole};
+    match b.game_rules().intake.hit_sound {
+        HitSound::ByConsole => {
+            let player = navi_record(b, r).actor_type == ActorType::Player;
+            let alliance = b.objects.get(r).alliance;
+            for side in 0..2 {
+                let own = player && side == alliance;
+                b.sound_for(side, if own { SoundRole::OwnHit } else { SoundRole::Hit });
+            }
+        }
+        HitSound::ByNavi => {
+            let role = if super::ai_navi::is_ai_navi(b, r) { SoundRole::AutoBattleHit } else { SoundRole::Hit };
+            b.sound(role);
+        }
+    }
+}
+
 /// `applyDamageToPlayer_801ba12`: subtract the final damage (Undershirt
 /// keeps 1 HP), then the element-5 damage; at 0 HP request deletion
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
@@ -315,14 +361,10 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
             d = hp - 1;
         }
         crate::kinds::subtract_hp(b, r, d);
-        // A player hears another sound when their own navi is hit;
+        // A player hears another sound when their own navi is hit (or, a hit
+        // that sounds by the navi, every console hears the navi's);
         // sprite_forceWhitePalette.
-        let player = navi_record(b, r).actor_type == ActorType::Player;
-        let alliance = b.objects.get(r).alliance;
-        for side in 0..2 {
-            let own = player && side == alliance;
-            b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
-        }
+        hit_sounds(b, r);
         b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
     }
@@ -362,12 +404,7 @@ fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
         }
         if crate::kinds::subtract_hp(b, r, d) {
             b.objects.sprite_mut(r).look.white = true;
-            let player = navi_record(b, r).actor_type == ActorType::Player;
-            let alliance = b.objects.get(r).alliance;
-            for side in 0..2 {
-                let own = player && side == alliance;
-                b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
-            }
+            hit_sounds(b, r);
         } else {
             fell = true;
         }
@@ -392,9 +429,9 @@ fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
 /// its sound) only with HP left; the element-5 damage takes the HP alone
 /// (0x0800AB92); at 0 HP, from either, the side's rules are asked
 /// (`hp_emptied`, 0x0800EBC8, which hold the navi at 1 HP themselves) and
-/// the navi falls unless they keep it. (Each console hears the hit's sound
-/// as its rules' `own_hit` or `hit`: EXE4's is one sound, 0x6B, for a navi
-/// whose NaviStats +0x26 isn't 1, as a netbattle's never are.) (Unported:
+/// the navi falls unless they keep it. (Its sound is the rules'
+/// `intake.hit_sound`'s: EXE4's, 0x6B on every console, 0x6D for a navi in
+/// auto battle, 0x08013A8C.) (Unported:
 /// 0x0800EE4C after the sound records the hit navi's panel into the hitter's
 /// side's records at 0x02037A90 and 0x02037C60, which nothing yet reads.)
 fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
@@ -414,12 +451,7 @@ fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
         o.hp = o.hp.saturating_sub(d);
         if o.hp != 0 {
             b.objects.sprite_mut(r).look.white = true;
-            let player = navi_record(b, r).actor_type == ActorType::Player;
-            let alliance = b.objects.get(r).alliance;
-            for side in 0..2 {
-                let own = player && side == alliance;
-                b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
-            }
+            hit_sounds(b, r);
         } else {
             left = false;
         }
