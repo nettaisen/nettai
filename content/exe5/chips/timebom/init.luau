@@ -2,7 +2,43 @@
 -- TimeBom1, TimeBom2, TimeBom3 and TimeBom+: the timebom series (each chip's own comment above its definition).
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local collision = require("../rules/collision")
+local countdown = require("@exelib/timebom/countdown")
 local timebom = require("@self/timebom")
+
+-- What the bombs are and what they react to: a neutral body, hit by everything (rows 0xE and 0xF).
+local BODY = { is = collision.neutral_body, hits = collision.everything }
+
+-- TimeBom1-3's bomb (0x080CEEE4's row 0).
+local BOMB = countdown.variant {
+    appear_anim = 0,
+    idle_anim = 1,
+    hp = 50,
+    identity = new.identity {
+        class = "field_object",
+        version = 5,
+        ai_index = 0x21,
+        look = { sprite = asset.sprite("countdown-bomb"), anim = 1, palette = 0, shadow = true, keeps_flip = true },
+    },
+    class = 1,
+    collision = BODY,
+}
+
+-- TimeBom+'s (row 1).
+local BIG_BOMB = countdown.variant {
+    appear_anim = 2,
+    idle_anim = 3,
+    hp = 300,
+    identity = new.identity {
+        class = "field_object",
+        version = 0,
+        ai_index = 0x21,
+        look = { sprite = asset.sprite("countdown-bomb"), anim = 3, palette = 0, shadow = true, keeps_flip = true },
+    },
+    class = 1,
+    collision = BODY,
+    strong_shake = true,
+}
 
 -- TimeBom1 (EXE5 chip 0x04b): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
 -- up the whole enemy area unless it is broken first (chips/timebom/timebom: EXE6's TimeBom with EXE5's placement).
@@ -18,7 +54,7 @@ local timebom1: Chip = {
     lockout = 30,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    dimming = timebom.controller.hook(timebom.variants.bomb),
+    dimming = timebom.controller.hook(BOMB),
     auto_battle = { class = "at_once" },
 }
 
@@ -36,7 +72,7 @@ local timebom2: Chip = {
     lockout = 30,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    dimming = timebom.controller.hook(timebom.variants.bomb),
+    dimming = timebom.controller.hook(BOMB),
     auto_battle = { class = "at_once" },
 }
 
@@ -54,7 +90,7 @@ local timebom3: Chip = {
     lockout = 30,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    dimming = timebom.controller.hook(timebom.variants.bomb),
+    dimming = timebom.controller.hook(BOMB),
     auto_battle = { class = "at_once" },
 }
 
@@ -83,7 +119,7 @@ local timebom_chip: Chip = {
     program_advances = {
         { order = 23, sequence = { recipe_timebom1, recipe_timebom2, recipe_timebom3 } },
     },
-    dimming = timebom.controller.hook(timebom.variants.big),
+    dimming = timebom.controller.hook(BIG_BOMB),
     auto_battle = { class = "at_once" },
 }
 
