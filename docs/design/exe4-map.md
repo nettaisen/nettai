@@ -542,8 +542,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 - **Spreader, HeatShot, Bubbler** (with Heat-V, HeatSide, Bub-V and BublSide: action 0x1E's variants 0 to 2,
   `chips/spreader/spreader`, DrkSpred's family on @exelib/spreadr): each variant's gun (attachment rows 0x0A, 6 and
-  0x0E), the tick it fires past and its height (0x080EC814's rows), and the chip's bullet row (objects/bullet: 3, 8 to
-  10, 4 to 6); nothing of their own.
+  0x0E), the tick it fires past and its height (0x080EC814's rows), and the chip's bullet (the bullet's rows 3, 8 to
+  10, 4 to 6), each chip's own; nothing of their own.
 - **Navi+20** (action 0x20's variant 4, its parameter 1: the Navi+ bonus, `modifier = "navi_plus"`): lib/plus, as
   Atk+10's.
 - **Meteors1** (with Meteors2 and 3: action 0x20's variant 0x11, `chips/meteors`): the spawner and its dropper
