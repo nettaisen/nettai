@@ -30,6 +30,8 @@ local roles: RolesSpec = {
     },
     sounds = {
         appear = asset.sound("appear"),
+        -- The custom gauge fills (0x080147F4).
+        gauge_full = asset.sound("gauge-full"),
         -- What the custom screen can't pick or take back (0x08020386, 0x08020634).
         refused = asset.sound("refused"),
         -- The custom screen's, which its player hears (docs/design/exe4-map.md §5): the window slides in (0x0801E24E);
