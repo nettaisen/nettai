@@ -1,0 +1,20 @@
+# EXE4's numbers of what its NaviStats name (exe4-compat's NaviStats conversion reads them). Written by hand from the
+# EXE4 ROM: edit it when content is renamed or added.
+
+# Navis: the navi numbers NaviStats +0x23 names (MegaMan 0, the one navi EXE4's netbattles have).
+[navis]
+"megaman" = 0
+
+# Weapons: the weapon routine numbers NaviStats +0x09 (the B button's) and +0x0A (the charged weapon's) name (the
+# routines at 0x0800CA7C: 0 the buster, 0x0800CC2E; 1 the charged shot, 0x0800CC54).
+[weapons]
+"megaman/buster" = [0]
+"megaman/charged-shot" = [1]
+
+# MegaMan's forms by soul number (NaviStats +0x24: 0 his base form; the souls, to port, from 1).
+[forms]
+"base" = 0
+
+# The auras a battle starts with by number (NaviStats +0x21, Mod Card 0x21: 2 Barrier100, 3 Barrier200, 6 LifeAura;
+# 0 none), those the content has.
+[barriers]
