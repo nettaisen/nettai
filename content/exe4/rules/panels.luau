@@ -29,7 +29,7 @@ return {
             cleared_by = "aqua",
         },
         holy = { flags = 0x00012010 },
-        pitfall = { flags = 0x00010210, stops_slides = true, crumbles = 190 },
+        pitfall = { flags = 0x00010210, stops_slides = true, traps = true, crumbles = 190 },
         hole = { flags = 0x00010010 },
     },
     -- EXE4's panel types by its own numbers.
