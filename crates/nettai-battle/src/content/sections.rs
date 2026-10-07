@@ -62,6 +62,12 @@ struct PanelTypeSection {
     /// An element by name.
     #[serde(default)]
     doubles: Option<String>,
+    #[serde(default)]
+    unbreakable: bool,
+    #[serde(default)]
+    stops_slides: bool,
+    #[serde(default)]
+    crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
     slide: Option<Vec<Vec<SlideStep>>>,
@@ -312,6 +318,7 @@ struct StatusSection {
     missing_collision_status: u32,
     reactions: super::rules::Reactions,
     reaction_actions: super::rules::ReactionActions,
+    drag: super::rules::DragRule,
     bugs_before_drain: bool,
     no_charge_drive: bool,
     hp_loss: super::rules::HpLoss,
@@ -434,6 +441,7 @@ impl Stated {
                 missing_collision_status: r.missing_collision_status.0,
                 reactions: r.reactions,
                 reaction_actions: r.reaction_actions,
+                drag: r.drag,
                 bugs_before_drain: r.intake.bugs_before_drain,
                 no_charge_drive: r.intake.no_charge_drive,
                 hp_loss: r.intake.hp_loss,
@@ -487,6 +495,7 @@ impl Stated {
             missing_collision_status: super::rules::MissingCollisionStatus(status.missing_collision_status),
             reactions: status.reactions,
             reaction_actions: status.reaction_actions,
+            drag: status.drag,
             emotion: status.emotion,
             form_break: status.form_break,
             weakness_hit_breaks_form: status.weakness_hit_breaks_form,
@@ -638,6 +647,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         slide,
                         cleared_by,
                         doubles,
+                        unbreakable: rule.unbreakable,
+                        stops_slides: rule.stops_slides,
+                        crumbles: rule.crumbles,
                         named: true,
                     };
                 }

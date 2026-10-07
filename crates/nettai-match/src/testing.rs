@@ -1,5 +1,5 @@
-//! Content for tests: content/exe6's definitions (and EXE5's:
-//! [`exe5_content`]), each game alone as a match loads it, on a made-up
+//! Content for tests: content/exe6's definitions (and EXE5's and EXE4's:
+//! [`exe5_content`], [`exe4_content`]), each game alone as a match loads it, on a made-up
 //! asset index
 //! (`testing::asset_names_used`), every sprite timed as the test content's
 //! navi is (nothing from a ROM), with their own strings.
@@ -53,6 +53,12 @@ pub fn exe6_content() -> Arc<Content> {
 pub fn exe5_content() -> Arc<Content> {
     static EXE5: OnceLock<Arc<Content>> = OnceLock::new();
     EXE5.get_or_init(|| Arc::new(defined(&["exe5"]).unwrap_or_else(|e| panic!("content/exe5: {e}")))).clone()
+}
+
+/// content/'s EXE4, defined once per test process.
+pub fn exe4_content() -> Arc<Content> {
+    static EXE4: OnceLock<Arc<Content>> = OnceLock::new();
+    EXE4.get_or_init(|| Arc::new(defined(&["exe4"]).unwrap_or_else(|e| panic!("content/exe4: {e}")))).clone()
 }
 
 /// A program on a NaviCust, for a test: which, in which of its colors (its
