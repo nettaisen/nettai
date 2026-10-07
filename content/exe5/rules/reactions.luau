@@ -13,10 +13,11 @@
 return {
     -- A push reads the first of bits 2 to 5 of the unflipped hitters' modifier, else the flipped ones' with the
     -- direction reversed (0x0800C9D8); an obstacle's the same from its own rows (0x0800D4B0, the table at 0x0800D53B:
-    -- EXE6's four and a fifth of nothing).
+    -- EXE6's four and a fifth of nothing). A push with 0x40 is a drag (0x08017B44, EXE6's `sub_801AEB0`).
     push_reading = {
         reads = "by_hitter_flip",
         bits = 4,
+        drag_bit = 0x40,
         obstacle_rows = {
             { dx = -1, dy = 0, panels = 6 },
             { dx = 1, dy = 0, panels = 6 },
@@ -28,15 +29,16 @@ return {
     -- The hit test (0x0801691C), where games differ: a FloatShoe body is hit by all (EXE5's collision types have no
     -- 0x80 self bit); the flag 0x80000000 is a body under the sea's surface, tested as a submerged one, and elec
     -- reaches either; a guard breaks to types with 0x1002 (so its own turn-aside mask, 0x0C004000, is the engine's
-    -- 0x0C005000 here); an elec hit counts once more on a body standing on a sea panel (0x08016AF6), as fire's on
-    -- grass.
+    -- 0x0C005000 here).
     hit_test = {
         float_shoe_needs_self_bit = false,
         bubbled_as_submerged = true,
         elec_reaches_submerged = true,
         guard_breaks_to = 0x1002,
-        elec_bonus_on_sea = true,
     },
+    -- A move's direction in the collision record (0x0800CC92, EXE6's `sub_800E994`): up, down, back or forward by
+    -- the side, other for a move of two panels or more right or down.
+    move_direction = "by_side",
     -- An obstacle's slide keeps no bounds: it goes anywhere open (0x08014894).
     obstacle_slide_bounds = false,
     push = {
@@ -51,13 +53,17 @@ return {
         { dx = 0, dy = 0, panels = 0 },
         { dx = 0, dy = 0, panels = 0 },
     },
+    -- A move's end on ice slides a body (0x080171F0), by the direction of the move (0x0800C988): none, up, down,
+    -- back, forward, other.
     ice = {
-        { dx = 0, dy = 0, panels = 0 },
-        { dx = 0, dy = -1, panels = 1 },
-        { dx = 0, dy = 1, panels = 1 },
-        { dx = -1, dy = 0, panels = 1 },
-        { dx = 1, dy = 0, panels = 1 },
-        { dx = 0, dy = 0, panels = 0 },
+        slide = {
+            { dx = 0, dy = 0, panels = 0 },
+            { dx = 0, dy = -1, panels = 1 },
+            { dx = 0, dy = 1, panels = 1 },
+            { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
+            { dx = 0, dy = 0, panels = 0 },
+        },
     },
     bubble_bob = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },

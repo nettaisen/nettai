@@ -33,7 +33,8 @@ return {
             -- By the direction of the move: none, up, down, back, forward, other.
             slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
         },
-        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire" },
+        -- A fire hit counts once more on a body standing on grass, an elec one on the sea (0x08016AF6).
+        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire", doubles = "fire" },
         ice = { flags = 0x00010810, trail_sound = asset.sound("freeze") },
         lava = {
             flags = 0x00011010,
@@ -50,6 +51,7 @@ return {
             drains = "fire",
             holds = 20,
             submerges = true,
+            doubles = "elec",
         },
     },
     -- EXE5's panel types by its own numbers (a panel trail's byte, NaviStats +0x12, names one: the cards' water a sea,
