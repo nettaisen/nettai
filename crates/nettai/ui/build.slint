@@ -1154,7 +1154,7 @@ component Summary {
                     }
 
                     NaviMark {
-                        width: 150px;
+                        width: root.navi != "" ? 150px : 0px;
                         navi: root.navi;
                     }
                 }
