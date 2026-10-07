@@ -588,7 +588,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   parameter is the navi's level (0, an SP's 3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a
   variant times 0, 2 or 3). The SP chips' damage goes by the side's deletion time (rules/sp_chips, formulas 1 to 22),
   the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count formula's `panels`). Roll (actor #0x2C)
-  is @exelib/roll's, with EXE4's differences as its spec's.
+  is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor #0x48) raises EXE5's Poltrgst's poltergeist
+  (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles by kind (attack objects #0x4C and #0x8C,
+  effect object #0x6E, 0x0800B3E8): their identities state `throwable = false` when they are ported. Its throws wait on
+  RockCube (the lab's junkman*/obstacle).
 
 **For the next steps:**
 
@@ -1550,3 +1553,7 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     `show_user` are EXE6's; Roll's recordings match (nothing in them reads the mark, and no viewer is blind). Shape: a
     `chip_use` rule for the user's vanish (EXE6's and EXE5's marks and tests, EXE4's none), with a recording of a blind
     viewer or a Reflector through a navi chip to confirm.
+151. **What the poltergeist leaves** (JunkMan's, @exelib/poltergeist). EXE4's 0x080EA16C and 0x0800B3E8 take every
+    field object but attack objects #0x4C and #0x8C and effect object #0x6E, tested by kind (EXE5's by NameID); the
+    engine asks the identity (`throwable`). None of the three is ported: whoever ports one gives its identity
+    `throwable = false`. JunkMan's throws themselves wait on RockCube (the lab's junkman*/obstacle).
