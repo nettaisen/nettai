@@ -196,12 +196,11 @@ export type MeteorMarkerLook = {
     shrink: number,
 }
 
--- A game's boomerang (@exelib/boomer/boomerang): its kind's key, its sprites (the tomahawk's too) and sound, what it
--- is (where a variant doesn't say) and hits, and its spark (where a variant doesn't say).
+-- A game's boomerang (@exelib/boomer/boomerang): its kind's key, its sprite and sound, what it is (where a variant
+-- doesn't say) and hits, and its spark (where a variant doesn't say).
 export type BoomerangLook = {
     id: string,
     sprite: SpriteAsset,
-    tomahawk_sprite: SpriteAsset,
     sound: Sound,
     is: CollisionType,
     hits: CollisionType,
@@ -209,15 +208,17 @@ export type BoomerangLook = {
 }
 
 -- A boomerang's variant: 16.16 pixels a tick along a row and along the
--- column, whether it turns the other side's panels it crosses to grass,
--- and whether it is the tomahawk (its own sprite and shadow, and its
--- second animation off row 1); its sprite, collision type and spark where
--- a game's kind's aren't its (EXE5's Boomer).
+-- column, whether it turns the other side's panels it crosses to grass;
+-- its sprite, collision type and spark where a game's kind's aren't its
+-- (EXE5's Boomer, EXE6's TomahawkCross Beast's tomahawk); its shadow (none:
+-- on the ground; the tomahawk's its sprite's own part) and its animation
+-- off row 1 (none: 0; the tomahawk's 1).
 export type BoomerangVariant = {
     speed: number,
     turn_speed: number,
     grass: boolean,
-    tomahawk: boolean?,
+    shadow: Shadow?,
+    off_row_1_anim: number?,
     sprite: SpriteAsset?,
     is: CollisionType?,
     spark: Spark?,

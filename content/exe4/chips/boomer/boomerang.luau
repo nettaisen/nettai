@@ -16,7 +16,6 @@ local SPRITE = asset.sprite("boomerang")
 boomerang.kind = common.make_kind {
     id = "boomer/boomerang",
     sprite = SPRITE,
-    tomahawk_sprite = SPRITE,
     sound = asset.sound("boomerang"),
     is = collision.attack,
     hits = collision.hits_navis,
