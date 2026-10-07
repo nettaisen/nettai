@@ -592,6 +592,16 @@ impl Battle {
         }
     }
 
+    /// The rules' `charge_released(side, navi)`.
+    pub(crate) fn rules_charge_released(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::ChargeReleased, Some(navi), None, None);
+    }
+
+    /// The rules' `release_taken(side, navi)`.
+    pub(crate) fn rules_release_taken(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::ReleaseTaken, Some(navi), None, None);
+    }
+
     /// The rules' `hit_bug(side, navi)`.
     pub(crate) fn rules_hit_bug(&mut self, side: u8, navi: ObjectRef) {
         self.call_rules(side, RulesHook::HitBug, Some(navi), None, None);

@@ -55,9 +55,9 @@ return {
     -- 0x080144E0: 0x1843F) the anti-sword trigger too. (A navi's own requests, GyroMan's take-off and landing,
     -- are his idle's to clear.)
     request_clears = {
-        attack = { "chaos_success", "chaos_failure" },
-        paralysis = { "anti_sword_triggered", "chaos_success", "chaos_failure" },
-        flinch = { "anti_sword_triggered", "chaos_success", "chaos_failure" },
-        drag = { "anti_sword_triggered", "chaos_success", "chaos_failure" },
+        attack = { "rules_release" },
+        paralysis = { "anti_sword_triggered", "rules_release" },
+        flinch = { "anti_sword_triggered", "rules_release" },
+        drag = { "anti_sword_triggered", "rules_release" },
     },
 }

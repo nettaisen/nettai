@@ -28,14 +28,15 @@ local form: FormDef = {
     sprite = asset.sprite("shadowsoul"),
     element = "null",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x31 (0x0800FA3E): DarkInvs (chip 0xBD), the charge table's row 0x31.
+    chaos = { weapon = chaos.weapon(darkinvs, { 40, 60, 90, 120, 150, 40 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x18 (0x0800F520, empty: the charged chip is the chip with its charge), the charge table's row 0x18.
         a_charge = charged_chips.routine({ 30, 30, 30, 30, 30, 70 }),
         back_special = back.weapon,
-        -- Routine 0x31 (0x0800FA3E): DarkInvs (chip 0xBD), the charge table's row 0x31.
-        chaos = chaos.weapon(darkinvs, { 40, 60, 90, 120, 150, 40 }),
     },
     charged_chips = { { family = "sword", damaging = false, plain = true } },
     status_reset = { "float_shoes", "floating_body" },

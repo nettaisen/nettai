@@ -291,6 +291,17 @@ pub enum RulesHook {
     /// `sub_801002C`, EXE5's 0x0800DD94: rules/light_dark's). The
     /// first part that answers decides; none, the framework's (EXE6's).
     NaviPalette,
+    /// `charge_released(side, navi)`: a full B charge is released while the
+    /// rules' own B charge is armed (`b_charge_time`; EXE5's Chaos Unison,
+    /// 0x0801086E): the rules note what it does (EXE5's: by its cycle's
+    /// window), which idle has them start (`release_taken`). Its result is
+    /// unused.
+    ChargeReleased,
+    /// `release_taken(side, navi)`: idle takes that release (EXE5's
+    /// 0x080F034E and 0x080F0382), the navi out of idle: the rules start
+    /// what it does (EXE5's chaos weapon, or its failure). Its result is
+    /// unused.
+    ReleaseTaken,
     /// `hit_bug(side, navi)`: any navi (a player's or not) takes the bugs
     /// its hit's code brings every navi (EXE6's `sub_801A6B4` and
     /// `sub_801A720`: the HP bug's level up, and paralysis and blindness),
@@ -438,6 +449,8 @@ impl RulesHook {
             RulesHook::NaviPalette => "navi_palette",
             RulesHook::NaviBug => "navi_bug",
             RulesHook::HitBug => "hit_bug",
+            RulesHook::ChargeReleased => "charge_released",
+            RulesHook::ReleaseTaken => "release_taken",
             RulesHook::BugMark => "bug_mark",
             RulesHook::NaviFlinched => "navi_flinched",
             RulesHook::HpEmptied => "hp_emptied",
@@ -460,7 +473,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 43] = [
+    pub const ALL: [RulesHook; 45] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -485,6 +498,8 @@ impl RulesHook {
         RulesHook::NaviPalette,
         RulesHook::NaviBug,
         RulesHook::HitBug,
+        RulesHook::ChargeReleased,
+        RulesHook::ReleaseTaken,
         RulesHook::BugMark,
         RulesHook::NaviFlinched,
         RulesHook::HpEmptied,

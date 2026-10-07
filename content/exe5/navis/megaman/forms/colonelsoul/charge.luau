@@ -58,7 +58,8 @@ local function draw(me: Object, s: State)
     if me.step_init == 0 then
         me:set_status("using_action", true)
         me:set_animation(ANIM)
-        local blade = if me.chaos_armed then CHAOS_BLADE else swords.blade
+        -- (The Chaos Unison charge armed: the rules' own B charge, rules/souls/chaos_charge.)
+        local blade = if me.b_charge_time ~= nil then CHAOS_BLADE else swords.blade
         attachment.attach(me, blade, "related", { anim = swords.blade_anim(me) })
         me:open_counter_window()
         battle.play_sound(SOUND)

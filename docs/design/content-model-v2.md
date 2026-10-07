@@ -713,7 +713,7 @@ the Regular memory, the custom level and the mood, and for a game that has them 
 of battle mode 9's A button. What may be left out reads as nothing for
 every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `banners`), a table
 that is empty without it (`elements`, `buster`, `math`, `custom_screen`), and in a section a list or an attribute
-of one entry that is none unless stated (a panel type's `burn`, the buster's `chaos_cycle`). A rule that picks
+of one entry that is none unless stated (a panel type's `burn`). A rule that picks
 between behaviors is named for what it does, not for a game (`shake = "console_rng"`, `retype = "is_alone"`,
 `obstacle_actions = "own_from_8"`). **A game has one ruleset** (the user: "there should only be
 one ruleset per game", then "collapse systems into one rules definition"): `define.rules` takes no `id`, a second
