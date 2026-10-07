@@ -88,6 +88,32 @@ function panels.closest_in_row(side: number, y: number, require: number, forbid:
     end
 end
 
+-- `sub_800D190` (EXE4's 0x0800A1E4): across the rows, the front-most of
+-- `side`'s panels whose flags meet (require, forbid): each row's
+-- `closest_in_row`, the greatest of them for side 0, the least for side 1;
+-- 0 without one.
+function panels.front_most(side: number, require: number, forbid: number): number
+    local found: { number } = {}
+    for y = 1, 3 do
+        local x = panels.closest_in_row(side, y, require, forbid)
+        if x ~= 0 then
+            table.insert(found, x)
+        end
+    end
+    if #found == 0 then
+        return 0
+    end
+    local x = found[1]
+    for i = 2, #found do
+        if side == 0 then
+            x = math.max(x, found[i])
+        else
+            x = math.min(x, found[i])
+        end
+    end
+    return x
+end
+
 -- `sub_800D618`: (x, y) is `victim`'s home but someone else holds it.
 function panels.taken_from(x: number, y: number, victim: number): boolean
     local p = field.panel(x, y)

@@ -64,7 +64,19 @@
 "navi-chip-controller" = { pool = "effect", index = 0x42, scratch_position = true }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "deltaray/navi" = { pool = "actor", index = 0x3D }
+"serchman/navi" = { pool = "actor", index = 0x31 }
+"serchman/scope" = { pool = "effect", index = 0x43 }
+"serchman/shot" = { pool = "attack", index = 0x57 }
+"thunman/navi" = { pool = "actor", index = 0x37 }
+"thunman/thunder" = { pool = "attack", index = 0x71 }
+"metalman/navi" = { pool = "actor", index = 0x40 }
+"junkman/navi" = { pool = "actor", index = 0x48 }
+"junkman/poltergeist" = { pool = "effect", index = 0x73 }
 # The follow effect (0x080E5B34): DeltaRay's burst.
 "follow-effect" = { pool = "effect", index = 0x31 }
 # The Elem chips' flame (action 0x60, 0x080CE49C).
 "elem/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+# The wind stages' wind (the actor lists' entry type 6, 0x080068DE: effect 0x41, 0x080E6820) and the gusts it blows
+# (0x080D6724).
+"wind" = { pool = "effect", index = 0x41, scratch_position = true }
+"gust" = { pool = "attack", index = 0x49, scratch_position = true }
