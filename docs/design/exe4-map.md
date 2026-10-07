@@ -142,29 +142,48 @@ a game's fact at those three bytes, and EXE4's record has no lock-on byte or dar
 
 ### 3.3 NaviStats
 
-0x40 bytes a side, two blocks at 0x0203BEC0 and 0x0203BF00 in battle (R). Eight more 0x40-byte blocks hang off a
-pointer at the toolkit's +0x78 (R: 0x0800D67E walks eight; whose they are: ?). The layout is EXE4's own.
-`fields.py --to B4WE navistats` (the field each call to a NaviStats accessor names, EXE6's against EXE4's; one to
-three calls each, so to confirm):
+0x40 bytes a block (R). **In battle**, a side's at 0x0203BEC0 + 0x40 side (0x0800D742), and eight more from
+0x0203BCC0 (0x0800D74C). **In the save**, eight blocks from the toolkit's +0x78: the save image's 0x4E60 (the save's
+pointers, toolkit +0x40 to +0x98, are 0x02002130 + the shift + a table's offsets, 0x080061AC: the routine that shifts
+the save, 0x08006128, sets them); MegaMan's is the first (blocks 1 to 7 hold another's defaults). The accessors
+(0x0800D756 on: set, get, a byte or a halfword, by side; 0x0800D78A on, MegaMan's save block's: 0x0800D78A is the
+"set_effect" Tango's Mod Cards call, so a card's effect id is the offset it sets). `tools/exe4/navistats.py` lists
+every call with a constant offset, by offset, with the caller's EXE6 and EXE5 counterparts: 43 offsets used.
 
-| EXE6 | EXE4 (calls) | EXE6's field (exe6-compat's codec) | BN4's Mod Card effect id (T, multi-game.md §2.4) |
-|---|---|---|---|
-| +0x0A | +0x12 (3) | the custom level (chips dealt) | 0x12, the custom screen's chips |
-| +0x0F | +0x1F (1) | read by the starting mood (`sub_8013892`; not modeled) | 0x1F, Full Synchro at the start |
-| +0x06 | +0x21 (1) | the first barrier, read by the starting mood | 0x21, an aura |
-| +0x07 | +0x0A (1) | the back special (B+Left) | 0x0A, the B charge (0x0C is B+Left) |
-| +0x39 | +0x09 (1) | the A charge weapon | 0x09, the B button |
-| +0x29 | +0x23 (6), +0x24 (3) | the navi | |
-| +0x2C | +0x23 (2), +0x24 (1), +0x00 (1) | the form | 0x24, a soul |
-| +0x0E | +0x00 (2), +0x27 (1) | the mood | |
-| +0x02 | +0x06 (1) | rapid | |
-| +0x18, +0x19, +0x31 | +0x0E, +0x0F, +0x24 (1 each) | the HP drain, custom drain and processing bugs | |
-| +0x16, +0x22, +0x26 | +0x00, +0x10, +0x19 (1 each) | the hit-status bug, the sun, chip drops | |
-| +0x64 (the second block) | +0x40 (1) | | |
+What a block holds, as far as read (R: the defaults a new block gets, 0x0800D6BE; MegaMan's HP, copied from the save's
+game state, 0x0800D726; the Mod Cards' effects, T; the paired reads of `fields.py --to B4WE navistats`, EXE6's offset
+in brackets, one to three calls each):
 
-So the Mod Card effect ids are NaviStats offsets (the custom level's +0x12 by three calls and Full Synchro's +0x1F
-agree; the rest one call each, some likely mispaired), as EXE6's bug codes are into its block: a card's effect sets
-the field of that offset. Where HP and max HP are in the block (?); the save's max HP is at 0x21CA (T).
+| Offset | Default | What |
+|---|---|---|
+| +0x00 | 0x99 | the mood, likely (EXE6 +0x0E: two paired reads; the played save's MegaMan has 0xAA) |
+| +0x05 | 0 | the buster's attack (Mod Card 0x05; read by EXE6's buster routines `sub_8011A7E` and kin [+0x01]) |
+| +0x06 | 0 | rapid [+0x02] (`sub_800FAAC`) |
+| +0x07 | 0 | charge, likely [+0x03] |
+| +0x09 | 0 | the B button's shot (Mod Card 0x09) |
+| +0x0A | 1 | the charged shot (Mod Card 0x0A, "B charge") |
+| +0x0C | 0xFF | B+Left (Mod Card 0x0C; none) |
+| +0x0E, +0x0F | 0 | the HP drain and custom drain bugs, likely [+0x18, +0x19] |
+| +0x10, +0x11 | 0x20, 4 | ? |
+| +0x12 | 5 | the custom level, the chips dealt (Mod Card 0x12, up to 8) [+0x0A] |
+| +0x13, +0x14 | 5, 1 | the Mega and Giga folder limits (Mod Cards 0x13, 0x14) |
+| +0x17 | 0x1F | ? |
+| +0x18 | 0 | the supports (Mod Card 0x18, Triple Supporter) [+0x0D] |
+| +0x1B | 0xFF | the panel a step leaves (Mod Card 0x1B: 1 broken, 3 cracked, 5 metal, 9 holy; none) |
+| +0x1F | 0 | Full Synchro at the start (Mod Card 0x1F) [+0x0F] |
+| +0x20 | 1 | ? |
+| +0x21 | 0 | the aura at the start (Mod Card 0x21: 2 Barrier100, 3 Barrier200, 6 LifeAura) [+0x06] |
+| +0x23 | 0 | the navi, likely [+0x29: six paired reads] |
+| +0x24 | 0 | the soul (Mod Card 0x24: a battle starts in it, 1 on) [+0x2C] |
+| +0x27 | 0 | MegaMan's color (Mod Card 0x27) |
+| +0x28 | 0 | All Guard (Mod Card 0x28) |
+| +0x2A | 1 | ? |
+| +0x30, +0x32 | 100 | HP and max HP (MegaMan's from the save's 0x2150 and 0x2152) [+0x40, +0x42] |
+| +0x34 | 100 | the base max HP (the save's 0x21CA, before the NaviCust's and the Mod Cards') |
+| +0x36 | 500 | the light/dark value (a halfword; Tango's dark save 460, its light saves 1000) [EXE5's +0x44] |
+
+The rest (+0x01 to +0x04, +0x08, +0x0B, +0x0D, +0x15, +0x16, +0x19, +0x1C to +0x1E, +0x22, +0x25, +0x26, +0x29,
++0x2B) is used and unread yet: the step that ports what reads it names it.
 
 ### 3.4 RAM
 
@@ -302,7 +321,7 @@ exchange.
   the extraction (§14).
 - **The oracle:** an EXE4 layout (the addresses of §3.4 and those still to find), its hooks (Tango's round start and
   round result, the frame routine), the four ROMs in the chip lab with Tango's twelve saves as bases.
-- **Open:** the NaviStats fields beyond those §3.3 pairs (HP among them); what the object record's +0x17 byte is;
+- **Open:** the NaviStats fields §3.3 leaves unread; what the object record's +0x17 byte is;
   the custom screen's states and Double Soul's offer; the dark chip offer; the emotion function; the turn-start order
   of a transformation; the panel entry's size and types (BN4 numbers holy 9, metal 5: multi-game.md §2.4); the link
   exchange's contents; the assets §14 leaves as placeholders, and the names of the sprites and sounds it lists
