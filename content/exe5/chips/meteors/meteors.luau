@@ -42,6 +42,8 @@ meteors.kind = falling_meteor.make_kind("meteor", {
     -- (Its landing's burst EXE6's.)
     burst = effects.burst,
     marker = marker,
+    hit_on = "burst",
+    marker_takes_side = true,
 })
 
 export type ShowerState = {
