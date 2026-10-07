@@ -99,7 +99,7 @@ const LAYOUT: CustomLayout = CustomLayout {
     slots: 0xE1,
     column_icons: 0x125,
     name_bar: 0x1D6,
-    cross_names: 0x139,
+    form_names: 0x139,
     slot_blank: 1,
     ok_cursor: CursorPlace {
         x: 0x58 + 3,
@@ -175,9 +175,9 @@ struct VersionAddresses {
     emblems: u32,
     emblem_palettes: u32,
     /// `sub_8029D94`'s `dword_86E7DCC`: ten names of 0x240 bytes.
-    cross_names: u32,
+    form_names: u32,
     /// `sub_8029EAC`'s `dword_86E944C`: ten palettes.
-    cross_palettes: u32,
+    form_name_palettes: u32,
 }
 
 const FALZAR: VersionAddresses = VersionAddresses {
@@ -186,8 +186,8 @@ const FALZAR: VersionAddresses = VersionAddresses {
     beast_buttons: 0x086E_79CC,
     emblems: 0x086F_5834,
     emblem_palettes: 0x086E_56FC,
-    cross_names: 0x086E_7DCC,
-    cross_palettes: 0x086E_944C,
+    form_names: 0x086E_7DCC,
+    form_name_palettes: 0x086E_944C,
 };
 
 /// The US Gregar ROM's (`MEGAMAN6_GXXBR5E`), read off the same code's
@@ -198,12 +198,12 @@ const GREGAR: VersionAddresses = VersionAddresses {
     beast_buttons: 0x086E_5950,
     emblems: 0x086F_3770,
     emblem_palettes: 0x086E_3680,
-    cross_names: 0x086E_5D50,
-    cross_palettes: 0x086E_73D0,
+    form_names: 0x086E_5D50,
+    form_name_palettes: 0x086E_73D0,
 };
 
 const BEAST_BUTTON_BYTES: usize = 0x400;
-pub(crate) const CROSS_NAMES: (usize, usize) = (10, 0x240);
+pub(crate) const FORM_NAMES: (usize, usize) = (10, 0x240);
 const CROSS_PALETTE_COUNT: u32 = 10;
 
 fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
@@ -236,8 +236,8 @@ fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
     };
     VersionPictures {
         buttons: vec![(BEAST_OUT_BUTTON.into(), beast_out)],
-        cross_names: tiles(rom, (a.cross_names, CROSS_NAMES.0 * CROSS_NAMES.1)),
-        cross_palettes: palettes(a.cross_palettes, CROSS_PALETTE_COUNT),
+        form_names: tiles(rom, (a.form_names, FORM_NAMES.0 * FORM_NAMES.1)),
+        form_name_palettes: palettes(a.form_name_palettes, CROSS_PALETTE_COUNT),
     }
 }
 
@@ -364,10 +364,10 @@ pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
         name_bar: tiles(rom, NAME_BAR),
         window_maps: WINDOW_MAPS.iter().map(|&a| map(rom, a)).collect(),
         window_patches: patches(rom, WINDOW_PATCHES),
-        cross_maps: (0..CROSS_MAPS.1)
+        form_list_maps: (0..CROSS_MAPS.1)
             .map(|i| map(rom, CROSS_MAPS.0 + 2 * MAP_CELLS * i))
             .collect(),
-        cross_patches: patches(rom, CROSS_PATCHES),
+        form_list_patches: patches(rom, CROSS_PATCHES),
         frame_palettes: palettes(FRAME_PALETTES),
         icon_palette: palette(rom, ICON_PALETTE),
         gray_palette: palette(rom, GRAY_PALETTE),
@@ -390,8 +390,8 @@ pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
         empty_icon: tiles(rom, (EMPTY_ICON, 0x80)),
         versioned,
         cursor: tiles(rom, CURSOR),
-        cross_cursor: tiles(rom, CROSS_CURSOR),
-        cross_cursor_palette: palette(rom, CROSS_CURSOR_PALETTE),
+        form_list_cursor: tiles(rom, CROSS_CURSOR),
+        form_list_cursor_palette: palette(rom, CROSS_CURSOR_PALETTE),
         emblems: emblems(roms, names),
         regular: tiles(rom, REGULAR),
         advance_name_colors: (0..ADVANCE_NAME_COLORS.1)

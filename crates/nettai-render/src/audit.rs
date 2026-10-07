@@ -76,10 +76,10 @@ pub enum Lookup {
     Button(u16),
     /// A navi's no-running message in the dialogue font, with its portrait.
     RunMessage(NaviHandle),
-    /// A Cross's name and colors in the Cross window.
-    CrossName(FormHandle),
-    /// A Cross's description in the dialogue font.
-    CrossDescription(FormHandle),
+    /// A form's name and colors in the form list's window.
+    FormName(FormHandle),
+    /// A form's description in the dialogue font.
+    FormDescription(FormHandle),
     /// A banner's glyphs.
     Banner(BannerId),
     /// A telop's place (its banner's layout).
@@ -137,8 +137,8 @@ impl Lookup {
             Lookup::Emblem(h) => format!("navi {} emblem", navi(h)),
             Lookup::Button(h) => format!("button {}", c.defs.button(nettai_battle::content::ButtonHandle(h)).name),
             Lookup::RunMessage(h) => format!("navi {} run message", navi(h)),
-            Lookup::CrossName(h) => format!("form {} cross name", form(h)),
-            Lookup::CrossDescription(h) => format!("form {} description", form(h)),
+            Lookup::FormName(h) => format!("form {} name in the form list", form(h)),
+            Lookup::FormDescription(h) => format!("form {} description", form(h)),
             Lookup::Banner(id) => format!("banner {}", asset(AssetKind::Banner, id.0)),
             Lookup::Telop(id) => format!("telop {}", asset(AssetKind::Banner, id.0)),
             Lookup::TelopUnknown => "telop of an untold chip".into(),

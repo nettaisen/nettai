@@ -164,7 +164,7 @@ fn custom_of(rom: &Rom, a: &Addresses) -> CustomLettering {
             other: picture(rom, a.other),
         },
         // (EXE5 has no Cross window.)
-        cross_names: Vec::new(),
+        form_names: Vec::new(),
         // Arm Change's and the re-deal button's pictures in the chip window,
         // and the soul button's tiles (by name, as a pack keeps them).
         buttons: vec![
