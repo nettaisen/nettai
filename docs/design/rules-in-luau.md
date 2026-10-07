@@ -399,7 +399,7 @@ by the binding.
 | `turn_started(side)` | after the sequencer, at the turn's start (`sub_800840C`'s end) | a turn in Beast Out spends one (`sub_8015A38`) |
 | `custom_requested(side)` | when the custom screen is asked for (`sub_8008452`) | the Beast Out check comes due (`sub_8015A16`) |
 | `custom_closed(side)` | when both results are in and the fight resumes (`sub_8009338`) | the Beast Out check's delay is set to 1 |
-| `custom_result(side, result)` | when both results are in (`sub_800B3D8`) | |
+| `custom_result(side)` | when both results are in and each hand with chips is installed (`sub_800B3D8`), the tick before the fight resumes | EXE4's dark chips' costs (0x0801EA1E, rules/dark_chips) |
 | `round_end(side)` | once per side as the round finishes | Beast Out used and crossed, read after the battle |
 | `folder_check(side)` | only when a tool asks (`Battle::check_folder`: a match's checks, a netplay offer, the editor, live play's random folder), never in a simulation | the folder rules (rules/folder: the size, the chips the pack lists, codes, copies by MB, Mega, Giga and dark limits, the Regular memory, the tag chips' 60 MB) |
 

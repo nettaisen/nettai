@@ -1,7 +1,8 @@
 # EXE4's chips by key: the original's numbers, written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 # id: the chip table's number (both versions, both regions); version: a version's own giga chip's version
 # (redsun or bluemoon), whose record the other version's ROM has but whose library it isn't in. The chips a
-# folder can hold (Tango's legal chips), the keys from the US names.
+# folder can hold (Tango's legal chips) and the dark chips the custom screen offers (0x0801DF38's lists), the
+# keys from the US names.
 
 "cannon" = { id = 0x001 }
 "hicannon" = { id = 0x002 }
@@ -189,6 +190,14 @@
 "greenwd1" = { id = 0x0b8 }
 "greenwd2" = { id = 0x0b9 }
 "greenwd3" = { id = 0x0ba }
+"drkcanon" = { id = 0x0bb }
+"drksword" = { id = 0x0bc }
+"darkbomb" = { id = 0x0bd }
+"drkvulcn" = { id = 0x0be }
+"drklance" = { id = 0x0bf }
+"drkspred" = { id = 0x0c0 }
+"drkstage" = { id = 0x0c1 }
+"drkrecov" = { id = 0x0c2 }
 "lifeaura" = { id = 0x0c9 }
 "muramasa" = { id = 0x0ca }
 "guardian" = { id = 0x0cb }

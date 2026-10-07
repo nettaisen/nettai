@@ -1354,6 +1354,9 @@ declare battle: {
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
+    -- The chip at i of a side's hand (from its first chip, used ones too),
+    -- if any.
+    hand_chip: (side: number, i: number) -> Chip?,
     -- EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
     -- its cursor to the first empty slot.
     hand_left: (side: number) -> number,
@@ -1915,6 +1918,10 @@ export type RulesSpec = {
         turn_started: ((side: number) -> ())?,
         -- A custom screen was asked for mid-fight (`sub_8008452`).
         custom_requested: ((side: number) -> ())?,
+        -- Both results are in and each hand with chips is installed
+        -- (`sub_800B3D8`), the tick before the fight resumes: EXE4's dark
+        -- chips' costs (0x0801EA1E).
+        custom_result: ((side: number) -> ())?,
         -- Both results are in and the fight resumes (`sub_8009338`).
         custom_closed: ((side: number) -> ())?,
         -- A tool asks whether a folder keeps the side's game's folder rules
