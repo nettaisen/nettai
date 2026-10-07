@@ -33,10 +33,15 @@ return {
         poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison"), stand = panel_types.poison },
         metal = { flags = 0x00030010, unbreakable = true },
         grass = { flags = 0x00010410, doubles = "fire", stand = panel_types.grass(nil), cleared_by = "fire" },
-        ice = { flags = 0x00010810, doubles = "elec" },
+        ice = {
+            flags = 0x00010810,
+            doubles = "elec",
+            move_end = panel_types.ice_pushes({ { 0x00, 0x40, 0x80, 0x20, 0x10 }, { 0x00, 0x40, 0x80, 0x10, 0x20 } }),
+            slide = panel_types.ice,
+        },
         lava = { flags = 0x00011010, expires = 960, burn = LAVA_BURN, cleared_by = "aqua" },
         holy = { flags = 0x00012010 },
-        pitfall = { flags = 0x00010210, stops_slides = true, traps = true, crumbles = 190 },
+        pitfall = { flags = 0x00010210, traps = true, crumbles = 190, slide = panel_types.pitfall },
         hole = { flags = 0x00010010 },
     },
     -- EXE4's panel types by its own numbers.

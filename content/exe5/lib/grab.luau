@@ -14,6 +14,12 @@ local shot_kind = shot.make_kind {
     land_sound = asset.sound("grab-shot"),
     target = collision.hits_navis,
     self_type = collision.thrown,
+    spares = "last_full_column",
 }
 
-return controller.make { id = "grab/controller", shot = shot_kind }
+return controller.make {
+    id = "grab/controller",
+    shot = shot_kind,
+    column = controller.column_to_grab,
+    panel = controller.edge_panel,
+}
