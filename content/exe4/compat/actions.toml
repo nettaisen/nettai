@@ -38,6 +38,8 @@
 # AntiDmg's counter (0x080ED972), which its trap's catch starts.
 "antidmg/counter" = 0x38
 "antiswrd/counter" = 0x39
+# AntiMagc's stance (0x080EE9EE).
+"megaman/anti-magic/action" = 0x72
 # The Thunders' (the chips' action 0x26, 0x080ECE14).
 "thunder1/action" = 0x26
 "thunder2/action" = 0x26

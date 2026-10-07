@@ -1475,8 +1475,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     charged shot's projectile; Reflect's routine sets the B+Left cooldown as it starts (`reactions.attack_end_lockout`)
     and a turned-aside hit marks the guard byte with 1 (`reactions.hit_test.guard_marks_direction`); the guard's sound
     (0x6E) is the roles' `sounds.guard`. HubBatc has its definition. The lab's navicust/shield, reflect and hubbatc
-    match, sounds too. Open: AntiMagc (routine 0x27: its stance, action 0x72 at 0x080EE9EE, arms the AntiDmg chip's
-    trap for 13 ticks, `sub_802CE8A` with chip 0x91, and its catch is AntiDmg's counter): with the AntiDmg chip. The
+    match, sounds too. **Done** (group B): AntiMagc (routine 0x27, guards' `anti_magic`: its stance, action 0x72 at
+    0x080EE9EE, makes AntiDmg its side's defensive chip for 13 ticks, 0x08022FDE with chip 0x91, and a catch hands over
+    to the trap's counter, 0x0800C780); the lab's stance/antimagc-* match and draw as mGBA's. Open: the
     Guard chips' variants 0 to 2 of the guard counter with a shock wave (0x080CFD2A, its row 6): with the Guard chips.
     EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
     is never turned aside while paused in a netbattle (nothing hits then).
