@@ -167,7 +167,8 @@ struct BannersSection {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct StatusSection {
-    hp_bug_periods: [u8; 8],
+    hp_drain: super::rules::HpDrainRule,
+    custom_drain: super::rules::CustomDrainRule,
     form_tick: bool,
     flash_hides_on_clear: bool,
     /// The status word a navi without collision data reads as.
@@ -284,7 +285,8 @@ impl Stated {
             buster: Some(BusterSection { recovery: r.buster_recovery.clone(), empty_hand: r.empty_hand }),
             holding_banners: Some(r.holding_banners.clone()),
             status: Some(StatusSection {
-                hp_bug_periods: r.hp_bug_periods,
+                hp_drain: r.hp_drain,
+                custom_drain: r.custom_drain,
                 form_tick: r.form_tick,
                 flash_hides_on_clear: r.flash_hides_on_clear,
                 missing_collision_status: r.missing_collision_status.0,
@@ -332,7 +334,8 @@ impl Stated {
             family_elements,
             panels,
             holding_banners: self.holding_banners.unwrap_or_default(),
-            hp_bug_periods: status.hp_bug_periods,
+            hp_drain: status.hp_drain,
+            custom_drain: status.custom_drain,
             form_tick: status.form_tick,
             flash_hides_on_clear: status.flash_hides_on_clear,
             missing_collision_status: super::rules::MissingCollisionStatus(status.missing_collision_status),

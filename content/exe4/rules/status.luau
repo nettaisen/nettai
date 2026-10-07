@@ -390,10 +390,13 @@ local status = {
         duration = 0,
         timer = { other = 0 },
     },
-    -- The status rules, EXE4's nearest the engine can say (exe4-map.md §18 lists each gap): EXE4's HP bug drains a
-    -- point every NaviStats +0x0E ticks (0x0800C164: the byte is the period, no table); the rest EXE5's until read.
+    -- The status rules, EXE4's as read and, where exe4-map.md §18 lists a gap, the nearest the engine can say. Its
+    -- NaviCust's HP bug drains a point every NaviStats +0x0E ticks (0x0800C164: the byte is the period, no table),
+    -- through a pause; its custom screen's every +0x0F ticks while the side's selection runs (0x0800C194: the
+    -- status's bit 0).
     rules = {
-        hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 },
+        hp_drain = { periods = "stat", stops_while_paused = false },
+        custom_drain = { periods = "stat", status = 0x1 },
         form_tick = false,
         flash_hides_on_clear = true,
         missing_collision_status = 0xE55EC002,
