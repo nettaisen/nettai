@@ -44,4 +44,6 @@ return {
     -- A banner (0x08014904, its steps from 0x08014994) slides in for 9 ticks, holds 30, slides out for 9; one that
     -- holds until let go (its table's state 2) doesn't count its hold, and let go (0x0801616C) slides out at once.
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out" },
+    -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
+    rng1_per_frame = false,
 }

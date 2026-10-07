@@ -762,9 +762,11 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// flags, state, action (a navi's by EXE4's numbers: `Compat::navi_action`),
 /// phase and its init byte, panel, side, element (the recording's +0x17),
 /// HP, position, timer, animation, and with `status` its collision's hit
-/// flags. (The lab's first recordings read the word at EXE6's place in the
-/// collision record, +0x3C, where EXE4's keeps none, always 0; later ones
-/// its hit flags, +0x54, exe4-map.md §15, §17: [`Round::carries_status`].)
+/// flags: what hit it this tick (the collision record's +0x54, EXE5's
+/// +0x68, the engine's `acc.hit_flags`). (The lab's first recordings read
+/// the word at EXE6's place in the collision record, +0x3C, where EXE4's
+/// keeps none, always 0; later ones its +0x54, exe4-map.md §15, §17:
+/// [`Round::carries_status`].)
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat, status: bool) -> Vec<String> {
     compare_with(b, f, f, compat, status)
 }
@@ -858,7 +860,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
                 Ok(n) => format!("{n:#04x}"),
                 Err(e) => format!("? ({e})"),
             };
-            let flags = if status { format!("{:#x}", x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0)) } else { "-".into() };
+            let flags = if status { format!("{:#x}", x.collision.map(|c| b.collision.get(c).acc.hit_flags).unwrap_or(0)) } else { "-".into() };
             vec![
                 ("kind", kind),
                 ("flags", format!("{:#04x}", x.flags)),

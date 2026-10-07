@@ -55,4 +55,6 @@ return {
     fade_clear = "at_target",
     -- A banner's steps are EXE6's.
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more" },
+    -- Each console's RNG1 advances once a frame after the battle's, as EXE6's.
+    rng1_per_frame = true,
 }
