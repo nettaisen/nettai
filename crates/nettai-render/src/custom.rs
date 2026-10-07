@@ -387,70 +387,78 @@ fn view_look<'a>(v: &View<'a>, view: ButtonView) -> Option<&'a ButtonPictures> {
     crate::lookups::button_of(v.assets, v.buttons, &d.name)
 }
 
-/// The icon of the soul EXE5's soul button offers or gave, if the special
-/// slot is the soul button: the pack's `icons` and the icon's first tile in
-/// them (the soul's, Chaos Unison's the 13th: 0x0802341C).
-fn soul_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
+/// The icon of the form the button that offers a form (the view
+/// `form_offer`) offers or gave, if the special slot is that button: the
+/// pack's `icons` of the button and the icon's first tile in them, the
+/// offer's place (`offer_icon`). (EXE5's soul button: the soul's icon,
+/// Chaos Unison's the 13th, 0x0802341C.)
+fn offered_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
     if !offers_form(v.b, v.screen, SPECIAL_SLOT) {
         return None;
     }
     let b = view_look(v, ButtonView::FormOffer)?;
-    let offer = v.b.offer(v.side)?;
-    let n = if offer.alternate { CHAOS_ICON } else { soul_place(v.b, v.side, offer.form) };
+    let n = offer_icon(v.b, v.side, v.b.offer(v.side)?);
     (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
 }
 
-/// The Chaos Unison's icon among the soul button's.
-const CHAOS_ICON: usize = 13;
-
-/// A soul's icon among the pack's soul button's: its place among its
-/// side's navi's souls, from 1 (the navi's `forms.souls.form_list` lists them in the
-/// icons' order, the original's soul numbers'); 0, the empty icon, for no
-/// soul or one the navi hasn't.
-fn soul_place(b: &Battle, side: u8, soul: Option<FormHandle>) -> usize {
-    let navi = b.stats[side as usize & 1].navi;
-    match (soul, &b.content.navi(navi).forms) {
-        (Some(f), Some(forms)) => forms.listed("souls").iter().position(|&s| s == f).map_or(0, |i| i + 1),
-        _ => 0,
+/// An offer's icon among its button's: the offered form's place in the
+/// side's navi's form list that holds it, from 1 (the list is in the icons'
+/// order: EXE5's souls, the original's soul numbers), and the form's
+/// alternate (`offer_chaos`) the one after the list's; 0, the empty icon,
+/// for no form or one none of the navi's lists holds.
+fn offer_icon(b: &Battle, side: u8, offer: nettai_battle::rules::Offer) -> usize {
+    match form_place(b, side, offer.form) {
+        Some((_, len)) if offer.alternate => len + 1,
+        Some((place, _)) => place + 1,
+        None => 0,
     }
 }
 
-/// EXE5's soul choice (its state 9, 0x080232D0: the window whose view is
-/// `offer_flight`, at its step and count, `at`): the soul's icon as
-/// a 16x16 sprite (sprite palette 13) over the picked column's cell after
-/// the picks (0x0802330C: y = 24 + 16 picks, x 0x60), drawn from the tick
-/// after it is loaded (0x08023360) through the white flashes, rising 2
-/// pixels a tick for 8 ticks onto the first cell (0x0802337A), whitened by
-/// its flash (fades 0x34 and 0x30, the sprite palette's), until the soul
-/// takes the first cell (0x080233E0).
-fn soul_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Option<SpritePart<'a>> {
-    let (tiles, first) = soul_icon(v)?;
-    let soul = v.b.offer(v.side)?.form;
-    flight(v, tiles, first, at, soul, problems)
+/// Where `form` is among side `side`'s navi's forms: its place in the
+/// first of the navi's form lists that holds it (from 0), and the list's
+/// length.
+fn form_place(b: &Battle, side: u8, form: Option<FormHandle>) -> Option<(usize, usize)> {
+    let navi = b.stats[side as usize & 1].navi;
+    let (place, list) = b.content.navi(navi).forms.as_ref()?.holding(form?)?;
+    Some((place, list.len()))
 }
 
-/// Why a console draws a soul's flying icon otherwise than the frontend:
-/// the game draws every soul's in its own version's outline, the frontend
-/// each soul's in the soul's version's.
-pub const OTHER_VERSIONS_SOUL: &str = "a soul's icon in its own version's outline (the console's ROM draws every soul's in the console's)";
+/// The flight of the offered form's icon (EXE5's soul choice, its state 9,
+/// 0x080232D0: the window whose view is `offer_flight`, at its step and
+/// count, `at`): the icon as a 16x16 sprite (sprite palette 13) over the
+/// picked column's cell after the picks (0x0802330C: y = 24 + 16 picks,
+/// x 0x60), drawn from the tick after it is loaded (0x08023360) through the
+/// white flashes, rising 2 pixels a tick for 8 ticks onto the first cell
+/// (0x0802337A), whitened by its flash (fades 0x34 and 0x30, the sprite
+/// palette's), until the form takes the first cell (0x080233E0).
+fn offered_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Option<SpritePart<'a>> {
+    let (tiles, first) = offered_icon(v)?;
+    let form = v.b.offer(v.side)?.form;
+    flight(v, tiles, first, at, form, problems)
+}
 
-/// The row of the soul button's icon palettes that is `soul`'s own
+/// Why a console draws an offered form's flying icon otherwise than the
+/// frontend: the game draws every form's in its own version's outline, the
+/// frontend each form's in the form's version's (EXE5's souls).
+pub const OTHER_VERSIONS_ICON: &str = "an offered form's icon in its own version's outline (the console's ROM draws every one in the console's)";
+
+/// The row of the offer button's icon palettes that is `form`'s own
 /// version's, of `rows` (the pack's base version's, then each other
-/// version's: `icon_palettes`). A soul's version is its place's among its
-/// navi's souls, which `forms.souls.form_list` lists a version after another in
-/// equal runs (the original's soul numbers: Team ProtoMan's six, then Team
-/// Colonel's): no field restates it. No soul, or one the navi hasn't: the
-/// base version's.
-fn soul_palette_row(b: &Battle, side: u8, soul: Option<FormHandle>, rows: usize) -> usize {
-    let navi = b.stats[side as usize & 1].navi;
-    let Some(forms) = &b.content.navi(navi).forms else { return 0 };
-    let souls = forms.listed("souls");
-    version_run(soul.and_then(|f| souls.iter().position(|&s| s == f)), souls.len(), rows)
+/// version's: `icon_palettes`). A form's version is its place's in the
+/// navi's form list that holds it, which lists a version after another in
+/// equal runs (EXE5's souls, the original's soul numbers: Team ProtoMan's
+/// six, then Team Colonel's): no field restates it. No form, or one none of
+/// the navi's lists holds: the base version's.
+fn icon_palette_row(b: &Battle, side: u8, form: Option<FormHandle>, rows: usize) -> usize {
+    match form_place(b, side, form) {
+        Some((place, len)) => version_run(Some(place), len, rows),
+        None => 0,
+    }
 }
 
 /// Which of `versions` equal runs of a list of `len` place `place` (from
-/// 0) is in: the version of a soul by its place among its navi's. No place:
-/// the first.
+/// 0) is in: the version of a form by its place in its navi's list. No
+/// place: the first.
 fn version_run(place: Option<usize>, len: usize, versions: usize) -> usize {
     let run = len / versions.max(1);
     match place {
@@ -478,18 +486,18 @@ fn capsule_flight<'a>(v: &View<'a>, packs: &crate::packs::Packs<'a>, problems: &
     });
     let chip = shown.nth((button as usize).checked_sub(1)?)?;
     let (tiles, _) = crate::lookups::chip_icon(packs, &v.b.content, chip, problems)?;
-    // (In the palette of the soul the side is in: the capsules' soul's.)
-    let soul = Some(v.b.stats[v.side as usize & 1].form);
-    flight(v, tiles, 0, at, soul, problems)
+    // (In the palette of the form the side is in: the capsules' soul's.)
+    let form = Some(v.b.stats[v.side as usize & 1].form);
+    flight(v, tiles, 0, at, form, problems)
 }
 
-/// The sprite of EXE5's soul's choice and capsule's mix (0x080254D8): the
-/// icon `first` of `tiles`, at the sequence's step and count (`at`), in the
-/// icons' palette of the button that offers a form: `soul`'s own version's
-/// (`soul_palette_row`), where the game draws its console's version's, so
-/// on a console of another version (a recording's) it is a known
-/// difference.
-fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, soul: Option<FormHandle>, problems: &mut Problems) -> Option<SpritePart<'a>> {
+/// The sprite of an icon's flight (EXE5's soul's choice and capsule's mix,
+/// 0x080254D8): the icon `first` of `tiles`, at the sequence's step and
+/// count (`at`), in the icons' palette of the button that offers a form:
+/// `form`'s own version's (`icon_palette_row`), where the game draws its
+/// console's version's, so on a console of another version (a recording's)
+/// it is a known difference.
+fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Option<FormHandle>, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let screen = v.screen;
     let rise = match at.step {
         4 if at.count > 0 => 0,
@@ -498,8 +506,8 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, soul: Op
         _ => return None,
     };
     let b = view_look(v, ButtonView::FormOffer)?;
-    // (The soul's version's: Team Colonel's outline is another color.)
-    let row = soul_palette_row(v.b, v.side, soul, 1 + b.icon_palettes.len());
+    // (The form's version's: Team Colonel's souls' outline is another color.)
+    let row = icon_palette_row(v.b, v.side, form, 1 + b.icon_palettes.len());
     let colors = row.checked_sub(1).and_then(|i| b.icon_palettes.get(i)).map_or(b.icon_palette, |(_, p)| *p);
     // The row a console of the recording's version draws every icon in.
     let console = v.packs.version().map(|version| b.icon_palettes.iter().position(|(name, _)| name == version).map_or(0, |i| i + 1));
@@ -513,7 +521,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, soul: Op
     };
     let y = 24 + 16 * screen.selection().len() as i32 - rise;
     if console.is_some_and(|console| console != row) {
-        problems.known(0x60, y & 0xFF, 16, 16, OTHER_VERSIONS_SOUL);
+        problems.known(0x60, y & 0xFF, 16, 16, OTHER_VERSIONS_ICON);
     }
     Some(SpritePart {
         x: 0x60,
@@ -1148,8 +1156,9 @@ impl Window {
             let at = self.layout.column_icons + 4 * i as u16;
             let icon = match v.screen.look.column[i] {
                 Some(c) => v.icon(c, problems).map(|t| (t, 0)),
-                // EXE5's soul, given for a chip: its icon (0x0802341C).
-                None if picks.get(i) == Some(&SPECIAL_SLOT) => soul_icon(v),
+                // The offered form, given for a chip: its icon (EXE5's
+                // soul's, 0x0802341C).
+                None if picks.get(i) == Some(&SPECIAL_SLOT) => offered_icon(v),
                 None => None,
             };
             let (tiles, first) = icon.unwrap_or((&a.empty_icon, 0));
@@ -1600,12 +1609,12 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
-    // EXE5's soul choice's flying icon (its state 9's routines draw it
-    // before the screen's others).
+    // The offered form's flying icon (EXE5's soul choice's: its state 9's
+    // routines draw it before the screen's others).
     if window_view(b, screen) == Some(WindowView::OfferFlight)
         && let Some(at) = b.offer_flight(v.side)
     {
-        queue.extend(soul_flight(&v, at, problems));
+        queue.extend(offered_flight(&v, at, problems));
     }
     // Its capsule's mix's (state 0x3C's).
     queue.extend(capsule_flight(&v, packs, problems));
@@ -1641,12 +1650,12 @@ pub fn draw<'a>(
 mod tests {
     use super::*;
 
-    /// A soul's version by its place among its navi's twelve souls: Team
-    /// ProtoMan's six (the pack's base version's palette, row 0), then
-    /// Team Colonel's (row 1); no soul, the base's; a pack with one
-    /// version's palette alone, that one.
+    /// A form's version by its place in its navi's list: of EXE5's twelve
+    /// souls, Team ProtoMan's six (the pack's base version's palette, row
+    /// 0), then Team Colonel's (row 1); no form, the base's; a pack with
+    /// one version's palette alone, that one.
     #[test]
-    fn a_souls_version_is_its_places_run() {
+    fn a_forms_version_is_its_places_run() {
         let rows: Vec<usize> = (0..12).map(|place| version_run(Some(place), 12, 2)).collect();
         assert_eq!(rows, [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
         assert_eq!((version_run(None, 12, 2), version_run(Some(11), 12, 1), version_run(Some(3), 0, 2)), (0, 0, 0));
