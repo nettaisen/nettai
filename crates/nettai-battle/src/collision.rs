@@ -550,13 +550,22 @@ impl Battle {
             rm.acc.hit_flags_by_flip[hd.flip as usize & 1] |= 0x40;
         }
         // What the hit wears off the mood: the byte's low seven bits, but
-        // none on a counter hit (the original reads them from the register
-        // it has just put the counter mark, 0x8000, in).
+        // on a counter hit what the counter puts in the register they're
+        // read from: none past EXE6's mark (0x8000), 0x7F of EXE4's 0xFF
+        // (the rules' `emotion.hit_mood`).
+        let hitter_gains = self.game_rules().emotion.hit_mood == crate::content::HitMood::HitterGains;
+        let rm = self.collision.get_mut(r);
         let mut mood_damage = (c & 0x7F) as u16;
         if c & 0x80 == 0 && c & 0x7F != 0 {
             if rm.counter_timer != 0 {
-                rm.acc.counter = 0x8000;
-                mood_damage = 0;
+                if hitter_gains {
+                    // EXE4's 0x08012C22: the counter counts 0xFF.
+                    rm.acc.counter = rm.acc.counter.wrapping_add(0xFF);
+                    mood_damage = 0x7F;
+                } else {
+                    rm.acc.counter = 0x8000;
+                    mood_damage = 0;
+                }
             } else {
                 rm.acc.counter = rm.acc.counter.wrapping_add((c & 0x7F) as u16);
             }
