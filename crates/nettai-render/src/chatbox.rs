@@ -25,10 +25,9 @@ use nettai_battle::Battle;
 /// 8 rows.
 const BOX_ROW: i32 = 12;
 /// The text's image (the line buffer `sub_30070B4` copies): 192 pixels
-/// wide and 40 rows, a line every 14 rows, shown at (51, 108) as three
-/// rows of six sprites (`chatbox_804021C`): 32x16, 32x16 and 32x8.
-const TEXT_X: i32 = 0x33;
-const TEXT_Y: i32 = 0x6C;
+/// wide and 40 rows, a line every 14 rows, shown from the pack's place
+/// (EXE6's (51, 108): `HudLayout::chatbox_text`) as three rows of six
+/// sprites (`chatbox_804021C`): 32x16, 32x16 and 32x8.
 const TEXT_WIDTH: usize = 192;
 const TEXT_ROWS: usize = 40;
 const LINE_ROWS: usize = 14;
@@ -39,9 +38,6 @@ const TEXT_SPRITES: [(usize, usize); 3] = [(0, 16), (16, 16), (32, 8)];
 const DESCENDER_ROWS: usize = 3;
 /// The pixels a line keeps clear of the box's right frame.
 const BORDER_GAP: i32 = 1;
-/// The key-wait arrow's place by the box (`byte_8045DCC`): the message
-/// box's (the default) and the description box's (`E8 06 01 01`).
-const ARROW_AT: [(i32, i32); 2] = [(0xE2, 0x8D), (0xCA, 0x8D)];
 /// The portrait sprite's place (`+0x84`, `+0x88`).
 const PORTRAIT_AT: (i32, i32) = (0x19, 0x80);
 /// The sprite layer the chatbox's sprites go to, in front of the rest.
@@ -226,6 +222,7 @@ fn note_true_face(b: &Battle, navi: nettai_content_api::NaviHandle, console: &st
 pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Layer, list: &mut SpriteList<'a>, sink: &mut TextSink) {
     let g = &assets.hud.chatbox;
     let c = &shown.chatbox;
+    let (text_x, text_y) = text_at(&assets.hud);
     if let Some(step) = c.box_step() {
         draw_box(g, shown.kind, step, names_layer);
     }
@@ -237,7 +234,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
         for (top, height) in TEXT_SPRITES {
             let mut row = Vec::new();
             for column in 0..TEXT_WIDTH / 32 {
-                let at = (TEXT_X + 32 * column as i32, TEXT_Y + top as i32);
+                let at = (text_x + 32 * column as i32, text_y + top as i32);
                 row.push(part(&shown.text, first, at, (32, height as u8), g.text_palette));
                 first += 4 * height / 8;
             }
@@ -253,12 +250,12 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
             Some(lines) => {
                 let tag = sink.tag();
                 list.insert_tagged(LAYER, TEXT_BUCKET, group, Some(tag));
-                let sprites = Rect::new(TEXT_X, TEXT_Y, TEXT_WIDTH as i32, (TEXT_ROWS + DESCENDER_ROWS) as i32);
+                let sprites = Rect::new(text_x, text_y, TEXT_WIDTH as i32, (TEXT_ROWS + DESCENDER_ROWS) as i32);
                 // Each line fits the open box's inside (the line buffer
                 // runs past the description box's right edge).
-                let room = text_room(g, shown.kind);
+                let room = text_room(g, (text_x, text_y), shown.kind);
                 for (k, (line, units)) in lines.iter().enumerate() {
-                    let rect = Rect::new(TEXT_X, TEXT_Y + (LINE_ROWS * k) as i32, room, 12);
+                    let rect = Rect::new(text_x, text_y + (LINE_ROWS * k) as i32, room, 12);
                     let item = TextItem::new(line.as_str(), Role::Dialogue, rect, g.text_palette[1], None);
                     sink.push(Plane::Sprite(tag), TextItem { clip: sprites, shown: Some(*units), ..item });
                 }
@@ -268,7 +265,9 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
     }
     // chatbox_804082C: the arrow; chatbox_8040B8C: the portrait in front.
     if let Some(frame) = c.look().arrow {
-        let at = ARROW_AT[shown.kind.min(1)];
+        // (Its place by the box: the pack's, EXE6's `byte_8045DCC`.)
+        let (x, y) = assets.hud.layout.chatbox_arrows[shown.kind.min(1)];
+        let at = (x as i32, y as i32);
         list.insert_at(LAYER, FRONT_BUCKET, vec![part(&g.arrow, 4 * frame as usize, at, (16, 16), g.text_palette)]);
     }
     if let Some((sheet, look)) = shown.portrait {
@@ -283,10 +282,10 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
 /// isn't the color under the text's left). The description box ends 27
 /// tiles in, short of the line buffer's 192 pixels; the message box spans
 /// the screen. The line buffer's width when the map has no such frame.
-pub fn text_room(g: &Graphics, kind: usize) -> i32 {
+pub fn text_room(g: &Graphics, (text_x, text_y): (i32, i32), kind: usize) -> i32 {
     let fallback = TEXT_WIDTH as i32;
     let Some(map) = g.boxes.get(kind).map(|steps| &steps[3]) else { return fallback };
-    let y = TEXT_Y + TEXT_ROWS as i32 / 2 - 8 * BOX_ROW;
+    let y = text_y + TEXT_ROWS as i32 / 2 - 8 * BOX_ROW;
     let Some(row) = map.chunks(Graphics::COLUMNS).nth((y / 8) as usize) else { return fallback };
     // A map entry's pixel at (x, y % 8) in its tile.
     let pixel = |e: &nettai_assets::MapEntry, x: usize| {
@@ -294,11 +293,16 @@ pub fn text_room(g: &Graphics, kind: usize) -> i32 {
         let (x, ty) = (if e.hflip { 7 - x } else { x }, if e.vflip { 7 - (y % 8) as usize } else { (y % 8) as usize });
         Some(t[8 * ty + x])
     };
-    let Some(fill) = row.get((TEXT_X / 8) as usize).and_then(|e| pixel(e, (TEXT_X % 8) as usize)) else { return fallback };
+    let Some(fill) = row.get((text_x / 8) as usize).and_then(|e| pixel(e, (text_x % 8) as usize)) else { return fallback };
     let drawn = |e: &&nettai_assets::MapEntry| g.tiles.get(e.tile as usize).is_some_and(|t| t.iter().any(|&p| p != 0));
     let Some((col, frame)) = row.iter().enumerate().rev().find(|(_, e)| drawn(e)) else { return fallback };
     let inner = (0..8).find(|&x| pixel(frame, x) != Some(fill)).unwrap_or(8);
-    (8 * col as i32 + inner as i32 - BORDER_GAP - TEXT_X).clamp(1, fallback)
+    (8 * col as i32 + inner as i32 - BORDER_GAP - text_x).clamp(1, fallback)
+}
+
+/// Where the chatbox's text starts on the screen (`HudLayout::chatbox_text`).
+pub fn text_at(hud: &nettai_assets::Hud) -> (i32, i32) {
+    (hud.layout.chatbox_text.0 as i32, hud.layout.chatbox_text.1 as i32)
 }
 
 /// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`).
@@ -482,10 +486,11 @@ mod tests {
     #[test]
     fn a_line_has_the_room_of_its_boxs_inside() {
         let g = exe6_like_boxes();
-        assert_eq!(text_room(&g, MESSAGE_BOX), 236 - 1 - TEXT_X);
-        assert_eq!(text_room(&g, DESCRIPTION_BOX), 212 - 1 - TEXT_X);
+        let at = text_at(&nettai_assets::Hud::default());
+        assert_eq!(text_room(&g, at, MESSAGE_BOX), 236 - 1 - 51);
+        assert_eq!(text_room(&g, at, DESCRIPTION_BOX), 212 - 1 - 51);
         // No graphics: the line buffer.
-        assert_eq!(text_room(&Graphics::default(), DESCRIPTION_BOX), TEXT_WIDTH as i32);
+        assert_eq!(text_room(&Graphics::default(), at, DESCRIPTION_BOX), TEXT_WIDTH as i32);
     }
 
     /// Every line the chatbox shows, in both languages (the chips' and the
@@ -499,7 +504,8 @@ mod tests {
     fn every_chatbox_line_fits_its_box() {
         let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
         let g = exe6_like_boxes();
-        let rooms = [text_room(&g, MESSAGE_BOX), text_room(&g, DESCRIPTION_BOX)];
+        let at = text_at(&nettai_assets::Hud::default());
+        let rooms = [text_room(&g, at, MESSAGE_BOX), text_room(&g, at, DESCRIPTION_BOX)];
         let mut r = crate::vfont::TextRenderer::new(std::sync::Arc::new(crate::vfont::VectorFont::bundled()));
         let (mut lines, mut fitted) = (0, Vec::new());
         for lang in ["en", "ja"] {
