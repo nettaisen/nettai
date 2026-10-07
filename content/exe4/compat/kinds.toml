@@ -50,3 +50,5 @@
 "mokorus/moloko" = { pool = "attack", index = 0x2C, scratch_position = true }
 # SidBmbo's bamboo (action 0x20's variant 5, 0x080D5DBA).
 "sidbmbo/bamboo" = { pool = "attack", index = 0x44, scratch_position = true }
+# The WhitWebs' webs (action 0x20's variants 8 to 10, 0x080D4E9C).
+"whitweb/web" = { pool = "attack", index = 0x3D, scratch_position = true }
