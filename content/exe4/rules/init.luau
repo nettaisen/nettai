@@ -40,6 +40,8 @@ local rules: Rules = {
         round_setup = save.round_setup,
         -- Each tick of the navi's intake: a navi that isn't dark closes the hole he stands on (./light_dark).
         navi_intake = light_dark.navi_intake,
+        -- Light and dark MegaMan (./light_dark): his palette.
+        navi_palette = light_dark.navi_palette,
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
