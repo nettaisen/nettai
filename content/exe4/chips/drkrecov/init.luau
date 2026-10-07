@@ -2,6 +2,7 @@
 -- DrkRecov (EXE4 chip 0x0C2): a dark chip, which no folder holds and the custom screen offers (rules/dark_chips). The
 -- recoveries' action 0x1D (lib/recov), its variant 8: the navi heals 1000 HP (its counter byte 0: no mood). Its cost: a
 -- worse custom drain and an HP drain (rules/dark_chips).
+-- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local recov = require("../lib/recov")
 
