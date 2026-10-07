@@ -9,7 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::content::{IceRule, PushSource, ReactionActions, SlideVector};
+use crate::content::{DragEnding, IceRule, PushSource, ReactionActions, SlideVector};
 use crate::field::{self, PanelType};
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
@@ -407,16 +407,8 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     if !plain {
         ai_mut(b, r).overlay = None;
     }
-    let f = flag1(b, r);
-    let anim = if plain {
-        1
-    } else if f & f1::PARALYZED != 0 {
-        2
-    } else if f & f1::SUPERARMOR != 0 {
-        0
-    } else {
-        1
-    };
+    // (The game's poses: EXE6's paralyzed one, EXE5's SuperArmor one.)
+    let anim = b.game_rules().drag.poses.pose(flag1(b, r));
     let o = b.objects.get_mut(r);
     o.anim = anim;
     o.anim_loaded = 0xFF;
@@ -483,9 +475,13 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
         return;
     }
     b.unreserve_panel(r, fp.x, fp.y);
-    if panel_kind(b, fp) == PanelType::Ice && coll(b, r).element != 2 {
+    let kind = panel_kind(b, fp);
+    if kind == PanelType::Ice && coll(b, r).element != 2 {
         let o = b.objects.get_mut(r);
         o.timer2 = o.timer2.wrapping_add(1);
+    } else if b.game_rules().panels.types[kind as usize].stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
+        // EXE4's pitfall stops a drag (0x08010B54).
+        b.objects.get_mut(r).timer2 = 0;
     }
     let o = b.objects.get_mut(r);
     let left = o.timer2 as i32 - 1;
@@ -514,9 +510,8 @@ pub(crate) fn passed(new: i32, old: i32, target: i32) -> bool {
     if new > old { target > old && target <= new } else { target > new && target <= old }
 }
 
-/// `sub_8017A38`: wait, then back to idle (or to paralysis). (Plain, EXE4's
-/// 0x08010C16: the drag cleared, its requests, and idle, in the pose it
-/// has.)
+/// `sub_8017A38`: wait, then back to idle (or to paralysis), by the game's
+/// `drag.ending`.
 fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     let t = o.timer as i32 - 1;
@@ -524,10 +519,18 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     if t >= 0 {
         return;
     }
-    if plain(b) {
-        clear_flag1(b, r, f1::DRAG);
+    let ending = b.game_rules().drag.ending;
+    if ending != DragEnding::ResumesParalysis {
+        // EXE5's (0x080144CE), EXE4's (0x08010C16): the drag and its use
+        // cleared, its requests, idle (EXE5's standing, EXE4's in its pose).
+        clear_flag1(b, r, in_use(b) | f1::DRAG);
         let clears = b.game_rules().request_clears.drag.0;
         ai_mut(b, r).requests &= !(request::ATTACKS | clears);
+        if ending == DragEnding::Stands {
+            let o = b.objects.get_mut(r);
+            o.anim = 0;
+            o.anim_loaded = 0xFF;
+        }
         return set_action(b, r, NaviAction::Idle);
     }
     if flag1(b, r) & f1::PARALYZED != 0 {
@@ -709,15 +712,22 @@ mod tests {
         assert_eq!(at(0x01), (0, 0, 0), "no bit set: the row past them");
     }
 
-    /// docs/design/exe4-map.md §18 item 33: plain reaction actions (EXE4's)
-    /// mark no action in use, count no reaction for a paralysis or a drag,
-    /// keep a dragged navi's paralysis to idle in the flinch's pose; marked
-    /// ones (the test content's, EXE6's) do each.
+    /// docs/design/exe4-map.md §18 item 33: plain reaction actions (EXE4's,
+    /// with its drag: the flinch's pose, kept to its end) mark no action in
+    /// use, count no reaction for a paralysis or a drag, keep a dragged
+    /// navi's paralysis to idle in the flinch's pose; marked ones (the test
+    /// content's, EXE6's) do each.
     #[test]
     fn plain_reaction_actions_mark_and_count_nothing_more() {
         let run = |plain: bool| {
             let (mut b, [_, r]) = fight_with(|rules| {
                 rules.reaction_actions = if plain { ReactionActions::Plain } else { ReactionActions::Marked };
+                if plain {
+                    rules.drag = crate::content::DragRule {
+                        poses: crate::content::DragPoses { paralyzed: None, super_armor: None, otherwise: 1 },
+                        ending: DragEnding::KeepsPose,
+                    };
+                }
             });
             let side = b.objects.get(r).alliance;
             let counted = |b: &Battle| b.side_stats[side as usize][3];
@@ -736,6 +746,42 @@ mod tests {
         };
         assert_eq!(run(false), ((2, true, 1), (NaviAction::Paralysis, true)));
         assert_eq!(run(true), ((1, false, 0), (NaviAction::Idle, true)));
+    }
+
+    /// A drag's pose and end by the game's `drag` (the status section's):
+    /// EXE6's paralyzed pose, then SuperArmor's, and a paralysis that
+    /// outlasts the drag goes on; EXE5's SuperArmor pose alone, and its end
+    /// stands the navi up whatever the paralysis, which it keeps.
+    #[test]
+    fn a_drags_pose_and_end_are_the_games() {
+        use crate::content::{DragPoses, DragRule};
+        let exe5 = DragRule { poses: DragPoses { paralyzed: None, super_armor: Some(0), otherwise: 1 }, ending: DragEnding::Stands };
+        let run = |rule: Option<DragRule>, status: u32| {
+            let (mut b, [_, r]) = fight_with(|rules| {
+                if let Some(rule) = rule {
+                    rules.drag = rule;
+                }
+            });
+            set_flag1(&mut b, r, status);
+            coll_mut(&mut b, r).hit_mod_final = 0;
+            b.objects.get_mut(r).slide_type = 1;
+            start_drag(&mut b, r);
+            let pose = b.objects.get(r).anim;
+            b.objects.get_mut(r).anim = 7;
+            b.objects.get_mut(r).timer = 0;
+            recover_from_drag(&mut b, r);
+            let o = b.objects.get(r);
+            (pose, super::super::navi_action(&b, r), o.anim, flag1(&b, r) & (f1::PARALYZED | f1::DRAG | f1::USING_ACTION))
+        };
+        let (p, sa) = (f1::PARALYZED, f1::SUPERARMOR);
+        // The test content's, EXE6's.
+        assert_eq!(run(None, p | sa), (2, NaviAction::Paralysis, 7, p | f1::USING_ACTION), "the paralysis goes on, in use");
+        assert_eq!(run(None, sa).0, 0);
+        assert_eq!(run(None, 0), (1, NaviAction::Idle, 0, 0));
+        // EXE5's.
+        assert_eq!(run(Some(exe5), p | sa), (0, NaviAction::Idle, 0, p));
+        assert_eq!(run(Some(exe5), p), (1, NaviAction::Idle, 0, p));
+        assert_eq!(run(Some(exe5), 0), (1, NaviAction::Idle, 0, 0));
     }
 
     /// docs/design/exe5-map.md §15.2: lava (the test content's burns for 50,
@@ -775,6 +821,34 @@ mod tests {
         assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: -1, tiles: 1 });
         coll_mut(&mut b, r).direction = 4;
         assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: 1, tiles: 1 });
+    }
+
+    /// docs/design/exe4-map.md §18 item 12: a drag that reaches a panel
+    /// whose type stops slides (EXE4's pitfall, 0x08010B54) stops there,
+    /// unless the navi floats.
+    #[test]
+    fn a_pitfall_stops_a_drag_unless_the_navi_floats() {
+        let run = |floats: bool| {
+            let (mut b, [_, r]) = fight_with(|r| r.panels.types[PanelType::Pitfall as usize].stops_slides = true);
+            b.set_panel_type(5, 2, PanelType::Pitfall);
+            if floats {
+                set_flag1(&mut b, r, f1::FLOATSHOE);
+            }
+            let (from, to) = (panel_coordinates(4, 2), panel_coordinates(5, 2));
+            let o = b.objects.get_mut(r);
+            o.panel = PanelPos { x: 4, y: 2 };
+            o.future_panel = PanelPos { x: 5, y: 2 };
+            (o.pos.x, o.pos.y) = from;
+            (o.vel.x, o.vel.y) = (to.0 - from.0, 0);
+            (o.slide_dx, o.slide_dy) = (1, 0);
+            o.timer2 = 3;
+            o.drag_step = DragStep::Slide;
+            step_drag(&mut b, r);
+            let o = b.objects.get(r);
+            (o.drag_step, o.future_panel.x)
+        };
+        assert_eq!(run(false), (DragStep::Recover, 5), "stopped on the pitfall");
+        assert_eq!(run(true), (DragStep::Slide, 6), "floating over it");
     }
 
     /// docs/design/exe5-map.md §15.3 item 17: a drag goes at the arena's

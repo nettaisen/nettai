@@ -427,7 +427,8 @@ mod tests {
 
     /// The field's blocks are audited for the panel types the own pack's
     /// game names, not for every type the engine has (EXE5's metal, lava
-    /// and sea, which EXE6's field has none of).
+    /// and sea, which EXE6's field has none of; EXE4's pitfall and hole,
+    /// which the test content names none of).
     #[test]
     fn the_field_is_audited_for_the_panel_types_its_game_names() {
         let mut c = (*testing::content()).clone();
@@ -436,11 +437,12 @@ mod tests {
             let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
             found.problems.iter().filter(|p| p.contains("doesn't draw panel type")).count()
         };
-        assert_eq!(missing(&c), PanelType::ALL.len());
+        let named = PanelType::ALL.len() - 2;
+        assert_eq!(missing(&c), named);
         for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
             c.rules_mut().panels.types[t as usize].named = false;
         }
-        assert_eq!(missing(&c), PanelType::ALL.len() - 3);
+        assert_eq!(missing(&c), named - 3);
     }
 
     /// A navi a side can start that has no no-running message is listed
