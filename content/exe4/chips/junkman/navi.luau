@@ -1,9 +1,9 @@
 --!strict
 -- JunkMan, the navi of EXE4's JunkMan chips (EXE4's actor object #0x48, 0x080C95E8: EXE4's own, on the navi chips'
--- template), whom the shared navi chip controller (objects/navi_chip_controller, its entry 0x14) brings. He fades in on
--- his user's panel (and goes if it isn't solid, a tick later), raises the poltergeist (@exelib/poltergeist, EXE4's
--- effect object #0x73: every obstacle on the field thrown at the nearest panel holding the other side's navi in front
--- of it) and waits until it is done; 21 ticks; and goes.
+-- template), and their controller, which brings him. He fades in on his user's panel (and goes if it isn't solid, a
+-- tick later), raises the poltergeist (@exelib/poltergeist, EXE4's effect object #0x73: every obstacle on the field
+-- thrown at the nearest panel holding the other side's navi in front of it) and waits until it is done; 21 ticks; and
+-- goes.
 
 local common = require("@exelib/poltergeist")
 local navi_chips = require("../../lib/navi_chips")
@@ -203,4 +203,11 @@ function junkman.spawn(controller: Object, user: Object, damage: number): Object
     return o
 end
 
-return junkman
+-- His chips' navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
+-- chips: compat/kinds.toml maps each one's to it): the user warps out, JunkMan, the user warps back in.
+return navi_chips.controller {
+    id = "junkman/controller",
+    name = "JunkMan",
+    spawn = junkman.spawn,
+    steps = navi_chips.SHARED,
+}
