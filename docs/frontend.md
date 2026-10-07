@@ -138,7 +138,10 @@ is the pack's image under the chip's key; whether its damage shows is its
 definition's flag. The emotion window shows the face the navi's form names
 for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
 (`NaviData::mugshot`); mugshot numbers from `nettai_assets::NAVI_MUGSHOTS`
-are the link navis' faces, with their Full Synchro palettes.
+are the link navis' faces, with their Full Synchro palettes. The box beside
+the face shows its side's count (the stat of the role `window_count`) where
+the side's rules say so for the round (`battle.set_window_count`: EXE6's
+Beast Out turns, `sub_801D814`), else the empty box.
 
 ### The battle backgrounds, by area
 
@@ -604,7 +607,7 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
-  navi goes into (`custom::beast_pictures`: the player's version's from
+  navi goes into (`custom::button_pictures`: the player's version's from
   the base form, and a form's own version's from a Cross), so a
   Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
@@ -655,13 +658,14 @@ What an EXE5 console does otherwise, by data, not by game:
   up onto the column's first cell under its flash, and the cell keeps it
   (`Battle::offer` and `Battle::offer_flight`: the offer, a soul's form, and
   the window's step, typed reads of what the view shows of the rules'
-  state; the icon is the soul's place
-  among its navi's souls, `soul_place`: a pack's soul icons are in the order
-  the navi lists its souls, the original's soul numbers'), in the palette of
-  the soul's own version on any console (Team Colonel's icons have another
-  outline color, the pack's `icon_versions`; the soul's version is its
-  place's among the navi's souls, a version's after another's:
-  `soul_palette_row`; §5);
+  state; the icon is the offered form's place
+  in the navi's form list that holds it, the alternate's (Chaos Unison's)
+  the one after the list's, `custom::offer_icon`: a pack's soul icons are in
+  the order the navi lists its souls, the original's soul numbers'), in the
+  palette of the soul's own version on any console (Team Colonel's icons
+  have another outline color, the pack's `icon_versions`; the form's
+  version is its place's in its list, a version's after another's:
+  `icon_palette_row`; §5);
 - what a soul adds to the screen, drawn by what the engine's screen says,
   not by soul (verified frame for frame, exe5.txt's custom/capsules,
   custom/capsule-frame, custom/arm-change and five souls/ scenarios):
@@ -972,10 +976,10 @@ them).
   console, as a version's chips show that version's art (the user's choice):
   so nothing of an EXE5 match needs a console's version to draw it. A soul's
   version is its place's among MegaMan's souls (`forms.souls.form_list` lists Team
-  ProtoMan's six, then Team Colonel's: `custom::soul_palette_row`); no
+  ProtoMan's six, then Team Colonel's: `custom::icon_palette_row`); no
   field restates it. A console of the other version than the soul's shows
   the icon in its own outline: listed as known
-  (`custom::OTHER_VERSIONS_SOUL`), as is a MeddySoul capsule's icon, which
+  (`custom::OTHER_VERSIONS_ICON`), as is a MeddySoul capsule's icon, which
   flies in the same palette.
 - **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
   has one picture for both chips, its own beast; the pack has each chip's
@@ -1148,8 +1152,8 @@ descriptions and the build creator without a line of Rust.
   form list, EXE6's `crosses`), a form that is none of the side's navi's
   own lists. What a value means is the rules' alone: no range is checked
   beyond the type's.
-- Facts known by role (`PlayerFact`): the version, Beast Out and the form
-  list, which the battle and its frontend read; the level and MegaMan's base
+- Facts known by role (`PlayerFact`): the version and the form list,
+  which the battle and its frontend read; the level and MegaMan's base
   HP, which tools read (the checks, the build creator). Where a tool needs one it
   asks by the role: a navi's version byte in its stats, the forms a random
   match's form list is picked from, the level's range.
