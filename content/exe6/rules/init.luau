@@ -60,6 +60,20 @@ local rules: Rules = {
         -- The bug frags (./dark_chips, `dword_203F7E0`), which the round starts with the player's.
         bug_frags = "u32",
     },
+    -- A navi's stats of EXE6's own, beside the engine's (NaviStats' bytes, which exe6-compat maps by these names): the
+    -- Beast Out turns left (+0x21, 3 fresh: ./beast spends them, ./emotion reads them; the emotion window's box
+    -- shows them), fighting in the sun (+0x22, MegaMan's: ./save), what the NaviCust does to chip drops and random
+    -- encounters (+0x26: 1 its collector bug, bit 2 Collect; +0x28: 1 its encounter bug: no netbattle reads them,
+    -- the patch cards' bug count does), and ChpShufl and NumbrOpn (+0x60, the custom screen's re-deal button,
+    -- ./navicust; +0x61, ten chips dealt, ./cross).
+    stats = {
+        beast_out_counter = schema.role("window_count", "u8"),
+        sun = "bool",
+        chip_drops = "u8",
+        encounters = "u8",
+        chip_shuffle = "bool",
+        number_open = "bool",
+    },
     -- What a player brings (nettai-match from a match's side, exe6-compat from a save or a recording): a side's
     -- facts.
     setup = {

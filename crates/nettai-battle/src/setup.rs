@@ -120,8 +120,9 @@ pub struct NaviCustBugs {
 }
 
 /// A navi's in-battle stats (the game's 0x64-byte NaviStats block). Only
-/// the bytes the engine uses are modeled; exe6-compat's codec knows the
-/// block's layout (the field comments give each one's offset).
+/// the bytes the engine uses are modeled, and the game's own beside them
+/// (`game`); the compat crates' codecs know the block's layout (the field
+/// comments give each one's offset).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviStats {
     /// +0x01: buster attack level.
@@ -156,18 +157,6 @@ pub struct NaviStats {
     pub air_shoes: bool,
     pub undershirt: bool,
     pub super_armor: bool,
-    /// +0x20: the navi's game (0 Gregar, 1 Falzar): MstrCros picks its
-    /// Crosses by it.
-    pub version: u8,
-    /// +0x21
-    pub beast_out_counter: u8,
-    /// +0x22: fighting outdoors in the sun (some chips hit harder).
-    pub sun: bool,
-    /// +0x26: what the NaviCust does to chip drops (1 its collector bug,
-    /// bit 2 Collect) and +0x28 to random encounters (1 its encounter
-    /// bug). No netbattle reads them; the patch cards' bug count does.
-    pub chip_drops: u8,
-    pub encounters: u8,
     /// +0x29
     pub navi: NaviHandle,
     /// +0x2B: a per-navi variant (selects its move lag).
@@ -186,23 +175,14 @@ pub struct NaviStats {
     pub chip_recovery: u16,
     /// +0x56..+0x59: the folders' tag chips.
     pub folder_tags: [[u8; 2]; 2],
-    /// +0x60: NaviCust ChpShufl (a custom-screen button re-deals).
-    pub chip_shuffle: bool,
-    /// +0x61: NaviCust NumbrOpn (the custom screen deals 10 chips).
-    pub number_open: bool,
-    /// EXE5's +0x4C: Hub Style, which EXE5's patch card 111 (0x6F) sets when
-    /// installed and on (0x08138214, the patch cards' application after the
-    /// NaviCust's compile): 1 by Team ProtoMan's card, 2 by Team Colonel's
-    /// (0x081382FC); 0 none. MegaMan's buster, arm, shade, palettes and
-    /// faces read it. No EXE6 navi has it.
-    pub hub_style: u8,
-    /// EXE5's +0x32: the turns Soul Unison gives a soul beside its 3
-    /// (signed: the NaviCust's SoulT+1, the patch cards' SoulTm+ and
-    /// SoulTm-), which EXE5's rules/souls reads at OK (0x08024FF6). No EXE6
-    /// navi has it.
-    pub soul_turn_bonus: i8,
     pub weapons: NaviWeapons,
     pub bugs: NaviCustBugs,
+    /// The stats of the navi's game's own (its rules' `stats`: EXE6's
+    /// Beast Out turns and NaviCust ChpShufl, EXE5's Hub Style, ...), by
+    /// the rules' schema: what the rules read and write by name, and the
+    /// compat crates map to the block's bytes. The engine reads none of them
+    /// but by a role ([`crate::content::StatRole`]).
+    pub game: nettai_content_api::SmallBlock,
 }
 
 impl NaviStats {
@@ -222,15 +202,12 @@ impl NaviStats {
         let defaults = NaviStats::default();
         let base = content.base_form_for(navi);
         Some(NaviStats {
-            // (+0x20, the version, is no value of the navi's or the game's:
-            // the routine writes its console's own, 0 in a Gregar ROM and 1
-            // in a Falzar one. Who makes the block gives it the side's: a
-            // battle's start does, `sub_800A2F8`, and the navi switch keeps
-            // the side's.)
             reg_up: game.reg_up,
             custom_level: game.custom_level,
             mood: game.mood,
-            beast_out_counter: game.beast_out_counter,
+            // (The game's own: what its `fresh_stats` gives them, the rest
+            // zero.)
+            game: game.stats,
             // The block's empty values: the support byte there with no
             // support on (0xFF is no byte), the first folder, no Regular
             // chip and no tag chips.
@@ -265,6 +242,25 @@ impl NaviStats {
             bugs: NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },
             ..defaults
         })
+    }
+
+    /// The game's own stat `name` (its rules' `stats`), if the game has it.
+    pub fn game_stat(&self, content: &Content, name: &str) -> Option<nettai_content_api::FieldValue> {
+        let schema = content.defs.schema(content.defs.rules()?.stats);
+        (self.game.id() == content.defs.rules()?.stats).then_some(())?;
+        Some(self.game.get(schema, schema.index_of(name)?))
+    }
+
+    /// Set the game's own stat `name` (its rules' `stats`); refused for a
+    /// stat the game hasn't, or a value its type doesn't take.
+    pub fn set_game_stat(&mut self, content: &Content, name: &str, v: nettai_content_api::Value) -> Result<(), String> {
+        let rules = content.defs.rules().ok_or("the content has no rules")?;
+        let schema = content.defs.schema(rules.stats);
+        if self.game.id() != rules.stats {
+            self.game = nettai_content_api::SmallBlock::new(rules.stats, schema).ok_or("the rules' stats are too large")?;
+        }
+        let i = schema.index_of(name).ok_or_else(|| format!("the game's stats have no `{name}`"))?;
+        self.game.set(schema, i, v).map_err(|e| format!("{name}: {e}"))
     }
 
     /// A hit's bug code can name any stat byte below 0x64 by its offset
@@ -351,13 +347,16 @@ impl NaviStats {
             0x1B => self.float_shoes = flag,
             0x1C => self.air_shoes = flag,
             0x1D => self.undershirt = flag,
-            0x20 => self.version = value,
-            0x21 => self.beast_out_counter = value,
-            0x22 => self.sun = flag,
             0x23 => self.super_armor = flag,
             0x24 => g.emotion = value,
-            0x26 => self.chip_drops = value,
-            0x28 => self.encounters = value,
+            // (A game's own stats, its rules' `stats`, by their offsets in
+            // its block: EXE6's version, Beast Out turns, sun, drops and
+            // encounters, ChpShufl and NumbrOpn. No hit of either game
+            // carries such a code; the game's own table writes them by
+            // name once it has one.)
+            0x20..=0x22 | 0x26 | 0x28 | 0x60 | 0x61 => {
+                panic!("bug code writes NaviStats+{offset:#x}, a stat of the game's own (its rules' `stats`), which the engine has no name for")
+            }
             0x29 => panic!("bug code writes navi {value:#x} to NaviStats+0x29: a navi by number is not supported"),
             0x2B => self.navi_variant = value,
             0x2C => self.form = form(value),
@@ -387,9 +386,6 @@ impl NaviStats {
             0x57 => self.folder_tags[0][1] = value,
             0x58 => self.folder_tags[1][0] = value,
             0x59 => self.folder_tags[1][1] = value,
-            0x60 => self.chip_shuffle = flag,
-            // The game tests the byte for 1.
-            0x61 => self.number_open = value == 1,
             0x63 => g.hand_shrink_turn = value,
             _ => panic!("bug code writes NaviStats+{offset:#x}, which is not modeled"),
         }

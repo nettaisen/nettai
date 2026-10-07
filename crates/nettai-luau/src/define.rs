@@ -727,7 +727,7 @@ pub(crate) fn finish(
     for (&(registry, key), &i) in &by_key {
         let tables: &[&str] = match registry {
             Registry::Kind | Registry::Action => &["state"],
-            Registry::Rules => &["state", "setup", "navi_state"],
+            Registry::Rules => &["state", "setup", "navi_state", "stats"],
             _ => continue,
         };
         for &field in tables {
