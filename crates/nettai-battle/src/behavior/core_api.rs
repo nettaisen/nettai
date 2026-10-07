@@ -727,6 +727,16 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn custom_offer(&mut self, side: u8, slot: u8, chip: ChipHandle, code: Option<u8>) -> ApiResult<()> {
+        let screen = self.custom_screen_mut(side)?;
+        let Some(place) = screen.offers.get_mut(slot as usize) else {
+            return Err(ApiError::Other(format!("custom.offer: a slot is 0 to 11, not {slot}")));
+        };
+        let code = crate::content::ChipCode(code.unwrap_or(crate::custom::screen::INVALID_CODE.0));
+        *place = Some(crate::custom::FolderChip { id: chip, code });
+        Ok(())
+    }
+
     fn custom_hand_size(&self, side: u8) -> ApiResult<u8> {
         Ok(self.custom_screen(side)?.hand_size)
     }

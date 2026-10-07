@@ -1303,6 +1303,11 @@ pub trait CoreApi {
     /// screen deals (as it deals, the framework's).
     fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<crate::ChipHandle>>>;
     fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()>;
+    /// `custom.offer(side, slot, chip, code)`: as the screen deals (the
+    /// rules' `deal`), a chip from outside the folder the screen shows in a
+    /// slot (0 to 11) once laid out (EXE4's dark chips); `code` the code's
+    /// number (A 0, `*` 26), none: the code outside the alphabet (0x1B).
+    fn custom_offer(&mut self, side: u8, slot: u8, chip: crate::ChipHandle, code: Option<u8>) -> ApiResult<()>;
     fn custom_hand_size(&self, side: u8) -> ApiResult<u8>;
     fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()>;
     fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;

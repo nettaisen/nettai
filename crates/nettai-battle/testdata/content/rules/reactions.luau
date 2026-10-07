@@ -38,6 +38,7 @@ return {
         bubbled_as_submerged = false,
         elec_reaches_submerged = false,
         guard_breaks_to = 0x0002,
+        guard_before_untouchable = false,
     },
     -- A pulled obstacle stays out of the puller's area.
     obstacle_slide_bounds = true,
