@@ -129,7 +129,12 @@ local roles: RolesSpec = {
         -- A Program Advance, and a selection that makes none (0x0801E696: no netbattle's screen shows the second).
         program_advance = asset.banner("program-advance"),
         program_advance_empty = asset.banner("program-advance-empty"),
-        -- (No telop: EXE4's banners have none, `telop` and `telop_remote` aren't EXE4's.)
+        -- A dimming chip's telop (0x08008C2A) has no banner of its own: 0x0801650C lays the chip's name on the banner
+        -- block (the user's console's, 0x08016454: its number 0, battle-start's) or on the second block (the other
+        -- player's, 0x080164B4), each in the banners' state 0 (their steps), and the HUD draws it in its own look
+        -- (`Hud.layout.telop`). So both telops run as banner 0.
+        telop = asset.banner("battle-start"),
+        telop_remote = asset.banner("battle-start"),
     },
 }
 
