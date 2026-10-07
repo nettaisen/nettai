@@ -164,6 +164,10 @@ pub struct CustomScreenLayout {
     /// The sound players the close sets back to full volume, in its order
     /// (EXE6's `sub_802A3CC`: 31, 22; EXE4's 0x0801E194: 9, 31).
     pub restore_players: Vec<u8>,
+    /// The custom gauge empties as the screen opens (EXE6's `sub_8026840`:
+    /// `sub_801DF92`), and again at the send; else it stays full until the
+    /// send (EXE4's 0x0801E1B4: 0x080159B0 empties it).
+    pub gauge_empties_at_open: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -329,6 +333,7 @@ impl Default for CustomScreenLayout {
                 sound: HoverSound::FromOpening { every: 64 },
             },
             restore_players: vec![31, 22],
+            gauge_empties_at_open: true,
         }
     }
 }

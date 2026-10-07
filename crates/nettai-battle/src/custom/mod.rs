@@ -464,9 +464,12 @@ impl Battle {
 
     /// The custom screen opens (`sub_8009338`'s first tick, `sub_8026840`).
     pub(crate) fn open_custom_screens(&mut self) {
-        // Shared: the turn count, the gauge.
-        self.gauge.value = 0;
-        self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
+        // Shared: the turn count, the gauge (a game that keeps it full until
+        // the send, EXE4's, empties it there: `restart_gauge`).
+        if self.content.rules().custom_screen.gauge_empties_at_open {
+            self.gauge.value = 0;
+            self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
+        }
         self.gauge.enabled = false;
         // sub_801DACC(0x30172): the chips' icons and window go.
         self.chip_hud = Default::default();
