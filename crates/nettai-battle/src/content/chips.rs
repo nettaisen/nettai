@@ -52,51 +52,63 @@ pub enum ChipClass {
     ProgramAdvance,
 }
 
-/// A chip's icon family. It gives the chip's attacks their secondary
-/// elements (`Rules::family_elements`) and keys the forms' chip bonuses
-/// and charged chips.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ChipFamily {
-    Fire = 0,
-    Aqua = 1,
-    Elec = 2,
-    Wood = 3,
-    Plus = 4,
-    Sword = 5,
-    Cursor = 6,
-    /// Obstacles and summons.
-    Summon = 7,
-    Wind = 8,
-    Break = 9,
-    Null = 10,
-    ProgramAdvance = 11,
-    /// The cross and beast attacks (chips 0x160..0x171).
-    Special = 12,
-    /// EXE5's recovery chips (docs/design/exe5-map.md §13, §15.3 item 5).
-    Recovery = 13,
-    /// EXE5's invisible family: Invisibl, AntiDmg, Mine.
-    Invisible = 14,
+/// A chip's family: one of its game's (the rules' `elements.families`,
+/// [`super::ChipFamilies`]), by its number there, the number the game's
+/// chip records hold and its pack's custom-screen icons are by. It gives
+/// the chip's attacks their secondary elements (`Rules::family_elements`)
+/// and keys the forms' chip bonuses and charged chips. In a content file,
+/// the family's name, which the game's families say the number of (a
+/// definition's names are read while its game's content is defined:
+/// [`reading_families`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ChipFamily(pub u8);
+
+thread_local! {
+    /// The families of the game whose definitions are being read (the
+    /// rules' `elements.families`), which a family's name is one of.
+    static READING: std::cell::RefCell<Option<super::ChipFamilies>> = const { std::cell::RefCell::new(None) };
 }
 
-impl ChipFamily {
-    pub const ALL: [ChipFamily; 15] = [
-        ChipFamily::Fire,
-        ChipFamily::Aqua,
-        ChipFamily::Elec,
-        ChipFamily::Wood,
-        ChipFamily::Plus,
-        ChipFamily::Sword,
-        ChipFamily::Cursor,
-        ChipFamily::Summon,
-        ChipFamily::Wind,
-        ChipFamily::Break,
-        ChipFamily::Null,
-        ChipFamily::ProgramAdvance,
-        ChipFamily::Special,
-        ChipFamily::Recovery,
-        ChipFamily::Invisible,
-    ];
+/// `f`, with a family's name read as one of `families` (the game's, as its
+/// content is defined).
+pub fn reading_families<T>(families: &super::ChipFamilies, f: impl FnOnce() -> T) -> T {
+    let before = READING.with(|r| r.replace(Some(families.clone())));
+    let out = f();
+    READING.with(|r| *r.borrow_mut() = before);
+    out
+}
+
+/// The non-elemental family of the game whose definitions are being read:
+/// the family of a chip that names none.
+pub(crate) fn reading_non_elemental() -> Option<ChipFamily> {
+    READING.with(|r| r.borrow().as_ref().map(|f| f.non_elemental))
+}
+
+impl Serialize for ChipFamily {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_u8(self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for ChipFamily {
+    /// A family's name (one of the game's being read), or its number.
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<ChipFamily, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Named {
+            Number(u8),
+            Name(String),
+        }
+        match Named::deserialize(d)? {
+            Named::Number(n) => Ok(ChipFamily(n)),
+            Named::Name(name) => READING.with(|r| match r.borrow().as_ref() {
+                Some(families) => families.by_name(&name).ok_or_else(|| {
+                    serde::de::Error::custom(format!("{name:?} is none of its game's chip families ({})", families.names().join(", ")))
+                }),
+                None => Err(serde::de::Error::custom(format!("chip family {name:?}: no game's families are being read"))),
+            }),
+        }
+    }
 }
 
 /// The chip record's flags. In a content file, a list of names.
