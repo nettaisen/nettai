@@ -2607,6 +2607,9 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   EXE4's 20) and whether a player burns while the battle is dimmed (`players_while_dimmed`: EXE4's);
   `grass_heal_slows_at`: the HP at or below which grass heals a wood body on the 180-tick count (EXE6's and EXE5's 9;
   EXE4's none).
+- **`effects.destroy`, since EXE4's port**: what an object's destroy does with its collision before freeing it:
+  `frees` it as it is (EXE6's, after releasing what marked reservations hold; EXE5's), or `unregisters` it first
+  (EXE4's: `object_removeCollisionData`, its panels refreshed and its hits and clearings resolved on them).
 - **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
   poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
   EXE4's 0x23F5F (their sea's and metal's 0x20000 too).
