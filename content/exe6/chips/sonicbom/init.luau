@@ -4,6 +4,12 @@
 
 local lockon = require("../rules/lockon")
 local sonic = require("@self/action")
+local slashes = require("../navis/megaman/forms/slashcross/slashes")
+
+-- Its boom staggers (hit modifier 3). Charged in SlashCross it becomes the
+-- charged slash its record's bytes read as (subtype 0, first parameter 3):
+-- the plain slash after a dash.
+local ACTION = sonic.action("sonicbom/action", { hit_mod = 3, pierces = false }, { charged = slashes.sword, step = true })
 
 local chip: Chip = {
     codes = { "E", "L", "S", "*" },
@@ -18,7 +24,7 @@ local chip: Chip = {
     flags = { "has_damage", "library" },
     beast = { rush = false, lockon = lockon.widesht },
     slot_in_limit = 1,
-    action = sonic.actions.sonicbom,
+    action = ACTION,
 }
 
 return { sonicbom = chip }

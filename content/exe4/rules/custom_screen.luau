@@ -193,9 +193,10 @@ return {
     -- It draws the last turns' block and counts its frame before its keys (0x0801E3DA, 0x0801E3DE): the cursor blinks
     -- a frame further on.
     frame_counts_first = true,
-    -- R's description and L's message are states of the choosing (0x18, 0x1C): their ticks draw the last turns' block
-    -- and count the frame, and the tick the chatbox is seen closed draws the cursor (0x08020A0A, 0x0801E412).
-    description_in_choosing = true,
+    -- R's description, L's message and the rules' windows (Double Soul's choice) are states of the choosing (0x18, 0x1C,
+    -- 0x10): their ticks draw the last turns' block and count the frame first, draw their sprites after their step, and
+    -- the tick one goes back draws the state it goes back to, its cursor (0x08020A0A, 0x0802095E, 0x0801E412).
+    states_in_choosing = true,
     -- The chatbox's end zero-fills the text's tiles in video memory itself (0x0805393C): the text is gone a frame before
     -- the box's first closing step, from the tick its wait for a key is answered.
     chatbox_end_clears_tiles = true,

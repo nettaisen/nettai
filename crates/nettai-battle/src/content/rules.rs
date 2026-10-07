@@ -719,6 +719,58 @@ pub struct RequestClears {
     pub drag: RequestSet,
 }
 
+/// Collision flags a status end clears, in a content file a list of their
+/// names (`StatusFlag`'s): the statuses'.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StatusFlags(pub u32);
+
+impl StatusFlags {
+    pub const NAMES: &'static [(u32, &'static str)] = &[
+        (crate::collision::f1::PARALYZED, "paralyzed"),
+        (crate::collision::f1::BLIND, "blind"),
+        (crate::collision::f1::IMMOBILIZED, "immobilized"),
+        (crate::collision::f1::CONFUSED, "confused"),
+        (crate::collision::f1::FROZEN, "frozen"),
+        (crate::collision::f1::BUBBLED, "bubbled"),
+    ];
+}
+
+serde_flags!(StatusFlags, u32);
+
+/// Status timers a status end zeroes, a bit each by the timer's index
+/// (`collision::timer`), in a content file a list of their names
+/// (`StatusTimer`'s).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StatusTimers(pub u16);
+
+impl StatusTimers {
+    pub const NAMES: &'static [(u32, &'static str)] = &[
+        (1 << crate::collision::timer::PARALYZE, "paralyze"),
+        (1 << crate::collision::timer::CONFUSE, "confuse"),
+        (1 << crate::collision::timer::BLIND, "blind"),
+        (1 << crate::collision::timer::IMMOBILIZE, "immobilize"),
+        (1 << crate::collision::timer::FREEZE, "freeze"),
+        (1 << crate::collision::timer::BUBBLE, "bubble"),
+    ];
+}
+
+serde_flags!(StatusTimers, u16);
+
+/// What a navi's statuses' end clears (EXE6's `sub_801A264`, EXE4's
+/// 0x08013218): its statuses' flags, its requests (the collision's second
+/// word: the statuses' own, the status table's `requests`) and its timers.
+/// EXE6's: the six statuses' flags (0x8001E800), the requests 0x300E8 and
+/// the six timers; EXE4's, a game with no freeze and no bubble, the four
+/// others' (0xE800), the requests 0x8068 and the four timers (its flag
+/// 0x10000 holds a navi changing into a soul).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StatusEnd {
+    pub flags: StatusFlags,
+    pub requests: u32,
+    pub timers: StatusTimers,
+}
+
 /// What a deleted player's object does in its destroy state
 /// (`kinds::player`'s `destroy`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
@@ -926,6 +978,24 @@ pub struct IntakeRules {
     pub hit_sound: HitSound,
     /// How a navi's barrier takes the tick's hits (`sub_801A802`).
     pub barrier: BarrierTick,
+    /// What a side's defensive chip catches (`sub_802CEF4`).
+    pub anti_traps: AntiTraps,
+}
+
+/// What a side's defensive chip catches (`IntakeRules::anti_traps`: EXE6's
+/// `sub_802CEF4`, EXE5's 0x08029A60, EXE4's 0x08023048).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AntiTraps {
+    /// AntiDmg catches a hit of at least this much damage (EXE6's 10;
+    /// EXE5's and EXE4's any, 1: they test the elements' damage for none).
+    pub damage_min: u16,
+    /// With the trap the navi's own status arms, a hit under the least is
+    /// swallowed all the same (EXE6's; EXE5's arms AntiDmg's own test).
+    pub armed_swallows_below: bool,
+    /// A sword's hit (hit flags 0x2000) with any of these flags isn't
+    /// AntiSwrd's (EXE6's 0x20000; EXE5's and EXE4's none).
+    pub sword_spares: u32,
 }
 
 /// How a navi's barrier takes the tick's hits (`IntakeRules::barrier`:
@@ -1529,6 +1599,8 @@ pub struct Rules {
     /// What the ends of a navi's actions clear of its requests (the
     /// reactions section's).
     pub request_clears: RequestClears,
+    /// What a navi's statuses' end clears (the reactions section's).
+    pub status_end: StatusEnd,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     /// The battle's flow where a game's differs (rule section `flow`, the

@@ -67,6 +67,8 @@ pub const NAVICUST_SIZE: usize = 5;
 const NAVI_STATS: usize = 0x4E60;
 const PATCH_CARDS_ON: usize = 0x464C;
 const PATCH_CARDS_OFF: usize = 0x4653;
+/// The event flags, a bit each (flag n: byte n / 8, bit 0x80 >> n % 8).
+const EVENT_FLAGS: usize = 0x2248;
 /// The slots: the PET's six and a seventh, which the reload reads too
 /// (0x08035164: slots 6 to 0).
 pub const PATCH_CARD_SLOTS: usize = 7;
@@ -233,6 +235,11 @@ impl Save {
     /// [`Save::max_hp`], [`Save::base_max_hp`] hold his).
     pub fn navi_stats(&self) -> [u8; crate::codec::NAVI_STATS] {
         self.image[NAVI_STATS..NAVI_STATS + crate::codec::NAVI_STATS].try_into().unwrap()
+    }
+
+    /// Whether event flag `flag` is set (`TestEventFlag`).
+    pub fn event_flag(&self, flag: u16) -> bool {
+        self.image[EVENT_FLAGS + flag as usize / 8] & (0x80 >> (flag % 8)) != 0
     }
 
     /// The patch cards by slot (a slot with no card: none).

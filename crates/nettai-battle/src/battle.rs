@@ -1658,6 +1658,11 @@ impl Battle {
         // (No sequencer, EXE4's: the turn starts, and its banner on the same
         // tick, 0x08007064.)
         if !self.game_rules().flow.sequencer_at_turn_start {
+            // (The turn's requests are the navis' to read all the same: a
+            // form change the rules ask for as the fight runs targets its
+            // side's, EXE4's soul given at OK, whose chip OK put first in
+            // the hand: 0x0800B924's chip less 0x160.)
+            self.turn_transforms = self.transform_requests;
             for side in 0..2u8 {
                 if self.player(side).is_some() {
                     self.notify_side(side, RulesHook::TurnStarted);
