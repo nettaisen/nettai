@@ -165,8 +165,8 @@ function flame.make_kind(look: Look): ElemFlame
             hit = "bool",
             sent = "bool",
         },
-        -- EXE5's 0x080D99D8, EXE4's 0x080CE2D8: by its lifecycle, then a sprite step (while dimmed too, with
-        -- Param4's bit 0).
+        -- EXE5's 0x080D99D8, EXE4's 0x080CE2D8: by its lifecycle, then a sprite step (while dimmed too and whatever
+        -- its collision holds, with any of Param4's flags: the game tests the whole byte).
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -180,7 +180,7 @@ function flame.make_kind(look: Look): ElemFlame
                 me:free()
                 return
             end
-            if bit32.btest((me.state :: State).flags, 1) then
+            if (me.state :: State).flags ~= 0 then
                 me:update_sprite_while_dimmed()
             else
                 me:update_sprite()
