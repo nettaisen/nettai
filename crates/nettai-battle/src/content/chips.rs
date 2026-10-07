@@ -227,6 +227,10 @@ impl ChipTraits {
     /// is M; EXE5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
     /// of which CusVolt1 comes as an A).
     pub const HIDES_DAMAGE_AS_A: u16 = 0x400;
+    /// Next in the hand, it shows no icon over its user: the icons there
+    /// start with the chip after it (EXE4's 0x0801502E: chips 0x160 to
+    /// 0x16F, the souls' chips).
+    pub const NO_ICON_WHEN_NEXT: u16 = 0x800;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -239,6 +243,7 @@ impl ChipTraits {
         (0x100, "goes_with_any"),
         (0x200, "not_navi_slot"),
         (0x400, "hides_damage_as_a"),
+        (0x800, "no_icon_when_next"),
     ];
 
     pub fn has(self, bit: u16) -> bool {

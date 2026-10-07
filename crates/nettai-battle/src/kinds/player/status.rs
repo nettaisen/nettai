@@ -66,6 +66,12 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if st & (ai_status::SWITCH_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
         return Flow::Dispatch;
     }
+    // (A game with no transformation sequencer at a turn's start, EXE4's:
+    // a navi changing form runs its change whatever else, dimmed or not,
+    // 0x08013AFC.)
+    if st & ai_status::FORM_CHANGE != 0 && !b.game_rules().flow.sequencer_at_turn_start {
+        return Flow::Dispatch;
+    }
     if st & ai_status::FORM_BREAKING != 0 && breaking_form(b, r) {
         return Flow::Return;
     }
@@ -73,6 +79,9 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     b.objects.get_mut(r).prevent_anim = 0;
+    if let Some(flow) = unpaused_form_change(b, r) {
+        return flow;
+    }
     if let Some(flow) = action_requests(b, r) {
         return flow;
     }
@@ -548,6 +557,22 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
         }
     }
     None
+}
+
+/// A game with no transformation sequencer at a turn's start (EXE4's): a
+/// form change asked for (its side's rules ask, EXE4's Double Soul from
+/// the hand's soul chip, 0x0800B658) starts as the navi's action as the
+/// fight runs, the form's change (0x08013B14: action 0x0D); the battle isn't
+/// paused for it.
+fn unpaused_form_change(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
+    if b.game_rules().flow.sequencer_at_turn_start || ai(b, r).requests & request::FORM_CHANGE == 0 {
+        return None;
+    }
+    ai_mut(b, r).requests &= !request::FORM_CHANGE;
+    let action = form_change_action(b, r)?;
+    ai_mut(b, r).status |= ai_status::FORM_CHANGE;
+    set_attack(b, r, NaviAction::Content(action), 0);
+    Some(Flow::Dispatch)
 }
 
 /// Stage B's drag request (`F2 & 0x100`): save the state, clear freeze
