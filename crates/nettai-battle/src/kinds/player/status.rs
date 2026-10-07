@@ -170,7 +170,12 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     if flag1(b, r) & f1::DEAD != 0 {
         return dispatch(b, r);
     }
-    if b.paused && navi_action(b, r) != NaviAction::Entry {
+    // (A navi that stops at control has no pause handler: the object loop
+    // decides whether it runs while paused, its header flag 0x04.)
+    if b.paused
+        && navi_action(b, r) != NaviAction::Entry
+        && b.content.rules().paused_navi == crate::content::PausedNavi::PauseHandler
+    {
         return pause_requests(b, r);
     }
     if b.is_dimmed() {

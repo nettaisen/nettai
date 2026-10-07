@@ -20,4 +20,6 @@ return {
     -- the main subsystem 0x080406B0 sets, not a netbattle's: a netbattle's win shows "ENEMY DELETED", or the judge's
     -- banner on the judge's ruling (the roles `win` and `win_judged`; the lab's `flow/buster-duel`, exe4-map.md §16).
     navi_win_banner = "never",
+    -- The intro (0x08007464) goes on from its init to its first step (the HUD's setup) on the same tick.
+    intro_steps_on_init = true,
 }

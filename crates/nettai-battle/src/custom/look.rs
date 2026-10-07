@@ -6,7 +6,7 @@
 
 use crate::battle::{Fade, FadeMode};
 use crate::SoundId;
-use crate::content::SoundRole;
+use crate::content::{HoverRules, HoverSound, SoundRole};
 
 /// The original's presentation state of a screen (the control block at
 /// `0x020364C0`).
@@ -35,7 +35,8 @@ pub struct ScreenLook {
     /// The console's second fade record (`loc_8006274`), which only a dark
     /// chip's hover runs: the window and the screen's sprites.
     pub window_fade: Fade,
-    /// `+0x12`, `+0x13`: the cursor's dark-chip hover (`sub_802A2B0`).
+    /// `+0x12`, `+0x13`: the cursor's dark-chip hover (`sub_802A2B0`; EXE4's
+    /// `+0x54`, `+0x58`, `+0x5D`).
     pub shade: ChipShade,
     /// What this tick drew.
     pub drawn: Drawn,
@@ -54,7 +55,9 @@ pub struct ScreenLook {
     /// Change, 0x080236C0, takes the pick without drawing; its blink draws
     /// the cell empty from the next tick, 0x08023712).
     pub column_kept: Option<u8>,
-    /// The hover's counter (the screen's `+0x14`): every tick, 0 to 63.
+    /// The hover's sound's counter (the screen's `+0x14`: every tick, 0 to
+    /// 63; EXE4's `+0x5C`, down from each turn of the hover: the rules'
+    /// `hover.sound`).
     pub hover_count: u8,
     /// The chips the slots' tiles show, as checked when the screen last
     /// drew them (`sub_8028250`, on opening and after every pick or take
@@ -94,12 +97,6 @@ pub enum ChipShade {
 /// The dark-chip hover's fades' speed.
 const SHADE_FADE_SPEED: u8 = 0xA;
 
-/// The hover's volume ramps (`byte_802A3F4`, `byte_802A400`): down for the
-/// music and up for the screen's player while darkening, the other way
-/// back. The window's fade takes 5 steps out and 6 back, so the ramps
-/// never run past their ends.
-const VOLUME_DOWN: [u16; 6] = [0x100, 0xE0, 0xC0, 0xA0, 0x80, 0x80];
-const VOLUME_UP: [u16; 6] = [0x80, 0x80, 0xA0, 0xC0, 0xE0, 0x100];
 
 /// What the chip window was last drawn for (`sub_8028476`): the slot
 /// under the cursor and how many picks there were then (OK's picture
@@ -334,51 +331,76 @@ impl ScreenLook {
         }
     }
 
-    /// `sub_802A2B0`, after every tick's state: the hover over a dark chip.
-    /// Resting on one (`on_shading`, `sub_802A394`) darkens the screen and
-    /// the window and turns the music down and the screen's player up, a
-    /// step a tick until the window's fade is done; leaving it undoes that
-    /// the same way. Its `+0x14` counter runs every tick from the screen's
-    /// opening; each time it wraps (every 64 ticks) while the hover isn't
-    /// clear, EXE5 plays the hover's sound (0x08025A8C; EXE6's routine
-    /// counts and plays nothing: its rules fill no role for it). The
-    /// routine runs its state first and steps the counter after (EXE5's
-    /// 0x08025A80), so on a tick with both, the volumes are set before the
-    /// sound is asked for.
-    pub(crate) fn hover(&mut self, on_shading: bool) {
-        self.hover_state(on_shading);
-        self.hover_count = (self.hover_count + 1) & 63;
-        if self.hover_count == 0 && self.shade != ChipShade::Clear {
-            self.play(ScreenSound::Shade);
+    /// A tick of the hover over a dark chip, as the rules' `hover` has it
+    /// (EXE6's `sub_802A2B0`, EXE4's 0x0801E478). Resting on one
+    /// (`on_shading`, `sub_802A394`; none: the tick's state left the chips,
+    /// and the hover turns neither way) darkens the screen and the window,
+    /// and ramps the music down and the screen's player up a tick at a time
+    /// (the rules' `to_dark`); leaving it undoes that (`to_clear`). A ramp
+    /// runs to its end before the hover turns again. Its sound: the
+    /// `+0x14` counter from the screen's opening, stepped after the ramp,
+    /// sounding as it wraps while the hover isn't clear (EXE5's 0x08025A8C;
+    /// on a tick with both, the volumes are set before the sound is asked
+    /// for); or EXE4's `+0x5C`, from each turn of the hover, stepped before
+    /// it while the shade has settled, sounding on its first such tick and
+    /// every `every` after.
+    pub(crate) fn hover(&mut self, on_shading: Option<bool>, rules: &HoverRules) {
+        match rules.sound {
+            HoverSound::FromOpening { every } => {
+                self.hover_state(on_shading, rules);
+                self.hover_count = (self.hover_count + 1) % every;
+                if self.hover_count == 0 && self.shade != ChipShade::Clear {
+                    self.play(ScreenSound::Shade);
+                }
+            }
+            HoverSound::WhileDark { every } => {
+                if self.shade == ChipShade::Shaded {
+                    self.hover_count = self.hover_count.wrapping_sub(1);
+                    if self.hover_count == 0 {
+                        self.play(ScreenSound::Shade);
+                        self.hover_count = every;
+                    }
+                }
+                if self.hover_state(on_shading, rules) {
+                    self.hover_count = 1;
+                }
+            }
         }
     }
 
-    fn hover_state(&mut self, on_shading: bool) {
-        self.shade = match self.shade {
-            ChipShade::Clear if on_shading => {
+    /// The hover's state a tick; whether it turned.
+    fn hover_state(&mut self, on_shading: Option<bool>, rules: &HoverRules) -> bool {
+        let ramp = |look: &mut ScreenLook, ticks: &[Option<[u16; 2]>], step: u8| -> bool {
+            if let Some(Some([music, screen])) = ticks.get(step as usize) {
+                look.call(ScreenCall::Volume { music: *music, screen: *screen });
+            }
+            step as usize + 1 < ticks.len()
+        };
+        let (shade, turned) = match self.shade {
+            ChipShade::Clear if on_shading == Some(true) => {
                 // sub_802A2E8
                 self.fade.start(FadeMode::Shade, SHADE_FADE_SPEED);
                 self.window_fade.start(FadeMode::ShadeWindow, SHADE_FADE_SPEED);
-                ChipShade::Shading { step: 0 }
+                (ChipShade::Shading { step: 0 }, true)
             }
-            ChipShade::Shaded if !on_shading => {
+            ChipShade::Shaded if on_shading == Some(false) => {
                 // sub_802A33E
                 self.fade.start(FadeMode::ShadeBack, SHADE_FADE_SPEED);
                 self.window_fade.start(FadeMode::ShadeWindowBack, SHADE_FADE_SPEED);
-                ChipShade::Clearing { step: 0 }
+                (ChipShade::Clearing { step: 0 }, true)
             }
+            // sub_802A30C
             ChipShade::Shading { step } => {
-                // sub_802A30C
-                self.call(ScreenCall::Volume { music: VOLUME_DOWN[step as usize], screen: VOLUME_UP[step as usize] });
-                if self.window_fade.active() { ChipShade::Shading { step: step + 1 } } else { ChipShade::Shaded }
+                (if ramp(self, &rules.to_dark, step) { ChipShade::Shading { step: step + 1 } } else { ChipShade::Shaded }, false)
             }
+            // sub_802A362
             ChipShade::Clearing { step } => {
-                // sub_802A362
-                self.call(ScreenCall::Volume { music: VOLUME_UP[step as usize], screen: VOLUME_DOWN[step as usize] });
-                if self.window_fade.active() { ChipShade::Clearing { step: step + 1 } } else { ChipShade::Clear }
+                (if ramp(self, &rules.to_clear, step) { ChipShade::Clearing { step: step + 1 } } else { ChipShade::Clear }, false)
             }
-            d => d,
+            d => (d, false),
         };
+        self.shade = shade;
+        turned
     }
 
     /// `sub_8029C08`: the emblem over the picked column, at the window's

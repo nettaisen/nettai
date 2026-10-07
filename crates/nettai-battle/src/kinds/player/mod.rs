@@ -842,7 +842,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_801DB84, sub_8018856, sub_801DC06, sub_801DC36: the HP number
     // HUD table.
     enable_turning(b, r);
-    if stats(b, r).first_barrier.is_some() {
+    if b.content.rules().effects.charge_glow == crate::content::ChargeGlow::WithCharge {
+        // (EXE4's init spawns none: a charge brings its own.)
+    } else if stats(b, r).first_barrier.is_some() {
         // sub_8013892's `pop {r4}` left the barrier type in r4, so the glow's
         // link slot (r4 + 0x58) is a BIOS address (docs/engine/dimming-
         // chips.md §3.4).

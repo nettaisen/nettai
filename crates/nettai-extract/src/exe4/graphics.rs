@@ -6,7 +6,7 @@
 //! pass's (`super::NOT_YET`).
 
 use crate::decode::{BackgroundDescriptor, background_picture_by, gfx_anims, tiles};
-use crate::exe4::rom::{Addresses, Rom, Roms, Version};
+use crate::exe4::rom::{Addresses, RED_SUN, Rom, Roms, Version};
 use nettai_assets::*;
 use nettai_content::names::AssetNames;
 
@@ -46,17 +46,22 @@ fn version_of(id: u16) -> Option<Version> {
 /// gives the chips their keys and the fonts their characters.
 pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     let sprites = roms.any().map(|(rom, a)| sprites(rom, a.sprite_list)).unwrap_or_default();
-    let mut hud = match roms.us() {
-        Some((rom, a)) => hud(rom, a, names),
-        None => crate::placeholders::hud(names, 0),
+    // The HUD's art is Red Sun US's (exe4/hud.rs); without it the fonts and
+    // text lines of a US ROM present, the rest placeholders.
+    let mut hud = if roms.redsun.is_present() {
+        let encoding = (names.glyphs.as_slice(), names.dialogue_glyphs.as_slice());
+        super::hud::hud(roms.redsun, &RED_SUN, roms.bluemoon, names, chip_icons(roms, names), dialogue_font(roms.redsun, &RED_SUN, encoding))
+    } else {
+        let mut hud = match roms.us() {
+            Some((rom, a)) => hud(rom, a, names),
+            None => crate::placeholders::hud(names, super::hud::BANNER_COUNT as usize),
+        };
+        hud.chip_icons = chip_icons(roms, names);
+        if let Some((rom, a)) = roms.any() {
+            hud.icon_palette = palette(rom, rom.u32(a.icon_palette_pointer));
+        }
+        hud
     };
-    hud.chip_icons = chip_icons(roms, names);
-    // (No banners yet: a pack keeps the banners' palette with their pictures,
-    // so it has none.)
-    hud.banner_palette = Palette::default();
-    if let Some((rom, a)) = roms.any() {
-        hud.icon_palette = palette(rom, rom.u32(a.icon_palette_pointer));
-    }
     let lettering = match roms.jp() {
         Some((rom, a)) => lettering(rom, a, &hud, names),
         None => crate::placeholders::lettering(&hud, names, LANGUAGE),
@@ -72,7 +77,83 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     ));
     // The backgrounds are the same in the four ROMs but for where they are.
     let backgrounds = roms.any().map(|(rom, a)| backgrounds(rom, a)).unwrap_or_default();
-    Bundle { sprites, field: Field::default(), backgrounds, hud, custom }
+    // The field, the HUD's and the custom screen's art are Red Sun US's (the
+    // base US ROM's, as the other games' packs take theirs).
+    let field = if roms.redsun.is_present() { field(roms.redsun) } else { Field::default() };
+    Bundle { sprites, field, backgrounds, hud, custom }
+}
+
+// ---- Field ------------------------------------------------------------------------
+
+/// The field's tiles (the field's load, 0x08006A40: decompressed to VRAM
+/// 0x06001460, as EXE5's and EXE6's) and background palettes 1..=8 (its
+/// transfer list, 0x08006A68, to the palette buffer's 0x03002A70).
+const FIELD_TILES: u32 = 0x0870_4660;
+const FIELD_PALETTES: u32 = 0x0870_73C0;
+/// Panel blocks: 32 bytes (5x3 map entries) per 6 * type + 3 * owner + row
+/// - 1 (0x080093FC, EXE6 `sub_800C01C`'s counterpart), for EXE4's 12 panel
+/// types (0x0800A3A8's flag words).
+const PANEL_BLOCKS: u32 = 0x0870_6640;
+const PANEL_TYPES: u8 = 12;
+/// The highlighted panel block (0x0800948A, EXE6 `sub_800C0BA`'s): one,
+/// which EXE4 draws for both highlights (it takes no highlight number).
+const HIGHLIGHT_BLOCK: u32 = 0x0870_6F40;
+/// The front edges by owner (0x080094C4: + 32 an owner).
+const FRONT_EDGES: u32 = 0x0870_6F60;
+/// The palette buffer's background palette 0 (the field's transfer list's
+/// palette 1 is at + 0x20).
+const FIELD_PALETTE_BUFFER: u32 = 0x0300_2A50;
+/// The panel palettes that cycle (0x08009556, called as the field is drawn:
+/// EXE6 `sub_800C192`'s counterpart, written out a palette at a time rather
+/// than from a list): each a counter pair at 0x02037AB0 + 2k (its frame,
+/// then a timer from 14, 13, 12, 11, 10 and 9, 0x08009120), a frame every 14
+/// ticks, from a table of palette pointers (its first the palette the field
+/// loads there) to a palette of the buffer.
+const PANEL_PALETTE_ANIMS: [(u32, usize, u32); 6] = [
+    (0x0800_9648, 10, 0x0300_2A70),
+    (0x0800_9678, 10, 0x0300_2AF0),
+    (0x0800_96A8, 6, 0x0300_2AB0),
+    (0x0800_96C8, 6, 0x0300_2B30),
+    (0x0800_96E8, 10, 0x0300_2AD0),
+    (0x0800_9718, 10, 0x0300_2B50),
+];
+const PANEL_PALETTE_TICKS: u8 = 14;
+
+/// The field from Red Sun US: its panel blocks by EXE4's numbers, each type
+/// drawn as the engine's type content gives that number
+/// (compat/panels.toml); the types that have none are left out from the
+/// first such (the blocks are by place).
+fn field(rom: &Rom) -> Field {
+    let c = exe4_compat::Compat::exe4();
+    let panel_types = (0..PANEL_TYPES)
+        .map_while(|n| match c.panel_type(n) {
+            Ok(t) => t.map(|t| t as u8),
+            Err(e) => panic!("EXE4 panel {n}: {e}"),
+        })
+        .collect();
+    let palette_anims = PANEL_PALETTE_ANIMS
+        .iter()
+        .enumerate()
+        .map(|(k, &(table, count, dest))| PaletteAnim {
+            slot: ((dest - FIELD_PALETTE_BUFFER) / 32) as u8,
+            frames: (0..count as u32).map(|i| (palette(rom, rom.u32(table + 4 * i)), PANEL_PALETTE_TICKS)).collect(),
+            initial_timer: PANEL_PALETTE_TICKS - k as u8,
+        })
+        .collect();
+    crate::decode::field_with(
+        rom,
+        crate::decode::FieldAddresses {
+            tiles: FIELD_TILES,
+            palettes: FIELD_PALETTES,
+            panels: PANEL_BLOCKS,
+            highlights: [HIGHLIGHT_BLOCK; 2],
+            edges: FRONT_EDGES,
+            palette_anims: 0,
+            palette_buffer: FIELD_PALETTE_BUFFER,
+        },
+        panel_types,
+        palette_anims,
+    )
 }
 
 /// A palette (the hardware ignores bit 15 of a color).
@@ -147,7 +228,7 @@ fn sprites(rom: &Rom, list: u32) -> Vec<SpriteSheet> {
 
 /// What glyph `k` of a font draws: the encoding's name for it, else its
 /// number in brackets.
-fn glyph_names((cell, dialogue): (&[String], &[String]), n: usize) -> Vec<String> {
+pub(super) fn glyph_names((cell, dialogue): (&[String], &[String]), n: usize) -> Vec<String> {
     (0..n).map(|k| cell.iter().chain(dialogue).nth(k).cloned().unwrap_or_else(|| format!("[{k:03x}]"))).collect()
 }
 
@@ -162,7 +243,7 @@ fn dialogue_font(rom: &Rom, a: &Addresses, encoding: (&[String], &[String])) -> 
 
 /// The HUD's text lines at `at`: a line with anything but glyphs in it (a
 /// text command) is cut there.
-fn texts(rom: &Rom, at: u32, first_control: u8) -> Vec<Vec<u16>> {
+pub(super) fn texts(rom: &Rom, at: u32, first_control: u8) -> Vec<Vec<u16>> {
     let offset = |i: u32| rom.u16(at + 2 * i) as u32;
     (0..offset(0) / 2)
         .map(|i| {
@@ -176,7 +257,7 @@ fn texts(rom: &Rom, at: u32, first_control: u8) -> Vec<Vec<u16>> {
 }
 
 /// The 8x16 font's glyphs an encoding names (no more than the font has).
-fn font_glyphs(encoding: (&[String], &[String])) -> usize {
+pub(super) fn font_glyphs(encoding: (&[String], &[String])) -> usize {
     (encoding.0.len() + encoding.1.len()).min(FONT_GLYPHS)
 }
 
@@ -206,6 +287,23 @@ fn lettering(rom: &Rom, a: &Addresses, base: &Hud, names: &AssetNames) -> HudLet
         font_chars: glyph_names(encoding, n),
         dialogue_font: dialogue_font(rom, a, encoding),
         texts: texts(rom, a.texts, first_control),
+        // The banners whose words differ, each where it starts (a longer
+        // name further left); not what kind of banner it is.
+        banners: base
+            .banners
+            .iter()
+            .enumerate()
+            .map(|(id, own)| {
+                let b = super::hud::banner(rom, a.banners, id as u32);
+                (b != *own).then_some(b)
+            })
+            .collect(),
+        banner_palette: palette(rom, a.banner_palette),
+        // ("カスタム中…", seven tiles wide as the US's "BUSY...".)
+        waiting: tiles(rom, a.waiting, super::hud::WAITING_BYTES),
+        waiting_palette: palette(rom, a.banner_palette),
+        // (The gauge's tiles, "CUSTOM" among them, are the US ROMs'.)
+        gauge_tiles: base.gauge_tiles.clone(),
         ..crate::placeholders::lettering(base, names, LANGUAGE)
     }
 }

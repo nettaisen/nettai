@@ -453,6 +453,8 @@ local status = {
         -- accumulator its table, 0x08017284, names by the navi's element: the elements rule's weakness table read the
         -- other way; none for null), whichever hit came last: its hit kernel stores no multiplier of a hit.
         weakness_mark = "weak_element_damage",
+        -- While the battle is paused a navi runs its pause handler in place of its action, as EXE6's.
+        paused_navi = "pause_handler",
     },
 }
 
