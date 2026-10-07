@@ -240,6 +240,23 @@ pub struct EffectsRules {
     /// What `object_genericDestroy` does with an object's collision before
     /// it frees the object.
     pub destroy: DestroyRule,
+    /// The order the objects of a pool are drawn in. Presentation: the
+    /// renderer's.
+    pub draw_order: DrawOrder,
+}
+
+/// The order a pool's objects are drawn in, each pool in turn (actors,
+/// attacks, effects): it decides which of two parts in the same depth
+/// bucket is in front (the one drawn later).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DrawOrder {
+    /// By the update list (EXE6's `sub_8003E18`, `sub_8004218` and
+    /// `sub_8004510` walk the lists `RunBattleObjectLogic` builds; EXE5's).
+    UpdateList,
+    /// By slot (EXE4's 0x08003BA0, 0x08003ED4 and 0x08004180 walk each
+    /// pool's slots from the first).
+    Slots,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the

@@ -77,4 +77,6 @@ return {
     bug_flicker = true,
     -- An object's destroy (`object_genericDestroy`) releases what it holds and frees its collision as it is.
     destroy = "frees",
+    -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
+    draw_order = "update_list",
 }

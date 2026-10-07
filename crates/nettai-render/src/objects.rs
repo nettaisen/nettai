@@ -186,6 +186,16 @@ pub fn palette_flash(b: &Battle) -> Option<u8> {
     })
 }
 
+/// A pool's objects in the order they are drawn (the rules'
+/// `effects.draw_order`): the update list's, or by slot.
+fn draw_order(b: &Battle, pool: Pool) -> Vec<nettai_battle::object::ObjectRef> {
+    let mut refs: Vec<_> = b.objects.in_order().filter(|r| r.pool == pool).collect();
+    if b.game_rules().effects.draw_order == nettai_battle::content::DrawOrder::Slots {
+        refs.sort_by_key(|r| r.slot);
+    }
+    refs
+}
+
 /// Whether `o` is of the engine's kind `kind`.
 fn is(b: &Battle, o: &Object, kind: EngineKind) -> bool {
     b.content.defs.engine_kind(o.kind) == Some(kind)
@@ -273,7 +283,7 @@ pub fn queue_objects<'a>(
     lookups_only: bool,
 ) {
     for pool in Pool::ALL {
-        for r in b.objects.in_order().filter(|r| r.pool == pool) {
+        for r in draw_order(b, pool) {
             let o = b.objects.get(r);
             // Objects whose sprite doesn't animate are culled to nothing
             // (`sub_30061E8` gives them a one-point mask).
