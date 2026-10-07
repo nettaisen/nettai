@@ -8,6 +8,7 @@ local merge = require("@exelib/merge")
 return merge {
     -- Chips: a module defining one, or a series module defining several.
     require("@self/airshot"),
+    require("@self/aquaup"),
     require("@self/areagrab"),
     require("@self/atk-10"),
     require("@self/atk-30"),
@@ -24,9 +25,11 @@ return merge {
     require("@self/drksword"),
     require("@self/drkvulcn"),
     require("@self/fullcust"),
+    require("@self/greenwd"),
     require("@self/heatshot"),
     require("@self/invalid"),
     require("@self/lance"),
+    require("@self/ligtnin"),
     require("@self/meteors"),
     require("@self/minibomb"),
     require("@self/navi-20"),

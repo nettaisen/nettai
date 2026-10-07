@@ -58,6 +58,15 @@
 "boomer3/action" = 0x20
 "repair/action" = 0x20
 "fullcust/action" = 0x20
+"ligtnin1/action" = 0x20
+"ligtnin2/action" = 0x20
+"ligtnin3/action" = 0x20
+"aquaup1/action" = 0x20
+"aquaup2/action" = 0x20
+"aquaup3/action" = 0x20
+"greenwd1/action" = 0x20
+"greenwd2/action" = 0x20
+"greenwd3/action" = 0x20
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D

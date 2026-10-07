@@ -57,6 +57,15 @@ language = "en"
 "boomer3" = { name = "Boomer3", description = "Boomerang\nencircles\nfield" }
 "repair" = { name = "Repair", description = "Recovers\nHP of \nitems" }
 "fullcust" = { name = "FullCust", description = "CustGauge\ninstantly\nrefills" }
+"ligtnin1" = { name = "Ligtnin1", description = "Thunder\nstrikes\nobstacles" }
+"ligtnin2" = { name = "Ligtnin2", description = "Thunder\nstrikes\nobstacles" }
+"ligtnin3" = { name = "Ligtnin3", description = "Thunder\nstrikes\nobstacles" }
+"aquaup1" = { name = "AquaUp1", description = "Raises\nAquaTowrs\nfrm crack" }
+"aquaup2" = { name = "AquaUp2", description = "Raises\nAquaTowrs\nfrm crack" }
+"aquaup3" = { name = "AquaUp3", description = "Raises\nAquaTowrs\nfrm crack" }
+"greenwd1" = { name = "GreenWd1", description = "Raises\nWoodTowrs\nfrm grass" }
+"greenwd2" = { name = "GreenWd2", description = "Raises\nWoodTowrs\nfrm grass" }
+"greenwd3" = { name = "GreenWd3", description = "Raises\nWoodTowrs\nfrm grass" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

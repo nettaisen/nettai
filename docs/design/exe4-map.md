@@ -550,6 +550,14 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 - **FullCust** (action 0x20's variant 7) and **Repair** (its variant 0x0B): EXE5's routines (FullCust's 0x080096C4,
   0x0800E26C) as spawners, on the engine's gauge and its field object registry; FullCust's branch for a navi whose
   NaviStats +0x26 is 2 (a story's other navi) has no netbattle navi to take it.
+- **AquaUp1, GreenWd1, Ligtnin1** (with their 2 and 3: action 0x20's variant 0x0C, their parameter 0, 1, 2,
+  `lib/towers`): EXE4's own. A controller (attack object 0x93) sweeps the columns from the user's back one, a column
+  every 11 ticks, raising an aqua tower from each cracked panel of the other side's holding its navi, a wood tower from
+  each grass one (objects/tower, attack 0x92's rows 0 and 1), or striking a lightning onto each panel holding an
+  obstacle (objects/lightning, attack 0x8E: EXE5's unused code; its eight hits around and its ring of sparks). The
+  lightning waits on RockCube's recordings (the lab's ligtnin*/obstacle). The towers' frames differ from mGBA's on a
+  few ticks where mGBA shows the tower's previous frame or a mix of two (big sprites: the original's display falling
+  a frame behind, not its state).
 
 **For the next steps:**
 

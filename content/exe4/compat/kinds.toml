@@ -40,3 +40,7 @@
 "meteors/dropper" = { pool = "effect", index = 0x81, scratch_position = true }
 # The Boomers' boomerang (action 0x20's variant 2, 0x080D3430).
 "boomer/boomerang" = { pool = "attack", index = 0x32, scratch_position = true }
+# The towers' controller (action 0x20's variant 0x0C, 0x080DF98C), its towers (0x080DF7D0) and lightning (0x080DF108).
+"towers/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"tower" = { pool = "attack", index = 0x92, scratch_position = true }
+"lightning" = { pool = "attack", index = 0x8E, scratch_position = true }
