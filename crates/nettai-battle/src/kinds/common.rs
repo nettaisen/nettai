@@ -44,32 +44,36 @@ pub fn update_sprite_even_paused(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).update(&b.content);
 }
 
-/// A panel that burns (EXE5's lava: 0x08016E18 for navis, 0x08016D80 for
-/// other bodies, the same tests in another order) burns a grounded body
-/// on it that isn't of fire: its damage in fire (shifted by the body's
-/// weakness to fire) as a hit, unless the body is flagged 0x09; either way
-/// the panel turns normal and its burn shows (the arena's spark
-/// `panel_burn`, jittered: one simulation RNG draw).
-pub fn panel_burn(b: &mut Battle, r: ObjectRef) {
+/// A panel that burns (its type's `burn`: EXE5's lava, 0x08016E18 for
+/// navis, 0x08016D80 for other bodies, the same tests in another order;
+/// EXE4's, 0x08013128 and 0x0801309E) burns a grounded body on it that
+/// isn't of fire nor spared: its damage in fire (shifted by the body's
+/// weakness to fire) as a hit, and what it wears off the mood, unless the
+/// body is flagged 0x09; either way the panel turns normal and its burn
+/// shows (the arena's spark `panel_burn`, jittered: one simulation RNG
+/// draw). Not while the battle is dimmed, unless `player` and the burn's
+/// `players_while_dimmed` (EXE4's).
+pub fn panel_burn(b: &mut Battle, r: ObjectRef, player: bool) {
     use crate::collision::f1;
-    if b.is_dimmed() {
-        return;
-    }
     let Some(c) = b.objects.get(r).collision else { return };
     let d = b.collision.get(c);
     let p = d.panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     let rules = b.content.rules();
-    let Some(damage) = rules.panels.types[kind as usize].burn else { return };
-    if d.element == 1 || d.region.is_none() || d.f1 & f1::FLOATSHOE != 0 || d.f1 & 0x8800_0206 != 0 {
+    let Some(burn) = rules.panels.types[kind as usize].burn else { return };
+    if b.is_dimmed() && !(player && burn.players_while_dimmed) {
+        return;
+    }
+    if d.element == 1 || d.region.is_none() || d.f1 & f1::FLOATSHOE != 0 || d.f1 & burn.spared_by != 0 {
         return;
     }
     if d.f1 & 0x09 == 0 {
         let shift = rules.element_weakness.get(d.element as usize).map_or(0, |row| row[1]);
-        let damage = damage.wrapping_shl(shift as u32);
+        let damage = burn.damage.wrapping_shl(shift as u32);
         let d = b.collision.get_mut(c);
         d.acc.element_damage[1] = d.acc.element_damage[1].wrapping_add(damage);
         d.acc.raw_element_damage[1] = d.acc.raw_element_damage[1].wrapping_add(damage);
+        d.acc.mood_damage = d.acc.mood_damage.wrapping_add(burn.mood);
         d.hit_mod_final |= 3;
         d.hit_mod_by_side[0] |= 3;
         d.hit_mod_by_side[1] |= 3;
