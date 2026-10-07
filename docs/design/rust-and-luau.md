@@ -56,9 +56,9 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Emotions | | | 1 | 3 | 4 |
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | | | 1 | | 1 |
-| The stat block and versions | | | 1 | | 1 |
+| The stat block and versions | | | | | |
 | Tools | | | 1 | | 1 |
-| **All** | | | **7** | **5** | **12** |
+| **All** | | | **6** | **5** | **11** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -148,9 +148,6 @@ rename left of EXE5's logic.
 
 ### The stat block and versions
 
-- **V2. The version-named renderer helpers** (`beast_pictures`, render custom.rs:578; `version_name`,
-  `console_version`, `known_emblem`, :592–640, which read `PlayerFact::Version`). Versions themselves are generic:
-  a pack's per-version pictures. *(c)* Rename `beast_pictures` to the button's version pictures; nothing else.
 
 ### Tools (nettai-match)
 
@@ -284,6 +281,9 @@ Each with what it was and what it is now.
   `NaviStats` fields and `NaviStat`s are gone. `version` is no stat: it is the side's version fact (EXE6's API
   `exe6.version`, which MstrCros reads; exe6-compat writes +0x20 from it). The stats pane lists the game's own by the
   schema's names (`stats::game_fields`). A bug code writes them by name (N2: a game's rules/navicust/bugs's `own`).
+- **V2.** `beast_pictures` is `button_pictures`: the version pictures a side's buttons draw, its navi's form's
+  version's when the form isn't the base form, else the player's (EXE6's Beast Out button the case). The rest
+  (`version_name`, `console_version`, `known_emblem`) was generic already.
 - **X1.** The fades by what they do: `FadeMode::{Flash, FlashBack, HalfOut, HalfOutBack}` (content's `flash`,
   `half_out`, ...; were `SoulFlash*`, `BeastOut*`), and D1's. A `fades` rule section stays §3.3's way for a fade of a
   game's own, which none needs yet.
