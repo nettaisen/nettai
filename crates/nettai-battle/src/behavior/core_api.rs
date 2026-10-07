@@ -1188,6 +1188,10 @@ impl CoreApi for Battle {
         self.looks[side as usize & 1].name_variant = variant;
     }
 
+    fn set_window_count(&mut self, side: u8, shown: bool) {
+        self.looks[side as usize & 1].window_count = shown;
+    }
+
     fn add_side_gauge(&mut self, side: u8, n: u16) {
         let s = &mut self.sides[side as usize & 1];
         s.gauge = (s.gauge as u32 + n as u32).min(crate::hud::CustomGauge::FULL as u32) as u16;

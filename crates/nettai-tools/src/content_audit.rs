@@ -294,9 +294,9 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     }
     // (A form's faces by each of its game's emotions.)
     for i in 0..c.defs.forms.len() {
-        for emotion in &c.rules().emotion.names {
+        for e in 0..c.rules().emotion.names.len() {
             for variant in [false, true] {
-                lookups::form_face(packs, c, FormHandle(i as u16), emotion, variant, p);
+                lookups::form_face(packs, c, FormHandle(i as u16), nettai_battle::content::Emotion(e as u8), variant, p);
             }
         }
     }

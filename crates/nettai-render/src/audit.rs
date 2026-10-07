@@ -62,8 +62,9 @@ pub enum Lookup {
     Mugshot(MugshotId),
     /// A link navi's own face in the emotion window.
     NaviFace(NaviHandle),
-    /// A form's face for an emotion (`emotion_number`).
-    FormFace(FormHandle, u8),
+    /// A form's face for an emotion of its game's, of its second set or
+    /// not.
+    FormFace(FormHandle, nettai_battle::content::Emotion, bool),
     /// A navi's name on the custom screen (the enemy names).
     NaviName(NaviHandle),
     /// A navi's variant name there (`battle.set_name_variant`: EXE5's Hub
@@ -104,21 +105,6 @@ pub enum Graphics {
     Warning,
 }
 
-/// The number in a [`Lookup::FormFace`] of the emotion named `name` (the
-/// games' emotions by `sub_8015B54`'s code; EXE5's worried, its own 1, 6;
-/// another name 0xF; 0x10 more for the form's second set).
-pub fn emotion_number(name: &str) -> u8 {
-    match name {
-        "normal" => 0,
-        "tired" => 1,
-        "full_synchro" => 2,
-        "angry" => 3,
-        "worn_out" => 5,
-        "worried" => 6,
-        _ => 0xF,
-    }
-}
-
 impl Lookup {
     /// The lookup as a line of text, by the content's names (`--lookups`:
     /// stable from run to run, and between content of other packs).
@@ -143,7 +129,9 @@ impl Lookup {
             Lookup::ChipDescription(h) => format!("chip {} description", chip(h)),
             Lookup::Mugshot(id) => format!("mugshot {}", asset(AssetKind::Mugshot, id.0)),
             Lookup::NaviFace(h) => format!("navi {} face", navi(h)),
-            Lookup::FormFace(h, e) => format!("form {} face {e}", form(h)),
+            Lookup::FormFace(h, e, variant) => {
+                format!("form {} face {}{}", form(h), c.rules().emotion.name(e), if variant { " (second set)" } else { "" })
+            }
             Lookup::NaviName(h) => format!("navi {} name", navi(h)),
             Lookup::NaviVariantName(h) => format!("navi {} variant name", navi(h)),
             Lookup::Emblem(h) => format!("navi {} emblem", navi(h)),

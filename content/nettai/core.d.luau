@@ -1275,6 +1275,9 @@ declare battle: {
     -- Presentation: whether the custom screen's enemy names show the side's navi by its variant name (the locale's
     -- `variant_name`: EXE5's Hub Style in a link battle).
     set_name_variant: (side: number, variant: boolean) -> (),
+    -- Presentation: whether the side's emotion window shows its count (its navi's stat of the role `window_count`:
+    -- EXE6's Beast Out turns), else its empty box.
+    set_window_count: (side: number, shown: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_802E04E`: take from a side's own custom gauge, down to empty.
@@ -2174,27 +2177,15 @@ export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- family's.
 export type ChipMatch = { element: ElementName?, family: ChipFamily? }
 
--- A form's faces in the emotion window by its navi's emotion: an emotion
--- without one shows `normal`.
-export type FaceSet = {
-    normal: Mugshot,
-    angry: Mugshot?,
-    tired: Mugshot?,
-    full_synchro: Mugshot?,
-    worn_out: Mugshot?,
-    -- EXE5's mood under 65.
-    worried: Mugshot?,
-}
+-- A form's faces in the emotion window by its navi's emotion, keyed by its game's emotion names (its rules' `emotion`
+-- order's; the engine holds a set to them as the content loads): an emotion without one shows the game's default
+-- emotion's (the order's last case's: EXE6's and EXE5's `normal`), which a set has.
+export type FaceSet = { [Emotion]: Mugshot }
 export type MugshotFaces = {
-    normal: Mugshot,
-    angry: Mugshot?,
-    tired: Mugshot?,
-    full_synchro: Mugshot?,
-    worn_out: Mugshot?,
-    worried: Mugshot?,
     -- A second set, shown where the side's rules ask (`battle.set_face_variant`): while the navi's rules' B charge is
     -- armed (EXE5's soul's Chaos Unison look), or in the base form (EXE5's Hub Style).
     variant: FaceSet?,
+    [Emotion]: Mugshot,
 }
 
 -- A navi (§3.2): MegaMan or a link navi. (`NaviDef`, since `Navi` is a

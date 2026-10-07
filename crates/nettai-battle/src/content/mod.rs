@@ -255,6 +255,8 @@ impl Content {
         // (The rules' references to definitions, which have their handles
         // now.)
         sections::link(self)?;
+        // (The forms' faces, keyed by the rules' emotions.)
+        navis::check_faces(self)?;
         self.count_strings();
         Ok(())
     }
