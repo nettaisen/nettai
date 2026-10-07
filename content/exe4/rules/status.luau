@@ -422,6 +422,9 @@ local status = {
         -- Every console hears a navi's hit as `hit` (0x6B), a navi in auto battle's (NaviStats +0x26 = 1) as
         -- `auto_battle_hit` (0x6D): its hit intake, 0x08013A8C.
         hit_sound = "by_navi",
+        -- A barrier (0x08012DF8) runs whenever its navi does (its timer counts in the intro's pause); wind takes it
+        -- away at once (0x08012E1E), the hit absorbed all the same.
+        barrier = { stops_while_paused = false, wind = "takes_away" },
         -- EXE4's emotions (0x0800F49C, in its order: the first that holds is the side's): in a soul (NaviStats +0x24,
         -- neither 0 nor 15) the soul's (its face the soul form's); angry (AIData +0x2E, anger's ticks); a mood of 0
         -- (the dark MegaMan's: worn out); Full Synchro (0xFF); a mood under 65 worried; else normal. Its setter
