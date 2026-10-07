@@ -624,8 +624,15 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   three-picks, flow/ko-side0, ko-double, ko-bluemoon, emotions/counter and full-synchro-hit. Together they cover
   the HP box (its colors through ko-side0's deletion), the custom gauge filling, the HP numbers, the chip icons
   (one and three chips), the chip name, damage and "×2", "PAUSE", "COUNTER HIT!" and the other player's used chip
-  (emotions/counter, frames 410 to 441). flow/ko-cannon and buster-side1 differ only in an explosion and in the
-  charge glow over the opponent, not the HUD.
+  (emotions/counter, frames 410 to 441). So is every fight frame of flow/ko-cannon (a deletion's explosion and the
+  Cannon's hit spark share a depth bucket: EXE4 draws each pool by slot, 0x08003BA0, 0x08003ED4, 0x08004180, where
+  EXE6 walks the update lists: `effects.draw_order`), flow/buster, buster-tap, flinch-moving, flinch-shooting, move,
+  move-edge, move-held, custom/back, back-all, hand-of-seven, same-chip, run-message, run-message-b, run-message-ok,
+  and, with group B's charge glow fix (69fb65ad6), flow/charge, charge-held, charge-move, buster-side1,
+  buster-attack-max, buster-charge-max, buster-speed-max, buster-hold, flinch-charging. Every stage the content plays
+  (33 of the lab's 46 stages/*/stand: cracked, grass, holes, holy, ice, lava, normal, poison, type 5, type A, in
+  their layouts) is pixel-exact but for the full gauge's 4-frame shift below: the field, its panels by type and their
+  palette cycles. The other 13 wait on their obstacles (§18 item 19).
   Two pieces show 4 frames late: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the full
   gauge's stripes and "L or R". That is by design, not a replay fault: the engine's custom screen is part of the
   shared simulation and acts on the link-delayed input every console has, where the original's local screen takes
