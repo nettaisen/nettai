@@ -298,7 +298,7 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     }
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    if b.call_panel(t, r, nettai_content_api::PanelCall::Stand).is_none() {
+    if b.call_panel(t, nettai_content_api::PanelCall::Stand { body: r }).is_none() {
         coll_mut(b, r).standing_count = 0;
     }
 }
@@ -321,7 +321,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
             return;
         }
         let kind = panel_kind(b, coll(b, r).panel);
-        if b.call_panel(kind, r, nettai_content_api::PanelCall::Rest) == Some(nettai_content_api::Value::Bool(true)) {
+        if b.call_panel(kind, nettai_content_api::PanelCall::Rest { body: r }) == Some(nettai_content_api::Value::Bool(true)) {
             return;
         }
         if f & f1::MOVE_COMPLETE == 0 {
@@ -331,7 +331,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     super::clear_flag1(b, r, f1::MOVE_COMPLETE);
     let p = coll(b, r).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    b.call_panel(kind, r, nettai_content_api::PanelCall::MoveEnd);
+    b.call_panel(kind, nettai_content_api::PanelCall::MoveEnd { body: r });
 }
 
 // ---- NaviCust bugs and traps ------------------------------------------------------

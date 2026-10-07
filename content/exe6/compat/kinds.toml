@@ -65,7 +65,7 @@
 "batcan/shot" = { pool = "attack", index = 0x01 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "flame" = { pool = "attack", index = 0x04 }
-"engine/eruption" = { pool = "attack", index = 0x07 }
+"eruption" = { pool = "attack", index = 0x07 }
 "bomb" = { pool = "attack", index = 0x08 }
 "panel-strike" = { pool = "attack", index = 0x09 }
 "flying-shot" = { pool = "attack", index = 0x0B }
