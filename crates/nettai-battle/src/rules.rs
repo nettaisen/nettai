@@ -603,9 +603,9 @@ impl Battle {
         self.call_rules(side, RulesHook::BugMark, Some(navi), None, None) == Some(Value::Bool(true))
     }
 
-    /// The rules' `navi_damaged(side, navi)`.
-    pub(crate) fn rules_navi_damaged(&mut self, side: u8, navi: ObjectRef) {
-        self.call_rules(side, RulesHook::NaviDamaged, Some(navi), None, None);
+    /// The rules' `navi_flinched(side, navi)`.
+    pub(crate) fn rules_navi_flinched(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::NaviFlinched, Some(navi), None, None);
     }
 
     /// The rules' `hp_emptied(side, navi)`: whether they answered true (the
