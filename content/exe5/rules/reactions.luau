@@ -36,6 +36,7 @@ return {
         elec_reaches_submerged = true,
         guard_breaks_to = 0x1002,
         guard_before_untouchable = false,
+        guard_marks_direction = true,
     },
     -- A move's direction in the collision record (0x0800CC92, EXE6's `sub_800E994`): up, down, back or forward by
     -- the side, other for a move of two panels or more right or down.

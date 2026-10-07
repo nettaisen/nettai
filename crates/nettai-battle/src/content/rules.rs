@@ -858,6 +858,10 @@ pub struct HitTest {
     /// guard still turns hits aside (EXE4's 0x08012BDC: 0x08000008); else
     /// with the other states before the guard (EXE6's and EXE5's).
     pub guard_before_untouchable: bool,
+    /// A hit a guard turns aside marks the receiver's guard byte with the
+    /// hitter's direction (1 << its flip: EXE6's, EXE5's); else with 1,
+    /// whatever the direction (EXE4's 0x08012BA6).
+    pub guard_marks_direction: bool,
 }
 
 /// How often a NaviCust bug drains a point of HP (the status section's
