@@ -110,6 +110,7 @@ language = "en"
 "seekbom1" = { name = "SeekBom1", description = "Throws a\nbomb at\nthe enemy" }
 "seekbom2" = { name = "SeekBom2", description = "Throws a\nbomb at\nthe enemy" }
 "seekbom3" = { name = "SeekBom3", description = "Throws a\nbomb at\nthe enemy" }
+"ball" = { name = "Ball", description = "Breaks\n3rd panel\nahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -273,6 +274,7 @@ language = "en"
 "111-gigafolder1" = { name = "GigaFolder1" }
 "112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "116-charge-shot-switch" = { name = "Charge Shot Switch" }
+"117-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
 "133-weapon-change" = { name = "Weapon Change" }
