@@ -147,6 +147,7 @@ standard = [
     "panlgrab",
     "areagrab",
     "atk-10",
+    "navi-20",
 ]
 mega = [
     "atk-30",
