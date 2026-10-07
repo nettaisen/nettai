@@ -68,14 +68,23 @@ charge-glow-a = "14-15"
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
 netbattle = 0x015  # a netbattle's music, which the fight's setup starts (the lab's flow/buster-duel, frame 130)
+description-open = 0x066  # R's description on the custom screen (0x080203C0)
 unselect-68 = 0x068
+refused = 0x069  # what the custom screen can't pick or take back, a soul it can't give (0x08020386, 0x08020634)
 buster-shot = 0x06a  # the buster shot and the charged shot (0x080EB372, 0x080ECC72)
 hit-bomb-0 = 0x06f
 hit-bomb-1 = 0x070
 log-in = 0x077
+program-advance-part = 0x079  # the Program Advance animation naming a chip of the recipe (0x0801E74E)
 custom-open = 0x07a  # the custom screen's opening (the lab's flow/buster-duel, frame 258)
+custom-cursor = 0x07d  # the custom screen's cursor moving (0x0802049C, 0x080206F6, 0x080207DC)
+custom-pick = 0x07e  # a chip picked on the custom screen (0x080203A0, from 0x080204B8)
+custom-back = 0x07f  # a pick taken back on the custom screen (0x080203A0, 0x0802066E, from 0x080204B8)
+custom-ok = 0x080  # OK on the custom screen (0x0802063E)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
+program-advance = 0x097  # the Program Advance animation's Program Advance (0x0801E83A)
 appear = 0x0b0  # the navis' appearance as a round starts (the lab's flow/buster-duel, frame 148)
+dark-hover = 0x100  # the custom screen's cursor resting on a dark chip, every 61 ticks (0x0801E4A6)
 buster-blank = 0x1c0  # the buster's blank shot (0x080EB39E)
 
 # Battle backgrounds: the loader's numbers (0x08085430, its descriptors at 0x0808563C: 0x00 to 0x1a), each named

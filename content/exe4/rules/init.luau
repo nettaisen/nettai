@@ -5,6 +5,7 @@
 -- each one an entry of exe4-map.md §18, which lists what is still to port (the NaviCust, the Mod Cards, the souls, the
 -- custom screen's own states, the chips).
 
+local custom = require("@self/custom")
 local fresh_stats = require("@self/fresh_stats")
 local save = require("@self/save")
 
@@ -26,6 +27,10 @@ local rules: Rules = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
     },
+    -- The custom screen's (./custom): the hand's size.
+    custom = {
+        hand_size = custom.hand_size,
+    },
     hooks = {
         -- What the save brings to the navi's stats (./save).
         round_setup = save.round_setup,
@@ -41,6 +46,7 @@ local rules: Rules = {
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     buster = require("@self/buster"),
     chip_use = require("@self/chip_use"),
+    custom_screen = require("@self/custom_screen"),
     effects = require("@self/effects"),
     elements = require("@self/elements"),
     flow = require("@self/flow"),
