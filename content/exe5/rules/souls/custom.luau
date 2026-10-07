@@ -70,7 +70,9 @@ end
 -- outlast the screen they were set on.
 local function forget_screen(s: any)
     local kept = s.screen
-    for name, kind in screen do
+    for name, declared in screen do
+        -- (A field the engine knows by a role is of its role's declared type: `schema.role(role, T)`'s `T`.)
+        local kind: SchemaField = if type(declared) == "table" and (declared :: any).__role then (declared :: any).of else declared
         local element, count
         if type(kind) == "string" then
             element, count = string.match(kind, "^(.+)%[(%d+)%]$")

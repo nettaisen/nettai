@@ -237,11 +237,13 @@ impl StatRole {
 }
 
 /// A form list's fields in the rules' state (the views `form_list_opening`,
-/// `form_list`, `form_list_closing` and `form_chosen`): the places of the
-/// forms offered among the player's (`offered`, a u8 array) and how many
-/// (`offered_count`), which entries are marked (`marked`, a bool array), the
-/// entry under the cursor (`window_cursor`), and whether one is chosen
-/// (`cross_chosen`) and its place (`chosen`).
+/// `form_list`, `form_list_closing` and `form_chosen`), each the field of
+/// its role (`schema.role`): the places of the forms offered among the
+/// player's (`form_list.offered`, a u8 array) and how many
+/// (`form_list.count`), which entries are marked (`form_list.marked`, a
+/// bool array), the entry under the cursor (`form_list.cursor`), and
+/// whether one is chosen (`form_list.chosen`, a bool) and its place
+/// (`form_list.chosen_place`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FormListFields {
     pub offered: FieldPath,
@@ -253,9 +255,10 @@ pub struct FormListFields {
 }
 
 /// A form offer's fields in the rules' state (the button view
-/// `form_offer`): the form on offer, none for no offer (`offer`, a form),
-/// whether the offer is the form's alternate (`offer_chaos`), and the turns
-/// left in the form it gave (`turns`), which the emotion window counts.
+/// `form_offer`), each the field of its role: the form on offer, none for
+/// no offer (`form_offer.form`, a form), whether the offer is the form's
+/// alternate (`form_offer.alternate`, a bool), and the turns left in the
+/// form it gave (`form_offer.turns`), which the emotion window counts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct OfferFields {
     pub form: FieldPath,
@@ -263,11 +266,12 @@ pub struct OfferFields {
     pub turns: FieldPath,
 }
 
-/// A flight's fields in the rules' state: its step and its count in the
-/// step. The offer's (the window view `offer_flight`: `unite_step`,
-/// `unite_count`), or a chip's (`chip_flight`: `mix_step`, `mix_count`, and
-/// `button`, which of the screen's buttons that show a chip, counted from
-/// 1: `mix_capsule`).
+/// A flight's fields in the rules' state, each the field of its role: its
+/// step and its count in the step. The offer's (the window view
+/// `offer_flight`: `offer_flight.step`, `offer_flight.count`), or a chip's
+/// (`chip_flight`: `chip_flight.step`, `chip_flight.count`, and
+/// `chip_flight.button`, which of the screen's buttons that show a chip,
+/// counted from 1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FlightFields {
     pub step: FieldPath,
@@ -318,25 +322,34 @@ impl Want {
 
 impl ViewFields {
     /// The fields the views of the rules' windows and buttons read of their
-    /// state (`state`). `Err`: a view's field the state lacks or keeps as
-    /// another type, said with the view's name and the window or button
-    /// that has it (`what`).
+    /// state (`state`), each the field the declaration gives the view's
+    /// role (`schema.role("form_list.offered", "u8[5]")`), never one by a
+    /// game's name for it. `Err`: a view's role no field has, or a field of
+    /// it of another type, said with the view's name and the window or
+    /// button that has it.
     pub(crate) fn of<'a>(
         state: &Schema,
         windows: impl Iterator<Item = (&'a str, WindowView)>,
         buttons: impl Iterator<Item = (&'a str, ButtonView)>,
     ) -> Result<ViewFields, String> {
         let mut fields = ViewFields::default();
-        // (A field by its name, the state's own or one of its records': the
-        // one of the name there is.)
-        let find = |who: &str, view: &str, name: &str, want: Want| -> Result<FieldPath, String> {
-            let found = state.find(name).map_err(|e| format!("{who} has the view `{view}`, which shows the state field `{name}`: {e}"))?;
+        // (A field by its role, the state's own or one of its records': the
+        // one of the role there is.)
+        let find = |who: &str, view: &str, role: &str, want: Want| -> Result<FieldPath, String> {
+            let found = state.find_role(role).map_err(|e| format!("{who} has the view `{view}`, which shows the state field of the role `{role}`: {e}"))?;
             let Some(path) = found else {
-                return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` ({}): the rules' state has none", want.says()));
+                return Err(format!(
+                    "{who} has the view `{view}`, which shows the state field of the role `{role}` ({}): the rules' state has none (`schema.role(\"{role}\", T)`)",
+                    want.says()
+                ));
             };
             let ty = state.place_of(path).ty();
             if !want.fits(ty) {
-                return Err(format!("{who} has the view `{view}`, which shows the state field `{name}` as {}: it is {ty:?}", want.says()));
+                return Err(format!(
+                    "{who} has the view `{view}`, which shows the state field of the role `{role}` (`{}`) as {}: it is {ty:?}",
+                    state.path_name(path),
+                    want.says()
+                ));
             }
             Ok(path)
         };
@@ -346,22 +359,23 @@ impl ViewFields {
             match view {
                 WindowView::FormListOpening | WindowView::FormList | WindowView::FormListClosing | WindowView::FormChosen => {
                     fields.form_list = Some(FormListFields {
-                        offered: f("offered", Want::U8s)?,
-                        count: f("offered_count", Want::U8)?,
-                        marked: f("marked", Want::Bools)?,
-                        cursor: f("window_cursor", Want::U8)?,
-                        chosen_set: f("cross_chosen", Want::Bool)?,
-                        chosen: f("chosen", Want::U8)?,
+                        offered: f("form_list.offered", Want::U8s)?,
+                        count: f("form_list.count", Want::U8)?,
+                        marked: f("form_list.marked", Want::Bools)?,
+                        cursor: f("form_list.cursor", Want::U8)?,
+                        chosen_set: f("form_list.chosen", Want::Bool)?,
+                        chosen: f("form_list.chosen_place", Want::U8)?,
                     });
                 }
                 WindowView::OfferFlight => {
-                    fields.offer_flight = Some(FlightFields { step: f("unite_step", Want::U8)?, count: f("unite_count", Want::U8)?, button: None });
+                    fields.offer_flight =
+                        Some(FlightFields { step: f("offer_flight.step", Want::U8)?, count: f("offer_flight.count", Want::U8)?, button: None });
                 }
                 WindowView::ChipFlight => {
                     fields.chip_flight = Some(FlightFields {
-                        step: f("mix_step", Want::U8)?,
-                        count: f("mix_count", Want::U8)?,
-                        button: Some(f("mix_capsule", Want::U8)?),
+                        step: f("chip_flight.step", Want::U8)?,
+                        count: f("chip_flight.count", Want::U8)?,
+                        button: Some(f("chip_flight.button", Want::U8)?),
                     });
                 }
             }
@@ -371,9 +385,9 @@ impl ViewFields {
             match view {
                 ButtonView::FormOffer => {
                     fields.offer = Some(OfferFields {
-                        form: find(&who, view.name(), "offer", Want::Form)?,
-                        alternate: find(&who, view.name(), "offer_chaos", Want::Bool)?,
-                        turns: find(&who, view.name(), "turns", Want::U8)?,
+                        form: find(&who, view.name(), "form_offer.form", Want::Form)?,
+                        alternate: find(&who, view.name(), "form_offer.alternate", Want::Bool)?,
+                        turns: find(&who, view.name(), "form_offer.turns", Want::U8)?,
                     });
                 }
                 // (It shows a picture, nothing the rules keep.)

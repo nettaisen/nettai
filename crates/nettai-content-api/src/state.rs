@@ -602,29 +602,41 @@ impl Schema {
     /// The field named `name`: one of this schema's, else one of its
     /// records', at any depth ([`FieldPath::DEPTH`]), the one field of the
     /// name there is (several: an error naming their paths). For a reader
-    /// that knows a field by its name wherever the content keeps it (the
-    /// rules' views).
+    /// that knows a field by its name wherever the content keeps it (a
+    /// test, a tool of one game's).
     pub fn find(&self, name: &str) -> Result<Option<FieldPath>, String> {
-        fn walk(schema: &Schema, name: &str, at: FieldPath, out: &mut Vec<FieldPath>) {
+        self.find_where(&format!("`{name}`"), &|f| f.name == name)
+    }
+
+    /// The field the declaration gives the role `role` (`schema.role(role,
+    /// T)`): one of this schema's, else one of its records', at any depth,
+    /// the one field of the role there is (several: an error naming their
+    /// paths). For the engine, which knows a field of the content's by its
+    /// role, whatever the content names it (the rules' views).
+    pub fn find_role(&self, role: &str) -> Result<Option<FieldPath>, String> {
+        self.find_where(&format!("the role `{role}`"), &|f| f.role.as_deref() == Some(role))
+    }
+
+    /// The one field, at any depth, that `matches` (`what`: it, for an
+    /// error).
+    fn find_where(&self, what: &str, matches: &dyn Fn(&FieldDef) -> bool) -> Result<Option<FieldPath>, String> {
+        fn walk(schema: &Schema, matches: &dyn Fn(&FieldDef) -> bool, at: FieldPath, out: &mut Vec<FieldPath>) {
             for (i, f) in schema.fields.iter().enumerate() {
                 let Some(here) = at.then(i) else { continue };
-                if f.name == name {
+                if matches(f) {
                     out.push(here);
                 }
                 if let FieldType::Record(fields) = &f.ty {
-                    walk(fields, name, here, out);
+                    walk(fields, matches, here, out);
                 }
             }
         }
         let mut found = Vec::new();
-        walk(self, name, FieldPath::default(), &mut found);
+        walk(self, matches, FieldPath::default(), &mut found);
         match found[..] {
             [] => Ok(None),
             [one] => Ok(Some(one)),
-            _ => Err(format!(
-                "`{name}` is {}",
-                found.iter().map(|p| format!("`{}`", self.path_name(*p))).collect::<Vec<_>>().join(" and ")
-            )),
+            _ => Err(format!("{what} is {}", found.iter().map(|p| format!("`{}`", self.path_name(*p))).collect::<Vec<_>>().join(" and "))),
         }
     }
 
@@ -1386,6 +1398,15 @@ mod tests {
         assert_eq!(b.get_at(at.field("y").unwrap()), FieldValue::I8(0));
         let twice = Schema::from_data(&map(vec![("a", map(vec![("n", str_("u8"))])), ("b", map(vec![("n", str_("u8"))]))])).unwrap();
         assert_eq!(twice.find("n"), Err("`n` is `a.n` and `b.n`".to_string()));
+        // A field by its role (`schema.role`), the schema's or a record's,
+        // whatever its name; not by a name.
+        let role = |r: &str, of: &str| map(vec![(ROLE_MARK, Data::Bool(true)), ("role", str_(r)), ("of", str_(of))]);
+        let roled = Schema::from_data(&map(vec![("own", map(vec![("step", role("w.step", "u8"))])), ("count", role("w.count", "u8"))])).unwrap();
+        let step = roled.find_role("w.step").unwrap().expect("the record's field of the role");
+        assert_eq!((roled.path_name(step), roled.find_role("w.count").map(|p| p.map(|p| roled.path_name(p)))), ("own.step".to_string(), Ok(Some("count".to_string()))));
+        assert_eq!((roled.find_role("step"), roled.find_role("w.other")), (Ok(None), Ok(None)));
+        let both = Schema::from_data(&map(vec![("a", role("w.n", "u8")), ("b", map(vec![("n", role("w.n", "u8"))]))])).unwrap();
+        assert_eq!(both.find_role("w.n"), Err("the role `w.n` is `a` and `b.n`".to_string()));
     }
 
     fn arena_schemas() -> (Schema, Schema) {
