@@ -429,9 +429,8 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
   edges by owner (0x080094C4, 0x08706F60), and the panel palettes that cycle (0x08009556, as the field is drawn: six,
   each a frame every 14 ticks from a table of palette pointers, their timers starting at 14, 13, 12, 11, 10 and 9:
-  0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them);
-  type 11 has none yet. What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12 reads what
-  they do).
+  0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them).
+  What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12: `metal`, `pitfall`, `hole`).
 - **The HUD** (R, Red Sun US's; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
   counterpart) and the load list (0x08015A0C): the HUD layer's tiles from 0x130 and the gauge's from 0x80, both in
   EXE6's order; the HP box (6x2, 0x08016B2C) and the gauge frame (18x2 with "CUSTOM", 0x08016B44); the HP box's palettes
@@ -743,11 +742,30 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.2 Panels
 
-12. **Panel types 5, 10 and 11.** 0x0800A3A8's flags: 5 is 0x30010 (EXE5's sea's), 10 is 0x10210 (EXE5's metal's), 11
-    is 0x10010; the panel tick (0x08009740) runs a timer at the panel's +0x12 for type 10 (bit 0x4000: wait while
-    something stands on it, then count down and turn normal). Placeholder: type 5 is the engine's `sea` and 10 its
-    `metal`, flags alone (no drain, hold, submersion or slide); 11 has no number (its layouts' stages wait). Port:
-    read each type's behavior (the panel tick, the step tables, what stands on them) and name each for what it is.
+12. **Done** (panel types 5, 10 and 11). 0x0800A3A8's flags: 5 is 0x30010, 10 is 0x10210, 11 is 0x10010. Each is
+    named for what it is, from what reads it and the chips' words:
+    - **5, `metal`** (the engine's EXE5 metal; a riveted plate): its flag 0x20000 is what the panel routines refuse
+      (0x08009AEC, 0x08009BAC, 0x08009BF0, 0x08009C4C, 0x08009D04: crack, break and their kin), so nothing cracks or
+      breaks it. The rule `panels.types.metal.unbreakable` (EXE5's metal is breakable: no such flag). Two routines
+      skip the test and would crack it: 0x08009B50 (EXE6's `object_crackPanelDup1`, which the engine has no use of)
+      and 0x08009CAC (`object_breakPanel_dup3`, the engine's `break_panel` with dup2, which refuses); poison
+      (0x08009D68) doesn't test it either, as the engine's doesn't. The chips wave reads which routine each EXE4 chip
+      calls (a chip of dup3's on metal is to split off then).
+    - **10, `pitfall`** (SandRing's "opens a pitfall trap"; a sand pit): a slide (0x080102FC) or a drag (0x08010B54)
+      that reaches it stops there unless the body has FloatShoe (f1 0x20; an aqua body's slide on ice reaches the
+      test too), the rule `stops_slides`; and it turns normal by its timer at the panel's +0x12 (the panel tick's
+      0x0800980E): a type change makes it 190 and counts at once (0x08009DC4), a stage's starts armed (bit 15,
+      0x08009120 writes 0x80BE to every panel) and counts from the tick a grounded body (0x0F800000, none floating:
+      0x00100000) stands on it, then normal without a blink. The rule `crumbles = 190`, the panel's
+      `crumble_timer`.
+    - **11, `hole`** (the Hole chip's "appears Hole in front", DrkLine's "turns all rows into Holes"): a solid panel
+      (normal's flags) that a navi standing on it closes (0x08013318, in the intake before the slide triggers): unless
+      the battle is dimmed, a navi whose light/dark value (NaviStats +0x36) is above 499, the default 500 too, sets
+      his collision's panel normal. EXE4's rules' `navi_intake` (rules/light_dark.luau), the setup's `karma`
+      (default 500). Its check of 0x0800F49C counts for nothing (the `movs r0, #5` before its `beq` sets the flags),
+      and NaviStats +0x26's 2, which skips it, is only a story's other navi's (0x08041100). exe4-compat's recordings
+      state no karma yet: the default, 500 (group B's: the NaviStats' +0x36).
+    No netbattle stage has type 11; the stages with 10 are generated now.
 13. **What each panel does.** Lava (8) turns normal after 960 (stated); its burn, poison's drain, grass, ice (item 1),
     holy, and the panel trails' sounds are EXE5's or none. Placeholder: `panels.types` flags (and lava's `expires`).
 14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
@@ -767,7 +785,7 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
 19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
-    5, 6, 7: rocks and the others, 0x080FC138's actor lists) and panel type 11. Port the obstacles, then generate them.
+    5, 6, 7: rocks and the others, 0x080FC138's actor lists). Port the obstacles, then generate them.
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one) into the
     first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). The engine's pick draws RNG1 then RNG2
     (link_pick's docs): EXE4 draws RNG2 twice. Shape: `link_pick.rng = { stage = "rng2", background = "rng2" }`.

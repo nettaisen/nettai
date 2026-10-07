@@ -86,7 +86,7 @@ impl Shadow {
 
 /// Panel types by name, in the engine's order (the type number is the
 /// index).
-pub const PANEL_TYPES: [&str; 16] = [
+pub const PANEL_TYPES: [&str; 18] = [
     "missing",
     "broken",
     "normal",
@@ -103,6 +103,8 @@ pub const PANEL_TYPES: [&str; 16] = [
     "metal",
     "lava",
     "sea",
+    "pitfall",
+    "hole",
 ];
 
 /// Actor types by name (an actor record's type).
