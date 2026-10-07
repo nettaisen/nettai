@@ -6,7 +6,7 @@
 // a list its slots, a line its height.
 
 import { Theme, Screen, UiSound } from "theme.slint";
-import { Slant, Label, OptionRow, Button } from "widgets.slint";
+import { Slant, Label, OptionRow, Button, NaviMark } from "widgets.slint";
 import { BuildText, StatRow } from "build.slint";
 
 export enum GameState {
@@ -167,13 +167,14 @@ export component Strip {
     in property <GameState> game-state;
     in property <string> build;
     // The build: 0 none of yours (a random side, or a match's), else one of
-    // yours, with its navi.
+    // yours, with its version and its navi where it isn't the game's own.
     in property <int> build-index;
+    in property <string> build-version;
     in property <string> build-navi;
     // A game is ready: its builds can be made and edited.
     in property <bool> can-act;
     property <string> game-note: root.game == "" ? @tr("No game found") : root.game-state == GameState.ready ? @tr("Ready to play") : root.game-state == GameState.loading ? @tr("LOADING…") : root.game-state == GameState.no-pack ? @tr("NO ASSET PACK") : @tr("CAN'T LOAD");
-    property <string> build-note: root.build-index == 0 ? @tr("A random side, from the seed") : root.build-navi;
+    property <string> build-note: root.build-index == 0 ? @tr("A random side, from the seed") : BuildText.preset(root.build-version) + (root.build-navi != "" ? (root.build-version != "" ? "  ·  " : "") + @tr("NAVI · {0}", root.build-navi) : "");
     // EDIT a build of yours, or make a NEW BUILD (NEW on a phone).
     property <string> action: root.build-index != 0 ? @tr("EDIT") : Theme.compact ? @tr("build" => "NEW") : @tr("NEW BUILD");
     // The row focused: 0 the game, 1 the build, 2 the action; -1 none.
@@ -309,17 +310,21 @@ export struct SheetLine {
     kind: int,
 }
 
-// What a build is, at a glance: its navi, its folder, what the round starts
-// it with, the rest of what it states.
+// What a build is, at a glance: its name and version, its folder, what the
+// round starts it with, the rest of what it states (its navi only where it
+// isn't the game's own).
 export struct Sheet {
     // There is a build to show (none: no game ready).
     shown: bool,
     face: image,
+    // Its navi where it isn't the game's own (a format of its own, marked);
+    // none for the game's own.
     navi: string,
     // The build's name, or what the side is (a random one, the match's).
     name: string,
-    // Its game.
+    // Its game; its version (EXE6's) or team (EXE5's), by its preset's name.
     sub: string,
+    version: string,
     stats: [StatRow],
     // Always the folder's room (30), empty entries held as such.
     folder: [SheetChip],
@@ -411,7 +416,7 @@ export component SheetView {
         padding-right: Theme.compact ? 22px : 36px;
         spacing: Theme.compact ? 8px : 12px;
 
-        // Who: the face, the navi, the build.
+        // Who: the face, the build, its version; another navi, marked.
         HorizontalLayout {
             height: Theme.compact ? 40px : 52px;
             spacing: 14px;
@@ -430,18 +435,31 @@ export component SheetView {
                 alignment: center;
                 horizontal-stretch: 1;
                 Text {
-                    text: root.sheet.shown ? root.sheet.navi : "—";
+                    text: root.sheet.shown ? root.sheet.name : "—";
                     color: white;
                     font-size: Theme.compact ? 18px : 24px;
                     font-weight: Theme.black;
                     overflow: elide;
                 }
 
+                // (On a phone, the version alone: the strip above names the
+                // game.)
                 Text {
-                    text: root.sheet.name + (root.sheet.sub != "" ? "  ·  " + root.sheet.sub : "");
+                    text: Theme.compact && root.sheet.version != "" ? BuildText.preset(root.sheet.version) : root.sheet.sub + (root.sheet.version != "" ? "  ·  " + BuildText.preset(root.sheet.version) : "");
                     color: Theme.text-dim;
                     font-size: Theme.label + 1px;
                     overflow: elide;
+                }
+            }
+
+            // (At the line's end, where there is one: the build's start
+            // stays where it is.)
+            Rectangle {
+                width: root.sheet.navi != "" ? (Theme.compact ? 116px : 150px) : 0px;
+                NaviMark {
+                    width: parent.width;
+                    y: (parent.height - self.height) / 2;
+                    navi: root.sheet.navi;
                 }
             }
         }

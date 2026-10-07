@@ -1,19 +1,31 @@
 --!strict
 -- The test content's panels: made-up rules for the engine's tests. Its
--- own sixteen types, EXE5's metal, lava and sea beside EXE6's thirteen,
+-- own sixteen types, EXE5's magnet, lava and sea beside EXE6's thirteen,
 -- each on the field (flag 0x10000, which the step sword looks
 -- for) and solid (0x10) but the missing and the broken. The roads last
 -- 0x708 ticks, lava and sea 960; lava burns for 50; sea drains fire bodies,
 -- holds a body that ends a move on it for 20 ticks and submerges what can
--- dive; metal slides a body as EXE5's does. A hitbox of fire turns grass
--- normal, of aqua the volcano and lava, of wood the roads and metal.
+-- dive; magnet slides a body as EXE5's does. A hitbox of fire turns grass
+-- normal, of aqua the volcano and lava, of wood the roads and magnet.
+-- Poison drains a body standing on it, and grass heals a wood body, at 9
+-- HP or less on the 180-tick count.
 
--- A metal panel's slide, by the direction of the move (none, up, down,
+local panel_types = require("@exelib/panel_types")
+local statuses = require("./status")
+
+-- A magnet panel's slide, by the direction of the move (none, up, down,
 -- back, forward, other): the steps tried in turn, dx toward the front.
 local F, B, U, D = { dx = 1, dy = 0 }, { dx = -1, dy = 0 }, { dx = 0, dy = -1 }, { dx = 0, dy = 1 }
 
 local function road(dx: number, dy: number)
-    return { flags = 0x00010210, expires = 0x708, cleared_by = "wood", road_slide = { dx = dx, dy = dy, panels = 1 } }
+    return {
+        flags = 0x00010210,
+        expires = 0x708,
+        cleared_by = "wood",
+        carries = { dx = dx, dy = dy, panels = 1 },
+        rest = panel_types.road,
+        slide = panel_types.carries,
+    }
 end
 
 -- Whether each panel is one of a row of the field's 6 by 3 (columns 1 to
@@ -50,22 +62,45 @@ return {
         broken = { flags = 0x00010000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110 },
+        poison = { flags = 0x00010110, stand = panel_types.poison },
         holy = { flags = 0x00012010 },
-        grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire" },
-        ice = { flags = 0x00010810 },
+        grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire", stand = panel_types.grass(9) },
+        ice = {
+            flags = 0x00010810,
+            move_end = panel_types.ice_slides,
+            slide = panel_types.ice,
+            hit = panel_types.freezes(statuses.freeze_150),
+        },
         volcano = { flags = 0x00011010, cleared_by = "aqua" },
         road_up = road(0, -1),
         road_down = road(0, 1),
         road_left = road(-1, 0),
         road_right = road(1, 0),
-        metal = {
+        magnet = {
             flags = 0x00010210,
             cleared_by = "wood",
-            slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
+            carries_by_move = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
+            move_end = panel_types.magnet,
+            slide = panel_types.carries,
         },
-        lava = { flags = 0x00011010, expires = 960, burn = { damage = 50, spared_by = 0x88000206 }, cleared_by = "aqua" },
-        sea = { flags = 0x00030010, expires = 960, drains = "fire", holds = 20, submerges = true },
+        lava = {
+            flags = 0x00011010,
+            expires = 960,
+            cleared_by = "aqua",
+            burn = panel_types.burn {
+                damage = 50,
+                spared_by = { "invisible", "submerged", "flashing", "untouchable", "bubbled" },
+                spark = new.spark { sprite = asset.sprite("test-spark"), anim = 0, palette = 0 },
+            },
+        },
+        sea = {
+            flags = 0x00030010,
+            expires = 960,
+            submerges = true,
+            stand = panel_types.drains("fire"),
+            move_end = panel_types.holds(20, new.effect { sprite = asset.sprite("test-burst"), anim = 0, palette = 0 }),
+            slide = panel_types.stops_a_slide,
+        },
     },
     -- Its panel types by its numbers.
     numbers = {
@@ -82,7 +117,7 @@ return {
         "road_down",
         "road_left",
         "road_right",
-        "metal",
+        "magnet",
         "lava",
         "sea",
     },
@@ -102,6 +137,4 @@ return {
     reservations = "marked",
     -- The flags' bits a type owns, which a crack, a break or poison clears.
     type_mask = 0x00003F5F,
-    -- At 9 HP or less grass heals a wood body on the 180-tick count.
-    grass_heal_slows_at = 9,
 }

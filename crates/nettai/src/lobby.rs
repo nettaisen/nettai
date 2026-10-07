@@ -117,6 +117,12 @@ impl App {
         Some((settings, m.sides[0].clone()))
     }
 
+    /// The build this player brings, as the other player's card shows it:
+    /// its name (none for a random side), its version by its preset's name.
+    fn play_label(&self, game: &str, ready: &Ready, side: &nettai_match::Side) -> (String, String) {
+        (self.selected_name().unwrap_or_default(), crate::builds::presets::version(ready.content(), game, side))
+    }
+
     /// Make the link `way` says, leaving any other.
     fn enter_room(&mut self, way: Way) {
         self.lobby.room = None;
@@ -126,6 +132,7 @@ impl App {
             return;
         };
         let Some((settings, side)) = self.play_proposal(&game, &ready) else { return };
+        let label = self.play_label(&game, &ready, &side);
         let config = nettai_rtc::Config::default();
         let link = match &way {
             Way::MakeRoom(code) | Way::JoinRoom(code) => {
@@ -144,6 +151,7 @@ impl App {
             Ok(link) => {
                 let mut a = Agreeing::new(link, ready.content(), settings, side, WAIT);
                 a.set_name(&self.name);
+                a.set_build(&label.0, &label.1);
                 self.lobby.room = Some((a, way));
             }
             Err(e) => self.lobby.problem = Some(e.0),
@@ -181,15 +189,28 @@ impl App {
     /// The link's standing, shown: the band, both cards, a problem.
     fn follow_lobby(&mut self) {
         let ui = self.ui();
-        // Your navi: your side's, as proposed.
-        let navi = self
+        // Your build: its name (a random side: so said), its version, its
+        // navi where it isn't the game's own; theirs as their lobby says.
+        let random = ui.global::<Strings>().invoke_random().to_string();
+        let build = self.selected_name().unwrap_or_else(|| random.clone());
+        let (navi, version) = self
             .play_game_ready()
             .and_then(|(g, r)| {
                 let side = self.play_proposal(&g, &r)?.1;
                 let graphics = r.graphics(self.lang);
-                Some(Names::of(r.content(), &graphics).navi(side.navi(r.content())))
+                let names = Names::of(r.content(), &graphics);
+                Some((crate::builds::view::odd_navi(r.content(), &names, &g, &side), crate::builds::presets::version(r.content(), &g, &side)))
             })
             .unwrap_or_default();
+        let their_navi = |key: Option<&str>| -> String {
+            let (Some(key), Some((g, r))) = (key, self.play_game_ready()) else { return String::new() };
+            let Some(n) = nettai_match::ids::navi(r.content(), &g, key) else { return String::new() };
+            if nettai_match::first_navi(r.content(), &g) == Some(n) {
+                return String::new();
+            }
+            let graphics = r.graphics(self.lang);
+            Names::of(r.content(), &graphics).navi(n)
+        };
         let direct = self.lobby.mode == Mode::Direct;
         let (link, ready, them, ping) = match &self.lobby.room {
             None if signal_server().is_none() && !direct => (LinkState::NoServer, false, Peer::default(), -1),
@@ -202,17 +223,23 @@ impl App {
                     Standing::Open => LinkState::Open,
                     Standing::Reconnecting(_) => LinkState::Reconnecting,
                 };
-                // (Their game, if it isn't this one: their card says so.)
-                let theirs = match a.theirs() {
-                    Some(Ok(s)) => game_names(&s.game).0,
-                    _ => String::new(),
-                };
+                // (Their build, by the label they say; their game before it
+                // where it isn't this one.)
+                let (their_build, their_version) = a.their_build().unwrap_or_default();
+                let mut build = if their_build.is_empty() { random.clone() } else { their_build.to_string() };
+                if let Some(Ok(s)) = a.theirs()
+                    && self.select.game.as_deref() != Some(s.game.as_str())
+                {
+                    build = format!("{}  ·  {build}", game_names(&s.game).0);
+                }
                 let present = link == LinkState::Open || a.theirs().is_some();
                 let name = a.their_name().unwrap_or_default();
-                (link, a.ready(), Peer { present, name: name.into(), navi: theirs.into(), ready: a.their_ready() }, -1)
+                let navi = their_navi(a.their_navi());
+                let peer = Peer { present, name: name.into(), build: build.into(), version: their_version.into(), navi: navi.into(), ready: a.their_ready() };
+                (link, a.ready(), peer, -1)
             }
         };
-        ui.set_play_me(Peer { present: true, name: self.name.as_str().into(), navi: navi.into(), ready });
+        ui.set_play_me(Peer { present: true, name: self.name.as_str().into(), build: build.into(), version: version.into(), navi: navi.into(), ready });
         ui.set_play_them(them);
         ui.set_play_link(link);
         ui.set_play_ping(ping);
@@ -287,9 +314,12 @@ impl App {
     pub fn propose(&mut self) {
         if let Some((id, ready)) = self.play_game_ready()
             && let Some((settings, side)) = self.play_proposal(&id, &ready)
-            && let Some((a, _)) = &mut self.lobby.room
         {
-            a.propose(ready.content(), settings, side);
+            let label = self.play_label(&id, &ready, &side);
+            if let Some((a, _)) = &mut self.lobby.room {
+                a.propose(ready.content(), settings, side);
+                a.set_build(&label.0, &label.1);
+            }
         }
     }
 

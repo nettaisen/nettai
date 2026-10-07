@@ -15,9 +15,13 @@ use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
 
-/// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
+/// `sub_801AF44`, including the action dispatch (`sub_801B9E6`). Its top
+/// block skips a pause but in the entry (EXE6's, EXE5's), or, where the
+/// navi stops for pauses at control (EXE4's 0x08013A48: no pause test),
+/// runs whenever the navi does: its take-control tick in the intro too.
 pub(super) fn update(b: &mut Battle, r: ObjectRef) {
-    if !b.paused || navi_action(b, r) == NaviAction::Entry {
+    let top_while_paused = b.content.rules().paused_navi == crate::content::PausedNavi::StopsAtControl;
+    if !b.paused || navi_action(b, r) == NaviAction::Entry || top_while_paused {
         match apply(b, r) {
             Flow::Tail => {}
             Flow::Dispatch => return dispatch(b, r),
@@ -618,7 +622,7 @@ fn start_slide(b: &mut Battle, r: ObjectRef) {
         return;
     }
     if o.slide_type == 3 {
-        ai_mut(b, r).road_cooldown = 5;
+        ai_mut(b, r).slide_cooldown = 5;
     }
     b.objects.get_mut(r).slide_type = 0;
     clear_flag1(b, r, f1::SLIDING);
@@ -646,17 +650,17 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).panel = fp;
     set_coordinates_from_panel(b, r);
     let kind = panel_kind(b, fp);
-    // EXE5's metal slides as EXE6's roads do here (0x08013564: type 5 where
-    // EXE6 tests 9 to 12), and its sea stops a slide (type 10): by the
-    // type's rule, its `slide` and its `holds`.
-    let rule = *b.game_rules().panels.rule(kind);
+    // The type's `slide`: ice's one panel further, a road's (EXE5's magnet's,
+    // 0x08013564's type 5 where EXE6 tests 9 to 12) carry, EXE5's sea's and
+    // EXE4's pitfall's (0x080102FC) stop.
     let mut go_on = true;
-    if b.game_rules().panels.is_named(kind, "ice") && coll(b, r).element != 2 {
+    let answer = b.panel_slide(kind, r, nettai_content_api::SlideHow::Slide);
+    if answer == Some(nettai_content_api::SlideAnswer::On) {
         let o = b.objects.get_mut(r);
         o.slide_tiles = o.slide_tiles.wrapping_add(1);
-    } else if (rule.road_slide.is_some() || rule.slide.is_some()) && flag1(b, r) & 0x24 == 0 {
+    } else if answer == Some(nettai_content_api::SlideAnswer::Carry) {
         if b.objects.get(r).slide_type == 3 {
-            ai_mut(b, r).road_cooldown = 5;
+            ai_mut(b, r).slide_cooldown = 5;
             go_on = false;
         } else {
             // Onto a road: it takes over.
@@ -674,10 +678,7 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
                 o.slide_tiles = o.slide_tiles.wrapping_add(1);
             }
         }
-    } else if rule.holds.is_some() {
-        go_on = false;
-    } else if rule.stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
-        // (EXE4's pitfall, 0x080102FC.)
+    } else if answer == Some(nettai_content_api::SlideAnswer::Stop) {
         go_on = false;
     }
     if go_on {

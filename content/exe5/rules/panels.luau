@@ -1,5 +1,5 @@
 --!strict
--- EXE5's panels (docs/design/exe5-map.md §15.2): its 11 panel types (0x0800BCF0) are EXE6's but for metal (type 5,
+-- EXE5's panels (docs/design/exe5-map.md §15.2): its 11 panel types (0x0800BCF0) are EXE6's but for magnet (type 5,
 -- EXE6's road flags, a plate's look), lava (type 8, the volcano's flags and sound but its own behavior) and sea
 -- (type 10, flag 0x20000); it has no roads. Each type's flag bits; the sound a panel trail makes turning a panel
 -- into it (0x080113A0); which panels start visible and the front edges (0x0800ABAC, 0x0800ABD4); the step rules
@@ -10,14 +10,29 @@
 -- battle; lava and sea turn normal after 960 ticks (blinking in the last 60, each its own timer, which a panel's
 -- new type sets: 0x0800B2AE); no panel erupts. A grounded body not of fire on lava burns for 50 (shifted by its
 -- weakness to fire) and the panel turns normal (0x08016D80, 0x08016E18); sea drains a fire body as poison drains
--- any (0x08016C7E, EXE6's `sub_801A186`), holds a body that ends a move on it for 20 ticks with a splash
--- (0x0801715E) and submerges what can dive (0x08017030); a move's end on metal starts a slide, tried in turn by
+-- any (0x08016C7E, EXE6's `sub_801A186`; grass heals a wood body, at 9 HP or less on the 180-tick count, as
+-- EXE6's), holds a body that ends a move on it for 20 ticks with a splash
+-- (0x0801715E) and submerges what can dive (0x08017030); a move's end on magnet starts a slide, tried in turn by
 -- the direction of the move (0x08017216, the tables at 0x0800C920 and 0x0800C9C0: dx toward the front). A hitbox
--- of fire turns grass normal as it passes over, of aqua lava, of wood metal (0x08016D14).
+-- of fire turns grass normal as it passes over, of aqua lava, of wood magnet (0x08016D14).
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
--- The steps a metal slide tries: forward, back, up, down.
+local panel_types = require("@exelib/panel_types")
+local sparks = require("../lib/sparks")
+
+-- The steps a magnet slide tries: forward, back, up, down.
 local F, B, U, D = { dx = 1, dy = 0 }, { dx = -1, dy = 0 }, { dx = 0, dy = -1 }, { dx = 0, dy = 1 }
+
+-- Lava's burn (0x08016D80, 0x08016E18): a body invisible, submerged, flashing, untouchable or bubbled is spared
+-- (0x88000206); the sparks' row 1, the fire spark.
+local LAVA_BURN = panel_types.burn {
+    damage = 50,
+    spared_by = { "invisible", "submerged", "flashing", "untouchable", "bubbled" },
+    spark = sparks.fire,
+}
+
+-- The splash of a body a sea panel holds at a move's end (effect 0x63: 0x0801715E).
+local SPLASH = new.effect { sprite = asset.sprite("splash"), anim = 0, palette = 0 }
 
 return {
     types = {
@@ -25,22 +40,35 @@ return {
         broken = { flags = 0x00014000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
-        metal = {
+        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison"), stand = panel_types.poison },
+        magnet = {
             flags = 0x00010210,
             trail_sound = asset.sound("immobilizer"),
             cleared_by = "wood",
             -- By the direction of the move: none, up, down, back, forward, other.
-            slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
+            carries_by_move = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
+            move_end = panel_types.magnet,
+            slide = panel_types.carries,
         },
         -- A fire hit counts once more on a body standing on grass, an elec one on the sea (0x08016AF6).
-        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire", doubles = "fire" },
-        ice = { flags = 0x00010810, trail_sound = asset.sound("freeze") },
+        grass = {
+            flags = 0x00010410,
+            trail_sound = asset.sound("grass"),
+            cleared_by = "fire",
+            doubles = "fire",
+            stand = panel_types.grass(9),
+        },
+        ice = {
+            flags = 0x00010810,
+            trail_sound = asset.sound("freeze"),
+            move_end = panel_types.ice_slides,
+            slide = panel_types.ice,
+        },
         lava = {
             flags = 0x00011010,
             trail_sound = asset.sound("panel-volcano"),
             expires = 960,
-            burn = { damage = 50, spared_by = 0x88000206 },
+            burn = LAVA_BURN,
             cleared_by = "aqua",
         },
         holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
@@ -48,15 +76,16 @@ return {
             flags = 0x00030010,
             trail_sound = asset.sound("sand-worm"),
             expires = 960,
-            drains = "fire",
-            holds = 20,
+            stand = panel_types.drains("fire"),
+            move_end = panel_types.holds(20, SPLASH),
+            slide = panel_types.stops_a_slide,
             submerges = true,
             doubles = "elec",
         },
     },
     -- EXE5's panel types by its own numbers (a panel trail's byte, NaviStats +0x12, names one: the cards' water a sea,
-    -- magnet a metal panel).
-    numbers = { "missing", "broken", "normal", "cracked", "poison", "metal", "grass", "ice", "lava", "holy", "sea" },
+    -- magnet a magnet panel).
+    numbers = { "missing", "broken", "normal", "cracked", "poison", "magnet", "grass", "ice", "lava", "holy", "sea" },
     -- The types the engine's own code needs: the missing panel, which no type change reaches; what a break and a
     -- crack make (1 and 3); the normal panel, what a mend, an expiry and a clearing leave (0x0800A998, 0x08016D14:
     -- 2).
@@ -112,6 +141,4 @@ return {
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x0800AFF8 and its kin), the sea's
     -- 0x20000 among them.
     type_mask = 0x00023F5F,
-    -- At 9 HP or less grass heals a wood body on the 180-tick count (0x08016C7E, EXE6's).
-    grass_heal_slows_at = 9,
 }

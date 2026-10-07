@@ -12,7 +12,7 @@
 //! reads as nothing for every game: a feature's section a game hasn't
 //! (`lockon`, `banners`) and a table
 //! that is empty without it (`elements`, `buster`, `math`); in a section, a list or an attribute of one entry
-//! that is none unless stated (a panel type's `burn`).
+//! that is none unless stated (a panel type's `expires`).
 //! Content whose rules are Rust tables (`Content::base_rules`: a tool's
 //! decode of a ROM, a test's content of a few modules) states them there,
 //! and its rules' sections replace those. (The engine's test content
@@ -43,19 +43,12 @@ struct ElementsSection {
 struct PanelTypeSection {
     flags: u32,
     #[serde(default)]
-    road_slide: Option<SlideVector>,
+    carries: Option<SlideVector>,
     /// A sound asset, as the pack identifies it.
     #[serde(default)]
     trail_sound: Option<u16>,
     #[serde(default)]
     expires: Option<u16>,
-    #[serde(default)]
-    burn: Option<super::rules::BurnRule>,
-    /// An element by name.
-    #[serde(default)]
-    drains: Option<String>,
-    #[serde(default)]
-    holds: Option<u16>,
     #[serde(default)]
     submerges: bool,
     /// An element by name.
@@ -67,14 +60,12 @@ struct PanelTypeSection {
     #[serde(default)]
     unbreakable: bool,
     #[serde(default)]
-    stops_slides: bool,
-    #[serde(default)]
     traps: bool,
     #[serde(default)]
     crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
-    slide: Option<Vec<Vec<SlideStep>>>,
+    carries_by_move: Option<Vec<Vec<SlideStep>>>,
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -120,8 +111,6 @@ struct PanelsSection {
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
     type_mask: u32,
-    #[serde(default)]
-    grass_heal_slows_at: Option<u16>,
 }
 
 #[derive(Deserialize)]
@@ -140,14 +129,15 @@ struct ReactionsSection {
     push_reading: super::rules::PushReading,
     hit_test: super::rules::HitTest,
     obstacle_slide_bounds: bool,
-    ice: super::rules::IceRule,
+    #[serde(default)]
+    slide_rows: Option<[SlideVector; 6]>,
     move_direction: super::rules::MoveDirection,
     bubble_bob: [i8; 32],
     slide_speed: super::rules::SlideSpeed,
     overlay_restart: super::rules::OverlayRestart,
     stance_counter: super::rules::StanceCounter,
     dead_player: super::rules::DeadPlayer,
-    attack_end_lockouts: bool,
+    attack_end_lockout: super::rules::AttackEndLockout,
     request_clears: super::rules::RequestClears,
 }
 
@@ -437,14 +427,14 @@ impl Stated {
                 push_reading: r.push_reading.clone(),
                 hit_test: r.hit_test,
                 obstacle_slide_bounds: r.obstacle_slide_bounds,
-                ice: r.ice,
+                slide_rows: r.slide_rows,
                 move_direction: r.move_direction,
                 bubble_bob: r.bubble_bob,
                 slide_speed: r.slide_speed,
                 overlay_restart: r.overlay_restart,
                 stance_counter: r.stance_counter,
                 dead_player: r.dead_player,
-                attack_end_lockouts: r.attack_end_lockouts,
+                attack_end_lockout: r.attack_end_lockout,
                 request_clears: r.request_clears,
             }),
             sine: Some(r.sine.clone()),
@@ -546,13 +536,13 @@ impl Stated {
             push_reading: reactions.push_reading,
             hit_test: reactions.hit_test,
             obstacle_slide_bounds: reactions.obstacle_slide_bounds,
-            ice: reactions.ice,
+            slide_rows: reactions.slide_rows,
             move_direction: reactions.move_direction,
             slide_speed: reactions.slide_speed,
             overlay_restart: reactions.overlay_restart,
             stance_counter: reactions.stance_counter,
             dead_player: reactions.dead_player,
-            attack_end_lockouts: reactions.attack_end_lockouts,
+            attack_end_lockout: reactions.attack_end_lockout,
             request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
             flow,
@@ -629,7 +619,18 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 stated.elements = Some((weakness, chip_families, families));
             }
             "panels" => {
-                let s: PanelsSection = r.read(spec, &at).map_err(e)?;
+                // (The types' hooks are functions, which the rules'
+                // definition holds: `RulesDef::panel_hook`.)
+                let mut spec = spec.clone();
+                if let Data::Map(fields) = &mut spec
+                    && let Some((_, Data::Map(types))) = fields.iter_mut().find(|(k, _)| matches!(k, DataKey::Str(s) if s == "types"))
+                {
+                    let hooks: Vec<&str> = nettai_content_api::PanelHook::ALL.iter().map(|h| h.name()).collect();
+                    for (_, t) in types.iter_mut() {
+                        super::reader::strip(t, &hooks);
+                    }
+                }
+                let s: PanelsSection = r.read(&spec, &at).map_err(e)?;
                 // The game's types, by its numbers (docs/design/exe5-map.md
                 // §15.3 item 1): EXE6's 13, EXE5's 11, EXE4's 12.
                 let mut types = Vec::with_capacity(s.numbers.len());
@@ -650,14 +651,13 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                             None => Ok(None),
                         }
                     };
-                    let drains = element("drains", &rule.drains)?;
                     let cleared_by = element("cleared_by", &rule.cleared_by)?;
                     let doubles = element("doubles", &rule.doubles)?;
-                    let slide = match &rule.slide {
+                    let carries_by_move = match &rule.carries_by_move {
                         Some(by_direction) => {
                             if by_direction.len() != 6 || by_direction.iter().any(|tries| tries.len() > 4) {
                                 return Err(e(format!(
-                                    "{at}.types.{name}.slide: six directions (none, up, down, back, forward, other), four steps or fewer each"
+                                    "{at}.types.{name}.carries_by_move: six directions (none, up, down, back, forward, other), four steps or fewer each"
                                 )));
                             }
                             let mut s = PanelSlide::default();
@@ -672,18 +672,14 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     };
                     types.push(PanelTypeRule {
                         flags: rule.flags,
-                        road_slide: rule.road_slide,
+                        carries: rule.carries,
                         trail_sound: rule.trail_sound.map(crate::sound::SoundId),
                         expires: rule.expires,
-                        burn: rule.burn,
-                        drains,
-                        holds: rule.holds,
                         submerges: rule.submerges,
-                        slide,
+                        carries_by_move,
                         cleared_by,
                         doubles,
                         unbreakable: rule.unbreakable,
-                        stops_slides: rule.stops_slides,
                         traps: rule.traps,
                         crumbles: rule.crumbles,
                     });
@@ -721,7 +717,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
                     reservations: s.reservations,
                     type_mask: s.type_mask,
-                    grass_heal_slows_at: s.grass_heal_slows_at,
                 });
             }
             "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),

@@ -180,18 +180,14 @@ pub enum StatusRole {
     DamageWordBlindness,
     /// What a counter hit lands instead of a flinch (`sub_800EB26`).
     CounterParalysis,
-    /// What an aqua hit gives a body standing on ice (`sub_801A0E0`'s
-    /// freeze).
-    IceFreeze,
 }
 
 impl StatusRole {
-    pub const ALL: [StatusRole; 5] = [
+    pub const ALL: [StatusRole; 4] = [
         StatusRole::DamageWordParalysis,
         StatusRole::DamageWordConfusion,
         StatusRole::DamageWordBlindness,
         StatusRole::CounterParalysis,
-        StatusRole::IceFreeze,
     ];
 
     /// Its name in `rules/roles.luau`'s `statuses`.
@@ -201,7 +197,6 @@ impl StatusRole {
             StatusRole::DamageWordConfusion => "damage_word_confusion",
             StatusRole::DamageWordBlindness => "damage_word_blindness",
             StatusRole::CounterParalysis => "counter_paralysis",
-            StatusRole::IceFreeze => "ice_freeze",
         }
     }
 
@@ -258,10 +253,6 @@ definition_roles! {
         /// One of the burst's (`sub_80E7D0C`; EXE6's around a navi going
         /// Beast Over).
         Burst = "burst",
-        /// The splash of a body held by a panel at a move's end (EXE5's sea,
-        /// effect 0x63: 0x0801715E). Only a game whose panels hold needs
-        /// it.
-        PanelSplash = "panel_splash",
     }
 }
 
@@ -277,9 +268,6 @@ definition_roles! {
         Eruption = "eruption",
         /// A thrown obstacle's landing's (`sub_8018002`).
         ThrownObstacle = "thrown_obstacle",
-        /// A panel's burn (EXE5's lava, the sparks' row 1: 0x08016D80). Only
-        /// a game whose panels burn needs it.
-        PanelBurn = "panel_burn",
     }
 }
 

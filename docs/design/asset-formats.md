@@ -296,7 +296,7 @@ palettes (row numbers = background palette slots, so a map entry's palette is
 the row it shows in). `field.json` holds:
 
 - `panel_types`: the panel types the field draws, by its game's names (its
-  rules' `panels.numbers`: `"normal"`, `"cracked"`, ..., `"metal"`, `"lava"`,
+  rules' `panels.numbers`: `"normal"`, `"cracked"`, ..., `"magnet"`, `"lava"`,
   `"sea"`), in the order of their blocks, the game's: EXE6's pack lists its
   13, EXE5's its 11, EXE4's its 12. A panel type a field doesn't list is
   drawn tinted (docs/design/rules-in-luau.md §7.4).
@@ -324,7 +324,10 @@ JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
 `tiles.png`, gid = tile number + 1, flips as Tiled's flip bits; palettes, when
 any cell's isn't 0, as the layer's `palettes` property, a hex digit a cell);
 `background.json` (whether it has its own palette, scroll speed in 1/16 pixel,
-animations). A tile
+or `speeding`, a scroll that speeds up: its speed's `step` a frame and its
+`top`, x then y, in 1/65536 pixel a frame, and `from_battle` where it waits
+for the battle's first frame, EXE5's background 0x1B, else from the
+background's load, EXE4's 0x17; animations). A tile
 animation's frames are `anim-K.png`, one block of tiles a
 frame; a palette animation's frames are color lists; a palette shift's
 (`brightens` or `darkens`: palettes shown lightened or darkened, per channel,

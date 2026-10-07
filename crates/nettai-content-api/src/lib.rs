@@ -53,7 +53,7 @@ pub use definitions::{Definition, Definitions, GAME_LISTS};
 pub use packs::{PackKind, PackManifest};
 pub use host::{
     BindPlan, ContentError, ContentHost, DimmingChipSpec, FnId, FnSource, HookCall,
-    InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec, RulesHook,
+    InstantChipSpec, Manifest, NaviChipSpec, PanelCall, PanelHook, PlaceSpec, RulesHook, SlideAnswer, SlideHow,
 };
 pub use registry::{
     ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, IdentityHandle, KindHandle, NaviHandle,

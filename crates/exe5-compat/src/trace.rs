@@ -732,11 +732,13 @@ impl Round {
         let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
         let (version, japanese) = d.traced_rom();
         let stage = compat.stage(st[0], actor_list, version, japanese).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
-        let pack = content.assets.pack(crate::ROOT).expect("needs saw the pack");
+        // (The background by its name in compat: a liberation's map's number
+        // is its area's background, which the pack has under the area's
+        // first number.)
         let background = nettai_battle::content::BackgroundId(
-            content
-                .assets
-                .number_handle(nettai_content_api::AssetKind::Background, pack, st[4] as u16)
+            compat
+                .background(st[4])
+                .and_then(|name| content.assets.handle(nettai_content_api::AssetKind::Background, name))
                 .ok_or_else(|| format!("EXE5's pack has no background {:#04x}", st[4]))?,
         );
         let settings = nettai_battle::BattleSettings { stage, background, effects: u32::from_le_bytes([st[8], st[9], st[10], st[11]]) };
