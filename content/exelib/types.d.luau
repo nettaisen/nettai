@@ -469,11 +469,6 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
 
--- A follow effect's look (@exelib/follow_effect): a row of a game's looks and its routine.
-export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed" | "with_idle_owner"
-
-export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
-
 -- BassAnly's dark ball (@exelib/bassanly/shot): its level (0 to 3: its
 -- speeds), its slant (-1 up, 1 down), and how it homes.
 export type DarkBallHoming = "none" | "diagonal" | "seeking"
