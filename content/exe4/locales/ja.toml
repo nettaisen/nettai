@@ -79,6 +79,9 @@ language = "ja"
 "thunman" = { name = "サンダーマン", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
 "thunmn-sp" = { name = "サンダーマンSP", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
 "thunmn-ds" = { name = "サンダーマンDS", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
+"metalman" = { name = "メタルマン", description = "目の前の1マスに\nこうてつのコブシを\nふりおろす!" }
+"metlmn-sp" = { name = "メタルマンSP", description = "目の前の1マスに\nこうてつのコブシを\nふりおろす!" }
+"metlmn-ds" = { name = "メタルマンDS", description = "目の前の1マスに\nこうてつのコブシを\nふりおろす!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

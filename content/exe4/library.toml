@@ -191,6 +191,9 @@ mega = [
     "protoman",
     "protom-sp",
     "protom-ds",
+    "metalman",
+    "metlmn-sp",
+    "metlmn-ds",
 ]
 giga = [
     "deltaray",
