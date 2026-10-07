@@ -14,15 +14,11 @@
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
-local follow_effect = require("../../objects/follow_effect")
 local parts = require("../../lib/swords/parts")
 
 -- What a chip summons him with: his palette (the chip's first parameter
 -- picks it).
 export type Summon = { palette: number }
-
--- His bursts' look (the follow effect's look 4).
-local BURST = follow_effect.look { sprite = asset.sprite("follow-effect"), anim = 0, palette = 0, behavior = "flash" }
 
 return common.make {
     id = "deltaray/navi",
@@ -47,9 +43,8 @@ return common.make {
     self_type = collision.slash,
     target = collision.hits_navis,
     finish_anim = 0xF,
-    burst = function(owner: Object, pos: Vec3, flip: number): Object?
-        return follow_effect.spawn(owner, pos, BURST, flip)
-    end,
+    -- His bursts (the follow effect's look 4), shown as he is.
+    burst = { id = "deltaray/burst", sprite = asset.sprite("follow-effect"), copies_visibility = true },
     flashes = true,
     candidate_x = common.behind,
     tracks = false,
