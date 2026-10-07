@@ -79,6 +79,7 @@ language = "ja"
 "036-max-hp-up" = { name = "マックスHPを強化" }
 "037-max-hp-up" = { name = "マックスHPを強化" }
 "038-max-hp-up" = { name = "マックスHPを強化" }
+"045-default-full-synchro" = { name = "デフォルトフルシンクロ" }
 "046-first-barrier200" = { name = "ファーストバリア200" }
 "049-buster-attack-15" = { name = "バスター攻撃力15" }
 "050-gigafolder1" = { name = "ギガフォルダ1" }

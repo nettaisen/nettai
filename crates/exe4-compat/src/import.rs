@@ -2,7 +2,7 @@
 //! one navi an EXE4 save operates), its equipped folder with its Regular chip,
 //! the NaviCust's programs as placed, what the save brings to the stats (the
 //! base HP and the Regular memory), and from MegaMan's NaviStats block his
-//! light/dark value and the Full Synchro at the start, and the patch cards
+//! light/dark value, and the patch cards
 //! switched on (a card whose effects aren't ported yet, docs/design/
 //! exe4-map.md §18, said and left out). The import is the compat
 //! boundary's: a save is the original's bytes, and a side its game's facts
@@ -44,11 +44,10 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
             left_out.push(format!("the save's {field} is left out: {e}"));
         }
     };
-    // His light/dark value and the Full Synchro at the start (NaviStats
-    // +0x36, +0x1F: EXE4's rules/light_dark).
+    // His light/dark value (NaviStats +0x36: EXE4's rules/light_dark). (The
+    // Full Synchro at the start, +0x1F, is patch card 45's.)
     let block = crate::codec::navi_stats(&save.navi_stats());
     state(side, "karma", &[Fact::Value(Value::Int(block.light_dark as i64))]);
-    state(side, "full_synchro_start", &[Fact::Value(Value::Bool(block.full_synchro))]);
     // Its equipped folder, by the chips' numbers' names.
     let mut chips = [None; 30];
     let mut nameless: Vec<u16> = Vec::new();
