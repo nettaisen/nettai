@@ -2,9 +2,10 @@
 -- EXE4's deletion (a navi's action 2, 0x08010850; the role `actions.deletion`): while MegaMan's (NaviStats +0x23 = 0,
 -- EXE4's content's one navi) and not in auto battle, drawn white each tick and by its phase (0x08010880):
 --   0 (0x08010890): one fewer alive navi on the side (the count alone, 0x080079C6); its hit region, status visuals,
---     submersion and charge gone; no chip; the hurt animation (2); its reservation and barrier let go (0x08012DEC: its
---     second related and the barrier byte);
---   4 (0x080108CA), unless dimmed: its links let go (the first related, AIData +0x60), the deletion sound (0x6C) and two
+--     submersion and charge gone; no chip; the hurt animation (2); its reservation let go; its barrier and its
+--     visual's link (0x08012DEC: the barrier byte and the object's +0x50, EXE4's link to the barrier's visual);
+--   4 (0x080108CA), unless dimmed: its links let go (the first related; AIData +0x60, EXE4's link to the Full Synchro
+--     aura, which hiding the navi reads, 0x080E2DBE), the deletion sound (0x6C) and two
 --     explosions (effect row 3: one on the navi, one where the allocator's registers say), then 21 ticks;
 --   8 (0x08010900): the 21 ticks;
 --   0xC (0x08010914): 32 ticks of mosaic and fading, then the damage-carry record forgets it (0x08022218) and it goes,
@@ -35,7 +36,7 @@ local function start(me: Object)
     me:drop_chip()
     me.anim = 2
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
-    me.related2 = nil
+    me.barrier_visual = nil
     me:drop_barrier()
     go(me, EXPLODE)
 end
@@ -47,7 +48,7 @@ local function explode(me: Object)
     end
     me.related1 = nil
     me.prevent_anim = 0
-    me.barrier_visual = nil
+    me.full_synchro_aura = nil
     battle.play_sound(DELETED)
     local pos = me.pos
     battle.effect(pos, EXPLOSION)
