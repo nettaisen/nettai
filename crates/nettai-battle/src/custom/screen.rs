@@ -661,7 +661,7 @@ impl Screen {
     /// turns' block, drawn by the window's frame counter.
     pub(crate) fn draw_window(&mut self, folder: &BattleFolder) {
         self.look.draw_emblem(0);
-        self.look.draw_regular(folder.regular_pending);
+        self.look.draw_regular(folder.regular_pending, false);
         self.look.draw_turn_limit();
     }
 
@@ -701,14 +701,21 @@ impl Screen {
                 self.look.draw_turn_limit();
                 self.look.frame += 1;
                 self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending);
+                self.look.draw_regular(folder.regular_pending, true);
                 self.look.draw_cursor();
                 None
             }
             Phase::Choosing => {
                 // sub_8026CCC: the keys, then the cursor, the emblem, the
                 // Regular chip's frame and the last turns' block are drawn,
-                // and the frame counts on.
+                // and the frame counts on. (EXE4's 0x0801E3D8 draws the last
+                // turns' block and counts first, then reads the keys and
+                // draws the rest: the rule `frame_counts_first`.)
+                let counts_first = view.library.layout().frame_counts_first;
+                if counts_first {
+                    self.look.draw_turn_limit();
+                    self.look.frame += 1;
+                }
                 let request = self.choose(joy, view, folder, extras);
                 // (OK takes the Regular chip out of the folder before the
                 // frame is drawn: `sub_80293F8`.)
@@ -723,15 +730,19 @@ impl Screen {
                     self.look.draw_cursor();
                 }
                 self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending && !regular_taken);
+                self.look.draw_regular(folder.regular_pending && !regular_taken, counts_first);
                 // (EXE5's 0x08023012: the chip a button holds, over it.)
                 self.look.draw_held(self.hold.is_some());
                 if drawn_after {
-                    self.look.draw_turn_limit();
+                    if !counts_first {
+                        self.look.draw_turn_limit();
+                    }
                 } else if matches!(self.phase, Phase::Closing { .. } | Phase::Hidden { .. }) {
                     self.look.turn_limit = false;
                 }
-                self.look.frame += 1;
+                if !counts_first {
+                    self.look.frame += 1;
+                }
                 request
             }
             Phase::Hidden { stage } => {
@@ -810,7 +821,7 @@ impl Screen {
                 // Regular chip's frame.
                 self.scrap(view, folder, extras);
                 self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending);
+                self.look.draw_regular(folder.regular_pending, false);
                 None
             }
             Phase::Redealing { .. } => {
@@ -818,7 +829,7 @@ impl Screen {
                 // Regular chip's frame.
                 self.redeal(view, folder, console, extras);
                 self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending);
+                self.look.draw_regular(folder.regular_pending, false);
                 None
             }
             Phase::Closing { tick } => {

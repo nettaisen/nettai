@@ -382,10 +382,12 @@ impl Editor {
         let button = |action: BuildAction| ActionButton { action };
         match &tab {
             Tab::Navi => {
+                // (The build's name and its facts first; its navi after them,
+                // a format of its own when it isn't the game's own.)
                 self.rows.push(RowSpec::Name);
-                self.rows.push(RowSpec::Navi);
                 let game = &self.game;
                 self.rows.extend(self.layout.rows.iter().map(|f| if presets::of(game, f).is_some() { RowSpec::Preset(f.clone()) } else { RowSpec::Fact(f.clone()) }));
+                self.rows.push(RowSpec::Navi);
                 if import::reads_saves(&self.game) {
                     self.rows.push(RowSpec::FromSave);
                 }
