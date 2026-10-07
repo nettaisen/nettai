@@ -753,10 +753,10 @@ fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)
 /// mood, the buster's levels and blank count, the weapons by compat
 /// (records.toml), the bugs' drains, the custom level and chip limits, the
 /// move lag's column (the engine's navi variant), the soul (the form), the
-/// aura, the HP. (The Full Synchro at the start is the rules' setup's:
-/// EXE4's rules/light_dark.) A block that holds what the port can't say yet
-/// (supports, a color, All Guard: patch cards to come) is an
-/// error, which `Round::needs` lists.
+/// aura, the HP, and the rules' stats (the weapon level, the move bug, the
+/// Full Synchro at the start). A block that holds what the port can't say
+/// yet (supports, a color, All Guard: patch cards to come) is an error,
+/// which `Round::needs` lists.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
