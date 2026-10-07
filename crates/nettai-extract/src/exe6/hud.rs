@@ -257,6 +257,7 @@ pub fn hud(roms: &crate::exe6::Roms, names: &AssetNames) -> Hud {
         warning: tiles(rom, WARNING, 0x100),
         warning_palette: palette(rom, WARNING_PALETTE),
         chatbox: chatbox(rom),
+        layout: nettai_assets::HudLayout::default(),
         language: String::new(),
         languages: Vec::new(),
     }

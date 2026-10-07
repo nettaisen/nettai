@@ -373,6 +373,7 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
             (&names.glyphs, &names.dialogue_glyphs),
         ),
         chatbox: chatbox(rom),
+        layout: nettai_assets::HudLayout::default(),
         language: String::new(),
         languages: Vec::new(),
     }
