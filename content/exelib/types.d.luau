@@ -675,6 +675,9 @@ export type PatchCardEffect = {
     -- The group its card screen lists it in, as the effect's constructor says: "parameter" (a stat's change) or
     -- "ability" (the rest, the bugs among them).
     group: ("parameter" | "ability")?,
+    -- A pair's half (EXE4's, kind "pair"): its `effects`, which apply only while the card `card` (its key) sits in
+    -- slot `slot`.
+    pair: { slot: number, card: string, effects: { PatchCardEffect } }?,
 }
 
 -- What a game's patch cards' application (@exelib/patch_cards/apply) reads of the game: its kinds in the order they
