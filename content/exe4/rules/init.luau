@@ -20,6 +20,12 @@ local rules: Rules = {
     stats = {
         weapon_level = "u8",
         move_bug = "u8",
+        -- The Full Synchro at the start (+0x1F: patch card 45's, ./patch_cards; the reload's reset clears it), which
+        -- the starting mood reads (./light_dark).
+        full_synchro_start = "bool",
+        -- MegaMan's color (+0x27: 0, or patch cards 59, 60, 89, 90's 1 to 4, ./patch_cards; the reset clears it),
+        -- which his palette reads (./light_dark).
+        color = "u8",
     },
     -- What a player brings (nettai-match from a match's side, exe4-compat from a recording): a side's facts.
     setup = {
@@ -32,9 +38,8 @@ local rules: Rules = {
         -- What the save brings to the navi's stats (./save): MegaMan's HP and the Regular memory.
         hp = "u16",
         reg_up = "u8",
-        -- MegaMan's light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F): ./light_dark.
+        -- MegaMan's light/dark value (NaviStats +0x36): ./light_dark.
         karma = "u16",
-        full_synchro_start = "bool",
         -- Their NaviCust (./navicust): the programs placed on its 5x5 board (the engine's 7x7 grid's middle) in its
         -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
         -- `rotation` quarters clockwise, compressed or not.
@@ -50,12 +55,11 @@ local rules: Rules = {
         patch_cards = schema.list({ card = "patch_cards", slot = "u8" }, patch_cards.SLOTS),
     },
     -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
-    -- the starting mood 0x99), no Full Synchro at the start.
+    -- the starting mood 0x99).
     setup_defaults = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
         karma = 500,
-        full_synchro_start = false,
     },
     -- What a side keeps through a round: the dark chips' (./dark_chips).
     state = dark_chips.state,

@@ -110,6 +110,10 @@ return {
         "road_left",
         "road_right",
     },
+    -- The types the engine's own code needs: the missing panel, which no type change reaches (`_object_setPanelType`);
+    -- what a break and a crack make (`object_crackPanel` and its kin: 1 and 3); the normal panel, what a mend, an
+    -- expiry and a clearing leave (`sub_800C380`, `sub_3007708`: 2).
+    roles = { missing = "missing", broken = "broken", cracked = "cracked", normal = "normal" },
     -- A reservation marks its holder (`object_reservePanel` sets its header flag 0x20), and the holder's destroy
     -- releases what it holds (`sub_801BB78`, from `object_genericDestroy` and the navis' end).
     reservations = "marked",

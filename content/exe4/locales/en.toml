@@ -5,6 +5,7 @@ language = "en"
 
 [chips]
 "cannon" = { name = "Cannon", description = "Cannon to\nattack\n1 enemy" }
+"airshot" = { name = "AirShot", description = "Knocks\nenemy\nback 1" }
 "hicannon" = { name = "HiCannon", description = "Cannon to\nattack\n1 enemy" }
 "m-cannon" = { name = "M-Cannon", description = "Cannon to\nattack\n1 enemy" }
 "lance" = { name = "Lance", description = "Lances\nthrough\nback line" }
@@ -98,9 +99,12 @@ language = "en"
 "036-max-hp-up" = { name = "Max HP Up" }
 "037-max-hp-up" = { name = "Max HP Up" }
 "038-max-hp-up" = { name = "Max HP Up" }
+"045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }
+"059-megaman-color-change" = { name = "MegaMan Color Change" }
+"060-megaman-color-change" = { name = "MegaMan Color Change" }
 "061-max-hp-up" = { name = "Max HP Up" }
 "062-max-hp-up" = { name = "Max HP Up" }
 "063-max-hp-up" = { name = "Max HP Up" }
@@ -110,6 +114,8 @@ language = "en"
 "067-max-hp-up" = { name = "Max HP Up" }
 "078-first-life-aura" = { name = "First Life Aura" }
 "088-pet-menu-color-change" = { name = "PET Menu Color Change" }
+"089-megaman-color-change" = { name = "MegaMan Color Change" }
+"090-megaman-color-change" = { name = "MegaMan Color Change" }
 "091-max-hp-up" = { name = "Max HP Up" }
 "092-max-hp-up" = { name = "Max HP Up" }
 "093-max-hp-up" = { name = "Max HP Up" }

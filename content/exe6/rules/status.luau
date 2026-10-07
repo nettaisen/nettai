@@ -172,6 +172,8 @@ local status = {
         paused_navi = "pause_handler",
         -- Its status timers hold while paused (`sub_800E730`'s `battle_isPaused`).
         timers_while_paused = false,
+        -- Its idle (`sub_80F0354`) leaves the navi's pose.
+        idle_stands = false,
     },
 }
 

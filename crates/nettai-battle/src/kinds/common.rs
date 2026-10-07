@@ -2,7 +2,6 @@
 //! coordinate conversion, the state word, and damage totals.
 
 use crate::battle::Battle;
-use crate::field::PanelType;
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 
 /// `object_setAnimation`: request animation `anim`, restarting it even if
@@ -60,7 +59,7 @@ pub fn panel_burn(b: &mut Battle, r: ObjectRef, player: bool) {
     let p = d.panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     let rules = b.content.rules();
-    let Some(burn) = rules.panels.types[kind as usize].burn else { return };
+    let Some(burn) = rules.panels.rule(kind).burn else { return };
     if b.is_dimmed() && !(player && burn.players_while_dimmed) {
         return;
     }
@@ -78,7 +77,7 @@ pub fn panel_burn(b: &mut Battle, r: ObjectRef, player: bool) {
         d.hit_mod_by_side[0] |= 3;
         d.hit_mod_by_side[1] |= 3;
     }
-    b.set_panel_type(p.x, p.y, PanelType::Normal);
+    b.set_panel_type(p.x, p.y, b.content.rules().panels.roles.normal);
     let (x, y) = crate::kinds::player::panel_coordinates(p.x, p.y);
     let at = crate::kinds::spark::jitter(b, 0xF, Vec3 { x, y, z: 0 });
     let spark = b.roles().spark(crate::content::SparkRole::PanelBurn);
@@ -162,7 +161,7 @@ pub fn set_action(b: &mut Battle, r: ObjectRef, action: u8) {
 /// (halved, rounding up, on a holy panel) into `final_damage`.
 pub fn total_damage(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
-    let holy = b.field.panel(o.panel.x, o.panel.y).is_some_and(|p| p.kind == PanelType::Holy) as u32;
+    let holy = b.field.panel(o.panel.x, o.panel.y).is_some_and(|p| b.content.rules().panels.is_named(p.kind, "holy")) as u32;
     let c = o.collision.expect("object with collision data");
     let acc = &mut b.collision.get_mut(c).acc;
     let mut total = 0u32;

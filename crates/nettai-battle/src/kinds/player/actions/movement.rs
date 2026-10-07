@@ -13,7 +13,6 @@ use super::ActionVars;
 use crate::actor::{ActorType, status};
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::field::PanelType;
 use crate::object::{ObjectRef, PanelPos};
 
 /// How a step picks its destination (the game's move type byte).
@@ -350,7 +349,8 @@ pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
         panic!("the panel trail reads the type of panel {from:?}, off the field (sub_8013CC4)");
     };
     let old = panel.kind;
-    if matches!(old, PanelType::Missing | PanelType::Broken) {
+    let roles = b.game_rules().panels.roles;
+    if old == roles.missing || old == roles.broken {
         return;
     }
     match kind {
@@ -367,7 +367,7 @@ pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
             };
             b.set_panel_type(from.x, from.y, t);
             if t != old
-                && let Some(sound) = b.game_rules().panels.types[t as usize].trail_sound
+                && let Some(sound) = b.game_rules().panels.rule(t).trail_sound
             {
                 b.play_sound(sound);
             }

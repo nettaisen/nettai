@@ -16,9 +16,9 @@
 --   tests. Nor does NaviStats +0x26's 2, which skips it.)
 -- - **His palette** (0x0800C08E each tick from the player's update, 0x080EAEEC, and as he is set up, 0x080107DE;
 --   0x0800BFFE picks it): a player whose param is set 1; in soul 15 1; in any other soul 0; else 4 in Full Synchro
---   (mood 0xFF), else by the value's tier (0x0800C052: from 1000 4, from 500 0, from 470 3, else 2); then 5 more for
---   each step of his color (NaviStats +0x27, a patch card's, which no stats here carry yet: exe4-compat refuses one).
---   Presentation: the sprite's palette. (Another navi's palette is 0x0800B95E's table: EXE4's content has MegaMan
+--   (mood 0xFF), else by the value's tier (0x0800C052: from 1000 4, from 500 0, from 470 3, else 2); then, but in a
+--   soul other than 15, 5 more for each step of his color (NaviStats +0x27: the rules' stat `color`, patch cards 59,
+--   60, 89 and 90's 1 to 4). Presentation: the sprite's palette. (Another navi's palette is 0x0800B95E's table: EXE4's content has MegaMan
 --   alone. No player the engine spawns has a param, and no soul is ported yet.) Tango's light saves hold 1000, its
 --   dark ones 460.
 
@@ -29,8 +29,6 @@ export type Setup = {
     -- 500 (0x0800D6BE, 0x0800D6CA), the setup's default. (A match's side's `karma`, which nettai-match writes by this
     -- field's name.)
     karma: number,
-    -- The save's Full Synchro at the start (NaviStats +0x1F: patch card 45's), none by default.
-    full_synchro_start: boolean,
 }
 
 -- 0x0800F56A: the starting mood by the value and the Full Synchro at the start.
@@ -50,10 +48,11 @@ local light_dark = {}
 -- A value at or below this is a dark MegaMan's (0x08013306 and 0x08013348: 0x1F3); above it a navi closes a hole.
 local DARK_AT_MOST = 499
 
--- 0x0800D872: MegaMan's starting mood.
-function light_dark.starting_mood(_side: number): number?
+-- 0x0800D872: MegaMan's starting mood, by the light/dark value and the Full Synchro at the start (NaviStats +0x1F:
+-- the rules' stat, patch card 45's, ../patch_cards).
+function light_dark.starting_mood(side: number): number?
     local setup = rules.setup() :: Setup
-    return starting_mood(setup.karma, setup.full_synchro_start)
+    return starting_mood(setup.karma, battle.navi(side).full_synchro_start)
 end
 
 -- Each tick of the navi's intake: 0x080132E6, the holy panel under a dark MegaMan turns normal; 0x08013318, a navi
@@ -93,13 +92,11 @@ function light_dark.navi_palette(side: number, _navi: Object): number?
         return nil
     end
     if not stats.form.base then
-        -- (A soul's: 0; soul 15's 1. No soul is ported yet.)
+        -- (A soul's: 0, no color; soul 15's 1 and the color's. No soul is ported yet.)
         return 0
     end
-    if stats.mood == 0xFF then
-        return 4
-    end
-    return tier((rules.setup() :: Setup).karma)
+    local palette = if stats.mood == 0xFF then 4 else tier((rules.setup() :: Setup).karma)
+    return palette + 5 * stats.color
 end
 
 return light_dark

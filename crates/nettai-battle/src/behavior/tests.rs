@@ -478,7 +478,7 @@ fn standard_duel() -> (std::collections::BTreeMap<String, usize>, bool) {
         for r in b.objects.in_order() {
             *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
-        broken |= (1..=6).any(|x| (1..=3).any(|y| b.field.panel(x, y).unwrap().kind == crate::field::PanelType::Broken));
+        broken |= (1..=6).any(|x| (1..=3).any(|y| b.field.panel(x, y).unwrap().kind == crate::content::testing::panel("broken")));
     }
     (seen, broken)
 }
@@ -1391,23 +1391,23 @@ fn a_side_stat_and_the_mood_are_set() {
 /// one tick.
 #[test]
 fn panels_break_poison_and_blink() {
-    use crate::field::{PanelType, pflags};
+    use crate::field::pflags;
     let mut b = rock_battle();
     b.field.refresh_all(&b.content.rules().panels, &b.collision);
     let (empty, occupied) = ((2, 1), (2, 2));
     b.field.panels[occupied.1][occupied.0].flags |= pflags::BODY_SIDE0;
     let kind = |b: &Battle, (x, y): (usize, usize)| b.field.panel(x as u8, y as u8).unwrap().kind;
     assert!(b.break_panel(empty.0 as u8, empty.1 as u8));
-    assert_eq!(kind(&b, empty), PanelType::Broken);
+    assert_eq!(kind(&b, empty), crate::content::testing::panel("broken"));
     assert!(!b.break_panel(empty.0 as u8, empty.1 as u8), "a broken panel isn't solid");
     assert!(b.break_panel(occupied.0 as u8, occupied.1 as u8));
-    assert_eq!(kind(&b, occupied), PanelType::Cracked);
+    assert_eq!(kind(&b, occupied), crate::content::testing::panel("cracked"));
     assert!(b.poison_panel(1, 3));
-    assert_eq!(kind(&b, (1, 3)), PanelType::Poison);
+    assert_eq!(kind(&b, (1, 3)), crate::content::testing::panel("poison"));
     assert!(!b.poison_panel(empty.0 as u8, empty.1 as u8));
-    b.blink_panel(4, 2, PanelType::Holy, 0);
+    b.blink_panel(4, 2, crate::content::testing::panel("holy"), 0);
     let p = b.field.panel(4, 2).unwrap();
-    assert_eq!((p.kind, p.blink), (PanelType::Normal, Some((PanelType::Holy, 0))));
+    assert_eq!((p.kind, p.blink), (crate::content::testing::panel("normal"), Some((crate::content::testing::panel("holy"), 0))));
     b.field.clear_one_frame_looks();
     assert_eq!(b.field.panel(4, 2).unwrap().blink, None);
 }
@@ -1540,7 +1540,7 @@ fn holed_content() -> std::sync::Arc<Content> {
     let mut c = testing::build();
     for stage in &mut c.defs.stages {
         for row in &mut stage.record.layout.rows {
-            row[3] = crate::field::PanelType::Missing;
+            row[3] = crate::content::testing::panel("missing");
         }
     }
     std::sync::Arc::new(c)
@@ -1575,7 +1575,7 @@ fn duel_on(chips: &[nettai_content_api::ChipHandle], content: std::sync::Arc<Con
             *d.seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
         d.panel_changed_hands |= (1..=6).any(|x| {
-            (1..=3).any(|y| b.field.panel(x, y).is_some_and(|p| p.kind != crate::field::PanelType::Missing && p.alliance != p.home))
+            (1..=3).any(|y| b.field.panel(x, y).is_some_and(|p| p.kind != crate::content::testing::panel("missing") && p.alliance != p.home))
         });
     }
     d

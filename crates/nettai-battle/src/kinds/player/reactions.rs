@@ -10,7 +10,7 @@ use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
 use crate::content::{DragEnding, IceRule, PushSource, ReactionActions, SlideVector};
-use crate::field::{self, PanelType};
+use crate::field;
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
 // ---- Deletion (action 2) -------------------------------------------------------
@@ -476,10 +476,10 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
     }
     b.unreserve_panel(r, fp.x, fp.y);
     let kind = panel_kind(b, fp);
-    if kind == PanelType::Ice && coll(b, r).element != 2 {
+    if b.game_rules().panels.is_named(kind, "ice") && coll(b, r).element != 2 {
         let o = b.objects.get_mut(r);
         o.timer2 = o.timer2.wrapping_add(1);
-    } else if b.game_rules().panels.types[kind as usize].stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
+    } else if b.game_rules().panels.rule(kind).stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
         // EXE4's pitfall stops a drag (0x08010B54).
         b.objects.get_mut(r).timer2 = 0;
     }
@@ -599,7 +599,7 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
             let kind = panel_kind(b, o.panel);
             // EXE5's metal (0x0800C8A8): the steps its slide tries by the
             // direction of the move, the first the navi can slide to.
-            if let Some(slide) = b.game_rules().panels.types[kind as usize].slide {
+            if let Some(slide) = b.game_rules().panels.rule(kind).slide {
                 let tries = slide.tries.get(coll(b, r).direction as usize).copied().unwrap_or_default();
                 return tries
                     .into_iter()
@@ -790,19 +790,19 @@ mod tests {
     #[test]
     fn lava_burns_a_grounded_navi() {
         let (mut b, [_, r]) = fight(PushSource::Final);
-        b.set_panel_type(5, 2, PanelType::Lava);
+        b.set_panel_type(5, 2, crate::content::testing::panel("lava"));
         let sparks = |b: &Battle| b.objects.in_order().filter(|&o| b.local_kind_key(o).contains("spark")).count();
         let before = sparks(&b);
         crate::kinds::common::panel_burn(&mut b, r, true);
         assert_eq!(coll(&b, r).acc.element_damage[1], 50);
         assert_eq!(coll(&b, r).hit_mod_final & 3, 3, "a hit");
-        assert_eq!(b.field.panels[2][5].kind, PanelType::Normal);
+        assert_eq!(b.field.panels[2][5].kind, crate::content::testing::panel("normal"));
         assert_eq!(sparks(&b), before + 1, "its burn shows");
         // A navi of fire stands on it.
-        b.set_panel_type(5, 2, PanelType::Lava);
+        b.set_panel_type(5, 2, crate::content::testing::panel("lava"));
         coll_mut(&mut b, r).element = 1;
         crate::kinds::common::panel_burn(&mut b, r, true);
-        assert_eq!(b.field.panels[2][5].kind, PanelType::Lava);
+        assert_eq!(b.field.panels[2][5].kind, crate::content::testing::panel("lava"));
     }
 
     /// EXE5's metal (0x0800C8A8, the tables at 0x0800C920 and 0x0800C9C0):
@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn metal_slides_by_the_direction_of_the_move() {
         let (mut b, [_, r]) = fight(PushSource::Final);
-        b.set_panel_type(5, 2, PanelType::Metal);
+        b.set_panel_type(5, 2, crate::content::testing::panel("metal"));
         b.objects.get_mut(r).slide_type = 3;
         coll_mut(&mut b, r).direction = 1;
         assert_eq!(slide_vector(&b, r), SlideVector { dx: -1, dy: 0, tiles: 1 });
@@ -829,8 +829,10 @@ mod tests {
     #[test]
     fn a_pitfall_stops_a_drag_unless_the_navi_floats() {
         let run = |floats: bool| {
-            let (mut b, [_, r]) = fight_with(|r| r.panels.types[PanelType::Pitfall as usize].stops_slides = true);
-            b.set_panel_type(5, 2, PanelType::Pitfall);
+            // (The test content's sea, made a type that stops slides.)
+            let pitfall = crate::content::testing::panel("sea");
+            let (mut b, [_, r]) = fight_with(|r| r.panels.types[pitfall.0 as usize].stops_slides = true);
+            b.set_panel_type(5, 2, pitfall);
             if floats {
                 set_flag1(&mut b, r, f1::FLOATSHOE);
             }

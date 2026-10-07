@@ -339,39 +339,38 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     }
 }
 
-/// The field (docs/design/rules-in-luau.md §7.4). Each loaded game's pack
-/// draws the panel types its game's `panels` section names, with their
-/// blocks (EXE6's field none of EXE5's metal, lava or sea). In an arena of
-/// each loaded game, every panel type a loaded game names and both
-/// highlights are drawn as the stage draws them (`FieldArt`): from the
-/// arena's field, another pack's, or as a tinted normal panel, which is
-/// said, not counted.
+/// The field (docs/design/rules-in-luau.md §7.4). The game's pack draws
+/// the panel types its game's `panels` section numbers, with their blocks.
+/// Every panel type the game numbers and both highlights are drawn as the
+/// stage draws them (`FieldArt`): from the game's field, or as a tinted
+/// normal panel, which is said, not counted.
 fn field(c: &Content, packs: &Packs, p: &mut Problems) {
-    let names = |t: PanelType| c.rules().panels.types.get(t as usize).is_some_and(|r| r.named);
+    let types = || (0..c.rules().panels.types.len() as u8).map(PanelType);
     let blocks = |pack: PackId, t: PanelType, p: &mut Problems| {
         for owner in 0..2 {
             for y in 1..=3 {
-                lookups::panel_block(c, &packs.bundle(pack).field, pack, t as u8, owner, y, p);
+                lookups::panel_block(c, &packs.bundle(pack).field, pack, t, owner, y, p);
             }
         }
     };
     let pack = packs.game_id(c);
-    for t in PanelType::ALL.into_iter().filter(|&t| names(t)) {
-        if packs.bundle(pack).field.draws(t as u8) {
+    for t in types() {
+        let name = c.rules().panels.name(t);
+        if packs.bundle(pack).field.draws(name) {
             blocks(pack, t, p);
         } else {
             p.note(format!(
-                "{}'s field doesn't draw panel type {} ({t:?}), which its game names (extract the pack again)",
+                "{}'s field doesn't draw panel type {} ({name}), which its game numbers (extract the pack again)",
                 lookups::pack_name(c, pack),
-                t as u8
+                t.0
             ));
         }
     }
     let art = FieldArt::of(c, packs);
-    for t in PanelType::ALL.into_iter().filter(|&t| names(t)) {
+    for t in types() {
         match art.panel(t) {
             Art::Field(from) => blocks(from, t, p),
-            Art::Tint => lookups::panel_tint(c, art.arena, t as u8, p),
+            Art::Tint => lookups::panel_tint(c, art.arena, t.0, p),
         }
     }
     for h in 1..=2 {
@@ -426,9 +425,7 @@ mod tests {
     }
 
     /// The field's blocks are audited for the panel types the own pack's
-    /// game names, not for every type the engine has (EXE5's metal, lava
-    /// and sea, which EXE6's field has none of; EXE4's pitfall and hole,
-    /// which the test content names none of).
+    /// game numbers, each of them.
     #[test]
     fn the_field_is_audited_for_the_panel_types_its_game_names() {
         let mut c = (*testing::content()).clone();
@@ -437,12 +434,13 @@ mod tests {
             let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
             found.problems.iter().filter(|p| p.contains("doesn't draw panel type")).count()
         };
-        let named = PanelType::ALL.len() - 2;
-        assert_eq!(missing(&c), named);
-        for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
-            c.rules_mut().panels.types[t as usize].named = false;
-        }
-        assert_eq!(missing(&c), named - 3);
+        let numbered = c.rules().panels.types.len();
+        assert_eq!(missing(&c), numbered);
+        // (A game of one type fewer.)
+        let panels = &mut c.rules_mut().panels;
+        panels.types.pop();
+        panels.names.pop();
+        assert_eq!(missing(&c), numbered - 1);
     }
 
     /// A navi a side can start that has no no-running message is listed

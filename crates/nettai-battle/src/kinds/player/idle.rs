@@ -207,6 +207,11 @@ fn decide(b: &mut Battle, r: ObjectRef) {
 /// then phase 4, which does nothing. Decisions run in both phases.
 fn phase_timer(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase != 0 {
+        // EXE4's idle stands the navi each tick past this phase (the
+        // rules' `idle_stands`).
+        if b.game_rules().idle_stands {
+            b.objects.get_mut(r).anim = 0;
+        }
         return;
     }
     if b.objects.get(r).phase_init == 0 {

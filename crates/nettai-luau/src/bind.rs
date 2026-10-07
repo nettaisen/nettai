@@ -25,7 +25,7 @@ use nettai_content_api::{
     ActorField, ApiError, BattleInfo, CollisionField, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
     AssetKind, SpawnAt,
-    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
+    ObstacleCrush, ObstacleRequest, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use nettai_content_api::{ObjectRef, RulesHook};
@@ -2318,9 +2318,11 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "panel", |lua, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
-        let Some(info) = with(|api, _| Ok(api.panel_info(p)))? else { return Ok(LuaValue::Nil) };
+        let Some((info, name)) = with(|api, _| Ok(api.panel_info(p).map(|i| (i, api.panel_type_name(i.kind)))))? else {
+            return Ok(LuaValue::Nil);
+        };
         let t = lua.create_table()?;
-        t.raw_set("kind", PANEL_TYPES[info.kind as usize])?;
+        t.raw_set("kind", name)?;
         t.raw_set("alliance", info.alliance)?;
         t.raw_set("home", info.home)?;
         Ok(LuaValue::Table(t))
@@ -2361,7 +2363,7 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "set_type", |_, (x, y, kind): (LuaValue, LuaValue, mlua::LuaString)| {
         let p = panel(x, y)?;
-        let kind = named(&kind, "panel type", |s| PANEL_TYPES.iter().position(|&n| n == s))? as u8;
+        let kind = panel_type_arg(&kind)?;
         with(|api, _| Ok(api.set_panel_type(p, kind)))
     });
     lib_fn!(lua, t, "crack", |_, (x, y): (LuaValue, LuaValue)| {
@@ -2399,10 +2401,18 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
-        let kind = named(&kind, "panel type", |s| PANEL_TYPES.iter().position(|&n| n == s))? as u8;
+        let kind = panel_type_arg(&kind)?;
         with(|api, _| Ok(api.blink_panel(p, kind, side)))
     });
     Ok(t)
+}
+
+/// A panel type's name: one of the game's (its panel rules' `numbers`), as
+/// its number.
+fn panel_type_arg(name: &mlua::LuaString) -> mlua::Result<u8> {
+    let s = name.to_str()?.to_string();
+    with(|api, _| Ok(api.panel_type_named(&s)))?
+        .ok_or_else(|| mlua::Error::runtime(format!("{s:?} is none of the game's panel types (its rules' panels.numbers)")))
 }
 
 fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
