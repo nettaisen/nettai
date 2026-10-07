@@ -8,6 +8,7 @@
 
 local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
+local deletion = require("./deletion")
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
@@ -29,12 +30,18 @@ local roles: RolesSpec = {
     regions = {
         anchor = regions.single,
     },
+    actions = {
+        -- A player's deletion (action 2, 0x08010850).
+        deletion = deletion.action,
+    },
     kinds = {
         -- The glow a navi's charge brings (effect object 5, 0x080E215C; the navi's tail spawns it, 0x0800BD88).
         charge_glow = charge_glow.kind,
     },
     sounds = {
         appear = asset.sound("appear"),
+        -- The custom gauge fills (0x080147F4).
+        gauge_full = asset.sound("gauge-full"),
         -- What the custom screen can't pick or take back (0x08020386, 0x08020634).
         refused = asset.sound("refused"),
         -- The custom screen's, which its player hears (docs/design/exe4-map.md §5): the window slides in (0x0801E24E);
@@ -57,6 +64,11 @@ local roles: RolesSpec = {
     },
     music = {
         link_battle = asset.sound("netbattle"),
+        -- The round's end (0x080071F8): the winner's, a special battle's (battle flag 2); a netbattle's loser's
+        -- (0x0800727C).
+        winner = asset.sound("winner"),
+        winner_special = asset.sound("winner-special"),
+        loser = asset.sound("loser"),
     },
     banners = {
         round_start = asset.banner("battle-number-start"),

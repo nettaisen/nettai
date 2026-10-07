@@ -128,6 +128,7 @@ struct ReactionsSection {
     slide_speed: super::rules::SlideSpeed,
     overlay_restart: super::rules::OverlayRestart,
     stance_counter: super::rules::StanceCounter,
+    dead_player: super::rules::DeadPlayer,
     request_clears: super::rules::RequestClears,
 }
 
@@ -170,6 +171,9 @@ struct CustomScreenSection {
     status_until: super::custom::StatusUntil,
     hover: HoverSection,
     restore_players: Vec<u8>,
+    gauge_empties_at_open: bool,
+    fades_clear_at_ok: bool,
+    cursor_after_leaving: bool,
 }
 
 #[derive(Deserialize)]
@@ -420,6 +424,7 @@ impl Stated {
                 slide_speed: r.slide_speed,
                 overlay_restart: r.overlay_restart,
                 stance_counter: r.stance_counter,
+                dead_player: r.dead_player,
                 request_clears: r.request_clears,
             }),
             sine: Some(r.sine.clone()),
@@ -518,6 +523,7 @@ impl Stated {
             slide_speed: reactions.slide_speed,
             overlay_restart: reactions.overlay_restart,
             stance_counter: reactions.stance_counter,
+            dead_player: reactions.dead_player,
             request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
             flow,
@@ -707,6 +713,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     status_until: s.status_until,
                     hover: s.hover.rules(&at).map_err(e)?,
                     restore_players: s.restore_players,
+                    gauge_empties_at_open: s.gauge_empties_at_open,
+                    fades_clear_at_ok: s.fades_clear_at_ok,
+                    cursor_after_leaving: s.cursor_after_leaving,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,

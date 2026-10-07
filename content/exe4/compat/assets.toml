@@ -8,7 +8,33 @@
 # Sprites: "cc-ii", the category's byte offset in the sprite list (0x0802793C) and the index.
 [sprites]
 megaman = "00-00"
+rollsoul = "00-01"  # MegaMan's sprite in soul 1 (0x0800B90A: his entry plus the soul)
+gutssoul = "00-02"  # MegaMan's sprite in soul 2 (0x0800B90A: his entry plus the soul)
+windsoul = "00-03"  # MegaMan's sprite in soul 3 (0x0800B90A: his entry plus the soul)
+searchsoul = "00-04"  # MegaMan's sprite in soul 4 (0x0800B90A: his entry plus the soul)
+firesoul = "00-05"  # MegaMan's sprite in soul 5 (0x0800B90A: his entry plus the soul)
+thundersoul = "00-06"  # MegaMan's sprite in soul 6 (0x0800B90A: his entry plus the soul)
+protosoul = "00-07"  # MegaMan's sprite in soul 7 (0x0800B90A: his entry plus the soul)
+numbersoul = "00-08"  # MegaMan's sprite in soul 8 (0x0800B90A: his entry plus the soul)
+metalsoul = "00-09"  # MegaMan's sprite in soul 9 (0x0800B90A: his entry plus the soul)
+junksoul = "00-0a"  # MegaMan's sprite in soul 10 (0x0800B90A: his entry plus the soul)
+aquasoul = "00-0b"  # MegaMan's sprite in soul 11 (0x0800B90A: his entry plus the soul)
+woodsoul = "00-0c"  # MegaMan's sprite in soul 12 (0x0800B90A: his entry plus the soul)
 instrument = "04-08"
+healnavi = "08-00"  # navi 14's sprite (0x0800B90A: 0x08017F98's entry 14; its win banner by 0x08008524)
+roll = "08-01"  # navi 1's sprite (0x0800B90A: 0x08017F98's entry 1; its win banner by 0x08008524)
+gutsman = "08-02"  # navi 2's sprite (0x0800B90A: 0x08017F98's entry 2; its win banner by 0x08008524)
+windman = "08-03"  # navi 3's sprite (0x0800B90A: 0x08017F98's entry 3; its win banner by 0x08008524)
+searchman = "08-04"  # navi 4's sprite (0x0800B90A: 0x08017F98's entry 4; its win banner by 0x08008524)
+fireman = "08-05"  # navi 5's sprite (0x0800B90A: 0x08017F98's entry 5; its win banner by 0x08008524)
+thunderman = "08-06"  # navi 6's sprite (0x0800B90A: 0x08017F98's entry 6; its win banner by 0x08008524)
+protoman = "08-07"  # navi 7's sprite (0x0800B90A: 0x08017F98's entry 7; its win banner by 0x08008524)
+numberman = "08-08"  # navi 8's sprite (0x0800B90A: 0x08017F98's entry 8; its win banner by 0x08008524)
+metalman = "08-09"  # navi 9's sprite (0x0800B90A: 0x08017F98's entry 9; its win banner by 0x08008524)
+junkman = "08-0a"  # navi 10's sprite (0x0800B90A: 0x08017F98's entry 10; its win banner by 0x08008524)
+aquaman = "08-0b"  # navi 11's sprite (0x0800B90A: 0x08017F98's entry 11; its win banner by 0x08008524)
+woodman = "08-0c"  # navi 12's sprite (0x0800B90A: 0x08017F98's entry 12; its win banner by 0x08008524)
+normalnavi = "08-0d"  # navi 13's sprite (0x0800B90A: 0x08017F98's entry 13; its win banner by 0x08008524)
 cannon = "0c-01"  # the Cannon held: attachment row 0 (0x080CD524), action 0x0B's variant 0 (0x080EB894)
 bomb = "0c-02"
 muzzle-flash = "0c-06"  # the buster's flash: attachment row 0x10 (0x080CD524), 0x080EB396
@@ -53,6 +79,7 @@ cross-slash = "10-35"
 explosion = "14-00"  # hit spark 0x0B (0x080E2090; EXE5's row 0x0B)
 impact = "14-01"  # hit spark 7 (0x080E2090; EXE5's row 7)
 small-puff = "14-02"
+deletion = "14-03"  # a navi's deletion: effect row 3 (0x080E1698), from 0x080108EE
 pink-flash = "14-04"  # hit spark 5, the charged shot's (0x080E2090; EXE5's 0x080E0814 row 5)
 hit-sparks = "14-05"
 hit = "14-06"  # hit spark 8 (0x080E2090; EXE5's row 8)
@@ -68,11 +95,15 @@ charge-glow-a = "14-15"
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
 netbattle = 0x015  # a netbattle's music, which the fight's setup starts (the lab's flow/buster-duel, frame 130)
+winner-special = 0x018  # the winner's music in a special battle, battle flag 2 (0x080071F8)
+loser = 0x019  # a netbattle's loser's music, battle type 0x46 and on (0x0800727C)
+winner = 0x01e  # the winner's music (0x080071F8)
 description-open = 0x066  # R's description on the custom screen (0x080203C0)
 unselect-68 = 0x068
 refused = 0x069  # what the custom screen can't pick or take back, a soul it can't give (0x08020386, 0x08020634)
 buster-shot = 0x06a  # the buster shot and the charged shot (0x080EB372, 0x080ECC72)
 hit = 0x06b  # a navi's hit: the hit intake (0x08013A96), on every console
+deleted = 0x06c  # a navi's deletion (action 2's explosions, 0x080108E2)
 auto-battle-hit = 0x06d  # a navi in auto battle hit (NaviStats +0x26 = 1): the hit intake (0x08013A9A)
 hit-bomb-0 = 0x06f
 hit-bomb-1 = 0x070
@@ -85,6 +116,7 @@ custom-cursor = 0x07d  # the custom screen's cursor moving (0x0802049C, 0x080206
 custom-pick = 0x07e  # a chip picked on the custom screen (0x080203A0, from 0x080204B8)
 custom-back = 0x07f  # a pick taken back on the custom screen (0x080203A0, 0x0802066E, from 0x080204B8)
 custom-ok = 0x080  # OK on the custom screen (0x0802063E)
+gauge-full = 0x081  # the custom gauge full as it fills (0x080147F4), or filled at once (0x080159D0)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
 program-advance = 0x097  # the Program Advance animation's Program Advance (0x0801E83A)
 appear = 0x0b0  # the navis' appearance as a round starts (the lab's flow/buster-duel, frame 148)
