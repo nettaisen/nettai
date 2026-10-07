@@ -137,9 +137,8 @@ MB), the dark flag in +0x09 bit 5, the counter +0x0A, family and subfamily +0x0B
 power +0x1A, the chip gate byte +0x1E, the icon, image and palette +0x20 to +0x28. The ROM agrees (R): `fields.py
 --to B4WE after getChip8021DA8` reads EXE6's class (+0x07) at EXE4's +0x08 in all six paired reads and every other
 field seen (+0x00 to +0x05, +0x09, +0x0A, +0x0C, +0x10, +0x14, +0x16, +0x18, +0x1A, +0x1C, +0x20, +0x24, +0x28) at
-EXE6's offset; Cannon, HiCannon and M-Cannon's +0x06 are 8, 24 and 40, their MB. (multi-game.md §2.2 says the three
-records share one order: not at +0x06 to +0x08.) So a chip codec is per game at those three bytes, and EXE4's record
-has no lock-on byte or dark chip id (multi-game.md §2.4).
+EXE6's offset; Cannon, HiCannon and M-Cannon's +0x06 are 8, 24 and 40, their MB. So the chip codec's byte order is
+a game's fact at those three bytes, and EXE4's record has no lock-on byte or dark chip id (multi-game.md §2.4).
 
 ### 3.3 NaviStats
 
@@ -297,13 +296,56 @@ exchange.
 
 **For the next steps:**
 
-- **Extraction** (`nettai-extract exe4`): the chip records, names and descriptions, the NaviCust parts, the sprites
-  (the object sprite table, to find as EXE5's was), the sounds (the m4a song table), both languages.
+- **Extraction** (`nettai-extract exe4`): as built, §14.
 - **exe4-compat:** the numbers (chips by id, navis, souls), the recording decode (the oracle's layout, §3.4, and the
-  setup line), the save import (§12).
+  setup line), the save import (§12). Its start (the chips' ids, the asset names, the text encodings) came with
+  the extraction (§14).
 - **The oracle:** an EXE4 layout (the addresses of §3.4 and those still to find), its hooks (Tango's round start and
   round result, the frame routine), the four ROMs in the chip lab with Tango's twelve saves as bases.
 - **Open:** the NaviStats fields beyond those §3.3 pairs (HP among them); what the object record's +0x17 byte is;
   the custom screen's states and Double Soul's offer; the dark chip offer; the emotion function; the turn-start order
   of a transformation; the panel entry's size and types (BN4 numbers holy 9, metal 5: multi-game.md §2.4); the link
-  exchange's contents.
+  exchange's contents; the assets §14 leaves as placeholders, and the names of the sprites and sounds it lists
+  unnamed.
+
+## 14. The assets (as built)
+
+`nettai-extract exe4 <pack> <ROM ...>` writes an EXE4 pack (crates/nettai-extract/src/exe4), its names and text
+encodings from content/exe4/compat (assets.toml, chips.toml, text.toml), which the verification workspace's
+tools/exe4/gen_content.py writes from the ROMs and `check`s again; the exe4-compat crate reads them. Each address is
+Red Sun US's and its counterpart in the other three ROMs: the value of the same literal of the same routine (the
+ROM data maps, `bmap.py --to <CODE> romdata`).
+
+- **Sprites** (R): the sprite list (0x0802793C; Blue Moon 0x08027940, the Japanese 0x08027890 and 0x08027894), its
+  battle categories (byte offsets 0x00 to 0x14) as EXE5's: 225 sprites, the same archives in all four ROMs.
+- **Sound** (R): the m4a song table (0x08155FF8): 391 songs, the same in all four ROMs (no version's own songs, as
+  EXE5's Team Colonel has).
+- **Chips** (R): the record's picture (+0x24, 7x6 tiles), its palette (+0x28) and icon (+0x20, 2x2 tiles), the icons'
+  palette by Tango's pointer (0x08015A78, the Japanese 0x080159D4). chips.toml has the chips a folder can hold
+  (Tango's legal chips: 1 to 186, 201 to 280, 301 to 310; 276), keyed by the US names as EXE5's are (`aquamn-sp`),
+  the ten version giga chips with their version, whose art comes from that version's ROM. The table's other records
+  are placeholders (ten "Bass" before Bass, seven "DarkNeo" before DarkNeo, a second "LifeAura"), the Program
+  Advances (from 321) and the e-Reader cards' two (311, 312: their names are the save's), not in chips.toml yet.
+- **The fonts and the HUD's text lines** (R), English from a US ROM, Japanese (the pack's `ja` lettering) from a
+  Japanese ROM: the 8x16 font (0x0868DF5C: 0x1A0 glyphs of 0x40 bytes, other data past them), the dialogue font
+  (0x08694F5C: 0x1C0 glyphs of 16x12, 0x60 bytes) and its advances (a word a glyph from 0x080515E0, past the word
+  its routine's literal names, as EXE5's), the text lines (0x087491CC: "DOUBLE DELETE!", "TRIPLE DELETE!", "VS",
+  "TIME UP!", the timer's 1 to 10, "COUNTER HIT!", ending in 0xE5). The Japanese ROMs' lines are the same English
+  words in their own encoding.
+- **The text encodings** (text.toml; Tango's BN4 character sets): a byte below 0xE4 is a glyph, E4 xx glyph 0xE4 +
+  xx; the text ends in 0xE5, a line in 0xE8 (EXE5's and EXE6's 0xE6 and 0xE9). The US fonts draw 0x00 to 0x6F, the
+  suits 0x6B to 0x6F in the dialogue font alone, and 0x69 and 0x6A as > and < in the 8x16 font but < and > in the
+  dialogue font (the encoding names the 8x16 font's). The Japanese encoding is 442 glyphs. The marks are the
+  engine's characters (text-rendering.md §10.5): EXE4 adds V over 2 to 5 (U+E009 to U+E00C) and □.
+- **Names** (assets.toml): 50 sprites and 4 sounds, a sprite whose archive is a named EXE5 or EXE6 sprite's by its
+  name, and a sprite or sound EXE4's code loads where EXE5's or EXE6's same code loads a named one (the place votes
+  of tools/exe5/assetmap.py over both maps; a pair the same but for constants votes only where the asset's number is
+  the same: such pairs in the object code are often other objects on one skeleton, and would have named an EXE4
+  sound EXE6's Beast Over burst). The rest (175 sprites, 387 sounds) are written under their numbers
+  (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's extraction.txt (`unnamed:`), to name by what loads them
+  as the port reads EXE4's own code.
+- **Placeholders** (extraction.txt's first line): the field, the backgrounds, the banners, the emotion faces, the
+  chatbox and the custom screen, whose routines are EXE4's own (§5, §7): the pack has the placeholder pass's.
+- **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
+  load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
+  status, chip_use, fresh_stats).
