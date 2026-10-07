@@ -37,9 +37,13 @@ const MAP_CELLS: u32 = 15 * 20;
 /// Where the blocks load (the patch list's runs: the name from 0x9C, the
 /// picture 0xAC, the code 0xD6, the damage 0xD8, the slots 0xDE, the
 /// picked column's icons 0x11A); no element tiles (a sprite) and no enemy
-/// names' bar; a hidden slot's fill solid 1 (0x08020EDC, as EXE6's); the
-/// cursor over OK at column 11, row 14 (0x08020DBC: (0x58, 0x70)), its
-/// corners `OK_CORNERS`.
+/// names' bar; a hidden slot's fill solid 1 (0x08020EDC, as EXE6's), a
+/// blank code or damage cell's solid 7 (0x08020E5C: 0x0801FD08, 0x0801FE2A);
+/// the empty icon in palette 9 (the slots' patches' palette, which
+/// 0x0801FB00 leaves on an empty slot and sets on a picked one;
+/// 0x0801FB6E's on an empty cell of the picked column); the cursor over OK
+/// at column 11, row 14 (0x08020DBC: (0x58, 0x70)), its corners
+/// `OK_CORNERS`.
 const LAYOUT: CustomLayout = CustomLayout {
     column_cells: 0x43,
     turn_limit: 0x70,
@@ -53,6 +57,8 @@ const LAYOUT: CustomLayout = CustomLayout {
     name_bar: 0,
     form_names: 0,
     slot_blank: 1,
+    detail_blank: 7,
+    empty_palette: Some(9),
     ok_cursor: CursorPlace { x: 0x58, y: 0x70, corners: [[(0, 0, false, false); 4]; 2] },
 };
 /// The cursor's corners (two frames of four words: y in the low half, x
@@ -117,11 +123,13 @@ const FAMILY_BYTES: [u32; 15] = [
 /// slot's icon (0x0801F59C).
 const SLOT_CODES: (u32, usize) = (0x0870_C3C0, 27);
 const EMPTY_ICON: u32 = 0x0870_CAC0;
-/// The UNITE button (0x0801FF14: 3x2 at column 11, row 17): its tiles,
-/// on offer and gray (the load list's to tile 0x52), and the window's fill
-/// tile it shows with no button (0x2A, the window frame's).
+/// The UNITE button (0x0801FF14: 3x2 at column 11, row 17, in palette 9,
+/// by its entries at 0x0801FF54's table): its tiles, on offer and gray (the
+/// load list's to tile 0x52: 0x52 on offer, 0x58 gray, when unavailable or
+/// a soul is chosen), and the window's fill tile it shows with no button
+/// (0x2A, the window frame's).
 const UNITE_TILES: (u32, usize) = (0x0874_8058, 0x180);
-const UNITE_PLACE: ButtonPlace = ButtonPlace { x: 11, y: 17, first_tile: 0x52 };
+const UNITE_PLACE: ButtonPlace = ButtonPlace { x: 11, y: 17, first_tile: 0x52, palette: 9 };
 const WINDOW_FILL_TILE: usize = 0x2A;
 /// The SHUFFLE button over slots 8 and 9 (0x0801F6C2: twelve tiles a
 /// state, by the screen's +0x13).

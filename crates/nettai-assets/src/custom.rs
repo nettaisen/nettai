@@ -129,6 +129,14 @@ pub struct CustomLayout {
     /// The color a hidden slot's tiles and a slot's blank code are filled
     /// with (EXE6's `byte_802A700`: 1).
     pub slot_blank: u8,
+    /// The color the chip window's blank code and damage cells are filled
+    /// with (EXE6's `sub_802869E` and EXE5's: 8; EXE4's 0x08020E5C: 7).
+    pub detail_blank: u8,
+    /// The palette the empty icon is drawn in where a slot or a cell of
+    /// the picked column has no chip: an empty or picked slot's, an empty
+    /// cell's (EXE4's 9: 0x0801FB00's and 0x0801FB6E's tables). None: the
+    /// patch list's (EXE6's and EXE5's).
+    pub empty_palette: Option<u8>,
     /// The cursor over OK (a button's is its own: `ButtonPictures::cursor`).
     pub ok_cursor: CursorPlace,
 }
@@ -199,20 +207,22 @@ pub struct ButtonPictures {
     pub icon_palettes: Vec<(String, Palette)>,
     /// Where the button is drawn when no patch of the window's places it:
     /// its cells on the window's map at a column and row, from its own
-    /// tile numbers (EXE4's UNITE button, 0x0801FF14: 3x2 at column 11,
-    /// row 17, from tile 0x52). None: the patch list's place in the slots'
-    /// run, its tiles among the slots'.
+    /// tile numbers, in a palette of the window's (EXE4's UNITE button,
+    /// 0x0801FF14: 3x2 at column 11, row 17, from tile 0x52, in palette 9).
+    /// None: the patch list's place in the slots' run, its tiles among the
+    /// slots'.
     pub place: Option<ButtonPlace>,
 }
 
 /// A button's own place on the window (`ButtonPictures::place`): the
-/// column and row of its first cell, and the tile number its tiles load
-/// at.
+/// column and row of its first cell, the tile number its tiles load at,
+/// and the window's palette its cells are in.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ButtonPlace {
     pub x: u8,
     pub y: u8,
     pub first_tile: u16,
+    pub palette: u8,
 }
 
 /// The chip window's element icon drawn as a sprite (EXE4's, 0x0801EECC: a

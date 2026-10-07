@@ -326,7 +326,9 @@ any cell's isn't 0, as the layer's `palettes` property, a hex digit a cell);
 `background.json` (whether it has its own palette, scroll speed in 1/16 pixel,
 animations). A tile
 animation's frames are `anim-K.png`, one block of tiles a
-frame; a palette animation's frames are color lists. Tiled's rotation bit is
+frame; a palette animation's frames are color lists; a palette shift's
+(`brightens` or `darkens`: palettes shown lightened or darkened, per channel,
+by a color a frame, EXE4's background 0x09) are one `shift` color each. Tiled's rotation bit is
 refused (the GBA only flips), and so are infinite maps and compressed layers,
 each with the setting to change.
 
@@ -439,6 +441,19 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
   `buttons` are the game's own (above: EXE5's special slot is the 3x2 soul
   button, with a palette for Soul Unison and one for Chaos Unison; EXE6's
   the 4x2 Beast Out).
+- EXE4's `custom.json` (docs/design/exe4-map.md §14) says what its screen
+  draws otherwise, each left out of the others': its layout's
+  `detail_blank` (the color a blank code or damage cell is, 7 where
+  EXE6's and EXE5's are 8) and `empty_palette` (the empty icon's palette in
+  a slot or cell without a chip, 9); `element_sprite` (the element icon
+  drawn as a 16x16 sprite at a place and in a palette of its own, not as
+  window tiles in palette 11 with `elements.png`'s colors); `cursor_palette`
+  (the cursor's and the Regular chip's frame's own sprite palette, not a
+  navi emblem's); `window_emblem` (the orb over the picked column drawn on
+  the window's map: `window-emblem.png` at `first_tile`, its frames' map
+  entries, and the steps of its turn after a pick, a frame or a hold each);
+  and a button's `place` ([column, row, first tile, palette]: the UNITE
+  button's own cells on the window's map, not among the slots').
 - A version's own chip (EXE5's and EXE6's version Giga chips, EXE5's Phoenix
   and DethPhnx), which the other version's ROM draws as its counterpart,
   has its icon and picture once, under the chip's key, from its own
