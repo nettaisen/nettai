@@ -80,18 +80,6 @@ export type MagnetVariant = { hit_mod: number, status: Status?, waits_for_navi: 
 export type CapsuleVariant = { palette: number, hit_mod: number, status: Status?, explosion: Effect }
 export type CapsuleLine = { region: Region, panels: { { number } }, style: number, anim: number }
 
--- A soul's navi's image as MegaMan unites with it (rules/souls/image, actor
--- object 0x2A; a soul's form's `image`): the navi's sprite, and what the
--- image puts on as it comes in and takes off as it goes (0x0800EDBC's and
--- 0x0800EEBE's routines by soul: GyroMan's propeller, NapalmMan's cannon,
--- Colonel's cape, KnightMan's ball and chain, NumberMan's face; none: it
--- wears nothing).
-export type SoulImage = {
-    sprite: SpriteAsset,
-    put_on: ((image: Object) -> ())?,
-    take_off: ((image: Object) -> ())?,
-}
-
 -- A button a soul adds to the custom screen (a `ButtonSpec` of the souls
 -- part's, which rules/souls/custom makes of it): where it sits, and its
 -- functions, which get the rules' state of the side (`s`: the fields

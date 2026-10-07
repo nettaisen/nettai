@@ -40,9 +40,13 @@
 "meteors/dropper" = { pool = "effect", index = 0x81, scratch_position = true }
 # The Boomers' boomerang (action 0x20's variant 2, 0x080D3430).
 "boomer/boomerang" = { pool = "attack", index = 0x32, scratch_position = true }
-# The towers' controller (action 0x20's variant 0x0C, 0x080DF98C), its towers (0x080DF7D0) and lightning (0x080DF108).
-"towers/controller" = { pool = "attack", index = 0x93, scratch_position = true }
-"tower" = { pool = "attack", index = 0x92, scratch_position = true }
+# The towers' controllers (action 0x20's variant 0x0C, 0x080DF98C: one object, AquaUp's, GreenWd's and LigtNin's),
+# their towers (0x080DF7D0: one object, AquaUp's and GreenWd's) and lightning (0x080DF108).
+"aquaup/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"greenwd/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"ligtnin/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"aquaup/tower" = { pool = "attack", index = 0x92, scratch_position = true }
+"greenwd/tower" = { pool = "attack", index = 0x92, scratch_position = true }
 "lightning" = { pool = "attack", index = 0x8E, scratch_position = true }
 # The Counters' strike (action 0x20's variant 0, 0x080CFDE4).
 "counter/strike" = { pool = "attack", index = 0x17, scratch_position = true }
@@ -96,6 +100,8 @@
 # parameter; here each user's own kind: DeltaRay's bursts (look 4) and MetalMan's fist (look 5).
 "deltaray/burst" = { pool = "effect", index = 0x31 }
 "metalman/fist" = { pool = "effect", index = 0x31 }
+# The Elem chips' flame (action 0x60, 0x080CE49C).
+"elem/flame" = { pool = "attack", index = 0x09, scratch_position = true }
 # The wind stages' wind (the actor lists' entry type 6, 0x080068DE: effect 0x41, 0x080E6820) and the gusts it blows
 # (0x080D6724).
 "wind" = { pool = "effect", index = 0x41, scratch_position = true }

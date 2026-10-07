@@ -510,7 +510,11 @@ The drawing is nettai-render's; the modules this section names are its.
 Layers, back to front: the backdrop color, the background (priority 3),
 the field (priority 2), sprites of priority 2, the HUD layer (priority 1),
 sprites of priority 0 (banners), and BG0 (priority 0: the custom screen's
-enemy names).
+enemy names). The HUD layer's priority is the game's (its pack's
+`hud_priority`, BG3's): EXE6's and EXE5's 1, EXE4's 0, so EXE4's HP numbers
+(priority 1) are under its HP box and custom screen, as EXE6's (priority 2)
+are under its. The custom screen's sprites (cursors, element, emblem, the
+chips flying) take the same priority, 1 and 0.
 
 **Objects** (`objects.rs`) follow the original's render passes
 (`sub_8003E18`/`sub_8004218`/`sub_8004510`, `sub_30061E8`, `sub_3006440`,
