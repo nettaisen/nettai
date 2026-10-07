@@ -1766,13 +1766,6 @@ impl PanelRules {
         self.names.get(t.0 as usize).map_or("(none of the game's)", String::as_str)
     }
 
-    /// Whether type `t` is the one the game names `name`. (Where the
-    /// engine's code still tests a type of a game's by name, until the
-    /// type's behavior is its rules': docs/design/rules-in-luau.md.)
-    pub fn is_named(&self, t: PanelType, name: &str) -> bool {
-        self.names.get(t.0 as usize).is_some_and(|n| n == name)
-    }
-
     /// The flag bits a panel type contributes to a panel's flags word,
     /// with the type itself in the low nibble: the game's number of it
     /// (EXE5's holy is its 9, EXE6's its 5), which is what the original's
@@ -1828,6 +1821,11 @@ pub struct PanelTypeRule {
     /// fire on grass; EXE5's 0x08016AF6 elec on its sea too, EXE4's
     /// 0x08012CF2 elec on ice).
     pub doubles: Option<u8>,
+    /// The shift that divides the damage a body standing on it takes, by
+    /// element, rounding up (holy's 1, halving: `object_calculateFinalDamage1`
+    /// and `object_calculateFinalDamage2`; a barrier's absorbing too,
+    /// `sub_801A802`).
+    pub damage_shift: u8,
     /// Nothing cracks or breaks it (EXE4's metal: its flag 0x20000, which
     /// the panel routines refuse).
     pub unbreakable: bool,
