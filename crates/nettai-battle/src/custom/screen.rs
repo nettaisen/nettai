@@ -14,7 +14,7 @@ use crate::console::Console;
 use crate::battle::FadeMode;
 use crate::content::{ButtonHandle, WindowHandle};
 use nettai_content_api::ChipHandle;
-use crate::content::{ChipClass, ChipCode, CustomScreenLayout, TemplateSlot};
+use crate::content::{ChipClass, ChipCode, CustomScreenLayout, InvalidPicks, ScreenKey, SlotMoves, SpecialCodes, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
 use crate::kinds::player::Emotion;
@@ -46,8 +46,10 @@ pub enum SlotKind {
     /// A dealt chip: entry `index` of the battle folder. `regular`: it is
     /// the folder's Regular chip.
     Chip { index: u8, regular: bool },
-    /// A link navi's own chip (`sub_80280A2`), offered once a round.
-    NaviChip(FolderChip),
+    /// A chip the screen offers from outside the folder: a link navi's own
+    /// chip (`sub_80280A2`), once a round; one the side's rules offer
+    /// (`custom.offer`: EXE4's dark chips, 0x0801DF38).
+    Offered(FolderChip),
     /// The OK button.
     Ok,
     /// A cell of a button of the rules (docs/design/rules-in-luau.md §4.4:
@@ -135,6 +137,11 @@ pub struct Slot {
 pub enum Phase {
     /// The window slides in (`sub_8026B04`, 10 ticks).
     Opening { tick: u8 },
+    /// The window is in, and the screen sets its cursor's state up before
+    /// it reads keys (EXE4's selection state 0, 0x08020340: a tick, where
+    /// the layout's `first_choosing_tick_reads_keys` says so). Drawn as
+    /// choosing, but for the cursor.
+    Settling,
     /// Picking chips (`sub_8026CCC`).
     Choosing,
     /// SELECT hid the window to look at the field (`sub_8026D06`).
@@ -299,6 +306,9 @@ pub struct Screen {
     pub hud: Banner,
     /// What the screen shows (presentation).
     pub look: ScreenLook,
+    /// The chips the side's rules offer as the screen deals (`custom.offer`),
+    /// by slot: the slots show them once laid out.
+    pub offers: [Option<FolderChip>; SLOTS],
 }
 
 /// A button picked in a chip's place (`custom.trade_last_pick`): the
@@ -401,6 +411,7 @@ impl Screen {
             program_advance: None,
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
+            offers: [None; SLOTS],
         };
         // The side's rules as the screen deals, on the folder as the last
         // screen left it and the framework's hand size (EXE5's opening,
@@ -422,7 +433,7 @@ impl Screen {
         // EXE5's offer of a team navi's own chip (0x08023EFE) picks between
         // its table's two entries for the navi, the same chip, with a draw
         // of the console's RNG.
-        if matches!(screen.slots[9].kind, SlotKind::NaviChip(_)) && view.library.navi_chip_draws(view.stats.navi) {
+        if matches!(screen.slots[9].kind, SlotKind::Offered(_)) && view.library.navi_chip_draws(view.stats.navi) {
             console.rng.next();
         }
         // sub_802806C: a cursor on the first slot goes to the first dark
@@ -442,15 +453,21 @@ impl Screen {
     fn lay_out(&mut self, view: &PlayerView, extras: &mut dyn super::Extras) {
         let layout = view.library.layout();
         for (slot, t) in self.slots.iter_mut().zip(layout.slots.iter()) {
+            // (A slot that lists its moves has no neighbors of its own: its
+            // keys look its lists up as they are read.)
+            let (vertical, left, right) = match t.moves.neighbors() {
+                Some((v, l, r)) => (Some(v), Some(l), Some(r)),
+                None => (None, None, None),
+            };
             *slot = Slot {
                 kind: match t.kind {
                     TemplateSlot::ChipPosition => SlotKind::Empty,
                     TemplateSlot::Ok => SlotKind::Ok,
                     TemplateSlot::Hidden => SlotKind::Hidden,
                 },
-                vertical: Some(t.vertical),
-                left: Some(t.left),
-                right: Some(t.right),
+                vertical,
+                left,
+                right,
                 state: SlotState::Selectable,
                 uses_left: 0,
                 marks: 0,
@@ -502,10 +519,42 @@ impl Screen {
         }
         if let Some(chip) = navi_chip(view) {
             // sub_80280A2: a link navi's own chip, once a round.
-            self.slots[9].kind = SlotKind::NaviChip(chip);
+            self.slots[9].kind = SlotKind::Offered(chip);
         }
-        self.fix_neighbors(layout);
+        // The chips the side's rules offer (EXE4's dark chips, 0x0801DF38:
+        // slots 8 and 9), over what the screen dealt there.
+        for (slot, chip) in self.offers.iter().enumerate().filter_map(|(s, c)| c.map(|c| (s, c))) {
+            self.slots[slot].kind = SlotKind::Offered(chip);
+        }
+        if layout.slots.iter().all(|s| s.moves.neighbors().is_some()) {
+            self.fix_neighbors(layout);
+        }
         self.cursor = (0..SLOTS as u8).find(|&s| !self.slots[s as usize].kind.is_absent()).unwrap_or(OK_SLOT);
+    }
+
+    /// Where a direction key takes the cursor from the slot it is on: its
+    /// neighbor (the neighbors model, fixed up as the screen opened; a
+    /// button's own), else the first slot of its list that is there.
+    fn target(&self, key: ScreenKey, layout: &CustomScreenLayout) -> Option<u8> {
+        let here = &self.slots[self.cursor as usize];
+        let own = match key {
+            ScreenKey::Up | ScreenKey::Down => here.vertical,
+            ScreenKey::Left => here.left,
+            ScreenKey::Right => here.right,
+            _ => None,
+        };
+        match &layout.slots[self.cursor as usize].moves {
+            SlotMoves::Neighbors { .. } => own,
+            SlotMoves::Candidates { up, down, left, right, .. } => own.or_else(|| {
+                let list = match key {
+                    ScreenKey::Up => up,
+                    ScreenKey::Down => down,
+                    ScreenKey::Left => left,
+                    _ => right,
+                };
+                list.iter().copied().find(|&s| !self.slots[s as usize].kind.is_absent())
+            }),
+        }
     }
 
     /// `sub_8027F42`: point neighbors that are absent at the next slot
@@ -547,7 +596,7 @@ impl Screen {
     pub fn chip_in(&self, slot: u8, folder: &BattleFolder) -> Option<FolderChip> {
         match self.slots[slot as usize].kind {
             SlotKind::Chip { index, .. } => folder.chips[index as usize],
-            SlotKind::NaviChip(c) => Some(c),
+            SlotKind::Offered(c) => Some(c),
             _ => None,
         }
     }
@@ -590,7 +639,7 @@ impl Screen {
     /// `sub_802A394`: choosing chips or reading a chip's description, the
     /// cursor rests on a dark chip (as it counts in a selection).
     fn on_shading_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
-        matches!(self.phase, Phase::Choosing | Phase::Description { window: None, .. })
+        matches!(self.phase, Phase::Settling | Phase::Choosing | Phase::Description { window: None, .. })
             && self.chip_in(self.cursor, folder).is_some_and(|c| is_dark(checked(c, view), view))
     }
 
@@ -602,9 +651,25 @@ impl Screen {
                 if tick == 1 {
                     self.look.play(ScreenSound::Open);
                 }
-                self.phase = if tick >= 10 { Phase::Choosing } else { Phase::Opening { tick } };
+                self.phase = if tick < 10 {
+                    Phase::Opening { tick }
+                } else if view.library.layout().first_choosing_tick_reads_keys {
+                    Phase::Choosing
+                } else {
+                    Phase::Settling
+                };
                 self.look.frame = SLIDE - SLIDE_STEP * tick as u32;
                 self.look.draw_emblem(self.look.frame);
+                None
+            }
+            Phase::Settling => {
+                // EXE4's 0x08020340 (the cursor's state put back), then
+                // 0x0801E3D8's frame count, the Regular chip's frame and no
+                // cursor (0x0801EEB8).
+                self.phase = Phase::Choosing;
+                self.look.draw_regular(folder.regular_pending);
+                self.look.draw_turn_limit();
+                self.look.frame += 1;
                 None
             }
             Phase::Choosing => {
@@ -677,23 +742,11 @@ impl Screen {
             }
             Phase::RunMessage { chatbox } => {
                 self.look.draw_emblem(0);
-                let mut chatbox = match chatbox {
-                    None => {
-                        // sub_8026EC8
-                        self.look.play(ScreenSound::RunMessage);
-                        let navi = view.stats.navi;
-                        Chatbox::new(Script::RunMessage { lines: view.library.run_message(navi) })
-                            .commands_wait_for_text(view.library.layout().chatbox_commands_wait_for_text)
-                            .talking(view.library.run_message_talking(navi))
-                    }
-                    Some(c) if !c.is_open() => {
-                        self.phase = Phase::Choosing;
-                        return None;
-                    }
-                    Some(c) => c,
-                };
-                chatbox.update(joy.held, joy.pressed);
-                self.phase = Phase::RunMessage { chatbox: Some(chatbox) };
+                if chatbox.is_some_and(|c| !c.is_open()) {
+                    self.phase = Phase::Choosing;
+                    return None;
+                }
+                self.step_run_message(joy, view);
                 None
             }
             Phase::Window { window, tick } => {
@@ -765,6 +818,24 @@ impl Screen {
             }
             Phase::Sending { started: true } => None,
         }
+    }
+
+    /// A tick of the no-running message's chatbox: its first (`sub_8026EC8`:
+    /// the message's sound, the script), or the next.
+    fn step_run_message(&mut self, joy: &Joypad, view: &PlayerView) {
+        let Phase::RunMessage { chatbox } = self.phase else { return };
+        let mut chatbox = match chatbox {
+            Some(c) => c,
+            None => {
+                self.look.play(ScreenSound::RunMessage);
+                let navi = view.stats.navi;
+                Chatbox::new(Script::RunMessage { lines: view.library.run_message(navi) })
+                    .commands_wait_for_text(view.library.layout().chatbox_commands_wait_for_text)
+                    .talking(view.library.run_message_talking(navi))
+            }
+        };
+        chatbox.update(joy.held, joy.pressed);
+        self.phase = Phase::RunMessage { chatbox: Some(chatbox) };
     }
 
     /// `sub_802B76C`: one step of the Program Advance animation.
@@ -857,67 +928,73 @@ impl Screen {
         }
     }
 
-    /// State 4 (`sub_8028B74`): one key per tick. Directions (auto-repeat)
-    /// come first, then A, B, START, SELECT, R and L (pressed).
+    /// State 4 (`sub_8028B74`): one key per tick, the first down in the
+    /// order the slot under the cursor reads them (the neighbors model's:
+    /// the directions by their auto-repeat, then A, B, START, SELECT, R and
+    /// L pressed; EXE4's: each place's own, 0x08020350, 0x08020620,
+    /// 0x08020728).
     fn choose(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
         // The side's rules first (EXE6's UP opening the Cross window, which
         // the original asks before the cursor's UP).
         if (joy.repeat | joy.pressed) != 0 && extras.keys(self, folder, joy) {
             return None;
         }
-        let here = self.slots[self.cursor as usize];
-        let rep = joy.repeat;
-        let target = if rep & (keys::UP | keys::DOWN) != 0 {
-            Some(here.vertical)
-        } else if rep & keys::LEFT != 0 {
-            Some(here.left)
-        } else if rep & keys::RIGHT != 0 {
-            Some(here.right)
-        } else {
-            None
+        let layout = view.library.layout();
+        let order: &[ScreenKey] = match &layout.slots[self.cursor as usize].moves {
+            SlotMoves::Neighbors { .. } => &ScreenKey::NEIGHBORS_ORDER,
+            SlotMoves::Candidates { keys, .. } => keys,
         };
-        if let Some(target) = target {
-            if let Some(t) = target {
-                if t != self.cursor {
+        let Some(key) = order.iter().copied().find(|&k| (if k.is_direction() { joy.repeat } else { joy.pressed }) & key_bits(k) != 0) else {
+            return None;
+        };
+        match key {
+            ScreenKey::Up | ScreenKey::Down | ScreenKey::Left | ScreenKey::Right => {
+                if let Some(t) = self.target(key, layout) {
+                    if t != self.cursor {
+                        self.look.play(ScreenSound::Cursor);
+                    }
+                    self.cursor = t;
+                    self.show_chip_window(folder, view);
+                }
+            }
+            ScreenKey::A => return self.press_a(view, folder, extras),
+            ScreenKey::B => self.deselect(view, folder, extras),
+            ScreenKey::Start => {
+                if self.cursor != OK_SLOT {
                     self.look.play(ScreenSound::Cursor);
                 }
-                self.cursor = t;
+                self.cursor = OK_SLOT;
                 self.show_chip_window(folder, view);
             }
-            return None;
-        }
-        let p = joy.pressed;
-        if p & keys::A != 0 {
-            return self.press_a(view, folder, extras);
-        } else if p & keys::B != 0 {
-            self.deselect(view, folder, extras);
-        } else if p & keys::START != 0 {
-            if self.cursor != OK_SLOT {
-                self.look.play(ScreenSound::Cursor);
+            ScreenKey::Select => self.phase = Phase::Hidden { stage: HiddenStage::Hiding },
+            ScreenKey::R => {
+                // The chip as the screen checks it: an invalid chip shows the
+                // invalid chip's description.
+                if let Some(c) = self.chip_in(self.cursor, folder) {
+                    let lines = view.library.chip(checked(c, view).id).description_lines;
+                    self.describe(joy, lines, None, None);
+                    self.look.play(ScreenSound::Description);
+                } else if let Some(c) = self.slots[self.cursor as usize].face {
+                    // A button that shows a chip (EXE5's capsules, 0x0802487C: the
+                    // slot's kinds 6 and 7): the chip's description.
+                    let lines = view.library.chip(c).description_lines;
+                    self.describe(joy, lines, None, None);
+                    self.look.play(ScreenSound::Description);
+                }
             }
-            self.cursor = OK_SLOT;
-            self.show_chip_window(folder, view);
-        } else if p & keys::SELECT != 0 {
-            self.phase = Phase::Hidden { stage: HiddenStage::Hiding };
-        } else if p & keys::R != 0 {
-            // The chip as the screen checks it: an invalid chip shows the
-            // invalid chip's description.
-            if let Some(c) = self.chip_in(self.cursor, folder) {
-                let lines = view.library.chip(checked(c, view).id).description_lines;
-                self.describe(joy, lines, None, None);
-                self.look.play(ScreenSound::Description);
-            } else if let Some(c) = self.slots[self.cursor as usize].face {
-                // A button that shows a chip (EXE5's capsules, 0x0802487C: the
-                // slot's kinds 6 and 7): the chip's description.
-                let lines = view.library.chip(c).description_lines;
-                self.describe(joy, lines, None, None);
-                self.look.play(ScreenSound::Description);
+            ScreenKey::L => {
+                // (The navi's message: every navi of the originals has one. A
+                // navi whose content states none has no box to open; the
+                // frontend's audit lists it.)
+                if view.library.run_message(view.stats.navi)[0] != 0 {
+                    self.phase = Phase::RunMessage { chatbox: None };
+                    if layout.run_message_at_key {
+                        // (EXE4's 0x080205C6 runs its script with the key, and
+                        // its state waits for it from the next tick.)
+                        self.step_run_message(joy, view);
+                    }
+                }
             }
-        } else if p & keys::L != 0 && view.library.run_message(view.stats.navi)[0] != 0 {
-            // (The navi's message: every navi of the originals has one. A
-            // navi whose content states none has no box to open; the
-            // frontend's audit lists it.)
-            self.phase = Phase::RunMessage { chatbox: None };
         }
         None
     }
@@ -927,9 +1004,12 @@ impl Screen {
         let cursor = self.cursor;
         let here = self.slots[cursor as usize];
         match here.kind {
-            SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
-                // sub_8028CCC
-                if here.state != SlotState::Selectable || self.selected as usize >= MAX_SELECTIONS {
+            SlotKind::Chip { .. } | SlotKind::Offered(_) => {
+                // sub_8028CCC (EXE4's 0x0801F73C refuses a chip that counts
+                // as the invalid chip too).
+                let invalid = view.library.layout().invalid_picks == InvalidPicks::Refused
+                    && self.chip_in(cursor, folder).is_some_and(|c| is_invalid(c, view));
+                if here.state != SlotState::Selectable || self.selected as usize >= MAX_SELECTIONS || invalid {
                     self.look.play(ScreenSound::Refused);
                     return None;
                 }
@@ -1073,7 +1153,7 @@ impl Screen {
         let slot = *self.selection().last()?;
         let (regular, navi_chip) = match self.slots[slot as usize].kind {
             SlotKind::Chip { regular, .. } => (regular, false),
-            SlotKind::NaviChip(_) => (false, true),
+            SlotKind::Offered(_) => (false, true),
             _ => return None,
         };
         let chip = checked(self.chip_in(slot, folder)?, view);
@@ -1177,7 +1257,7 @@ impl Screen {
         // button that shows a chip sets none (EXE5's 0x08024422), and an
         // empty or hidden slot draws nothing.
         match here.kind {
-            SlotKind::Chip { .. } | SlotKind::NaviChip(_) if chip.is_some() => w.framed = chip,
+            SlotKind::Chip { .. } | SlotKind::Offered(_) if chip.is_some() => w.framed = chip,
             SlotKind::Ok => w.framed = None,
             SlotKind::Button { .. } if here.face.is_none() => w.framed = None,
             _ => {}
@@ -1435,19 +1515,31 @@ impl Screen {
 
     /// `sub_8028E32`: gray out what doesn't go with the selection.
     pub(crate) fn update_availability(&mut self, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
+        let layout = view.library.layout();
+        // A chip as the selection counts it: as checked, or as it is where
+        // an invalid chip is never picked (EXE4's 0x0801F9E0).
+        let counted = |c: FolderChip| match layout.invalid_picks {
+            InvalidPicks::Picked => checked(c, view),
+            InvalidPicks::Refused => c,
+        };
+        // The codes that stand apart, and the one `*` doesn't stand for.
+        let (apart, unstarred): (&[ChipCode], Option<ChipCode>) = match layout.special_codes {
+            SpecialCodes::Apart => (&SPECIAL_CODES, None),
+            SpecialCodes::Unstarred => (&[], Some(INVALID_CODE)),
+        };
         // sub_8028E4C: what the picked chips have in common.
         let mut same_chip = Common::Any;
         let mut code = Common::Any;
         let mut special = None;
         for &s in self.selection() {
             let Some(c) = self.chip_in(s, folder) else { continue };
-            let c = checked(c, view);
+            let c = counted(c);
             // (A chip that goes with any selection constrains none: EXE6's
             // BeastOut chip.)
             if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
                 continue;
             }
-            if SPECIAL_CODES.contains(&c.code) {
+            if apart.contains(&c.code) {
                 special = Some(c.code);
                 continue;
             }
@@ -1464,19 +1556,25 @@ impl Screen {
             if slot.state == SlotState::Selected {
                 continue;
             }
-            let c = checked(c, view);
+            let c = counted(c);
             let ok = if full {
                 false
             } else if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
                 true
-            } else if SPECIAL_CODES.contains(&c.code) {
+            } else if apart.contains(&c.code) {
                 special.is_none_or(|s| s == c.code)
             } else if same_chip == Common::One(c.id) {
                 true
             } else {
                 match code {
                     Common::Mixed => false,
-                    Common::Any => true,
+                    // (No code yet: no chip picked, or every pick a `*`,
+                    // which goes with any code but the one it doesn't stand
+                    // for.)
+                    Common::Any => unstarred.is_none_or(|u| c.code != u || same_chip == Common::Any),
+                    // The code `*` doesn't stand for goes with itself alone
+                    // (EXE4's 0x0801FA96).
+                    Common::One(k) if unstarred.is_some_and(|u| k == u || c.code == u) => c.code == k,
                     Common::One(k) => c.code == ChipCode::ASTERISK || c.code == k,
                 }
             };
@@ -1519,6 +1617,22 @@ const SLIDE_STEP: u32 = 12;
 const REDEAL_STEP: u8 = 4;
 const REDEAL_STEPS: u8 = 8;
 
+/// A key's joypad bit.
+fn key_bits(k: ScreenKey) -> u16 {
+    match k {
+        ScreenKey::A => keys::A,
+        ScreenKey::B => keys::B,
+        ScreenKey::Start => keys::START,
+        ScreenKey::Select => keys::SELECT,
+        ScreenKey::R => keys::R,
+        ScreenKey::L => keys::L,
+        ScreenKey::Up => keys::UP,
+        ScreenKey::Down => keys::DOWN,
+        ScreenKey::Left => keys::LEFT,
+        ScreenKey::Right => keys::RIGHT,
+    }
+}
+
 /// Scan `list` from `start` for the first slot present.
 fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
     let mut i = start as usize;
@@ -1533,34 +1647,36 @@ fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
 /// invalid chip when it is a Mega or Giga chip past the navi's limit for
 /// the battle, or its code isn't one the chip comes in.
 pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
-    let limited = within_limit(c, view);
-    if limited != c {
-        return limited;
-    }
+    if is_invalid(c, view) { FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE } } else { c }
+}
+
+/// Whether a chip counts as the invalid chip ([`checked`]): past the
+/// navi's limit, or in a code the chip doesn't come in.
+fn is_invalid(c: FolderChip, view: &PlayerView) -> bool {
     // (The original also skips the check for chips past its chip table,
     // which no folder holds.)
-    if c.code != INVALID_CODE && !view.library.chip(c.id).codes.contains(&c.code) {
-        return FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE };
-    }
-    c
+    past_limit(c, view) || (c.code != INVALID_CODE && !view.library.chip(c.id).codes.contains(&c.code))
 }
 
 /// `sub_802A53C`: a chip as the class limits count it, the invalid chip
 /// when it is a Mega or Giga chip past the navi's limit for the battle
 /// (`checked` without the code).
 fn within_limit(c: FolderChip, view: &PlayerView) -> FolderChip {
+    if past_limit(c, view) { FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE } } else { c }
+}
+
+/// Whether a Mega or Giga chip is past the navi's limit for the battle.
+fn past_limit(c: FolderChip, view: &PlayerView) -> bool {
     let d = view.library.chip(c.id);
-    if !SPECIAL_CODES.contains(&c.code) {
-        let limit = match d.class {
-            ChipClass::Mega => Some((view.class_uses.mega, view.stats.mega_level)),
-            ChipClass::Giga => Some((view.class_uses.giga, view.stats.giga_level)),
-            _ => None,
-        };
-        if limit.is_some_and(|(used, max)| used > max) {
-            return FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE };
-        }
+    if SPECIAL_CODES.contains(&c.code) {
+        return false;
     }
-    c
+    let limit = match d.class {
+        ChipClass::Mega => Some((view.class_uses.mega, view.stats.mega_level)),
+        ChipClass::Giga => Some((view.class_uses.giga, view.stats.giga_level)),
+        _ => None,
+    };
+    limit.is_some_and(|(used, max)| used > max)
 }
 
 /// A chip with the dark flag (its record's `0x20`).

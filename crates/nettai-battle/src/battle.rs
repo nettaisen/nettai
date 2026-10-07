@@ -922,14 +922,22 @@ impl Battle {
 
     /// Play the sound content gives `role`, heard on both sides; and to
     /// `side`'s player only.
+    /// (A role a game may leave unfilled, `SoundRole::optional`, plays
+    /// nothing unfilled: the game has no such sound.)
     pub fn sound(&mut self, role: SoundRole) {
-        let id = self.roles().sound(role);
-        self.play_sound(id);
+        if let Some(id) = self.role_sound(role) {
+            self.play_sound(id);
+        }
     }
 
     pub fn sound_for(&mut self, side: u8, role: SoundRole) {
-        let id = self.roles().sound(role);
-        self.play_sound_for(side, id);
+        if let Some(id) = self.role_sound(role) {
+            self.play_sound_for(side, id);
+        }
+    }
+
+    fn role_sound(&self, role: SoundRole) -> Option<crate::SoundId> {
+        if role.optional() { self.roles().try_sound(role) } else { Some(self.roles().sound(role)) }
     }
 
     /// The sound calls of the last tick, in the order the game makes them,
