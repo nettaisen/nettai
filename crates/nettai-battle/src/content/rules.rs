@@ -237,6 +237,9 @@ pub struct EffectsRules {
     /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
     /// RNG1 never moves in a bugged navi's fight.
     pub bug_flicker: bool,
+    /// What `object_genericDestroy` does with an object's collision before
+    /// it frees the object.
+    pub destroy: DestroyRule,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the
@@ -256,6 +259,21 @@ pub enum ChipIcons {
     /// in depth buckets from the icons' count down (EXE4's 0x08014860
     /// and 0x08015000: the local navi's alone).
     NaviOffset,
+}
+
+/// What `object_genericDestroy` does with an object's collision (the
+/// effects section's `destroy`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DestroyRule {
+    /// Frees it as it is (EXE6's, after releasing what the object holds
+    /// when its reservations mark it; EXE5's 0x080138F2): its registrations
+    /// on the panels stay, stale, until the slot is next registered.
+    Frees,
+    /// Unregisters it first (EXE4's 0x080D8C58: `object_removeCollisionData`,
+    /// 0x080129FC), which refreshes its panels and resolves its hits and the
+    /// panels it clears on them, then frees it.
+    Unregisters,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
@@ -1495,8 +1513,11 @@ pub struct PanelRules {
     /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
     /// 0x20000 too). A crack keeps the solidity and the crack bit.
     pub type_mask: u32,
-    /// What the panel a body stands on does each tick (`StandingRule`).
-    pub standing: StandingRule,
+    /// At this HP or less a wood body on grass heals on the battle's
+    /// 180-tick count instead of its 20-tick one (EXE6's `sub_801A186` and
+    /// EXE5's 0x08016C7E: 9; EXE4's 0x08012FF2 none, the 20-tick count at
+    /// any HP).
+    pub grass_heal_slows_at: Option<u16>,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the
@@ -1559,21 +1580,6 @@ pub struct BurnRule {
     /// which has no dimming test; every other body's waits, as EXE5's).
     #[serde(default)]
     pub players_while_dimmed: bool,
-}
-
-/// What the panel a body stands on does each tick (the panel rules'
-/// `standing`: poison's drain, grass's heal; EXE6's `sub_801A186`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct StandingRule {
-    /// Both hold while the battle is paused (EXE6's, EXE5's 0x08016C7E);
-    /// EXE4's (0x08012FF2) run on.
-    pub stops_while_paused: bool,
-    /// At this HP or less a wood body on grass heals on the battle's
-    /// 180-tick count instead of its 20-tick one (EXE6's and EXE5's 9;
-    /// EXE4's none: always the 20-tick count).
-    #[serde(default)]
-    pub slow_heal_at: Option<u16>,
 }
 
 /// A drag's pose and its end (the status section's `drag`).

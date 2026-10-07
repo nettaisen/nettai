@@ -474,7 +474,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         rng1_per_frame = true,
         chip_icons = "attach_point",
         used_chip_ticks = 0x3C,
-        bug_flicker = true,"#,
+        bug_flicker = true,
+        destroy = "frees","#,
             ),
             (
                 "flow",
@@ -517,8 +518,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         dash_step = step,
         any_side_step = step,
         reservations = "unmarked",
-        type_mask = 0x3F5F,
-        standing = { stops_while_paused = true },"#,
+        type_mask = 0x3F5F,"#,
             ),
             (
                 "pools",
