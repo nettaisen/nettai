@@ -1529,6 +1529,7 @@ dependencies = [
 name = "exe4-compat"
 version = "0.1.0"
 dependencies = [
+ "nettai-battle",
  "serde",
  "toml 0.8.23",
 ]

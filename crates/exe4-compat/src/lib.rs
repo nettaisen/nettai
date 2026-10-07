@@ -17,6 +17,7 @@
 
 pub mod save;
 
+use nettai_battle::field::PanelType;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -58,7 +59,8 @@ pub struct ChipEntry {
 /// assets under. Sprites as "cc-ii" (the category's byte offset in the
 /// sprite list and the index), sounds by the song table's numbers, battle
 /// backgrounds by the background loader's (0x08085430), banners by the
-/// banner block's (0x02037CE0's +1).
+/// banner block's (0x02037CE0's +1), the emotion window's faces by the
+/// number the extractor gives them (its exe4/hud.rs).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AssetNames {
@@ -70,6 +72,8 @@ pub struct AssetNames {
     pub backgrounds: BTreeMap<String, u8>,
     #[serde(default)]
     pub banners: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub mugshots: BTreeMap<String, u8>,
 }
 
 /// EXE4's text encodings (text.toml): what each byte below `first_control`
@@ -96,6 +100,25 @@ pub struct Encoding {
     pub dialogue_glyphs: Vec<String>,
 }
 
+/// An EXE4 panel type (panels.toml): the flag word the game gives it
+/// (0x0800A3A8), and the engine's panel type it is by content's name for it
+/// (none: no stage of content's has it yet).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PanelEntry {
+    #[serde(default)]
+    pub name: Option<String>,
+    pub flags: u32,
+    #[serde(default)]
+    pub engine: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PanelsFile {
+    types: BTreeMap<String, PanelEntry>,
+}
+
 /// EXE4's compat tables (content/exe4/compat).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Compat {
@@ -107,17 +130,40 @@ pub struct Compat {
     pub assets: AssetNames,
     /// text.toml: the text encodings.
     pub text: Text,
+    /// panels.toml: by EXE4's panel type number.
+    pub panels: BTreeMap<u8, PanelEntry>,
 }
 
 /// The files of a compat folder.
-pub const FILES: [&str; 3] = ["chips.toml", "assets.toml", "text.toml"];
+pub const FILES: [&str; 4] = ["chips.toml", "assets.toml", "text.toml", "panels.toml"];
 
 /// This repository's compat (content/exe4/compat), built in.
-const EXE4: [(&str, &str); 3] = [
+const EXE4: [(&str, &str); 4] = [
     ("chips.toml", include_str!("../../../content/exe4/compat/chips.toml")),
     ("assets.toml", include_str!("../../../content/exe4/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/exe4/compat/text.toml")),
+    ("panels.toml", include_str!("../../../content/exe4/compat/panels.toml")),
 ];
+
+/// The engine's panel type of an engine panel name as panels.toml writes
+/// it (content's names for the engine's types).
+fn engine_panel(name: &str) -> Option<PanelType> {
+    Some(match name {
+        "missing" => PanelType::Missing,
+        "broken" => PanelType::Broken,
+        "normal" => PanelType::Normal,
+        "cracked" => PanelType::Cracked,
+        "poison" => PanelType::Poison,
+        "holy" => PanelType::Holy,
+        "grass" => PanelType::Grass,
+        "ice" => PanelType::Ice,
+        "volcano" => PanelType::Volcano,
+        "metal" => PanelType::Metal,
+        "lava" => PanelType::Lava,
+        "sea" => PanelType::Sea,
+        _ => return None,
+    })
+}
 
 /// A sprite's "cc-ii".
 fn parse_sprite(id: &str) -> Option<(u8, u8)> {
@@ -161,11 +207,20 @@ impl Compat {
                 return Err(format!("assets.toml: sounds {name} and {other} are both {id:#05x}"));
             }
         }
+        let panels: PanelsFile = toml::from_str(&text("panels.toml")?).map_err(|e| format!("panels.toml: {e}"))?;
         let text: Text = toml::from_str(&text("text.toml")?).map_err(|e| format!("text.toml: {e}"))?;
         if text.glyphs.len() > text.first_control as usize || text.jp.glyphs.len() > text.first_control as usize {
             return Err(format!("text.toml: more glyphs than the bytes below first_control ({:#04x})", text.first_control));
         }
-        Ok(Compat { chips, chip_keys, assets, text })
+        let mut by_number = BTreeMap::new();
+        for (n, p) in panels.types {
+            let n: u8 = n.parse().map_err(|_| format!("panels.toml: type {n:?} is no number"))?;
+            if let Some(e) = &p.engine {
+                engine_panel(e).ok_or_else(|| format!("panels.toml: type {n}'s engine type {e:?} isn't the engine's"))?;
+            }
+            by_number.insert(n, p);
+        }
+        Ok(Compat { chips, chip_keys, assets, text, panels: by_number })
     }
 
     /// A chip's id (`cannon`) by its number.
@@ -176,6 +231,13 @@ impl Compat {
     /// A chip's entry by its id.
     pub fn chip_entry(&self, key: &str) -> Option<&ChipEntry> {
         self.chips.get(key)
+    }
+
+    /// The engine's panel type of EXE4's panel type `n` (none: content has no
+    /// type for it yet).
+    pub fn panel_type(&self, n: u8) -> Result<Option<PanelType>, String> {
+        let p = self.panels.get(&n).ok_or_else(|| format!("panels.toml has no type {n}"))?;
+        Ok(p.engine.as_deref().and_then(engine_panel))
     }
 
     /// The sprites' names by (category, index).
@@ -199,6 +261,10 @@ mod tests {
         assert_eq!((c.text.first_control, c.text.glyphs.len()), (0xE4, 0x70));
         assert_eq!(c.text.jp.glyphs.len(), 0xE4);
         assert!(!c.text.jp.dialogue_glyphs.is_empty());
+        // Twelve panel types, the last none of content's yet.
+        assert_eq!(c.panels.len(), 12);
+        assert_eq!(c.panel_type(8), Ok(Some(PanelType::Lava)));
+        assert_eq!(c.panel_type(11), Ok(None));
     }
 
     #[test]
