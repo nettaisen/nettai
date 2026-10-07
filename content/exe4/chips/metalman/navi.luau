@@ -1,15 +1,14 @@
 --!strict
--- MetalMan, the navi of EXE4's MetalMan chips (EXE4's actor object #0x40, 0x080C7D44: EXE4's own), whom the shared navi
--- chip controller (objects/navi_chip_controller, its entry 0x10) brings, with his fist (the follow effect's look 5,
--- objects/follow_effect). He fades in on his user's panel; while the battle is dimmed his user aims his punch: with A
--- held, the d-pad moves a target over the field (highlighted), from his own panel; A let go fixes it. 22 ticks after
--- he came he blinks to the target's column (unless it is his own panel), 3 ticks out, 3 in, a hit of no damage on the
--- target; then, unless that is the field's far edge or holds a body of his side, he winds up (40 ticks) and punches the
--- panel ahead (60 ticks; the hit at 56 left: it breaks a solid panel, with a shake, a flash and a sound); else he waits
--- 61 ticks. Then he goes.
+-- MetalMan, the navi of EXE4's MetalMan chips (EXE4's actor object #0x40, 0x080C7D44: EXE4's own), and each chip's
+-- controller, which brings him, with his fist (the follow effect's look 5). He fades in on his
+-- user's panel; while the battle is dimmed his user aims his punch: with A held, the d-pad moves a target over the
+-- field (highlighted), from his own panel; A let go fixes it. 22 ticks after he came he blinks to the target's column
+-- (unless it is his own panel), 3 ticks out, 3 in, a hit of no damage on the target; then, unless that is the field's
+-- far edge or holds a body of his side, he winds up (40 ticks) and punches the panel ahead (60 ticks; the hit at 56
+-- left: it breaks a solid panel, with a shake, a flash and a sound); else he waits 61 ticks. Then he goes.
 
 local collision = require("../../rules/collision")
-local follow_effect = require("../../objects/follow_effect")
+local follow_effect = require("@exelib/follow_effect")
 local navi_chips = require("../../lib/navi_chips")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
@@ -19,8 +18,8 @@ local metalman = {}
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x64).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS): his palette.
-    level: number,
+    -- His chip's palette.
+    palette: number,
     -- The gray of his color shader, fading in (+0x19).
     gray: number,
     -- His aim (Param2): 0 not begun, 1 A held, 2 fixed; his target (Param3, Param4).
@@ -34,11 +33,37 @@ export type State = {
 local SPRITE = asset.sprite("metalman")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_WIND_UP = asset.sound("metal-fist")
+
+-- His fist: the follow effect's look 5 (sprite 10-39), whose routine (0x080E5AC8) hides it but while he stands in his
+-- animation 0, then shows it as he is, on his panel a pixel up, with his blending and mosaic; once the fight is on it
+-- no longer runs while paused.
+local FIST = follow_effect.make {
+    id = "metalman/fist",
+    sprite = asset.sprite("metalman-fist"),
+    anim = 0,
+    palette = 0,
+    copies_visibility = false,
+    update = function(me: Object)
+        if battle.fighting() then
+            me.run_while_paused = false
+        end
+        me.visible = false
+        local owner = me.related1 :: Object
+        if owner.anim ~= 0 then
+            return
+        end
+        me:copy_visibility(owner)
+        me.panel_x, me.panel_y = owner.panel_x, owner.panel_y
+        me:set_coordinates_from_panel()
+        me.sprite.alpha = owner.sprite.alpha
+        me.sprite.mosaic = owner.sprite.mosaic
+        local p = me.pos
+        me.pos = Vec3.new(p.x, p.y - 0x10000, p.z)
+    end,
+}
 local SOUND_PUNCH = asset.sound("metal-punch")
 -- The punch's flash on a solid panel (effect row 0x47).
 local FLASH = new.effect { sprite = asset.sprite("strike-flash"), anim = 0, palette = 0 }
--- His palettes a variant (0x0800B9B1's entry 6).
-local PALETTES = 2
 local FADE_GRAY = 0x1F
 -- A body of each side (0x080C7F3C): a target that holds one of his own side stops his punch.
 local OWN_BODY = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -319,7 +344,7 @@ local function tick(me: Object)
     me.sprite.color_shader = st(me).gray * 0x421
 end
 
--- 0x080C7D64: on his panel with his shadow, facing his side's way, his palette by the level, faded out; his fist (the
+-- 0x080C7D64: on his panel with his shadow, facing his side's way, in his chip's palette, faded out; his fist (the
 -- follow effect's look 5, a pixel above him, running while paused until the fight is on); his target his panel; his
 -- height the spawner's.
 local function init(me: Object)
@@ -331,12 +356,12 @@ local function init(me: Object)
     sprite:set_animation(0)
     me:set_coordinates_from_panel()
     sprite:set_flip(me.alliance)
-    sprite.palette = navi_chips.palette(PALETTES, s.level)
+    sprite.palette = s.palette
     sprite.color_shader = 0x7FFF
     me.visible = true
     -- 0x080C79A0.
     local p = me.pos
-    local fist = follow_effect.spawn(me, Vec3.new(p.x, p.y - 0x10000, p.z), follow_effect.looks.metal_fist, me.alliance)
+    local fist = FIST.spawn(me, Vec3.new(p.x, p.y - 0x10000, p.z), me.alliance)
     if fist then
         fist.run_while_paused = true
     end
@@ -352,7 +377,7 @@ metalman.kind = new.kind {
     pool = "actor",
     state = {
         controller = "object",
-        level = "u8",
+        palette = "u8",
         gray = "u8",
         aim = "u8",
         target_x = "u8",
@@ -380,9 +405,9 @@ metalman.kind = new.kind {
     end,
 }
 
--- 0x080C8102: MetalMan for the controller's user, with the damage plus the bonus, of the chip's level. (His position is
--- the spawner's registers: his panel, the element and his side, of which his init keeps the height.)
-function metalman.spawn(controller: Object, user: Object, damage: number): Object?
+-- 0x080C8102: MetalMan for the controller's user, with the damage plus the bonus, in the chip's palette. (His position
+-- is the spawner's registers: his panel, the element and his side, of which his init keeps the height.)
+function metalman.spawn(controller: Object, user: Object, damage: number, palette: number): Object?
     local x, y = controller.panel_x, controller.panel_y
     local o = battle.spawn(metalman.kind, Vec3.new(x + y * 0x100, controller.element, user.alliance))
     if not o then
@@ -393,8 +418,21 @@ function metalman.spawn(controller: Object, user: Object, damage: number): Objec
     o:set_damage_word(damage)
     local s = st(o)
     s.controller = controller
-    s.level = (controller.state :: NaviChipControllerState).level
+    s.palette = palette
     return o
 end
 
-return metalman
+-- What each MetalMan chip states for its own controller: the controller's id (the original's effect object #0x42,
+-- 0x080E6A18, for all six navis' chips: compat maps each to it) and his palette (0x0800B950 by the chip's level: two
+-- palettes a variant).
+export type ChipSpec = { id: string, palette: number }
+
+-- A MetalMan chip's controller: the user warps out, MetalMan, the user warps back in.
+local function controller(chip: ChipSpec): NaviChipController
+    local function spawn(c: Object, user: Object, damage: number): Object?
+        return metalman.spawn(c, user, damage, chip.palette)
+    end
+    return navi_chips.controller { id = chip.id, name = "MetalMan", spawn = spawn, steps = navi_chips.SHARED }
+end
+
+return { controller = controller }

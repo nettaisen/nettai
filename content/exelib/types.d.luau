@@ -469,11 +469,6 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
 
--- A follow effect's look (@exelib/follow_effect): a row of a game's looks and its routine.
-export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed" | "with_idle_owner"
-
-export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
-
 -- BassAnly's dark ball (@exelib/bassanly/shot): its level (0 to 3: its
 -- speeds), its slant (-1 up, 1 down), and how it homes.
 export type DarkBallHoming = "none" | "diagonal" | "seeking"
@@ -1611,11 +1606,10 @@ export type Lockon = LockonDef
 -- after the navi), the controller's state, and what a game's `make` hands back.
 export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
 export type NaviChipShortCourse = { out: number, after: number }
-export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean, level: number, which: number }
+export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean }
 export type NaviChipController = {
     kind: Kind,
     hook: (user: Object, spec: DimmingChipSpec) -> Object?,
-    hook_for: (level: number, which: number?) -> (user: Object, spec: DimmingChipSpec) -> Object?,
 }
 
 -- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the
@@ -1654,6 +1648,16 @@ export type ElemFlameLook = {
 export type ElemFlame = {
     kind: Kind,
     spawn: (owner: Object, x: number, y: number, element: number, z: number, s: ElemFlameState, damage: number) -> Object?,
+}
+
+-- A soul's navi's image as MegaMan unites with it (@exelib/souls/image: EXE5's actor object 0x2A, EXE4's effect object
+-- 0x13; a soul's form's `image`): the navi's sprite, and what the image puts on as it comes in and takes off as it goes
+-- (EXE5's 0x0800EDBC's and 0x0800EEBE's routines by soul: GyroMan's propeller, NapalmMan's cannon, Colonel's cape,
+-- KnightMan's ball and chain, NumberMan's face; EXE4's part by 0x080E36AC's table; none: it wears nothing).
+export type SoulImage = {
+    sprite: SpriteAsset,
+    put_on: ((image: Object) -> ())?,
+    take_off: ((image: Object) -> ())?,
 }
 
 -- A game's cannonball (@exelib/cannball/ball): its kind's key, its sprite, the puff it ends in off solid ground and

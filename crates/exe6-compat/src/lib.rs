@@ -416,7 +416,9 @@ pub struct Compat {
     /// The NaviCust programs by their number (navicust.toml): a part id
     /// is 4 x the number + its color variant.
     pub navicust: NaviCustNumbers,
-    /// The kinds by the slot they fill.
+    /// The kinds by the slot they fill: the first by key, where several
+    /// of the content's kinds are one of the original's objects (each user
+    /// of a shared object making its own kind), which agree on the slot.
     slots: BTreeMap<(Pool, u8), String>,
     /// The game whose ids it numbers (`exe6`): its keys are those ids, local
     /// to the game (`minibomb`; docs/design/content-model-v2.md §4.0).
@@ -512,8 +514,20 @@ impl Compat {
         for (k, e) in &c.kinds {
             let pool = Pool::from_name(&e.pool)
                 .ok_or_else(|| format!("kinds.toml: {k}'s pool {:?} is not actor, attack or effect", e.pool))?;
-            if let Some(other) = c.slots.insert((pool, e.index), k.clone()) {
-                return Err(format!("kinds.toml: {k} and {other} both fill {} #{:#04X}", e.pool, e.index));
+            // (Several kinds may fill one slot, the original's one object
+            // that several users of it make each their own of; what the
+            // comparison knows of the slot must then be the same.)
+            match c.slots.get(&(pool, e.index)) {
+                Some(other) if c.kinds[other] != *e => {
+                    return Err(format!(
+                        "kinds.toml: {k} and {other} both fill {} #{:#04X}, and differ in what the comparison knows of it",
+                        e.pool, e.index
+                    ));
+                }
+                Some(_) => {}
+                None => {
+                    c.slots.insert((pool, e.index), k.clone());
+                }
             }
         }
         c.check_unique()?;
@@ -581,7 +595,8 @@ impl Compat {
         self.compat_key(content, key).unwrap_or(key)
     }
 
-    /// The kind that fills an object slot, and its entry.
+    /// The kind that fills an object slot (the first by key, where
+    /// several do), and its entry.
     pub fn kind_at(&self, pool: Pool, index: u8) -> Option<(&str, &KindEntry)> {
         let key = self.slots.get(&(pool, index))?;
         Some((key.as_str(), &self.kinds[key]))
