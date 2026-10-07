@@ -1,9 +1,9 @@
 --!strict
 -- Cannon, HiCannon and M-Cannon (EXE4 chips 0x001 to 0x003; their records at 0x080197EC + n * 0x2C): the cannons'
--- action 0x0B (lib/cannons), its variants 0 to 2: the cannon in palettes 0 to 2 (attachment rows 0 to 2), the
+-- action 0x0B (lib/cannon), its variants 0 to 2: the cannon in palettes 0 to 2 (attachment rows 0 to 2), the
 -- cannon's shot (projectile row 1).
 
-local cannons = require("../lib/cannons")
+local cannon_lib = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
 
 local cannon: Chip = {
@@ -17,7 +17,7 @@ local cannon: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    action = cannons.action { id = "cannon/action", arm = cannons.arm, shot = variants.cannon },
+    action = cannon_lib.action { id = "cannon/action", arm = cannon_lib.arms.cannon, shot = variants.cannon },
 }
 
 local hicannon: Chip = {
@@ -31,7 +31,7 @@ local hicannon: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    action = cannons.action { id = "hicannon/action", arm = cannons.arm_hi, shot = variants.cannon },
+    action = cannon_lib.action { id = "hicannon/action", arm = cannon_lib.arms.hicannon, shot = variants.cannon },
 }
 
 local m_cannon: Chip = {
@@ -45,7 +45,7 @@ local m_cannon: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    action = cannons.action { id = "m-cannon/action", arm = cannons.arm_mega, shot = variants.cannon },
+    action = cannon_lib.action { id = "m-cannon/action", arm = cannon_lib.arms.m_cannon, shot = variants.cannon },
 }
 
 return { cannon = cannon, hicannon = hicannon, ["m-cannon"] = m_cannon }
