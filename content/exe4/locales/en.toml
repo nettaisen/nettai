@@ -16,6 +16,14 @@ language = "en"
 "recov150" = { name = "Recov150", description = "Recovers\n150HP" }
 "recov200" = { name = "Recov200", description = "Recovers\n200HP" }
 "recov300" = { name = "Recov300", description = "Recovers\n300HP" }
+"drkcanon" = { name = "DrkCanon", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drksword" = { name = "DrkSword", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"darkbomb" = { name = "DarkBomb", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkvulcn" = { name = "DrkVulcn", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drklance" = { name = "DrkLance", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkspred" = { name = "DrkSpred", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkstage" = { name = "DrkStage", description = "DARKCHIP\nCREATED\nBY DESIRE" }
+"drkrecov" = { name = "DrkRecov", description = "DARKCHIP\nCREATED\nBY DESIRE" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

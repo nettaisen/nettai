@@ -6,6 +6,7 @@
 -- custom screen's own states, the chips).
 
 local custom = require("@self/custom")
+local dark_chips = require("@self/dark_chips")
 local fresh_stats = require("@self/fresh_stats")
 local light_dark = require("@self/light_dark")
 local patch_cards = require("@self/patch_cards")
@@ -56,9 +57,16 @@ local rules: Rules = {
         karma = 500,
         full_synchro_start = false,
     },
-    -- The custom screen's (./custom): the hand's size.
+    -- What a side keeps through a round: the dark chips' (./dark_chips).
+    state = dark_chips.state,
+    -- The custom screen's: the hand's size (./custom); the dark chips' offer as it deals and what is sent of them
+    -- (./dark_chips).
     custom = {
         hand_size = custom.hand_size,
+        deal = dark_chips.deal,
+        chip_picked = dark_chips.chip_picked,
+        chip_taken_back = dark_chips.chip_taken_back,
+        confirmed = dark_chips.confirmed,
     },
     hooks = {
         -- What the save brings to the navi's stats (./save), then the NaviCust and the patch cards compiled into them
@@ -67,6 +75,8 @@ local rules: Rules = {
             save.round_setup(side)
             navicust.run(side)
         end,
+        -- As each hand is installed, its dark chips' costs (./dark_chips).
+        custom_result = dark_chips.custom_result,
         -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, the holy panel a
         -- dark one clears and the hole a navi that isn't dark closes.
         starting_mood = light_dark.starting_mood,
