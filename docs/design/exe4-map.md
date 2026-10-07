@@ -1,5 +1,7 @@
 # EXE4 against EXE5 and EXE6: the routine map
 
+EXE4 against EXE3 (what of EXE4's code is EXE3's, system by system): [exe4-against-exe3.md](exe4-against-exe3.md).
+
 What of EXE5's and EXE6's battle code EXE4 (Battle Network 4: Red Sun and Blue Moon) has, routine by routine, and
 what is its own: the evidence base for EXE4's port, as [exe5-map.md](exe5-map.md) was for EXE5's. The user, through
 the coordinator, 2026-10-06: port EXE4 "the way EXE5 was ported, frame-exact against recordings".
