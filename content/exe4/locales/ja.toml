@@ -7,6 +7,14 @@ language = "ja"
 "cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"recov10" = { name = "リカバリー10", description = "HPを10\nかいふくする" }
+"recov30" = { name = "リカバリー30", description = "HPを30\nかいふくする" }
+"recov50" = { name = "リカバリー50", description = "HPを50\nかいふくする" }
+"recov80" = { name = "リカバリー80", description = "HPを80\nかいふくする" }
+"recov120" = { name = "リカバリー120", description = "HPを120\nかいふくする" }
+"recov150" = { name = "リカバリー150", description = "HPを150\nかいふくする" }
+"recov200" = { name = "リカバリー200", description = "HPを200\nかいふくする" }
+"recov300" = { name = "リカバリー300", description = "HPを300\nかいふくする" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
