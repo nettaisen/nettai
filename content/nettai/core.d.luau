@@ -1966,9 +1966,10 @@ export type RulesSpec = {
         -- Whether the navi's hit's bug shows the HP bug's marker (`sub_801A4A6`), as its hits' effects show; asked
         -- when a hit brought a code.
         bug_mark: ((side: number, navi: Object) -> boolean?)?,
-        -- A player's navi took damage: once a hit sequence (`sub_8013F1E`'s gate), before the hit's status takes;
-        -- the NaviCust's hit bug (`hit_status`) may put its own in its place (`navi.collision.status_final`).
-        navi_damaged: ((side: number, navi: Object) -> ())?,
+        -- A player's navi's hits ask it to flinch or be dragged (its requests 0x104: `sub_8013F1E`, EXE5's
+        -- 0x0801156E), before the hit's status takes: the NaviCust's hit bug (`hit_status`), behind the game's gate,
+        -- may put its own in its place (`navi.collision.status_final`).
+        navi_flinched: ((side: number, navi: Object) -> ())?,
         -- A loss of HP brought the side's navi to 0, by a game whose HP loss asks (`status.hp_loss = "gauge"`: EXE5's
         -- object_subtractHP, 0x0800C6E0, calling 0x0802C16C): the rules may hold it (EXE5's last stand), and answer
         -- true: the hit shows (white, its sounds: EXE5's applyDamageToPlayer, 0x080185A2); none, it doesn't.
