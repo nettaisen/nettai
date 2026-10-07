@@ -150,14 +150,15 @@ export type BurnSpec = { id: string?, burner: AttachmentLook, flame: Flame }
 
 -- A Reflector's guard (chips/rflectr/guard, the original's action 0x2B):
 -- how long it guards and the shield it holds up; the counterattack the
--- first blocked hit sends (`wave`: the Reflectors' wave; `shot`: the
--- buster's projectile; none); `heedless`: it heeds nothing it blocks (the
+-- first blocked hit sends, the user's own (from the navi one panel ahead,
+-- (x, y), with the attack's damage word: the Reflectors' wave, the NaviCust
+-- Reflect's buster shot; none); `heedless`: it heeds nothing it blocks (the
 -- NaviCust Shield's). `id`: the action's key when no chip holds it.
 export type ReflectorGuard = {
     id: string?,
     ticks: number,
     look: ReflectorShieldLook,
-    counter: ("wave" | "shot")?,
+    counter: ((me: Object, x: number, y: number, damage: number) -> ())?,
     heedless: boolean?,
 }
 
