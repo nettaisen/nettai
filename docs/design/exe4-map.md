@@ -197,19 +197,50 @@ Everything moved again. Read (R) or confirmed by Tango (T):
 | RNG2 | 0x020013F0 | 0x02001D40 | 0x02001790 | R, T |
 | the joypad | 0x0200A270 | 0x0200AF50 | 0x0200A700 | R: the toolkit's +0x04 |
 | the object update list | 0x02009380 | 0x0200A410 | 0x02009E40 | R |
-| the sound queue | 0x0200A490 | 0x0200B170 | 0x0200A800 | R |
+| its sentinel | 0x02009AB0 | 0x0200ABA0 | 0x0200A4C0 | R: the object loop, 0x0800314C |
+| the sound queue | 0x0200A490 | 0x0200B170 | 0x0200A800 | R: its append, 0x0800073C; entries from **+4** (EXE6 +0xC, EXE5 +8) |
 | the chip blocks (hands) | 0x020349C0 | 0x02034E20 | 0x02035CB0 | R, T |
 | the input records | 0x02036820 | 0x02036E90 | 0x02037C40 | R |
-| the panels | 0x02039AE0 | 0x0203A100 | 0x0203AC70 | R (EXE6's map; the entry size ?) |
+| the banner | 0x02036840 | 0x02036ED0 | 0x02037CE0 | R: its fields as EXE6's (+0x00, +0x07, +0x08), 0x08016188 |
+| the HUD's block (EXE6's 0x02035280) | 0x02035280 | | 0x020363F0 | R: the custom gauge at **+0x24**, its rate +0x26 (EXE6 +0x20, +0x22: 0x080168BE, 0x0801592C), the HUD's task mask at **+0x48** (EXE6 +0x40: 0x080146A8) |
+| the battle folder | 0x0203CDB0 | 0x0203C830 | 0x0203BE80 | R: 30 chips, 0x3C bytes (0x08007AE8 copies 60 bytes), NaviStats after it |
+| the panels | 0x02039AE0 | 0x0203A100 | 0x0203AC70 | R: 0x20 bytes an entry, as EXE6's (`_object_getPanelDataOffset`, the same code, 0x0800A3D8) |
 | the fighting machine | 0x0203CA70 | 0x0203C5D0 | 0x0203BCB0 | R |
 | NaviStats | 0x0203CE00 | 0x0203C880 | 0x0203BEC0 | R |
-| the link struct | 0x0203F7D8 | 0x0203F244 | 0x0203F6D4 | R |
+| the link struct | 0x0203F7D8 | 0x0203F244 | 0x0203F6D4 | R; its status at +1 (0x08017B88) |
 | the custom screen's state | 0x020364C0 | 0x02036B10 | 0x02036440 | R; T's "custom flags" |
 | the actor pool | 0x0203A9B0 | 0x0203B200 | 0x0203B180 | R, T |
+| the m4a players | 0x02010690... | +0xBE0 | **+0x1210** | R: the player table 0x08000654, EXE6's moved by one amount |
 
-To find for the oracle (§13): the battle folder, the banner, the custom gauge and the HUD's task mask, the pause flag,
-the exchanged transform records (if EXE4 has the records at all), the panel entry's size and the sound queue's
-entries.
+What the oracle reads besides (R; oracle-trace's `EXE4`):
+
+- **The pause flag** is in the game state the toolkit's **+0x40** points at (EXE6's +0x3C), at its **+9** (EXE6's
+  +0xA): the object loop reads it there (0x0800316C). The game state is in the save's region the save's shift moves
+  (0x02002130 on, §3.3, §12), so the address is the pointer's, read each time.
+- **BattleState** (0x02035810, the toolkit's +0x18) keeps the local side at +0x0D, the settings' pointer at +0x3C
+  (written once, 0x08007ACC), the flags at +0x32 (`battle_setFlags`, the same code), the wins and losses at
+  +0x18/+0x19 and the Regular chip's flag at +0x17 (written by the folder's builder, 0x08007B44), as EXE6's; its
+  +0x08 is read where EXE6's +0x07 is (the battle's mode, likely), and it has fields of its own at +0x44 and +0x64.
+  It has **no frame and tick counters** (EXE6's +0x60, +0x64): the frame routine counts nothing.
+- **No transform records** are exchanged (EXE6's 0x0203F558 and 0x0203F658: their copy, `sub_800840C`'s, has no
+  counterpart in 0x08007064).
+- **The joypad's** repeat beat is at +0x13, cycling 0 to 4, as EXE6's (0x080003B0).
+- **The save** is the RAM from 0x02000000, the region from 0x2130 to 0x5E20 moved by the shift word at 0x1550
+  (§12): the NaviCust's parts at 0x4564 and its grid at 0x4540, the Mod Cards' slots at 0x464C (on) and 0x4653
+  (off), the color bar at 0x190 (outside the region).
+
+**The hooks** (R; oracle-trace's `RED_SUN_HOOKS` and the others, checked against the four ROMs by its
+tests/hooks.rs). The battle runs as the main loop's **subsystem 8**: the frame routine, 0x08006B14 (EXE6's
+`battle_8007800`'s counterpart: BattleState's state byte through its table, 0x08006B30: states 0, 4 (the round's
+loop, 0x08006CB4), 8, 0xC and 0x10), is the third word of the main loop's subsystem table (0x0800032C), entered by
+its dispatch's `mov lr, pc; bx r0` and returning to the loop at **0x08000300**; no link applet calls it (EXE6's and
+EXE5's netbattles run it from theirs). The frame starts after the wait at 0x0800036C (0x080002B8). The m4a calls
+are those the sound requests queue (their literal pools from 0x0800075C): SongNumStart 0x08112848, MPlayAllStop
+0x0811297C, VolumeControl 0x081137F0, FadeOut 0x081127A4, SongNumStop 0x08112914, ImmInit 0x08112A38, FadeIn
+0x08112A10; EXE4 queues no tempo request and no conditional music; its pitch control is EXE6's code (0x08113858).
+Blue Moon US's are Red Sun's with the sound library 0x14 further; the Japanese ROMs' have the frame routine 0x20
+earlier (0x08006AF4) and the sound library 0x194 earlier (`versions.py B4WE B4WJ map`). The round's start and its
+result are Tango's primer's traps (§4), which the chip lab takes from tango-gamesupport-bn4 as it does EXE5's.
 
 ## 4. The battle flow
 
@@ -319,8 +350,8 @@ exchange.
 - **exe4-compat:** the numbers (chips by id, navis, souls), the recording decode (the oracle's layout, §3.4, and the
   setup line), the save import (§12). Its start (the chips' ids, the asset names, the text encodings) came with
   the extraction (§14).
-- **The oracle:** an EXE4 layout (the addresses of §3.4 and those still to find), its hooks (Tango's round start and
-  round result, the frame routine), the four ROMs in the chip lab with Tango's twelve saves as bases.
+- **The oracle:** its EXE4 layout and hooks are oracle-trace's `EXE4` and `RED_SUN_HOOKS` (and the other three
+  ROMs'), §3.4; the four ROMs in the chip lab with Tango's twelve saves as bases.
 - **Open:** the NaviStats fields §3.3 leaves unread; what the object record's +0x17 byte is;
   the custom screen's states and Double Soul's offer; the dark chip offer; the emotion function; the turn-start order
   of a transformation; the panel entry's size and types (BN4 numbers holy 9, metal 5: multi-game.md §2.4); the link
