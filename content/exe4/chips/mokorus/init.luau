@@ -1,7 +1,7 @@
 --!strict
 -- MokoRus1, MokoRus2 and MokoRus3 (EXE4 chips 0x082 to 0x084; their records at 0x080197EC + n * 0x2C): the spawners'
--- action 0x20 (lib/spawners), its variant 1: three Molokos charge along the rows (./moloko), their parameter (0 to 2)
--- their palette.
+-- action 0x20 (lib/spawners), its variant 1: three Molokos charge along the rows (./moloko), in palette 0, 2 or 4 (twice
+-- their parameter, 0 to 2).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local moloko = require("@self/moloko")
@@ -22,7 +22,7 @@ local mokorus1: Chip = {
 }
 
 local mokorus2: Chip = {
-    action = spawners.action { id = "mokorus2/action", spawn = moloko.spawner(1) },
+    action = spawners.action { id = "mokorus2/action", spawn = moloko.spawner(2) },
     codes = { "G", "K", "U" },
     element = "null",
     family = "null",
@@ -36,7 +36,7 @@ local mokorus2: Chip = {
 }
 
 local mokorus3: Chip = {
-    action = spawners.action { id = "mokorus3/action", spawn = moloko.spawner(2) },
+    action = spawners.action { id = "mokorus3/action", spawn = moloko.spawner(4) },
     codes = { "O", "T", "Y" },
     element = "null",
     family = "null",

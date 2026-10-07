@@ -1613,28 +1613,29 @@ export type NaviChipController = {
 }
 
 -- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the
--- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), and its flags (Param4: 1 runs while dimmed;
--- 4 paralyzes, hit modifier 1, its hit back 12 ticks after one; 8 its self type row 0x25; its high nibble a panel type
--- to leave); its palette (EXE5's +0x0D, EXE4's +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's
--- +0x60).
+-- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), its flags (Param4's low nibble: 1 runs while
+-- dimmed; 4 paralyzes, hit modifier 1, its hit back 12 ticks after one; 8 its self type row 0x25) and the panel type
+-- it leaves (the panel type Param4's high nibble names; none, or as its state holds it "none", leaves none); its
+-- palette (EXE5's +0x0D, EXE4's +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
 export type ElemFlameState = {
     count: number,
     spread: boolean,
     ticks: number,
     offset: number,
     flags: number,
+    leaves: PanelType?,
     palette: number,
     hit: boolean,
     sent: boolean,
 }
 
--- A game's element flame: its key, sprite, its game's panel types by number, whether a spreading flame sends the two
--- beside its next one (EXE5's; EXE4's none), its self types (an attack, or row 0x25 with Param4's bit 8), what it
--- hits, and its spark by element.
+-- A game's element flame: its key, sprite, the panel types its flames may leave (EXE4's ElemDark's poison; none, they
+-- leave none), whether a spreading flame sends the two beside its next one (EXE5's; EXE4's none), its self types (an
+-- attack, or row 0x25 with Param4's bit 8), what it hits, and its spark by element.
 export type ElemFlameLook = {
     id: string,
     sprite: SpriteAsset,
-    panel_types: { [number]: PanelType },
+    leaves: { PanelType }?,
     spreads: boolean,
     attack: CollisionType,
     attack_480: CollisionType,
@@ -1647,4 +1648,14 @@ export type ElemFlameLook = {
 export type ElemFlame = {
     kind: Kind,
     spawn: (owner: Object, x: number, y: number, element: number, z: number, s: ElemFlameState, damage: number) -> Object?,
+}
+
+-- A soul's navi's image as MegaMan unites with it (@exelib/souls/image: EXE5's actor object 0x2A, EXE4's effect object
+-- 0x13; a soul's form's `image`): the navi's sprite, and what the image puts on as it comes in and takes off as it goes
+-- (EXE5's 0x0800EDBC's and 0x0800EEBE's routines by soul: GyroMan's propeller, NapalmMan's cannon, Colonel's cape,
+-- KnightMan's ball and chain, NumberMan's face; EXE4's part by 0x080E36AC's table; none: it wears nothing).
+export type SoulImage = {
+    sprite: SpriteAsset,
+    put_on: ((image: Object) -> ())?,
+    take_off: ((image: Object) -> ())?,
 }
