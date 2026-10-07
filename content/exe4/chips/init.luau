@@ -46,6 +46,7 @@ return merge {
     require("@self/recov"),
     require("@self/repair"),
     require("@self/roll"),
+    require("@self/seekbom"),
     require("@self/serchman"),
     require("@self/sidbmbo"),
     require("@self/spreader"),

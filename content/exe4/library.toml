@@ -229,6 +229,9 @@ giga = [
     "deltaray",
 ]
 secret = [
+    "seekbom1",
+    "seekbom2",
+    "seekbom3",
     "meteors1",
     "meteors2",
     "meteors3",

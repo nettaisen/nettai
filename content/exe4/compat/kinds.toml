@@ -19,6 +19,9 @@
 "energbom/burst" = { pool = "attack", index = 0x11 }
 # The Binders' binder (0x080D2748).
 "binder/binder" = { pool = "attack", index = 0x2D }
+# The SeekBoms' bomb (0x080DEED6) and the sparkles it bursts in (0x080E33D4: no sprite, its position the registers).
+"seekbom/bomb" = { pool = "attack", index = 0x8D }
+"sparkles" = { pool = "effect", index = 0x11, scratch_position = true }
 "bullet" = { pool = "attack", index = 0x12 }
 "lance" = { pool = "attack", index = 0x4F }
 "panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }

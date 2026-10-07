@@ -596,6 +596,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   lib/trajectory over its sine table), hitting each panel it lands on; it goes on a hole, halfway through its fourth
   hop, or past the field's sides. Its element is the byte its thrower stores from the register holding the release
   point's Y (none for a navi at rest).
+  **SeekBom1** (with 2 and 3: variant 9, `chips/seekbom`): EXE4's own seeking bomb (attack 0x8D), aimed by its
+  thrower at the other side's navi ahead nearest in columns (between equally near ones it compares the row itself with
+  the nearest row distance so far: kept), flies 40 ticks and bursts where it lands in EXE4's sparkles (effect 0x11,
+  objects/sparkles: @exelib/vdoll/sparkles whose look `stays` where its object was as they started, 0x080E3348).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
   navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
