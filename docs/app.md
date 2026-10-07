@@ -260,8 +260,9 @@ by those names. The first language is the system's (`sys-locale`, by its primary
   in the preview, the replays and the battle's banners;
 - the battle's own drawing switches too (`Player::set_language`).
 
-A language the content has no table for shows the content's own names. Stage and background names have no display
-names in the content, so they are shown by their names in it.
+A language the content has no table for shows the content's own names. A background shows its locales' name (the
+preview's arenas: `Names::background`, its area's as the game's menus name it, docs/frontend.md §1); a stage has no
+display name in the content, so it is shown by its name in it.
 
 **Adding a language** is adding its catalog. With gettext's tools and Slint's extractor
 (`cargo install slint-tr-extractor`):
