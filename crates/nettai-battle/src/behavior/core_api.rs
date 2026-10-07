@@ -1539,8 +1539,8 @@ impl CoreApi for Battle {
     }
 
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    fn poison_panel(&mut self, p: PanelPos) -> bool {
-        Battle::poison_panel(self, p.x, p.y)
+    fn overwrite_panel(&mut self, p: PanelPos, kind: u8, sound: Option<u16>) -> bool {
+        Battle::overwrite_panel(self, p.x, p.y, PanelType(kind), sound.map(SoundId))
     }
 
     fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8) {

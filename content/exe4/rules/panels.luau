@@ -44,7 +44,7 @@ return {
             slide = panel_types.ice,
         },
         lava = { flags = 0x00011010, expires = 960, burn = LAVA_BURN, cleared_by = "aqua" },
-        holy = { flags = 0x00012010 },
+        holy = { flags = 0x00012010, damage_shift = 1 },
         pitfall = {
             flags = 0x00010210,
             traps = true,

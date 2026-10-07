@@ -295,6 +295,15 @@ pub enum ChipMatch {
     Family(ChipFamily),
 }
 
+/// A form's chips that deal double on a panel type (`panel_doubles`): the
+/// type, and the chips.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PanelDoubles {
+    pub panel: crate::field::PanelType,
+    pub chips: ChipMatch,
+}
+
 /// One of MegaMan's forms. (What a game's rules say of their game's
 /// forms, EXE6's kinds of form among it, is their extension:
 /// `SystemDef::extends`.)
@@ -381,11 +390,11 @@ pub struct FormData {
     /// What primes it, and what a primed use doubles (EXE5's GyroSoul).
     #[serde(default)]
     pub priming: Option<Priming>,
-    /// The damaging chips (not dimming chips) that deal double while it
-    /// stands on grass, which the use turns normal (EXE5's TomahawkSoul's
-    /// Wood chips: 0x0801032A).
+    /// The panel type it doubles on, and the damaging chips (not dimming
+    /// chips) that deal double while it stands on one, which the use turns
+    /// normal (EXE5's TomahawkSoul's Wood chips on grass: 0x0801032A).
     #[serde(default)]
-    pub grass_doubles: Option<ChipMatch>,
+    pub panel_doubles: Option<PanelDoubles>,
     /// The ticks a damaging chip (not a dimming chip) used with the panel
     /// ahead not its side's keeps it invulnerable (EXE5's KnightSoul's 50:
     /// 0x08010392).

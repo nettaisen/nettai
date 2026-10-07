@@ -23,7 +23,8 @@ return {
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison"), stand = panel_types.poison },
-        holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
+        -- The damage a body standing on it takes is halved, rounding up, by element (`object_calculateFinalDamage1`).
+        holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change"), damage_shift = 1 },
         -- A fire hit counts once more on a body standing on grass (`applyHeatOnGrassDamage_300766c`).
         grass = {
             flags = 0x00010410,
