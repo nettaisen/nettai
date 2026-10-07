@@ -277,7 +277,7 @@ impl HudState {
                 _ => shown.insert(HpNumberShown { number, shown: number.hp, color: 0, timer: 0 }),
             };
             let o = b.objects.get(number.object);
-            let poisoned = o.collision.is_some_and(|c| b.collision.get(c).poison_timer != 0);
+            let poisoned = o.collision.is_some_and(|c| b.collision.get(c).standing_count != 0);
             if e.shown < o.hp {
                 e.color = 2;
                 e.timer = 10;

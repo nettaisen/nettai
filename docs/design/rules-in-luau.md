@@ -3255,3 +3255,23 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
   the right-hand console's road mirror is the road carrying the other way (by the types' `road_slide`).
 - **Until their steps**, the engine's code that still tests a type of a game's asks by name
   (`PanelRules::is_named`: poison, holy, grass, ice, volcano); each later step removes its names.
+
+### Panels into Luau, step 2: a panel type's `burn` and `stand` (2026-10-07, branch exe4-engine)
+
+- **The hooks** are functions in a type's table (`panels.types.<name>.burn`, `.stand`), which the rules' definition
+  holds by the type's number (`RulesDef::panel_hook`; the panels section's reader skips them). The engine calls one
+  where it tested the type: `burn(body, player)` at the start of a navi's hit intake and in an object's
+  `burn_on_panel` (`kinds::common::panel_burn`); `stand(body)` where the standing effects run (`sub_801A186`: not
+  paused or dimmed, the body with a region), and a type without `stand` zeroes the body's standing count. A type
+  without the hook costs no call.
+- **What they do is content's**: content/exelib/panel_types.luau has poison's drain (a point every seventh tick
+  through the sixth damage slot, unless the body is untouchable, floats or is invulnerable), `drains(element)`
+  (EXE5's sea), `grass(slows_at)` (EXE6's and EXE5's 9; EXE4's none) and `burn { damage, spared_by, mood,
+  players_while_dimmed, spark }` (EXE5's and EXE4's lava, their spared statuses by name). Each game's
+  rules/panels.luau gives its types these. Gone from Rust: `BurnRule`, a type's `burn` and `drains`, the panels'
+  `grass_heal_slows_at`, the spark role `panel_burn`; `poison_timer` is the body's `standing_count`.
+- **The API they use**: the collision's `standing_count`, `add_damage(element, amount, raw)`, `add_mood_damage`,
+  `add_hit_mod`; `battle.cycle(20 | 180)` and `battle.weakness(receiver, hitter)`.
+- **The original's quirk** in poison's drain (an immune body's grass test reads its status word against grass's
+  number, 6, which a word with an immunity flag never is) is unreachable: an immune body's count goes to 0, as the
+  original's does.
