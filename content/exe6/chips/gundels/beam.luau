@@ -13,12 +13,6 @@ local common = require("@exelib/gundels/beam")
 
 local beam = {}
 
--- The looks (`dword_80E5C28`): GunDelSol's, and GunDelEX's wider one.
-beam.sprites = {
-    plain = asset.sprite("sun-beam"),
-    wide = asset.sprite("sun-beam-ex"),
-}
-
 -- `sub_80E5D3E`: end the beam (its next update frees it).
 beam.stop = common.stop
 
