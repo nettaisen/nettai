@@ -705,19 +705,24 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     `overlay/aqua` and `overlay/proto` (a95f's: a soul flinched, dragged and shooting, with and without Full Synchro)
     check it once souls play.
 33. **EXE4's reaction actions and its slide** (found by group C; the player's action table, 0x080EAEFC, entries 2 to
-    5). Each is its own beside the engine's (EXE6's, which EXE5 shares where its labs pass):
-    - the drag (0x08010A9C, its start 0x08010ABC): DRAG alone (not the action in use), always animation 1 (EXE6's 2
-      paralyzed, 0 with SuperArmor), no drag hook or overlay refresh, the Z kept, no side stat bumped, and calls
-      0x0800DD82 and 0x08022F2C (unread); its end (0x08010C16) clears DRAG and the requests 0x43F and goes to idle
-      (action 6), with none of EXE6's paralysis turn, flag clears or slide state;
-    - the flinch (0x08010960): FLINCHING alone, 0x08022F2C, the AI status's low seven bits (0x0800C1F2), no freeze or
-      bubble to end; its end clears the requests 0x43F;
-    - the paralysis (0x080109FA): its own entry (0x0800DD14's hook, 0x08022F2C) and its mash (AIData +0x1E);
-    - the slide (0x08010294, 0x080102FC): the collision record's panels and direction each tick (0x08012D9A), no
-      direction at its end, no road cooldown; a type 10 panel stops it unless the body floats (item 12).
-    The status block (0x08013A48) is EXE5's order (`status.reactions = "flash_timer_first"`) but goes straight to the
-    action while flag 0x10000 is set and asks for action 13 by 0x0800B8B0. To port; observable in the lab's `drag/`,
-    `ice/` and `status/` recordings.
+    5).
+    - **Done: the actions.** The flinch (0x08010960), the paralysis (0x080109FA) and the drag (0x08010ABC, its end
+      0x08010C16) differ from the engine's (EXE6's) beyond their hooks and requests: none marks the action in use
+      (flag 0x400000) or lets go of the overlay link (AIData +0x68); the flinch keeps the body's height as it snaps it;
+      the paralysis snaps it sliding or not and counts no reaction (the side's stat 3); the drag takes the flinch's
+      pose (EXE6's 2 paralyzed, 0 with SuperArmor), keeps the height, counts none, and at its end clears the drag alone
+      (no slide, paralysis, heat-trap or flag2 0x10 clears) and goes to idle in its pose, paralyzed or not. The rule
+      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is.
+      (EXE5's drag has no paralyzed pose either, 0x08014304: an EXE5 difference no recording has shown, left as it is.)
+    - Read and the same: the per-navi flinch, paralysis and drag hooks (0x0800DC9C, 0x0800DD14, 0x0800DD82: the
+      identities' `overlay_hooks`), the requests their ends clear (item 6), the drag's speed and its step (ice a panel
+      more); the slide's start and step (0x08010294, 0x080102FC) as EXE6's (item 3).
+    - Left, unreached or another's: a reaction's entry clears the side's timed effect (0x08022F2C: the side record's
+      +0x0B kind, +0x2E ticks, +0x0F, which an action's effects table, 0x080EC9CC, sets; to port with the chip that
+      sets it); the AI status bits a flinch's and a paralysis's entry clear (0x7F; the engine's 0x20005F: the bits
+      differ only in 0x20, EXE5's dive, and 0x200000, neither EXE4's); the slide's collision panels updated each tick
+      (0x08012D9A: the direction ends 0, where EXE6's sets the slide's; nothing reads it after a slide); a type 10
+      panel stopping a slide or a drag unless the body floats (item 12).
 
 ### 18.2 Panels
 
@@ -811,8 +816,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     which charge (+9) and its level, sounds 0x71 as it starts and 0x72 at the full charge, sits at a per-navi offset,
     0x080E2274, and frees itself when the charge goes). The charge itself counts per source (+0x0A, +0x0B levels;
     +0x30, +0x32 counters; 0x0800BDAA clears them), not EXE6's one counter. **Done:** the init's part,
-    `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4). Open: the charge's counting and the glow
-    kind (MegaMan's, §18.4).
+    `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4); the counting (item 47); the glow, the role
+    `kinds.charge_glow` (content/exe4/objects/charge_glow), which the navi's tail spawns as the charge gets a level.
+    Its per-navi offset is MegaMan's (none) alone: EXE4's content has no other navi. Unported: the tail's color
+    shader before it (0x0800BB18: AIData +0x2C in 1 to 90, a shader from 0x0800BB40 by the battle timer; what sets
+    +0x2C is to find).
 40. **The intro's first tick.** EXE4's intro (0x08007464) goes on from its init to the HUD's setup on the same tick
     (state [4,0,4,4] after the round's first tick). **Done:** `flow.intro_steps_on_init`. (Its init's one RNG2 draw is
     the actors' spawn's last call, 0x080F576C, where EXE6's is `sub_8014178`'s: the same draw.)
@@ -827,3 +835,21 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     banners 0x24, 0x28, 0x34) doesn't count its hold, and let go (0x0801616C) slides out at once. **Done:**
     `effects.banner`. Unread: a state 3 banner (shown without sliding), which no table entry has.
 44. **The HUD's banner task** is the HUD task mask's bit 5 (0x20; EXE6's bit 15): exe4-compat's comparison reads it.
+45. **A hit's sound.** EXE4's hit intake (0x08013A8C) plays 0x6B on every console, 0x6D for a navi in auto battle
+    (NaviStats +0x26 = 1); EXE6's and EXE5's play `own_hit` to the hit navi's player and `hit` to the other. **Done:**
+    `status.intake.hit_sound` (`by_console`: EXE6, EXE5; `by_navi`: EXE4; the role `auto_battle_hit`).
+46. **RNG1 by the frame.** EXE4's main loop (0x080002B0) draws no RNG1 a frame (EXE6's `main_` and EXE5's draw one
+    after the subsystem). **Done:** `effects.rng1_per_frame`.
+47. **The buttons and the charge.** EXE4's decode (0x0800BDE0) and charge (0x0800BBA4, levels 0x0800BB50) are their own:
+    no hold requests; B held charges B, A held with a chip in hand A (the other's press switches); a count goes on past
+    full (to 510); the buster on B's release; B then Left (whatever the facing) within 8 ticks for the B+Left special;
+    L and R are no navi's. **Done:** `effects.charge` (`hold_flags`: EXE6, EXE5; `per_button`: EXE4), the engine's one
+    counter and level standing for EXE4's two (only the charging source's is ever nonzero).
+48. **The souls' buttons** (with the souls, §18.4 item 25): in 0x0800BDE0 soul 2 asks for the charged shot (request
+    0x20) at six B presses each within 10 ticks of the last (AIData +0x11, +0x12), soul 15 decodes neither the buster
+    nor the B+Left special and charges nothing (0x0800BBB2); whether a chip charges on A is 0x0800BC78's test by soul and
+    the chip's +7 and +9 (souls 5, 7, 9, 11), which the engine asks of the form's `charged_chips`.
+49. **Controller 2** (NaviStats +0x26 = 2; 0x0800BF1C, 0x0800BCD4): Right and Left presses move a per-side column
+    (0x0802E070's +0x11) and the B count runs only under request 0x80. No netbattle sets it; the engine has none.
+50. **The levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an attack
+    (0x0800BE48, 0x0800BE8E, 0x0800BF10); what reads them is to find (the engine keeps none).

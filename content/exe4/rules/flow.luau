@@ -22,4 +22,7 @@ return {
     navi_win_banner = "never",
     -- The intro (0x08007464) goes on from its init to its first step (the HUD's setup) on the same tick.
     intro_steps_on_init = true,
+    -- No transformation sequencer at a turn's start: the fighting machine's state 0 (0x08007064) is the turn's
+    -- banner, from the turn's first tick.
+    sequencer_at_turn_start = false,
 }
