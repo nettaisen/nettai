@@ -53,6 +53,9 @@
 "meteors1/action" = 0x20
 "meteors2/action" = 0x20
 "meteors3/action" = 0x20
+"boomer1/action" = 0x20
+"boomer2/action" = 0x20
+"boomer3/action" = 0x20
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D
