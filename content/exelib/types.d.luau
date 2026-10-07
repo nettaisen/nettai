@@ -1051,6 +1051,8 @@ export type PanelChange = {
     flicker: boolean,
     ticks: number,
     sides: { [number]: PanelCondition },
+    -- The sound as it starts (EXE4's changes to holes: 0x080E4390), every fourth tick, and as the panels change.
+    start_sound: Sound?,
     tick_sound: Sound?,
     change_sound: Sound?,
 }
