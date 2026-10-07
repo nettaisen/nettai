@@ -4,6 +4,10 @@
 
 local sonic = require("./sonicbom/action")
 
+-- Its boom is plain. Charged in SlashCross (its record's bytes all zero) it
+-- is the plain slash where the navi stands.
+local ACTION = sonic.action("curse/action", { hit_mod = 0, pierces = false })
+
 local chip: Chip = {
     codes = { "E", "L", "S", "*" },
     element = "null",
@@ -16,7 +20,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
-    action = sonic.actions.curse,
+    action = ACTION,
 }
 
 return { curse = chip }
