@@ -133,7 +133,8 @@
 "darkinvs/controller" = { pool = "effect", index = 0x18, scratch_position = true }
 "darkinvs/stand-in" = { pool = "actor", index = 0x09 }
 "darkinvs/image" = { pool = "actor", index = 0x0A }
-"follow-effect" = { pool = "effect", index = 0x31 }
+# DeltaRay's bursts: the follow effect's look 4 (effect #0x31, 0x080E3E3C, one object for all its looks).
+"deltaray/burst" = { pool = "effect", index = 0x31 }
 "meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "napalmmn/bomb" = { pool = "attack", index = 0x3A }
 "gyroman/bomb" = { pool = "attack", index = 0x1B, scratch_position = true }

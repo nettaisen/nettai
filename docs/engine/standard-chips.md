@@ -323,7 +323,7 @@ As ported (content model v2; every routine branch by branch, each chip's record 
 | Chip | Action | Module | Kinds it spawns |
 |---|---|---|---|
 | HeatPres | `heatpres/action` | navis/heatman/chip.luau | chips/heatman/flame (`heatman/flame`, HeatMan's own) |
-| DElecSwd | `delecswd/action` | navis/elecman/chip.luau | objects/follow_effect (`follow-effect`: the glow, with DeltaRay's bursts) |
+| DElecSwd | `delecswd/action` | navis/elecman/chip.luau | its glow, `delecswd/glow` (@exelib/follow_effect's maker: the follow effect's look 7) |
 | RSlash | `rslash/action` | navis/slashman/chip.luau | navis/slashman/riding_hit.luau (`slashman/riding-hit`) |
 | EDeletBm | `edeletbm/action` | navis/eraseman/chip.luau | chips/eraseman/beam (`eraseman/beam`, EraseMan's own) |
 | VolcChrg | `volcchrg/action` | navis/chargeman/chip.luau | navis/chargeman/volcano_rock.luau (`chargeman/volcano-rock`) |
