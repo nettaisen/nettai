@@ -1062,9 +1062,22 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       (0x080E0842, EXE6's `sub_80D8DEE`: the side's actor count, BS+4, to 0 and the round's time-up byte to 1, the call
       `battle.lose_round`; it also sets battle flag 8, which nothing in EXE4 reads: 0x08007A8C's 28 callers test 1, 2
       and 0x10). The lab's stages/lava-middle-close, typeA-row, ice-columns and holes-diagonal-b (null, stand, walk)
-      and panels/lava-blinking replay every frame; none breaks a flag (a scenario that does is a95f's to record).
-    - Kind 5, a gear (records 32 to 35: attack object #0x76, 0x080DBD94, HP 50, moving along its row); kind 6, effect
-      #0x41 (records 88 to 95, 0x080E6820: off the field, spawning an attack by turns). To port.
+      and panels/lava-blinking replay every frame, and so does stages/lava-middle-close/flag-break (side 1's flag
+      broken by 25 Cannons, through the round's end into round 2's fight; `lose_round` zeroes the side's actor count,
+      BS+4, which the fight's result reads, not its alive count, BS+0x12).
+    - **Done: kind 5, the gear** (records 32 to 35; content/exe4/objects/gear). Attack object #0x76 (0x080DBD94, EXE6's
+      `sub_80D385C` by its place), its sheet 10-33, 50 HP, guarded (its status bit 0), hitting for 20 (0x080068C0's
+      damage word 0x00940014) what it runs into, on its panel's side for the other side (its mode 0, the stages'), at
+      half a pixel a tick: past its panel's center it checks the next panel, else the one under where it is going
+      (`sub_800E258`, the BIOS's signed divisions), and turns back from one off the field, not solid, with a body (other than a
+      navi's: 0x03800000) or of the other side (0x080DBF5E); sound 0x149 as it starts. Its reaction is 0x0801427A (EXE6's
+      `sub_801B878` without LilBoiler's eruption test: destroyed by any touch, the HP as it is; none of EXE4's six
+      reactions reads the removal request), its end an explosion and 0x6F (0x080DBF24). Its modes 1 (a lifetime and its
+      side's registry) and 2 (other collision rows, a spawner's slot) are ported for effect #0x49 (0x080E7244) and an
+      actor's 0x080C7C74, which aren't. The lab's stages/type5 and type5-row (null, stand, walk), panels/type5-stand-on
+      and stages/type5/gears-roll and gears-hit (a95f's: navis out of its row for 900 ticks, the gears bouncing between
+      the edge and the center line; then one runs into side 0) replay every frame.
+    - Kind 6, effect #0x41 (records 88 to 95, 0x080E6820: off the field, spawning an attack by turns). To port.
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
     battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
     set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
