@@ -376,11 +376,12 @@ and faces are its own table, to read.
 - **Counters**: Cannon opens a 16-tick window in a netbattle (0x0800BA66); a counter hit paralyzes (status byte 0x12,
   0x0800B08E), closes the window, shows COUNTER and sounds 0x10A (0x08013410; 0x73 too when the hitter was in Full
   Synchro, hit flag 0x80, 0x08012CC0).
-- **Light and dark**: a dark MegaMan clears the holy panel he stands on (0x080132E6).
+- **Light and dark** (rules/light_dark): a dark MegaMan clears the holy panel he stands on (0x080132E6); a navi that
+  isn't dark closes a hole (0x08013318, §18 item 12).
 
 Checked: the lab's emotions/counter, counter-side1, counter-buster, full-synchro-hit and full-synchro-card match every
 frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's battle-over gate and the 0x73 sound
-(presentation), panel type 11's light rule (0x08013318).
+(presentation).
 
 ## 8. NaviCust and Mod Cards
 
@@ -500,9 +501,8 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
   edges by owner (0x080094C4, 0x08706F60), and the panel palettes that cycle (0x08009556, as the field is drawn: six,
   each a frame every 14 ticks from a table of palette pointers, their timers starting at 14, 13, 12, 11, 10 and 9:
-  0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them);
-  type 11 has none yet. What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12 reads what
-  they do).
+  0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them).
+  What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12: `metal`, `pitfall`, `hole`).
 - **The HUD** (R, Red Sun US's; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
   counterpart) and the load list (0x08015A0C): the HUD layer's tiles from 0x130 and the gauge's from 0x80, both in
   EXE6's order; the HP box (6x2, 0x08016B2C) and the gauge frame (18x2 with "CUSTOM", 0x08016B44); the HP box's palettes
@@ -802,8 +802,25 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       the paralysis snaps it sliding or not and counts no reaction (the side's stat 3); the drag takes the flinch's
       pose (EXE6's 2 paralyzed, 0 with SuperArmor), keeps the height, counts none, and at its end clears the drag alone
       (no slide, paralysis, heat-trap or flag2 0x10 clears) and goes to idle in its pose, paralyzed or not. The rule
-      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is.
-      (EXE5's drag has no paralyzed pose either, 0x08014304: an EXE5 difference no recording has shown, left as it is.)
+      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is;
+      the drag's pose and end are `status.drag` (below).
+    - **Done: the drag's pose and end, each game's** (`status.drag`: `poses`, the first that holds of a paralyzed
+      navi's and a SuperArmor one's, else `otherwise`; `ending`). EXE6's (`sub_80178D4`, `sub_8017A38`): paralyzed
+      2, SuperArmor 0, else 1; at its end a paralysis that outlasts it goes on as the paralysis action, else the
+      slide, the paralysis, the heat trap, a slide request and the slide's state are cleared, the navi stands, its
+      overlay refreshed (`resumes_paralysis`). EXE5's (0x08014304, 0x080144CE): SuperArmor 0, else 1, no paralyzed
+      pose; at its end the drag and its use are cleared, its requests, and the navi stands, whatever the paralysis
+      (`stands`): the engine had EXE6's. EXE4's (0x08010ABC, 0x08010C16): 1, kept to its end (`keeps_pose`). EXE5's
+      paralyzed start is barely reachable: its status block ends a paralysis at a drag's request unless a counter made
+      it that tick (flag2 0x8000), and a counter's own paralysis waits for the drag's end (the lab's
+      `drag/counter-push`, a95f's: the drag starts at 457 without it, the paralysis at 483; with SprArmr,
+      `counter-push-superarmor`, the same); a navi already paralyzed when a counter push lands would show it. Both
+      recordings match every frame, before the rule and after. Read beside it, EXE5's own: its flinch, paralysis and
+      drag starts call 0x0802D644, which resets the side's state block (`sub_802E070`'s) at +0x0B and +0x2E (the mode
+      chips' mode and ticks, which nothing in a battle reads), +0x0F and +0x50 (the SELECT special's, the operation
+      battle's: the user declined that mode), then calls 0x0802FB9C and 0x0802FD50 (EXE6's `sub_802F084`), both
+      unported; its drag start resets the facing (flip 0 and 0x0800D1EA) where turning is off (AIData status 0x400
+      clear: every netbattle's), which leaves a navi facing as it started.
     - Read and the same: the per-navi flinch, paralysis and drag hooks (0x0800DC9C, 0x0800DD14, 0x0800DD82: the
       identities' `overlay_hooks`), the requests their ends clear (item 6), the drag's speed and its step (ice a panel
       more); the slide's start and step (0x08010294, 0x080102FC) as EXE6's (item 3).
@@ -816,11 +833,30 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.2 Panels
 
-12. **Panel types 5, 10 and 11.** 0x0800A3A8's flags: 5 is 0x30010 (EXE5's sea's), 10 is 0x10210 (EXE5's metal's), 11
-    is 0x10010; the panel tick (0x08009740) runs a timer at the panel's +0x12 for type 10 (bit 0x4000: wait while
-    something stands on it, then count down and turn normal). Placeholder: type 5 is the engine's `sea` and 10 its
-    `metal`, flags alone (no drain, hold, submersion or slide); 11 has no number (its layouts' stages wait). Port:
-    read each type's behavior (the panel tick, the step tables, what stands on them) and name each for what it is.
+12. **Done** (panel types 5, 10 and 11). 0x0800A3A8's flags: 5 is 0x30010, 10 is 0x10210, 11 is 0x10010. Each is
+    named for what it is, from what reads it and the chips' words:
+    - **5, `metal`** (the engine's EXE5 metal; a riveted plate): its flag 0x20000 is what the panel routines refuse
+      (0x08009AEC, 0x08009BAC, 0x08009BF0, 0x08009C4C, 0x08009D04: crack, break and their kin), so nothing cracks or
+      breaks it. The rule `panels.types.metal.unbreakable` (EXE5's metal is breakable: no such flag). Two routines
+      skip the test and would crack it: 0x08009B50 (EXE6's `object_crackPanelDup1`, which the engine has no use of)
+      and 0x08009CAC (`object_breakPanel_dup3`, the engine's `break_panel` with dup2, which refuses); poison
+      (0x08009D68) doesn't test it either, as the engine's doesn't. The chips wave reads which routine each EXE4 chip
+      calls (a chip of dup3's on metal is to split off then).
+    - **10, `pitfall`** (SandRing's "opens a pitfall trap"; a sand pit): a slide (0x080102FC) or a drag (0x08010B54)
+      that reaches it stops there unless the body has FloatShoe (f1 0x20; an aqua body's slide on ice reaches the
+      test too), the rule `stops_slides`; and it turns normal by its timer at the panel's +0x12 (the panel tick's
+      0x0800980E): a type change makes it 190 and counts at once (0x08009DC4), a stage's starts armed (bit 15,
+      0x08009120 writes 0x80BE to every panel) and counts from the tick a grounded body (0x0F800000, none floating:
+      0x00100000) stands on it, then normal without a blink. The rule `crumbles = 190`, the panel's
+      `crumble_timer`.
+    - **11, `hole`** (the Hole chip's "appears Hole in front", DrkLine's "turns all rows into Holes"): a solid panel
+      (normal's flags) that a navi standing on it closes (0x08013318, in the intake before the slide triggers): unless
+      the battle is dimmed, a navi whose light/dark value (NaviStats +0x36) is above 499, the default 500 too, sets
+      his collision's panel normal. EXE4's rules' `navi_intake` (rules/light_dark), the setup's `karma`
+      (default 500). Its check of 0x0800F49C counts for nothing (the `movs r0, #5` before its `beq` sets the flags),
+      and NaviStats +0x26's 2, which skips it, is only a story's other navi's (0x08041100). exe4-compat's recordings
+      state no karma yet: the default, 500 (group B's: the NaviStats' +0x36).
+    No netbattle stage has type 11; the stages with 10 are generated now.
 13. **What each panel does.** Lava (8) turns normal after 960 (stated); its burn, poison's drain, grass, ice (item 1),
     holy, and the panel trails' sounds are EXE5's or none. Placeholder: `panels.types` flags (and lava's `expires`).
 14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
@@ -840,12 +876,16 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
 19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
-    5, 6, 7: rocks and the others, 0x080FC138's actor lists) and panel type 11. Port the obstacles, then generate them.
-20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one) into the
-    first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). The engine's pick draws RNG1 then RNG2
-    (link_pick's docs): EXE4 draws RNG2 twice. Shape: `link_pick.rng = { stage = "rng2", background = "rng2" }`.
-    Placeholder: `link_pick.stages` leaves out the waiting stages (so the pick's odds differ) and `backgrounds` is
-    empty.
+    5, 6, 7: rocks and the others, 0x080FC138's actor lists). Port the obstacles, then generate them.
+20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
+    battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
+    set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
+    24, by their names), `first_round_stages` (a random match is a triple battle's: every round among the first 0x60).
+    No RNG field: nettai picks a match's places before the battle with its own generator (docs/frontend.md §2), so
+    only the odds are the game's, which the lists state. a95f's sweep (1,000 seeds, tools/chiplab/gen_exe4.py
+    `STAGES`) drew from all 96 records: no panel type 11; its obstacles are the four of item 19 (the boulder #0x6E, #0x76, #0x9C, effect #0x41).
+    So `stages` must list all 96 records, each working: the 34 waiting ones (actor kinds 3, 5, 6 and 7) wait for
+    those four obstacles (item 19); until then the list leaves them out and the odds differ.
 21. **Done** (backgrounds' names). The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else
     the map's (0x08085BAC, its table at the literal 0x08085BCC, default 3). The 22 that maps draw are named for their
     areas, by the menu's names (tools/backgrounds: names.tsv, areas.py exe4; docs/frontend.md §1 has the table). No
@@ -870,8 +910,14 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 ### 18.4 MegaMan, his weapons, the objects
 
 24. **The move that cuts a recovery short.** The buster's and the charged shot's recoveries (0x080EB3D8, 0x080ECCCC)
-    use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208; the engine's `can_move`, `held_direction`,
-    `step_target` and `start_move` are EXE6's (`sub_800FA54` differs at 0.45). Placeholder: the engine's.
+    use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
+    **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
+    confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
+    recordings match. Open: with no key held (or sliding) 0x0800B4B0 steps by NaviStats +0x0D (bits 0x10 to 0x80, the
+    keys; 0 and 0xFF none), which a dark chip or Mod Card bug sets (the lab's dark/, modcards/ and navicust/ recordings
+    carry 0x10, 0x20, 0xFF), with step 2's NaviCust. The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
+    1, as the engine's; by the +0x25 column (12 to 8) for param 2, and 20 under event flag 0x1187: neither is a
+    netbattle's.
 25. **The buster bonus, element, weakness and souls.** EXE4's buster is Attack + 1 (0x0800CC2E) for every navi:
     `buster_bonus = 0`. MegaMan's element, attach points, the souls (0x080184F0 by soul: the weapons; the sprite's index
     plus the soul, 0x0800B90A), the emotion window's faces. Placeholders: `element = "null"`, no forms but `base`.
@@ -960,3 +1006,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x0802E070's +0x11) and the B count runs only under request 0x80. No netbattle sets it; the engine has none.
 50. **The levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an attack
     (0x0800BE48, 0x0800BE8E, 0x0800BF10); what reads them is to find (the engine keeps none).
+51. **A player's deletion.** EXE4's (action 2, 0x08010850) is its own, not EXE6's `sub_80173F4`: the hurt animation
+    as it starts (EXE6's with the explosions); the alive count alone (0x080079C6), never the alive lists; no chip count,
+    charge glow link or tracking let go; its second related and barrier byte at the start, AIData +0x60 with the
+    explosions; no aura or overlay links; no death hook at the end. **Done:** the role `actions.deletion`
+    (content/exe4/rules/deletion.luau; the engine's own where the role is unfilled: EXE6, EXE5); the flow/ko recordings
+    match through the deletion. Open: the deletion of a navi in auto battle or of another navi (0x08010D4C: effect object
+    0x11 and a 90-tick explosion), which EXE4's content doesn't reach (its players are MegaMan, by a player).
+52. **The dead player's object.** EXE4's destroy state (0x0801052C) lets go of the collision data, frees the object and
+    counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
+    slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
+    of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.

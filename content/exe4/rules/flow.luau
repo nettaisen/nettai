@@ -22,10 +22,10 @@ return {
     navi_win_banner = "never",
     -- The intro (0x08007464) goes on from its init to its first step (the HUD's setup) on the same tick.
     intro_steps_on_init = true,
-    -- L or R with a full gauge: the fight reads both players' keys itself and asks for the custom screen on that tick
-    -- (0x08007A2E, from the fighting state, 0x08007188: no reversions).
-    custom_request = "joypads",
     -- No transformation sequencer at a turn's start: the fighting machine's state 0 (0x08007064) is the turn's
     -- banner, from the turn's first tick.
     sequencer_at_turn_start = false,
+    -- L or R with a full gauge: the fight reads both players' keys itself and asks for the custom screen on that tick
+    -- (0x08007A2E, from the fighting state, 0x08007188: no reversions).
+    custom_request = "joypads",
 }

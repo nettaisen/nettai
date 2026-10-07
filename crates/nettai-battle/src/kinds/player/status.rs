@@ -228,7 +228,12 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     match action {
         NaviAction::Entry => entry::entry(b, r),
         NaviAction::TakeControl => entry::take_control(b, r),
-        NaviAction::Deletion => reactions::deletion(b, r),
+        NaviAction::Deletion => match b.roles().try_action(crate::content::ActionRole::Deletion) {
+            // (A navi no player controls dies the engine's way: EXE4's own,
+            // 0x08010D4C, waits for EXE4's auto battle, exe4-map.md §18.)
+            Some(deletion) if !super::ai_navi::is_ai_navi(b, r) => crate::behavior::run_action(b, deletion, r),
+            _ => reactions::deletion(b, r),
+        },
         NaviAction::Flinch => reactions::flinch(b, r),
         NaviAction::Paralysis => reactions::paralysis(b, r),
         NaviAction::Drag => reactions::drag(b, r),
@@ -671,6 +676,9 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
             }
         }
     } else if rule.holds.is_some() {
+        go_on = false;
+    } else if rule.stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
+        // (EXE4's pitfall, 0x080102FC.)
         go_on = false;
     }
     if go_on {

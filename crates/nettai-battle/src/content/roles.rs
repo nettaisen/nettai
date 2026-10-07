@@ -56,10 +56,14 @@ pub enum ActionRole {
     /// (`sub_801B9E6`): EXE6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
     /// attack runs as it is.
     Wrapper,
+    /// A player's deletion, where the rules have their own (EXE4's action 2,
+    /// 0x08010850): the navi's deletion action runs it. Unfilled, the
+    /// engine's (EXE6's `sub_80173F4`, EXE5's alike).
+    Deletion,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 12] = [
+    pub const ALL: [ActionRole; 13] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -72,6 +76,7 @@ impl ActionRole {
         ActionRole::Ungrounded,
         ActionRole::Glowless,
         ActionRole::Wrapper,
+        ActionRole::Deletion,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -89,6 +94,7 @@ impl ActionRole {
             ActionRole::Ungrounded => "ungrounded",
             ActionRole::Glowless => "glowless",
             ActionRole::Wrapper => "wrapper",
+            ActionRole::Deletion => "deletion",
         }
     }
 

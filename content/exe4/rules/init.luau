@@ -26,8 +26,8 @@ local rules: Rules = {
         karma = "u16",
         full_synchro_start = "bool",
     },
-    -- A setup that says nothing: what every save brings at its highest; a fresh save's light/dark value (0x0800D6CA
-    -- writes 500: the starting mood 0x99), no Full Synchro at the start.
+    -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
+    -- the starting mood 0x99), no Full Synchro at the start.
     setup_defaults = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
@@ -41,7 +41,8 @@ local rules: Rules = {
     hooks = {
         -- What the save brings to the navi's stats (./save).
         round_setup = save.round_setup,
-        -- Light and dark MegaMan (./light_dark): his starting mood, the holy panels a dark one clears.
+        -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, the holy panel a
+        -- dark one clears and the hole a navi that isn't dark closes.
         starting_mood = light_dark.starting_mood,
         navi_intake = light_dark.navi_intake,
         -- What is wrong with a side's setup, which tools ask (the simulation never does).

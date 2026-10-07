@@ -1418,9 +1418,22 @@ fn full_synchro_effect(b: &mut Battle, r: ObjectRef) {
 
 // ---- Destroy -------------------------------------------------------------------
 
-/// `sub_8016C4E`: runs once. Players (`not_counted == 0`) stay allocated and
-/// linked until the end of the round.
+/// The destroy state, as the rules' `dead_player` says: `sub_8016C4E`,
+/// once (players, `not_counted == 0`, stay allocated and linked until the
+/// end of the round), or EXE4's 0x0801052C, freed at once.
 fn destroy(b: &mut Battle, r: ObjectRef) {
+    if b.game_rules().dead_player == crate::content::DeadPlayer::Freed {
+        let c = coll_id(b, r);
+        b.collision.free(c);
+        // (Its param 2 set, an owner's count goes down in its place: no
+        // player the engine spawns has one.)
+        let side = b.objects.get(r).alliance as usize;
+        b.round.actor_count[side] = b.round.actor_count[side].wrapping_sub(1);
+        let a = actor_id(b, r);
+        b.actors.free(a);
+        b.objects.free(r);
+        return;
+    }
     if b.objects.get(r).phase_init != 0 {
         return;
     }
