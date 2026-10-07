@@ -983,11 +983,13 @@ impl Battle {
 
     fn tick_running(&mut self, input: &[PlayerTick; 2]) {
         // Both players' buttons, and whether each one's custom screen is
-        // open (status bit 2), reach the fight.
+        // open (status bit 2) and, where its screen says so, its selection
+        // runs (bit 0: EXE4's), reach the fight.
         self.read_joypads(input);
         for p in 0..2 {
             self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
-            self.round.remote_status[p] = if self.custom.sides[p].in_custom { 4 } else { 0 };
+            let side = &self.custom.sides[p];
+            self.round.remote_status[p] = (if side.in_custom { 4 } else { 0 }) | side.selecting as u8;
         }
 
         self.run_mode_handler();
@@ -2194,14 +2196,16 @@ impl Battle {
         crate::kinds::shift_damage_carry(self);
     }
 
-    /// `sub_80102AC`: the NaviCust HP-drain bug, active only while that
-    /// player's custom screen is open.
+    /// `sub_80102AC` (EXE4's 0x0800C194): the custom screen's HP-drain bug,
+    /// active only while that player's status has one of the rule
+    /// `custom_drain`'s bits (EXE6's: its screen is up; EXE4's: its
+    /// selection runs), every period by the bug's level or the stat itself.
     fn custom_hp_drain(&mut self, side: u8) {
-        if self.round.remote_status[side as usize] & 5 == 0 {
+        let rule = self.content.rules().custom_drain;
+        if self.round.remote_status[side as usize] & rule.status == 0 {
             return;
         }
-        const PERIOD: [u8; 8] = [0, 40, 30, 20, 10, 5, 3, 2];
-        let period = PERIOD[(self.stats[side as usize].bugs.custom_drain & 7) as usize];
+        let period = rule.periods.period(self.stats[side as usize].bugs.custom_drain);
         if period == 0 {
             return;
         }
