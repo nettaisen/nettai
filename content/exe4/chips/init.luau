@@ -42,5 +42,6 @@ return merge {
     require("@self/serchman"),
     require("@self/spreader"),
     require("@self/sword"),
+    require("@self/thunman"),
     require("@self/vulcan"),
 }
