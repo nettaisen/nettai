@@ -429,9 +429,9 @@ fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
 /// its sound) only with HP left; the element-5 damage takes the HP alone
 /// (0x0800AB92); at 0 HP, from either, the side's rules are asked
 /// (`hp_emptied`, 0x0800EBC8, which hold the navi at 1 HP themselves) and
-/// the navi falls unless they keep it. (Each console hears the hit's sound
-/// as its rules' `own_hit` or `hit`: EXE4's is one sound, 0x6B, for a navi
-/// whose NaviStats +0x26 isn't 1, as a netbattle's never are.) (Unported:
+/// the navi falls unless they keep it. (Its sound is the rules'
+/// `intake.hit_sound`'s: EXE4's, 0x6B on every console, 0x6D for a navi in
+/// auto battle, 0x08013A8C.) (Unported:
 /// 0x0800EE4C after the sound records the hit navi's panel into the hitter's
 /// side's records at 0x02037A90 and 0x02037C60, which nothing yet reads.)
 fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
@@ -451,12 +451,7 @@ fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
         o.hp = o.hp.saturating_sub(d);
         if o.hp != 0 {
             b.objects.sprite_mut(r).look.white = true;
-            let player = navi_record(b, r).actor_type == ActorType::Player;
-            let alliance = b.objects.get(r).alliance;
-            for side in 0..2 {
-                let own = player && side == alliance;
-                b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
-            }
+            hit_sounds(b, r);
         } else {
             left = false;
         }
