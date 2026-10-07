@@ -25,6 +25,7 @@ return merge {
     require("@self/heatshot"),
     require("@self/invalid"),
     require("@self/lance"),
+    require("@self/meteors"),
     require("@self/minibomb"),
     require("@self/navi-20"),
     require("@self/panlgrab"),

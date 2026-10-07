@@ -537,6 +537,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   10, 4 to 6); nothing of their own.
 - **Navi+20** (action 0x20's variant 4, its parameter 1: the Navi+ bonus, `modifier = "navi_plus"`): lib/plus, as
   Atk+10's.
+- **Meteors1** (with Meteors2 and 3: action 0x20's variant 0x11, `chips/meteors`): the spawner and its dropper
+  (effect object 0x81) are EXE5's code that no EXE5 chip uses (0x080E9DA2, 0x080E9D04), ported here; the target's
+  panel is found with @exelib/panels' `closest_in_row`. The meteor and its marker are @exelib/meteors' with EXE4's
+  look, which states two differences: the hit is set on the meteor's panel whether it bursts there or not
+  (`hit_on = "landing"`), and the marker is left side 0 (`marker_takes_side = false`).
 
 **For the next steps:**
 
