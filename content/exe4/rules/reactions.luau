@@ -7,10 +7,12 @@
 return {
     -- A push reads the first of bits 2 to 7 of the hits' final modifier (0x0800ACAA): back, forward, a panel back, a
     -- panel forward, up, down, toward the navi's front; an obstacle's the same from its copy of the rows (0x0800B1C0,
-    -- 0x0800B218), toward the pusher.
+    -- 0x0800B218), toward the pusher. A push with the flinch bit is a drag (0x08013858: 0x080138D8), and an obstacle's
+    -- push (0x0801393E); whatever started it, a slide and a drag read the push (0x08010294, 0x08010ABC).
     push_reading = {
         reads = "final",
         bits = 6,
+        drag_bit = 0x01,
         obstacle_rows = {
             { dx = 1, dy = 0, panels = 6 },
             { dx = -1, dy = 0, panels = 6 },

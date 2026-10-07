@@ -13,10 +13,11 @@
 return {
     -- A push reads the first of bits 2 to 5 of the unflipped hitters' modifier, else the flipped ones' with the
     -- direction reversed (0x0800C9D8); an obstacle's the same from its own rows (0x0800D4B0, the table at 0x0800D53B:
-    -- EXE6's four and a fifth of nothing).
+    -- EXE6's four and a fifth of nothing). A push with 0x40 is a drag (0x08017B44, EXE6's `sub_801AEB0`).
     push_reading = {
         reads = "by_hitter_flip",
         bits = 4,
+        drag_bit = 0x40,
         obstacle_rows = {
             { dx = -1, dy = 0, panels = 6 },
             { dx = 1, dy = 0, panels = 6 },

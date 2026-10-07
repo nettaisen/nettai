@@ -555,12 +555,19 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      0x08012D9A) is 0 none, 1 up, 2 down, 3 left and 4 right whatever the side, across before up and down, never
      EXE6's 5 (other); EXE6's and EXE5's (`sub_800E994`) is back and forward by the side, 5 for a move of two panels
      or more right or down or a diagonal one. The rule `reactions.move_direction` (`by_side`, `absolute`).
-2. **The drag is the flinch bit with a push.** The hit intake (around 0x080137FA) takes a drag where the final
-   modifier has the flinch bit (1) and a push bit (2 to 7); the slide (0x08010294) always reads the push (EXE6's and
-   EXE5's drag reads its own direction). Shape: the push reading's rule for drags (`push_reading.drag = "flinch_and_push"`
-   beside EXE6's and EXE5's own). Placeholder: the engine's drag.
-3. **The slide reads the push always.** 0x08010294 (the slide, slide type 1): the vector is the first push bit's row
-   whatever started the slide. Part of item 2's rule.
+2. **Done: the drag is the flinch bit with a push.** The hit intake (0x08013858, at 0x080138D2) takes a drag where the
+   final modifier has a push bit (2 to 7, 0xFC) and the flinch bit (1), clearing the flinch request, else a slide
+   unless dragged or moving (0x100040); an obstacle's intake (0x0801393E, 0x080139D8) a push the same way, unless
+   moving. EXE6's and EXE5's push bits are 0x3C, the drag bit 0x40 (`sub_801AEB0`; an obstacle's `sub_801AD9E` tests
+   0x40 alone, which no hit has without a push bit). The rule `reactions.push_reading.drag_bit` (EXE6 and EXE5 0x40,
+   EXE4 0x01), the push bits by `push_reading.bits`.
+3. **Done: the slide reads the push always.** 0x08010294 (the slide) and 0x08010ABC (the drag) call the push reading
+   (0x0800ACAA) whatever started them, and the intake sets no slide type; EXE6's and EXE5's read by the slide type
+   (`sub_800E468`: their drag's `sub_800E45E` passes 1, which the routine overwrites). In EXE4 nothing but a push
+   starts a slide (its ice is a push, item 1; it has no roads and no metal slide), so the engine's slide type 1,
+   which the intake sets with a push's request, reads the same: no rule. (EXE4's reading stores the row even when
+   its first panel is closed, which the slide then tests; EXE6's stores none: nothing reads the row after a failed
+   slide.) Left of EXE4's slide and drag, as their own gaps: item 33.
 4. **Elec on ice.** 0x08012CF2: an elec hit counts once more on ice (panel 7), a fire hit on grass; the engine's bonus
    is elec on the sea (`hit_test.elec_bonus_on_sea`). Shape: `hit_test.element_bonus = { {element, panel}, ... }`
    (EXE6's {elec, sea}... as each states). Placeholder: `elec_bonus_on_sea = false` (EXE4 gives none on ice).
@@ -579,6 +586,20 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
 10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.
 11. **Overlay restart.** Placeholder: `reactions.overlay_restart = "reload"` (EXE5's code at 0x080CC61A; confirm).
+33. **EXE4's reaction actions and its slide** (found by group C; the player's action table, 0x080EAEFC, entries 2 to
+    5). Each is its own beside the engine's (EXE6's, which EXE5 shares where its labs pass):
+    - the drag (0x08010A9C, its start 0x08010ABC): DRAG alone (not the action in use), always animation 1 (EXE6's 2
+      paralyzed, 0 with SuperArmor), no drag hook or overlay refresh, the Z kept, no side stat bumped, and calls
+      0x0800DD82 and 0x08022F2C (unread); its end (0x08010C16) clears DRAG and the requests 0x43F and goes to idle
+      (action 6), with none of EXE6's paralysis turn, flag clears or slide state;
+    - the flinch (0x08010960): FLINCHING alone, 0x08022F2C, the AI status's low seven bits (0x0800C1F2), no freeze or
+      bubble to end; its end clears the requests 0x43F;
+    - the paralysis (0x080109FA): its own entry (0x0800DD14's hook, 0x08022F2C) and its mash (AIData +0x1E);
+    - the slide (0x08010294, 0x080102FC): the collision record's panels and direction each tick (0x08012D9A), no
+      direction at its end, no road cooldown; a type 10 panel stops it unless the body floats (item 12).
+    The status block (0x08013A48) is EXE5's order (`status.reactions = "flash_timer_first"`) but goes straight to the
+    action while flag 0x10000 is set and asks for action 13 by 0x0800B8B0. To port; observable in the lab's `drag/`,
+    `ice/` and `status/` recordings.
 
 ### 18.2 Panels
 

@@ -580,8 +580,12 @@ pub fn take_navi_bug(b: &mut Battle, side: u8, bugs: u16) {
 
 // ---- Hit results -------------------------------------------------------------------
 
-/// `sub_801AEB0`: hit modifier bits to requests: 1 flinch (not with
-/// SuperArmor or anger), 2 flash, 0x04-0x20 push, with 0x40 drag.
+/// `sub_801AEB0` (EXE4's in 0x08013858): hit modifier bits to requests: 1
+/// flinch (not with SuperArmor or anger), 2 flash, a push (the rules'
+/// push bits: EXE6's 0x04-0x20, EXE4's 0x04-0x80) a slide, or with the
+/// rules' drag bit (EXE6's 0x40, EXE4's the flinch bit) a drag. (EXE4's
+/// sets no slide type: its slides read the push whatever the type, and
+/// none but the push's is set in it.)
 fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
     let hm = coll(b, r).hit_mod_final;
     if flag1(b, r) & (f1::SUPERARMOR | f1::ANGER) == 0 && hm & 1 != 0 {
@@ -590,10 +594,11 @@ fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
     if hm & 2 != 0 {
         set_flag2(b, r, 0x2);
     }
-    if hm & 0x3C == 0 {
+    let reading = &b.game_rules().push_reading;
+    if hm & reading.mask() == 0 {
         return;
     }
-    if hm & 0x40 != 0 {
+    if hm & reading.drag_bit != 0 {
         set_flag2(b, r, 0x100);
         clear_flag2(b, r, 0x4);
         b.objects.get_mut(r).slide_type = 1;
@@ -852,5 +857,35 @@ mod tests {
         let (mut b, r) = on_ice(testing::rules().ice, 3);
         slide_triggers(&mut b, r);
         assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0x10, 2));
+    }
+
+    /// docs/design/exe4-map.md §18 items 2 and 3: a push is a drag with the
+    /// rules' drag bit: EXE6's 0x40 (its push bits 0x04 to 0x20), EXE4's the
+    /// flinch bit (its push bits 0x04 to 0x80, 0x40 a push up). The requests
+    /// of modifier `hm`: (flinch, slide, drag), and the slide type.
+    #[test]
+    fn a_push_drags_by_the_rules_bit() {
+        let requests = |exe4: bool, hm: u8| {
+            let (mut b, r) = on_ice(testing::rules().ice, 0);
+            if exe4 {
+                let mut c: Content = testing::build();
+                c.define().unwrap_or_else(|e| panic!("{e}"));
+                let rules = c.rules_mut();
+                rules.push_reading.bits = 6;
+                rules.push_reading.drag_bit = 0x01;
+                rules.push_reading.shift = None;
+                b.content = Arc::new(c);
+            }
+            coll_mut(&mut b, r).hit_mod_final = hm;
+            hit_modifier_requests(&mut b, r);
+            let f = flag2(&b, r);
+            ((f & 0x4 != 0, f & 0x10 != 0, f & 0x100 != 0), b.objects.get(r).slide_type)
+        };
+        assert_eq!(requests(false, 0x44), ((false, false, true), 1));
+        assert_eq!(requests(false, 0x05), ((true, true, false), 1));
+        assert_eq!(requests(false, 0x41), ((true, false, false), 0), "0x40 alone is no push");
+        assert_eq!(requests(true, 0x41), ((false, false, true), 1), "EXE4's push up with the flinch bit drags");
+        assert_eq!(requests(true, 0x40), ((false, true, false), 1), "EXE4's push up alone slides");
+        assert_eq!(requests(true, 0x01), ((true, false, false), 0));
     }
 }

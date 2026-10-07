@@ -494,11 +494,21 @@ pub enum StanceCounter {
 /// 0x0800B1C0): the final modifier's bits 2 to 7, a navi's and an
 /// obstacle's six rows the same (back, forward, a panel back, a panel
 /// forward, up, down), then none.
+///
+/// A hit's push (one of those bits set) is a drag, rather than a slide,
+/// with the modifier's `drag_bit` set too (the hit intake, EXE6's
+/// `sub_801AEB0`: 0x40; EXE4's, 0x08013858: 0x01, the flinch bit), and an
+/// obstacle's push is that (EXE6's `sub_801AD9E` tests the bit alone, which
+/// no hit has without a push; EXE4's 0x0801393E both). Whatever starts a
+/// navi's slide or drag, a game whose pushes are its only slides reads the
+/// push (EXE4's 0x08010294 and 0x08010ABC call its reading straight): the
+/// engine's slide type 1, which the intake sets with the request.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PushReading {
     pub reads: PushSource,
     pub bits: u8,
+    pub drag_bit: u8,
     #[serde(default)]
     pub shift: Option<PushShift>,
     /// An obstacle's rows, turned toward the pusher's side.
@@ -530,6 +540,17 @@ impl PushReading {
     /// none set: the row past them.
     pub fn first(&self, modifier: u8) -> usize {
         (0..self.bits as usize).find(|&i| (modifier >> 2) & (1 << i) != 0).unwrap_or(self.bits as usize)
+    }
+
+    /// The modifier's push bits: `bits` of them from bit 2 (EXE6's 0x3C,
+    /// EXE4's 0xFC).
+    pub fn mask(&self) -> u8 {
+        (((1u16 << self.bits) - 1) << 2) as u8
+    }
+
+    /// Whether `modifier` pushes as a drag: a push bit and the drag bit.
+    pub fn drags(&self, modifier: u8) -> bool {
+        modifier & self.mask() != 0 && modifier & self.drag_bit != 0
     }
 }
 
