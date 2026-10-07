@@ -3,8 +3,9 @@
 //! and a phone's size, and writes the window as each shows to a PNG
 //! (`Window::take_snapshot`: the window's own renderer's picture). The
 //! battle is a real one: a random match of the first game ready, the stand-in
-//! with 1 HP so the set is decided at the first hits, played by the title's
-//! demo buttons.
+//! with 1 HP so the set is decided at the first hits, played by the
+//! welcome's demo buttons. Some shots come in pairs, a state apart (a row
+//! focused, a section opened), for a comparison that finds what moved.
 //!
 //! `NETTAI_TOUR_LANGS` names the languages (by code, comma-separated; all of
 //! them by default).
@@ -22,6 +23,8 @@ type Step = (Duration, Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>)>);
 /// Walk the screens, writing each to `dir`, then quit.
 pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     let _ = std::fs::create_dir_all(&dir);
+    // (The backdrop still: two shots differ only where the screen does.)
+    ui.global::<crate::Theme>().set_still(true);
     let languages: Vec<&'static str> = match std::env::var("NETTAI_TOUR_LANGS") {
         Ok(list) => crate::lang::LANGUAGES.iter().map(|(c, _)| *c).filter(|c| list.split(',').any(|l| l == *c)).collect(),
         Err(_) => crate::lang::LANGUAGES.iter().map(|(c, _)| *c).collect(),
@@ -83,54 +86,72 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
                 add(500, shot(&dir, tag("build-grid-held")));
                 add(100, Box::new(|_, app| app.borrow_mut().go(Screen::Builds)));
                 add(900, Box::new(|_, _| {}));
-                // The build chosen in Training, and in the lobby linked directly.
+                // The build chosen in the strip: Training's, Play's; Play's
+                // band with a direct link, and hosting one.
                 add(100, Box::new(|ui, app| {
                     let mut app = app.borrow_mut();
+                    app.tour_select();
                     app.enter(Screen::Training);
-                    let game = app.builds_game_index();
-                    app.training_game(game);
-                    app.training_build(1);
-                    ui.set_training_cursor(2);
+                    ui.set_training_cursor(1);
                 }));
                 add(900, shot(&dir, tag("training-build")));
                 add(100, Box::new(|ui, app| {
-                    let mut app = app.borrow_mut();
-                    app.enter(Screen::Lobby);
-                    app.lobby_mode(2);
-                    app.lobby_build(1);
-                    ui.set_lobby_cursor(4);
+                    app.borrow_mut().enter(Screen::Play);
+                    ui.set_play_cursor(1);
                 }));
-                add(900, shot(&dir, tag("lobby-direct")));
+                add(900, shot(&dir, tag("play-build")));
+                add(100, Box::new(|ui, app| {
+                    app.borrow_mut().play_mode(1);
+                    ui.set_play_cursor(4);
+                }));
+                add(700, shot(&dir, tag("play-direct")));
+                add(100, Box::new(|_, app| app.borrow_mut().play_fight()));
+                add(900, shot(&dir, tag("play-hosting")));
+                add(100, Box::new(|_, app| {
+                    let mut app = app.borrow_mut();
+                    app.play_leave();
+                    app.play_mode(0);
+                }));
                 if only.is_some() {
                     continue;
                 }
             }
+            // The first run's welcome.
             add(300, Box::new(|ui, app| {
-                app.borrow_mut().enter(Screen::Title);
-                ui.set_title_started(false);
+                app.borrow_mut().enter(Screen::Welcome);
+                ui.set_welcome_cursor(0);
             }));
-            add(900, shot(&dir, tag("title")));
-            add(100, Box::new(|ui, _| ui.invoke_nav(NavAction::Confirm)));
-            add(2500, shot(&dir, tag("menu")));
+            add(2500, shot(&dir, tag("welcome")));
+            add(100, Box::new(|_, app| {
+                let ja = app.borrow().lang == "ja";
+                app.borrow_mut().set_name(if ja { "ネット" } else { "Lan" });
+            }));
+            // Play, its strip and its band; the keys in the bar.
             add(100, Box::new(|ui, app| {
-                ui.set_title_cursor(0);
-                app.borrow_mut().enter(Screen::Training);
+                let mut app = app.borrow_mut();
+                app.tour_select_random();
+                app.enter(Screen::Play);
+                ui.set_play_cursor(0);
+                ui.set_bar_focus(false);
             }));
-            add(500, shot(&dir, tag("training-none")));
-            add(100, Box::new(|ui, app| {
-                let first = app.borrow().first_ready();
-                if let Some(i) = first {
-                    app.borrow_mut().training_game(i);
-                    ui.set_training_cursor(2);
-                }
-            }));
+            add(900, shot(&dir, tag("play")));
+            add(100, Box::new(|ui, _| ui.set_play_cursor(5)));
+            add(500, shot(&dir, tag("play-focus")));
+            add(100, Box::new(|ui, _| ui.set_bar_focus(true)));
+            add(500, shot(&dir, tag("play-bar")));
+            add(100, Box::new(|ui, _| ui.invoke_nav(NavAction::Right)));
             add(700, shot(&dir, tag("training")));
+            add(100, Box::new(|ui, _| {
+                ui.set_bar_focus(false);
+                ui.set_training_cursor(4);
+            }));
+            add(500, shot(&dir, tag("training-focus")));
             // The opponent's choices: a masher, round after round.
             add(100, Box::new(|ui, app| {
                 let mut app = app.borrow_mut();
                 app.training_behavior(3);
                 app.training_endless(true);
-                ui.set_training_cursor(4);
+                ui.set_training_cursor(5);
             }));
             add(700, shot(&dir, tag("training-options")));
             add(100, Box::new(|_, app| {
@@ -149,17 +170,33 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
                 app.tour_fast();
             }));
             add(25000, shot(&dir, tag("battle-result")));
-            add(100, Box::new(|_, app| app.borrow_mut().enter(Screen::Replays)));
-            add(2500, shot(&dir, tag("replays")));
-            add(100, Box::new(|_, app| app.borrow_mut().enter(Screen::Lobby)));
-            add(300, Box::new(|ui, app| {
-                let ja = app.borrow().lang == "ja";
-                app.borrow_mut().set_name(if ja { "ネット" } else { "Lan" });
-                ui.set_lobby_cursor(2);
+            add(100, Box::new(|ui, app| {
+                app.borrow_mut().enter(Screen::Replays);
+                ui.set_replays_cursor(0);
             }));
-            add(700, shot(&dir, tag("lobby")));
-            add(100, Box::new(|_, app| app.borrow_mut().enter(Screen::Settings)));
+            add(2500, shot(&dir, tag("replays")));
+            add(100, Box::new(|ui, _| ui.invoke_nav(NavAction::Next)));
+            add(700, shot(&dir, tag("replays-filtered")));
+            add(100, Box::new(|ui, _| ui.invoke_nav(NavAction::Previous)));
+            add(100, Box::new(|ui, app| {
+                app.borrow_mut().enter(Screen::Settings);
+                ui.set_settings_section(0);
+                ui.set_settings_in_pane(false);
+            }));
             add(700, shot(&dir, tag("settings")));
+            add(100, Box::new(|ui, _| {
+                ui.set_settings_in_pane(true);
+                ui.set_settings_cursor(1);
+            }));
+            add(500, shot(&dir, tag("settings-focus")));
+            add(100, Box::new(|ui, _| {
+                ui.set_settings_in_pane(false);
+                ui.set_settings_section(3);
+            }));
+            add(500, shot(&dir, tag("settings-controls")));
+            add(100, Box::new(|ui, _| ui.set_settings_section(4)));
+            add(500, shot(&dir, tag("settings-about")));
+            add(100, Box::new(|ui, _| ui.set_settings_section(0)));
         }
     }
     add(200, Box::new(|_, _| {

@@ -22,15 +22,18 @@ export enum NavAction {
     remove,
 }
 
+// The screens: the first run's welcome; the tabs under the top bar (online
+// play, training, the replays, the builds and the settings); the build
+// creator; the battle.
 export enum Screen {
-    title,
+    welcome,
+    play,
     training,
-    battle,
-    lobby,
     replays,
-    settings,
     builds,
+    settings,
     build,
+    battle,
 }
 
 // What a menu sound is for (the game's own custom screen sounds, through its
@@ -92,6 +95,9 @@ export global Theme {
     out property <length> body: compact ? 15px : 17px;
     out property <length> label: compact ? 11px : 12px;
     out property <length> slant: compact ? 10px : 16px;
+
+    // Nothing moves by itself (the tour's shots, compared for what moved).
+    in-out property <bool> still: false;
 
     out property <duration> quick: 140ms;
     out property <duration> settle: 260ms;

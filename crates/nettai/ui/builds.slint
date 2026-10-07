@@ -1,9 +1,10 @@
-// Builds: the player's builds of each game, a new one, one from a save.
-// The app moves the cursor (the keys and the pad as navigation actions);
-// the mouse and touch point and confirm.
+// Builds, the top bar's utility tab: the player's builds of each game, a new
+// one, one from a save (Tango's save management). The app moves the cursor
+// (the keys and the pad as navigation actions); the mouse and touch point
+// and confirm.
 
 import { Theme, NavAction } from "theme.slint";
-import { Slant, Label, Heading, Hints, Glyph } from "widgets.slint";
+import { Slant, Label, Hints, Glyph } from "widgets.slint";
 
 export struct BuildCard {
     name: string,
@@ -132,16 +133,8 @@ export component BuildsScreen {
     VerticalLayout {
         padding-left: Theme.gutter;
         padding-right: Theme.gutter;
-        padding-top: Theme.gutter * 0.6;
+        padding-top: Theme.gap;
         spacing: Theme.gap;
-
-        Heading {
-            text: @tr("heading" => "BUILDS");
-            sub: @tr("YOUR SIDES, GAME BY GAME");
-            back => {
-                root.nav(NavAction.back);
-            }
-        }
 
         HorizontalLayout {
             spacing: 8px;
@@ -250,7 +243,7 @@ export component BuildsScreen {
                     { key: "↑↓", button: "✚", text: @tr("Choose") },
                     { key: "Enter", button: "A", text: @tr("Open") },
                     { key: "A S", button: "L R", text: @tr("Game") },
-                    { key: "Esc", button: "B", text: @tr("Back") },
+                    { key: "Esc", button: "B", text: @tr("Tabs") },
                 ];
             }
 
