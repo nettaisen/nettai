@@ -94,6 +94,7 @@ energy-burst = "14-12"
 lightning = "14-14"
 charge-glow-a = "14-15"
 full-synchro-aura = "14-16"  # the Full Synchro aura: actor object 0x5E's init (0x080CD1A8), spawned for a navi in Full Synchro (0x0800D9C8)
+megaman-portrait = "20-40"  # the no-running message's speaker, F4 00 40 (0x0804F750): the mugshot table 0x08028038's 0x40, which 0x080028F2 loads
 
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]

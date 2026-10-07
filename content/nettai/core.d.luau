@@ -961,9 +961,6 @@ declare extern type Navi with
     -- battle's start (+0x3D).
     auto_step: number
     starting_damage: number
-    -- NaviCust bug: the keys the navi steps by when none is held (EXE4's
-    -- +0x0D: the joypad's direction bits; 0 and 0xFF none).
-    idle_step_keys: number
     -- The folder the navi brings (+0x2D, 0 to 2), the folders' Regular
     -- chips (+0x2E, +0x2F) and tag chips (+0x56 to +0x59), entries as the
     -- save keeps them (0xFF none).

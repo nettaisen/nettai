@@ -118,7 +118,8 @@ struct PanelsSection {
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
     type_mask: u32,
-    standing: super::rules::StandingRule,
+    #[serde(default)]
+    grass_heal_slows_at: Option<u16>,
 }
 
 #[derive(Deserialize)]
@@ -334,6 +335,7 @@ struct StatusSection {
     weakness_hit_breaks_form: bool,
     weakness_mark: super::rules::WeaknessMark,
     paused_navi: super::rules::PausedNavi,
+    timers_while_paused: bool,
 }
 
 /// The `fresh_stats` section but its weapon (`mode9_a`, a definition) and
@@ -457,6 +459,7 @@ impl Stated {
                 weakness_hit_breaks_form: r.weakness_hit_breaks_form,
                 weakness_mark: r.weakness_mark,
                 paused_navi: r.paused_navi,
+                timers_while_paused: r.status_timers_while_paused,
             }),
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
@@ -508,6 +511,7 @@ impl Stated {
             weakness_hit_breaks_form: status.weakness_hit_breaks_form,
             weakness_mark: status.weakness_mark,
             paused_navi: status.paused_navi,
+            status_timers_while_paused: status.timers_while_paused,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
                 no_charge_drive: status.no_charge_drive,
@@ -694,7 +698,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     numbers,
                     reservations: s.reservations,
                     type_mask: s.type_mask,
-                    standing: s.standing,
+                    grass_heal_slows_at: s.grass_heal_slows_at,
                 });
             }
             "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),

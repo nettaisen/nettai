@@ -59,6 +59,7 @@ return {
         keys = { "up", "down", "right", "left" },
         confused = { up = "down", down = "up", left = "right", right = "left" },
         idle_checks_target = false,
+        -- (No move bug of a rules stat: the processing bug, astray steps, is the engine's own.)
     },
     -- A screen fade toward clear ends on the step whose level reaches its target (`sub_8006366`).
     fade_clear = "at_target",
@@ -72,4 +73,10 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second (`sub_801EB18`).
     used_chip_ticks = 0x3C,
+    -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (`sub_801CC94`).
+    bug_flicker = true,
+    -- An object's destroy (`object_genericDestroy`) releases what it holds and frees its collision as it is.
+    destroy = "frees",
+    -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
+    draw_order = "update_list",
 }

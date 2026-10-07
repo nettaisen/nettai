@@ -467,6 +467,8 @@ local status = {
         weakness_mark = "weak_element_damage",
         -- While the battle is paused a navi runs its pause handler in place of its action, as EXE6's.
         paused_navi = "pause_handler",
+        -- Its status timers hold while paused (0x0800CB50, as EXE6's).
+        timers_while_paused = false,
     },
 }
 
