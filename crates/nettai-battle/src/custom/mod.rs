@@ -90,6 +90,11 @@ pub struct Side {
     /// The status bit the player's console sends: its custom screen is
     /// open (BattleState+0x11 bit 2).
     pub in_custom: bool,
+    /// The status bit 0 the player's console sends while its selection
+    /// runs: EXE4's screen's (BattleState +0x14, from the selection's start
+    /// until OK), which its custom screen's HP bug reads (the rule
+    /// `custom_drain`); EXE6's and EXE5's screens send none.
+    pub selecting: bool,
     /// The hand and transformation built at OK, sent after the window
     /// slides out (None: no chips picked).
     pub built: Option<(Option<ChipHand>, TransformRequest)>,
@@ -109,6 +114,7 @@ impl Side {
             class_uses: ClassCounts::default(),
             screen: None,
             in_custom: false,
+            selecting: false,
             built: None,
             sent: None,
             emotion: Emotion::default(),
