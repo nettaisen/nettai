@@ -72,8 +72,12 @@ description-open = 0x066  # R's description on the custom screen (0x080203C0)
 unselect-68 = 0x068
 refused = 0x069  # what the custom screen can't pick or take back, a soul it can't give (0x08020386, 0x08020634)
 buster-shot = 0x06a  # the buster shot and the charged shot (0x080EB372, 0x080ECC72)
+hit = 0x06b  # a navi's hit: the hit intake (0x08013A96), on every console
+auto-battle-hit = 0x06d  # a navi in auto battle hit (NaviStats +0x26 = 1): the hit intake (0x08013A9A)
 hit-bomb-0 = 0x06f
 hit-bomb-1 = 0x070
+buster-charge = 0x071  # a charge's glow coming (effect 5's init, 0x080E21C2)
+buster-charged = 0x072  # a charge's glow as the charge fills (effect 5, 0x080E222C)
 log-in = 0x077
 program-advance-part = 0x079  # the Program Advance animation naming a chip of the recipe (0x0801E74E)
 custom-open = 0x07a  # the custom screen's opening (the lab's flow/buster-duel, frame 258)
