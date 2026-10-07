@@ -23,6 +23,9 @@
 "bub-v/action" = 0x1E
 "bublside/action" = 0x1E
 # The throws' (the chips' action 0x09, 0x080EB3FE).
+"binder1/action" = 0x09
+"binder2/action" = 0x09
+"binder3/action" = 0x09
 "darkbomb/action" = 0x09
 "energbom/action" = 0x09
 "megenbom/action" = 0x09
