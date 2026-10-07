@@ -154,6 +154,10 @@ pub enum Crush {
     /// `sub_801B878` (LilBoiler's) while its ExtraVars+4 is set: such a
     /// touch is as any hit (while it is clear the routine is `Breaks`).
     Ignores,
+    /// EXE4's 0x08014058 (its boulder's): `Destroys` but for the bodies'
+    /// touches, which don't destroy it, and the removal request, which it
+    /// doesn't read.
+    DestroysSparingBodies,
 }
 
 /// When [`react`] holds the obstacle still while dimmed.
@@ -459,15 +463,19 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
         b.objects.get(r).hp == 0
     };
     let destroy = killed || {
-        let crushing = if crush == Crush::SparesBodies { CRUSHING_HITS_BUT_BODIES } else { CRUSHING_HITS };
+        let crushing = match crush {
+            Crush::SparesBodies | Crush::DestroysSparingBodies => CRUSHING_HITS_BUT_BODIES,
+            _ => CRUSHING_HITS,
+        };
         if crush != Crush::Ignores && b.collision.get(c).acc.hit_flags & crushing != 0 {
-            if crush != Crush::Destroys {
+            if !matches!(crush, Crush::Destroys | Crush::DestroysSparingBodies) {
                 b.objects.get_mut(r).hp = 0;
             }
             true
         } else {
             conversion_step(b, r);
-            f2_of(b, r) & f2::REMOVED != 0 || b.objects.get(r).hp == 0
+            let removed = crush != Crush::DestroysSparingBodies && f2_of(b, r) & f2::REMOVED != 0;
+            removed || b.objects.get(r).hp == 0
         }
     };
     if destroy {
