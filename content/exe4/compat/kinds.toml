@@ -1,0 +1,11 @@
+# EXE4's object kinds: the original's pool and index (the recordings compare them), and the positions the comparison
+# skips (register garbage the spawner leaves until the kind's init places it). Written by hand from the EXE4 recordings
+# and code, as kinds come up in the replays: edit it when content is renamed or added. A key without a root is EXE4's
+# own; `engine/...` the engine's.
+
+"engine/player" = { pool = "actor", index = 0x00 }
+"engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
+"engine/effect" = { pool = "effect", index = 0x00 }
+"engine/spark" = { pool = "effect", index = 0x04 }
+"projectile" = { pool = "attack", index = 0x00 }
+"attachment" = { pool = "attack", index = 0x02 }

@@ -1527,7 +1527,7 @@ declare obstacle: {
     -- `sub_800F656`: forget it in the field-object registry.
     unregister: (me: Object) -> (),
     -- `sub_801AD9E` and its variants: resolve this tick's hits. What a
-    -- pushing hit (hit modifier 0x40) does: "forgets_damage" (the default,
+    -- pushing hit (a push with its game's drag bit) does: "forgets_damage" (the default,
     -- `sub_801AD9E`: pushed, its damage forgotten), "keeps_damage"
     -- (`sub_801AD12`: pushed, the damage lands), "any_hit" (`sub_801ADFA`:
     -- that, and any one side's hit but type 0x1000 pushes it a panel away;

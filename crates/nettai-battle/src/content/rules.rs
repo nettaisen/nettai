@@ -320,6 +320,79 @@ pub struct SlideSpeed {
     pub y: i32,
 }
 
+/// How a move's direction goes into the collision record
+/// (`object_updateCollisionPanels`: the reactions section's
+/// `move_direction`), which an ice slide or push, EXE5's metal slide and
+/// content reading the record's direction read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MoveDirection {
+    /// EXE6's `sub_800E994` (EXE5's 0x0800CC92, the same code): 0 none, 1
+    /// up, 2 down, 3 back and 4 forward by the side, 5 other. Only a move
+    /// of two panels or more right or down is other (the routine tests
+    /// `>= 2` and nothing below -1), and a diagonal one: any move left or up
+    /// along one axis counts by its sign, so a navi warped two panels back
+    /// (side 0) or forward (side 1) has moved back or forward, and slides on
+    /// ice.
+    BySide,
+    /// EXE4's 0x0800AF90: 0 none, 1 up, 2 down, 3 left and 4 right whatever
+    /// the side, across before up and down (a diagonal move by its x), and no
+    /// other.
+    Absolute,
+}
+
+impl MoveDirection {
+    /// The direction of a move from `old` to `new` by a body of side
+    /// `alliance`.
+    pub fn of(self, old: crate::object::PanelPos, new: crate::object::PanelPos, alliance: u8) -> u8 {
+        let dx = new.x as i8 - old.x as i8;
+        let dy = new.y as i8 - old.y as i8;
+        match self {
+            MoveDirection::BySide => {
+                if dx >= 2 || dy >= 2 {
+                    return 5;
+                }
+                let (back, forward) = if alliance == 0 { (3, 4) } else { (4, 3) };
+                match (dx.signum(), dy.signum()) {
+                    (0, 0) => 0,
+                    (0, -1) => 1,
+                    (0, 1) => 2,
+                    (-1, 0) => back,
+                    (1, 0) => forward,
+                    _ => 5,
+                }
+            }
+            MoveDirection::Absolute => match (dx.signum(), dy.signum()) {
+                (1, _) => 4,
+                (-1, _) => 3,
+                (_, 1) => 2,
+                (_, -1) => 1,
+                _ => 0,
+            },
+        }
+    }
+}
+
+/// What a body's move that ends on ice does (the reactions section's
+/// `ice`: EXE6's `sub_801A3DA`, EXE5's 0x080171F0, EXE4's 0x0801335A), unless
+/// the body is of aqua, floats or is submerged (flags 0x24) or isn't
+/// affected by ice; by the direction of the move (the collision record's,
+/// as `MoveDirection` puts it).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum IceRule {
+    /// It slides (slide type 2), a row by direction (none, up, down, back,
+    /// forward, other; `dx` toward the body's front): EXE6's `byte_800E4E8`,
+    /// EXE5's 0x0800C988.
+    Slide([SlideVector; 6]),
+    /// A push bit by the body's side and the direction is ORed into its
+    /// collision's final modifier, which the intake reads after: a slide by
+    /// the push's row, or a drag with a hit's drag bit (EXE4's, the table at
+    /// 0x080133B4, five directions a side). A direction past a side's row
+    /// pushes nothing.
+    Push([[u8; 5]; 2]),
+}
+
 /// The rule section `fresh_stats`: what a navi's stats hold when they are
 /// made fresh (`NaviStats::fresh`), beyond what the navi's own row states
 /// (its `fresh` and `weapons`): what the game's routine writes for every
@@ -421,11 +494,21 @@ pub enum StanceCounter {
 /// 0x0800B1C0): the final modifier's bits 2 to 7, a navi's and an
 /// obstacle's six rows the same (back, forward, a panel back, a panel
 /// forward, up, down), then none.
+///
+/// A hit's push (one of those bits set) is a drag, rather than a slide,
+/// with the modifier's `drag_bit` set too (the hit intake, EXE6's
+/// `sub_801AEB0`: 0x40; EXE4's, 0x08013858: 0x01, the flinch bit), and an
+/// obstacle's push is that (EXE6's `sub_801AD9E` tests the bit alone, which
+/// no hit has without a push; EXE4's 0x0801393E both). Whatever starts a
+/// navi's slide or drag, a game whose pushes are its only slides reads the
+/// push (EXE4's 0x08010294 and 0x08010ABC call its reading straight): the
+/// engine's slide type 1, which the intake sets with the request.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PushReading {
     pub reads: PushSource,
     pub bits: u8,
+    pub drag_bit: u8,
     #[serde(default)]
     pub shift: Option<PushShift>,
     /// An obstacle's rows, turned toward the pusher's side.
@@ -457,6 +540,17 @@ impl PushReading {
     /// none set: the row past them.
     pub fn first(&self, modifier: u8) -> usize {
         (0..self.bits as usize).find(|&i| (modifier >> 2) & (1 << i) != 0).unwrap_or(self.bits as usize)
+    }
+
+    /// The modifier's push bits: `bits` of them from bit 2 (EXE6's 0x3C,
+    /// EXE4's 0xFC).
+    pub fn mask(&self) -> u8 {
+        (((1u16 << self.bits) - 1) << 2) as u8
+    }
+
+    /// Whether `modifier` pushes as a drag: a push bit and the drag bit.
+    pub fn drags(&self, modifier: u8) -> bool {
+        modifier & self.mask() != 0 && modifier & self.drag_bit != 0
     }
 }
 
@@ -886,8 +980,11 @@ pub struct Rules {
     /// `byte_8017F24`); else an obstacle slides anywhere open (EXE5's
     /// 0x08014894 keeps no bounds).
     pub obstacle_slide_bounds: bool,
-    /// Ice slides by the direction the navi last moved.
-    pub ice_vectors: [SlideVector; 6],
+    /// What a move that ends on ice does (the reactions section's).
+    pub ice: IceRule,
+    /// How a move's direction goes into the collision record (the
+    /// reactions section's).
+    pub move_direction: MoveDirection,
     /// How fast a navi slides and is dragged (the reactions section's).
     pub slide_speed: SlideSpeed,
     /// How a navi's hooks restart what it wears (the reactions section's).
