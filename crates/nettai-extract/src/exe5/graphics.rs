@@ -235,7 +235,35 @@ fn field(rom: &Rom) -> Field {
 
 // ---- Backgrounds -------------------------------------------------------------------
 
+/// The backgrounds by number, one picture a background: where compat's
+/// assets.toml makes several numbers one background (a liberation's map's
+/// number and its area's), the pack has the first's, and the others must be
+/// the same (their load data, their scroll callbacks and their animations),
+/// or the extraction fails.
 fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
+    let mut out = pictures(rom);
+    let raw = |id: u32| {
+        let d = rom.u32(BACKGROUNDS + 4 * id);
+        let load: Vec<u32> = (0..7).map(|i| rom.u32(d + 4 * i)).collect();
+        let scroll: Vec<u32> = (0..4).map(|i| rom.u32(BACKGROUND_SCROLL + 16 * id + 4 * i)).collect();
+        (load, scroll)
+    };
+    for (name, numbers) in &exe5_compat::Compat::exe5().assets.backgrounds {
+        let (&first, others) = numbers.all().split_first().expect("compat checks a background has a number");
+        for &n in others {
+            assert!(
+                raw(n as u32) == raw(first as u32) && out.get(n as usize) == out.get(first as usize),
+                "background {name}: {n:#04x} isn't {first:#04x}'s picture again (its load data, scroll or animations differ)"
+            );
+            out[n as usize] = None;
+        }
+    }
+    out
+}
+
+/// Each background number's picture as its load data, scroll callback and
+/// animations make it.
+fn pictures(rom: &Rom) -> Vec<Option<Background>> {
     (0..BACKGROUND_COUNT)
         .map(|id| {
             let (tiles, first_tile, map, map_width, map_height, palette) =
