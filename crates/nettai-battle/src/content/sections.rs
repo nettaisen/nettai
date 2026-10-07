@@ -43,14 +43,12 @@ struct ElementsSection {
 struct PanelTypeSection {
     flags: u32,
     #[serde(default)]
-    road_slide: Option<SlideVector>,
+    carries: Option<SlideVector>,
     /// A sound asset, as the pack identifies it.
     #[serde(default)]
     trail_sound: Option<u16>,
     #[serde(default)]
     expires: Option<u16>,
-    #[serde(default)]
-    holds: Option<u16>,
     #[serde(default)]
     submerges: bool,
     /// An element by name.
@@ -62,14 +60,12 @@ struct PanelTypeSection {
     #[serde(default)]
     unbreakable: bool,
     #[serde(default)]
-    stops_slides: bool,
-    #[serde(default)]
     traps: bool,
     #[serde(default)]
     crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
-    slide: Option<Vec<Vec<SlideStep>>>,
+    carries_by_move: Option<Vec<Vec<SlideStep>>>,
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -133,7 +129,8 @@ struct ReactionsSection {
     push_reading: super::rules::PushReading,
     hit_test: super::rules::HitTest,
     obstacle_slide_bounds: bool,
-    ice: super::rules::IceRule,
+    #[serde(default)]
+    slide_rows: Option<[SlideVector; 6]>,
     move_direction: super::rules::MoveDirection,
     bubble_bob: [i8; 32],
     slide_speed: super::rules::SlideSpeed,
@@ -426,7 +423,7 @@ impl Stated {
                 push_reading: r.push_reading.clone(),
                 hit_test: r.hit_test,
                 obstacle_slide_bounds: r.obstacle_slide_bounds,
-                ice: r.ice,
+                slide_rows: r.slide_rows,
                 move_direction: r.move_direction,
                 bubble_bob: r.bubble_bob,
                 slide_speed: r.slide_speed,
@@ -535,7 +532,7 @@ impl Stated {
             push_reading: reactions.push_reading,
             hit_test: reactions.hit_test,
             obstacle_slide_bounds: reactions.obstacle_slide_bounds,
-            ice: reactions.ice,
+            slide_rows: reactions.slide_rows,
             move_direction: reactions.move_direction,
             slide_speed: reactions.slide_speed,
             overlay_restart: reactions.overlay_restart,
@@ -652,11 +649,11 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     };
                     let cleared_by = element("cleared_by", &rule.cleared_by)?;
                     let doubles = element("doubles", &rule.doubles)?;
-                    let slide = match &rule.slide {
+                    let carries_by_move = match &rule.carries_by_move {
                         Some(by_direction) => {
                             if by_direction.len() != 6 || by_direction.iter().any(|tries| tries.len() > 4) {
                                 return Err(e(format!(
-                                    "{at}.types.{name}.slide: six directions (none, up, down, back, forward, other), four steps or fewer each"
+                                    "{at}.types.{name}.carries_by_move: six directions (none, up, down, back, forward, other), four steps or fewer each"
                                 )));
                             }
                             let mut s = PanelSlide::default();
@@ -671,16 +668,14 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     };
                     types.push(PanelTypeRule {
                         flags: rule.flags,
-                        road_slide: rule.road_slide,
+                        carries: rule.carries,
                         trail_sound: rule.trail_sound.map(crate::sound::SoundId),
                         expires: rule.expires,
-                        holds: rule.holds,
                         submerges: rule.submerges,
-                        slide,
+                        carries_by_move,
                         cleared_by,
                         doubles,
                         unbreakable: rule.unbreakable,
-                        stops_slides: rule.stops_slides,
                         traps: rule.traps,
                         crumbles: rule.crumbles,
                     });
