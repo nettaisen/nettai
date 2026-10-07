@@ -83,4 +83,6 @@ return {
     frame_counts_first = false,
     -- The description and L's message are the screen's own states.
     description_in_choosing = false,
+    -- The chatbox's end clears the text's buffers only.
+    chatbox_end_clears_tiles = false,
 }

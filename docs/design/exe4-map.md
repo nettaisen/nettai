@@ -693,8 +693,10 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   knows the shift itself (§17's known deviations: `shifted.tsv`, "exact at the replay's known shift").
   The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
   only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
-  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
-  clears the text a tick before the box closes and draws the cursor a frame sooner (group A's).
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
+  text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
+  zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
+  on the tick the screen sees the box closed (`description_in_choosing`).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
