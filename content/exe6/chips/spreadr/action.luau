@@ -2,8 +2,9 @@
 -- The Spreaders' action (the original's action 0x25, `sub_80ECBB0`;
 -- docs/engine/shot-chips.md §5): the shared action
 -- (@exelib/spreadr/action) with EXE6's sound, attachment and bullet.
--- SpoutCross's charged shot fires its own bullet from its water cannon the
--- same way.
+-- Each user states its gun and bullet (`spreader.action { gun = ..., bullet
+-- = ... }`): the Spreaders' (./init); SpoutCross's charged shot and the
+-- patch card puffy's fire theirs from the water cannon the same way.
 
 local attachment = require("../../objects/attachment")
 local bullet = require("../../objects/bullet")
@@ -14,11 +15,6 @@ local spreader = {}
 
 -- One state for every spreader.
 spreader.STATE = common.STATE
-
-spreader.guns = {
-    spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
-    water_cannon = attachment.look { sprite = asset.sprite("water-cannon"), palette = 0, attach_point = 25 },
-}
 
 local LOOK: SpreaderLook = {
     sound = asset.sound("h-burst"),

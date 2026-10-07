@@ -7,6 +7,7 @@
 -- also sets the attack's variant to 1, which picks the fan: the action's
 -- argument here.)
 
+local attachment = require("../../../../objects/attachment")
 local weapon = require("../../../../lib/weapon")
 local windrack = require("../../../../chips/windrack/action")
 
@@ -14,7 +15,12 @@ local charge = {}
 
 -- WindRack's action with TenguCross's fan (its compat key maps it to
 -- 0x3F).
-local GUST = windrack.action { id = "tengucross/charge/gust", rack = windrack.racks.tengu_fan }
+-- TenguCross's fan (the original's attachment row 0x33, WindRack's other
+-- variants).
+local GUST = windrack.action {
+    id = "tengucross/charge/gust",
+    rack = attachment.look { sprite = asset.sprite("tengu-fan"), palette = 0 },
+}
 
 -- The attack's element (Wind, secondary element 0x20) and hit parameter.
 local WIND, HIT_PARAM = 0x20, 0x94

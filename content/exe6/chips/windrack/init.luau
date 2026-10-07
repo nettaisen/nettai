@@ -2,6 +2,7 @@
 -- WindRack: a swing of a rack that hits the column ahead and blows unseen
 -- gusts down every row from it (./action).
 
+local attachment = require("../objects/attachment")
 local action = require("@self/action")
 local lockon = require("../rules/lockon")
 
@@ -13,7 +14,8 @@ local chip: Chip = {
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.widesht },
-    action = action.action { rack = action.racks.wind_rack },
+    -- Its rack (the original's attachment row 0x2A, variant 0).
+    action = action.action { rack = attachment.look { sprite = asset.sprite("wind-rack"), palette = 0 } },
 }
 
 return { windrack = chip }

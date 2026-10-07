@@ -5,7 +5,7 @@
 -- column beyond (the original's action 0x2A, `sub_80ED090`;
 -- docs/engine/shot-chips.md §9). The three differ only in their damage.
 --
--- These are their actions; the chips are ./chips.
+-- Each chip states its action (./init).
 
 local attachment = require("../../objects/attachment")
 local corn = require("./corn")
@@ -30,7 +30,8 @@ local SOUND = asset.sound("corn-shot")
 -- The corn gun (the original's attachment row 0x18).
 local GUN = attachment.look { sprite = asset.sprite("corn-shooter"), palette = 0, attach_point = 25 }
 
-local function action(id: string): Action
+-- A chip's CornSht (its action's id).
+function cornsht.action(id: string): Action
     -- `sub_80ED0AC`: the Atk+ bonus goes into the damage word; the gun;
     -- on the tenth tick the corn, from the navi's own panel, the gun's
     -- next animation, the sound.
@@ -96,11 +97,5 @@ end
 
 -- The corn gun, which CornFsta's farmer (chips/cornfsta) holds too.
 cornsht.gun = GUN
-
-cornsht.actions = {
-    cornsht1 = action("cornsht1/action"),
-    cornsht2 = action("cornsht2/action"),
-    cornsht3 = action("cornsht3/action"),
-}
 
 return cornsht
