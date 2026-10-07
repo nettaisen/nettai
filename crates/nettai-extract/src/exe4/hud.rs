@@ -105,6 +105,9 @@ const WARNING_PALETTE: u32 = 0x0870_C3A0;
 /// 0xE730: 1).
 const PAUSE_AT: (u8, u8) = (100, 64);
 const HP_NUMBER_PRIORITY: u8 = 1;
+/// A message (0x08015FE8: "COUNTER HIT!", text line 14, rendered 14 glyphs
+/// wide by 0x080162CC): its map from column 8 of row 2, 14 columns wide.
+const MESSAGE_AT: (u8, u8, u8) = (8, 2, 14);
 /// The telops (0x0801650C, which lays out the user's on the banner block
 /// and the other player's on the second block): fifteen glyphs centered
 /// from x 0 on the user's console and from x 120 on the other's, at y 32;
@@ -312,7 +315,12 @@ pub fn hud(
         warning_palette: palette(rom, WARNING_PALETTE),
         dialogue_font,
         chatbox: chatbox(rom),
-        layout: HudLayout { pause: PAUSE_AT, hp_number_priority: HP_NUMBER_PRIORITY, telop: Some(telop(rom)) },
+        layout: HudLayout {
+            pause: PAUSE_AT,
+            hp_number_priority: HP_NUMBER_PRIORITY,
+            message: MESSAGE_AT,
+            telop: Some(telop(rom)),
+        },
         language: String::new(),
         languages: Vec::new(),
     }

@@ -507,12 +507,14 @@ pub fn draw<'a>(
     if b.late_turns() && b.round.mode == mode::FIGHTING && timed {
         draw_text(layer, text, hud, text_palette, TEXT_TIME_UP + (b.fight.turn_timer / 60) as usize, (11, 0, 8), problems);
     }
-    // The message (`sub_801E270`: 17 glyphs from column 7, under the gauge).
+    // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
+    // the pack's place).
     if let Some(m) = b.message {
         let line = match m.message {
             nettai_battle::hud::Message::CounterHit => TEXT_COUNTER_HIT,
         };
-        draw_text(layer, text, hud, text_palette, line, (7, 2, 17), problems);
+        let (column, row, width) = hud.layout.message;
+        draw_text(layer, text, hud, text_palette, line, (column as i32, row as i32, width as usize), problems);
     }
 
     // The next chip's name (and damage) at the bottom left, while the
