@@ -57,12 +57,14 @@ return {
     -- Ice slides by the direction the navi last moved (none, up, down,
     -- back, forward, other).
     ice = {
-        NONE,
-        { dx = 0, dy = -1, panels = 1 },
-        { dx = 0, dy = 1, panels = 1 },
-        { dx = -1, dy = 0, panels = 1 },
-        { dx = 1, dy = 0, panels = 1 },
-        NONE,
+        slide = {
+            NONE,
+            { dx = 0, dy = -1, panels = 1 },
+            { dx = 0, dy = 1, panels = 1 },
+            { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
+            NONE,
+        },
     },
     bubble_bob = bob,
     -- A slide and a drag go 10 pixels a tick across and 6 in depth.

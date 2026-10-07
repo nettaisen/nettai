@@ -2592,6 +2592,10 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   `sub_800E994`, EXE5's the same: back and forward by the side, other for two panels or more right or down or a
   diagonal move) or `absolute` (EXE4's 0x0800AF90: left and right whatever the side, across before up and down,
   never other).
+- **`reactions.ice`, since EXE4's port**: what a move's end on ice does. `{ slide = rows }` (EXE6's `byte_800E4E8`,
+  EXE5's 0x0800C988: slide type 2, a row by direction) or `{ push = { side 0's, side 1's } }` (EXE4's 0x0801335A,
+  the table at 0x080133B4: a push bit by side and direction ORed into the final modifier, which the intake's
+  reading of the hit modifiers then turns into a slide, or a drag).
 - **`status.emotions` had no honest short name** as one rule: it picked one of two whole emotion models. It has
   since been split into what it switched, each named for what it does ("`status.emotions`, split", below); no rule
   is named for a game now.
