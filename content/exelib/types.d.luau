@@ -1611,11 +1611,10 @@ export type Lockon = LockonDef
 -- after the navi), the controller's state, and what a game's `make` hands back.
 export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
 export type NaviChipShortCourse = { out: number, after: number }
-export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean, level: number }
+export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean }
 export type NaviChipController = {
     kind: Kind,
     hook: (user: Object, spec: DimmingChipSpec) -> Object?,
-    hook_for: (level: number) -> (user: Object, spec: DimmingChipSpec) -> Object?,
 }
 
 -- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the

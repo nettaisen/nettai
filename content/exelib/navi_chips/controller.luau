@@ -14,8 +14,9 @@
 --   a wait; the navi, which it waits on, then a second wait from the navi's leaving; then the undim, the user warping
 --   back in as it starts.
 --
--- Each chip's `dimming` hook is its controller's `hook`; its navi tells the controller it is done through
--- `navi_chip.navi_left` (the kind's `navi_left`) or `controller.done`.
+-- Each chip makes its own controller, with its own navi (`spawn`: what differs between a navi's chips, its palette and
+-- the like, is the chip's), and its `dimming` hook is that controller's `hook`; the navi tells the controller it is
+-- done through `navi_chip.navi_left` (the kind's `navi_left`) or `controller.done`.
 
 local dimming_chips = require("@exelib/dimming")
 
@@ -23,8 +24,8 @@ local controller = {}
 
 -- The controller's state (`NaviChipControllerState`): the chip, which its telop names and AntiNavi checks (+0x30),
 -- and its Atk+ bonus (+0x32), which the navi's damage adds; whether the navi is out (EXE5's +0x18, EXE4's +0x05 or
--- ExtraVars+0: the flag its spawn sets and its end clears); EXE4's: the chip's first parameter, the navi's level (0,
--- an SP's 3, a DS's 4), which its spawn reads.
+-- ExtraVars+0: the flag its spawn sets and its end clears). (EXE4's controllers keep the chip's first parameter, its
+-- navi's level, which their navis read for their palettes and the like: here each chip states those itself.)
 type State = NaviChipControllerState
 type Step = NaviChipStep
 type Short = NaviChipShortCourse
@@ -43,8 +44,7 @@ export type Spec = {
     warp: ((side: number, out: boolean) -> ())?,
 }
 
--- What `make` hands back (`NaviChipController`): the kind, the chip's `dimming` hook, and the hook of a chip that gives
--- the controller a level (EXE4's).
+-- What `make` hands back (`NaviChipController`): the kind and the chip's `dimming` hook.
 type Controller = NaviChipController
 
 -- The actions: the dim, AntiNavi, the name, the effect, the undim.
@@ -153,7 +153,7 @@ function controller.make(spec: Spec): Controller
     local kind = new.kind {
         id = spec.id,
         pool = "effect",
-        state = { chip = "chip", bonus = "u16", busy = "bool", level = "u8" },
+        state = { chip = "chip", bonus = "u16", busy = "bool" },
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -182,21 +182,18 @@ function controller.make(spec: Spec): Controller
     }
 
     -- The chip's `dimming` hook (the game's dimming spawner's entry for it): the controller, on the user's panel, of
-    -- its side and facing, with the chip and its bonus, and the navi's level (the chip's first parameter).
-    local function hook_for(level: number): (user: Object, spec: DimmingChipSpec) -> Object?
-        return function(user: Object, dspec: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, dspec)
-            if o then
-                local s = o.state :: State
-                s.chip = dspec.chip
-                s.bonus = dspec.bonus
-                s.level = level
-            end
-            return o
+    -- its side and facing, with the chip and its bonus.
+    local function hook(user: Object, dspec: DimmingChipSpec): Object?
+        local o = dimming_chips.spawn(kind, user, dspec)
+        if o then
+            local s = o.state :: State
+            s.chip = dspec.chip
+            s.bonus = dspec.bonus
         end
+        return o
     end
 
-    return { kind = kind, hook = hook_for(0), hook_for = hook_for }
+    return { kind = kind, hook = hook }
 end
 
 return controller

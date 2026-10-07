@@ -1,9 +1,10 @@
 --!strict
 -- JunkMan, JunkMnSP and JunkMnDS (EXE4 chips 0x0F8 to 0x0FA): navi chips, the dimming chips' action 0x0C, its variant
 -- 0x40: their controller (./navi) brings JunkMan, who throws every obstacle on the field at the nearest of the other
--- side's navis in front of him (the poltergeist, @exelib/poltergeist); the chip's first parameter is his level (0, 3,
--- 4), which picks his palette. JunkMnSP's damage goes by how fast its user deleted JunkMan SP (rules/sp_chips: formula
--- 10, the table's row 9), JunkMnDS's by the field's holes (formula 32).
+-- side's navis in front of him (the poltergeist, @exelib/poltergeist); each chip states his palette (0x0800B950 by its
+-- first parameter, its level 0, 3 or 4: two palettes a variant, times 0, 2 or 3). JunkMnSP's damage goes by how fast
+-- its user deleted JunkMan SP (rules/sp_chips: formula 10, the table's row 9), JunkMnDS's by the field's holes (formula
+-- 32).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local navi = require("@self/navi")
@@ -24,7 +25,7 @@ local junkman: Chip = {
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    dimming = navi.hook_for(0),
+    dimming = navi.controller { id = "junkman/controller", palette = 0 }.hook,
 }
 
 local junkmn_sp: Chip = {
@@ -39,7 +40,7 @@ local junkmn_sp: Chip = {
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    dimming = navi.hook_for(3),
+    dimming = navi.controller { id = "junkmn-sp/controller", palette = 4 }.hook,
 }
 
 local junkmn_ds: Chip = {
@@ -53,7 +54,7 @@ local junkmn_ds: Chip = {
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
-    dimming = navi.hook_for(4),
+    dimming = navi.controller { id = "junkmn-ds/controller", palette = 6 }.hook,
 }
 
 return { junkman = junkman, ["junkmn-sp"] = junkmn_sp, ["junkmn-ds"] = junkmn_ds }
