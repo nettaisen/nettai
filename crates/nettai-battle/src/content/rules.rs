@@ -224,6 +224,33 @@ pub struct EffectsRules {
     /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
     /// draws it.
     pub rng1_per_frame: bool,
+    /// Where and which chip icons the HUD stacks over a navi.
+    /// Presentation: the renderer's.
+    pub chip_icons: ChipIcons,
+    /// The ticks the other player's console names a chip a player used,
+    /// the tick it starts on counted (`Battle::used_chip_for`: EXE6's
+    /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
+    /// of the second block that shows without sliding, 33).
+    pub used_chip_ticks: u8,
+}
+
+/// The chip icons the HUD stacks over a navi that holds chips (the
+/// renderer's `icon_parts`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChipIcons {
+    /// Over its sprite's attach point 3, the next chip's icon once for
+    /// every chip held (six at most), each next one two pixels up and
+    /// two away from where the console faces, in front of the field's
+    /// objects (EXE6's `sub_801C082`, EXE5's).
+    AttachPoint,
+    /// At its own offset from its place on the screen (its identity's
+    /// `chip_icons_at`: EXE4's table 0x0800B9E4, by navi number, which
+    /// 0x08015B24 keeps), each chip it holds from the next one on by its
+    /// own icon, each next one two pixels up and two left, at priority 1
+    /// in depth buckets from the icons' count down (EXE4's 0x08014860
+    /// and 0x08015000: the local navi's alone).
+    NaviOffset,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
@@ -1438,6 +1465,14 @@ pub struct PanelRules {
     pub numbers: Vec<PanelType>,
     /// Whether a reservation marks its holder (`Reservations`).
     pub reservations: Reservations,
+    /// The flags word's bits a panel's type owns (its number, solidity, its
+    /// crack and the types' own flags), which a crack, a break or poison
+    /// clears before it sets its own: EXE6's 0x3F5F (`object_crackPanel`
+    /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
+    /// 0x20000 too). A crack keeps the solidity and the crack bit.
+    pub type_mask: u32,
+    /// What the panel a body stands on does each tick (`StandingRule`).
+    pub standing: StandingRule,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the
@@ -1480,6 +1515,41 @@ pub enum ReactionActions {
     /// height and counts no reaction (its pose and its end are the status
     /// section's `drag`).
     Plain,
+}
+
+/// A burning panel's (a panel type's `burn`): a grounded body not of fire
+/// standing on it takes `damage` in fire, shifted by its weakness to fire,
+/// as a hit, unless its status word has a bit of `spared_by` (or its 0x09:
+/// then only the panel turns normal).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BurnRule {
+    pub damage: u16,
+    /// EXE5's 0x88000206, EXE4's 0x206.
+    pub spared_by: u32,
+    /// What the burn wears off the mood besides (EXE4's 20, its +0x36; EXE5's
+    /// none).
+    #[serde(default)]
+    pub mood: u16,
+    /// A player burns while the battle is dimmed too (EXE4's 0x08013128,
+    /// which has no dimming test; every other body's waits, as EXE5's).
+    #[serde(default)]
+    pub players_while_dimmed: bool,
+}
+
+/// What the panel a body stands on does each tick (the panel rules'
+/// `standing`: poison's drain, grass's heal; EXE6's `sub_801A186`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StandingRule {
+    /// Both hold while the battle is paused (EXE6's, EXE5's 0x08016C7E);
+    /// EXE4's (0x08012FF2) run on.
+    pub stops_while_paused: bool,
+    /// At this HP or less a wood body on grass heals on the battle's
+    /// 180-tick count instead of its 20-tick one (EXE6's and EXE5's 9;
+    /// EXE4's none: always the 20-tick count).
+    #[serde(default)]
+    pub slow_heal_at: Option<u16>,
 }
 
 /// A drag's pose and its end (the status section's `drag`).
@@ -1589,10 +1659,10 @@ pub struct PanelTypeRule {
     /// last 60 (EXE6's roads 0x708, `sub_800C380`; EXE5's lava and sea 960,
     /// 0x0800A998).
     pub expires: Option<u16>,
-    /// The fire damage a grounded body standing on it takes, shifted by
-    /// its weakness to fire, as the panel turns normal (EXE5's lava,
-    /// 0x08016D80 and 0x08016E18).
-    pub burn: Option<u16>,
+    /// What it does to a grounded body standing on it as it turns normal
+    /// (EXE5's lava, 0x08016D80 and 0x08016E18; EXE4's, 0x0801309E and
+    /// 0x08013128).
+    pub burn: Option<BurnRule>,
     /// The element of the bodies it drains as poison drains any (EXE5's
     /// sea: fire, 0x08016C7E).
     pub drains: Option<u8>,
