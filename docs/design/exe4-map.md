@@ -634,10 +634,13 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   their layouts) is pixel-exact but for the full gauge's 4-frame shift below: the field, its panels by type and their
   palette cycles. The other 13 wait on their obstacles (§18 item 19).
   Two pieces show 4 frames late: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the full
-  gauge's stripes and "L or R". That is by design, not a replay fault: the engine's custom screen is part of the
-  shared simulation and acts on the link-delayed input every console has, where the original's local screen takes
-  its own joypad at once. The OK reaches it 4 frames later (Round::screen_late), so the counter they run on starts
-  4 frames later, in live play too. Compared 4 frames apart (verify tools/frontend-compare/offset-compare.py), the
+  gauge's stripes and "L or R". That is a shift of the comparison with the recording's console, not of nettai: the
+  recordings' consoles were linked by an emulated cable with a 4-frame delay, which exe4-compat feeds as the
+  original's fight and screen saw it, and the engine's custom screen (part of the shared simulation, with no link
+  delay of its own) takes the OK when the fight's view of it arrives (Round::screen_late), so the counter they run
+  on starts 4 frames later than the original's local screen's. Live nettai has no built-in delay (netplay's
+  `present_delay` is 0, with rollback): its screen reacts on the tick its input arrives. Compared 4 frames apart
+  (verify tools/frontend-compare/offset-compare.py), the
   full gauge's cells are exact on all 10,509 full-gauge frames of flow/no-time-limit.
   The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
   only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
@@ -1200,8 +1203,18 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `first_barrier` at the init (0x0800D892); exe4-compat names the aura types (records.toml). The navi's link to the
     visual is EXE4's object +0x50 (the engine's `barrier_visual`: 0x08012DEC clears it with the barrier, as the
     deletion does); EXE4's AIData +0x60 is the Full Synchro aura's link. The lab's navicust/firstbarrier matches.
-    Open: Shield, Reflect, AntiMagc and HubBatc (the B+Left weapons 0x25 to 0x27: the guard action 0x25 and
-    AntiMagc's 0x72).
+    **Done** too: Shield and Reflect, the B+Left weapons 0x25 and 0x26 (content/exe4/navis/megaman/weapons/guards):
+    EXE4's guard (action 0x25, 0x080ECCF2: content/exe4/lib/guard; the shield, attack 0x2B, 0x080D2224:
+    content/exe4/objects/shield, EXE6's but one sheet, 14 fade ticks for every row, running while dimmed and not while
+    paused, animating then too, and no test of its owner's having vanished), Shield countering nothing, Reflect the
+    charged shot's projectile; Reflect's routine sets the B+Left cooldown as it starts (`reactions.attack_end_lockouts`)
+    and a turned-aside hit marks the guard byte with 1 (`reactions.hit_test.guard_marks_direction`); the guard's sound
+    (0x6E) is the roles' `sounds.guard`. HubBatc has its definition. The lab's navicust/shield, reflect and hubbatc
+    match, sounds too. Open: AntiMagc (routine 0x27: its stance, action 0x72 at 0x080EE9EE, arms the AntiDmg chip's
+    trap for 13 ticks, `sub_802CE8A` with chip 0x91, and its catch is AntiDmg's counter): with the AntiDmg chip. The
+    Guard chips' variants 0 to 2 of the guard counter with a shock wave (0x080CFD2A, its row 6): with the Guard chips.
+    EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
+    is never turned aside while paused in a netbattle (nothing hits then).
 54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
     controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
     a recording with a support stops at its setup.
