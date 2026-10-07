@@ -111,6 +111,7 @@ language = "ja"
 "seekbom2" = { name = "サーチボム2", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
 "seekbom3" = { name = "サーチボム3", description = "てきをねらって\nとんでいくボムを\nなげつける!" }
 "ball" = { name = "ホウガン", description = "3マス前に\nホウガンをなげる!\nパネルはかい攻撃!" }
+"geyser" = { name = "カンケツセン", description = "3マス前になげつけ\nあなマスにおちると\n水がふきだす!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

@@ -31,6 +31,7 @@ return merge {
     require("@self/elem"),
     require("@self/energbom"),
     require("@self/fullcust"),
+    require("@self/geyser"),
     require("@self/greenwd"),
     require("@self/heatshot"),
     require("@self/invalid"),

@@ -28,6 +28,7 @@
 "binder2/action" = 0x09
 "binder3/action" = 0x09
 "darkbomb/action" = 0x09
+"geyser/action" = 0x09
 "energbom/action" = 0x09
 "megenbom/action" = 0x09
 "minibomb/action" = 0x09

@@ -111,6 +111,7 @@ language = "en"
 "seekbom2" = { name = "SeekBom2", description = "Throws a\nbomb at\nthe enemy" }
 "seekbom3" = { name = "SeekBom3", description = "Throws a\nbomb at\nthe enemy" }
 "ball" = { name = "Ball", description = "Breaks\n3rd panel\nahead" }
+"geyser" = { name = "Geyser", description = "Geyser 3\nsquares\nforward" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
