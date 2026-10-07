@@ -48,7 +48,7 @@ struct PanelTypeSection {
     #[serde(default)]
     expires: Option<u16>,
     #[serde(default)]
-    burn: Option<u16>,
+    burn: Option<super::rules::BurnRule>,
     /// An element by name.
     #[serde(default)]
     drains: Option<String>,
@@ -114,6 +114,7 @@ struct PanelsSection {
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
     type_mask: u32,
+    standing: super::rules::StandingRule,
 }
 
 #[derive(Deserialize)]
@@ -680,6 +681,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     numbers,
                     reservations: s.reservations,
                     type_mask: s.type_mask,
+                    standing: s.standing,
                 });
             }
             "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),

@@ -578,6 +578,9 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
+- Panels through a pause and a dimming (§18 item 13): a navi on poison loses HP while the battle is paused, a wood
+  navi on grass heals then, and a player on lava burns while the battle is dimmed (as EXE4's code reads; a lab
+  scenario on `poison-middle` or `lava-middle-close` with a pause, and a dimming chip over lava, would show it).
 
 ## 17. The recordings
 
@@ -831,8 +834,34 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       (0x0800AFF8 on; its sea has 0x20000); EXE6's clear 0x3F5F. The rule `panels.type_mask` (EXE6's 0x3F5F, EXE5's
       and EXE4's 0x23F5F): the engine cleared EXE6's in every game, so an EXE5 sea panel cracked or poisoned kept
       its 0x20000 until its next refresh.
-13. **What each panel does.** Lava (8) turns normal after 960 (stated); its burn, poison's drain, grass, ice (item 1),
-    holy, and the panel trails' sounds are EXE5's or none. Placeholder: `panels.types` flags (and lava's `expires`).
+13. **Done** (what each panel does). Read against the engine's (EXE6's, EXE5's lava):
+    - **Lava's burn** (a player's 0x08013128, then any body's 0x0801309E; the player's runs first, so the second finds
+      the panel normal): a grounded body not of fire, without FloatShoe and none of the status bits 0x206 (EXE5's
+      0x88000206), takes 50 in fire shifted by its weakness to fire, unless flagged 0x09, and 20 more off its mood
+      (collision +0x36, the kernel's mood damage: EXE5's has none); the panel turns normal with its burn's spark. The
+      player's has no dimming test (any body's has). A panel type's `burn` is a table now: `damage`, `spared_by`,
+      `mood`, `players_while_dimmed` (EXE5's `{ damage = 50, spared_by = 0x88000206 }`).
+    - **Poison and grass** (0x08012FF2, EXE6's `sub_801A186`): the same tests (poison's 0x08000028 immunity, the grass
+      test reading the status word after an immune body, as EXE6's), but no pause test, and grass heals a wood body on
+      the battle's 20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less). The rule
+      `panels.standing` (`stops_while_paused`, `slow_heal_at`: EXE6's and EXE5's true and 9, EXE4's false and none).
+      EXE4's player intake runs while paused (only the fight's flag 1 gates it, 0x08013858), so its poison drains and
+      its grass heals through a pause (§16). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the
+      whole byte too): EXE4's objects have no high nibble.
+    - **What passes over a panel** (0x08013058, from the collision's removal, 0x08012A50): grass of fire and lava of
+      aqua turn normal (`cleared_by`, EXE5's 0x08016D14 less its metal of wood), unless the hitbox has 0x0C000000. It
+      has no pause test (EXE5's and EXE6's have): no hitbox is removed while paused (frozen objects), so no rule.
+    - **Holy** (9): the final damage halves on it (0x0800AC3A, EXE6's); EXE4's barrier (0x08012DF8) is its own, with no
+      holy test (kinds by +0x04: the barrier chips' port, the chips wave).
+    - **Ice** (7): item 1's push; elec doubles on it (item 4).
+    - Left, the souls' and the Mod Cards': FireSoul (NaviStats +0x24 = 5) on lava heals 50 and clears it, with effect
+      7 at the navi and sound 0x9A (0x080131B8) instead of burning; WoodSoul (+0x24 = 12) heals 1 more on grass while
+      BattleState +0x16 is 0 (0x08012FB6, after poison). The panel trail is the Mod Cards' (NaviStats +0x1B, 0x080EB254,
+      the move's step): every step (no chance, no RNG draw), the panel left unless missing or broken becomes the
+      trail's type by EXE4's number (1 by `object_breakPanel_dup2`, any other by a type change: a crack by type 3,
+      not the crack routine), sounding 0x124 for poison onto a panel that wasn't (and 0x95 when the type change's
+      return, the panel's occupants' collision bits, is 3: never with the navi's own body on it); EXE6's trail (a
+      NaviCust bug, a chance by level) isn't it: to port with the Mod Cards.
 14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
     find EXE4's drawing of them. Placeholder: EXE5's grids. The any-side step rows are EXE5's too.
 15. **Battle mode 1's mend** and **reservations**: EXE5's until read.
