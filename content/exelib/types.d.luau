@@ -1274,8 +1274,20 @@ export type ThunderBallLook = {
 export type ElemTrapStrike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
 
 -- A game's counterattack (`strike.make_kind`): its strikes by element
--- (null to wood), and what its hits are and reach.
-export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType, bursts: Kind }
+-- (null to wood), what its hits are and reach, its bursts' kind; the panels
+-- it strikes (none: `byte_80E36E4`'s mask over the field, EXE6's and EXE5's;
+-- EXE4's the other side's navi's panels, 0x080E5244), a step after the hits
+-- (EXE4's sets the other side's mood to 1, 0x0800F4DE), and where its bursts
+-- go (none: the whole field; EXE4's the other side's area, 0x080E531F).
+export type ElemTrapStrikeLook = {
+    strikes: { [number]: ElemTrapStrike },
+    self_type: CollisionType,
+    target: CollisionType,
+    bursts: Kind,
+    targets: ((me: Object) -> { { x: number, y: number } })?,
+    after: ((me: Object) -> ())?,
+    bursts_over: ((me: Object) -> Region)?,
+}
 
 -- A game's trap (chips/elemtrap/trap, `trap.make_kind`): what springs it
 -- (fire to wood's first hit, or one element's: the one it is set with),
