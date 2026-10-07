@@ -30,6 +30,7 @@
 # The spawners (the chips' action 0x20, 0x080EC972).
 "lance/action" = 0x20
 "drklance/action" = 0x20
+"invalid/action" = 0x20
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D
