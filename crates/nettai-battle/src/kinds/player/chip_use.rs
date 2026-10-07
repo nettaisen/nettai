@@ -235,12 +235,16 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     let side = b.objects.get(r).alliance;
     match boost {
         Some(Boost::FullSynchro) => {
-            set_mood(b, side, 0x80);
+            // (The mood it leaves: the rules' `emotion.full_synchro_spent`.)
+            let spent = b.game_rules().emotion.full_synchro_spent;
+            set_mood(b, side, spent);
             b.sound(BONUS_SOUND);
         }
         Some(Boost::Anger) => {
             super::status::end_anger(b, r);
-            b.sound(BONUS_SOUND);
+            if b.game_rules().emotion.anger_boost_sound {
+                b.sound(BONUS_SOUND);
+            }
         }
         Some(Boost::Primed) => {
             ai_mut(b, r).primed = false;

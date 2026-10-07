@@ -146,6 +146,12 @@ local status = {
             -- its palette and aura besides); a worn-out navi's buster deals 1; worn out or tired, anger doesn't
             -- start.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },
+            -- A hit's counter byte wears the receiver's mood; a counter hit marks the counter (0x8000) and wears none,
+            -- and the counterer's rules hear it (`sub_801A200`: ./emotion). A chip's use leaves Full Synchro at 0x80,
+            -- and plays the boost's sound for anger's too (`sub_80127C0` after `sub_8012A38`).
+            hit_mood = "counter_mark",
+            full_synchro_spent = 0x80,
+            anger_boost_sound = true,
         },
         form_break = "marked_forms",
         -- A damaging weakness hit asks for that break (`sub_801A506`, a step of its status routine).
