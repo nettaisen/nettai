@@ -23,6 +23,7 @@ return merge {
     require("@self/custom2"),
     require("@self/fish"),
     require("@self/flotshoe"),
+    require("@self/fstbarr"),
     require("@self/gigfldr1"),
     require("@self/hp-100"),
     require("@self/hp-200"),
