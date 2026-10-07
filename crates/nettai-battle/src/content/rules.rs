@@ -224,6 +224,28 @@ pub struct EffectsRules {
     /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
     /// draws it.
     pub rng1_per_frame: bool,
+    /// Where and which chip icons the HUD stacks over a navi.
+    /// Presentation: the renderer's.
+    pub chip_icons: ChipIcons,
+}
+
+/// The chip icons the HUD stacks over a navi that holds chips (the
+/// renderer's `icon_parts`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChipIcons {
+    /// Over its sprite's attach point 3, the next chip's icon once for
+    /// every chip held (six at most), each next one two pixels up and
+    /// two away from where the console faces, in front of the field's
+    /// objects (EXE6's `sub_801C082`, EXE5's).
+    AttachPoint,
+    /// At its own offset from its place on the screen (its identity's
+    /// `chip_icons_at`: EXE4's table 0x0800B9E4, by navi number, which
+    /// 0x08015B24 keeps), each chip it holds from the next one on by its
+    /// own icon, each next one two pixels up and two left, at priority 1
+    /// in depth buckets from the icons' count down (EXE4's 0x08014860
+    /// and 0x08015000: the local navi's alone).
+    NaviOffset,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,

@@ -59,4 +59,9 @@ return {
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out", bounces = false },
     -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
     rng1_per_frame = false,
+    -- The chip icons over the local navi (0x08014860, 0x08015000): at its identity's `chip_icons_at` from its place on
+    -- the screen (0x0800B9E4 by navi number, which 0x08015B24 keeps), each chip it holds from the next one on by its own
+    -- icon (the chip record's +0x20), each next one two pixels up and two left: sprites of priority 1 in the field's layer,
+    -- the first in the depth bucket of the icons' count and each next one a bucket lower. EXE4 has no attach points.
+    chip_icons = "navi_offset",
 }
