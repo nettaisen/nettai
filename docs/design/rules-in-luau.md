@@ -1200,7 +1200,9 @@ EXE6 stays byte-identical; EXE5's side is unit tests and asm citations, and the 
   EXE5's obstacle push (0x08017AD8) isn't ported.
 - **Optional roles (item 4).** `statuses.ice_freeze` and `hooks.encased` may be absent: no freeze, nothing
   encased.
-- **Families (item 5).** `ChipFamily::Recovery` and `Invisible`, appended.
+- **Families (item 5).** `ChipFamily::Recovery` and `Invisible`, appended. (Since: each game's families are its
+  rules' data, `elements.families` and `non_elemental`, and `ChipFamily` a number of its game's; EXE5's keep these
+  numbers.)
 - **The mood (item 6), changed from the answer first given** (the coordinator approved the change): EXE5's mood byte
   is the engine's mood (`NaviStats::mood`), so instead of an `exe5:mood` system with hooks there is
   `battle.gain_mood(side, n)` (EXE5's 0x08012802: 0 and 0xFF stay, 254 at most) and `battle.lose_mood(side, n)`
