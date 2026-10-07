@@ -3,8 +3,21 @@
 -- (action.luau). They differ in the number of bullets (3, 4, 5, 10) and
 -- SuprVulc's bullet's look.
 
+local bullet = require("../objects/bullet")
 local lockon = require("../rules/lockon")
+local regions = require("@exelib/regions")
 local vulcan = require("@self/action")
+
+-- The Vulcans' bullet (the bullet's row 0xC): the panel found and the one
+-- behind it, staggering, its hit shown once at the bullet.
+local SHOT = bullet.variant { region = regions.long, hit_mod = 1, effect = bullet.hit, single = true }
+-- SuprVulc's (row 0x10): the same, its hit brighter.
+local SUPER_SHOT = bullet.variant {
+    region = regions.long,
+    hit_mod = 1,
+    effect = new.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 1 },
+    single = true,
+}
 
 local chips: { [string]: Chip } = {
     vulcan1 = {
@@ -15,7 +28,7 @@ local chips: { [string]: Chip } = {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
-        action = vulcan.action { shots = 3, bullet = vulcan.bullets.plain },
+        action = vulcan.action { shots = 3, bullet = SHOT },
     },
     vulcan2 = {
         codes = { "D", "F", "L" },
@@ -25,7 +38,7 @@ local chips: { [string]: Chip } = {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
-        action = vulcan.action { shots = 4, bullet = vulcan.bullets.plain },
+        action = vulcan.action { shots = 4, bullet = SHOT },
     },
     vulcan3 = {
         codes = { "A", "G", "R" },
@@ -35,7 +48,7 @@ local chips: { [string]: Chip } = {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
-        action = vulcan.action { shots = 5, bullet = vulcan.bullets.plain },
+        action = vulcan.action { shots = 5, bullet = SHOT },
     },
     suprvulc = {
         codes = { "V" },
@@ -45,7 +58,7 @@ local chips: { [string]: Chip } = {
         slot_in_limit = 1,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
-        action = vulcan.action { shots = 10, bullet = vulcan.bullets.super },
+        action = vulcan.action { shots = 10, bullet = SUPER_SHOT },
     },
 }
 
