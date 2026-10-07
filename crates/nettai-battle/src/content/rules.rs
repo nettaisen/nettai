@@ -232,24 +232,6 @@ pub struct EffectsRules {
     /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
     /// of the second block that shows without sliding, 33).
     pub used_chip_ticks: u8,
-    /// What `object_genericDestroy` does with an object's collision before
-    /// it frees the object.
-    pub destroy: DestroyRule,
-}
-
-/// What `object_genericDestroy` does with an object's collision (the
-/// effects section's `destroy`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DestroyRule {
-    /// Frees it as it is (EXE6's, after releasing what the object holds
-    /// when its reservations mark it; EXE5's 0x080138F2): its registrations
-    /// on the panels stay, stale, until the slot is next registered.
-    Frees,
-    /// Unregisters it first (EXE4's 0x080D8C58: `object_removeCollisionData`,
-    /// 0x080129FC), which refreshes its panels and resolves its hits and the
-    /// panels it clears on them, then frees it.
-    Unregisters,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the

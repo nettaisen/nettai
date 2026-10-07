@@ -60,9 +60,6 @@ return {
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out", bounces = false },
     -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
     rng1_per_frame = false,
-    -- An object's destroy (0x080D8C58) unregisters its collision first (0x080129FC: its panels refreshed, its hits
-    -- and the panels it clears resolved on them), then frees it.
-    destroy = "unregisters",
     -- The chip icons over the local navi (0x08014860, 0x08015000): at its identity's `chip_icons_at` from its place on
     -- the screen (0x0800B9E4 by navi number, which 0x08015B24 keeps), each chip it holds from the next one on by its own
     -- icon (the chip record's +0x20), each next one two pixels up and two left: sprites of priority 1 in the field's layer,
