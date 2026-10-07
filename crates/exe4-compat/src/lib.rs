@@ -25,6 +25,7 @@
 
 pub mod codec;
 pub mod save;
+pub mod setup;
 #[cfg(feature = "trace")]
 pub mod trace;
 
@@ -285,6 +286,19 @@ pub struct Compat {
     pub records: RecordNumbers,
     /// panels.toml: by EXE4's panel type number.
     pub panels: BTreeMap<u8, PanelEntry>,
+    /// navicust.toml: the NaviCust programs' numbers and colored variants.
+    pub navicust: NaviCustNumbers,
+}
+
+/// EXE4's NaviCust programs (navicust.toml): each program's number (a part
+/// id's high bits), by key, and its colored variants (a part id's low
+/// bits) in the order of its definition's colors.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+pub struct NaviCustNumbers {
+    #[serde(default)]
+    pub programs: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub variants: BTreeMap<String, Vec<u8>>,
 }
 
 /// EXE4's navi states, by their CurAction (the player's state table,
@@ -296,7 +310,7 @@ const EXE4_STATES: [nettai_battle::kinds::player::NaviAction; 7] = {
 };
 
 /// The files of a compat folder.
-pub const FILES: [&str; 10] = [
+pub const FILES: [&str; 11] = [
     "chips.toml",
     "assets.toml",
     "text.toml",
@@ -307,10 +321,11 @@ pub const FILES: [&str; 10] = [
     "actions.toml",
     "records.toml",
     "panels.toml",
+    "navicust.toml",
 ];
 
 /// This repository's compat (content/exe4/compat), built in.
-const EXE4: [(&str, &str); 10] = [
+const EXE4: [(&str, &str); 11] = [
     ("chips.toml", include_str!("../../../content/exe4/compat/chips.toml")),
     ("assets.toml", include_str!("../../../content/exe4/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/exe4/compat/text.toml")),
@@ -321,6 +336,7 @@ const EXE4: [(&str, &str); 10] = [
     ("actions.toml", include_str!("../../../content/exe4/compat/actions.toml")),
     ("records.toml", include_str!("../../../content/exe4/compat/records.toml")),
     ("panels.toml", include_str!("../../../content/exe4/compat/panels.toml")),
+    ("navicust.toml", include_str!("../../../content/exe4/compat/navicust.toml")),
 ];
 
 /// The engine's panel type of an engine panel name as panels.toml writes
@@ -431,7 +447,30 @@ impl Compat {
             }
             panels.insert(n, p);
         }
-        Ok(Compat { chips, chip_keys, assets, text: text_file, rules, stages, games, kinds, actions, records, panels })
+        let navicust: NaviCustNumbers = toml::from_str(&text("navicust.toml")?).map_err(|e| format!("navicust.toml: {e}"))?;
+        Ok(Compat { chips, chip_keys, assets, text: text_file, rules, stages, games, kinds, actions, records, panels, navicust })
+    }
+
+    /// A save's NaviCust part (its id: 4 x the program's number + the
+    /// variant): the program's key and the color's place in its definition's
+    /// colors; none for the empty part 0.
+    pub fn navicust_part(&self, id: u8) -> Result<Option<(&str, u8)>, String> {
+        if id == 0 {
+            return Ok(None);
+        }
+        let number = id >> 2;
+        let key = self
+            .navicust
+            .programs
+            .iter()
+            .find(|(_, n)| **n == number)
+            .map(|(k, _)| k.as_str())
+            .ok_or_else(|| format!("navicust.toml has no program {number} (part id {id:#04x})"))?;
+        let color = self.navicust.variants[key]
+            .iter()
+            .position(|&v| v == id & 3)
+            .ok_or_else(|| format!("{key} has no color in variant {} (part id {id:#04x})", id & 3))?;
+        Ok(Some((key, color as u8)))
     }
 
     /// A chip's id (`cannon`) by its number.

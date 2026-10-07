@@ -190,8 +190,13 @@ charged weapon's routines (0x0800BD62: copied to the AI data's +0x0D and +0x0F, 
 0x0800BD1C; the routines at 0x0800CA7C: 0 the buster, 0x0800CC2E, 1 the charged shot, 0x0800CC54); +0x25 is the move
 lag's column (0x0800C208).
 
-The rest (+0x01 to +0x04, +0x0B, +0x0D, +0x15, +0x16, +0x19, +0x1C to +0x1E, +0x22, +0x26, +0x29, +0x2B) is used and
-unread yet: the step that ports what reads it names it.
+The NaviCust's handlers and bugs (§8) write: +0x01 to +0x04 super armor, FloatShoes, AirShoes, Undershirt; +0x0B
+BustPack's weapon level (0 to 2, copied to the AI data's +8 at the init, 0x0800D8D2); +0x0D the move bug (0xFF
+confused 720 ticks as the round starts, 0x0800D8B0; else its high nibble, in the keys' bits, is held when no direction
+is, 0x0800B4DA); +0x15 the encounter bug; +0x16 SneakRun; +0x17's bits 1 to 4 OilBody, Fish, Battery, Jungle; +0x19
+Collect (bit 1) and the result bug (1); +0x1C Humor; +0x1D BugStop; +0x1E SoulClen (read by the light/dark value's
+update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x29, +0x2B) is used and unread yet: the step that
+ports what reads it names it.
 
 ### 3.4 RAM
 
@@ -386,10 +391,25 @@ frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's b
 ## 8. NaviCust and Mod Cards
 
 The NaviCust compile EXE5 and EXE6 share (`sub_813C458`) and its placement checks have no counterpart: EXE4's compile
-is its own. 47 programs, four color variants each (188 parts, T; the part table at 0x0804563C in Red Sun US, 0x08045644
-in Blue Moon US). The save's NaviCust: its list at 0x4564 and the 5x5 grid at 0x4540 (T). **Mod Cards** (EXE4's patch
-cards): 134 by Tango's count, six slots in the save (0x464C on, 0x4653 off, T), whose effects set NaviStats bytes by
-number (§3.3); the cards' routine is to find (EXE5's 0x08138214 has no counterpart).
+is its own (R). 47 programs, four color variants each (188 parts; the part table at 0x0804563C in Red Sun US,
+0x08045644 in Blue Moon US, 0x08045538 and 0x08045540 in the Japanese: EXE5's format, +1 the plus flag, +3 the color,
++4 the bug, +8 and +0xC the shapes, its +0 group never read). The save's NaviCust: its list at 0x4564 (25 parts of 8
+bytes) and the 5x5 grid at 0x4540 (T). **Mod Cards** (EXE4's patch cards): 134 by Tango's count, six slots in the save
+(0x464C on, 0x4653 off, T), whose effects set NaviStats bytes by number (§3.3), their handlers the table at
+0x08041E8C, their bugs counted with the NaviCust's (0x080476E0).
+
+**The reload** (0x08035130; as ported: content/exe4/rules/navicust): the analysis (0x08047344) counts each program's
+bug by where it is (the command line, the third row, right to left: a plus part on it; off it, a program), by its
+neighbors (its shape uncompressed, moved a cell each way: one of its color counts that one's bug), by HubBatc (once
+more) and by the colors (0x08047644: five bring the move and custom bugs once, six twice); the stats reset keeping
++0x00, +0x20, +0x29 and +0x36 (0x08036CC0); the programs' handlers (0x08041974, the table 0x08041A50: the command
+line's right to left, a part already run to the right skipped; the plus parts off it in the list's order, then on it
+left to right), the HP programs' sum making the maximum (0x08042FD0: the HP left as it was); the bugs (0x08042A94:
+BugStop, +0x1D, drops the counts instead), each at its count's level, 1 to 3, by the table 0x08042B18; the Mod Cards
+from the last slot to the first (0x08041E6A), the maximum again after each; the bugs again, all of them (0x08042A58).
+tools/exe4/gen_navicust.py (verify) writes the programs (content/exe4/navicust), their numbers
+(compat/navicust.toml) and names from the part tables; programs 29 to 33 and 40 (the elements' charged shots and
+WeapLV+1) have no colored part, so no save holds them, and have no definition.
 
 ## 9. The link exchange
 
@@ -963,7 +983,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 29. **Cannon's family** (+0x0B, 0x0B) and **what 0x0800BA66 does** as action 0x0B starts. Placeholder: `family =
     "null"`.
 30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
-    neither, the lab's first batch's.
+    neither, the lab's first batch's. **Done:** the NaviCust (§8: rules/navicust, the setup's `navicust_programs`,
+    exe4-compat's from a recording's list, the replays comparing the stats it compiles); the lab's navicust/
+    recordings whose programs are ported match. Open: the Mod Cards (items 56 to 58); the programs below.
 
 ### 18.5 Roles and the custom screen
 
@@ -1051,3 +1073,21 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
     slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
     of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
+53. **FirstBarrier, HubBatc, Shield, Reflect, AntiMagc.** FstBarr's handler sets the aura at the start (+0x21 = 1, the
+    Barrier chip's barrier: the init raises it, 0x0800D894, 0x08012DCE, its visual 0x080E2622), which the Mod Cards'
+    Barrier100, Barrier200 and LifeAura set too (2, 3, 6); Shield, Reflect and AntiMagc set B+Left (+0x0C = 0x25,
+    0x26, 0x27: weapon routines of the table at 0x0800CA7C); HubBatc runs FstBarr's and Shield's handlers among its
+    eight. Until they are ported the five programs have no definition (tools/exe4/gen_navicust.py's `WAITING`), and the
+    recordings that carry them stop at their setup.
+54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
+    controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
+    a recording with a support stops at its setup.
+55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
+    bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
+    RNG1 never moves in the fight).
+56. **The Mod Cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
+    group): the cards' content, their handlers (0x08041E8C), the setup's `mod_cards`, exe4-compat's from a recording's
+    slots (a recording with a card on stops at its setup until then).
+57. **The ~50 Mod Cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
+    buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
+58. **The 12 soul Mod Cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
