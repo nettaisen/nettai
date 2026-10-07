@@ -195,6 +195,7 @@ struct CustomScreenSection {
     cursor_after_leaving: bool,
     frame_counts_first: bool,
     description_in_choosing: bool,
+    chatbox_end_clears_tiles: bool,
 }
 
 #[derive(Deserialize)]
@@ -763,6 +764,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     cursor_after_leaving: s.cursor_after_leaving,
                     frame_counts_first: s.frame_counts_first,
                     description_in_choosing: s.description_in_choosing,
+                    chatbox_end_clears_tiles: s.chatbox_end_clears_tiles,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,

@@ -193,6 +193,14 @@ pub struct CustomScreenLayout {
     /// states, which draw only the emblem (EXE6's `sub_8026E4C`).
     /// Presentation.
     pub description_in_choosing: bool,
+    /// The chatbox's end clears the text's sprite tiles in video memory
+    /// itself (EXE4's 0x0805393C zero-fills 0x06015700 with the buffers),
+    /// which shows a frame before the box's first closing step, drawn
+    /// through buffers: as drawn, the text is gone from the tick the wait
+    /// for a key is answered; else it clears only the buffers the tiles are
+    /// copied from (EXE6's and EXE5's `chatbox_8045F60`), and the text goes
+    /// with the box's first step. Presentation.
+    pub chatbox_end_clears_tiles: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -363,6 +371,7 @@ impl Default for CustomScreenLayout {
             cursor_after_leaving: true,
             frame_counts_first: false,
             description_in_choosing: false,
+            chatbox_end_clears_tiles: false,
         }
     }
 }
