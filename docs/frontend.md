@@ -169,8 +169,12 @@ twelve characters cut short spelled as the game's dialogue spells it (`robot-con
   `initMapTilesState_803037c`'s descriptors and `decompressCoordEventData_8030aa4`'s collision data, one of each
   per set). In EXE5 every such comp draws the same map tiles, and each of the two collision maps (the
   SquirrelCmps', the others') holds comps of both: nothing else in the data sets the eleven apart.
-- Two backgrounds of one area are told apart by a part's number (`end-area2`) or a story state
-  (`mr-weather-comp-storm`).
+- Two backgrounds of one area are told apart by a story state (`mr-weather-comp-storm`), or by a part's number
+  where they differ.
+- Numbers whose load data, scroll callbacks and animations are the same are one background (EXE5's liberation
+  maps' numbers and their areas': `acdc-area` is 0x08 and 0x0C), named for its area: one key, one picture in the
+  pack (the first number's), and compat/assets.toml lists every number (`acdc-area = [0x08, 0x0c]`). EXE6 and
+  EXE4 have none such (verify's `areas.py --check` compares the numbers a name lists in the ROM).
 - EXE5 has two that no menu name gives: the VisionBursts' maps, which the menu leaves blank and their own
   dialogue names (`visionburst`), and one no map draws, named for the battles whose settings state it
   (`nebulagray`).
@@ -215,8 +219,8 @@ state as `backgrounds`.
 Mr.Weather's comps are the one place the story changes it (`sub_8081308`'s `word_8081368`: a map and an event
 flag): each draws 0x15 until its typhoon virus is beaten, then 0x10.
 
-**EXE5** has 29. A link battle draws one of 0x00 to 0x1A (0x08129F2C's table at 0x08129F6C, its `link_pick`
-rules' `backgrounds`).
+**EXE5** has 29 numbers and 22 backgrounds. A link battle draws one of 0x00 to 0x1A (0x08129F2C's table at
+0x08129F6C, its `link_pick` rules' `backgrounds`: a merged background there as often as its numbers are).
 
 <!-- backgrounds:exe5 -->
 | Number | Name | The maps that draw it (the menu's names; map group:numbers) | Named from | Also | Was (its picture) |
@@ -233,32 +237,35 @@ rules' `backgrounds`).
 | 0x09 | `oran-area` | Oran Area1, 2 (0x91:0, 1) | the menu | a link battle | `calendar-gold` (red diamonds rising on black) |
 | 0x0a | `scilab-area` | SciLab1, 2, 4 (0x92:0, 1, 2) | **the menu, spelled out as the dialogue has it** | a link battle | `ones-and-zeros` (slanted 01s and 10s on bright blue) |
 | 0x0b | `visionburst` | unnamed maps (0x8a:0, 0x8a:1, 0x8a:2) | **the dialogue: the menu names none** | a link battle | `grid` (a green grid on black, warping) |
-| 0x0c | `acdc-area3` | ACDC Area3 (0x86:0) | the menu | a link battle | `calendar-blue-2` (0x08's again) |
-| 0x0d | `oran-area3` | Oran Area3 (0x86:1) | the menu | a link battle | `calendar-gold-2` (0x09's again) |
-| 0x0e | `scilab-area3` | SciLab3 (0x86:2) | the menu | a link battle | `ones-and-zeros-2` (0x0a's again) |
+| 0x0c | `acdc-area` | ACDC Area3 (0x86:0) | **the menu: 0x08's area, the same load data** | a link battle | `calendar-blue-2` (0x08's again) |
+| 0x0d | `oran-area` | Oran Area3 (0x86:1) | **the menu: 0x09's area, the same load data** | a link battle | `calendar-gold-2` (0x09's again) |
+| 0x0e | `scilab-area` | SciLab3 (0x86:2) | **the menu: 0x0a's area, the same load data** | a link battle | `ones-and-zeros-2` (0x0a's again) |
 | 0x0f | `end-area` | End Area1, 3, 4 (0x93:0, 1, 2) | the menu | a link battle | `numbers-3` (red and green diamonds on dark red) |
 | 0x10 | `ship-comp` | ShipComp1, 1, 2, 3 (0x82:0, 1, 2, 3) | the menu | a link battle | `ship-wheels` (ship's wheels on blue) |
 | 0x11 | `scilab-hp` | SciLab HP (0x88:4) | the menu | a link battle | `swirls` (swirls) |
-| 0x12 | `end-area2` | End Area2 (0x86:3) | the menu | a link battle | `numbers` (0x0f's again) |
+| 0x12 | `end-area` | End Area2 (0x86:3) | **the menu: 0x0f's area, the same load data** | a link battle | `numbers` (0x0f's again) |
 | 0x13 | `gargcastle-hp` | GargCastleHP (0x88:5) | the menu | a link battle | `lions` (pale lion masks on cream, one lit at a time) |
-| 0x14 | `end-area5` | End Area5 (0x86:4) | the menu | a link battle | `numbers-2` (0x0f's again) |
+| 0x14 | `end-area` | End Area5 (0x86:4) | **the menu: 0x0f's area, the same load data** | a link battle | `numbers-2` (0x0f's again) |
 | 0x15 | `soulserv-comp` | SoulServComp (0x84:4) | the menu | a link battle | `crests` (dark red crests on black) |
 | 0x16 | `gargoyle-comp` | GargoylComp1, 2, 2, 3 (0x83:0, 1, 2, 3) | **the menu, spelled out as the dialogue has it** | a link battle | `shuriken` (shuriken turning on purple) |
 | 0x17 | `factory-comp` | FactoryComp1, 2, 3, 4 (0x84:0, 1, 2, 3) | the menu | a link battle | `microchips` (gray chips with a magenta core, coming apart) |
 | 0x18 | `undernet` | Undernet1, 2, 3 (0x94:0, 1, 2); NebulaArea6 (0x94:5) | the menu | a link battle | `glyphs-2` (brown speckles) |
 | 0x19 | `nebula-area` | NebulaArea2, 4 (0x94:3, 4) | the menu | a link battle | `glyphs-blue` (0x18's speckles in dark blue) |
-| 0x1a | `undernet4` | Undernet4 (0x86:5) | the menu | a link battle | `glyphs` (0x18's again) |
+| 0x1a | `undernet` | Undernet4 (0x86:5) | **the menu: 0x18's area, the same load data** | a link battle | `glyphs` (0x18's again) |
 | 0x1b | `nebulagray` | none | **the battles that state it: no map draws it** | 2 battle settings state it (0x081140e0, 0x08114270) | unnamed (not looked at) |
-| 0x1c | `nebula-area1` | NebulaArea1, 3, 5 (0x86:6, 7, 8) | the menu |  | unnamed (0x19's again) |
+| 0x1c | `nebula-area` | NebulaArea1, 3, 5 (0x86:6, 7, 8) | **the menu: 0x19's area, the same load data** |  | unnamed (0x19's again) |
 <!-- /backgrounds:exe5 -->
 
-- A liberation's map (group 0x86) draws its area's picture again: the same load data as the area's other parts
-  (0x0C as 0x08, 0x0D as 0x09, 0x0E as 0x0A, 0x12 and 0x14 as 0x0F, 0x1A as 0x18, 0x1C as 0x19).
+- A liberation's map (group 0x86) draws its area's picture again: the same load data, scroll callbacks and
+  animations as the area's other parts (0x0C as 0x08, 0x0D as 0x09, 0x0E as 0x0A, 0x12 and 0x14 as 0x0F, 0x1A as
+  0x18, 0x1C as 0x19), so its number is its area's background (`acdc-area`, `oran-area`, `scilab-area`,
+  `end-area`, `undernet`, `nebula-area`). The extractor checks that they are the same and writes the first's.
 - While its liberation runs, such a map draws another picture. The loader (0x0808C2C8) takes the load data from a
   second table (0x0808C500, where the usual one is 0x0808C578) when the map is the running mission's (0x08051982)
   and the battle isn't a link battle; the two tables differ for those seven numbers alone. The pack has the usual
   table's pictures, which are a link battle's.
-- 0x1B and 0x1C are not among a link battle's, and no recording has shown them: their drawing isn't compared.
+- 0x1B and 0x1C are not among a link battle's (0x1C's picture is 0x19's, which a link battle draws), and no
+  recording has shown 0x1B: its drawing isn't compared.
 
 **EXE4** has 27. Its routine is 0x08085BAC (the table at 0x08085BD0; a real-world map's 0x03), the menu's names
 0x0802DEB0's (a group's first name number plus the map number, into the archive at 0x086E8770), and a battle's
