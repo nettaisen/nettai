@@ -53,6 +53,7 @@ cross-slash = "10-35"
 explosion = "14-00"  # hit spark 0x0B (0x080E2090; EXE5's row 0x0B)
 impact = "14-01"  # hit spark 7 (0x080E2090; EXE5's row 7)
 small-puff = "14-02"
+deletion = "14-03"  # a navi's deletion: effect row 3 (0x080E1698), from 0x080108EE
 pink-flash = "14-04"  # hit spark 5, the charged shot's (0x080E2090; EXE5's 0x080E0814 row 5)
 hit-sparks = "14-05"
 hit = "14-06"  # hit spark 8 (0x080E2090; EXE5's row 8)
@@ -73,6 +74,7 @@ unselect-68 = 0x068
 refused = 0x069  # what the custom screen can't pick or take back, a soul it can't give (0x08020386, 0x08020634)
 buster-shot = 0x06a  # the buster shot and the charged shot (0x080EB372, 0x080ECC72)
 hit = 0x06b  # a navi's hit: the hit intake (0x08013A96), on every console
+deleted = 0x06c  # a navi's deletion (action 2's explosions, 0x080108E2)
 auto-battle-hit = 0x06d  # a navi in auto battle hit (NaviStats +0x26 = 1): the hit intake (0x08013A9A)
 hit-bomb-0 = 0x06f
 hit-bomb-1 = 0x070
