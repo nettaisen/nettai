@@ -312,7 +312,14 @@ mod tests {
         }
         assert!(step(&four, "exe4", &mut side, "karma", 1));
         assert_eq!((number(&four, &side, "karma"), number(&four, &side, "hp")), (Some(460), Some(997)));
-        assert_eq!(version(&four, "exe4", &side), "", "EXE4 states no version");
+        assert_eq!(version(&four, "exe4", &side), "", "a new build states no version");
+        // Its version's preset: Red Sun's six souls, then Blue Moon's.
+        assert!(step(&four, "exe4", &mut side, "version", 1));
+        let red = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"].map(String::from).to_vec();
+        assert_eq!((side.version(&four), forms(&four, &side, "souls")), (Some("redsun"), red));
+        assert!(step(&four, "exe4", &mut side, "version", 1));
+        let blue = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"].map(String::from).to_vec();
+        assert_eq!((side.version(&four), forms(&four, &side, "souls")), (Some("bluemoon"), blue));
     }
 
     /// EXE6's version: a new build states none (none is assumed) and is on

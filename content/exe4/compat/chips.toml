@@ -288,4 +288,16 @@
 "blakbarr" = { id = 0x134, version = "redsun" }
 "bluemoon" = { id = 0x135, version = "bluemoon" }
 "bugcharg" = { id = 0x136, version = "redsun" }
+"rollsoul" = { id = 0x161 }
+"gutssoul" = { id = 0x162 }
+"windsoul" = { id = 0x163 }
+"srchsoul" = { id = 0x164 }
+"firesoul" = { id = 0x165 }
+"thunsoul" = { id = 0x166 }
+"protsoul" = { id = 0x167 }
+"numsoul" = { id = 0x168 }
+"metlsoul" = { id = 0x169 }
+"junksoul" = { id = 0x16a }
+"aquasoul" = { id = 0x16b }
+"woodsoul" = { id = 0x16c }
 "invalid" = { id = 0x184 }
