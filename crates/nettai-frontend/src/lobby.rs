@@ -12,7 +12,8 @@
 //!
 //! 1. **Lobby** — a peer's proposal, `Settings { game, rounds }`, the
 //!    rounds by name (each round's stage and background stated, or left to
-//!    the seed), and whether the peer is ready to play it; with the
+//!    the seed), whether the peer is ready to play it, and its player's
+//!    name ([`player_name`]: shown, never taken for who they are); with the
 //!    compatibility fields (the protocol's version, the engine's, the
 //!    content's hash, the role), so a peer that can't play the other's
 //!    match says so at once. The lobby is symmetric: each peer proposes
@@ -244,8 +245,9 @@ impl Settings {
 /// nonces), both sides (by side: the host's, then the joiner's), this
 /// peer's side, the set they play and its match (every round's place
 /// stated, as the seed picks those the settings leave: what a replay
-/// keeps); and this peer's Reveal as sent, which it sends again to a
-/// Hello or a Reveal that comes after the match is agreed.
+/// keeps); both players' names as their lobbies said them last (by side);
+/// and this peer's Reveal as sent, which it sends again to a Hello or a
+/// Reveal that comes after the match is agreed.
 #[derive(Clone)]
 pub struct Agreement {
     pub settings: Settings,
@@ -254,6 +256,7 @@ pub struct Agreement {
     pub side: usize,
     pub set: Set,
     pub m: Match,
+    pub names: [String; 2],
     pub answer: Vec<u8>,
 }
 
@@ -274,6 +277,17 @@ struct Theirs {
     revision: u32,
     settings: Result<Settings, String>,
     ready: bool,
+    name: String,
+}
+
+/// The most characters of a player's name the lobby carries.
+pub const NAME_LENGTH: usize = 16;
+
+/// A player's name as the lobby carries and shows it: its control
+/// characters left out, trimmed, at most [`NAME_LENGTH`] characters. A
+/// name is only shown: nothing takes it for who the player is.
+pub fn player_name(name: &str) -> String {
+    name.chars().filter(|c| !c.is_control()).collect::<String>().trim().chars().take(NAME_LENGTH).collect::<String>().trim_end().to_string()
 }
 
 /// Where the handshake is past the lobby.
@@ -305,6 +319,8 @@ pub struct Lobby {
     compat: Compat,
     mine: Settings,
     ready: bool,
+    /// This player's name ([`player_name`]).
+    name: String,
     revision: u32,
     theirs: Option<Theirs>,
     side: Side,
@@ -338,6 +354,7 @@ impl Lobby {
             compat: Compat::new(content, role),
             mine: settings,
             ready: false,
+            name: String::new(),
             revision: 0,
             theirs: None,
             side,
@@ -376,6 +393,23 @@ impl Lobby {
 
     pub fn their_ready(&self) -> bool {
         self.theirs.as_ref().is_some_and(|t| t.ready)
+    }
+
+    /// The other player's name, as their lobby said it last ([`player_name`]:
+    /// shown, never taken for who they are).
+    pub fn their_name(&self) -> Option<&str> {
+        self.theirs.as_ref().map(|t| t.name.as_str())
+    }
+
+    /// Say this player's name ([`player_name`] of it) to the other peer.
+    /// Not in the middle of agreeing: a name stays as it was agreed with.
+    pub fn set_name(&mut self, name: &str) {
+        let name = player_name(name);
+        if name != self.name && matches!(self.phase, Phase::Lobby) {
+            self.name = name;
+            self.revision += 1;
+            self.changed = true;
+        }
     }
 
     /// Propose `settings`: a change clears this peer's ready (and the
@@ -471,16 +505,17 @@ impl Lobby {
         if !self.compatible(&compat) || self.over() {
             return;
         }
-        let (Ok(revision), Ok(ready), Ok(settings)) = (r.get::<u32>(), r.get::<bool>(), r.bytes()) else { return };
+        let (Ok(revision), Ok(ready), Ok(settings), Ok(name)) = (r.get::<u32>(), r.get::<bool>(), r.bytes(), r.get::<String>()) else { return };
         if self.theirs.as_ref().is_some_and(|t| revision <= t.revision) {
             return;
         }
         let settings = Settings::from_bytes(&self.content, settings);
+        let name = player_name(&name);
         // A change of theirs clears this peer's ready too.
         if self.theirs.as_ref().is_some_and(|t| t.settings != settings) && self.ready {
             self.change(false);
         }
-        self.theirs = Some(Theirs { revision, settings, ready });
+        self.theirs = Some(Theirs { revision, settings, ready, name });
         // (A commitment stands while the other's state is the one agreed.)
         if let Phase::Hello(c) | Phase::Reveal(c, _) = &self.phase
             && !(ready && c.revisions.1 == revision)
@@ -586,6 +621,7 @@ impl Lobby {
         w.put(&self.revision);
         w.put(&self.ready);
         w.bytes(&self.mine.to_bytes(&self.content));
+        w.put(&self.name);
         out
     }
 
@@ -631,7 +667,9 @@ impl Lobby {
         let seed = seed(host, join);
         let sides = if me == 0 { [self.side.clone(), side] } else { [side, self.side.clone()] };
         let (set, m) = crate::netplay::netplay_setup(&self.content, seed, &c.settings, sides.clone())?;
-        Ok(Agreement { settings: c.settings.clone(), seed, sides, side: me, set, m, answer: c.reveal.clone() })
+        let their_name = self.their_name().unwrap_or("").to_string();
+        let names = if me == 0 { [self.name.clone(), their_name] } else { [their_name, self.name.clone()] };
+        Ok(Agreement { settings: c.settings.clone(), seed, sides, side: me, set, m, names, answer: c.reveal.clone() })
     }
 }
 
@@ -725,6 +763,35 @@ mod tests {
 
     fn settings(rounds: Vec<RoundSettings>) -> Settings {
         Settings { game: "exe6".into(), rounds }
+    }
+
+    /// Each player's name goes to the other, cut to its length and without
+    /// control characters, and the agreement holds both by side; a name
+    /// changes nobody's readiness.
+    #[test]
+    fn names_go_to_the_other_player() {
+        let content = nettai_match::testing::exe6_content();
+        let s = settings(vec![RoundSettings::default(); TRIPLE_BATTLE]);
+        let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
+        lobbies[0].set_name("  Lan\u{7}\u{1b}[31m ");
+        lobbies[1].set_name("Chaud Blaze, of Officials");
+        lobbies[1].set_ready(false);
+        run(&mut lobbies, Instant::now(), 3, &mut |_, _| {});
+        assert_eq!(lobbies[1].their_name(), Some("Lan[31m"));
+        assert_eq!(lobbies[0].their_name(), Some("Chaud Blaze, of"));
+        assert!(lobbies[0].ready(), "a name changes no readiness");
+        lobbies[1].set_ready(true);
+        run(&mut lobbies, Instant::now(), 20, &mut |_, _| {});
+        let names: Vec<[String; 2]> = lobbies
+            .iter_mut()
+            .map(|l| match l.poll(Instant::now()) {
+                Status::Agreed(a) => a.names.clone(),
+                _ => panic!("not agreed"),
+            })
+            .collect();
+        assert_eq!(names[0], ["Lan[31m".to_string(), "Chaud Blaze, of".to_string()]);
+        assert_eq!(names[1], names[0]);
+        assert_eq!(player_name("\u{0}\u{0}"), "");
     }
 
     /// Settings go by name and read back; ones this content can't play are

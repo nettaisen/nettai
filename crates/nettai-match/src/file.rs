@@ -400,7 +400,19 @@ pub fn game_of(text: &str) -> Result<String, String> {
 pub fn write(content: &Content, m: &Match) -> String {
     let file = to_file(content, m);
     let body = toml::to_string_pretty(&file).expect("a match file serializes");
-    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-demo --match FILE`.\n\n{}", tidy(&body, &file))
+    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-demo --match FILE`.\n\n{}", tidy(&body, &[("left", &file.left), ("right", &file.right)]))
+}
+
+/// A side alone as TOML, under the table `key` (`[side]`), laid out as a
+/// match file lays out its sides: what a file of one side holds (a
+/// player's build, under a header of its own), which [`resolve_side`]
+/// reads back.
+pub fn side_toml(content: &Content, key: &str, s: &Side) -> String {
+    let side = side_file(content, s);
+    let mut table = toml::map::Map::new();
+    table.insert(key.to_string(), toml::Value::try_from(&side).expect("a side serializes"));
+    let body = toml::to_string_pretty(&table).expect("a side serializes");
+    tidy(&body, &[(key, &side)])
 }
 
 /// The most entries of a fact's list a file writes on one line.
@@ -434,14 +446,15 @@ fn inline(v: &toml::Value) -> toml_edit::Value {
     }
 }
 
-/// `body`, the pretty printer's text of `file`, as a person would lay it
-/// out: a fact's short list on its line (`crosses = ["heatcross",
-/// "eleccross"]`; a longer one an entry a line, as the printer has it), and
-/// a list of records an inline table a line, after the side's other values
-/// (the printer makes a table of each, under its own header).
-fn tidy(body: &str, file: &MatchFile) -> String {
+/// `body`, the pretty printer's text of a file of `sides` (each its table's
+/// name and the side), as a person would lay it out: a fact's short list on
+/// its line (`crosses = ["heatcross", "eleccross"]`; a longer one an entry
+/// a line, as the printer has it), and a list of records an inline table a
+/// line, after the side's other values (the printer makes a table of each,
+/// under its own header).
+fn tidy(body: &str, sides: &[(&str, &SideFile)]) -> String {
     let mut doc: toml_edit::DocumentMut = body.parse().expect("a match file parses");
-    for (side, of) in [("left", &file.left), ("right", &file.right)] {
+    for &(side, of) in sides {
         for (key, _) in &of.facts.0 {
             let list = doc.get_mut(side).and_then(|s| s.get_mut(key)).and_then(|f| f.as_array_mut());
             if let Some(list) = list.filter(|l| l.len() <= SHORT_LIST) {
