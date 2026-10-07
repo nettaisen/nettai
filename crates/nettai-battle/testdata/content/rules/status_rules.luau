@@ -15,10 +15,9 @@ return {
     missing_collision_status = 0xE3A02004,
     -- A drag, the slides and a flinch, then the mercy flash's timer.
     reactions = "flash_timer_last",
-    -- The HP bug drains before a hit's NaviCust bug is taken, whose drain
-    -- argument adds; no no-charge drive; a loss of HP takes the HP alone.
+    -- The HP bug drains before a hit's NaviCust bug is taken; no no-charge
+    -- drive; a loss of HP takes the HP alone.
     bugs_before_drain = false,
-    drain_bug_flags = false,
     no_charge_drive = false,
     hp_loss = "hp_alone",
     -- Worn out (exhausted, or a mood of 0) before anger, then held tired, Full

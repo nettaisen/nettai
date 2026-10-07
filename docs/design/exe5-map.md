@@ -1388,10 +1388,10 @@ one set of kinds (chips/circgun/circgun).
 
 EXE5's hit intake (0x080178EC) takes a hit's NaviCust bug (0x0801103E) before the HP bug drains (0x0800DFEC), where
 EXE6's `sub_801AC6C` drains first, and a drain bug's argument goes by its flags (bit 4 adds its low four bits, bit 5
-subtracts them, else the level rises to them): the status section's `bugs_before_drain` and `drain_bug_flags`
-(MoonBld's bug 0x18 drains a tick sooner; BugBomb's codes are its own, argument 0x12). The rest of 0x0801103E is
-EXE6's `sub_80139F6` but for codes EXE5's chips here don't give (0xFD and 0xFC: a drain of 1 on conditions; no 0xF8
-or 0xF5, which set their bytes as any other code): not ported.
+subtracts them, else the level rises to them): the status section's `bugs_before_drain` and rules/navicust/bugs's
+`drain_by_flags` (MoonBld's bug 0x18 drains a tick sooner; BugBomb's codes are its own, argument 0x12). The rest of
+0x0801103E is EXE6's `sub_80139F6` but for codes 0xFD and 0xFC (a drain of 1 on conditions: the light and dark part's,
+below) and 0xF8 and 0xF5, which set their bytes as any other code: no chip here gives them, not ported.
 
 Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's and MoonBld's charged step;
 Slasher's request 0x80000 (`actions.stun_strike`, EXE5's action 0x49: DarkInvs's drive's end, which only that drive's
