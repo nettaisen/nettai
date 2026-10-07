@@ -75,6 +75,8 @@ return {
     used_chip_ticks = 0x3C,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (`sub_801CC94`).
     bug_flicker = true,
+    -- A step leaves its NaviCust panel trail at a chance of its level in 8, an RNG2 draw (`sub_8013CC4`).
+    panel_trail = "by_chance",
     -- An object's destroy (`object_genericDestroy`) releases what it holds and frees its collision as it is.
     destroy = "frees",
     -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
