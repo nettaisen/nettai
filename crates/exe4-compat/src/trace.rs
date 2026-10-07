@@ -63,12 +63,12 @@ pub struct Setup {
     pub rng1s: Option<[u32; 2]>,
     #[serde(default)]
     pub regular_flags: Option<[u8; 2]>,
-    /// Both consoles' NaviCusts and Mod Cards as their saves hold them:
+    /// Both consoles' NaviCusts and patch cards as their saves hold them:
     /// what the PET compiled into the recorded stats.
     #[serde(default)]
     pub navicusts: Option<[NaviCustSetup; 2]>,
     #[serde(default)]
-    pub mod_cards: Option<[ModCardsSetup; 2]>,
+    pub patch_cards: Option<[PatchCardsSetup; 2]>,
     /// Both sides' regions ("us" or "jp").
     pub game_regions: [String; 2],
     /// The background the battle shows by the loader's first choice
@@ -95,11 +95,11 @@ pub struct NaviCustSetup {
     pub color_bar: String,
 }
 
-/// A console's Mod Cards as its save holds them, in a setup line: the six
+/// A console's patch cards as its save holds them, in a setup line: the six
 /// slots' cards on (save 0x464C) and off (0x4653), 0xFF none, hex.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ModCardsSetup {
+pub struct PatchCardsSetup {
     pub on: String,
     pub off: String,
 }
@@ -298,10 +298,11 @@ pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
             }
         }
     }
-    if let Some(m) = &s.mod_cards {
+    if let Some(m) = &s.patch_cards {
         for c in m {
-            if unhex(&c.on)?.len() != crate::save::MOD_CARD_SLOTS || unhex(&c.off)?.len() != crate::save::MOD_CARD_SLOTS {
-                return Err("Mod Card slots that aren't six".into());
+            // (The recorder takes the PET's six slots; the reload reads a seventh, which no console fills.)
+            if unhex(&c.on)?.len() != RECORDED_PATCH_CARD_SLOTS || unhex(&c.off)?.len() != RECORDED_PATCH_CARD_SLOTS {
+                return Err("patch card slots that aren't six".into());
             }
         }
     }
@@ -635,13 +636,23 @@ impl Round {
             return Err("the content has no rules (EXE4's)".into());
         }
         let local = d.local();
-        // A recording with its NaviCusts has the rules compile them (rules/navicust) over the stats the reload
-        // starts from; the Mod Cards aren't ported yet (exe4-map.md §18), so a recording with one on is refused.
-        if let Some(cards) = &self.setup.mod_cards {
-            for (side, c) in cards.iter().enumerate() {
-                if let Some(&n) = unhex(&c.on)?.iter().find(|&&n| n != 0xFF) {
-                    return Err(format!("side {side}'s Mod Card {n}: not ported yet (docs/design/exe4-map.md §18)"));
+        // A recording with its NaviCusts has the rules compile them and its patch cards (rules/navicust,
+        // rules/patch_cards) over the stats the reload starts from; one with a card whose effects wait (exe4-map.md
+        // §18) is refused.
+        let mut cards: [Vec<Fact>; 2] = [Vec::new(), Vec::new()];
+        if let Some(on) = &self.setup.patch_cards {
+            for (side, c) in on.iter().enumerate() {
+                let slots: Vec<Option<u8>> = unhex(&c.on)?.into_iter().map(|n| (n != 0xFF).then_some(n)).collect();
+                let (facts, waiting) = crate::setup::patch_cards(content, compat, &slots)?;
+                if let Some(n) = waiting.first() {
+                    return Err(format!("side {side}'s patch card {n}: not ported yet (docs/design/exe4-map.md §18)"));
                 }
+                // (The compile starts from the reload's reset, which needs the NaviCust: a recording without
+                // one has its stats as they were compiled, cards and all.)
+                if !facts.is_empty() && self.setup.navicusts.is_none() {
+                    return Err(format!("side {side}'s patch cards without its NaviCust: the recording can't be compiled"));
+                }
+                cards[side] = facts;
             }
         }
         let compiled = self.setup.navicusts.is_some();
@@ -683,6 +694,8 @@ impl Round {
                 let programs = crate::setup::navicust(content, compat, &crate::save::parts(&list))?;
                 player.set_fact(content, "navicust_programs", &programs)?;
             }
+            // And its patch cards (rules/patch_cards).
+            player.set_fact(content, "patch_cards", &cards[side])?;
             Ok(player)
         });
         let [p0, p1] = players;
@@ -743,7 +756,7 @@ fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)
 /// move lag's column (the engine's navi variant), the soul (the form), the
 /// aura, the HP. (The Full Synchro at the start is the rules' setup's:
 /// EXE4's rules/light_dark.) A block that holds what the port can't say yet
-/// (supports, a color, All Guard: Mod Cards to come) is an
+/// (supports, a color, All Guard: patch cards to come) is an
 /// error, which `Round::needs` lists.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
@@ -799,7 +812,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     Ok(stats)
 }
 
-/// What the NaviCust and the Mod Cards compile into a side's stats (rules/navicust), as EXE4's block's bytes say
+/// What the NaviCust and the patch cards compile into a side's stats (rules/navicust), as EXE4's block's bytes say
 /// them: the abilities (+0x01 to +0x04), the buster's levels and blanks (+0x05 to +0x08), the weapon level and the
 /// move bug (+0x0B, +0x0D), the drains (+0x0E, +0x0F), the custom level and chip limits (+0x12 to +0x14), the supports
 /// (+0x18), the panel trail (+0x1B), the max HP (+0x32).
@@ -887,6 +900,10 @@ pub fn reset(content: &Content, compat: &Compat, s: &NaviStats) -> Result<Engine
     Ok(stats)
 }
 
+/// The patch card slots a recording's setup has (the PET's six: 0x464C to
+/// 0x4651).
+const RECORDED_PATCH_CARD_SLOTS: usize = 6;
+
 /// Differences between the engine and an EXE4 frame: the state machine, the
 /// simulation RNG, the pause, the gauge, the banner, the panels (by EXE4's
 /// numbers, the rules' `panels.numbers`) and the objects: each object's
@@ -946,7 +963,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
         check("banner number", show(ours), show(theirs));
     }
-    // What the NaviCust and the Mod Cards compile into each side's stats, where the frame has the blocks.
+    // What the NaviCust and the patch cards compile into each side's stats, where the frame has the blocks.
     if let Some(blocks) = &f.navi_stats {
         for (side, hex) in blocks.iter().enumerate() {
             let Ok(raw) = unhex(hex) else { continue };

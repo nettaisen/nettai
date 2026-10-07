@@ -30,11 +30,11 @@ comes from: **R** read in the ROMs for this map, **T** Tango's BN4 game support 
   0x0203B180 (Tango's "unit" records agree, T), 32 attack slots at 0x0203C080, 32 effects (0xC8) at 0x02037D10.
 - **The stat block** (NaviStats) is **0x40 bytes** a side (R: the accessors at 0x0800D67E to 0x0800D6B6 multiply by
   0x40), at 0x0203BEC0 in battle (EXE5 0x60, EXE6 0x64). Its fields are EXE4's own layout, the same kinds as EXE6's
-  at other offsets (§3.3); BN4's Mod Card effect ids are those offsets.
+  at other offsets (§3.3); BN4's patch card effect ids are those offsets.
 - **EXE4's own systems** (R: absent or differing in both maps; K for what they are): the custom screen's states, Double
   Soul (no counterpart of EXE5's soul button, its hand builder or the turn-start transformation sequencer EXE5 and
   EXE6 share), the dark chips offered in battle, the emotions (EXE5's emotion routine and mood setter have no
-  counterpart), the NaviCust compile (EXE5's and EXE6's shared compile is absent), the Mod Cards (patch cards: 134 by
+  counterpart), the NaviCust compile (EXE5's and EXE6's shared compile is absent), the patch cards (134 by
   Tango's count, six slots in the save), the battle flow (EXE6's `battle_8007800` similar 0.50 at 0x08006B14).
 - **Red Sun and Blue Moon** are the same code, moved by 0 to 0x14 bytes (R: 4,504 routines paired in both, 4,261 of
   them moved by 0, 4, 8 or 0xC); the Japanese ROMs move more (−0x110 to +0x3C, the text code). Twelve souls, six a
@@ -149,39 +149,39 @@ a game's fact at those three bytes, and EXE4's record has no lock-on byte or dar
 pointers, toolkit +0x40 to +0x98, are 0x02002130 + the shift + a table's offsets, 0x080061AC: the routine that shifts
 the save, 0x08006128, sets them); MegaMan's is the first (blocks 1 to 7 hold another's defaults). The accessors
 (0x0800D756 on: set, get, a byte or a halfword, by side; 0x0800D78A on, MegaMan's save block's: 0x0800D78A is the
-"set_effect" Tango's Mod Cards call, so a card's effect id is the offset it sets). `tools/exe4/navistats.py` lists
+"set_effect" Tango's patch cards call, so a card's effect id is the offset it sets). `tools/exe4/navistats.py` lists
 every call with a constant offset, by offset, with the caller's EXE6 and EXE5 counterparts: 43 offsets used.
 
 What a block holds, as far as read (R: the defaults a new block gets, 0x0800D6BE; MegaMan's HP, copied from the save's
-game state, 0x0800D726; the Mod Cards' effects, T; the paired reads of `fields.py --to B4WE navistats`, EXE6's offset
+game state, 0x0800D726; the patch cards' effects, T; the paired reads of `fields.py --to B4WE navistats`, EXE6's offset
 in brackets, one to three calls each):
 
 | Offset | Default | What |
 |---|---|---|
 | +0x00 | 0x99 | the mood, likely (EXE6 +0x0E: two paired reads; the played save's MegaMan has 0xAA) |
-| +0x05 | 0 | the buster's attack (Mod Card 0x05; read by EXE6's buster routines `sub_8011A7E` and kin [+0x01]) |
+| +0x05 | 0 | the buster's attack (patch card 0x05; read by EXE6's buster routines `sub_8011A7E` and kin [+0x01]) |
 | +0x06 | 0 | rapid [+0x02] (`sub_800FAAC`) |
 | +0x07 | 0 | charge, likely [+0x03] |
-| +0x09 | 0 | the B button's shot (Mod Card 0x09) |
-| +0x0A | 1 | the charged shot (Mod Card 0x0A, "B charge") |
-| +0x0C | 0xFF | B+Left (Mod Card 0x0C; none) |
+| +0x09 | 0 | the B button's shot (patch card 0x09) |
+| +0x0A | 1 | the charged shot (patch card 0x0A, "B charge") |
+| +0x0C | 0xFF | B+Left (patch card 0x0C; none) |
 | +0x0E, +0x0F | 0 | the HP drain and custom drain bugs, likely [+0x18, +0x19] |
 | +0x10, +0x11 | 0x20, 4 | ? |
-| +0x12 | 5 | the custom level, the chips dealt (Mod Card 0x12, up to 8) [+0x0A] |
-| +0x13, +0x14 | 5, 1 | the Mega and Giga folder limits (Mod Cards 0x13, 0x14) |
+| +0x12 | 5 | the custom level, the chips dealt (patch card 0x12, up to 8) [+0x0A] |
+| +0x13, +0x14 | 5, 1 | the Mega and Giga folder limits (patch cards 0x13, 0x14) |
 | +0x17 | 0x1F | ? |
-| +0x18 | 0 | the supports (Mod Card 0x18, Triple Supporter) [+0x0D] |
-| +0x1B | 0xFF | the panel a step leaves (Mod Card 0x1B: 1 broken, 3 cracked, 5 metal, 9 holy; none) |
-| +0x1F | 0 | Full Synchro at the start (Mod Card 0x1F) [+0x0F] |
+| +0x18 | 0 | the supports (patch card 0x18, Triple Supporter) [+0x0D] |
+| +0x1B | 0xFF | the panel a step leaves (patch card 0x1B: 1 broken, 3 cracked, 5 metal, 9 holy; none) |
+| +0x1F | 0 | Full Synchro at the start (patch card 0x1F) [+0x0F] |
 | +0x20 | 1 | ? |
-| +0x21 | 0 | the aura at the start (Mod Card 0x21: 2 Barrier100, 3 Barrier200, 6 LifeAura) [+0x06] |
+| +0x21 | 0 | the aura at the start (patch card 0x21: 2 Barrier100, 3 Barrier200, 6 LifeAura) [+0x06] |
 | +0x23 | 0 | the navi, likely [+0x29: six paired reads] |
-| +0x24 | 0 | the soul (Mod Card 0x24: a battle starts in it, 1 on) [+0x2C] |
-| +0x27 | 0 | MegaMan's color (Mod Card 0x27) |
-| +0x28 | 0 | All Guard (Mod Card 0x28) |
+| +0x24 | 0 | the soul (patch card 0x24: a battle starts in it, 1 on) [+0x2C] |
+| +0x27 | 0 | MegaMan's color (patch card 0x27) |
+| +0x28 | 0 | All Guard (patch card 0x28) |
 | +0x2A | 1 | ? |
 | +0x30, +0x32 | 100 | HP and max HP (MegaMan's from the save's 0x2150 and 0x2152) [+0x40, +0x42] |
-| +0x34 | 100 | the base max HP (the save's 0x21CA, before the NaviCust's and the Mod Cards') |
+| +0x34 | 100 | the base max HP (the save's 0x21CA, before the NaviCust's and the patch cards') |
 | +0x36 | 500 | the light/dark value (a halfword; Tango's dark save 460, its light saves 1000) [EXE5's +0x44] |
 
 Read since: +0x08 is the buster's blank count (the buster shot, 0x080EB35A: a draw of RNG2, `(GetRNG2() & 15) + 1`, no
@@ -239,7 +239,7 @@ What the oracle reads besides (R; oracle-trace's `EXE4`):
   counterpart in 0x08007064).
 - **The joypad's** repeat beat is at +0x13, cycling 0 to 4, as EXE6's (0x080003B0).
 - **The save** is the RAM from 0x02000000, the region from 0x2130 to 0x5E20 moved by the shift word at 0x1550
-  (§12): the NaviCust's parts at 0x4564 and its grid at 0x4540, the Mod Cards' slots at 0x464C (on) and 0x4653
+  (§12): the NaviCust's parts at 0x4564 and its grid at 0x4540, the patch cards' slots at 0x464C (on) and 0x4653
   (off), the color bar at 0x190 (outside the region).
 
 **On running consoles** (the chip lab's EXE4 base, Red Sun against Blue Moon, Tango's primer): the hooks trace
@@ -250,7 +250,7 @@ custom screen, **0xC** the fight; the fighting machine's first byte is **4** whi
 the local player's navi and **+0x48** at the other's (EXE6 keeps alive lists by alliance at +0x80); the custom gauge
 (0x02036414) fills from 0 to 0x4000 (0x5A0 a second; the rate field beside it holds 0x20); the panels' types and owners are as the stage shows
 (grass at the edges, lava in the middle, each side's). The setup line's NaviStats are the compiled stats: a save's
-base HP (0x21CA) and its Mod Cards reach them (a Mod Card's +200 max HP, 1000 to 1200), the save's stats block itself
+base HP (0x21CA) and its patch cards reach them (a patch card's +200 max HP, 1000 to 1200), the save's stats block itself
 is rebuilt as it loads.
 
 **The hooks** (R; oracle-trace's `RED_SUN_HOOKS` and the others, checked against the four ROMs by its
@@ -369,7 +369,7 @@ and faces are its own table, to read.
   (0x0801E0B4) and dark chips to 5 alone in a netbattle (0x0801DE90).
 - **The mood** (NaviStats +0x00): the setters (0x0800F4DE set, 0x0800F4FA raise to 0xFF, 0x0800F51E raise to 0xFE
   unless 0xFF, 0x0800F546 lower to 1) leave a mood of 0 and do nothing while paused. The starting mood (0x0800D872,
-  0x0800F56A) by the light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F, a Mod Card's):
+  0x0800F56A) by the light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F, a patch card's):
   under 470 0, the start 0xFF, from 1000 190, else value / 20 + 128. A hit's counter byte (the hitter's collision +5)
   raises the hitter's mood and wears the receiver's (0x08012C10, 0x080131E4: `hit_mood = "hitter_gains"`), a counter
   hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks paralyzed (0x0800C540) asks for it; it sets the mood 0x80
@@ -388,15 +388,18 @@ Checked: the lab's emotions/counter, counter-side1, counter-buster, full-synchro
 frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's battle-over gate and the 0x73 sound
 (presentation).
 
-## 8. NaviCust and Mod Cards
+## 8. NaviCust and patch cards
 
 The NaviCust compile EXE5 and EXE6 share (`sub_813C458`) and its placement checks have no counterpart: EXE4's compile
 is its own (R). 47 programs, four color variants each (188 parts; the part table at 0x0804563C in Red Sun US,
 0x08045644 in Blue Moon US, 0x08045538 and 0x08045540 in the Japanese: EXE5's format, +1 the plus flag, +3 the color,
 +4 the bug, +8 and +0xC the shapes, its +0 group never read). The save's NaviCust: its list at 0x4564 (25 parts of 8
-bytes) and the 5x5 grid at 0x4540 (T). **Mod Cards** (EXE4's patch cards): 134 by Tango's count, six slots in the save
-(0x464C on, 0x4653 off, T), whose effects set NaviStats bytes by number (§3.3), their handlers the table at
-0x08041E8C, their bugs counted with the NaviCust's (0x080476E0).
+bytes) and the 5x5 grid at 0x4540 (T). **Patch cards** (改造カード): 134 by Tango's count, six slots in the save
+(0x464C on, 0x4653 off, T; the reload reads a seventh, 0x4652), whose effects set NaviStats bytes by number (§3.3),
+their handlers the table at 0x08041E8C, their bugs counted with the NaviCust's (0x080476E0) or cleared (0x080476EC).
+A card's slot is the save's: the reload runs the card in each slot, the last first (0x08035164), with no table of
+which slot a card belongs in (the ROMs hold none; Tango's lists say the printed cards'), and the pairs' halves test
+the other's slot (0x08042504).
 
 **The reload** (0x08035130; as ported: content/exe4/rules/navicust): the analysis (0x08047344) counts each program's
 bug by where it is (the command line, the third row, right to left: a plus part on it; off it, a program), by its
@@ -405,7 +408,7 @@ more) and by the colors (0x08047644: five bring the move and custom bugs once, s
 +0x00, +0x20, +0x29 and +0x36 (0x08036CC0); the programs' handlers (0x08041974, the table 0x08041A50: the command
 line's right to left, a part already run to the right skipped; the plus parts off it in the list's order, then on it
 left to right), the HP programs' sum making the maximum (0x08042FD0: the HP left as it was); the bugs (0x08042A94:
-BugStop, +0x1D, drops the counts instead), each at its count's level, 1 to 3, by the table 0x08042B18; the Mod Cards
+BugStop, +0x1D, drops the counts instead), each at its count's level, 1 to 3, by the table 0x08042B18; the patch cards
 from the last slot to the first (0x08041E6A), the maximum again after each; the bugs again, all of them (0x08042A58).
 tools/exe4/gen_navicust.py (verify) writes the programs (content/exe4/navicust), their numbers
 (compat/navicust.toml) and names from the part tables; programs 29 to 33 and 40 (the elements' charged shots and
@@ -425,7 +428,7 @@ to read.
 |---|---|---|---|
 | chips | the record table 0x080197EC (0x2C each); names 0x0804FB74, descriptions 0x0801FDE0 (pointers) | 350 (Red Sun legal: 1–186, 201–280, and its version's navi chips) | R, T |
 | NaviCust programs | parts 0x0804563C; names 0x0804FB84, descriptions 0x0803E63C | 47 programs, 188 parts | T |
-| Mod Cards | | 134 | T |
+| patch cards | | 134 | T |
 | souls | (the custom screen's code, to read) | 6 a version | K, T |
 | navis | MegaMan in a netbattle (K) | | |
 | stages | (the settings generator's tables, to read) | | |
@@ -443,14 +446,14 @@ the versions (T).
 
 Tango's BN4 save support (T): the image is 0x73D2 bytes; the mask word at 0x1554, the shift word at 0x1550 (a region
 from 0x2130 to 0x5E20 moves by it, up to 0x1FC, a multiple of 4), the checksum at 0x21E8, the game's name at 0x2208;
-the equipped folder at 0x2132, the Regular chip at 0x214C; the NaviCust and Mod Cards (§8). Tango ships twelve raw
+the equipped folder at 0x2132, the Regular chip at 0x214C; the NaviCust and patch cards (§8). Tango ships twelve raw
 netbattle saves (tango-gamesupport-bn4/src/saves): light with HP 1000 or 999 and dark with HP 997, for each version and
 region; with the .sav on disk (Blue Moon US), the chip lab's bases and the save import's tests have what EXE5's had.
 
 **The import** (exe4-compat's `import`, which the app's build creator calls): a .sav or a raw image (which says
 neither version nor region; the import reads neither) gives MegaMan, the equipped folder and its Regular chip, the
 NaviCust's programs, the base HP (0x21CA), the Regular memory, and from MegaMan's NaviStats block (0x4E60) the
-light/dark value and the Full Synchro at the start; the Mod Cards are said and left out until they are ported (item
+light/dark value and the Full Synchro at the start; the patch cards are said and left out until they are ported (item
 56). MegaMan's HP and maximum are the game state's (0x2150, 0x2152): the block's own HP words are stale in a save,
 and a battle copies the game state's in (0x0800D726). verify's exe4_navicust test imports each of Tango's twelve
 saves and compiles it: the stats match the block's (and the game state's maximum) in every byte the compile writes.
@@ -465,7 +468,7 @@ objects in exelib are the starting point for EXE4's: a chip whose EXE5 code is E
 one whose code is similar is shared with EXE4's parameters, as EXE5 did with EXE6's).
 
 **EXE4's own:** the actor and its actions (most of the actors area), the custom screen's states and its rules, Double
-Soul and its transformation, the dark chips offered in battle, the emotions, the NaviCust compile and the Mod Cards,
+Soul and its transformation, the dark chips offered in battle, the emotions, the NaviCust compile and the patch cards,
 the stat block (0x40 bytes, the same kinds of fields at other offsets), the battle flow's handlers, the link
 exchange.
 
@@ -734,12 +737,12 @@ the round's fight starts (BattleState's state byte 4), an `exchange` line when t
 frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (oracle-trace's `EXE4` layout):
 
 - **setup:** `"game":"exe4"`; `settings_ptr` and `settings` (BattleState+0x3C's 0x10 bytes); `navi_stats` (both blocks,
-  0x40 bytes each, §3.3, as the PET compiled them: a side's HP its save's base HP, its Mod Cards applied); `folder`
+  0x40 bytes each, §3.3, as the PET compiled them: a side's HP its save's base HP, its patch cards applied); `folder`
   (the traced console's battle folder, 30 chips, 0x3C bytes, a halfword each: the id, the code index << 9) and
   `folders` (both, by side); `battle_state` (0xF0 bytes); `rng1`, `rng2`; `joypad_phases` (each console's joypad beat,
   0 to 4); `game_versions` (`redsun`, `bluemoon`); `frame_counter` (the console's frame counter, the toolkit's +0x24);
   `navicusts` (each side's save's NaviCust: `parts`, the 25 parts of 8 bytes at save 0x4564; `grid`, the 5x5 grid at
-  0x4540; `color_bar`, 6 bytes at 0x190) and `mod_cards` (each side's save's six slots: `on` at 0x464C, `off` at
+  0x4540; `color_bar`, 6 bytes at 0x190) and `patch_cards` (each side's save's six slots: `on` at 0x464C, `off` at
   0x4653, a card's number or 0xFF); `game_regions`. **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
   chip flags) come only when the traced console is side 1: side 0's console runs its frame before side 1's in a tick,
   so the other console's last capture is a frame behind when side 0's setup line is written (EXE5's side-0 recordings
@@ -997,14 +1000,14 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     - **Holy** (9): the final damage halves on it (0x0800AC3A, EXE6's); EXE4's barrier (0x08012DF8) is its own, with no
       holy test (kinds by +0x04: the barrier chips' port, the chips wave).
     - **Ice** (7): item 1's push; elec doubles on it (item 4).
-    - Left, the souls' and the Mod Cards': FireSoul (NaviStats +0x24 = 5) on lava heals 50 and clears it, with effect
+    - Left, the souls' and the patch cards': FireSoul (NaviStats +0x24 = 5) on lava heals 50 and clears it, with effect
       7 at the navi and sound 0x9A (0x080131B8) instead of burning; WoodSoul (+0x24 = 12) heals 1 more on grass while
-      BattleState +0x16 is 0 (0x08012FB6, after poison). The panel trail is the Mod Cards' (NaviStats +0x1B, 0x080EB254,
+      BattleState +0x16 is 0 (0x08012FB6, after poison). The panel trail is the patch cards' (NaviStats +0x1B, 0x080EB254,
       the move's step): every step (no chance, no RNG draw), the panel left unless missing or broken becomes the
       trail's type by EXE4's number (1 by `object_breakPanel_dup2`, any other by a type change: a crack by type 3,
       not the crack routine), sounding 0x124 for poison onto a panel that wasn't (and 0x95 when the type change's
       return, the panel's occupants' collision bits, is 3: never with the navi's own body on it); EXE6's trail (a
-      NaviCust bug, a chance by level) isn't it: to port with the Mod Cards.
+      NaviCust bug, a chance by level) isn't it: to port with the patch cards.
 14. **Done** (start-visible panels and front edges). EXE4 keeps no grids: its field's init (0x08009120) marks all 40
     panels visible (0x08009186: 0x40 into each flags byte at 0x02037B36), its drawing (0x080092AC) draws each valid
     panel (x 1 to 6, y 1 to 3) while visible, and the front edges under row 3 alone (0x0800937A), each by its row-3
@@ -1116,7 +1119,7 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     confused keys, 0x0800B550, EXE6's swaps; the idle starting only a step that can go), which `held_direction` and
     the idle read; the flow/move
     recordings match. **Done** too: the move bug, NaviStats +0x0D (`effects.steps.bug`, the rules' stat `move_bug`,
-    which the NaviCust's bugs write and a dark chip's or Mod Card's will): with no key held (or sliding) 0x0800B4B0
+    which the NaviCust's bugs write and a dark chip's or patch card's will): with no key held (or sliding) 0x0800B4B0
     steps by its keys (bits 0x10 to 0x80; 0 and 0xFF none), and at 0xFF the init confuses the navi for 720 ticks
     (0x0800D8B0). Open there: the confusion's visual at the start (item 59). The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
     1, as the engine's; by the +0x25 column (12 to 8) for param 2, and 20 under event flag 0x1187: neither is a
@@ -1135,11 +1138,11 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     11, null 12, program advance 14, the souls' chips 15, `special`; 13 none). Cannon's is 12, null; its +0x0B, 0x0B,
     is its action (`cannon/action`). Double Soul's table 0x08020008 reads the same byte as a soul's kind (gen_rules.py
     holds the families to it). 0x0800BA66 opens the counter window (§7).
-30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
+30. **NaviCust, patch cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
     neither, the lab's first batch's. **Done:** the NaviCust (§8: rules/navicust, the setup's `navicust_programs`,
     exe4-compat's from a recording's list, the replays comparing the stats it compiles) and the save import (§12); the
     lab's navicust/ recordings whose programs are ported match, and Tango's saves compile as their blocks say. Open:
-    the Mod Cards (items 56 to 58); the waiting programs (item 53).
+    the patch cards (items 56 to 58); the waiting programs (item 53).
 
 ### 18.5 Roles and the custom screen
 
@@ -1228,7 +1231,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
     of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
 53. **FirstBarrier, HubBatc, Shield, Reflect, AntiMagc.** FstBarr's handler sets the aura at the start (+0x21 = 1, the
-    Barrier chip's barrier: the init raises it, 0x0800D894, 0x08012DCE, its visual 0x080E2622), which the Mod Cards'
+    Barrier chip's barrier: the init raises it, 0x0800D894, 0x08012DCE, its visual 0x080E2622), which the patch cards'
     Barrier100, Barrier200 and LifeAura set too (2, 3, 6); Shield, Reflect and AntiMagc set B+Left (+0x0C = 0x25,
     0x26, 0x27: weapon routines of the table at 0x0800CA7C); HubBatc runs FstBarr's and Shield's handlers among its
     eight. Until they are ported the five programs have no definition (tools/exe4/gen_navicust.py's `WAITING`), and the
@@ -1238,7 +1241,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     EXE4 `false`, `takes_away`). Its types (0x080185E0: HP, threshold, timer, as halfwords): 1 10 HP, 2 100, 3 200, 4
     150 regrowing 180 ticks after it breaks, 5 1 HP, 6 a 200 threshold for 3000 ticks, 7 a 300 threshold for 3000
     ticks; types 4 and 7 (and a threshold over 255) wait on the chips that raise them. **Done:** FstBarr: EXE4's
-    barriers (content/exe4/lib/barriers: types 1, 2, 3 and 6, the Mod Cards' auras' too) and their visual (effect 7,
+    barriers (content/exe4/lib/barriers: types 1, 2, 3 and 6, the patch cards' auras' too) and their visual (effect 7,
     content/exe4/objects/barrier_visual: EXE6's but no blown action and no sound going down, its sprite updated paused
     or not, running while paused until the fight starts, placed by per-navi offsets), raised by the roles' hook
     `first_barrier` at the init (0x0800D892); exe4-compat names the aura types (records.toml). The navi's link to the
@@ -1262,12 +1265,22 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
     bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
     RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
-56. **The Mod Cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
-    group): the cards' content, their handlers (0x08041E8C), the setup's `mod_cards`, exe4-compat's from a recording's
-    slots (a recording with a card on stops at its setup until then).
-57. **The ~50 Mod Cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
+56. **The patch cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
+    group): the cards' content, their handlers (0x08041E8C), the setup's `patch_cards`, exe4-compat's from a recording's
+    slots (a recording with a card on stops at its setup until then). **Done** (§8): tools/exe4/gen_patch_cards.py
+    (verify) decodes the four ROMs' handlers; content/exe4/patch_cards (the 56 cards whose effects EXE4's content can
+    do), rules/patch_cards (their constructors and their part of the reload), the setup's `patch_cards` (a card and its
+    slot), exe4-compat's numbers (compat/patch-cards.toml), a recording's slots and a save's into the setup; the lab's
+    modcards/ recordings whose cards are ported compile as recorded (exe4_navicust) and replay. The cards that wait,
+    each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
+    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); Full Synchro at the start (card 45,
+    +0x1F: `full_synchro_start` turns from a setup fact into a rules stat the card writes, item 60); MegaMan's color
+    (59, 60, 89, 90: +0x27, item 60); the pairs, each half applying when the other sits in its slot (0x08042504):
+    Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item 60), Charge FullCustom (103, 104:
+    the charged shot FullCustom, item 57).
+57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
-58. **The 12 soul Mod Cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
+58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
 59. **The status timers while paused, and the status visual.** EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
     (EXE6's `sub_800E730` and EXE5's 0x0800CB50 return), so a navi confused at the start (the move bug, item 24) shows
@@ -1275,6 +1288,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `sub_80E08FC`): its sprites by row (0x080E22B8: 14-0B confusion, 14-09 blindness), its sound 0xAE every 60 ticks
     (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
     routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
+60. **The patch cards' own bytes.** Card 45 sets NaviStats +0x1F, the Full Synchro at the start, which the reload's
+    reset doesn't keep (0x08036CC0): the setup fact `full_synchro_start` is the card's, so it becomes a rules stat the
+    card writes and rules/light_dark reads (the fact gone from exe4-compat and the import). Cards 59, 60, 89 and 90 set
+    +0x27, MegaMan's color, which rules/light_dark's palette reads (+0x27 x 5): a rules stat. Cards 76 and 77 (All
+    Guard) set +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so
+    it turns aside every hit that doesn't break guards, 0x08012B84).
+
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's

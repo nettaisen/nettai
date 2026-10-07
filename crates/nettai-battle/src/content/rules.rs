@@ -380,7 +380,7 @@ pub struct StepControls {
     /// leaves for idle at once (its phase from the start).
     pub idle_checks_target: bool,
     /// A move bug: a stat of the rules' (`stats`) that the NaviCust's and
-    /// the Mod Cards' bugs write, and what it does (EXE4's NaviStats
+    /// the patch cards' bugs write, and what it does (EXE4's NaviStats
     /// +0x0D). EXE6's and EXE5's have none (theirs, the processing bug,
     /// is the engine's own).
     #[serde(default)]

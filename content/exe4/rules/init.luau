@@ -2,18 +2,19 @@
 -- EXE4's rules, their one definition (docs/design/rules-in-luau.md §2.5): what a player brings, the hooks the framework
 -- calls, its rule sections and its roles. The port is under way (docs/design/exe4-map.md): so far a netbattle of
 -- MegaMan with his buster and charged shot; a section's value the engine can't say EXE4's way yet is the nearest it can,
--- each one an entry of exe4-map.md §18, which lists what is still to port (the NaviCust, the Mod Cards, the souls, the
+-- each one an entry of exe4-map.md §18, which lists what is still to port (the NaviCust, the patch cards, the souls, the
 -- custom screen's own states, the chips).
 
 local custom = require("@self/custom")
 local fresh_stats = require("@self/fresh_stats")
 local light_dark = require("@self/light_dark")
+local patch_cards = require("@self/patch_cards")
 local navicust = require("@self/navicust")
 local save = require("@self/save")
 
 local rules: Rules = {
     -- EXE4's own stats (NaviStats bytes the engine's stats don't hold): BustPack's weapon level (+0x0B, which the
-    -- charged shot reads), and the NaviCust's and the Mod Cards' move bug (+0x0D: 0xFF confused at the start, 0x10
+    -- charged shot reads), and the NaviCust's and the patch cards' move bug (+0x0D: 0xFF confused at the start, 0x10
     -- and 0x20 steps of its own, right and left: ./navicust).
     stats = {
         weapon_level = "u8",
@@ -44,6 +45,8 @@ local rules: Rules = {
             rotation = "u8",
             compressed = "bool",
         }, 25),
+        -- Their patch cards (./patch_cards): each card switched on and the slot it is in (a save's 0x464C, by slot).
+        patch_cards = schema.list({ card = "patch_cards", slot = "u8" }, patch_cards.SLOTS),
     },
     -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
     -- the starting mood 0x99), no Full Synchro at the start.
@@ -58,10 +61,11 @@ local rules: Rules = {
         hand_size = custom.hand_size,
     },
     hooks = {
-        -- What the save brings to the navi's stats (./save), then the NaviCust compiled into them (./navicust).
+        -- What the save brings to the navi's stats (./save), then the NaviCust and the patch cards compiled into them
+        -- (./navicust, ./patch_cards).
         round_setup = function(side: number)
             save.round_setup(side)
-            navicust.run(side, nil)
+            navicust.run(side)
         end,
         -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, the holy panel a
         -- dark one clears and the hole a navi that isn't dark closes.
@@ -77,6 +81,7 @@ local rules: Rules = {
             end
             save.validate(side, problem)
             navicust.validate(side, problem)
+            patch_cards.validate(side, problem)
             return out
         end,
     },
