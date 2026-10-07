@@ -842,3 +842,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x0802E070's +0x11) and the B count runs only under request 0x80. No netbattle sets it; the engine has none.
 50. **The levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an attack
     (0x0800BE48, 0x0800BE8E, 0x0800BF10); what reads them is to find (the engine keeps none).
+51. **A player's deletion.** EXE4's (action 2, 0x08010850) is its own, not EXE6's `sub_80173F4`: the hurt animation
+    as it starts (EXE6's with the explosions); the alive count alone (0x080079C6), never the alive lists; no chip count,
+    charge glow link or tracking let go; its second related and barrier byte at the start, AIData +0x60 with the
+    explosions; no aura or overlay links; no death hook at the end. **Done:** the role `actions.deletion`
+    (content/exe4/rules/deletion.luau; the engine's own where the role is unfilled: EXE6, EXE5); the flow/ko recordings
+    match through the deletion. Open: the deletion of a navi in auto battle or of another navi (0x08010D4C: effect object
+    0x11 and a 90-tick explosion), which EXE4's content doesn't reach (its players are MegaMan, by a player).
