@@ -6,6 +6,25 @@ language = "ja"
 [chips]
 "cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "airshot" = { name = "エアシュート", description = "ヒットしたあいてを\n1マスおくへおす\nくうきほう" }
+"hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"lance" = { name = "バンブーランス", description = "てきエリアの右はし\nたてれつにとつぜん\nたけやりが発生!" }
+"recov10" = { name = "リカバリー10", description = "HPを10\nかいふくする" }
+"recov30" = { name = "リカバリー30", description = "HPを30\nかいふくする" }
+"recov50" = { name = "リカバリー50", description = "HPを50\nかいふくする" }
+"recov80" = { name = "リカバリー80", description = "HPを80\nかいふくする" }
+"recov120" = { name = "リカバリー120", description = "HPを120\nかいふくする" }
+"recov150" = { name = "リカバリー150", description = "HPを150\nかいふくする" }
+"recov200" = { name = "リカバリー200", description = "HPを200\nかいふくする" }
+"recov300" = { name = "リカバリー300", description = "HPを300\nかいふくする" }
+"drkcanon" = { name = "ダークキャノン", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"drksword" = { name = "ダークソード", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"darkbomb" = { name = "ダークボム", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"drkvulcn" = { name = "ダークバルカン", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"drklance" = { name = "ダークランス", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"drkspred" = { name = "ダークスプレッド", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"drkstage" = { name = "ダークステージ", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"drkrecov" = { name = "ダークリカバリー", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

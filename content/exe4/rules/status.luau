@@ -450,6 +450,7 @@ local status = {
             hit_mood = "hitter_gains",
             full_synchro_spent = 0x99,
             anger_boost_sound = false,
+            -- (No `anger_damage`: only 120 ticks stunned ask for anger, 0x0800C540; no damage does.)
         },
         -- (A soul's break by a weakness hit: EXE5's until the souls are read.)
         form_break = "any_form",
