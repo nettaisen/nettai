@@ -2,6 +2,7 @@
 -- Cannon, HiCannon and M-Cannon (EXE4 chips 0x001 to 0x003; their records at 0x080197EC + n * 0x2C): the cannons'
 -- action 0x0B (lib/cannon), its variants 0 to 2: the cannon in palettes 0 to 2 (attachment rows 0 to 2), the
 -- cannon's shot (projectile row 1).
+-- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cannon_lib = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")

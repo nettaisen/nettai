@@ -19,6 +19,7 @@ return merge {
     require("@self/drkstage"),
     require("@self/drksword"),
     require("@self/drkvulcn"),
+    require("@self/invalid"),
     require("@self/lance"),
     require("@self/panlgrab"),
     require("@self/recov"),

@@ -29,8 +29,15 @@ local LOOK: VulcanLook = {
     sound = asset.sound("col-army-2"),
     -- The vulcan (the original's attachment row 0xD).
     arm = attachment.look { sprite = asset.sprite("vulcan"), palette = 0, attach_point = 14 },
-    attachment = attachment.kind,
+    -- Held in the overlay (`sub_80EBF30`), its animation 0.
+    hold = function(me: Object, look: AttachmentLook, which: Slot)
+        attachment.attach(me, look, which)
+    end,
+    slot = "overlay",
     bullet_kind = bullet.kind,
+    -- The navi holds it in its animation 0xA and fires in 0xD.
+    hold_anim = 0xA,
+    fire_anim = 0xD,
 }
 
 -- A chip's vulcan.

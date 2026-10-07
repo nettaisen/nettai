@@ -288,3 +288,4 @@
 "blakbarr" = { id = 0x134, version = "redsun" }
 "bluemoon" = { id = 0x135, version = "bluemoon" }
 "bugcharg" = { id = 0x136, version = "redsun" }
+"invalid" = { id = 0x184 }
