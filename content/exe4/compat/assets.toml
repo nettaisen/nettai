@@ -173,6 +173,7 @@ big-sword-swing = 0x0b4  # a big sword's swing: action 0x0A's variants 5 and 11 
 metal-fist = 0x0b7  # MetalMan winding up his punch (0x080C7F50)
 vulcan = 0x0bb  # a vulcan's shot: action 0x1F (0x080EC916)
 heat-burst = 0x0bc  # a HeatShot's bullet's burst: bullet rows 8 to 11 (0x080CF3DC)
+energy-burst = 0x0bd  # an energy burst: attack 0x11's init (0x080CF34C), EnergBom's and MegEnBom's, EXE5's energy burst's
 counter-strike = 0x0be  # the Counters' strike: attack 0x17's init (0x080CFD96)
 shield = 0x0c1  # a guard's shield going up (attack 0x2B's init, 0x080D227C)
 moloko = 0x0c7  # a Moloko charging: attack 0x2C (0x080D245C)

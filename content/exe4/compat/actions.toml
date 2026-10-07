@@ -24,6 +24,8 @@
 "bublside/action" = 0x1E
 # The throws' (the chips' action 0x09, 0x080EB3FE).
 "darkbomb/action" = 0x09
+"energbom/action" = 0x09
+"megenbom/action" = 0x09
 "minibomb/action" = 0x09
 # The swords' (the chips' action 0x0A, 0x080EB51E).
 "drksword/action" = 0x0A

@@ -102,6 +102,8 @@ language = "ja"
 "junkman" = { name = "ジャンクマン", description = "フィールド上の\nぶったいをうかせて\nてきにぶつける!" }
 "junkmn-sp" = { name = "ジャンクマンSP", description = "フィールド上の\nぶったいをうかせて\nてきにぶつける!" }
 "junkmn-ds" = { name = "ジャンクマンDS", description = "フィールド上の\nぶったいをうかせて\nてきにぶつける!" }
+"energbom" = { name = "エナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
+"megenbom" = { name = "メガエナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

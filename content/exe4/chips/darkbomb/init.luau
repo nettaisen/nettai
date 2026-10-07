@@ -6,9 +6,15 @@
 -- (rules/dark_chips).
 -- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
+local attachment = require("../objects/attachment")
 local bombs = require("../lib/bombs")
 local collision = require("../rules/collision")
 local regions = require("@exelib/regions")
+
+-- The dark bomb in hand (attachment row 0x11: the bomb, 0c-02, in palette 3), and its explosion (effect row 0x2B: the
+-- explosion in palette 1).
+local HELD = attachment.look { sprite = asset.sprite("bomb"), palette = 3 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
 
 local darkbomb: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -23,14 +29,14 @@ local darkbomb: Chip = {
     flags = { "has_damage", "dark" },
     action = bombs.throw {
         id = "darkbomb/action",
-        held = bombs.held_dark,
+        held = HELD,
         thrower = bombs.thrower(bombs.variant {
             collision = { is = collision.thrown, hits = collision.hits_navis },
             hit_mod = 3,
             palette = 3,
             anim = 1,
             blast = regions.square,
-            explosion = bombs.effects.dark_explosion,
+            explosion = EXPLOSION,
         }),
     },
 }
