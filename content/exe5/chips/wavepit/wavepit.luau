@@ -14,14 +14,9 @@ local sparks = require("../../lib/sparks")
 
 local wavepit = {}
 
--- What starts a wave (0x080DAFA0's rows, by the chip's first parameter): the panel flags it needs and those it
--- mustn't have, whether the panel turns Normal, and the wave's palette.
+-- What starts a chip's wave (its row of 0x080DAFA0, by the chip's first parameter): the panel flags it needs and those
+-- it mustn't have, whether the panel turns Normal, and the wave's palette. Each chip states its own.
 export type Pit = { require: number, forbid: number, mends: boolean, palette: number }
-wavepit.pits = {
-    wavepit = { require = 0x0002_0000, forbid = 0, mends = true, palette = 0 } :: Pit,
-    redwave = { require = 0x0000_1000, forbid = 0, mends = true, palette = 1 } :: Pit,
-    mudwave = { require = 0, forbid = 0x10, mends = false, palette = 2 } :: Pit,
-}
 
 export type State = {
     -- Its palette (its first parameter), and whether it may stand off solid ground (its second: MudWave's first
