@@ -1,9 +1,10 @@
 --!strict
 -- SearchMan's scope, as EXE5 and EXE4 share it (EXE5's effect object #0x43, 0x080E5208; EXE4's #0x43, 0x080E6B44; EXE6
 -- keeps its code, `sub_80E55C0`, which no EXE6 chip spawns): it starts on the top of a column in the enemy area and
--- sweeps the columns from there to the far bound, down one column and up the next, a panel every 6 ticks (4 for the
--- SP and DS chips), until its user presses A while the battle is dimmed or 300 ticks pass; then it locks on
--- (animation 1) and gives SearchMan the panel. B pressed with A, or within 5 ticks of it, powers his last shot.
+-- sweeps the columns from there to the far bound, down one column and up the next, a panel every few ticks (its
+-- spawner's: 6, the SP and DS chips' 4; the original's by the chip's level), until its user presses A while the battle
+-- is dimmed or 300 ticks pass; then it locks on (animation 1) and gives SearchMan the panel. B pressed with A, or
+-- within 5 ticks of it, powers his last shot.
 --
 -- Each game makes its kind (`scope.make`): its sprites (EXE5's sight, its other look, which EXE5's Satelity sends
 -- out), its sounds (EXE5's power-up sound; EXE4's has none), and where its sweep starts and ends (EXE5's 0x080E5416;
@@ -12,8 +13,8 @@
 local scope = {}
 
 export type State = {
-    -- The chip's level (its Param1): a faster sweep for SP and DS.
-    level: number,
+    -- The ticks of its sweep a panel (the original's by the chip's level, its Param1: 6, the SP's and DS's 4).
+    sweep: number,
     -- Its look: the sight (EXE5's +0x64: Satelity's; SearchMan's is 0, the scope).
     sight: boolean,
     -- Whose new presses while dimmed it reads (EXE5's +0x60, SearchMan's user; EXE4's its side's navi's, 0x0800C09A).
@@ -42,7 +43,7 @@ export type Spec = {
 
 export type Scope = {
     kind: Kind,
-    spawn: (searchman: Object, user: Object, level: number, sight: boolean?) -> Object?,
+    spawn: (searchman: Object, user: Object, sweep: number, sight: boolean?) -> Object?,
 }
 
 local TIME_LIMIT = 0x12C
@@ -181,7 +182,7 @@ function scope.make(spec: Spec): Scope
     wait = function(me: Object)
         local s = me.state :: State
         if me.phase == 0 then
-            local ticks = if s.level ~= 0 then 4 else 6
+            local ticks = s.sweep
             me.timer = ticks
             me.phase = ticks
         end
@@ -248,7 +249,7 @@ function scope.make(spec: Spec): Scope
         id = spec.id,
         pool = "effect",
         state = {
-            level = "u8",
+            sweep = "u8",
             sight = "bool",
             user = "object",
             down = "bool",
@@ -272,13 +273,14 @@ function scope.make(spec: Spec): Scope
     }
 
     -- 0x080E547C: SearchMan's scope for `searchman` (who takes its panel and its power-up: his state's `powered`),
-    -- `user`'s presses read, of a chip of `level`; `sight`: in its other look (EXE5's Satelity's, for its controller).
-    local function spawn(searchman: Object, user: Object, level: number, sight: boolean?): Object?
+    -- `user`'s presses read, sweeping a panel every `sweep` ticks; `sight`: in its other look (EXE5's Satelity's, for
+    -- its controller).
+    local function spawn(searchman: Object, user: Object, sweep: number, sight: boolean?): Object?
         local o = battle.spawn(kind, Vec3.zero)
         if o then
             local s = o.state :: State
             s.user = user
-            s.level = level
+            s.sweep = sweep
             s.sight = sight == true
             o.alliance, o.flip = searchman.alliance, searchman.flip
             o.related1 = searchman
