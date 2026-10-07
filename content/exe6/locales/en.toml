@@ -393,6 +393,31 @@ language = "en"
 "tengucross" = { name = "TenguCross", description = "WindChip Atk\n+10!AirShsOn!\nⒷ+Left:SuckIn" }
 "tomahawkcross" = { name = "TomahawkCross", description = "Chrg WoodChip:\nAtk x2! Status\nGuard:NoAbnorm" }
 
+# The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
+# tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
+[backgrounds]
+"acdc-area" = { name = "ACDC Area" }
+"acdc-hp" = { name = "ACDC HP" }
+"aquarium-comp" = { name = "Aquarium Comp" }
+"aquarium-hp" = { name = "Aquarium HP" }
+"central-area" = { name = "CentralArea" }
+"comp" = { name = "Comp" }
+"comp-alt" = { name = "Comp (Alt)" }
+"copybot-comp" = { name = "CopyBotComp" }
+"graveyard" = { name = "Graveyard" }
+"green-area" = { name = "Green Area" }
+"green-hp" = { name = "Green HP" }
+"judgetree-comp" = { name = "JudgeTreeComp" }
+"lans-hp" = { name = "Lan's HP" }
+"mr-weather-comp" = { name = "Mr.Weather Comp" }
+"mr-weather-comp-storm" = { name = "Mr.Weather Comp (Typhoon)" }
+"robot-control-comp" = { name = "Robot Control Comp" }
+"seaside-area" = { name = "SeasideArea" }
+"sky-area" = { name = "Sky Area" }
+"sky-hp" = { name = "Sky HP" }
+"underground" = { name = "Underground" }
+"undernet" = { name = "Undernet" }
+
 [patch_cards]
 "airman" = { name = "AirMan" }
 "amonicul" = { name = "Amonicul" }
