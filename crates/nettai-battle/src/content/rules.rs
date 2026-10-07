@@ -373,6 +373,26 @@ impl MoveDirection {
     }
 }
 
+/// What a body's move that ends on ice does (the reactions section's
+/// `ice`: EXE6's `sub_801A3DA`, EXE5's 0x080171F0, EXE4's 0x0801335A), unless
+/// the body is of aqua, floats or is submerged (flags 0x24) or isn't
+/// affected by ice; by the direction of the move (the collision record's,
+/// as `MoveDirection` puts it).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum IceRule {
+    /// It slides (slide type 2), a row by direction (none, up, down, back,
+    /// forward, other; `dx` toward the body's front): EXE6's `byte_800E4E8`,
+    /// EXE5's 0x0800C988.
+    Slide([SlideVector; 6]),
+    /// A push bit by the body's side and the direction is ORed into its
+    /// collision's final modifier, which the intake reads after: a slide by
+    /// the push's row, or a drag with a hit's drag bit (EXE4's, the table at
+    /// 0x080133B4, five directions a side). A direction past a side's row
+    /// pushes nothing.
+    Push([[u8; 5]; 2]),
+}
+
 /// The rule section `fresh_stats`: what a navi's stats hold when they are
 /// made fresh (`NaviStats::fresh`), beyond what the navi's own row states
 /// (its `fresh` and `weapons`): what the game's routine writes for every
@@ -939,8 +959,8 @@ pub struct Rules {
     /// `byte_8017F24`); else an obstacle slides anywhere open (EXE5's
     /// 0x08014894 keeps no bounds).
     pub obstacle_slide_bounds: bool,
-    /// Ice slides by the direction the navi last moved.
-    pub ice_vectors: [SlideVector; 6],
+    /// What a move that ends on ice does (the reactions section's).
+    pub ice: IceRule,
     /// How a move's direction goes into the collision record (the
     /// reactions section's).
     pub move_direction: MoveDirection,

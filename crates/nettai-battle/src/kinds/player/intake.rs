@@ -315,8 +315,8 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A36A`: start road slides, and ice slides at the end of a move
-/// (consuming MOVE_COMPLETE).
+/// `sub_801A36A`: start road slides, and what ice does at the end of a
+/// move (consuming MOVE_COMPLETE): a slide, or EXE4's push (the rule `ice`).
 fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let mut cooldown_ended = false;
     if !b.paused && !b.is_dimmed() && ai(b, r).road_cooldown != 0 {
@@ -358,11 +358,22 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     if kind != PanelType::Ice {
         return;
     }
-    // sub_801A3DA
+    // sub_801A3DA (EXE4's 0x0801335A)
     let f = flag1(b, r);
     if coll(b, r).element != 2 && f & 0x24 == 0 && f & f1::AFFECTED_BY_ICE != 0 {
-        set_flag2(b, r, 0x10);
-        b.objects.get_mut(r).slide_type = 2;
+        match b.game_rules().ice {
+            crate::content::IceRule::Slide(_) => {
+                set_flag2(b, r, 0x10);
+                b.objects.get_mut(r).slide_type = 2;
+            }
+            // EXE4's: a push bit by side and direction into the final
+            // modifier, which the hit modifiers' requests read below.
+            crate::content::IceRule::Push(bits) => {
+                let side = b.objects.get(r).alliance as usize & 1;
+                let c = coll_mut(b, r);
+                c.hit_mod_final |= bits[side].get(c.direction as usize).copied().unwrap_or(0);
+            }
+        }
     }
 }
 
@@ -790,4 +801,56 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
     let spark = b.roles().spark(SparkRole::Guard);
     crate::kinds::spark::spawn(b, r, pos, spark);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::content::{Content, IceRule, testing};
+    use std::sync::Arc;
+
+    /// A fight on the test content whose ice does `ice`: the battle and side
+    /// 1's navi (at (5, 2)), standing on ice at a move's end, the move's
+    /// direction `direction`.
+    fn on_ice(ice: IceRule, direction: u8) -> (Battle, ObjectRef) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        c.rules_mut().ice = ice;
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        crate::content::testing::on(&mut setup, &c);
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let r = b.player(1).unwrap();
+        b.set_panel_type(5, 2, PanelType::Ice);
+        super::super::set_flag1(&mut b, r, f1::AFFECTED_BY_ICE | f1::MOVE_COMPLETE);
+        let c = coll_mut(&mut b, r);
+        c.direction = direction;
+        c.hit_mod_final = 0;
+        (b, r)
+    }
+
+    /// docs/design/exe4-map.md §18 item 1: EXE4's ice is a push (0x0801335A):
+    /// a move's end on it ORs the push bit of the side and the direction into
+    /// the final modifier, and starts no ice slide; EXE6's slides.
+    #[test]
+    fn ice_pushes_or_slides_by_the_rule() {
+        let push = IceRule::Push([[0, 0x40, 0x80, 0x20, 0x10], [0, 0x40, 0x80, 0x10, 0x20]]);
+        let (mut b, r) = on_ice(push, 3);
+        slide_triggers(&mut b, r);
+        assert_eq!(coll(&b, r).hit_mod_final, 0x10, "side 1's move left: its push forward");
+        assert_eq!((flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0), "no ice slide");
+        assert_eq!(flag1(&b, r) & f1::MOVE_COMPLETE, 0, "the move's end is taken");
+        // An aqua body stays.
+        let (mut b, r) = on_ice(push, 1);
+        coll_mut(&mut b, r).element = 2;
+        slide_triggers(&mut b, r);
+        assert_eq!(coll(&b, r).hit_mod_final, 0);
+        // The test content's ice (EXE6's) slides.
+        let (mut b, r) = on_ice(testing::rules().ice, 3);
+        slide_triggers(&mut b, r);
+        assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0x10, 2));
+    }
 }
