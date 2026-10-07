@@ -710,3 +710,30 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 1 problem
     with the pack: MegaMan has no emblem (the custom screen's extraction, §14). The banners, the faces (MegaMan's
     `forms`, so his faces are his base form's `mugshot`) and the warning marker are in.
+
+### 18.6 Found by the replays
+
+What the lab's recordings showed past §18's first list (group B's replays, exe4-compat's `trace`). Each generalization
+is a rule field every game states, EXE6's and EXE5's unchanged.
+
+39. **The charge and its glow.** EXE4's navi init (0x0801079C) spawns no charge glow: the charge spawns its own
+    (0x0800BD88: effect 5, 0x080E215C, when the AI data's +0x0A or +0x0B has a level and +0x58 holds none; it reads
+    which charge (+9) and its level, sounds 0x71 as it starts and 0x72 at the full charge, sits at a per-navi offset,
+    0x080E2274, and frees itself when the charge goes). The charge itself counts per source (+0x0A, +0x0B levels;
+    +0x30, +0x32 counters; 0x0800BDAA clears them), not EXE6's one counter. **Done:** the init's part,
+    `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4). Open: the charge's counting and the glow
+    kind (MegaMan's, §18.4).
+40. **The intro's first tick.** EXE4's intro (0x08007464) goes on from its init to the HUD's setup on the same tick
+    (state [4,0,4,4] after the round's first tick). **Done:** `flow.intro_steps_on_init`. (Its init's one RNG2 draw is
+    the actors' spawn's last call, 0x080F576C, where EXE6's is `sub_8014178`'s: the same draw.)
+41. **The fade toward clear.** 0x08005BDE ends the fade on the step whose level would go under its target and keeps
+    the last one, a step after EXE6's `sub_8006366` (the intro's fade takes 18 steps). **Done:** `effects.fade_clear`
+    (the renderer's `Fade::intro_ticks` with it).
+42. **A paused navi.** EXE4's status block (its tail, 0x08013C2A) has no pause handler: the navi runs while paused
+    only until it takes control, which clears its header flag 0x04 (0x08010A88), and the object loop skips it then.
+    **Done:** `status.paused_navi` (`pause_handler`: EXE6, EXE5; `stops_at_control`: EXE4).
+43. **The banner's steps.** EXE4's banner task (0x08014904, 0x08014934; its steps from 0x08014994) slides in for 9
+    ticks, holds 30, slides out for 9 (EXE6's 5, 0x30, 5); a holding banner (its table's state 2, 0x08016C04:
+    banners 0x24, 0x28, 0x34) doesn't count its hold, and let go (0x0801616C) slides out at once. **Done:**
+    `effects.banner`. Unread: a state 3 banner (shown without sliding), which no table entry has.
+44. **The HUD's banner task** is the HUD task mask's bit 5 (0x20; EXE6's bit 15): exe4-compat's comparison reads it.

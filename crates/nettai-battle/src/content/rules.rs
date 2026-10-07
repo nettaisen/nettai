@@ -46,6 +46,10 @@ pub struct FlowRules {
     /// `banners.win`); any other win shows the role `win`'s, or
     /// `win_judged`'s on the judge's ruling. Each game states its own.
     pub navi_win_banner: NaviWinBanner,
+    /// The intro's first tick runs its first step too (the HUD's setup):
+    /// EXE4's intro (0x08007464) goes on from its init on the same tick,
+    /// where EXE6's (`sub_80091F0`) and EXE5's return after it.
+    pub intro_steps_on_init: bool,
 }
 
 /// The rule section `link_pick`: what a link battle picks at random with
@@ -182,6 +186,77 @@ pub struct EffectsRules {
     pub obstacle_actions: ObstacleActions,
     /// The Full Synchro aura where games differ.
     pub full_synchro_aura: AuraRules,
+    /// When a navi's charge glow comes.
+    pub charge_glow: ChargeGlow,
+    /// When a screen fade toward clear ends (`Fade::step`).
+    pub fade_clear: FadeClear,
+    /// A banner's steps (`hud::Banner`).
+    pub banner: BannerSteps,
+}
+
+/// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
+/// slides out; and how a banner that holds until let go is let go.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BannerSteps {
+    pub slide_in: u8,
+    pub hold: u8,
+    pub slide_out: u8,
+    pub release: BannerRelease,
+}
+
+/// How a holding banner is let go (`hud::Banner::release`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BannerRelease {
+    /// Its timer stops at 5 while it holds; let go, it holds three ticks
+    /// more, then slides out (EXE6's `sub_801CE28`, `sub_801E780`).
+    HoldsThreeMore,
+    /// Its hold doesn't count while it holds; let go, it slides out at once
+    /// (EXE4's 0x080149CE, 0x0801616C).
+    SlidesOut,
+}
+
+/// When a screen fade toward clear (the intro's, a dimming's end) ends.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FadeClear {
+    /// On the step whose level reaches its target, kept at least 0 (EXE6's
+    /// `sub_8006366`, EXE5's).
+    AtTarget,
+    /// On the step whose level would go under its target, which isn't kept:
+    /// one step later (EXE4's 0x08005BDE; its intro's fade from white
+    /// takes 18 steps, EXE6's 17).
+    PastTarget,
+}
+
+/// What a navi does while the battle is paused (`Rules::paused_navi`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PausedNavi {
+    /// It runs through the pause (its header flag 0x04 stays), and its
+    /// status block's tail runs its pause handler in place of its action
+    /// (but in its entry): the form changes and reversions, the navi
+    /// switches (EXE6's `loc_801B142`, EXE5's).
+    PauseHandler,
+    /// It runs through the pause until it takes control, which clears its
+    /// header flag 0x04 (EXE4's 0x08010A88), so that the object loop skips
+    /// it then; its status block's tail has no pause handler and runs its
+    /// action (0x08013C2A).
+    StopsAtControl,
+}
+
+/// When a navi's charge glow (effect #8, `kinds::charge_glow`) comes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChargeGlow {
+    /// With the navi: its init spawns it, and it lives as long (EXE6's
+    /// `sub_80E0F02`, EXE5's).
+    WithNavi,
+    /// With a charge: the navi's init spawns none (EXE4's 0x0801079C); the
+    /// charge brings its own glow (0x0800BD88's effect 5, which goes when
+    /// the charge does).
+    WithCharge,
 }
 
 /// How a game's obstacles number their action tables (`kinds::obstacle`):
@@ -950,6 +1025,9 @@ pub struct Rules {
     /// section `status`): EXE6's the last hit's multiplier, EXE5's the
     /// damage of the element the navi is weak to.
     pub weakness_mark: WeaknessMark,
+    /// What a navi does while the battle is paused (rule section
+    /// `status`): see [`PausedNavi`].
+    pub paused_navi: PausedNavi,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,
