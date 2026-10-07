@@ -52,13 +52,13 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | Feature | (a) | (b) | (c) | (d) | All |
 |---|---|---|---|---|---|
 | Beast Out and Beast Over | | | | | |
-| Crosses and the form framework | | | 2 | | 2 |
+| Crosses and the form framework | | | 1 | | 1 |
 | Emotions | | | | 3 | 3 |
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | | | | | |
 | The stat block and versions | | | | | |
 | Tools | | | | | |
-| **All** | | | **2** | **5** | **7** |
+| **All** | | | **1** | **5** | **6** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -69,15 +69,6 @@ rename left of EXE5's logic.
 
 ### Crosses and the form framework (EXE6; the form break and the navi switch are both games')
 
-- **C7. The renderer's Cross window**. Pieces:
-  - render custom.rs's `cross_stage`, `cross_map`, `cross_names`, `cross_cursor_parts`, `navi_crosses`,
-    `cross_picture` and `cross_at` (custom.rs:553–735, :865–890, :1354), the last reading `PlayerFact::CrossList`;
-  - `lookups::cross_name` (lookups.rs:403);
-  - `Lookup::{CrossName, CrossDescription}` (audit.rs:79);
-  - chatbox.rs:90.
-
-  About 250 lines. *(c)* It draws the `FormList` view (§4.8). Rename to the view, and read the offered forms from
-  the view rather than from the fact.
 - **C8. The Cross window's assets**. Pieces:
   - nettai-assets' `CustomScreen::{cross_maps, cross_patches, cross_cursor, cross_cursor_palette}`,
     `VersionPictures::{cross_names, cross_palettes}` and `CustomLayout::cross_names`;
@@ -177,6 +168,11 @@ Each with what it was and what it is now.
 - **C5.** `cross_doubles` and `Boost::Cross` are `charge_doubles` and `Boost::Charged`.
 - **C6.** The form list window: `ScreenLook::{form_list_tab, form_list_cursor}` and `custom.draw_form_list_cursor`,
   `custom.set_form_list_tab`.
+- **C7.** The renderer's Cross window draws the `FormList` view by its names: `form_list_stage` and
+  `FormListStage`, `form_list_map`, `form_names`, `form_list_cursor_parts`, `version_forms`, `form_name_picture`,
+  `lookups::form_name`, `Lookup::{FormName, FormDescription}`. The offered forms are the view's
+  (`FormList::forms`: the player's form list's entries at the places offered), so `cross_at` and the renderer's
+  read of the fact are gone. The pack's pictures keep their names until C8.
 - **C9.** `PlayerFact::CrossList` is `PlayerFact::FormList`, which a setup field takes by declaring the role
   (`schema.role("form_list", T)`): EXE6's `crosses`, whose name stays its own, so its match files keep
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.

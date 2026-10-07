@@ -36,12 +36,12 @@ const ROWS: usize = 20;
 const WINDOW_TILE: u16 = 0x01;
 /// A chip picture's tiles (7x6).
 const PICTURE_TILES: u16 = 42;
-/// The Crosses' names in the Cross window (9x2 each, `byte_8029DF8`,
-/// from the layout's `cross_names`).
-pub(crate) const CROSS_NAME_TILES: usize = 18;
-/// The Cross window's maps: three opening steps, then the window with one
-/// to five Crosses.
-const CROSS_OPENING_MAPS: usize = 3;
+/// The forms' names in the form list's window (9x2 each, EXE6's Cross
+/// window's, `byte_8029DF8`, from the layout's `cross_names`).
+pub(crate) const FORM_NAME_TILES: usize = 18;
+/// The form list window's maps: three opening steps, then the window with
+/// one to five forms (EXE6's Cross window's).
+const FORM_LIST_OPENING_MAPS: usize = 3;
 /// The Program Advance animation's names (`sub_802B80C`): 9 cells of the
 /// 8x16 font from the chip window's picture's first tile (EXE6's 0xAB), 18
 /// tiles a name; a pick's code in its last cell; a name every 3 rows from
@@ -556,24 +556,24 @@ impl View<'_> {
     }
 }
 
-/// A navi's Crosses of a version of its game, in the order its definition
-/// lists them (`NaviForms::listed`): the Cross window's order, and the
-/// order of a pack version's names and colors.
-pub fn navi_crosses<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> &'c [FormHandle] {
+/// A navi's forms of a version of its game: its form list named for the
+/// version, in the order its definition lists them (`NaviForms::listed`:
+/// EXE6's Crosses), the order of a pack version's names and colors.
+pub fn version_forms<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> &'c [FormHandle] {
     c.navi(navi).forms.as_ref().map_or(&[], |f| f.listed(version))
 }
 
-/// A Cross's name pictures and colors in the Cross window, by the Cross's
-/// own version (a Gregar Cross shows Gregar's name in any player's window):
-/// its version's custom-screen pictures (the form's `version`) and its
-/// number among that version's Crosses as `navi`, whose Cross it is, lists
-/// them (`navi_crosses`). Its name is `cross_names`' 18 tiles from
+/// A form's name pictures and colors in the form list's window, by the
+/// form's own version (a Gregar Cross shows Gregar's name in any player's
+/// window): its version's custom-screen pictures (the form's `version`) and
+/// its number among that version's forms as `navi`, whose form it is, lists
+/// them (`version_forms`). Its name is `cross_names`' 18 tiles from
 /// `18 * number` on the cursor's row (`18 * (number + 5)` on the others'),
 /// its colors `cross_palettes[number]` (`[number + 5]` once used). None: a
 /// form of no version, or one the navi doesn't list.
-pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
+pub fn form_name_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
     let version = c.form(form).version.as_deref()?;
-    let number = navi_crosses(c, navi, version).iter().position(|&f| f == form)?;
+    let number = version_forms(c, navi, version).iter().position(|&f| f == form)?;
     Some((a.versioned.get(version), number))
 }
 
@@ -660,28 +660,19 @@ fn state_number(s: SlotState) -> usize {
     }
 }
 
-/// The tick of a Cross's choice the white fade is over and the Cross put
-/// on (`sub_8027AAE`; rules/cross's `PUT_ON_TICK`): the window's map
-/// is the chips' again.
-const CROSS_PUT_ON_TICK: u16 = 25;
-
-/// The Cross in place `place` of a side's Crosses, as EXE6's rules/cross
-/// finds it (content/exe6/rules/cross/window.luau's `cross_at`), from what
-/// the player brought: the entry of their form list
-/// (`PlayerFact::FormList`: the Crosses they have, in the window's order).
-/// None: no Cross there.
-pub fn cross_at(b: &Battle, side: u8, place: u8) -> Option<FormHandle> {
-    b.fact(side, PlayerFact::FormList)?.form(place as usize)
-}
+/// The tick of a form's choice the white fade is over and the form put
+/// on (EXE6's Cross, `sub_8027AAE`; rules/cross's `PUT_ON_TICK`): the
+/// window's map is the chips' again.
+const FORM_PUT_ON_TICK: u16 = 25;
 
 /// Where a form list's window is (EXE6's Cross window: the windows whose
 /// views are `form_list_opening`, `form_list`, `form_list_closing` and
 /// `form_chosen`): the one up (its tick), or a description from it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CrossStage {
+pub enum FormListStage {
     /// `sub_8027834`, 12 ticks.
     Opening(u16),
-    /// `sub_802794A`, or a Cross's description from it.
+    /// `sub_802794A`, or a form's description from it.
     Up,
     /// `sub_802790C`, 6 ticks.
     Closing(u16),
@@ -690,33 +681,33 @@ pub enum CrossStage {
 }
 
 /// The stage of the form list's window on screen `s`, if one is up.
-pub fn cross_stage(b: &Battle, s: &Screen) -> Option<CrossStage> {
+pub fn form_list_stage(b: &Battle, s: &Screen) -> Option<FormListStage> {
     let (window, tick) = match s.phase {
         Phase::Window { window, tick } => (window, tick),
         Phase::Description { window: Some(window), .. } => (window, 0),
         _ => return None,
     };
     Some(match b.content.defs.window(window).view? {
-        WindowView::FormListOpening => CrossStage::Opening(tick),
-        WindowView::FormList => CrossStage::Up,
-        WindowView::FormListClosing => CrossStage::Closing(tick),
-        WindowView::FormChosen => CrossStage::Chosen(tick),
+        WindowView::FormListOpening => FormListStage::Opening(tick),
+        WindowView::FormList => FormListStage::Up,
+        WindowView::FormListClosing => FormListStage::Closing(tick),
+        WindowView::FormChosen => FormListStage::Chosen(tick),
         WindowView::OfferFlight | WindowView::ChipFlight => return None,
     })
 }
 
-/// The Cross window's map the screen shows, if it shows one: its opening
-/// steps every 3 ticks (`sub_8027834`), then the window with its Crosses,
-/// until it closes (`sub_802790C`, 5 ticks) or the Cross chosen is put on
-/// (`sub_8027AAE`).
-fn cross_map(v: &View) -> Option<usize> {
-    let stage = cross_stage(v.b, v.screen)?;
+/// The form list window's map the screen shows, if it shows one: its
+/// opening steps every 3 ticks (`sub_8027834`), then the window with its
+/// forms, until it closes (`sub_802790C`, 5 ticks) or the form chosen is
+/// put on (`sub_8027AAE`).
+fn form_list_map(v: &View) -> Option<usize> {
+    let stage = form_list_stage(v.b, v.screen)?;
     let count = v.b.form_list(v.side).map_or(0, |w| w.count);
-    let full = CROSS_OPENING_MAPS + count.max(1) as usize - 1;
+    let full = FORM_LIST_OPENING_MAPS + count.max(1) as usize - 1;
     match stage {
-        CrossStage::Opening(tick) if tick >= 3 => Some(tick as usize / 3 - 1),
-        CrossStage::Up | CrossStage::Closing(_) => Some(full),
-        CrossStage::Chosen(tick) if tick < CROSS_PUT_ON_TICK => Some(full),
+        FormListStage::Opening(tick) if tick >= 3 => Some(tick as usize / 3 - 1),
+        FormListStage::Up | FormListStage::Closing(_) => Some(full),
+        FormListStage::Chosen(tick) if tick < FORM_PUT_ON_TICK => Some(full),
         _ => None,
     }
 }
@@ -734,12 +725,12 @@ impl Window {
             advance_names: Vec::new(),
             layout: a.layout,
         };
-        // sub_8026840: the window's map, with the Cross tab or without; or
-        // the Cross window's.
-        let cross = cross_map(v);
-        let (map, patches) = match cross {
+        // sub_8026840: the window's map, with the form list's tab (EXE6's
+        // Cross tab) or without; or the form list window's.
+        let form_list = form_list_map(v);
+        let (map, patches) = match form_list {
             Some(i) => (a.cross_maps.get(i), &a.cross_patches),
-            // (A game without the Cross tab has one map: EXE5.)
+            // (A game without the tab has one map: EXE5.)
             None => (a.window_maps.get(v.screen.look.form_list_tab as usize).or(a.window_maps.first()), &a.window_patches),
         };
         if let Some(m) = map {
@@ -772,8 +763,8 @@ impl Window {
         w.chip_window(v, text, problems);
         w.slots(v, problems);
         w.column(v, problems);
-        if cross.is_some_and(|i| i >= CROSS_OPENING_MAPS) {
-            w.cross_names(v, problems);
+        if form_list.is_some_and(|i| i >= FORM_LIST_OPENING_MAPS) {
+            w.form_names(v, problems);
         }
         if v.screen.look.turn_limit {
             // sub_8029D34: "FINAL TURN", 7x2 at column 15, row 4 (past the
@@ -867,24 +858,22 @@ impl Window {
         self.tiles.put(at, &fonts::cell_text(v.hud, &glyphs, ADVANCE_NAME_CELLS, 0));
     }
 
-    /// `sub_802794A`: the Crosses' names (`sub_8029D94`: the one under the
-    /// cursor in its own look) over the Cross window's map, and palette 10
-    /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
-    fn cross_names(&mut self, v: &View, problems: &mut Problems) {
+    /// `sub_802794A`: the offered forms' names (`sub_8029D94`: the one
+    /// under the cursor in its own look) over the form list window's map,
+    /// and palette 10 the form under the cursor's (`sub_8029EAC`: a used
+    /// one's darker).
+    fn form_names(&mut self, v: &View, problems: &mut Problems) {
         let Some(w) = v.b.form_list(v.side) else { return };
-        // Each Cross's name and colors are its own version's (a player's
+        // Each form's name and colors are its own version's (a player's
         // Crosses can hold another's: docs/engine/custom-screen.md §4.1).
         let navi = v.b.stats[v.side as usize].navi;
-        let mut picture = |slot: usize| {
-            let form = cross_at(v.b, v.side, w.offered[slot])?;
-            crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
-        };
+        let mut picture = |slot: usize| crate::lookups::form_name(v.assets, &v.b.content, navi, w.forms[slot]?, problems);
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };
             let name = number + if slot == w.cursor as usize { 0 } else { 5 };
-            let at = self.layout.cross_names + (CROSS_NAME_TILES * slot) as u16;
-            self.tiles.put_part(at, &own.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
-            for i in 0..CROSS_NAME_TILES {
+            let at = self.layout.cross_names + (FORM_NAME_TILES * slot) as u16;
+            self.tiles.put_part(at, &own.cross_names, FORM_NAME_TILES * name, FORM_NAME_TILES);
+            for i in 0..FORM_NAME_TILES {
                 let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
                 self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
             }
@@ -1358,10 +1347,10 @@ fn cursor_at(p: &nettai_assets::CursorPlace) -> (i32, i32, CursorShape) {
     (p.x as i32, p.y as i32, CursorShape { corners })
 }
 
-/// `sub_80289E4`: the Cross window's cursor, a box around the Cross under
-/// it: four corners, then seven edge pieces above and below (`byte_8028A30`:
-/// y, x, flips), in sprite palette 14.
-fn cross_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
+/// `sub_80289E4`: the form list window's cursor, a box around the form
+/// under it: four corners, then seven edge pieces above and below
+/// (`byte_8028A30`: y, x, flips), in sprite palette 14.
+fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
     let cursor = v.b.form_list(v.side).map_or(0, |w| w.cursor);
     let (x, y) = (5, 5 + 16 * cursor as i32);
     let corners = [(2, 3, false, false), (2, 0x43, true, false), (0xC, 0x43, true, true), (0xC, 3, false, true)];
@@ -1638,7 +1627,7 @@ pub fn draw<'a>(
         queue.extend(held_part(&v, packs, problems));
     }
     if let Some(frame) = drawn.form_list_cursor {
-        queue.extend(cross_cursor_parts(&v, a, frame));
+        queue.extend(form_list_cursor_parts(&v, a, frame));
     }
     for part in queue {
         list.insert_at(SPRITE_LAYER, 0, vec![part]);

@@ -596,14 +596,14 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   its palette sprite palette 11 (the cursor's and the Regular chip's
   frame's too); a navi with none shows none;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
-  Beast, the pack's `-gregar` assets); a Cross's name and
-  colors in the Cross window are its own version's (`custom::cross_picture`:
-  the pack's pictures of the form's `version`, numbered by the Cross's
-  place among that version's Crosses in its navi's list,
-  `forms.<version>.crosses`, which is the original's order;
-  for the form in the entry's place, `custom::cross_at`: the player's Cross
-  list's entry, else their version's Cross of that number, read as the
-  facts the engine names, `Battle::fact` and `PlayerFact`), so a Gregar
+  Beast, the pack's `-gregar` assets); a form's name and colors in the
+  form list's window (EXE6's Cross window) are its own version's
+  (`custom::form_name_picture`: the pack's pictures of the form's
+  `version`, numbered by the form's place among that version's forms in
+  its navi's list, `forms.<version>.form_list`, which is the original's
+  order; the forms offered are the view's, `FormList::forms`: the
+  player's form list's entries at the places offered, the setup's field
+  of the role `form_list`), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
