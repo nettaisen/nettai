@@ -518,7 +518,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         bugs_before_drain = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",
-        emotion = { mood_held = "at_zero", anger_end = "resets_mood", plain_in_battle_mode_1 = false, normal_in_a_form = true, anger_before_worn_out = false, tired_and_exhausted = true, worried_below = 40 },
+        emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" } },
         form_break = "marked_forms",
         weakness_hit_breaks_form = true,
         weakness_mark = "weak_element_damage","#,
@@ -571,9 +571,10 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((r.slide_speed.x, r.slide_speed.y), (0x30000, 0x20000));
         assert_eq!((r.reactions, r.form_break, r.intake.hp_loss), (Reactions::FlashTimerFirst, FormBreak::MarkedForms, HpLoss::HpAlone));
         assert_eq!((r.weakness_hit_breaks_form, r.weakness_mark), (true, WeaknessMark::WeakElementDamage));
-        let m = r.emotion;
-        assert_eq!((m.mood_held, m.anger_end, m.worried_below), (MoodHeld::AtZero, AngerEnd::ResetsMood, Some(40)));
-        assert_eq!((m.plain_in_battle_mode_1, m.normal_in_a_form, m.anger_before_worn_out, m.tired_and_exhausted), (false, true, false, true));
+        let m = &r.emotion;
+        assert_eq!((m.mood_held, m.anger_end, m.names.clone()), (MoodHeld::AtZero, AngerEnd::ResetsMood, vec!["normal".to_string(), "worn_out".into(), "worried".into()]));
+        let worried = crate::content::EmotionWhen { mood_below: Some(40), in_form: Some(false), ..Default::default() };
+        assert_eq!((m.order.len(), m.order[1].when.clone(), m.role(crate::content::Emotion(1)), m.role(crate::content::Emotion(0))), (3, vec![worried], Some(crate::content::EmotionRole::WornOut), None));
         let aura = r.effects.full_synchro_aura;
         assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight), (true, true, false));
         assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0), (false, true, 7));
@@ -609,8 +610,11 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert!(e.contains("rules: status.emotion: missing field `anger_end`"), "{e}");
         let e = game(rules(None, None, Some((" steps_while_paused = true,", "")))).unwrap_err();
         assert!(e.contains("rules: effects.full_synchro_aura: missing field `steps_while_paused`"), "{e}");
-        let c = game(rules(None, None, Some((", worried_below = 40", "")))).unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(c.rules().emotion.worried_below, None, "no mood is worried");
+        // The order's last case holds always; a role is of an emotion the order names.
+        let e = game(rules(None, None, Some(("{ emotion = \"normal\" }", "{ emotion = \"normal\", when = { { mood = 1 } } }")))).unwrap_err();
+        assert!(e.contains("the emotions' order ends with `normal` when it holds: its last case holds always"), "{e}");
+        let e = game(rules(None, None, Some(("roles = { worn_out", "roles = { tired")))).unwrap_err();
+        assert!(e.contains("roles: `tired` is no emotion of the order's"), "{e}");
         // A field of a table of settings, too.
         let e = game(rules(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
         assert!(e.contains("rules: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");

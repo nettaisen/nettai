@@ -7,7 +7,7 @@
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::kinds::common::{self, Progress};
-use crate::kinds::player::{Emotion, emotion};
+use crate::kinds::player::{EmotionRole, emotion_role};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
 
@@ -162,7 +162,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).look.set_flip(facing);
     let linked = b.objects.get(navi).actor.is_some_and(|a| b.actors.get(a).full_synchro_aura.is_some());
     if linked {
-        if emotion(b, alliance) == Emotion::FullSynchro {
+        if emotion_role(b, alliance) == Some(EmotionRole::FullSynchro) {
             return;
         }
         set_link(b, navi, None);

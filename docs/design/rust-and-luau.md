@@ -53,12 +53,12 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 |---|---|---|---|---|---|
 | Beast Out and Beast Over | | | 1 | | 1 |
 | Crosses and the form framework | | | 2 | | 2 |
-| Emotions | | 1 | 1 | 3 | 5 |
+| Emotions | | | 1 | 3 | 4 |
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | 1 | | 1 | | 2 |
 | The stat block and versions | | | 1 | | 1 |
 | Tools | | | 1 | | 1 |
-| **All** | **1** | **1** | **7** | **5** | **14** |
+| **All** | **1** | | **7** | **5** | **13** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -91,16 +91,6 @@ rename left of EXE5's logic.
   format bump.
 ### Emotions (both games; EXE6's tired, Full Synchro and anger, EXE5's worried and dark)
 
-- **E1. The `Emotion` enum and its derivation** (`Emotion`, `emotion()`, player/mod.rs:360–412: `sub_8015B54` read
-  by the `emotion` section's `EmotionRules`; `CoreApi::emotion`, api.rs:1272; `CustomPlayer::emotion`, api.rs:876).
-  The enum holds both games' emotions. Read by:
-  - the palette (per tick);
-  - the doubling (per chip use);
-  - the HUD's faces, the custom screen's `PlayerView`, the last stand and idle.
-
-  *(b)* By §4.6, each game's rules name their emotions and push the current one at their own events: a mood change,
-  anger, exhaustion, tired. The framework keeps typed fields for what it reads on hot paths (Full Synchro, angry,
-  worn out). About 50 lines plus some 15 readers. Pushing means no per-tick Luau. This is the widest-reaching item.
 - **E2. The mood and anger machinery**:
   - `set_mood`, `gain_mood`, `lose_mood`, `mood_is_held` (player/mod.rs:525–565);
   - anger's tick (`tick_anger`, status.rs:930, every tick for every navi);
@@ -124,11 +114,12 @@ rename left of EXE5's logic.
 - **E5. Faces by emotion**:
   - `FaceSet` (navis.rs:450–495: normal, angry, tired, full_synchro, worn_out, worried);
   - the HUD's pick and mood flash (render hud.rs:94–104, :210–230, :846–868);
-  - `face_hub` and `face_chaos` (player/mod.rs:499–520);
+  - `face_hub` and `face_charged` (player/mod.rs);
   - render audit's `emotion_number`.
 
-  *(c)* Faces keyed by the game's emotion names once E1 is done. The second set of faces is a look the rules push
-  (`face_hub` already is; `face_chaos` follows S1).
+  *(c)* Faces keyed by the game's emotion names. Since E1 a face is looked up by its emotion's name, through
+  `FaceSet`'s fields (named for both games' emotions); what is left is a set keyed by the game's own names. The
+  second set of faces is a look the rules push (`face_hub`, and since S1 `face_charged`).
 
 ### NaviCust (both games)
 
@@ -217,6 +208,19 @@ Each with what it was and what it is now.
 - **D2.** `dark_substitute` is `rules_substitute`.
 - **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are
   `BattleInfo::Effects` (`battle.effects()`), whose bits EXE5's rules/light_dark names.
+- **E1.** A game's emotions are its rules' data: the status section's `emotion.order`, the game's emotions by name in
+  the order its routine reads them (the first case that holds is the side's), each case's alternatives over the
+  framework's facts (`mood`, `mood_below`, `angry`, `tired`, `exhausted`, `in_form`, `battle_mode`), and `roles`,
+  what an emotion is to the framework (`full_synchro`: the doubling, its palette and aura, the counter flash;
+  `angry`: the doubling; `worn_out`: buster damage 1, no anger; `tired`: no anger). `Emotion` is an index into the
+  game's names (`Emotion(0)` the last case's, the default); `battle.emotion` and `custom.player(side).emotion`
+  give the name, faces are looked up by it, and the readers ask the role. The enum's game variants and
+  `EmotionRules`' five flags (`plain_in_battle_mode_1`, `normal_in_a_form`, `anger_before_worn_out`,
+  `tired_and_exhausted`, `worried_below`) are gone. Not pushed, as the audit first proposed: a pushed emotion
+  would have to be told every change of its inputs (the mood's setters, anger's start and end, the held states,
+  the form: some fifteen places, a missed one a stale emotion), where the order read on each read keeps nothing
+  in step (rules-in-luau.md §4.6), stays exact by construction, costs no Luau call and serves the presentation's
+  read-only readers too.
 - **E6.** EXE5's last stand is its rules' `hp_emptied(side, navi)` hook (EXE5's rules/emotion/dark_survival: the check
   0x0802C16C, the hold at 1 HP and the volley's request), which a loss of HP to 0 asks under `status.hp_loss =
   "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.
