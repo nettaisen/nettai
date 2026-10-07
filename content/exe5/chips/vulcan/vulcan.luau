@@ -15,8 +15,15 @@ local vulcan = {}
 local LOOK: VulcanLook = {
     sound = asset.sound("col-army-2"),
     arm = attachment.look { sprite = asset.sprite("vulcan"), palette = 0, attach_point = 14 },
-    attachment = attachment.kind,
+    -- Held in the overlay, its animation 0, as EXE6's.
+    hold = function(me: Object, look: AttachmentLook, which: Slot)
+        attachment.attach(me, look, which)
+    end,
+    slot = "overlay",
     bullet_kind = bullet.kind,
+    -- The navi holds it in its animation 0xA and fires in 0xD, as EXE6's.
+    hold_anim = 0xA,
+    fire_anim = 0xD,
 }
 
 -- The InfVulcs' gun (row 0x1F).
