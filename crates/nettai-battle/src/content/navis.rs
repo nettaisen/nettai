@@ -439,7 +439,7 @@ pub struct Faces {
 /// default emotion's (`Emotion(0)`'s: EXE6's and EXE5's normal).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 pub struct FaceSet {
-    /// The faces by their emotion's name, in the definition's order.
+    /// The faces by their emotion's name, in name order (a table's).
     pub by_emotion: Vec<(String, super::MugshotId)>,
     /// The face of every emotion (a definition's one face, `mugshot = ...`).
     pub every: Option<super::MugshotId>,
