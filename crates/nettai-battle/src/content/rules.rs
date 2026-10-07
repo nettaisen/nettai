@@ -232,6 +232,28 @@ pub struct EffectsRules {
     /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
     /// of the second block that shows without sliding, 33).
     pub used_chip_ticks: u8,
+    /// Each console's emotion window checks its navi's NaviCust bugs and
+    /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
+    /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
+    /// RNG1 never moves in a bugged navi's fight.
+    pub bug_flicker: bool,
+    /// The order the objects of a pool are drawn in. Presentation: the
+    /// renderer's.
+    pub draw_order: DrawOrder,
+}
+
+/// The order a pool's objects are drawn in, each pool in turn (actors,
+/// attacks, effects): it decides which of two parts in the same depth
+/// bucket is in front (the one drawn later).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DrawOrder {
+    /// By the update list (EXE6's `sub_8003E18`, `sub_8004218` and
+    /// `sub_8004510` walk the lists `RunBattleObjectLogic` builds; EXE5's).
+    UpdateList,
+    /// By slot (EXE4's 0x08003BA0, 0x08003ED4 and 0x08004180 walk each
+    /// pool's slots from the first).
+    Slots,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the
@@ -351,6 +373,25 @@ pub struct StepControls {
     /// `sub_80F0354`) a held direction starts the step, which, blocked,
     /// leaves for idle at once (its phase from the start).
     pub idle_checks_target: bool,
+    /// A move bug: a stat of the rules' (`stats`) that the NaviCust's and
+    /// the Mod Cards' bugs write, and what it does (EXE4's NaviStats
+    /// +0x0D). EXE6's and EXE5's have none (theirs, the processing bug,
+    /// is the engine's own).
+    #[serde(default)]
+    pub bug: Option<StepBug>,
+}
+
+/// A move bug (`StepControls::bug`): the rules' stat `stat` (a `u8`). At
+/// 0xFF the navi is confused for `confused` ticks as the round starts
+/// (EXE4's init, 0x0800D8B0); else its high nibble, in the keys' bits
+/// (0x10 right, 0x20 left, 0x40 up, 0x80 down), is held while the navi
+/// holds no direction key or slides, in the keys' order and never turned
+/// by a confusion (0x0800B4DA): the navi steps on its own.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StepBug {
+    pub stat: String,
+    pub confused: u16,
 }
 
 /// A direction key (`StepControls`).

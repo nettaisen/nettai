@@ -423,6 +423,15 @@ pub struct HudLayout {
     /// banner, 0x08014ABE ends with it); otherwise while the banner slides
     /// in and holds (EXE6's `sub_801D048`).
     pub judge_from_hold: bool,
+    /// Where the chatbox's text starts (its sprites' top left:
+    /// `chatbox_runScript`'s text place, EXE6's (0x33, 0x6C); EXE4's
+    /// 0x0804E3B4: (0x3F, 0x6D)).
+    pub chatbox_text: (u8, u8),
+    /// Where the chatbox's key-wait arrow is, in the message box and in the
+    /// description box (EXE6's `byte_8045DCC`: (0xE2, 0x8D), and the
+    /// description's E8 06 box (0xCA, 0x8D); EXE4 shows a description in
+    /// the message box, its arrow where the message's is).
+    pub chatbox_arrows: [(u8, u8); 2],
     /// The telops' own look, where the game lays a telop out in its code
     /// rather than from a banner record of its table (EXE4's 0x0801650C);
     /// none: the telop banners' places, in the HP box's palette (EXE6's).
@@ -431,7 +440,15 @@ pub struct HudLayout {
 
 impl Default for HudLayout {
     fn default() -> Self {
-        HudLayout { pause: (100, 63), hp_number_priority: 2, message: (7, 2, 17), judge_from_hold: false, telop: None }
+        HudLayout {
+            pause: (100, 63),
+            hp_number_priority: 2,
+            message: (7, 2, 17),
+            judge_from_hold: false,
+            chatbox_text: (0x33, 0x6C),
+            chatbox_arrows: [(0xE2, 0x8D), (0xCA, 0x8D)],
+            telop: None,
+        }
     }
 }
 

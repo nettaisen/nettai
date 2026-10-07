@@ -50,8 +50,10 @@ local function tick(me: Object)
     me:update_sprite()
 end
 
--- 0x080E217C: the source charging now (none: it goes at once); its sprite by it (14-08 for B's, 14-15 for A's), no
--- shadow, animation 0; the charging sound; its first update at once.
+-- 0x080E217C: the source charging now (none: it goes at once); its sprite by it (14-08 for B's, 14-15 for A's), its
+-- first part drawn with the rest (`sprite_noShadow`), animation 0 from its first frame (`sprite_loadAnimationData`,
+-- which steps nothing); the charging sound; its first update at once, whose sprite update is the animation's first
+-- step.
 local function init(me: Object)
     local navi = me.related1 :: Object
     local state = me.state :: State
@@ -62,10 +64,9 @@ local function init(me: Object)
     end
     local sprite = me.sprite
     sprite:load(if source == 2 then B_GLOW else A_GLOW)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
-    sprite:step()
     me.visible = true
     battle.play_sound(CHARGING)
     me:set_lifecycle("update")
