@@ -403,7 +403,9 @@ local status = {
         reactions = "flash_timer_first",
         bugs_before_drain = true,
         no_charge_drive = false,
-        hp_loss = "hp_alone",
+        -- A player's hit drains its side's gauge with the HP and shows only with HP left; at 0 HP the rules are asked
+        -- after (0x08013A48: 0x0800AB9E, 0x0800EBC8); every other loss takes the HP alone (0x0800AB92).
+        hp_loss = "hit_drains_gauge",
         -- EXE4's emotions (to read: exe4-map.md §7, §18): EXE5's until then.
         emotion = {
             mood_held = "at_zero",

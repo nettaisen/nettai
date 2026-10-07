@@ -627,7 +627,16 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      byte has bit 0 where the side's screen says so (`custom::Side::selecting`; EXE6's and EXE5's never do, their
      traces compare the byte): EXE4's screen (group A's) sets it while its selection runs (in the lab's
      `custom/cannon` from frame 273 until OK).
-   - To read: `reactions = "flash_timer_first"`, `hp_loss = "hp_alone"`, the rest EXE5's (the placeholders).
+   - **Done: the loss of HP.** EXE4's `object_subtractHP` (0x0800AB92) takes the HP alone, but its player's status
+     block (0x08013A48) drains the side's gauge with a hit's HP (0x0800AB9E, by the loss ×128, as EXE5's), shows the
+     hit (white, its sound) only with HP left, takes the element-5 damage without the gauge, and at 0 HP asks the
+     side's rules after (0x0800EBC8: a dark MegaMan's last stand, emotion 5, which holds him at 1 HP and asks for
+     request 0x1000: the rules' `hp_emptied`, to write with the dark chips). The rule `status.hp_loss =
+     "hit_drains_gauge"`. Its hit sound is one, 0x6B, for a navi whose NaviStats +0x26 isn't 1 (0x6D else), which a
+     netbattle's never is: the roles' `own_hit` and `hit` both 0x6B (group A's role fill). Unported: 0x0800EE4C
+     after the sound records the hit navi's panel into the hitter's side's records (0x02037A90, 0x02037C60), which
+     nothing read so far reads.
+   - To read: `reactions = "flash_timer_first"`, the rest EXE5's (the placeholders).
 8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
 9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
 10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.
