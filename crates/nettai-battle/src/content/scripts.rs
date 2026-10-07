@@ -497,7 +497,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 "reactions",
                 r#"
         push = row(10, none),
-        push_reading = "by_hitter_flip",
+        push_reading = { reads = "by_hitter_flip", bits = 4, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
         hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002, elec_bonus_on_sea = false },
         obstacle_slide_bounds = false,
         ice = row(6, none),
@@ -556,7 +556,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let c = game(rules(None, None, None)).unwrap_or_else(|e| panic!("{e}"));
         let r = c.rules();
         use crate::content::{
-            AngerEnd, FormBreak, HpLoss, MoodHeld, NaviWinBanner, ObstacleActions, OverlayRestart, PushReading, Reactions,
+            AngerEnd, FormBreak, HpLoss, MoodHeld, NaviWinBanner, ObstacleActions, OverlayRestart, PushSource, Reactions,
             Reservations, RetypeRule, ShakeRule, StanceCounter, WeaknessMark,
         };
         assert_eq!((r.flow.result_words, r.flow.escape_check, r.flow.navi_win_banner), (49, false, NaviWinBanner::OperationBattle));
@@ -565,7 +565,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             (ShakeRule::BattleRng, 0x7FF, 2, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
         );
         assert_eq!((r.chip_use.leave_on_use, r.chip_use.anti_navi_sparkle.z), (true, 16));
-        assert_eq!((r.push_reading, r.overlay_restart, r.stance_counter), (PushReading::ByHitterFlip, OverlayRestart::Reload, StanceCounter::NextTick));
+        assert_eq!((r.push_reading.reads, r.push_reading.bits, r.overlay_restart, r.stance_counter), (PushSource::ByHitterFlip, 4, OverlayRestart::Reload, StanceCounter::NextTick));
         assert_eq!((r.hit_test.float_shoe_needs_self_bit, r.hit_test.elec_reaches_submerged, r.hit_test.guard_breaks_to), (true, true, 0x1002));
         assert!(!r.obstacle_slide_bounds);
         assert_eq!((r.slide_speed.x, r.slide_speed.y), (0x30000, 0x20000));

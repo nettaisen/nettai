@@ -9,7 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::content::{PushReading, SlideVector};
+use crate::content::{PushSource, SlideVector};
 use crate::field::{self, PanelType};
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
@@ -518,29 +518,35 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
     let facing = |v: SlideVector| SlideVector { dx: v.dx * front, ..v };
     let v = match o.slide_type {
         0 => SlideVector::NONE,
-        1 => match b.game_rules().push_reading {
-            // sub_800E548: from the hit modifier bits.
-            PushReading::TowardFront => {
-                let hm = coll(b, r).hit_mod_final;
-                let off = if hm & 0x80 != 0 { 5 } else { 0 };
-                let bits = (hm & 0x7F) >> 2;
-                let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
-                facing(b.game_rules().push_vectors[i + off])
+        1 => {
+            let reading = &b.game_rules().push_reading;
+            let none = reading.bits as usize;
+            match reading.reads {
+                // sub_800E548 (EXE4's 0x0800ACAA): the first of the final
+                // modifier's bits from bit 2, toward the front; a shift bit
+                // (EXE6's 0x80) picks rows further on.
+                PushSource::Final => {
+                    let hm = coll(b, r).hit_mod_final;
+                    let off = match reading.shift {
+                        Some(s) if hm & s.bit != 0 => s.rows as usize,
+                        _ => 0,
+                    };
+                    facing(b.game_rules().push_vectors[reading.first(hm) + off])
+                }
+                // EXE5's 0x0800C9D8: the first of the unflipped hitters'
+                // modifier's bits, else of the flipped ones' with the
+                // direction reversed (none past them).
+                PushSource::ByHitterFlip => {
+                    let [from0, from1] = coll(b, r).hit_mod_by_side;
+                    let (i, sign) = match reading.first(from0) {
+                        i if i == none => (reading.first(from1), -1),
+                        i => (i, 1),
+                    };
+                    let v = b.game_rules().push_vectors[i];
+                    SlideVector { dx: v.dx * front * sign, ..v }
+                }
             }
-            // EXE5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
-            // hitters' modifier, else of the flipped ones' with the
-            // direction reversed; five rows (none past the fifth).
-            PushReading::ByHitterFlip => {
-                let [from0, from1] = coll(b, r).hit_mod_by_side;
-                let first = |hm: u8| (0..4).find(|&i| (hm >> 2) & (1 << i) != 0).unwrap_or(4);
-                let (i, sign) = match first(from0) {
-                    4 => (first(from1), -1),
-                    i => (i, 1),
-                };
-                let v = b.game_rules().push_vectors[i];
-                SlideVector { dx: v.dx * front * sign, ..v }
-            }
-        },
+        }
         2 => facing(*b.game_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
             let kind = panel_kind(b, o.panel);
@@ -581,15 +587,18 @@ mod tests {
     use crate::content::{Content, testing};
     use std::sync::Arc;
 
-    /// A fight on the test content whose arena reads pushes `reading`:
-    /// the battle and its two navis (side 0 at (2, 2), side 1 at (5, 2)).
-    fn fight(reading: PushReading) -> (Battle, [ObjectRef; 2]) {
+    /// A fight on the test content whose arena reads pushes from `reads`
+    /// (its push rules else the test content's, EXE6's): the battle and
+    /// its two navis (side 0 at (2, 2), side 1 at (5, 2)).
+    fn fight(reads: PushSource) -> (Battle, [ObjectRef; 2]) {
+        fight_with(|r| r.push_reading.reads = reads)
+    }
+
+    /// The same, the arena's rules changed by `change`.
+    fn fight_with(change: impl FnOnce(&mut crate::content::Rules)) -> (Battle, [ObjectRef; 2]) {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        {
-            let rules = c.rules_mut();
-            rules.push_reading = reading;
-        }
+        change(c.rules_mut());
         let c = Arc::new(c);
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
         crate::content::testing::on(&mut setup, &c);
@@ -604,8 +613,8 @@ mod tests {
     /// The push of side 1's navi after hits from unflipped hitters with
     /// modifier `from0` and from flipped ones with `from1` (EXE6 reads them
     /// together).
-    fn push(reading: PushReading, from0: u8, from1: u8) -> SlideVector {
-        let (mut b, [_, r]) = fight(reading);
+    fn push(reads: PushSource, from0: u8, from1: u8) -> SlideVector {
+        let (mut b, [_, r]) = fight(reads);
         let c = coll_mut(&mut b, r);
         c.hit_mod_final = from0 | from1;
         c.hit_mod_by_side = [from0, from1];
@@ -622,15 +631,38 @@ mod tests {
         // 1's is -1).
         let left = SlideVector { dx: -1, dy: 0, tiles: 6 };
         let right = SlideVector { dx: 1, dy: 0, tiles: 6 };
-        assert_eq!(push(PushReading::TowardFront, 0x04, 0), left);
-        assert_eq!(push(PushReading::TowardFront, 0, 0x04), left);
-        assert_eq!(push(PushReading::ByHitterFlip, 0x04, 0), left);
-        assert_eq!(push(PushReading::ByHitterFlip, 0, 0x04), right, "a flipped hitter's hit pushes it the other way");
+        assert_eq!(push(PushSource::Final, 0x04, 0), left);
+        assert_eq!(push(PushSource::Final, 0, 0x04), left);
+        assert_eq!(push(PushSource::ByHitterFlip, 0x04, 0), left);
+        assert_eq!(push(PushSource::ByHitterFlip, 0, 0x04), right, "a flipped hitter's hit pushes it the other way");
         // The unflipped hitters' hits come first.
-        assert_eq!(push(PushReading::ByHitterFlip, 0x04, 0x08), left);
+        assert_eq!(push(PushSource::ByHitterFlip, 0x04, 0x08), left);
         // EXE6's 0x80 picks the vertical rows; EXE5 has no such bit.
-        let v = push(PushReading::TowardFront, 0x84, 0);
+        let v = push(PushSource::Final, 0x84, 0);
         assert_eq!((v.dx, v.dy), (0, -1));
+    }
+
+    /// EXE4's push (0x0800ACAA) reads six bits of the final modifier, from
+    /// bit 2, and no shift: 0x40 and 0x80 are its pushes up and down.
+    #[test]
+    fn a_push_reads_as_many_bits_as_the_rules_say() {
+        let rows = [(1, 0, 6), (-1, 0, 6), (1, 0, 1), (-1, 0, 1), (0, -1, 1), (0, 1, 1), (0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0)];
+        let (mut b, [_, r]) = fight_with(|rules| {
+            rules.push_reading.bits = 6;
+            rules.push_reading.shift = None;
+            rules.push_vectors = rows.map(|(dx, dy, tiles)| SlideVector { dx, dy, tiles });
+        });
+        b.objects.get_mut(r).slide_type = 1;
+        let mut at = |hm: u8| {
+            coll_mut(&mut b, r).hit_mod_final = hm;
+            let v = slide_vector(&b, r);
+            (v.dx, v.dy, v.tiles)
+        };
+        // (Side 1's front is -1.)
+        assert_eq!(at(0x04), (-1, 0, 6));
+        assert_eq!(at(0x40), (0, -1, 1));
+        assert_eq!(at(0x80), (0, 1, 1));
+        assert_eq!(at(0x01), (0, 0, 0), "no bit set: the row past them");
     }
 
     /// docs/design/exe5-map.md §15.2: lava (the test content's burns for 50,
@@ -638,7 +670,7 @@ mod tests {
     /// normal, with its burn's spark; a navi of fire it leaves be.
     #[test]
     fn lava_burns_a_grounded_navi() {
-        let (mut b, [_, r]) = fight(PushReading::TowardFront);
+        let (mut b, [_, r]) = fight(PushSource::Final);
         b.set_panel_type(5, 2, PanelType::Lava);
         let sparks = |b: &Battle| b.objects.in_order().filter(|&o| b.local_kind_key(o).contains("spark")).count();
         let before = sparks(&b);
@@ -660,7 +692,7 @@ mod tests {
     /// then up; after a move forward, down first.
     #[test]
     fn metal_slides_by_the_direction_of_the_move() {
-        let (mut b, [_, r]) = fight(PushReading::TowardFront);
+        let (mut b, [_, r]) = fight(PushSource::Final);
         b.set_panel_type(5, 2, PanelType::Metal);
         b.objects.get_mut(r).slide_type = 3;
         coll_mut(&mut b, r).direction = 1;
@@ -705,7 +737,7 @@ mod tests {
     /// falls to 1 at least, and 0 (and, rising, 0xFF) stays.
     #[test]
     fn the_mood_rises_and_falls_within_its_bounds() {
-        let (mut b, _) = fight(PushReading::TowardFront);
+        let (mut b, _) = fight(PushSource::Final);
         let mood = |b: &Battle| b.stats[0].mood;
         b.stats[0].mood = 250;
         super::super::gain_mood(&mut b, 0, 10);

@@ -263,7 +263,7 @@ impl Stated {
             panels: Some(r.panels.clone()),
             reactions: Some(ReactionsSection {
                 push: r.push_vectors,
-                push_reading: r.push_reading,
+                push_reading: r.push_reading.clone(),
                 hit_test: r.hit_test,
                 obstacle_slide_bounds: r.obstacle_slide_bounds,
                 ice: r.ice_vectors,

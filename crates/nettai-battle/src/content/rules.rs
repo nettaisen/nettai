@@ -406,18 +406,54 @@ pub enum StanceCounter {
 
 /// How a navi's push (slide type 1) reads the hits it took, and an
 /// obstacle's push the same way (`kinds::obstacle`: an obstacle's vector,
-/// and its push on any hit).
+/// and its push on any hit): from which hit modifier byte, the first of how
+/// many of its bits from bit 2 (none set: the row past them), and an
+/// obstacle's rows. EXE6's (`sub_800E548`, `sub_800F598`): the final
+/// modifier's bits 2 to 5, 0x80 moving a navi's pick five rows on, an
+/// obstacle's four rows (`byte_800F604`; none set reads past them, from the
+/// BIOS). EXE5's (0x0800C9D8; an obstacle's 0x0800D4B0 and 0x08017AD8): the
+/// unflipped hitters' bits 2 to 5, else the flipped ones' with the
+/// direction reversed, an obstacle's five rows. EXE4's (0x0800ACAA,
+/// 0x0800B1C0): the final modifier's bits 2 to 7, a navi's and an
+/// obstacle's six rows the same (back, forward, a panel back, a panel
+/// forward, up, down), then none.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PushReading {
+    pub reads: PushSource,
+    pub bits: u8,
+    #[serde(default)]
+    pub shift: Option<PushShift>,
+    /// An obstacle's rows, turned toward the pusher's side.
+    pub obstacle_rows: Vec<SlideVector>,
+}
+
+/// Which hit modifier a push reads (`PushReading::reads`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum PushReading {
-    /// The first of bits 2 to 5 of the hits' modifier, toward the navi's
-    /// front; the 0x80 bit picks the last five rows (EXE6's
-    /// `sub_800E548`).
-    TowardFront,
-    /// The first of bits 2 to 5 of the unflipped hitters' modifier, else
-    /// of the flipped ones' with the direction reversed (EXE5's
-    /// 0x0800C9D8; an obstacle's 0x0800D4B0 and 0x08017AD8).
+pub enum PushSource {
+    /// The hits' final modifier, toward the navi's front.
+    Final,
+    /// The unflipped hitters' modifier, else the flipped ones' with the
+    /// direction reversed (`CollisionData::hit_mod_by_side`).
     ByHitterFlip,
+}
+
+/// A modifier bit that moves a navi's pick of a push row `rows` on
+/// (`PushReading::shift`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PushShift {
+    pub bit: u8,
+    pub rows: u8,
+}
+
+impl PushReading {
+    /// The row the first set bit of `modifier`'s `bits` from bit 2 picks;
+    /// none set: the row past them.
+    pub fn first(&self, modifier: u8) -> usize {
+        (0..self.bits as usize).find(|&i| (modifier >> 2) & (1 << i) != 0).unwrap_or(self.bits as usize)
+    }
 }
 
 /// The hit test where games differ (EXE6's `sub_3007218`, EXE5's
