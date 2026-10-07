@@ -128,4 +128,6 @@ standard = [
     "recov150",
     "recov200",
     "recov300",
+    "panlgrab",
+    "areagrab",
 ]
