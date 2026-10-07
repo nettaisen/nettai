@@ -71,4 +71,6 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second, as EXE6's.
     used_chip_ticks = 0x3C,
+    -- A pool's objects are drawn in update order, as EXE6's.
+    draw_order = "update_list",
 }
