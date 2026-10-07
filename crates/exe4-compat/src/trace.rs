@@ -125,6 +125,15 @@ pub struct Object {
     pub timer: u16,
     pub anim: u8,
     pub status: u32,
+    /// The collision record's status word (+0x64, the engine's `f1`), in
+    /// recordings from verify exe4-oracle 021aea61 on.
+    #[serde(default)]
+    pub f1: Option<u32>,
+    /// The sprite block's palette (+4), its palette's other half (+5) and
+    /// its palette pointer (+0x34): what 0x0800295C draws the object in, in
+    /// recordings from verify exe4-oracle d6fb7060 on.
+    #[serde(default)]
+    pub sprite: Option<[u32; 3]>,
 }
 
 /// One battle frame. (EXE4's BattleState counts no frames or ticks: the
@@ -144,6 +153,10 @@ pub struct Frame {
     pub paused: u8,
     pub hud_tasks: u32,
     pub banner: String,
+    /// Both sides' battle NaviStats this frame (hex), in recordings from
+    /// verify exe4-oracle d6fb7060 on.
+    #[serde(default)]
+    pub navi_stats: Option<[String; 2]>,
     pub input: [[u16; 3]; 2],
     pub objects: Vec<Object>,
     pub panels: Vec<[u8; 2]>,
@@ -646,6 +659,8 @@ impl Round {
             // What the save brings to the stats (EXE4's rules/save): the base
             // HP, which the rules write into the HP.
             player.set_fact(content, "hp", &[Fact::Value(Value::Int(d.navi_stats[side].max_base_hp as i64))])?;
+            // His light/dark value (NaviStats +0x36: the rules' light_dark).
+            player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
             Ok(player)
         });
         let [p0, p1] = players;
@@ -766,7 +781,9 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// +0x68, the engine's `acc.hit_flags`). (The lab's first recordings read
 /// the word at EXE6's place in the collision record, +0x3C, where EXE4's
 /// keeps none, always 0; later ones its +0x54, exe4-map.md §15, §17:
-/// [`Round::carries_status`].)
+/// [`Round::carries_status`].) Where the recording has them, its status
+/// word (+0x64, the engine's `f1`) and its sprite's palette (the sprite
+/// block's +4).
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat, status: bool) -> Vec<String> {
     compare_with(b, f, f, compat, status)
 }
@@ -845,6 +862,9 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
         }
     };
     type Fields = Vec<(&'static str, String)>;
+    // (A recording has each of these for every object or none.)
+    let has_f1 = f.objects.first().is_some_and(|o| o.f1.is_some());
+    let has_sprite = f.objects.first().is_some_and(|o| o.sprite.is_some());
     let ours: Vec<Fields> = b
         .objects
         .in_order()
@@ -863,6 +883,9 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
                 Err(e) => format!("? ({e})"),
             };
             let flags = if status { format!("{:#x}", x.collision.map(|c| b.collision.get(c).acc.hit_flags).unwrap_or(0)) } else { "-".into() };
+            // (What the recording has: its status word, its sprite's palette.)
+            let f1 = if has_f1 { format!("{:#x}", x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0)) } else { "-".into() };
+            let palette = if has_sprite { b.objects.sprite(o).look.palette.to_string() } else { "-".into() };
             vec![
                 ("kind", kind),
                 ("flags", format!("{:#04x}", x.flags)),
@@ -878,6 +901,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
                 ("timer", x.timer.to_string()),
                 ("anim", x.anim.to_string()),
                 ("status", flags),
+                ("f1", f1),
+                ("palette", palette),
             ]
         })
         .collect();
@@ -904,6 +929,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
                 ("timer", o.timer.to_string()),
                 ("anim", o.anim.to_string()),
                 ("status", if status { format!("{:#x}", o.status) } else { "-".into() }),
+                ("f1", o.f1.map_or("-".into(), |v| format!("{v:#x}"))),
+                ("palette", o.sprite.map_or("-".into(), |v| v[0].to_string())),
             ]
         })
         .collect();

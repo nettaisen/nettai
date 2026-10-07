@@ -4,7 +4,7 @@
 -- flash. EXE4's own, not EXE5's and EXE6's
 -- (@exelib/attachment): its row (0x080CD524, 4 bytes: the sprite's category and index, the palette, the lift) puts it
 -- at its owner's position, raised by the lift, never at an attach point; it follows its owner's visibility, color
--- shader, palette, mosaic and flip; it runs while dimmed (header flag 0x10) but not while paused. What it shows is a
+-- shader, white flash, blending and flip; it runs while dimmed (header flag 0x10) but not while paused. What it shows is a
 -- look (`attachment.look { sprite, palette, lift }`, a row); `attachment.attach(owner, look, slot, anim)`.
 
 local slot = require("@exelib/slot")
@@ -24,8 +24,9 @@ function attachment.look(spec: AttachmentLook): AttachmentLook
     return new.record("attachment-look", spec)
 end
 
--- 0x080CD666: at the owner's position less the lift (Y and Z, unsigned); its visibility, color shader, palette,
--- mosaic and flip; gone once the slot is empty; animating unless dimmed.
+-- 0x080CD666: at the owner's position less the lift (Y and Z, unsigned); its visibility, color shader, white flash
+-- (the sprite's final palette, +0x15's high nibble: 0x08002E34, 0x08002E20), blending (+0x11's bits 0x0C: 0x08002D4C,
+-- 0x08002CEA) and flip; gone once the slot is empty; animating unless dimmed.
 local function follow(me: Object)
     local owner = me.related1 :: Object
     local s = me.state :: State
@@ -35,8 +36,8 @@ local function follow(me: Object)
     me:copy_visibility(owner)
     local look, worn = me.sprite, owner.sprite
     look.color_shader = worn.color_shader
-    look.palette = worn.palette
-    look.mosaic = worn.mosaic
+    look.white = worn.white
+    look.alpha = worn.alpha
     look.hflip = worn.hflip
     look.vflip = worn.vflip
     if not slot.occupied(owner, s.slot) then
