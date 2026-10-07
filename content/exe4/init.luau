@@ -6,5 +6,9 @@
 -- it.
 
 return {
+    chips = require("@self/chips"),
+    navis = require("@self/navis"),
+    forms = require("@self/navis/megaman/forms/base"),
+    stages = require("@self/stages"),
     rules = require("@self/rules"),
 }

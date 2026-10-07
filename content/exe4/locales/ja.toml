@@ -1,0 +1,9 @@
+# Japanese: EXE4's strings by definition key. Display text only. So far MegaMan's and Cannon's names.
+
+language = "ja"
+
+[chips]
+"cannon" = { name = "キャノン" }
+
+[navis]
+"megaman" = { name = "ロックマン" }
