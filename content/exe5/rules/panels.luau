@@ -40,7 +40,7 @@ return {
             flags = 0x00011010,
             trail_sound = asset.sound("panel-volcano"),
             expires = 960,
-            burn = 50,
+            burn = { damage = 50, spared_by = 0x88000206 },
             cleared_by = "aqua",
         },
         holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
@@ -108,4 +108,7 @@ return {
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x0800AFF8 and its kin), the sea's
     -- 0x20000 among them.
     type_mask = 0x00023F5F,
+    -- Poison's drain and grass's heal hold while paused, and at 9 HP or less grass heals on the 180-tick count
+    -- (0x08016C7E, EXE6's).
+    standing = { stops_while_paused = true, slow_heal_at = 9 },
 }

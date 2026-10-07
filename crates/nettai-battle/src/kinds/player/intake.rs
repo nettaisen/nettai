@@ -24,8 +24,8 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     if b.is_battle_over() || flag1(b, r) & f1::DEAD != 0 {
         return;
     }
-    // (EXE5's lava burns first: 0x080178EC.)
-    crate::kinds::common::panel_burn(b, r);
+    // (EXE5's lava burns first: 0x080178EC; EXE4's a player's, 0x08013128.)
+    crate::kinds::common::panel_burn(b, r, true);
     barrier(b, r);
     standing_effects(b, r);
     // The side's rules, each tick (EXE5's light and dark: a dark MegaMan
@@ -105,7 +105,7 @@ pub(super) fn collect_hits_navi(b: &mut Battle, r: ObjectRef) {
     if b.is_battle_over() || flag1(b, r) & f1::DEAD != 0 {
         return;
     }
-    crate::kinds::common::panel_burn(b, r);
+    crate::kinds::common::panel_burn(b, r, false);
     barrier(b, r);
     standing_effects(b, r);
     let side = b.objects.get(r).alliance;
@@ -278,9 +278,12 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801A186`: poison panels hurt 1 HP every 7 ticks (through
 /// element 5), and a panel that drains a body's element (EXE5's sea, fire
-/// bodies: 0x08016C7E) the same; wood navis on grass heal.
+/// bodies: 0x08016C7E) the same; wood navis on grass heal. (The panel
+/// rules' `standing`: EXE4's, 0x08012FF2, run on while paused and heal on
+/// the 20-tick count at any HP.)
 fn standing_effects(b: &mut Battle, r: ObjectRef) {
-    if b.is_dimmed() || b.paused || coll(b, r).region.is_none() {
+    let rule = b.game_rules().panels.standing;
+    if b.is_dimmed() || (b.paused && rule.stops_while_paused) || coll(b, r).region.is_none() {
         return;
     }
     let p = coll(b, r).panel;
@@ -309,7 +312,8 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     if !on_grass || b.objects.get(r).element & 0xF != 4 {
         return;
     }
-    let cycle = if b.objects.get(r).hp > 9 { b.round.cycle20 } else { b.round.cycle180 };
+    let slow = rule.slow_heal_at.is_some_and(|at| b.objects.get(r).hp <= at);
+    let cycle = if slow { b.round.cycle180 } else { b.round.cycle20 };
     if cycle == 0 {
         add_hp(b, r, 1);
     }
@@ -917,5 +921,94 @@ mod tests {
         assert_eq!(requests(true, 0x41), ((false, false, true), 1), "EXE4's push up with the flinch bit drags");
         assert_eq!(requests(true, 0x40), ((false, true, false), 1), "EXE4's push up alone slides");
         assert_eq!(requests(true, 0x01), ((true, false, false), 0));
+    }
+
+    /// A fight on the test content, its rules changed by `change`: the
+    /// battle and side 1's navi, fighting, its body's region anchored.
+    fn fight_with(change: impl FnOnce(&mut crate::content::Rules)) -> (Battle, ObjectRef) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        change(c.rules_mut());
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        crate::content::testing::on(&mut setup, &c);
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let r = b.player(1).unwrap();
+        (b, r)
+    }
+
+    /// docs/design/exe4-map.md §18 item 13: EXE4's lava (`burn`) burns a
+    /// player while the battle is dimmed, wears 20 off its mood, and spares
+    /// only the bits it names; another body waits out the dimming. The test
+    /// content's (EXE5's) burns no one dimmed and wears no mood.
+    #[test]
+    fn a_burn_is_the_games() {
+        use crate::content::BurnRule;
+        let exe4 = BurnRule { damage: 50, spared_by: 0x206, mood: 20, players_while_dimmed: true };
+        let run = |burn: Option<BurnRule>, dimmed: bool, player: bool, status: u32| {
+            let (mut b, r) = fight_with(|rules| {
+                if let Some(burn) = burn {
+                    rules.panels.types[PanelType::Lava as usize].burn = Some(burn);
+                }
+            });
+            let p = coll(&b, r).panel;
+            b.set_panel_type(p.x, p.y, PanelType::Lava);
+            if dimmed {
+                b.round.flags |= battle_flags::DIMMED;
+            }
+            super::super::set_flag1(&mut b, r, status);
+            crate::kinds::common::panel_burn(&mut b, r, player);
+            let c = coll(&b, r);
+            (c.acc.element_damage[1], c.acc.mood_damage, b.field.panels[p.y as usize][p.x as usize].kind == PanelType::Lava)
+        };
+        assert_eq!(run(Some(exe4), true, true, 0), (50, 20, false), "EXE4's player, dimmed");
+        assert_eq!(run(Some(exe4), true, false, 0), (0, 0, true), "another body waits");
+        assert_eq!(run(Some(exe4), false, true, 0x8000_0000), (50, 20, false), "EXE5's 0x80000000 spares none");
+        assert_eq!(run(None, true, true, 0), (0, 0, true), "EXE5's waits");
+        assert_eq!(run(None, false, true, 0x8000_0000), (0, 0, true));
+        assert_eq!(run(None, false, true, 0), (50, 0, false));
+    }
+
+    /// docs/design/exe4-map.md §18 item 13: EXE4's poison drains and grass
+    /// heals while paused, grass on the 20-tick count at any HP (`standing`);
+    /// EXE6's (the test content's) hold, and heal at 9 HP or less on the
+    /// 180-tick count.
+    #[test]
+    fn standing_effects_are_the_games() {
+        use crate::content::StandingRule;
+        let exe4 = StandingRule { stops_while_paused: false, slow_heal_at: None };
+        let poisoned = |rule: Option<StandingRule>| {
+            let (mut b, r) = fight_with(|rules| {
+                if let Some(rule) = rule {
+                    rules.panels.standing = rule;
+                }
+            });
+            let p = coll(&b, r).panel;
+            b.set_panel_type(p.x, p.y, PanelType::Poison);
+            b.paused = true;
+            coll_mut(&mut b, r).poison_timer = 0;
+            standing_effects(&mut b, r);
+            coll(&b, r).acc.element_damage[5]
+        };
+        assert_eq!((poisoned(Some(exe4)), poisoned(None)), (1, 0));
+        let healed = |rule: Option<StandingRule>| {
+            let (mut b, r) = fight_with(|rules| {
+                if let Some(rule) = rule {
+                    rules.panels.standing = rule;
+                }
+            });
+            let p = coll(&b, r).panel;
+            b.set_panel_type(p.x, p.y, PanelType::Grass);
+            let o = b.objects.get_mut(r);
+            o.element = 4;
+            (o.hp, o.max_hp) = (5, 100);
+            (b.round.cycle20, b.round.cycle180) = (0, 1);
+            standing_effects(&mut b, r);
+            b.objects.get(r).hp
+        };
+        assert_eq!((healed(Some(exe4)), healed(None)), (6, 5), "at 5 HP: EXE4's 20-tick count, EXE6's 180");
     }
 }

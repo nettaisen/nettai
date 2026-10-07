@@ -4,10 +4,11 @@
 -- flag 0x20000 the panel routines refuse to crack or break; 10 SandRing's pitfall, which stops a slide or a drag
 -- unless the body floats (0x080102FC, 0x08010B54) and turns normal 190 ticks after a type change makes it, a
 -- stage's after a grounded body stands on it (0x0800980E); 11 the Hole chip's hole. The step rules (0x0800ADF0, a
--- dash's 0x0800C41C: EXE5's values); what the panels do as far as the engine can say it (the panel tick
--- 0x08009740: a broken panel mends after 600 ticks; type 8, lava, turns normal after 960, blinking its last 60).
--- Nearest the engine can say until each is ported (exe4-map.md §18): what each type does to what stands on it and
--- what passes over it, the panel trails' sounds, which panels start visible and the front edges (EXE5's: EXE4's
+-- dash's 0x0800C41C: EXE5's values). What the panels do (the panel tick 0x08009740: a broken panel mends after 600
+-- ticks; type 8, lava, turns normal after 960, blinking its last 60): lava burns a grounded body not of fire for 50
+-- (0x08013128, a player's even while dimmed; 0x0801309E), poison drains and grass heals a wood body (0x08012FF2,
+-- on while paused), what passes over grass of fire or lava of aqua clears it (0x08013058). Nearest the engine can
+-- say until each is ported (exe4-map.md §18): which panels start visible and the front edges (EXE5's: EXE4's
 -- tables are to find), the any-side step (EXE5's rows), a broken panel's mend in battle mode 1, and the
 -- reservations (EXE5's).
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
@@ -20,9 +21,14 @@ return {
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110 },
         metal = { flags = 0x00030010, unbreakable = true },
-        grass = { flags = 0x00010410, doubles = "fire" },
+        grass = { flags = 0x00010410, doubles = "fire", cleared_by = "fire" },
         ice = { flags = 0x00010810, doubles = "elec" },
-        lava = { flags = 0x00011010, expires = 960 },
+        lava = {
+            flags = 0x00011010,
+            expires = 960,
+            burn = { damage = 50, spared_by = 0x206, mood = 20, players_while_dimmed = true },
+            cleared_by = "aqua",
+        },
         holy = { flags = 0x00012010 },
         pitfall = { flags = 0x00010210, stops_slides = true, crumbles = 190 },
         hole = { flags = 0x00010010 },
@@ -78,4 +84,7 @@ return {
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x08009AEC and its kin), metal's
     -- 0x20000 among them.
     type_mask = 0x00023F5F,
+    -- Poison's drain and grass's heal run on while paused, and grass heals on the 20-tick count at any HP
+    -- (0x08012FF2: its only test the dimming's).
+    standing = { stops_while_paused = false },
 }

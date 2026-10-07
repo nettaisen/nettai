@@ -64,7 +64,7 @@ return {
             cleared_by = "wood",
             slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
         },
-        lava = { flags = 0x00011010, expires = 960, burn = 50, cleared_by = "aqua" },
+        lava = { flags = 0x00011010, expires = 960, burn = { damage = 50, spared_by = 0x88000206 }, cleared_by = "aqua" },
         sea = { flags = 0x00030010, expires = 960, drains = "fire", holds = 20, submerges = true },
     },
     -- Its panel types number as the engine orders them.
@@ -100,4 +100,7 @@ return {
     reservations = "marked",
     -- The flags' bits a type owns, which a crack, a break or poison clears.
     type_mask = 0x00003F5F,
+    -- Poison's drain and grass's heal hold while paused, and at 9 HP or less
+    -- grass heals on the 180-tick count.
+    standing = { stops_while_paused = true, slow_heal_at = 9 },
 }
