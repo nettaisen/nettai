@@ -4,19 +4,31 @@
 //!
 //! - [`Compat`]: the tables, content key to the original's numbers: the
 //!   chips' ids, the names the extractor writes EXE4's assets under, the
-//!   text encodings. [`Compat::exe4`] is this repository's, built in.
+//!   text encodings, the statuses, the netbattle stages, the object kinds,
+//!   the navi actions, what NaviStats name by number, and where the other
+//!   ROMs have what compat addresses. [`Compat::exe4`] is this repository's,
+//!   built in.
+//! - [`codec`]: EXE4's records in the engine's terms: the 0x40-byte
+//!   NaviStats, the field's panels, the chip blocks, the link record.
 //! - [`save`]: an EXE4 save file, and what a player's setup takes of it.
+//! - `trace` (feature `trace`): the chip lab's EXE4 recordings, read,
+//!   decoded and replayed (docs/design/exe4-map.md §17).
 //!
-//! The codecs of EXE4's records, the recordings' decode and the save import
-//! come with the port (docs/design/exe4-map.md §13). The verification
-//! workspace's tools/exe4/gen_content.py writes the tables from the ROMs.
+//! The verification workspace's tools/exe4/gen_content.py and gen_rules.py
+//! write the generated tables from the ROMs; kinds.toml, actions.toml,
+//! records.toml and games.toml are written by hand from the code and the
+//! recordings, as the port reaches them.
 //!
 //! Keys: the tables are keyed by EXE4's ids, local to the game (`cannon`),
 //! as content writes them (docs/design/content-model-v2.md §4.0). The engine
 //! never reads any of it (a test guards it).
 
+pub mod codec;
 pub mod save;
+#[cfg(feature = "trace")]
+pub mod trace;
 
+use nettai_content_api::Pool;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -33,13 +45,51 @@ pub enum Version {
 }
 
 impl Version {
-    /// The version's name as compat and a pack write it (`redsun`,
-    /// `bluemoon`).
+    /// The version's name as compat, a pack and the recordings write it
+    /// (`redsun`, `bluemoon`).
     pub fn name(self) -> &'static str {
         match self {
             Version::RedSun => "redsun",
             Version::BlueMoon => "bluemoon",
         }
+    }
+
+    /// The version a name names.
+    pub fn named(name: &str) -> Option<Version> {
+        match name {
+            "redsun" => Some(Version::RedSun),
+            "bluemoon" => Some(Version::BlueMoon),
+            _ => None,
+        }
+    }
+}
+
+/// EXE4's object pools: how many slots each has (exe4-map.md §3.1: 8 actors,
+/// 32 attacks, 32 effects).
+pub fn pool_slots(pool: Pool) -> usize {
+    match pool {
+        Pool::Actor => 8,
+        Pool::Attack => 32,
+        Pool::Effect => 32,
+    }
+}
+
+/// The pool of an object type number as the recordings print it (1, 3, 4).
+pub fn pool_of_type(t: u8) -> Option<Pool> {
+    match t {
+        1 => Some(Pool::Actor),
+        3 => Some(Pool::Attack),
+        4 => Some(Pool::Effect),
+        _ => None,
+    }
+}
+
+/// The type number of a pool, as the recordings print it.
+pub fn type_of_pool(p: Pool) -> u8 {
+    match p {
+        Pool::Actor => 1,
+        Pool::Attack => 3,
+        Pool::Effect => 4,
     }
 }
 
@@ -96,6 +146,97 @@ pub struct Encoding {
     pub dialogue_glyphs: Vec<String>,
 }
 
+/// The original's numbers of EXE4's rule definitions (rules.toml).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RuleNumbers {
+    /// Statuses (0x08018550): a hit's status byte, by key.
+    #[serde(default)]
+    pub statuses: BTreeMap<String, u8>,
+}
+
+/// A netbattle stage (stages.toml): the settings records that are it (their
+/// numbers in the table, 0x080FC138), its panel layout's number (the
+/// record's +1) and its actor list's address (+8, Red Sun US's: games.toml
+/// has the other ROMs' offsets).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageEntry {
+    pub settings: Vec<u8>,
+    pub layout: u8,
+    pub actor_list: u32,
+}
+
+/// An object kind (kinds.toml): EXE4's pool and index of it, and the
+/// position bytes the comparison skips (as exe5-compat's).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KindEntry {
+    pub pool: String,
+    pub index: u8,
+    /// Its position is register garbage until its init places it.
+    #[serde(default)]
+    pub scratch_position: bool,
+    /// Its position is garbage while it has no sprite (the charge glow
+    /// before its first update).
+    #[serde(default)]
+    pub scratch_position_without_sprite: bool,
+    /// The fraction of its Z is register garbage.
+    #[serde(default)]
+    pub scratch_z_fraction: bool,
+}
+
+/// Where a ROM other than Red Sun's US one has what compat names by that
+/// ROM's addresses (games.toml, one section a ROM).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GameAddresses {
+    /// How far its battle settings records (and the stage actor lists their
+    /// +8 names) are from Red Sun US's.
+    pub settings: i32,
+}
+
+/// games.toml: the other three ROMs' [`GameAddresses`].
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Games {
+    pub bluemoon: GameAddresses,
+    #[serde(rename = "jp-redsun")]
+    pub jp_redsun: GameAddresses,
+    #[serde(rename = "jp-bluemoon")]
+    pub jp_bluemoon: GameAddresses,
+}
+
+impl Games {
+    /// The addresses of a version's ROM of a region (none: Red Sun's US
+    /// one, compat's own).
+    pub fn of(&self, version: Version, japanese: bool) -> Option<&GameAddresses> {
+        match (version, japanese) {
+            (Version::RedSun, false) => None,
+            (Version::BlueMoon, false) => Some(&self.bluemoon),
+            (Version::RedSun, true) => Some(&self.jp_redsun),
+            (Version::BlueMoon, true) => Some(&self.jp_bluemoon),
+        }
+    }
+}
+
+/// What EXE4's NaviStats name by number (records.toml): navis by navi
+/// number (+0x23), weapons by routine number (+0x09, +0x0A, +0x0C), MegaMan's
+/// forms by soul number (+0x24: 0 his base form), auras by number (+0x21),
+/// each by its key.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordNumbers {
+    #[serde(default)]
+    pub navis: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub weapons: BTreeMap<String, Vec<u8>>,
+    #[serde(default)]
+    pub forms: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub barriers: BTreeMap<String, u8>,
+}
+
 /// EXE4's compat tables (content/exe4/compat).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Compat {
@@ -107,22 +248,59 @@ pub struct Compat {
     pub assets: AssetNames,
     /// text.toml: the text encodings.
     pub text: Text,
+    /// rules.toml: the rule definitions' numbers.
+    pub rules: RuleNumbers,
+    /// stages.toml: the netbattle stages, by key.
+    pub stages: BTreeMap<String, StageEntry>,
+    /// games.toml: where the other ROMs have what compat addresses.
+    pub games: Games,
+    /// kinds.toml: the object kinds' numbers, by key.
+    pub kinds: BTreeMap<String, KindEntry>,
+    /// actions.toml: the navi action numbers, by key.
+    pub actions: BTreeMap<String, u8>,
+    /// records.toml: what NaviStats name by number.
+    pub records: RecordNumbers,
 }
 
+/// EXE4's navi states, by their CurAction (the player's state table,
+/// 0x080EAEFC: entry, take control, deletion, flinch, paralysis, drag, then
+/// the navi's own from 6), as EXE5's: idle is 6.
+const EXE4_STATES: [nettai_battle::kinds::player::NaviAction; 7] = {
+    use nettai_battle::kinds::player::NaviAction::*;
+    [Entry, TakeControl, Deletion, Flinch, Paralysis, Drag, Idle]
+};
+
 /// The files of a compat folder.
-pub const FILES: [&str; 3] = ["chips.toml", "assets.toml", "text.toml"];
+pub const FILES: [&str; 9] =
+    ["chips.toml", "assets.toml", "text.toml", "rules.toml", "stages.toml", "games.toml", "kinds.toml", "actions.toml", "records.toml"];
 
 /// This repository's compat (content/exe4/compat), built in.
-const EXE4: [(&str, &str); 3] = [
+const EXE4: [(&str, &str); 9] = [
     ("chips.toml", include_str!("../../../content/exe4/compat/chips.toml")),
     ("assets.toml", include_str!("../../../content/exe4/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/exe4/compat/text.toml")),
+    ("rules.toml", include_str!("../../../content/exe4/compat/rules.toml")),
+    ("stages.toml", include_str!("../../../content/exe4/compat/stages.toml")),
+    ("games.toml", include_str!("../../../content/exe4/compat/games.toml")),
+    ("kinds.toml", include_str!("../../../content/exe4/compat/kinds.toml")),
+    ("actions.toml", include_str!("../../../content/exe4/compat/actions.toml")),
+    ("records.toml", include_str!("../../../content/exe4/compat/records.toml")),
 ];
 
 /// A sprite's "cc-ii".
 fn parse_sprite(id: &str) -> Option<(u8, u8)> {
     let (c, i) = id.split_once('-')?;
     Some((u8::from_str_radix(c, 16).ok()?, u8::from_str_radix(i, 16).ok()?))
+}
+
+/// The pool a kinds.toml entry names.
+fn parse_pool(name: &str) -> Option<Pool> {
+    match name {
+        "actor" => Some(Pool::Actor),
+        "attack" => Some(Pool::Attack),
+        "effect" => Some(Pool::Effect),
+        _ => None,
+    }
 }
 
 impl Compat {
@@ -161,16 +339,42 @@ impl Compat {
                 return Err(format!("assets.toml: sounds {name} and {other} are both {id:#05x}"));
             }
         }
-        let text: Text = toml::from_str(&text("text.toml")?).map_err(|e| format!("text.toml: {e}"))?;
-        if text.glyphs.len() > text.first_control as usize || text.jp.glyphs.len() > text.first_control as usize {
-            return Err(format!("text.toml: more glyphs than the bytes below first_control ({:#04x})", text.first_control));
+        let text_file: Text = toml::from_str(&text("text.toml")?).map_err(|e| format!("text.toml: {e}"))?;
+        if text_file.glyphs.len() > text_file.first_control as usize || text_file.jp.glyphs.len() > text_file.first_control as usize {
+            return Err(format!("text.toml: more glyphs than the bytes below first_control ({:#04x})", text_file.first_control));
         }
-        Ok(Compat { chips, chip_keys, assets, text })
+        let rules: RuleNumbers = toml::from_str(&text("rules.toml")?).map_err(|e| format!("rules.toml: {e}"))?;
+        let mut statuses = BTreeMap::new();
+        for (k, &n) in &rules.statuses {
+            if let Some(other) = statuses.insert(n, k) {
+                return Err(format!("rules.toml: statuses {k} and {other} are both {n:#04x}"));
+            }
+        }
+        let stages: BTreeMap<String, StageEntry> = toml::from_str(&text("stages.toml")?).map_err(|e| format!("stages.toml: {e}"))?;
+        let games: Games = toml::from_str(&text("games.toml")?).map_err(|e| format!("games.toml: {e}"))?;
+        let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
+        for (k, e) in &kinds {
+            parse_pool(&e.pool).ok_or_else(|| format!("kinds.toml: {k}'s pool {:?} is no pool", e.pool))?;
+        }
+        let actions: BTreeMap<String, u8> = toml::from_str(&text("actions.toml")?).map_err(|e| format!("actions.toml: {e}"))?;
+        let records: RecordNumbers = toml::from_str(&text("records.toml")?).map_err(|e| format!("records.toml: {e}"))?;
+        let mut forms = BTreeMap::new();
+        for (k, n) in &records.forms {
+            if let Some(other) = forms.insert(*n, k) {
+                return Err(format!("records.toml: forms {k} and {other} are both {n}"));
+            }
+        }
+        Ok(Compat { chips, chip_keys, assets, text: text_file, rules, stages, games, kinds, actions, records })
     }
 
     /// A chip's id (`cannon`) by its number.
     pub fn chip_key(&self, id: u16) -> Option<&str> {
         self.chip_keys.get(&id).map(String::as_str)
+    }
+
+    /// [`Compat::chip_key`], owned.
+    pub fn chip(&self, id: u16) -> Option<String> {
+        self.chip_key(id).map(String::from)
     }
 
     /// A chip's entry by its id.
@@ -181,6 +385,82 @@ impl Compat {
     /// The sprites' names by (category, index).
     pub fn sprite_names(&self) -> BTreeMap<(u8, u8), String> {
         self.assets.sprites.iter().filter_map(|(name, id)| Some((parse_sprite(id)?, name.clone()))).collect()
+    }
+
+    /// The stage whose layout and actor list a settings record of a
+    /// console of `version` and region names: its id.
+    pub fn stage(&self, layout: u8, actor_list: u32, version: Version, japanese: bool) -> Option<String> {
+        let shift = self.games.of(version, japanese).map_or(0, |g| g.settings);
+        let actor_list = actor_list.wrapping_sub(shift as u32);
+        self.stages.iter().find(|(_, e)| e.layout == layout && e.actor_list == actor_list).map(|(k, _)| k.clone())
+    }
+
+    /// The navi of a navi number (NaviStats +0x23): its id, if records.toml
+    /// has it.
+    pub fn navi_key(&self, n: u8) -> Option<&str> {
+        self.records.navis.iter().find(|&(_, &v)| v == n).map(|(k, _)| k.as_str())
+    }
+
+    /// A navi's number (NaviStats +0x23), by its id.
+    pub fn navi_number(&self, key: &str) -> Option<u8> {
+        self.records.navis.get(key).copied()
+    }
+
+    /// The weapon of a routine number (NaviStats +0x09, +0x0A: 0x0800CA7C's
+    /// table): its id (Err: a number records.toml lacks).
+    pub fn weapon(&self, n: u8) -> Result<String, String> {
+        self.records.weapons.iter().find(|(_, v)| v.contains(&n)).map(|(k, _)| k.clone()).ok_or_else(|| format!("weapon routine {n:#04x}"))
+    }
+
+    /// The form of a soul number (NaviStats +0x24: 0 the base form): its id.
+    pub fn form(&self, number: u8) -> Option<&str> {
+        self.records.forms.iter().find(|&(_, &n)| n == number).map(|(k, _)| k.as_str())
+    }
+
+    /// A form's soul number by its id.
+    pub fn form_number(&self, key: &str) -> Option<u8> {
+        self.records.forms.get(key).copied()
+    }
+
+    /// The aura of a number (NaviStats +0x21; None: 0, none).
+    pub fn barrier(&self, n: u8) -> Result<Option<String>, String> {
+        if n == 0 {
+            return Ok(None);
+        }
+        self.records.barriers.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(k.clone())).ok_or_else(|| format!("aura {n}"))
+    }
+
+    /// A status's id (`paralyze-90`) by a hit's status byte.
+    pub fn status(&self, byte: u8) -> Option<String> {
+        self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| k.clone())
+    }
+
+    /// An object kind's pool and EXE4's index of it, by the kind's key.
+    pub fn kind(&self, key: &str) -> Option<(Pool, u8)> {
+        let e = self.kinds.get(key)?;
+        Some((parse_pool(&e.pool)?, e.index))
+    }
+
+    /// The original's action number for object `r`'s CurAction (+9), as the
+    /// recordings have it: any object's but a navi's its own byte; a navi's
+    /// NaviAction as EXE4 numbers it: the framework's states by EXE4's state
+    /// table (`EXE4_STATES`), the engine's actions, content's and the
+    /// chips' by key (actions.toml).
+    pub fn navi_action(&self, b: &nettai_battle::Battle, r: nettai_battle::object::ObjectRef) -> Result<u8, String> {
+        use nettai_battle::kinds::player::{NaviAction, navi_action};
+        if b.objects.get(r).actor.is_none() {
+            return Ok(b.objects.get(r).action);
+        }
+        let action = navi_action(b, r);
+        if let Some(n) = EXE4_STATES.iter().position(|&s| s == action) {
+            return Ok(n as u8);
+        }
+        let key = match action {
+            NaviAction::Engine(e) => e.key(),
+            NaviAction::Content(h) => b.content.defs.action(h).key.as_str(),
+            state => return Err(format!("EXE4 has no state {state:?}")),
+        };
+        self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))
     }
 }
 
@@ -199,6 +479,21 @@ mod tests {
         assert_eq!((c.text.first_control, c.text.glyphs.len()), (0xE4, 0x70));
         assert_eq!(c.text.jp.glyphs.len(), 0xE4);
         assert!(!c.text.jp.dialogue_glyphs.is_empty());
+        assert_eq!(c.status(0x10).as_deref(), Some("paralyze-90"));
+        assert_eq!((c.navi_key(0), c.form(0), c.weapon(0).as_deref()), (Some("megaman"), Some("base"), Ok("megaman/buster")));
+        assert_eq!(c.kind("engine/player"), Some((Pool::Actor, 0)));
+    }
+
+    /// A settings record names its stage by its layout and actor list, at
+    /// its ROM's addresses: the lab's netbattle-2 (record 1) on Red Sun's US
+    /// console, and on Blue Moon's (its records 0xC further).
+    #[test]
+    fn a_settings_record_names_its_stage() {
+        let c = Compat::exe4();
+        assert_eq!(c.stage(0x00, 0x080F_C5F2, Version::RedSun, false).as_deref(), Some("netbattle-2"));
+        assert_eq!(c.stage(0x00, 0x080F_C5FE, Version::BlueMoon, false).as_deref(), Some("netbattle-2"));
+        assert_eq!(c.stage(0x70, 0x080F_C616, Version::RedSun, false).as_deref(), Some("netbattle-60"));
+        assert_eq!(c.stage(0x00, 0x080F_C5F2, Version::BlueMoon, false), None);
     }
 
     #[test]

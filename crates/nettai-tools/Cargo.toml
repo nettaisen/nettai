@@ -17,6 +17,7 @@ nettai-render = { path = "../nettai-render" }
 # numbers, which a game's compat crate reads and compares.
 exe6-compat = { path = "../exe6-compat", features = ["trace"] }
 exe5-compat = { path = "../exe5-compat", features = ["trace"] }
+exe4-compat = { path = "../exe4-compat", features = ["trace"] }
 nettai-assets = { path = "../nettai-assets" }
 # The sound's lookups and the audit's mixing (no audio device).
 nettai-audio = { path = "../nettai-audio", default-features = false }
