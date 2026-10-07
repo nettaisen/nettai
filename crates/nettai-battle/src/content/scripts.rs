@@ -465,7 +465,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         afterimages_wear_overlays = true,
         load_sets_part_palette = true,
         obstacle_actions = "own_from_6",
-        full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false },
+        full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false, spawn_runs_while_paused = false },
         charge_glow = "with_navi",
         charge = "hold_flags",
         fade_clear = "at_target",
@@ -616,7 +616,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let worried = crate::content::EmotionWhen { mood_below: Some(40), in_form: Some(false), ..Default::default() };
         assert_eq!((m.order.len(), m.order[1].when.clone(), m.role(crate::content::Emotion(1)), m.role(crate::content::Emotion(0))), (3, vec![worried], Some(crate::content::EmotionRole::WornOut), None));
         let aura = r.effects.full_synchro_aura;
-        assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight), (true, true, false));
+        assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight, aura.spawn_runs_while_paused), (true, true, false, false));
         assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0), (false, true, 7));
         assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
         let f = r.fresh_stats;
