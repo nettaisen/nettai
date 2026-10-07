@@ -270,14 +270,16 @@ export type SpreaderSpec = {
     fire_after: number?,
 }
 
--- A game's spreaders (@exelib/spreadr/action): the shot's sound, the attachment kind (the gun's) and its bullets'
--- kind.
+-- A game's spreaders (@exelib/spreadr/action): the shot's sound, how the navi holds the gun and where (EXE6's and
+-- EXE5's @exelib/attachment kind in the overlay, its animation by the holder's AI index from the game's table,
+-- `attachment.holder`; EXE4's own in the related slot, its animation twice the navi's number), its bullets' kind,
+-- and the navi's animation as it fires (EXE6's and EXE5's 0xB; EXE4's 14).
 export type SpreaderLook = {
     sound: Sound,
-    attachment: Kind,
+    hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
+    slot: Slot,
     bullet_kind: Kind,
-    -- The gun's animation by its holder's AI index, from 0 (the game's table).
-    gun_anims: { number },
+    anim: number,
 }
 
 -- A trap chip's object (a "trap" record, @exelib/traps/controller): `set` spawns it for the controller and its user,
