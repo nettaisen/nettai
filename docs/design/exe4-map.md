@@ -591,6 +591,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (0x080CE088, with its blast region at 0x080CE270 and explosion at 0x080CE277), each chip's own. **EnergBom,
   MegEnBom** (`chips/energbom`): bomb row 2 blasts nothing and leaves an energy burst (attack 0x11, @exelib/energbom's,
   EXE6's code with EXE4's sprite and sound 0xBD). (Row 1's landing spawns 0x080CE58E's object, which no chip throws.)
+  **Binder1** (with 2 and 3: variant 3, `chips/binder`): EXE4's own binder (attack 0x2D) hops along the row two
+  panels a hop (in place over the other side's navi after its first landing), aimed by `sub_8001330` (EXE4's
+  lib/trajectory over its sine table), hitting each panel it lands on; it goes on a hole, halfway through its fourth
+  hop, or past the field's sides. Its element is the byte its thrower stores from the register holding the release
+  point's Y (none for a navi at rest).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
   navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,

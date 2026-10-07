@@ -104,6 +104,9 @@ language = "ja"
 "junkmn-ds" = { name = "ジャンクマンDS", description = "フィールド上の\nぶったいをうかせて\nてきにぶつける!" }
 "energbom" = { name = "エナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
 "megenbom" = { name = "メガエナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
+"binder1" = { name = "バウンドノート1", description = "1マスおきにはねる\nおんぷを2マス前に\nなげつける!" }
+"binder2" = { name = "バウンドノート2", description = "1マスおきにはねる\nおんぷを2マス前に\nなげつける!" }
+"binder3" = { name = "バウンドノート3", description = "1マスおきにはねる\nおんぷを2マス前に\nなげつける!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
