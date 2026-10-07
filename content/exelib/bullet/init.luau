@@ -53,7 +53,9 @@ local function burst(me: Object, v: BulletVariant, look: BulletLook)
     local c = me.collision
     c:set_region(v.region)
     if v.single then
-        battle.effect(me.pos, v.effect, bit32.bxor(me.alliance, me.flip))
+        -- (EXE4's shows it unturned, `look.single_unturned`: 0x080CF55E passes no flip.)
+        local flip = if look.single_unturned then 0 else bit32.bxor(me.alliance, me.flip)
+        battle.effect(me.pos, v.effect, flip)
     else
         battle.region_effects(c.panel_x, c.panel_y, v.region, me.alliance, v.effect, me.pos.z)
     end

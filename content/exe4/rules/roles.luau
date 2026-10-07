@@ -45,6 +45,8 @@ local roles: RolesSpec = {
     },
     sounds = {
         appear = asset.sound("appear"),
+        -- The confusion's visual, every 60 ticks (effect 6, 0x080E2354).
+        confusion = asset.sound("confusion"),
         -- An obstacle taking damage (0x08014058: the stages' boulder).
         damage = asset.sound("damage"),
         -- The custom gauge fills (0x080147F4); the HP box's alarm (0x0801475E).
@@ -91,6 +93,10 @@ local roles: RolesSpec = {
     sprites = {
         -- The Full Synchro aura (actor object 0x5E, 0x080CD1A8: 14-16, EXE5's and EXE6's numbers too).
         full_synchro_aura = asset.sprite("full-synchro-aura"),
+        -- The status visuals over a navi (effect 6's rows, 0x080E22B8: 14-0B, 14-09; it has no third row, and the status
+        -- routine spawns none for the immobilized).
+        confusion = asset.sprite("confusion"),
+        blindness = asset.sprite("blindness"),
     },
     music = {
         link_battle = asset.sound("netbattle"),

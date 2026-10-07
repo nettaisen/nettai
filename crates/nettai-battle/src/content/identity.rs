@@ -228,6 +228,10 @@ pub struct Identity {
     /// screen (x right, y down: EXE4's table 0x0800B9E4 by navi number),
     /// where the rules' `effects.chip_icons` is `navi_offset`.
     pub chip_icons_at: Option<(i8, i8)>,
+    /// Where its status visual sits from its position (x toward the enemy
+    /// side, z up: EXE4's actor record's +6 and +7, 0x08011878), where the
+    /// rules' `effects.status_visual.place` is `status_mark`.
+    pub status_mark: Option<(i8, i8)>,
     /// Whose it is, for a navi's or a form's.
     pub owner: Option<IdentityOwner>,
     /// What it is as a navi no player controls (actor type navi).
@@ -258,9 +262,26 @@ impl Identity {
             quiet_win: false,
             marker_flat_anim: None,
             chip_icons_at: None,
+            status_mark: None,
             owner: None,
             body: None,
         })
+    }
+}
+
+/// A field of `{ x, y }` pixels a byte each holds, if stated.
+fn pixels(v: &nettai_content_api::Data, field: &str) -> Result<Option<(i8, i8)>, String> {
+    use nettai_content_api::Data;
+    match v {
+        Data::Nil => Ok(None),
+        Data::List(xy) => match xy.as_slice() {
+            [Data::Int(x), Data::Int(y)] => match (i8::try_from(*x), i8::try_from(*y)) {
+                (Ok(x), Ok(y)) => Ok(Some((x, y))),
+                _ => Err(format!("`{field}` {{ {x}, {y} }} is not in pixels a byte holds")),
+            },
+            _ => Err(format!("`{field}` is `{{ x, y }}`")),
+        },
+        other => Err(format!("`{field}` is {other:?}, not `{{ x, y }}`")),
     }
 }
 
@@ -545,17 +566,8 @@ pub(crate) fn read(
             Data::Nil => None,
             v => Some(byte(v, "marker_flat_anim")?),
         },
-        chip_icons_at: match spec.field("chip_icons_at") {
-            Data::Nil => None,
-            Data::List(xy) => match xy.as_slice() {
-                [Data::Int(x), Data::Int(y)] => match (i8::try_from(*x), i8::try_from(*y)) {
-                    (Ok(x), Ok(y)) => Some((x, y)),
-                    _ => return Err(what(format!("`chip_icons_at` {{ {x}, {y} }} is not in pixels a byte holds"))),
-                },
-                _ => return Err(what("`chip_icons_at` is `{ x, y }`".into())),
-            },
-            other => return Err(what(format!("`chip_icons_at` is {other:?}, not `{{ x, y }}`"))),
-        },
+        chip_icons_at: pixels(spec.field("chip_icons_at"), "chip_icons_at").map_err(&what)?,
+        status_mark: pixels(spec.field("status_mark"), "status_mark").map_err(&what)?,
         owner: None,
         body,
     })

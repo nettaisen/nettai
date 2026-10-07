@@ -1,6 +1,8 @@
 //! A status's visual over a navi (effect object #6, `sub_80E08FC`): the
 //! confusion's circling stars (with their sound every second) and the
-//! blindness's mark, at the navi's sprite attach point 5. It keeps an
+//! blindness's mark, at the navi's sprite attach point 5 (or where the
+//! rules' `effects.status_visual` says: EXE4's at its identity's
+//! `status_mark`). It keeps an
 //! effect slot and a place in the update order while the status lasts: it
 //! ends itself once the navi's link to it is cleared or the navi's status
 //! flag is off. Spawned by the status routine (`status.rs`), which links it
@@ -8,7 +10,7 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::content::{SoundRole, SpriteRole};
+use crate::content::{SoundRole, SpriteRole, StatusVisualPlace};
 use crate::object::{ObjectRef, flags, state};
 
 /// Which status it shows (Param1, a row of `byte_80E08E4`).
@@ -92,12 +94,15 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 fn init(b: &mut Battle, r: ObjectRef) {
     let (sprite, _) = vars(b, r).row();
     let sprite = b.roles().sprite(sprite);
+    let shadow = b.game_rules().effects.status_visual.shadow;
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     // (`sprite_loadAnimationData`, 0x080E0932 and EXE5's 0x080E093A: the
     // animation starts on its first frame, for that frame's time.)
     s.set_animation(0, &b.content);
-    s.look.shadow = crate::object::sprite::Shadow::WithSprite;
+    if shadow {
+        s.look.shadow = crate::object::sprite::Shadow::WithSprite;
+    }
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.set_visible(true);
@@ -131,16 +136,30 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         }
     }
     let owner = b.objects.get(r).related[0].expect("a status visual without its owner");
-    let (dx, dz) = crate::kinds::player::attach_point(b, owner, ATTACH_POINT);
+    let place = b.game_rules().effects.status_visual.place;
+    let (dx, dz) = match place {
+        StatusVisualPlace::AttachPoint => crate::kinds::player::attach_point(b, owner, ATTACH_POINT),
+        // (0x080E235A: toward the enemy side by the visual's own side.)
+        StatusVisualPlace::StatusMark => {
+            let o = b.objects.get(owner);
+            let Some((x, z)) = b.content.identity(o.identity).status_mark else {
+                panic!("identity {:?} has no `status_mark`, where its status visual sits (0x08011878)", b.content.identity(o.identity).key)
+            };
+            let toward = if b.objects.get(r).alliance == 0 { 1 } else { -1 };
+            (x as i32 * toward, z as i32)
+        }
+    };
     let p = b.objects.get(owner).pos;
     let o = b.objects.get_mut(r);
     o.pos.x = p.x.wrapping_add(dx << 16);
     o.pos.y = p.y;
     o.pos.z = p.z.wrapping_add(dz << 16);
-    crate::kinds::common::set_panels_from_coordinates(b, r);
-    let o = b.objects.get_mut(r);
-    if !crate::field::is_valid(o.panel.x, o.panel.y) {
-        o.set_visible(false);
+    if place == StatusVisualPlace::AttachPoint {
+        crate::kinds::common::set_panels_from_coordinates(b, r);
+        let o = b.objects.get_mut(r);
+        if !crate::field::is_valid(o.panel.x, o.panel.y) {
+            o.set_visible(false);
+        }
     }
     let (_, flag) = status.row();
     let c = b.objects.get(owner).collision.expect("a status on an object without collision data");
