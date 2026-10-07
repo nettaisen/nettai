@@ -70,6 +70,24 @@ function panels.side_direction(alliance: number): number
     return -(alliance * 2 - 1)
 end
 
+-- `object_getClosestPanelMatchingRowFiltered` (EXE6's, EXE5's, EXE4's
+-- 0x0800A1AE): in row `y`, from the far edge of `side`'s field (column 6
+-- for side 0, 1 for side 1) back toward `side`'s, the first panel whose
+-- flags meet (require, forbid); 0 when it walks off the field.
+function panels.closest_in_row(side: number, y: number, require: number, forbid: number): number
+    local x = 6 - 5 * side
+    local step = 2 * side - 1
+    while true do
+        if field.check(x, y, require, forbid) then
+            return x
+        end
+        x += step
+        if not field.valid(x, y) then
+            return 0
+        end
+    end
+end
+
 -- `sub_800D618`: (x, y) is `victim`'s home but someone else holds it.
 function panels.taken_from(x: number, y: number, victim: number): boolean
     local p = field.panel(x, y)
