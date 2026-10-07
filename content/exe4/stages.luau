@@ -7,10 +7,6 @@
 -- numbering, its netbattle 0; EXE4's records have no effects word nor EXE6's panel pattern, so each states EXE5's
 -- netbattle's (0x88C, 0x38: no turning, each navi facing its side). A record's numbers are compat's.
 -- Waiting (EXE4's obstacles and panels to port):
---   netbattle-33 (layout 0x30, actors 0x080fc6c9): actor kinds 5
---   netbattle-34 (layout 0x30, actors 0x080fc6da): actor kinds 5
---   netbattle-35 (layout 0x31, actors 0x080fc6c9): actor kinds 5
---   netbattle-36 (layout 0x31, actors 0x080fc6da): actor kinds 5
 --   netbattle-89 (layout 0x32, actors 0x080fc795): actor kinds 6
 --   netbattle-90 (layout 0x32, actors 0x080fc7a6): actor kinds 6
 --   netbattle-91 (layout 0x66, actors 0x080fc795): actor kinds 6
@@ -23,6 +19,7 @@
 
 local boulder = require("./objects/boulder")
 local flag = require("./objects/flag")
+local gear = require("./objects/gear")
 
 local stages: { [string]: StageDef } = {
     ["netbattle-1"] = {
@@ -489,6 +486,78 @@ local stages: { [string]: StageDef } = {
             { place = "navi", side = 0, x = 2, y = 2 },
             { place = boulder.kind, x = 4, y = 1 },
             { place = boulder.kind, x = 3, y = 3 },
+        },
+    },
+    ["netbattle-33"] = {
+        layout = {
+            "metal metal metal metal metal metal",
+            "metal metal metal metal metal metal",
+            "metal metal metal metal metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = gear.kind, x = 3, y = 2, argument = 25 },
+            { place = gear.kind, x = 4, y = 2, argument = 25 },
+        },
+    },
+    ["netbattle-34"] = {
+        layout = {
+            "metal metal metal metal metal metal",
+            "metal metal metal metal metal metal",
+            "metal metal metal metal metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = gear.kind, x = 4, y = 2, argument = 25 },
+            { place = gear.kind, x = 3, y = 2, argument = 25 },
+        },
+    },
+    ["netbattle-35"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "metal metal metal metal metal metal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = gear.kind, x = 3, y = 2, argument = 25 },
+            { place = gear.kind, x = 4, y = 2, argument = 25 },
+        },
+    },
+    ["netbattle-36"] = {
+        layout = {
+            "normal normal normal normal normal normal",
+            "metal metal metal metal metal metal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = gear.kind, x = 4, y = 2, argument = 25 },
+            { place = gear.kind, x = 3, y = 2, argument = 25 },
         },
     },
     ["netbattle-37"] = {
