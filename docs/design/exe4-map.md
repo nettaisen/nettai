@@ -1088,7 +1088,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Barrier100, Barrier200 and LifeAura set too (2, 3, 6); Shield, Reflect and AntiMagc set B+Left (+0x0C = 0x25,
     0x26, 0x27: weapon routines of the table at 0x0800CA7C); HubBatc runs FstBarr's and Shield's handlers among its
     eight. Until they are ported the five programs have no definition (tools/exe4/gen_navicust.py's `WAITING`), and the
-    recordings that carry them stop at their setup.
+    recordings that carry them stop at their setup. EXE4's barrier tick (0x08012DF8) is EXE6's `sub_801A802` but that
+    it runs while paused (whenever its navi does) and that wind takes the barrier away at once (no popped barrier, no
+    hit flag does it): **done**, `status.intake.barrier` (`stops_while_paused`, `wind`: EXE6 and EXE5 `true`, `pops`;
+    EXE4 `false`, `takes_away`). Its types (0x080185E0: HP, threshold, timer, as halfwords): 1 10 HP, 2 100, 3 200, 4
+    150 regrowing 180 ticks after it breaks, 5 1 HP, 6 a 200 threshold for 3000 ticks, 7 a 300 threshold for 3000
+    ticks; types 4 and 7 (and a threshold over 255) wait on the chips that raise them.
 54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
     controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
     a recording with a support stops at its setup.
