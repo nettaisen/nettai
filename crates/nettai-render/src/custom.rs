@@ -548,7 +548,19 @@ impl View<'_> {
 
     /// Sprite palette 11, as the second fade record leaves it.
     fn emblem_palette(&self) -> Palette {
-        let p = self.emblem_palette;
+        self.faded(self.emblem_palette)
+    }
+
+    /// The cursor's and the Regular chip's frame's palette: the screen's
+    /// own (EXE4's sprite palette 13, `CustomScreen::cursor_palette`), else
+    /// the emblem's (sprite palette 11).
+    fn cursor_palette(&self) -> Palette {
+        self.assets.cursor_palette.map_or_else(|| self.emblem_palette(), |p| self.faded(p))
+    }
+
+    /// A sprite palette of the screen's, as the second fade record leaves
+    /// it.
+    fn faded(&self, p: Palette) -> Palette {
         match window_fade(self.b) {
             Some(f) => p.map(|c| crate::compose::apply_fade(c, f)),
             None => p,
@@ -752,6 +764,7 @@ impl Window {
             }
             tile += p.width as u16 * p.height as u16;
         }
+        w.window_emblem(v);
         w.tiles.put(WINDOW_TILE, &a.window_tiles);
         w.tiles.put(w.layout.column_cells, &a.column_cells);
         w.tiles.put(w.layout.turn_limit, &a.turn_limit);
@@ -771,6 +784,36 @@ impl Window {
             // window's columns: drawn on the layer apart).
         }
         w
+    }
+
+    /// The screen's own emblem on the window's map (EXE4's orb, 0x08020028),
+    /// in the frame its turn's step shows: the step the emblem was drawn
+    /// with this tick, else the screen's (0 at rest).
+    fn window_emblem(&mut self, v: &View) {
+        let Some(e) = &v.assets.window_emblem else { return };
+        self.tiles.put(e.first_tile, &e.tiles);
+        let step = v.screen.look.drawn.emblem.map_or(v.screen.look.spin, |(_, spin)| spin);
+        let Some(frame) = e.frames.get(e.frame(step as usize)) else { return };
+        for (k, entry) in frame.iter().enumerate() {
+            let (x, y) = (e.x as usize + k % e.width as usize, e.y as usize + k / e.width.max(1) as usize);
+            if x < COLUMNS && y < ROWS {
+                self.map[y * COLUMNS + x] = *entry;
+            }
+        }
+    }
+
+    /// A button's cells at its own place on the window's map
+    /// (`ButtonPictures::place`: EXE4's UNITE button, 0x0801FF14), its set
+    /// `set`'s tiles from the place's first tile.
+    fn placed_button(&mut self, b: &ButtonPictures, p: nettai_assets::ButtonPlace, set: usize) {
+        let n = b.width as usize * b.height as usize;
+        self.tiles.put_part(p.first_tile, &b.tiles, n * set, n);
+        for k in 0..n {
+            let (x, y) = (p.x as usize + k % b.width as usize, p.y as usize + k / b.width.max(1) as usize);
+            if x < COLUMNS && y < ROWS {
+                self.map[y * COLUMNS + x] = MapEntry { tile: p.first_tile + k as u16, hflip: false, vflip: false, palette: p.palette };
+            }
+        }
     }
 
     /// The Program Advance animation's names on the layer (`sub_802B80C`:
@@ -910,9 +953,9 @@ impl Window {
             w.tiles.put(w.layout.art, &picture.tiles);
             w.palettes[10] = picture.palette;
             // sub_802869E
-            w.tiles.fill(w.layout.code, 2, BLANK_8);
-            w.tiles.fill(w.layout.element, 4, BLANK_7);
-            w.tiles.fill(w.layout.digits, 6, BLANK_8);
+            w.tiles.fill(w.layout.code, 2, w.layout.detail_blank);
+            w.blank_element(a);
+            w.tiles.fill(w.layout.digits, 6, w.layout.detail_blank);
         };
         match v.screen.slots[slot as usize].kind {
             SlotKind::Chip { .. } | SlotKind::Offered(_) => {
@@ -931,9 +974,9 @@ impl Window {
                     self.chip_name_and_art(v, chip, text, problems);
                     self.palettes[9] = self.frame_palette(v, cw.framed, problems);
                     // sub_802869E
-                    self.tiles.fill(self.layout.code, 2, BLANK_8);
-                    self.tiles.fill(self.layout.element, 4, BLANK_7);
-                    self.tiles.fill(self.layout.digits, 6, BLANK_8);
+                    self.tiles.fill(self.layout.code, 2, self.layout.detail_blank);
+                    self.blank_element(a);
+                    self.tiles.fill(self.layout.digits, 6, self.layout.detail_blank);
                 } else if let Some(look) = v.button_look(button) {
                     // (EXE5's soul button, 0x08024540: its picture in its
                     // first palette, a Chaos Unison's in its second, the
@@ -954,6 +997,14 @@ impl Window {
                 }
             }
             SlotKind::Empty | SlotKind::Hidden => {}
+        }
+    }
+
+    /// `sub_802869E`'s element cells, blank (a screen whose element icon is
+    /// a sprite has none: EXE4's, `CustomScreen::element_sprite`).
+    fn blank_element(&mut self, a: &CustomScreen) {
+        if a.element_sprite.is_none() {
+            self.tiles.fill(self.layout.element, 4, BLANK_7);
         }
     }
 
@@ -987,7 +1038,7 @@ impl Window {
             damage.min(999).to_string().bytes().map(|d| (d - b'0') as usize).collect()
         };
         let blanks = 3 - digits.len();
-        self.tiles.fill(self.layout.digits, 2 * blanks, BLANK_8);
+        self.tiles.fill(self.layout.digits, 2 * blanks, self.layout.detail_blank);
         for (i, &d) in digits.iter().enumerate() {
             self.tiles.put_part(self.layout.digits + 2 * (blanks + i) as u16, &a.digits, 2 * d, 2);
         }
@@ -1085,10 +1136,16 @@ impl Window {
                     } else if crate::lookups::button(a, v.buttons, &v.b.content, button, problems).is_some()
                         && let Some(look) = v.button_look(button)
                     {
-                        // (The slots after it start past its tiles; the
-                        // special slot is the last.)
-                        self.tiles.put_part(at, &look.pack.tiles, look.set(state), look.count);
-                        at += look.count as u16;
+                        match look.pack.place {
+                            // (At its own place: EXE4's UNITE button.)
+                            Some(p) => self.placed_button(look.pack, p, look.set(state) / look.count.max(1)),
+                            // (The slots after it start past its tiles; the
+                            // special slot is the last.)
+                            None => {
+                                self.tiles.put_part(at, &look.pack.tiles, look.set(state), look.count);
+                                at += look.count as u16;
+                            }
+                        }
                     }
                 }
                 SlotKind::Empty => {
@@ -1099,10 +1156,13 @@ impl Window {
                 // (The special slot's button's hidden look, if it has one;
                 // else the window's fill, as a hidden slot's.)
                 SlotKind::Hidden if s as u8 == SPECIAL_SLOT => match v.hidden_special() {
-                    Some((b, set)) => {
-                        let n = b.width as usize * b.height as usize;
-                        self.tiles.put_part(at, &b.tiles, n * set, n)
-                    }
+                    Some((b, set)) => match b.place {
+                        Some(p) => self.placed_button(b, p, set),
+                        None => {
+                            let n = b.width as usize * b.height as usize;
+                            self.tiles.put_part(at, &b.tiles, n * set, n)
+                        }
+                    },
                     None => self.tiles.fill(at, 6, self.layout.slot_blank),
                 },
                 SlotKind::Hidden => {
@@ -1114,9 +1174,12 @@ impl Window {
         // The icons' palettes (the 2x2 icon cells of slots 0-9).
         for s in 0..10usize {
             let slot = v.screen.slots[s];
+            // (The empty icon in the pack's palette for it: EXE4's 9.)
+            let empty = self.layout.empty_palette.unwrap_or(11);
             let palette = match slot.kind {
-                SlotKind::Empty => 11,
+                SlotKind::Empty => empty,
                 SlotKind::Chip { .. } | SlotKind::Offered(_) if slot.state == SlotState::Unavailable => 12,
+                SlotKind::Chip { .. } | SlotKind::Offered(_) if v.screen.look.slot_picked[s] => empty,
                 SlotKind::Chip { .. } | SlotKind::Offered(_) => 11,
                 SlotKind::Ok => continue,
                 // (A button's chip: a chip's, 0x08024200.)
@@ -1157,6 +1220,13 @@ impl Window {
             for (x, hflip) in [(11, false), (14, true)] {
                 self.map[(3 + 2 * i) * COLUMNS + x] = MapEntry { tile, hflip, vflip: false, palette: 9 };
                 self.map[(4 + 2 * i) * COLUMNS + x] = MapEntry { tile: tile + 1, hflip, vflip: false, palette: 9 };
+            }
+            // (An empty cell's icon in the empty icon's palette, where the
+            // pack has one: EXE4's 0x0801FB6E.)
+            if let Some(p) = self.layout.empty_palette.filter(|_| filled == 0) {
+                for (x, y) in [(12, 3 + 2 * i), (13, 3 + 2 * i), (12, 4 + 2 * i), (13, 4 + 2 * i)] {
+                    self.map[y * COLUMNS + x].palette = p;
+                }
             }
         }
     }
@@ -1400,7 +1470,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             }
         },
     };
-    let palette = v.emblem_palette();
+    let palette = v.cursor_palette();
     // Queued last corner first (`sub_8028820`).
     shape.corners[frame as usize & 1]
         .iter()
@@ -1467,6 +1537,43 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
     }
 }
 
+/// The chip window's element icon as a sprite (EXE4's, 0x0801EECC: 16x16
+/// in its own palette, at the window's left edge less its scroll while the
+/// scroll is 40 or less), while the cursor is on a chip, from the screen's
+/// open on (0x0801E314, 0x08020DB4): the last chip's element's.
+fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<SpritePart<'a>> {
+    let e = a.element_sprite?;
+    let s = v.screen;
+    if !matches!(s.slots[s.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) || place.scroll > ELEMENT_SHOWN_TO {
+        return None;
+    }
+    let c = s.look.chip_window.last_chip?;
+    let family = v.b.content.chip(c.id).family as usize;
+    if a.elements.len() < 4 * (family + 1) {
+        return None;
+    }
+    Some(SpritePart {
+        x: ((e.x as i32 - place.scroll as i32) & 0x1FF) as u16,
+        y: e.y as u8,
+        width: 16,
+        height: 16,
+        tiles: &a.elements,
+        first_tile: 4 * family,
+        hflip: false,
+        vflip: false,
+        palette: v.faded(e.palette),
+        priority: 1,
+        alpha: None,
+        mosaic: None,
+        vscale: None,
+        affine: None,
+    })
+}
+
+/// The window's scroll past which the element sprite isn't drawn
+/// (0x0801EECC).
+const ELEMENT_SHOWN_TO: u32 = 40;
+
 /// The Regular chip's frame (`sub_802899C`): a 32x32 sprite around the
 /// first slot.
 /// The chip a button holds, over the button (EXE5's Arm Change, 0x080254F4):
@@ -1506,7 +1613,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
         first_tile: 16 * (v.screen.look.regular_frame as usize & 1),
         hflip: false,
         vflip: false,
-        palette: v.emblem_palette(),
+        palette: v.cursor_palette(),
         priority: 1,
         alpha: None,
         mosaic: None,
@@ -1591,7 +1698,8 @@ pub fn draw<'a>(
             w.cell(hud_layer, e, 15 + (i % 7) as i32, 4 + (i / 7) as i32, place.scroll);
         }
     }
-    if names_shown(b, screen) {
+    // (A screen without the names' bar draws no names: EXE4's.)
+    if names_shown(b, screen) && !a.name_bar.is_empty() {
         draw_names(&v, &w, hud_layer, names_layer, text, problems);
     }
     // The sprites, as their routines queue them (each in front of the
@@ -1610,7 +1718,9 @@ pub fn draw<'a>(
     if let Some(frame) = drawn.cursor {
         queue.extend(cursor_parts(&v, a, frame));
     }
-    if let Some((x, spin)) = drawn.emblem {
+    queue.extend(element_part(&v, a, place));
+    // (A screen with an emblem of its own draws it on the window's map.)
+    if let Some((x, spin)) = drawn.emblem.filter(|_| a.window_emblem.is_none()) {
         let part = emblem_part(&v, emblem, x, spin);
         if let Some(why) = known_emblem(b, packs, side) {
             // (Where the sprite is, its coordinates wrapped as the

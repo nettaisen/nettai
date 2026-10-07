@@ -50,6 +50,8 @@ const LAYOUT: CustomLayout = CustomLayout {
     name_bar: 0x1B6,
     form_names: 0,
     slot_blank: 2,
+    detail_blank: 8,
+    empty_palette: None,
     ok_cursor: CursorPlace {
         x: 0x58,
         y: 0x70,

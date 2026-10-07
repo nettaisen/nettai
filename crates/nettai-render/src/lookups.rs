@@ -219,7 +219,10 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
         ChipClass::Giga => Some(2),
         _ => None,
     };
+    // (A pack with one frame color draws every chip in it: EXE4's, which
+    // its screen loads once, 0x0801DC28.)
     let frame = match class {
+        _ if a.frame_palettes.len() == 1 => 0,
         Some(_) if data.flags.has(ChipFlags::DARK) => 3,
         Some(n) => n,
         None => 0,
@@ -232,7 +235,8 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
         // (A family past the elements with colors shows none: the
         // original's.)
         let family = data.family as usize;
-        if family < a.element_colors.len() && a.elements.len() < 4 * (family + 1) {
+        let has_icon = family < a.element_colors.len() || a.element_sprite.is_some();
+        if has_icon && a.elements.len() < 4 * (family + 1) {
             problems.note(format!("chip {key:?}: the custom screen has no icon for its element ({family})"));
         }
         if a.codes.len() < 2 * (code.min(crate::custom::NO_CODE) as usize + 1) {
