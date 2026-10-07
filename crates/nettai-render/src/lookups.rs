@@ -460,10 +460,14 @@ pub fn telop<'a>(packs: &Packs<'a>, c: &Content, id: BannerId, problems: &mut Pr
     found
 }
 
-/// Whether banner `id` is the damage judge's (its layout's kind, by its
-/// number in its pack): the HUD draws the judge's numbers under it.
+/// Whether banner `id` is the damage judge's: the content's judge banner
+/// (the role `banners.judge`), or one its pack lays out as the judge's (its
+/// layout's kind, by its number there: EXE6's). The HUD draws the judge's
+/// numbers under it. (EXE4's judge banner is a holding banner of its
+/// table, 0x28, whose numbers its HUD task 9 draws: 0x080163C8.)
 pub fn is_judge(packs: &Packs, c: &Content, id: BannerId) -> bool {
-    packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4)).is_some_and(|l| l.kind == JUDGE_KIND)
+    c.defs.roles().banners.get(&nettai_battle::content::BannerRole::Judge) == Some(&id)
+        || packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4)).is_some_and(|l| l.kind == JUDGE_KIND)
 }
 
 /// Whether banner `id` is laid out as a telop's in its pack (its kind).

@@ -224,6 +224,10 @@ pub struct Identity {
     /// The animation in which the target marker over it isn't raised to
     /// its attach point (Gregar's 0x4F, `sub_80E1520`).
     pub marker_flat_anim: Option<u8>,
+    /// Where the HUD stacks the chip icons over it, from its place on the
+    /// screen (x right, y down: EXE4's table 0x0800B9E4 by navi number),
+    /// where the rules' `effects.chip_icons` is `navi_offset`.
+    pub chip_icons_at: Option<(i8, i8)>,
     /// Whose it is, for a navi's or a form's.
     pub owner: Option<IdentityOwner>,
     /// What it is as a navi no player controls (actor type navi).
@@ -253,6 +257,7 @@ impl Identity {
             breaks_on_weakness: false,
             quiet_win: false,
             marker_flat_anim: None,
+            chip_icons_at: None,
             owner: None,
             body: None,
         })
@@ -539,6 +544,17 @@ pub(crate) fn read(
         marker_flat_anim: match spec.field("marker_flat_anim") {
             Data::Nil => None,
             v => Some(byte(v, "marker_flat_anim")?),
+        },
+        chip_icons_at: match spec.field("chip_icons_at") {
+            Data::Nil => None,
+            Data::List(xy) => match xy.as_slice() {
+                [Data::Int(x), Data::Int(y)] => match (i8::try_from(*x), i8::try_from(*y)) {
+                    (Ok(x), Ok(y)) => Some((x, y)),
+                    _ => return Err(what(format!("`chip_icons_at` {{ {x}, {y} }} is not in pixels a byte holds"))),
+                },
+                _ => return Err(what("`chip_icons_at` is `{ x, y }`".into())),
+            },
+            other => return Err(what(format!("`chip_icons_at` is {other:?}, not `{{ x, y }}`"))),
         },
         owner: None,
         body,
