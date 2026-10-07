@@ -575,8 +575,12 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     again (0x0801E1D6); EXE6's comes back when the message goes. Not ported: no defensive chip is ported yet.
   - 10 **"????"** for a defensive chip, at columns 6 and 26 (0x08015266): EXE6's.
   - 12 **"PAUSE"** at (100, 64), a row lower than EXE6's (the pack's `layout.pause`).
-  - 13 **"BUSY..."** at column 22, row 4 (0x08015624); 23 **"PLAN-B..."** in the same place (0x080158D8, started
-    by 0x08016AE8 from 0x08021138, the second screen's).
+  - 13 **"BUSY..."** at column 22, row 4 (0x08015624): on a console whose screen has sent its result, also while the
+    other player picks on a second screen it opened with L (both consoles are in the custom screen's sub-state then).
+    23 **"PLAN-B..."** in the same place (0x080158D8) is not a netbattle's: 0x08016AE8 starts it from 0x08021138, a
+    state of the system at 0x0203BC90 (0x08020F64, from the flow at 0x0800784C), which the levels gauge (16) and the
+    column marker (22) belong to: controller 2's (§18 item 49). The lab's custom/plan-b (side 1 opens a second
+    screen, side 0 traced) never sets draw bit 23.
   - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
   - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
     "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
@@ -1138,4 +1142,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
       seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
       item 16 reads EXE4's. With it, the damage judge: its numbers' values (0x0801642C, 0x08016408) and a recording
-      to compare.
+      to compare;
+    - the warning marker (0x0800843E: a 16x16 sprite at tile 0x360, its second frame at bit 3 of the frame counter, in
+      palette 13; 0x08008424 also sounds 0x79 every 16 frames), with the chips that show it: the gauge chips'
+      effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
+      The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
+      EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
