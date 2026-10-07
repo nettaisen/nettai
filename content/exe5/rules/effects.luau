@@ -72,4 +72,6 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second, as EXE6's.
     used_chip_ticks = 0x3C,
+    -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (0x08019780, EXE6's).
+    bug_flicker = true,
 }
