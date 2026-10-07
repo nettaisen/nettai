@@ -3,9 +3,16 @@
 -- staggers what it hits; the same cannon in three colors (the
 -- original's action 0x14 with subtypes 0 to 2; lib/cannon.luau).
 
+local attachment = require("../objects/attachment")
 local shooter = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
 local lockon = require("../rules/lockon")
+
+-- Their cannons (the original's attachment rows 0 to 2: the cannon in
+-- palettes 0, 1 and 2), at the navi's attach point 7.
+local CANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 0, attach_point = 7 }
+local HICANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 1, attach_point = 7 }
+local M_CANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 2, attach_point = 7 }
 
 local cannon: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -20,7 +27,7 @@ local cannon: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
     slot_in_limit = 3,
-    action = shooter.action { id = "cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
+    action = shooter.action { id = "cannon/action", arm = CANNON_ARM, shot = variants.cannon },
 }
 
 local hicannon: Chip = {
@@ -36,7 +43,7 @@ local hicannon: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
     slot_in_limit = 3,
-    action = shooter.action { id = "hicannon/action", arm = shooter.arms.hicannon, shot = variants.cannon },
+    action = shooter.action { id = "hicannon/action", arm = HICANNON_ARM, shot = variants.cannon },
 }
 
 local m_cannon: Chip = {
@@ -52,7 +59,7 @@ local m_cannon: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
     slot_in_limit = 3,
-    action = shooter.action { id = "m-cannon/action", arm = shooter.arms.m_cannon, shot = variants.cannon },
+    action = shooter.action { id = "m-cannon/action", arm = M_CANNON_ARM, shot = variants.cannon },
 }
 
 return { cannon = cannon, hicannon = hicannon, ["m-cannon"] = m_cannon }
