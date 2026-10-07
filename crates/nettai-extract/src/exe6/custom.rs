@@ -402,6 +402,9 @@ pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
             })
             .collect(),
         languages: Vec::new(),
+        element_sprite: None,
+        cursor_palette: None,
+        window_emblem: None,
     }
 }
 

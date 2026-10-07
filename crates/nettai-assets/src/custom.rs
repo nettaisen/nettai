@@ -197,6 +197,64 @@ pub struct ButtonPictures {
     /// where it differs, by version (EXE5: Team Colonel's has another
     /// outline color, its ROM's 0x0874BDBC).
     pub icon_palettes: Vec<(String, Palette)>,
+    /// Where the button is drawn when no patch of the window's places it:
+    /// its cells on the window's map at a column and row, from its own
+    /// tile numbers (EXE4's UNITE button, 0x0801FF14: 3x2 at column 11,
+    /// row 17, from tile 0x52). None: the patch list's place in the slots'
+    /// run, its tiles among the slots'.
+    pub place: Option<ButtonPlace>,
+}
+
+/// A button's own place on the window (`ButtonPictures::place`): the
+/// column and row of its first cell, and the tile number its tiles load
+/// at.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ButtonPlace {
+    pub x: u8,
+    pub y: u8,
+    pub first_tile: u16,
+}
+
+/// The chip window's element icon drawn as a sprite (EXE4's, 0x0801EECC: a
+/// 16x16 sprite at the window's column 3, row 10, in a palette of its
+/// own), rather than as tiles of the window's map (EXE6's and EXE5's, in
+/// the window's palette 11 with each element's colors).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ElementSprite {
+    /// Its place from the window's left edge (which slides with it) and
+    /// the screen's top.
+    pub x: i16,
+    pub y: i16,
+    pub palette: Palette,
+}
+
+/// An emblem the screen draws on the window's map (EXE4's, 0x08020028:
+/// the orb over the picked column, 2x3 cells at column 12, row 0), by
+/// frames: its tiles from `first_tile`, its frames' map entries (`width`
+/// x `height` each, row by row), and the steps its turn goes through after
+/// a pick (`Screen::look`'s step: a frame, or a step that holds the last;
+/// the first frame at rest).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WindowEmblem {
+    pub x: u8,
+    pub y: u8,
+    pub width: u8,
+    pub height: u8,
+    pub first_tile: u16,
+    pub tiles: Tiles,
+    pub frames: Vec<Vec<MapEntry>>,
+    pub steps: Vec<Option<u8>>,
+}
+
+impl WindowEmblem {
+    /// The frame shown at a turn's step (from 1; 0: at rest): the step's
+    /// own, or the last a step before it showed.
+    pub fn frame(&self, step: usize) -> usize {
+        if step == 0 {
+            return 0;
+        }
+        self.steps.iter().take(step).rev().find_map(|f| *f).map_or(0, |f| f as usize)
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -269,6 +327,16 @@ pub struct CustomScreen {
     pub advance_name_colors: Vec<[u16; 4]>,
     /// The other languages' pictures with words (`crate::lettering`).
     pub languages: Vec<(String, crate::CustomLettering)>,
+    /// The chip window's element icon as a sprite (EXE4's); none: as the
+    /// window's tiles (`layout.element`).
+    pub element_sprite: Option<ElementSprite>,
+    /// The palette of the cursor and the Regular chip's frame where it is
+    /// their own (EXE4's sprite palette 13, 0x0870C360); none: the navi's
+    /// emblem's (EXE6's and EXE5's sprite palette 11).
+    pub cursor_palette: Option<Palette>,
+    /// The emblem the screen draws on its window by frames (EXE4's), in
+    /// place of a navi's emblem sprite (`emblems`).
+    pub window_emblem: Option<WindowEmblem>,
 }
 
 impl CustomScreen {
