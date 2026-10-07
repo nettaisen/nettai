@@ -43,11 +43,13 @@ return {
     obstacle_actions = "own_from_6",
     -- Its Full Synchro aura (actor object 0x5E, 0x080C45E0) keeps the animation it started with (0x080C4648), steps
     -- its sprite paused or not, and once the fight is on stops running while the battle is paused (its header flag
-    -- goes). It is hidden while its navi is under the sea's surface too (the reactions' `hit_test`).
+    -- goes). It is hidden while its navi is under the sea's surface too (the reactions' `hit_test`). Its spawn
+    -- (0x080C46E2) sets no header flag: it waits while the battle is paused.
     full_synchro_aura = {
         follows_identity = false,
         steps_while_paused = true,
         stops_at_a_pause_in_the_fight = true,
+        spawn_runs_while_paused = false,
     },
     -- A navi's charge glow (effect 8) comes with it, as EXE6's.
     charge_glow = "with_navi",

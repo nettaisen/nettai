@@ -957,6 +957,31 @@ pub struct EmotionRules {
     pub order: Vec<EmotionCase>,
     /// What each emotion is to the framework, by [`Emotion`].
     pub roles: Vec<Option<EmotionRole>>,
+    /// What a hit's counter byte does to the moods.
+    pub hit_mood: HitMood,
+    /// The mood a Full Synchro boost leaves, through the setter (EXE6's and
+    /// EXE5's 0x80; EXE4's 0x99, 0x0800D568).
+    pub full_synchro_spent: u8,
+    /// Anger's boost plays the boost's sound, as Full Synchro's does (EXE6's,
+    /// EXE5's); else none (EXE4's 0x0800D57C ends the anger alone).
+    pub anger_boost_sound: bool,
+}
+
+/// What a hit's counter byte (the hitter's collision +5's low bits) does
+/// to the moods (`EmotionRules::hit_mood`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitMood {
+    /// The byte wears the receiver's mood; a counter hit (in the
+    /// receiver's counter window) marks the counter (0x8000) and wears
+    /// none, and the counterer's side's rules hear it (`countered`): EXE6's
+    /// hit kernel and `sub_801A200`, EXE5's.
+    CounterMark,
+    /// The bytes the receiver takes in a tick raise the other side's mood
+    /// (to 0xFF; a mood of 0 stays), a counter hit's counting 0xFF, and
+    /// wear the receiver's (a counter hit's 0x7F): EXE4's hit kernel
+    /// (0x08012C10) and status routine (0x080131E4). No `countered`.
+    HitterGains,
 }
 
 /// A side's emotion: one of its game's ([`EmotionRules::names`]); the
@@ -1069,6 +1094,9 @@ struct EmotionSection {
     order: Vec<EmotionCaseSpec>,
     #[serde(default)]
     roles: std::collections::BTreeMap<String, EmotionRole>,
+    hit_mood: HitMood,
+    full_synchro_spent: u8,
+    anger_boost_sound: bool,
 }
 
 #[derive(Deserialize)]
@@ -1084,7 +1112,8 @@ impl TryFrom<EmotionSection> for EmotionRules {
 
     fn try_from(s: EmotionSection) -> Result<EmotionRules, String> {
         let order = s.order.into_iter().map(|c| (c.emotion, c.when)).collect();
-        EmotionRules::new(s.mood_held, s.anger_end, order, s.roles.into_iter().collect())
+        let rules = EmotionRules::new(s.mood_held, s.anger_end, order, s.roles.into_iter().collect())?;
+        Ok(EmotionRules { hit_mood: s.hit_mood, full_synchro_spent: s.full_synchro_spent, anger_boost_sound: s.anger_boost_sound, ..rules })
     }
 }
 
@@ -1123,7 +1152,17 @@ impl EmotionRules {
             };
             roles[i] = Some(role);
         }
-        Ok(EmotionRules { mood_held, anger_end, names, order, roles })
+        // (The section states the rest; EXE6's until then.)
+        Ok(EmotionRules {
+            mood_held,
+            anger_end,
+            names,
+            order,
+            roles,
+            hit_mood: HitMood::CounterMark,
+            full_synchro_spent: 0x80,
+            anger_boost_sound: true,
+        })
     }
 }
 
@@ -1166,6 +1205,10 @@ pub struct AuraRules {
     /// (EXE5's: its header flag goes); else it runs through every pause
     /// (EXE6's).
     pub stops_at_a_pause_in_the_fight: bool,
+    /// Its spawn has it run while the battle is paused (EXE6's
+    /// `sub_80C4C12` sets the header flag 0x04); else it waits for the
+    /// battle to run (EXE5's 0x080C46E2, EXE4's 0x080CD276).
+    pub spawn_runs_while_paused: bool,
 }
 
 /// Global rules: element weakness, collision types, panels, banners,
