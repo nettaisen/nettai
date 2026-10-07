@@ -4,6 +4,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("./colonel/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "C" },
@@ -18,7 +19,10 @@ local chip: Chip = {
     flags = { "dimming", "has_damage" },
     extra_flags = { 8, 16 },
     slot_in_limit = 1,
-    navi = navi.summon_cross,
+    navi = navi_chips.make {
+        id = "crossdiv/controller",
+        summon = navi.summon_cross,
+    },
     auto_battle = { class = "at_once" },
 }
 

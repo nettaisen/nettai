@@ -27,7 +27,8 @@ local STEPS: { NaviChipStep } = { { wait = WAIT }, "navi", { wait = WAIT }, { wa
 controllers.done = common.done
 
 function controllers.make(spec: Spec): NaviChipController
-    return common.make { id = spec.id, name = spec.name, spawn = spec.spawn, steps = STEPS }
+    -- (Past the navi chips' block: AntiNavi lets them through, and they aren't kept as the last navi chip.)
+    return common.make { id = spec.id, name = spec.name, spawn = spec.spawn, steps = STEPS, navi_block = false }
 end
 
 return controllers

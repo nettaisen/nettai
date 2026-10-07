@@ -122,8 +122,10 @@ pub enum ChipUsage {
     Action(ActionHandle),
     /// A cut-in chip: its controller's spawner, `(user, spec) -> controller`.
     Dimming(FnId),
-    /// A navi chip: its navi's spawner, `(user, controller, spec) -> navi`.
-    Navi(FnId),
+    /// A chip handed off to its controller (its `navi`): the controller's
+    /// spawner, `(user, spec) -> controller`, as a cut-in chip's; the user
+    /// goes back to idle at once.
+    HandOff(FnId),
     /// An instant chip: its effect, `(user, spec)`.
     Instant(FnId),
 }
@@ -870,7 +872,9 @@ fn byte(d: &Definition, field: &str) -> Result<u8, ContentError> {
 
 /// A definition's function slot at `path`, which must hold a function.
 fn slot(d: &Definition, path: &str) -> Result<FnSource, ContentError> {
-    match d.spec.field(path) {
+    // (A path names fields within fields, `navi.hook`.)
+    let at = path.split('.').fold(&d.spec, |at, f| at.field(f));
+    match at {
         Data::Function => Ok(FnSource::slot(d.registry, &d.key, path)),
         Data::Nil => Err(ContentError::new(format!("{}.luau: {} {} needs `{path}`", d.module, d.registry, d.key))),
         _ => Err(ContentError::new(format!("{}.luau: {} {}'s `{path}` is not a function", d.module, d.registry, d.key))),
@@ -1376,14 +1380,18 @@ impl Defs {
                 Data::Ref(Registry::Action, key) => usages.push(ChipUsage::Action(action_handle(key).expect("a defined action"))),
                 _ => return Err(ContentError::new(format!("{}.luau: chip {}'s `action` is not an action", d.module, d.key))),
             }
-            for (field, usage) in [
-                ("dimming", ChipUsage::Dimming as fn(FnId) -> ChipUsage),
-                ("navi", ChipUsage::Navi),
-                ("instant", ChipUsage::Instant),
-            ] {
+            for (field, usage) in [("dimming", ChipUsage::Dimming as fn(FnId) -> ChipUsage), ("instant", ChipUsage::Instant)] {
                 if !d.spec.field(field).is_nil() {
                     usages.push(usage(functions.id(slot(d, field)?)));
                 }
+            }
+            // `navi`: the controller's spawner, or a table with it as its
+            // `hook` (and whatever else the content keeps of the chip's
+            // controller there).
+            match d.spec.field("navi") {
+                Data::Nil => {}
+                Data::Map(_) => usages.push(ChipUsage::HandOff(functions.id(slot(d, "navi.hook")?))),
+                _ => usages.push(ChipUsage::HandOff(functions.id(slot(d, "navi")?))),
             }
             let [usage] = usages[..] else {
                 return Err(ContentError::new(format!(
