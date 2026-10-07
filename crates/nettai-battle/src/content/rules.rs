@@ -1,6 +1,6 @@
 //! The rules' tables: data no single entity owns.
 
-use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffset, SecondaryElements};
+use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, SecondaryElements};
 use crate::field::PanelType;
 use super::flags::serde_flags;
 use serde::{Deserialize, Serialize};
@@ -681,7 +681,6 @@ pub struct Rules {
     pub request_clears: RequestClears,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
-    pub lockon: Lockon,
     /// The battle's flow where a game's differs (rule section `flow`, the
     /// arena's game's).
     pub flow: FlowRules,
@@ -966,67 +965,4 @@ impl SlideVector {
     pub const NONE: SlideVector = SlideVector { dx: 0, dy: 0, tiles: 0 };
 }
 
-/// The Beast Out lock-on: where the Beast rush attacks from (`ho_8026554`,
-/// by the chip's lock-on mode, a definition: `Content::lockon`). What the
-/// modes share.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Lockon {
-    /// Column shifts toward the user tried, in order, when no panel next
-    /// to the target fits (`byte_8026735`).
-    pub column_shifts: Vec<i8>,
-    /// What every panel between the chosen one and the target must be for
-    /// the modes that need a clear path, by alliance (`byte_8026544`).
-    pub clear_path: [PanelCondition; 2],
-}
-
-/// How a lock-on mode picks the panel to attack from.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum LockonRule {
-    /// Stay on the navi's own panel (`sub_802661C`, mode 0).
-    #[default]
-    Stay,
-    /// Along the target's row, counting from the navi's own column
-    /// (`sub_8026622`): `offsets` (or `same_row_offsets` when the target
-    /// stands in the navi's row), then the same in the rows `row_shifts`
-    /// away from the target's.
-    Row,
-    /// Next to the target (`sub_8026450`): the first panel of `offsets`
-    /// the navi can stand on, then with the column shifts if
-    /// `column_shifts` (`sub_80265D0`), and only with a clear path to the
-    /// target if `clear_path` (`sub_80264A8`).
-    Near,
-}
-
-/// A lock-on mode (`new.record("lockon", ...)`; an entry of the original's
-/// `jt_8026584`). Offsets are relative to where the rule counts from, dx
-/// toward the user's front; a panel past the target's column never fits.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct LockonMode {
-    pub rule: LockonRule,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub offsets: Vec<PanelOffset>,
-    /// `Row`: the offsets when the target is in the navi's row.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub same_row_offsets: Vec<PanelOffset>,
-    /// `Row`: the rows tried after the target's, relative to it.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub row_shifts: Vec<i8>,
-    /// `Near`: the offsets when the target stands in the column farthest
-    /// ahead of the user (`sub_80266BA`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub far_column_offsets: Option<Vec<PanelOffset>>,
-    /// `Near`: try the column shifts too.
-    #[serde(default)]
-    pub column_shifts: bool,
-    /// `Near`: every panel from the chosen one up to the target's column
-    /// must meet `Lockon::clear_path`.
-    #[serde(default)]
-    pub clear_path: bool,
-    /// Afterwards, the middle row of the chosen column is taken if the
-    /// navi can stand there (`sub_80265FE`).
-    #[serde(default)]
-    pub prefers_middle_row: bool,
-}
 

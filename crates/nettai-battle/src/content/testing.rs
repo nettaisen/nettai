@@ -1170,6 +1170,7 @@ pub fn scripts() -> Scripts {
                 ("rules/beast/init", "rules/beast/init"),
                 ("rules/emotion/init", "rules/emotion/init"),
                 ("rules/beast/rush", "rules/beast/rush"),
+                ("rules/lockon_search", "rules/lockon_search"),
                 ("rules/beast/berserk", "rules/beast/berserk"),
                 // (Its chips are the test content's own: testdata's
                 // rules/cross_special.luau.)

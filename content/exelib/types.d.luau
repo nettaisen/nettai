@@ -1489,3 +1489,26 @@ export type NaviCustBugSpecial =
     | { kind: "blanks" }
     | { kind: "strip" }
     | { kind: "uninstall", spark: Spark, sound: Sound }
+
+-- A Beast Out lock-on mode (EXE6's rules/lockon: a record of type "lockon",
+-- `new.record("lockon", { id = ..., ... })`, which only its rules read): how
+-- the rush picks the panel to attack a target from. `stay`: the navi's own
+-- panel. `row`: along the target's row counting from the navi's own column
+-- (`same_row_offsets` when they share a row), then the rows `row_shifts`
+-- away. `near`: the first of `offsets` (dx toward the user's front) next to
+-- the target the navi can stand on (`far_column_offsets` for a target in the
+-- column farthest ahead), then with the rules' column shifts, with a clear
+-- path to the target if asked; afterwards the middle row of that column, if
+-- preferred and free.
+export type LockonDef = {
+    id: string?,
+    rule: "stay" | "row" | "near",
+    offsets: { { number } }?,
+    same_row_offsets: { { number } }?,
+    row_shifts: { number }?,
+    far_column_offsets: { { number } }?,
+    column_shifts: boolean?,
+    clear_path: boolean?,
+    prefers_middle_row: boolean?,
+}
+export type Lockon = LockonDef

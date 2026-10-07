@@ -198,13 +198,6 @@ const FRESH_STATS: [&str; 4] = ["reg_up", "custom_level", "mood", "mode9_a"];
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct LockonSection {
-    column_shifts: Vec<i8>,
-    clear_path: [PanelCondition; 2],
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct LinkPickSection {
     first_round_stages: usize,
     backgrounds: Vec<super::BackgroundId>,
@@ -233,7 +226,6 @@ pub(crate) const SECTIONS: &[&str] = &[
     "flow",
     "fresh_stats",
     "link_pick",
-    "lockon",
     "math",
     "panels",
     "pools",
@@ -259,7 +251,6 @@ struct Stated {
     buster: Option<BusterSection>,
     holding_banners: Option<Vec<BannerId>>,
     status: Option<StatusSection>,
-    lockon: Option<Lockon>,
     chip_use: Option<super::rules::ChipUseRules>,
     flow: Option<super::rules::FlowRules>,
     effects: Option<super::rules::EffectsRules>,
@@ -304,7 +295,6 @@ impl Stated {
                 weakness_hit_breaks_form: r.weakness_hit_breaks_form,
                 weakness_mark: r.weakness_mark,
             }),
-            lockon: Some(r.lockon.clone()),
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
             link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages, backgrounds: r.link_pick.backgrounds.clone() }),
@@ -375,7 +365,6 @@ impl Stated {
             stance_counter: reactions.stance_counter,
             request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
-            lockon: self.lockon.unwrap_or_default(),
             flow,
             effects,
             chip_use,
@@ -553,10 +542,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),
             "banners" => stated.holding_banners = Some(r.read::<BannersSection>(spec, &at).map_err(e)?.holding),
             "status" => stated.status = Some(r.read(spec, &at).map_err(e)?),
-            "lockon" => {
-                let s: LockonSection = r.read(spec, &at).map_err(e)?;
-                stated.lockon = Some(Lockon { column_shifts: s.column_shifts, clear_path: s.clear_path });
-            }
             "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),
             "flow" => stated.flow = Some(r.read(spec, &at).map_err(e)?),
             "link_pick" => {
