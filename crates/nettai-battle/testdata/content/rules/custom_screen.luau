@@ -81,8 +81,8 @@ return {
     cursor_after_leaving = true,
     -- The frame counts after what the choosing draws.
     frame_counts_first = false,
-    -- The description and L's message are the screen's own states.
-    description_in_choosing = false,
+    -- The description, L's message and the rules' windows are the screen's own states.
+    states_in_choosing = false,
     -- The chatbox's end clears the text's buffers only.
     chatbox_end_clears_tiles = false,
     -- The interpreter goes on after a character.

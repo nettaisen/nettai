@@ -185,7 +185,7 @@ struct CustomScreenSection {
     fades_clear_at_ok: bool,
     cursor_after_leaving: bool,
     frame_counts_first: bool,
-    description_in_choosing: bool,
+    states_in_choosing: bool,
     chatbox_end_clears_tiles: bool,
     chatbox_character_ends_tick: bool,
 }
@@ -762,7 +762,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     fades_clear_at_ok: s.fades_clear_at_ok,
                     cursor_after_leaving: s.cursor_after_leaving,
                     frame_counts_first: s.frame_counts_first,
-                    description_in_choosing: s.description_in_choosing,
+                    states_in_choosing: s.states_in_choosing,
                     chatbox_end_clears_tiles: s.chatbox_end_clears_tiles,
                     chatbox_character_ends_tick: s.chatbox_character_ends_tick,
                     left_scan_top: s.left_scan_top,

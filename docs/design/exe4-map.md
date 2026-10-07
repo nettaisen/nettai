@@ -336,9 +336,10 @@ from the ROM and its code, read routine by routine):
   (`cursor_after_leaving`, 0x0801E412). The choosing tick draws the last turns' block and counts its frame before
   its keys (`frame_counts_first`, 0x0801E3DA, 0x0801E3DE): the cursor blinks a frame further on than EXE6's, and the
   Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0. R's
-  description and L's message are states of the choosing (`description_in_choosing`: the selection's 0x18 and 0x1C):
-  their ticks draw the last turns' block and count the frame, and the tick one sees its chatbox closed goes back to
-  the state it came from and draws its cursor (0x08020A0A, 0x0801E412).
+  description, L's message and the rules' windows are states of the choosing (`states_in_choosing`: the selection's
+  0x18, 0x1C and 0x10): their ticks draw the last turns' block and count the frame, a window's sprites after its step
+  (the soul's choice's icon from the tick it loads, 0x08020DE2), and the tick one goes back draws the state it goes
+  back to, its cursor (0x08020A0A, 0x0802095E, 0x0801E412).
 - **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape, its
   portrait `megaman-portrait` (F4 00 40: the mugshot table 0x08028038's 0x40); a character ends the tick's printing
   (`chatbox_character_ends_tick`, 0x0804E1B2: a character every third tick, where EXE6's interpreter goes on and
@@ -726,7 +727,7 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
   text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
   zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
-  on the tick the screen sees the box closed (`description_in_choosing`).
+  on the tick the screen sees the box closed (`states_in_choosing`).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
