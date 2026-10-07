@@ -49,6 +49,14 @@ pub struct Addresses {
     /// The first of the scroll callbacks (a routine that returns; the ones
     /// after it at the same offsets in the four ROMs).
     pub scrollers: u32,
+    /// The banners (0x0801617E's table: a record a banner, by its number),
+    /// the banner font's digits (a pointer a digit, the tenth the blank),
+    /// the banners' palette, and "BUSY..." (7x2 tiles), each in its
+    /// language's words.
+    pub banners: u32,
+    pub banner_digits: u32,
+    pub banner_palette: u32,
+    pub waiting: u32,
 }
 
 /// Red Sun US (`MEGAMANBN4RS`, B4WE).
@@ -64,6 +72,10 @@ pub const RED_SUN: Addresses = Addresses {
     background_scroll: 0x0808_5488,
     background_anims: 0x0808_5A50,
     scrollers: 0x0800_1ED0,
+    banners: 0x0801_6C04,
+    banner_digits: 0x0801_7A28,
+    banner_palette: 0x0875_0E40,
+    waiting: 0x0875_0900,
 };
 
 /// Blue Moon US (`MEGAMANBN4BM`, B4BE).
@@ -79,6 +91,10 @@ pub const BLUE_MOON: Addresses = Addresses {
     background_scroll: 0x0808_5494,
     background_anims: 0x0808_5A5C,
     scrollers: 0x0800_1ED0,
+    banners: 0x0801_6C04,
+    banner_digits: 0x0801_7A28,
+    banner_palette: 0x0875_08D0,
+    waiting: 0x0875_0390,
 };
 
 /// Red Sun Japan (`ROCK_EXE4_RS`, B4WJ).
@@ -94,6 +110,10 @@ pub const RED_SUN_JP: Addresses = Addresses {
     background_scroll: 0x0808_54D4,
     background_anims: 0x0808_5A9C,
     scrollers: 0x0800_1EB0,
+    banners: 0x0801_6B44,
+    banner_digits: 0x0801_7968,
+    banner_palette: 0x0874_E688,
+    waiting: 0x0874_E088,
 };
 
 /// Blue Moon Japan (`ROCK_EXE4_BM`, B4BJ).
@@ -109,6 +129,10 @@ pub const BLUE_MOON_JP: Addresses = Addresses {
     background_scroll: 0x0808_54E0,
     background_anims: 0x0808_5AA8,
     scrollers: 0x0800_1EB0,
+    banners: 0x0801_6B44,
+    banner_digits: 0x0801_7968,
+    banner_palette: 0x0874_E180,
+    waiting: 0x0874_DB80,
 };
 
 /// The four ROMs.
