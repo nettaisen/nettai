@@ -581,7 +581,7 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
     "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
     the holding banner's hold (0x08014AA8) until the banner is gone (0x08014ABE: the pack's `layout.judge_from_hold`).
-    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 53).
+    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 130).
   - Not in a netbattle: 7 and 19, the turn timer's seconds over "CUSTOM" (0x08016362 from the fight's timer
     0x08008066, and its blinking from 0x080169DA, for battle kind 0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
     code); 16, 17 and 22, the gauge in three colors, its sprite and the column marker of controller 2 (0x08016842
@@ -1121,7 +1121,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 
 The fight HUD as read and ported is §14's "The fight HUD as ported". What it still waits on:
 
-53. **HUD pieces that wait on content** (group E). Port each with what reaches it:
+130. **HUD pieces that wait on content** (group E). Port each with what reaches it:
     - a soul chip (0x160 to 0x16F) as the next chip shows no icon of its own, and the stack starts at the second
       (0x08015000), with Double Soul's chips;
     - a message stops "????" until the next custom screen starts it (0x08015FE8 stops draw bit 10), with the
