@@ -7,7 +7,7 @@ use nettai_content_api::api::ApiResult;
 use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi, DimmingStep,
-    Emotion, FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
+    FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
     ScreenFade, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
@@ -650,16 +650,8 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn emotion(&self, side: u8) -> Emotion {
-        use crate::kinds::player::Emotion as E;
-        match kinds::player::emotion(self, side & 1) {
-            E::Normal => Emotion::Normal,
-            E::Tired => Emotion::Tired,
-            E::FullSynchro => Emotion::FullSynchro,
-            E::Angry => Emotion::Angry,
-            E::WornOut => Emotion::WornOut,
-            E::Worried => Emotion::Worried,
-        }
+    fn emotion(&self, side: u8) -> String {
+        kinds::player::emotion_name(self, side & 1).to_string()
     }
 
     fn set_mood(&mut self, side: u8, mood: u8) {
@@ -1034,16 +1026,8 @@ impl CoreApi for Battle {
 
     fn custom_player(&self, side: u8) -> ApiResult<nettai_content_api::api::CustomPlayer> {
         let s = &self.custom.sides[side as usize & 1];
-        use crate::kinds::player::Emotion as E;
         Ok(nettai_content_api::api::CustomPlayer {
-            emotion: match s.emotion {
-                E::Normal => Emotion::Normal,
-                E::Tired => Emotion::Tired,
-                E::FullSynchro => Emotion::FullSynchro,
-                E::Angry => Emotion::Angry,
-                E::WornOut => Emotion::WornOut,
-                E::Worried => Emotion::Worried,
-            },
+            emotion: self.game_rules().emotion.name(s.emotion).to_string(),
             random_battle: self.setup.settings.effects & crate::setup::effects::RANDOM != 0,
         })
     }

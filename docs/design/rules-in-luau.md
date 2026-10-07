@@ -509,7 +509,9 @@ folder whose ruleset lacks the system (`battle.side_has_system`).
 
 Emotions are each game's (EXE6's five; EXE5's differ): a system declares its emotions' names, pushes the current one
 per side, and `battle.emotion(side)` returns that name with its game. Full Synchro and the mood, which the lineage
-shares, are framework fields the systems push and the framework's doubling and window read.
+shares, are framework fields the systems push and the framework's doubling and window read. (As built: the emotion is
+not pushed but read, decision 1 below; since rust-and-luau.md's E1 the order it is read in, the names and what each
+is to the framework are each game's rules' data, the status section's `emotion.order` and `roles`.)
 
 ### 4.7 The other side, only through the engine
 
@@ -2650,11 +2652,16 @@ rule named for what it does, stated by both games; nothing in the simulation cha
   are isn't written down. The engine's test is an identity's `never_angers` (no index in Rust), which no identity
   states today: no navi a player operates has such a record.
 - `worried_below` is the one field left out by a game: none stated, no mood is worried.
+- (Since rust-and-luau.md's E1 the five switches are gone: each game states its order of emotions, `emotion.order`,
+  with what each is to the framework, `roles`.)
 - Checked: the emotion test plays both sets of rules over the same moods, anger's end and the setter; the
   generators know the rules (gen-content states and compares EXE6's, `gen_rules.py` writes EXE5's status rules as
   stated); replays of the recordings that exercise emotions in each game.
 
 ### To schedule: the emotion models into each game's `emotion` system
+
+(Since rust-and-luau.md's E1, the derivation's part is done another way: each game's `emotion.order` and `roles`,
+data the framework reads on each read, in place of the hook (1) below; that entry says why.)
 
 The model's differences are rules of the game now (above), read by the framework. Each game already has an
 `emotion` system in Luau (content/<game>/rules/emotion) that decides *when* a mood changes (the counter's Full

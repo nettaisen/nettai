@@ -14,7 +14,6 @@ use nettai_assets::{
 };
 use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
 use nettai_battle::field::PanelType;
-use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 
 /// A sprite's name for a problem's text (`sprite "bomb"`).
@@ -289,7 +288,7 @@ pub fn form_face<'a>(
     packs: &Packs<'a>,
     c: &Content,
     form: FormHandle,
-    emotion: Emotion,
+    emotion: &str,
     variant: bool,
     problems: &mut Problems,
 ) -> (Option<nettai_battle::content::InPack<u8>>, Option<(&'a Tiles, &'a [Palette])>) {

@@ -3,7 +3,7 @@
 //! the hand, apply the damage modifiers, and start the chip's action. See
 //! chips.md §2.6.4 and §2.7.
 
-use super::{Emotion, ai, ai_mut, emotion, flag1, form_of, navi_of, navi_record, set_attack, set_mood, stats};
+use super::{EmotionRole, ai, ai_mut, emotion_role, flag1, form_of, navi_of, navi_record, set_attack, set_mood, stats};
 use crate::actor::{ActorType, AttackVars, request};
 use crate::battle::Battle;
 use crate::collision::f1;
@@ -595,9 +595,9 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16
     let boost = if ai(b, r).primed {
         primed_doubles(b, r, cd).then_some(Boost::Primed)
     } else {
-        match emotion(b, b.objects.get(r).alliance) {
-            Emotion::FullSynchro => Some(Boost::FullSynchro),
-            Emotion::Angry => Some(Boost::Anger),
+        match emotion_role(b, b.objects.get(r).alliance) {
+            Some(EmotionRole::FullSynchro) => Some(Boost::FullSynchro),
+            Some(EmotionRole::Angry) => Some(Boost::Anger),
             _ if charge_doubles(b, r, chip, charge) => Some(Boost::Charged),
             _ if grass_doubles(b, r, cd) => Some(Boost::Grass),
             _ if null_doubles(b, r, chip) => Some(Boost::NullDoubled),

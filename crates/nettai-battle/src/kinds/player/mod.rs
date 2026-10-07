@@ -357,63 +357,34 @@ fn null_family(b: &Battle, id: Option<ChipHandle>) -> bool {
     b.content.chip(id).family == crate::content::ChipFamily::Null
 }
 
-/// A navi's emotion, as its mugshot shows it (`sub_8015B54`'s code in
-/// parentheses).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Emotion {
-    /// (0)
-    Normal,
-    /// The Beast Out counter is spent (1).
-    Tired,
-    /// Full Synchro (2).
-    FullSynchro,
-    /// (3)
-    Angry,
-    /// Mood 0, or exhausted after Beast Over (5). (EXE5's mood of 0: a dark
-    /// MegaMan's.)
-    WornOut,
-    /// EXE5's mood under 65 (its emotion 1, 0x08012740): worried.
-    Worried,
+pub use crate::content::{Emotion, EmotionRole};
+
+/// `sub_8015B54` (EXE5's 0x0801270C): a side's emotion, the first of its
+/// game's order (the status section's `emotion`) that holds of its navi:
+/// its mood, its anger, its held tired and exhausted states, whether it is
+/// out of its base form, and the battle's mode.
+pub fn emotion(b: &Battle, side: u8) -> Emotion {
+    let p = b.player(side).expect("side has a player");
+    let a = ai(b, p);
+    let facts = crate::content::EmotionFacts {
+        mood: b.stats[side as usize].mood,
+        angry: a.anger != 0,
+        tired: a.tired,
+        exhausted: a.exhausted,
+        in_form: !form_of(b, p).base,
+        battle_mode: battle_mode(b),
+    };
+    b.game_rules().emotion.of(&facts)
 }
 
-/// `sub_8015B54` (EXE5's 0x0801270C): a side's emotion, read off its navi
-/// by the game's rules (`EmotionRules`, the status section's `emotion`).
-///
-/// EXE6's: worn out (exhausted, AIData +0x33, or a mood of 0), then angry
-/// (+0x34), held tired (+0x32), Full Synchro (a mood of 0xFF), else normal.
-///
-/// EXE5's (0x08012740; in battle mode 1, 0x080127C0: Full Synchro or
-/// normal): in a soul (NaviStats +0x2C) normal, the soul's own face (its
-/// emotion 4), which nothing doubles or ends; then angry, a mood of 0 (5: a
-/// dark MegaMan's), Full Synchro, normal (65 and up), else worried (1). It
-/// reads no held tired or exhausted state.
-pub fn emotion(b: &Battle, side: u8) -> Emotion {
-    let rules = b.game_rules().emotion;
-    let mood = b.stats[side as usize].mood;
-    let p = b.player(side).expect("side has a player");
-    let full_synchro = mood == 0xFF;
-    if rules.plain_in_battle_mode_1 && battle_mode(b) == 1 {
-        return if full_synchro { Emotion::FullSynchro } else { Emotion::Normal };
-    }
-    if rules.normal_in_a_form && !form_of(b, p).base {
-        return Emotion::Normal;
-    }
-    let a = ai(b, p);
-    let worn_out = mood == 0 || (rules.tired_and_exhausted && a.exhausted);
-    let angry = a.anger != 0;
-    if worn_out && !(angry && rules.anger_before_worn_out) {
-        Emotion::WornOut
-    } else if angry {
-        Emotion::Angry
-    } else if rules.tired_and_exhausted && a.tired {
-        Emotion::Tired
-    } else if full_synchro {
-        Emotion::FullSynchro
-    } else if rules.worried_below.is_some_and(|below| mood < below) {
-        Emotion::Worried
-    } else {
-        Emotion::Normal
-    }
+/// What side `side`'s emotion is to the framework.
+pub fn emotion_role(b: &Battle, side: u8) -> Option<EmotionRole> {
+    b.game_rules().emotion.role(emotion(b, side))
+}
+
+/// Side `side`'s emotion's name (its game's).
+pub fn emotion_name(b: &Battle, side: u8) -> &str {
+    b.game_rules().emotion.name(emotion(b, side))
 }
 
 /// A loss of HP brought `r` to 0 (EXE5's `object_subtractHP` calls
@@ -1294,7 +1265,7 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         (form.base, form.traits.has(FormTraits::MOOD_PALETTE), form.palette)
     };
     let no_charge = ai(b, r).status & crate::actor::status::NO_CHARGE != 0;
-    let full_synchro = emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro;
+    let full_synchro = emotion_role(b, b.objects.get(r).alliance) == Some(EmotionRole::FullSynchro);
     let style = if s.element != 0 { s.element.wrapping_mul(5).wrapping_add(0x12) } else { 0 };
     let palette = if !is_megaman(b, r) {
         let by_state: u8 = match (full_synchro, no_charge) {
@@ -1429,7 +1400,7 @@ fn full_synchro_effect(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).hp == 0 || a.actor_type != ActorType::Player || b.content.identity(a.identity).aura_anim.is_none() {
         return;
     }
-    if emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro && a.full_synchro_aura.is_none() {
+    if emotion_role(b, b.objects.get(r).alliance) == Some(EmotionRole::FullSynchro) && a.full_synchro_aura.is_none() {
         crate::kinds::full_synchro_aura::spawn(b, r);
     }
 }

@@ -727,26 +727,45 @@ mod tests {
     /// `emotion` rules, as the game's content states them.
     #[test]
     fn each_games_emotions_go_by_its_rules() {
-        use super::super::{Emotion, emotion, set_mood};
-        use crate::content::{AngerEnd, EmotionRules, MoodHeld};
-        let exe6 = EmotionRules {
-            mood_held: MoodHeld::TiredOrExhausted,
-            anger_end: AngerEnd::ResetsMood,
-            plain_in_battle_mode_1: false,
-            normal_in_a_form: false,
-            anger_before_worn_out: false,
-            tired_and_exhausted: true,
-            worried_below: None,
+        use super::super::{emotion_name, set_mood};
+        use crate::content::{AngerEnd, EmotionRole, EmotionRules, EmotionWhen, MoodHeld};
+        let when = |w: EmotionWhen| vec![w];
+        let case = |name: &str, when: Vec<EmotionWhen>| (name.to_string(), when);
+        let roles = || {
+            [("full_synchro", EmotionRole::FullSynchro), ("angry", EmotionRole::Angry), ("worn_out", EmotionRole::WornOut)]
+                .map(|(n, r)| (n.to_string(), r))
+                .to_vec()
         };
-        let exe5 = EmotionRules {
-            mood_held: MoodHeld::AtZero,
-            anger_end: AngerEnd::ThroughSetter,
-            plain_in_battle_mode_1: true,
-            normal_in_a_form: true,
-            anger_before_worn_out: true,
-            tired_and_exhausted: false,
-            worried_below: Some(65),
-        };
+        let mut exe6_roles = roles();
+        exe6_roles.push(("tired".to_string(), EmotionRole::Tired));
+        let exe6 = EmotionRules::new(
+            MoodHeld::TiredOrExhausted,
+            AngerEnd::ResetsMood,
+            vec![
+                case("worn_out", vec![EmotionWhen { mood: Some(0), ..Default::default() }, EmotionWhen { exhausted: Some(true), ..Default::default() }]),
+                case("angry", when(EmotionWhen { angry: Some(true), ..Default::default() })),
+                case("tired", when(EmotionWhen { tired: Some(true), ..Default::default() })),
+                case("full_synchro", when(EmotionWhen { mood: Some(0xFF), ..Default::default() })),
+                case("normal", vec![]),
+            ],
+            exe6_roles,
+        )
+        .unwrap();
+        let exe5 = EmotionRules::new(
+            MoodHeld::AtZero,
+            AngerEnd::ThroughSetter,
+            vec![
+                case("full_synchro", when(EmotionWhen { battle_mode: Some(1), mood: Some(0xFF), ..Default::default() })),
+                case("normal", vec![EmotionWhen { battle_mode: Some(1), ..Default::default() }, EmotionWhen { in_form: Some(true), ..Default::default() }]),
+                case("angry", when(EmotionWhen { angry: Some(true), ..Default::default() })),
+                case("worn_out", when(EmotionWhen { mood: Some(0), ..Default::default() })),
+                case("full_synchro", when(EmotionWhen { mood: Some(0xFF), ..Default::default() })),
+                case("worried", when(EmotionWhen { mood_below: Some(65), ..Default::default() })),
+                case("normal", vec![]),
+            ],
+            roles(),
+        )
+        .unwrap();
         assert_eq!(testing::rules().emotion, exe6, "the test content plays as EXE6 does");
         let emotions = |which: EmotionRules| {
             let mut c: Content = testing::build();
@@ -765,11 +784,11 @@ mod tests {
             let mut seen = Vec::new();
             for mood in [0x80, 40, 0xFF, 0] {
                 b.stats[0].mood = mood;
-                seen.push(emotion(&b, 0));
+                seen.push(emotion_name(&b, 0).to_string());
             }
             // Angry with a mood of 0.
             ai_mut(&mut b, r).anger = 600;
-            seen.push(emotion(&b, 0));
+            seen.push(emotion_name(&b, 0).to_string());
             // Anger's end, from a mood of 0.
             super::super::status::end_anger(&mut b, r);
             let calmed = b.stats[0].mood;
@@ -781,11 +800,11 @@ mod tests {
             b.stats[0].mood = 0x80;
             ai_mut(&mut b, r).tired = true;
             set_mood(&mut b, 0, 0xFF);
-            seen.push(emotion(&b, 0));
+            seen.push(emotion_name(&b, 0).to_string());
             (seen, calmed, set, b.stats[0].mood)
         };
-        use Emotion::*;
-        assert_eq!(emotions(exe6), (vec![Normal, Normal, FullSynchro, WornOut, WornOut, Tired], 0x80, 0xFF, 0x80));
-        assert_eq!(emotions(exe5), (vec![Normal, Worried, FullSynchro, WornOut, Angry, FullSynchro], 0, 0, 0xFF));
+        let names = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(emotions(exe6), (names(&["normal", "normal", "full_synchro", "worn_out", "worn_out", "tired"]), 0x80, 0xFF, 0x80));
+        assert_eq!(emotions(exe5), (names(&["normal", "worried", "full_synchro", "worn_out", "angry", "full_synchro"]), 0, 0, 0xFF));
     }
 }
