@@ -1,12 +1,13 @@
 --!strict
--- A grab shot, as EXE5 and EXE6 share it (EXE6's attack object #0xF,
--- `sub_80C6414`; EXE5's #0xF): AreaGrab's and PanelGrab's. Each game makes
--- its own kind (`shot.make_kind`: its sprite, sounds and collision types).
--- It drops onto its panel from high up in 32 ticks, hits
--- whatever stands there, and takes the panel for its side if it is the
--- other side's, empty, and not the last of that side's full columns (the
--- panel comes back later with the stolen-area return). Its controller makes
--- it run while dimmed. See docs/engine/chips.md §3.6.8.
+-- A grab shot, as EXE6, EXE5 and EXE4 share it (EXE6's attack object #0xF,
+-- `sub_80C6414`; EXE5's #0xF; EXE4's #0xF, 0x080CEFD4): AreaGrab's and
+-- PanelGrab's. Each game makes its own kind (`shot.make_kind`: its sprite,
+-- sounds, collision types and which of the other side's panels it spares).
+-- It drops onto its panel from high up in 32 ticks, hits whatever stands
+-- there, and takes the panel for its side if it is the other side's, empty,
+-- and not one it spares (the panel comes back later with the stolen-area
+-- return). Its controller makes it run while dimmed. See
+-- docs/engine/chips.md §3.6.8.
 
 local panels = require("../panels")
 local regions = require("../regions")
@@ -23,6 +24,10 @@ export type Look = {
     land_sound: Sound,
     target: CollisionType,
     self_type: CollisionType,
+    -- What of the other side's area it never takes: the last of its full
+    -- home columns (EXE6's and EXE5's, `sub_800D668`), or its back column
+    -- (EXE4's 0x080CF0A6: column 6 of side 1's, 1 of side 0's).
+    spares: "last_full_column" | "back_column",
 }
 -- How high it starts, and how fast it falls, 16.16.
 local HEIGHT, FALL_SPEED = 0x100_0000, 0x8_0000
@@ -66,7 +71,9 @@ local function fall(me: Object, look: Look)
         hit.run_while_dimmed = true
     end
     local takes = TAKES[me.alliance]
-    if field.check(x, y, takes.require, takes.forbid) and panels.can_take(x, y, bit32.bxor(me.alliance, 1)) then
+    local victim = bit32.bxor(me.alliance, 1)
+    local spared = if look.spares == "back_column" then x == victim * 5 + 1 else not panels.can_take(x, y, victim)
+    if field.check(x, y, takes.require, takes.forbid) and not spared then
         -- (The original takes the side from its first parameter, which its
         -- spawn sets to its side.)
         field.set_alliance(x, y, me.alliance)
