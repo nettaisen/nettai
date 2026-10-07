@@ -1134,6 +1134,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
     slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
     of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
+110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
+    EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
+    return while paused: a navi's run before it takes control (it runs paused until then, item 42's
+    `stops_at_control`) counts them, so the move bug's start confusion (NaviStats +0x0D = 0xFF) spawns its visual on
+    the intro's first tick (`navicust/bug-humor`, `bug-undersht`). The rule `status.timers_while_paused` (EXE4 true;
+    EXE6, EXE5 false); the visual's own EXE4 differences (its sound, offset and role) are group A's.
 
 ### 18.7 The HUD
 
