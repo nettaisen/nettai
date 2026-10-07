@@ -21,7 +21,7 @@ use nettai_content_api::SpriteId;
 
 use nettai_content_api::{
     ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, EntryHandle, FnId, FnSource, FormHandle, KindHandle,
-    NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, RulesHook,
+    NaviHandle, PanelHook, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, RulesHook,
     WeaponHandle,
 };
 
@@ -385,6 +385,9 @@ pub struct RulesDef {
     pub navi_state: Option<StateId>,
     /// Its hooks, in [`RulesHook::ALL`]'s order.
     hooks: Vec<Option<FnId>>,
+    /// Its panel types' hooks (`panels.types.<name>.<hook>`), by the type's
+    /// number, in [`PanelHook::ALL`]'s order.
+    panel_hooks: Vec<[Option<FnId>; PanelHook::ALL.len()]>,
     /// Its own actions, which reach its state.
     pub actions: Vec<ActionHandle>,
     /// Its custom-screen buttons and windows.
@@ -409,6 +412,12 @@ impl RulesDef {
     pub fn hook(&self, hook: RulesHook) -> Option<FnId> {
         let i = RulesHook::ALL.iter().position(|&h| h == hook).expect("every hook is listed");
         self.hooks[i]
+    }
+
+    /// Panel type `t`'s function for `hook`, if it has one.
+    pub fn panel_hook(&self, t: crate::field::PanelType, hook: PanelHook) -> Option<FnId> {
+        let i = PanelHook::ALL.iter().position(|&h| h == hook).expect("every hook is listed");
+        self.panel_hooks.get(t.0 as usize).and_then(|h| h[i])
     }
 }
 
@@ -1813,6 +1822,27 @@ impl Defs {
                 }
                 _ => return Err(what("`custom` is a table of functions by custom-screen hook name")),
             }
+            // Its panel types' hooks (docs/design/rules-in-luau.md, "Panels
+            // into Luau"), by the type's number (the panels section's
+            // `numbers`, which says the types it states).
+            let panel_names = content.rules.as_ref().map(|r| r.panels.names.clone()).unwrap_or_default();
+            let mut panel_hooks = vec![[None; PanelHook::ALL.len()]; panel_names.len()];
+            if let Data::Map(entries) = d.spec.field("panels").field("types") {
+                for (k, spec) in entries {
+                    let name = k.to_string();
+                    let Some(n) = panel_names.iter().position(|x| *x == name) else { continue };
+                    for (i, hook) in PanelHook::ALL.iter().enumerate() {
+                        match spec.field(hook.name()) {
+                            Data::Nil => {}
+                            Data::Function => {
+                                let path = format!("panels.types.{name}.{}", hook.name());
+                                panel_hooks[n][i] = Some(functions.id(FnSource::slot(d.registry, &d.key, &path)));
+                            }
+                            _ => return Err(what(&format!("panels.types.{name}.{} is a function", hook.name()))),
+                        }
+                    }
+                }
+            }
             let own: &[Data] = match d.spec.field("actions") {
                 Data::Nil => &[],
                 Data::List(items) => items,
@@ -2048,6 +2078,7 @@ impl Defs {
                 setup_default,
                 navi_state,
                 hooks,
+                panel_hooks,
                 actions: system_actions,
                 buttons: own_buttons,
                 windows: own_windows,
