@@ -1,7 +1,7 @@
 --!strict
 -- Reactions: EXE4's push rows (0x0800ACDC: six and none), the slide and drag speeds (0x0801077C, 0x080111E8:
--- EXE5's), its ice push (0x0801335A), its hit test and request clears, and its stance's counter, the nearest the
--- engine can say until read (exe4-map.md §18).
+-- EXE5's), its ice push (0x0801335A), its hit test, request clears, stance counter and overlay restart, each read
+-- from EXE4's code (exe4-map.md §18).
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
 
 return {
@@ -66,8 +66,10 @@ return {
     -- (EXE4 has no bubbled reaction: six framework states.)
     bubble_bob = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },
-    -- What a navi wears restarts by reloading its animation (0x080CC61A, EXE5's code).
+    -- What a navi wears restarts by reloading its animation at its next step (0x080CC61A, EXE5's code: the
+    -- navis' flinch and drag hooks by NaviStats +0x23, 0x0800DC9C and 0x0800DD82).
     overlay_restart = "reload",
-    -- (A stance's counter: EXE4's to read.)
+    -- The counter a stance's caught hit starts (AntiMagc's B+Left stance, action 114 at 0x080EE9EE, by the
+    -- anti-damage or anti-sword request: 0x0800C780) runs from the next tick: its action is set, not run.
     stance_counter = "next_tick",
 }

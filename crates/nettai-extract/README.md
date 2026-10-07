@@ -4,9 +4,9 @@ One Rust library and binary extracts EXE4, EXE5 and EXE6 battle assets. ROM iden
 LZ77, sprite/portrait archives, field and background formats, background animations,
 banners, custom-screen patch lists, placeholders, and pack export/verification are shared.
 The `exe4`, `exe5` and `exe6` modules retain game-specific addresses, layouts and source selection.
-EXE4's is partial while its port is under way: its sprites, chip pictures and icons, fonts and
-HUD text lines in both languages, the field, the HUD with its banners, faces and chatbox, and sound;
-the custom screen is a placeholder its `extraction.txt` lists.
+EXE4's has its sprites, chip pictures and icons, fonts and HUD text lines in both languages, the
+field, the HUD with its banners, faces and chatbox, the custom screen with its Japanese words, and
+sound; its `extraction.txt` lists the sprites and sounds without names yet.
 
 ```sh
 cargo run --release -p nettai-extract -- exe6 new-pack falzar.gba gregar-jp.gba

@@ -495,13 +495,17 @@ impl Round {
 
     /// The frame of side `side`'s OK on the custom screen opened on the
     /// `opened`th of the round's frames, if the side pressed it: found from
-    /// the side's custom screen bit as the recording console received it
-    /// (BattleState +0x14 + side, bit 2), which arrives cleared
-    /// `SCREEN_BIT_CLEARED + link_delay` frames after the OK.
+    /// the side's choosing bit as the recording console received it
+    /// (BattleState +0x14 + side, bit 0: set as the selection starts,
+    /// 0x08020348, and cleared by OK on the tick it takes the key,
+    /// 0x08020652), which goes out with the next tick's packet and arrives
+    /// `SCREEN_BIT_CLEARED + link_delay` frames after the OK. (Bit 2, the
+    /// screen's open bit, clears as its result is sent, 0x0801E986: eleven
+    /// ticks after the OK, or after a Program Advance's animation.)
     fn screen_ok(&self, opened: usize, side: usize) -> Option<u32> {
-        let open = |g: &&Frame| g.bs.get(2 * (0x14 + side)..2 * (0x15 + side)).and_then(|h| u8::from_str_radix(h, 16).ok()).is_some_and(|b| b & 4 != 0);
+        let choosing = |g: &&Frame| g.bs.get(2 * (0x14 + side)..2 * (0x15 + side)).and_then(|h| u8::from_str_radix(h, 16).ok()).is_some_and(|b| b & 1 != 0);
         let screen = self.frames[opened..].iter().take_while(|g| g.state[0] == 4 && g.state[1] == 8);
-        let cleared = screen.skip_while(|g| !open(g)).find(|g| !open(g))?;
+        let cleared = screen.skip_while(|g| !choosing(g)).find(|g| !choosing(g))?;
         cleared.frame.checked_sub(SCREEN_BIT_CLEARED + self.link_delay() as u32)
     }
 
@@ -674,9 +678,10 @@ const BANNER_TASK: u32 = 0x20;
 
 /// The chip lab's emulated cable's delay, in ticks.
 const LINK_DELAY: u8 = 4;
-/// How many frames after a side's OK its custom screen bit arrives
-/// cleared, past the link's delay.
-const SCREEN_BIT_CLEARED: u32 = 2;
+/// How many frames after a side's OK its choosing bit arrives cleared, past
+/// the link's delay: the next tick's packet takes it (custom/cannon: side
+/// 0's OK on 276, its bit received cleared on 281).
+const SCREEN_BIT_CLEARED: u32 = 1;
 /// The effects a link battle's match type adds to its stage's (as
 /// nettai-match's `MATCH_EFFECTS`).
 const LINK_BATTLE_EFFECTS: u32 = 0x600;
@@ -757,9 +762,11 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// flags, state, action (a navi's by EXE4's numbers: `Compat::navi_action`),
 /// phase and its init byte, panel, side, element (the recording's +0x17),
 /// HP, position, timer, animation, and with `status` its collision's hit
-/// flags. (The lab's first recordings read the word at EXE6's place in the
-/// collision record, +0x3C, where EXE4's keeps none, always 0; later ones
-/// its hit flags, +0x54, exe4-map.md §15, §17: [`Round::carries_status`].)
+/// flags: what hit it this tick (the collision record's +0x54, EXE5's
+/// +0x68, the engine's `acc.hit_flags`). (The lab's first recordings read
+/// the word at EXE6's place in the collision record, +0x3C, where EXE4's
+/// keeps none, always 0; later ones its +0x54, exe4-map.md §15, §17:
+/// [`Round::carries_status`].)
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat, status: bool) -> Vec<String> {
     compare_with(b, f, f, compat, status)
 }
@@ -855,7 +862,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
                 Ok(n) => format!("{n:#04x}"),
                 Err(e) => format!("? ({e})"),
             };
-            let flags = if status { format!("{:#x}", x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0)) } else { "-".into() };
+            let flags = if status { format!("{:#x}", x.collision.map(|c| b.collision.get(c).acc.hit_flags).unwrap_or(0)) } else { "-".into() };
             vec![
                 ("kind", kind),
                 ("flags", format!("{:#04x}", x.flags)),

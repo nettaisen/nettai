@@ -2572,12 +2572,12 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to` (its `elec_bonus_on_sea` since a panel type's `doubles`); since EXE4's port `guard_before_untouchable` |
   | `reactions.obstacle_slide_bounds` | part of `push_reading` | a setting of its own |
   | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
-  | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge` |
+  | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge`; since EXE4's port `hit_drains_gauge` |
   | `status.form_break` | `exe6`, `exe5` | `cross_or_beast`, `any_form` |
   | `status.emotions` | `exe6`, `exe5` | split since (below): `status.emotion`'s seven rules and `effects.full_synchro_aura`'s three |
 
 - **Still a bundle under one name** (each a whole routine of one game, named for its most visible difference):
-  `retype` (what is set, the dimmed mark, a bug code's high byte), `palette_flash` (the pause, and for variant 1 the dimming), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets),
+  `retype` (what is set, the dimmed mark, a bug code's high byte), `palette_flash` (the pause, and for variant 1 the dimming), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets), `status.reaction_actions` (since EXE4's port: `marked` or `plain`, whether the reaction actions mark the action in use, ground and count, and the drag's pose and end),
   `hp_loss` (the gauge, asking the rules at 0 HP, how a hit shows), `form_break` (which forms break, and the break's
   animation, overlay and collision region).
 - **`damage_word` is data since EXE4's port** (EXE4 decodes neither game's way: 14 bits of damage and one flag):

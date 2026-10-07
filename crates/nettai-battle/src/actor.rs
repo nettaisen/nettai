@@ -288,7 +288,7 @@ pub struct ActorData {
     pub buffered_move: u8,
     /// Charge counter, level (0 none, 1 charging, 2 full) and source
     /// (0 none, 1 A, 2 B).
-    pub charge_counter: u8,
+    pub charge_counter: u16,
     pub charge_level: u8,
     pub charge_source: u8,
     pub total_damage_taken: u16,

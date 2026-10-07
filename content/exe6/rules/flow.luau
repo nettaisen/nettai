@@ -25,4 +25,6 @@ return {
     -- L or R with a full gauge: the navi's input decode asks for the custom screen (`sub_8012FC8` sets battle flag
     -- 0x10), which the fight reads the next tick (`sub_800A1D0`).
     custom_request = "navi_input",
+    -- A turn starts with the transformation sequencer, run twice (fighting state 0, `sub_800840C`); its banner after.
+    sequencer_at_turn_start = true,
 }

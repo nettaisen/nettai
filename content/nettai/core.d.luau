@@ -2706,6 +2706,12 @@ export type RolesSpec = {
         -- #0xD2 and actor object #0x28).
         mode9_attack: Kind?,
         mode9_actor: Kind?,
+        -- The charge glow a navi's charge brings, where the rules' effects
+        -- say `charge_glow = "with_charge"` (EXE4's effect object 5): the
+        -- engine spawns it as the navi's charge gets a level and its link
+        -- (`charge_glow`) is empty, the navi its `related1`, links it and
+        -- sets its state's `shown`.
+        charge_glow: Kind?,
     }?,
     -- The chips the rules name: what a zeroed chip field reads, the chip a
     -- custom-screen button's pick stands as in the hand (EXE6's BeastOut)
@@ -2774,6 +2780,7 @@ export type RolesSpec = {
         panel_poison: Sound?,
         own_hit: Sound?,
         hit: Sound?,
+        auto_battle_hit: Sound?,
         damage: Sound?,
         guard: Sound?,
         counter_hit: Sound?,

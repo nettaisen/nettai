@@ -52,6 +52,11 @@ pub struct FlowRules {
     pub intro_steps_on_init: bool,
     /// How a player asks for the custom screen with a full gauge.
     pub custom_request: CustomRequest,
+    /// A turn starts with the transformation sequencer (EXE6's fighting
+    /// state 0, `sub_800840C`, twice, which EXE5 has too): the turn's
+    /// banner a tick after it's through. EXE4 has none: its fighting state
+    /// 0 (0x08007064) is the turn's banner, from the turn's first tick.
+    pub sequencer_at_turn_start: bool,
 }
 
 /// How a player asks for the custom screen with a full gauge, L or R.
@@ -205,14 +210,25 @@ pub struct EffectsRules {
     pub full_synchro_aura: AuraRules,
     /// When a navi's charge glow comes.
     pub charge_glow: ChargeGlow,
+    /// How a navi's buttons charge, and ask for the buster, the charged
+    /// shot and chips.
+    pub charge: ChargeControls,
     /// When a screen fade toward clear ends (`Fade::step`).
     pub fade_clear: FadeClear,
     /// A banner's steps (`hud::Banner`).
     pub banner: BannerSteps,
+    /// Each console's RNG1 advances once a frame, after the battle's (EXE6's
+    /// main loop, `main_`'s `GetRNG1` after the subsystem; EXE5's). EXE4's
+    /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
+    /// draws it.
+    pub rng1_per_frame: bool,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
-/// slides out; and how a banner that holds until let go is let go.
+/// slides out; and how a banner that holds until let go is let go. Sliding
+/// in, it unsquashes in a line from its first tick to its last, and
+/// squashes so sliding out (the frontend's: EXE6's `sub_801CE28` by 0x20 a
+/// tick over 5, EXE4's 0x08014994 by 0x10 over 9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BannerSteps {
@@ -220,6 +236,9 @@ pub struct BannerSteps {
     pub hold: u8,
     pub slide_out: u8,
     pub release: BannerRelease,
+    /// It bounces as its hold starts and as it ends, squashed a little
+    /// for two ticks each (EXE6's `sub_801CE28`; EXE4's holds still).
+    pub bounces: bool,
 }
 
 /// How a holding banner is let go (`hud::Banner::release`).
@@ -261,6 +280,28 @@ pub enum PausedNavi {
     /// it then; its status block's tail has no pause handler and runs its
     /// action (0x08013C2A).
     StopsAtControl,
+}
+
+/// How a navi's buttons charge, and ask for the buster, the charged shot and
+/// chips (`EffectsRules::charge`; `kinds::player::input`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChargeControls {
+    /// EXE6's (`sub_8012FC8`, `sub_8012EBC`; EXE5's): the held button
+    /// raises a hold request (A first, then B; pressing the other switches),
+    /// its charge counts to a full charge and stays there; the buster fires
+    /// on B's release (its press without a charged shot); L and R turn, or
+    /// with a full gauge ask for the custom screen; B then back (by the
+    /// navi's facing) with B held asks for the B+Back special.
+    HoldFlags,
+    /// EXE4's (0x0800BDE0, 0x0800BBA4, 0x0800BB50): no hold requests; B
+    /// held charges B, A held with a chip in hand charges A (counting while
+    /// the chip charges), the other's press switching, and a count goes on
+    /// past a full charge (to 510); the buster fires on B's release, unless
+    /// a buster or charged shot is asked already; the navi's buttons
+    /// neither turn it nor ask for the custom screen; B then Left
+    /// (whichever way it faces) within 8 ticks asks for the B+Left special.
+    PerButton,
 }
 
 /// When a navi's charge glow (effect #8, `kinds::charge_glow`) comes.
@@ -747,6 +788,21 @@ pub struct IntakeRules {
     pub no_charge_drive: bool,
     /// How a navi loses HP (`object_subtractHP`, `applyDamageToPlayer`).
     pub hp_loss: HpLoss,
+    /// What a navi's hit sounds like, on each console.
+    pub hit_sound: HitSound,
+}
+
+/// What a navi's hit sounds like, on each console (`IntakeRules::hit_sound`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitSound {
+    /// A player hears the role `own_hit` when their own navi is hit, `hit`
+    /// when another is (EXE6's `applyDamageToPlayer_801ba12`, EXE5's).
+    ByConsole,
+    /// Every console hears the role `hit`, or `auto_battle_hit` for a navi
+    /// in auto battle (EXE4's hit intake, 0x08013A8C: sound 0x6D where the
+    /// navi's NaviStats +0x26 is 1, else 0x6B).
+    ByNavi,
 }
 
 /// How a navi loses HP (`IntakeRules::hp_loss`).
@@ -762,6 +818,14 @@ pub enum HpLoss {
     /// only by their answer there (0x080185A2); one that doesn't goes
     /// straight to the deletion's test, without the element-5 damage.
     Gauge,
+    /// EXE4's: a loss takes the HP alone (`object_subtractHP`, 0x0800AB92),
+    /// but a player's hit (its status block's final damage, 0x08013A48)
+    /// drains its side's gauge too (0x0800AB9E: by the loss ×128) and shows
+    /// (white, its sound) only with HP left; at 0 HP, from the hit or the
+    /// element-5 damage, the side's rules are asked after (`hp_emptied`:
+    /// 0x0800EBC8, EXE4's dark MegaMan's last stand, which holds the navi at
+    /// 1 HP itself), and the navi falls unless they keep it.
+    HitDrainsGauge,
 }
 
 /// What a navi's status word (its collision data's flags 1) reads as while
@@ -1083,6 +1147,8 @@ pub struct Rules {
     /// How a navi's status block runs its reactions (rule section
     /// `status`).
     pub reactions: Reactions,
+    /// How a navi's reaction actions run (rule section `status`).
+    pub reaction_actions: ReactionActions,
     /// A side's emotions where games differ (rule section `status`'s
     /// `emotion`): how one is read off the navi, what holds a mood, how
     /// anger leaves it.
@@ -1251,6 +1317,34 @@ pub enum Reactions {
     /// (0x08017084 unless its flag2 bit, the engine's 0x4000), and resets
     /// nothing else.
     FlashTimerFirst,
+}
+
+/// How a navi's reaction actions run, flinch, paralysis (and freeze and
+/// bubble) and drag (the status section's `reaction_actions`), where games
+/// differ beyond their hooks and requests.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReactionActions {
+    /// EXE6's (`sub_80174FE`, `sub_80175B8`, `sub_80178D4`, `sub_8017A38`;
+    /// EXE5's alike, 0x08014132 on): each marks the action in use (flag
+    /// 0x400000) and leaves it at its end; a flinch and a paralysis snap the
+    /// body to its panel, on the ground, unless it slides; each counts a
+    /// reaction (the side's stat 3) and lets go of the navi's overlay link;
+    /// the drag takes the paralyzed pose (2) or SuperArmor's (0) where they
+    /// hold, else the flinch's, puts the body on the panel's ground line,
+    /// and at its end clears the slide, the paralysis and the drag's own
+    /// states, the pose back to standing, or turns to a paralysis that
+    /// outlasts it. (EXE5's drag has no paralyzed pose, 0x08014304: a
+    /// difference no recording has shown.)
+    Marked,
+    /// EXE4's (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks
+    /// the action in use or lets go of the overlay link; the flinch keeps
+    /// the body's height as it snaps it, and the paralysis snaps it, at its
+    /// height, sliding or not, and counts no reaction; the drag takes the
+    /// flinch's pose, keeps the height, counts no reaction, and at its end
+    /// clears the drag alone and goes to idle in the pose it had, paralyzed
+    /// or not.
+    Plain,
 }
 
 /// What reserving a panel does to its holder (the panels section's
