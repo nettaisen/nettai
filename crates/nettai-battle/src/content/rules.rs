@@ -204,6 +204,12 @@ pub struct EffectsRules {
     /// which doesn't step as it starts, shows its first frame in its
     /// palette 0). Presentation: `Look::part_palette`.
     pub load_sets_part_palette: bool,
+    /// A sprite updated through the dimming (`object_updateSpriteTimestop`)
+    /// steps on the tick it loads a newly requested animation (EXE6's
+    /// `sub_801BBF4`, EXE5's); EXE4's (0x08014446) only loads it, stepping
+    /// from the next tick (its `object_updateSprite`, 0x080143FC, steps as
+    /// EXE6's does).
+    pub dimmed_update_steps_on_load: bool,
     /// How the game's obstacles number their action tables.
     pub obstacle_actions: ObstacleActions,
     /// The Full Synchro aura where games differ.

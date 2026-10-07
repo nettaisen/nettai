@@ -91,6 +91,22 @@ fn spring_anti_recovery(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<Obje
     heal::spawn_counterattack(b, user, damage, z)
 }
 
+/// EXE4's Roll chips' spawner (0x080E5554), which springs AntiRecv itself
+/// before a controller comes: the trap's mark over `user`, the other side's
+/// record spent, and AntiRecv's counterattack with the damage word
+/// `damage` (the spawner works it out: EXE4's three times half the chip's
+/// damage word), whose telop names the record's chip. (Its dimming is the
+/// caller's to register.)
+pub(crate) fn spring_anti_recovery_with(b: &mut Battle, user: ObjectRef, damage: u32) -> Option<ObjectRef> {
+    let side = b.objects.get(user).alliance;
+    let trap = b.linked[(side ^ 1) as usize & 1].chip;
+    let z = heal::trap_mark(b, user);
+    b.clear_linked(side ^ 1);
+    let c = heal::spawn_counterattack(b, user, damage, z)?;
+    b.objects.get_mut(c).telop_chip = trap.map(|chip| crate::hud::TelopChip { chip: Some(chip), ..Default::default() });
+    Some(c)
+}
+
 /// `sub_80E199A`: three times the damage word's damage (its low 11 bits),
 /// doubled first when it carries the double-damage flag (0x8000).
 fn counterattack_damage(word: u32) -> u32 {

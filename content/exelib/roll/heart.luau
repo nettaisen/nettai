@@ -5,7 +5,9 @@
 -- sound and an effect, and goes 60 ticks later. See docs/engine/chips.md §3.6.20.
 --
 -- Each game makes its own kind (`heart.make`): its sprite and animation, its sound, and the sparkle (the effect
--- table's row 0x26) and the effect on the healed navi (row 6).
+-- table's row 0x26) and the effect on the healed navi (row 6). EXE4's (its attack #0x4E, 0x080D728C, the same code
+-- but there) heals its side's navi as it lands (`sub_80103BC`, 0x080D7354) and goes at once if there is none: its
+-- spawn keeps no user.
 
 local heart = {}
 
@@ -17,6 +19,8 @@ export type Spec = {
     heal_sound: Sound,
     sparkle: Effect,
     healed: Effect,
+    -- EXE4's: it heals its side's navi, not the user its spawn keeps (it keeps none).
+    heals_side_navi: boolean?,
 }
 
 export type Heart = {
@@ -49,7 +53,17 @@ function heart.make(spec: Spec): Heart
     -- `sub_80CE1D6`: heal the user (`object_addHP`), then 60 ticks.
     local function heal(me: Object)
         if me.phase == 0 then
-            local user = me.related1 :: Object
+            local user: Object
+            if spec.heals_side_navi then
+                local navi = battle.player(me.alliance)
+                if not navi then
+                    me:set_lifecycle("destroy")
+                    return
+                end
+                user = navi
+            else
+                user = me.related1 :: Object
+            end
             local amount = me.damage
             if amount == 0 then
                 amount = user.max_hp
@@ -123,7 +137,9 @@ function heart.make(spec: Spec): Heart
             o.panel_x, o.panel_y = x, y
             o:set_damage_word(amount)
             o.alliance = user.alliance
-            o.related1 = user
+            if not spec.heals_side_navi then
+                o.related1 = user
+            end
             o.run_while_dimmed = true
         end
         return o
