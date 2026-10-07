@@ -66,6 +66,9 @@ language = "ja"
 "greenwd1" = { name = "グリーンウッド1", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
 "greenwd2" = { name = "グリーンウッド2", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
 "greenwd3" = { name = "グリーンウッド3", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"counter1" = { name = "カウンター1", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"counter2" = { name = "カウンター2", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"counter3" = { name = "カウンター3", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

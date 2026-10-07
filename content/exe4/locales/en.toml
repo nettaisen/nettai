@@ -66,6 +66,9 @@ language = "en"
 "greenwd1" = { name = "GreenWd1", description = "Raises\nWoodTowrs\nfrm grass" }
 "greenwd2" = { name = "GreenWd2", description = "Raises\nWoodTowrs\nfrm grass" }
 "greenwd3" = { name = "GreenWd3", description = "Raises\nWoodTowrs\nfrm grass" }
+"counter1" = { name = "Counter1", description = "Counter-\nattack to\nenemy" }
+"counter2" = { name = "Counter2", description = "Counter-\nattack to\nenemy" }
+"counter3" = { name = "Counter3", description = "Counter-\nattack to\nenemy" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
