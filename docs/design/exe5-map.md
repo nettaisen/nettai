@@ -1517,11 +1517,11 @@ them.
   - *The system's* is rules/souls/: the soul button and the soul's choice (custom.luau), the turns (init.luau), the
     change and the revert (change.luau, revert.luau, each defining its action, which every soul names), the image
     and the shade (image.luau, shade.luau), Chaos Unison's failure (chaos.luau). It names no soul: custom.luau
-    gathers each soul's `custom` from MegaMan's `forms.souls` and asks the soul the side's navi is in.
+    gathers each soul's `custom` from MegaMan's `forms.souls.form_list` and asks the soul the side's navi is in.
   - *The original's number* (NaviStats +0x2C: 1 to 12) is compat's: content/exe5/compat/records.toml's `[forms]`
     (exe5-compat's `Compat::form_number`, `form`), which a recording's setup (each version's six souls, by the
     save's flags) and the save import read. MegaMan lists his souls in that order (navis/megaman/init.luau's
-    `forms.souls`): the order of the soul button's icons in a pack, by which the frontend takes a soul's icon
+    `forms.souls.form_list`): the order of the soul button's icons in a pack, by which the frontend takes a soul's icon
     (nettai-render's `soul_place`; nettai-match's `megamans_souls_are_in_the_order_of_their_numbers` holds the
     list to compat's numbers).
 - **The soul button** (the souls module's button `soul`, rules/souls/custom.luau: EXE5's layout's slot 11,
