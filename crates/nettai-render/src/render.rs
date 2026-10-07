@@ -77,7 +77,8 @@ impl Renderer {
     pub fn with_packs(graphics: PackGraphics) -> Renderer {
         Renderer {
             graphics,
-            // Background priority 3 (BG1), field 2 (BG2), HUD 1 (BG3).
+            // Background priority 3 (BG1), field 2 (BG2), HUD 1 (BG3: the
+            // game's pack's `hud_priority`, set each frame).
             background: Layer::new(3, 1),
             field: Layer::new(2, 2),
             hud: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
@@ -228,6 +229,9 @@ impl Renderer {
         };
         let (jx, jy) = crate::custom::hud_jitter(b);
         self.hud.shift(-jx, -jy);
+        // (The HUD's BG3 is the game's priority: EXE4's 0 covers the HP
+        // numbers' priority 1 where the custom screen is.)
+        self.hud.priority = own_game.hud.layout.hud_priority;
         let (parts, tags) = list.into_tagged_parts();
         let backdrop = stage.palettes[0][0];
         // The transformation's fade takes every background palette, a
