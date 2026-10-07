@@ -301,12 +301,13 @@ pub enum RulesHook {
     /// bug's marker (`sub_801A4A6`), asked as its hits' effects show and
     /// only when a hit brought a code.
     BugMark,
-    /// `navi_damaged(side, navi)`: a player's navi took damage: once a hit
-    /// sequence (`sub_8013F1E`'s gate: the hit flags, a damage, the latch
-    /// its flinch holds), before the hit's status takes; the NaviCust's hit
-    /// bug (the `hit_status` stat) puts its status there or raises the HP
+    /// `navi_flinched(side, navi)`: a player's navi's hits ask it to flinch
+    /// or be dragged (its requests 0x104: `sub_8013F1E`, EXE5's
+    /// 0x0801156E), before the hit's status takes: the NaviCust's hit bug
+    /// (the `hit_status` stat), behind the game's gate (EXE6's: a hit,
+    /// damage, once a hit sequence), puts its status there or raises the HP
     /// bug. Its result is unused.
-    NaviDamaged,
+    NaviFlinched,
     /// `navi_bug(side, navi)`: the navi takes its hit's NaviCust bug
     /// (`sub_80139F6`, EXE5's 0x0801103E: the collision's `inflicted_bugs`,
     /// its code and argument): the game's table of its codes, which writes
@@ -438,7 +439,7 @@ impl RulesHook {
             RulesHook::NaviBug => "navi_bug",
             RulesHook::HitBug => "hit_bug",
             RulesHook::BugMark => "bug_mark",
-            RulesHook::NaviDamaged => "navi_damaged",
+            RulesHook::NaviFlinched => "navi_flinched",
             RulesHook::HpEmptied => "hp_emptied",
             RulesHook::ObstacleReaction => "obstacle_reaction",
             RulesHook::CustomHandSize => "custom.hand_size",
@@ -485,7 +486,7 @@ impl RulesHook {
         RulesHook::NaviBug,
         RulesHook::HitBug,
         RulesHook::BugMark,
-        RulesHook::NaviDamaged,
+        RulesHook::NaviFlinched,
         RulesHook::HpEmptied,
         RulesHook::ObstacleReaction,
         RulesHook::CustomHandSize,
