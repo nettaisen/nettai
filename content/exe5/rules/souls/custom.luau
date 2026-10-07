@@ -89,10 +89,11 @@ end
 -- The side's navi's souls (MegaMan's: the forms with a `soul`).
 local function souls_of(side: number): { FormDef }
     local forms = battle.navi(side).navi.forms
-    if forms == nil or forms.souls == nil then
+    local souls: { form_list: { FormDef }? }? = if forms ~= nil then forms.souls else nil
+    if souls == nil or souls.form_list == nil then
         return {}
     end
-    return forms.souls
+    return souls.form_list
 end
 
 -- The soul a chip of `family` gives up for (the first of the navi's souls for that family).
@@ -402,13 +403,13 @@ end
 
 -- Soul Unison's buttons and windows, by name (a button's is the key of its look in a pack), and the state fields
 -- they keep beside the soul button's (rules/init.luau declares those): the soul button, and what each soul adds to the screen,
--- gathered from the souls of the navi that has them (MegaMan's `forms.souls`, each form's `custom`). A name is one of
+-- gathered from the souls of the navi that has them (MegaMan's `forms.souls.form_list`, each form's `custom`). A name is one of
 -- Soul Unison's: two souls can't both add a button, a window or a screen field of the same name. (`screen`, above:
 -- `forget_screen` reads it at each deal.)
 local buttons: { [string]: ButtonSpec } = { soul = custom_souls.button }
 local windows: { [string]: WindowSpec } = { soul_unison = custom_souls.window }
 local forms = assert(megaman.forms)
-for _, soul in assert(forms.souls) do
+for _, soul in assert(forms.souls).form_list do
     local part: SoulCustom? = soul.custom
     if part ~= nil then
         local soul_buttons: { [string]: SoulButton } = part.buttons or {}
