@@ -42,7 +42,8 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 ///   round's and the match's end are markers;
 /// - the lobby and the handshake (nettai-frontend's `lobby`): the
 ///   settings' messages (the game and the rounds by name, with the
-///   compatibility fields), the Hello's commitment (SHA-256 of the agreed
+///   compatibility fields, and the player's name: version 4), the Hello's
+///   commitment (SHA-256 of the agreed
 ///   settings' hash and the Reveal's bytes), the Reveal (a nonce and the
 ///   side, in nettai-match's binary: a side's facts in the order of its
 ///   game's rules' setup, definitions by their handles in the content both
@@ -51,7 +52,7 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 ///   nonces (the seed), which both peers must do alike.
 ///
 /// A change to any of them is a new version.
-pub const VERSION: u16 = 3;
+pub const VERSION: u16 = 4;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer
