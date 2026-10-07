@@ -297,7 +297,9 @@ export type GunDelSolSpec = {
     firing_ticks: number,
     beam: SunBeam,
     beam_in_sun: SunBeam,
-    wide: boolean?,
+    -- The hits' region: the column two panels ahead (GunDelEX's and the
+    -- column past it).
+    region: Region,
 }
 
 -- ---- DblBeast's beasts (chips/dblbeast/beast) -------------------------------
