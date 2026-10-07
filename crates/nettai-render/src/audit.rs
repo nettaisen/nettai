@@ -62,8 +62,9 @@ pub enum Lookup {
     Mugshot(MugshotId),
     /// A link navi's own face in the emotion window.
     NaviFace(NaviHandle),
-    /// A form's face for an emotion (`emotion_number`).
-    FormFace(FormHandle, u8),
+    /// A form's face for an emotion of its game's, of its second set or
+    /// not.
+    FormFace(FormHandle, nettai_battle::content::Emotion, bool),
     /// A navi's name on the custom screen (the enemy names).
     NaviName(NaviHandle),
     /// A navi's variant name there (`battle.set_name_variant`: EXE5's Hub
@@ -75,10 +76,10 @@ pub enum Lookup {
     Button(u16),
     /// A navi's no-running message in the dialogue font, with its portrait.
     RunMessage(NaviHandle),
-    /// A Cross's name and colors in the Cross window.
-    CrossName(FormHandle),
-    /// A Cross's description in the dialogue font.
-    CrossDescription(FormHandle),
+    /// A form's name and colors in the form list's window.
+    FormName(FormHandle),
+    /// A form's description in the dialogue font.
+    FormDescription(FormHandle),
     /// A banner's glyphs.
     Banner(BannerId),
     /// A telop's place (its banner's layout).
@@ -102,21 +103,6 @@ pub enum Graphics {
     Chatbox,
     /// The warning marker.
     Warning,
-}
-
-/// The number in a [`Lookup::FormFace`] of the emotion named `name` (the
-/// games' emotions by `sub_8015B54`'s code; EXE5's worried, its own 1, 6;
-/// another name 0xF; 0x10 more for the form's second set).
-pub fn emotion_number(name: &str) -> u8 {
-    match name {
-        "normal" => 0,
-        "tired" => 1,
-        "full_synchro" => 2,
-        "angry" => 3,
-        "worn_out" => 5,
-        "worried" => 6,
-        _ => 0xF,
-    }
 }
 
 impl Lookup {
@@ -143,14 +129,16 @@ impl Lookup {
             Lookup::ChipDescription(h) => format!("chip {} description", chip(h)),
             Lookup::Mugshot(id) => format!("mugshot {}", asset(AssetKind::Mugshot, id.0)),
             Lookup::NaviFace(h) => format!("navi {} face", navi(h)),
-            Lookup::FormFace(h, e) => format!("form {} face {e}", form(h)),
+            Lookup::FormFace(h, e, variant) => {
+                format!("form {} face {}{}", form(h), c.rules().emotion.name(e), if variant { " (second set)" } else { "" })
+            }
             Lookup::NaviName(h) => format!("navi {} name", navi(h)),
             Lookup::NaviVariantName(h) => format!("navi {} variant name", navi(h)),
             Lookup::Emblem(h) => format!("navi {} emblem", navi(h)),
             Lookup::Button(h) => format!("button {}", c.defs.button(nettai_battle::content::ButtonHandle(h)).name),
             Lookup::RunMessage(h) => format!("navi {} run message", navi(h)),
-            Lookup::CrossName(h) => format!("form {} cross name", form(h)),
-            Lookup::CrossDescription(h) => format!("form {} description", form(h)),
+            Lookup::FormName(h) => format!("form {} name in the form list", form(h)),
+            Lookup::FormDescription(h) => format!("form {} description", form(h)),
             Lookup::Banner(id) => format!("banner {}", asset(AssetKind::Banner, id.0)),
             Lookup::Telop(id) => format!("telop {}", asset(AssetKind::Banner, id.0)),
             Lookup::TelopUnknown => "telop of an untold chip".into(),

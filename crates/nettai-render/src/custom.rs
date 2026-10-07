@@ -36,12 +36,12 @@ const ROWS: usize = 20;
 const WINDOW_TILE: u16 = 0x01;
 /// A chip picture's tiles (7x6).
 const PICTURE_TILES: u16 = 42;
-/// The Crosses' names in the Cross window (9x2 each, `byte_8029DF8`,
-/// from the layout's `cross_names`).
-pub(crate) const CROSS_NAME_TILES: usize = 18;
-/// The Cross window's maps: three opening steps, then the window with one
-/// to five Crosses.
-const CROSS_OPENING_MAPS: usize = 3;
+/// The forms' names in the form list's window (9x2 each, EXE6's Cross
+/// window's, `byte_8029DF8`, from the layout's `form_names`).
+pub(crate) const FORM_NAME_TILES: usize = 18;
+/// The form list window's maps: three opening steps, then the window with
+/// one to five forms (EXE6's Cross window's).
+const FORM_LIST_OPENING_MAPS: usize = 3;
 /// The Program Advance animation's names (`sub_802B80C`): 9 cells of the
 /// 8x16 font from the chip window's picture's first tile (EXE6's 0xAB), 18
 /// tiles a name; a pick's code in its last cell; a name every 3 rows from
@@ -293,11 +293,11 @@ struct View<'a> {
     side: u8,
     screen: &'a Screen,
     assets: &'a CustomScreen,
-    /// The pictures of the Beast the navi goes into (`beast_pictures`):
-    /// the console's version's, unless the player's Crosses put the navi in
-    /// the other game's Cross. A button's look is this version's own, if it
-    /// has one.
-    beast: &'a VersionPictures,
+    /// The version pictures the side's buttons draw (`button_pictures`): the
+    /// player's version's, unless its navi is in a form of another version
+    /// (EXE6's Beast Out button: the other game's Cross's Beast). A button's
+    /// look is this version's own, if it has one.
+    buttons: &'a VersionPictures,
     /// The navi's emblem's palette (`lookups::emblem`; zeros: it has no
     /// emblem), which is sprite palette 11: the cursor's and the Regular
     /// chip's frame's too (`sub_802812C`).
@@ -350,7 +350,7 @@ impl<'a> View<'a> {
     /// that chip's slot whatever its name.
     fn button_look(&self, button: nettai_battle::content::ButtonHandle) -> Option<ButtonLook<'a>> {
         let d = self.b.content.defs.button(button);
-        let pack = crate::lookups::button_of(self.assets, self.beast, &d.name)?;
+        let pack = crate::lookups::button_of(self.assets, self.buttons, &d.name)?;
         Some(ButtonLook { pack, count: pack.width as usize * pack.height as usize * d.cells.max(1) as usize })
     }
 
@@ -361,7 +361,7 @@ impl<'a> View<'a> {
     /// in, 0x080240D8).
     fn hidden_special(&self) -> Option<(&'a ButtonPictures, usize)> {
         self.b.content.defs.buttons.iter().filter(|d| d.slot == SPECIAL_SLOT).find_map(|d| {
-            let pack = crate::lookups::button_of(self.assets, self.beast, &d.name)?;
+            let pack = crate::lookups::button_of(self.assets, self.buttons, &d.name)?;
             Some((pack, pack.hidden? as usize))
         })
     }
@@ -384,73 +384,81 @@ fn window_view(b: &Battle, screen: &Screen) -> Option<WindowView> {
 /// button's name, the key of its look).
 fn view_look<'a>(v: &View<'a>, view: ButtonView) -> Option<&'a ButtonPictures> {
     let d = v.b.content.defs.buttons.iter().find(|d| d.view == Some(view))?;
-    crate::lookups::button_of(v.assets, v.beast, &d.name)
+    crate::lookups::button_of(v.assets, v.buttons, &d.name)
 }
 
-/// The icon of the soul EXE5's soul button offers or gave, if the special
-/// slot is the soul button: the pack's `icons` and the icon's first tile in
-/// them (the soul's, Chaos Unison's the 13th: 0x0802341C).
-fn soul_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
+/// The icon of the form the button that offers a form (the view
+/// `form_offer`) offers or gave, if the special slot is that button: the
+/// pack's `icons` of the button and the icon's first tile in them, the
+/// offer's place (`offer_icon`). (EXE5's soul button: the soul's icon,
+/// Chaos Unison's the 13th, 0x0802341C.)
+fn offered_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
     if !offers_form(v.b, v.screen, SPECIAL_SLOT) {
         return None;
     }
     let b = view_look(v, ButtonView::FormOffer)?;
-    let offer = v.b.offer(v.side)?;
-    let n = if offer.alternate { CHAOS_ICON } else { soul_place(v.b, v.side, offer.form) };
+    let n = offer_icon(v.b, v.side, v.b.offer(v.side)?);
     (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
 }
 
-/// The Chaos Unison's icon among the soul button's.
-const CHAOS_ICON: usize = 13;
-
-/// A soul's icon among the pack's soul button's: its place among its
-/// side's navi's souls, from 1 (the navi's `forms.souls.form_list` lists them in the
-/// icons' order, the original's soul numbers'); 0, the empty icon, for no
-/// soul or one the navi hasn't.
-fn soul_place(b: &Battle, side: u8, soul: Option<FormHandle>) -> usize {
-    let navi = b.stats[side as usize & 1].navi;
-    match (soul, &b.content.navi(navi).forms) {
-        (Some(f), Some(forms)) => forms.listed("souls").iter().position(|&s| s == f).map_or(0, |i| i + 1),
-        _ => 0,
+/// An offer's icon among its button's: the offered form's place in the
+/// side's navi's form list that holds it, from 1 (the list is in the icons'
+/// order: EXE5's souls, the original's soul numbers), and the form's
+/// alternate (`offer_chaos`) the one after the list's; 0, the empty icon,
+/// for no form or one none of the navi's lists holds.
+fn offer_icon(b: &Battle, side: u8, offer: nettai_battle::rules::Offer) -> usize {
+    match form_place(b, side, offer.form) {
+        Some((_, len)) if offer.alternate => len + 1,
+        Some((place, _)) => place + 1,
+        None => 0,
     }
 }
 
-/// EXE5's soul choice (its state 9, 0x080232D0: the window whose view is
-/// `offer_flight`, at its step and count, `at`): the soul's icon as
-/// a 16x16 sprite (sprite palette 13) over the picked column's cell after
-/// the picks (0x0802330C: y = 24 + 16 picks, x 0x60), drawn from the tick
-/// after it is loaded (0x08023360) through the white flashes, rising 2
-/// pixels a tick for 8 ticks onto the first cell (0x0802337A), whitened by
-/// its flash (fades 0x34 and 0x30, the sprite palette's), until the soul
-/// takes the first cell (0x080233E0).
-fn soul_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Option<SpritePart<'a>> {
-    let (tiles, first) = soul_icon(v)?;
-    let soul = v.b.offer(v.side)?.form;
-    flight(v, tiles, first, at, soul, problems)
+/// Where `form` is among side `side`'s navi's forms: its place in the
+/// first of the navi's form lists that holds it (from 0), and the list's
+/// length.
+fn form_place(b: &Battle, side: u8, form: Option<FormHandle>) -> Option<(usize, usize)> {
+    let navi = b.stats[side as usize & 1].navi;
+    let (place, list) = b.content.navi(navi).forms.as_ref()?.holding(form?)?;
+    Some((place, list.len()))
 }
 
-/// Why a console draws a soul's flying icon otherwise than the frontend:
-/// the game draws every soul's in its own version's outline, the frontend
-/// each soul's in the soul's version's.
-pub const OTHER_VERSIONS_SOUL: &str = "a soul's icon in its own version's outline (the console's ROM draws every soul's in the console's)";
+/// The flight of the offered form's icon (EXE5's soul choice, its state 9,
+/// 0x080232D0: the window whose view is `offer_flight`, at its step and
+/// count, `at`): the icon as a 16x16 sprite (sprite palette 13) over the
+/// picked column's cell after the picks (0x0802330C: y = 24 + 16 picks,
+/// x 0x60), drawn from the tick after it is loaded (0x08023360) through the
+/// white flashes, rising 2 pixels a tick for 8 ticks onto the first cell
+/// (0x0802337A), whitened by its flash (fades 0x34 and 0x30, the sprite
+/// palette's), until the form takes the first cell (0x080233E0).
+fn offered_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Option<SpritePart<'a>> {
+    let (tiles, first) = offered_icon(v)?;
+    let form = v.b.offer(v.side)?.form;
+    flight(v, tiles, first, at, form, problems)
+}
 
-/// The row of the soul button's icon palettes that is `soul`'s own
+/// Why a console draws an offered form's flying icon otherwise than the
+/// frontend: the game draws every form's in its own version's outline, the
+/// frontend each form's in the form's version's (EXE5's souls).
+pub const OTHER_VERSIONS_ICON: &str = "an offered form's icon in its own version's outline (the console's ROM draws every one in the console's)";
+
+/// The row of the offer button's icon palettes that is `form`'s own
 /// version's, of `rows` (the pack's base version's, then each other
-/// version's: `icon_palettes`). A soul's version is its place's among its
-/// navi's souls, which `forms.souls.form_list` lists a version after another in
-/// equal runs (the original's soul numbers: Team ProtoMan's six, then Team
-/// Colonel's): no field restates it. No soul, or one the navi hasn't: the
-/// base version's.
-fn soul_palette_row(b: &Battle, side: u8, soul: Option<FormHandle>, rows: usize) -> usize {
-    let navi = b.stats[side as usize & 1].navi;
-    let Some(forms) = &b.content.navi(navi).forms else { return 0 };
-    let souls = forms.listed("souls");
-    version_run(soul.and_then(|f| souls.iter().position(|&s| s == f)), souls.len(), rows)
+/// version's: `icon_palettes`). A form's version is its place's in the
+/// navi's form list that holds it, which lists a version after another in
+/// equal runs (EXE5's souls, the original's soul numbers: Team ProtoMan's
+/// six, then Team Colonel's): no field restates it. No form, or one none of
+/// the navi's lists holds: the base version's.
+fn icon_palette_row(b: &Battle, side: u8, form: Option<FormHandle>, rows: usize) -> usize {
+    match form_place(b, side, form) {
+        Some((place, len)) => version_run(Some(place), len, rows),
+        None => 0,
+    }
 }
 
 /// Which of `versions` equal runs of a list of `len` place `place` (from
-/// 0) is in: the version of a soul by its place among its navi's. No place:
-/// the first.
+/// 0) is in: the version of a form by its place in its navi's list. No
+/// place: the first.
 fn version_run(place: Option<usize>, len: usize, versions: usize) -> usize {
     let run = len / versions.max(1);
     match place {
@@ -478,18 +486,18 @@ fn capsule_flight<'a>(v: &View<'a>, packs: &crate::packs::Packs<'a>, problems: &
     });
     let chip = shown.nth((button as usize).checked_sub(1)?)?;
     let (tiles, _) = crate::lookups::chip_icon(packs, &v.b.content, chip, problems)?;
-    // (In the palette of the soul the side is in: the capsules' soul's.)
-    let soul = Some(v.b.stats[v.side as usize & 1].form);
-    flight(v, tiles, 0, at, soul, problems)
+    // (In the palette of the form the side is in: the capsules' soul's.)
+    let form = Some(v.b.stats[v.side as usize & 1].form);
+    flight(v, tiles, 0, at, form, problems)
 }
 
-/// The sprite of EXE5's soul's choice and capsule's mix (0x080254D8): the
-/// icon `first` of `tiles`, at the sequence's step and count (`at`), in the
-/// icons' palette of the button that offers a form: `soul`'s own version's
-/// (`soul_palette_row`), where the game draws its console's version's, so
-/// on a console of another version (a recording's) it is a known
-/// difference.
-fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, soul: Option<FormHandle>, problems: &mut Problems) -> Option<SpritePart<'a>> {
+/// The sprite of an icon's flight (EXE5's soul's choice and capsule's mix,
+/// 0x080254D8): the icon `first` of `tiles`, at the sequence's step and
+/// count (`at`), in the icons' palette of the button that offers a form:
+/// `form`'s own version's (`icon_palette_row`), where the game draws its
+/// console's version's, so on a console of another version (a recording's)
+/// it is a known difference.
+fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Option<FormHandle>, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let screen = v.screen;
     let rise = match at.step {
         4 if at.count > 0 => 0,
@@ -498,8 +506,8 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, soul: Op
         _ => return None,
     };
     let b = view_look(v, ButtonView::FormOffer)?;
-    // (The soul's version's: Team Colonel's outline is another color.)
-    let row = soul_palette_row(v.b, v.side, soul, 1 + b.icon_palettes.len());
+    // (The form's version's: Team Colonel's souls' outline is another color.)
+    let row = icon_palette_row(v.b, v.side, form, 1 + b.icon_palettes.len());
     let colors = row.checked_sub(1).and_then(|i| b.icon_palettes.get(i)).map_or(b.icon_palette, |(_, p)| *p);
     // The row a console of the recording's version draws every icon in.
     let console = v.packs.version().map(|version| b.icon_palettes.iter().position(|(name, _)| name == version).map_or(0, |i| i + 1));
@@ -513,7 +521,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, soul: Op
     };
     let y = 24 + 16 * screen.selection().len() as i32 - rise;
     if console.is_some_and(|console| console != row) {
-        problems.known(0x60, y & 0xFF, 16, 16, OTHER_VERSIONS_SOUL);
+        problems.known(0x60, y & 0xFF, 16, 16, OTHER_VERSIONS_ICON);
     }
     Some(SpritePart {
         x: 0x60,
@@ -548,35 +556,34 @@ impl View<'_> {
     }
 }
 
-/// A navi's Crosses of a version of its game, in the order its definition
-/// lists them (`NaviForms::listed`): the Cross window's order, and the
-/// order of a pack version's names and colors.
-pub fn navi_crosses<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> &'c [FormHandle] {
+/// A navi's forms of a version of its game: its form list named for the
+/// version, in the order its definition lists them (`NaviForms::listed`:
+/// EXE6's Crosses), the order of a pack version's names and colors.
+pub fn version_forms<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> &'c [FormHandle] {
     c.navi(navi).forms.as_ref().map_or(&[], |f| f.listed(version))
 }
 
-/// A Cross's name pictures and colors in the Cross window, by the Cross's
-/// own version (a Gregar Cross shows Gregar's name in any player's window):
-/// its version's custom-screen pictures (the form's `version`) and its
-/// number among that version's Crosses as `navi`, whose Cross it is, lists
-/// them (`navi_crosses`). Its name is `cross_names`' 18 tiles from
+/// A form's name pictures and colors in the form list's window, by the
+/// form's own version (a Gregar Cross shows Gregar's name in any player's
+/// window): its version's custom-screen pictures (the form's `version`) and
+/// its number among that version's forms as `navi`, whose form it is, lists
+/// them (`version_forms`). Its name is `form_names`' 18 tiles from
 /// `18 * number` on the cursor's row (`18 * (number + 5)` on the others'),
-/// its colors `cross_palettes[number]` (`[number + 5]` once used). None: a
+/// its colors `form_name_palettes[number]` (`[number + 5]` once used). None: a
 /// form of no version, or one the navi doesn't list.
-pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
+pub fn form_name_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
     let version = c.form(form).version.as_deref()?;
-    let number = navi_crosses(c, navi, version).iter().position(|&f| f == form)?;
+    let number = version_forms(c, navi, version).iter().position(|&f| f == form)?;
     Some((a.versioned.get(version), number))
 }
 
-/// The pictures of the Beast a side's navi goes into, or is in: the
-/// Beast Out button, its picture in the chip window and the BeastOut
-/// chip's. They are its version's (EXE6's rules/beast's rule): a form
-/// that isn't the base form goes into its own version's Beast (the form's
-/// `version`: another's than the player's when their Crosses hold one of
-/// its), and the base form into the player's (docs/engine/custom-screen.md
-/// §4.1).
-pub fn beast_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
+/// The version pictures a side's buttons draw (a button's look, its picture
+/// in the chip window, its chip's): those of its navi's form's version when
+/// the form isn't the base form and has one (another's than the player's
+/// when their Crosses hold one of its), else the player's version's. (EXE6's
+/// Beast Out button: the Beast its navi goes into, or is in; rules/beast's
+/// rule, docs/engine/custom-screen.md §4.1.)
+pub fn button_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
     let side = side & 1;
     let form = b.content.form(b.stats[side as usize].form);
     let version = match form.version.as_deref() {
@@ -653,28 +660,19 @@ fn state_number(s: SlotState) -> usize {
     }
 }
 
-/// The tick of a Cross's choice the white fade is over and the Cross put
-/// on (`sub_8027AAE`; rules/cross's `PUT_ON_TICK`): the window's map
-/// is the chips' again.
-const CROSS_PUT_ON_TICK: u16 = 25;
-
-/// The Cross in place `place` of a side's Crosses, as EXE6's rules/cross
-/// finds it (content/exe6/rules/cross/window.luau's `cross_at`), from what
-/// the player brought: the entry of their form list
-/// (`PlayerFact::FormList`: the Crosses they have, in the window's order).
-/// None: no Cross there.
-pub fn cross_at(b: &Battle, side: u8, place: u8) -> Option<FormHandle> {
-    b.fact(side, PlayerFact::FormList)?.form(place as usize)
-}
+/// The tick of a form's choice the white fade is over and the form put
+/// on (EXE6's Cross, `sub_8027AAE`; rules/cross's `PUT_ON_TICK`): the
+/// window's map is the chips' again.
+const FORM_PUT_ON_TICK: u16 = 25;
 
 /// Where a form list's window is (EXE6's Cross window: the windows whose
 /// views are `form_list_opening`, `form_list`, `form_list_closing` and
 /// `form_chosen`): the one up (its tick), or a description from it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CrossStage {
+pub enum FormListStage {
     /// `sub_8027834`, 12 ticks.
     Opening(u16),
-    /// `sub_802794A`, or a Cross's description from it.
+    /// `sub_802794A`, or a form's description from it.
     Up,
     /// `sub_802790C`, 6 ticks.
     Closing(u16),
@@ -683,33 +681,33 @@ pub enum CrossStage {
 }
 
 /// The stage of the form list's window on screen `s`, if one is up.
-pub fn cross_stage(b: &Battle, s: &Screen) -> Option<CrossStage> {
+pub fn form_list_stage(b: &Battle, s: &Screen) -> Option<FormListStage> {
     let (window, tick) = match s.phase {
         Phase::Window { window, tick } => (window, tick),
         Phase::Description { window: Some(window), .. } => (window, 0),
         _ => return None,
     };
     Some(match b.content.defs.window(window).view? {
-        WindowView::FormListOpening => CrossStage::Opening(tick),
-        WindowView::FormList => CrossStage::Up,
-        WindowView::FormListClosing => CrossStage::Closing(tick),
-        WindowView::FormChosen => CrossStage::Chosen(tick),
+        WindowView::FormListOpening => FormListStage::Opening(tick),
+        WindowView::FormList => FormListStage::Up,
+        WindowView::FormListClosing => FormListStage::Closing(tick),
+        WindowView::FormChosen => FormListStage::Chosen(tick),
         WindowView::OfferFlight | WindowView::ChipFlight => return None,
     })
 }
 
-/// The Cross window's map the screen shows, if it shows one: its opening
-/// steps every 3 ticks (`sub_8027834`), then the window with its Crosses,
-/// until it closes (`sub_802790C`, 5 ticks) or the Cross chosen is put on
-/// (`sub_8027AAE`).
-fn cross_map(v: &View) -> Option<usize> {
-    let stage = cross_stage(v.b, v.screen)?;
+/// The form list window's map the screen shows, if it shows one: its
+/// opening steps every 3 ticks (`sub_8027834`), then the window with its
+/// forms, until it closes (`sub_802790C`, 5 ticks) or the form chosen is
+/// put on (`sub_8027AAE`).
+fn form_list_map(v: &View) -> Option<usize> {
+    let stage = form_list_stage(v.b, v.screen)?;
     let count = v.b.form_list(v.side).map_or(0, |w| w.count);
-    let full = CROSS_OPENING_MAPS + count.max(1) as usize - 1;
+    let full = FORM_LIST_OPENING_MAPS + count.max(1) as usize - 1;
     match stage {
-        CrossStage::Opening(tick) if tick >= 3 => Some(tick as usize / 3 - 1),
-        CrossStage::Up | CrossStage::Closing(_) => Some(full),
-        CrossStage::Chosen(tick) if tick < CROSS_PUT_ON_TICK => Some(full),
+        FormListStage::Opening(tick) if tick >= 3 => Some(tick as usize / 3 - 1),
+        FormListStage::Up | FormListStage::Closing(_) => Some(full),
+        FormListStage::Chosen(tick) if tick < FORM_PUT_ON_TICK => Some(full),
         _ => None,
     }
 }
@@ -727,12 +725,12 @@ impl Window {
             advance_names: Vec::new(),
             layout: a.layout,
         };
-        // sub_8026840: the window's map, with the Cross tab or without; or
-        // the Cross window's.
-        let cross = cross_map(v);
-        let (map, patches) = match cross {
-            Some(i) => (a.cross_maps.get(i), &a.cross_patches),
-            // (A game without the Cross tab has one map: EXE5.)
+        // sub_8026840: the window's map, with the form list's tab (EXE6's
+        // Cross tab) or without; or the form list window's.
+        let form_list = form_list_map(v);
+        let (map, patches) = match form_list {
+            Some(i) => (a.form_list_maps.get(i), &a.form_list_patches),
+            // (A game without the tab has one map: EXE5.)
             None => (a.window_maps.get(v.screen.look.form_list_tab as usize).or(a.window_maps.first()), &a.window_patches),
         };
         if let Some(m) = map {
@@ -765,8 +763,8 @@ impl Window {
         w.chip_window(v, text, problems);
         w.slots(v, problems);
         w.column(v, problems);
-        if cross.is_some_and(|i| i >= CROSS_OPENING_MAPS) {
-            w.cross_names(v, problems);
+        if form_list.is_some_and(|i| i >= FORM_LIST_OPENING_MAPS) {
+            w.form_names(v, problems);
         }
         if v.screen.look.turn_limit {
             // sub_8029D34: "FINAL TURN", 7x2 at column 15, row 4 (past the
@@ -860,24 +858,22 @@ impl Window {
         self.tiles.put(at, &fonts::cell_text(v.hud, &glyphs, ADVANCE_NAME_CELLS, 0));
     }
 
-    /// `sub_802794A`: the Crosses' names (`sub_8029D94`: the one under the
-    /// cursor in its own look) over the Cross window's map, and palette 10
-    /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
-    fn cross_names(&mut self, v: &View, problems: &mut Problems) {
+    /// `sub_802794A`: the offered forms' names (`sub_8029D94`: the one
+    /// under the cursor in its own look) over the form list window's map,
+    /// and palette 10 the form under the cursor's (`sub_8029EAC`: a used
+    /// one's darker).
+    fn form_names(&mut self, v: &View, problems: &mut Problems) {
         let Some(w) = v.b.form_list(v.side) else { return };
-        // Each Cross's name and colors are its own version's (a player's
+        // Each form's name and colors are its own version's (a player's
         // Crosses can hold another's: docs/engine/custom-screen.md §4.1).
         let navi = v.b.stats[v.side as usize].navi;
-        let mut picture = |slot: usize| {
-            let form = cross_at(v.b, v.side, w.offered[slot])?;
-            crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
-        };
+        let mut picture = |slot: usize| crate::lookups::form_name(v.assets, &v.b.content, navi, w.forms[slot]?, problems);
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };
             let name = number + if slot == w.cursor as usize { 0 } else { 5 };
-            let at = self.layout.cross_names + (CROSS_NAME_TILES * slot) as u16;
-            self.tiles.put_part(at, &own.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
-            for i in 0..CROSS_NAME_TILES {
+            let at = self.layout.form_names + (FORM_NAME_TILES * slot) as u16;
+            self.tiles.put_part(at, &own.form_names, FORM_NAME_TILES * name, FORM_NAME_TILES);
+            for i in 0..FORM_NAME_TILES {
                 let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
                 self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
             }
@@ -885,7 +881,7 @@ impl Window {
         let c = w.cursor as usize;
         if let Some((own, number)) = picture(c) {
             let index = number + if w.marked[c] { 5 } else { 0 };
-            if let Some(p) = own.cross_palettes.get(index) {
+            if let Some(p) = own.form_name_palettes.get(index) {
                 self.palettes[10] = *p;
             }
         }
@@ -1086,7 +1082,7 @@ impl Window {
                         }
                         self.tiles.fill(at + 4, 2, self.layout.slot_blank);
                         at += 6;
-                    } else if crate::lookups::button(a, v.beast, &v.b.content, button, problems).is_some()
+                    } else if crate::lookups::button(a, v.buttons, &v.b.content, button, problems).is_some()
                         && let Some(look) = v.button_look(button)
                     {
                         // (The slots after it start past its tiles; the
@@ -1149,8 +1145,9 @@ impl Window {
             let at = self.layout.column_icons + 4 * i as u16;
             let icon = match v.screen.look.column[i] {
                 Some(c) => v.icon(c, problems).map(|t| (t, 0)),
-                // EXE5's soul, given for a chip: its icon (0x0802341C).
-                None if picks.get(i) == Some(&SPECIAL_SLOT) => soul_icon(v),
+                // The offered form, given for a chip: its icon (EXE5's
+                // soul's, 0x0802341C).
+                None if picks.get(i) == Some(&SPECIAL_SLOT) => offered_icon(v),
                 None => None,
             };
             let (tiles, first) = icon.unwrap_or((&a.empty_icon, 0));
@@ -1350,23 +1347,23 @@ fn cursor_at(p: &nettai_assets::CursorPlace) -> (i32, i32, CursorShape) {
     (p.x as i32, p.y as i32, CursorShape { corners })
 }
 
-/// `sub_80289E4`: the Cross window's cursor, a box around the Cross under
-/// it: four corners, then seven edge pieces above and below (`byte_8028A30`:
-/// y, x, flips), in sprite palette 14.
-fn cross_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
+/// `sub_80289E4`: the form list window's cursor, a box around the form
+/// under it: four corners, then seven edge pieces above and below
+/// (`byte_8028A30`: y, x, flips), in sprite palette 14.
+fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
     let cursor = v.b.form_list(v.side).map_or(0, |w| w.cursor);
     let (x, y) = (5, 5 + 16 * cursor as i32);
     let corners = [(2, 3, false, false), (2, 0x43, true, false), (0xC, 0x43, true, true), (0xC, 3, false, true)];
     let edges = (0..7).map(|i| (2, 0xB + 8 * i, false, false)).chain((0..7).map(|i| (0xC, 0xB + 8 * i, false, true)));
     let pieces = corners.into_iter().map(|c| (c, 0)).chain(edges.map(|e| (e, 1)));
-    let palette = a.cross_cursor_palette;
+    let palette = a.form_list_cursor_palette;
     pieces
         .map(|((dy, dx, hflip, vflip), edge)| SpritePart {
             x: ((x + dx) & 0x1FF) as u16,
             y: (y + dy) as u8,
             width: 8,
             height: 8,
-            tiles: &a.cross_cursor,
+            tiles: &a.form_list_cursor,
             first_tile: 2 * (frame as usize & 1) + edge,
             hflip,
             vflip,
@@ -1547,7 +1544,7 @@ pub fn draw<'a>(
         side,
         screen,
         assets: a,
-        beast: beast_pictures(b, a, side),
+        buttons: button_pictures(b, a, side),
         emblem_palette,
         hud: &assets.hud,
         packs: packs.clone(),
@@ -1601,12 +1598,12 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
-    // EXE5's soul choice's flying icon (its state 9's routines draw it
-    // before the screen's others).
+    // The offered form's flying icon (EXE5's soul choice's: its state 9's
+    // routines draw it before the screen's others).
     if window_view(b, screen) == Some(WindowView::OfferFlight)
         && let Some(at) = b.offer_flight(v.side)
     {
-        queue.extend(soul_flight(&v, at, problems));
+        queue.extend(offered_flight(&v, at, problems));
     }
     // Its capsule's mix's (state 0x3C's).
     queue.extend(capsule_flight(&v, packs, problems));
@@ -1630,7 +1627,7 @@ pub fn draw<'a>(
         queue.extend(held_part(&v, packs, problems));
     }
     if let Some(frame) = drawn.form_list_cursor {
-        queue.extend(cross_cursor_parts(&v, a, frame));
+        queue.extend(form_list_cursor_parts(&v, a, frame));
     }
     for part in queue {
         list.insert_at(SPRITE_LAYER, 0, vec![part]);
@@ -1642,12 +1639,12 @@ pub fn draw<'a>(
 mod tests {
     use super::*;
 
-    /// A soul's version by its place among its navi's twelve souls: Team
-    /// ProtoMan's six (the pack's base version's palette, row 0), then
-    /// Team Colonel's (row 1); no soul, the base's; a pack with one
-    /// version's palette alone, that one.
+    /// A form's version by its place in its navi's list: of EXE5's twelve
+    /// souls, Team ProtoMan's six (the pack's base version's palette, row
+    /// 0), then Team Colonel's (row 1); no form, the base's; a pack with
+    /// one version's palette alone, that one.
     #[test]
-    fn a_souls_version_is_its_places_run() {
+    fn a_forms_version_is_its_places_run() {
         let rows: Vec<usize> = (0..12).map(|place| version_run(Some(place), 12, 2)).collect();
         assert_eq!(rows, [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
         assert_eq!((version_run(None, 12, 2), version_run(Some(11), 12, 1), version_run(Some(3), 0, 2)), (0, 0, 0));

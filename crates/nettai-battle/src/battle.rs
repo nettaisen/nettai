@@ -583,6 +583,11 @@ pub struct SideLooks {
     /// And whatever its form while its navi's rules' B charge is armed
     /// (EXE5's Chaos Unison look, 0x080125F6: `face_charged`).
     pub face_variant_charged: bool,
+    /// The emotion window shows the side's count (its navi's stat of the
+    /// role `window_count`), else its empty box, as the side's rules say
+    /// for the round (`battle.set_window_count`: EXE6's Beast Out turns,
+    /// `sub_801D814`).
+    pub window_count: bool,
     /// The custom screen's enemy names show the side's navi by its variant
     /// name (EXE5's Hub Style in a link battle: 0x0801AE3A's NameID 0xEA;
     /// `battle.set_name_variant`).
@@ -2347,7 +2352,7 @@ mod tests {
     fn a_sides_looks_outlast_the_players_init() {
         let c = testing::content();
         let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c)), c);
-        let looks = SideLooks { face_variant: true, face_variant_charged: false, name_variant: true };
+        let looks = SideLooks { face_variant: true, face_variant_charged: false, window_count: false, name_variant: true };
         b.looks = [looks; 2];
         b.sides[1].sword_pick = 3;
         b.spawn_actors();

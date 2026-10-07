@@ -48,7 +48,7 @@ const LAYOUT: CustomLayout = CustomLayout {
     slots: 0x9F,
     column_icons: 0xE1,
     name_bar: 0x1B6,
-    cross_names: 0,
+    form_names: 0,
     slot_blank: 2,
     ok_cursor: CursorPlace {
         x: 0x58,
@@ -350,8 +350,8 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
         name_bar: block(rom, NAME_BAR),
         window_maps: vec![map(WINDOW_MAP)],
         window_patches: patches(rom, WINDOW_PATCHES),
-        cross_maps: Vec::new(),
-        cross_patches: PatchList::default(),
+        form_list_maps: Vec::new(),
+        form_list_patches: PatchList::default(),
         frame_palettes: palettes(FRAME_PALETTES),
         icon_palette: palette(rom, ICON_PALETTE),
         gray_palette: palette(rom, GRAY_PALETTE),
@@ -382,8 +382,8 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
         // the game's base version's.)
         versioned: Versioned::new(Version::ProtoMan.name(), VersionPictures::default()),
         cursor: block(rom, CURSOR),
-        cross_cursor: Tiles::default(),
-        cross_cursor_palette: [0; 16],
+        form_list_cursor: Tiles::default(),
+        form_list_cursor_palette: [0; 16],
         emblems: emblems(roms, names),
         regular: block(rom, REGULAR),
         advance_name_colors: (0..ADVANCE_NAME_COLORS.1)

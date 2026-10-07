@@ -51,44 +51,25 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 
 | Feature | (a) | (b) | (c) | (d) | All |
 |---|---|---|---|---|---|
-| Beast Out and Beast Over | | | 1 | | 1 |
-| Crosses and the form framework | | | 2 | | 2 |
-| Emotions | | | 1 | 3 | 4 |
+| Beast Out and Beast Over | | | | | |
+| Crosses and the form framework | | | | | |
+| Emotions | | | | 3 | 3 |
 | NaviCust | | | | 2 | 2 |
-| Souls and Chaos Unison | | | 1 | | 1 |
-| The stat block and versions | | | 1 | | 1 |
-| Tools | | | 1 | | 1 |
-| **All** | | | **7** | **5** | **12** |
+| Souls and Chaos Unison | | | | | |
+| The stat block and versions | | | | | |
+| Tools | | | | | |
+| **All** | | | | **5** | **5** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
-dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
-the kind (b) entries one at a time. They are listed under [Done](#done) with their new names. X5 is new: what X4's
-rename left of EXE5's logic.
+dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 did
+the kind (b) entries one at a time, and step 3 the kind (c) ones (presentation: the renderer and tools draw views by
+role, the pack names the form list window's pictures for it), each frame for frame alike. They are listed under
+[Done](#done) with their new names. X5 is new: what X4's rename left of EXE5's logic. What is left is kind (d).
 
 ### Beast Out and Beast Over (EXE6)
 
-- **B6. The HUD's Beast Out count** (`beast_count_shown`, render hud.rs:926, which reads `PlayerFact::BeastOut`) and
-  that fact role (views.rs:124), which nothing else reads. (The count itself is read by its role since B3:
-  `StatRole::WindowCount`.) *(c)* A HUD view the rules fill (whether the count shows). The fact stays EXE6's setup
-  field, with no role.
 ### Crosses and the form framework (EXE6; the form break and the navi switch are both games')
 
-- **C7. The renderer's Cross window**. Pieces:
-  - render custom.rs's `cross_stage`, `cross_map`, `cross_names`, `cross_cursor_parts`, `navi_crosses`,
-    `cross_picture` and `cross_at` (custom.rs:553–735, :865–890, :1354), the last reading `PlayerFact::CrossList`;
-  - `lookups::cross_name` (lookups.rs:403);
-  - `Lookup::{CrossName, CrossDescription}` (audit.rs:79);
-  - chatbox.rs:90.
-
-  About 250 lines. *(c)* It draws the `FormList` view (§4.8). Rename to the view, and read the offered forms from
-  the view rather than from the fact.
-- **C8. The Cross window's assets**. Pieces:
-  - nettai-assets' `CustomScreen::{cross_maps, cross_patches, cross_cursor, cross_cursor_palette}`,
-    `VersionPictures::{cross_names, cross_palettes}` and `CustomLayout::cross_names`;
-  - nettai-content's custom.rs (:60, :89, :131, :265–290, :443–525, :615–686).
-
-  About 120 lines. *(c)* The pack format names these pictures for the form list window. Rename with C7 at a pack
-  format bump.
 ### Emotions (both games; EXE6's tired, Full Synchro and anger, EXE5's worried and dark)
 
 - **E2. The mood and anger machinery**:
@@ -111,15 +92,6 @@ rename left of EXE5's logic.
   `emotion_window_glitch` API, api.rs:1286, :2038; `HudPart::EmotionWindow`). It checks every tick on both consoles
   and draws the console's RNG, which the digest covers. *(d)* It stays simulated. At most the HUD part gets a neutral
   name.
-- **E5. Faces by emotion**:
-  - `FaceSet` (navis.rs:450–495: normal, angry, tired, full_synchro, worn_out, worried);
-  - the HUD's pick and mood flash (render hud.rs:94–104, :210–230, :846–868);
-  - `face_hub` and `face_charged` (player/mod.rs);
-  - render audit's `emotion_number`.
-
-  *(c)* Faces keyed by the game's emotion names. Since E1 a face is looked up by its emotion's name, through
-  `FaceSet`'s fields (named for both games' emotions); what is left is a set keyed by the game's own names. The
-  second set of faces is a look the rules push (`face_hub`, and since S1 `face_charged`).
 
 ### NaviCust (both games)
 
@@ -142,20 +114,12 @@ rename left of EXE5's logic.
 ### Souls and Chaos Unison (EXE5)
 
 
-- **S3. The renderer's soul icons and flights** (`soul_icon`, `soul_place`, `soul_flight`, `soul_palette_row`,
-  `CHAOS_ICON`, render custom.rs:393–505; they read MegaMan's `souls` form list, `NaviForms::listed("souls")`). *(c)* The form offer view's icon (§4.8's
-  `offer`, `offer_chaos`). Rename to the view.
 
 ### The stat block and versions
 
-- **V2. The version-named renderer helpers** (`beast_pictures`, render custom.rs:578; `version_name`,
-  `console_version`, `known_emblem`, :592–640, which read `PlayerFact::Version`). Versions themselves are generic:
-  a pack's per-version pictures. *(c)* Rename `beast_pictures` to the button's version pictures; nothing else.
 
 ### Tools (nettai-match)
 
-- **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name; link_navis.rs; story.rs). The
-  game's own are listed from its rules' `stats` since V1 (`stats::game_fields`). *(c)* The engine's by role.
 
 ### Done
 
@@ -179,6 +143,11 @@ Each with what it was and what it is now.
   CrossWindowClose, CrossChosen}` and their `SoundRole::Custom*` roles are gone. The rules play their own sounds in
   the screen's order (`custom.play_sound`, `ScreenSound::Rules`): EXE6's beast/custom.luau and cross/window.luau
   hold them.
+- **B6.** Whether the emotion window shows its side's count is a look the rules push for the round
+  (`battle.set_window_count`, `SideLooks::window_count`): EXE6's rules/beast's `round_setup` says it from
+  `sub_801D814`'s rule (mode 5 always, mode 1 never, else the save's `beast_out`, no navi code's `level`, no
+  gauge of each side's own, not a random battle). `beast_count_shown` and the fact role `PlayerFact::BeastOut`
+  are gone; `beast_out` is EXE6's setup field with no role.
 - **B7.** `FormEffects::BERSERK` (`berserk`) is `CONTROLLER_RESTART` (`controller_restart`).
 - **B8.** `ActionRole::DustBeastScatter` is `Ungrounded` (`ungrounded`), and `ChargeTackle` is `Glowless`
   (`glowless`).
@@ -193,6 +162,16 @@ Each with what it was and what it is now.
 - **C5.** `cross_doubles` and `Boost::Cross` are `charge_doubles` and `Boost::Charged`.
 - **C6.** The form list window: `ScreenLook::{form_list_tab, form_list_cursor}` and `custom.draw_form_list_cursor`,
   `custom.set_form_list_tab`.
+- **C7.** The renderer's Cross window draws the `FormList` view by its names: `form_list_stage` and
+  `FormListStage`, `form_list_map`, `form_names`, `form_list_cursor_parts`, `version_forms`, `form_name_picture`,
+  `lookups::form_name`, `Lookup::{FormName, FormDescription}`. The offered forms are the view's
+  (`FormList::forms`: the player's form list's entries at the places offered), so `cross_at` and the renderer's
+  read of the fact are gone. The pack's pictures keep their names until C8.
+- **C8.** The pack names the form list window's pictures for it (`custom.json` version 2): `form_list_maps`,
+  `form_list_patches`, `form-list-cursor.png`, `form-names[-V][-L].png` and the layout's `form_names`; nettai-assets'
+  `CustomScreen::{form_list_maps, form_list_patches, form_list_cursor, form_list_cursor_palette}`,
+  `VersionPictures::{form_names, form_name_palettes}`, `CustomLayout::form_names` and `CustomLettering::form_names`.
+  The pictures are the same bytes under the new names; a version 1 pack is refused until extracted again.
 - **C9.** `PlayerFact::CrossList` is `PlayerFact::FormList`, which a setup field takes by declaring the role
   (`schema.role("form_list", T)`): EXE6's `crosses`, whose name stays its own, so its match files keep
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
@@ -217,6 +196,12 @@ Each with what it was and what it is now.
   the form: some fifteen places, a missed one a stale emotion), where the order read on each read keeps nothing
   in step (rules-in-luau.md §4.6), stays exact by construction, costs no Luau call and serves the presentation's
   read-only readers too.
+- **E5.** A form's faces are keyed by its game's emotion names (`FaceSet::by_emotion`, and the Luau `FaceSet` an
+  indexer by `Emotion`): an emotion without a face shows the set's one face, else the game's default emotion's.
+  `Content::define` holds every set to the rules' emotions (`check_faces`: names among them, a face for the
+  default). The HUD and the lookups pass the `Emotion` (`Faces::shown`), the audit's lookup is
+  `Lookup::FormFace(form, Emotion, second set)` described by name (`emotion_number` is gone), and `face_hub` is
+  `base_face_variant`, the base form's second set the rules push.
 - **E6.** EXE5's last stand is its rules' `hp_emptied(side, navi)` hook (EXE5's rules/emotion/dark_survival: the check
   0x0802C16C, the hold at 1 HP and the volley's request), which a loss of HP to 0 asks under `status.hp_loss =
   "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.
@@ -263,6 +248,11 @@ Each with what it was and what it is now.
   `SoulData`, `FormData::soul`, `NaviForms::souls` and the "a base form is no soul" check leave Rust; exe5-compat,
   the app's builds view and the demo read a soul's family from the extension (`Defs::extension`), the renderer's
   icons (S3) the list `souls`.
+- **S3.** The renderer's soul icons are the `form_offer` view's: `offered_icon`, `offer_icon`, `offered_flight`,
+  `icon_palette_row`, `OTHER_VERSIONS_ICON`. An offer's icon is the offered form's place in the navi's form list
+  that holds it (`NaviForms::holding`), from 1, the alternate's (`offer_chaos`) the one after the list's, so neither
+  the list's name (`souls`) nor Chaos Unison's 13 is the renderer's; the icon palette's row is the form's version
+  run in that list.
 - **T1.** The save importers are the compat crates' (the user: "import code should move out of nettai-match i think
   and into compat"): `exe6_compat::import` and `exe5_compat::import` each give a whole side by field name, from the
   save's decoded bytes; nettai-match depends on no compat crate, and the caller (nettai-demo's `save_import`) imports
@@ -271,6 +261,12 @@ Each with what it was and what it is now.
   (the user: "i don't think you need learning right? since the battles are one-off"). A random EXE5 match states no
   auto battle data; the editor's pane reads the two facts by field name, laid out by EXE5's rules/auto_battle/block
   (`Battle::module_data`), and the save import writes the facts from the block.
+- **T3.** The stats pane (stats.rs, every `NaviStats` field by name, and `game_fields`) went with nettai-demo. The
+  navi views read a navi's levels' range by one generic read, `NaviData::last_level` (what its definition says a
+  level gives it: `levels` or `story`), for `level_required`, `play_level`, `Side::takes_level` and the build
+  creator, where each matched both records; `story::max_level` and `link_navis::has_levels` (unused since the
+  editor) are gone, and `link_navis` keeps its tests of EXE6's reload. The build creator's NAVI tab shows the
+  engine's own stats by the engine's names (nettai, not audited).
 - **T4** (step c3b). `has_navicust`, `has_patch_cards` and `navicust_rules` are gone.
 - **T5.** `PlayerFact::SpTimes` and `Facts::{sp_times, set_sp_times, takes_sp_times}` are gone. The times are the
   field `sp_times`, which tools set and read through the generic facts and compat writes by name
@@ -282,8 +278,11 @@ Each with what it was and what it is now.
   compat codecs map to the block's bytes by name. EXE6's: `beast_out_counter`, `sun`, `chip_drops`, `encounters`,
   `chip_shuffle`, `number_open`; EXE5's: `sun`, `chip_drops`, `encounters`, `hub_style`, `soul_turn_bonus`. Their
   `NaviStats` fields and `NaviStat`s are gone. `version` is no stat: it is the side's version fact (EXE6's API
-  `exe6.version`, which MstrCros reads; exe6-compat writes +0x20 from it). The stats pane lists the game's own by the
-  schema's names (`stats::game_fields`). A bug code writes them by name (N2: a game's rules/navicust/bugs's `own`).
+  `exe6.version`, which MstrCros reads; exe6-compat writes +0x20 from it). The stats pane listed the game's own by the
+  schema's names (`stats::game_fields`; the pane went with nettai-demo). A bug code writes them by name (N2: a game's rules/navicust/bugs's `own`).
+- **V2.** `beast_pictures` is `button_pictures`: the version pictures a side's buttons draw, its navi's form's
+  version's when the form isn't the base form, else the player's (EXE6's Beast Out button the case). The rest
+  (`version_name`, `console_version`, `known_emblem`) was generic already.
 - **X1.** The fades by what they do: `FadeMode::{Flash, FlashBack, HalfOut, HalfOutBack}` (content's `flash`,
   `half_out`, ...; were `SoulFlash*`, `BeastOut*`), and D1's. A `fades` rule section stays §3.3's way for a fade of a
   game's own, which none needs yet.

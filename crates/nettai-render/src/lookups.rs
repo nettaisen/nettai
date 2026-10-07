@@ -7,7 +7,7 @@
 //! key (a chip's icon by its qualified key, a banner by its handle) fails
 //! both the same way.
 
-use crate::audit::{Graphics, Lookup, Problems, emotion_number};
+use crate::audit::{Graphics, Lookup, Problems};
 use crate::packs::Packs;
 use nettai_assets::{
     BannerLayout, ButtonPictures, ChipArt, CustomScreen, DialogueFont, Emblem, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles, VersionPictures,
@@ -288,16 +288,16 @@ pub fn form_face<'a>(
     packs: &Packs<'a>,
     c: &Content,
     form: FormHandle,
-    emotion: &str,
+    emotion: nettai_battle::content::Emotion,
     variant: bool,
     problems: &mut Problems,
 ) -> (Option<nettai_battle::content::InPack<u8>>, Option<(&'a Tiles, &'a [Palette])>) {
-    let picture = c.form(form).mugshot.and_then(|faces| crate::packs::mugshot(c, faces.shown(emotion, variant)));
+    let picture = c.form(form).mugshot.as_ref().and_then(|faces| crate::packs::mugshot(c, faces.shown(&c.rules().emotion, emotion, variant)));
     let face = picture.and_then(|m| {
         let (hud, n) = packs.mugshot(m);
         hud.mugshot(n)
     });
-    if problems.lookup(Lookup::FormFace(form, emotion_number(emotion) | if variant { 0x10 } else { 0 })) && face.is_none() {
+    if problems.lookup(Lookup::FormFace(form, emotion, variant)) && face.is_none() {
         problems.note(format!("form {:?} has no mugshot in the pack", c.defs.form(form).key));
     }
     (picture, face)
@@ -316,7 +316,7 @@ pub fn emblem<'a>(a: &'a CustomScreen, c: &Content, navi: NaviHandle, problems: 
 }
 
 /// The pack's look of the button named `name`: the version's own (`own`:
-/// the pictures of the version the screen draws, `custom::beast_pictures`),
+/// the pictures of the version the screen draws, `custom::button_pictures`),
 /// else the pack's.
 pub fn button_of<'a>(a: &'a CustomScreen, own: &'a VersionPictures, name: &str) -> Option<&'a ButtonPictures> {
     own.button(name).or_else(|| a.button(name))
@@ -396,28 +396,28 @@ pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     !hud.warning.is_empty()
 }
 
-/// A Cross's name and colors in the Cross window: its version's pictures
-/// and its number among that version's Crosses as `navi` lists them
-/// (`custom::cross_picture`), with its name's tiles and colors there.
-pub fn cross_name<'a>(
+/// A form's name and colors in the form list's window: its version's
+/// pictures and its number among that version's forms as `navi` lists them
+/// (`custom::form_name_picture`), with its name's tiles and colors there.
+pub fn form_name<'a>(
     a: &'a CustomScreen,
     c: &Content,
     navi: NaviHandle,
     form: FormHandle,
     problems: &mut Problems,
 ) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
-    let found = crate::custom::cross_picture(c, a, navi, form);
-    if problems.lookup(Lookup::CrossName(form)) {
+    let found = crate::custom::form_name_picture(c, a, navi, form);
+    if problems.lookup(Lookup::FormName(form)) {
         let key = &c.defs.form(form).key;
         match found {
             None => {
                 let navi = &c.defs.navi(navi).key;
-                problems.note(format!("form {key:?} has no name on the custom screen (it says no `version`, or navi {navi:?} doesn't list it among that version's Crosses)"));
+                problems.note(format!("form {key:?} has no name on the custom screen (it says no `version`, or navi {navi:?} doesn't list it among that version's forms)"));
             }
             Some((own, number)) => {
-                let names = crate::custom::CROSS_NAME_TILES * (number + 5 + 1);
-                if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {
-                    problems.note(format!("form {key:?}: the custom screen has no name or colors for Cross {number}"));
+                let names = crate::custom::FORM_NAME_TILES * (number + 5 + 1);
+                if own.form_names.len() < names || own.form_name_palettes.len() < number + 5 + 1 {
+                    problems.note(format!("form {key:?}: the custom screen has no name or colors for its version's form {number}"));
                 }
             }
         }
