@@ -1,14 +1,14 @@
 --!strict
--- AirShot's action, as EXE5 and EXE6 share it (EXE6's action 0x21, `sub_80EC884`;
--- EXE5's 0x1D, the same code but for the shooter's attachment row;
--- docs/engine/shot-chips.md §3): a shot from the panel ahead. The navi
--- raises its air shooter and fires on the 7th tick; 11 ticks of recovery
--- after the 11th. A chip gives what the navi holds and what it fires
--- (`airshot.action({ shooter = ..., shot = ... }, look)`, with the game's
--- sound, attachment and projectiles): EXE6's AirShot its shooter and wind
--- shot, EXE5's its own.
-
-local attachment = require("./attachment")
+-- AirShot's action, as EXE6, EXE5 and EXE4 share it (EXE6's action 0x21,
+-- `sub_80EC884`; EXE5's 0x1D, the same code but for the shooter's
+-- attachment row; EXE4's 0x23, 0x080ECB74, emap: its fire and recovery
+-- EXE5's, similar; docs/engine/shot-chips.md §3): a shot from the panel
+-- ahead. The navi raises its air shooter and fires on the 7th tick; the
+-- recovery after the 11th. A chip gives what the navi holds, what it fires
+-- and its recovery's count (`airshot.action({ shooter = ..., shot = ...,
+-- recovery = ... }, look)`, with the game's look: the sound, how the navi
+-- holds the shooter, the projectiles, the navi's animation and the
+-- shooter's slot, EXE4's own in each but the sound and projectiles).
 
 local airshot = {}
 
@@ -22,27 +22,16 @@ local STATE = { timer = "u16" }
 -- The phases, on the attack's step.
 local FIRE, RECOVER = 0x0, 0x4
 
-local ANIM = 9
-
--- (A game's AirShot is a `ShooterLook`: its sound, attachment kind, the
--- shooter's, and projectiles.)
-type Look = ShooterLook
+-- (A game's AirShot is an `AirShotLook`: its sound, how the navi holds the
+-- shooter (EXE6's `sub_80EC934`: by the holder's AI index, from
+-- `off_80EC944`, where the link navis HeatMan, GroundMan and DustMan hold
+-- their own, 1; unlike the cannon's it doesn't ask whether the holder is a
+-- player), its projectiles, the navi's animation and the shooter's slot.)
+type Look = AirShotLook
 -- The shot leaves on this tick of the count, and the phase ends on this
--- one; the recovery's ticks.
-local SHOT_TICK, FIRE_TICKS, RECOVER_TICKS = 5, 0xA, 0xA
+-- one.
+local SHOT_TICK, FIRE_TICKS = 5, 0xA
 local SHOT_Z = 0x18_0000
-
--- `sub_80EC934`: the shooter's animation by the holder's AI index, from
--- its game's table (`look.arm_anims`: EXE6's `off_80EC944`, where the link
--- navis HeatMan, GroundMan and DustMan hold their own, 1). Unlike the
--- cannon's it doesn't ask whether the holder is a player.
-local function arm_anim(me: Object, look: Look): number
-    local anim = look.arm_anims[me.ai_index + 1]
-    if anim == nil then
-        error(string.format("AI index %d reads past the air shooters' table (`sub_80EC934`)", me.ai_index))
-    end
-    return anim
-end
 
 -- An AirShot: what the navi holds and what it fires, of a game's `look`.
 function airshot.action(spec: AirShotSpec, look: Look): Action
@@ -52,11 +41,11 @@ function airshot.action(spec: AirShotSpec, look: Look): Action
     -- the next phase at 0xA.
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_animation(ANIM)
+            me:set_animation(look.anim)
             me:open_counter_window()
             s.timer = 0
             me:set_status("using_action", true)
-            attachment.attach(look.attachment, me, spec.shooter, "overlay", { anim = arm_anim(me, look) })
+            look.hold(me, spec.shooter, look.slot)
             battle.play_sound(SOUND)
             me.step_init = 4
             return
@@ -72,10 +61,11 @@ function airshot.action(spec: AirShotSpec, look: Look): Action
         end
     end
 
-    -- `sub_80EC90E`: 11 ticks, then the shooter goes and back to idle.
+    -- `sub_80EC90E`: the recovery's count and a tick, then the shooter goes
+    -- and back to idle.
     local function recover(me: Object, s: State)
         if me.step_init == 0 then
-            s.timer = RECOVER_TICKS
+            s.timer = spec.recovery
             me.step_init = 4
         end
         local t = s.timer - 1
