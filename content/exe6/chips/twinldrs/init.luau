@@ -6,6 +6,7 @@ local protoman_chips = require("./protoman")
 local antinavi = require("./antinavi").antinavi
 local colonel_chips = require("./colonel")
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -23,7 +24,10 @@ local chip: Chip = {
         { order = 9, sequence = { protoman_chips["protomn-sp"], antinavi, colonel_chips.colonel } },
         { order = 10, sequence = { colonel_chips["colonel-sp"], antinavi, protoman_chips.protoman } },
     },
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "twinldrs/controller",
+        summon = navi.summon,
+    },
 }
 
 return { twinldrs = chip }

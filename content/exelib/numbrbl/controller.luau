@@ -11,6 +11,7 @@
 -- NumbrBl's `dimming` hook is `controller.hook(kind, balls)`.
 
 local dimming_chips = require("@exelib/dimming")
+local navi_chips = require("@exelib/navi_chips/controller")
 
 local controller = {}
 
@@ -54,9 +55,9 @@ function controller.make(id: string, effect: (me: Object) -> ()): Kind
                 if a == DIM then
                     dimming.dim_screen(me)
                 elseif a == ANTI_NAVI then
-                    dimming.check_anti_navi(me, s.chip)
+                    navi_chips.anti_navi(me, navi_chips.in_block(s.chip))
                 elseif a == TELOP then
-                    dimming.show_navi_telop(me, s.chip)
+                    navi_chips.name(me, s.chip, navi_chips.in_block(s.chip))
                 elseif a == EFFECT then
                     effect(me)
                 elseif a == UNDIM then
