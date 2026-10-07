@@ -12,7 +12,10 @@
 -- - "while_in_action": lasts while its owner stays in the action it was
 --   spawned in;
 -- - "riding": the same, riding on its owner;
--- - "timed": the same, 30 ticks at most.
+-- - "timed": the same, 30 ticks at most;
+-- - "with_idle_owner" (EXE4's look 5, MetalMan's: 0x080E5AC8): hidden, but while its owner is in its animation 0
+--   shown as its owner is, on the owner's panel a pixel up, with the owner's blending and mosaic; once the fight is
+--   on it no longer runs while paused.
 --
 -- The original's looks that last through an action name the owner's action
 -- by number, each the action that spawns them; here the effect keeps the
@@ -176,6 +179,25 @@ function follow_effect.make_kind(spec: KindSpec): Kind
         me:set_lifecycle("destroy")
     end
 
+    -- EXE4's 0x080E5AC8: with its owner while the owner stands in its animation 0.
+    local function with_idle_owner(me: Object)
+        if battle.fighting() then
+            me.run_while_paused = false
+        end
+        me.visible = false
+        local owner = me.related1 :: Object
+        if owner.anim ~= 0 then
+            return
+        end
+        me:copy_visibility(owner)
+        me.panel_x, me.panel_y = owner.panel_x, owner.panel_y
+        me:set_coordinates_from_panel()
+        me.sprite.alpha = owner.sprite.alpha
+        me.sprite.mosaic = owner.sprite.mosaic
+        local p = me.pos
+        me.pos = Vec3.new(p.x, p.y - 0x10000, p.z)
+    end
+
     local function none(_me: Object) end
 
     local BEHAVIORS: { [Behavior]: (Object) -> () } = {
@@ -185,6 +207,7 @@ function follow_effect.make_kind(spec: KindSpec): Kind
         while_in_action = while_in_action,
         riding = riding,
         timed = timed,
+        with_idle_owner = with_idle_owner,
     }
 
     -- `sub_80E3DE0`: what its look does, then (EXE6's) shown as the owner is.

@@ -79,6 +79,9 @@ language = "en"
 "thunman" = { name = "ThunMan", description = "Lightning\nstrikes\n3sq ahead" }
 "thunmn-sp" = { name = "ThunMnSP", description = "Lightning\nstrikes\n3sq ahead" }
 "thunmn-ds" = { name = "ThunMnDS", description = "Lightning\nstrikes\n3sq ahead" }
+"metalman" = { name = "MetalMan", description = "Iron fist\ncrushes\n1sq ahead" }
+"metlmn-sp" = { name = "MetlMnSP", description = "Iron fist\ncrushes\n1sq ahead" }
+"metlmn-ds" = { name = "MetlMnDS", description = "Iron fist\ncrushes\n1sq ahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
