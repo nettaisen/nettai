@@ -74,7 +74,7 @@ return {
     -- A deleted player's object stays in its slot, as EXE6's.
     dead_player = "kept",
     -- An attack's end hands its lockout on, as EXE6's (0x0800F2D0).
-    attack_end_lockouts = true,
+    attack_end_lockout = "by_kind",
     -- What the ends of a navi's actions clear of its requests besides the attacks' six: the Chaos Unison releases,
     -- at an attack's end (0x0800F2DA: 0x1803F); at a paralysis's, a flinch's and a drag's (0x080142A6, 0x080141D0,
     -- 0x080144E0: 0x1843F) the anti-sword trigger too. (A navi's own requests, GyroMan's take-off and landing,

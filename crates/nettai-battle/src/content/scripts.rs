@@ -544,7 +544,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         overlay_restart = "reload",
         stance_counter = "next_tick",
         dead_player = "kept",
-        attack_end_lockouts = true,
+        attack_end_lockout = "by_kind",
         request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 } },"#,
             ),
             (
