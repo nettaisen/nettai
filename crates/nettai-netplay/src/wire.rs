@@ -1,5 +1,5 @@
 //! Byte codecs for what the handshake carries between peers (the
-//! program's `Hello`, nettai-demo's `net`): its versions, the game, the
+//! lobby's `Hello`, nettai-frontend's `lobby`): its versions, the game, the
 //! content's hash, the nonce. (What a player brings to the match is the
 //! frontend's to encode: a side in nettai-match's binary.)
 //!

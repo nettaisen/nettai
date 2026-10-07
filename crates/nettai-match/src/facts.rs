@@ -12,7 +12,7 @@
 //! that says nothing has, and which a round can't start without (an enum
 //! or a list of definitions nothing states: no variant is assumed, and an
 //! empty list is a statement) are the content's; a match file states a fact under its
-//! field's name, and the editor shows one by its type. Three the engine
+//! field's name, and the build creator shows one by its type. Three the engine
 //! itself knows by role (`PlayerFact`: the version, Beast Out, the form
 //! list), and where this crate needs one of those (the version's place in a
 //! navi's stats, the forms a navi's list may hold) it asks by the role.

@@ -1,5 +1,7 @@
-// Play: choose the game and the match (a random one, or a match file's),
-// see who fights where, and fight the stand-in.
+// Training: you against the computer, offline. Choose the game and the
+// match (a random one, or a match file's), your build and your opponent's,
+// what the opponent does and how long the set is; see who fights where, and
+// fight.
 
 import { Theme, NavAction, UiSound } from "theme.slint";
 import { Slant, Label, Heading, Hints, Hint, Button, OptionRow, Versus, Input } from "widgets.slint";
@@ -10,6 +12,32 @@ export enum GameState {
     loading,
     ready,
     failed,
+}
+
+// What the opponent does, as the window words it (the order of
+// `nettai_frontend::driver::Opponent::ALL`).
+export global TrainingText {
+    pure public function opponent(i: int) -> string {
+        if i == 1 {
+            return @tr("opponent" => "Dummy");
+        } else if i == 2 {
+            return @tr("opponent" => "Mover");
+        } else if i == 3 {
+            return @tr("opponent" => "Masher");
+        }
+        @tr("Stand-in")
+    }
+
+    pure public function about(i: int) -> string {
+        if i == 1 {
+            return @tr("Stands still and picks no chip");
+        } else if i == 2 {
+            return @tr("Moves about at random, never attacks");
+        } else if i == 3 {
+            return @tr("Moves, shoots and uses its chips at random");
+        }
+        @tr("Stands still and picks its first chip")
+    }
 }
 
 export struct GameCard {
@@ -97,13 +125,19 @@ component GameTile {
     }
 }
 
-// The choices: the game and the match.
+// The choices: the game, the match, both builds, what the opponent does and
+// the rounds.
 component Choices {
     in property <[GameCard]> games;
     in property <int> game;
     in property <[string]> sources;
     in property <[string]> builds;
     in property <int> build;
+    in property <[string]> opponents;
+    in property <int> opponent;
+    in property <int> behavior;
+    in property <bool> endless;
+    in property <int> rounds;
     in property <int> source;
     in property <string> seed;
     in property <int> cursor;
@@ -113,7 +147,7 @@ component Choices {
     callback nav(NavAction);
 
     VerticalLayout {
-        spacing: Theme.gap;
+        spacing: Theme.gap * 0.5;
         alignment: start;
         Label {
             text: @tr("GAME");
@@ -122,7 +156,7 @@ component Choices {
 
         HorizontalLayout {
             spacing: Theme.gap;
-            height: Theme.compact ? 92px : 132px;
+            height: Theme.compact ? 84px : 112px;
             for g[i] in root.games: GameTile {
                 card: g;
                 chosen: root.game == i;
@@ -154,44 +188,32 @@ component Choices {
             height: 4px;
         }
 
-        OptionRow {
-            text: @tr("MATCH");
-            value: root.sources.length > 0 ? root.sources[root.source] : "—";
-            note: root.source == 0 ? @tr("Seed {0} · confirm for another", root.seed) : @tr("A match file from the matches folder");
-            focused: root.cursor == 1;
+        for row in [1, 2, 3, 4, 5]: OptionRow {
+            height: Theme.compact ? 48px : 56px;
+            text: row == 1 ? @tr("MATCH") : row == 2 ? @tr("YOUR BUILD") : row == 3 ? @tr("OPPONENT") : row == 4 ? @tr("IT DOES") : @tr("ROUNDS");
+            value: row == 1 ? (root.sources.length > 0 ? root.sources[root.source] : "—")
+                : row == 2 ? (root.builds.length > 0 ? root.builds[root.build] : "—")
+                : row == 3 ? (root.opponents.length > 0 ? root.opponents[root.opponent] : "—")
+                : row == 4 ? TrainingText.opponent(root.behavior).to-uppercase()
+                : root.endless ? @tr("rounds" => "ENDLESS") : @tr("rounds" => "BEST OF {0}", root.rounds);
+            note: row == 1 ? (root.source == 0 ? @tr("Seed {0} · confirm for another", root.seed) : @tr("A match file from the matches folder"))
+                : row == 2 ? (root.build > 0 ? @tr("One of your builds, in place of your side") : root.source == 0 ? @tr("A random side, from the seed") : @tr("Your side as the match file states it"))
+                : row == 3 ? (root.opponent > 0 ? @tr("One of your builds, in the opponent's place") : root.source == 0 ? @tr("A random side, from the seed") : @tr("The other side as the match file states it"))
+                : row == 4 ? TrainingText.about(root.behavior)
+                : root.endless ? @tr("99 rounds, the most a set has: first to 50 wins") : @tr("A set as the match lists it");
+            focused: root.cursor == row;
             enabled: root.game >= 0;
             step(d) => {
-                root.point(1, root.game-cursor);
+                root.point(row, root.game-cursor);
                 root.nav(d < 0 ? NavAction.left : NavAction.right);
             }
             activate => {
-                root.point(1, root.game-cursor);
-                root.nav(NavAction.confirm);
+                root.point(row, root.game-cursor);
+                root.nav(row == 1 ? NavAction.confirm : NavAction.right);
             }
             hover => {
                 if root.game >= 0 {
-                    root.point(1, root.game-cursor);
-                }
-            }
-        }
-
-        OptionRow {
-            text: @tr("YOUR BUILD");
-            value: root.builds.length > 0 ? root.builds[root.build] : "—";
-            note: root.build > 0 ? @tr("One of your builds, in place of your side") : root.source == 0 ? @tr("A random side, from the seed") : @tr("Your side as the match file states it");
-            focused: root.cursor == 2;
-            enabled: root.game >= 0;
-            step(d) => {
-                root.point(2, root.game-cursor);
-                root.nav(d < 0 ? NavAction.left : NavAction.right);
-            }
-            activate => {
-                root.point(2, root.game-cursor);
-                root.nav(NavAction.right);
-            }
-            hover => {
-                if root.game >= 0 {
-                    root.point(2, root.game-cursor);
+                    root.point(row, root.game-cursor);
                 }
             }
         }
@@ -212,15 +234,15 @@ component Fight {
             text: @tr("FIGHT");
             primary: true;
             enabled: root.can-fight;
-            focused: root.cursor == 3;
+            focused: root.cursor == 6;
             width: 260px;
             activate => {
-                root.point(3, root.game-cursor);
+                root.point(6, root.game-cursor);
                 root.nav(NavAction.confirm);
             }
             hover => {
                 if root.can-fight {
-                    root.point(3, root.game-cursor);
+                    root.point(6, root.game-cursor);
                 }
             }
         }
@@ -232,6 +254,11 @@ component Fight {
 component Preview {
     in property <MatchPreview> preview;
     in property <bool> chosen;
+    // What the opponent does.
+    in property <int> behavior;
+    // The arenas are drawn (not on a phone held upright: the choices and
+    // FIGHT take its height).
+    in property <bool> arenas: true;
     // (`room`: the width it is given, from outside the layout.)
     in property <length> room;
     // The arenas' pictures, each a whole multiple of the display's pixels
@@ -275,7 +302,7 @@ component Preview {
                     left-name: root.preview.left;
                     left-sub: @tr("YOU");
                     right-name: root.preview.right;
-                    right-sub: @tr("STAND-IN");
+                    right-sub: TrainingText.opponent(root.behavior).to-uppercase();
                 }
 
                 if root.chosen && root.preview.problem != "": Text {
@@ -285,11 +312,11 @@ component Preview {
                     font-size: 13px;
                 }
 
-                if root.chosen: Label {
+                if root.chosen && root.arenas: Label {
                     text: @tr("THE ARENAS");
                 }
 
-                if root.chosen: Rectangle {
+                if root.chosen && root.arenas: Rectangle {
                     height: ceil(root.preview.rounds.length / root.columns) * (root.card-height + Theme.gap);
                     for r[i] in root.preview.rounds: VerticalLayout {
                         x: mod(i, root.columns) * (root.thumb + Theme.gap);
@@ -345,7 +372,7 @@ component Preview {
     }
 }
 
-export component PlayScreen {
+export component TrainingScreen {
     in property <[GameCard]> games;
     // The game chosen (none yet: -1; the player chooses, nothing is assumed).
     in-out property <int> game: -1;
@@ -355,8 +382,17 @@ export component PlayScreen {
     // Your side: 0 a random one (or the match file's), then each build of the game.
     in property <[string]> builds;
     in-out property <int> build;
+    // The opponent's side, the same way.
+    in property <[string]> opponents;
+    in-out property <int> opponent;
+    // What the opponent does (`TrainingText`), and whether the set goes on
+    // round after round; the match's rounds.
+    in-out property <int> behavior;
+    in-out property <bool> endless;
+    in property <int> rounds;
     in property <MatchPreview> preview;
-    // The row focused: 0 the games, 1 the match, 2 FIGHT.
+    // The row focused: 0 the games, 1 the match, 2 your build, 3 the
+    // opponent's, 4 what it does, 5 the rounds, 6 FIGHT.
     in-out property <int> cursor;
     // The game card focused on the first row.
     in-out property <int> game-cursor;
@@ -366,6 +402,9 @@ export component PlayScreen {
     callback choose-game(int);
     callback choose-source(int);
     callback choose-build(int);
+    callback choose-opponent(int);
+    callback choose-behavior(int);
+    callback choose-endless(bool);
     callback reroll();
     callback fight();
     callback back();
@@ -381,7 +420,7 @@ export component PlayScreen {
                 root.sound(UiSound.cursor);
             }
         } else if a == NavAction.down {
-            if root.cursor < 3 && root.game >= 0 {
+            if root.cursor < 6 && root.game >= 0 {
                 root.cursor += 1;
                 root.sound(UiSound.cursor);
             }
@@ -396,30 +435,37 @@ export component PlayScreen {
             } else {
                 root.sound(UiSound.refused);
             }
-        } else if root.cursor == 1 && (a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next) {
+        } else if root.cursor >= 1 && root.cursor <= 5 && (a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next) {
             root.sound(UiSound.cursor);
-            root.choose-source(mod(root.source + (a == NavAction.left || a == NavAction.previous ? root.sources.length - 1 : 1), max(1, root.sources.length)));
-        } else if root.cursor == 1 && a == NavAction.confirm {
-            if root.source == 0 {
-                root.sound(UiSound.pick);
-                root.reroll();
-            } else {
-                root.cursor = 2;
-                root.sound(UiSound.cursor);
-            }
-        } else if root.cursor == 2 && (a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next) {
+            root.step(root.cursor, a == NavAction.left || a == NavAction.previous ? -1 : 1);
+        } else if root.cursor == 1 && a == NavAction.confirm && root.source == 0 {
+            root.sound(UiSound.pick);
+            root.reroll();
+        } else if root.cursor >= 1 && root.cursor <= 5 && a == NavAction.confirm {
+            root.cursor += 1;
             root.sound(UiSound.cursor);
-            root.choose-build(mod(root.build + (a == NavAction.left || a == NavAction.previous ? root.builds.length - 1 : 1), max(1, root.builds.length)));
-        } else if root.cursor == 2 && a == NavAction.confirm {
-            root.cursor = 3;
-            root.sound(UiSound.cursor);
-        } else if root.cursor == 3 && a == NavAction.confirm {
+        } else if root.cursor == 6 && a == NavAction.confirm {
             if root.can-fight {
                 root.sound(UiSound.pick);
                 root.fight();
             } else {
                 root.sound(UiSound.refused);
             }
+        }
+    }
+
+    // Row `row`'s value a step on (`d`: -1 or 1).
+    function step(row: int, d: int) {
+        if row == 1 {
+            root.choose-source(mod(root.source + d + root.sources.length, max(1, root.sources.length)));
+        } else if row == 2 {
+            root.choose-build(mod(root.build + d + root.builds.length, max(1, root.builds.length)));
+        } else if row == 3 {
+            root.choose-opponent(mod(root.opponent + d + root.opponents.length, max(1, root.opponents.length)));
+        } else if row == 4 {
+            root.choose-behavior(mod(root.behavior + d + 4, 4));
+        } else if row == 5 {
+            root.choose-endless(!root.endless);
         }
     }
 
@@ -438,8 +484,8 @@ export component PlayScreen {
         spacing: Theme.gap;
 
         Heading {
-            text: @tr("heading" => "PLAY");
-            sub: @tr("OFFLINE · AGAINST THE STAND-IN");
+            text: @tr("heading" => "TRAINING");
+            sub: @tr("OFFLINE · AGAINST THE COMPUTER");
             back => {
                 root.nav(NavAction.back);
             }
@@ -461,6 +507,11 @@ export component PlayScreen {
                     source: root.source;
                     builds: root.builds;
                     build: root.build;
+                    opponents: root.opponents;
+                    opponent: root.opponent;
+                    behavior: root.behavior;
+                    endless: root.endless;
+                    rounds: root.rounds;
                     seed: root.preview.seed;
                     cursor: root.cursor;
                     game-cursor: root.game-cursor;
@@ -495,6 +546,7 @@ export component PlayScreen {
                 room: (Theme.window-width - 2 * Theme.gutter - Theme.gap * 2) * 0.58;
                 preview: root.preview;
                 chosen: root.game >= 0;
+                behavior: root.behavior;
             }
         }
         if root.portrait: VerticalLayout {
@@ -507,6 +559,11 @@ export component PlayScreen {
                 source: root.source;
                 builds: root.builds;
                 build: root.build;
+                opponents: root.opponents;
+                opponent: root.opponent;
+                behavior: root.behavior;
+                endless: root.endless;
+                rounds: root.rounds;
                 seed: root.preview.seed;
                 cursor: root.cursor;
                 game-cursor: root.game-cursor;
@@ -522,6 +579,8 @@ export component PlayScreen {
                 room: Theme.window-width - 2 * Theme.gutter;
                 preview: root.preview;
                 chosen: root.game >= 0;
+                behavior: root.behavior;
+                arenas: false;
             }
 
             Rectangle {

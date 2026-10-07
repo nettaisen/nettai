@@ -54,6 +54,9 @@ export enum RowKind {
     choice,
     flag,
     number,
+    // A fact stated as one of a few presets (its value the preset's name),
+    // with the face the round starts the navi with.
+    preset,
     // A time (mm:ss.cc), of a definition.
     time,
     from-save,
@@ -277,8 +280,21 @@ export global BuildText {
     pure public function value(r: FactRow) -> string {
         if r.kind == RowKind.flag {
             return r.on ? @tr("flag" => "ON") : @tr("flag" => "OFF");
+        } else if r.kind == RowKind.preset {
+            return BuildText.preset(r.value);
         }
         r.value
+    }
+
+    // A preset's name (the app's builds.toml names them), else its name as
+    // the app spells it.
+    pure public function preset(key: string) -> string {
+        if key == "light" {
+            return @tr("preset" => "LIGHT");
+        } else if key == "dark" {
+            return @tr("preset" => "DARK");
+        }
+        key.to-uppercase()
     }
 
     pure public function filter(f: FilterChip) -> string {
@@ -501,7 +517,7 @@ component FactRowView {
     in property <bool> focused;
     callback activate();
     callback step(int);
-    property <bool> steps: root.item.kind == RowKind.navi || root.item.kind == RowKind.choice || root.item.kind == RowKind.flag || root.item.kind == RowKind.number || root.item.kind == RowKind.time;
+    property <bool> steps: root.item.kind == RowKind.navi || root.item.kind == RowKind.choice || root.item.kind == RowKind.flag || root.item.kind == RowKind.number || root.item.kind == RowKind.time || root.item.kind == RowKind.preset;
     property <bool> action: root.item.kind == RowKind.from-save || root.item.kind == RowKind.duplicate || root.item.kind == RowKind.delete || root.item.kind == RowKind.delete-confirm;
     property <bool> danger: root.item.kind == RowKind.delete || root.item.kind == RowKind.delete-confirm;
     property <length> lean: root.height * 0.25;
@@ -530,7 +546,7 @@ component FactRowView {
         padding-left: root.lean + 16px;
         padding-right: root.lean + 10px;
         spacing: 12px;
-        if root.item.kind == RowKind.navi: Image {
+        if root.item.kind == RowKind.navi || (root.item.kind == RowKind.preset && root.item.picture.width > 0): Image {
             source: root.item.picture;
             width: 64px;
             height: 32px;

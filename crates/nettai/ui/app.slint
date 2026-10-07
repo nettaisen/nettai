@@ -6,7 +6,7 @@ import { Backdrop, Input, Slant } from "widgets.slint";
 import { Format } from "format.slint";
 import { TitleScreen } from "title.slint";
 import { BattleScreen, BattleKind, Side, Playback, Connection } from "battle.slint";
-import { PlayScreen, GameCard, GameState, MatchPreview, RoundCard } from "play.slint";
+import { TrainingScreen, TrainingText, GameCard, GameState, MatchPreview, RoundCard } from "training.slint";
 import { LobbyScreen, LinkState, Peer } from "lobby.slint";
 import { ReplaysScreen, ReplayRow, ReplayCheck } from "replays.slint";
 import { SettingsScreen } from "settings.slint";
@@ -18,10 +18,6 @@ import { BuildScreen, BuildTab, TabKind, BuildAction, ActionButton, RowKind, Fac
 export global Strings {
     pure public function random() -> string {
         @tr("match" => "Random")
-    }
-
-    pure public function stand-in() -> string {
-        @tr("Stand-in")
     }
 
     // Your side as a match file states it.
@@ -36,7 +32,7 @@ export global Strings {
     }
 }
 
-export { Theme, NavAction, Screen, UiSound, Input, Format, BattleKind, Side, Playback, Connection, GameCard, GameState, MatchPreview, RoundCard, LinkState, Peer, ReplayRow, ReplayCheck }
+export { Theme, NavAction, Screen, UiSound, Input, Format, BattleKind, Side, Playback, Connection, GameCard, GameState, MatchPreview, RoundCard, LinkState, Peer, ReplayRow, ReplayCheck, TrainingText }
 export { BuildCard, BuildTab, TabKind, BuildAction, ActionButton, RowKind, FactRow, EntryRow, PickRow, CheckTile, FilterChip, Detail, StatRow, GridCell, GridPart, LeftKind, RightKind }
 
 export component AppWindow inherits Window {
@@ -72,11 +68,14 @@ export component AppWindow inherits Window {
     callback quit();
     callback sound(UiSound);
 
-    callback play-game(int);
-    callback play-source(int);
-    callback play-reroll();
-    callback play-fight();
-    callback play-build(int);
+    callback training-game(int);
+    callback training-source(int);
+    callback training-reroll();
+    callback training-fight();
+    callback training-build(int);
+    callback training-opponent(int);
+    callback training-behavior(int);
+    callback training-endless(bool);
 
     callback battle-resume();
     callback battle-restart();
@@ -125,8 +124,8 @@ export component AppWindow inherits Window {
             title.nav(a);
         } else if root.screen == Screen.battle {
             battle.nav(a);
-        } else if root.screen == Screen.play {
-            play.nav(a);
+        } else if root.screen == Screen.training {
+            training.nav(a);
         } else if root.screen == Screen.lobby {
             lobby.nav(a);
         } else if root.screen == Screen.replays {
@@ -234,11 +233,11 @@ export component AppWindow inherits Window {
             monitor-game: root.monitor-game;
             activate(i) => {
                 if i == 0 {
-                    root.go(Screen.play);
-                } else if i == 1 {
-                    root.go(Screen.builds);
-                } else if i == 2 {
                     root.go(Screen.lobby);
+                } else if i == 1 {
+                    root.go(Screen.training);
+                } else if i == 2 {
+                    root.go(Screen.builds);
                 } else if i == 3 {
                     root.go(Screen.replays);
                 } else if i == 4 {
@@ -252,27 +251,36 @@ export component AppWindow inherits Window {
             }
         }
 
-        play := PlayScreen {
-            visible: root.screen == Screen.play;
+        training := TrainingScreen {
+            visible: root.screen == Screen.training;
             width: root.width;
             height: root.height;
             back => {
                 root.go(Screen.title);
             }
             choose-game(i) => {
-                root.play-game(i);
+                root.training-game(i);
             }
             choose-source(i) => {
-                root.play-source(i);
+                root.training-source(i);
             }
             reroll => {
-                root.play-reroll();
+                root.training-reroll();
             }
             choose-build(b) => {
-                root.play-build(b);
+                root.training-build(b);
+            }
+            choose-opponent(b) => {
+                root.training-opponent(b);
+            }
+            choose-behavior(i) => {
+                root.training-behavior(i);
+            }
+            choose-endless(on) => {
+                root.training-endless(on);
             }
             fight => {
-                root.play-fight();
+                root.training-fight();
             }
             sound(s) => {
                 root.sound(s);
@@ -480,12 +488,12 @@ export component AppWindow inherits Window {
     in-out property <int> battle-cursor <=> battle.cursor;
     in-out property <bool> title-started <=> title.started;
     in-out property <int> title-cursor <=> title.cursor;
-    in property <[GameCard]> games <=> play.games;
-    in-out property <int> play-chosen <=> play.game;
-    in property <[string]> play-sources <=> play.sources;
-    in-out property <int> play-source-index <=> play.source;
-    in property <MatchPreview> play-preview <=> play.preview;
-    in-out property <int> play-cursor <=> play.cursor;
+    in property <[GameCard]> games <=> training.games;
+    in-out property <int> training-chosen <=> training.game;
+    in property <[string]> training-sources <=> training.sources;
+    in-out property <int> training-source-index <=> training.source;
+    in property <MatchPreview> training-preview <=> training.preview;
+    in-out property <int> training-cursor <=> training.cursor;
     in-out property <int> lobby-mode-index <=> lobby.mode;
     in property <string> lobby-code-text <=> lobby.code;
     in property <[string]> lobby-games <=> lobby.games;
@@ -493,8 +501,13 @@ export component AppWindow inherits Window {
     in property <[string]> lobby-builds <=> lobby.builds;
     in-out property <int> lobby-build-index <=> lobby.build;
     in property <string> lobby-direct-address <=> lobby.direct-address;
-    in property <[string]> play-builds <=> play.builds;
-    in-out property <int> play-build-index <=> play.build;
+    in property <[string]> training-builds <=> training.builds;
+    in-out property <int> training-build-index <=> training.build;
+    in property <[string]> training-opponents <=> training.opponents;
+    in-out property <int> training-opponent-index <=> training.opponent;
+    in-out property <int> training-behavior-index <=> training.behavior;
+    in-out property <bool> training-endless-on <=> training.endless;
+    in property <int> training-rounds <=> training.rounds;
     in property <Peer> lobby-me <=> lobby.me;
     in property <Peer> lobby-them <=> lobby.them;
     in property <LinkState> lobby-link <=> lobby.link;

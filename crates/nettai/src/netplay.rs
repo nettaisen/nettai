@@ -5,7 +5,7 @@
 //! (`nettai_frontend::lobby`, which does no IO: [`Agreeing`] carries its
 //! datagrams), then the match, on [`Framed`]: the link as the library's
 //! `Channel`, its frames told from the lobby's by their first byte as
-//! nettai-demo's connection tells them. [`Link`] is what both need of a
+//! the retired nettai-demo's connection told them. [`Link`] is what both need of a
 //! link (nettai-rtc's `Link` is one).
 //!
 //! The lobby screen drives an [`Agreeing`]: the player's game and side

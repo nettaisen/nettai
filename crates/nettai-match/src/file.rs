@@ -400,7 +400,7 @@ pub fn game_of(text: &str) -> Result<String, String> {
 pub fn write(content: &Content, m: &Match) -> String {
     let file = to_file(content, m);
     let body = toml::to_string_pretty(&file).expect("a match file serializes");
-    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-demo --match FILE`.\n\n{}", tidy(&body, &[("left", &file.left), ("right", &file.right)]))
+    format!("# A nettai match (docs/frontend.md §6): play it from nettai's matches folder, or render it with `nettai-tool --match FILE --headless F`.\n\n{}", tidy(&body, &[("left", &file.left), ("right", &file.right)]))
 }
 
 /// A side alone as TOML, under the table `key` (`[side]`), laid out as a
