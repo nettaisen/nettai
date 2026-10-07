@@ -223,7 +223,10 @@
 "spoutman/pillar" = { pool = "effect", index = 0x2D, scratch_z_fraction = true }
 "spoutman/mark" = { pool = "effect", index = 0x2E }
 "barriers/controller" = { pool = "effect", index = 0x2F, scratch_position = true }
-"follow-effect" = { pool = "effect", index = 0x31 }
+# The follow effect (effect #0x31, `sub_80E3D68`): one object in the original, its look and routine by its first
+# parameter; here each user's own kind: DeltaRay's bursts (look 4) and ElecMan's glow in DElecSwd (look 7).
+"deltaray/burst" = { pool = "effect", index = 0x31 }
+"delecswd/glow" = { pool = "effect", index = 0x31 }
 "tomahawkman/axe" = { pool = "effect", index = 0x32 }
 "anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
 "meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }

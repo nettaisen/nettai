@@ -92,8 +92,10 @@
 "metalman/navi" = { pool = "actor", index = 0x40 }
 "junkman/navi" = { pool = "actor", index = 0x48 }
 "junkman/poltergeist" = { pool = "effect", index = 0x73 }
-# The follow effect (0x080E5B34): DeltaRay's burst.
-"follow-effect" = { pool = "effect", index = 0x31 }
+# The follow effect (effect #0x31, 0x080E58B4): one object in the original, its look and routine by its first
+# parameter; here each user's own kind: DeltaRay's bursts (look 4) and MetalMan's fist (look 5).
+"deltaray/burst" = { pool = "effect", index = 0x31 }
+"metalman/fist" = { pool = "effect", index = 0x31 }
 # The wind stages' wind (the actor lists' entry type 6, 0x080068DE: effect 0x41, 0x080E6820) and the gusts it blows
 # (0x080D6724).
 "wind" = { pool = "effect", index = 0x41, scratch_position = true }

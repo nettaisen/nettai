@@ -1363,7 +1363,6 @@ pub fn scripts() -> Scripts {
                 // The link navis' own chips (whose actions the test link
                 // chips run) and their kinds.
                 ("lib/link_chips", "lib/link_chips"),
-                ("objects/follow_effect/init", "objects/follow_effect/init"),
                 ("navis/heatman/chip", "navis/heatman/chip"),
                 ("navis/elecman/chip", "navis/elecman/chip"),
                 ("navis/slashman/chip", "navis/slashman/chip"),

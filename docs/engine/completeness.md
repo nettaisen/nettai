@@ -89,10 +89,10 @@ agents' runs).
 
 | Class | Routines |
 |---|---|
-| Ported: cited in the engine's source or content (3,236 run, 205 don't: §6.1) | 3,441 |
+| Ported: cited in the engine's source or content (3,236 run, 201 don't: §6.1) | 3,437 |
 | Out of scope: not reachable from a netbattle's code | 3,175 |
 | Documented: cited in docs/engine only (268 run, 154 don't) | 422 |
-| Out of scope: excluded by a rule (§5) | 349 |
+| Out of scope: excluded by a rule (§5) | 353 |
 | Folded into a ported caller (22 of them never run) | 203 |
 | Infrastructure a netbattle runs | 126 |
 | Trivial: empty or an accessor | 122 |
@@ -222,11 +222,12 @@ only they call.
 
 ### 6.1 Ported routines no recording runs
 
-205 routines the source cites are never run by the lab (260 before the cut-in chips' recordings ran to their
-end, 225 before the scenarios of the second batch below, 208 before the third's). Every one has been read: three
-of the last 76 could run and have scenarios now, and none of the 205 can run in a netbattle. A citation is not a test: these are the port's
-unverified parts, or content for something a netbattle can't do. By the file that cites them, with whether a
-netbattle can run them where that has been read:
+201 routines the source cites are never run by the lab (205 before the follow effect's four looks no netbattle spawns
+left the source for excl.py's rules, 2026-10-07; 260 before the cut-in chips' recordings ran to their end, 225 before
+the scenarios of the second batch below, 208 before the third's). Every one has been read: three of the last 76 could
+run and have scenarios now, and none of the 201 can run in a netbattle. A citation is not a test: these are the port's
+unverified parts, or content for something a netbattle can't do. By the file that cites them, with whether a netbattle
+can run them where that has been read:
 
 | Where | Routines | What | A netbattle |
 |---|---|---|---|
@@ -242,7 +243,6 @@ netbattle can run them where that has been read:
 | `chips/lifesync` | 6 | LifeSync's aim, marker, warning and sync | can't: a link battle skips them (dimming-chip-effects.md §14) |
 | `kinds/target_marker.rs` | 3 | the lock-on marker's choice between two targets | can't: a side has one combatant |
 | `lib/bombs/slash.luau` | 4 | a bomb's lingering hit (attack object #0xA) | can't: no chip throws bomb kind 1 (the module went with the define-less content, 2026-10-06: nothing reached it) |
-| `objects/follow_effect` | 4 | the follow effect's looks 3, 5, 6 and 8 | can't: no spawner passes look 3, and looks 5, 6 and 8 come from an AI navi's actions and an out-of-scope object (DeltaRay's 4 and ElecMan's 7 run) |
 | `chips/lilbolr/layer.luau` | 4 | a layer's own flip, row offset, held sprite and visibility | can't: the viruses' settings |
 | `chips/timebom`, `spoutman`, `airhocky`, `geddon`, `wavearm`, `objects/panel_bursts`, `objects/rock`, `chips/sandwrm` | 9 | TimeBom's blinking away, SpoutMan's water standing again, the puck's simple bounce, Geddon's poison and its row builder, the bursts' panels by offsets, a breaking wave, the rock's fall, SandWrm's hole waiting open | can't: the variants no chip sets (countdown rows 2 to 7, every puck crossing, no poison or breaking row), a second spout only his AI gives, every caller of the bursts passing an area, and the two documented in unverified.md |
 | uncalled, or called only by code out of scope | 15 | the end-of-list spawn's twin (`sub_800333C`), the body overlay's held visibility, SlashCross's wave while dimmed, Beat's unread flag, an effect following its owner, the form overlay's stun hold, a push by any hit (`sub_801ADFA`), a navi's own wind, the overlay refreshes of other actor records (MegaMan's is `sub_80C44D2` in every form), DiveMan's AI, the virus update, the drain hits' healing | can't: nothing references them, or only routines the audit finds unreachable or a rule excludes |

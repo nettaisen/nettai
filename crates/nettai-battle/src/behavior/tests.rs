@@ -68,6 +68,7 @@ fn battles_run_the_content_scripts() {
             "count/lance",
             "count/navi",
             "crakshot/shot",
+            "delecswd/glow",
             "django/navi",
             "dolthdr/doll",
             "dolthdr/thunder-column",
@@ -111,7 +112,6 @@ fn battles_run_the_content_scripts() {
             "flmhook/hook",
             "flshbom/bomb",
             "flying-shot",
-            "follow-effect",
             "forms/cross-merge",
             "gauge-speed",
             "golmhit/golem",
@@ -593,7 +593,7 @@ fn the_link_navis_chips_play_and_roll_back() {
     }
     for kind in [
         "heatman/flame",
-        "follow-effect",
+        "delecswd/glow",
         "slashman/riding-hit",
         "eraseman/beam",
         "chargeman/volcano-rock",

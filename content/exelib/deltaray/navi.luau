@@ -19,6 +19,7 @@
 -- 0x080C7238) is this code with EXE4's differences as the spec's: his
 -- spawner, his search's first column, and his strike all at once.
 
+local follow_effect = require("../follow_effect")
 local regions = require("../regions")
 
 -- What a chip summons him with: his palette (the chip's first parameter
@@ -43,10 +44,10 @@ export type Spec = {
     -- His strike's hit (what it is and what it hits).
     self_type: CollisionType,
     target: CollisionType,
-    -- His finish's animation, and his burst (the game's follow effect,
-    -- `burst(owner, pos, flip)`).
+    -- His finish's animation, and his burst (the follow effect's look 4):
+    -- its kind's id, its sprite, and whether it is shown as he is (EXE6's).
     finish_anim: number,
-    burst: (owner: Object, pos: Vec3, flip: number) -> Object?,
+    burst: { id: string, sprite: SpriteAsset, copies_visibility: boolean },
     -- The palette flashes EXE6's strike and burst make (EXE5's make none).
     flashes: boolean,
     -- The column of his first candidate panel from an enemy navi's column
@@ -114,6 +115,27 @@ function deltaray.plus_one(x: number, _f: number): number
     return x + 1
 end
 
+-- His burst (the follow effect's look 4): it shows for its timer (60
+-- ticks, which his burst sets again), in animation 1 below 55.
+local BURST_TICKS, BURST_SWITCH = 0x3C, 0x37
+
+-- EXE6's `sub_80E3EB4` (EXE5's 0x080E4024, EXE4's 0x080E5AA0): the burst's
+-- routine.
+local function burst_update(me: Object)
+    if me.action == 0 then
+        me.action = 4
+        me.timer = BURST_TICKS
+    end
+    if me.timer < BURST_SWITCH then
+        me.anim = 1
+    end
+    local left = me.timer - 1
+    me.timer = left
+    if left <= 0 then
+        me:set_lifecycle("destroy")
+    end
+end
+
 -- A game's DeltaRay: his kind, and the chip's navi hook.
 function deltaray.make(spec: Spec): {
     kind: Kind,
@@ -124,6 +146,15 @@ function deltaray.make(spec: Spec): {
     end
 
     local at_once = spec.strike_at_once == true
+
+    local BURST = follow_effect.make {
+        id = spec.burst.id,
+        sprite = spec.burst.sprite,
+        anim = 0,
+        palette = 0,
+        copies_visibility = spec.burst.copies_visibility,
+        update = burst_update,
+    }
 
     -- His sword let go (his first related slot), where his game lets it go.
     local function let_go(me: Object)
@@ -455,11 +486,11 @@ function deltaray.make(spec: Spec): {
         end
     end
 
-    -- `sub_80C2FBC`: a burst (the follow effect's "flash", 60 ticks) on
-    -- (x, y), with a sound (and EXE6's white flash of 20 ticks).
+    -- `sub_80C2FBC`: a burst (60 ticks) on (x, y), with a sound (and EXE6's
+    -- white flash of 20 ticks).
     local function burst(me: Object, x: number, y: number)
         local cx, cy = field.center(x, y)
-        local fx = spec.burst(me, Vec3.new(cx, cy, 0), bit32.bxor(me.alliance, me.flip))
+        local fx = BURST.spawn(me, Vec3.new(cx, cy, 0), bit32.bxor(me.alliance, me.flip))
         if fx then
             fx.timer = 0x3C
         end
