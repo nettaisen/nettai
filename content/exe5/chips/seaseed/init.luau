@@ -7,6 +7,15 @@
 local bombs = require("../lib/bombs")
 local seed = require("../lib/bombs/seed")
 
+-- Its seed (Param1 1): sea, the sprout (effect 0x29) and its sound.
+local SEED = seed.variant {
+    element = 0,
+    palette = 1,
+    panel = "sea",
+    effect = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 },
+    sound = asset.sound("sand-worm"),
+}
+
 local chip: Chip = {
     codes = { "D", "J", "M", "*" },
     element = "null",
@@ -21,9 +30,9 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     action = bombs.throw {
-        held = seed.held(seed.variants.sea),
+        held = seed.held(SEED),
         held_anim = 8,
-        thrower = seed.thrower(seed.variants.sea),
+        thrower = seed.thrower(SEED),
     },
     auto_battle = { class = "into_reach", range = "columns_two_to_four" },
 }

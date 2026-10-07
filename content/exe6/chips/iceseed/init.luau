@@ -17,7 +17,8 @@ local chip: Chip = {
             element = 2,
             palette = 1,
             panel = "ice",
-            effect = seed.sprout,
+            -- Its sprout (effect 0x3B).
+            effect = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 },
             sound = asset.sound("freeze"),
         }),
     },
