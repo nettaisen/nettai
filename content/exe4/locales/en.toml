@@ -8,3 +8,40 @@ language = "en"
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
+
+[navicust_programs]
+"airshoes" = { name = "AirShoes", description = "Walk even\nif no\npanels!" }
+"attack-1" = { name = "Attack+1", description = "MegBuster\nAttack+1!" }
+"attckmax" = { name = "AttckMAX", description = "MegBuster\nAttckMAX!" }
+"battery" = { name = "Battery", description = "Attracts\nElec\nviruses!" }
+"beat" = { name = "Beat", description = "VS only!\nTake high\nlvl chips" }
+"bodypack" = { name = "BodyPack", description = "4 items\nto\nprotect!" }
+"bugstop" = { name = "BugStop", description = "Stops\noccurance\nof bugs" }
+"bustpack" = { name = "BustPack", description = "Atk/speed\n/charge\n+3 each!" }
+"charge-1" = { name = "Charge+1", description = "MegBuster\nCharge\nup+1!" }
+"chargmax" = { name = "ChargMAX", description = "MegBuster\nCharge\nMAX!" }
+"collect" = { name = "Collect", description = "Find more\nchip data\non enemy" }
+"custom1" = { name = "Custom1", description = "Can pick\n1 more\nchip!" }
+"custom2" = { name = "Custom2", description = "Can pick\n2 more\nchips!" }
+"fish" = { name = "Fish", description = "Attracts\nAqua\nviruses!" }
+"flotshoe" = { name = "FlotShoe", description = "No effect\nfrm panel\ntype!" }
+"gigfldr1" = { name = "GigFldr1", description = "1 more\nGigaChip\nin folder" }
+"hp-100" = { name = "HP+100", description = "MAX HP\n+100!" }
+"hp-200" = { name = "HP+200", description = "MAX HP\n+200!" }
+"hp-300" = { name = "HP+300", description = "MAX HP\n+300!" }
+"hp-400" = { name = "HP+400", description = "MAX HP\n+400!" }
+"hp-50" = { name = "HP+50", description = "MAX HP\n+50!" }
+"hp-500" = { name = "HP+500", description = "MAX HP\n+500!" }
+"humor" = { name = "Humor", description = "Install\nand try\nL Button!" }
+"jungle" = { name = "Jungle", description = "Attracts\nWood\nviruses!" }
+"megfldr1" = { name = "MegFldr1", description = "1 more\nMegaChip\nin folder" }
+"megfldr2" = { name = "MegFldr2", description = "2 more\nMegaChips\nin folder" }
+"oilbody" = { name = "OilBody", description = "Attracts\nFire\nviruses!" }
+"rush" = { name = "Rush", description = "VS only!\nFind an\nopponent" }
+"sneakrun" = { name = "SneakRun", description = "Weak enmy\nstop\nappearing" }
+"soulclen" = { name = "SoulClen", description = "Cleanses\nevil\nthoughts" }
+"speed-1" = { name = "Speed+1", description = "MegBuster\nSpeed+1!" }
+"speedmax" = { name = "SpeedMAX", description = "MegBuster\nSpeedMAX!" }
+"sprarmr" = { name = "SprArmr", description = "You won't\nget push-\ned back!" }
+"tango" = { name = "Tango", description = "VS only!\nHeals in\na pinch" }
+"undersht" = { name = "UnderSht", description = "Keep 1HP\neven on\nfatal hit" }
