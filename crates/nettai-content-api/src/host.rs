@@ -220,11 +220,18 @@ pub enum PanelHook {
     /// "on" (one panel further), "carry" (a navi's slide is carried the
     /// type's way: roads, EXE5's magnet), "stop", or nil (as any panel).
     Slide,
+    /// `hit(body, element)`: in the hit kernel, an object that isn't a body
+    /// (an attack, of `element`) touches a body standing on the type, the
+    /// body not invulnerable and the object's hit flags' bit 0 clear (EXE6's
+    /// ice: an aqua attack freezes the body and the panel turns normal). Its
+    /// result is unused.
+    Hit,
 }
 
 impl PanelHook {
     /// Every hook, in order.
-    pub const ALL: [PanelHook; 5] = [PanelHook::Burn, PanelHook::Stand, PanelHook::Rest, PanelHook::MoveEnd, PanelHook::Slide];
+    pub const ALL: [PanelHook; 6] =
+        [PanelHook::Burn, PanelHook::Stand, PanelHook::Rest, PanelHook::MoveEnd, PanelHook::Slide, PanelHook::Hit];
 
     /// The hook's name in a panel type's table.
     pub fn name(self) -> &'static str {
@@ -234,6 +241,7 @@ impl PanelHook {
             PanelHook::Rest => "rest",
             PanelHook::MoveEnd => "move_end",
             PanelHook::Slide => "slide",
+            PanelHook::Hit => "hit",
         }
     }
 }
@@ -246,6 +254,7 @@ pub enum PanelCall {
     Rest,
     MoveEnd,
     Slide { how: SlideHow },
+    Hit { element: u8 },
 }
 
 impl PanelCall {
@@ -257,6 +266,7 @@ impl PanelCall {
             PanelCall::Rest => PanelHook::Rest,
             PanelCall::MoveEnd => PanelHook::MoveEnd,
             PanelCall::Slide { .. } => PanelHook::Slide,
+            PanelCall::Hit { .. } => PanelHook::Hit,
         }
     }
 }
