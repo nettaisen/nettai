@@ -79,6 +79,7 @@ language = "en"
 "036-max-hp-up" = { name = "Max HP Up" }
 "037-max-hp-up" = { name = "Max HP Up" }
 "038-max-hp-up" = { name = "Max HP Up" }
+"045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }
