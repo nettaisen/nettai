@@ -22,6 +22,9 @@ local rules: Rules = {
         -- The Full Synchro at the start (+0x1F: patch card 45's, ./patch_cards; the reload's reset clears it), which
         -- the starting mood reads (./light_dark).
         full_synchro_start = "bool",
+        -- MegaMan's color (+0x27: 0, or patch cards 59, 60, 89, 90's 1 to 4, ./patch_cards; the reset clears it),
+        -- which his palette reads (./light_dark).
+        color = "u8",
     },
     -- What a player brings (nettai-match from a match's side, exe4-compat from a recording): a side's facts.
     setup = {

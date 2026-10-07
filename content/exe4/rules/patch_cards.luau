@@ -66,6 +66,11 @@ function cards.full_synchro(): PatchCardEffect
     return effect { kind = "full_synchro" }
 end
 
+-- MegaMan's color (+0x27: the rules' stat `color`, which his palette reads).
+function cards.color(n: number): PatchCardEffect
+    return effect { kind = "color", amount = n }
+end
+
 -- The panel a step leaves (+0x1B: EXE4's panel type, 1 broken; `effects.panel_trail`).
 function cards.panel_trail(panel: number): PatchCardEffect
     return effect { kind = "panel_trail", amount = panel }
@@ -111,6 +116,8 @@ local function apply(stats: Navi, e: PatchCardEffect, work: Work, counts: Counts
         stats.back_special_weapon = e.weapon
     elseif k == "full_synchro" then
         stats.full_synchro_start = true
+    elseif k == "color" then
+        stats.color = n
     elseif k == "panel_trail" then
         stats.panel_trail = n
     elseif k == "bug" then
