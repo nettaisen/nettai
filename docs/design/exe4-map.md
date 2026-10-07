@@ -1034,7 +1034,22 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
     `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
 19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
-    5, 6, 7: rocks and the others, 0x080FC138's actor lists). Port the obstacles, then generate them.
+    5, 6, 7, 0x080FC138's actor lists: 0x08006754's table at 0x08006778 spawns each). Port the obstacles, then generate
+    them (gen_rules.py's `STAGE_ACTORS`: a kind's module and its entry's argument).
+    - **Done: kind 3, the boulder** (records 20, 21, 24 to 31; content/exe4/objects/boulder). Attack object #0x6E
+      (0x080DB0EC), EXE6's code (`sub_80D2290`, @exelib/boulder) but for its init writing no NameID, its tick taking
+      hits never pushed (0x080139A0) and reacting by 0x08014058 (EXE6's `sub_801B4D4` but for its crushing hits,
+      0x00800002: no body's touch, and no removal request read; the obstacle reaction `destroys_sparing_bodies`), its
+      waiting keeping action 0, its action table's 7 rows (1 also stops it running paused, 3 nothing, 5 the
+      knock-back), its leaving by its HP (left: a puff, effect 21; none: two chunks of debris, lib/rock, and a splash,
+      effect 1), its end 0x08010560, and the damage it is thrown for (100). Its hit sound is the roles'
+      `sounds.damage` (0xC8). The lab's stages/grass, grass-rows-a/b and grass-checks-a/b (null, stand, walk) replay
+      every frame; their chip scenarios wait for Bubbler, Thunder1, HeatShot and ElemLeaf.
+    - Kind 7, the flag (records 76 to 87): attack object #0x9C (0x080E06AC, EXE6's `sub_80D8C5C`, no EXE6 stage's),
+      each side's in its back corner (the entry's argument: bit 7 the side, the rest the HP in eights); its HP out,
+      its side's alive count goes to 0 and the battle's time-up byte to 1 (0x080E0842: the round lost), with battle
+      flag 8. Kind 5, a gear (records 32 to 35: attack object #0x76, 0x080DBD94, HP 50, moving along its row); kind
+      6, effect #0x41 (records 88 to 95, 0x080E6820: off the field, spawning an attack by turns). To port.
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
     battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
     set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
