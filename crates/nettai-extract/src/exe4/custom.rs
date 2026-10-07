@@ -113,6 +113,13 @@ const EMPTY_ICON: u32 = 0x0870_CAC0;
 /// a soul is chosen), and the window's fill tile it shows with no button
 /// (0x2A, the window frame's).
 const UNITE_TILES: (u32, usize) = (0x0874_8058, 0x180);
+/// The icons of the souls' chips, chip 0x160 (no soul) and 0x161 to 0x16C
+/// (their records' +0x20, one after another; every ROM's alike), by the
+/// offer: the soul's choice flies its soul's (0x0802084E: chip 0x160 plus
+/// the screen's +0x0D) as a sprite in their palette (0x0802086C, sprite
+/// palette 11, 0x08020DF4).
+const SOUL_ICONS: (u32, usize) = (0x0874_7878, 13 * 0x80);
+const SOUL_ICON_PALETTE: u32 = 0x0874_7FF8;
 const UNITE_PLACE: ButtonPlace = ButtonPlace { x: 11, y: 17, first_tile: 0x52, palette: 9 };
 const WINDOW_FILL_TILE: usize = 0x2A;
 /// The SHUFFLE button over slots 8 and 9 (0x0801F6C2: twelve tiles a
@@ -231,6 +238,8 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         palettes: vec![unite_picture.palette],
         picture: unite_picture,
         place: Some(UNITE_PLACE),
+        icons: block(rom, SOUL_ICONS),
+        icon_palette: palette(rom, SOUL_ICON_PALETTE),
         ..ButtonPictures::default()
     };
     let shuffle_picture = picture(rom, SHUFFLE_PICTURE);

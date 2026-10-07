@@ -127,6 +127,20 @@ function dark_chips.chip_picked(side: number, _chip: Chip)
     s.picks += 1
 end
 
+-- Double Soul's choice (0x08020900, ./souls/custom): the last pick's place goes first and the others' each one on, the
+-- picks' offered flags with them. The soul in the first place keeps the flag of the chip given up for it, which OK
+-- counts sent all the same (0x0801F074: the chip's entry, the screen's +0x0E, through 0x0801EF7C); taking the soul back
+-- puts the chip back in its place (0x0801F8FC).
+function dark_chips.last_pick_first(_side: number)
+    local s = rules.state() :: State
+    if s.picks == 0 then
+        return
+    end
+    local last = bit32.lshift(1, s.picks - 1)
+    local others = bit32.band(s.offered_picks, last - 1)
+    s.offered_picks = bit32.bor(bit32.lshift(others, 1), if bit32.btest(s.offered_picks, last) then 1 else 0)
+end
+
 -- The last pick taken back.
 function dark_chips.chip_taken_back(_side: number, _chip: Chip)
     local s = rules.state() :: State

@@ -2,18 +2,26 @@
 //! one navi an EXE4 save operates), its equipped folder with its Regular chip,
 //! the NaviCust's programs as placed, what the save brings to the stats (the
 //! base HP and the Regular memory), and from MegaMan's NaviStats block his
-//! light/dark value, and the patch cards
-//! switched on (a card whose effects aren't ported yet, docs/design/
-//! exe4-map.md §18, said and left out). The import is the compat
+//! light/dark value, the patch cards switched on (a card whose effects
+//! aren't ported yet, docs/design/exe4-map.md §18, said and left out), its
+//! version, and Double Soul and the souls it has. The import is the compat
 //! boundary's: a save is the original's bytes, and a side its game's facts
 //! (nettai's build creator picks the game's import: `builds::import`).
 
 use crate::save::Save;
 use nettai_battle::content::{ChipCode, Content};
+use nettai_content_api::Registry;
 use nettai_battle::custom::FolderChip;
 use nettai_battle::rules::Fact;
 use nettai_content_api::Value;
 use nettai_match::{Folder, Side, ids};
+
+/// Double Soul's event flag (0x0801E0B4).
+const DOUBLE_SOUL: u16 = 0x14;
+/// Each version's first soul's event flag, its others' following in its
+/// souls' order (0x08020018's tables by version: Red Sun's 0x17 to 0x1C,
+/// Blue Moon's 0x1D to 0x22).
+const SOUL_FLAGS: [u16; 2] = [0x17, 0x1D];
 
 /// The EXE4 save in `file` (a .sav's bytes, or a raw save image as Tango's
 /// netplay templates hold), or why it is none. (A raw image says neither its
@@ -87,6 +95,21 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
     // What the save brings to the stats: the base HP, the Regular memory.
     state(side, "hp", &[Fact::Value(Value::Int(save.base_max_hp() as i64))]);
     state(side, "reg_up", &[Fact::Value(Value::Int(save.regular_memory() as i64))]);
+    // Its version; Double Soul (event flag 0x14) and the souls it has (EXE4's
+    // rules/souls): of the forms MegaMan lists for the version, in order,
+    // those whose flags are set (0x0801FFD4's table: Red Sun's souls'
+    // 0x17 to 0x1C, Blue Moon's 0x1D to 0x22).
+    let version = save.version.name();
+    state(side, "version", &[Fact::Name(version)]);
+    state(side, "double_soul", &[Fact::Value(Value::Bool(save.event_flag(DOUBLE_SOUL)))]);
+    let navi = side.navi(content);
+    let listed = content.navi(navi).forms.as_ref().map_or(&[][..], |f| f.listed(version));
+    let first = SOUL_FLAGS[save.version as usize];
+    let souls: Vec<Fact> = (listed.iter().enumerate())
+        .filter(|&(k, _)| save.event_flag(first + k as u16))
+        .map(|(_, f)| Fact::Value(Value::Def(Registry::Form, f.0)))
+        .collect();
+    state(side, "souls", &souls);
     notes.extend(left_out);
     notes
 }
@@ -103,7 +126,10 @@ mod tests {
     /// the command line's left end; patch card 16 (Panel Change) on in slot 0
     /// and card 12 (Buster Patch, whose B button waits) in slot 1, card 1 off
     /// in slot 2; MegaMan's block with
-    /// the dark value 460; a base HP of 760 and a Regular memory of 10.
+    /// the dark value 460; a base HP of 760 and a Regular memory of 10;
+    /// Double Soul (event flag 0x14) and Red Sun's souls 1 and 3 (flags 0x17
+    /// and 0x19, RollSoul and WindSoul), and Blue Moon's flag of soul 7
+    /// (0x1D), which a Red Sun save's souls don't read.
     fn image() -> Vec<u8> {
         let mut img = vec![0; crate::save::IMAGE_SIZE];
         img[0x2208..0x2208 + 20].copy_from_slice(b"ROCKMANEXE4 20031022");
@@ -121,6 +147,9 @@ mod tests {
         img[0x464C..0x464C + 7].copy_from_slice(&[16, 12, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
         img[0x4653..0x4653 + 7].copy_from_slice(&[0xFF, 0xFF, 1, 0xFF, 0xFF, 0xFF, 0xFF]);
         img[0x4E60 + 0x36..0x4E60 + 0x38].copy_from_slice(&460u16.to_le_bytes());
+        for flag in [0x14usize, 0x17, 0x19, 0x1D] {
+            img[0x2248 + flag / 8] |= 0x80 >> (flag % 8);
+        }
         img
     }
 
@@ -144,6 +173,15 @@ mod tests {
         );
         let Some(Stated::List(cards)) = get("patch_cards") else { panic!("{:?}", get("patch_cards")) };
         assert_eq!(cards.len(), 1, "{cards:?}");
+        let form = |key: &str| Stated::Def(Registry::Form, Some(content.form_by_key(key).0));
+        assert_eq!(
+            (get("version"), get("double_soul"), get("souls")),
+            (
+                Some(Stated::Variant(Some("redsun".into()))),
+                Some(Stated::Flag(true)),
+                Some(Stated::List([form("rollsoul"), form("windsoul")].into_iter().chain(std::iter::repeat_n(Stated::Def(Registry::Form, None), 4)).collect()))
+            )
+        );
         assert_eq!(
             notes,
             [
