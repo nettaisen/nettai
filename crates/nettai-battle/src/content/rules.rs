@@ -577,6 +577,11 @@ pub struct HitTest {
     /// The type bits a guard breaks to (EXE6's 0x2, EXE5's 0x1002); a type
     /// with 0x4000 breaks one by 0x1002 in either.
     pub guard_breaks_to: u32,
+    /// An untouchable receiver (flag 0x08000000) is tested with the
+    /// invulnerable one, after its guard and the air/ground test, so its
+    /// guard still turns hits aside (EXE4's 0x08012BDC: 0x08000008); else
+    /// with the other states before the guard (EXE6's and EXE5's).
+    pub guard_before_untouchable: bool,
 }
 
 /// How a navi takes a hit's NaviCust bug, where games differ (`sub_801AC6C`,
