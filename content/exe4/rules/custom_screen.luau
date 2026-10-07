@@ -193,4 +193,7 @@ return {
     -- It draws the last turns' block and counts its frame before its keys (0x0801E3DA, 0x0801E3DE): the cursor blinks
     -- a frame further on.
     frame_counts_first = true,
+    -- R's description and L's message are states of the choosing (0x18, 0x1C): their ticks draw the last turns' block
+    -- and count the frame, and the tick the chatbox is seen closed draws the cursor (0x08020A0A, 0x0801E412).
+    description_in_choosing = true,
 }

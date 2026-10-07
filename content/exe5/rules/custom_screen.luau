@@ -91,4 +91,6 @@ return {
     cursor_after_leaving = true,
     -- The frame (the cursor's blink) counts after what the choosing draws, as EXE6's.
     frame_counts_first = false,
+    -- The description and L's message are the screen's own states, as EXE6's: they draw only the emblem.
+    description_in_choosing = false,
 }
