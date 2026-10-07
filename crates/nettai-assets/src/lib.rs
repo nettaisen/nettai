@@ -414,6 +414,10 @@ pub struct HudLayout {
     /// The priority the HP numbers under objects are drawn at (EXE6's
     /// `sub_801C202`: 2; EXE4's 0x08014EB8: 1).
     pub hp_number_priority: u8,
+    /// Where a message ("COUNTER HIT!") is laid: its first column and its
+    /// row, and how many glyphs wide (EXE6's `sub_801E270`: from column 7,
+    /// row 2, 17; EXE4's 0x08015FE8: from column 8, row 2, 14).
+    pub message: (u8, u8, u8),
     /// The telops' own look, where the game lays a telop out in its code
     /// rather than from a banner record of its table (EXE4's 0x0801650C);
     /// none: the telop banners' places, in the HP box's palette (EXE6's).
@@ -422,7 +426,7 @@ pub struct HudLayout {
 
 impl Default for HudLayout {
     fn default() -> Self {
-        HudLayout { pause: (100, 63), hp_number_priority: 2, telop: None }
+        HudLayout { pause: (100, 63), hp_number_priority: 2, message: (7, 2, 17), telop: None }
     }
 }
 
