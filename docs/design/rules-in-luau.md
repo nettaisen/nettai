@@ -3295,3 +3295,12 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
 - **EXE5's type 5 is "magnet"** (the user: "metal" panels in EXE5 are magnet panels): its rules, compat table,
   stages, chips, generators and pack field name it so, and the form trait is `stands_on_magnet`. EXE4's type 5 stays
   "metal", its unbreakable plate.
+
+### Panels into Luau, step 4: a type's `hit` (2026-10-07, branch exe4-engine)
+
+- **The hook** `hit(body, element)`: the hit kernel's point where an object that isn't a body (an attack, of
+  `element`) touches a body that isn't invulnerable, the object's hit flags' bit 0 clear (`hs` a body's, `rs` not)
+  calls the type of the panel under the body. EXE6's ice (and the test content's): an aqua attack freezes the body
+  (its `status_final`, `statuses.freeze_150`) and the panel turns normal (exelib's `panel_types.freezes(status)`).
+  EXE5's and EXE4's ice have none.
+- **Gone from Rust**: the status role `ice_freeze` (EXE6's roles, the test content's, the test pack's).

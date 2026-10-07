@@ -61,6 +61,37 @@ language = "ja"
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
 
+# The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
+# tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
+[backgrounds]
+"acdc-area" = { name = "秋原エリア" }
+"air-stadium" = { name = "くうちゅうスタジアム" }
+"black-earth" = { name = "ブラックアース" }
+"castillo-hp" = { name = "シェロ・カスティロのHP" }
+"colosseum" = { name = "コロッセオ" }
+"comp" = { name = "電脳" }
+"darksoul" = { name = "ダークソウル" }
+"dexs-hp" = { name = "デカオのHP" }
+"duo" = { name = "デューオ" }
+"eltwr-comp" = { name = "でんぱとうの電脳" }
+"hotel-hp" = { name = "ホテルのHP" }
+"jomonelec-hp" = { name = "ジョーモン電気のHP" }
+"lans-hp" = { name = "熱斗のHP" }
+"mayls-hp" = { name = "メイルのHP" }
+"meteor-comp" = { name = "しょうわくせいの電脳" }
+"netfrica-area" = { name = "アッフリクエリア" }
+"netopia-area" = { name = "アメロッパエリア" }
+"park-area" = { name = "パークエリア" }
+"sharo-area" = { name = "シャーロエリア" }
+"spacectr-hp" = { name = "うちゅうセンターのHP" }
+"stadium" = { name = "スタジアム" }
+"town-area" = { name = "タウンエリア" }
+"toyrobo-comp" = { name = "ぬいぐるみロボの電脳" }
+"toyrobo-comp4" = { name = "ぬいぐるみロボの電脳4" }
+"undernet" = { name = "ウラインターネット" }
+"yais-hp" = { name = "やいとのHP" }
+"yumland-area" = { name = "アジーナエリア" }
+
 [navicust_programs]
 "airshoes" = { name = "エアシューズ", description = "パネルのないマスでも\nいどうできる!" }
 "attack-1" = { name = "アタック+1", description = "ロックバスターの\n攻撃力が1アップ!" }

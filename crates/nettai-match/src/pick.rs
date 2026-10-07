@@ -312,8 +312,11 @@ mod tests {
         let never: Vec<String> = crate::link_battle_stages(&five, "exe5").into_iter().map(|s| name(&five, s)).filter(|n| !reached.contains(n)).collect();
         assert_eq!(never, (75..=86).map(|n| format!("netbattle-{n}")).collect::<Vec<_>>(), "records 76 to 87");
         assert!(crate::link_stage(&five, "exe5", "netbattle-80").is_ok(), "a match may name one all the same");
+        // (Its 27 numbers, 21 backgrounds: a liberation map's number is its
+        // area's background, acdc-area's 0x08 and 0x0C.)
         let backgrounds = link_backgrounds(&five);
-        assert_eq!((backgrounds.len(), backgrounds.iter().collect::<std::collections::BTreeSet<_>>().len()), (27, 27));
+        assert_eq!((backgrounds.len(), backgrounds.iter().collect::<std::collections::BTreeSet<_>>().len()), (27, 21));
+        assert_eq!((backgrounds[8], backgrounds[12]), ("acdc-area", "acdc-area"));
         // The places a match leaves to its seed are of the pick's stages and
         // backgrounds, the first round's of the first round's count: EXE6's
         // all 96, EXE5's the first 68 (a practice's 0x44: netbattle-1 to

@@ -333,7 +333,9 @@ from the ROM and its code, read routine by routine):
   tick (players 31 and 9, the table 0x0801E584); its sound 0x100 on the tick after the shade settles and every 61;
   OK clears the fades at once (`fades_clear_at_ok`); the close sets players 9 and 31 back (`restore_players`).
 - **Drawing** (presentation): the tick a key leaves the choosing draws what its new state draws, no cursor
-  (`cursor_after_leaving`, 0x0801E412).
+  (`cursor_after_leaving`, 0x0801E412). The choosing tick draws the last turns' block and counts its frame before
+  its keys (`frame_counts_first`, 0x0801E3DA, 0x0801E3DE): the cursor blinks a frame further on than EXE6's, and the
+  Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0.
 - **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape.
 - **Sounds** (named for their code in gen_content.py's BY_USE): open 0x7A, cursor 0x7D, pick 0x7E, back 0x7F, OK 0x80,
   refused 0x69, description 0x66, the hover 0x100, the Program Advance's parts 0x79 and its result 0x97, the gauge full
@@ -721,7 +723,8 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   on starts 4 frames later than the original's local screen's. Live nettai has no built-in delay (netplay's
   `present_delay` is 0, with rollback): its screen reacts on the tick its input arrives. Compared 4 frames apart
   (verify tools/frontend-compare/offset-compare.py), the
-  full gauge's cells are exact on all 10,509 full-gauge frames of flow/no-time-limit.
+  full gauge's cells are exact on all 10,509 full-gauge frames of flow/no-time-limit. The frame comparison now
+  knows the shift itself (§17's known deviations: `shifted.tsv`, "exact at the replay's known shift").
   The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
   only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
   arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
@@ -862,6 +865,24 @@ cable, and the replay feeds the custom screen's OK as the fight saw it, the cabl
 original's screen took it, so the side's selection status (BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4
 ticks longer, and the custom HP-drain bug, which counts only while it is set (0x0800C194), drains a point the original
 doesn't. No link latency goes into the engine (the user's word); a recording with another cause is no deviation.
+
+**The frames' known shift** (every game's recordings since engine 21cac76de took the link cable out of the engine,
+which EXE5's and EXE6's frame comparisons showed as a regression from engine 8a5cc6130: EXE5's backgrounds/0x00 at
+807 of 1159 frames). The replay feeds the recording console's custom screen its OK the cable's delay late (compat's
+`Round::fed`), so the fight resumes on the original's frame, and so that screen shows its OK that much later: from
+the original's OK until the replay's (`held`: the screen still choosing), then its slide-out (`late`, until the fight
+resumes) and, counted from its send, the full gauge's stripes and "L or R" and EXE4's "BUSY..." (`gauge`, the gauge's
+place, for the rest of the round) `link_delay` frames behind the original's. Each harness gives the OK's frame
+(`Round::local_ok`, `first_local_ok`), nettai-tool's replay drivers say the frame's shift (`Driver::feed_shift`), and
+`--headless` writes it beside the frames (`shifted.tsv`: frame, what, frames late, x, y, width, height). The verify
+workspace's frame comparison (tools/frontend-compare/compare.py) compares the shifted places with the original's frame
+and its frame that many frames before, a pixel matching either matching, and reports apart what is exact only so ("at
+the replay's known shift: X fight frames and Y of the custom screen's more exact"), what still differs only inside the
+shifted places (the late screen over the panels' palettes, which run on time; the stripes' first frames as the gauge
+fills: their own runs, "only where the replay shifts"), and the frames held; lab-compare.sh counts a scenario with no
+other difference as exact at the known shift. Checked: EXE5 backgrounds/0x00 (807 pixel-exact, 355 more at the shift,
+12 only where it shifts, 3 held: nothing else), custom/picks, description, chips/0x001-cannon/hit; EXE6 flow/keep-hand
+(a full gauge, two screens), custom/hide-window, take-back, chips/0x001-cannon/hit; EXE4's custom set.
 
 ## 18. Engine gaps (must close)
 

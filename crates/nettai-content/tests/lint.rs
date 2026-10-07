@@ -111,11 +111,22 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
         c.define().unwrap_or_else(|e| panic!("content/: {e}"));
         c
     };
+    // (The made-up assets have the backgrounds the content names; the
+    // pack has the others the locales name too.)
+    let with_backgrounds = |mut c: nettai_battle::Content, game: &str| {
+        let own = nettai_content::locale::load(&dir.join(game), "en").unwrap().unwrap();
+        for name in own.backgrounds.keys() {
+            let at = nettai_content_api::InPack { pack: nettai_content_api::PackId(0), id: 0xFE };
+            c.assets.backgrounds.entry(name.clone()).or_insert(at);
+        }
+        c
+    };
     let c = define(base.strings.clone());
     let mut r = Report::default();
-    nettai_content::locale::check_games(dir, &c, &mut r);
+    nettai_content::locale::check_games(dir, &with_backgrounds(c.clone(), "exe6"), &mut r);
     let mut five = read(&["exe5"]);
     five.define().unwrap_or_else(|e| panic!("content/exe5: {e}"));
+    let five = with_backgrounds(five, "exe5");
     nettai_content::locale::check_games(dir, &five, &mut r);
     // The library orders (content/<game>/library.toml) name the games' own
     // definitions, each once, in sections their classes fit.

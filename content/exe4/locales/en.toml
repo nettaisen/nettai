@@ -61,6 +61,37 @@ language = "en"
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
 
+# The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
+# tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
+[backgrounds]
+"acdc-area" = { name = "ACDC Area" }
+"air-stadium" = { name = "AirStadium" }
+"black-earth" = { name = "BlackEarth" }
+"castillo-hp" = { name = "Castillo HP" }
+"colosseum" = { name = "Colosseum" }
+"comp" = { name = "Comp" }
+"darksoul" = { name = "DarkSoul" }
+"dexs-hp" = { name = "Dex's HP" }
+"duo" = { name = "Duo" }
+"eltwr-comp" = { name = "ElTwrComp" }
+"hotel-hp" = { name = "Hotel HP" }
+"jomonelec-hp" = { name = "JomonElec HP" }
+"lans-hp" = { name = "Lan's HP" }
+"mayls-hp" = { name = "Mayl's HP" }
+"meteor-comp" = { name = "MeteorComp" }
+"netfrica-area" = { name = "NetFricaArea" }
+"netopia-area" = { name = "Netopia Area" }
+"park-area" = { name = "Park Area" }
+"sharo-area" = { name = "Sharo Area" }
+"spacectr-hp" = { name = "SpaceCtr HP" }
+"stadium" = { name = "Stadium" }
+"town-area" = { name = "Town Area" }
+"toyrobo-comp" = { name = "ToyRoboComp" }
+"toyrobo-comp4" = { name = "ToyRoboComp4" }
+"undernet" = { name = "Undernet" }
+"yais-hp" = { name = "Yai's HP" }
+"yumland-area" = { name = "YumLand Area" }
+
 [navicust_programs]
 "airshoes" = { name = "AirShoes", description = "Walk even\nif no\npanels!" }
 "attack-1" = { name = "Attack+1", description = "MegBuster\nAttack+1!" }

@@ -12,8 +12,10 @@
 //!
 //! 1. **Lobby** — a peer's proposal, `Settings { game, rounds }`, the
 //!    rounds by name (each round's stage and background stated, or left to
-//!    the seed), whether the peer is ready to play it, and its player's
-//!    name ([`player_name`]: shown, never taken for who they are); with the
+//!    the seed), whether the peer is ready to play it, its player's name
+//!    ([`player_name`]: shown, never taken for who they are), the navi its
+//!    side plays and the build it brings, as its program labels it (its
+//!    name and version: shown, never taken for the side); with the
 //!    compatibility fields (the protocol's version, the engine's, the
 //!    content's hash, the role), so a peer that can't play the other's
 //!    match says so at once. The lobby is symmetric: each peer proposes
@@ -278,16 +280,31 @@ struct Theirs {
     settings: Result<Settings, String>,
     ready: bool,
     name: String,
+    /// The navi their side plays, by its name in the game.
+    navi: String,
+    /// The build they bring, as their program labels it: its name, its
+    /// version.
+    build: (String, String),
 }
 
 /// The most characters of a player's name the lobby carries.
 pub const NAME_LENGTH: usize = 16;
 
+/// The most characters of a build's label (its name, its version) the
+/// lobby carries.
+pub const BUILD_LENGTH: usize = 40;
+
 /// A player's name as the lobby carries and shows it: its control
 /// characters left out, trimmed, at most [`NAME_LENGTH`] characters. A
 /// name is only shown: nothing takes it for who the player is.
 pub fn player_name(name: &str) -> String {
-    name.chars().filter(|c| !c.is_control()).collect::<String>().trim().chars().take(NAME_LENGTH).collect::<String>().trim_end().to_string()
+    shown(name, NAME_LENGTH)
+}
+
+/// Text the lobby carries only to be shown: its control characters left
+/// out, trimmed, at most `length` characters.
+fn shown(text: &str, length: usize) -> String {
+    text.chars().filter(|c| !c.is_control()).collect::<String>().trim().chars().take(length).collect::<String>().trim_end().to_string()
 }
 
 /// Where the handshake is past the lobby.
@@ -321,6 +338,8 @@ pub struct Lobby {
     ready: bool,
     /// This player's name ([`player_name`]).
     name: String,
+    /// The build this player brings, as the program labels it.
+    build: (String, String),
     revision: u32,
     theirs: Option<Theirs>,
     side: Side,
@@ -355,6 +374,7 @@ impl Lobby {
             mine: settings,
             ready: false,
             name: String::new(),
+            build: (String::new(), String::new()),
             revision: 0,
             theirs: None,
             side,
@@ -399,6 +419,42 @@ impl Lobby {
     /// shown, never taken for who they are).
     pub fn their_name(&self) -> Option<&str> {
         self.theirs.as_ref().map(|t| t.name.as_str())
+    }
+
+    /// The navi the other player's side plays, by its name in the game, as
+    /// their lobby said it last: shown before the match (a navi other than
+    /// the game's own is a format of its own), never taken for their side,
+    /// which their Reveal brings.
+    pub fn their_navi(&self) -> Option<&str> {
+        self.theirs.as_ref().map(|t| t.navi.as_str())
+    }
+
+    /// The build the other player brings, as their program labels it (its
+    /// name, its version), as their lobby said it last: shown, never taken
+    /// for their side.
+    pub fn their_build(&self) -> Option<(&str, &str)> {
+        self.theirs.as_ref().map(|t| (t.build.0.as_str(), t.build.1.as_str()))
+    }
+
+    /// Say the build this player brings, as the program labels it (its
+    /// name, its version), to the other peer: shown there, as a name is.
+    pub fn set_build(&mut self, name: &str, version: &str) {
+        let build = (shown(name, BUILD_LENGTH), shown(version, BUILD_LENGTH));
+        if build != self.build && matches!(self.phase, Phase::Lobby) {
+            self.build = build;
+            self.revision += 1;
+            self.changed = true;
+        }
+    }
+
+    /// The side this player brings, from now: a change clears this peer's
+    /// ready (and the other's, which sees its navi) and takes back an
+    /// agreement not yet played, as a change of settings does.
+    pub fn set_side(&mut self, side: Side) {
+        if side != self.side && !self.over() {
+            self.side = side;
+            self.change(false);
+        }
     }
 
     /// Say this player's name ([`player_name`] of it) to the other peer.
@@ -505,17 +561,22 @@ impl Lobby {
         if !self.compatible(&compat) || self.over() {
             return;
         }
-        let (Ok(revision), Ok(ready), Ok(settings), Ok(name)) = (r.get::<u32>(), r.get::<bool>(), r.bytes(), r.get::<String>()) else { return };
+        let (Ok(revision), Ok(ready), Ok(settings), Ok(name), Ok(navi), Ok(build), Ok(version)) =
+            (r.get::<u32>(), r.get::<bool>(), r.bytes(), r.get::<String>(), r.get::<String>(), r.get::<String>(), r.get::<String>())
+        else {
+            return;
+        };
         if self.theirs.as_ref().is_some_and(|t| revision <= t.revision) {
             return;
         }
         let settings = Settings::from_bytes(&self.content, settings);
         let name = player_name(&name);
+        let build = (shown(&build, BUILD_LENGTH), shown(&version, BUILD_LENGTH));
         // A change of theirs clears this peer's ready too.
         if self.theirs.as_ref().is_some_and(|t| t.settings != settings) && self.ready {
             self.change(false);
         }
-        self.theirs = Some(Theirs { revision, settings, ready, name });
+        self.theirs = Some(Theirs { revision, settings, ready, name, navi, build });
         // (A commitment stands while the other's state is the one agreed.)
         if let Phase::Hello(c) | Phase::Reveal(c, _) = &self.phase
             && !(ready && c.revisions.1 == revision)
@@ -622,6 +683,9 @@ impl Lobby {
         w.put(&self.ready);
         w.bytes(&self.mine.to_bytes(&self.content));
         w.put(&self.name);
+        w.put(&nettai_match::ids::local(&self.content.defs.navi(self.side.navi(&self.content)).key).to_string());
+        w.put(&self.build.0);
+        w.put(&self.build.1);
         out
     }
 
@@ -792,6 +856,44 @@ mod tests {
         assert_eq!(names[0], ["Lan[31m".to_string(), "Chaud Blaze, of".to_string()]);
         assert_eq!(names[1], names[0]);
         assert_eq!(player_name("\u{0}\u{0}"), "");
+    }
+
+    /// Each player's navi goes to the other by its name before the match,
+    /// and their build's label; a new side says its navi, clears both
+    /// readies, and is the one revealed.
+    #[test]
+    fn navis_and_builds_go_to_the_other_player() {
+        let content = nettai_match::testing::exe6_content();
+        let s = settings(vec![RoundSettings::default(); TRIPLE_BATTLE]);
+        let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
+        lobbies[1].set_ready(false);
+        lobbies[0].set_build("Heat \u{7}guts", "gregar");
+        run(&mut lobbies, Instant::now(), 3, &mut |_, _| {});
+        assert_eq!(lobbies[1].their_navi(), Some("megaman"));
+        assert_eq!(lobbies[1].their_build(), Some(("Heat guts", "gregar")), "the build's label, shown as a name is");
+        assert!(lobbies[0].ready(), "a label changes no readiness");
+        let elecman = nettai_match::ids::navi(&content, "exe6", "elecman").unwrap();
+        let mut other = side(&content, 3);
+        other.set_navi(&content, elecman).unwrap();
+        other.set_level(&content, Some(10)).unwrap();
+        // (A link navi has no Crosses.)
+        other.set_fact(&content, "crosses", &[]).unwrap();
+        assert_eq!(nettai_match::check::check_side_alone(&content, "exe6", &other), Vec::<String>::new());
+        lobbies[0].set_side(other.clone());
+        assert!(!lobbies[0].ready(), "a new side clears the ready");
+        run(&mut lobbies, Instant::now(), 3, &mut |_, _| {});
+        assert_eq!(lobbies[1].their_navi(), Some("elecman"));
+        lobbies[0].set_ready(true);
+        lobbies[1].set_ready(true);
+        run(&mut lobbies, Instant::now(), 20, &mut |_, _| {});
+        let navis: Vec<String> = lobbies
+            .iter_mut()
+            .map(|l| match l.poll(Instant::now()) {
+                Status::Agreed(a) => nettai_match::ids::local(&content.defs.navi(a.m.sides[0].navi(&content)).key).to_string(),
+                _ => panic!("not agreed"),
+            })
+            .collect();
+        assert_eq!(navis, ["elecman", "elecman"], "the side revealed is the new one");
     }
 
     /// Settings go by name and read back; ones this content can't play are
