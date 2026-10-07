@@ -23,13 +23,12 @@ return {
     -- The hit test (`sub_3007218`), where games differ: a FloatShoe body (flag 0x20) meets only collision types
     -- with the 0x80 self bit; the flag 0x80000000 is a bubble, on which an elec hit counts once more (no body
     -- dives under a sea), and elec reaches a submerged body no more than another element; a guard breaks to types
-    -- with 0x2 (0x1002 for a type with 0x4000); no panel doubles an elec hit.
+    -- with 0x2 (0x1002 for a type with 0x4000).
     hit_test = {
         float_shoe_needs_self_bit = true,
         bubbled_as_submerged = false,
         elec_reaches_submerged = false,
         guard_breaks_to = 0x0002,
-        elec_bonus_on_sea = false,
     },
     -- A move's direction in the collision record (`sub_800E994`, `object_updateCollisionPanels`): up, down, back
     -- or forward by the side, other for a move of two panels or more right or down.

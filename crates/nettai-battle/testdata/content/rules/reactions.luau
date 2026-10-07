@@ -32,13 +32,12 @@ return {
     },
     -- A FloatShoe body meets only collision types with the 0x80 self bit;
     -- the flag 0x80000000 is a bubble, on which an elec hit counts once
-    -- more; a guard breaks to types with 0x2; its sea gives elec no bonus.
+    -- more; a guard breaks to types with 0x2.
     hit_test = {
         float_shoe_needs_self_bit = true,
         bubbled_as_submerged = false,
         elec_reaches_submerged = false,
         guard_breaks_to = 0x0002,
-        elec_bonus_on_sea = false,
     },
     -- A pulled obstacle stays out of the puller's area.
     obstacle_slide_bounds = true,

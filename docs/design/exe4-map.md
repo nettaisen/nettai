@@ -568,9 +568,11 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    which the intake sets with a push's request, reads the same: no rule. (EXE4's reading stores the row even when
    its first panel is closed, which the slide then tests; EXE6's stores none: nothing reads the row after a failed
    slide.) Left of EXE4's slide and drag, as their own gaps: item 33.
-4. **Elec on ice.** 0x08012CF2: an elec hit counts once more on ice (panel 7), a fire hit on grass; the engine's bonus
-   is elec on the sea (`hit_test.elec_bonus_on_sea`). Shape: `hit_test.element_bonus = { {element, panel}, ... }`
-   (EXE6's {elec, sea}... as each states). Placeholder: `elec_bonus_on_sea = false` (EXE4 gives none on ice).
+4. **Done: elec on ice.** 0x08012CF2 (the hit kernel's and its unfiltered channel's): an elec hit counts once more,
+   as null damage, on a body standing on ice (panel 7), a fire hit on grass (6); EXE6's fire on grass alone
+   (`applyHeatOnGrassDamage_300766c`), EXE5's and elec on its sea (0x08016AF6). The panel type's rule
+   `doubles = element` (EXE4's grass fire, ice elec, gen_rules.py reading the kernel's comparisons); the reactions'
+   `hit_test.elec_bonus_on_sea` is gone.
 5. **The hit test.** 0x08012AFC: no FloatShoe self bit, no body under a sea; a guard breaks to types with 0x1002
    (0x08012F24) and turns aside what lacks 0x0C004000. Placeholder: the `hit_test` booleans as written, the guard's
    0x1002; the 0x0C004000 test is the engine's (to compare).
