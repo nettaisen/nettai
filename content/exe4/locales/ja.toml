@@ -5,6 +5,7 @@ language = "ja"
 
 [chips]
 "cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"airshot" = { name = "エアシュート", description = "ヒットしたあいてを\n1マスおくへおす\nくうきほう" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

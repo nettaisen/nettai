@@ -472,6 +472,16 @@ Soul and its transformation, the dark chips offered in battle, the emotions, the
 the stat block (0x40 bytes, the same kinds of fields at other offsets), the battle flow's handlers, the link
 exchange.
 
+**The first chips** (the nine of Tango's saves' folders, group B's and A's, the pattern of the chips wave): each a
+chip module (`chips/<series>`) composing its action's family (`lib/<family>`) from its variant's rows, its record's
+fields by hand from the record (§3.2), its names and descriptions the ROMs', its action number in
+compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, side1) and frame-compared.
+
+- **AirShot** (action 0x23, `lib/airshot`): EXE4's own. EXE6's and EXE5's (@exelib/airshot) differ in the animation
+  (12, not 9), the shooter (an attachment of EXE4's kind, row 9, not an overlay), the shot's tick and the recovery
+  (none for variant 0: the store of 10 overwritten, 0x080ECC0A); the projectile (exelib's, EXE4's row 4: hit
+  modifier 0x21, EXE5's 0x61) and its spawn are shared.
+
 **For the next steps:**
 
 - **Extraction** (`nettai-extract exe4`): as built, §14.
@@ -1303,6 +1313,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090. Cards 76 and 77 (All Guard) set
     +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so it turns aside
     every hit that doesn't break guards, 0x08012B84).
+61. **Done: the idle stands the navi** (from AirShot's replays). MegaMan's idle (0x080EEB38) puts animation 0 on each
+    tick past its first phase (0x080EEB7C: 0x080EEBAC), the 10 ticks after a reaction's end; EXE6's (`sub_80F0354`)
+    and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
+    shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
+    `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
 
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
