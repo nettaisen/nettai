@@ -70,6 +70,9 @@ pub struct BuildsState {
     pub status: String,
     pub editor: Option<Editor>,
     pub kits: HashMap<String, Rc<Kit>>,
+    /// The screen the creator goes back to (the Builds tab, or the tab whose
+    /// strip opened it).
+    pub from: crate::Screen,
 }
 
 /// The face the emotion window shows of a navi: its form's for an emotion

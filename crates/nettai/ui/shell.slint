@@ -1,0 +1,546 @@
+// The app's frame, as Tango's: the top bar with its tabs (online play,
+// training and the replays; the builds and the settings at its right, the
+// occasional ones), the selector strip a tab chooses the game and the build
+// in, the chosen build's sheet, and the band at a tab's foot that holds its
+// main action. Each keeps its size whatever it shows: a value has its column,
+// a list its slots, a line its height.
+
+import { Theme, Screen, UiSound } from "theme.slint";
+import { Slant, Label, OptionRow, Button } from "widgets.slint";
+import { BuildText, StatRow } from "build.slint";
+
+export enum GameState {
+    // No asset pack of it is found.
+    no-pack,
+    loading,
+    ready,
+    failed,
+}
+
+export struct GameCard {
+    id: string,
+    // Its short name (EXE6), and the larger number on its card.
+    name: string,
+    number: string,
+    state: GameState,
+    // Why it can't be played, in the library's words (a command to run).
+    detail: string,
+}
+
+// A tab of the top bar.
+component Tab {
+    in property <string> text;
+    in property <bool> active;
+    // The bar has the keys, and this is the tab they are on.
+    in property <bool> focused;
+    // One of the occasional tabs (the builds, the settings): quieter.
+    in property <bool> utility;
+    // Something waits on it (an open room, while another tab is shown).
+    in property <bool> badge;
+    callback clicked();
+    width: label.preferred-width + (Theme.compact ? 18px : 36px);
+
+    Slant {
+        y: 8px;
+        height: parent.height - 16px;
+        lean: 10px;
+        color: root.focused ? Theme.cyan : root.active ? Theme.raised : transparent;
+        animate color { duration: Theme.quick; }
+    }
+
+    label := Text {
+        text: root.text;
+        color: root.focused ? Theme.ink : root.active ? white : root.utility ? Theme.text-faint : Theme.text-dim;
+        font-size: Theme.compact ? 11px : root.utility ? 13px : 16px;
+        font-weight: Theme.black;
+        letter-spacing: (Theme.compact ? 0.5px : 1.5px) * Theme.tracking;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    // The active tab's mark along the bar's foot.
+    Rectangle {
+        y: parent.height - 3px;
+        height: 3px;
+        background: root.active ? Theme.cyan : transparent;
+    }
+
+    if root.badge: Rectangle {
+        x: parent.width - 12px;
+        y: 12px;
+        width: 7px;
+        height: 7px;
+        border-radius: 3.5px;
+        background: Theme.magenta;
+    }
+
+    TouchArea {
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// The top bar: the name, then the tabs.
+export component TopBar {
+    in property <Screen> active;
+    in property <bool> focused;
+    in property <bool> badge;
+    callback choose(Screen);
+    height: Theme.compact ? 48px : 60px;
+
+    Rectangle {
+        background: Theme.ink.with-alpha(0.78);
+    }
+
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: @linear-gradient(90deg, Theme.cyan.with-alpha(0.55) 0%, Theme.line 45%, Theme.line.with-alpha(0.2) 100%);
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.compact ? 6px : Theme.gutter * 0.6;
+        padding-right: Theme.compact ? 6px : Theme.gutter * 0.6;
+        spacing: Theme.compact ? 0px : 4px;
+        // The name, small (not on a phone: the tabs need its room).
+        if !Theme.compact: Rectangle {
+            width: 112px;
+            Text {
+                x: 2px;
+                y: (parent.height - self.preferred-height) / 2 + 2px;
+                text: "nettai";
+                color: Theme.magenta.with-alpha(0.85);
+                font-size: 26px;
+                font-weight: Theme.black;
+                font-italic: true;
+            }
+
+            Text {
+                x: 0px;
+                y: (parent.height - self.preferred-height) / 2;
+                text: "nettai";
+                color: white;
+                font-size: 26px;
+                font-weight: Theme.black;
+                font-italic: true;
+            }
+        }
+
+        for t[i] in [
+            { screen: Screen.play, text: @tr("tab" => "PLAY") },
+            { screen: Screen.training, text: @tr("tab" => "TRAINING") },
+            { screen: Screen.replays, text: @tr("tab" => "REPLAYS") },
+        ]: Tab {
+            text: t.text;
+            active: root.active == t.screen;
+            focused: root.focused && root.active == t.screen;
+            badge: i == 0 && root.badge && root.active != Screen.play;
+            clicked => {
+                root.choose(t.screen);
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        for t in [
+            { screen: Screen.builds, text: @tr("tab" => "BUILDS") },
+            { screen: Screen.settings, text: @tr("tab" => "SETTINGS") },
+        ]: Tab {
+            text: t.text;
+            utility: true;
+            active: root.active == t.screen;
+            focused: root.focused && root.active == t.screen;
+            clicked => {
+                root.choose(t.screen);
+            }
+        }
+    }
+}
+
+// The selector strip: the game and the build a tab plays, and the build's
+// own action (edit it, or make one).
+export component Strip {
+    in property <string> game;
+    in property <GameState> game-state;
+    in property <string> build;
+    // The build: 0 none of yours (a random side, or a match's), else one of
+    // yours, with its navi.
+    in property <int> build-index;
+    in property <string> build-navi;
+    // A game is ready: its builds can be made and edited.
+    in property <bool> can-act;
+    property <string> game-note: root.game == "" ? @tr("No game found") : root.game-state == GameState.ready ? @tr("Ready to play") : root.game-state == GameState.loading ? @tr("LOADING…") : root.game-state == GameState.no-pack ? @tr("NO ASSET PACK") : @tr("CAN'T LOAD");
+    property <string> build-note: root.build-index == 0 ? @tr("A random side, from the seed") : root.build-navi;
+    // EDIT a build of yours, or make a NEW BUILD (NEW on a phone).
+    property <string> action: root.build-index != 0 ? @tr("EDIT") : Theme.compact ? @tr("build" => "NEW") : @tr("NEW BUILD");
+    // The row focused: 0 the game, 1 the build, 2 the action; -1 none.
+    in property <int> cursor: -1;
+    callback point(int);
+    callback step(int, int);
+    callback act();
+    property <length> row-height: Theme.compact ? 52px : 60px;
+    height: Theme.portrait ? 2 * root.row-height + Theme.gap * 0.5 : root.row-height;
+
+    if !Theme.portrait: HorizontalLayout {
+        spacing: Theme.gap;
+        OptionRow {
+            height: root.row-height;
+            width: 34%;
+            text: @tr("GAME");
+            value: root.game;
+            note: root.game-note;
+            value-width: Theme.compact ? 96px : 120px;
+            focused: root.cursor == 0;
+            step(d) => {
+                root.point(0);
+                root.step(0, d);
+            }
+            activate => {
+                root.point(0);
+                root.step(0, 1);
+            }
+        }
+
+        OptionRow {
+            height: root.row-height;
+            horizontal-stretch: 1;
+            text: @tr("YOUR BUILD");
+            value: root.build;
+            note: root.build-note;
+            focused: root.cursor == 1;
+            step(d) => {
+                root.point(1);
+                root.step(1, d);
+            }
+            activate => {
+                root.point(1);
+                root.step(1, 1);
+            }
+        }
+
+        Button {
+            width: Theme.compact ? 132px : 190px;
+            height: root.row-height;
+            text: root.action;
+            enabled: root.can-act;
+            focused: root.cursor == 2;
+            activate => {
+                root.point(2);
+                root.act();
+            }
+        }
+    }
+    // (On a phone held upright: the game and the action in a line, the
+    // build under them, its whole width.)
+    if Theme.portrait: VerticalLayout {
+        spacing: Theme.gap * 0.5;
+        HorizontalLayout {
+            spacing: Theme.gap * 0.5;
+            OptionRow {
+                height: root.row-height;
+                horizontal-stretch: 1;
+                text: @tr("GAME");
+                value: root.game;
+                note: root.game-note;
+                value-width: 64px;
+                focused: root.cursor == 0;
+                step(d) => {
+                    root.point(0);
+                    root.step(0, d);
+                }
+                activate => {
+                    root.point(0);
+                    root.step(0, 1);
+                }
+            }
+
+            Button {
+                width: 104px;
+                height: root.row-height;
+                text: root.action;
+                enabled: root.can-act;
+                focused: root.cursor == 2;
+                activate => {
+                    root.point(2);
+                    root.act();
+                }
+            }
+        }
+
+        OptionRow {
+            height: root.row-height;
+            text: @tr("YOUR BUILD");
+            value: root.build;
+            note: root.build-note;
+            value-width: 128px;
+            focused: root.cursor == 1;
+            step(d) => {
+                root.point(1);
+                root.step(1, d);
+            }
+            activate => {
+                root.point(1);
+                root.step(1, 1);
+            }
+        }
+    }
+}
+
+// One of a sheet's folder entries.
+export struct SheetChip {
+    icon: image,
+    name: string,
+    code: string,
+    // REG, TAG.
+    marks: string,
+    empty: bool,
+}
+
+// One of the rest a build states: a fact of one value, or a list, by its
+// setup field's name (the window words it); `kind` 0 the text as it is, 1
+// a flag ("1" or "0"), 2 a preset (its name).
+export struct SheetLine {
+    key: string,
+    fallback: string,
+    text: string,
+    kind: int,
+}
+
+// What a build is, at a glance: its navi, its folder, what the round starts
+// it with, the rest of what it states.
+export struct Sheet {
+    // There is a build to show (none: no game ready).
+    shown: bool,
+    face: image,
+    navi: string,
+    // The build's name, or what the side is (a random one, the match's).
+    name: string,
+    // Its game.
+    sub: string,
+    stats: [StatRow],
+    // Always the folder's room (30), empty entries held as such.
+    folder: [SheetChip],
+    // The rest it states: its facts of one value, its lists (the Crosses,
+    // the souls, the patch cards…), a line each.
+    lines: [SheetLine],
+    // What its rules say first, if anything.
+    problem: string,
+}
+
+component SheetEntry {
+    in property <SheetChip> chip;
+    in property <int> number;
+    height: 22px;
+    HorizontalLayout {
+        spacing: 6px;
+        Text {
+            width: 18px;
+            text: root.number < 10 ? "0" + root.number : "" + root.number;
+            color: Theme.text-faint;
+            font-size: 10px;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            width: Theme.compact ? 16px : 20px;
+            Image {
+                y: (parent.height - self.height) / 2;
+                width: parent.width;
+                height: parent.width;
+                source: root.chip.icon;
+                image-rendering: pixelated;
+            }
+        }
+
+        Text {
+            horizontal-stretch: 1;
+            text: root.chip.empty ? "—" : root.chip.name;
+            color: root.chip.empty ? Theme.text-faint : Theme.text;
+            font-size: Theme.compact ? 12px : 13px;
+            font-weight: Theme.bold;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Text {
+            width: 26px;
+            text: root.chip.marks;
+            color: Theme.gold;
+            font-size: 9px;
+            font-weight: Theme.black;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+
+        Text {
+            width: 14px;
+            text: root.chip.code;
+            color: Theme.cyan;
+            font-size: 13px;
+            font-weight: Theme.black;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// A build's sheet, as Tango shows the save a player brings: always on
+// screen, so what is brought to the match is seen (and switched) before it.
+export component SheetView {
+    in property <Sheet> sheet;
+    // The folder in this many columns: three where they have the room.
+    in property <int> columns: root.width > 980px ? 3 : 2;
+    // The stats' column (not on a phone held upright).
+    in property <bool> stats: !Theme.portrait;
+    property <int> rows: ceil(30 / root.columns);
+    property <length> entry-height: 22px;
+
+    Slant {
+        lean: 22px;
+        color: Theme.panel.with-alpha(0.55);
+        stroke: Theme.line;
+        stroke-width: 1px;
+    }
+
+    VerticalLayout {
+        padding: Theme.compact ? 12px : 20px;
+        padding-left: Theme.compact ? 24px : 40px;
+        padding-right: Theme.compact ? 22px : 36px;
+        spacing: Theme.compact ? 8px : 12px;
+
+        // Who: the face, the navi, the build.
+        HorizontalLayout {
+            height: Theme.compact ? 40px : 52px;
+            spacing: 14px;
+            Rectangle {
+                width: Theme.compact ? 64px : 96px;
+                Image {
+                    width: parent.width;
+                    height: parent.width / 2;
+                    y: (parent.height - self.height) / 2;
+                    source: root.sheet.face;
+                    image-rendering: pixelated;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Text {
+                    text: root.sheet.shown ? root.sheet.navi : "—";
+                    color: white;
+                    font-size: Theme.compact ? 18px : 24px;
+                    font-weight: Theme.black;
+                    overflow: elide;
+                }
+
+                Text {
+                    text: root.sheet.name + (root.sheet.sub != "" ? "  ·  " + root.sheet.sub : "");
+                    color: Theme.text-dim;
+                    font-size: Theme.label + 1px;
+                    overflow: elide;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.gap * 1.5;
+            vertical-stretch: 1;
+            // What the round starts the navi with, and the rest stated.
+            if root.stats: VerticalLayout {
+                width: 210px;
+                spacing: 0px;
+                alignment: start;
+                Label {
+                    text: @tr("AS A ROUND STARTS");
+                    height: 20px;
+                }
+
+                for s in root.sheet.stats: HorizontalLayout {
+                    height: 22px;
+                    Text {
+                        horizontal-stretch: 1;
+                        text: BuildText.stat(s.key);
+                        color: Theme.text-dim;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+
+                    Text {
+                        width: 92px;
+                        text: s.value;
+                        color: Theme.text;
+                        font-size: 12px;
+                        font-weight: Theme.bold;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                }
+                Rectangle {
+                    height: 8px;
+                }
+
+                for l in root.sheet.lines: Text {
+                    text: BuildText.field(l.key, l.fallback) + ": " + (l.kind == 1 ? (l.text == "1" ? @tr("flag" => "ON") : @tr("flag" => "OFF")) : l.kind == 2 ? BuildText.preset(l.text) : l.text);
+                    color: Theme.text-dim;
+                    font-size: 11px;
+                    wrap: word-wrap;
+                }
+            }
+
+            // The folder: its 30 entries in their places.
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 4px;
+                alignment: start;
+                Label {
+                    text: @tr("FOLDER");
+                    height: 20px;
+                }
+
+                Rectangle {
+                    height: root.rows * root.entry-height;
+                    for c[i] in root.sheet.folder: SheetEntry {
+                        x: mod(i, root.columns) * (parent.width / root.columns);
+                        y: floor(i / root.columns) * root.entry-height;
+                        width: parent.width / root.columns - 10px;
+                        height: root.entry-height;
+                        chip: c;
+                        number: i + 1;
+                    }
+                }
+            }
+        }
+
+        // What its rules say first: a line kept for it.
+        Text {
+            height: 18px;
+            text: root.sheet.problem;
+            color: Theme.warn;
+            font-size: 12px;
+            overflow: elide;
+        }
+    }
+}
+
+// The band at a tab's foot: the tab's main action, the same height whatever
+// it holds.
+export component Band {
+    height: Theme.compact ? 76px : 92px;
+    Rectangle {
+        background: Theme.ink.with-alpha(0.6);
+    }
+
+    Rectangle {
+        height: 1px;
+        y: 0;
+        background: @linear-gradient(90deg, transparent 0%, Theme.line-bright 30%, Theme.line-bright 70%, transparent 100%);
+    }
+
+    @children
+}
