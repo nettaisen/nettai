@@ -1,6 +1,7 @@
-//! nettai: the app. A title, offline play against the stand-in, the netplay
-//! lobby and the replays, around a battle played through nettai-frontend,
-//! in a Slint window (docs/app.md).
+//! nettai: the app, in Tango's shape. A top bar's tabs (Play, online;
+//! Training, against the computer; the replays; the builds; the settings) and
+//! a first run's welcome, around a battle played through nettai-frontend, in
+//! a Slint window (docs/app.md).
 //!
 //! The window's rendering is the clock: before each frame is drawn the app
 //! runs (`App::frame`: the battle's ticks due, its picture presented for
@@ -73,6 +74,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let app = Rc::new(RefCell::new(App::new(&ui)));
     APP.with(|a| a.set(app.clone())).unwrap_or_else(|_| unreachable!("the app starts once"));
     app.borrow_mut().load_games();
+    app.borrow_mut().start();
     wire(&ui, &app);
 
     // The clock: before each frame is drawn, the app's frame; after it, the
@@ -159,6 +161,13 @@ fn key_probe() {
     });
 }
 
+/// `f` run on the app after the window's event (a file dialog it opens
+/// runs its own loop).
+fn later_(app: &Rc<RefCell<App>>, f: Box<dyn FnOnce(&mut App)>) {
+    let app = app.clone();
+    slint::Timer::single_shot(Duration::ZERO, move || f(&mut app.borrow_mut()));
+}
+
 /// The screens' requests, to the app.
 fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     let on = |f: fn(&mut App)| {
@@ -167,13 +176,20 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     };
     let a = app.clone();
     ui.on_go(move |screen| a.borrow_mut().go(screen));
+    let a = app.clone();
+    ui.on_tab(move |screen| a.borrow_mut().enter(screen));
+    let a = app.clone();
+    ui.on_welcome_language(move |d| a.borrow_mut().welcome_language(d));
+    ui.on_welcome_done(on(App::welcome_done));
+    let a = app.clone();
+    ui.on_select_step(move |row, d| a.borrow_mut().select_step(row, d));
+    let a = app.clone();
+    ui.on_select_act(move || later_(&a, Box::new(|app| app.select_act())));
     ui.on_quit(|| {
         let _ = slint::quit_event_loop();
     });
     let a = app.clone();
     ui.on_sound(move |s| a.borrow_mut().sound.play(s));
-    let a = app.clone();
-    ui.on_training_game(move |i| a.borrow_mut().training_game(i as usize));
     let a = app.clone();
     ui.on_training_source(move |i| a.borrow_mut().training_source(i as usize));
     ui.on_training_reroll(on(App::training_reroll));
@@ -192,27 +208,23 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
         }
     });
     let a = app.clone();
-    ui.on_lobby_mode(move |m| a.borrow_mut().lobby_mode(m));
+    ui.on_play_mode(move |m| a.borrow_mut().play_mode(m));
     let a = app.clone();
-    ui.on_lobby_code(move |c| a.borrow_mut().lobby_code(&c));
-    let a = app.clone();
-    ui.on_lobby_game(move |g| a.borrow_mut().lobby_game(g.max(0) as usize));
-    let a = app.clone();
-    ui.on_lobby_build(move |b| a.borrow_mut().lobby_build(b.max(0) as usize));
-    let a = app.clone();
-    ui.on_lobby_code_done(move || a.borrow_mut().lobby_code_done());
-    let a = app.clone();
-    ui.on_training_build(move |b| a.borrow_mut().training_build(b.max(0) as usize));
+    ui.on_play_code(move |c| a.borrow_mut().play_code(&c));
+    ui.on_play_fight(on(App::play_fight));
+    ui.on_play_ready(on(App::play_ready));
+    ui.on_play_leave(on(App::play_leave));
+    ui.on_play_copy(on(App::play_copy));
     let a = app.clone();
     ui.on_training_opponent(move |b| a.borrow_mut().training_opponent(b.max(0) as usize));
     let a = app.clone();
     ui.on_training_behavior(move |i| a.borrow_mut().training_behavior(i.max(0) as usize));
     let a = app.clone();
     ui.on_training_endless(move |on| a.borrow_mut().training_endless(on));
-    ui.on_lobby_ready(on(App::lobby_ready));
-    ui.on_lobby_copy(on(App::lobby_copy));
     let a = app.clone();
     ui.on_replays_watch(move |i, side| a.borrow_mut().replays_watch(i.max(0) as usize, side.clamp(0, 1) as u8));
+    let a = app.clone();
+    ui.on_replays_filter(move |i| a.borrow_mut().replays_filter(i.max(0) as usize));
     let a = app.clone();
     ui.on_settings_step(move |row, by| a.borrow_mut().settings_step(row, by));
     let a = app.clone();
