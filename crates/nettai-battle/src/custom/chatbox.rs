@@ -13,7 +13,10 @@
 //!   fade-in (seven ticks once the box is open), the close for its
 //!   fade-out (three);
 //! - text: at print speed 0 a whole line a tick; otherwise a character
-//!   every `speed + 1` ticks, and at once from the tick B is held or A is
+//!   every `speed` ticks, its delay counting down on its own tick too (or
+//!   every `speed + 1`, where a character ends the tick's printing: the
+//!   rule `custom_screen.chatbox_character_ends_tick`, EXE4's), and at
+//!   once from the tick B is held or A is
 //!   pressed (`chatbox_8040154`), which the box only looks for once it has
 //!   run four ticks without waiting on a command;
 //! - a command after a character, which waits out the character's delay
@@ -263,6 +266,9 @@ pub struct Chatbox {
     /// The end clears the text's tiles in video memory itself (the game's
     /// rule, `CustomScreenLayout::chatbox_end_clears_tiles`). Presentation.
     end_clears_tiles: bool,
+    /// A character printed ends the tick's printing (the game's rule,
+    /// `CustomScreenLayout::chatbox_character_ends_tick`).
+    character_ends_tick: bool,
     /// What it shows (presentation).
     look: ChatboxLook,
 }
@@ -291,6 +297,7 @@ impl Chatbox {
             halt: 0,
             commands_wait: false,
             end_clears_tiles: false,
+            character_ends_tick: false,
             look: ChatboxLook::default(),
         }
     }
@@ -306,6 +313,13 @@ impl Chatbox {
     /// game's rule `custom_screen.chatbox_end_clears_tiles`).
     pub fn end_clears_tiles(mut self, clears: bool) -> Chatbox {
         self.end_clears_tiles = clears;
+        self
+    }
+
+    /// Whether a character printed ends the tick's printing (the game's
+    /// rule `custom_screen.chatbox_character_ends_tick`).
+    pub fn character_ends_tick(mut self, ends: bool) -> Chatbox {
+        self.character_ends_tick = ends;
         self
     }
 
@@ -424,7 +438,8 @@ impl Chatbox {
                         if self.printed >= n {
                             self.next();
                         }
-                        true
+                        // (EXE4's 0x0804E1B2 stops at a character.)
+                        !self.character_ends_tick
                     } else {
                         self.char_wait -= 1;
                         false
@@ -684,6 +699,27 @@ mod tests {
             assert_eq!(closes(script, press(keys::A, first - 1)), None, "{breaks} breaks");
             assert_eq!(closes(script, press(keys::A, first)), Some(first + 4), "{breaks} breaks");
             assert_eq!(closes(script, press(keys::SELECT, first + 9)), Some(first + 13));
+        }
+    }
+
+    /// A message's characters come every second tick where the
+    /// interpreter goes on after one (its delay counting down on its own
+    /// tick: EXE6's), every third where a character ends the tick's
+    /// printing (EXE4's: its recording prints one every third tick).
+    #[test]
+    fn a_character_that_ends_the_tick_comes_every_third_tick() {
+        for (ends, gap) in [(false, 2), (true, 3)] {
+            let mut c = Chatbox::new(Script::RunMessage { lines: [6, 0, 0] }).character_ends_tick(ends);
+            let mut at = Vec::new();
+            for t in 0..80 {
+                let before = c.printed_text();
+                c.update(0, 0);
+                if c.printed_text() != before && c.printed_text().1 != 0 {
+                    at.push(t);
+                }
+            }
+            assert!(at.len() >= 3, "{at:?}");
+            assert!(at.windows(2).all(|w| w[1] - w[0] == gap), "a character ends the tick: {ends}: {at:?}");
         }
     }
 

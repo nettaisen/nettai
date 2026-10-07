@@ -95,4 +95,6 @@ return {
     description_in_choosing = false,
     -- The chatbox's end clears the text's buffers only, as EXE6's: the text goes with the box's first closing step.
     chatbox_end_clears_tiles = false,
+    -- The interpreter goes on after a character, as EXE6's: its delay counts down on its own tick.
+    chatbox_character_ends_tick = false,
 }

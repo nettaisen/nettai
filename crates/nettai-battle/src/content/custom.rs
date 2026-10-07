@@ -201,6 +201,13 @@ pub struct CustomScreenLayout {
     /// copied from (EXE6's and EXE5's `chatbox_8045F60`), and the text goes
     /// with the box's first step. Presentation.
     pub chatbox_end_clears_tiles: bool,
+    /// A character the chatbox prints ends the tick's printing (EXE4's
+    /// interpreter goes on only while rushing, at print speed 0 or after a
+    /// command that says so: 0x0804E1B2), so the next character's delay
+    /// counts down from the tick after: a character every speed + 1 ticks;
+    /// else the interpreter goes on, and that delay counts down on the
+    /// character's own tick (EXE6's and EXE5's). Presentation.
+    pub chatbox_character_ends_tick: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -372,6 +379,7 @@ impl Default for CustomScreenLayout {
             frame_counts_first: false,
             description_in_choosing: false,
             chatbox_end_clears_tiles: false,
+            chatbox_character_ends_tick: false,
         }
     }
 }

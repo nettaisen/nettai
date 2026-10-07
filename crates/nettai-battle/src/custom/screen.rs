@@ -918,6 +918,7 @@ impl Screen {
                 Chatbox::new(Script::RunMessage { lines: view.library.run_message(navi) })
                     .commands_wait_for_text(view.library.layout().chatbox_commands_wait_for_text)
                     .end_clears_tiles(view.library.layout().chatbox_end_clears_tiles)
+                    .character_ends_tick(view.library.layout().chatbox_character_ends_tick)
                     .talking(view.library.run_message_talking(navi))
             }
         };
