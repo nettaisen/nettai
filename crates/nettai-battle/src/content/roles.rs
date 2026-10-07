@@ -264,8 +264,6 @@ definition_roles! {
         Plain = "plain",
         /// A blocked hit's (`object_spawnHiteffect`).
         Guard = "guard",
-        /// An eruption's hits' (a volcano panel's, `sub_80E1DA0`).
-        Eruption = "eruption",
         /// A thrown obstacle's landing's (`sub_8018002`).
         ThrownObstacle = "thrown_obstacle",
     }
@@ -290,9 +288,6 @@ definition_roles! {
         FloatingNavi = "floating_navi",
         /// What a navi's body reacts to.
         NaviTarget = "navi_target",
-        /// An eruption (a volcano panel's), and what it reaches.
-        Eruption = "eruption",
-        EruptionTarget = "eruption_target",
         /// A thrown obstacle's landing, and what it reaches.
         ThrownObstacle = "thrown_obstacle",
         ThrownObstacleTarget = "thrown_obstacle_target",
@@ -456,8 +451,6 @@ definition_roles! {
         /// The mark over a navi a hit told something about ("!!", the HP
         /// bug's).
         HitMarker = "hit_marker",
-        /// A volcano panel's eruption.
-        Eruption = "eruption",
         /// The target marker (EXE6's Beast forms' lock-on marker).
         TargetMarker = "target_marker",
     }
