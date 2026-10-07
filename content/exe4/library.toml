@@ -154,4 +154,10 @@ mega = [
     "roll",
     "roll-sp",
     "roll-ds",
+    "protoman",
+    "protom-sp",
+    "protom-ds",
+]
+giga = [
+    "deltaray",
 ]
