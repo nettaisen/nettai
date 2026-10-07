@@ -981,6 +981,14 @@ fn init_round_state(b: &mut Battle, r: ObjectRef) {
         let hook = b.roles().hook(crate::content::HookRole::FirstBarrier);
         crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
     }
+    // The move bug's confusion at the start (EXE4's 0x0800D8B0:
+    // `effects.steps.bug`).
+    if let Some(bug) = &b.game_rules().effects.steps.bug
+        && idle::move_bug(b, r) == 0xFF
+    {
+        let ticks = bug.confused;
+        coll_mut(b, r).status_timers[timer::CONFUSE] = ticks;
+    }
     // (EXE6's rules/emotion holds a navi whose Beast Out counter is spent
     // tired from the round's start.)
     reset_abilities(b, r);

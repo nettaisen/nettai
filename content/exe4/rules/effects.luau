@@ -45,11 +45,14 @@ return {
     charge = "per_button",
     -- A held direction steps by the first of right, left, up, down held (0x0800B4B0); confused, down steps left, up
     -- right, left down, right up (0x0800B550); the idle starts a step only toward a panel the navi may step to
-    -- (0x080EEC82). (With no key held, 0x0800B4B0 steps by NaviStats +0x0D, a story script's; a netbattle's is 0.)
+    -- (0x080EEC82). The move bug (NaviStats +0x0D, the stat `move_bug`: ./navicust's) confuses the navi for 720
+    -- ticks as the round starts at 0xFF (0x0800D8B0); else, with no key held (or sliding), its keys step it
+    -- (0x0800B4DA: 0x10 right, 0x20 left).
     steps = {
         keys = { "right", "left", "up", "down" },
         confused = { up = "right", down = "left", left = "down", right = "up" },
         idle_checks_target = true,
+        bug = { stat = "move_bug", confused = 720 },
     },
     -- A screen fade toward clear ends on the step whose level would go under its target (0x08005BDE, which doesn't
     -- keep that level): a step after EXE6's, so its intro's fade from white takes 18 steps.
