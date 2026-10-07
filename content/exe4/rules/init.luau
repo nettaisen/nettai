@@ -8,9 +8,17 @@
 local custom = require("@self/custom")
 local fresh_stats = require("@self/fresh_stats")
 local light_dark = require("@self/light_dark")
+local navicust = require("@self/navicust")
 local save = require("@self/save")
 
 local rules: Rules = {
+    -- EXE4's own stats (NaviStats bytes the engine's stats don't hold): BustPack's weapon level (+0x0B, which the
+    -- charged shot reads), and the NaviCust's and the Mod Cards' move bug (+0x0D: 0xFF confused at the start, 0x10
+    -- and 0x20 steps of its own, right and left: ./navicust).
+    stats = {
+        weapon_level = "u8",
+        move_bug = "u8",
+    },
     -- What a player brings (nettai-match from a match's side, exe4-compat from a recording): a side's facts.
     setup = {
         -- The navi they play: the round's stats are its. No default: a side states it.
@@ -25,6 +33,17 @@ local rules: Rules = {
         -- MegaMan's light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F): ./light_dark.
         karma = "u16",
         full_synchro_start = "bool",
+        -- Their NaviCust (./navicust): the programs placed on its 5x5 board (the engine's 7x7 grid's middle) in its
+        -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
+        -- `rotation` quarters clockwise, compressed or not.
+        navicust_programs = schema.list({
+            program = "navicust_programs",
+            color = { "white", "pink", "yellow", "red", "blue", "green" },
+            x = "u8",
+            y = "u8",
+            rotation = "u8",
+            compressed = "bool",
+        }, 25),
     },
     -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
     -- the starting mood 0x99), no Full Synchro at the start.
@@ -39,8 +58,11 @@ local rules: Rules = {
         hand_size = custom.hand_size,
     },
     hooks = {
-        -- What the save brings to the navi's stats (./save).
-        round_setup = save.round_setup,
+        -- What the save brings to the navi's stats (./save), then the NaviCust compiled into them (./navicust).
+        round_setup = function(side: number)
+            save.round_setup(side)
+            navicust.run(side, nil)
+        end,
         -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, the holy panel a
         -- dark one clears and the hole a navi that isn't dark closes.
         starting_mood = light_dark.starting_mood,
@@ -50,9 +72,11 @@ local rules: Rules = {
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
-            save.validate(side, function(text: string, field: string?, entry: number?)
+            local function problem(text: string, field: string?, entry: number?)
                 table.insert(out, { text = text, field = field, entry = entry })
-            end)
+            end
+            save.validate(side, problem)
+            navicust.validate(side, problem)
             return out
         end,
     },

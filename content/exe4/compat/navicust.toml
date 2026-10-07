@@ -1,0 +1,78 @@
+# The NaviCust programs (content/exe4/navicust/) by their number, a part id's high bits (the part id is
+# 4 x the number + the variant, whose color the part table gives), which a save's NaviCust list holds
+# (8 bytes a part: +0 the id, +2 its column, +3 its row, +4 its quarter turns, +5 compressed). Written by tools/exe4/gen_navicust.py (bn6battle-verify) from the EXE4 ROMs.
+
+[programs]
+"airshoes" = 12
+"attack-1" = 34
+"attckmax" = 37
+"battery" = 17
+"beat" = 27
+"bodypack" = 22
+"bugstop" = 24
+"bustpack" = 21
+"charge-1" = 36
+"chargmax" = 39
+"collect" = 19
+"custom1" = 2
+"custom2" = 3
+"fish" = 16
+"flotshoe" = 11
+"gigfldr1" = 6
+"hp-100" = 42
+"hp-200" = 43
+"hp-300" = 44
+"hp-400" = 45
+"hp-50" = 41
+"hp-500" = 46
+"humor" = 20
+"jungle" = 18
+"megfldr1" = 4
+"megfldr2" = 5
+"oilbody" = 15
+"rush" = 26
+"sneakrun" = 14
+"soulclen" = 25
+"speed-1" = 35
+"speedmax" = 38
+"sprarmr" = 1
+"tango" = 28
+"undersht" = 13
+
+# Each program's colored variants (a part id's low bits), in the order of its definition's colors.
+[variants]
+"airshoes" = [0]
+"attack-1" = [0, 1, 2]
+"attckmax" = [0, 1, 2]
+"battery" = [3]
+"beat" = [0]
+"bodypack" = [0]
+"bugstop" = [0]
+"bustpack" = [0]
+"charge-1" = [0, 1, 2]
+"chargmax" = [0, 1, 2]
+"collect" = [1]
+"custom1" = [3]
+"custom2" = [3]
+"fish" = [1]
+"flotshoe" = [3]
+"gigfldr1" = [0]
+"hp-100" = [0, 1, 2]
+"hp-200" = [0, 1, 2]
+"hp-300" = [0, 1, 2]
+"hp-400" = [0, 1, 2]
+"hp-50" = [0, 1, 2]
+"hp-500" = [0, 1, 2]
+"humor" = [1]
+"jungle" = [0]
+"megfldr1" = [1, 3]
+"megfldr2" = [3]
+"oilbody" = [3]
+"rush" = [2]
+"sneakrun" = [2]
+"soulclen" = [1]
+"speed-1" = [0, 1, 2]
+"speedmax" = [0, 1, 2]
+"sprarmr" = [3]
+"tango" = [1]
+"undersht" = [0]
