@@ -807,7 +807,7 @@ fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<Str
         .flat_map(|y| (1..=6).map(move |x| (x, y)))
         .map(|(x, y)| {
             let p = b.field.panel(x, y).unwrap();
-            [p.kind as u8, p.alliance]
+            [p.kind.0, p.alliance]
         })
         .collect();
     check("panels", format!("{panels:?}"), format!("{:?}", f.panels));

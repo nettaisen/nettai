@@ -498,6 +498,16 @@ Soul and its transformation, the dark chips offered in battle, the emotions, the
 the stat block (0x40 bytes, the same kinds of fields at other offsets), the battle flow's handlers, the link
 exchange.
 
+**The first chips** (the nine of Tango's saves' folders, group B's and A's, the pattern of the chips wave): each a
+chip module (`chips/<series>`) composing its action's family (`lib/<family>`) from its variant's rows, its record's
+fields by hand from the record (§3.2), its names and descriptions the ROMs', its action number in
+compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, side1) and frame-compared.
+
+- **AirShot** (action 0x23, `lib/airshot`): EXE4's own. EXE6's and EXE5's (@exelib/airshot) differ in the animation
+  (12, not 9), the shooter (an attachment of EXE4's kind, row 9, not an overlay), the shot's tick and the recovery
+  (none for variant 0: the store of 10 overwritten, 0x080ECC0A); the projectile (exelib's, EXE4's row 4: hit
+  modifier 0x21, EXE5's 0x61) and its spawn are shared.
+
 **For the next steps:**
 
 - **Extraction** (`nettai-extract exe4`): as built, §14.
@@ -791,14 +801,23 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
 **The decode and the replay** are exe4-compat's (`codec`: the 0x40-byte NaviStats by its fields, the panels, the chip
 blocks, the link record of §18 item 23; `trace`, feature `trace`: the lines, their decode, a round's setup in the
 engine's terms, the buttons fed, the comparison, `run_round`), as exe5-compat's are EXE5's. A round's stage is the
-settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance
-from Red Sun US's); its background the record's +5; its stats the recorded block over the navi's fresh stats, an
-unported field (supports, a panel trail, Full Synchro or an aura at the start, a color, All Guard) a need that stops
-the setup. The compat tables kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the
-framework's states, which are EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and
-records.toml (navis, weapon routines, souls, auras by number) are written by hand as the replays reach them.
-The verification workspace's trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over data/traces/lab-exe4;
-nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
+settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance from
+Red Sun US's); its background the record's +5; its stats, where the recording carries the saves' NaviCusts, those and
+its patch cards compiled by the rules (§8) and checked against the recorded block, else the recorded block over the
+navi's fresh stats; an unported field (supports, All Guard) a need that stops the setup. The compat tables
+kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the framework's states, which are
+EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and records.toml (navis, weapon
+routines, souls, auras by number) are written by hand as the replays reach them. The verification workspace's
+trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over data/traces/lab-exe4; nettai-tool plays an EXE4
+recording (`Exe4TracePlayer`).
+
+**Known deviations** (the workspace's trace-tests `deviations.rs`, `Set::Exe4Lab`, as EXE6's lab has its own): a
+recording the engine departs from on purpose matches every frame up to its deviation, and the frames after it aren't
+compared. `modcards/017-custom2`, `modcards/105-panel-change` and `modcards/110-custom3`, frame 274: nettai has no link
+cable, and the replay feeds the custom screen's OK as the fight saw it, the cable's delay (4 ticks) after the
+original's screen took it, so the side's selection status (BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4
+ticks longer, and the custom HP-drain bug, which counts only while it is set (0x0800C194), drains a point the original
+doesn't. No link latency goes into the engine (the user's word); a recording with another cause is no deviation.
 
 ## 18. Engine gaps (must close)
 
@@ -1294,16 +1313,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 56. **The patch cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
     group): the cards' content, their handlers (0x08041E8C), the setup's `patch_cards`, exe4-compat's from a recording's
     slots (a recording with a card on stops at its setup until then). **Done** (§8): tools/exe4/gen_patch_cards.py
-    (verify) decodes the four ROMs' handlers; content/exe4/patch_cards (the 56 cards whose effects EXE4's content can
+    (verify) decodes the four ROMs' handlers; content/exe4/patch_cards (the 61 cards whose effects EXE4's content can
     do), rules/patch_cards (their constructors and their part of the reload), the setup's `patch_cards` (a card and its
     slot), exe4-compat's numbers (compat/patch-cards.toml), a recording's slots and a save's into the setup; the lab's
     modcards/ recordings whose cards are ported compile as recorded (exe4_navicust) and replay. The cards that wait,
     each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
-    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); Full Synchro at the start (card 45,
-    +0x1F: `full_synchro_start` turns from a setup fact into a rules stat the card writes, item 60); MegaMan's color
-    (59, 60, 89, 90: +0x27, item 60); the pairs, each half applying when the other sits in its slot (0x08042504):
-    Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item 60), Charge FullCustom (103, 104:
-    the charged shot FullCustom, item 57).
+    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); the pairs, each half applying when the
+    other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item
+    60), Charge FullCustom (103, 104: the charged shot FullCustom, item 57).
 57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
@@ -1316,11 +1333,18 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
     routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
 60. **The patch cards' own bytes.** Card 45 sets NaviStats +0x1F, the Full Synchro at the start, which the reload's
-    reset doesn't keep (0x08036CC0): the setup fact `full_synchro_start` is the card's, so it becomes a rules stat the
-    card writes and rules/light_dark reads (the fact gone from exe4-compat and the import). Cards 59, 60, 89 and 90 set
-    +0x27, MegaMan's color, which rules/light_dark's palette reads (+0x27 x 5): a rules stat. Cards 76 and 77 (All
-    Guard) set +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so
-    it turns aside every hit that doesn't break guards, 0x08012B84).
+    reset doesn't keep (0x08036CC0): **done**, the rules' stat `full_synchro_start`, which the card writes and
+    rules/light_dark's starting mood reads (no setup fact: exe4-compat reads +0x1F into the stat where a recording's
+    stats aren't compiled). Cards 59, 60, 89 and 90 set +0x27, MegaMan's color (1 to 4), which the reset clears too:
+    **done**, the rules' stat `color`, which the cards write and rules/light_dark's palette reads (5 more a step of it,
+    0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090. Cards 76 and 77 (All Guard) set
+    +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so it turns aside
+    every hit that doesn't break guards, 0x08012B84).
+61. **Done: the idle stands the navi** (from AirShot's replays). MegaMan's idle (0x080EEB38) puts animation 0 on each
+    tick past its first phase (0x080EEB7C: 0x080EEBAC), the 10 ticks after a reaction's end; EXE6's (`sub_80F0354`)
+    and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
+    shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
+    `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannons). Wire

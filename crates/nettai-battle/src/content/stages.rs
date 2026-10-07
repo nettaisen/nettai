@@ -63,9 +63,9 @@ pub enum Place {
     Kind(KindHandle),
 }
 
-/// The panel type a layout names (its serde name: `normal`, `road_up`).
+/// The panel type a layout names (one of its game's: `normal`, `road_up`).
 fn panel_type(name: &str) -> Option<PanelType> {
-    PanelType::ALL.into_iter().find(|t| serde_json::to_value(t).ok().and_then(|v| v.as_str().map(|s| s == name)).unwrap_or(false))
+    crate::field::reading_panel_type(name).ok()
 }
 
 /// A stage definition as the engine holds it. `kind` and `record` give the

@@ -210,13 +210,14 @@ fn portraits(roms: &Roms, names: &AssetNames) -> Vec<SpriteSheet> {
 
 // ---- Field -----------------------------------------------------------------------
 
+/// EXE5's panel types' names by number (compat/panels.toml).
+pub fn panel_names() -> Vec<String> {
+    let c = exe5_compat::Compat::exe5();
+    (0..PANEL_TYPES as u8).map(|n| c.panel_name(n).unwrap_or_else(|e| panic!("EXE5 panel {n}: {e}")).to_string()).collect()
+}
+
 fn field(rom: &Rom) -> Field {
-    let panel_types = (0..PANEL_TYPES as u8)
-        .map(|n| match exe5_compat::Compat::exe5().panel_type(n) {
-            Ok(Some(t)) => t as u8,
-            other => panic!("EXE5 panel {n}: {other:?}"),
-        })
-        .collect();
+    let panel_types = panel_names();
     crate::decode::field(
         rom,
         crate::decode::FieldAddresses {

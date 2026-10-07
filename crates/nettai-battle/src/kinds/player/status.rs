@@ -13,7 +13,6 @@ use super::{
 use crate::actor::{ActorType, request, status as ai_status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
-use crate::field::PanelType;
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
@@ -650,12 +649,12 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
     // EXE5's metal slides as EXE6's roads do here (0x08013564: type 5 where
     // EXE6 tests 9 to 12), and its sea stops a slide (type 10): by the
     // type's rule, its `slide` and its `holds`.
-    let rule = b.game_rules().panels.types[kind as usize];
+    let rule = *b.game_rules().panels.rule(kind);
     let mut go_on = true;
-    if kind == PanelType::Ice && coll(b, r).element != 2 {
+    if b.game_rules().panels.is_named(kind, "ice") && coll(b, r).element != 2 {
         let o = b.objects.get_mut(r);
         o.slide_tiles = o.slide_tiles.wrapping_add(1);
-    } else if (kind.is_road() || rule.slide.is_some()) && flag1(b, r) & 0x24 == 0 {
+    } else if (rule.road_slide.is_some() || rule.slide.is_some()) && flag1(b, r) & 0x24 == 0 {
         if b.objects.get(r).slide_type == 3 {
             ai_mut(b, r).road_cooldown = 5;
             go_on = false;
@@ -986,7 +985,7 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
     }
     let rules = &b.game_rules().panels;
     let p = coll(b, r).panel;
-    let on = b.field.panel(p.x, p.y).is_some_and(|p| rules.types[p.kind as usize].submerges);
+    let on = b.field.panel(p.x, p.y).is_some_and(|p| rules.rule(p.kind).submerges);
     let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
     coll_mut(b, r).dive_timer = if on && dives { 0xFFFF } else { 0 };
     let t = coll(b, r).dive_timer;
