@@ -477,11 +477,13 @@ chip module (`chips/<series>`) composing its action's family (`lib/<family>`) fr
 fields by hand from the record (§3.2), its names and descriptions the ROMs', its action number in
 compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, side1) and frame-compared.
 
-- **AirShot** (action 0x23, `lib/airshot`): EXE4's own. EXE6's and EXE5's (@exelib/airshot) differ in the animation
-  (12, not 9), the shooter (an attachment of EXE4's kind, row 9, not an overlay), the shot's tick and the recovery
-  (none for variant 0: the store of 10 overwritten, 0x080ECC0A); the projectile (exelib's, EXE4's row 4: hit
-  modifier 0x21, EXE5's 0x61) and its spawn are shared.
-- **CrakOut** (and DublCrak and TripCrak: action 0x21, `lib/cracks`): EXE5's code, moved to exelib
+- **AirShot** (action 0x23, `lib/airshot`): @exelib/airshot (emap: its fire and recovery EXE5's, similar), with the
+  differences as its look's and spec's parameters: the navi's animation (12, not 9), how the navi holds the shooter
+  (ShooterLook's `hold`: an attachment of EXE4's kind, row 9, its animation the navi's number, in the related slot,
+  not the overlay) and the recovery's count (the attack's variant: AirShot's 0, the store of 10 overwritten,
+  0x080ECC0A; 30 for any other). The projectile (exelib's, EXE4's row 4: hit modifier 0x21, EXE5's 0x61) and its
+  spawn are shared.
+- **CrakOut** (and DublCrak and TripCrak: action 0x21, `lib/crack`): EXE5's code, moved to exelib
   (@exelib/crack, EXE5's on it). EXE4's look: the pointing animation (16, EXE5's 12), the crack's dust and sounds
   (0x1BA, the break's 0x1A9: 0x08009D04), and a spawner (0x080CFF1A) that places a crack on every panel of the
   pattern where EXE5's keeps to the field (no recording yet reaches a crack off the field: TripCrak from the top or
