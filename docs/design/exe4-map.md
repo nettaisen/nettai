@@ -1191,6 +1191,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `sub_80E08FC`): its sprites by row (0x080E22B8: 14-0B confusion, 14-09 blindness), its sound 0xAE every 60 ticks
     (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
     routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
+110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
+    EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
+    return while paused: a navi's run before it takes control (it runs paused until then, item 42's
+    `stops_at_control`) counts them, so the move bug's start confusion (NaviStats +0x0D = 0xFF) spawns its visual on
+    the intro's first tick (`navicust/bug-humor`, `bug-undersht`). The rule `status.timers_while_paused` (EXE4 true;
+    EXE6, EXE5 false); the visual's own EXE4 differences (its sound, offset and role) are group A's.
 
 ### 18.7 The HUD
 
