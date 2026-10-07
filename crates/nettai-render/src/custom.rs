@@ -1544,7 +1544,13 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<SpritePart<'a>> {
     let e = a.element_sprite?;
     let s = v.screen;
-    if !matches!(s.slots[s.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) || place.scroll > ELEMENT_SHOWN_TO {
+    // (Not before the window is on the layer: the opening's first tick,
+    // which draws none of it, shows none.)
+    let window_out = place.from >= place.to;
+    if !matches!(s.slots[s.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_))
+        || place.scroll > ELEMENT_SHOWN_TO
+        || window_out
+    {
         return None;
     }
     let c = s.look.chip_window.last_chip?;

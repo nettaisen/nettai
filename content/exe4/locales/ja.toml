@@ -8,3 +8,40 @@ language = "ja"
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
+
+[navicust_programs]
+"airshoes" = { name = "エアシューズ", description = "パネルのないマスでも\nいどうできる!" }
+"attack-1" = { name = "アタック+1", description = "ロックバスターの\n攻撃力が1アップ!" }
+"attckmax" = { name = "アタックMAX", description = "ロックバスターの\n攻撃力がMAXに!" }
+"battery" = { name = "バッテリーモード", description = "バッテリーじょうたい\nで電気属性ウイルスが\nよってくるようになる" }
+"beat" = { name = "ビートサポート", description = "たいせんせんよう!\nメガクラスいじょうの\nチップをうばいさる" }
+"bodypack" = { name = "ボディパック", description = "アーマー、シャツ\nエア、フロートの\n4てんパック!" }
+"bugstop" = { name = "バグストッパー", description = "バグの発生をおさえる\nとくしゅなプログラム" }
+"bustpack" = { name = "バスターパック", description = "バスターのアタック、\nラピッド、チャージが\nそれぞれ+3!" }
+"charge-1" = { name = "チャージ+1", description = "ロックバスターの\nチャージ力が\n1アップ!" }
+"chargmax" = { name = "チャージMAX", description = "ロックバスターの\nチャージ力が\nMAXに!" }
+"collect" = { name = "コレクターズアイ", description = "てきのざんがいから\nチップデータをみつけ\nだすがんりきがアップ" }
+"custom1" = { name = "カスタム1", description = "カスタム画面で\nさいしょにえらべる\nチップ枚数が+1" }
+"custom2" = { name = "カスタム2", description = "カスタム画面で\nさいしょにえらべる\nチップ枚数が+2" }
+"fish" = { name = "アイムフィッシュ", description = "さかなになりきって\n水属性のウイルスから\nみつけられやすくなる" }
+"flotshoe" = { name = "フロートシューズ", description = "地面からすこしういて\nいるのでパネルの\nえいきょうをうけない" }
+"gigfldr1" = { name = "ギガフォルダ1", description = "フォルダに入れられる\nギガクラスチップの\n枚数が+1" }
+"hp-100" = { name = "HP+100", description = "マックスHPが\n100ふえる!" }
+"hp-200" = { name = "HP+200", description = "マックスHPが\n200ふえる!" }
+"hp-300" = { name = "HP+300", description = "マックスHPが\n300ふえる!" }
+"hp-400" = { name = "HP+400", description = "マックスHPが\n400ふえる!" }
+"hp-50" = { name = "HP+50", description = "マックスHPが\n50ふえる!" }
+"hp-500" = { name = "HP+500", description = "マックスHPが\n500ふえる!" }
+"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLボタンで\nはなしてみてください" }
+"jungle" = { name = "ジャングルランド", description = "ジャングルのかおりを\nほうしゅつして木属性\nウイルスをひきつける" }
+"megfldr1" = { name = "メガフォルダ1", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+1" }
+"megfldr2" = { name = "メガフォルダ2", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+2" }
+"oilbody" = { name = "オイルボディ", description = "炎属性ウイルスが\n大スキなオイルをぬり\nねらわれやすくなる!" }
+"rush" = { name = "ラッシュサポート", description = "たいせんせんよう!\nきえたあいてのニオイ\nをかぎつけとびかかる" }
+"sneakrun" = { name = "シノビダッシュ", description = "自分よりよわいてきと\nであわなくなる!" }
+"soulclen" = { name = "ソウルクリーナー", description = "おのれのあくぎょうを\nくいあらためるための\nしゅぎょうプログラム" }
+"speed-1" = { name = "ラピッド+1", description = "ロックバスターの\n連射力が1アップ!" }
+"speedmax" = { name = "ラピッドMAX", description = "ロックバスターの\n連射力がMAXに!" }
+"sprarmr" = { name = "スーパーアーマー", description = "攻撃をくらっても\nのけぞらなくなる!" }
+"tango" = { name = "タンゴサポート", description = "たいせんせんよう!\nひんしになったときに\nてあてをしてくれる!" }
+"undersht" = { name = "アンダーシャツ", description = "ちしりょうのダメージ\nをうけてもHP1で\nとりあえずたえる!" }

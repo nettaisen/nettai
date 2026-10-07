@@ -1,7 +1,8 @@
 //! A build from a save file: each game's compat crate reads its own game's
-//! saves (`exe6_compat::import`, `exe5_compat::import`: the original's
-//! bytes into the game's facts, by field name), and the build's game picks
-//! which. A save of another game is refused, not switched to.
+//! saves (`exe6_compat::import`, `exe5_compat::import`,
+//! `exe4_compat::import`: the original's bytes into the game's facts, by
+//! field name), and the build's game picks which. A save of another game is
+//! refused, not switched to.
 
 use nettai_battle::content::Content;
 use nettai_match::Side;
@@ -14,6 +15,7 @@ pub fn side_of_save(content: &Content, game: &str, file: &[u8]) -> Result<(Side,
     let mut notes = match game {
         exe6_compat::ROOT => exe6_compat::import::import(content, &mut side, &read(game, file, exe6_compat::import::read)?)?,
         exe5_compat::ROOT => exe5_compat::import::import(content, game, &mut side, &read(game, file, exe5_compat::import::read)?),
+        exe4_compat::ROOT => exe4_compat::import::import(content, game, &mut side, &read(game, file, exe4_compat::import::read)?),
         other => return Err(format!("{other} has no save import")),
     };
     // (What a build in the app never states is the rules' defaults: a save's
@@ -36,7 +38,7 @@ fn built(content: &Content, game: &str, side: &mut Side) -> Vec<String> {
 
 /// Whether game `game`'s saves can be read.
 pub fn reads_saves(game: &str) -> bool {
-    matches!(game, exe6_compat::ROOT | exe5_compat::ROOT)
+    matches!(game, exe6_compat::ROOT | exe5_compat::ROOT | exe4_compat::ROOT)
 }
 
 /// The auto battle data of the save in `file` alone, as `side`'s (its other

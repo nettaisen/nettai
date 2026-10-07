@@ -473,7 +473,9 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
         rng1_per_frame = true,
         chip_icons = "attach_point",
-        used_chip_ticks = 0x3C,"#,
+        used_chip_ticks = 0x3C,
+        bug_flicker = true,
+        draw_order = "update_list","#,
             ),
             (
                 "flow",
@@ -650,7 +652,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 98, "every field of every section");
+        assert_eq!(fields, 100, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

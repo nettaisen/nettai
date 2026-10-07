@@ -190,8 +190,13 @@ charged weapon's routines (0x0800BD62: copied to the AI data's +0x0D and +0x0F, 
 0x0800BD1C; the routines at 0x0800CA7C: 0 the buster, 0x0800CC2E, 1 the charged shot, 0x0800CC54); +0x25 is the move
 lag's column (0x0800C208).
 
-The rest (+0x01 to +0x04, +0x0B, +0x0D, +0x15, +0x16, +0x19, +0x1C to +0x1E, +0x22, +0x26, +0x29, +0x2B) is used and
-unread yet: the step that ports what reads it names it.
+The NaviCust's handlers and bugs (§8) write: +0x01 to +0x04 super armor, FloatShoes, AirShoes, Undershirt; +0x0B
+BustPack's weapon level (0 to 2, copied to the AI data's +8 at the init, 0x0800D8D2); +0x0D the move bug (0xFF
+confused 720 ticks as the round starts, 0x0800D8B0; else its high nibble, in the keys' bits, is held when no direction
+is, 0x0800B4DA); +0x15 the encounter bug; +0x16 SneakRun; +0x17's bits 1 to 4 OilBody, Fish, Battery, Jungle; +0x19
+Collect (bit 1) and the result bug (1); +0x1C Humor; +0x1D BugStop; +0x1E SoulClen (read by the light/dark value's
+update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x29, +0x2B) is used and unread yet: the step that
+ports what reads it names it.
 
 ### 3.4 RAM
 
@@ -386,10 +391,25 @@ frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's b
 ## 8. NaviCust and Mod Cards
 
 The NaviCust compile EXE5 and EXE6 share (`sub_813C458`) and its placement checks have no counterpart: EXE4's compile
-is its own. 47 programs, four color variants each (188 parts, T; the part table at 0x0804563C in Red Sun US, 0x08045644
-in Blue Moon US). The save's NaviCust: its list at 0x4564 and the 5x5 grid at 0x4540 (T). **Mod Cards** (EXE4's patch
-cards): 134 by Tango's count, six slots in the save (0x464C on, 0x4653 off, T), whose effects set NaviStats bytes by
-number (§3.3); the cards' routine is to find (EXE5's 0x08138214 has no counterpart).
+is its own (R). 47 programs, four color variants each (188 parts; the part table at 0x0804563C in Red Sun US,
+0x08045644 in Blue Moon US, 0x08045538 and 0x08045540 in the Japanese: EXE5's format, +1 the plus flag, +3 the color,
++4 the bug, +8 and +0xC the shapes, its +0 group never read). The save's NaviCust: its list at 0x4564 (25 parts of 8
+bytes) and the 5x5 grid at 0x4540 (T). **Mod Cards** (EXE4's patch cards): 134 by Tango's count, six slots in the save
+(0x464C on, 0x4653 off, T), whose effects set NaviStats bytes by number (§3.3), their handlers the table at
+0x08041E8C, their bugs counted with the NaviCust's (0x080476E0).
+
+**The reload** (0x08035130; as ported: content/exe4/rules/navicust): the analysis (0x08047344) counts each program's
+bug by where it is (the command line, the third row, right to left: a plus part on it; off it, a program), by its
+neighbors (its shape uncompressed, moved a cell each way: one of its color counts that one's bug), by HubBatc (once
+more) and by the colors (0x08047644: five bring the move and custom bugs once, six twice); the stats reset keeping
++0x00, +0x20, +0x29 and +0x36 (0x08036CC0); the programs' handlers (0x08041974, the table 0x08041A50: the command
+line's right to left, a part already run to the right skipped; the plus parts off it in the list's order, then on it
+left to right), the HP programs' sum making the maximum (0x08042FD0: the HP left as it was); the bugs (0x08042A94:
+BugStop, +0x1D, drops the counts instead), each at its count's level, 1 to 3, by the table 0x08042B18; the Mod Cards
+from the last slot to the first (0x08041E6A), the maximum again after each; the bugs again, all of them (0x08042A58).
+tools/exe4/gen_navicust.py (verify) writes the programs (content/exe4/navicust), their numbers
+(compat/navicust.toml) and names from the part tables; programs 29 to 33 and 40 (the elements' charged shots and
+WeapLV+1) have no colored part, so no save holds them, and have no definition.
 
 ## 9. The link exchange
 
@@ -426,6 +446,14 @@ from 0x2130 to 0x5E20 moves by it, up to 0x1FC, a multiple of 4), the checksum a
 the equipped folder at 0x2132, the Regular chip at 0x214C; the NaviCust and Mod Cards (§8). Tango ships twelve raw
 netbattle saves (tango-gamesupport-bn4/src/saves): light with HP 1000 or 999 and dark with HP 997, for each version and
 region; with the .sav on disk (Blue Moon US), the chip lab's bases and the save import's tests have what EXE5's had.
+
+**The import** (exe4-compat's `import`, which the app's build creator calls): a .sav or a raw image (which says
+neither version nor region; the import reads neither) gives MegaMan, the equipped folder and its Regular chip, the
+NaviCust's programs, the base HP (0x21CA), the Regular memory, and from MegaMan's NaviStats block (0x4E60) the
+light/dark value and the Full Synchro at the start; the Mod Cards are said and left out until they are ported (item
+56). MegaMan's HP and maximum are the game state's (0x2150, 0x2152): the block's own HP words are stale in a save,
+and a battle copies the game state's in (0x0800D726). verify's exe4_navicust test imports each of Tango's twelve
+saves and compiles it: the stats match the block's (and the game state's maximum) in every byte the compile writes.
 
 ## 13. What to share, what is EXE4's own, and the next steps
 
@@ -575,8 +603,12 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     again (0x0801E1D6); EXE6's comes back when the message goes. Not ported: no defensive chip is ported yet.
   - 10 **"????"** for a defensive chip, at columns 6 and 26 (0x08015266): EXE6's.
   - 12 **"PAUSE"** at (100, 64), a row lower than EXE6's (the pack's `layout.pause`).
-  - 13 **"BUSY..."** at column 22, row 4 (0x08015624); 23 **"PLAN-B..."** in the same place (0x080158D8, started
-    by 0x08016AE8 from 0x08021138, the second screen's).
+  - 13 **"BUSY..."** at column 22, row 4 (0x08015624): on a console whose screen has sent its result, also while the
+    other player picks on a second screen it opened with L (both consoles are in the custom screen's sub-state then).
+    23 **"PLAN-B..."** in the same place (0x080158D8) is not a netbattle's: 0x08016AE8 starts it from 0x08021138, a
+    state of the system at 0x0203BC90 (0x08020F64, from the flow at 0x0800784C), which the levels gauge (16) and the
+    column marker (22) belong to: controller 2's (§18 item 49). The lab's custom/plan-b (side 1 opens a second
+    screen, side 0 traced) never sets draw bit 23.
   - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
   - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
     "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
@@ -592,12 +624,25 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   three-picks, flow/ko-side0, ko-double, ko-bluemoon, emotions/counter and full-synchro-hit. Together they cover
   the HP box (its colors through ko-side0's deletion), the custom gauge filling, the HP numbers, the chip icons
   (one and three chips), the chip name, damage and "×2", "PAUSE", "COUNTER HIT!" and the other player's used chip
-  (emotions/counter, frames 410 to 441). flow/ko-cannon and buster-side1 differ only in an explosion and in the
-  charge glow over the opponent, not the HUD.
-  Two pieces show 4 frames late in a replay: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the
-  full gauge's stripes and "L or R". The replay harness causes it: exe4-compat's screen takes the OK 4 frames late
-  (Round::screen_late), so the counter starts 4 later. Compared 4 frames apart, the full gauge's cells are exact on
-  all 10,509 full-gauge frames of flow/no-time-limit.
+  (emotions/counter, frames 410 to 441). So is every fight frame of flow/ko-cannon (a deletion's explosion and the
+  Cannon's hit spark share a depth bucket: EXE4 draws each pool by slot, 0x08003BA0, 0x08003ED4, 0x08004180, where
+  EXE6 walks the update lists: `effects.draw_order`), flow/buster, buster-tap, flinch-moving, flinch-shooting, move,
+  move-edge, move-held, custom/back, back-all, hand-of-seven, same-chip, run-message, run-message-b, run-message-ok,
+  and, with group B's charge glow fix (69fb65ad6), flow/charge, charge-held, charge-move, buster-side1,
+  buster-attack-max, buster-charge-max, buster-speed-max, buster-hold, flinch-charging. Every stage the content plays
+  (33 of the lab's 46 stages/*/stand: cracked, grass, holes, holy, ice, lava, normal, poison, type 5, type A, in
+  their layouts) is pixel-exact but for the full gauge's 4-frame shift below: the field, its panels by type and their
+  palette cycles. The other 13 wait on their obstacles (§18 item 19).
+  Two pieces show 4 frames late: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the full
+  gauge's stripes and "L or R". That is by design, not a replay fault: the engine's custom screen is part of the
+  shared simulation and acts on the link-delayed input every console has, where the original's local screen takes
+  its own joypad at once. The OK reaches it 4 frames later (Round::screen_late), so the counter they run on starts
+  4 frames later, in live play too. Compared 4 frames apart (verify tools/frontend-compare/offset-compare.py), the
+  full gauge's cells are exact on all 10,509 full-gauge frames of flow/no-time-limit.
+  The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
+  only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
+  clears the text a tick before the box closes and draws the cursor a frame sooner (group A's).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -1026,9 +1071,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
     **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
     confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
-    recordings match. Open: with no key held (or sliding) 0x0800B4B0 steps by NaviStats +0x0D (bits 0x10 to 0x80, the
-    keys; 0 and 0xFF none), which a dark chip or Mod Card bug sets (the lab's dark/, modcards/ and navicust/ recordings
-    carry 0x10, 0x20, 0xFF), with step 2's NaviCust. The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
+    recordings match. **Done** too: the move bug, NaviStats +0x0D (`effects.steps.bug`, the rules' stat `move_bug`,
+    which the NaviCust's bugs write and a dark chip's or Mod Card's will): with no key held (or sliding) 0x0800B4B0
+    steps by its keys (bits 0x10 to 0x80; 0 and 0xFF none), and at 0xFF the init confuses the navi for 720 ticks
+    (0x0800D8B0). Open there: the confusion's visual at the start (item 59). The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
     1, as the engine's; by the +0x25 column (12 to 8) for param 2, and 20 under event flag 0x1187: neither is a
     netbattle's.
 25. **The buster bonus, element, weakness and souls.** EXE4's buster is Attack + 1 (0x0800CC2E) for every navi:
@@ -1046,7 +1092,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     is its action (`cannon/action`). Double Soul's table 0x08020008 reads the same byte as a soul's kind (gen_rules.py
     holds the families to it). 0x0800BA66 opens the counter window (§7).
 30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
-    neither, the lab's first batch's.
+    neither, the lab's first batch's. **Done:** the NaviCust (§8: rules/navicust, the setup's `navicust_programs`,
+    exe4-compat's from a recording's list, the replays comparing the stats it compiles) and the save import (§12); the
+    lab's navicust/ recordings whose programs are ported match, and Tango's saves compile as their blocks say. Open:
+    the Mod Cards (items 56 to 58); the waiting programs (item 53).
 
 ### 18.5 Roles and the custom screen
 
@@ -1134,6 +1183,31 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
     slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
     of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
+53. **FirstBarrier, HubBatc, Shield, Reflect, AntiMagc.** FstBarr's handler sets the aura at the start (+0x21 = 1, the
+    Barrier chip's barrier: the init raises it, 0x0800D894, 0x08012DCE, its visual 0x080E2622), which the Mod Cards'
+    Barrier100, Barrier200 and LifeAura set too (2, 3, 6); Shield, Reflect and AntiMagc set B+Left (+0x0C = 0x25,
+    0x26, 0x27: weapon routines of the table at 0x0800CA7C); HubBatc runs FstBarr's and Shield's handlers among its
+    eight. Until they are ported the five programs have no definition (tools/exe4/gen_navicust.py's `WAITING`), and the
+    recordings that carry them stop at their setup.
+54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
+    controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
+    a recording with a support stops at its setup.
+55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
+    bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
+    RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
+56. **The Mod Cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
+    group): the cards' content, their handlers (0x08041E8C), the setup's `mod_cards`, exe4-compat's from a recording's
+    slots (a recording with a card on stops at its setup until then).
+57. **The ~50 Mod Cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
+    buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
+58. **The 12 soul Mod Cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
+59. **The status timers while paused, and the status visual.** EXE4's status timers (0x0800AE58: paralysis +0x10,
+    confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
+    (EXE6's `sub_800E730` and EXE5's 0x0800CB50 return), so a navi confused at the start (the move bug, item 24) shows
+    the confusion's visual on the round's first tick, during the intro. The visual is effect 6 (0x080E22C8, EXE6's
+    `sub_80E08FC`): its sprites by row (0x080E22B8: 14-0B confusion, 14-09 blindness), its sound 0xAE every 60 ticks
+    (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
+    routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's
@@ -1156,4 +1230,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
       seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
       item 16 reads EXE4's. With it, the damage judge: its numbers' values (0x0801642C, 0x08016408) and a recording
-      to compare.
+      to compare;
+    - the warning marker (0x0800843E: a 16x16 sprite at tile 0x360, its second frame at bit 3 of the frame counter, in
+      palette 13; 0x08008424 also sounds 0x79 every 16 frames), with the chips that show it: the gauge chips'
+      effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
+      The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
+      EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
