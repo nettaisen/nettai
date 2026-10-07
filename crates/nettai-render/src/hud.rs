@@ -17,7 +17,7 @@ use nettai_battle::actor::status;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use nettai_battle::battle::{fight, mode, top};
 use nettai_battle::content::ChipFlags;
-use nettai_battle::kinds::player::{Emotion, emotion};
+use nettai_battle::kinds::player::{Emotion, EmotionRole, emotion, emotion_role};
 use nettai_content_api::FormHandle;
 use nettai_content_api::ChipHandle;
 use nettai_battle::hud::HpNumber;
@@ -96,9 +96,9 @@ impl Face {
         let hub = nettai_battle::kinds::player::face_hub(b, side);
         let f = b.content.form(form);
         Face {
-            picture: f.mugshot.and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(emotion, variant))),
+            picture: f.mugshot.and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(b.game_rules().emotion.name(emotion), variant))),
             own: f.base,
-            full_synchro: emotion == Emotion::FullSynchro,
+            full_synchro: b.game_rules().emotion.role(emotion) == Some(EmotionRole::FullSynchro),
             // (The count the emotion window's box shows: a stat of the
             // game's own, by its role: EXE6's Beast Out turns.)
             count: match b.stat(side, nettai_battle::content::StatRole::WindowCount) {
@@ -847,7 +847,7 @@ fn mugshot_parts<'a>(
     if !navi.changes_form() {
         // (The mugshot's own pack's HUD holds its picture.)
         let Some((tiles, palettes, _)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return };
-        let full_synchro = emotion(b, side as u8) == Emotion::FullSynchro;
+        let full_synchro = emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
         let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
@@ -864,7 +864,7 @@ fn mugshot_parts<'a>(
         packs,
         &b.content,
         face.form,
-        face.emotion,
+        b.game_rules().emotion.name(face.emotion),
         face.hub || nettai_battle::kinds::player::face_charged(b, side as u8),
         problems,
     ) else { return };
