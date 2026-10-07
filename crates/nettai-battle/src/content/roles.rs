@@ -180,18 +180,14 @@ pub enum StatusRole {
     DamageWordBlindness,
     /// What a counter hit lands instead of a flinch (`sub_800EB26`).
     CounterParalysis,
-    /// What an aqua hit gives a body standing on ice (`sub_801A0E0`'s
-    /// freeze).
-    IceFreeze,
 }
 
 impl StatusRole {
-    pub const ALL: [StatusRole; 5] = [
+    pub const ALL: [StatusRole; 4] = [
         StatusRole::DamageWordParalysis,
         StatusRole::DamageWordConfusion,
         StatusRole::DamageWordBlindness,
         StatusRole::CounterParalysis,
-        StatusRole::IceFreeze,
     ];
 
     /// Its name in `rules/roles.luau`'s `statuses`.
@@ -201,7 +197,6 @@ impl StatusRole {
             StatusRole::DamageWordConfusion => "damage_word_confusion",
             StatusRole::DamageWordBlindness => "damage_word_blindness",
             StatusRole::CounterParalysis => "counter_paralysis",
-            StatusRole::IceFreeze => "ice_freeze",
         }
     }
 
