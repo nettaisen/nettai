@@ -1346,7 +1346,9 @@ impl Battle {
     /// `sub_8026A6C`: the screens close and the fight resumes.
     fn close_custom_screens(&mut self) {
         self.restart_gauge();
-        self.play_sound(SoundCue::RestoreVolume);
+        for player in self.content.rules().custom_screen.restore_players.clone() {
+            self.play_sound(SoundCue::Volume { player, volume: 0x100 });
+        }
         // `sub_8009338`: each side's rules, for a side with its navi.
         for side in 0..2 {
             if self.player_actor(side).is_some() {

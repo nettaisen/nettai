@@ -694,8 +694,15 @@ of the earlier games) gets three things on the screen, all ported though no chip
   0xC0, 0xA0, 0x80, 0x80), the screen's player up `byte_802A400` (the same, reversed); 5 steps, the fade taking
   5 frames. When the cursor leaves (or the state changes), fades 0x50 and 0x58 take both back and the volumes go
   the other way, 6 steps (a fade toward clear holds its first frame). The volumes are cues
-  (`SoundCue::ScreenVolume`) for the screen's player; the closing's `sub_802A3CC` sets both to 0x100 again
-  (`RestoreVolume`), and `sub_80062EC` clears both fade records. The look keeps the hover (`ScreenLook::dark`)
+  (`SoundCue::Volume`) for the screen's player; the closing's `sub_802A3CC` sets both to 0x100 again, and
+  `sub_80062EC` clears both fade records. All of it is the rules' (`custom_screen.hover`, `restore_players`): the
+  ramps as volume calls by tick after the hover turns (EXE6's and EXE5's five and six, a call every tick), the
+  players (the music's and the screen's), when it runs and when its sound plays. EXE4's (0x0801E478) runs only on
+  the ticks its screen chooses (from its choosing state, 0x0801E40E: frozen while the window is hidden, slides or
+  the Program Advance plays; a tick whose state left the chips turns it neither way), its ramps are 11 ticks with a
+  call on every other (0x0801E528, from 0x0801E584 by a formula that leaves the music at 0x60 and the screen at 0xC0
+  when dark, 0xC0 and 0x60 back), its players are 31 and 9, its close sets 9 and then 31 back (0x0801E180), and its
+  sound (0x100) plays on the tick after the shade settles and every 61 ticks it stays (`+0x5C`, 0x0801E49C). The look keeps the hover (`ScreenLook::dark`)
   and the second record (`window_fade`).
 - **The hover's counter** (`+0x14`; `ScreenLook::hover_count`): the routine steps it every tick, 0 to 63, from 0
   as each screen opens, whatever the screen's state (a description, a window of the rules such as EXE5's soul's

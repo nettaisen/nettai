@@ -144,4 +144,42 @@ return {
     -- The console says its custom screen is open until it sends (bit 4: 0x08007618 to 0x0801E986; bit 1 from the
     -- choosing's first tick to OK, 0x08020348 to 0x08020652).
     status_until = "sending",
+    -- The cursor's hover over a dark chip (0x0801E478, which the choosing state alone calls, 0x0801E40E; a tick
+    -- whose selection's state left the chips turns it neither way, 0x0801E4B6): its ramps' volume calls, by tick
+    -- after it turns, the music's player's and the screen's (11 ticks, 0x0801E514; a call on each odd count,
+    -- 0x0801E528, from 0x0801E584); its sound on the tick after the shade settles and every 61 ticks it stays
+    -- (+0x5C, 0x0801E49C).
+    hover = {
+        runs = "while_choosing",
+        to_dark = {
+            {},
+            { music = 0xE0, screen = 0xE0 },
+            {},
+            { music = 0xC0, screen = 0x100 },
+            {},
+            { music = 0xA0, screen = 0x100 },
+            {},
+            { music = 0x80, screen = 0xE0 },
+            {},
+            { music = 0x60, screen = 0xC0 },
+            {},
+        },
+        to_clear = {
+            {},
+            { music = 0xE0, screen = 0xE0 },
+            {},
+            { music = 0x100, screen = 0xC0 },
+            {},
+            { music = 0x100, screen = 0xA0 },
+            {},
+            { music = 0xE0, screen = 0x80 },
+            {},
+            { music = 0xC0, screen = 0x60 },
+            {},
+        },
+        players = { 31, 9 },
+        sound = { counts = "while_dark", every = 61 },
+    },
+    -- The players the close sets back to full volume (0x0801E180).
+    restore_players = { 9, 31 },
 }

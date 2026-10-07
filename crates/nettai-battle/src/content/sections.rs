@@ -159,6 +159,56 @@ struct CustomScreenSection {
     program_advances: super::custom::ProgramAdvanceRules,
     modifier_passes_regular: bool,
     status_until: super::custom::StatusUntil,
+    hover: HoverSection,
+    restore_players: Vec<u8>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HoverSection {
+    runs: super::custom::HoverRuns,
+    to_dark: Vec<RampTick>,
+    to_clear: Vec<RampTick>,
+    players: [u8; 2],
+    sound: super::custom::HoverSound,
+}
+
+/// A tick of the hover's ramp: its two volumes, or none (`{}`).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RampTick {
+    #[serde(default)]
+    music: Option<u16>,
+    #[serde(default)]
+    screen: Option<u16>,
+}
+
+impl HoverSection {
+    fn rules(self, at: &str) -> Result<super::custom::HoverRules, String> {
+        let ramp = |ticks: Vec<RampTick>, name: &str| -> Result<Vec<Option<[u16; 2]>>, String> {
+            if ticks.is_empty() {
+                return Err(format!("{at}: hover.{name}: a ramp has a tick at least"));
+            }
+            ticks
+                .into_iter()
+                .map(|t| match (t.music, t.screen) {
+                    (Some(m), Some(s)) => Ok(Some([m, s])),
+                    (None, None) => Ok(None),
+                    _ => Err(format!("{at}: hover.{name}: a tick sets both volumes (`music`, `screen`) or neither (`{{}}`)")),
+                })
+                .collect()
+        };
+        if let super::custom::HoverSound::FromOpening { every: 0 } | super::custom::HoverSound::WhileDark { every: 0 } = self.sound {
+            return Err(format!("{at}: hover.sound: `every` is a tick at least"));
+        }
+        Ok(super::custom::HoverRules {
+            runs: self.runs,
+            to_dark: ramp(self.to_dark, "to_dark")?,
+            to_clear: ramp(self.to_clear, "to_clear")?,
+            players: self.players,
+            sound: self.sound,
+        })
+    }
 }
 
 /// A slot of the section: its kind, and its neighbors (`vertical`, `left`,
@@ -629,6 +679,8 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     program_advances: s.program_advances,
                     modifier_passes_regular: s.modifier_passes_regular,
                     status_until: s.status_until,
+                    hover: s.hover.rules(&at).map_err(e)?,
+                    restore_players: s.restore_players,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,

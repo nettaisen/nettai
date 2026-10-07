@@ -14,7 +14,7 @@ use crate::console::Console;
 use crate::battle::FadeMode;
 use crate::content::{ButtonHandle, WindowHandle};
 use nettai_content_api::ChipHandle;
-use crate::content::{ChipClass, ChipCode, CustomScreenLayout, InvalidPicks, ScreenKey, SlotMoves, SpecialCodes, TemplateSlot};
+use crate::content::{ChipClass, ChipCode, CustomScreenLayout, HoverRuns, InvalidPicks, ScreenKey, SlotMoves, SpecialCodes, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
 use crate::kinds::player::Emotion;
@@ -175,6 +175,24 @@ pub enum Phase {
     /// The result is on its way to the other player (`sub_8026DC4`);
     /// `started`: its first tick, which sends it, has run.
     Sending { started: bool },
+}
+
+impl Phase {
+    /// The screen chooses: the window is in and its own (EXE4's running
+    /// state 4, 0x0801E3D8, whatever its selection's state), not sliding,
+    /// hidden, playing the Program Advance or sending.
+    pub fn chooses(&self) -> bool {
+        matches!(
+            self,
+            Phase::Settling
+                | Phase::Choosing
+                | Phase::Description { .. }
+                | Phase::RunMessage { .. }
+                | Phase::Window { .. }
+                | Phase::Scrapping { .. }
+                | Phase::Redealing { .. }
+        )
+    }
 }
 
 /// The chips a re-deal shuffles, in the order it walks the folder (the
@@ -616,9 +634,17 @@ impl Screen {
     /// console's HUD banner.
     pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
         self.look.drawn = Default::default();
+        let choosing = self.phase.chooses();
         let request = self.step(joy, view, folder, console, extras);
-        let on_shading = self.on_shading_chip(view, folder);
-        self.look.hover(on_shading);
+        let hover = &view.library.layout().hover;
+        match hover.runs {
+            HoverRuns::EveryTick => self.look.hover(Some(self.on_shading_chip(view, folder)), hover),
+            HoverRuns::WhileChoosing if choosing => {
+                let on_shading = self.phase.chooses().then(|| self.on_shading_chip(view, folder));
+                self.look.hover(on_shading, hover);
+            }
+            HoverRuns::WhileChoosing => {}
+        }
         self.hud.tick();
         if let Phase::ProgramAdvance { anim } = &mut self.phase {
             anim.fade = anim.fade.saturating_sub(1);
