@@ -418,6 +418,11 @@ pub struct HudLayout {
     /// row, and how many glyphs wide (EXE6's `sub_801E270`: from column 7,
     /// row 2, 17; EXE4's 0x08015FE8: from column 8, row 2, 14).
     pub message: (u8, u8, u8),
+    /// The damage judge's numbers show from its banner's hold until the
+    /// banner is gone (EXE4's task 9: 0x08014AA8 waits for the holding
+    /// banner, 0x08014ABE ends with it); otherwise while the banner slides
+    /// in and holds (EXE6's `sub_801D048`).
+    pub judge_from_hold: bool,
     /// The telops' own look, where the game lays a telop out in its code
     /// rather than from a banner record of its table (EXE4's 0x0801650C);
     /// none: the telop banners' places, in the HP box's palette (EXE6's).
@@ -426,7 +431,7 @@ pub struct HudLayout {
 
 impl Default for HudLayout {
     fn default() -> Self {
-        HudLayout { pause: (100, 63), hp_number_priority: 2, message: (7, 2, 17), telop: None }
+        HudLayout { pause: (100, 63), hp_number_priority: 2, message: (7, 2, 17), judge_from_hold: false, telop: None }
     }
 }
 

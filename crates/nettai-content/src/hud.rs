@@ -95,7 +95,8 @@ pub struct HudDoc {
 }
 
 /// `nettai_assets::HudLayout`: "PAUSE"'s place, the HP numbers' priority,
-/// a message's place and width, and the telops' own look (where they are laid out from on the user's
+/// a message's place and width, when the judge's numbers show, and the
+/// telops' own look (where they are laid out from on the user's
 /// console and on the other's, and their glyphs after the name with their
 /// palette).
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -105,6 +106,7 @@ pub struct HudLayoutDoc {
     pub hp_number_priority: u8,
     /// [column, row, glyphs].
     pub message: [u8; 3],
+    pub judge_from_hold: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub telop: Option<TelopDoc>,
 }
@@ -113,7 +115,13 @@ impl Default for HudLayoutDoc {
     fn default() -> Self {
         let d = nettai_assets::HudLayout::default();
         let (column, row, width) = d.message;
-        HudLayoutDoc { pause: [d.pause.0, d.pause.1], hp_number_priority: d.hp_number_priority, message: [column, row, width], telop: None }
+        HudLayoutDoc {
+            pause: [d.pause.0, d.pause.1],
+            hp_number_priority: d.hp_number_priority,
+            message: [column, row, width],
+            judge_from_hold: d.judge_from_hold,
+            telop: None,
+        }
     }
 }
 
@@ -360,6 +368,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         pause: [h.layout.pause.0, h.layout.pause.1],
         hp_number_priority: h.layout.hp_number_priority,
         message: [h.layout.message.0, h.layout.message.1, h.layout.message.2],
+        judge_from_hold: h.layout.judge_from_hold,
         telop: h.layout.telop.as_ref().map(|t| TelopDoc {
             places: t.places.map(|(x, y)| [x, y]),
             glyphs: image("telop-glyphs.png", &t.glyphs, GLYPHS(TelopLook::GLYPHS as u32), &[t.palette], 1),
@@ -538,6 +547,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         pause: (doc.layout.pause[0], doc.layout.pause[1]),
         hp_number_priority: doc.layout.hp_number_priority,
         message: (doc.layout.message[0], doc.layout.message[1], doc.layout.message[2]),
+        judge_from_hold: doc.layout.judge_from_hold,
         telop,
     };
     Some(Hud {
