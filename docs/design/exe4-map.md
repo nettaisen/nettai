@@ -1188,7 +1188,20 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Barrier100, Barrier200 and LifeAura set too (2, 3, 6); Shield, Reflect and AntiMagc set B+Left (+0x0C = 0x25,
     0x26, 0x27: weapon routines of the table at 0x0800CA7C); HubBatc runs FstBarr's and Shield's handlers among its
     eight. Until they are ported the five programs have no definition (tools/exe4/gen_navicust.py's `WAITING`), and the
-    recordings that carry them stop at their setup.
+    recordings that carry them stop at their setup. EXE4's barrier tick (0x08012DF8) is EXE6's `sub_801A802` but that
+    it runs while paused (whenever its navi does) and that wind takes the barrier away at once (no popped barrier, no
+    hit flag does it): **done**, `status.intake.barrier` (`stops_while_paused`, `wind`: EXE6 and EXE5 `true`, `pops`;
+    EXE4 `false`, `takes_away`). Its types (0x080185E0: HP, threshold, timer, as halfwords): 1 10 HP, 2 100, 3 200, 4
+    150 regrowing 180 ticks after it breaks, 5 1 HP, 6 a 200 threshold for 3000 ticks, 7 a 300 threshold for 3000
+    ticks; types 4 and 7 (and a threshold over 255) wait on the chips that raise them. **Done:** FstBarr: EXE4's
+    barriers (content/exe4/lib/barriers: types 1, 2, 3 and 6, the Mod Cards' auras' too) and their visual (effect 7,
+    content/exe4/objects/barrier_visual: EXE6's but no blown action and no sound going down, its sprite updated paused
+    or not, running while paused until the fight starts, placed by per-navi offsets), raised by the roles' hook
+    `first_barrier` at the init (0x0800D892); exe4-compat names the aura types (records.toml). The navi's link to the
+    visual is EXE4's object +0x50 (the engine's `barrier_visual`: 0x08012DEC clears it with the barrier, as the
+    deletion does); EXE4's AIData +0x60 is the Full Synchro aura's link. The lab's navicust/firstbarrier matches.
+    Open: Shield, Reflect, AntiMagc and HubBatc (the B+Left weapons 0x25 to 0x27: the guard action 0x25 and
+    AntiMagc's 0x72).
 54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
     controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
     a recording with a support stops at its setup.
