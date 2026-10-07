@@ -40,6 +40,11 @@ return {
             { emotion = "normal" },
         },
         roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },
+        -- A counter marks the counter and the counterer's rules hear it; Full Synchro's boost leaves 0x80, and
+        -- anger's boost sounds too.
+        hit_mood = "counter_mark",
+        full_synchro_spent = 0x80,
+        anger_boost_sound = true,
     },
     -- The weakness request breaks a Cross or a Beast to what it breaks to.
     form_break = "marked_forms",

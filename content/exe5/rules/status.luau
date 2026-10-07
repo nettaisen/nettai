@@ -447,6 +447,11 @@ local status = {
             -- What the framework does by them: Full Synchro and anger double the next damaging chip (Full Synchro
             -- its palette and aura besides); a worn-out navi's buster deals 1, and anger doesn't start.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
+            -- A counter hit marks the counter and the counterer's rules hear it (0x08016FDC: ./emotion), as EXE6's; a
+            -- chip's use leaves Full Synchro at 0x80 and sounds anger's boost too (after 0x0801026C, as EXE6's).
+            hit_mood = "counter_mark",
+            full_synchro_spent = 0x80,
+            anger_boost_sound = true,
         },
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
         form_break = "any_form",
