@@ -788,7 +788,9 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
     check("state", format!("{:?}", [r.top, r.mode, r.sub, r.init]), format!("{:?}", f.state));
     check("rng2", format!("{:#010x}", b.rng.state), format!("{:#010x}", f.rng2));
     check("paused", (b.paused as u8).to_string(), f.paused.to_string());
-    check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
+    // The gauge as the recording console holds it (EXE4 keeps it full until
+    // its own send), on the frame its screen is as late as the banner.
+    check("gauge", format!("{:#x}", b.gauge_for(r.local_side)), format!("{:#x}", banner.gauge));
     // The banner: its task (EXE4's HUD's task mask, +0x48, bit 5; EXE6's
     // bit 15) and, while it shows, the number the recording console's block
     // holds (its +1).
