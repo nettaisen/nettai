@@ -8,6 +8,7 @@
 
 local collision = require("../rules/collision")
 local controller = require("@exelib/grab/controller")
+local panels = require("@exelib/panels")
 local shot = require("@exelib/grab/shot")
 
 local shot_kind = shot.make_kind {
@@ -23,21 +24,11 @@ local shot_kind = shot.make_kind {
 -- The panel filters by side (0x080E205C's: a side's panels have the owner bit 0x20 set for side 1, clear for side 0).
 local OWN = { [0] = { require = 0, forbid = 0x20 }, [1] = { require = 0x20, forbid = 0 } }
 
--- 0x0800A1AE (`object_getClosestPanelMatchingRowFiltered`): in row `y`, from the far edge of `side`'s field (column 6
--- for side 0, 1 for side 1) back toward `side`'s, the first panel of `side`'s; 0 when it walks off the field.
+-- 0x0800A1AE (@exelib/panels' `closest_in_row`): in row `y`, from the far edge of `side`'s field back toward `side`'s,
+-- the first panel of `side`'s; 0 when it walks off the field.
 local function closest_of_side(side: number, y: number): number
-    local back = -(1 - 2 * side)
-    local x = 6 - 5 * side
-    while true do
-        local own = OWN[side]
-        if field.check(x, y, own.require, own.forbid) then
-            return x
-        end
-        x += back
-        if not field.valid(x, y) then
-            return 0
-        end
-    end
+    local own = OWN[side]
+    return panels.closest_in_row(side, y, own.require, own.forbid)
 end
 
 -- 0x0800A1E4: AreaGrab's column, the other side's panels' front-most across the rows (each row's closest of that side

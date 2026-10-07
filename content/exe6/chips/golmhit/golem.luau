@@ -14,6 +14,7 @@
 -- cracks its panel, or its column, where it lands.
 
 local collision = require("../../rules/collision")
+local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 
 local golem = {}
@@ -58,23 +59,6 @@ local STAY_TICKS = 0x2D
 
 -- The actions.
 local LEAP, HOP_1, HOP_2, LANDED = 0, 4, 8, 0xC
-
--- `object_getClosestPanelMatchingRowFiltered`: from the back column of the
--- side `from_right` names, the first panel on row `y` that meets the
--- conditions (0 if none).
-local function closest(from_right: boolean, y: number, require: number, forbid: number): number
-    local x = if from_right then 6 else 1
-    local step = if from_right then -1 else 1
-    while true do
-        if field.check(x, y, require, forbid) then
-            return x
-        end
-        x += step
-        if not field.valid(x, y) then
-            return 0
-        end
-    end
-end
 
 -- `sub_80E4FE8`: highlight its column (region 4), on the field.
 local function highlight(me: Object)
@@ -233,8 +217,10 @@ local function init(me: Object)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     if not (me.state :: State).own_panel then
         local side = me.alliance
-        local from_right = bit32.bxor(bit32.bxor(side, me.flip), 1) == 0
-        local x = closest(from_right, me.panel_y, TARGET_REQUIRE[side], TARGET_FORBID[side])
+        -- `object_getClosestPanelMatchingRowFiltered` (@exelib/panels):
+        -- from column 6 when side ^ flip is 1, else from column 1.
+        local from = bit32.bxor(bit32.bxor(side, me.flip), 1)
+        local x = panels.closest_in_row(from, me.panel_y, TARGET_REQUIRE[side], TARGET_FORBID[side])
         if x == 0 then
             x = me.panel_x + me.facing
         end
