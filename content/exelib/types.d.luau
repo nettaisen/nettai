@@ -115,11 +115,28 @@ export type WideShotSpec = { id: string?, wave: WaveVariant, waves: number, shoo
 
 -- What a chip's vulcan fires (@exelib/vulcan/action): how many bullets, and which; the vulcan the navi holds and the
 -- bullets' kind (none: the game's).
-export type VulcanSpec = { shots: number, bullet: BulletVariant, arm: AttachmentLook?, bullet_kind: Kind? }
+export type VulcanSpec = {
+    -- The action's key when no chip definition holds it (its compat key).
+    id: string?,
+    shots: number,
+    bullet: BulletVariant,
+    arm: AttachmentLook?,
+    bullet_kind: Kind?,
+}
 
--- A game's vulcans (@exelib/vulcan/action): the shot's sound, the vulcan the navi holds, its attachment kind and its
--- bullets' kind.
-export type VulcanLook = { sound: Sound, arm: AttachmentLook, attachment: Kind, bullet_kind: Kind }
+-- A game's vulcans (@exelib/vulcan/action): the shot's sound, the vulcan the navi holds, how it holds it and where
+-- (EXE6's and EXE5's @exelib/attachment kind in the overlay; EXE4's own in the related slot, its animation three
+-- times the navi's number), its bullets' kind, and the navi's animations as it holds the vulcan and as it fires
+-- (EXE6's and EXE5's 0xA and 0xD; EXE4's 13 and 17).
+export type VulcanLook = {
+    sound: Sound,
+    arm: AttachmentLook,
+    hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
+    slot: Slot,
+    bullet_kind: Kind,
+    hold_anim: number,
+    fire_anim: number,
+}
 
 -- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
 -- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
