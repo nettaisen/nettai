@@ -15,6 +15,7 @@ return merge {
     require("@self/boomer"),
     require("@self/bubbler"),
     require("@self/cannon"),
+    require("@self/counter"),
     require("@self/crakout"),
     require("@self/darkbomb"),
     require("@self/drkcanon"),

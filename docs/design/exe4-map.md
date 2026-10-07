@@ -558,6 +558,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   lightning waits on RockCube's recordings (the lab's ligtnin*/obstacle). The towers' frames differ from mGBA's on a
   few ticks where mGBA shows the tower's previous frame or a mix of two (big sprites: the original's display falling
   a frame behind, not its state).
+- **Counter1** (with Counter2 and 3: action 0x20's variant 0, `chips/counter`): EXE4's own spawner and EXE5's unused
+  strike (attack 0x17, EXE5's 0x080DF93C's code): a strike with a hitbox on each navi of the local console's list
+  (BattleState +0x44, from the other side's place: three entries for a user of side 0, one for side 1) whose counter
+  window is open.
 
 **For the next steps:**
 
