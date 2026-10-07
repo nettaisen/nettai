@@ -290,6 +290,9 @@ declare extern type Collision with
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
+    -- What a panel type counts while the body stands on it (poison's drain,
+    -- `sub_801A186`); the standing effects zero it on a type with no `stand`.
+    standing_count: number
     -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
     -- which setup takes from the damage word's high half.
     counter_byte: number
@@ -328,6 +331,13 @@ declare extern type Collision with
     -- `sub_801A4DC`: the objects whose collisions hit it this window, in
     -- slot order.
     function hit_by(self): { Object }
+    -- Add to the damage taken this window in an element (0 to 4, 5 the
+    -- sixth slot), and to the raw damage barriers and traps see where `raw`.
+    function add_damage(self, element: number, amount: number, raw: boolean): ()
+    -- Add to the mood damage taken this window.
+    function add_mood_damage(self, amount: number): ()
+    -- Set hit modifier bits this window, both sides' too.
+    function add_hit_mod(self, bits: number): ()
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -1120,6 +1130,12 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
+    -- The battle's count of fight ticks modulo `period` (20 or 180), which
+    -- grass heals by.
+    cycle: (period: number) -> number,
+    -- The shift a hit of element `hitter` takes against a body of element
+    -- `receiver` (the rules' `elements.weakness`).
+    weakness: (receiver: number, hitter: number) -> number,
     -- `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
     -- count (what the fight's result reads) to 0 and the round's time-up
     -- byte set (and battle flag 8, which nothing in EXE4 reads).
