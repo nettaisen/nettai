@@ -1,7 +1,7 @@
 //! An EXE4 save file (the .sav an emulator keeps), and what nettai reads of
 //! it for a player's setup: the version and region, the equipped folder with
-//! its Regular chip, the NaviCust (its list and grid), the Mod Cards (BN4's
-//! patch cards: six slots, each a card on or off), the base max HP and the
+//! its Regular chip, the NaviCust (its list and grid), the patch cards (BN4's
+//! patch cards: seven slots, each a card on or off), the base max HP and the
 //! Regular memory.
 //!
 //! The file holds the save image at 0: 0x73D2 bytes, each XORed with the
@@ -22,8 +22,8 @@
 //! 9 bits, the code above), the NaviCust's list at 0x4564 (25 parts of 8
 //! bytes: the part id, 0 none; its column, row, rotation and compression
 //! flag at +2 to +5) and its 5x5 grid at 0x4540 (a cell the list's entry
-//! from 1, 0 empty), the Mod Cards at 0x464C (six slots, a card on) and
-//! 0x4653 (the same six, a card off; 0xFF none), MegaMan's NaviStats block
+//! from 1, 0 empty), the patch cards at 0x464C (seven slots, a card on) and
+//! 0x4653 (the same seven, a card off; 0xFF none), MegaMan's NaviStats block
 //! at 0x4E60 (the first of eight).
 
 use crate::Version;
@@ -65,9 +65,11 @@ pub const NAVICUST_SIZE: usize = 5;
 /// MegaMan's NaviStats block, the first of the save's eight (the toolkit's
 /// +0x78): his stats as the PET's last reload left them.
 const NAVI_STATS: usize = 0x4E60;
-const MOD_CARDS_ON: usize = 0x464C;
-const MOD_CARDS_OFF: usize = 0x4653;
-pub const MOD_CARD_SLOTS: usize = 6;
+const PATCH_CARDS_ON: usize = 0x464C;
+const PATCH_CARDS_OFF: usize = 0x4653;
+/// The slots: the PET's six and a seventh, which the reload reads too
+/// (0x08035164: slots 6 to 0).
+pub const PATCH_CARD_SLOTS: usize = 7;
 
 /// A folder's chip: its number and its code (0 A to 25 Z, 26 the asterisk).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -96,9 +98,9 @@ pub fn parts(list: &[u8]) -> [Option<Part>; NAVICUST_PARTS] {
     })
 }
 
-/// A Mod Card slot's card and whether it is on.
+/// A patch card slot's card and whether it is on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ModCard {
+pub struct PatchCard {
     pub id: u8,
     pub on: bool,
 }
@@ -195,13 +197,13 @@ impl Save {
         self.image[REGULAR_MEMORY] + 4
     }
 
-    /// The base max HP (before the NaviCust's and the Mod Cards' HP).
+    /// The base max HP (before the NaviCust's and the patch cards' HP).
     pub fn base_max_hp(&self) -> u16 {
         self.u16(BASE_MAX_HP)
     }
 
     /// MegaMan's HP and maximum HP (the maximum the PET's last reload made:
-    /// the base, the NaviCust's and the Mod Cards' HP).
+    /// the base, the NaviCust's and the patch cards' HP).
     pub fn hp(&self) -> u16 {
         self.u16(HP)
     }
@@ -233,12 +235,12 @@ impl Save {
         self.image[NAVI_STATS..NAVI_STATS + crate::codec::NAVI_STATS].try_into().unwrap()
     }
 
-    /// The Mod Cards by slot (a slot with no card: none).
-    pub fn mod_cards(&self) -> [Option<ModCard>; MOD_CARD_SLOTS] {
-        std::array::from_fn(|s| match (self.image[MOD_CARDS_ON + s], self.image[MOD_CARDS_OFF + s]) {
+    /// The patch cards by slot (a slot with no card: none).
+    pub fn patch_cards(&self) -> [Option<PatchCard>; PATCH_CARD_SLOTS] {
+        std::array::from_fn(|s| match (self.image[PATCH_CARDS_ON + s], self.image[PATCH_CARDS_OFF + s]) {
             (0xFF, 0xFF) => None,
-            (0xFF, id) => Some(ModCard { id, on: false }),
-            (id, _) => Some(ModCard { id, on: true }),
+            (0xFF, id) => Some(PatchCard { id, on: false }),
+            (id, _) => Some(PatchCard { id, on: true }),
         })
     }
 }
@@ -248,7 +250,7 @@ mod tests {
     use super::*;
 
     /// An image of a version: the game's name, a folder of Cannons (code A,
-    /// then B) and an AirShot, a Regular chip, a part, a Mod Card on and one
+    /// then B) and an AirShot, a Regular chip, a part, a patch card on and one
     /// off.
     fn image() -> Vec<u8> {
         let mut img = vec![0; IMAGE_SIZE];
@@ -266,8 +268,8 @@ mod tests {
         img[BASE_MAX_HP..BASE_MAX_HP + 2].copy_from_slice(&760u16.to_le_bytes());
         img[NAVICUST..NAVICUST + 8].copy_from_slice(&[0xA5, 0, 1, 4, 1, 0, 0, 0]);
         img[NAVICUST_GRID + 5 * 4 + 1] = 1;
-        img[MOD_CARDS_ON..MOD_CARDS_ON + 6].copy_from_slice(&[7, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
-        img[MOD_CARDS_OFF..MOD_CARDS_OFF + 6].copy_from_slice(&[0xFF, 9, 0xFF, 0xFF, 0xFF, 0xFF]);
+        img[PATCH_CARDS_ON..PATCH_CARDS_ON + 7].copy_from_slice(&[7, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+        img[PATCH_CARDS_OFF..PATCH_CARDS_OFF + 7].copy_from_slice(&[0xFF, 9, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
         img
     }
 
@@ -304,7 +306,7 @@ mod tests {
             assert_eq!(s.navicust()[0], Some(Part { id: 0xA5, column: 1, row: 4, rotation: 1, compressed: false }));
             assert!(s.navicust()[1..].iter().all(Option::is_none));
             assert_eq!(s.navicust_grid()[4][1], Some(0));
-            assert_eq!(s.mod_cards()[..3], [Some(ModCard { id: 7, on: true }), Some(ModCard { id: 9, on: false }), None]);
+            assert_eq!(s.patch_cards()[..3], [Some(PatchCard { id: 7, on: true }), Some(PatchCard { id: 9, on: false }), None]);
         }
     }
 

@@ -10,6 +10,7 @@ return {
     navis = require("@self/navis"),
     forms = require("@self/navis/megaman/forms/base"),
     stages = require("@self/stages"),
+    patch_cards = require("@self/patch_cards"),
     navicust_programs = require("@self/navicust"),
     rules = require("@self/rules"),
 }

@@ -1424,7 +1424,8 @@ export type SupportsLook = {
 -- docs/engine/patch-cards.md): an entry of a game's root's collection
 -- `patch_cards` (the core reads it as data), what every game's card is. Its key (compat's
 -- patch-cards.toml gives its number), its capacity cost (EXE6's MB, which
--- the installed cards' limit counts) and its effects in the card's order:
+-- the installed cards' limit counts; none for BN4's, a card a slot) and its
+-- effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (EXE6's
 -- rules/patch_cards, rules/patch_cards), and its type is the game's (EXE6's
@@ -1437,7 +1438,7 @@ export type PatchCardSpec = {
     -- Its id, its key in its collection (`patch_cards.canodumb`): the
     -- loader's to read, never written in the table.
     id: string?,
-    mb: number,
+    mb: number?,
     effects: { any },
 }
 export type PatchCard = PatchCardSpec
