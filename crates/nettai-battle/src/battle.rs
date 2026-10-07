@@ -762,6 +762,17 @@ impl Battle {
             validation: None,
             setup,
         };
+        // The navi's stats of its game's own are of the rules' `stats`: a
+        // setup's of none (a test's, made without the content) has them
+        // all zero.
+        if let Some(rules) = b.content.defs.rules() {
+            let schema = b.content.defs.schema(rules.stats);
+            for stats in &mut b.stats {
+                if stats.game.id() != rules.stats {
+                    stats.game = nettai_content_api::SmallBlock::new(rules.stats, schema).expect("the rules' stats fit (the content's load holds them to it)");
+                }
+            }
+        }
         // The navi the player states (the engine's navi fact) is the one the
         // round's stats are of: a setup that says another is two setups.
         for side in 0..2u8 {
@@ -778,20 +789,6 @@ impl Battle {
                     b.content.defs.navi(nettai_content_api::NaviHandle(h)).key,
                     b.content.defs.navi(navi).key
                 );
-            }
-        }
-        // The navi's version byte (NaviStats+0x20) is the player's, which
-        // the console sets as the battle starts: the place of the version
-        // they state among those the rules declare (the engine's version
-        // fact: EXE6's Gregar 0, Falzar 1). A game whose rules take no
-        // version leaves the byte as the setup gives it.
-        for side in 0..2u8 {
-            let place = b.fact(side, PlayerFact::Version).filter(|f| f.stated()).and_then(|f| match (f.value(), f.ty()) {
-                (nettai_content_api::FieldValue::Enum(i), nettai_content_api::FieldType::Enum(_)) => Some(i),
-                _ => None,
-            });
-            if let Some(place) = place {
-                b.stats[side as usize].version = place;
             }
         }
         // Each side's rules set the round up before anything reads the

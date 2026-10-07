@@ -182,18 +182,20 @@ struct StatusSection {
     weakness_mark: super::rules::WeaknessMark,
 }
 
-/// The `fresh_stats` section but its weapon (`mode9_a`, a definition: the
-/// rules' [`link`] gives it its handle).
+/// The `fresh_stats` section but its weapon (`mode9_a`, a definition) and
+/// the game's own stats (by the rules' `stats`): the rules' [`link`] gives
+/// those.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct FreshStatsSection {
     reg_up: u8,
     custom_level: u8,
     mood: u8,
-    /// (None stated: none, a game without Beast Out.)
-    #[serde(default)]
-    beast_out_counter: u8,
 }
+
+/// The engine's fields of the `fresh_stats` section; the rest are the
+/// game's own stats.
+const FRESH_STATS: [&str; 4] = ["reg_up", "custom_level", "mood", "mode9_a"];
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -579,13 +581,19 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 // (Its weapon is a definition, which `link` resolves once
                 // the definitions have their handles.)
                 let mut data = spec.clone();
+                let own: Vec<String> = match spec {
+                    Data::Map(entries) => entries.iter().map(|(k, _)| k.to_string()).filter(|k| !FRESH_STATS.contains(&k.as_str())).collect(),
+                    _ => Vec::new(),
+                };
+                let own: Vec<&str> = own.iter().map(String::as_str).collect();
+                super::reader::strip(&mut data, &own);
                 super::reader::strip(&mut data, &["mode9_a"]);
                 let s: FreshStatsSection = r.read(&data, &at).map_err(e)?;
                 stated.fresh_stats = Some(super::rules::FreshStatsRules {
                     reg_up: s.reg_up,
                     custom_level: s.custom_level,
                     mood: s.mood,
-                    beast_out_counter: s.beast_out_counter,
+                    stats: Default::default(),
                     mode9_a: None,
                 });
             }
@@ -657,6 +665,39 @@ pub fn link(content: &mut Content) -> Result<(), ContentError> {
         }
     }
     let section = d.spec.field("fresh_stats");
+    // The game's own stats, fresh: a block of the rules' `stats`, with the
+    // section's values of them.
+    if let Some(rules_def) = content.defs.rules() {
+        let id = rules_def.stats;
+        let schema = content.defs.schema(id);
+        let path = nettai_content_api::keys::module_path(&d.module);
+        let mut block = nettai_content_api::SmallBlock::new(id, schema).ok_or_else(|| {
+            ContentError::new(format!(
+                "{path}.luau: rules: their `stats` take {} bytes; a navi's stats keep {} of the game's own",
+                schema.size(),
+                nettai_content_api::SMALL_BLOCK
+            ))
+        })?;
+        if let Data::Map(entries) = section {
+            for (k, v) in entries {
+                let name = k.to_string();
+                if FRESH_STATS.contains(&name.as_str()) {
+                    continue;
+                }
+                let at = format!("{path}.luau: rules: fresh_stats.{name}");
+                let i = schema.index_of(&name).ok_or_else(|| ContentError::new(format!("{at}: neither the engine's nor the rules' `stats`")))?;
+                let value = match v {
+                    Data::Bool(b) => nettai_content_api::Value::Bool(*b),
+                    Data::Int(n) => nettai_content_api::Value::Int(*n),
+                    other => return Err(ContentError::new(format!("{at}: a number or a flag, not {other:?}"))),
+                };
+                block.set(schema, i, value).map_err(|e| ContentError::new(format!("{at}: {e}")))?;
+            }
+        }
+        if let Some(rules) = content.rules.as_mut() {
+            rules.fresh_stats.stats = block;
+        }
+    }
     if matches!(section, Data::Nil) {
         return Ok(());
     }

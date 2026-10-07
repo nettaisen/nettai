@@ -517,16 +517,19 @@ fn stats_pane(e: &Editor, s: usize) -> Element<'_, Msg> {
             return scrollable(col).into();
         }
     };
-    for f in stats::FIELDS {
-        let value = match stats::to_toml(c, (f.get)(&stats)) {
+    // (The engine's, then the game's own by their names.)
+    let own = stats::game_fields(c, &stats);
+    let all = stats::FIELDS.iter().map(|f| (f.name.to_string(), (f.get)(&stats), f.about)).chain(own.into_iter().map(|(n, v)| (n, v, "")));
+    for (name, value, about) in all {
+        let value = match stats::to_toml(c, value) {
             toml::Value::String(v) => v,
             other => other.to_string(),
         };
         col = col.push(
             row![
-                text(f.name).size(13).width(Length::Fixed(170.0)),
+                text(name).size(13).width(Length::Fixed(170.0)),
                 text(value).size(13).width(Length::Fixed(200.0)),
-                text(f.about).size(12).color(DIM)
+                text(about).size(12).color(DIM)
             ]
             .spacing(8)
             .align_y(Alignment::Center),

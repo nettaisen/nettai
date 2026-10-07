@@ -213,6 +213,36 @@ impl PlayerFact {
     }
 }
 
+/// What a frontend reads of a navi's stats of its game's own (the rules'
+/// `stats`, `NaviStats::game`) by the engine's name for it: the stat the
+/// rules give the role (`schema.role(name, T)`), else the stat of the name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StatRole {
+    /// The count the emotion window's box shows beside the navi's face,
+    /// where the HUD shows one (EXE6's Beast Out turns left, its
+    /// `beast_out_counter`).
+    WindowCount,
+}
+
+impl StatRole {
+    pub const ALL: &'static [StatRole] = &[StatRole::WindowCount];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            StatRole::WindowCount => "window_count",
+        }
+    }
+
+    /// Whether a stat of type `ty` holds the role, and what it must be if
+    /// not.
+    pub(crate) fn fits(self, ty: &FieldType) -> Result<(), &'static str> {
+        match self {
+            StatRole::WindowCount if matches!(ty, FieldType::U8) => Ok(()),
+            StatRole::WindowCount => Err("a u8"),
+        }
+    }
+}
+
 /// A form list's fields in the rules' state (the views `form_list_opening`,
 /// `form_list`, `form_list_closing` and `form_chosen`): the places of the
 /// forms offered among the player's (`offered`, a u8 array) and how many
