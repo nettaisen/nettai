@@ -685,6 +685,23 @@ impl Battle {
         self.content.defs.rules()?.panel_hook(t, hook)
     }
 
+    /// Call panel type `t`'s hook for `call` with `body`, if it has one:
+    /// its result (none: no hook).
+    pub(crate) fn call_panel(&mut self, t: PanelType, body: ObjectRef, call: nettai_content_api::PanelCall) -> Option<nettai_content_api::Value> {
+        let f = self.panel_hook(t, call.hook())?;
+        Some(crate::behavior::call_hook(self, f, nettai_content_api::HookCall::Panel { body, call }))
+    }
+
+    /// Panel type `t`'s `slide(body, how)`: what a slide, a drag or an
+    /// obstacle's slide does as it reaches the type (none: as any panel).
+    pub(crate) fn panel_slide(&mut self, t: PanelType, body: ObjectRef, how: nettai_content_api::SlideHow) -> Option<nettai_content_api::SlideAnswer> {
+        use nettai_content_api::{PanelCall, SlideAnswer, Value};
+        match self.call_panel(t, body, PanelCall::Slide { how })? {
+            Value::Int(n) if (1..=3).contains(&n) => Some(SlideAnswer::ALL[n as usize - 1]),
+            _ => None,
+        }
+    }
+
     /// Whether object `r` stands trapped: on a panel whose type traps (EXE4's
     /// pitfall, its `object_canMove`'s 0x0800AD42), not floating.
     pub fn trapped(&self, r: ObjectRef) -> bool {
@@ -859,16 +876,16 @@ mod tests {
 
     /// A panel's flags word holds its type in the low nibble by the game's
     /// number of it (its place in the rules' `numbers`: the test content's
-    /// holy is its 5, its metal 13), with the type's own flags; the roles
+    /// holy is its 5, its magnet 13), with the type's own flags; the roles
     /// name the types the engine's code needs.
     #[test]
     fn a_panels_flags_hold_the_games_number_of_its_type() {
         let content = scenario::content();
         let rules = &content.rules().panels;
-        let (holy, metal) = (panel("holy"), panel("metal"));
-        assert_eq!((holy.0, metal.0), (5, 13));
+        let (holy, magnet) = (panel("holy"), panel("magnet"));
+        assert_eq!((holy.0, magnet.0), (5, 13));
         assert_eq!(rules.type_flags(holy), 5 | rules.rule(holy).flags);
-        assert_eq!(rules.type_flags(metal), 13 | rules.rule(metal).flags);
+        assert_eq!(rules.type_flags(magnet), 13 | rules.rule(magnet).flags);
         assert_eq!((rules.roles.missing, rules.roles.broken, rules.roles.cracked, rules.roles.normal), (panel("missing"), panel("broken"), panel("cracked"), panel("normal")));
         assert_eq!((rules.numbered(15), rules.numbered(16)), (Some(panel("sea")), None));
     }
@@ -964,18 +981,17 @@ mod tests {
     /// docs/design/exe4-map.md §18 item 12: EXE4's metal is unbreakable (its
     /// panel routines refuse flag 0x20000), and its pitfall turns normal a
     /// while after a type change makes it; a stage's waits, armed, for a
-    /// grounded body. (The test content's metal and holy, made so.)
+    /// grounded body. (The test content's magnet and holy, made so.)
     #[test]
     fn exe4s_metal_holds_and_its_pitfall_crumbles() {
         use super::CRUMBLE_ARMED;
         let mut b = Battle::new(scenario::setup(), scenario::content());
         let mut c = (*b.content).clone();
-        let (metal, pitfall) = (panel("metal"), panel("holy"));
+        let (metal, pitfall) = (panel("magnet"), panel("holy"));
         {
             let types = &mut c.rules_mut().panels.types;
             types[metal.0 as usize].unbreakable = true;
             types[pitfall.0 as usize].crumbles = Some(190);
-            types[pitfall.0 as usize].stops_slides = true;
         }
         b.content = std::sync::Arc::new(c);
         b.set_panel_type(3, 1, metal);

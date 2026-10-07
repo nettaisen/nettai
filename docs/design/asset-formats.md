@@ -296,7 +296,7 @@ palettes (row numbers = background palette slots, so a map entry's palette is
 the row it shows in). `field.json` holds:
 
 - `panel_types`: the panel types the field draws, by its game's names (its
-  rules' `panels.numbers`: `"normal"`, `"cracked"`, ..., `"metal"`, `"lava"`,
+  rules' `panels.numbers`: `"normal"`, `"cracked"`, ..., `"magnet"`, `"lava"`,
   `"sea"`), in the order of their blocks, the game's: EXE6's pack lists its
   13, EXE5's its 11, EXE4's its 12. A panel type a field doesn't list is
   drawn tinted (docs/design/rules-in-luau.md §7.4).
