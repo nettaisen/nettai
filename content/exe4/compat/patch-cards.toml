@@ -23,6 +23,7 @@
 "022-charge-shot-switch" = 22
 "023-charge-shot-switch" = 23
 "024-charge-shot-switch" = 24
+"025-charge-shot-switch" = 25
 "026-charge-shot-switch" = 26
 "027-charge-shot-switch" = 27
 "028-pet-menu-color-change" = 28
@@ -53,12 +54,15 @@
 "065-max-hp-up" = 65
 "066-max-hp-up" = 66
 "067-max-hp-up" = 67
+"068-b-left-ability-activation" = 68
 "069-b-left-ability-activation" = 69
 "072-b-left-ability-activation" = 72
 "073-b-left-ability-activation" = 73
 "076-all-guard-1-2" = 76
 "077-all-guard-2-2" = 77
 "078-first-life-aura" = 78
+"083-charge-shot-switch" = 83
+"084-charge-shot-switch" = 84
 "085-charge-shot-switch" = 85
 "086-charge-shot-switch" = 86
 "087-charge-shot-switch" = 87
@@ -85,6 +89,9 @@
 "110-custom3" = 110
 "111-gigafolder1" = 111
 "112-b-left-ability-activation" = 112
+"114-charge-shot-switch" = 114
+"116-charge-shot-switch" = 116
+"117-charge-shot-switch" = 117
 "119-charge-shot-switch" = 119
 "120-charge-shot-switch" = 120
 "133-weapon-change" = 133

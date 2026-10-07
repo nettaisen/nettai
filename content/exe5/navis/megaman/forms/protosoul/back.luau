@@ -9,6 +9,7 @@ local guard = require("../../../../lib/guard")
 
 local back = {}
 
+local REFLECTOR = asset.sprite("reflector-shield")
 local TICKS = 0x14
 local DAMAGE = 50
 local LOCKOUT = 40
@@ -16,13 +17,15 @@ local LOCKOUT = 40
 local REFLECT = guard.action {
     id = "protosoul/back/action",
     ticks = TICKS,
-    look = guard.looks.navicust_reflect,
-    counter = { kind = "shot" },
+    -- The Reflect program's look (row 1 of 0x080CA1F0).
+    look = guard.look { sprite = REFLECTOR, anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },
+    counter = guard.reflect,
 }
 local CHAOS_REFLECT = guard.action {
     ticks = TICKS,
-    look = guard.looks.chaos_reflect,
-    counter = { kind = "shot" },
+    -- Row 9 of 0x080CA1F0.
+    look = guard.look { sprite = REFLECTOR, anim = 10, fade_anim = 11, fade_ticks = 0xE, palette = 0 },
+    counter = guard.reflect,
 }
 
 -- 0x0800F634

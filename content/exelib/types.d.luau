@@ -155,8 +155,9 @@ export type VulcanLook = {
     fire_anim: number,
 }
 
--- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
--- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
+-- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at its
+-- level (the chip's `level`, capped at 3: Static's the navi's kinds of NaviCust bug, DarkTorn's its side's statistic 3;
+-- `panels` by level, { dx, dy } from the panel two ahead, dx toward the navi's front; `tornadoes`, by level, over
 -- `tornado`: tornadoes that differ by level, EXE5's Static's); and the fan it holds, with an addition to its palette.
 export type TornadoBlow = {
     -- The action's key when no chip definition holds it.
@@ -167,7 +168,7 @@ export type TornadoBlow = {
     tornado_kind: Kind?,
     single: TornadoSpec?,
     spread: {
-        by: "bug_kinds" | "side_stat",
+        level: (me: Object) -> number,
         panels: { [number]: { { number } } },
         tornado: TornadoSpec,
         tornadoes: { [number]: TornadoSpec }?,
@@ -181,8 +182,9 @@ export type TornadoBlowLook = { attachment: Kind, tornado: Kind }
 -- `kind`, a ball kind of its own (none: the game's).
 export type ThunderShot = { id: string?, ball: ThunderBall, kind: Kind? }
 
--- A game's thunder shots (@exelib/thunder/shoot): its buster (the arm) and its ball's kind.
-export type ThunderShotLook = { buster: Buster, ball: Kind }
+-- A game's thunder shots (@exelib/thunder/shoot): its buster (the arm it raises; none: EXE4's raises none), its
+-- ball's kind, and the navi's animation as it shoots (none: EXE6's and EXE5's 0x0E; EXE4's 0x12).
+export type ThunderShotLook = { buster: Buster?, ball: Kind, anim: number? }
 
 -- How a falling meteor's panel marker blinks (@exelib/meteors/marker; EXE6's `byte_80E4334`, by the original's first
 -- parameter): its lifetime, its blink period, the ticks lit each period, and how much each period shrinks the next
@@ -1248,14 +1250,16 @@ export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: num
 export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug: number? }
 
 -- A game's thunder ball (chips/thunder/ball, `make_kind`): its sprite and
--- animation small and big (fast, or DarkThnd's 12 panels), its collision
--- type (a 12-panel one's, if another), hit modifier and spark, its sound
--- (a 12-panel one's, if another).
+-- animation small and big (fast, or DarkThnd's 12 panels; none: a game
+-- whose ball is never big, EXE4's), its collision type (a 12-panel one's,
+-- if another), hit modifier and spark, its sound (a 12-panel one's, if
+-- another), and its own search for its target (none: `sub_80C95EC`'s,
+-- EXE6's and EXE5's).
 export type ThunderBallLook = {
     sprite: SpriteAsset,
     small_anim: number,
-    big_sprite: SpriteAsset,
-    big_anim: number,
+    big_sprite: SpriteAsset?,
+    big_anim: number?,
     is: CollisionType,
     dark_is: CollisionType?,
     target: CollisionType,
@@ -1263,6 +1267,7 @@ export type ThunderBallLook = {
     spark: Spark,
     sound: Sound,
     dark_sound: Sound?,
+    find_target: ((me: Object) -> (number, number))?,
 }
 
 -- ElemTrap's counterattack by element (chips/elemtrap/strike): its sound,
@@ -1270,8 +1275,20 @@ export type ThunderBallLook = {
 export type ElemTrapStrike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
 
 -- A game's counterattack (`strike.make_kind`): its strikes by element
--- (null to wood), and what its hits are and reach.
-export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType, bursts: Kind }
+-- (null to wood), what its hits are and reach, its bursts' kind; the panels
+-- it strikes (none: `byte_80E36E4`'s mask over the field, EXE6's and EXE5's;
+-- EXE4's the other side's navi's panels, 0x080E5244), a step after the hits
+-- (EXE4's sets the other side's mood to 1, 0x0800F4DE), and where its bursts
+-- go (none: the whole field; EXE4's the other side's area, 0x080E531F).
+export type ElemTrapStrikeLook = {
+    strikes: { [number]: ElemTrapStrike },
+    self_type: CollisionType,
+    target: CollisionType,
+    bursts: Kind,
+    targets: ((me: Object) -> { { x: number, y: number } })?,
+    after: ((me: Object) -> ())?,
+    bursts_over: ((me: Object) -> Region)?,
+}
 
 -- A game's trap (chips/elemtrap/trap, `trap.make_kind`): what springs it
 -- (fire to wood's first hit, or one element's: the one it is set with),
@@ -1682,3 +1699,42 @@ export type SoulImage = {
     put_on: ((image: Object) -> ())?,
     take_off: ((image: Object) -> ())?,
 }
+
+-- A game's cannonball (@exelib/cannball/ball): its kind's key, its sprite, the puff it ends in off solid ground and
+-- the impact where it lands, the crack's sound, and its collision types (what it is and what it hits).
+export type CannonballLook = {
+    id: string,
+    sprite: SpriteAsset,
+    puff: Effect,
+    impact: Effect,
+    crack: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+}
+
+-- A game's cannonball kind, and a thrower of it at the panel three ahead of the user.
+export type Cannonball = { kind: Kind, thrower: () -> Thrower }
+
+-- A game's Geyser (@exelib/geyser/geyser): its bomb's and water's kind keys, the bomb's and the geyser's sprites, the
+-- splash (on solid ground and where the water lands) and its sound, the eruption's sound, its hits' collision types
+-- (what they are, what they hit) and spark, whether the splash on solid ground takes the throw's Atk+ bonus (EXE4's
+-- 0x080D5AA4 reads the spawn's +0x64; none: EXE5's, which stores it and never reads it), and its water's height: the
+-- register the geyser's update leaves for the water's spawn, the battle state's address (the battle-over test's r3:
+-- EXE5's 0x02034A90, EXE4's 0x02035810), at which the water's hits land and their sparks show, far above the field.
+export type GeyserLook = {
+    id: string,
+    water_id: string,
+    bomb: SpriteAsset,
+    geyser: SpriteAsset,
+    splash: Effect,
+    splash_sound: Sound,
+    erupt: Sound,
+    attack: CollisionType,
+    hits: CollisionType,
+    spark: Spark,
+    splash_bonus: boolean?,
+    water_height: number,
+}
+
+-- A game's Geyser kinds (the bomb and its water), and a thrower of the bomb at the panel three ahead of the user.
+export type GeyserBomb = { kind: Kind, water: Kind, thrower: () -> Thrower }

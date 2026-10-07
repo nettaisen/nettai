@@ -15,8 +15,9 @@ local LOCKOUT = 40
 local REFLECT = guard.action {
     id = "protoman/back/action",
     ticks = TICKS,
-    look = guard.looks.navicust_reflect,
-    counter = { kind = "shot" },
+    -- The Reflect program's look (row 1 of 0x080CA1F0).
+    look = guard.look { sprite = asset.sprite("reflector-shield"), anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },
+    counter = guard.reflect,
 }
 
 -- 0x0800F6CC

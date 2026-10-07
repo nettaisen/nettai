@@ -494,8 +494,8 @@ local stages: { [string]: StageDef } = {
         actors = {
             { place = "navi", side = 0, x = 1, y = 2 },
             { place = "navi", side = 1, x = 6, y = 2 },
-            { place = gear.kind, x = 3, y = 2, argument = 25 },
-            { place = gear.kind, x = 4, y = 2, argument = 25 },
+            { place = gear.kind, x = 3, y = 2 },
+            { place = gear.kind, x = 4, y = 2 },
         },
     },
     ["netbattle-34"] = {
@@ -512,8 +512,8 @@ local stages: { [string]: StageDef } = {
         actors = {
             { place = "navi", side = 1, x = 6, y = 2 },
             { place = "navi", side = 0, x = 1, y = 2 },
-            { place = gear.kind, x = 4, y = 2, argument = 25 },
-            { place = gear.kind, x = 3, y = 2, argument = 25 },
+            { place = gear.kind, x = 4, y = 2 },
+            { place = gear.kind, x = 3, y = 2 },
         },
     },
     ["netbattle-35"] = {
@@ -530,8 +530,8 @@ local stages: { [string]: StageDef } = {
         actors = {
             { place = "navi", side = 0, x = 1, y = 2 },
             { place = "navi", side = 1, x = 6, y = 2 },
-            { place = gear.kind, x = 3, y = 2, argument = 25 },
-            { place = gear.kind, x = 4, y = 2, argument = 25 },
+            { place = gear.kind, x = 3, y = 2 },
+            { place = gear.kind, x = 4, y = 2 },
         },
     },
     ["netbattle-36"] = {
@@ -548,8 +548,8 @@ local stages: { [string]: StageDef } = {
         actors = {
             { place = "navi", side = 1, x = 6, y = 2 },
             { place = "navi", side = 0, x = 1, y = 2 },
-            { place = gear.kind, x = 4, y = 2, argument = 25 },
-            { place = gear.kind, x = 3, y = 2, argument = 25 },
+            { place = gear.kind, x = 4, y = 2 },
+            { place = gear.kind, x = 3, y = 2 },
         },
     },
     ["netbattle-37"] = {
@@ -1085,9 +1085,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 0, x = 3, y = 2 },
-            { place = flag.kind, x = 1, y = 1, argument = 125 },
+            { place = flag.kind, x = 1, y = 1, side = 0, hp = 1000 },
             { place = "navi", side = 1, x = 4, y = 2 },
-            { place = flag.kind, x = 6, y = 3, argument = 253 },
+            { place = flag.kind, x = 6, y = 3, side = 1, hp = 1000 },
         },
     },
     ["netbattle-78"] = {
@@ -1103,9 +1103,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 1, x = 4, y = 2 },
-            { place = flag.kind, x = 6, y = 3, argument = 253 },
+            { place = flag.kind, x = 6, y = 3, side = 1, hp = 1000 },
             { place = "navi", side = 0, x = 3, y = 2 },
-            { place = flag.kind, x = 1, y = 1, argument = 125 },
+            { place = flag.kind, x = 1, y = 1, side = 0, hp = 1000 },
         },
     },
     ["netbattle-79"] = {
@@ -1121,9 +1121,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 0, x = 3, y = 2 },
-            { place = flag.kind, x = 1, y = 3, argument = 125 },
+            { place = flag.kind, x = 1, y = 3, side = 0, hp = 1000 },
             { place = "navi", side = 1, x = 4, y = 2 },
-            { place = flag.kind, x = 6, y = 1, argument = 253 },
+            { place = flag.kind, x = 6, y = 1, side = 1, hp = 1000 },
         },
     },
     ["netbattle-80"] = {
@@ -1139,9 +1139,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 1, x = 4, y = 2 },
-            { place = flag.kind, x = 6, y = 1, argument = 253 },
+            { place = flag.kind, x = 6, y = 1, side = 1, hp = 1000 },
             { place = "navi", side = 0, x = 3, y = 2 },
-            { place = flag.kind, x = 1, y = 3, argument = 125 },
+            { place = flag.kind, x = 1, y = 3, side = 0, hp = 1000 },
         },
     },
     ["netbattle-81"] = {
@@ -1157,9 +1157,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 0, x = 1, y = 2 },
-            { place = flag.kind, x = 1, y = 1, argument = 125 },
+            { place = flag.kind, x = 1, y = 1, side = 0, hp = 1000 },
             { place = "navi", side = 1, x = 6, y = 2 },
-            { place = flag.kind, x = 6, y = 3, argument = 253 },
+            { place = flag.kind, x = 6, y = 3, side = 1, hp = 1000 },
         },
     },
     ["netbattle-82"] = {
@@ -1175,9 +1175,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 1, x = 6, y = 2 },
-            { place = flag.kind, x = 6, y = 3, argument = 253 },
+            { place = flag.kind, x = 6, y = 3, side = 1, hp = 1000 },
             { place = "navi", side = 0, x = 1, y = 2 },
-            { place = flag.kind, x = 1, y = 1, argument = 125 },
+            { place = flag.kind, x = 1, y = 1, side = 0, hp = 1000 },
         },
     },
     ["netbattle-83"] = {
@@ -1193,9 +1193,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 0, x = 1, y = 2 },
-            { place = flag.kind, x = 1, y = 3, argument = 125 },
+            { place = flag.kind, x = 1, y = 3, side = 0, hp = 1000 },
             { place = "navi", side = 1, x = 6, y = 2 },
-            { place = flag.kind, x = 6, y = 1, argument = 253 },
+            { place = flag.kind, x = 6, y = 1, side = 1, hp = 1000 },
         },
     },
     ["netbattle-84"] = {
@@ -1211,9 +1211,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 1, x = 6, y = 2 },
-            { place = flag.kind, x = 6, y = 1, argument = 253 },
+            { place = flag.kind, x = 6, y = 1, side = 1, hp = 1000 },
             { place = "navi", side = 0, x = 1, y = 2 },
-            { place = flag.kind, x = 1, y = 3, argument = 125 },
+            { place = flag.kind, x = 1, y = 3, side = 0, hp = 1000 },
         },
     },
     ["netbattle-85"] = {
@@ -1229,9 +1229,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 0, x = 2, y = 2 },
-            { place = flag.kind, x = 1, y = 2, argument = 125 },
+            { place = flag.kind, x = 1, y = 2, side = 0, hp = 1000 },
             { place = "navi", side = 1, x = 5, y = 2 },
-            { place = flag.kind, x = 6, y = 2, argument = 253 },
+            { place = flag.kind, x = 6, y = 2, side = 1, hp = 1000 },
         },
     },
     ["netbattle-86"] = {
@@ -1247,9 +1247,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 1, x = 5, y = 2 },
-            { place = flag.kind, x = 6, y = 2, argument = 253 },
+            { place = flag.kind, x = 6, y = 2, side = 1, hp = 1000 },
             { place = "navi", side = 0, x = 2, y = 2 },
-            { place = flag.kind, x = 1, y = 2, argument = 125 },
+            { place = flag.kind, x = 1, y = 2, side = 0, hp = 1000 },
         },
     },
     ["netbattle-87"] = {
@@ -1265,9 +1265,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 0, x = 2, y = 2 },
-            { place = flag.kind, x = 1, y = 2, argument = 125 },
+            { place = flag.kind, x = 1, y = 2, side = 0, hp = 1000 },
             { place = "navi", side = 1, x = 5, y = 2 },
-            { place = flag.kind, x = 6, y = 2, argument = 253 },
+            { place = flag.kind, x = 6, y = 2, side = 1, hp = 1000 },
         },
     },
     ["netbattle-88"] = {
@@ -1283,9 +1283,9 @@ local stages: { [string]: StageDef } = {
         effects = 0x0000088C,
         actors = {
             { place = "navi", side = 1, x = 5, y = 2 },
-            { place = flag.kind, x = 6, y = 2, argument = 253 },
+            { place = flag.kind, x = 6, y = 2, side = 1, hp = 1000 },
             { place = "navi", side = 0, x = 2, y = 2 },
-            { place = flag.kind, x = 1, y = 2, argument = 125 },
+            { place = flag.kind, x = 1, y = 2, side = 0, hp = 1000 },
         },
     },
     ["netbattle-89"] = {
