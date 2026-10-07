@@ -1303,6 +1303,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090. Cards 76 and 77 (All Guard) set
     +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so it turns aside
     every hit that doesn't break guards, 0x08012B84).
+61. **Done: the idle stands the navi** (from AirShot's replays). MegaMan's idle (0x080EEB38) puts animation 0 on each
+    tick past its first phase (0x080EEB7C: 0x080EEBAC), the 10 ticks after a reaction's end; EXE6's (`sub_80F0354`)
+    and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
+    shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
+    `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
 
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)

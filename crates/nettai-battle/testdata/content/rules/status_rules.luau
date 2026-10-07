@@ -60,4 +60,6 @@ return {
     paused_navi = "pause_handler",
     -- The status timers hold while paused.
     timers_while_paused = false,
+    -- The idle leaves the navi's pose.
+    idle_stands = false,
 }
