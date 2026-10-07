@@ -95,7 +95,7 @@ pub struct HudDoc {
 }
 
 /// `nettai_assets::HudLayout`: "PAUSE"'s place, the HP numbers' priority,
-/// a message's place and width, when the judge's numbers show, where the
+/// the HUD layer's priority, a message's place and width, when the judge's numbers show, where the
 /// chatbox's text starts and its arrows are, and the telops' own look (where they are laid out from on the user's
 /// console and on the other's, and their glyphs after the name with their
 /// palette).
@@ -104,6 +104,7 @@ pub struct HudDoc {
 pub struct HudLayoutDoc {
     pub pause: [u8; 2],
     pub hp_number_priority: u8,
+    pub hud_priority: u8,
     /// [column, row, glyphs].
     pub message: [u8; 3],
     pub judge_from_hold: bool,
@@ -121,6 +122,7 @@ impl Default for HudLayoutDoc {
         HudLayoutDoc {
             pause: [d.pause.0, d.pause.1],
             hp_number_priority: d.hp_number_priority,
+            hud_priority: d.hud_priority,
             message: [column, row, width],
             judge_from_hold: d.judge_from_hold,
             chatbox_text: [d.chatbox_text.0, d.chatbox_text.1],
@@ -372,6 +374,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
     let layout = HudLayoutDoc {
         pause: [h.layout.pause.0, h.layout.pause.1],
         hp_number_priority: h.layout.hp_number_priority,
+        hud_priority: h.layout.hud_priority,
         message: [h.layout.message.0, h.layout.message.1, h.layout.message.2],
         judge_from_hold: h.layout.judge_from_hold,
         chatbox_text: [h.layout.chatbox_text.0, h.layout.chatbox_text.1],
@@ -553,6 +556,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     let layout = HudLayout {
         pause: (doc.layout.pause[0], doc.layout.pause[1]),
         hp_number_priority: doc.layout.hp_number_priority,
+        hud_priority: doc.layout.hud_priority,
         message: (doc.layout.message[0], doc.layout.message[1], doc.layout.message[2]),
         judge_from_hold: doc.layout.judge_from_hold,
         chatbox_text: (doc.layout.chatbox_text[0], doc.layout.chatbox_text[1]),
