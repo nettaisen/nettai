@@ -768,7 +768,7 @@ engine's terms, the buttons fed, the comparison, `run_round`), as exe5-compat's 
 settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance from
 Red Sun US's); its background the record's +5; its stats, where the recording carries the saves' NaviCusts, those and
 its patch cards compiled by the rules (§8) and checked against the recorded block, else the recorded block over the
-navi's fresh stats; an unported field (supports, a color, All Guard) a need that stops the setup. The compat tables
+navi's fresh stats; an unported field (supports, All Guard) a need that stops the setup. The compat tables
 kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the framework's states, which are
 EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and records.toml (navis, weapon
 routines, souls, auras by number) are written by hand as the replays reach them. The verification workspace's
@@ -1277,15 +1277,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 56. **The patch cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
     group): the cards' content, their handlers (0x08041E8C), the setup's `patch_cards`, exe4-compat's from a recording's
     slots (a recording with a card on stops at its setup until then). **Done** (§8): tools/exe4/gen_patch_cards.py
-    (verify) decodes the four ROMs' handlers; content/exe4/patch_cards (the 57 cards whose effects EXE4's content can
+    (verify) decodes the four ROMs' handlers; content/exe4/patch_cards (the 61 cards whose effects EXE4's content can
     do), rules/patch_cards (their constructors and their part of the reload), the setup's `patch_cards` (a card and its
     slot), exe4-compat's numbers (compat/patch-cards.toml), a recording's slots and a save's into the setup; the lab's
     modcards/ recordings whose cards are ported compile as recorded (exe4_navicust) and replay. The cards that wait,
     each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
-    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); MegaMan's color
-    (59, 60, 89, 90: +0x27, item 60); the pairs, each half applying when the other sits in its slot (0x08042504):
-    Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item 60), Charge FullCustom (103, 104:
-    the charged shot FullCustom, item 57).
+    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); the pairs, each half applying when the
+    other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item
+    60), Charge FullCustom (103, 104: the charged shot FullCustom, item 57).
 57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
@@ -1299,10 +1298,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 60. **The patch cards' own bytes.** Card 45 sets NaviStats +0x1F, the Full Synchro at the start, which the reload's
     reset doesn't keep (0x08036CC0): **done**, the rules' stat `full_synchro_start`, which the card writes and
     rules/light_dark's starting mood reads (no setup fact: exe4-compat reads +0x1F into the stat where a recording's
-    stats aren't compiled). Cards 59, 60, 89 and 90 set
-    +0x27, MegaMan's color, which rules/light_dark's palette reads (+0x27 x 5): a rules stat. Cards 76 and 77 (All
-    Guard) set +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so
-    it turns aside every hit that doesn't break guards, 0x08012B84).
+    stats aren't compiled). Cards 59, 60, 89 and 90 set +0x27, MegaMan's color (1 to 4), which the reset clears too:
+    **done**, the rules' stat `color`, which the cards write and rules/light_dark's palette reads (5 more a step of it,
+    0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090. Cards 76 and 77 (All Guard) set
+    +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so it turns aside
+    every hit that doesn't break guards, 0x08012B84).
 
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
