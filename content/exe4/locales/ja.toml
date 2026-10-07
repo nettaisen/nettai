@@ -55,6 +55,8 @@ language = "ja"
 "boomer1" = { name = "ブーメラン1", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 "boomer2" = { name = "ブーメラン2", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 "boomer3" = { name = "ブーメラン3", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"repair" = { name = "リペア-", description = "キューブなどの\nおきもののHPを\nかいふくさせる" }
+"fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

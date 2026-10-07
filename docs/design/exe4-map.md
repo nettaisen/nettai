@@ -545,6 +545,9 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 - **Boomer1** (with Boomer2 and 3: action 0x20's variant 2, `chips/boomer`): @exelib/boomer's boomerang, which is
   EXE5's code with EXE4's constants (its sound, 0xAB) and EXE5's variant rows; thrown from the back column by the side
   alone (EXE4 objects have no flip).
+- **FullCust** (action 0x20's variant 7) and **Repair** (its variant 0x0B): EXE5's routines (FullCust's 0x080096C4,
+  0x0800E26C) as spawners, on the engine's gauge and its field object registry; FullCust's branch for a navi whose
+  NaviStats +0x26 is 2 (a story's other navi) has no netbattle navi to take it.
 
 **For the next steps:**
 
