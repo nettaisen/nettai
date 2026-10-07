@@ -25,6 +25,9 @@
 //! [forms]
 //! "heatcross" = { name = "...", description = "..." }
 //!
+//! [backgrounds]
+//! "lans-hp" = { name = "熱斗のHP" }
+//!
 //! [patch-cards]
 //! "canodumb" = { name = "..." }
 //!
@@ -37,7 +40,10 @@
 //!
 //! A table names its game's definitions by their ids, as the game's
 //! modules do (local to the game: `cannon`; docs/design/rules-in-luau.md,
-//! the namespace).
+//! the namespace); `[backgrounds]` names its pack's backgrounds by their
+//! asset names (compat/assets.toml's), the name a player sees for each
+//! (the app's arenas): the area whose maps draw it, as the game's menus name
+//! it (docs/frontend.md §1).
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
@@ -59,7 +65,7 @@
 //! `{field}` the effect's number of that name; the build creator's patch card list
 //! shows them).
 
-pub use nettai_battle::content::strings::{ChipStrings, EntryStrings, FormStrings, NaviStrings, Strings, Table};
+pub use nettai_battle::content::strings::{BackgroundStrings, ChipStrings, EntryStrings, FormStrings, NaviStrings, Strings, Table};
 use nettai_battle::content::Defs;
 use std::path::{Path, PathBuf};
 
@@ -222,12 +228,41 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
     unknown
 }
 
+/// What is wrong with a game's table's `[backgrounds]` against the
+/// backgrounds its pack has (`backgrounds`, their asset names; its
+/// placeholders, `background-0c`, none of them): a name the pack hasn't, a
+/// string with a combining mark, and in the own language's (`own`), a
+/// background without a name, which a frontend would show by its asset name.
+pub fn check_backgrounds(s: &Strings, backgrounds: &[&str], own: bool) -> Vec<String> {
+    let mut out = Vec::new();
+    for (name, b) in &s.backgrounds {
+        if !backgrounds.contains(&name.as_str()) {
+            out.push(format!("backgrounds.{name}: the pack has no background of this name"));
+        }
+        if let Some(c) = b.name.as_deref().and_then(|v| v.chars().find(|&c| matches!(c, '\u{0300}'..='\u{036F}' | '\u{3099}' | '\u{309A}'))) {
+            out.push(format!("backgrounds.{name}.name has a combining mark ({c:?}): write the composed character"));
+        }
+    }
+    if own {
+        for name in backgrounds {
+            if s.background(name).and_then(|b| b.name.as_ref()).is_none() {
+                out.push(format!("backgrounds.{name}: the content's own language names every background of the pack"));
+            }
+        }
+    }
+    out
+}
+
 /// Check the tables of each game `c` loaded from content `dir` against
 /// `c`: each language's table of the game's pack (a chip the game's
 /// init.luau doesn't require yet, its folder `chips/<key>/` there without
 /// a use, may have its strings before it loads), and the own language's
-/// present.
+/// present; the backgrounds' against the content's assets' (its pack's, or
+/// on made-up assets those its modules name).
 pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
+    use nettai_content_api::{AssetKind, AssetNames};
+    let backgrounds: Vec<&str> =
+        c.assets.names(AssetKind::Background).into_iter().filter(|n| !AssetNames::is_placeholder(AssetKind::Background, n)).collect();
     for game in c.scripts.games() {
         let pack = dir.join(&game);
         let text_tables = c.scripts.manifest(&game).map(|m| m.text.clone()).unwrap_or_default();
@@ -246,6 +281,9 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
                 Ok(Some(mut s)) => {
                     s.chips.retain(|k, _| !unported(k));
                     for problem in check(&s, &c.defs, &text_tables, lang == OWN) {
+                        r.error(&at, problem);
+                    }
+                    for problem in check_backgrounds(&s, &backgrounds, lang == OWN) {
                         r.error(&at, problem);
                     }
                 }
@@ -290,5 +328,19 @@ mod tests {
         // (Own language: a declared table it hasn't.)
         let none = parse("language = \"en\"\n", "en.toml").unwrap();
         assert_eq!(check(&none, &defs, &["patch_card_effects".to_string()], true).len(), 1);
+    }
+
+    /// `[backgrounds]` names the pack's backgrounds by their asset names:
+    /// a name the pack hasn't is refused, and the own language names every
+    /// one the pack has.
+    #[test]
+    fn the_backgrounds_are_the_packs() {
+        let s = parse("language = \"en\"\n[backgrounds]\n\"lans-hp\" = { name = \"Lan's HP\" }\n\"lan-hp\" = { name = \"?\" }\n", "en.toml").unwrap();
+        assert_eq!(s.background("lans-hp").and_then(|b| b.name.as_deref()), Some("Lan's HP"));
+        assert_eq!(
+            check_backgrounds(&s, &["lans-hp", "comp"], true),
+            ["backgrounds.lan-hp: the pack has no background of this name", "backgrounds.comp: the content's own language names every background of the pack"]
+        );
+        assert_eq!(check_backgrounds(&s, &["lans-hp", "comp", "lan-hp"], false), Vec::<String>::new());
     }
 }
