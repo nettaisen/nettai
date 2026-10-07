@@ -1148,6 +1148,10 @@ pub struct AuraRules {
     /// (EXE5's: its header flag goes); else it runs through every pause
     /// (EXE6's).
     pub stops_at_a_pause_in_the_fight: bool,
+    /// Its spawn has it run while the battle is paused (EXE6's
+    /// `sub_80C4C12` sets the header flag 0x04); else it waits for the
+    /// battle to run (EXE5's 0x080C46E2, EXE4's 0x080CD276).
+    pub spawn_runs_while_paused: bool,
 }
 
 /// Global rules: element weakness, collision types, panels, banners,
