@@ -1084,9 +1084,15 @@ fn step_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     }
     b.unreserve_panel(r, fp.x, fp.y);
     let aqua = b.collision.get(collision(b, r)).element == 2;
-    if !aqua && b.field.panel(fp.x, fp.y).is_some_and(|p| p.kind == PanelType::Ice) {
+    let under = b.field.panel(fp.x, fp.y).map(|p| p.kind);
+    if !aqua && under == Some(PanelType::Ice) {
         let o = b.objects.get_mut(r);
         o.phase_init = o.phase_init.wrapping_add(1);
+    } else if under.is_some_and(|k| b.game_rules().panels.types[k as usize].stops_slides)
+        && f1_of(b, r) & f1::FLOATSHOE == 0
+    {
+        // (EXE4's pitfall stops it: 0x080106B8 and its kin.)
+        b.objects.get_mut(r).phase_init = 0;
     }
     let o = b.objects.get_mut(r);
     let left = o.phase_init as i32 - 1;
