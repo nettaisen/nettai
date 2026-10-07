@@ -12,6 +12,7 @@ return merge {
     require("@self/areagrab"),
     require("@self/atk-10"),
     require("@self/atk-30"),
+    require("@self/binder"),
     require("@self/boomer"),
     require("@self/bubbler"),
     require("@self/cannon"),
