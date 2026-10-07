@@ -7,10 +7,9 @@
 -- dash's 0x0800C41C: EXE5's values). What the panels do (the panel tick 0x08009740: a broken panel mends after 600
 -- ticks; type 8, lava, turns normal after 960, blinking its last 60): lava burns a grounded body not of fire for 50
 -- (0x08013128, a player's even while dimmed; 0x0801309E), poison drains and grass heals a wood body (0x08012FF2,
--- at any HP every 20 ticks), what passes over grass of fire or lava of aqua clears it (0x08013058). Nearest the engine can
--- say until each is ported (exe4-map.md §18): which panels start visible and the front edges (EXE5's: EXE4's
--- tables are to find), the any-side step (EXE5's rows), a broken panel's mend in battle mode 1, and the
--- reservations (EXE5's).
+-- at any HP every 20 ticks), what passes over grass of fire or lava of aqua clears it (0x08013058). Every panel
+-- starts visible (0x08009186) and row 3 draws the front edges (0x0800937A). EXE4 has no any-side step rule (EXE6's
+-- `sub_800E680` is absent): its rows here are EXE6's, for EXE6's code in an EXE4 arena.
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
 
 return {
@@ -36,11 +35,11 @@ return {
     -- EXE4's panel types by its own numbers.
     numbers = { "missing", "broken", "normal", "cracked", "poison", "metal", "grass", "ice", "lava", "holy", "pitfall", "hole" },
     start_visible = {
-        { false, false, false, false, false, false, false, false },
-        { false, true, true, true, true, true, true, false },
-        { false, true, true, true, true, true, true, false },
-        { false, true, true, true, true, true, true, false },
-        { false, false, false, false, false, false, false, false },
+        { true, true, true, true, true, true, true, true },
+        { true, true, true, true, true, true, true, true },
+        { true, true, true, true, true, true, true, true },
+        { true, true, true, true, true, true, true, true },
+        { true, true, true, true, true, true, true, true },
     },
     front_edges = {
         { false, false, false, false, false, false, false, false },
@@ -79,7 +78,10 @@ return {
             { require = 0x00000000, forbid = 0x0B800000 },
         },
     },
+    -- A broken panel mends after 600 ticks in every battle (0x08009132, 0x0800976C).
     mend = { normal = 600, battle_mode_1 = 600 },
+    -- A reservation doesn't mark its holder (0x080143A8 sets the panel's alone), and a destroyed holder's stay
+    -- (0x080D8C58 releases none).
     reservations = "unmarked",
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x08009AEC and its kin), metal's
     -- 0x20000 among them.

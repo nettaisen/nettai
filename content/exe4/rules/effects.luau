@@ -60,4 +60,7 @@ return {
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out", bounces = false },
     -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
     rng1_per_frame = false,
+    -- An object's destroy (0x080D8C58) unregisters its collision first (0x080129FC: its panels refreshed, its hits
+    -- and the panels it clears resolved on them), then frees it.
+    destroy = "unregisters",
 }
