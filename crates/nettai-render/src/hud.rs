@@ -314,6 +314,14 @@ fn custom_open(b: &Battle) -> bool {
     b.round.mode == mode::CUSTOM && b.custom.sides[b.setup.local_side as usize].in_custom
 }
 
+/// The custom gauge's frame: from column 6 of the top two rows, 18 columns
+/// wide.
+const GAUGE_COLUMN: i32 = 6;
+const GAUGE_COLUMNS: i32 = 18;
+/// Where the custom gauge is drawn, in pixels (x, y, width, height): its
+/// frame's tiles.
+pub const GAUGE_AREA: (i32, i32, i32, i32) = (GAUGE_COLUMN * 8, 0, GAUGE_COLUMNS * 8, 16);
+
 /// While the local player's result is sent and the opponent's isn't in:
 /// the ticks "Cstmzing..." has been up (`sub_801E474` starts it).
 fn waiting_ticks(b: &Battle) -> Option<u32> {
@@ -400,7 +408,7 @@ pub fn draw<'a>(
     if gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
-            put(layer, hud, pal, e, 6 + (i as i32 % 18), i as i32 / 18);
+            put(layer, hud, pal, e, GAUGE_COLUMN + (i as i32 % GAUGE_COLUMNS), i as i32 / GAUGE_COLUMNS);
         }
         // (The local console's: EXE4's keeps it full until its own send.)
         let g = b.gauge_for(b.setup.local_side);
