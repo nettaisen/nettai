@@ -604,17 +604,47 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    (`applyHeatOnGrassDamage_300766c`), EXE5's and elec on its sea (0x08016AF6). The panel type's rule
    `doubles = element` (EXE4's grass fire, ice elec, gen_rules.py reading the kernel's comparisons); the reactions'
    `hit_test.elec_bonus_on_sea` is gone.
-5. **The hit test.** 0x08012AFC: no FloatShoe self bit, no body under a sea; a guard breaks to types with 0x1002
-   (0x08012F24) and turns aside what lacks 0x0C004000. Placeholder: the `hit_test` booleans as written, the guard's
-   0x1002; the 0x0C004000 test is the engine's (to compare).
-6. **Request clears.** 0x0800CA4A (an attack's end) zeroes the AI data's request halfword at +0x70; EXE4's exits
-   0x0800CA28 and 0x0800C9FC (the latter also writes AIData +0x3A from the attack's +5) differ from EXE6's
-   `object_exitAttackState`. Shape: `reactions.request_clears` rows per EXE4's, and the exit's extra write as a rule
-   or the actions' own. Placeholder: empty clears; the buster, charged shot and Cannon call the engine's `exit_attack`.
-7. **Statuses.** The status table 0x08018550 is generated (4 groups of 4); the status rules are EXE5's but for the
-   HP bug: 0x0800C164 reads NaviStats +0x0E as the period itself (no table), and the custom gauge drain 0x0800C194.
-   Shape: `status.hp_bug_periods` becomes `hp_bug = { periods = [...] } | { period_is_byte = true }`. Placeholder:
-   EXE5's `hp_bug_periods`, `reactions = "flash_timer_first"`, `hp_loss = "hp_alone"`, the rest EXE5's.
+5. **Done: the hit test.** EXE4's kernel (0x08012AFC, from the pair test 0x08012AE0; its unfiltered channel
+   0x08012D1E), read against the engine's (EXE6's `sub_3007218`):
+   - as the rules said: no FloatShoe self bit, no body under a sea, elec reaching no submerged body; a guard breaks to
+     types with 0x1002 (0x08012B8C, with no 0x4000 case: the engine's 0x1002 either way) and turns aside what lacks
+     0x0C004000 (the engine's 0x0C005000, which a type with 0x1000 never reaches);
+   - its own: an untouchable receiver is tested with the invulnerable one (0x08012BDC: 0x08000008), after the guard
+     and the air/ground test, so its guard still turns a hit aside. The rule `hit_test.guard_before_untouchable`
+     (EXE4 true; EXE6, EXE5 false). (EXE4 sets the flag for soul 15: 0x0800E17E, from the souls' table at
+     0x0800E0A0, by NaviStats +0x24.)
+   - Nothing reads or can reach the rest, so no rule: it records no hitter bits (`hit_by`) and no hits by flip,
+     ORs no secondary element (its attacks have none), has no thaw or bubble multiplier (EXE4's flag 0x10000 is
+     not a freeze but a player action's, 0x080EBA84; its freeze is elsewhere, item 7), no aqua-on-ice freeze (the
+     role is EXE6's), and multiplies by a shift (0x08012CA4: 1 for a weakness, the engine's 1 + 1).
+   - For others: a guard marks the receiver's +0x26 with 1, not a bit by the hitter's flip (the chips wave: a guard
+     chip reading the engine's `guard_dirs`); the counter's mark (0xFF added to +0x38, 0x7F off the mood) and hit
+     flag 0x80 by the hitter's side's 0x0800F49C (2: the table at 0x08012CEC) are item 9's (group A).
+6. **Done: request clears.** EXE4's ends: an attack's (0x0800CA28, 0x0800C9FC) clears the six attack requests
+   (0x3F) and nothing more; a paralysis's, a flinch's and a drag's (0x08010A74, 0x080109E6, 0x08010C28) 0x43F, the
+   anti-sword trigger too (0x400, which AntiSwrd's trap sets, 0x0802309C). Stated: `request_clears` (attack none, the
+   others `anti_sword_triggered`). EXE4 has no kind byte for the exit (EXE6's `sub_801171C` reads the attack's
+   +0x1C): each action calls one of three routines, which map onto the engine's kinds, so no rule:
+   - 0x0800CA4A, bare (animation 0, idle, the attack's step): the move's (0x080EB252, 0x080EB314), EXE6's kind 4;
+   - 0x0800CA28, the requests, the charge and the action in use cleared too: the buster's (0x080EB3D6, 0x080EB3F0)
+     and the charged shot's (0x080ECCCC), many chips', EXE6's kind 1;
+   - 0x0800C9FC, that and AIData +0x3A from the attack's +5 (its lockout): the chips' (Cannon's 0x080EB9E8) and
+     action 9's (0x080EB51C, likely the B+Left ability), EXE6's kind 2. One field for both: the idle that reads it
+     decides whether the B+Left ability's is the engine's chip lockout or its back special's (kind 3).
+   - EXE4's exits zero no buffered move (EXE6's AIData +0x1A) and no special source (+0x1B): nothing in EXE4 sets
+     either while the engine's movement is EXE6's (item 24, group B's).
+7. **Statuses.** The status table 0x08018550 is generated (4 groups of 4). The status rules, each read from EXE4's
+   routine:
+   - **Done: the drains.** The NaviCust's HP bug (0x0800C164) reads NaviStats +0x0E as the period itself (no table)
+     and drains through a pause (EXE6's `sub_8010230` reads a period by level and holds while paused); the custom
+     screen's (0x0800C194) reads +0x0F as the period, and runs while the side's status (BattleState +0x14) has bit 0,
+     its selection running (EXE6's `sub_80102AC` by level, while it has bit 0 or 2, the screen up). The rules
+     `status.hp_drain` (`periods`: eight by level, or `"stat"`; `stops_while_paused`) and `status.custom_drain`
+     (`periods`, `status`'s bits); `hp_bug_periods` and the engine's own custom table are gone. The engine's status
+     byte has bit 0 where the side's screen says so (`custom::Side::selecting`; EXE6's and EXE5's never do, their
+     traces compare the byte): EXE4's screen (group A's) sets it while its selection runs (in the lab's
+     `custom/cannon` from frame 273 until OK).
+   - To read: `reactions = "flash_timer_first"`, `hp_loss = "hp_alone"`, the rest EXE5's (the placeholders).
 8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
 9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
 10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.

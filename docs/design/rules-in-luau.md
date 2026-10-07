@@ -2569,7 +2569,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `effects.palette_flash` | `exe6`, `exe5` | `mode_runs_through_pause`, `pause_holds` |
   | `effects.obstacle_actions` | `exe6`, `exe5` | `own_from_8`, `own_from_6` |
   | `reactions.push_reading` | `exe6`, `exe5` | `toward_front`, `by_hitter_flip`; since EXE4's port data: which modifier it `reads` (`final`, `by_hitter_flip`), how many `bits` from bit 2, a `shift` bit, an obstacle's rows |
-  | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to` (its `elec_bonus_on_sea` since a panel type's `doubles`) |
+  | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to` (its `elec_bonus_on_sea` since a panel type's `doubles`); since EXE4's port `guard_before_untouchable` |
   | `reactions.obstacle_slide_bounds` | part of `push_reading` | a setting of its own |
   | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
   | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge` |
@@ -2602,6 +2602,10 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - **A panel type's `doubles`, since EXE4's port** (was the hit test's `elec_bonus_on_sea`): the element whose hits
   count once more, as null damage, on a body standing on it: fire on grass in all three games, and EXE5's elec on
   its sea, EXE4's elec on ice (0x08012CF2).
+- **`status.hp_drain` and `status.custom_drain`, since EXE4's port** (were `hp_bug_periods` and a Rust table): a
+  NaviCust drain bug's period by level (EXE6's and EXE5's tables) or its stat itself (`"stat"`, EXE4's), whether
+  a pause holds the HP bug (EXE6's and EXE5's do, EXE4's doesn't), and the status bits the custom screen's bug runs
+  under (EXE6's and EXE5's 5, the screen up; EXE4's 1, its selection running).
 - **`status.emotions` had no honest short name** as one rule: it picked one of two whole emotion models. It has
   since been split into what it switched, each named for what it does ("`status.emotions`, split", below); no rule
   is named for a game now.
