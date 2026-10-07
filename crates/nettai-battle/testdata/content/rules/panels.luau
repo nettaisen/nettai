@@ -64,7 +64,7 @@ return {
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110, stand = panel_types.poison },
-        holy = { flags = 0x00012010 },
+        holy = { flags = 0x00012010, damage_shift = 1 },
         grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire", stand = panel_types.grass(9) },
         ice = {
             flags = 0x00010810,

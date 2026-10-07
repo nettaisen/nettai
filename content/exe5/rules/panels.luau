@@ -71,7 +71,11 @@ return {
             burn = LAVA_BURN,
             cleared_by = "aqua",
         },
-        holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
+        holy = {
+            flags = 0x00012010,
+            trail_sound = asset.sound("panel-change"),
+            damage_shift = 1,
+        },
         sea = {
             flags = 0x00030010,
             trail_sound = asset.sound("sand-worm"),
