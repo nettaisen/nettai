@@ -452,7 +452,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         fades_clear_at_ok = true,
         cursor_after_leaving = false,
         frame_counts_first = true,
-        description_in_choosing = true,
+        states_in_choosing = true,
         chatbox_end_clears_tiles = true,
         chatbox_character_ends_tick = true,"#,
             ),
