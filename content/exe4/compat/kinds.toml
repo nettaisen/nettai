@@ -44,6 +44,14 @@
 "towers/controller" = { pool = "attack", index = 0x93, scratch_position = true }
 "tower" = { pool = "attack", index = 0x92, scratch_position = true }
 "lightning" = { pool = "attack", index = 0x8E, scratch_position = true }
+# The Counters' strike (action 0x20's variant 0, 0x080CFDE4).
+"counter/strike" = { pool = "attack", index = 0x17, scratch_position = true }
+# MokoRus's Molokos (action 0x20's variant 1, 0x080D250C).
+"mokorus/moloko" = { pool = "attack", index = 0x2C, scratch_position = true }
+# SidBmbo's bamboo (action 0x20's variant 5, 0x080D5DBA).
+"sidbmbo/bamboo" = { pool = "attack", index = 0x44, scratch_position = true }
+# The WhitWebs' webs (action 0x20's variants 8 to 10, 0x080D4E9C).
+"whitweb/web" = { pool = "attack", index = 0x3D, scratch_position = true }
 # The navi chips (the dimming chips' navi variants): the user's warp (0x080E2D26's effect #0x0C, 0x080E2C24) and each
 # navi's controller and objects.
 "navi-chip-warp" = { pool = "effect", index = 0x0C }
