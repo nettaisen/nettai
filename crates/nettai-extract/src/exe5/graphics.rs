@@ -48,9 +48,8 @@ const BACKGROUND_COUNT: u32 = 29;
 const BACKGROUND_SCROLL: u32 = 0x0808_C32C;
 const BACKGROUND_ANIMS: u32 = 0x0808_C96C;
 /// The scroll callbacks and their counters' steps (1/16 pixel a frame): the
-/// same code as EXE6's `BGScrollCB_*`. EXE5's own at 0x080019EC follows the
-/// joypad (a background the player scrolls) and 0x08001A24 does nothing;
-/// both are drawn still.
+/// same code as EXE6's `BGScrollCB_*`. 0x08001A24 does nothing (drawn
+/// still); EXE5's own at 0x080019EC is [`SPEEDING`].
 const SCROLLERS: [(u32, (i32, i32)); 5] = [
     (0x0800_1936, (-8, -4)), // EXE6 BGScrollCB_BG1Diagonal3to2Scroll
     (0x0800_196E, (0, -4)),  // BGScrollCB_BG1UpScroll
@@ -58,6 +57,13 @@ const SCROLLERS: [(u32, (i32, i32)); 5] = [
     (0x0800_19B6, (8, 0)),   // a fast right scroll (EXE6 has a slow one)
     (0x0800_19C8, (-8, 0)),  // BGScrollCB_BG1FastLeftScroll
 ];
+/// EXE5's own BG1 callback (nebulagray's, 0x1B): while battle flag 0x40 is
+/// set (BattleState+0x5C, which the battle's intro sets on its first frame,
+/// 0x080E06A0) it takes 0x400 from its counter (0x0200A728, which the
+/// battle's init clears, 0x0808C2B8), to -0x40000, and moves BG1 down by the
+/// counter's arithmetic shift right 16 (BG1VOFS minus it): a speed rising
+/// by 1/64 pixel a frame to 4 pixels a frame, each frame's move rounded up.
+const SPEEDING: (u32, Speeding) = (0x0800_19EC, Speeding { step: (0, 0x400), top: (0, 0x4_0000) });
 
 /// The chip records (0x2C bytes, as EXE6's): +0x20 the icon, +0x24 the
 /// picture, +0x28 its palette. Team Colonel's table is 4 bytes lower.
@@ -274,6 +280,7 @@ fn pictures(rom: &Rom) -> Vec<Option<Background>> {
                 .find(|(a, _)| *a == cb)
                 .map(|(_, v)| *v)
                 .unwrap_or((0, 0));
+            let speeding = (cb == SPEEDING.0).then_some(SPEEDING.1);
             let anims = gfx_anims(rom, rom.u32(BACKGROUND_ANIMS + 4 * id), PALETTE_BUFFER);
             Some(Background {
                 tiles,
@@ -283,6 +290,7 @@ fn pictures(rom: &Rom) -> Vec<Option<Background>> {
                 map_height,
                 palette,
                 scroll,
+                speeding,
                 anims,
             })
         })
