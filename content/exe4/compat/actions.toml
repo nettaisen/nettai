@@ -18,14 +18,19 @@
 "drksword/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
-# AirShot (the chips' action 0x23, 0x080ECB74).
-"airshot/action" = 0x23
 "hicannon/action" = 0x0B
 "m-cannon/action" = 0x0B
 "drkcanon/action" = 0x0B
+# AirShot (the chips' action 0x23, 0x080ECB74).
+"airshot/action" = 0x23
+# The cracks (the chips' action 0x21, 0x080ECA14).
+"crakout/action" = 0x21
+"dublcrak/action" = 0x21
+"tripcrak/action" = 0x21
 # The spawners (the chips' action 0x20, 0x080EC972).
 "lance/action" = 0x20
 "drklance/action" = 0x20
+"invalid/action" = 0x20
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D

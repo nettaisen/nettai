@@ -4,6 +4,7 @@
 -- the telop its effect (0x080E987C) hands two panel changes to two panel changers on its panel (objects/panel_changer)
 -- and waits until one is done: the user's own area turns to holes (0x080E423C's row 12, no flicker) and the other
 -- side's to poison (row 13), each over 30 ticks. Its cost: one chip fewer on the custom screen (rules/dark_chips).
+-- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local dimming_chips = require("@exelib/dimming")
 local panel_changer = require("../objects/panel_changer")

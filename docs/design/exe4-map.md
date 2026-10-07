@@ -358,10 +358,14 @@ Double Soul button and its window (the selection's states 0xC and 0x10).
   DrkVulcn: 720 ticks of confusion (status 0x21). DrkLance: the custom drain (+0x0F: 6, else 4 up to 6, else 3).
   DrkSpred: the panel trail, poison (+0x1B = 4). DrkStage: the custom level one less, down to 2. DrkRecov: the custom
   drain as DrkLance's and the HP drain (+0x0E: 10, else 6 up to 10, else 3). The mood: none (a mood of 0 stays).
-- **The chips**: on the families group A wrote with every branch (lib/cannon 0x0B on @exelib/cannon, lib/swords 0x0A, lib/bombs 0x09,
-  lib/vulcans 0x1F, lib/spreaders 0x1E, lib/recov 0x1D (on @exelib/recov/heal), lib/spawners 0x20 with chips/lance/lance (on @exelib/lance), and the dimming
-  action 0x0C with DrkStage's controller, effect #0x6A, and the panel changer, effect #0x1F), each chip composing its
-  variant's rows. DrkStage is EXE4's first dimming chip: its telop runs on the banner with no banner of its own (item 71).
+- **The chips**: laid out as EXE5's and EXE6's, each series in its folder with its action, the shared ones in lib/, on
+  @exelib where EXE4's routine is EXE5's or EXE6's code (its differences as the look's or game's data): lib/cannon
+  0x0B (@exelib/cannon), lib/swords 0x0A (@exelib/swords/slash), lib/bombs 0x09 (@exelib/bombs/throw and bomb),
+  chips/vulcan/vulcan 0x1F (@exelib/vulcan/action), chips/spreader/spreader 0x1E (@exelib/spreadr/action),
+  chips/recov/recov 0x1D (@exelib/recov/heal), chips/lance/lance (@exelib/lance) on lib/spawners 0x20 (EXE4's own,
+  emap: absent; lib/plus its variant 4), and the dimming action 0x0C with DrkStage's controller, effect #0x6A, and
+  the panel changer, effect #0x1F (@exelib/panel_changer). The records are tools/exe4/gen_content.py's. DrkStage
+  is EXE4's first dimming chip: its telop runs on the banner with no banner of its own (item 71).
 
 Checked: the lab's dark/offer, hover-long, hover-hide, hover-describe, hover-then-ok-fast, with-folder-chip, side1,
 bluemoon, drksword, darkbomb, drkvulcn, drkspred, drkstage, drkcanon and drkcanon-taunt match every frame; drklance
@@ -503,10 +507,17 @@ chip module (`chips/<series>`) composing its action's family (`lib/<family>`) fr
 fields by hand from the record (§3.2), its names and descriptions the ROMs', its action number in
 compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, side1) and frame-compared.
 
-- **AirShot** (action 0x23, `lib/airshot`): EXE4's own. EXE6's and EXE5's (@exelib/airshot) differ in the animation
-  (12, not 9), the shooter (an attachment of EXE4's kind, row 9, not an overlay), the shot's tick and the recovery
-  (none for variant 0: the store of 10 overwritten, 0x080ECC0A); the projectile (exelib's, EXE4's row 4: hit
-  modifier 0x21, EXE5's 0x61) and its spawn are shared.
+- **AirShot** (action 0x23, `lib/airshot`): @exelib/airshot (emap: its fire and recovery EXE5's, similar), with the
+  differences as its look's and spec's parameters: the navi's animation (12, not 9), how the navi holds the shooter
+  (ShooterLook's `hold`: an attachment of EXE4's kind, row 9, its animation the navi's number, in the related slot,
+  not the overlay) and the recovery's count (the attack's variant: AirShot's 0, the store of 10 overwritten,
+  0x080ECC0A; 30 for any other). The projectile (exelib's, EXE4's row 4: hit modifier 0x21, EXE5's 0x61) and its
+  spawn are shared.
+- **CrakOut** (and DublCrak and TripCrak: action 0x21, `lib/crack`): EXE5's code, moved to exelib
+  (@exelib/crack, EXE5's on it). EXE4's look: the pointing animation (16, EXE5's 12), the crack's dust and sounds
+  (0x1BA, the break's 0x1A9: 0x08009D04), and a spawner (0x080CFF1A) that places a crack on every panel of the
+  pattern where EXE5's keeps to the field (no recording yet reaches a crack off the field: TripCrak from the top or
+  bottom row).
 
 **For the next steps:**
 
@@ -779,7 +790,8 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
   0 to 4); `game_versions` (`redsun`, `bluemoon`); `frame_counter` (the console's frame counter, the toolkit's +0x24);
   `navicusts` (each side's save's NaviCust: `parts`, the 25 parts of 8 bytes at save 0x4564; `grid`, the 5x5 grid at
   0x4540; `color_bar`, 6 bytes at 0x190) and `patch_cards` (each side's save's six slots: `on` at 0x464C, `off` at
-  0x4653, a card's number or 0xFF); `game_regions`. **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
+  0x4653, a card's number or 0xFF); `game_regions`; `background` (the game state's +0x0F, the background the loader
+  picks first, 0xFF none). **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
   chip flags) come only when the traced console is side 1: side 0's console runs its frame before side 1's in a tick,
   so the other console's last capture is a frame behind when side 0's setup line is written (EXE5's side-0 recordings
   lack them for the same reason). A decode reads them when present and doesn't expect them on a side-0 recording.
@@ -791,9 +803,12 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
   bytes: its +1 the banner, 0x0C the turn's start, 4 "ENEMY DELETED", 8 "MEGAMAN DELETED"); `input` (each player's
   held, pressed and released); `objects` in update order (type, index, flags, params, state, panel, alliance, `flip`:
   the record's +0x17, which EXE4's code reads where EXE6's reads +0x0E, §3.1: the object's element, which the replay
-  compares as such; hp, max HP, position, timer, animation, status: the collision record's hit flags, +0x54, in the
-  recordings from oracle-trace's `collision_status`, 0 in the lab's first ones, which read EXE6's +0x3C); `panels`
-  (the 6x3 field's type and owner, the panel's +0 and +1); `chip_blocks` (both, 0x50 bytes, EXE6's layout).
+  compares as such; hp, max HP, position, timer, animation, `status`: the collision record's hit flags, +0x54; `f1`:
+  its status word, +0x64; `sprite`: the sprite block's palette, its other half and its palette pointer, +4, +5 and
+  +0x34); `navi_stats` (both sides' battle blocks); `panels` (the 6x3 field's type and owner, the panel's +0 and +1);
+  `chip_blocks` (both, 0x50 bytes, EXE6's layout). Every field but `rng1s` and `regular_flags` is required: the whole
+  lab was recorded again by the oracle that writes them (a95f, verify 4a8360d9; the first oracle's `status` read
+  EXE6's +0x3C, where EXE4 keeps the hit's damage).
 - **sounds:** a line per call each battle frame queued (the frame, the m4a call, its arguments): EXE4's queue holds
   SongNumStart, MPlayAllStop, VolumeControl (the m4a players by EXE6's numbering, EXE4's 0x1210 further), FadeOut,
   SongNumStop, ImmInit and FadeIn (§3.4).
@@ -802,14 +817,13 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
 blocks, the link record of §18 item 23; `trace`, feature `trace`: the lines, their decode, a round's setup in the
 engine's terms, the buttons fed, the comparison, `run_round`), as exe5-compat's are EXE5's. A round's stage is the
 settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance from
-Red Sun US's); its background the record's +5; its stats, where the recording carries the saves' NaviCusts, those and
-its patch cards compiled by the rules (§8) and checked against the recorded block, else the recorded block over the
-navi's fresh stats; an unported field (supports, All Guard) a need that stops the setup. The compat tables
-kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the framework's states, which are
-EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and records.toml (navis, weapon
-routines, souls, auras by number) are written by hand as the replays reach them. The verification workspace's
-trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over data/traces/lab-exe4; nettai-tool plays an EXE4
-recording (`Exe4TracePlayer`).
+Red Sun US's); its background the setup's, else the record's +5; its stats the saves' NaviCusts and patch cards compiled
+by the rules (§8), checked against the recorded blocks at the setup and every frame; an unported field (supports, All
+Guard) a need that stops the setup. The compat tables kinds.toml (the object kinds' pools and numbers), actions.toml
+(the navi actions past the framework's states, which are EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the
+charged shot 0x24) and records.toml (navis, weapon routines, souls, auras by number) are written by hand as the replays
+reach them. The verification workspace's trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over
+data/traces/lab-exe4; nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
 
 **Known deviations** (the workspace's trace-tests `deviations.rs`, `Set::Exe4Lab`, as EXE6's lab has its own): a
 recording the engine departs from on purpose matches every frame up to its deviation, and the frames after it aren't
@@ -885,11 +899,12 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    others `anti_sword_triggered`). EXE4 has no kind byte for the exit (EXE6's `sub_801171C` reads the attack's
    +0x1C): each action calls one of three routines, which map onto the engine's kinds, so no rule:
    - 0x0800CA4A, bare (animation 0, idle, the attack's step): the move's (0x080EB252, 0x080EB314), EXE6's kind 4;
-   - 0x0800CA28, the requests, the charge and the action in use cleared too: the buster's (0x080EB3D6, 0x080EB3F0)
-     and the charged shot's (0x080ECCCC), many chips', EXE6's kind 1;
-   - 0x0800C9FC, that and AIData +0x3A from the attack's +5 (its lockout): the chips' (Cannon's 0x080EB9E8) and
-     action 9's (0x080EB51C, likely the B+Left ability), EXE6's kind 2. One field for both: the idle that reads it
-     decides whether the B+Left ability's is the engine's chip lockout or its back special's (kind 3).
+   - 0x0800CA28, the requests, the charge and the action in use cleared too: the buster's recovery (0x080EB3D2,
+     0x080EB3EC) and the charged shot's recovery's end (0x080ECCC8), and the other navis' and souls' actions; the
+     lockouts left as they are (`exit_attack(true)`);
+   - 0x0800C9FC, that and AIData +0x3A (the chip lockout) from the attack's +5 (its lockout) whatever the attack's
+     kind, a 0 clearing it: the chips' and weapons' (65 callers: Cannon's 0x080EB9E8, the charged shot's move cut
+     0x080ECCE0, ...). The rule `reactions.attack_end_lockout` ("chip_lockout"; EXE6's and EXE5's "by_kind").
    - EXE4's exits zero no buffered move (EXE6's AIData +0x1A) and no special source (+0x1B): nothing in EXE4 sets
      either while the engine's movement is EXE6's (item 24, group B's).
 7. **Done: statuses.** The status table 0x08018550 is generated (4 groups of 4). The status rules, each read from
@@ -1296,7 +1311,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     EXE4's guard (action 0x25, 0x080ECCF2: content/exe4/lib/guard; the shield, attack 0x2B, 0x080D2224:
     content/exe4/objects/shield, EXE6's but one sheet, 14 fade ticks for every row, running while dimmed and not while
     paused, animating then too, and no test of its owner's having vanished), Shield countering nothing, Reflect the
-    charged shot's projectile; Reflect's routine sets the B+Left cooldown as it starts (`reactions.attack_end_lockouts`)
+    charged shot's projectile; Reflect's routine sets the B+Left cooldown as it starts (`reactions.attack_end_lockout`)
     and a turned-aside hit marks the guard byte with 1 (`reactions.hit_test.guard_marks_direction`); the guard's sound
     (0x6E) is the roles' `sounds.guard`. HubBatc has its definition. The lab's navicust/shield, reflect and hubbatc
     match, sounds too. Open: AntiMagc (routine 0x27: its stance, action 0x72 at 0x080EE9EE, arms the AntiDmg chip's
@@ -1334,12 +1349,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
 60. **The patch cards' own bytes.** Card 45 sets NaviStats +0x1F, the Full Synchro at the start, which the reload's
     reset doesn't keep (0x08036CC0): **done**, the rules' stat `full_synchro_start`, which the card writes and
-    rules/light_dark's starting mood reads (no setup fact: exe4-compat reads +0x1F into the stat where a recording's
-    stats aren't compiled). Cards 59, 60, 89 and 90 set +0x27, MegaMan's color (1 to 4), which the reset clears too:
-    **done**, the rules' stat `color`, which the cards write and rules/light_dark's palette reads (5 more a step of it,
-    0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090. Cards 76 and 77 (All Guard) set
-    +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so it turns aside
-    every hit that doesn't break guards, 0x08012B84).
+    rules/light_dark's starting mood reads (no setup fact). Cards 59, 60, 89 and 90 set +0x27, MegaMan's color (1 to 4),
+    which the reset clears too: **done**, the rules' stat `color`, which the cards write and rules/light_dark's palette
+    reads (5 more a step of it, 0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090.
+    Cards 76 and 77 (All Guard) set +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up
+    from the start, so it turns aside every hit that doesn't break guards, 0x08012B84).
 61. **Done: the idle stands the navi** (from AirShot's replays). MegaMan's idle (0x080EEB38) puts animation 0 on each
     tick past its first phase (0x080EEB7C: 0x080EEBAC), the 10 ticks after a reaction's end; EXE6's (`sub_80F0354`)
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
