@@ -57,7 +57,9 @@ export type Lifecycle = "init" | "update" | "destroy" | "finish"
 -- "hidden" on a sprite without a shadow part hides its first part.
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
-export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out" | "worried"
+-- A side's emotion: a name of its game's (its rules' status section's `emotion.order`: EXE6's "normal", "tired",
+-- "full_synchro", "angry", "worn_out"; EXE5's "worried" in place of "tired").
+export type Emotion = string
 -- A side's SELECT or Cross special in progress (each side its own gauge:
 -- `battle.own_gauges`).
 -- A side's special in progress: the SELECT special, or the rules' takeover
