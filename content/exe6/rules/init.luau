@@ -60,6 +60,8 @@ local rules: Rules = {
         swung = "u8",
         -- The bug frags (./dark_chips, `dword_203F7E0`), which the round starts with the player's.
         bug_frags = "u32",
+        -- AIData+0x1C: the NaviCust's hit bug took this hit sequence (./navicust/bugs).
+        hit_bug_latched = "bool",
     },
     -- A navi's stats of EXE6's own, beside the engine's (NaviStats' bytes, which exe6-compat maps by these names): the
     -- Beast Out turns left (+0x21, 3 fresh: ./beast spends them, ./emotion reads them; the emotion window's box
@@ -256,7 +258,7 @@ local rules: Rules = {
         navi_bug = navicust_bugs.navi_bug,
         hit_bug = navicust_bugs.hit_bug,
         bug_mark = navicust_bugs.bug_mark,
-        navi_damaged = navicust_bugs.navi_damaged,
+        navi_flinched = navicust_bugs.navi_flinched,
         -- A dark chip's bug frag, its substitute, and the HP bug its use worsens (./dark_chips).
         chip_substitute = dark_chips.chip_substitute,
         chip_prepared = dark_chips.chip_prepared,

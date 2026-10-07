@@ -1456,3 +1456,36 @@ export type NaviCustProgramSpec = {
     effects: { NaviCustEffect }?,
 }
 export type NaviCustProgram = NaviCustProgramSpec
+
+-- A game's part of the NaviCust bugs a hit inflicts (@exelib/navicust/bugs).
+export type NaviCustBugTable = {
+    -- Its own stats (its rules' `stats`) by the NaviStats byte a code names: the stat, and how the game reads the
+    -- byte ("flag": any nonzero byte is true; "one": only 1 is; "signed": as `ldrsb` reads it).
+    own: { [number]: { name: string, as: ("byte" | "flag" | "one" | "signed")? } },
+    -- Bytes a code may name that no stat holds, and what they are (EXE6's version, a side's fact).
+    unheld: { [number]: string }?,
+    -- A drain's argument goes by its flags (EXE5's 0x0801103E): with bit 4 the level adds its low four bits (to at
+    -- most 7), with bit 5 it loses them (to at least 0), else it rises to them (a level that wouldn't rise is left,
+    -- the bug spared: nothing reloads). Else the argument adds (EXE6's, to at most 7).
+    drain_by_flags: boolean,
+    -- The codes the game's routine takes as bugs of their own.
+    specials: { [number]: NaviCustBugSpecial },
+    -- The side's NaviStats block, in bytes (EXE6's 0x64, EXE5's 0x60), and what a code past it does: "nothing"
+    -- (EXE6's routine leaves the codes from 0x64 alone: `sub_80139F6`'s 0x08013ACC), or "written" (EXE5's writes any
+    -- code's byte at 0x08011142, at NaviStats + 0x60 x side + the code, 0x08010DD6: side 0's codes 0x60 to 0xBF are
+    -- side 1's bytes; the rest are RAM past both blocks, from 0x0203C940, which no stat holds and no hit of EXE5's
+    -- content brings a code for, so nothing is written there; the abilities and form flags come back all the same).
+    block: number,
+    past_block: "nothing" | "written",
+    -- The hit bug's statuses: blindness and confusion (its levels 1 and 2).
+    statuses: { hit_blind: Status, hit_confuse: Status },
+}
+
+-- A code's own bug: a panel trail (its kind and level); every buster shot a blank (0xFF); MegaMan's body programs
+-- gone (0xFB: EXE6's `sub_8014080`, EXE5's 0x080117D4); uninstalled, with a spark and a sound (EXE6's 0xF8,
+-- `sub_80140EE`).
+export type NaviCustBugSpecial =
+    { kind: "panel_trail", trail: number, level: number }
+    | { kind: "blanks" }
+    | { kind: "strip" }
+    | { kind: "uninstall", spark: Spark, sound: Sound }
