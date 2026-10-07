@@ -10,6 +10,9 @@ local recipe_anubis = require("./anubis").anubis
 local recipe_bugbomb = require("./bugbomb").bugbomb
 local recipe_geddon3 = require("./geddon").geddon3
 
+-- Its statue (row 1 of 0x080D0858): a drain every tick, 300 HP.
+local STATUE = anubis.variant { anim = 1, period = 1, hp = 300, version = 3 }
+
 local chip: Chip = {
     codes = {},
     element = "null",
@@ -28,7 +31,7 @@ local chip: Chip = {
     program_advances = {
         { order = 24, sequence = { recipe_bugbomb, recipe_geddon3, recipe_anubis } },
     },
-    dimming = anubis.controller.hook(anubis.variants.poisphar),
+    dimming = anubis.controller.hook(STATUE),
     auto_battle = { class = "landing_ahead" },
 }
 
