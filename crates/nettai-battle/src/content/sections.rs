@@ -11,8 +11,7 @@
 //! field `escape_check``). What may be left out
 //! reads as nothing for every game: a feature's section a game hasn't
 //! (`lockon`, `banners`) and a table
-//! that is empty without it (`elements`, `buster`, `math`,
-//! `custom_screen`); in a section, a list or an attribute of one entry
+//! that is empty without it (`elements`, `buster`, `math`); in a section, a list or an attribute of one entry
 //! that is none unless stated (a panel type's `burn`).
 //! Content whose rules are Rust tables (`Content::base_rules`: a tool's
 //! decode of a ROM, a test's content of a few modules) states them there,
@@ -131,12 +130,20 @@ struct MathSection {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct CustomScreenSection {
-    slots: [SlotLayout; 12],
+    slots: [SlotSection; 12],
+    // (The neighbors' scans: a screen whose slots list their moves has
+    // none.)
+    #[serde(default)]
     left_scan_top: Vec<u8>,
+    #[serde(default)]
     left_scan_bottom: Vec<u8>,
+    #[serde(default)]
     right_scan_top: Vec<u8>,
+    #[serde(default)]
     right_scan_bottom: Vec<u8>,
+    #[serde(default)]
     left_scan_start: [u8; 12],
+    #[serde(default)]
     right_scan_start: [u8; 12],
     /// (None listed: a re-deal keeps none, whatever the hand.)
     #[serde(default)]
@@ -144,6 +151,82 @@ struct CustomScreenSection {
     emblem_at_window_return: bool,
     chatbox_commands_wait_for_text: bool,
     talking_characters: super::custom::TalkingCharacters,
+    first_choosing_tick_reads_keys: bool,
+    run_message_at_key: bool,
+    invalid_picks: super::custom::InvalidPicks,
+    special_codes: super::custom::SpecialCodes,
+    program_advances: super::custom::ProgramAdvanceRules,
+    modifier_passes_regular: bool,
+    status_until: super::custom::StatusUntil,
+}
+
+/// A slot of the section: its kind, and its neighbors (`vertical`, `left`,
+/// `right`, the screen's neighbors model) or its keys and their moves
+/// (`keys`, `up`, `down`, `left`, `right`: lists of slots).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SlotSection {
+    kind: TemplateSlot,
+    #[serde(default)]
+    vertical: Option<u8>,
+    #[serde(default)]
+    left: Option<Neighbor>,
+    #[serde(default)]
+    right: Option<Neighbor>,
+    #[serde(default)]
+    keys: Option<Vec<super::custom::ScreenKey>>,
+    #[serde(default)]
+    up: Option<Vec<u8>>,
+    #[serde(default)]
+    down: Option<Vec<u8>>,
+}
+
+/// A slot's neighbor: one slot (the neighbors model), or the slots a key
+/// goes to (the first that is there).
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum Neighbor {
+    Slot(u8),
+    Candidates(Vec<u8>),
+}
+
+impl SlotSection {
+    /// The slot as the layout keeps it: a slot with `keys` lists its moves,
+    /// one without names its neighbors.
+    fn layout(self, at: &str) -> Result<SlotLayout, String> {
+        let moves = match self.keys {
+            Some(keys) => {
+                if self.vertical.is_some() {
+                    return Err(format!("{at}: a slot that lists its keys goes UP and DOWN by `up` and `down`, not `vertical`"));
+                }
+                let list = |n: Option<Neighbor>, name: &str| match n {
+                    None => Ok(Vec::new()),
+                    Some(Neighbor::Candidates(v)) => Ok(v),
+                    Some(Neighbor::Slot(_)) => Err(format!("{at}: a slot that lists its keys states `{name}` as a list of slots")),
+                };
+                let (left, right) = (list(self.left, "left")?, list(self.right, "right")?);
+                let moves = SlotMoves::Candidates { keys, up: self.up.unwrap_or_default(), down: self.down.unwrap_or_default(), left, right };
+                if let SlotMoves::Candidates { up, down, left, right, .. } = &moves
+                    && up.iter().chain(down).chain(left).chain(right).any(|&s| s as usize >= 12)
+                {
+                    return Err(format!("{at}: a move goes to a slot of 0 to 11"));
+                }
+                moves
+            }
+            None => {
+                if self.up.is_some() || self.down.is_some() {
+                    return Err(format!("{at}: `up` and `down` go with `keys` (a slot that lists its keys)"));
+                }
+                let slot = |n: Option<Neighbor>, name: &str| match n {
+                    Some(Neighbor::Slot(s)) => Ok(s),
+                    _ => Err(format!("{at}: missing field `{name}` (a slot's neighbor, a slot number)")),
+                };
+                let vertical = self.vertical.ok_or_else(|| format!("{at}: missing field `vertical`"))?;
+                SlotMoves::Neighbors { vertical, left: slot(self.left, "left")?, right: slot(self.right, "right")? }
+            }
+        };
+        Ok(SlotLayout { kind: self.kind, moves })
+    }
 }
 
 #[derive(Deserialize)]
@@ -233,7 +316,8 @@ pub(crate) const SECTIONS: &[&str] = &[
 /// The rule sections the rules state, whatever else they do: those with a
 /// rule that has no neutral value (a choice between games' behaviors, a
 /// size, a speed). The engine has no game's to fall back on.
-pub(crate) const REQUIRED: &[&str] = &["chip_use", "effects", "flow", "fresh_stats", "link_pick", "panels", "pools", "reactions", "status"];
+pub(crate) const REQUIRED: &[&str] =
+    &["chip_use", "custom_screen", "effects", "flow", "fresh_stats", "link_pick", "panels", "pools", "reactions", "status"];
 
 /// What is stated of the rules, by section: a rules' sections, over
 /// the content's Rust tables when it has them.
@@ -311,6 +395,7 @@ impl Stated {
             ))
         };
         let chip_use = self.chip_use.ok_or_else(|| missing("chip_use"))?;
+        let custom_screen = self.custom_screen.ok_or_else(|| missing("custom_screen"))?;
         let effects = self.effects.ok_or_else(|| missing("effects"))?;
         let flow = self.flow.ok_or_else(|| missing("flow"))?;
         let link_pick = self.link_pick.ok_or_else(|| missing("link_pick"))?;
@@ -365,7 +450,7 @@ impl Stated {
             effects,
             chip_use,
             fresh_stats,
-            custom_screen: self.custom_screen.unwrap_or_default(),
+            custom_screen,
             pools,
         })
     }
@@ -521,8 +606,26 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 if s.talking_characters.only.is_some() == s.talking_characters.all_but.is_some() {
                     return Err(e(format!("{at}: talking_characters states `only` or `all_but`, one of the two")));
                 }
+                let mut slots = Vec::with_capacity(12);
+                for (i, slot) in s.slots.into_iter().enumerate() {
+                    slots.push(slot.layout(&format!("{at}.slots[{}]", i + 1)).map_err(e)?);
+                }
+                let neighbors = slots.iter().filter(|s| s.moves.neighbors().is_some()).count();
+                if neighbors != 0 && neighbors != slots.len() {
+                    return Err(e(format!("{at}: every slot names its neighbors, or every one lists its keys")));
+                }
+                if neighbors == 0 && [&s.left_scan_top, &s.left_scan_bottom, &s.right_scan_top, &s.right_scan_bottom].iter().any(|l| !l.is_empty()) {
+                    return Err(e(format!("{at}: the neighbors' scans go with slots that name their neighbors")));
+                }
                 stated.custom_screen = Some(CustomScreenLayout {
-                    slots: s.slots,
+                    slots: slots.try_into().unwrap_or_else(|_| unreachable!("twelve slots")),
+                    first_choosing_tick_reads_keys: s.first_choosing_tick_reads_keys,
+                    run_message_at_key: s.run_message_at_key,
+                    invalid_picks: s.invalid_picks,
+                    special_codes: s.special_codes,
+                    program_advances: s.program_advances,
+                    modifier_passes_regular: s.modifier_passes_regular,
+                    status_until: s.status_until,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,

@@ -915,7 +915,7 @@ impl Window {
             w.tiles.fill(w.layout.digits, 6, BLANK_8);
         };
         match v.screen.slots[slot as usize].kind {
-            SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
+            SlotKind::Chip { .. } | SlotKind::Offered(_) => {
                 let Some(c) = cw.last_chip else { return };
                 self.chip_details(v, c, text, problems);
             }
@@ -1054,7 +1054,7 @@ impl Window {
         for (s, slot) in v.screen.slots.iter().enumerate() {
             let state = state_number(slot.state);
             match slot.kind {
-                SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
+                SlotKind::Chip { .. } | SlotKind::Offered(_) => {
                     let Some(c) = v.screen.look.slot_chips[s] else { continue };
                     if v.screen.look.slot_picked[s] {
                         self.tiles.put(at, &a.empty_icon);
@@ -1116,8 +1116,8 @@ impl Window {
             let slot = v.screen.slots[s];
             let palette = match slot.kind {
                 SlotKind::Empty => 11,
-                SlotKind::Chip { .. } | SlotKind::NaviChip(_) if slot.state == SlotState::Unavailable => 12,
-                SlotKind::Chip { .. } | SlotKind::NaviChip(_) => 11,
+                SlotKind::Chip { .. } | SlotKind::Offered(_) if slot.state == SlotState::Unavailable => 12,
+                SlotKind::Chip { .. } | SlotKind::Offered(_) => 11,
                 SlotKind::Ok => continue,
                 // (A button's chip: a chip's, 0x08024200.)
                 SlotKind::Button { .. } if slot.face.is_some() => {
@@ -1183,7 +1183,7 @@ impl Window {
     fn known_icons(&self, v: &View, place: Placement, problems: &mut Problems) {
         let other = |c: FolderChip| crate::lookups::other_versions_icon(&v.packs, v.b, c.id);
         for (s, slot) in v.screen.slots.iter().enumerate().take(10) {
-            let shown = matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::NaviChip(_)) && !v.screen.look.slot_picked[s];
+            let shown = matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) && !v.screen.look.slot_picked[s];
             if shown && v.screen.look.slot_chips[s].is_some_and(other) {
                 // (The slot's 2x2 icon cells: `slots`.)
                 let first = self.map[(13 + 3 * (s / 5)) * COLUMNS + 1 + 2 * (s % 5)].tile;
@@ -1381,7 +1381,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
     let s = v.screen;
     let slot = s.cursor;
     let (x, y, shape) = match s.slots[slot as usize].kind {
-        SlotKind::Chip { .. } | SlotKind::NaviChip(_) | SlotKind::Empty | SlotKind::Hidden => {
+        SlotKind::Chip { .. } | SlotKind::Offered(_) | SlotKind::Empty | SlotKind::Hidden => {
             let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
             (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
         }

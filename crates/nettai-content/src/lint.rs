@@ -67,7 +67,8 @@ pub fn definitions(c: &Content, r: &mut Report) {
             unfilled("collision", role.name(), roles.collisions.contains_key(&role));
         }
         for &role in SoundRole::ALL {
-            unfilled("sounds", role.name(), roles.sounds.contains_key(&role));
+            // (A sound some game hasn't is filled where the game has it.)
+            unfilled("sounds", role.name(), role.optional() || roles.sounds.contains_key(&role));
         }
         for &role in MusicRole::ALL {
             unfilled("music", role.name(), roles.music.contains_key(&role));
