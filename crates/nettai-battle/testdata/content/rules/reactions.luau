@@ -17,10 +17,11 @@ return {
     -- A push reads the first of bits 2 to 5 of the hits' final modifier,
     -- toward the navi's front; the 0x80 bit picks the last five rows. An
     -- obstacle's push reads the same bits from its own four rows, toward
-    -- the pusher.
+    -- the pusher. A push with 0x40 is a drag (an obstacle's push).
     push_reading = {
         reads = "final",
         bits = 4,
+        drag_bit = 0x40,
         shift = { bit = 0x80, rows = 5 },
         obstacle_rows = {
             { dx = -1, dy = 0, panels = 6 },

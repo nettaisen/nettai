@@ -6,10 +6,12 @@
 return {
     -- A push reads the first of bits 2 to 5 of the hits' final modifier, toward the navi's front; the 0x80 bit picks the
     -- last five rows (`sub_800E548`). An obstacle's push reads the same bits from its own rows (`sub_800F598`,
-    -- `byte_800F604`), turned toward the pusher; with none set it reads past them, from the BIOS.
+    -- `byte_800F604`), turned toward the pusher; with none set it reads past them, from the BIOS. A push with 0x40 is
+    -- a drag (`sub_801AEB0`), and an obstacle's push (`sub_801AD9E`).
     push_reading = {
         reads = "final",
         bits = 4,
+        drag_bit = 0x40,
         shift = { bit = 0x80, rows = 5 },
         obstacle_rows = {
             { dx = -1, dy = 0, panels = 6 },

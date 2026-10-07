@@ -2596,6 +2596,9 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   EXE5's 0x0800C988: slide type 2, a row by direction) or `{ push = { side 0's, side 1's } }` (EXE4's 0x0801335A,
   the table at 0x080133B4: a push bit by side and direction ORed into the final modifier, which the intake's
   reading of the hit modifiers then turns into a slide, or a drag).
+- **`reactions.push_reading.drag_bit`, since EXE4's port**: the modifier bit that makes a push a drag (and an
+  obstacle's push): EXE6's and EXE5's 0x40, EXE4's 0x01, the flinch bit. The push bits are `bits` of them from
+  bit 2 (EXE6's 0x3C, EXE4's 0xFC, its 0x40 and 0x80 pushes up and down).
 - **`status.emotions` had no honest short name** as one rule: it picked one of two whole emotion models. It has
   since been split into what it switched, each named for what it does ("`status.emotions`, split", below); no rule
   is named for a game now.
