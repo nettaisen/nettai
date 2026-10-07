@@ -20,4 +20,6 @@ return {
     -- flag 0x40, 0x080090E8, then 0x080090C0's table); a Team Battle's and a NetBattle's shows "ENEMY DELETED", or
     -- "YOU WIN" on the judge's ruling (the roles `win` and `win_judged`). EXE6's link battles all show the navi's.
     navi_win_banner = "operation_battle",
+    -- The intro returns after its init, as EXE6's.
+    intro_steps_on_init = false,
 }
