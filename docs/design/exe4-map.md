@@ -182,8 +182,14 @@ in brackets, one to three calls each):
 | +0x34 | 100 | the base max HP (the save's 0x21CA, before the NaviCust's and the Mod Cards') |
 | +0x36 | 500 | the light/dark value (a halfword; Tango's dark save 460, its light saves 1000) [EXE5's +0x44] |
 
-The rest (+0x01 to +0x04, +0x08, +0x0B, +0x0D, +0x15, +0x16, +0x19, +0x1C to +0x1E, +0x22, +0x25, +0x26, +0x29,
-+0x2B) is used and unread yet: the step that ports what reads it names it.
+Read since: +0x08 is the buster's blank count (the buster shot, 0x080EB35A: a draw of RNG2, `(GetRNG2() & 15) + 1`, no
+greater than it clicks and fires nothing; the engine's `buster_blanks`); +0x09 and +0x0A are the B button's and the
+charged weapon's routines (0x0800BD62: copied to the AI data's +0x0D and +0x0F, +0x0F the charge table's row too,
+0x0800BD1C; the routines at 0x0800CA7C: 0 the buster, 0x0800CC2E, 1 the charged shot, 0x0800CC54); +0x25 is the move
+lag's column (0x0800C208).
+
+The rest (+0x01 to +0x04, +0x0B, +0x0D, +0x15, +0x16, +0x19, +0x1C to +0x1E, +0x22, +0x26, +0x29, +0x2B) is used and
+unread yet: the step that ports what reads it names it.
 
 ### 3.4 RAM
 
@@ -474,10 +480,10 @@ restating theirs the same.
 
 Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 
-- The win banner: a link battle's KO win shows the winner navi's banner (event flag 0x1187 set in the netbattle's
-  subsystem, §15 flow). The lab's `flow/buster-duel` (§17) shows otherwise on Tango's netbattle: the winner's console
+- Settled: the win banner. The lab's `flow/buster-duel` (§17) shows on Tango's netbattle that the winner's console
   shows banner 4, "ENEMY DELETED" (the banner block's +1 from frame 1057), the loser's banner 8, "MEGAMAN DELETED"
-  (`flow/buster-duel-bluemoon`, frame 1056).
+  (`flow/buster-duel-bluemoon`, frame 1056): event flag 0x1187 isn't a netbattle's. The flow states `never` (a new
+  choice of `navi_win_banner`, EXE6's and EXE5's unchanged).
 - The palette flash before the fades: EXE4's fade slots (§15 effects).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
 
@@ -520,3 +526,120 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
 - **sounds:** a line per call each battle frame queued (the frame, the m4a call, its arguments): EXE4's queue holds
   SongNumStart, MPlayAllStop, VolumeControl (the m4a players by EXE6's numbering, EXE4's 0x1210 further), FadeOut,
   SongNumStop, ImmInit and FadeIn (§3.4).
+
+## 18. Engine gaps (must close)
+
+A `game = "exe4"` round starts: content/exe4 states every rule section, MegaMan with his buster and charged shot,
+Cannon, the netbattle stages and the roles a round reaches first. Where the engine can't yet say what EXE4 does, a
+section or a definition states the nearest value it can, with a comment that points here. **Every entry below is to
+be ported from the disassembly before EXE4 counts as done** (recordings check a port; they don't limit it). Each
+says the EXE4 routine (Red Sun US), what it does, what the engine lacks, the shape the generalization takes (rule
+data, not a third named branch; EXE6's and EXE5's sections restating theirs, one commit each), and which fields hold
+a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sections: change its output there.
+
+### 18.1 Reactions and the hit
+
+1. **Ice is a push.** 0x0801335A: a body that ends a move on ice (panel type 7) gets a push bit ORed into the
+   collision record's final modifier (+0x0D) from the table at 0x080133B4 by the move's direction (`00 40 80 20 10`
+   for side 0, `00 40 80 10 20` for side 1: none, up, down, back, forward), so the slide that follows is the push's
+   (the push rows at 0x0800ACDC: a panel up, down, back or forward). The engine slides on ice by the reactions' `ice` rows (six
+   `SlideVector`s by direction). Shape: a reactions field `ice: { rows = {...} } | { push_bits = {side0, side1} }`
+   (or `ice_push_bits: [[u8; 5]; 2]?` beside `ice`). Placeholder: `reactions.ice` is six zero rows (no slide).
+2. **The drag is the flinch bit with a push.** The hit intake (around 0x080137FA) takes a drag where the final
+   modifier has the flinch bit (1) and a push bit (2 to 7); the slide (0x08010294) always reads the push (EXE6's and
+   EXE5's drag reads its own direction). Shape: the push reading's rule for drags (`push_reading.drag = "flinch_and_push"`
+   beside EXE6's and EXE5's own). Placeholder: the engine's drag.
+3. **The slide reads the push always.** 0x08010294 (the slide, slide type 1): the vector is the first push bit's row
+   whatever started the slide. Part of item 2's rule.
+4. **Elec on ice.** 0x08012CF2: an elec hit counts once more on ice (panel 7), a fire hit on grass; the engine's bonus
+   is elec on the sea (`hit_test.elec_bonus_on_sea`). Shape: `hit_test.element_bonus = { {element, panel}, ... }`
+   (EXE6's {elec, sea}... as each states). Placeholder: `elec_bonus_on_sea = false` (EXE4 gives none on ice).
+5. **The hit test.** 0x08012AFC: no FloatShoe self bit, no body under a sea; a guard breaks to types with 0x1002
+   (0x08012F24) and turns aside what lacks 0x0C004000. Placeholder: the `hit_test` booleans as written, the guard's
+   0x1002; the 0x0C004000 test is the engine's (to compare).
+6. **Request clears.** 0x0800CA4A (an attack's end) zeroes the AI data's request halfword at +0x70; EXE4's exits
+   0x0800CA28 and 0x0800C9FC (the latter also writes AIData +0x3A from the attack's +5) differ from EXE6's
+   `object_exitAttackState`. Shape: `reactions.request_clears` rows per EXE4's, and the exit's extra write as a rule
+   or the actions' own. Placeholder: empty clears; the buster, charged shot and Cannon call the engine's `exit_attack`.
+7. **Statuses.** The status table 0x08018550 is generated (4 groups of 4); the status rules are EXE5's but for the
+   HP bug: 0x0800C164 reads NaviStats +0x0E as the period itself (no table), and the custom gauge drain 0x0800C194.
+   Shape: `status.hp_bug_periods` becomes `hp_bug = { periods = [...] } | { period_is_byte = true }`. Placeholder:
+   EXE5's `hp_bug_periods`, `reactions = "flash_timer_first"`, `hp_loss = "hp_alone"`, the rest EXE5's.
+8. **Emotions.** EXE4's mood and emotion window (§7) are unread. Placeholder: `status.rules.emotion` is EXE5's.
+9. **Counter hits.** The status a counter lands (EXE5's role `counter_paralysis`) is unread; no role yet.
+10. **Stance counter.** Placeholder: `reactions.stance_counter = "next_tick"` (EXE5's); EXE4's to read.
+11. **Overlay restart.** Placeholder: `reactions.overlay_restart = "reload"` (EXE5's code at 0x080CC61A; confirm).
+
+### 18.2 Panels
+
+12. **Panel types 5, 10 and 11.** 0x0800A3A8's flags: 5 is 0x30010 (EXE5's sea's), 10 is 0x10210 (EXE5's metal's), 11
+    is 0x10010; the panel tick (0x08009740) runs a timer at the panel's +0x12 for type 10 (bit 0x4000: wait while
+    something stands on it, then count down and turn normal). Placeholder: type 5 is the engine's `sea` and 10 its
+    `metal`, flags alone (no drain, hold, submersion or slide); 11 has no number (its layouts' stages wait). Port:
+    read each type's behavior (the panel tick, the step tables, what stands on them) and name each for what it is.
+13. **What each panel does.** Lava (8) turns normal after 960 (stated); its burn, poison's drain, grass, ice (item 1),
+    holy, and the panel trails' sounds are EXE5's or none. Placeholder: `panels.types` flags (and lava's `expires`).
+14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
+    find EXE4's drawing of them. Placeholder: EXE5's grids. The any-side step rows are EXE5's too.
+15. **Battle mode 1's mend** and **reservations**: EXE5's until read.
+
+### 18.3 Flow, stages and the link
+
+16. **No time limit, no double KO** (the lab's first batch): nothing ends a netbattle's stand-off, and when both navis
+    are deleted on the same tick side 1's shot resolves first and side 1 survives. The engine's link battle has the
+    judge's ruling (round result 7) and a draw. Shape: flow rules `time_limit: false` and the KO order as data.
+    Placeholder: the engine's.
+17. **The fight-live test.** The fight runs while the fighting machine's first byte is 4 and BattleState +3 is 4; for
+    one tick as the custom screen closes the machine still reads 4. Pause sets fight[0] to 0x18. To compare with the
+    engine's fight states in step 5.
+18. **Battle type.** A netbattle record's +4 (0x46; the battle state's +0x0F, 0x48 in the lab's) is EXE4's battle type,
+    its battle flags by it (0x08007EEC's table). The engine's `mode` is EXE6's numbering. Placeholder: each stage's
+    `mode = 0`, `effects = 0x88C` and `panel_pattern = 0x38` (EXE5's netbattle's).
+19. **Stages that wait.** gen_rules.py lists them in stages.luau's header: the records with obstacles (actor kinds 3,
+    5, 6, 7: rocks and the others, 0x080FC138's actor lists) and panel type 11. Port the obstacles, then generate them.
+20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one) into the
+    first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). The engine's pick draws RNG1 then RNG2
+    (link_pick's docs): EXE4 draws RNG2 twice. Shape: `link_pick.rng = { stage = "rng2", background = "rng2" }`.
+    Placeholder: `link_pick.stages` leaves out the waiting stages (so the pick's odds differ) and `backgrounds` is
+    empty.
+21. **Backgrounds' names.** The loader (0x08085430) takes the game state's +0x0F, else the settings' +5, else the map's
+    (0x08085BAC, its table at the literal 0x08085BCC, default 3). Only 0x03 (`comp`) is named; name the rest by the
+    areas that show them (tools/backgrounds/areas.py, as EXE5's and EXE6's) in gen_content.py's BACKGROUNDS. The
+    background 0x17's scroll (0x08001F88) speeds up to 4 pixels a frame: the pack draws it at that speed.
+22. **The win banner** is settled (§16, `never`); **banners' pictures** aren't extracted (the HUD's banners are
+    placeholders): gen_content.py's BANNERS names 0x04, 0x08, 0x0C and 0x30 from the lab's recordings.
+23. **The link record** (agent ae3a's reading, for step 3's codecs): built at 0x0203BD40 by 0x08008708: +0x00 the magic
+    0x12345678, +0x04 the sender's RNG2, +0x08 BattleState +0x3C, +0x0C MegaMan's 0x40-byte NaviStats (+0x2A from event
+    flag 0x1184 or the mode; +0x36 set to 500 when 0x08006570 says so), then 0x2C bytes from 0x02001610 (+0x4C) and
+    0x02007230 (+0x78), 0x10 from the toolkit's +0x64 (+0xA4), the save's +0x20 and +0x24 (+0xB4, +0xB8), 8 bytes from
+    0x02035CA0 (+0xBC). 0x080087A8 unpacks the received records (0x0203E390 side 0, 0x0203E490 side 1) into the
+    NaviStats and seeds the battle's RNG2 from side 0's record (0x0203E394).
+
+### 18.4 MegaMan, his weapons, the objects
+
+24. **The move that cuts a recovery short.** The buster's and the charged shot's recoveries (0x080EB3D8, 0x080ECCCC)
+    use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208; the engine's `can_move`, `held_direction`,
+    `step_target` and `start_move` are EXE6's (`sub_800FA54` differs at 0.45). Placeholder: the engine's.
+25. **The buster bonus, element, weakness and souls.** EXE4's buster is Attack + 1 (0x0800CC2E) for every navi:
+    `buster_bonus = 0`. MegaMan's element, attach points, the souls (0x080184F0 by soul: the weapons; the sprite's index
+    plus the soul, 0x0800B90A), the emotion window's faces. Placeholders: `element = "null"`, no forms but `base`.
+26. **The flash's and the held cannon's animation** is NaviStats +0x23 (the navi's number): MegaMan's 0, stated as a
+    constant in weapons/buster, weapons/charged_shot and chips/cannon.
+27. **The projectile** (0x080CD354, 0x080CD3D4) runs @exelib's EXE5 code with EXE4's rows; its tick is 0.89 alike and
+    its rows 10 and 11 set a status (0x08013212): compare the code and port the difference.
+28. **The attack's +6 halfword** adds to the cannon's damage (0x080EB984); the engine's chip use doesn't set it.
+29. **Cannon's family** (+0x0B, 0x0B) and **what 0x0800BA66 does** as action 0x0B starts. Placeholder: `family =
+    "null"`.
+30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
+    neither, the lab's first batch's.
+
+### 18.5 Roles and the custom screen
+
+31. **The custom screen** is EXE4's own (§5: its states, no ADD button, the description on R is the selection's state
+    0x18); the engine runs EXE6's. Its sounds wait: a round stops at tick 149 on `sounds.custom_pick`.
+32. **Roles not filled** (the content check lists them): every sound but `appear` and `custom_open`, the music but
+    `link_battle`, the effects (deletion, recovery, the cut-in flash), sprites (charge glow, statuses), banners but
+    `round_start`, `turn_start` and `win`, the kinds and actions EXE5's roles name. Name each EXE4 asset for the code
+    that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 7 problems
+    with the pack: the four named banners have no pictures, MegaMan and his base form no mugshot, MegaMan no emblem
+    (the HUD's and the custom screen's extraction, §14).
