@@ -137,9 +137,8 @@ MB), the dark flag in +0x09 bit 5, the counter +0x0A, family and subfamily +0x0B
 power +0x1A, the chip gate byte +0x1E, the icon, image and palette +0x20 to +0x28. The ROM agrees (R): `fields.py
 --to B4WE after getChip8021DA8` reads EXE6's class (+0x07) at EXE4's +0x08 in all six paired reads and every other
 field seen (+0x00 to +0x05, +0x09, +0x0A, +0x0C, +0x10, +0x14, +0x16, +0x18, +0x1A, +0x1C, +0x20, +0x24, +0x28) at
-EXE6's offset; Cannon, HiCannon and M-Cannon's +0x06 are 8, 24 and 40, their MB. (multi-game.md §2.2 says the three
-records share one order: not at +0x06 to +0x08.) So a chip codec is per game at those three bytes, and EXE4's record
-has no lock-on byte or dark chip id (multi-game.md §2.4).
+EXE6's offset; Cannon, HiCannon and M-Cannon's +0x06 are 8, 24 and 40, their MB. So the chip codec's byte order is
+a game's fact at those three bytes, and EXE4's record has no lock-on byte or dark chip id (multi-game.md §2.4).
 
 ### 3.3 NaviStats
 
