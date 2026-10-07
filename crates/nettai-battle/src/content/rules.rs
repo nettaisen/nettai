@@ -320,6 +320,59 @@ pub struct SlideSpeed {
     pub y: i32,
 }
 
+/// How a move's direction goes into the collision record
+/// (`object_updateCollisionPanels`: the reactions section's
+/// `move_direction`), which an ice slide or push, EXE5's metal slide and
+/// content reading the record's direction read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MoveDirection {
+    /// EXE6's `sub_800E994` (EXE5's 0x0800CC92, the same code): 0 none, 1
+    /// up, 2 down, 3 back and 4 forward by the side, 5 other. Only a move
+    /// of two panels or more right or down is other (the routine tests
+    /// `>= 2` and nothing below -1), and a diagonal one: any move left or up
+    /// along one axis counts by its sign, so a navi warped two panels back
+    /// (side 0) or forward (side 1) has moved back or forward, and slides on
+    /// ice.
+    BySide,
+    /// EXE4's 0x0800AF90: 0 none, 1 up, 2 down, 3 left and 4 right whatever
+    /// the side, across before up and down (a diagonal move by its x), and no
+    /// other.
+    Absolute,
+}
+
+impl MoveDirection {
+    /// The direction of a move from `old` to `new` by a body of side
+    /// `alliance`.
+    pub fn of(self, old: crate::object::PanelPos, new: crate::object::PanelPos, alliance: u8) -> u8 {
+        let dx = new.x as i8 - old.x as i8;
+        let dy = new.y as i8 - old.y as i8;
+        match self {
+            MoveDirection::BySide => {
+                if dx >= 2 || dy >= 2 {
+                    return 5;
+                }
+                let (back, forward) = if alliance == 0 { (3, 4) } else { (4, 3) };
+                match (dx.signum(), dy.signum()) {
+                    (0, 0) => 0,
+                    (0, -1) => 1,
+                    (0, 1) => 2,
+                    (-1, 0) => back,
+                    (1, 0) => forward,
+                    _ => 5,
+                }
+            }
+            MoveDirection::Absolute => match (dx.signum(), dy.signum()) {
+                (1, _) => 4,
+                (-1, _) => 3,
+                (_, 1) => 2,
+                (_, -1) => 1,
+                _ => 0,
+            },
+        }
+    }
+}
+
 /// The rule section `fresh_stats`: what a navi's stats hold when they are
 /// made fresh (`NaviStats::fresh`), beyond what the navi's own row states
 /// (its `fresh` and `weapons`): what the game's routine writes for every
@@ -888,6 +941,9 @@ pub struct Rules {
     pub obstacle_slide_bounds: bool,
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
+    /// How a move's direction goes into the collision record (the
+    /// reactions section's).
+    pub move_direction: MoveDirection,
     /// How fast a navi slides and is dragged (the reactions section's).
     pub slide_speed: SlideSpeed,
     /// How a navi's hooks restart what it wears (the reactions section's).

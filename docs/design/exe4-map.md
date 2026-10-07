@@ -547,6 +547,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    (the push rows at 0x0800ACDC: a panel up, down, back or forward). The engine slides on ice by the reactions' `ice` rows (six
    `SlideVector`s by direction). Shape: a reactions field `ice: { rows = {...} } | { push_bits = {side0, side1} }`
    (or `ice_push_bits: [[u8; 5]; 2]?` beside `ice`). Placeholder: `reactions.ice` is six zero rows (no slide).
+   - **Done: the move's direction** the table is read by. EXE4's (0x0800AF90, from its `object_updateCollisionPanels`,
+     0x08012D9A) is 0 none, 1 up, 2 down, 3 left and 4 right whatever the side, across before up and down, never
+     EXE6's 5 (other); EXE6's and EXE5's (`sub_800E994`) is back and forward by the side, 5 for a move of two panels
+     or more right or down or a diagonal one. The rule `reactions.move_direction` (`by_side`, `absolute`).
 2. **The drag is the flinch bit with a push.** The hit intake (around 0x080137FA) takes a drag where the final
    modifier has the flinch bit (1) and a push bit (2 to 7); the slide (0x08010294) always reads the push (EXE6's and
    EXE5's drag reads its own direction). Shape: the push reading's rule for drags (`push_reading.drag = "flinch_and_push"`
