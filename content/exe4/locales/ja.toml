@@ -76,6 +76,9 @@ language = "ja"
 "serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
 "srchmn-sp" = { name = "サーチマンSP", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
 "srchmn-ds" = { name = "サーチマンDS", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"thunman" = { name = "サンダーマン", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
+"thunmn-sp" = { name = "サンダーマンSP", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
+"thunmn-ds" = { name = "サンダーマンDS", description = "3マス前方のたて\n1れつにらくらい!\nパネルごとこわす!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

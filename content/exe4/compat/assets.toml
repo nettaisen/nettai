@@ -114,6 +114,7 @@ dust = "14-0e"  # a crack's dust: attack 0x18's init (0x080CFE86), the cracks' (
 vulcan-hit = "14-0f"
 heat-burst = "14-11"  # a HeatShot's bullet's burst: effect row 0x29 (0x080E1698), bullet rows 8 to 11 (0x080CF3DC)
 energy-burst = "14-12"
+thunder-flash = "14-13"  # ThunMan's thunderbolt striking a solid panel: effect row 0x47 (0x080E1698), 0x080DB692
 lightning = "14-14"
 charge-glow-a = "14-15"
 full-synchro-aura = "14-16"  # the Full Synchro aura: actor object 0x5E's init (0x080CD1A8), spawned for a navi in Full Synchro (0x0800D9C8)
