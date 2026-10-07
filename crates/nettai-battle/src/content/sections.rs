@@ -295,7 +295,7 @@ impl Stated {
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
             link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages, backgrounds: r.link_pick.backgrounds.clone() }),
-            effects: Some(r.effects),
+            effects: Some(r.effects.clone()),
             fresh_stats: Some(r.fresh_stats),
         }
     }

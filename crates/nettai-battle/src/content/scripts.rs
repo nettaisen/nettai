@@ -438,7 +438,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         shake = "battle_rng",
         spark_steps_at_start = true,
         retype = "is_and_hits",
-        damage_word = "statuses_and_bug",
+        damage_word = { damage = 0x7FF, flags = { { bit = 0x4000, status = "damage_word_paralysis", hit_modifier = 0, stop = true }, { bit = 0x800, bug = 0x1118 } } },
         palette_flash = "mode_runs_through_pause",
         palette_flash_order = "after_fades",
         overlays_run_while_paused = true,
@@ -556,13 +556,13 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let c = game(rules(None, None, None)).unwrap_or_else(|e| panic!("{e}"));
         let r = c.rules();
         use crate::content::{
-            AngerEnd, DamageWordRule, FormBreak, HpLoss, MoodHeld, NaviWinBanner, ObstacleActions, OverlayRestart, PushReading, Reactions,
+            AngerEnd, FormBreak, HpLoss, MoodHeld, NaviWinBanner, ObstacleActions, OverlayRestart, PushReading, Reactions,
             Reservations, RetypeRule, ShakeRule, StanceCounter, WeaknessMark,
         };
         assert_eq!((r.flow.result_words, r.flow.escape_check, r.flow.navi_win_banner), (49, false, NaviWinBanner::OperationBattle));
         assert_eq!(
-            (r.effects.shake, r.effects.damage_word, r.effects.retype, r.effects.obstacle_actions),
-            (ShakeRule::BattleRng, DamageWordRule::StatusesAndBug, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
+            (r.effects.shake, r.effects.damage_word.damage, r.effects.damage_word.flags.len(), r.effects.retype, r.effects.obstacle_actions),
+            (ShakeRule::BattleRng, 0x7FF, 2, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
         );
         assert_eq!((r.chip_use.leave_on_use, r.chip_use.anti_navi_sparkle.z), (true, 16));
         assert_eq!((r.push_reading, r.overlay_restart, r.stance_counter), (PushReading::ByHitterFlip, OverlayRestart::Reload, StanceCounter::NextTick));

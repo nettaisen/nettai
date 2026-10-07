@@ -133,7 +133,7 @@ pub struct ChipUseRules {
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and
 /// 16), the arena's: the battle's shared effects where games' touch the
 /// simulation differently. A game states every one.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EffectsRules {
     /// What the camera shake draws its jitter from.
@@ -144,8 +144,8 @@ pub struct EffectsRules {
     pub spark_steps_at_start: bool,
     /// How an object's collision types are set again (`sub_801A082`).
     pub retype: RetypeRule,
-    /// How a damage word's flag bits decode (`sub_8019F44`).
-    pub damage_word: DamageWordRule,
+    /// How an object's damage word decodes (`sub_8019F44`).
+    pub damage_word: DamageWord,
     /// What holds a screen palette flash (effect object #0x0A,
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,
@@ -197,23 +197,45 @@ pub enum ObstacleActions {
 }
 
 /// How the collision setup (`object_setupCollisionData`'s and
-/// `sub_801A082`'s call of `sub_8019F44`) decodes the flag bits of an
-/// object's damage word: the damage is its low 11 bits, doubled with
-/// 0x8000.
+/// `sub_801A082`'s call of `sub_8019F44`) decodes an object's damage word:
+/// the damage is its bits under `damage` (EXE6's and EXE5's low 11, 0x7FF;
+/// EXE4's low 14, 0x3FFF: 0x08012860), doubled with 0x8000; then its flag
+/// bits, read in the order the game's routine reads them (`flags`). EXE6's:
+/// 0x4000 a paralysis with hit modifier 1, then 0x2000 bug code 0xF8 (and
+/// no more), else 0x1000 bug code 0xF7, each code's high byte the target
+/// lookup's row offset (what the caller left in r1). EXE5's (0x080165EC):
+/// 0x4000 a paralysis with hit modifier 0 (no flinch), and no more; else
+/// 0x2000 a confusion, and no more; else 0x1000 a blindness; then 0x800 bug
+/// code 0x18 with high byte 0x11. EXE4's: 0x4000 its status 0x12 with hit
+/// modifier 0, nothing else.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DamageWord {
+    pub damage: u16,
+    pub flags: Vec<DamageFlag>,
+}
+
+/// A flag bit of a damage word (`DamageWord::flags`): what its hits carry
+/// when the word has it, and whether the reading stops there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DamageWordRule {
-    /// A paralysis and two bug codes (EXE6's `sub_8019F44`): 0x4000 the
-    /// role `statuses.damage_word_paralysis` with hit modifier 1 (a flinch
-    /// too); then 0x2000 bug code 0xF8 (and no more), else 0x1000 bug code
-    /// 0xF7, each code's high byte what the caller left in r1.
-    ParalysisAndBugs,
-    /// Three statuses and a bug code (EXE5's 0x080165EC): 0x4000 the
-    /// paralysis (status byte 0x10) with hit modifier 0 (no flinch), and no
-    /// more; else 0x2000 the role `statuses.damage_word_confusion` (0x20),
-    /// and no more; else 0x1000 `statuses.damage_word_blindness` (0x30);
-    /// then 0x800 bug code 0x18 with high byte 0x11.
-    StatusesAndBug,
+#[serde(deny_unknown_fields)]
+pub struct DamageFlag {
+    pub bit: u16,
+    /// The status its hits carry (the role naming it, `statuses`).
+    #[serde(default)]
+    pub status: Option<super::StatusRole>,
+    /// The hit modifier it sets (1 a flinch, 0 none).
+    #[serde(default)]
+    pub hit_modifier: Option<u8>,
+    /// The bug code its hits carry; its high byte, where `bug_high_row`,
+    /// the target lookup's row offset (EXE6's: what the lookup left in r1).
+    #[serde(default)]
+    pub bug: Option<u16>,
+    #[serde(default)]
+    pub bug_high_row: bool,
+    /// The reading ends at this bit when the word has it.
+    #[serde(default)]
+    pub stop: bool,
 }
 
 /// What holds a screen palette flash (effect object #0x0A) while the battle
