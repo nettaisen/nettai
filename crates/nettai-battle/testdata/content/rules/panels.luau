@@ -7,6 +7,10 @@
 -- holds a body that ends a move on it for 20 ticks and submerges what can
 -- dive; metal slides a body as EXE5's does. A hitbox of fire turns grass
 -- normal, of aqua the volcano and lava, of wood the roads and metal.
+-- Poison drains a body standing on it, and grass heals a wood body, at 9
+-- HP or less on the 180-tick count.
+
+local panel_types = require("@exelib/panel_types")
 
 -- A metal panel's slide, by the direction of the move (none, up, down,
 -- back, forward, other): the steps tried in turn, dx toward the front.
@@ -50,9 +54,9 @@ return {
         broken = { flags = 0x00010000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110 },
+        poison = { flags = 0x00010110, stand = panel_types.poison },
         holy = { flags = 0x00012010 },
-        grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire" },
+        grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire", stand = panel_types.grass(9) },
         ice = { flags = 0x00010810 },
         volcano = { flags = 0x00011010, cleared_by = "aqua" },
         road_up = road(0, -1),
@@ -64,8 +68,17 @@ return {
             cleared_by = "wood",
             slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
         },
-        lava = { flags = 0x00011010, expires = 960, burn = { damage = 50, spared_by = 0x88000206 }, cleared_by = "aqua" },
-        sea = { flags = 0x00030010, expires = 960, drains = "fire", holds = 20, submerges = true },
+        lava = {
+            flags = 0x00011010,
+            expires = 960,
+            cleared_by = "aqua",
+            burn = panel_types.burn {
+                damage = 50,
+                spared_by = { "invisible", "submerged", "flashing", "untouchable", "bubbled" },
+                spark = new.spark { sprite = asset.sprite("test-spark"), anim = 0, palette = 0 },
+            },
+        },
+        sea = { flags = 0x00030010, expires = 960, holds = 20, submerges = true, stand = panel_types.drains("fire") },
     },
     -- Its panel types by its numbers.
     numbers = {
@@ -102,6 +115,4 @@ return {
     reservations = "marked",
     -- The flags' bits a type owns, which a crack, a break or poison clears.
     type_mask = 0x00003F5F,
-    -- At 9 HP or less grass heals a wood body on the 180-tick count.
-    grass_heal_slows_at = 9,
 }

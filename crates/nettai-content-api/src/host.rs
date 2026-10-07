@@ -187,6 +187,39 @@ pub enum HookCall {
         chip: Option<crate::ChipHandle>,
         weapon: Option<crate::WeaponHandle>,
     },
+    /// A hook of a panel type's (its rules' `panels.types.<name>.<hook>`):
+    /// what the type does where the engine meets it, with the body it
+    /// meets there (docs/design/rules-in-luau.md, "Panels into Luau").
+    Panel { hook: PanelHook, body: ObjectRef, player: bool },
+}
+
+/// Which hook of a panel type's is called: where the engine meets the type,
+/// in the original's order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PanelHook {
+    /// `burn(body, player)`: at the start of a navi's hit intake (EXE5's
+    /// 0x080178EC, EXE4's 0x08013128 for a player, 0x0801309E for another
+    /// body), and an object's `burn_on_panel`: the body stands on the type.
+    /// `player`: the body is a player's navi. Its result is unused.
+    Burn,
+    /// `stand(body)`: each tick of the fight, in a navi's intake where the
+    /// standing effects run (`sub_801A186`), not paused or dimmed, while
+    /// the body has a region: the body stands on the type. (Without the
+    /// hook the body's standing count goes to 0.) Its result is unused.
+    Stand,
+}
+
+impl PanelHook {
+    /// Every hook, in order.
+    pub const ALL: [PanelHook; 2] = [PanelHook::Burn, PanelHook::Stand];
+
+    /// The hook's name in a panel type's table.
+    pub fn name(self) -> &'static str {
+        match self {
+            PanelHook::Burn => "burn",
+            PanelHook::Stand => "stand",
+        }
+    }
 }
 
 /// Which hook of the rules is called (docs/design/rules-in-luau.md §4.1).

@@ -680,6 +680,11 @@ impl Battle {
         self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
     }
 
+    /// Panel type `t`'s `hook`, if its rules give it one.
+    pub(crate) fn panel_hook(&self, t: PanelType, hook: nettai_content_api::PanelHook) -> Option<nettai_content_api::FnId> {
+        self.content.defs.rules()?.panel_hook(t, hook)
+    }
+
     /// Whether object `r` stands trapped: on a panel whose type traps (EXE4's
     /// pitfall, its `object_canMove`'s 0x0800AD42), not floating.
     pub fn trapped(&self, r: ObjectRef) -> bool {
