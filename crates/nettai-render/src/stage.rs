@@ -158,11 +158,11 @@ impl<'a> Stage<'a> {
             }
             let n = clock.background;
             let counter = |step: i32| (((step.wrapping_mul(n as i32)) as u32 >> 4) & 0xFFFF) as i32;
-            // (A speeding scroll from the battle's first frame, its ticks'
-            // count: the background's own clock runs from the round's init,
-            // which a recording starts past.)
+            // (A speeding scroll on the background's clock, or from the
+            // battle's first frame on its ticks: the background's runs from
+            // the round's init, which a recording starts past.)
             scroll = match bg.speeding {
-                Some(s) => s.offset(clock.field),
+                Some(s) => s.offset(if s.from_battle { clock.field } else { n }),
                 None => (counter(bg.scroll.0), counter(bg.scroll.1)),
             };
             let mut shifts = Vec::new();
