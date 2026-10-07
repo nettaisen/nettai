@@ -40,6 +40,8 @@ const MAP_CELLS: u32 = 15 * 20;
 const LAYOUT: CustomLayout = CustomLayout {
     column_cells: 0x47,
     turn_limit: 0x4B,
+    // (0x08025970's map: palette 9.)
+    turn_limit_palette: 9,
     name: 0x59,
     art: 0x69,
     code: 0x93,
