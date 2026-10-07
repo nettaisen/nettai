@@ -115,6 +115,9 @@ language = "en"
 "thunder1" = { name = "Thunder1", description = "Pralyzing\nelectric\nattack!" }
 "thunder2" = { name = "Thunder2", description = "Pralyzing\nelectric\nattack!" }
 "thunder3" = { name = "Thunder3", description = "Pralyzing\nelectric\nattack!" }
+"topman" = { name = "TopMan", description = "Attck hit\n3 panels\nahead" }
+"topmn-sp" = { name = "TopMnSP", description = "Attck hit\n3 panels\nahead" }
+"topmn-ds" = { name = "TopMnDS", description = "Attck hit\n3 panels\nahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
