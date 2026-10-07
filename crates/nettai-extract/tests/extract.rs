@@ -35,6 +35,19 @@ fn empty_sets_make_loadable_packs_and_language_variants() {
     }
 }
 
+/// EXE4's pack from no ROMs: placeholders under compat's names, written and
+/// read back. (Its content has no rules yet, so no battle loads with it.)
+#[test]
+fn an_empty_set_makes_an_exe4_pack() {
+    let assets = extract(Game::Exe4, &RomSet::default()).unwrap();
+    assert_eq!(assets.missing_roms.len(), 4);
+    assert!(assets.placeholders.iter().any(|p| p == "sprite/megaman"));
+    assert!(assets.warnings.iter().any(|w| w.contains("aren't extracted yet")));
+    assets.graphics.clone().in_language("ja").unwrap().in_language("en").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    assets.write(dir.path()).unwrap();
+}
+
 #[test]
 fn rejects_unknown_truncated_and_duplicate_roms() {
     let mut roms = RomSet::default();

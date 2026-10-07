@@ -236,7 +236,8 @@ readers), and what I know of the games. Each claim below is marked:
 - **The battle object record**: 0xD8 bytes, the panel at +0x12, the destination at +0x14, the owner at +0x16, HP
   at +0x24, max HP at +0x26, in BN4, EXE5 and EXE6 (T). EXE5 keeps the loaded chip at +0x2A as EXE6 does (T).
 - **The chip hand**: a 0x50-byte block per player, a counter of chips used, then the chips (T).
-- **The chip record**: 0x2C bytes in all three, in the same order: codes, attack element, rarity, element,
+- **The chip record**: 0x2C bytes in all three, in the same order but for +0x06 to +0x08, which BN4 holds as MB,
+  element, class (exe4-map.md §3.2, R): codes, attack element, rarity, element,
   class, MB, effect flags (bit 5 marks a dark chip), counter settings, attack family and subfamily (the chip's
   action and its variant: what v2 made each chip's own use), a byte for the Dark Soul's use of the chip, attack
   parameters, the lockout delay, library numbers, attack power, sort keys, the Battle Chip Gate's limit, and the
