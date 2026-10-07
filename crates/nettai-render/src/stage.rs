@@ -101,10 +101,13 @@ pub struct StageClock {
 impl StageClock {
     /// The clock for a battle. The background has moved once per frame
     /// since the round's init began (one frame more in the first round of
-    /// a set, whose background is set up a frame earlier; measured against
-    /// the original); the field is drawn once per running tick.
+    /// a set of a game whose intro waits a tick after its init, EXE6's and
+    /// EXE5's: the background is set up a frame earlier; none in EXE4's,
+    /// whose intro goes on from its init on the same tick, `flow`'s
+    /// `intro_steps_on_init`; measured against the originals); the field is
+    /// drawn once per running tick.
     pub fn of(b: &Battle) -> StageClock {
-        let head_start = (b.setup.score.round == 0) as u32;
+        let head_start = (b.setup.score.round == 0 && !b.game_rules().flow.intro_steps_on_init) as u32;
         StageClock { background: b.round.frames.wrapping_add(head_start), field: b.round.ticks }
     }
 }
@@ -152,6 +155,7 @@ impl<'a> Stage<'a> {
             let n = clock.background;
             let counter = |step: i32| (((step.wrapping_mul(n as i32)) as u32 >> 4) & 0xFFFF) as i32;
             scroll = (counter(bg.scroll.0), counter(bg.scroll.1));
+            let mut shifts = Vec::new();
             for anim in &bg.anims {
                 let Some(frame) = anim_frame(anim, n) else { continue };
                 let fr = &anim.frames[frame];
@@ -164,7 +168,15 @@ impl<'a> Stage<'a> {
                             }
                         }
                     }
+                    // (After the palettes' own frames: EXE4's 0x0800258C
+                    // shifts the palettes as shown.)
+                    AnimTarget::PaletteShift { first, count, darken } => shifts.push((first, count, darken, fr.shift)),
                     AnimTarget::Nothing => {}
+                }
+            }
+            for (first, count, darken, by) in shifts {
+                for slot in palettes.iter_mut().skip(first as usize).take(count as usize) {
+                    *slot = slot.map(|c| nettai_assets::shift_color(c, by, darken));
                 }
             }
         }

@@ -8,16 +8,14 @@
 //! all four ROMs), the chips' pictures and icons, the fonts and the HUD's
 //! text lines in English (the US ROMs) and Japanese (the Japanese ROMs),
 //! the battle backgrounds (the same in all four), the sound (the same
-//! songs in all four), the field and the HUD (Red Sun US's: graphics.rs,
-//! hud.rs: the HP box, the gauge, the banners, the emotion window's faces,
-//! "BUSY...", the chatbox), and the banners' and "BUSY..."'s Japanese
-//! words. The custom screen is EXE4's own code to read still: the
-//! extraction fills it with placeholders and says so (`NOT_YET`).
+//! songs in all four), the field, the HUD and the custom screen (Red Sun
+//! US's: graphics.rs, hud.rs: the HP box, the gauge, the banners, the
+//! emotion window's faces, "BUSY...", the chatbox; custom.rs), and the
+//! Japanese words of the banners, "BUSY..." and the custom screen.
 
+mod custom;
 pub(super) mod graphics;
 mod hud;
 pub(super) mod names;
 pub(super) mod rom;
 
-/// What the pack doesn't have of EXE4's yet, which a warning lists.
-pub(crate) const NOT_YET: &str = "EXE4's custom screen isn't extracted yet (placeholders): its routines are EXE4's own, to read first (docs/design/exe4-map.md §14)";

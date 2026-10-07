@@ -300,6 +300,44 @@ soul a battle (?). **Dark chips** (T, K): never in a folder, offered only in bat
 MegaMan is worried (?); a chip with the dark flag (+0x09 bit 5). How the offer is drawn, which slot it takes and what
 using one does (the dark state, no Double Soul afterwards: ?) are EXE4's own code, to read.
 
+**As ported** (group A, the engine's custom/screen.rs on EXE4's rules; §18 item 31). The engine runs one screen for
+every game; what EXE4's code does otherwise is its rule section `custom_screen` (written by tools/exe4/gen_rules.py
+from the ROM and its code, read routine by routine):
+
+- **The block's states as the engine's phases.** The running state's sub-states: 0 the slide in (`Phase::Opening`,
+  10 ticks, the open sound 0x7A on the first), 4 choosing, 8 the slide out (`Closing`), 0xC SELECT's hiding
+  (`Hidden`: no sound, no emblem drawn on the return), 0x10 the Program Advance animation (`ProgramAdvance`: EXE6's
+  steps, its fade back a step longer by `effects.fade_clear`), 0x18 the send and the wait (`Sending`; 0x14, the escape
+  chatbox, no netbattle reaches). The selection's states inside choosing: 0 the settle tick (`Settling`: the state it
+  was in put back, no key read, value 1 of the status set), 4 the chips, 8 OK and 0xC the button under it (the
+  engine's cursor on slot 10 or 11), 0x10 the soul's animation and 0x14 SearchSoul's shuffle (the rules' windows),
+  0x18 R's description (`Description`), 0x1C L's message (`RunMessage`, its script run with the key).
+- **The keys and moves** (`slots`): each place reads its own keys in its own order (the chips' 0x08020350, OK's
+  0x08020620, the button's 0x08020728) and moves to the first slot of a list that holds something (0x080204C0,
+  0x08020518, 0x08020568, 0x0802070C, 0x080207F4). Slots 8 and 9, the dark chips' places, show no frame without a
+  chip.
+- **Picks** (0x0801F73C): a chip that counts as the invalid chip is refused (`invalid_picks`), the dark chips' code 27
+  is one `*` doesn't stand for (`special_codes`). **OK's hand** (0x0801F034): no Program Advance record, no Regular
+  mark on it, the entries past the selection cleared, a modifier's mark kept (`program_advances`,
+  `modifier_passes_regular`). The hand is the custom level, uncapped (rules/custom: `hand_size`, 0x0801DC8E).
+- **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
+  (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
+- **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
+  0x08007A2E); it stays full until each console's send (`gauge_empties_at_open`, `Battle::gauge_for`).
+- **The dark chip hover** (0x0801E478, `hover`): only while choosing; an 11-tick ramp with a volume call every other
+  tick (players 31 and 9, the table 0x0801E584); its sound 0x100 on the tick after the shade settles and every 61;
+  OK clears the fades at once (`fades_clear_at_ok`); the close sets players 9 and 31 back (`restore_players`).
+- **Drawing** (presentation): the tick a key leaves the choosing draws what its new state draws, no cursor
+  (`cursor_after_leaving`, 0x0801E412).
+- **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape.
+- **Sounds** (named for their code in gen_content.py's BY_USE): open 0x7A, cursor 0x7D, pick 0x7E, back 0x7F, OK 0x80,
+  refused 0x69, description 0x66, the hover 0x100, the Program Advance's parts 0x79 and its result 0x97, the gauge full
+  0x81; the hide, the description's close, L's message and the pause play none (optional roles).
+
+Checked against the chip lab's custom/ recordings (every one whose chips the content has matches every frame and
+every sound call; with exe4-compat's harness comparing the gauge as the recording console holds it). Not yet: the
+Double Soul button and its window (the selection's states 0xC and 0x10), the dark chip offer (§18, group A's step 4).
+
 ## 6. Transformations
 
 EXE5's and EXE6's turn-start transformation sequencer (`sub_801483C`, `sub_80148CC`, `sub_8014944`, `sub_8014A00`,
@@ -421,9 +459,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   name, and a sprite or sound EXE4's code loads where EXE5's or EXE6's same code loads a named one (the place votes
   of tools/exe5/assetmap.py over both maps; a pair the same but for constants votes only where the asset's number is
   the same: such pairs in the object code are often other objects on one skeleton, and would have named an EXE4
-  sound EXE6's Beast Over burst). The rest (175 sprites, 387 sounds) are written under their numbers
-  (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's extraction.txt (`unnamed:`), to name by what loads them
-  as the port reads EXE4's own code.
+  sound EXE6's Beast Over burst). Then what EXE4's own code says (gen_content.py's BY_USE): the assets the ported
+  content uses, each by the code that loads it; the navis' sprites by navi number (0x0800B90A's table 0x08017F98:
+  navis 1 to 14, Roll to HealNavi, named by their win banners, 0x08008524) and MegaMan's in each soul by soul
+  number (RollSoul to WoodSoul, the navis' order: the chip names' list from MegaSoul has them so). The rest (142
+  sprites, 368 sounds: the story navis' 0x0E to 0x19, the viruses', the chips' objects and effects, and the sounds
+  of what isn't ported) are written under their numbers (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's
+  extraction.txt (`unnamed:`), to name by what loads them as the port reads EXE4's own code (the verification
+  workspace's tools/exe4/assetloads.py lists each one's loads).
 - **The field** (R, Red Sun US's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
   its transfer list 0x08006A68: background palettes 1 to 8), the panel blocks (0x080093FC: 6 * type + 3 * owner + row
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
@@ -442,7 +485,36 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   0 to 5); the chatbox (0x0804E3B4: one box, which descriptions show in too). The Japanese ROMs' banners and
   "カスタム中…" are the pack's Japanese lettering. Not drawn yet: "PLAN-B..." (0x08016AE8's list, the other waiting
   words, 作戦変更中… in Japanese), shown while the other player is in what group A's screen calls the second screen.
-- **Placeholders** (extraction.txt's first line): the custom screen, whose routines are EXE4's own (§5).
+- **The custom screen** (R, Red Sun US's; exe4/custom.rs), as EXE5's in its parts, from EXE4's own routines: the
+  window (0x0801DC28: the map 0x0870CC80, its patch list 0x0801DD90 from tile 0x9C, one frame color for every chip,
+  0x0870C340) and the HUD's load list (the frame's tiles, the picked column's cells, "FINAL TURN", the UNITE button's
+  and the emblem's tiles); the chip window (0x0801FC40: the name, picture, code and damage; the element icon a sprite
+  of its own palette, 0x0801EECC, by the record's element byte in EXE5's order); the slots (0x0801FB00: palettes 11,
+  12 gray, 9 picked); OK's two pictures; the cursor's corners (0x0801EDB4's tables, its own palette 0x0870C360,
+  sprite palette 13); the Regular chip's frame. What EXE5 doesn't have, the pack says (`CustomScreen`'s
+  `element_sprite`, `cursor_palette`, `window_emblem`, a button's `place`): the emblem over the picked column is the
+  window's own orb (0x08020028: four frames of 2x3 on the map at column 12, row 0, turned by the steps of 0x08020078
+  as a chip is picked), no navi's; the UNITE button (`soul`) is drawn at its own place (0x0801FF14: 3x2 at column
+  11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) over
+  slots 8 and 9 (0x08709E00, three states). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
+  button's tiles are the pack's Japanese lettering. Also the layout's `detail_blank` (a blank code or damage cell is
+  solid 7, 0x08020E5C: 0x0801FD08, 0x0801FE2A) and `empty_palette` (the empty icon in palette 9: the slots' patches'
+  own, which 0x0801FB00 leaves on an empty slot and sets on a picked one; 0x0801FB6E sets it on the picked column's
+  empty cells, 11 on a filled one).
+- **Drawn as the original** (frames compared with the lab's mGBA shots, tools/frontend-compare: custom/cannon,
+  describe, pause, three-picks and flow/buster-side1, as far as each plays): the field and its panels; the
+  backgrounds, 0x02's and 0x09's with their animations (0x09 is 0x03's picture darkened each frame by a color that
+  changes, GFX animation command 0x0C: a palette transform, 0x080024BC, subtracting per channel, mode 4, which
+  0x0800258C runs each frame on the palettes shown: the pack's `darkens`), the background's clock without the first
+  round's head start (`StageClock`); the emotion window's face; the banners as they unsquash and squash (0x08014994:
+  from 0xC0 to 0x40 over the slide's 9 ticks, a line, as EXE6's over its 5; no bounce in the hold: the rules'
+  `effects.banner.bounces`); the custom screen as it opens, while picking and on OK (the window, the chip window and
+  OK's pictures, the slots' palettes, the picked column, the element sprite, the window's emblem). What still
+  differs is not the drawing's: the HP box (the intro doesn't show it yet); MegaMan's colors (the original draws
+  him in his sprite's palette row 4, 0x0821B854, with the normal face, where the base form says row 0); the UNITE
+  button (content/exe4 registers no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the
+  original hides them); the cursor on OK after it is pressed (the original hides it); the chatbox's description
+  (content/exe4's Cannon has none).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -693,19 +765,24 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     `overlay/aqua` and `overlay/proto` (a95f's: a soul flinched, dragged and shooting, with and without Full Synchro)
     check it once souls play.
 33. **EXE4's reaction actions and its slide** (found by group C; the player's action table, 0x080EAEFC, entries 2 to
-    5). Each is its own beside the engine's (EXE6's, which EXE5 shares where its labs pass):
-    - the drag (0x08010A9C, its start 0x08010ABC): DRAG alone (not the action in use), always animation 1 (EXE6's 2
-      paralyzed, 0 with SuperArmor), no drag hook or overlay refresh, the Z kept, no side stat bumped, and calls
-      0x0800DD82 and 0x08022F2C (unread); its end (0x08010C16) clears DRAG and the requests 0x43F and goes to idle
-      (action 6), with none of EXE6's paralysis turn, flag clears or slide state;
-    - the flinch (0x08010960): FLINCHING alone, 0x08022F2C, the AI status's low seven bits (0x0800C1F2), no freeze or
-      bubble to end; its end clears the requests 0x43F;
-    - the paralysis (0x080109FA): its own entry (0x0800DD14's hook, 0x08022F2C) and its mash (AIData +0x1E);
-    - the slide (0x08010294, 0x080102FC): the collision record's panels and direction each tick (0x08012D9A), no
-      direction at its end, no road cooldown; a type 10 panel stops it unless the body floats (item 12).
-    The status block (0x08013A48) is EXE5's order (`status.reactions = "flash_timer_first"`) but goes straight to the
-    action while flag 0x10000 is set and asks for action 13 by 0x0800B8B0. To port; observable in the lab's `drag/`,
-    `ice/` and `status/` recordings.
+    5).
+    - **Done: the actions.** The flinch (0x08010960), the paralysis (0x080109FA) and the drag (0x08010ABC, its end
+      0x08010C16) differ from the engine's (EXE6's) beyond their hooks and requests: none marks the action in use
+      (flag 0x400000) or lets go of the overlay link (AIData +0x68); the flinch keeps the body's height as it snaps it;
+      the paralysis snaps it sliding or not and counts no reaction (the side's stat 3); the drag takes the flinch's
+      pose (EXE6's 2 paralyzed, 0 with SuperArmor), keeps the height, counts none, and at its end clears the drag alone
+      (no slide, paralysis, heat-trap or flag2 0x10 clears) and goes to idle in its pose, paralyzed or not. The rule
+      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is.
+      (EXE5's drag has no paralyzed pose either, 0x08014304: an EXE5 difference no recording has shown, left as it is.)
+    - Read and the same: the per-navi flinch, paralysis and drag hooks (0x0800DC9C, 0x0800DD14, 0x0800DD82: the
+      identities' `overlay_hooks`), the requests their ends clear (item 6), the drag's speed and its step (ice a panel
+      more); the slide's start and step (0x08010294, 0x080102FC) as EXE6's (item 3).
+    - Left, unreached or another's: a reaction's entry clears the side's timed effect (0x08022F2C: the side record's
+      +0x0B kind, +0x2E ticks, +0x0F, which an action's effects table, 0x080EC9CC, sets; to port with the chip that
+      sets it); the AI status bits a flinch's and a paralysis's entry clear (0x7F; the engine's 0x20005F: the bits
+      differ only in 0x20, EXE5's dive, and 0x200000, neither EXE4's); the slide's collision panels updated each tick
+      (0x08012D9A: the direction ends 0, where EXE6's sets the slide's; nothing reads it after a slide); a type 10
+      panel stopping a slide or a drag unless the body floats (item 12).
 
 ### 18.2 Panels
 
@@ -787,13 +864,16 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 ### 18.5 Roles and the custom screen
 
 31. **The custom screen** is EXE4's own (§5: its states, no ADD button, the description on R is the selection's state
-    0x18); the engine runs EXE6's. Its sounds wait: a round stops at tick 149 on `sounds.custom_pick`.
+    0x18). **Done** but for Double Soul's button and window (group A): §5's "As ported" lists the rules that say it
+    (`custom_screen`'s keys and moves, settle tick, picks, hand, status, hover, gauge, drawing; flow
+    `custom_request`), checked on the lab's custom/ recordings, frame and sound.
 32. **Roles not filled** (the content check lists them): every sound but `appear` and `custom_open`, the music but
     `link_battle`, the effects (deletion, recovery, the cut-in flash), sprites (charge glow, statuses), banners but
     `round_start`, `turn_start` and `win`, the kinds and actions EXE5's roles name. Name each EXE4 asset for the code
-    that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 1 problem
-    with the pack: MegaMan has no emblem (the custom screen's extraction, §14). The banners, the faces (MegaMan's
-    `forms`, so his faces are his base form's `mugshot`) and the warning marker are in.
+    that uses it (gen_content.py's BY_USE, with the address; tools/exe4/assetloads.py lists where each unnamed one is
+    loaded) and fill the role. EXE4's content audit lists no problem with the pack (the custom screen's emblem is the
+    window's own, §14). The banners, the faces (MegaMan's `forms`, so his faces are his base form's `mugshot`), the
+    warning marker, the navis' sprites and MegaMan's souls' are in.
 
 ### 18.6 Found by the replays
 

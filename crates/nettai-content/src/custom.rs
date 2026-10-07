@@ -23,8 +23,8 @@ use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
 use nettai_assets::{
-    ButtonLettering, ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomLettering, CustomScreen, Emblem, MapEntry, MapPatch, Palette,
-    PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned,
+    ButtonLettering, ButtonPictures, ButtonPlace, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomLettering, CustomScreen, ElementSprite, Emblem,
+    MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned, WindowEmblem,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -109,6 +109,40 @@ pub struct CustomDoc {
     /// picture's palettes, and how the screen draws it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub buttons: Vec<ButtonDoc>,
+    /// The chip window's element icon as a sprite: its place and palette
+    /// (left out: the window's tiles, EXE6's and EXE5's).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub element_sprite: Option<ElementSpriteDoc>,
+    /// The cursor's and the Regular chip's frame's own palette (left out:
+    /// the navi's emblem's).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor_palette: Option<Vec<String>>,
+    /// The emblem the screen draws on its window by frames (left out: none,
+    /// a navi's emblem sprite).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window_emblem: Option<WindowEmblemDoc>,
+}
+
+/// `nettai_assets::ElementSprite`: its place from the window's left edge
+/// and the screen's top, its palette.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ElementSpriteDoc {
+    pub at: [i16; 2],
+    pub palette: Vec<String>,
+}
+
+/// `nettai_assets::WindowEmblem`: its first cell, its size in cells, the
+/// tile number its tiles load at (`window-emblem.png`), its frames' map
+/// entries (as `tile:palette[:flips]`), and the steps of its turn (a
+/// frame's number, or null: hold).
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WindowEmblemDoc {
+    pub at: [u8; 2],
+    pub size: [u8; 2],
+    pub first_tile: u16,
+    pub tiles: TileImage,
+    pub frames: Vec<Vec<String>>,
+    pub steps: Vec<Option<u8>>,
 }
 
 /// A navi's emblem (`nettai_assets::Emblem`): its 2x2 tiles in its palette.
@@ -133,7 +167,16 @@ pub struct LayoutDoc {
     pub name_bar: u16,
     pub form_names: u16,
     pub slot_blank: u8,
+    /// (Left out: 8, EXE6's.)
+    #[serde(default = "detail_blank")]
+    pub detail_blank: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_palette: Option<u8>,
     pub ok_cursor: CursorDoc,
+}
+
+fn detail_blank() -> u8 {
+    8
 }
 
 /// `nettai_assets::CursorPlace`: the place, and each frame's four corners
@@ -171,6 +214,8 @@ impl From<CustomLayout> for LayoutDoc {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor,
         } = l;
         LayoutDoc {
@@ -186,6 +231,8 @@ impl From<CustomLayout> for LayoutDoc {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor: ok_cursor.into(),
         }
     }
@@ -206,6 +253,8 @@ impl From<LayoutDoc> for CustomLayout {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor,
         } = l;
         CustomLayout {
@@ -221,6 +270,8 @@ impl From<LayoutDoc> for CustomLayout {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor: ok_cursor.into(),
         }
     }
@@ -256,6 +307,10 @@ pub struct ButtonDoc {
     /// own: the icons' image's palette rows after the first, in order (none:
     /// an empty list).
     pub icon_versions: Vec<String>,
+    /// Its own place on the window, [column, row, first tile, palette]
+    /// (left out: the patch list's, in the slots' run).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub place: Option<[u16; 4]>,
 }
 
 /// Another language's pictures with words: its own files, named with the
@@ -371,6 +426,7 @@ fn button_doc(image: &mut Image, name: &str, file: &str, b: &ButtonPictures, fra
         held_at: b.held_at.map(|(x, y)| [x, y]),
         icons,
         icon_versions,
+        place: b.place.map(|p| [p.x as u16, p.y as u16, p.first_tile, p.palette as u16]),
     }
 }
 
@@ -418,9 +474,9 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     };
     let none = |_: usize| 0u8;
     let frame0 = c.frame_palettes.first().copied().unwrap_or([0; 16]);
-    // (The cursor and the Regular chip's frame show in the first emblem's
-    // palette: they are drawn in the navi's emblem's.)
-    let emblem0 = c.emblems.first().map_or([0; 16], |e| e.palette);
+    // (The cursor and the Regular chip's frame show in their own palette,
+    // or the first emblem's: they are drawn in the navi's emblem's.)
+    let emblem0 = c.cursor_palette.unwrap_or_else(|| c.emblems.first().map_or([0; 16], |e| e.palette));
     let grid = |columns| Layout::Grid { columns };
     let window = image("window.png", &c.window_tiles, grid(16), &c.frame_palettes, c.frame_palettes.len(), &none);
     let column_cells = image("column-cells.png", &c.column_cells, GLYPHS(2), &[frame0], 0, &none);
@@ -455,8 +511,14 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let own = version(None, &vs.base);
     let versions = vs.versions.iter().map(|(name, v)| VersionEntry { version: name.clone(), own: version(Some(name), v) }).collect();
     let codes = image("codes.png", &c.codes, GLYPHS(28), &[frame0], 0, &none);
-    let rows = element_rows(c);
-    let elements = image("elements.png", &c.elements, ICONS(11), &rows, rows.len(), &|i| (i / 4) as u8);
+    // (A sprite's icons: one palette of its own, the sprite's, for viewing.)
+    let elements = match &c.element_sprite {
+        Some(e) => image("elements.png", &c.elements, ICONS(11), &[e.palette], 0, &none),
+        None => {
+            let rows = element_rows(c);
+            image("elements.png", &c.elements, ICONS(11), &rows, rows.len(), &|i| (i / 4) as u8)
+        }
+    };
     let digits = image("digits.png", &c.digits, GLYPHS(11), &[frame0], 0, &none);
     let slot_codes = image("slot-codes.png", &c.slot_codes, Layout::Blocks { width: 2, height: 1, columns: 14 }, &[frame0], 0, &none);
     let empty_icon = image("empty-icon.png", &c.empty_icon, ICONS(1), &[c.icon_palette], 0, &none);
@@ -497,6 +559,14 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         languages.insert(lang.clone(), CustomLanguageDoc { pictures, form_names, buttons });
     }
     let buttons = c.buttons.iter().map(|(name, b)| button_doc(&mut image, name, name, b, frame0)).collect();
+    let window_emblem = c.window_emblem.as_ref().map(|e| WindowEmblemDoc {
+        at: [e.x, e.y],
+        size: [e.width, e.height],
+        first_tile: e.first_tile,
+        tiles: image("window-emblem.png", &e.tiles, Layout::Grid { columns: 6 }, &[frame0], 0, &none),
+        frames: e.frames.iter().map(|f| f.iter().map(tiles::entry_text).collect()).collect(),
+        steps: e.steps.clone(),
+    });
     let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
     let doc = CustomDoc {
         format: FORMAT.into(),
@@ -532,6 +602,9 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         languages,
         layout: c.layout.into(),
         buttons,
+        element_sprite: c.element_sprite.map(|e| ElementSpriteDoc { at: [e.x, e.y], palette: tiles::palette_text(&e.palette) }),
+        cursor_palette: c.cursor_palette.as_ref().map(tiles::palette_text),
+        window_emblem,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
     files
@@ -607,6 +680,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
                 icons,
                 icon_palette,
                 icon_palettes,
+                place: b.place.map(|[x, y, first_tile, palette]| ButtonPlace { x: x as u8, y: y as u8, first_tile, palette: palette as u8 }),
             },
         ))
     };
@@ -655,6 +729,22 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
     for b in &doc.buttons {
         buttons.push(button(b, report)?);
     }
+    let element_sprite =
+        doc.element_sprite.as_ref().map(|e| ElementSprite { x: e.at[0], y: e.at[1], palette: tiles::parse_palette(&e.palette, report, &name) });
+    let cursor_palette = doc.cursor_palette.as_ref().map(|p| tiles::parse_palette(p, report, &name));
+    let window_emblem = match &doc.window_emblem {
+        Some(e) => Some(WindowEmblem {
+            x: e.at[0],
+            y: e.at[1],
+            width: e.size[0],
+            height: e.size[1],
+            first_tile: e.first_tile,
+            tiles: img(&e.tiles, report)?.0,
+            frames: e.frames.iter().map(|f| map(f, report)).collect(),
+            steps: e.steps.clone(),
+        }),
+        None => None,
+    };
     let mut emblems = Vec::new();
     for e in &doc.emblems {
         let (tiles, palettes) = img(&e.image, report)?;
@@ -679,7 +769,12 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         pictures,
         codes: img(&doc.codes, report)?.0,
         elements,
-        element_colors: element_rows.iter().map(|p| std::array::from_fn(|i| p[10 + i])).collect(),
+        // (A sprite's icons bring no colors to the window's palette.)
+        element_colors: if element_sprite.is_some() {
+            Vec::new()
+        } else {
+            element_rows.iter().map(|p| std::array::from_fn(|i| p[10 + i])).collect()
+        },
         digits: img(&doc.digits, report)?.0,
         slot_codes: img(&doc.slot_codes, report)?.0,
         empty_icon: img(&doc.empty_icon, report)?.0,
@@ -700,5 +795,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             })
             .collect(),
         languages,
+        element_sprite,
+        cursor_palette,
+        window_emblem,
     })
 }
