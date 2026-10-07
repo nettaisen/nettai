@@ -165,6 +165,7 @@ struct CustomScreenSection {
     hover: HoverSection,
     restore_players: Vec<u8>,
     gauge_empties_at_open: bool,
+    fades_clear_at_ok: bool,
 }
 
 #[derive(Deserialize)]
@@ -694,6 +695,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     hover: s.hover.rules(&at).map_err(e)?,
                     restore_players: s.restore_players,
                     gauge_empties_at_open: s.gauge_empties_at_open,
+                    fades_clear_at_ok: s.fades_clear_at_ok,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,

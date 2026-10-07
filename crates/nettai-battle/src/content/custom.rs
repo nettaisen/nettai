@@ -168,6 +168,10 @@ pub struct CustomScreenLayout {
     /// `sub_801DF92`), and again at the send; else it stays full until the
     /// send (EXE4's 0x0801E1B4: 0x080159B0 empties it).
     pub gauge_empties_at_open: bool,
+    /// OK clears the console's fade records at once (EXE4's 0x08020656: a
+    /// dark chip's shade goes with it); else they run on until the screens
+    /// close (EXE6's `sub_8026A6C`: `sub_80062EC`). Presentation.
+    pub fades_clear_at_ok: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -334,6 +338,7 @@ impl Default for CustomScreenLayout {
             },
             restore_players: vec![31, 22],
             gauge_empties_at_open: true,
+            fades_clear_at_ok: false,
         }
     }
 }

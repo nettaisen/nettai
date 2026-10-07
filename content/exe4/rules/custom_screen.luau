@@ -185,4 +185,6 @@ return {
     -- The custom gauge stays full while the screen is up (its opening, 0x0801DC28, leaves it): the send empties it
     -- (0x0801E1B4: 0x080159B0).
     gauge_empties_at_open = false,
+    -- OK clears the fade records at once (0x08020656, 0x0802065A), a dark chip's shade with them.
+    fades_clear_at_ok = true,
 }
