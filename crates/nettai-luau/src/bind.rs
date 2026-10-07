@@ -2733,6 +2733,9 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
                 t.raw_set("variant", bound.def_value(Registry::Record, v.0)?)?;
             }
             t.raw_set("argument", spec.argument)?;
+            if let Some(hp) = spec.hp {
+                t.raw_set("hp", hp)?;
+            }
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
