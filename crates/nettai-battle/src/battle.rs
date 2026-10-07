@@ -1768,6 +1768,21 @@ impl Battle {
             self.sound(SoundRole::Pause);
             return;
         }
+        if self.game_rules().flow.custom_request == crate::content::CustomRequest::Joypads {
+            // EXE4's 0x08007A2E: either player's L or R with the gauge full
+            // asks for the screen on this tick (0x0800718E: the battle
+            // pauses, each side's rules hear it, the fight's result is 6).
+            if self.joypad_custom_request() {
+                self.paused = true;
+                for side in 0..2u8 {
+                    if self.player_actor(side).is_some() {
+                        self.notify_side(side, RulesHook::CustomRequested);
+                    }
+                }
+                self.fight.result = 6;
+            }
+            return;
+        }
         let open = if self.round.flags & battle_flags::OWN_GAUGES != 0 {
             // sub_800A244: in the own-gauges mode a side opens it with
             // L or R and a gauge of 0x2900, which it pays.
@@ -1887,6 +1902,17 @@ impl Battle {
             return None;
         }
         (0..2u8).find(|&p| self.inputs[p as usize].pressed & keys::START != 0)
+    }
+
+    /// EXE4's 0x08007A2E (the flow's `custom_request` "joypads"): not
+    /// dimmed, the battle not over, not the late turns, the gauge full, and
+    /// L or R pressed on either player's joypad.
+    fn joypad_custom_request(&self) -> bool {
+        if self.is_dimmed() || self.is_battle_over() || self.late_turns() {
+            return false;
+        }
+        self.round.flags & battle_flags::GAUGE_FULL != 0
+            && (self.inputs[0].pressed | self.inputs[1].pressed) & (keys::L | keys::R) != 0
     }
 
     /// `sub_800A1D0`.
