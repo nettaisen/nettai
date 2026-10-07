@@ -66,9 +66,21 @@ local roles: RolesSpec = {
         loser = asset.sound("loser"),
     },
     banners = {
+        -- A round's start, a turn's (a netbattle's: 0x080070BA), the final turns' (0x08007094).
         round_start = asset.banner("battle-number-start"),
         turn_start = asset.banner("turn-start"),
+        final_turn = asset.banner("final-turn"),
+        -- A draw (0x0800730C); a win's, and a win and a loss on the judge's ruling (0x08007220, 0x080072C8); the
+        -- damage judge's (0x080163EE).
+        draw = asset.banner("draw"),
         win = asset.banner("enemy-deleted"),
+        win_judged = asset.banner("you-win"),
+        lose_judged = asset.banner("you-lose"),
+        judge = asset.banner("hit-damage-judge"),
+        -- A Program Advance, and a selection that makes none (0x0801E696: no netbattle's screen shows the second).
+        program_advance = asset.banner("program-advance"),
+        program_advance_empty = asset.banner("program-advance-empty"),
+        -- (No telop: EXE4's banners have none, `telop` and `telop_remote` aren't EXE4's.)
     },
 }
 
