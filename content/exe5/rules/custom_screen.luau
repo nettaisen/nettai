@@ -82,4 +82,6 @@ return {
     },
     -- The players the close sets back to full volume (0x08025BA4).
     restore_players = { 31, 22 },
+    -- The custom gauge empties as the screen opens (0x08022C5E), and again at the send.
+    gauge_empties_at_open = true,
 }

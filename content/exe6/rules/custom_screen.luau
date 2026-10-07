@@ -78,4 +78,6 @@ return {
     },
     -- The players the close sets back to full volume (`sub_802A3CC`).
     restore_players = { 31, 22 },
+    -- The custom gauge empties as the screen opens (`sub_8026840` calls `sub_801DF92`), and again at the send.
+    gauge_empties_at_open = true,
 }
