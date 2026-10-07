@@ -44,6 +44,15 @@ pub enum Version {
 }
 
 impl Version {
+    /// Its name, as the pack names its versions' assets and the app its
+    /// team's preset: `protoman`, `colonel`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Version::Protoman => "protoman",
+            Version::Colonel => "colonel",
+        }
+    }
+
     /// The event flag of soul `number` (1 to 12) in this version's save, if
     /// it can have it (0x08024BF0, the soul button's table: Team
     /// ProtoMan's souls 1 to 6 flags 2 to 7, Team Colonel's 7 to 12 flags 8
