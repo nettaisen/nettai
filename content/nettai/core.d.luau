@@ -87,10 +87,13 @@ export type PanelType =
     | "road_down"
     | "road_left"
     | "road_right"
-    -- EXE5's (docs/design/exe5-map.md §15.2).
+    -- EXE5's (docs/design/exe5-map.md §15.2); metal EXE4's too.
     | "metal"
     | "lava"
     | "sea"
+    -- EXE4's (docs/design/exe4-map.md §18 item 12).
+    | "pitfall"
+    | "hole"
 -- Status flags of an object with collision data.
 export type StatusFlag =
     "guard"

@@ -1410,6 +1410,17 @@ pub struct PanelTypeRule {
     /// fire on grass; EXE5's 0x08016AF6 elec on its sea too, EXE4's
     /// 0x08012CF2 elec on ice).
     pub doubles: Option<u8>,
+    /// Nothing cracks or breaks it (EXE4's metal: its flag 0x20000, which
+    /// the panel routines refuse).
+    pub unbreakable: bool,
+    /// A slide or a drag that reaches it stops there unless the body floats
+    /// (EXE4's pitfall: 0x080102FC, 0x08010B54).
+    pub stops_slides: bool,
+    /// It turns normal after these ticks (EXE4's pitfall, 190: 0x0800980E),
+    /// counted at once when a type change makes it (0x08009DC4), and on a
+    /// stage's from the tick a grounded body stands on it (0x08009120 arms
+    /// every panel).
+    pub crumbles: Option<u16>,
     /// Whether the game's own section names the type; one it doesn't is
     /// the first other loaded game's that does (docs/design/rules-in-luau.md
     /// §7.4).

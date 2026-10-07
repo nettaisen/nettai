@@ -483,9 +483,13 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
         return;
     }
     b.unreserve_panel(r, fp.x, fp.y);
-    if panel_kind(b, fp) == PanelType::Ice && coll(b, r).element != 2 {
+    let kind = panel_kind(b, fp);
+    if kind == PanelType::Ice && coll(b, r).element != 2 {
         let o = b.objects.get_mut(r);
         o.timer2 = o.timer2.wrapping_add(1);
+    } else if b.game_rules().panels.types[kind as usize].stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
+        // EXE4's pitfall stops a drag (0x08010B54).
+        b.objects.get_mut(r).timer2 = 0;
     }
     let o = b.objects.get_mut(r);
     let left = o.timer2 as i32 - 1;
@@ -775,6 +779,34 @@ mod tests {
         assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: -1, tiles: 1 });
         coll_mut(&mut b, r).direction = 4;
         assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: 1, tiles: 1 });
+    }
+
+    /// docs/design/exe4-map.md §18 item 12: a drag that reaches a panel
+    /// whose type stops slides (EXE4's pitfall, 0x08010B54) stops there,
+    /// unless the navi floats.
+    #[test]
+    fn a_pitfall_stops_a_drag_unless_the_navi_floats() {
+        let run = |floats: bool| {
+            let (mut b, [_, r]) = fight_with(|r| r.panels.types[PanelType::Pitfall as usize].stops_slides = true);
+            b.set_panel_type(5, 2, PanelType::Pitfall);
+            if floats {
+                set_flag1(&mut b, r, f1::FLOATSHOE);
+            }
+            let (from, to) = (panel_coordinates(4, 2), panel_coordinates(5, 2));
+            let o = b.objects.get_mut(r);
+            o.panel = PanelPos { x: 4, y: 2 };
+            o.future_panel = PanelPos { x: 5, y: 2 };
+            (o.pos.x, o.pos.y) = from;
+            (o.vel.x, o.vel.y) = (to.0 - from.0, 0);
+            (o.slide_dx, o.slide_dy) = (1, 0);
+            o.timer2 = 3;
+            o.drag_step = DragStep::Slide;
+            step_drag(&mut b, r);
+            let o = b.objects.get(r);
+            (o.drag_step, o.future_panel.x)
+        };
+        assert_eq!(run(false), (DragStep::Recover, 5), "stopped on the pitfall");
+        assert_eq!(run(true), (DragStep::Slide, 6), "floating over it");
     }
 
     /// docs/design/exe5-map.md §15.3 item 17: a drag goes at the arena's

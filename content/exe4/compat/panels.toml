@@ -1,8 +1,8 @@
 # EXE4's panel types by number, written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs:
 # the panel flag word each has (the table at 0x0800A3A8) and the engine's panel type it is, by the name
-# content/exe4/rules/panels.luau gives that number (none for type 11: its stages wait). The panel blocks the
+# content/exe4/rules/panels.luau gives that number: type 5 metal (flag 0x20000, which nothing cracks or breaks),
+# 10 SandRing's pitfall, 11 the Hole chip's hole (docs/design/exe4-map.md §18 item 12). The panel blocks the
 # extractor writes are by these numbers (0x08706640: 6 * type + 3 * owner + row - 1), each drawn as its engine type.
-# What types 5, 10 and 11 are is docs/design/exe4-map.md §18 item 12's.
 
 [types.0]
 name = "missing"
@@ -30,9 +30,9 @@ flags = 0x10110
 engine = "poison"
 
 [types.5]
-name = "sea"
+name = "metal"
 flags = 0x30010
-engine = "sea"
+engine = "metal"
 
 [types.6]
 name = "grass"
@@ -55,9 +55,11 @@ flags = 0x12010
 engine = "holy"
 
 [types.10]
-name = "metal"
+name = "pitfall"
 flags = 0x10210
-engine = "metal"
+engine = "pitfall"
 
 [types.11]
+name = "hole"
 flags = 0x10010
+engine = "hole"

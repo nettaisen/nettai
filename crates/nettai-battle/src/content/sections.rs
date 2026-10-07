@@ -62,6 +62,12 @@ struct PanelTypeSection {
     /// An element by name.
     #[serde(default)]
     doubles: Option<String>,
+    #[serde(default)]
+    unbreakable: bool,
+    #[serde(default)]
+    stops_slides: bool,
+    #[serde(default)]
+    crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
     slide: Option<Vec<Vec<SlideStep>>>,
@@ -632,6 +638,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         slide,
                         cleared_by,
                         doubles,
+                        unbreakable: rule.unbreakable,
+                        stops_slides: rule.stops_slides,
+                        crumbles: rule.crumbles,
                         named: true,
                     };
                 }
