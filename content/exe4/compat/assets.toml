@@ -81,6 +81,7 @@ satellite-beam = "10-1f"
 satellite-flare = "10-21"
 heart = "10-26"
 boulder = "10-31"  # the stages' boulder: attack object #0x6E's init (0x080DB114), the actor lists' entry type 3
+flag = "10-32"  # the flag stages' flag: attack object #0x9C's init (0x080E06D4), the actor lists' entry type 7
 follow-effect = "10-34"
 cross-slash = "10-35"
 explosion = "14-00"  # hit spark 0x0B (0x080E2090; EXE5's row 0x0B)
