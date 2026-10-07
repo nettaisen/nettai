@@ -1,7 +1,7 @@
 --!strict
--- The test content's panels: made-up rules for the engine's tests. Every
--- panel type the engine has, EXE5's metal, lava and sea beside EXE6's
--- thirteen, each on the field (flag 0x10000, which the step sword looks
+-- The test content's panels: made-up rules for the engine's tests. Its
+-- own sixteen types, EXE5's metal, lava and sea beside EXE6's thirteen,
+-- each on the field (flag 0x10000, which the step sword looks
 -- for) and solid (0x10) but the missing and the broken. The roads last
 -- 0x708 ticks, lava and sea 960; lava burns for 50; sea drains fire bodies,
 -- holds a body that ends a move on it for 20 ticks and submerges what can
@@ -67,7 +67,7 @@ return {
         lava = { flags = 0x00011010, expires = 960, burn = { damage = 50, spared_by = 0x88000206 }, cleared_by = "aqua" },
         sea = { flags = 0x00030010, expires = 960, drains = "fire", holds = 20, submerges = true },
     },
-    -- Its panel types number as the engine orders them.
+    -- Its panel types by its numbers.
     numbers = {
         "missing",
         "broken",
@@ -86,6 +86,8 @@ return {
         "lava",
         "sea",
     },
+    -- The types the engine's own code needs.
+    roles = { missing = "missing", broken = "broken", cracked = "cracked", normal = "normal" },
     start_visible = rows(1, 3),
     front_edges = rows(3, 3),
     step = own,

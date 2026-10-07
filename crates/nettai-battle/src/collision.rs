@@ -8,7 +8,7 @@
 
 use crate::battle::Battle;
 use crate::content::{Content, DamageWord, Region, RegionRole, SparkRole, StatusRole};
-use crate::field::{self, PanelType};
+use crate::field;
 use crate::object::{ObjectRef, PanelPos};
 use nettai_content_api::{CollisionHandle, RegionHandle, SparkHandle, StatusHandle};
 
@@ -539,9 +539,9 @@ impl Battle {
             && rs & 0x0C00_0000 == 0
             && hd.status_timers[timer::INVULNERABLE] == 0
             && rd.acc.hit_flags & 1 == 0
-            && self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind) == Some(PanelType::Ice)
+            && self.field.panel(hd.panel.x, hd.panel.y).is_some_and(|p| self.content.rules().panels.is_named(p.kind, "ice"))
         {
-            self.set_panel_type(hd.panel.x, hd.panel.y, PanelType::Normal);
+            self.set_panel_type(hd.panel.x, hd.panel.y, self.content.rules().panels.roles.normal);
             self.collision.get_mut(h).status_final = Some(freeze);
         }
         let c = hd.counter_byte;
@@ -630,7 +630,7 @@ impl Battle {
     /// sea; EXE4's 0x08012CF2 and elec on ice).
     fn panel_bonus(&self, rd: &CollisionData, hd: &CollisionData) -> bool {
         let Some(p) = self.field.panel(rd.panel.x, rd.panel.y) else { return false };
-        self.content.rules().panels.types[p.kind as usize].doubles == Some(hd.element)
+        self.content.rules().panels.rule(p.kind).doubles == Some(hd.element)
     }
 
     /// `sub_3007692`: the unfiltered channel barriers look at. (EXE5's,
@@ -669,9 +669,9 @@ impl Battle {
         let Some(p) = self.field.panel(x, y) else { return };
         // (EXE6: fire on grass, aqua on volcano, wood on roads; EXE5's
         // 0x08016D14 the same with lava and metal.)
-        let cleared_by = self.content.rules().panels.types[p.kind as usize].cleared_by;
+        let cleared_by = self.content.rules().panels.rule(p.kind).cleared_by;
         if cleared_by == Some(e) {
-            self.set_panel_type(x, y, PanelType::Normal);
+            self.set_panel_type(x, y, self.content.rules().panels.roles.normal);
         }
     }
 
@@ -819,12 +819,12 @@ mod tests {
             b.panel_bonus(b.collision.get(r), &hd)
         };
         let p = b.collision.get(r).panel;
-        b.set_panel_type(p.x, p.y, PanelType::Grass);
+        b.set_panel_type(p.x, p.y, crate::content::testing::panel("grass"));
         assert_eq!((bonus(&b, 1), bonus(&b, 3)), (true, false));
-        b.set_panel_type(p.x, p.y, PanelType::Ice);
+        b.set_panel_type(p.x, p.y, crate::content::testing::panel("ice"));
         assert_eq!((bonus(&b, 1), bonus(&b, 3)), (false, false), "the test content's ice doubles nothing");
         let mut c = (*b.content).clone();
-        c.rules_mut().panels.types[PanelType::Ice as usize].doubles = Some(3);
+        c.rules_mut().panels.types[crate::content::testing::panel("ice").0 as usize].doubles = Some(3);
         b.content = Arc::new(c);
         assert_eq!((bonus(&b, 1), bonus(&b, 3)), (false, true));
     }

@@ -58,8 +58,10 @@ fn bundle() -> Bundle {
         palettes: (1..=8).map(palette).collect(),
         first_palette: 1,
         palette_anims: vec![PaletteAnim { slot: 2, frames: vec![(palette(20), 16), (palette(21), 8)], initial_timer: 14 }],
-        // (In another game's order, as EXE5's: the types round-trip by name.)
-        panel_types: vec![0, 1, 2, 3, 4, 13, 6, 7, 14, 5, 15],
+        // (EXE5's: the types round-trip by name.)
+        panel_types: ["missing", "broken", "normal", "cracked", "poison", "metal", "grass", "ice", "lava", "holy", "sea"]
+            .map(String::from)
+            .to_vec(),
         panels: (0..11 * 6).map(|i| std::array::from_fn(|k| entry(10 + (k % 6) as u16, 1 + (i % 8) as u8, k % 2 == 0, false))).collect(),
         front_edges: [std::array::from_fn(|k| entry(11, 1, false, k == 0)), std::array::from_fn(|_| entry(12, 5, true, true))],
         highlights: vec![std::array::from_fn(|_| entry(13, 3, false, false)), std::array::from_fn(|_| entry(14, 7, false, false))],

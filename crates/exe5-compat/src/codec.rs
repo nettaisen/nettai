@@ -153,8 +153,8 @@ pub fn navi_stats(b: &[u8; NAVI_STATS]) -> Result<NaviStats, String> {
 pub struct Panel {
     /// EXE5's panel type number.
     pub number: u8,
-    /// The engine's panel type; none for EXE5's metal and sea panels.
-    pub kind: Option<PanelType>,
+    /// Its panel type (the game's number of it).
+    pub kind: PanelType,
     pub alliance: u8,
 }
 

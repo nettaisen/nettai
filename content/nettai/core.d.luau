@@ -73,27 +73,8 @@ export type HudPart = "gauge" | "emotion_window" | "level_gauge" | "hp_box" | "c
 -- A screen fade content starts (`SetScreenFade`'s modes): the
 -- transformation sequencer's fade out (0x44, to full) and back in (0x40).
 export type ScreenFade = "transform_out" | "transform_in"
-export type PanelType =
-    "missing"
-    | "broken"
-    | "normal"
-    | "cracked"
-    | "poison"
-    | "holy"
-    | "grass"
-    | "ice"
-    | "volcano"
-    | "road_up"
-    | "road_down"
-    | "road_left"
-    | "road_right"
-    -- EXE5's (docs/design/exe5-map.md §15.2); metal EXE4's too.
-    | "metal"
-    | "lava"
-    | "sea"
-    -- EXE4's (docs/design/exe4-map.md §18 item 12).
-    | "pitfall"
-    | "hole"
+-- A panel type, by name: one of its game's (its rules' `panels.numbers`).
+export type PanelType = string
 -- Status flags of an object with collision data.
 export type StatusFlag =
     "guard"
