@@ -152,17 +152,14 @@ pub struct Encoding {
     pub dialogue_glyphs: Vec<String>,
 }
 
-/// An EXE4 panel type (panels.toml): the flag word the game gives it
-/// (0x0800A3A8), and the engine's panel type it is by content's name for it
-/// (none: no stage of content's has it yet).
+/// An EXE4 panel type (panels.toml): content's name for it (its rules'
+/// `panels.numbers`, by the same number) and the flag word the game gives
+/// it (0x0800A3A8).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PanelEntry {
-    #[serde(default)]
-    pub name: Option<String>,
+    pub name: String,
     pub flags: u32,
-    #[serde(default)]
-    pub engine: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -352,28 +349,6 @@ const EXE4: [(&str, &str); 12] = [
     ("patch-cards.toml", include_str!("../../../content/exe4/compat/patch-cards.toml")),
 ];
 
-/// The engine's panel type of an engine panel name as panels.toml writes
-/// it (content's names for the engine's types).
-fn engine_panel(name: &str) -> Option<PanelType> {
-    Some(match name {
-        "missing" => PanelType::Missing,
-        "broken" => PanelType::Broken,
-        "normal" => PanelType::Normal,
-        "cracked" => PanelType::Cracked,
-        "poison" => PanelType::Poison,
-        "holy" => PanelType::Holy,
-        "grass" => PanelType::Grass,
-        "ice" => PanelType::Ice,
-        "volcano" => PanelType::Volcano,
-        "metal" => PanelType::Metal,
-        "lava" => PanelType::Lava,
-        "sea" => PanelType::Sea,
-        "pitfall" => PanelType::Pitfall,
-        "hole" => PanelType::Hole,
-        _ => return None,
-    })
-}
-
 /// A sprite's "cc-ii".
 fn parse_sprite(id: &str) -> Option<(u8, u8)> {
     let (c, i) = id.split_once('-')?;
@@ -455,9 +430,6 @@ impl Compat {
         let mut panels = BTreeMap::new();
         for (n, p) in panels_file.types {
             let n: u8 = n.parse().map_err(|_| format!("panels.toml: type {n:?} is no number"))?;
-            if let Some(e) = &p.engine {
-                engine_panel(e).ok_or_else(|| format!("panels.toml: type {n}'s engine type {e:?} isn't the engine's"))?;
-            }
             panels.insert(n, p);
         }
         let navicust: NaviCustNumbers = toml::from_str(&text("navicust.toml")?).map_err(|e| format!("navicust.toml: {e}"))?;
@@ -508,11 +480,15 @@ impl Compat {
         self.chips.get(key)
     }
 
-    /// The engine's panel type of EXE4's panel type `n` (none: content has no
-    /// type for it yet).
-    pub fn panel_type(&self, n: u8) -> Result<Option<PanelType>, String> {
-        let p = self.panels.get(&n).ok_or_else(|| format!("panels.toml has no type {n}"))?;
-        Ok(p.engine.as_deref().and_then(engine_panel))
+    /// The panel type EXE4 numbers `n`: the same number in content's rules,
+    /// which name it as panels.toml does.
+    pub fn panel_type(&self, n: u8) -> Result<PanelType, String> {
+        self.panels.get(&n).map(|_| PanelType(n)).ok_or_else(|| format!("panels.toml has no type {n}"))
+    }
+
+    /// The name content gives EXE4's panel type `n`.
+    pub fn panel_name(&self, n: u8) -> Result<&str, String> {
+        self.panels.get(&n).map(|p| p.name.as_str()).ok_or_else(|| format!("panels.toml has no type {n}"))
     }
 
     /// The sprites' names by (category, index).
@@ -615,8 +591,9 @@ mod tests {
         // Twelve panel types: 5 metal, 10 SandRing's pitfall, 11 the Hole
         // chip's hole.
         assert_eq!(c.panels.len(), 12);
-        assert_eq!(c.panel_type(8), Ok(Some(PanelType::Lava)));
-        assert_eq!((c.panel_type(5), c.panel_type(10), c.panel_type(11)), (Ok(Some(PanelType::Metal)), Ok(Some(PanelType::Pitfall)), Ok(Some(PanelType::Hole))));
+        assert_eq!((c.panel_type(8), c.panel_name(8)), (Ok(PanelType(8)), Ok("lava")));
+        assert_eq!((c.panel_name(5), c.panel_name(10), c.panel_name(11)), (Ok("metal"), Ok("pitfall"), Ok("hole")));
+        assert!(c.panel_type(12).is_err());
         assert_eq!(c.status(0x10).as_deref(), Some("paralyze-90"));
         assert_eq!((c.navi_key(0), c.form(0), c.weapon(0).as_deref()), (Some("megaman"), Some("base"), Ok("megaman/buster")));
         assert_eq!(c.kind("engine/player"), Some((Pool::Actor, 0)));

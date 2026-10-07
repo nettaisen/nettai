@@ -30,9 +30,12 @@
 "036-max-hp-up" = 36
 "037-max-hp-up" = 37
 "038-max-hp-up" = 38
+"045-default-full-synchro" = 45
 "046-first-barrier200" = 46
 "049-buster-attack-15" = 49
 "050-gigafolder1" = 50
+"059-megaman-color-change" = 59
+"060-megaman-color-change" = 60
 "061-max-hp-up" = 61
 "062-max-hp-up" = 62
 "063-max-hp-up" = 63
@@ -42,6 +45,8 @@
 "067-max-hp-up" = 67
 "078-first-life-aura" = 78
 "088-pet-menu-color-change" = 88
+"089-megaman-color-change" = 89
+"090-megaman-color-change" = 90
 "091-max-hp-up" = 91
 "092-max-hp-up" = 92
 "093-max-hp-up" = 93

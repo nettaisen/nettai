@@ -44,6 +44,7 @@ heal = "0c-12"  # HP recovered: the heal's sparkle, effect row 7 (0x080E16B4), 0
 grab-shot = "0c-13"
 sword-slash = "0c-14"
 big-slash = "0c-15"  # a big slash over two columns: effect rows 0x1D and 0x1E (0x080E1698), the swords' variants 5, 6 and 11 (0x080EB7E4)
+air-shooter = "0c-18"  # AirShot's shooter: attachment row 9 (0x080CD524), action 0x23 (0x080ECBC0)
 spreader = "0c-19"  # the spreaders' gun: attachment rows 0x0A and 0x32 (0x080CD524), action 0x1E (0x080EC7AC)
 bubble-burst = "0c-1a"  # a Bubbler's bullet's burst: effect row 0x25 (0x080E1698), bullet rows 4 to 7 and 13 (0x080CF3DC)
 reflector-shield = "0c-1b"  # a guard's shield (attack 0x2B's init, 0x080D224A)

@@ -115,21 +115,22 @@ pub fn pack_name(c: &Content, pack: PackId) -> String {
     c.assets.packs.get(pack.index()).map_or(format!("pack {}", pack.index()), |g| format!("{g}'s pack"))
 }
 
-/// Pack `pack`'s field's panel block for a panel type (`kind`, the
-/// engine's number), owner (0 the viewer's) and row (`y`, 1..=3): a field
-/// that draws the type (`stage::FieldArt`).
+/// Pack `pack`'s field's panel block for a panel type (`kind`, by its
+/// name), owner (0 the viewer's) and row (`y`, 1..=3): a field that draws
+/// the type (`stage::FieldArt`).
 pub fn panel_block<'a>(
     c: &Content,
     field: &'a nettai_assets::Field,
     pack: PackId,
-    kind: u8,
+    kind: PanelType,
     owner: usize,
     y: u8,
     problems: &mut Problems,
 ) -> Option<&'a [nettai_assets::MapEntry]> {
-    let block = field.panel(kind, owner, y).map(|b| &b[..]);
-    if problems.lookup(Lookup::Panel(pack, kind, owner as u8, y)) && block.is_none() {
-        problems.note(format!("{}'s field has no block for panel type {kind}, owner {owner}, row {y}", pack_name(c, pack)));
+    let name = c.rules().panels.name(kind);
+    let block = field.panel(name, owner, y).map(|b| &b[..]);
+    if problems.lookup(Lookup::Panel(pack, kind.0, owner as u8, y)) && block.is_none() {
+        problems.note(format!("{}'s field has no block for panel type {name}, owner {owner}, row {y}", pack_name(c, pack)));
     }
     block
 }
@@ -138,7 +139,7 @@ pub fn panel_block<'a>(
 /// `HIGHLIGHT_TINT + h`.
 pub const HIGHLIGHT_TINT: u8 = 16;
 
-/// A panel type (`kind`, the engine's number; a highlight,
+/// A panel type (`kind`, the game's number; a highlight,
 /// `HIGHLIGHT_TINT + h`) that no loaded pack's field draws, in an arena of
 /// pack `arena`'s: drawn as a tinted normal panel, by design
 /// (docs/design/rules-in-luau.md §7.4). Said, not counted.
@@ -146,10 +147,7 @@ pub fn panel_tint(c: &Content, arena: PackId, kind: u8, problems: &mut Problems)
     if problems.lookup(Lookup::PanelTint(arena, kind)) {
         let what = match kind.checked_sub(HIGHLIGHT_TINT) {
             Some(h) => format!("highlight {h}"),
-            None => match PanelType::ALL.get(kind as usize) {
-                Some(t) => format!("panel type {kind} ({t:?})"),
-                None => format!("panel type {kind}"),
-            },
+            None => format!("panel type {kind} ({})", c.rules().panels.name(PanelType(kind))),
         };
         problems.say(format!("in an arena of {}, {what} is in no loaded pack's field: drawn as a tinted normal panel", pack_name(c, arena)));
     }

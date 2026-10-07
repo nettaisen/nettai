@@ -27,6 +27,16 @@ variants.cannon = projectile.variant {
     spark = sparks.impact,
 }
 
+-- Row 4: AirShot's shot (action 0x23, 0x080ECBEE; its parameter +0x10): it pushes (hit modifier 0x21; EXE5's row 4
+-- 0x61), with the impact spark.
+variants.air = projectile.variant {
+    id = "shot/air",
+    collision = { is = collision.pushing, hits = collision.hits_navis },
+    hit_mod = 0x21,
+    element = "null",
+    spark = sparks.impact,
+}
+
 -- Row 6: the charged shot (action 0x24, 0x080ECC7E).
 variants.charged = projectile.variant {
     id = "shot/charged",

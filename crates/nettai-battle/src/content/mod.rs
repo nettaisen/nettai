@@ -251,12 +251,14 @@ impl Content {
         check_support(&self.scripts, &definitions)?;
         // The rule sections into the rules' typed tables.
         sections::build(self, &definitions)?;
-        // (The definitions name chip families: the game's, its rules'.)
+        // (The definitions name chip families and panel types: the game's,
+        // its rules'.)
         let families = self.rules.as_ref().map(|r| r.chip_families.clone()).unwrap_or_default();
-        self.defs = chips::reading_families(&families, || Defs::build(self, definitions))?;
+        let panel_types = self.rules.as_ref().map(|r| r.panels.names.clone()).unwrap_or_default();
+        self.defs = crate::field::reading_panel_types(&panel_types, || chips::reading_families(&families, || Defs::build(self, definitions)))?;
         // (The rules' references to definitions, which have their handles
         // now.)
-        chips::reading_families(&families, || sections::link(self))?;
+        crate::field::reading_panel_types(&panel_types, || chips::reading_families(&families, || sections::link(self)))?;
         // (The forms' faces, keyed by the rules' emotions.)
         navis::check_faces(self)?;
         self.count_strings();

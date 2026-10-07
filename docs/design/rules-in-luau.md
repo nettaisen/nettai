@@ -3227,3 +3227,31 @@ The user: "i don't think you need learning right? since the battles are one-off"
 - **The editor's Auto battle pane** is its own view of `auto_battle_places` and `auto_battle_records` by field name,
   laid out by EXE5's rules/auto_battle/block as it loaded (`PLACES`, `RECORDS`, `RECORD_CHIPS`, `LISTS`), a list
   named for a chip class holding what the game writes there (the `first` list says nothing now).
+
+### Panels into Luau, step 1: a panel type is its game's number (2026-10-07, branch exe4-engine)
+
+The user: "move panels into luau immediately actually". The design (C's note, approved by the coordinator): a panel
+type is one of its game's, by the game's number; Rust keeps the field's machine (the grid, each panel's state, set
+type, crack, break, the mend, the flags' refresh, visibility, `type_mask`) and calls each type's hooks where it tests
+a type now; the behavior moves into the types' hooks in each game's rules, one family a step (standing, a move's end
+and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_sound`, `type_mask`, `expires`,
+`doubles`, `cleared_by`, `unbreakable`, `traps`, the holy halving as a number). Step 1, the representation:
+
+- **`PanelType(u8)`**: the game's number of the type, its place in the rules' `panels.numbers`, the number a
+  panel's flags word holds in its low nibble, a stage layout's and a panel trail's byte. `panels.types` stays keyed
+  by name; `numbers` orders them, every one of them (EXE6 13, EXE5 11, EXE4 12, the test content 16), sixteen at
+  most. Gone: the engine's 18-variant enum, its own order, `named` (a match is one game), and the type a game
+  doesn't number.
+- **`panels.roles`**: the types the engine's own code needs, by name: the missing panel (no type change reaches
+  it), what a break and a crack make, the normal panel (what a mend, an expiry, a clearing, a burn and a grass
+  bonus leave). A crack's and a break's flags take the role's number (the original's `| 3` and `| 1`).
+- **Names**: a content file names a type by name, read as its game's while the content is defined
+  (`field::reading_panel_types`, as the chip families); the content API (`Panel.kind`, `field.set_type`,
+  `field.blink`) names it so, mapped by the battle's rules (`panel_type_named`, `panel_type_name`); core.d.luau's
+  `PanelType` is a string. The poison op writes the type's own bits, those the mask owns, where the original's
+  0x114 was written.
+- **The compat tables** (exe4's and exe5's panels.toml) name each number as the rules do; `engine` is gone, a
+  trace's number is the type. The pack's field lists its types by name, the renderer draws a type by its name, and
+  the right-hand console's road mirror is the road carrying the other way (by the types' `road_slide`).
+- **Until their steps**, the engine's code that still tests a type of a game's asks by name
+  (`PanelRules::is_named`: poison, holy, grass, ice, volcano); each later step removes its names.
