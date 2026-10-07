@@ -505,7 +505,8 @@ impl Battle {
                 // (EXE5's mask is 0x0C004000: the same here, where its
                 // guard has broken to every type with 0x1000.)
                 if flags & 0x0C00_5000 == 0 {
-                    self.collision.get_mut(r).guard_dirs |= 1 << hd.flip;
+                    let mark = if test.guard_marks_direction { 1 << hd.flip } else { 1 };
+                    self.collision.get_mut(r).guard_dirs |= mark;
                     flags |= 0x2_0000;
                 }
                 let rm = self.collision.get_mut(r);

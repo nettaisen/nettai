@@ -35,12 +35,15 @@ language = "en"
 "hp-400" = { name = "HP+400", description = "MAX HP\n+400!" }
 "hp-50" = { name = "HP+50", description = "MAX HP\n+50!" }
 "hp-500" = { name = "HP+500", description = "MAX HP\n+500!" }
+"hubbatc" = { name = "HubBatc", description = "Maximizes\nyour\npotential" }
 "humor" = { name = "Humor", description = "Install\nand try\nL Button!" }
 "jungle" = { name = "Jungle", description = "Attracts\nWood\nviruses!" }
 "megfldr1" = { name = "MegFldr1", description = "1 more\nMegaChip\nin folder" }
 "megfldr2" = { name = "MegFldr2", description = "2 more\nMegaChips\nin folder" }
 "oilbody" = { name = "OilBody", description = "Attracts\nFire\nviruses!" }
+"reflect" = { name = "Reflect", description = "Return\ndmg with\nB + Left!" }
 "rush" = { name = "Rush", description = "VS only!\nFind an\nopponent" }
+"shield" = { name = "Shield", description = "Zero dmg\nwith\nB + Left!" }
 "sneakrun" = { name = "SneakRun", description = "Weak enmy\nstop\nappearing" }
 "soulclen" = { name = "SoulClen", description = "Cleanses\nevil\nthoughts" }
 "speed-1" = { name = "Speed+1", description = "MegBuster\nSpeed+1!" }
