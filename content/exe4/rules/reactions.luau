@@ -70,6 +70,8 @@ return {
     -- The counter a stance's caught hit starts (AntiMagc's B+Left stance, action 114 at 0x080EE9EE, by the
     -- anti-damage or anti-sword request: 0x0800C780) runs from the next tick: its action is set, not run.
     stance_counter = "next_tick",
+    -- So does a trap's (AntiDmg's and AntiSwrd's, actions 0x38 and 0x39: the same routine).
+    trap_counter = "next_tick",
     -- A deleted player's object lets go of its collision data, is freed and counts one actor fewer, all at once
     -- (0x0801052C); its reservations stay as they are.
     dead_player = "freed",
