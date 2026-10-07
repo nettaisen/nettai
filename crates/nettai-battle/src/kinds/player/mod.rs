@@ -839,9 +839,12 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_801002C, sprite_setPalette.
     let palette = palette_pick(b, r);
     b.objects.sprite_mut(r).look.palette = palette;
-    // sub_80142B0: bodies deal 10 in link battles.
-    if is_link(b) {
-        b.objects.get_mut(r).damage = 10;
+    // sub_80142B0: bodies deal 10 in link battles (the rules'
+    // `link_body_damage`: EXE6's and EXE5's; EXE4 has none).
+    if is_link(b)
+        && let Some(d) = b.game_rules().link_body_damage
+    {
+        b.objects.get_mut(r).damage = d.damage;
     }
     if b.create_collision(r).is_none() {
         b.objects.free(r);
@@ -1114,9 +1117,13 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     }
     form::apply_form_flags(b, r);
     update_element(b, r);
-    // sub_80142C2
-    if is_link(b) {
-        coll_mut(b, r).self_damage = 10;
+    // sub_80142C2: the body's damage in a link battle again (the rules'
+    // `link_body_damage`, EXE6's).
+    if is_link(b)
+        && let Some(d) = b.game_rules().link_body_damage
+        && d.again_at_reset
+    {
+        coll_mut(b, r).self_damage = d.damage;
     }
 }
 
