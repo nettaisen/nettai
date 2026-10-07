@@ -397,8 +397,9 @@ and faces are its own table, to read.
   0x0800F56A) by the light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F, a patch card's):
   under 470 0, the start 0xFF, from 1000 190, else value / 20 + 128. A hit's counter byte (the hitter's collision +5)
   raises the hitter's mood and wears the receiver's (0x08012C10, 0x080131E4: `hit_mood = "hitter_gains"`), a counter
-  hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks paralyzed (0x0800C540) asks for it; it sets the mood 0x80
-  and lasts 600 ticks (0x0800C560); its end sets 0x80 through the setter.
+  hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks flinching or paralyzed (0x0800C540) ask for it, and no
+  damage does (EXE6's and EXE5's 300 do: `emotion.anger_damage`, none for EXE4's); it sets the mood 0x80 and lasts
+  600 ticks (0x0800C560); its end sets 0x80 through the setter.
 - **Full Synchro**: a chip's boost doubles it, leaves the mood at 0x99 and sounds 0x1BB; anger's boost ends the anger
   without a sound (0x0800D54E). The aura (actor 0x5E, 0x080CD180, EXE5's code) spawns for a navi in Full Synchro
   (0x0800D9AE) and waits while paused (0x080CD276 sets no header flag). The window's faces: the base form's mugshots
