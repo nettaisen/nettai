@@ -8,6 +8,8 @@
 "megaman/buster/shot" = 0x08
 # The Cannon chip's use (the chips' action 0x0B, 0x080EB894).
 "cannon/action" = 0x0B
+# AirShot (the chips' action 0x23, 0x080ECB74).
+"airshot/action" = 0x23
 # The charged shot.
 "megaman/charged-shot/action" = 0x24
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.

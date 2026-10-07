@@ -472,6 +472,16 @@ Soul and its transformation, the dark chips offered in battle, the emotions, the
 the stat block (0x40 bytes, the same kinds of fields at other offsets), the battle flow's handlers, the link
 exchange.
 
+**The first chips** (the nine of Tango's saves' folders, group B's and A's, the pattern of the chips wave): each a
+chip module (`chips/<series>`) composing its action's family (`lib/<family>`) from its variant's rows, its record's
+fields by hand from the record (§3.2), its names and descriptions the ROMs', its action number in
+compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, side1) and frame-compared.
+
+- **AirShot** (action 0x23, `lib/airshot`): EXE4's own. EXE6's and EXE5's (@exelib/airshot) differ in the animation
+  (12, not 9), the shooter (an attachment of EXE4's kind, row 9, not an overlay), the shot's tick and the recovery
+  (none for variant 0: the store of 10 overwritten, 0x080ECC0A); the projectile (exelib's, EXE4's row 4: hit
+  modifier 0x21, EXE5's 0x61) and its spawn are shared.
+
 **For the next steps:**
 
 - **Extraction** (`nettai-extract exe4`): as built, §14.
