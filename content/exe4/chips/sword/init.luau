@@ -12,6 +12,15 @@ local swords = require("../lib/swords")
 
 local HIT = { hits = collision.hits_navis, is = collision.slash }
 
+-- Their slashes (the effect table 0x080E1698's rows 0x19, 0x17, 0x18, 0x1A and 0x1B: the slash sprite 0c-14): one
+-- panel's, a column's, two panels', and the wide and long ones in palette 5.
+local SLASH = asset.sprite("sword-slash")
+local SWORD_SLASH = new.effect { sprite = SLASH, anim = 2, palette = 0 }
+local WIDE_SLASH = new.effect { sprite = SLASH, anim = 0, palette = 0 }
+local LONG_SLASH = new.effect { sprite = SLASH, anim = 1, palette = 0 }
+local WIDE_BLADE_SLASH = new.effect { sprite = SLASH, anim = 0, palette = 5 }
+local LONG_BLADE_SLASH = new.effect { sprite = SLASH, anim = 1, palette = 5 }
+
 local function slash(id: string, region: Region, effect: Effect): Action
     return swords.slash {
         id = id,
@@ -23,7 +32,7 @@ local function slash(id: string, region: Region, effect: Effect): Action
 end
 
 local sword: Chip = {
-    action = slash("sword/action", regions.single, swords.effects.slash),
+    action = slash("sword/action", regions.single, SWORD_SLASH),
     codes = { "E", "L", "S" },
     element = "null",
     family = "sword",
@@ -37,7 +46,7 @@ local sword: Chip = {
 }
 
 local wideswrd: Chip = {
-    action = slash("wideswrd/action", regions.wide, swords.effects.wide),
+    action = slash("wideswrd/action", regions.wide, WIDE_SLASH),
     codes = { "E", "L", "S" },
     element = "null",
     family = "sword",
@@ -51,7 +60,7 @@ local wideswrd: Chip = {
 }
 
 local longswrd: Chip = {
-    action = slash("longswrd/action", regions.long, swords.effects.long),
+    action = slash("longswrd/action", regions.long, LONG_SLASH),
     codes = { "E", "L", "S" },
     element = "null",
     family = "sword",
@@ -65,7 +74,7 @@ local longswrd: Chip = {
 }
 
 local wideblde: Chip = {
-    action = slash("wideblde/action", regions.wide, swords.effects.wide_blade),
+    action = slash("wideblde/action", regions.wide, WIDE_BLADE_SLASH),
     codes = { "C", "K", "S" },
     element = "null",
     family = "sword",
@@ -79,7 +88,7 @@ local wideblde: Chip = {
 }
 
 local longblde: Chip = {
-    action = slash("longblde/action", regions.long, swords.effects.long_blade),
+    action = slash("longblde/action", regions.long, LONG_BLADE_SLASH),
     codes = { "G", "R", "S" },
     element = "null",
     family = "sword",
