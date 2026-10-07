@@ -213,6 +213,8 @@ pub struct EffectsRules {
     /// How a navi's buttons charge, and ask for the buster, the charged
     /// shot and chips.
     pub charge: ChargeControls,
+    /// How a navi's held direction keys pick its step.
+    pub steps: StepControls,
     /// When a screen fade toward clear ends (`Fade::step`).
     pub fade_clear: FadeClear,
     /// A banner's steps (`hud::Banner`).
@@ -302,6 +304,46 @@ pub enum ChargeControls {
     /// neither turn it nor ask for the custom screen; B then Left
     /// (whichever way it faces) within 8 ticks asks for the B+Left special.
     PerButton,
+}
+
+/// How a navi's held direction keys pick its step (`EffectsRules::steps`;
+/// `kinds::player::idle::held_direction`, the idle's step).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StepControls {
+    /// The keys read, first held first (EXE6's `sub_800FA54`: up, down,
+    /// right, left; EXE4's 0x0800B4B0: right, left, up, down). Right is
+    /// toward the other side, left away, on either side's console.
+    pub keys: Vec<StepKey>,
+    /// What each key steps toward while the navi is confused (EXE6's
+    /// `byte_800FAA4`: up and down swapped, right and left; EXE4's
+    /// 0x0800B550: down left, up right, left down, right up).
+    pub confused: ConfusedKeys,
+    /// The idle starts a step only toward a panel the navi may step to
+    /// (EXE4's idle, 0x080EEC82: 0x0800B4B0 tests the panel); else (EXE6's
+    /// `sub_80F0354`) a held direction starts the step, which, blocked,
+    /// leaves for idle at once (its phase from the start).
+    pub idle_checks_target: bool,
+}
+
+/// A direction key (`StepControls`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StepKey {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// A confused navi's step for each key (`StepControls::confused`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConfusedKeys {
+    pub up: StepKey,
+    pub down: StepKey,
+    pub left: StepKey,
+    pub right: StepKey,
 }
 
 /// When a navi's charge glow (effect #8, `kinds::charge_glow`) comes.
@@ -602,6 +644,21 @@ pub struct RequestClears {
     pub paralysis: RequestSet,
     pub flinch: RequestSet,
     pub drag: RequestSet,
+}
+
+/// What a deleted player's object does in its destroy state
+/// (`kinds::player`'s `destroy`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeadPlayer {
+    /// EXE6's `sub_8016C4E` (EXE5's alike): its reservations and collision
+    /// data let go and the side's actor count one less, once; the object
+    /// kept in its slot (freed for an actor record that isn't counted).
+    Kept,
+    /// EXE4's 0x0801052C: its collision data let go, the object freed at
+    /// once and the side's actor count one less; its reservations as they
+    /// are.
+    Freed,
 }
 
 /// When the counter a stance's caught hit starts (`sub_80105F2`) runs.
@@ -1209,6 +1266,8 @@ pub struct Rules {
     pub overlay_restart: OverlayRestart,
     /// When a stance's counter runs (the reactions section's).
     pub stance_counter: StanceCounter,
+    /// What a deleted player's object does (the reactions section's).
+    pub dead_player: DeadPlayer,
     /// What the ends of a navi's actions clear of its requests (the
     /// reactions section's).
     pub request_clears: RequestClears,

@@ -185,7 +185,11 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let dir = held_direction(b, r);
-    if dir != 0 {
+    // (Where the rules say so, a blocked step starts nothing: EXE4's.)
+    let blocked = |b: &Battle| {
+        b.game_rules().effects.steps.idle_checks_target && movement::step_target(b, r, dir).is_none()
+    };
+    if dir != 0 && !blocked(b) {
         return start_move(b, r, dir);
     }
     if ai(b, r).requests & (request::TURN_L | request::TURN_R) != 0 {
@@ -511,25 +515,41 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
     b.start_dimming(side, true, controller, host);
 }
 
-/// `sub_800FA54`: the held direction (up, down, right, left in that
-/// priority; swapped when confused), none while sliding.
+/// `sub_800FA54` (EXE4's 0x0800B4B0): the held direction, its keys read in
+/// the rules' order and taken as the rules' confused keys while confused
+/// (`effects.steps`), none while sliding.
 pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
+    use crate::content::StepKey;
     if flag1(b, r) & f1::SLIDING != 0 {
         return 0;
     }
+    let steps = &b.game_rules().effects.steps;
     let held = ai(b, r).pad.held;
-    let dir = if held & keys::UP != 0 {
-        1
-    } else if held & keys::DOWN != 0 {
-        2
-    } else if held & keys::RIGHT != 0 {
-        4
-    } else if held & keys::LEFT != 0 {
-        3
-    } else {
-        return 0;
+    let bit = |k: StepKey| match k {
+        StepKey::Up => keys::UP,
+        StepKey::Down => keys::DOWN,
+        StepKey::Left => keys::LEFT,
+        StepKey::Right => keys::RIGHT,
     };
-    if flag1(b, r) & f1::CONFUSED != 0 { [0, 2, 1, 4, 3][dir as usize] } else { dir }
+    let Some(&key) = steps.keys.iter().find(|&&k| held & bit(k) != 0) else { return 0 };
+    let key = if flag1(b, r) & f1::CONFUSED != 0 {
+        let c = steps.confused;
+        match key {
+            StepKey::Up => c.up,
+            StepKey::Down => c.down,
+            StepKey::Left => c.left,
+            StepKey::Right => c.right,
+        }
+    } else {
+        key
+    };
+    // The direction codes: 1 up, 2 down, 3 back (left), 4 forward (right).
+    match key {
+        StepKey::Up => 1,
+        StepKey::Down => 2,
+        StepKey::Left => 3,
+        StepKey::Right => 4,
+    }
 }
 
 /// `sub_80116AE(dir, sub_8010332(), sub_80103A8())`: a step toward `dir`

@@ -335,7 +335,7 @@ pub fn dim_fade(b: &Battle) -> Fade {
 /// stand, his action 0x30) are drawn by the fade's own record: out as it
 /// runs and black until the fade back in, which clears as it runs.
 pub fn layer_fade(b: &Battle) -> Fade {
-    let left = b.fade.remaining(b.content.rules().effects.fade_clear);
+    let left = shown_remaining(b);
     match b.transform_seq.state {
         SequencerState::Transform { phase: TransformPhase::FadeOut, started: true } => Fade::Black(16u8.saturating_sub(left)),
         SequencerState::Transform { phase: TransformPhase::Change, .. } => Fade::Black(16),
@@ -348,14 +348,22 @@ pub fn layer_fade(b: &Battle) -> Fade {
     }
 }
 
+/// What the screen shows of the running fade: its steps left as a fade
+/// that ends at its target counts them. A game whose fade toward clear ends
+/// a step later (`effects.fade_clear`'s `past_target`: EXE4's) steps through
+/// the same levels on the same frames and holds the clear screen that step
+/// more: drawn alike.
+fn shown_remaining(b: &Battle) -> u8 {
+    b.fade.remaining(nettai_battle::content::FadeClear::AtTarget)
+}
+
 /// The screen fade: the battle fades in while the intro's fade runs
 /// (`Fade::TICKS` frames) and fades out to black at the end. The screen
 /// shows the fade one frame late (it is applied to the palettes at the
 /// next vblank).
 pub fn screen_fade(b: &Battle) -> Fade {
-    let clear = b.content.rules().effects.fade_clear;
-    let total = nettai_battle::battle::Fade::intro_ticks(clear) as u32;
-    let left = (b.fade.remaining(clear) as u32 + 1).min(total);
+    let total = nettai_battle::battle::Fade::TICKS as u32;
+    let left = (shown_remaining(b) as u32 + 1).min(total);
     if b.round.intro_bits & 0x01 == 0 {
         // The first battle of a set fades in from white, later ones from
         // black (`sub_80E0684`); a console whose game's flow says

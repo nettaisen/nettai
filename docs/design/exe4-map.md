@@ -840,8 +840,14 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 ### 18.4 MegaMan, his weapons, the objects
 
 24. **The move that cuts a recovery short.** The buster's and the charged shot's recoveries (0x080EB3D8, 0x080ECCCC)
-    use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208; the engine's `can_move`, `held_direction`,
-    `step_target` and `start_move` are EXE6's (`sub_800FA54` differs at 0.45). Placeholder: the engine's.
+    use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
+    **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
+    confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
+    recordings match. Open: with no key held (or sliding) 0x0800B4B0 steps by NaviStats +0x0D (bits 0x10 to 0x80, the
+    keys; 0 and 0xFF none), which a dark chip or Mod Card bug sets (the lab's dark/, modcards/ and navicust/ recordings
+    carry 0x10, 0x20, 0xFF), with step 2's NaviCust. The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
+    1, as the engine's; by the +0x25 column (12 to 8) for param 2, and 20 under event flag 0x1187: neither is a
+    netbattle's.
 25. **The buster bonus, element, weakness and souls.** EXE4's buster is Attack + 1 (0x0800CC2E) for every navi:
     `buster_bonus = 0`. MegaMan's element, attach points, the souls (0x080184F0 by soul: the weapons; the sprite's index
     plus the soul, 0x0800B90A), the emotion window's faces. Placeholders: `element = "null"`, no forms but `base`.
@@ -916,3 +922,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x0802E070's +0x11) and the B count runs only under request 0x80. No netbattle sets it; the engine has none.
 50. **The levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an attack
     (0x0800BE48, 0x0800BE8E, 0x0800BF10); what reads them is to find (the engine keeps none).
+51. **A player's deletion.** EXE4's (action 2, 0x08010850) is its own, not EXE6's `sub_80173F4`: the hurt animation
+    as it starts (EXE6's with the explosions); the alive count alone (0x080079C6), never the alive lists; no chip count,
+    charge glow link or tracking let go; its second related and barrier byte at the start, AIData +0x60 with the
+    explosions; no aura or overlay links; no death hook at the end. **Done:** the role `actions.deletion`
+    (content/exe4/rules/deletion.luau; the engine's own where the role is unfilled: EXE6, EXE5); the flow/ko recordings
+    match through the deletion. Open: the deletion of a navi in auto battle or of another navi (0x08010D4C: effect object
+    0x11 and a 90-tick explosion), which EXE4's content doesn't reach (its players are MegaMan, by a player).
+52. **The dead player's object.** EXE4's destroy state (0x0801052C) lets go of the collision data, frees the object and
+    counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
+    slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
+    of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
