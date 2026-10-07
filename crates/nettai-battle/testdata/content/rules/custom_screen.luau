@@ -85,4 +85,6 @@ return {
     description_in_choosing = false,
     -- The chatbox's end clears the text's buffers only.
     chatbox_end_clears_tiles = false,
+    -- The interpreter goes on after a character.
+    chatbox_character_ends_tick = false,
 }
