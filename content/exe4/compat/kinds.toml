@@ -23,6 +23,12 @@
 "anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
 "panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
+# AntiSwrd's counter's sonic boom (0x080D899E).
+"sonic-boom" = { pool = "attack", index = 0x58 }
+# AntiDmg's counter's shuriken (0x080D90A4, BodyGrd's diving one).
+"antidmg/shuriken" = { pool = "attack", index = 0x5C }
+# AntiRecv's counterattack (0x080E5436: its position the spawner's registers).
+"antirecv/controller" = { pool = "effect", index = 0x2C, scratch_position = true }
 # The Thunders' thunder ball (0x080D2156).
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
