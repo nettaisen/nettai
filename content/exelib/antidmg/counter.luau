@@ -1,7 +1,8 @@
 --!strict
 -- AntiDmg's counter, as EXE5 and EXE6 share it (EXE6's navi action 0x47,
--- `sub_80EE90C`; EXE5's 0x47): each game makes its own (`counter.action_at`:
--- its key, its shuriken's kind, its sounds and its puff). When
+-- `sub_80EE90C`; EXE5's 0x47; EXE4's 0x38, 0x080ED972, where its spec says):
+-- each game makes its own (`counter.action_at`: its key, its shuriken's kind
+-- or its own throw, its target, its sounds and its puff). When
 -- an AntiDmg trap (or the AntiDmg program's stance) catches a hit, the
 -- navi vanishes in a puff and throws a shuriken (./shuriken) at an enemy,
 -- by the attack's variant (`attack_variant`): a random one for 0, the nearest
@@ -22,14 +23,22 @@ export type State = {
 
 local STATE = { timer = "u16" }
 
--- A game's counter: its key, its shuriken's kind, the sounds of its
--- vanishing and its throw, and the puff as it vanishes.
+-- A game's counter: its key, its shuriken's kind (or its own throw: EXE4's
+-- dives BodyGrd's shuriken, 0x080D90A4), its own target (none: by the
+-- attack's variant; EXE4's a random one of the other player navi's panels,
+-- 0x0800FAF6, whatever the variant), the sounds of its vanishing and its
+-- throw, the puff as it vanishes, and whether its vanish keeps the navi's
+-- move as it is (EXE4's 0x080ED994 reserves its panel and nothing more: no
+-- reservation undone, no sliding or moving status; none: EXE6's and EXE5's).
 export type Spec = {
     id: string,
-    shuriken: Kind,
+    shuriken: Kind?,
+    throw: ((me: Object, x: number, y: number, damage: number) -> ())?,
+    target: ((me: Object) -> (number?, number?))?,
     vanish_sound: Sound,
     throw_sound: Sound,
     puff: Effect,
+    keeps_move: boolean?,
 }
 
 local VANISH_ANIM = 4
@@ -91,9 +100,11 @@ end
 local function vanish(me: Object, s: State, spec: Spec)
     if me.step_init == 0 then
         me:set_animation(VANISH_ANIM)
-        me:unreserve_panel(me.future_panel_x, me.future_panel_y)
-        me:set_status("sliding", false)
-        me:set_status("moving", true)
+        if not spec.keeps_move then
+            me:unreserve_panel(me.future_panel_x, me.future_panel_y)
+            me:set_status("sliding", false)
+            me:set_status("moving", true)
+        end
         me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
         me:reserve_panel(me.panel_x, me.panel_y)
         me.collision:set_region(nil)
@@ -117,16 +128,25 @@ end
 local function throw(me: Object, s: State, spec: Spec)
     me.visible = false
     if me.step_init == 0 then
-        local variant = me.attack_variant
         local x, y
-        if variant == 0 then
-            x, y = random_enemy(me)
-        elseif variant == 1 then
-            x, y = nearest_enemy(me)
+        if spec.target then
+            x, y = spec.target(me)
+        else
+            local variant = me.attack_variant
+            if variant == 0 then
+                x, y = random_enemy(me)
+            elseif variant == 1 then
+                x, y = nearest_enemy(me)
+            end
         end
         if x and y then
             local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-            shuriken.spawn(spec.shuriken, me, x, y, me.attack_element, HIT_MOD, damage, flip_toward(me, x), HEIGHT)
+            if spec.throw then
+                spec.throw(me, x, y, damage)
+            else
+                local kind = spec.shuriken :: Kind
+                shuriken.spawn(kind, me, x, y, me.attack_element, HIT_MOD, damage, flip_toward(me, x), HEIGHT)
+            end
         end
         battle.play_sound(spec.throw_sound)
         s.timer = 0x1E
@@ -140,13 +160,15 @@ local function throw(me: Object, s: State, spec: Spec)
 end
 
 -- `sub_80EE9F2`: back, its trap request done; 6 ticks, then idle.
-local function back(me: Object, s: State)
+local function back(me: Object, s: State, spec: Spec)
     if me.step_init == 0 then
         me:set_animation(0)
         me.collision:set_region(regions.single)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
         me:set_request("anti_damage_triggered", false)
-        me:set_status("moving", false)
+        if not spec.keeps_move then
+            me:set_status("moving", false)
+        end
         s.timer = 5
         me.step_init = 4
     end
@@ -170,7 +192,7 @@ function counter.action_at(spec: Spec): Action
             elseif step == 4 then
                 throw(me, s, spec)
             elseif step == 8 then
-                back(me, s)
+                back(me, s, spec)
             else
                 error(string.format("AntiDmg's counter: phase %#x reads past off_80EE920", step))
             end
