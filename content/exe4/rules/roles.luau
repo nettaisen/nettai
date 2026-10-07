@@ -89,7 +89,7 @@ local roles: RolesSpec = {
         recovery = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
     },
     hooks = {
-        -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the Mod Cards' aura): the
+        -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the patch cards' aura): the
         -- navi enters with the barrier its stats name, and its visual (../lib/barriers).
         first_barrier = function(navi: Object)
             local barrier = battle.navi(navi.alliance).first_barrier

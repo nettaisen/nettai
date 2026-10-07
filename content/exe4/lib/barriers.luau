@@ -1,5 +1,5 @@
 --!strict
--- EXE4's barriers (FstBarr's, the Mod Cards' auras at the start, the barrier chips'): by EXE4's barrier types, the
+-- EXE4's barriers (FstBarr's, the patch cards' auras at the start, the barrier chips'): by EXE4's barrier types, the
 -- rows of 0x080185E0 (HP, threshold, timer) and of its visual's looks, 0x080E23D8 (sprite, animation, palette, the
 -- parts MegaMan's hides), raised by 0x08012DCE with EXE4's visual (../objects/barrier_visual: effect object 7). The
 -- barrier's tick is the rules' (`status.intake.barrier`). Types 4 (150 HP, regrowing 180 ticks after it breaks),

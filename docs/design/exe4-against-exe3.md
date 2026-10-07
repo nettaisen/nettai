@@ -325,7 +325,7 @@ light/dark helper 0x0800F56A, and Full Synchro on a counter, 0x080131E4. **Both 
 ### 3.10 NaviCust and the programs' effects
 
 This is EXE3's code that EXE4 kept and EXE5 dropped. EXE4's NaviCust module (0x08046D94 to 0x08048600, the code that
-loads the part table 0x0804563C) and its program and Mod Card effect setters (0x08041B00 to 0x08042260) come to 199
+loads the part table 0x0804563C) and its program and patch card effect setters (0x08041B00 to 0x08042260) come to 199
 routines. Of these, 57 are the same in EXE3, 32 consts and 36 similar, against 28 and 5 in EXE5 and EXE6. EXE3's are
 at 0x0803AEB0 to 0x0803C360 (the part table 0x08039420, T) and 0x0803C4DC to 0x0803D0DC. Large routines are
 byte-identical: EXE4's 0x080470B8 (208 bytes) is EXE3's 0x0803B0C0, and its 0x08047DDC (230 bytes) is EXE3's
