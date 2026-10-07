@@ -7,7 +7,7 @@
 -- dash's 0x0800C41C: EXE5's values). What the panels do (the panel tick 0x08009740: a broken panel mends after 600
 -- ticks; type 8, lava, turns normal after 960, blinking its last 60): lava burns a grounded body not of fire for 50
 -- (0x08013128, a player's even while dimmed; 0x0801309E), poison drains and grass heals a wood body (0x08012FF2,
--- on while paused), what passes over grass of fire or lava of aqua clears it (0x08013058). Nearest the engine can
+-- at any HP every 20 ticks), what passes over grass of fire or lava of aqua clears it (0x08013058). Nearest the engine can
 -- say until each is ported (exe4-map.md §18): which panels start visible and the front edges (EXE5's: EXE4's
 -- tables are to find), the any-side step (EXE5's rows), a broken panel's mend in battle mode 1, and the
 -- reservations (EXE5's).
@@ -84,7 +84,4 @@ return {
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x08009AEC and its kin), metal's
     -- 0x20000 among them.
     type_mask = 0x00023F5F,
-    -- Poison's drain and grass's heal run on while paused, and grass heals on the 20-tick count at any HP
-    -- (0x08012FF2: its only test the dimming's).
-    standing = { stops_while_paused = false },
 }

@@ -100,7 +100,6 @@ return {
     reservations = "marked",
     -- The flags' bits a type owns, which a crack, a break or poison clears.
     type_mask = 0x00003F5F,
-    -- Poison's drain and grass's heal hold while paused, and at 9 HP or less
-    -- grass heals on the 180-tick count.
-    standing = { stops_while_paused = true, slow_heal_at = 9 },
+    -- At 9 HP or less grass heals a wood body on the 180-tick count.
+    grass_heal_slows_at = 9,
 }
