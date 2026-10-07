@@ -8,7 +8,7 @@
 //! `auto_battle_records`); for a side that operates a team navi, the navi's
 //! level, whose HP the story gives; and its SP deletion times. The import is
 //! the compat boundary's: a save is the original's bytes, and a side its
-//! game's facts (nettai-demo's `save_import` picks the game's import).
+//! game's facts (nettai's build creator picks the game's import: `builds::import`).
 
 use nettai_match::{Folder, Side, ids};
 use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, AutoBattlePattern, Save};
@@ -503,7 +503,7 @@ mod tests {
         image[0x554C..0x554C + 0xE0].fill(0xFF);
         import_file(&content, &mut m, 1, &image).unwrap();
         assert_eq!(block_of(&content, &m.sides[1]), AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] });
-        // The data alone, from a save's file (the editor's "From a save").
+        // The data alone, from a save's file (the build creator's FROM A SAVE…).
         let mut side = m.sides[0].clone();
         assert_eq!(auto_battle_of_save(&content, "exe5", &image, &mut side), Ok(Vec::new()));
         assert_eq!(block_of(&content, &side), block_of(&content, &m.sides[1]));

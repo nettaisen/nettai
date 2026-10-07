@@ -1,7 +1,7 @@
 //! A side from an EXE6 save ([`crate::save`]): what the game's rules take
 //! of it, each written by its setup field's name. The import is the compat
 //! boundary's: a save is the original's bytes, and a side its game's facts
-//! (nettai-demo's `save_import` picks the game's import).
+//! (nettai's build creator picks the game's import: `builds::import`).
 
 use crate::save::Save;
 use nettai_match::{Folder, Side, ids};

@@ -1,11 +1,34 @@
-# The app's builds (docs/app.md §8): the facts a build made in the app never states.
+# The app's builds (docs/app.md §8): the facts a build made in the app never states, and those it states only as one
+# of a few presets.
 #
-# Every build in the app plays at the most its game allows, and states only what a player chooses: these facts are
-# always the rules' defaults (the most HP and Regular memory, the sun, a navi's last level, every SP navi deleted in
-# no time, the auto battle data's pattern records as nothing learned, Chaos Unison on). The creator neither shows nor edits them; a
-# build read from a file or made from a save is set to them, and the import says so. The facts of the engine's
-# level and base HP roles are among them in any game; these are the rest, by game, each by its setup field's name.
+# Every build in the app plays at the most its game allows, and states only what a player chooses: the facts under
+# `at_defaults` are always the rules' defaults (the most HP and Regular memory, the sun, a navi's last level, every SP
+# navi deleted in no time, the auto battle data's pattern records as nothing learned, Chaos Unison on). The creator
+# neither shows nor edits them; a build read from a file or made from a save is set to them, and the import says so.
+# The facts of the engine's level and base HP roles are among them in any game, unless a preset sets them; these are
+# the rest, by game, each by its setup field's name.
 
 [at_defaults]
 exe6 = ["hp", "reg_up", "sun", "level", "sp_times"]
-exe5 = ["hp", "reg_up", "sun", "level", "sp_times", "auto_battle_records", "chaos_unison"]
+exe5 = ["reg_up", "sun", "level", "sp_times", "auto_battle_records", "chaos_unison"]
+
+# A fact a build states only as one of a few presets, by game and the fact's name: each preset (`choice`, its name)
+# sets the facts under `set` together. The creator offers the presets in the fact's row, the first first, and shows
+# none of the other facts they set. A build whose fact is another value (made new, read from a file, made from a save)
+# takes the preset on its side of the game's line: the last whose `from` the value reaches. A preset's facts that the
+# side's navi has none of (a base HP where its navi doesn't change form) stay the rules' defaults.
+#
+# EXE5's light and dark MegaMan, as Tango's EXE5 save templates have them (tango-gamesupport-bn5's src/saves/*.raw,
+# light and dark of each team and region alike; MegaMan's NaviStats at the image's 0x52A8): the light/dark value
+# (+0x44) 1000 and the base HP (+0x3E) 1000, or 0 and 997. The line is the game's: a value of 470 or more is a light
+# MegaMan's, under it a dark one's (content/exe5/rules/light_dark: `LIGHT_CHIPS`, the chips' check, 0x08010118; the
+# starting mood, 0x0801283A, a dark MegaMan's under it). A new build's 500 (the rules' default) is light's.
+[[presets.exe5.karma]]
+choice = "light"
+from = 470
+set = { karma = 1000, hp = 1000 }
+
+[[presets.exe5.karma]]
+choice = "dark"
+from = 0
+set = { karma = 0, hp = 997 }

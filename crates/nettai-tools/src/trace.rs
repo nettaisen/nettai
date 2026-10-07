@@ -258,7 +258,7 @@ mod tests {
     /// when it states none: nothing takes it for EXE6's.
     #[test]
     fn a_recording_is_of_the_game_it_states() {
-        let dir = std::env::temp_dir().join(format!("nettai-demo-trace-game-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nettai-tools-trace-game-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let write = |name: &str, text: &str| {
             let path = dir.join(name);

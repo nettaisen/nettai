@@ -352,7 +352,7 @@ should not have any region specific code", and of the chip window, "go with jp e
 knows a console's region: its packs carry no region, and the renderer draws every console's screen the same. What
 a console of the other region shows otherwise (a US console's placeholders and its chip window's later start below;
 an EXE5 Japanese console's background 0x05) is the verification's to know: its frame comparison knows each
-recording's console, asks the frontend where it draws those things (nettai-demo's `--mark`, `marks.tsv`) and
+recording's console, asks the frontend where it draws those things (nettai-tool's `--mark`, `marks.tsv`) and
 counts them as known differences (bn6battle-verify's tools/frontend-compare/consoles.tsv, by game, region and
 version). The compat crates, which read recordings, keep what they need of a console's ROM.
 

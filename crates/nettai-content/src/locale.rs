@@ -56,7 +56,7 @@
 //! tables its manifest declares (`text = ["patch_card_effects"]`), which
 //! tools show (EXE6's and EXE5's `patch_card_effects`: a patch card's
 //! effects as its menu lists them, by the effect's kind and choice,
-//! `{field}` the effect's number of that name; the editor's patch card list
+//! `{field}` the effect's number of that name; the build creator's patch card list
 //! shows them).
 
 pub use nettai_battle::content::strings::{ChipStrings, EntryStrings, FormStrings, NaviStrings, Strings, Table};

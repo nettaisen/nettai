@@ -5,11 +5,11 @@
 //! Drawing skips what it can't find, so nothing here stops a frame; the
 //! renderer and the audio check note each case in [`Problems`]. Every
 //! lookup the drawing code makes of the packs and the content goes through
-//! [`crate::lookups`] (the audio's, a cue's song, through nettai-demo's
+//! [`crate::lookups`] (the audio's, a cue's song, through nettai-tools'
 //! `sound_lookups`), which notes it as a [`Lookup`] and checks it once a
-//! run. Two audits, nettai-demo's, use them:
+//! run. Two audits, nettai-tools', use them:
 //!
-//! - `--audit-content` (nettai-demo's `content_audit`) makes every
+//! - `--audit-content` (nettai-tools' `content_audit`) makes every
 //!   lookup the content can: every chip's icon, picture and name, every
 //!   navi's and form's face, every asset the content names, in both
 //!   languages;

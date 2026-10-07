@@ -25,8 +25,8 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
 - **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc: native on the `rtc` crate,
-  the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker;
-  `nettai-demo --match FILE --room CODE`) or directly (`--host PORT` / `--join ADDR:PORT`); a dropped connection
+  the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker; nettai's
+  lobby, by the room's code) or directly (a host's UDP port, joined by its address); a dropped connection
   is made again and the match goes on where it was. A handshake checks the protocol, the engine and the content,
   swaps what each player brings and agrees the seed (§4.7, §4.8).
 - **Snapshots**: `Battle` is plain data, `Clone`, `Send` and `Sync` (checked at compile time); a snapshot
@@ -505,13 +505,12 @@ The transport is the host's: nettai-netplay and nettai-frontend have no socket a
 `NetPlayer` plays on a `netplay::Channel` the host implements (send a frame to the other player, take the next one
 that came, neither ever waiting; nothing is assumed of delivery; and, if it can tell, how long it has been down
 while it is being made again, `down_for`, §4.8), and the match is agreed before it (`lobby::Lobby` over the host's
-datagrams, below). The program's transport is a WebRTC data channel, nettai-rtc's `Link` (§4.8), and nettai-demo's
-`net` runs the handshake over it.
+datagrams, below). nettai's transport is a WebRTC data channel, nettai-rtc's `Link` (§4.8), and nettai's
+`netplay` runs the handshake over it.
 
-`net::Datagram` is all the program's handshake needs of a transport: send a datagram to the other peer, and take
-the next one that arrived, neither ever waiting; and this side's role, once it is known (directly at once; in a room
-when the signaling server lets the player in, so the handshake makes its lobby then, and gives up after the joiner's
-wait if the server can't be reached). A `Link` is one.
+`netplay::Link` is all nettai's handshake needs of a transport: send a datagram to the other peer, and take the
+next one that arrived, neither ever waiting; and this side's role, once it is known (directly at once; in a room
+when the signaling server lets the player in, so the handshake makes its lobby then). nettai-rtc's `Link` is one.
 
 Every datagram on the channel starts with a byte that says what it is (`lobby::Kind`): a protocol frame, a lobby
 message, a Hello, a Reveal, or a refusal. A frame needs that byte because a handshake message can come late or
@@ -520,7 +519,7 @@ the lobby says its part every 100 ms until it is answered, and a Hello or a Reve
 again, so a reliable channel of their own would add nothing.
 
 **The lobby and the handshake** (nettai-frontend's `lobby::Lobby`, without IO: the host feeds it the datagrams
-that arrive and sends what it hands back; nettai-demo's `net::NetHandshake` runs it over the link, polled each
+that arrive and sends what it hands back; nettai's `netplay::Agreeing` runs it over the link, polled each
 frame):
 
 1. **Lobby.** Each peer says its proposal, the match's settings (the game and the rounds, each round's stage and
@@ -621,9 +620,9 @@ gap can't pass twice the stall guard, inside the horizon (§4.6); when it is bac
 side hasn't acknowledged, rollback corrects what was predicted, and clock sync levels the peers again. What the
 frontend does is not give up: `NetPlayer` ends a match after 10 seconds with nothing from the other player, but not
 while the channel says it is down (`Channel::down_for`), counting again from when it is back; giving up is the
-transport's. The players see the battle stop within half a second; the window's title says "the connection
-dropped: reconnecting (Ns)" (`NetStatus::reconnecting`), and stderr when it drops and when it is back; the battle
-goes on where it was, or the match ends after 30 seconds with the message above.
+transport's. The players see the battle stop within half a second; nettai's battle says "reconnecting (N s)"
+(`NetStatus::reconnecting`); the battle goes on where it was, or the match ends after 30 seconds with the message
+above.
 
 ## 5. Results
 
@@ -695,8 +694,9 @@ for who recorded, one playing back with no difference. nettai-rtc's tests open l
 0.1 s, through a room in about 0.15 s), bring them back after outages of either side (one generation an outage),
 give up after the reconnection timeout, and refuse a third player in a room; the same tests pass against the
 Worker under `wrangler dev`, and in a browser (headless Chrome) two connections in a page, two links in a room, and
-a browser's link and a native one in the same room trade datagrams. nettai-demo's `net` tests shake hands directly
-and in a room on localhost, both sides polled on one thread, and agree the match. (Earlier, over plain UDP, two
+a browser's link and a native one in the same room trade datagrams. nettai's `netplay` test agrees a match in a
+room of an in-process server, both sides polled on one thread, and plays it over the links (nettai-demo's `net`
+tests, retired with it, did the same directly and in a room). (Earlier, over plain UDP, two
 frontends in their windows on loopback played with an 18 ms round trip, the joiner seeing the battle from its side.)
 
 ### 5.2 How long before a divergence, and why

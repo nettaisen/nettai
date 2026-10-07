@@ -1,8 +1,8 @@
 //! nettai-tool: nettai's command line without a window, for the developer
 //! and the verification: chosen frames of a battle to PNGs (a trace's, a
 //! match file's, a replay's), the content and trace audits, a match's setup
-//! and a replay checked. Its options are nettai-demo's for the same (the
-//! program it takes them from: docs/app.md §10).
+//! and a replay checked (docs/tools.md). Its options are the retired
+//! nettai-demo's for the same.
 
 use nettai_frontend::driver::{Driver, LivePlayer};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
@@ -234,7 +234,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         return Err("one trace at a time (several with --audit)".into());
     }
     if !a.traces.is_empty() && a.headless.is_none() && !a.audit {
-        return Err("a trace is rendered (--headless F) or audited (--audit); it is watched in a window by nettai-demo for now".into());
+        return Err("a trace is rendered (--headless F) or audited (--audit); no window watches one".into());
     }
     let headless_only = a.objects || !a.marks.is_empty() || a.png_scale != 1;
     if headless_only && a.headless.is_none() {
@@ -603,7 +603,7 @@ mod tests {
         parse(values.iter().map(|s| s.to_string()))
     }
 
-    /// The options verify's scripts give (nettai-demo's, for the same).
+    /// The options verify's scripts give (the retired nettai-demo's, for the same).
     #[test]
     fn verifys_command_lines_parse() {
         for options in [
@@ -627,7 +627,7 @@ mod tests {
             (vec![], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
             (vec!["--match", "m.toml", "--host", "7777"], "unknown option --host (a window's options are nettai's)"),
             (vec!["--match", "m.toml", "--replay", "r.ntrp"], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
-            (vec!["t.jsonl"], "a trace is rendered (--headless F) or audited (--audit); it is watched in a window by nettai-demo for now"),
+            (vec!["t.jsonl"], "a trace is rendered (--headless F) or audited (--audit); no window watches one"),
             (vec!["--audit-content"], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
             (vec!["--match", "m.toml", "--keys", "1:a"], "--keys holds buttons in a match file's set played headless (--match FILE --headless F)"),
             (vec!["--match", "m.toml", "--side", "left"], "--side goes with --replay"),

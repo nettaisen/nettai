@@ -2,7 +2,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: nettai VERSION\n"
-"POT-Creation-Date: 2026-10-07 00:01+0000\n"
+"POT-Creation-Date: 2026-10-07 03:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,16 +17,12 @@ msgctxt "match"
 msgid "Random"
 msgstr ""
 
-#: ui/app.slint:24
-msgid "Stand-in"
-msgstr ""
-
-#: ui/app.slint:29
+#: ui/app.slint:25
 msgctxt "build"
 msgid "The match's"
 msgstr ""
 
-#: ui/app.slint:35
+#: ui/app.slint:31
 msgctxt "language"
 msgid "English"
 msgstr ""
@@ -96,493 +92,508 @@ msgctxt "side"
 msgid "Right console"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:421
+msgid "Start over"
+msgstr ""
+
+#: ui/battle.slint:545
 msgid "STOPPED"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:545
 msgctxt "result"
 msgid "YOU WIN"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:545
 msgctxt "result"
 msgid "YOU LOSE"
 msgstr ""
 
-#: ui/battle.slint:535
+#: ui/battle.slint:545
 msgctxt "result"
 msgid "DRAW"
 msgstr ""
 
-#: ui/battle.slint:592
+#: ui/battle.slint:602
 msgid "Recorded to {0}"
 msgstr ""
 
-#: ui/battle.slint:598
+#: ui/battle.slint:608
 msgid "WATCH AGAIN"
 msgstr ""
 
-#: ui/battle.slint:598
+#: ui/battle.slint:608
 msgid "REMATCH"
 msgstr ""
 
-#: ui/battle.slint:598
+#: ui/battle.slint:608
 msgid "MENU"
 msgstr ""
 
-#: ui/battle.slint:631
+#: ui/battle.slint:641
 msgid "PAUSED"
 msgstr ""
 
-#: ui/battle.slint:644
+#: ui/battle.slint:654
 msgid "RESUME"
 msgstr ""
 
-#: ui/battle.slint:644
+#: ui/battle.slint:654
 msgid "QUIT TO MENU"
 msgstr ""
 
-#: ui/battle.slint:644
+#: ui/battle.slint:654
 msgid "START OVER"
 msgstr ""
 
-#: ui/battle.slint:669
+#: ui/battle.slint:679
 msgid "The battle goes on while you're here: netplay can't pause."
 msgstr ""
 
-#: ui/battle.slint:681 ui/build.slint:1743 ui/build.slint:1748
-#: ui/battle.slint:681 ui/build.slint:1743 ui/build.slint:1748 ui/builds.slint:250 ui/lobby.slint:463 ui/play.slint:551
-#: ui/battle.slint:681 ui/build.slint:1743 ui/build.slint:1748 ui/builds.slint:250 ui/lobby.slint:463 ui/play.slint:551 ui/settings.slint:183 ui/title.slint:255
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463 ui/settings.slint:183 ui/title.slint:255
+#: ui/battle.slint:691 ui/build.slint:1759 ui/build.slint:1764 ui/builds.slint:250 ui/lobby.slint:463 ui/settings.slint:183 ui/title.slint:255
 msgid "Choose"
 msgstr ""
 
-#: ui/battle.slint:682 ui/build.slint:1749 ui/build.slint:1755
-#: ui/battle.slint:682 ui/build.slint:1749 ui/build.slint:1755 ui/play.slint:553 ui/title.slint:256
+#: ui/battle.slint:692 ui/build.slint:1765 ui/build.slint:1771
+#: ui/battle.slint:692 ui/build.slint:1765 ui/build.slint:1771 ui/title.slint:256 ui/training.slint:612
 msgid "Confirm"
 msgstr ""
 
-#: ui/battle.slint:683
+#: ui/battle.slint:693
 msgid "Menu"
 msgstr ""
 
-#: ui/battle.slint:683
+#: ui/battle.slint:693
 msgid "Resume"
 msgstr ""
 
-#: ui/build.slint:180
+#: ui/build.slint:183
 msgid "CHIP"
 msgstr ""
 
-#: ui/build.slint:182
+#: ui/build.slint:185
 msgid "REGULAR"
 msgstr ""
 
-#: ui/build.slint:184
+#: ui/build.slint:187
 msgid "TAG"
 msgstr ""
 
-#: ui/build.slint:186
+#: ui/build.slint:189
 msgid "CLEAR"
 msgstr ""
 
-#: ui/build.slint:188
+#: ui/build.slint:191
 msgid "MOVE UP"
 msgstr ""
 
-#: ui/build.slint:190
+#: ui/build.slint:193
 msgid "MOVE DOWN"
 msgstr ""
 
-#: ui/build.slint:192
+#: ui/build.slint:195
 msgid "REMOVE"
 msgstr ""
 
-#: ui/build.slint:194
+#: ui/build.slint:197
 msgid "NONE"
 msgstr ""
 
-#: ui/build.slint:196
+#: ui/build.slint:199
 msgid "DEFAULT"
 msgstr ""
 
-#: ui/build.slint:198
+#: ui/build.slint:201
 msgid "ITS VERSION'S OWN"
 msgstr ""
 
-#: ui/build.slint:200 ui/build.slint:253 ui/builds.slint:73
+#: ui/build.slint:203 ui/build.slint:256 ui/builds.slint:73
 msgid "FROM A SAVE…"
 msgstr ""
 
-#: ui/build.slint:202
+#: ui/build.slint:205
 msgid "EMPTY"
 msgstr ""
 
-#: ui/build.slint:213
+#: ui/build.slint:216
 msgctxt "field"
 msgid "Crosses"
 msgstr ""
 
-#: ui/build.slint:215
+#: ui/build.slint:218
 msgctxt "field"
 msgid "Souls"
 msgstr ""
 
-#: ui/build.slint:217
+#: ui/build.slint:220
 msgctxt "field"
 msgid "Patch cards"
 msgstr ""
 
-#: ui/build.slint:219
+#: ui/build.slint:222
 msgctxt "field"
 msgid "Version"
 msgstr ""
 
-#: ui/build.slint:221
+#: ui/build.slint:224
 msgctxt "field"
 msgid "Beast Out"
 msgstr ""
 
-#: ui/build.slint:223
+#: ui/build.slint:226
 msgctxt "field"
 msgid "BugFrags"
 msgstr ""
 
-#: ui/build.slint:225
+#: ui/build.slint:228
 msgctxt "field"
 msgid "Light/dark"
 msgstr ""
 
-#: ui/build.slint:227
+#: ui/build.slint:230
 msgctxt "field"
 msgid "Chaos Unison"
 msgstr ""
 
-#: ui/build.slint:229
+#: ui/build.slint:232
 msgctxt "field"
 msgid "Board"
 msgstr ""
 
-#: ui/build.slint:236
+#: ui/build.slint:239
 msgctxt "tab"
 msgid "NAVI"
 msgstr ""
 
-#: ui/build.slint:238
+#: ui/build.slint:241
 msgctxt "tab"
 msgid "FOLDER"
 msgstr ""
 
-#: ui/build.slint:240
+#: ui/build.slint:243
 msgctxt "tab"
 msgid "NAVICUST"
 msgstr ""
 
-#: ui/build.slint:242
+#: ui/build.slint:245
 msgctxt "tab"
 msgid "AUTO BATTLE"
 msgstr ""
 
-#: ui/build.slint:249 ui/build.slint:1699
+#: ui/build.slint:252 ui/build.slint:1715
 msgid "NAME"
 msgstr ""
 
-#: ui/build.slint:251
+#: ui/build.slint:254
 msgid "NAVI"
 msgstr ""
 
-#: ui/build.slint:255
+#: ui/build.slint:258
 msgid "DUPLICATE"
 msgstr ""
 
-#: ui/build.slint:257
+#: ui/build.slint:260
 msgid "DELETE"
 msgstr ""
 
-#: ui/build.slint:259
+#: ui/build.slint:262
 msgid "DELETE? CONFIRM AGAIN"
 msgstr ""
 
-#: ui/build.slint:268
+#: ui/build.slint:271
 msgid "Confirm to rename it"
 msgstr ""
 
-#: ui/build.slint:270
+#: ui/build.slint:273
 msgid "The whole build, from an original save (.sav)"
 msgstr ""
 
-#: ui/build.slint:272
+#: ui/build.slint:275
 msgid "A copy, to change apart"
 msgstr ""
 
-#: ui/build.slint:279
+#: ui/build.slint:282
 msgctxt "flag"
 msgid "ON"
 msgstr ""
 
-#: ui/build.slint:279
+#: ui/build.slint:282
 msgctxt "flag"
 msgid "OFF"
 msgstr ""
 
-#: ui/build.slint:286 ui/build.slint:1699
+#: ui/build.slint:293
+msgctxt "preset"
+msgid "LIGHT"
+msgstr ""
+
+#: ui/build.slint:295
+msgctxt "preset"
+msgid "DARK"
+msgstr ""
+
+#: ui/build.slint:302 ui/build.slint:1715
 msgid "SEARCH"
 msgstr ""
 
-#: ui/build.slint:288
+#: ui/build.slint:304
 msgctxt "filter"
 msgid "ALL"
 msgstr ""
 
-#: ui/build.slint:290
+#: ui/build.slint:306
 msgctxt "filter"
 msgid "STANDARD"
 msgstr ""
 
-#: ui/build.slint:292
+#: ui/build.slint:308
 msgctxt "filter"
 msgid "MEGA"
 msgstr ""
 
-#: ui/build.slint:294
+#: ui/build.slint:310
 msgctxt "filter"
 msgid "GIGA"
 msgstr ""
 
-#: ui/build.slint:296
+#: ui/build.slint:312
 msgctxt "filter"
 msgid "PA"
 msgstr ""
 
-#: ui/build.slint:298
+#: ui/build.slint:314
 msgctxt "filter"
 msgid "FOR THE PLACE"
 msgstr ""
 
-#: ui/build.slint:305
+#: ui/build.slint:321
 msgctxt "stat"
 msgid "HP"
 msgstr ""
 
-#: ui/build.slint:307
+#: ui/build.slint:323
 msgctxt "stat"
 msgid "Attack"
 msgstr ""
 
-#: ui/build.slint:309
+#: ui/build.slint:325
 msgctxt "stat"
 msgid "Rapid"
 msgstr ""
 
-#: ui/build.slint:311
+#: ui/build.slint:327
 msgctxt "stat"
 msgid "Charge"
 msgstr ""
 
-#: ui/build.slint:313
+#: ui/build.slint:329
 msgctxt "stat"
 msgid "Custom"
 msgstr ""
 
-#: ui/build.slint:315
+#: ui/build.slint:331
 msgctxt "stat"
 msgid "Mega chips"
 msgstr ""
 
-#: ui/build.slint:317
+#: ui/build.slint:333
 msgctxt "stat"
 msgid "Giga chips"
 msgstr ""
 
-#: ui/build.slint:319
+#: ui/build.slint:335
 msgctxt "stat"
 msgid "Regular memory"
 msgstr ""
 
-#: ui/build.slint:321
+#: ui/build.slint:337
 msgctxt "stat"
 msgid "Abilities"
 msgstr ""
 
-#: ui/build.slint:323
+#: ui/build.slint:339
 msgctxt "stat"
 msgid "Bug"
 msgstr ""
 
-#: ui/build.slint:325
+#: ui/build.slint:341
 msgctxt "stat"
 msgid "Chips"
 msgstr ""
 
-#: ui/build.slint:327
+#: ui/build.slint:343
 msgctxt "stat"
 msgid "Tag chips"
 msgstr ""
 
-#: ui/build.slint:329
+#: ui/build.slint:345
 msgctxt "stat"
 msgid "Chosen"
 msgstr ""
 
-#: ui/build.slint:331
+#: ui/build.slint:347
 msgctxt "stat"
 msgid "In all"
 msgstr ""
 
-#: ui/build.slint:333
+#: ui/build.slint:349
 msgctxt "stat"
 msgid "Places"
 msgstr ""
 
-#: ui/build.slint:341
+#: ui/build.slint:357
 msgctxt "bug"
 msgid "steps go astray"
 msgstr ""
 
-#: ui/build.slint:343
+#: ui/build.slint:359
 msgctxt "bug"
 msgid "panel trail"
 msgstr ""
 
-#: ui/build.slint:345
+#: ui/build.slint:361
 msgctxt "bug"
 msgid "blank buster shots"
 msgstr ""
 
-#: ui/build.slint:347
+#: ui/build.slint:363
 msgctxt "bug"
 msgid "hits give a status"
 msgstr ""
 
-#: ui/build.slint:349
+#: ui/build.slint:365
 msgctxt "bug"
 msgid "HP drains"
 msgstr ""
 
-#: ui/build.slint:351
+#: ui/build.slint:367
 msgctxt "bug"
 msgid "HP drains in the custom screen"
 msgstr ""
 
-#: ui/build.slint:353
+#: ui/build.slint:369
 msgctxt "bug"
 msgid "a status as the battle starts"
 msgstr ""
 
-#: ui/build.slint:355
+#: ui/build.slint:371
 msgctxt "bug"
 msgid "the emotion swings"
 msgstr ""
 
-#: ui/build.slint:357
+#: ui/build.slint:373
 msgctxt "bug"
 msgid "the hand shrinks"
 msgstr ""
 
-#: ui/build.slint:359
+#: ui/build.slint:375
 msgctxt "bug"
 msgid "damage as the custom screen opens"
 msgstr ""
 
-#: ui/build.slint:361
+#: ui/build.slint:377
 msgctxt "bug"
 msgid "no supports"
 msgstr ""
 
-#: ui/build.slint:653
+#: ui/build.slint:669
 msgid "— empty —"
 msgstr ""
 
-#: ui/build.slint:1104
+#: ui/build.slint:1120
 msgid "AS A ROUND STARTS"
 msgstr ""
 
-#: ui/build.slint:1136
+#: ui/build.slint:1152
 msgid "READY TO PLAY"
 msgstr ""
 
-#: ui/build.slint:1136
+#: ui/build.slint:1152
 msgid "WHAT KEEPS IT FROM PLAYING"
 msgstr ""
 
-#: ui/build.slint:1278
+#: ui/build.slint:1294
 msgid "{0} · BUILD"
 msgstr ""
 
-#: ui/build.slint:1294 ui/builds.slint:107 ui/lobby.slint:92
-#: ui/build.slint:1294 ui/builds.slint:107 ui/lobby.slint:92 ui/lobby.slint:388 ui/play.slint:83
+#: ui/build.slint:1310 ui/builds.slint:107 ui/lobby.slint:92
+#: ui/build.slint:1310 ui/builds.slint:107 ui/lobby.slint:92 ui/lobby.slint:388 ui/training.slint:111
 msgid "READY"
 msgstr ""
 
-#: ui/build.slint:1294 ui/builds.slint:107
+#: ui/build.slint:1310 ui/builds.slint:107
 msgid "{n} PROBLEM"
 msgid_plural "{n} PROBLEMS"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/build.slint:1416
+#: ui/build.slint:1432
 msgid "Nothing here yet: choose from the list beside it."
 msgstr ""
 
-#: ui/build.slint:1517
+#: ui/build.slint:1533
 msgid "BOARD"
 msgstr ""
 
-#: ui/build.slint:1731
+#: ui/build.slint:1747
 msgid ""
 "Choose a program, then put it on the board: L and R turn it, C compresses "
 "it. A placed one is picked up by pressing it."
 msgstr ""
 
-#: ui/build.slint:1731
+#: ui/build.slint:1747
 msgid ""
 "Choose an entry, then a chip in one of its codes: it goes there, and the "
 "next entry is chosen."
 msgstr ""
 
-#: ui/build.slint:1731
+#: ui/build.slint:1747
 msgid "Confirm one on the list to add it; one of yours, to move or remove it."
 msgstr ""
 
-#: ui/build.slint:1731
+#: ui/build.slint:1747
 msgid "Choose a place, then the chip that goes there."
 msgstr ""
 
-#: ui/build.slint:1734 ui/build.slint:1739
+#: ui/build.slint:1750 ui/build.slint:1755
 msgid "Put it down"
 msgstr ""
 
-#: ui/build.slint:1735 ui/build.slint:1740
+#: ui/build.slint:1751 ui/build.slint:1756
 msgid "Turn"
 msgstr ""
 
-#: ui/build.slint:1736
+#: ui/build.slint:1752
 msgid "Compress"
 msgstr ""
 
-#: ui/build.slint:1737 ui/build.slint:1741
+#: ui/build.slint:1753 ui/build.slint:1757
 msgid "Put back"
 msgstr ""
 
-#: ui/build.slint:1744
+#: ui/build.slint:1760
 msgid "Code / color"
 msgstr ""
 
-#: ui/build.slint:1745
+#: ui/build.slint:1761
 msgid "Put in"
 msgstr ""
 
-#: ui/build.slint:1746 ui/build.slint:1752 ui/build.slint:1757
-#: ui/build.slint:1746 ui/build.slint:1752 ui/build.slint:1757 ui/lobby.slint:466 ui/play.slint:554
-#: ui/build.slint:1746 ui/build.slint:1752 ui/build.slint:1757 ui/lobby.slint:466 ui/play.slint:554 ui/settings.slint:185 ui/title.slint:257
+#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773
+#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773 ui/lobby.slint:466 ui/replays.slint:396
+#: ui/build.slint:1762 ui/build.slint:1768 ui/build.slint:1773 ui/lobby.slint:466 ui/replays.slint:396 ui/title.slint:257 ui/training.slint:613
 msgid "Back"
 msgstr ""
 
-#: ui/build.slint:1750
+#: ui/build.slint:1766
 msgid "Take off"
 msgstr ""
 
-#: ui/build.slint:1751 ui/build.slint:1756
+#: ui/build.slint:1767 ui/build.slint:1772
 msgid "Tab"
 msgstr ""
 
@@ -669,11 +680,11 @@ msgctxt "speed"
 msgid "×1/{0}"
 msgstr ""
 
-#: ui/lobby.slint:52 ui/lobby.slint:367 ui/play.slint:276
+#: ui/lobby.slint:52 ui/lobby.slint:367 ui/training.slint:303
 msgid "YOU"
 msgstr ""
 
-#: ui/lobby.slint:52 ui/lobby.slint:367
+#: ui/lobby.slint:52 ui/lobby.slint:367 ui/training.slint:193
 msgid "OPPONENT"
 msgstr ""
 
@@ -692,11 +703,11 @@ msgstr ""
 
 #: ui/lobby.slint:203
 msgctxt "heading"
-msgid "NETPLAY"
+msgid "PLAY"
 msgstr ""
 
 #: ui/lobby.slint:204
-msgid "ROLLBACK · ROOM CODES OR A DIRECT LINK"
+msgid "ONLINE · ROLLBACK · ROOM CODES OR A DIRECT LINK"
 msgstr ""
 
 #: ui/lobby.slint:224
@@ -745,7 +756,7 @@ msgstr ""
 msgid "Type your name"
 msgstr ""
 
-#: ui/lobby.slint:322 ui/play.slint:119
+#: ui/lobby.slint:322 ui/training.slint:153
 msgid "GAME"
 msgstr ""
 
@@ -753,11 +764,11 @@ msgstr ""
 msgid "Both players play the same game"
 msgstr ""
 
-#: ui/lobby.slint:336 ui/play.slint:179
+#: ui/lobby.slint:336 ui/training.slint:193
 msgid "YOUR BUILD"
 msgstr ""
 
-#: ui/lobby.slint:338 ui/play.slint:181
+#: ui/lobby.slint:338 ui/training.slint:200 ui/training.slint:201
 msgid "A random side, from the seed"
 msgstr ""
 
@@ -785,77 +796,8 @@ msgstr ""
 msgid "Reconnecting…"
 msgstr ""
 
-#: ui/lobby.slint:464 ui/play.slint:552 ui/settings.slint:184
+#: ui/lobby.slint:464 ui/settings.slint:184 ui/training.slint:611
 msgid "Change"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "CHOSEN"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "LOADING…"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "NO ASSET PACK"
-msgstr ""
-
-#: ui/play.slint:83
-msgid "CAN'T LOAD"
-msgstr ""
-
-#: ui/play.slint:148
-msgid "No games found: the content folder or the packs folder is missing."
-msgstr ""
-
-#: ui/play.slint:158
-msgid "MATCH"
-msgstr ""
-
-#: ui/play.slint:160
-msgid "Seed {0} · confirm for another"
-msgstr ""
-
-#: ui/play.slint:160
-msgid "A match file from the matches folder"
-msgstr ""
-
-#: ui/play.slint:181
-msgid "One of your builds, in place of your side"
-msgstr ""
-
-#: ui/play.slint:181
-msgid "Your side as the match file states it"
-msgstr ""
-
-#: ui/play.slint:212
-msgid "FIGHT"
-msgstr ""
-
-#: ui/play.slint:266
-msgid "Choose a game"
-msgstr ""
-
-#: ui/play.slint:278
-msgid "STAND-IN"
-msgstr ""
-
-#: ui/play.slint:289
-msgid "THE ARENAS"
-msgstr ""
-
-#: ui/play.slint:319
-msgid "ROUND {0}"
-msgstr ""
-
-#: ui/play.slint:441
-msgctxt "heading"
-msgid "PLAY"
-msgstr ""
-
-#: ui/play.slint:442
-msgid "OFFLINE · AGAINST THE STAND-IN"
 msgstr ""
 
 #: ui/replays.slint:240
@@ -1020,25 +962,25 @@ msgid "PLAY"
 msgstr ""
 
 #: ui/title.slint:80
-msgid "Fight the stand-in, offline"
+msgid "Online: another player, by a room code or a direct link"
 msgstr ""
 
 #: ui/title.slint:81
+msgctxt "menu"
+msgid "TRAINING"
+msgstr ""
+
+#: ui/title.slint:81
+msgid "Offline: you against the computer"
+msgstr ""
+
+#: ui/title.slint:82
 msgctxt "menu"
 msgid "BUILDS"
 msgstr ""
 
-#: ui/title.slint:81
+#: ui/title.slint:82
 msgid "Your navi, folder, NaviCust and patch cards"
-msgstr ""
-
-#: ui/title.slint:82
-msgctxt "menu"
-msgid "NETPLAY"
-msgstr ""
-
-#: ui/title.slint:82
-msgid "Play another player with a room code"
 msgstr ""
 
 #: ui/title.slint:83
@@ -1070,4 +1012,138 @@ msgstr ""
 
 #: ui/title.slint:241
 msgid "DEMO · {0}"
+msgstr ""
+
+#: ui/training.slint:22
+msgctxt "opponent"
+msgid "Dummy"
+msgstr ""
+
+#: ui/training.slint:24
+msgctxt "opponent"
+msgid "Mover"
+msgstr ""
+
+#: ui/training.slint:26
+msgctxt "opponent"
+msgid "Masher"
+msgstr ""
+
+#: ui/training.slint:28
+msgid "Stand-in"
+msgstr ""
+
+#: ui/training.slint:33
+msgid "Stands still and picks no chip"
+msgstr ""
+
+#: ui/training.slint:35
+msgid "Moves about at random, never attacks"
+msgstr ""
+
+#: ui/training.slint:37
+msgid "Moves, shoots and uses its chips at random"
+msgstr ""
+
+#: ui/training.slint:39
+msgid "Stands still and picks its first chip"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "CHOSEN"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "LOADING…"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "NO ASSET PACK"
+msgstr ""
+
+#: ui/training.slint:111
+msgid "CAN'T LOAD"
+msgstr ""
+
+#: ui/training.slint:182
+msgid "No games found: the content folder or the packs folder is missing."
+msgstr ""
+
+#: ui/training.slint:193
+msgid "MATCH"
+msgstr ""
+
+#: ui/training.slint:193
+msgid "IT DOES"
+msgstr ""
+
+#: ui/training.slint:193
+msgid "ROUNDS"
+msgstr ""
+
+#: ui/training.slint:198
+msgctxt "rounds"
+msgid "ENDLESS"
+msgstr ""
+
+#: ui/training.slint:198
+msgctxt "rounds"
+msgid "BEST OF {0}"
+msgstr ""
+
+#: ui/training.slint:199
+msgid "Seed {0} · confirm for another"
+msgstr ""
+
+#: ui/training.slint:199
+msgid "A match file from the matches folder"
+msgstr ""
+
+#: ui/training.slint:200
+msgid "One of your builds, in place of your side"
+msgstr ""
+
+#: ui/training.slint:200
+msgid "Your side as the match file states it"
+msgstr ""
+
+#: ui/training.slint:201
+msgid "One of your builds, in the opponent's place"
+msgstr ""
+
+#: ui/training.slint:201
+msgid "The other side as the match file states it"
+msgstr ""
+
+#: ui/training.slint:203
+msgid "99 rounds, the most a set has: first to 50 wins"
+msgstr ""
+
+#: ui/training.slint:203
+msgid "A set as the match lists it"
+msgstr ""
+
+#: ui/training.slint:234
+msgid "FIGHT"
+msgstr ""
+
+#: ui/training.slint:293
+msgid "Choose a game"
+msgstr ""
+
+#: ui/training.slint:316
+msgid "THE ARENAS"
+msgstr ""
+
+#: ui/training.slint:346
+msgid "ROUND {0}"
+msgstr ""
+
+#: ui/training.slint:487
+msgctxt "heading"
+msgid "TRAINING"
+msgstr ""
+
+#: ui/training.slint:488
+msgid "OFFLINE · AGAINST THE COMPUTER"
 msgstr ""

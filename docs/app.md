@@ -4,15 +4,16 @@
 webviews, and chose Slint ("it should be very polished though"). `crates/nettai` is that app. It runs on the
 desktop (built and measured on macOS). §6 records what the web build needs and §7 what mobile would take.
 
-nettai is the player's host of nettai-frontend; nettai-demo is being retired (its plan: §10). It wraps the
-battle in the screens a player sees:
+nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
+the command line with no window, for frames, audits and checks (docs/tools.md). nettai-demo, the first desktop
+host, is retired (§10). nettai wraps the battle in the screens a player sees:
 
 - a title screen, with a battle playing itself on its monitor;
-- Play: the game, a random match or a match file, your build, and a preview of who fights in which arenas,
-  against the stand-in;
+- PLAY, online play: the netplay lobby, rooms through nettai-rtc or a direct link, with your build (§4);
+- TRAINING, you against the computer, offline: the game, a random match or a match file, your build and the
+  opponent's, what the opponent does and how long the set is, and a preview of who fights in which arenas;
 - the battle;
 - the builds: a player's sides, game by game, made in the build creator (§8);
-- the netplay lobby: rooms through nettai-rtc, or a direct link;
 - the replays: every set played is recorded;
 - settings, kept between runs (§9).
 
@@ -21,7 +22,8 @@ catalogs, one for each language; the content's names come from its locales.
 
     NETTAI_PACKS=<packs> cargo run --release -p nettai
 
-The packs are found as nettai-demo finds them (`$NETTAI_PACKS`, else `data`). What the player makes is kept in
+The packs are found as nettai-tool finds them (`$NETTAI_PACKS`, else `data`, each pack by the game it says;
+written by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`). What the player makes is kept in
 the app's data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
 `$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are
 in `builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), match files are
@@ -31,7 +33,7 @@ netplay, `$NETTAI_SIGNAL` names the signaling server (§4). Some variables are f
 | Variable | What it does |
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
-| `NETTAI_PLAY=<game>` | Starts straight into a random set of the game. |
+| `NETTAI_TRAINING=<game>` | Starts straight into a random training set of the game, against the stand-in. |
 | `NETTAI_NETPLAY=<game>:<make\|join>:<CODE>`, `<game>:host:`, `<game>:direct:<HOST:PORT>` | Starts straight into that room (or direct link), ready. |
 | `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
@@ -88,13 +90,14 @@ timestamped as they arrive. While the battle has the keys, they don't reach the 
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
 - Esc pauses (Tab does nothing in the battle: in the menus it is the next item, Shift+Tab the one before);
-- in a replay, Space pauses, `-` and `=` change the speed, and `.` steps a frame.
+- in a replay, Space pauses, `-` and `=` change the speed, and `.` steps a frame;
+- in training, R (or F5) starts over: the same set again from its first round.
 
 **The gamepad** is read through gilrs and polled each frame:
 
 - the south button is A, the west (or east) button B, the shoulders L and R, and Start and Select are theirs;
 - the D-pad and the left stick move;
-- the Mode (Guide) button pauses.
+- the Mode (Guide) button pauses, and in training the north button (Y, △) starts over.
 
 In the menus the same presses navigate, and the key hints switch to the pad's buttons once it is used.
 
@@ -134,21 +137,42 @@ previous, next) from the window's keys, the gamepad, or a click or tap, which fo
 - **Responsive layout:** the window sets `Theme.compact` (small) and `Theme.portrait` (held upright) as its size
   changes. Layouts follow these imperatively-set values, never the window's own size, so they don't size the
   window.
-- **On a phone held upright:** the battle draws an on-screen pad under the picture, Play puts FIGHT at the foot,
-  and the lobby shows the two players in a line.
+- **On a phone held upright:** the battle draws an on-screen pad under the picture, Training puts FIGHT at the
+  foot (and shows no arenas: its choices take the height), and the lobby shows the two players in a line.
 
 The screens:
 
 - **Title.** The demo battle is a random set of a loaded game, with the stand-in's custom screen pressed on
   both sides and the left navi fighting.
-- **Play.** No game is assumed: the player chooses one. YOUR BUILD puts one of their builds of it in place of
-  their side (a build that can't play says why). The arenas are each round's field, played alone for 24 ticks
-  and drawn (`arenas.rs`).
+- **Play** is online play (the user: "play should be online play and the single player play should be some kind of
+  training mode instead under training"): the lobby, §4. It is the menu's first entry.
+- **Training** is you against the computer, offline, every set recorded as any other. No game is assumed: the
+  player chooses one. The match is a random one (from a seed; confirm for another) or a match file of the matches
+  folder. YOUR BUILD puts one of their builds of the game in place of their side, and OPPONENT one in place of the
+  other side (a build that can't play says why). IT DOES is what the opponent does, its buttons alone, as a
+  player's are (`nettai_frontend::driver::Opponent`, recorded with the set):
+  - **Stand-in**: stands still; its custom screen picks the first chip it can and presses OK.
+  - **Dummy**: stands still and picks no chip.
+  - **Mover**: moves about the field at random (seeded), never attacks; its custom screen is the stand-in's.
+  - **Masher**: moves, shoots, charges and uses its chips at random (seeded); its custom screen is the
+    stand-in's.
+
+  ROUNDS is the match's (a triple battle's three, or the file's) or ENDLESS: 99 rounds, the most a set has (`MAX_ROUNDS`),
+  which the game decides at 50 wins; its pips count the rounds won, and its preview shows the first three arenas.
+  The arenas are each round's field, played alone for 24 ticks and drawn (`arenas.rs`). In the battle, R, F5 or the
+  pad's north button (and the pause's START OVER) start the set over from its first round with the same draw,
+  recorded anew.
+
+  What training doesn't do, because it would need behavior the engine or the rules don't have: a custom gauge
+  that is always full (no setting or fact makes one; the gauge's speed is a stat the rules build), the round being
+  played started over by itself (a set's later round starts from the rounds before it, and a replay holds a set
+  from its start), and an opponent that fights as the game's own navis do (the engine has no computer navi for a
+  link battle's side).
 - **Builds** and the build creator: §8.
 - **The battle.** The pause has resume, start over and quit (the language is Settings' alone). The result has the score, the replay
   file it was recorded to, rematch and menu. A replay has its transport, and netplay its connection line and
   "reconnecting (N s)".
-- **The lobby.** §4.
+- **The lobby** (Play): §4.
 - **Replays.** Newest first, each row with:
   - the date in local time;
   - the navis, by the content's names;
@@ -209,7 +233,7 @@ script it lacks, Slint falls back to the system's fonts on the desktop. The web 
 may lack one, so such a language needs its font bundled: import a Noto face for the script in `theme.slint`
 beside Murecho, and fontique falls back to it by coverage.
 
-## 4. Netplay
+## 4. Netplay (Play)
 
 The lobby meets the other player in a room of nettai-rtc's signaling server, by the room's code, or over a
 direct link:
@@ -232,7 +256,7 @@ datagrams of `nettai_frontend::lobby`):
 3. Readiness is each player's toggle, and each sees the other's. Changing the game or the build clears both.
 4. Once both are ready on the same settings, the match is agreed and the battle is a `NetPlayer` over the link
    (`netplay::Framed`: the link as the library's `Channel`, frames told from the lobby's datagrams by their first
-   byte, as nettai-demo's connection does). It is recorded, with both names.
+   byte, as nettai-demo's connection did). It is recorded, with both names.
 
 The battle shows the connection's figures (ping, present delay, rollbacks) and "reconnecting (N s)" while the link
 is down (`NetStatus::reconnecting`). Netplay can't pause: the pause's panel says so and holds no buttons.
@@ -246,11 +270,20 @@ Without `$NETTAI_SIGNAL` the lobby says there is none (a direct link still works
 meet with `NETTAI_NETPLAY=exe6:make:ROOM42` and `NETTAI_NETPLAY=exe6:join:ROOM42`, or directly with
 `NETTAI_NETPLAY=exe6:host:` and `NETTAI_NETPLAY=exe6:direct:127.0.0.1:47474`.
 
-What's missing: the present delay can't be set on the screen.
+A room's link finds its way through NATs with nettai-rtc's default STUN server (`stun:stun.l.google.com:19302`)
+and checks the certificates its descriptions name; a direct link authenticates nobody, as plain UDP doesn't. Over
+the Internet, the host forwards UDP port 47474 on its router to its machine, and the other player joins the
+router's public address. What the library does when the link drops, and what the handshake checks, is
+docs/frontend.md §2's.
+
+What's missing: the present delay can't be set on the screen (the library's `Player::set_present_delay`), and no
+TURN server can be given, so two players whose NATs need a relay can't meet (nettai-rtc's `Config` takes
+one, an `IceServer` with its credentials, in its `ice_servers`; Cloudflare's TURN service hands out short-lived
+credentials from its API).
 
 ## 5. Latency and smoothness
 
-Measured as nettai-demo measures (docs/frontend.md §7). `NETTAI_KEY_PROBE` presses the right arrow every 300 to
+Measured as nettai-demo measured (docs/frontend.md §7, its lessons). `NETTAI_KEY_PROBE` presses the right arrow every 300 to
 400 ms, through the event loop as a key's event arrives, at no particular point between frames.
 `NETTAI_PLAY_STATS` prints, every two seconds:
 
@@ -401,13 +434,14 @@ one (`nettai_match::file::side_toml`, read back by `resolve_side`: the same name
 
 The **Builds** screen lists a game's builds (L and R go through the games), each with its navi's face, its folder's
 count and whether it can play (or what the rules say first), above NEW BUILD and FROM A SAVE…. A save can also be
-dropped on the window. Builds are chosen in Play and in the lobby (§4).
+dropped on the window. Builds are chosen in Training and in Play's lobby (§4).
 
 **The creator** (`crate::builds`) lays a build out from its game's rules' setup schema alone (`builds::layout`;
 the rules declare no views), a tab for each kind of fact:
 
 - **NAVI:** the build's name, the navi (by its face), and each fact of one value: a flag, a number, an enum's
-  variants (EXE6's version, Beast Out, bug frags; EXE5's light/dark value and Chaos Unison). Then FROM A SAVE…,
+  variants (EXE6's version, Beast Out, bug frags), or a fact's presets (EXE5's light or dark MegaMan, with the face
+  the round starts him with: below). Then FROM A SAVE…,
   DUPLICATE and DELETE (confirmed twice). Beside them, what the round starts the navi with (HP, the buster, the
   custom screen, the Mega and Giga limits, the Regular memory, the abilities and the NaviCust's bugs) and every
   problem the rules see.
@@ -440,10 +474,22 @@ sides of a match of its game, each problem beside its field and entry (a tab wit
 **What a build never states.** Every build in the app plays at the most its game allows, and states only what a
 player chooses. The facts kept at the rules' defaults (`layout::at_defaults`) are those of the engine's level and
 base HP roles, and the ones the app lists by game in `crates/nettai/builds.toml`: what a save brings to the
-navi's stats (HP, the Regular memory, the sun, the level), the SP navi times, and EXE5's auto battle records.
-The creator neither shows nor edits them. A navi that must have a level has its last. A build made new, read
-from a file or made from a save is set to them (`layout::as_built`), and a place of the auto battle data that
-pointed at a record is emptied; a save's import says which facts were set to the defaults.
+navi's stats (HP, the Regular memory, the sun, the level), the SP navi times, EXE5's auto battle records and its
+Chaos Unison (always on: the user, "chaos unison should always be enabled in a build"). The creator neither shows
+nor edits them. A navi that must have a level has its last. A build made new, read from a file or made from a save
+is set to them (`layout::as_built`), and a place of the auto battle data that pointed at a record is emptied; a
+save's import says which facts were set to the defaults.
+
+**Presets** (`builds::presets`, the same file's `presets`): a fact a build states only as one of a few presets,
+each of which sets several facts together. EXE5's are its light and dark MegaMan, as Tango's EXE5 save templates
+have them, the only two (the user: "there's only 2 karma save presets in bn5, and they also end up setting
+megaman's base hp"): LIGHT, the light/dark value 1000 and the base HP 1000, and DARK, 0 and 997. The value's row
+steps between them and shows the face the round starts MegaMan with (`screen::Face`: the round's first tick, the
+dark one's his dark face); the base HP is no row of its own. A team navi's base HP stays the rules' default (its
+HP is its story's: `edit::without_forms`). A build whose value is another (made new, read from a file, made from
+a save) takes the preset on its side of the game's line, 470 (content/exe5/rules/light_dark's `LIGHT_CHIPS`): a
+new build's 500 is light's, and a save's import says which it took ("karma 100 is dark's: the dark preset (hp 997,
+karma 0)").
 
 **From a save** (`builds::import`): each game's compat crate reads its own saves (`exe6_compat::import`,
 `exe5_compat::import`); a save of another game is refused.
@@ -460,22 +506,24 @@ What nettai-demo does, and where each part goes:
 
 | nettai-demo | Goes to |
 |---|---|
-| Live play against the stand-in, `--match` files, `--record` | nettai: Play (match files, builds) |
-| Netplay (rooms, `--host`/`--join`) | nettai: the lobby (rooms, direct links) |
+| Live play against the stand-in, `--match` files, `--record` | nettai: Training (match files, builds) |
+| Netplay (rooms, `--host`/`--join`) | nettai: Play, the lobby (rooms, direct links) |
 | Replays (`--replay`, watching) | nettai: Replays |
-| The match editor (iced) | nettai: the build creator (a match file is two sides; Play opens match files) |
+| The match editor (iced) | nettai: the build creator (a match file is two sides; Training opens match files) |
 | `--headless` frames (`--png-scale`, `--keys`, `--objects`, `--mark`), headless `--replay` | nettai-tools |
 | The trace replay of the original's recordings (the compat `trace` feature) | nettai-tools |
 | `--audit`, `--audit-content` | nettai-tools |
 | `--show-folders`, `--save-match`, setup dumps | nettai-tools |
 
-nettai-tools is a small CLI crate (binary `nettai-tool`, no window toolkit) holding nettai-demo's headless modules
-as they were (`headless`, `trace`, `content_audit`, `sound_lookups`; nettai-demo re-exports them until it goes),
-with the same flags, so verify's scripts (lab-compare.sh, lab-batch.sh, identity.sh, compare.sh,
-play-headless.sh, embed-against.sh, audit-against.sh, and the merge checks) switch from `nettai-demo …` to
-`nettai-tool …` (built with `-p nettai-tools`) mechanically. Its frames, marks and audits are nettai-demo's, byte
-for byte. Without frames, `--match FILE` says the setup (`--show-folders`, `--save-match`) and `--replay FILE` plays
-the replay to its end and says whether it reproduces. A trace is rendered or audited; watching one in a window
-stays nettai-demo's until the window goes. The order: the build creator; nettai-tools;
-verify's scripts and the merge checks switched (on a verify branch); then nettai-demo and iced deleted from the
-workspace, and docs/frontend.md's program sections moved here and to nettai-tools' own doc.
+nettai-tools is a small CLI crate (binary `nettai-tool`, no window toolkit; docs/tools.md) holding nettai-demo's
+headless modules as they were (`headless`, `trace`, `content_audit`, `sound_lookups`), with the same flags, so
+verify's scripts (lab-compare.sh, lab-batch.sh, identity.sh, compare.sh, play-headless.sh, embed-against.sh,
+audit-against.sh, and the merge checks) switched from `nettai-demo …` to `nettai-tool …` (built with
+`-p nettai-tools`) mechanically. Its frames, marks and audits are nettai-demo's, byte for byte. Without frames,
+`--match FILE` says the setup (`--show-folders`, `--save-match`) and `--replay FILE` plays the replay to its end
+and says whether it reproduces. A trace is rendered or audited: the user wanted no trace viewer ("i don't think you
+really need a trace viewer").
+
+The order was: the build creator; nettai-tools; verify's scripts and the merge checks switched; then, on
+2026-10-06, nettai-demo deleted from the workspace with iced and what only it pulled in (`Cargo.lock`: 824
+packages, then 738), and docs/frontend.md's program sections moved here and to docs/tools.md.

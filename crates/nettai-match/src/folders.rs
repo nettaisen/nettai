@@ -1,6 +1,6 @@
 //! Folders against their rules, which are each game's (its rules'
 //! `folder_check`: EXE6's are content/exe6/rules/folder/init.luau): one
-//! check that a match file, a netplay offer, the editor and live play's
+//! check that a match file, a netplay offer, the build creator and live play's
 //! random folder all go through (`Battle::check_folder`). The rules read
 //! the side's stats as its round set them up (the NaviCust's and the patch
 //! cards' folder limits), so a check runs on that side's battle.

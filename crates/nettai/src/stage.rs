@@ -2,7 +2,7 @@
 //! and the picture it presents, as the window shows it.
 //!
 //! The window's rendering is the clock (`main`'s rendering notifier, as
-//! nettai-demo's picture widget is): before each frame is drawn the battle
+//! the retired nettai-demo's picture widget was): before each frame is drawn the battle
 //! runs the ticks due and, if one ran (or the space changed), presents a
 //! new picture, which that same frame draws. The picture is the size of the
 //! frame's largest whole multiple that fits the space, in the display's

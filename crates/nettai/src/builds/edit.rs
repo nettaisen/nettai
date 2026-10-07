@@ -108,13 +108,20 @@ pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) -> bool
     }
     let level = nettai_match::level_required(content, navi).then(|| side.level(content).unwrap_or(0));
     let _ = side.set_level(content, level);
-    if content.navi(navi).forms.is_none() {
+    without_forms(content, side);
+    side.state_own_forms(content);
+    side.facts != before
+}
+
+/// What a navi that doesn't change form has none of, back at the rules'
+/// defaults on a side of one: the pieces on the board, its board, and its
+/// base HP (its HP is its level's or its story's).
+pub fn without_forms(content: &Content, side: &mut Side) {
+    if side.stated_navi(content).is_some_and(|n| content.navi(n).forms.is_none()) {
         for fact in [crate::builds::grid::PIECES_FIELD, crate::builds::grid::SIZE_FIELD, PlayerFact::BaseHp.name()] {
             side.facts.reset(content, fact);
         }
     }
-    side.state_own_forms(content);
-    side.facts != before
 }
 
 /// An edit of a list of definitions.

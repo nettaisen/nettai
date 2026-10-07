@@ -1,8 +1,10 @@
 //! The pictures the creator shows of a game's definitions, from its pack
 //! as a frame draws them (`nettai_render::pictures`): a chip's icon and its
-//! picture in the chip window, a form's face (a Cross's, a soul's) and a
-//! navi's. Each is made the first time it is asked for, and kept.
+//! picture in the chip window, a form's face (a Cross's, a soul's), a
+//! navi's, and the face a round starts a navi with. Each is made the first
+//! time it is asked for, and kept.
 
+use crate::builds::screen::Face;
 use crate::games::Ready;
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 use nettai_render::packs::PackGraphics;
@@ -20,6 +22,7 @@ pub struct Pictures {
     art: RefCell<HashMap<ChipHandle, slint::Image>>,
     faces: RefCell<HashMap<FormHandle, slint::Image>>,
     navis: RefCell<HashMap<NaviHandle, slint::Image>>,
+    shown: RefCell<HashMap<Face, slint::Image>>,
 }
 
 /// An RGBA picture as the window shows one (none: an empty image).
@@ -29,8 +32,8 @@ fn image(p: Option<Image>) -> slint::Image {
     slint::Image::from_rgba8(buffer)
 }
 
-/// What `get` makes of `key`, made once.
-fn kept<K: std::hash::Hash + Eq + Copy>(map: &RefCell<HashMap<K, slint::Image>>, key: K, make: impl FnOnce() -> Option<Image>) -> slint::Image {
+/// What `make` makes of `key`, made once.
+fn kept<K: std::hash::Hash + Eq>(map: &RefCell<HashMap<K, slint::Image>>, key: K, make: impl FnOnce() -> Option<Image>) -> slint::Image {
     if let Some(i) = map.borrow().get(&key) {
         return i.clone();
     }
@@ -42,7 +45,15 @@ fn kept<K: std::hash::Hash + Eq + Copy>(map: &RefCell<HashMap<K, slint::Image>>,
 impl Pictures {
     pub fn new(ready: Rc<Ready>) -> Pictures {
         let packs = ready.loaded.graphics.packs();
-        Pictures { ready, packs, icons: Default::default(), art: Default::default(), faces: Default::default(), navis: Default::default() }
+        Pictures {
+            ready,
+            packs,
+            icons: Default::default(),
+            art: Default::default(),
+            faces: Default::default(),
+            navis: Default::default(),
+            shown: Default::default(),
+        }
     }
 
     /// A chip's 16x16 icon.
@@ -71,5 +82,16 @@ impl Pictures {
                 pictures::form_face(&packs, content, form)
             })
         })
+    }
+
+    /// The face the emotion window shows (`Face`): a form's for an emotion,
+    /// or a navi's own.
+    pub fn shown(&self, face: &Face) -> slint::Image {
+        match face {
+            Face::Navi(n) => self.navi(*n),
+            Face::Form(form, emotion, variant) => kept(&self.shown, face.clone(), || {
+                pictures::face(&self.packs.packs(), self.ready.content(), *form, emotion, *variant)
+            }),
+        }
     }
 }
