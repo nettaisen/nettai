@@ -690,9 +690,12 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
-- Panels through a pause and a dimming (§18 item 13): a navi on poison loses HP while the battle is paused, a wood
-  navi on grass heals then, and a player on lava burns while the battle is dimmed (as EXE4's code reads; a lab
-  scenario on `poison-middle` or `lava-middle-close` with a pause, and a dimming chip over lava, would show it).
+- Settled: panels through a pause and a dimming (§18 item 13, a95f's `panels/` recordings). Poison doesn't drain
+  through a pause (`poison-pause`: the player doesn't run paused); a player landing on lava burns the tick after
+  it lands even while the battle is dimmed (`lava-dimming-33`, RockCube's dimming: the burn at 418, its flinch at
+  565 as the dimming ends; `-32` and `-34` the dimming before the landing and after the burn), not while it blinks
+  (`lava-blinking`: the burn on the tick f1's 0x200 clears). The lava ones wait for their stage (layout 0x71,
+  §18 item 19) and RockCube.
 
 ## 17. The recordings
 
@@ -956,12 +959,13 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       player's has no dimming test (any body's has). A panel type's `burn` is a table now: `damage`, `spared_by`,
       `mood`, `players_while_dimmed` (EXE5's `{ damage = 50, spared_by = 0x88000206 }`).
     - **Poison and grass** (0x08012FF2, EXE6's `sub_801A186`): the same tests (poison's 0x08000028 immunity, the grass
-      test reading the status word after an immune body, as EXE6's), but no pause test, and grass heals a wood body on
-      the battle's 20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less). The rule
-      `panels.standing` (`stops_while_paused`, `slow_heal_at`: EXE6's and EXE5's true and 9, EXE4's false and none).
-      EXE4's player intake runs while paused (only the fight's flag 1 gates it, 0x08013858), so its poison drains and
-      its grass heals through a pause (§16). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the
-      whole byte too): EXE4's objects have no high nibble.
+      test reading the status word after an immune body, as EXE6's), and grass heals a wood body on the battle's
+      20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less): the rule
+      `panels.grass_heal_slows_at` (theirs 9, EXE4's none). It has no pause test, but EXE4's player never runs paused
+      once in control (its header flag 0x04 cleared, `paused_navi = "stops_at_control"`): a95f's
+      `panels/poison-pause` holds its HP through a START pause, the drain due at the pause landing the tick after it
+      (and replays every frame). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the whole byte
+      too): EXE4's objects have no high nibble.
     - **What passes over a panel** (0x08013058, from the collision's removal, 0x08012A50): grass of fire and lava of
       aqua turn normal (`cleared_by`, EXE5's 0x08016D14 less its metal of wood), unless the hitbox has 0x0C000000. It
       has no pause test (EXE5's and EXE6's have): no hitbox is removed while paused (frozen objects), so no rule.
@@ -976,9 +980,23 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       not the crack routine), sounding 0x124 for poison onto a panel that wasn't (and 0x95 when the type change's
       return, the panel's occupants' collision bits, is 3: never with the navi's own body on it); EXE6's trail (a
       NaviCust bug, a chance by level) isn't it: to port with the Mod Cards.
-14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
-    find EXE4's drawing of them. Placeholder: EXE5's grids. The any-side step rows are EXE5's too.
-15. **Battle mode 1's mend** and **reservations**: EXE5's until read.
+14. **Done** (start-visible panels and front edges). EXE4 keeps no grids: its field's init (0x08009120) marks all 40
+    panels visible (0x08009186: 0x40 into each flags byte at 0x02037B36), its drawing (0x080092AC) draws each valid
+    panel (x 1 to 6, y 1 to 3) while visible, and the front edges under row 3 alone (0x0800937A), each by its row-3
+    panel's visibility (0x080094C4, else 0x080094FC blanks it), as the engine draws a panel's `front_edge` with it.
+    Stated: `start_visible` all true (what the engine reads of it, the valid panels', is EXE5's grid), `front_edges`
+    row 3, written by gen_rules.py from that code. The any-side step: EXE4 has no `sub_800E680` (EXE5 neither), so its
+    rows are EXE6's, for EXE6's code (a chip's) in an EXE4 arena.
+15. **Done** (battle mode 1's mend and the reservations).
+    - **The mend:** 600 ticks in every battle: the field's init (0x08009132) and the panel tick (0x0800976C) store
+      the one constant whatever the battle's mode (`mend = { normal = 600, battle_mode_1 = 600 }`, now asserted).
+    - **Reservations:** EXE4's `object_reservePanel` (0x080143A8) marks the panel alone (no header flag 0x20 on the
+      holder, as EXE5's), `reservations = "unmarked"`.
+    - **The destroy** (found here): EXE4's `object_genericDestroy` (0x080D8C58) unregisters the object's collision
+      (`object_removeCollisionData`, 0x080129FC: its panels refreshed, its hits and the panels it clears resolved on
+      them) before freeing it, where EXE6's releases its reservations and EXE5's (0x080138F2) frees it as it is
+      (its registrations stale on the panels until the slot is next registered). The rule `effects.destroy`
+      (`frees`, EXE6's and EXE5's; `unregisters`, EXE4's).
 
 ### 18.3 Flow, stages and the link
 

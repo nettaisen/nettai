@@ -806,6 +806,29 @@ mod tests {
         assert_eq!(b.collision.get(r).acc.hit_flags, 0);
     }
 
+    /// docs/design/exe4-map.md §18 item 15: EXE4's destroy unregisters the
+    /// object's collision (`effects.destroy`), so its panel no longer
+    /// carries its bit; EXE6's frees it as it is, the bit left stale.
+    #[test]
+    fn a_destroy_unregisters_where_the_rules_say() {
+        use crate::content::DestroyRule;
+        let run = |rule: DestroyRule| {
+            let (mut b, [h, _]) = fight(tests()[0]);
+            let mut c = (*b.content).clone();
+            c.rules_mut().effects.destroy = rule;
+            b.content = Arc::new(c);
+            let r = b.player(0).unwrap();
+            b.present_collision(h);
+            let (p, bit) = (b.collision.get(h).panel, b.collision.get(h).bit);
+            let at = (p.y * 8 + p.x) as usize;
+            assert_ne!(b.collision.masks[at] & bit, 0, "registered");
+            crate::kinds::generic_destroy(&mut b, r);
+            b.collision.masks[at] & bit != 0
+        };
+        assert!(!run(DestroyRule::Unregisters));
+        assert!(run(DestroyRule::Frees));
+    }
+
     /// docs/design/exe4-map.md §18 item 4: a hit counts once more on a body
     /// standing on a panel whose type doubles its element: the test
     /// content's grass fire (EXE6's), and ice elec as EXE4's states it.
