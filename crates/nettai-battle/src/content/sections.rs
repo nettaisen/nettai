@@ -32,6 +32,10 @@ use crate::field::PanelType;
 #[serde(deny_unknown_fields)]
 struct ElementsSection {
     weakness: BTreeMap<String, [u8; 6]>,
+    /// The chip families, each name with its number (`ChipFamilies`).
+    families: BTreeMap<String, u8>,
+    /// The non-elemental family's name.
+    non_elemental: String,
     #[serde(default)]
     family_elements: BTreeMap<String, SecondaryElements>,
 }
@@ -395,7 +399,7 @@ pub(crate) const REQUIRED: &[&str] =
 /// the content's Rust tables when it has them.
 #[derive(Default)]
 struct Stated {
-    elements: Option<([[u8; 6]; 6], [SecondaryElements; 15])>,
+    elements: Option<([[u8; 6]; 6], ChipFamilies, Vec<SecondaryElements>)>,
     panels: Option<PanelRules>,
     reactions: Option<ReactionsSection>,
     sine: Option<Vec<i16>>,
@@ -415,7 +419,7 @@ impl Stated {
     /// Every section, as Rust tables state it.
     fn of(r: &Rules) -> Stated {
         Stated {
-            elements: Some((r.element_weakness, r.family_elements)),
+            elements: Some((r.element_weakness, r.chip_families.clone(), r.family_elements.clone())),
             panels: Some(r.panels.clone()),
             reactions: Some(ReactionsSection {
                 push: r.push_vectors,
@@ -484,10 +488,11 @@ impl Stated {
         let reactions = self.reactions.ok_or_else(|| missing("reactions"))?;
         let status = self.status.ok_or_else(|| missing("status"))?;
         panels.types.resize(PanelType::ALL.len(), PanelTypeRule::default());
-        let (element_weakness, family_elements) = self.elements.unwrap_or_default();
+        let (element_weakness, chip_families, family_elements) = self.elements.unwrap_or_default();
         let buster = self.buster.unwrap_or(BusterSection { recovery: Vec::new(), empty_hand: EmptyHandChip::default() });
         Ok(Rules {
             element_weakness,
+            chip_families,
             family_elements,
             panels,
             holding_banners: self.holding_banners.unwrap_or_default(),
@@ -587,15 +592,23 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         .ok_or_else(|| e(format!("{at}: weakness.{name} is not an element")))?;
                     weakness[i] = *row;
                 }
-                let mut families = [SecondaryElements::default(); ChipFamily::ALL.len()];
-                for (name, bits) in &s.family_elements {
-                    let f = ChipFamily::ALL
-                        .iter()
-                        .find(|&&f| serde_name(&f) == *name)
-                        .ok_or_else(|| e(format!("{at}: family_elements.{name} is not a chip family")))?;
-                    families[*f as usize] = *bits;
+                let mut by_number: Vec<(String, ChipFamily)> = s.families.iter().map(|(n, &f)| (n.clone(), ChipFamily(f))).collect();
+                by_number.sort_by_key(|&(_, f)| f);
+                if let Some(w) = by_number.windows(2).find(|w| w[0].1 == w[1].1) {
+                    return Err(e(format!("{at}: families.{} and families.{} are both {}", w[0].0, w[1].0, w[0].1.0)));
                 }
-                stated.elements = Some((weakness, families));
+                let non_elemental = by_number
+                    .iter()
+                    .find(|(n, _)| *n == s.non_elemental)
+                    .map(|&(_, f)| f)
+                    .ok_or_else(|| e(format!("{at}: non_elemental {:?} is none of the families", s.non_elemental)))?;
+                let chip_families = ChipFamilies { families: by_number, non_elemental };
+                let mut families = vec![SecondaryElements::default(); chip_families.families.last().map_or(0, |&(_, f)| f.0 as usize + 1)];
+                for (name, bits) in &s.family_elements {
+                    let f = chip_families.by_name(name).ok_or_else(|| e(format!("{at}: family_elements.{name} is none of the families")))?;
+                    families[f.0 as usize] = *bits;
+                }
+                stated.elements = Some((weakness, chip_families, families));
             }
             "panels" => {
                 let s: PanelsSection = r.read(spec, &at).map_err(e)?;

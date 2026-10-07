@@ -329,9 +329,10 @@ what OK turns into a transformation.
 ### 2.6 Chips and statuses
 
 - **The chip record** is shared (§2.2). The engine's `ChipData` fields map onto it, so an EXE5 chip definition has
-  the same shape. Not shared: EXE6's 13 chip families and the secondary elements they give (`ChipFamily`,
-  `family_elements`), `ChipTraits` (EXE6's list of special cases), and the damage formulas by SP deletion time and
-  by link navi level.
+  the same shape. Not shared: the chip families and the secondary elements they give (`ChipFamily`, a number of its
+  game's, and `family_elements`: each game's rules' `elements` section names its families with their numbers and
+  its non-elemental one; EXE4's has metal), `ChipTraits` (EXE6's list of special cases), and the damage formulas by
+  SP deletion time and by link navi level.
 - **Statuses** are definitions (`define.status`) with a timer from a fixed set (EXE6's nine: paralysis,
   confusion, blindness, immobilization, flash, submerged, invulnerable, freeze, bubble). Paralysis, freeze,
   bubble and invulnerability are in BN4 and EXE5 (K); confusion, blindness and immobilization (?). rules/status.luau
@@ -570,7 +571,7 @@ NaviStats-like layout), so EXE5's seams should fit it with less new work. The sa
 | `Supports`, `SpTimes` | setup.rs | EXE6's (supports perhaps EXE5's too, §2.3). |
 | `FadeMode::{BeastOut, BeastOutBack, Mode1Transform*}` | battle.rs | EXE6's fade table values; the fade table is per game. |
 | `actor::request::{CROSS_*, SELECT_SPECIAL, MODE9_A}` | actor.rs | EXE6's request bits. |
-| `ChipFamily`, `ChipTraits`, `ExtraChipFlags::{RUSH_CANCELS, FREE_SLOT_IN}` | content/chips.rs | EXE6's families and special cases. |
+| `ChipTraits`, `ExtraChipFlags::{RUSH_CANCELS, FREE_SLOT_IN}` | content/chips.rs | EXE6's special cases. (`ChipFamily` was EXE6's families; it is a number of its game's now, the rules' `elements.families`.) |
 | `Registry::Lockon`, `Rules::lockon`, `Rules::berserk`, `Rules::cross_special`, `Rules::sp_*` | nettai-content-api, content/rules.rs | EXE6's. |
 | Roles such as `gregar_roar`, `falzar_roar`, `beast_over_*`, `cross_death`, `beast_claw` | content/roles.rs, rules/roles.luau | EXE6's role set; roles become per game. |
 | `ActorField::{BeastLockon, BeastOutSpent}` (`BeastLockon` the framework's `Wrapped` since rules-in-Luau S3), `NaviState::Cross*`, `SideSpecial`, `Emotion` | nettai-content-api api.rs, core.d.luau | EXE6's API extension (§3.6). |

@@ -97,27 +97,11 @@ const ELEMENTS: u32 = 0x0870_9260;
 const ELEMENT_COUNT: u32 = 13;
 const ELEMENT_PALETTE: u32 = 0x0870_9DE0;
 const ELEMENT_SPRITE: (i16, i16) = (24, 80);
-/// The icons are by the chip record's element byte (+7), EXE5's order; the
-/// pack has them by the engine's family numbers (`ChipFamily`): for each,
-/// EXE4's byte (the program advance's and the special family's, past the
-/// icons, show the last, null's).
-const FAMILY_BYTES: [u32; 15] = [
-    0,  // fire
-    1,  // aqua
-    2,  // elec
-    3,  // wood
-    5,  // plus
-    6,  // sword
-    8,  // cursor
-    9,  // summon
-    10, // wind
-    11, // break
-    12, // null
-    12, // program advance
-    12, // special
-    4,  // recovery
-    7,  // invisible
-];
+/// The icons are by the chip record's element byte (+7), EXE4's own family
+/// numbers, which its rules' families are (`elements.families`): 0 to 15,
+/// those past the icons (13 none's, 14 the program advance's, 15 the
+/// souls') showing the last, null's.
+const FAMILIES: u32 = 16;
 /// The slots' codes (16x8: 0x0801F5CC, by code, 27 of them; a code past
 /// them, the empty slot's, the fill solid 1: 0x08020EDC) and the empty
 /// slot's icon (0x0801F59C).
@@ -291,7 +275,7 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         },
         codes: glyphs(CODES),
         elements: Tiles {
-            pixels: FAMILY_BYTES.iter().flat_map(|&b| tiles(rom, ELEMENTS + 0x80 * b.min(ELEMENT_COUNT - 1), 0x80).pixels).collect(),
+            pixels: (0..FAMILIES).flat_map(|b| tiles(rom, ELEMENTS + 0x80 * b.min(ELEMENT_COUNT - 1), 0x80).pixels).collect(),
         },
         element_colors: Vec::new(),
         digits: glyphs(DIGITS),
