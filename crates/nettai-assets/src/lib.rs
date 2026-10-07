@@ -268,7 +268,8 @@ pub struct Background {
     pub anims: Vec<GfxAnim>,
 }
 
-/// A graphics animation: tiles or palettes replaced on a schedule.
+/// A graphics animation: tiles or palettes replaced on a schedule, or the
+/// palettes shown shifted by a color.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GfxAnim {
     pub target: AnimTarget,
@@ -284,6 +285,13 @@ pub enum AnimTarget {
     Tiles { first: u16, count: u16 },
     /// Replaces background palettes `first..first + count`.
     Palettes { first: u8, count: u8 },
+    /// Shifts background palettes `first..first + count` as shown (after
+    /// the palettes' own animations) by each frame's `shift`, per channel
+    /// and saturating: brightened by adding it, or darkened by taking it
+    /// away (EXE4's GFX animation command 0x0C, a palette transform of
+    /// mode 0 or 4 that 0x0800258C runs each frame on the palettes it
+    /// shows: EXE4's background 0x09, background 0x03 darkened).
+    PaletteShift { first: u8, count: u8, darken: bool },
     #[default]
     Nothing,
 }
@@ -292,8 +300,20 @@ pub enum AnimTarget {
 pub struct GfxAnimFrame {
     pub tiles: Tiles,
     pub palettes: Vec<Palette>,
+    /// The color (BGR555) a palette shift adds or takes away.
+    pub shift: u16,
     /// Frames this one shows for.
     pub delay: u16,
+}
+
+/// A color shifted by `by`, per 5-bit channel, saturating: brightened
+/// (`darken` false) or darkened (`AnimTarget::PaletteShift`).
+pub fn shift_color(c: u16, by: u16, darken: bool) -> u16 {
+    (0..3).fold(0, |out, k| {
+        let (a, b) = ((c >> (5 * k)) & 31, (by >> (5 * k)) & 31);
+        let ch = if darken { a.saturating_sub(b) } else { (a + b).min(31) };
+        out | ch << (5 * k)
+    })
 }
 
 // ---- HUD -----------------------------------------------------------------------

@@ -167,7 +167,16 @@ pub struct LayoutDoc {
     pub name_bar: u16,
     pub form_names: u16,
     pub slot_blank: u8,
+    /// (Left out: 8, EXE6's.)
+    #[serde(default = "detail_blank")]
+    pub detail_blank: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_palette: Option<u8>,
     pub ok_cursor: CursorDoc,
+}
+
+fn detail_blank() -> u8 {
+    8
 }
 
 /// `nettai_assets::CursorPlace`: the place, and each frame's four corners
@@ -205,6 +214,8 @@ impl From<CustomLayout> for LayoutDoc {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor,
         } = l;
         LayoutDoc {
@@ -220,6 +231,8 @@ impl From<CustomLayout> for LayoutDoc {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor: ok_cursor.into(),
         }
     }
@@ -240,6 +253,8 @@ impl From<LayoutDoc> for CustomLayout {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor,
         } = l;
         CustomLayout {
@@ -255,6 +270,8 @@ impl From<LayoutDoc> for CustomLayout {
             name_bar,
             form_names,
             slot_blank,
+            detail_blank,
+            empty_palette,
             ok_cursor: ok_cursor.into(),
         }
     }
@@ -290,10 +307,10 @@ pub struct ButtonDoc {
     /// own: the icons' image's palette rows after the first, in order (none:
     /// an empty list).
     pub icon_versions: Vec<String>,
-    /// Its own place on the window, [column, row, first tile] (left out:
-    /// the patch list's, in the slots' run).
+    /// Its own place on the window, [column, row, first tile, palette]
+    /// (left out: the patch list's, in the slots' run).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub place: Option<[u16; 3]>,
+    pub place: Option<[u16; 4]>,
 }
 
 /// Another language's pictures with words: its own files, named with the
@@ -409,7 +426,7 @@ fn button_doc(image: &mut Image, name: &str, file: &str, b: &ButtonPictures, fra
         held_at: b.held_at.map(|(x, y)| [x, y]),
         icons,
         icon_versions,
-        place: b.place.map(|p| [p.x as u16, p.y as u16, p.first_tile]),
+        place: b.place.map(|p| [p.x as u16, p.y as u16, p.first_tile, p.palette as u16]),
     }
 }
 
@@ -663,7 +680,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
                 icons,
                 icon_palette,
                 icon_palettes,
-                place: b.place.map(|[x, y, first_tile]| ButtonPlace { x: x as u8, y: y as u8, first_tile }),
+                place: b.place.map(|[x, y, first_tile, palette]| ButtonPlace { x: x as u8, y: y as u8, first_tile, palette: palette as u8 }),
             },
         ))
     };

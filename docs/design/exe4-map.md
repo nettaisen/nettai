@@ -454,7 +454,23 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   as a chip is picked), no navi's; the UNITE button (`soul`) is drawn at its own place (0x0801FF14: 3x2 at column
   11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) over
   slots 8 and 9 (0x08709E00, three states). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
-  button's tiles are the pack's Japanese lettering.
+  button's tiles are the pack's Japanese lettering. Also the layout's `detail_blank` (a blank code or damage cell is
+  solid 7, 0x08020E5C: 0x0801FD08, 0x0801FE2A) and `empty_palette` (the empty icon in palette 9: the slots' patches'
+  own, which 0x0801FB00 leaves on an empty slot and sets on a picked one; 0x0801FB6E sets it on the picked column's
+  empty cells, 11 on a filled one).
+- **Drawn as the original** (frames compared with the lab's mGBA shots, tools/frontend-compare: custom/cannon,
+  describe, pause, three-picks and flow/buster-side1, to frame 270, where the engine stops on the screen's unported
+  sounds): the field and its panels; the backgrounds, 0x02's and 0x09's with their animations (0x09 is 0x03's
+  picture darkened each frame by a color that changes, GFX animation command 0x0C: a palette transform, 0x080024BC,
+  subtracting per channel, mode 4, which 0x0800258C runs each frame on the palettes shown: the pack's `darkens`),
+  the background's clock without the first round's head start (`StageClock`); the emotion window's face; the banners
+  as they unsquash and squash (0x08014994: from 0xC0 to 0x40 over the slide's 9 ticks, a line, as EXE6's over its 5;
+  no bounce in the hold: the rules' `effects.banner.bounces`); the custom screen as it opens (the window, the chip
+  window, the slots' palettes, the picked column, the element sprite, the window's emblem). Not yet compared: the
+  screen past its open (the engine stops), the UNITE button and the empty slots of the second row (content/exe4
+  registers no buttons and deals no empty slots yet), the HP box (the intro doesn't show it yet), and MegaMan's
+  colors: the original draws him in his sprite's palette row 4 (0x0821B854) with the normal face, where the base
+  form says row 0.
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).

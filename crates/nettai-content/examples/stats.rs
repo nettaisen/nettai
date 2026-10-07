@@ -234,6 +234,9 @@ pub fn tiles_survey(b: &Bundle) {
             let t = match a.target {
                 AnimTarget::Tiles { first, count } => format!("tiles {first}+{count}"),
                 AnimTarget::Palettes { first, count } => format!("palettes {first}+{count}"),
+                AnimTarget::PaletteShift { first, count, darken } => {
+                    format!("{} {first}+{count}", if darken { "darkens" } else { "brightens" })
+                }
                 AnimTarget::Nothing => "nothing".into(),
             };
             let delays: Vec<u16> = a.frames.iter().map(|f| f.delay).collect();

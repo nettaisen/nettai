@@ -76,15 +76,24 @@ fn bundle() -> Bundle {
             GfxAnim {
                 target: AnimTarget::Tiles { first: 2, count: 3 },
                 frames: vec![
-                    GfxAnimFrame { tiles: tiles(3, 5), palettes: vec![], delay: 64 },
-                    GfxAnimFrame { tiles: tiles(3, 6), palettes: vec![], delay: 1 },
+                    GfxAnimFrame { tiles: tiles(3, 5), palettes: vec![], shift: 0, delay: 64 },
+                    GfxAnimFrame { tiles: tiles(3, 6), palettes: vec![], shift: 0, delay: 1 },
                 ],
                 repeat_from: Some(1),
             },
             GfxAnim {
                 target: AnimTarget::Palettes { first: 0, count: 1 },
-                frames: vec![GfxAnimFrame { tiles: Tiles::default(), palettes: vec![palette(30)], delay: 12 }],
+                frames: vec![GfxAnimFrame { tiles: Tiles::default(), palettes: vec![palette(30)], shift: 0, delay: 12 }],
                 repeat_from: None,
+            },
+            // A palette darkened by a color that changes (EXE4's background 0x09).
+            GfxAnim {
+                target: AnimTarget::PaletteShift { first: 0, count: 1, darken: true },
+                frames: vec![
+                    GfxAnimFrame { shift: 0x2228, delay: 8, ..Default::default() },
+                    GfxAnimFrame { shift: 0x2669, delay: 60, ..Default::default() },
+                ],
+                repeat_from: Some(0),
             },
         ],
     };
@@ -226,6 +235,8 @@ fn custom() -> CustomScreen {
             name_bar: 0x1D6,
             form_names: 0x139,
             slot_blank: 1,
+            detail_blank: 8,
+            empty_palette: None,
             ok_cursor: cursor(0),
         },
         // A special slot's button with icons, and two over the slots' row
@@ -337,6 +348,8 @@ fn custom_exe4() -> CustomScreen {
     let mut c = custom();
     c.element_colors.clear();
     c.layout.element = 0;
+    c.layout.detail_blank = 7;
+    c.layout.empty_palette = Some(9);
     c.element_sprite = Some(ElementSprite { x: 24, y: 80, palette: palette(110) });
     c.cursor_palette = Some(palette(111));
     c.emblems.clear();
@@ -351,7 +364,7 @@ fn custom_exe4() -> CustomScreen {
         frames: (0..4).map(frame).collect(),
         steps: vec![Some(1), Some(2), Some(3), None, Some(0), None, Some(1), None, None],
     });
-    c.buttons[0].1.place = Some(ButtonPlace { x: 11, y: 17, first_tile: 0x52 });
+    c.buttons[0].1.place = Some(ButtonPlace { x: 11, y: 17, first_tile: 0x52, palette: 9 });
     c
 }
 
