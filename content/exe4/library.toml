@@ -116,6 +116,15 @@ standard = [
     "hicannon",
     "m-cannon",
     "airshot",
+    "vulcan1",
+    "vulcan2",
+    "vulcan3",
+    "minibomb",
+    "sword",
+    "wideswrd",
+    "longswrd",
+    "wideblde",
+    "longblde",
     "lance",
     "crakout",
     "dublcrak",
@@ -130,4 +139,8 @@ standard = [
     "recov300",
     "panlgrab",
     "areagrab",
+    "atk-10",
+]
+mega = [
+    "atk-30",
 ]
