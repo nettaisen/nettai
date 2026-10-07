@@ -447,7 +447,6 @@ fn started(content: &Arc<Content>, m: &Match, ticks: usize) -> nettai_battle::Ba
 /// with mood 128 and his plain face; a light one (1000) at 190.
 #[test]
 fn a_dark_side_starts_dark() {
-    use nettai_battle::kinds::player::Emotion;
     let content = exe5_content();
     let at = |value: Option<u16>| {
         let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
@@ -455,14 +454,14 @@ fn a_dark_side_starts_dark() {
             m.sides[0].set_fact(&content, "karma", &number(v as i64)).unwrap();
         }
         let b = started(&content, &m, 40);
-        (b.stats[0].mood, nettai_battle::kinds::player::emotion(&b, 0))
+        (b.stats[0].mood, nettai_battle::kinds::player::emotion_name(&b, 0).to_string())
     };
-    assert_eq!(at(Some(100)), (0, Emotion::WornOut));
-    assert_eq!(at(None), ((500 / 20 + 103) as u8, Emotion::Normal));
-    assert_eq!(at(Some(1000)), (190, Emotion::Normal));
+    assert_eq!(at(Some(100)), (0, "worn_out".to_string()));
+    assert_eq!(at(None), ((500 / 20 + 103) as u8, "normal".to_string()));
+    assert_eq!(at(Some(1000)), (190, "normal".to_string()));
     // The face a mood of 0 shows: the base form's dark one.
     let base = content.base_form_for(crate::ids::navi(&content, "exe5", "megaman").unwrap());
-    let face = content.form(base).mugshot.unwrap().of(Emotion::WornOut);
+    let face = content.form(base).mugshot.unwrap().of("worn_out");
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "megaman-dark"), Some(face.0));
 }
 

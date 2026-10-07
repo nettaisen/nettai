@@ -104,17 +104,18 @@ pub enum Graphics {
     Warning,
 }
 
-/// An emotion's number in a [`Lookup::FormFace`] (`sub_8015B54`'s code;
-/// EXE5's worried, its own 1, 6; 0x10 more for the form's second set).
-pub fn emotion_number(e: nettai_battle::kinds::player::Emotion) -> u8 {
-    use nettai_battle::kinds::player::Emotion;
-    match e {
-        Emotion::Normal => 0,
-        Emotion::Tired => 1,
-        Emotion::FullSynchro => 2,
-        Emotion::Angry => 3,
-        Emotion::WornOut => 5,
-        Emotion::Worried => 6,
+/// The number in a [`Lookup::FormFace`] of the emotion named `name` (the
+/// games' emotions by `sub_8015B54`'s code; EXE5's worried, its own 1, 6;
+/// another name 0xF; 0x10 more for the form's second set).
+pub fn emotion_number(name: &str) -> u8 {
+    match name {
+        "normal" => 0,
+        "tired" => 1,
+        "full_synchro" => 2,
+        "angry" => 3,
+        "worn_out" => 5,
+        "worried" => 6,
+        _ => 0xF,
     }
 }
 

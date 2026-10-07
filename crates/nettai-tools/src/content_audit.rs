@@ -34,7 +34,6 @@ use nettai_assets::Bundle;
 use nettai_battle::Content;
 use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SoundRole, SpriteId};
 use nettai_battle::field::PanelType;
-use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 use nettai_render::audit::{Lookup, Problems};
 use nettai_render::packs::Packs;
@@ -194,10 +193,6 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
     out
 }
 
-/// The emotions a form's faces are by.
-const EMOTIONS: [Emotion; 6] =
-    [Emotion::Normal, Emotion::Tired, Emotion::FullSynchro, Emotion::Angry, Emotion::WornOut, Emotion::Worried];
-
 /// Every lookup, in one language (`text`, the HUD's lettering in `packs`).
 fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a::SoundBank>]>, p: &mut Problems) {
     let own = packs.own();
@@ -297,8 +292,9 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
             }
         }
     }
+    // (A form's faces by each of its game's emotions.)
     for i in 0..c.defs.forms.len() {
-        for emotion in EMOTIONS {
+        for emotion in &c.rules().emotion.names {
             for variant in [false, true] {
                 lookups::form_face(packs, c, FormHandle(i as u16), emotion, variant, p);
             }
