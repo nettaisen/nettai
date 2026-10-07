@@ -523,11 +523,25 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
   game state's +9, read through the toolkit's pointer), `hud_tasks`, `banner` (the banner block 0x02037CE0's 0x10
   bytes: its +1 the banner, 0x0C the turn's start, 4 "ENEMY DELETED", 8 "MEGAMAN DELETED"); `input` (each player's
   held, pressed and released); `objects` in update order (type, index, flags, params, state, panel, alliance, `flip`:
-  the record's +0x17, which EXE4's code reads where EXE6's reads +0x0E, §3.1; hp, max HP, position, timer, animation,
-  status); `panels` (the 6x3 field's type and owner, the panel's +0 and +1); `chip_blocks` (both, 0x50 bytes).
+  the record's +0x17, which EXE4's code reads where EXE6's reads +0x0E, §3.1: the object's element, which the replay
+  compares as such; hp, max HP, position, timer, animation, status: the collision record's hit flags, +0x54, in the
+  recordings from oracle-trace's `collision_status`, 0 in the lab's first ones, which read EXE6's +0x3C); `panels`
+  (the 6x3 field's type and owner, the panel's +0 and +1); `chip_blocks` (both, 0x50 bytes, EXE6's layout).
 - **sounds:** a line per call each battle frame queued (the frame, the m4a call, its arguments): EXE4's queue holds
   SongNumStart, MPlayAllStop, VolumeControl (the m4a players by EXE6's numbering, EXE4's 0x1210 further), FadeOut,
   SongNumStop, ImmInit and FadeIn (§3.4).
+
+**The decode and the replay** are exe4-compat's (`codec`: the 0x40-byte NaviStats by its fields, the panels, the chip
+blocks, the link record of §18 item 23; `trace`, feature `trace`: the lines, their decode, a round's setup in the
+engine's terms, the buttons fed, the comparison, `run_round`), as exe5-compat's are EXE5's. A round's stage is the
+settings record's layout and actor list (compat's stages.toml; the other ROMs' records are games.toml's distance
+from Red Sun US's); its background the record's +5; its stats the recorded block over the navi's fresh stats, an
+unported field (supports, a panel trail, Full Synchro or an aura at the start, a color, All Guard) a need that stops
+the setup. The compat tables kinds.toml (the object kinds' pools and numbers), actions.toml (the navi actions past the
+framework's states, which are EXE5's order: idle 6, a step 7, the buster 8, Cannon 0x0B, the charged shot 0x24) and
+records.toml (navis, weapon routines, souls, auras by number) are written by hand as the replays reach them.
+The verification workspace's trace-tests `exe4_replay` and sound-tests `exe4_sounds` run them over data/traces/lab-exe4;
+nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
 
 ## 18. Engine gaps (must close)
 
@@ -646,7 +660,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     flag 0x1184 or the mode; +0x36 set to 500 when 0x08006570 says so), then 0x2C bytes from 0x02001610 (+0x4C) and
     0x02007230 (+0x78), 0x10 from the toolkit's +0x64 (+0xA4), the save's +0x20 and +0x24 (+0xB4, +0xB8), 8 bytes from
     0x02035CA0 (+0xBC). 0x080087A8 unpacks the received records (0x0203E390 side 0, 0x0203E490 side 1) into the
-    NaviStats and seeds the battle's RNG2 from side 0's record (0x0203E394).
+    NaviStats and seeds the battle's RNG2 from side 0's record (0x0203E394). **Done:** exe4-compat's
+    `codec::LinkRecord` (the magic checked; the RNG2, the settings record and the NaviStats by their fields, the rest
+    kept whole: nothing in the battle reads it past the unpack).
 
 ### 18.4 MegaMan, his weapons, the objects
 
