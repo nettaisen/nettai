@@ -25,7 +25,7 @@ use nettai_content_api::RecordHandle;
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionId, f1};
 use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
-use crate::field::{self, PanelType, pflags};
+use crate::field::{self, pflags};
 use crate::kinds::common::{self, Progress};
 use crate::object::{DragStep, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3, flags};
 
@@ -1085,10 +1085,10 @@ fn step_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     b.unreserve_panel(r, fp.x, fp.y);
     let aqua = b.collision.get(collision(b, r)).element == 2;
     let under = b.field.panel(fp.x, fp.y).map(|p| p.kind);
-    if !aqua && under == Some(PanelType::Ice) {
+    if !aqua && under.is_some_and(|k| b.game_rules().panels.is_named(k, "ice")) {
         let o = b.objects.get_mut(r);
         o.phase_init = o.phase_init.wrapping_add(1);
-    } else if under.is_some_and(|k| b.game_rules().panels.types[k as usize].stops_slides)
+    } else if under.is_some_and(|k| b.game_rules().panels.rule(k).stops_slides)
         && f1_of(b, r) & f1::FLOATSHOE == 0
     {
         // (EXE4's pitfall stops it: 0x080106B8 and its kin.)

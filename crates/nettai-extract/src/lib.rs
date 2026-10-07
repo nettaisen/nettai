@@ -184,7 +184,12 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
             &names,
         ),
     };
-    let mut placeholders = placeholders::complete(&mut graphics, &names);
+    let panel_names = match game {
+        Game::Exe4 => exe4::graphics::panel_names(),
+        Game::Exe5 => exe5::graphics::panel_names(),
+        Game::Exe6 => exe6::graphics::panel_names(),
+    };
+    let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
     let (mut sound, missing_songs) = if let Some(rom) = sources.iter().find(|r| r.is_present()) {
         let (bank, failures) =
             m4a::rom::extract(&rom.0).map_err(|e| Error(format!("reading sound: {e}")))?;

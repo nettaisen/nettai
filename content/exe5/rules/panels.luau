@@ -57,6 +57,10 @@ return {
     -- EXE5's panel types by its own numbers (a panel trail's byte, NaviStats +0x12, names one: the cards' water a sea,
     -- magnet a metal panel).
     numbers = { "missing", "broken", "normal", "cracked", "poison", "metal", "grass", "ice", "lava", "holy", "sea" },
+    -- The types the engine's own code needs: the missing panel, which no type change reaches; what a break and a
+    -- crack make (1 and 3); the normal panel, what a mend, an expiry and a clearing leave (0x0800A998, 0x08016D14:
+    -- 2).
+    roles = { missing = "missing", broken = "broken", cracked = "cracked", normal = "normal" },
     start_visible = {
         { false, false, false, false, false, false, false, false },
         { false, true, true, true, true, true, true, false },

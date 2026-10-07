@@ -47,8 +47,8 @@ pub fn definitions(c: &Content, r: &mut Report) {
         // (The panels' burn and splash are needed only by a game whose own
         // panels burn or hold: EXE5's lava and sea.)
         let own = &c.rules().panels.types[..];
-        let needs_burn = own.iter().any(|t| t.named && t.burn.is_some());
-        let needs_splash = own.iter().any(|t| t.named && t.holds.is_some());
+        let needs_burn = own.iter().any(|t| t.burn.is_some());
+        let needs_splash = own.iter().any(|t| t.holds.is_some());
         for role in StatusRole::ALL {
             unfilled("statuses", role.name(), roles.statuses.contains_key(&role));
         }
