@@ -442,7 +442,19 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   0 to 5); the chatbox (0x0804E3B4: one box, which descriptions show in too). The Japanese ROMs' banners and
   "カスタム中…" are the pack's Japanese lettering. Not drawn yet: "PLAN-B..." (0x08016AE8's list, the other waiting
   words, 作戦変更中… in Japanese), shown while the other player is in what group A's screen calls the second screen.
-- **Placeholders** (extraction.txt's first line): the custom screen, whose routines are EXE4's own (§5).
+- **The custom screen** (R, Red Sun US's; exe4/custom.rs), as EXE5's in its parts, from EXE4's own routines: the
+  window (0x0801DC28: the map 0x0870CC80, its patch list 0x0801DD90 from tile 0x9C, one frame color for every chip,
+  0x0870C340) and the HUD's load list (the frame's tiles, the picked column's cells, "FINAL TURN", the UNITE button's
+  and the emblem's tiles); the chip window (0x0801FC40: the name, picture, code and damage; the element icon a sprite
+  of its own palette, 0x0801EECC, by the record's element byte in EXE5's order); the slots (0x0801FB00: palettes 11,
+  12 gray, 9 picked); OK's two pictures; the cursor's corners (0x0801EDB4's tables, its own palette 0x0870C360,
+  sprite palette 13); the Regular chip's frame. What EXE5 doesn't have, the pack says (`CustomScreen`'s
+  `element_sprite`, `cursor_palette`, `window_emblem`, a button's `place`): the emblem over the picked column is the
+  window's own orb (0x08020028: four frames of 2x3 on the map at column 12, row 0, turned by the steps of 0x08020078
+  as a chip is picked), no navi's; the UNITE button (`soul`) is drawn at its own place (0x0801FF14: 3x2 at column
+  11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) over
+  slots 8 and 9 (0x08709E00, three states). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
+  button's tiles are the pack's Japanese lettering.
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).

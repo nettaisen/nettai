@@ -394,5 +394,8 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
             })
             .collect(),
         languages: Vec::new(),
+        element_sprite: None,
+        cursor_palette: None,
+        window_emblem: None,
     }
 }
