@@ -91,7 +91,7 @@ patch_cards.CHOICE = {
 -- The element bytes of the bodies (NaviStats +0x10).
 patch_cards.BODY = { null = 0, fire = 1, aqua = 2, elec = 3, wood = 4 } :: { [string]: number }
 -- What a step leaves behind, by the panel the effect names (the trail byte, NaviStats +0x12: 0x08138802's rows,
--- EXE5's panel types: water its sea, magnet its metal, holy its 9).
+-- EXE5's panel types: water its sea, magnet its magnet panel, holy its 9).
 patch_cards.TRAILS = {
     crack = 3,
     hole = 1,

@@ -28,7 +28,7 @@ use nettai_content_api::{
     ObstacleCrush, ObstacleRequest, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
-use nettai_content_api::{ObjectRef, PanelHook, RulesHook};
+use nettai_content_api::{ObjectRef, PanelCall, RulesHook, SlideAnswer};
 use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
@@ -577,6 +577,10 @@ impl UserData for Object {
             let f = named(&name, "navi state", NaviState::from_name)?;
             with(|api, _| api.set_navi_state(this.0, f, on).map_err(api_error))
         });
+        methods.add_method("form_trait", |_, this, name: mlua::LuaString| {
+            let name = name.to_str()?.to_string();
+            with(|api, _| api.form_trait(this.0, &name).map_err(api_error))
+        });
         for &pad in Pad::ALL {
             methods.add_method(pad.name(), move |_, this, name: mlua::LuaString| {
                 let key = named(&name, "button", Key::from_name)?;
@@ -942,6 +946,10 @@ impl UserData for Collision {
         methods.add_method("add_hit_mod", |_, this, bits: LuaValue| {
             let bits = u8_arg(bits, "bits")?;
             with(|api, _| Ok(api.add_hit_mod(this.0, bits)))
+        });
+        methods.add_method("add_final_hit_mod", |_, this, bits: LuaValue| {
+            let bits = u8_arg(bits, "bits")?;
+            with(|api, _| Ok(api.add_final_hit_mod(this.0, bits)))
         });
     }
 }
@@ -2703,10 +2711,13 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
-        // A panel type's: the body, and whether it is a player's navi
-        // (`burn`'s).
-        HookCall::Panel { hook: PanelHook::Burn, body, player } => vec![obj(body)?, LuaValue::Boolean(player)],
-        HookCall::Panel { hook: PanelHook::Stand, body, .. } => vec![obj(body)?],
+        // A panel type's: the body, then `burn`'s whether it is a player's
+        // navi, `slide`'s what reaches the panel.
+        HookCall::Panel { body, call: PanelCall::Burn { player } } => vec![obj(body)?, LuaValue::Boolean(player)],
+        HookCall::Panel { body, call: PanelCall::Stand | PanelCall::Rest | PanelCall::MoveEnd } => vec![obj(body)?],
+        HookCall::Panel { body, call: PanelCall::Slide { how } } => {
+            vec![obj(body)?, LuaValue::String(lua.create_string(how.name())?)]
+        }
         HookCall::Given { side, chip } => {
             let chip = match chip {
                 Some(c) => LuaValue::Table(bound.def_value(Registry::Chip, c.0)?),
@@ -2765,6 +2776,24 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         }
         // A navi's role hook may hand back an object (`navi_deleted`'s).
         HookCall::RoleNavi { .. } => Ok(object_arg(&v, "the object a role hook returns")?.map_or(Value::Nil, Value::Object)),
+        // A panel type's `rest`: whether it handled the body.
+        HookCall::Panel { call: PanelCall::Rest, .. } => match v {
+            LuaValue::Boolean(b) => Ok(Value::Bool(b)),
+            LuaValue::Nil => Ok(Value::Bool(false)),
+            _ => Err(mlua::Error::runtime(format!("a panel type's `rest` returns whether it handled the body, not a {}", v.type_name()))),
+        },
+        // Its `slide`: an answer's number (1 up), nil none.
+        HookCall::Panel { call: PanelCall::Slide { .. }, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::String(s) => {
+                let s = s.to_str()?;
+                match SlideAnswer::ALL.iter().position(|a| a.name() == &*s) {
+                    Some(i) => Ok(Value::Int(i as i64 + 1)),
+                    None => Err(mlua::Error::runtime(format!("a panel type's `slide` answers \"on\", \"carry\", \"stop\" or nil, not {:?}", &*s))),
+                }
+            }
+            _ => Err(mlua::Error::runtime(format!("a panel type's `slide` answers a name or nil, not a {}", v.type_name()))),
+        },
         HookCall::InstantChip { .. }
         | HookCall::RoleEncased { .. }
         | HookCall::NaviLeft { .. }

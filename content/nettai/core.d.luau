@@ -179,6 +179,16 @@ export type NaviStateFlag =
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
+-- A navi's slide type: none, a push's, by the arena's rows and the move's
+-- direction (the rules' `reactions.slide_rows`: ice's), the panel's own carry
+-- (a type's `carries` or `carries_by_move`: a road's, EXE5's magnet's).
+export type SlideType = "none" | "push" | "rows" | "panel"
+-- What reaches a panel in a panel type's `slide`: a navi's slide, its drag,
+-- an obstacle's slide.
+export type SlideHow = "slide" | "drag" | "obstacle"
+-- A panel type's `slide`'s answer: one panel further, carried the type's way
+-- (a navi's slide), stopped.
+export type SlideAnswer = "on" | "carry" | "stop"
 -- What other objects ask of a field object (an obstacle).
 export type ObstacleFlag =
     "destroy"
@@ -338,6 +348,8 @@ declare extern type Collision with
     function add_mood_damage(self, amount: number): ()
     -- Set hit modifier bits this window, both sides' too.
     function add_hit_mod(self, bits: number): ()
+    -- Set hit modifier bits this window, the final modifier's alone.
+    function add_final_hit_mod(self, bits: number): ()
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -402,6 +414,8 @@ declare extern type Object with
     no_sprite_update: boolean
     -- A navi's drag reaction step (the byte other kinds use otherwise).
     drag_step: DragStep
+    -- A navi's slide type, which its slide request starts.
+    slide_type: SlideType
     -- It holds a panel reservation (released when it is destroyed).
     holds_reservation: boolean
     sprite: Sprite
@@ -474,6 +488,8 @@ declare extern type Object with
     -- The actor data (read-only unless noted).
     actor_type: ActorType
     ai_index: number
+    -- The ticks before a panel may carry the navi again (read-only).
+    slide_cooldown: number
     -- The sprite overlay attached for the current attack (writable).
     overlay: Object?
     -- Writable links: the target marker (EXE6's Beast Out lock-on marker),
@@ -676,6 +692,8 @@ declare extern type Object with
     function set_request(self, flag: Request, on: boolean): ()
     function navi_state(self, flag: NaviStateFlag): boolean
     function set_navi_state(self, flag: NaviStateFlag, on: boolean): ()
+    -- Whether its side's form has the trait (a form definition's `traits`).
+    function form_trait(self, name: FormTrait): boolean
     -- The buttons, and the record kept while the battle is dimmed.
     function held(self, key: Key): boolean
     function pressed(self, key: Key): boolean
@@ -2374,7 +2392,7 @@ export type FormEffect =
 --     (EraseCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (EXE5's MagnetSoul);
+--   stands_on_magnet: a magnet panel doesn't slide the navi (EXE5's MagnetSoul);
 --   controlled: the side's rules' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
@@ -2392,7 +2410,7 @@ export type FormTrait =
     "status_immune"
     | "erases"
     | "special_holds_buster"
-    | "stands_on_metal"
+    | "stands_on_magnet"
     | "controlled"
     | "shows_target_marker"
     | "afterimages_stay"

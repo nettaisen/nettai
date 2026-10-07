@@ -116,6 +116,10 @@ pub struct BarrierSpec {
 /// A navi's drag reaction steps by name (BattleObject+0x0D: the game's 0,
 /// 4, 8).
 pub const DRAG_STEPS: [&str; 3] = ["start", "slide", "recover"];
+/// A navi's slide types (BattleObject+0x0E): none, a push's, by the arena's
+/// rows and the move's direction (ice's), the panel's own carry (a road's,
+/// EXE5's magnet's).
+pub const SLIDE_TYPES: [&str; 4] = ["none", "push", "rows", "panel"];
 
 fn enum_type(names: &[&str]) -> FieldType {
     FieldType::Enum(names.iter().map(|s| s.to_string()).collect())
@@ -212,6 +216,9 @@ named_fields! {
         NoSpriteUpdate = "no_sprite_update", Bool, rw;
         /// A navi's drag reaction step (BattleObject+0x0D).
         DragStep = "drag_step", enum_type(&DRAG_STEPS), rw;
+        /// A navi's slide type ([`SLIDE_TYPES`]), which its slide request
+        /// starts.
+        SlideType = "slide_type", enum_type(&SLIDE_TYPES), rw;
         /// It holds a panel reservation (released when it is destroyed).
         HoldsReservation = "holds_reservation", Bool, rw;
     }
@@ -288,6 +295,9 @@ named_fields! {
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;
+        /// The ticks before a panel may carry the navi again (its slide of
+        /// type 3's end sets 5; `sub_801A36A` counts it down).
+        SlideCooldown = "slide_cooldown", U16, ro;
         /// The target marker (EXE6's Beast Out lock-on marker).
         TargetMarker = "target_marker", Object, rw;
         /// The charge glow.
@@ -1211,6 +1221,12 @@ pub trait CoreApi {
     fn add_mood_damage(&mut self, o: ObjectRef, amount: u16);
     /// Set hit modifier bits on `o` this window, both sides' too.
     fn add_hit_mod(&mut self, o: ObjectRef, bits: u8);
+    /// Set hit modifier bits on `o` this window, the final modifier's alone
+    /// (EXE4's ice's push).
+    fn add_final_hit_mod(&mut self, o: ObjectRef, bits: u8);
+    /// Whether the form of `o`'s side has the trait named `name` (a form
+    /// definition's `traits`).
+    fn form_trait(&self, o: ObjectRef, name: &str) -> ApiResult<bool>;
     /// `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
     /// count (what the fight's result reads) to 0 and the round's time-up
     /// byte set. (It also sets battle flag 8, which nothing in EXE4 reads.)
