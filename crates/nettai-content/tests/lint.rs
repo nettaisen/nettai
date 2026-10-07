@@ -279,7 +279,7 @@ fn exe5s_rules_are_its_games() {
     assert_eq!(five.element_weakness, six.element_weakness);
     assert_eq!(five.sine, six.sine);
     assert_eq!(five.holding_banners.len(), 3);
-    assert_eq!(five.hp_bug_periods, six.hp_bug_periods);
+    assert_eq!((five.hp_drain, five.custom_drain), (six.hp_drain, six.custom_drain));
     // The ported chips: EXE5's own, apart from EXE6's of the same key.
     for key in ["cannon", "minibomb", "energbom", "panlgrab", "antiswrd", "holypanl", "fullcust"] {
         assert!(d.chip_by_key(&format!("{key}")).is_some(), "{key}");
