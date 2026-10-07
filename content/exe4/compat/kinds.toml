@@ -4,6 +4,7 @@
 # own; `engine/...` the engine's.
 
 "engine/player" = { pool = "actor", index = 0x00 }
+"engine/full-synchro-aura" = { pool = "actor", index = 0x5E, scratch_position = true }
 "engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
 "engine/effect" = { pool = "effect", index = 0x00 }
 "engine/spark" = { pool = "effect", index = 0x04 }

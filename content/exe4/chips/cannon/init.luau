@@ -1,13 +1,13 @@
 --!strict
 -- Cannon (EXE4 chip 0x001; its record at 0x080197EC + 0x2C): EXE4's cannon, action 0x0B (0x080EB854), its variant 0
--- (the attack's +3). On its first tick the navi shows animation 9 with the cannon held (attachment row 0, 0c-01, its
--- animation the navi's number); on the 15th the cannon's sound (0x8C) and the cannon shot (projectile row 1) from the
+-- (the attack's +3). On its first tick the navi shows animation 9, opens its counter window (0x0800BA66: 16 ticks in
+-- a netbattle) and holds the cannon (attachment row 0, 0c-01, its animation the navi's number); on the 15th the cannon's sound (0x8C) and the cannon shot (projectile row 1) from the
 -- panel in front, with the attack's damage word (its +6 halfword added: 0 for a chip, §18); after 29 ticks the recovery: animation 8 for 4 ticks,
 -- then the attack's exit (0x0800C9FC). (Its variants 4 and up show afterimages on the 8th tick and fire row 0x0C:
 -- HiCannon's and M-Cannon's to read, docs/design/exe4-map.md §18.)
 --
 -- Nearest the engine can say until read (exe4-map.md §18): its family (the record's +0x0B, 0x0B: EXE4's numbering is
--- to read), and what 0x0800BA66 does as it starts.
+-- to read).
 
 local attachment = require("../objects/attachment")
 local projectile = require("../lib/projectile")
@@ -28,6 +28,7 @@ type State = { timer: number }
 local function shoot(me: Object, s: State)
     if me.step_init == 0 then
         me:set_animation(9)
+        me:open_counter_window()
         s.timer = 0
         attachment.attach(me, held, "related", NAVI_NUMBER)
         me:set_status("using_action", true)
