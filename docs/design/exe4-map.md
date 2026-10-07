@@ -568,8 +568,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
   navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
-  DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter):
-  @exelib/navi_chips/controller (EXE5's Phoenix's and DethPhnx's controllers are the same code), its course EXE4's
+  DeltaRay's, MetalMan's and JunkMan's one, #0x42, picking the navi by the chip's third parameter: in the content each
+  navi's own controller, each mapped to #0x42 in compat/kinds.toml): @exelib/navi_chips/controller (EXE5's Phoenix's and DethPhnx's controllers are the same code), its course EXE4's
   (content/exe4/lib/navi_chips: the user warping out, the navi, a wait, the user warping back in, in four shapes), the
   user's warp EXE4's own effect #0x0C (EXE6's dead `sub_80E11FC`, not the engine's actor #0x2D). The chip's first
   parameter is the navi's level (0, an SP's 3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a

@@ -1,11 +1,11 @@
 --!strict
--- ProtoMan, the navi of EXE4's ProtoMan chips (EXE4's actor object #0x3C, 0x080C6ED4), whom the shared navi chip
--- controller (objects/navi_chip_controller, its entry 8) brings: EXE6's and EXE5's (@exelib/protoman/navi; the same
--- code) with EXE4's look (his sprite, 08-07, in his chip's palette, 0x0800B950: two palettes a variant; his sword,
--- attachment row 3, 0c-00, in its animation 7, animating while dimmed; his slash, effect row 0x5E, 0c-14) and its
--- differences: his spawner (0x080C721A) keeps neither his user, nor its facing, nor the element, his height his side;
--- he lands in front of an enemy navi on a solid panel no body or object of his side's is on (0x080C70CC, by side), his
--- user's panel no exception; and his slash strikes as it starts (0x080C71AA), his sword away as it ends.
+-- ProtoMan, the navi of EXE4's ProtoMan chips (EXE4's actor object #0x3C, 0x080C6ED4), and their controller, which
+-- brings him: EXE6's and EXE5's (@exelib/protoman/navi; the same code) with EXE4's look (his sprite, 08-07, in his
+-- chip's palette, 0x0800B950: two palettes a variant; his sword, attachment row 3, 0c-00, in its animation 7, animating
+-- while dimmed; his slash, effect row 0x5E, 0c-14) and its differences: his spawner (0x080C721A) keeps neither his
+-- user, nor its facing, nor the element, his height his side; he lands in front of an enemy navi on a solid panel no
+-- body or object of his side's is on (0x080C70CC, by side), his user's panel no exception; and his slash strikes as it
+-- starts (0x080C71AA), his sword away as it ends.
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
@@ -65,4 +65,11 @@ local function spawn(controller: Object, user: Object, damage: number): Object?
     )
 end
 
-return { kind = protoman.kind, spawn = spawn }
+-- His chips' navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
+-- chips: compat/kinds.toml maps each one's to it): the user warps out, ProtoMan, the user warps back in.
+return navi_chips.controller {
+    id = "protoman/controller",
+    name = "ProtoMan",
+    spawn = spawn,
+    steps = navi_chips.SHARED,
+}

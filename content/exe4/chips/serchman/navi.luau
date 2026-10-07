@@ -1,9 +1,9 @@
 --!strict
--- SearchMan, the navi of EXE4's SearchMan chips (EXE4's actor object #0x31, 0x080C355C), whom the shared navi chip
--- controller (objects/navi_chip_controller, its entry 0) brings: @exelib/serchman/navi with EXE4's look (his sprite,
--- 08-04, in his chip's palette, 0x0800B950: two palettes a variant; his rifle up in animation 15 and a shot in 10; the
--- shot's sound 0xBB) and his spawner (0x080C37D4: neither his user, nor its facing, nor the element; his height his
--- side); his scope (./scope) reads his side's navi's presses.
+-- SearchMan, the navi of EXE4's SearchMan chips (EXE4's actor object #0x31, 0x080C355C), and their controller, which
+-- brings him: @exelib/serchman/navi with EXE4's look (his sprite, 08-04, in his chip's palette, 0x0800B950: two
+-- palettes a variant; his rifle up in animation 15 and a shot in 10; the shot's sound 0xBB) and his spawner
+-- (0x080C37D4: neither his user, nor its facing, nor the element; his height his side); his scope (./scope) reads his
+-- side's navi's presses.
 
 local common = require("@exelib/serchman/navi")
 local navi_chips = require("../../lib/navi_chips")
@@ -47,4 +47,11 @@ local function spawn(controller: Object, user: Object, damage: number): Object?
     )
 end
 
-return { kind = searchman.kind, spawn = spawn }
+-- His chips' navi chip controller (EXE4's effect object #0x42, 0x080E6A18, which the original shares among six navis'
+-- chips: compat/kinds.toml maps each one's to it): the user warps out, SearchMan, the user warps back in.
+return navi_chips.controller {
+    id = "serchman/controller",
+    name = "SearchMan",
+    spawn = spawn,
+    steps = navi_chips.SHARED,
+}

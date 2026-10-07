@@ -1,8 +1,8 @@
 --!strict
 -- EXE4's navi chips: dimming chips (action 0x0C) whose variant's spawner (0x080220E0's) makes its navi's controller
 -- (each navi its own effect object: TopMan's #0x0B, 0x080E2B54, and the others' copies; SerchMan's, ThunMan's,
--- ProtoMan's, DeltaRay's, MetalMan's and JunkMan's one, #0x42, 0x080E6A18, by the chip's third parameter):
--- @exelib/navi_chips/controller's, with EXE4's courses (`navi_chips.LONG` and the others) and its warp. The user warps
+-- ProtoMan's, DeltaRay's, MetalMan's and JunkMan's one, #0x42, 0x080E6A18, its navi by the chip's third parameter,
+-- here each navi's own): @exelib/navi_chips/controller's, with EXE4's courses (`navi_chips.LONG` and the others) and its warp. The user warps
 -- out and back in as EXE4's own effect object #0x0C (0x080E2C24: EXE6's and EXE5's code that neither game runs,
 -- `sub_80E11FC`), not EXE6's and EXE5's actor #0x2D (the engine's `navi_chip.warp`).
 --
@@ -18,7 +18,8 @@ type Step = NaviChipStep
 -- The courses (by phase): the user warps out (31 ticks), the navi, then a wait (31) and the user warping back in (31):
 -- NumbrMan's (0x080E2F08), FireMan's, GutsMan's, AquaMan's.
 navi_chips.LONG = { { wait = 0x1E, warp = "out" }, "navi", { wait = 0x1E }, { wait = 0x1E, warp = "in" } } :: { Step }
--- The same without the wait: the shared controller's (0x080E6A60).
+-- The same without the wait: effect #0x42's (0x080E6A60: SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's
+-- and JunkMan's).
 navi_chips.SHARED = { { wait = 0x1E, warp = "out" }, "navi", { wait = 0x1E, warp = "in" } } :: { Step }
 -- No warp back: Roll's (0x080E54A0), who brings her user back herself.
 navi_chips.RETURNED = { { wait = 0x1E, warp = "out" }, "navi" } :: { Step }
