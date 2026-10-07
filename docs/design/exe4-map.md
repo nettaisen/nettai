@@ -359,7 +359,7 @@ Double Soul button and its window (the selection's states 0xC and 0x10).
   DrkSpred: the panel trail, poison (+0x1B = 4). DrkStage: the custom level one less, down to 2. DrkRecov: the custom
   drain as DrkLance's and the HP drain (+0x0E: 10, else 6 up to 10, else 3). The mood: none (a mood of 0 stays).
 - **The chips**: on the families group A wrote with every branch (lib/cannons 0x0B, lib/swords 0x0A, lib/bombs 0x09,
-  lib/vulcans 0x1F, lib/spreaders 0x1E, lib/recoveries 0x1D, lib/spawners 0x20 with objects/lance, and the dimming
+  lib/vulcans 0x1F, lib/spreaders 0x1E, lib/recov 0x1D (on @exelib/recov/heal), lib/spawners 0x20 with objects/lance, and the dimming
   action 0x0C with DrkStage's controller, effect #0x6A, and the panel changer, effect #0x1F), each chip composing its
   variant's rows. DrkStage is EXE4's first dimming chip: its telop runs as banner 0 (the roles' `telop`, item 71).
 
