@@ -543,7 +543,7 @@ impl Battle {
             && let Some(kind) = self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind)
             && let Some(body) = hd.parent
         {
-            self.call_panel(kind, body, nettai_content_api::PanelCall::Hit { element: rd.element });
+            self.call_panel(kind, nettai_content_api::PanelCall::Hit { body, element: rd.element });
         }
         let c = hd.counter_byte;
         let rm = self.collision.get_mut(r);

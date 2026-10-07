@@ -24,6 +24,10 @@ local LAVA_BURN = panel_types.burn {
     spark = sparks.fire,
 }
 
+-- The pitfall turns normal 190 ticks after a type change makes it; a stage's waits for a grounded body
+-- (0x0800980E, 0x08009DC4, 0x08009120).
+local PITFALL = panel_types.crumbles(190)
+
 return {
     types = {
         missing = { flags = 0x00018000 },
@@ -41,7 +45,14 @@ return {
         },
         lava = { flags = 0x00011010, expires = 960, burn = LAVA_BURN, cleared_by = "aqua" },
         holy = { flags = 0x00012010 },
-        pitfall = { flags = 0x00010210, traps = true, crumbles = 190, slide = panel_types.pitfall },
+        pitfall = {
+            flags = 0x00010210,
+            traps = true,
+            slide = panel_types.pitfall,
+            tick = PITFALL.tick,
+            changed = PITFALL.changed,
+            start = PITFALL.start,
+        },
         hole = { flags = 0x00010010 },
     },
     -- EXE4's panel types by its own numbers.
