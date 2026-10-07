@@ -319,6 +319,10 @@ pub fn hud(
             pause: PAUSE_AT,
             hp_number_priority: HP_NUMBER_PRIORITY,
             message: MESSAGE_AT,
+            // (The damage judge's numbers, task 9 from 0x080163C8: from its
+            // holding banner's hold, 0x08014AA8, until the banner is gone,
+            // 0x08014ABE.)
+            judge_from_hold: true,
             telop: Some(telop(rom)),
         },
         language: String::new(),

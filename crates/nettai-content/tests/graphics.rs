@@ -161,6 +161,7 @@ fn bundle() -> Bundle {
             pause: (100, 64),
             hp_number_priority: 1,
             message: (8, 2, 14),
+            judge_from_hold: true,
             telop: Some(TelopLook { places: [(0, 32), (120, 32)], glyphs: tiles(2 * TelopLook::GLYPHS, 58), palette: palette(59) }),
         },
         language: "en".into(),

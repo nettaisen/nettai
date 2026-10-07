@@ -578,9 +578,12 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 13 **"BUSY..."** at column 22, row 4 (0x08015624); 23 **"PLAN-B..."** in the same place (0x080158D8, started
     by 0x08016AE8 from 0x08021138, the second screen's).
   - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
-  - Not in a netbattle: 9 the damage judge (0x080152C4, state at 0x02037BD0); 7 and 19, the turn timer's seconds
-    over "CUSTOM" (0x08016362 from the fight's timer 0x08008066, and its blinking from 0x080169DA, for battle kind
-    0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
+  - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
+    "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
+    the holding banner's hold (0x08014AA8) until the banner is gone (0x08014ABE: the pack's `layout.judge_from_hold`).
+    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 53).
+  - Not in a netbattle: 7 and 19, the turn timer's seconds over "CUSTOM" (0x08016362 from the fight's timer
+    0x08008066, and its blinking from 0x080169DA, for battle kind 0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
     code); 16, 17 and 22, the gauge in three colors, its sprite and the column marker of controller 2 (0x08016842
     from 0x08007846, 0x08016878 from 0x08022A08, 0x0801589A; §18 item 49).
 
@@ -1118,4 +1121,5 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
       the engine's telop for EXE4 comes with the first dimming chip;
     - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
       seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
-      item 16 reads EXE4's.
+      item 16 reads EXE4's. With it, the damage judge: its numbers' values (0x0801642C, 0x08016408) and a recording
+      to compare.
