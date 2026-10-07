@@ -201,14 +201,10 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `object_genericDestroy`: drop reservations, free collision, free. (By
-/// the effects' `destroy`: EXE4's unregisters the collision first.)
+/// `object_genericDestroy`: drop reservations, free collision, free.
 pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
     b.release_reservations(r);
     if let Some(c) = b.objects.get(r).collision {
-        if b.game_rules().effects.destroy == crate::content::DestroyRule::Unregisters {
-            b.remove_collision(c);
-        }
         b.collision.free(c);
     }
     b.objects.free(r);

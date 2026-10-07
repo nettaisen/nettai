@@ -76,8 +76,6 @@ return {
     bug_flicker = true,
     -- A step leaves its NaviCust panel trail at a chance of its level in 8, an RNG2 draw, as EXE6's.
     panel_trail = "by_chance",
-    -- An object's destroy (0x080138F2) frees its collision as it is.
-    destroy = "frees",
     -- A pool's objects are drawn in update order, as EXE6's.
     draw_order = "update_list",
 }

@@ -240,9 +240,6 @@ pub struct EffectsRules {
     /// When a player's step leaves its stats' panel trail on the panel it
     /// leaves (`bugs.panel_trail_kind`).
     pub panel_trail: PanelTrail,
-    /// What `object_genericDestroy` does with an object's collision before
-    /// it frees the object.
-    pub destroy: DestroyRule,
     /// The order the objects of a pool are drawn in. Presentation: the
     /// renderer's.
     pub draw_order: DrawOrder,
@@ -279,21 +276,6 @@ pub enum ChipIcons {
     /// in depth buckets from the icons' count down (EXE4's 0x08014860
     /// and 0x08015000: the local navi's alone).
     NaviOffset,
-}
-
-/// What `object_genericDestroy` does with an object's collision (the
-/// effects section's `destroy`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DestroyRule {
-    /// Frees it as it is (EXE6's, after releasing what the object holds
-    /// when its reservations mark it; EXE5's 0x080138F2): its registrations
-    /// on the panels stay, stale, until the slot is next registered.
-    Frees,
-    /// Unregisters it first (EXE4's 0x080D8C58: `object_removeCollisionData`,
-    /// 0x080129FC), which refreshes its panels and resolves its hits and the
-    /// panels it clears on them, then frees it.
-    Unregisters,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,
@@ -936,6 +918,33 @@ pub struct IntakeRules {
     pub hp_loss: HpLoss,
     /// What a navi's hit sounds like, on each console.
     pub hit_sound: HitSound,
+    /// How a navi's barrier takes the tick's hits (`sub_801A802`).
+    pub barrier: BarrierTick,
+}
+
+/// How a navi's barrier takes the tick's hits (`IntakeRules::barrier`:
+/// EXE6's `sub_801A802`, EXE5's, EXE4's 0x08012DF8).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BarrierTick {
+    /// It stands still while the battle is paused (EXE6's, EXE5's). EXE4's
+    /// runs whenever its navi does: in the intro's pause, until the navi
+    /// takes control (`status.paused_navi`), its timer counts.
+    pub stops_while_paused: bool,
+    /// What wind does to it.
+    pub wind: BarrierWind,
+}
+
+/// What wind (the raw elements' 0x20) does to a barrier.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BarrierWind {
+    /// Pops it (EXE6's, EXE5's), as do the raw hit flags 0xA20: popped, it
+    /// absorbs every hit until its visual clears it.
+    Pops,
+    /// Takes it away at once (EXE4's: no popped barrier, and no hit flag
+    /// does it); the hit is absorbed all the same.
+    TakesAway,
 }
 
 /// What a navi's hit sounds like, on each console (`IntakeRules::hit_sound`).
