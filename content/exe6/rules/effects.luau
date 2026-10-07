@@ -68,4 +68,6 @@ return {
     -- The chip icons over a navi (`sub_801C082`): over its sprite's attach point 3, the next chip's icon once for every
     -- chip held, each next one two pixels up and away from where the console faces, in front of the field's objects.
     chip_icons = "attach_point",
+    -- The other player's console names a chip a player used for a second (`sub_801EB18`).
+    used_chip_ticks = 0x3C,
 }
