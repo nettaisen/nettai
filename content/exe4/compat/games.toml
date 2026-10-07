@@ -1,0 +1,15 @@
+# EXE4's ROMs other than Red Sun's US one, whose addresses compat's other files give: where each has them. Written by
+# hand from the four ROMs (each one's netbattle settings records found by their bytes); exe4-compat reads it.
+
+[bluemoon]
+# How far its battle settings records (0x080FC144) and the stage actor lists their +8 names are from Red Sun US's
+# (0x080FC138).
+settings = 0xC
+
+[jp-redsun]
+# Its settings records at 0x080FC00C.
+settings = -300  # -0x12C
+
+[jp-bluemoon]
+# Its settings records at 0x080FC018.
+settings = -288  # -0x120
