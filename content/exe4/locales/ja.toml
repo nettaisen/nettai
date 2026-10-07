@@ -30,6 +30,9 @@ language = "ja"
 "drkrecov" = { name = "ダークリカバリー", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
 "panlgrab" = { name = "パネルスチール", description = "前方のてきエリアの\n1マスを 自分の\nエリアにぬりかえる" }
 "areagrab" = { name = "エリアスチール", description = "てきエリアの左はし\nたて1れつを自分の\nエリアにぬりかえる" }
+"roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"roll-sp" = { name = "ロールSP", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"roll-ds" = { name = "ロールDS", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

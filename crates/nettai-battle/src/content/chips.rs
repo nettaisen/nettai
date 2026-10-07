@@ -334,6 +334,10 @@ pub enum Counted {
     /// The field's panels of this type the side owns
     /// (`object_dead_getPanelsTypeAllianceCount`).
     OwnPanels(crate::field::PanelType),
+    /// The field's panels of this type, whichever side owns them
+    /// (`object_dead_getPanelsTypeAllianceCount` for each side: EXE4's DS
+    /// navi chips, 0x08019518, by the field's holes).
+    Panels(crate::field::PanelType),
     /// The turns before this one: the turn number less one, as unsigned
     /// (turn 0 counts as the most).
     TurnsBefore,

@@ -23,4 +23,5 @@ return merge {
     require("@self/lance"),
     require("@self/panlgrab"),
     require("@self/recov"),
+    require("@self/roll"),
 }
