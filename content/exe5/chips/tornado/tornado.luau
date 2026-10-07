@@ -5,7 +5,7 @@
 --
 -- - The variants (0x080CAD44: palette, re-arm ticks) are EXE6's rows with re-arms of 2 for rows 0, 4, 5 and 6 (EXE6's
 --   4).
--- - A plain tornado takes a panel's variant on lava (row 4), sea (6), grass (0), metal (5) and ice (6) (0x080CAF3C),
+-- - A plain tornado takes a panel's variant on lava (row 4), sea (6), grass (0), magnet (5) and ice (6) (0x080CAF3C),
 --   turns the panel Normal, and doesn't double its damage (EXE6 does).
 -- - It is EXE5's row 0x20 (EXE6's 0x12), the HP-bug variant's row 0x4B, reaching row 5; its spark EXE5's of its element.
 -- - The fan is EXE5's attachment rows 0xC and 0x17 (EXE6's 0x21 and 0x22: the same look in EXE5's sprite).
@@ -26,7 +26,7 @@ tornado.variants = {
     static = variant { palette = 3, rearm = 4 },
     hp_bug = variant { palette = 3, rearm = 4, bug = 0x54 + 5 * 0x100 },
     lava = variant { palette = 4, rearm = 2 },
-    metal = variant { palette = 2, rearm = 2 },
+    magnet = variant { palette = 2, rearm = 2 },
     sea = variant { palette = 5, rearm = 2 },
     row7 = variant { palette = 0, rearm = 0 },
 }
@@ -38,7 +38,7 @@ tornado.kind = common.make_kind("tornado", {
         lava = tornado.variants.lava,
         sea = tornado.variants.sea,
         grass = tornado.variants.grass,
-        metal = tornado.variants.metal,
+        magnet = tornado.variants.magnet,
         ice = tornado.variants.sea,
     },
     doubles_on_panel = false,

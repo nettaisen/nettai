@@ -1,6 +1,6 @@
 # EXE5's panel types by number, written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs:
 # the name content/exe5/rules/panels.luau gives each number (the same number there) and the panel flag word it has
-# (the table at 0x0800BCF0): metal, lava and sea EXE5's own (docs/design/exe5-map.md §15.3 item 1). exe5-map.md
+# (the table at 0x0800BCF0): magnet, lava and sea EXE5's own (docs/design/exe5-map.md §15.3 item 1). exe5-map.md
 # §3.4.
 
 [types.0]
@@ -24,7 +24,7 @@ name = "poison"
 flags = 0x10110
 
 [types.5]
-name = "metal"
+name = "magnet"
 flags = 0x10210
 
 [types.6]

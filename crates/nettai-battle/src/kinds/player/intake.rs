@@ -298,35 +298,30 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     }
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    match b.panel_hook(t, nettai_content_api::PanelHook::Stand) {
-        Some(f) => {
-            let call = nettai_content_api::HookCall::Panel { hook: nettai_content_api::PanelHook::Stand, body: r, player: false };
-            crate::behavior::call_hook(b, f, call);
-        }
-        None => coll_mut(b, r).standing_count = 0,
+    if b.call_panel(t, r, nettai_content_api::PanelCall::Stand).is_none() {
+        coll_mut(b, r).standing_count = 0;
     }
 }
 
-/// `sub_801A36A`: start road slides, and what ice does at the end of a
-/// move (consuming MOVE_COMPLETE): a slide, or EXE4's push (the rule `ice`).
+/// `sub_801A36A`: what the panel under a navi does to it at rest (its
+/// type's `rest`: EXE6's roads carry it) and at a move's end (consuming
+/// MOVE_COMPLETE, or as its slide cooldown runs out: the type's `move_end`:
+/// ice's slide or EXE4's push, EXE5's magnet's slide and sea's hold). The
+/// cooldown counts down outside pauses and the dimming.
 fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let mut cooldown_ended = false;
-    if !b.paused && !b.is_dimmed() && ai(b, r).road_cooldown != 0 {
+    if !b.paused && !b.is_dimmed() && ai(b, r).slide_cooldown != 0 {
         let a = ai_mut(b, r);
-        a.road_cooldown -= 1;
-        cooldown_ended = a.road_cooldown == 0;
+        a.slide_cooldown -= 1;
+        cooldown_ended = a.slide_cooldown == 0;
     }
     if !cooldown_ended {
         let f = flag1(b, r);
         if f & (f1::DRAG | f1::MOVING) != 0 {
             return;
         }
-        if b.game_rules().panels.is_road(panel_kind(b, coll(b, r).panel)) {
-            // sub_801A400
-            if ai(b, r).road_cooldown == 0 && f & 0x24 == 0 {
-                set_flag2(b, r, 0x10);
-                b.objects.get_mut(r).slide_type = 3;
-            }
+        let kind = panel_kind(b, coll(b, r).panel);
+        if b.call_panel(kind, r, nettai_content_api::PanelCall::Rest) == Some(nettai_content_api::Value::Bool(true)) {
             return;
         }
         if f & f1::MOVE_COMPLETE == 0 {
@@ -336,67 +331,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     super::clear_flag1(b, r, f1::MOVE_COMPLETE);
     let p = coll(b, r).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    // EXE5's panels at a move's end (0x0801715E, after its own flag test):
-    // metal slides the body, sea holds it.
-    let rule = *b.game_rules().panels.rule(kind);
-    if (rule.slide.is_some() || rule.holds.is_some()) && flag1(b, r) & 0x0010_0040 == 0 {
-        if rule.slide.is_some() {
-            return metal_slide(b, r);
-        }
-        if let Some(ticks) = rule.holds {
-            return panel_hold(b, r, ticks);
-        }
-    }
-    if !b.game_rules().panels.is_named(kind, "ice") {
-        return;
-    }
-    // sub_801A3DA (EXE4's 0x0801335A)
-    let f = flag1(b, r);
-    if coll(b, r).element != 2 && f & 0x24 == 0 && f & f1::AFFECTED_BY_ICE != 0 {
-        match b.game_rules().ice {
-            crate::content::IceRule::Slide(_) => {
-                set_flag2(b, r, 0x10);
-                b.objects.get_mut(r).slide_type = 2;
-            }
-            // EXE4's: a push bit by side and direction into the final
-            // modifier, which the hit modifiers' requests read below.
-            crate::content::IceRule::Push(bits) => {
-                let side = b.objects.get(r).alliance as usize & 1;
-                let c = coll_mut(b, r);
-                c.hit_mod_final |= bits[side].get(c.direction as usize).copied().unwrap_or(0);
-            }
-        }
-    }
-}
-
-/// EXE5's 0x08017216: a move's end on metal slides the body (slide type
-/// 3), unless it slid within the cooldown, is floating or slide-proof
-/// (flags 0x24), or is a navi whose form stands on metal (EXE5's MagnetSoul).
-fn metal_slide(b: &mut Battle, r: ObjectRef) {
-    if ai(b, r).road_cooldown != 0 || flag1(b, r) & 0x24 != 0 {
-        return;
-    }
-    if form_of(b, r).traits.has(crate::content::FormTraits::STANDS_ON_METAL) {
-        return;
-    }
-    set_flag2(b, r, 0x10);
-    b.objects.get_mut(r).slide_type = 3;
-}
-
-/// EXE5's 0x080171C2: a move's end on a panel that holds (sea) holds the
-/// body there for `ticks` (immobilized: EXE6's `sub_800EB18`) with a splash
-/// (the arena's effect `panel_splash`), unless it floats, dives or is of
-/// aqua.
-fn panel_hold(b: &mut Battle, r: ObjectRef, ticks: u16) {
-    let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
-    if flag1(b, r) & f1::FLOATSHOE != 0 || dives || b.objects.get(r).element == 2 {
-        return;
-    }
-    coll_mut(b, r).status_timers[crate::collision::timer::IMMOBILIZE] = ticks;
-    super::set_flag1(b, r, f1::IMMOBILIZED);
-    let pos = b.objects.get(r).pos;
-    let look = b.roles().effect(crate::content::EffectRole::PanelSplash);
-    crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
+    b.call_panel(kind, r, nettai_content_api::PanelCall::MoveEnd);
 }
 
 // ---- NaviCust bugs and traps ------------------------------------------------------
@@ -807,17 +742,14 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::content::{Content, IceRule, testing};
+    use crate::content::{Content, testing};
     use std::sync::Arc;
 
-    /// A fight on the test content whose ice does `ice`: the battle and side
-    /// 1's navi (at (5, 2)), standing on ice at a move's end, the move's
-    /// direction `direction`.
-    fn on_ice(ice: IceRule, direction: u8) -> (Battle, ObjectRef) {
-        let mut c: Content = testing::build();
-        c.define().unwrap_or_else(|e| panic!("{e}"));
-        c.rules_mut().ice = ice;
-        let c = Arc::new(c);
+    /// A fight on the test content: the battle and side 1's navi (at (5,
+    /// 2)), standing on ice at a move's end, the move's direction
+    /// `direction`.
+    fn on_ice(direction: u8) -> (Battle, ObjectRef) {
+        let c = testing::content();
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
         crate::content::testing::on(&mut setup, &c);
         let mut b = Battle::new(setup, c);
@@ -833,26 +765,20 @@ mod tests {
         (b, r)
     }
 
-    /// docs/design/exe4-map.md §18 item 1: EXE4's ice is a push (0x0801335A):
-    /// a move's end on it ORs the push bit of the side and the direction into
-    /// the final modifier, and starts no ice slide; EXE6's slides.
+    /// The test content's ice (EXE6's: its `move_end`, exelib's
+    /// `panel_types.ice_slides`): a move's end on it requests a slide by
+    /// the rows (slide type 2), the move's end taken; an aqua body stays.
+    /// (EXE4's ice pushes: nettai-match's games tests.)
     #[test]
-    fn ice_pushes_or_slides_by_the_rule() {
-        let push = IceRule::Push([[0, 0x40, 0x80, 0x20, 0x10], [0, 0x40, 0x80, 0x10, 0x20]]);
-        let (mut b, r) = on_ice(push, 3);
-        slide_triggers(&mut b, r);
-        assert_eq!(coll(&b, r).hit_mod_final, 0x10, "side 1's move left: its push forward");
-        assert_eq!((flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0), "no ice slide");
-        assert_eq!(flag1(&b, r) & f1::MOVE_COMPLETE, 0, "the move's end is taken");
-        // An aqua body stays.
-        let (mut b, r) = on_ice(push, 1);
-        coll_mut(&mut b, r).element = 2;
-        slide_triggers(&mut b, r);
-        assert_eq!(coll(&b, r).hit_mod_final, 0);
-        // The test content's ice (EXE6's) slides.
-        let (mut b, r) = on_ice(testing::rules().ice, 3);
+    fn ice_slides_by_its_rules() {
+        let (mut b, r) = on_ice(3);
         slide_triggers(&mut b, r);
         assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0x10, 2));
+        assert_eq!(flag1(&b, r) & f1::MOVE_COMPLETE, 0, "the move's end is taken");
+        let (mut b, r) = on_ice(1);
+        coll_mut(&mut b, r).element = 2;
+        slide_triggers(&mut b, r);
+        assert_eq!((flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0), "an aqua body");
     }
 
     /// docs/design/exe4-map.md §18 item 7: the HP bug drains by the rule:
@@ -862,7 +788,7 @@ mod tests {
     fn the_hp_bug_drains_by_the_rule() {
         use crate::content::{DrainPeriods, HpDrainRule, StatIsPeriod};
         let lost = |rule: Option<HpDrainRule>, paused: bool| {
-            let (mut b, r) = on_ice(testing::rules().ice, 0);
+            let (mut b, r) = on_ice(0);
             if let Some(rule) = rule {
                 let mut c = (*b.content).clone();
                 c.rules_mut().hp_drain = rule;
@@ -891,7 +817,7 @@ mod tests {
     #[test]
     fn a_push_drags_by_the_rules_bit() {
         let requests = |exe4: bool, hm: u8| {
-            let (mut b, r) = on_ice(testing::rules().ice, 0);
+            let (mut b, r) = on_ice(0);
             if exe4 {
                 let mut c: Content = testing::build();
                 c.define().unwrap_or_else(|e| panic!("{e}"));
