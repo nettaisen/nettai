@@ -2,8 +2,12 @@
 -- WideSht1, WideSht2 and WideSht3: the widesht series (each chip's own comment above its definition).
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
-local wave = require("@self/variants")
 local widesht = require("@self/wave")
+
+-- Their waves: WideSht1's (kind 3), WideSht2's (kind 4) and WideSht3's (kind 5), each faster.
+local WAVE1 = widesht.wide(0x6_0000, false)
+local WAVE2 = widesht.wide(0x6_8000, false)
+local WAVE3 = widesht.wide(0x7_0000, false)
 
 -- WideSht1 (EXE5 chip 0x009): the navi raises its wide shooter and sends a wave from the panel ahead over a column
 -- of three: the shared WideSht (@exelib/widesht, the original's action 0x30, EXE5's 0x25; the same code but for the
@@ -21,7 +25,7 @@ local widesht1: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = widesht.action { wave = wave.wide, waves = 1, z = 0 },
+    action = widesht.action { wave = WAVE1, waves = 1, z = 0 },
     auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
@@ -41,7 +45,7 @@ local widesht2: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = widesht.action { wave = wave.wide2, waves = 1, z = 0 },
+    action = widesht.action { wave = WAVE2, waves = 1, z = 0 },
     auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
@@ -61,7 +65,7 @@ local widesht3: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = widesht.action { wave = wave.wide3, waves = 1, z = 0 },
+    action = widesht.action { wave = WAVE3, waves = 1, z = 0 },
     auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
