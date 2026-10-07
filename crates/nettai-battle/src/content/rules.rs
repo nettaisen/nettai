@@ -670,6 +670,14 @@ pub enum HpLoss {
     /// only by their answer there (0x080185A2); one that doesn't goes
     /// straight to the deletion's test, without the element-5 damage.
     Gauge,
+    /// EXE4's: a loss takes the HP alone (`object_subtractHP`, 0x0800AB92),
+    /// but a player's hit (its status block's final damage, 0x08013A48)
+    /// drains its side's gauge too (0x0800AB9E: by the loss ×128) and shows
+    /// (white, its sound) only with HP left; at 0 HP, from the hit or the
+    /// element-5 damage, the side's rules are asked after (`hp_emptied`:
+    /// 0x0800EBC8, EXE4's dark MegaMan's last stand, which holds the navi at
+    /// 1 HP itself), and the navi falls unless they keep it.
+    HitDrainsGauge,
 }
 
 /// What a navi's status word (its collision data's flags 1) reads as while
