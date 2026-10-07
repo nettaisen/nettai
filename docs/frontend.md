@@ -192,13 +192,13 @@ tables.
 **The names a player sees** (the app's arenas: `Names::background`) are each game's locales' `[backgrounds]`,
 by asset name, in English and Japanese: the area's name as the game's menu shows it, from the US ROM and from the
 Japanese ROM (its first map's, the part number dropped where the key drops it: ACDC Area, 秋原エリア; EXE4's
-ToyRoboComp4 keeps it). In English, where the key spells out what the menu cut short, the dialogue's spelling
-(Robot Control Comp, Aquarium Comp, JudgeTreeComp, Mr.Weather Comp, SciLab Area, Gargoyle Comp); where no menu
-names it, the game's other words (EXE5's VisionBurst, パストビジョン, from its dialogue; NebulaGray, Duo and DarkSoul
-from the enemies' and souls' names; EXE4's venues' real-world map names, Stadium, AirStadium, Colosseum); and where
-the game has no name at all, a translation (`comp`: Comp, 電脳; `comp-alt`: Comp (Alt), 電脳 (別色); EXE6's storm:
-Mr.Weather Comp (Typhoon), ウェザーくんの電脳 (台風)). names.tsv holds them, EXE5's generator writes its locales'
-from it, and `areas.py --check` holds names.tsv to the ROMs' menus and every game's locales to names.tsv.
+ToyRoboComp4 keeps it), as the menu writes it, a word its twelve characters cut short too (RobCtrlComp,
+GargoylComp: the user's choice, though a key spells such a word out); where no menu names it, the game's other
+words (EXE5's VisionBurst, パストビジョン, from its dialogue; NebulaGray, Duo and DarkSoul from the enemies' and
+souls' names; EXE4's venues' real-world map names, Stadium, AirStadium, Colosseum); and where the game has no name
+at all, a translation (`comp`: Comp, 電脳; `comp-alt`: Comp (Alt), 電脳 (別色); EXE6's storm: MrWeathrCmp
+(Typhoon), ウェザーくんの電脳 (台風)). names.tsv holds them, EXE5's generator writes its locales' from it, and
+`areas.py --check` holds names.tsv to the ROMs' menus and every game's locales to names.tsv.
 
 **EXE6** has 21. A link battle draws one of `sub_81209DC`'s table (`byte_8120A20`), which its `link_pick` rules
 state as `backgrounds`.
