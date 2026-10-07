@@ -130,11 +130,14 @@ pub struct CustomScreens {
     pub ticks: u32,
     /// Both results are in; the screen closes next tick.
     pub committed: bool,
+    /// The custom gauge as the screens opened (what a console that keeps
+    /// it until its own send holds: `Battle::gauge_for`).
+    pub gauge_at_open: u16,
 }
 
 impl CustomScreens {
     pub fn new(players: &[PlayerSetup; 2]) -> CustomScreens {
-        CustomScreens { sides: [Side::new(&players[0]), Side::new(&players[1])], ticks: 0, committed: false }
+        CustomScreens { sides: [Side::new(&players[0]), Side::new(&players[1])], ticks: 0, committed: false, gauge_at_open: 0 }
     }
 }
 
@@ -318,6 +321,7 @@ impl Side {
         self.emotion = ctx.emotion;
         let Some(mut screen) = self.screen else { return None };
         let mut folder = self.folder;
+        let settling = screen.phase == Phase::Settling;
         let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console, extras);
         match request {
             Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage, extras),
@@ -342,6 +346,17 @@ impl Side {
         };
         if cleared {
             self.in_custom = false;
+        }
+        // EXE4's selection says it runs from its first tick (its state 0,
+        // 0x08020348: the screen's settling tick) to OK (0x08020652); its
+        // description, SELECT's hiding and L's message leave it set.
+        if ctx.library.layout().status_until == crate::content::StatusUntil::Sending {
+            if settling {
+                self.selecting = true;
+            }
+            if request == Some(Request::Confirm) {
+                self.selecting = false;
+            }
         }
         self.screen = Some(screen);
         self.folder = folder;
@@ -452,9 +467,14 @@ impl Battle {
 
     /// The custom screen opens (`sub_8009338`'s first tick, `sub_8026840`).
     pub(crate) fn open_custom_screens(&mut self) {
-        // Shared: the turn count, the gauge.
-        self.gauge.value = 0;
-        self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
+        // Shared: the turn count, the gauge (a game that keeps it full until
+        // the send, EXE4's, empties it at the first: `restart_gauge`; each
+        // console its own at its own, `Battle::gauge_for`).
+        self.custom.gauge_at_open = self.gauge.value;
+        if self.content.rules().custom_screen.gauge_empties_at_open {
+            self.gauge.value = 0;
+            self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
+        }
         self.gauge.enabled = false;
         // sub_801DACC(0x30172): the chips' icons and window go.
         self.chip_hud = Default::default();
@@ -537,6 +557,23 @@ impl Battle {
             for hud in &mut self.chip_hud {
                 hud.icons = true;
             }
+        }
+    }
+
+    /// The custom gauge as `side`'s console holds it: the battle's, but in a
+    /// game whose screen keeps it until its own send (the rules'
+    /// `custom_screen.gauge_empties_at_open` false: EXE4's 0x0801E1B4), what
+    /// it was at the opening while that side's screen hasn't sent (the
+    /// battle's empties at the first send; nothing reads it until the fight
+    /// resumes, after both). Presentation (the HUD's gauge) and the
+    /// recordings' comparison.
+    pub fn gauge_for(&self, side: u8) -> u16 {
+        let s = &self.custom.sides[side as usize & 1];
+        let keeps = !self.content.rules().custom_screen.gauge_empties_at_open;
+        if keeps && self.round.mode == crate::battle::mode::CUSTOM && s.screen.is_some() && s.sent.is_none() {
+            self.custom.gauge_at_open
+        } else {
+            self.gauge.value
         }
     }
 

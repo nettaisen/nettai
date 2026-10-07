@@ -164,6 +164,20 @@ pub struct CustomScreenLayout {
     /// The sound players the close sets back to full volume, in its order
     /// (EXE6's `sub_802A3CC`: 31, 22; EXE4's 0x0801E194: 9, 31).
     pub restore_players: Vec<u8>,
+    /// The custom gauge empties as the screen opens (EXE6's `sub_8026840`:
+    /// `sub_801DF92`), and again at the send; else it stays full until the
+    /// send (EXE4's 0x0801E1B4: 0x080159B0 empties it).
+    pub gauge_empties_at_open: bool,
+    /// OK clears the console's fade records at once (EXE4's 0x08020656: a
+    /// dark chip's shade goes with it); else they run on until the screens
+    /// close (EXE6's `sub_8026A6C`: `sub_80062EC`). Presentation.
+    pub fades_clear_at_ok: bool,
+    /// The tick a key leaves the choosing (OK, SELECT, R, L, a window)
+    /// still draws the cursor and the last turns' block (EXE6's
+    /// `sub_8026CCC` draws after its keys); else the tick draws what the
+    /// state its keys left it in draws: no cursor, the block taken off for
+    /// OK and SELECT (EXE4's 0x0801E412). Presentation.
+    pub cursor_after_leaving: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -262,11 +276,13 @@ pub struct ProgramAdvanceRules {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatusUntil {
-    /// The window starts sliding out (EXE6's `sub_8026BF4`: status bit 4).
+    /// The window starts sliding out (EXE6's `sub_8026BF4`: status value 4);
+    /// no other bit says the selection runs.
     Closing,
-    /// The result is sent (EXE4: bit 4 from the screen's opening, 0x08007618,
-    /// to the send, 0x0801E986; bit 1 from the choosing's first tick to OK,
-    /// 0x08020652: the fight reads the two together).
+    /// The result is sent (EXE4: value 4 from the screen's opening,
+    /// 0x08007618, to the send, 0x0801E986); and value 1 says the selection
+    /// runs, from its first tick (0x08020348) to OK (0x08020652:
+    /// `custom::Side::selecting`). The fight reads the two together.
     Sending,
 }
 
@@ -327,6 +343,9 @@ impl Default for CustomScreenLayout {
                 sound: HoverSound::FromOpening { every: 64 },
             },
             restore_players: vec![31, 22],
+            gauge_empties_at_open: true,
+            fades_clear_at_ok: false,
+            cursor_after_leaving: true,
         }
     }
 }

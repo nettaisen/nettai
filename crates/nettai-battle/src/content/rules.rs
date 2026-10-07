@@ -55,6 +55,23 @@ pub struct FlowRules {
     /// banner a tick after it's through. EXE4 has none: its fighting state
     /// 0 (0x08007064) is the turn's banner, from the turn's first tick.
     pub sequencer_at_turn_start: bool,
+    /// How a player asks for the custom screen with a full gauge.
+    pub custom_request: CustomRequest,
+}
+
+/// How a player asks for the custom screen with a full gauge, L or R.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomRequest {
+    /// The navi's input decode marks the request (EXE6's `sub_8012FC8`
+    /// sets battle flag 0x10), which the fight reads on the next tick
+    /// (`sub_800A1D0`), and the navis' reversions run before the screen.
+    NaviInput,
+    /// The fight reads both players' keys itself (EXE4's 0x08007A2E: L or
+    /// R pressed, the gauge full, not dimmed, the battle not over, not the
+    /// late turns) and asks for the screen on that tick (0x0800718E: no
+    /// reversions); the navi's decode doesn't.
+    Joypads,
 }
 
 /// The rule section `link_pick`: what a link battle picks at random with
