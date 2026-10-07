@@ -6,20 +6,12 @@
 -- it), EXE4's own numbering. Nearest the engine can say (exe4-map.md §18): the engine's battle mode is EXE6's
 -- numbering, its netbattle 0; EXE4's records have no effects word nor EXE6's panel pattern, so each states EXE5's
 -- netbattle's (0x88C, 0x38: no turning, each navi facing its side). A record's numbers are compat's.
--- Waiting (EXE4's obstacles and panels to port):
---   netbattle-89 (layout 0x32, actors 0x080fc795): actor kinds 6
---   netbattle-90 (layout 0x32, actors 0x080fc7a6): actor kinds 6
---   netbattle-91 (layout 0x66, actors 0x080fc795): actor kinds 6
---   netbattle-92 (layout 0x66, actors 0x080fc7a6): actor kinds 6
---   netbattle-93 (layout 0x6a, actors 0x080fc7b7): actor kinds 6
---   netbattle-94 (layout 0x6a, actors 0x080fc7c8): actor kinds 6
---   netbattle-95 (layout 0x81, actors 0x080fc7b7): actor kinds 6
---   netbattle-96 (layout 0x81, actors 0x080fc7c8): actor kinds 6
 -- Written by tools/exe4/gen_rules.py (bn6battle-verify) from the EXE4 ROM; people own it now.
 
 local boulder = require("./objects/boulder")
 local flag = require("./objects/flag")
 local gear = require("./objects/gear")
+local wind = require("./objects/wind")
 
 local stages: { [string]: StageDef } = {
     ["netbattle-1"] = {
@@ -1294,6 +1286,150 @@ local stages: { [string]: StageDef } = {
             { place = flag.kind, x = 6, y = 2, argument = 253 },
             { place = "navi", side = 0, x = 2, y = 2 },
             { place = flag.kind, x = 1, y = 2, argument = 125 },
+        },
+    },
+    ["netbattle-89"] = {
+        layout = {
+            "metal metal metal metal metal metal",
+            "metal cracked cracked cracked cracked metal",
+            "metal metal metal metal metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+        },
+    },
+    ["netbattle-90"] = {
+        layout = {
+            "metal metal metal metal metal metal",
+            "metal cracked cracked cracked cracked metal",
+            "metal metal metal metal metal metal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
+        },
+    },
+    ["netbattle-91"] = {
+        layout = {
+            "grass grass poison poison grass grass",
+            "grass poison poison poison poison grass",
+            "grass grass poison poison grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+        },
+    },
+    ["netbattle-92"] = {
+        layout = {
+            "grass grass poison poison grass grass",
+            "grass poison poison poison poison grass",
+            "grass grass poison poison grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 6, y = 2 },
+            { place = "navi", side = 0, x = 1, y = 2 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
+        },
+    },
+    ["netbattle-93"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "poison poison poison poison poison poison",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 2, y = 1 },
+            { place = "navi", side = 1, x = 5, y = 1 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+        },
+    },
+    ["netbattle-94"] = {
+        layout = {
+            "grass grass grass grass grass grass",
+            "poison poison poison poison poison poison",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 5, y = 1 },
+            { place = "navi", side = 0, x = 2, y = 1 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
+        },
+    },
+    ["netbattle-95"] = {
+        layout = {
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 0, x = 2, y = 1 },
+            { place = "navi", side = 1, x = 5, y = 1 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+        },
+    },
+    ["netbattle-96"] = {
+        layout = {
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+            "normal normal holy holy normal normal",
+        },
+        panel_pattern = 0x38,
+        background = asset.background("comp"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = {
+            { place = "navi", side = 1, x = 5, y = 1 },
+            { place = "navi", side = 0, x = 2, y = 1 },
+            { place = wind.kind, side = 1, x = 0, y = 0 },
+            { place = wind.kind, side = 0, x = 0, y = 0 },
         },
     },
 }
