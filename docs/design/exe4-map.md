@@ -542,7 +542,59 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the original hides them); the cursor on OK
   after it is pressed (the original hides it). Since drawn: MegaMan's colors (his palette by his light/dark value,
   rules/light_dark: the setups' 1000 draws row 4, 0x0821B854), the intro's fade (by its levels), Cannon's
-  description.
+  description, the HP box (below).
+- **The fight HUD as ported** (group E). The HUD block is 0x020363F0. Its draw tasks run from the mask at +0x4C
+  (0x08014D10, table 0x08014D34), its update tasks from the mask at +0x48 (0x080146A8, table 0x080146CC). A piece
+  is shown by setting both bits: the starters' table 0x08015E9C (0x08015E78) and the stoppers' table 0x08015BC4
+  (0x08015B9E). Each piece, by its draw bit:
+  - 0 **the HP box** (0x08014D98; rolled by update 0 at 0x0801472C, EXE6's roll: an eighth plus 4, held 15 ticks,
+    the low color at a quarter, the alarm 0x82 every 45 ticks): drawn. EXE4 loads the gauge's tiles (from 0x80)
+    before the HUD layer's (from 0x130); the renderer took the HP box's tiles for the gauge's.
+  - 1 **the custom gauge** (0x08014E14; filled by update 1, 0x080147BA): EXE6's code with the counter at +0x18 and
+    the value at +0x24. It skips its drawing from the 15th turn of a link battle (0x08007E4E). The full gauge's
+    stripes and "L or R" go by +0x18. "BUSY..." runs the same counter (update 13, 0x08014ADC: +1 & 63 a tick, from 63
+    at its start, 0x080166F0) until the exchange is done (0x0801E9B6). Drawn as EXE6's.
+  - 2 **the HP numbers under objects** (0x08014EB8; rolled by update 2, 0x08014800: an eighth plus 2): one color,
+    at priority 1 (the pack's `layout.hp_number_priority`).
+  - 3 **the chip icons**, over the local navi alone. Update 3 (0x08014860) places them at its place on the screen
+    plus the per-navi offset 0x0800B9E4 (which 0x08015B24 keeps at +0x1B, +0x1C): navi 0, MegaMan, (0, -55); 1 to
+    12, the souls in navi order, (0, -67), (-8, -59), (-12, -84), (0, -64), (3, -72), (-4, -72), (-1, -62),
+    (-5, -70), (-5, -79), (4, -60), (-6, -60), (-9, -77). It loads each chip's own icon, from the next chip on.
+    Draw 3 (0x08015000) draws them two pixels up and left each, at priority 1 in depth buckets from the count down
+    (`effects.chip_icons = "navi_offset"`, the identity's `chip_icons_at`). A soul chip as the next chip (0x160 to
+    0x16F) shows no icon of its own: the stack starts at the second. Not ported until Double Soul's chips exist.
+  - 4 **the chip name and damage** at row 18 (0x08015078): EXE6's layout (the damage after the name's glyphs, "+"
+    and the two bonuses' sum, "×2" when 0x0800F49C says 2 or 3 of the navi's +0x16). Whether the damage shows is
+    the chip's +9 bit 2 (update 4, 0x080148D8).
+  - 5 and 8 **the banner and the user's telop** on the banner block 0x02037CE0. 15 is **the other player's telop**
+    on the second block 0x02037CF0. Both are laid out by 0x0801650C from x 0 or 120, at y 32, in the palette
+    0x08750E80 (the pack's `layout.telop`). A navi's chip use names the chip on the other console as a banner that
+    never slides (0x0800C7A8, state 3): `effects.used_chip_ticks` 33.
+  - 6 **the messages** (0x08015FE8; 60 ticks, update 6): "COUNTER HIT!" (text line 14) from column 8 of row 2, 14
+    glyphs wide (the pack's `layout.message`). A message also stops "????" (draw 10) until a custom screen starts it
+    again (0x0801E1D6); EXE6's comes back when the message goes. Not ported: no defensive chip is ported yet.
+  - 10 **"????"** for a defensive chip, at columns 6 and 26 (0x08015266): EXE6's.
+  - 12 **"PAUSE"** at (100, 64), a row lower than EXE6's (the pack's `layout.pause`).
+  - 13 **"BUSY..."** at column 22, row 4 (0x08015624); 23 **"PLAN-B..."** in the same place (0x080158D8, started
+    by 0x08016AE8 from 0x08021138, the second screen's).
+  - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
+  - Not in a netbattle: 9 the damage judge (0x080152C4, state at 0x02037BD0); 7 and 19, the turn timer's seconds
+    over "CUSTOM" (0x08016362 from the fight's timer 0x08008066, and its blinking from 0x080169DA, for battle kind
+    0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
+    code); 16, 17 and 22, the gauge in three colors, its sprite and the column marker of controller 2 (0x08016842
+    from 0x08007846, 0x08016878 from 0x08022A08, 0x0801589A; §18 item 49).
+
+  Compared with the lab's mGBA shots (verify `tools/frontend-compare`, recordings under the exe4-hud verify
+  worktree's data/verify/exe4-presentation). Every fight frame is pixel-exact in custom/cannon, describe, pause,
+  three-picks, flow/ko-side0, ko-double, ko-bluemoon, emotions/counter and full-synchro-hit. Together they cover
+  the HP box (its colors through ko-side0's deletion), the custom gauge filling, the HP numbers, the chip icons
+  (one and three chips), the chip name, damage and "×2", "PAUSE", "COUNTER HIT!" and the other player's used chip
+  (emotions/counter, frames 410 to 441). flow/ko-cannon and buster-side1 differ only in an explosion and in the
+  charge glow over the opponent, not the HUD.
+  Two pieces show 4 frames late in a replay: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the
+  full gauge's stripes and "L or R". The replay harness causes it: exe4-compat's screen takes the OK 4 frames late
+  (Round::screen_late), so the counter starts 4 later. Compared 4 frames apart, the full gauge's cells are exact on
+  all 10,509 full-gauge frames of flow/no-time-limit.
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -1051,3 +1103,19 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
     slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
     of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
+
+### 18.7 The HUD
+
+The fight HUD as read and ported is §14's "The fight HUD as ported". What it still waits on:
+
+53. **HUD pieces that wait on content** (group E). Port each with what reaches it:
+    - a soul chip (0x160 to 0x16F) as the next chip shows no icon of its own, and the stack starts at the second
+      (0x08015000), with Double Soul's chips;
+    - a message stops "????" until the next custom screen starts it (0x08015FE8 stops draw bit 10), with the
+      defensive chips;
+    - a dimming chip's telop: the user's on the banner block (0x08016454), the other player's on the second block in
+      state 0 (0x08008C40), both sliding and squashing as banners do. The renderer draws them from Hud.layout.telop;
+      the engine's telop for EXE4 comes with the first dimming chip;
+    - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
+      seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
+      item 16 reads EXE4's.
