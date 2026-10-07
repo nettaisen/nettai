@@ -1,20 +1,18 @@
 --!strict
 -- SerchMan, SrchMnSP and SrchMnDS (EXE4 chips 0x0E6 to 0x0E8): navi chips, the dimming chips' action 0x0C, its variant
--- 0x20: the shared navi chip controller (objects/navi_chip_controller, the chips' third parameter 0) brings SearchMan
--- (./navi), whose scope sweeps the enemy area until his user locks it on, and who fires five shots on the panel; the
--- chip's first parameter is his level (0, 3, 4), which picks his palette and his scope's speed. SrchMnSP's damage goes
--- by how fast its user deleted SearchMan SP (rules/sp_chips: formula 4, the table's row 3), SrchMnDS's by the field's
--- holes (formula 26).
+-- 0x20: their controller (./navi) brings SearchMan, whose scope sweeps the enemy area until his user locks it on, and
+-- who fires five shots on the panel; each chip states his palette (0x0800B950 by its first parameter, its level 0, 3 or
+-- 4: two palettes a variant, times 0, 2 or 3) and his scope's sweep (6 ticks a panel; the SP's and DS's 4). SrchMnSP's
+-- damage goes by how fast its user deleted SearchMan SP (rules/sp_chips: formula 4, the table's row 3), SrchMnDS's by
+-- the field's holes (formula 26).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
-local controller = require("../objects/navi_chip_controller")
+local navi = require("@self/navi")
 local navi_chips = require("../lib/navi_chips")
 local sp_chips = require("../rules/sp_chips")
 
 -- SearchMan's row of the navi chips' damage (0x08018B48's row 3), by step.
 local ROW: { number } = { 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25 }
--- The shared controller's SearchMan (the chips' third parameter).
-local SEARCHMAN = 0
 
 local serchman: Chip = {
     codes = { "S" },
@@ -27,7 +25,7 @@ local serchman: Chip = {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    dimming = controller.hook_for(0, SEARCHMAN),
+    dimming = navi.controller { id = "serchman/controller", palette = 0, sweep = 6 }.hook,
 }
 
 local srchmn_sp: Chip = {
@@ -42,7 +40,7 @@ local srchmn_sp: Chip = {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    dimming = controller.hook_for(3, SEARCHMAN),
+    dimming = navi.controller { id = "srchmn-sp/controller", palette = 4, sweep = 4 }.hook,
 }
 
 local srchmn_ds: Chip = {
@@ -56,7 +54,7 @@ local srchmn_ds: Chip = {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
-    dimming = controller.hook_for(4, SEARCHMAN),
+    dimming = navi.controller { id = "srchmn-ds/controller", palette = 6, sweep = 4 }.hook,
 }
 
 return { serchman = serchman, ["srchmn-sp"] = srchmn_sp, ["srchmn-ds"] = srchmn_ds }

@@ -1,11 +1,11 @@
 --!strict
--- Roll, the navi of the Roll chips, as EXE6 and EXE5 share her (the original's actor object #0x2C: EXE6's `sub_80C07BC`,
--- EXE5's 0x080C06A4, the same code but for the parts each game passes), brought by their navi chip controller. She
--- fades in over her user's panel; warps up and down in front of the nearest enemy navi ahead (`sub_80C0C9A`); whips
--- it three times (a hit region 10 ticks apart, with her ribbon out); warps up and away; warps her user back in
--- herself; and drops a heart on her user's panel (the game's heart) that heals three times her damage. Then she
--- goes, and the controller moves on. With no enemy navi ahead she leaves at once. (The controller skips the user's
--- warp back in for her: she brings it herself.) See docs/engine/chips.md §3.6.20.
+-- Roll, the navi of the Roll chips, as EXE6 and EXE5 share her (the original's actor object #0x2C: EXE6's
+-- `sub_80C07BC`, EXE5's 0x080C06A4, the same code but for the parts each game passes), brought by their navi chip
+-- controller. She fades in over her user's panel; warps up and down in front of the nearest enemy navi ahead
+-- (`sub_80C0C9A`); whips it three times (a hit region 10 ticks apart, with her ribbon out); warps up and away; warps
+-- her user back in herself; and drops a heart on her user's panel (the game's heart) that heals three times her damage.
+-- Then she goes, and the controller moves on. With no enemy navi ahead she leaves at once. (The controller skips the
+-- user's warp back in for her: she brings it herself.) See docs/engine/chips.md §3.6.20.
 --
 -- Each game makes its own kind (`roll.make`): her sprite and sounds, her warp's sparkle, her ribbon, her heart, and
 -- the controller's address her position takes; and EXE5's additions: what more she does as she appears, how she
@@ -24,8 +24,8 @@ local slot = require("../slot")
 -- What a chip summons her with (the chips' first parameter picks them): her whip's rounds of three hits (1; 3 for
 -- the parameter 5, which no chip has) and her palette (EXE6's Roll3's, EXE5's RollDS's is 1); EXE5's: the parameter
 -- (the chip's level: 0, 3 for SP, 4 for DS), which its additions read, and what her ribbon's palette adds (RollDS's
--- 1).
-export type Summon = { rounds: number, palette: number, level: number?, ribbon_palette: number? }
+-- 1); EXE4's: what her heart adds to her side's mood (its spec's `heart_dropped` reads it).
+export type Summon = { rounds: number, palette: number, level: number?, ribbon_palette: number?, mood: number? }
 
 export type Spec = {
     -- The kind's id.
@@ -105,6 +105,8 @@ export type State = {
     -- EXE5's: her chip's level (Param1) and what her ribbon's palette adds.
     level: number,
     ribbon_palette: number,
+    -- EXE4's: what her heart adds to her side's mood (her chip's).
+    mood: number,
 }
 
 local roll = {}
@@ -578,6 +580,7 @@ function roll.make(spec: Spec): Roll
             target_y = "u8",
             level = "u8",
             ribbon_palette = "u8",
+            mood = "u8",
         },
         -- `sub_80C07BC`.
         update = function(me: Object)
@@ -619,6 +622,7 @@ function roll.make(spec: Spec): Roll
             s.palette = args.palette
             s.level = args.level or 0
             s.ribbon_palette = args.ribbon_palette or 0
+            s.mood = args.mood or 0
             return o
         end
     end
