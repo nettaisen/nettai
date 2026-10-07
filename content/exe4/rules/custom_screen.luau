@@ -81,7 +81,7 @@ return {
         },
         -- 8: the bottom row's chip 4
         {
-            kind = "chip_position",
+            kind = "hidden",
             keys = { "a", "b", "r", "l", "start", "select", "up", "down", "right", "left" },
             up = { 3, 2, 1, 0 },
             down = { 8, 7, 6, 5 },
@@ -90,7 +90,7 @@ return {
         },
         -- 9: the bottom row's chip 5
         {
-            kind = "chip_position",
+            kind = "hidden",
             keys = { "a", "b", "r", "l", "start", "select", "up", "down", "right", "left" },
             up = { 4, 3, 2, 1, 0 },
             down = { 9, 8, 7, 6, 5 },
@@ -182,4 +182,12 @@ return {
     },
     -- The players the close sets back to full volume (0x0801E180).
     restore_players = { 9, 31 },
+    -- The custom gauge stays full while the screen is up (its opening, 0x0801DC28, leaves it): the send empties it
+    -- (0x0801E1B4: 0x080159B0).
+    gauge_empties_at_open = false,
+    -- OK clears the fade records at once (0x08020656, 0x0802065A), a dark chip's shade with them.
+    fades_clear_at_ok = true,
+    -- The choosing state draws what its selection's state is after the keys (0x0801E412: the table 0x0801E454):
+    -- the tick a key leaves the choosing draws no cursor, and OK and SELECT take the last turns' block off.
+    cursor_after_leaving = false,
 }

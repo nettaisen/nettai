@@ -165,6 +165,9 @@ struct CustomScreenSection {
     status_until: super::custom::StatusUntil,
     hover: HoverSection,
     restore_players: Vec<u8>,
+    gauge_empties_at_open: bool,
+    fades_clear_at_ok: bool,
+    cursor_after_leaving: bool,
 }
 
 #[derive(Deserialize)]
@@ -308,6 +311,7 @@ struct StatusSection {
     /// The status word a navi without collision data reads as.
     missing_collision_status: u32,
     reactions: super::rules::Reactions,
+    reaction_actions: super::rules::ReactionActions,
     bugs_before_drain: bool,
     no_charge_drive: bool,
     hp_loss: super::rules::HpLoss,
@@ -429,6 +433,7 @@ impl Stated {
                 flash_hides_on_clear: r.flash_hides_on_clear,
                 missing_collision_status: r.missing_collision_status.0,
                 reactions: r.reactions,
+                reaction_actions: r.reaction_actions,
                 bugs_before_drain: r.intake.bugs_before_drain,
                 no_charge_drive: r.intake.no_charge_drive,
                 hp_loss: r.intake.hp_loss,
@@ -481,6 +486,7 @@ impl Stated {
             flash_hides_on_clear: status.flash_hides_on_clear,
             missing_collision_status: super::rules::MissingCollisionStatus(status.missing_collision_status),
             reactions: status.reactions,
+            reaction_actions: status.reaction_actions,
             emotion: status.emotion,
             form_break: status.form_break,
             weakness_hit_breaks_form: status.weakness_hit_breaks_form,
@@ -698,6 +704,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     status_until: s.status_until,
                     hover: s.hover.rules(&at).map_err(e)?,
                     restore_players: s.restore_players,
+                    gauge_empties_at_open: s.gauge_empties_at_open,
+                    fades_clear_at_ok: s.fades_clear_at_ok,
+                    cursor_after_leaving: s.cursor_after_leaving,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,
