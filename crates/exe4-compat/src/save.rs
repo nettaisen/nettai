@@ -15,15 +15,16 @@
 //! Tango's raw netplay saves are such an image unmasked and unshifted, whose
 //! version and region their names give: [`Save::from_image`].)
 //!
-//! Once unshifted: the equipped folder's number at 0x2132, the Regular chip
-//! in battle at 0x214C (an entry of the folder, 0xFF none) and each folder's
-//! at 0x214D, the Regular memory at 0x2148 (less 4), the base max HP at
-//! 0x21CA, the folders at 0x262C (three of 30 halfwords: the chip in the low
+//! Once unshifted: MegaMan's HP and maximum HP at 0x2150 and 0x2152, the
+//! equipped folder's number at 0x2132, the Regular chip in battle at 0x214C
+//! (an entry of the folder, 0xFF none) and each folder's at 0x214D, the
+//! Regular memory at 0x2148 (less 4), the base max HP at 0x21CA, the folders at 0x262C (three of 30 halfwords: the chip in the low
 //! 9 bits, the code above), the NaviCust's list at 0x4564 (25 parts of 8
 //! bytes: the part id, 0 none; its column, row, rotation and compression
 //! flag at +2 to +5) and its 5x5 grid at 0x4540 (a cell the list's entry
 //! from 1, 0 empty), the Mod Cards at 0x464C (six slots, a card on) and
-//! 0x4653 (the same six, a card off; 0xFF none).
+//! 0x4653 (the same six, a card off; 0xFF none), MegaMan's NaviStats block
+//! at 0x4E60 (the first of eight).
 
 use crate::Version;
 
@@ -50,6 +51,10 @@ const EQUIPPED_FOLDER: usize = 0x2132;
 const REGULAR_CHIP: usize = 0x214C;
 const REGULAR_MEMORY: usize = 0x2148;
 const BASE_MAX_HP: usize = 0x21CA;
+/// MegaMan's HP and maximum HP (the game state's; a battle copies them into
+/// his NaviStats block, 0x0800D726, whose own words the save leaves stale).
+const HP: usize = 0x2150;
+const MAX_HP: usize = 0x2152;
 const FOLDERS: usize = 0x262C;
 pub const FOLDERS_COUNT: usize = 3;
 pub const FOLDER_SIZE: usize = 30;
@@ -57,6 +62,9 @@ const NAVICUST: usize = 0x4564;
 pub const NAVICUST_PARTS: usize = 25;
 const NAVICUST_GRID: usize = 0x4540;
 pub const NAVICUST_SIZE: usize = 5;
+/// MegaMan's NaviStats block, the first of the save's eight (the toolkit's
+/// +0x78): his stats as the PET's last reload left them.
+const NAVI_STATS: usize = 0x4E60;
 const MOD_CARDS_ON: usize = 0x464C;
 const MOD_CARDS_OFF: usize = 0x4653;
 pub const MOD_CARD_SLOTS: usize = 6;
@@ -77,6 +85,15 @@ pub struct Part {
     pub row: u8,
     pub rotation: u8,
     pub compressed: bool,
+}
+
+/// A NaviCust list as the save keeps it (25 entries of 8 bytes: the part id,
+/// 0 none; its column, row, rotation and compression flag at +2 to +5).
+pub fn parts(list: &[u8]) -> [Option<Part>; NAVICUST_PARTS] {
+    std::array::from_fn(|i| {
+        let p = &list[8 * i..8 * i + 8];
+        (p[0] != 0).then_some(Part { id: p[0], column: p[2], row: p[3], rotation: p[4], compressed: p[5] != 0 })
+    })
 }
 
 /// A Mod Card slot's card and whether it is on.
@@ -183,12 +200,19 @@ impl Save {
         self.u16(BASE_MAX_HP)
     }
 
+    /// MegaMan's HP and maximum HP (the maximum the PET's last reload made:
+    /// the base, the NaviCust's and the Mod Cards' HP).
+    pub fn hp(&self) -> u16 {
+        self.u16(HP)
+    }
+
+    pub fn max_hp(&self) -> u16 {
+        self.u16(MAX_HP)
+    }
+
     /// The NaviCust's list (an entry with no part: none).
     pub fn navicust(&self) -> [Option<Part>; NAVICUST_PARTS] {
-        std::array::from_fn(|i| {
-            let p = &self.image[NAVICUST + 8 * i..NAVICUST + 8 * i + 8];
-            (p[0] != 0).then_some(Part { id: p[0], column: p[2], row: p[3], rotation: p[4], compressed: p[5] != 0 })
-        })
+        parts(&self.image[NAVICUST..NAVICUST + 8 * NAVICUST_PARTS])
     }
 
     /// The NaviCust's grid, row by row: a cell's part, by its entry in the
@@ -200,6 +224,13 @@ impl Save {
                 n => Some(n as usize - 1),
             })
         })
+    }
+
+    /// MegaMan's NaviStats block (`codec::navi_stats` reads it), as the PET's
+    /// last reload left it but its HP words (+0x30 to +0x35: [`Save::hp`],
+    /// [`Save::max_hp`], [`Save::base_max_hp`] hold his).
+    pub fn navi_stats(&self) -> [u8; crate::codec::NAVI_STATS] {
+        self.image[NAVI_STATS..NAVI_STATS + crate::codec::NAVI_STATS].try_into().unwrap()
     }
 
     /// The Mod Cards by slot (a slot with no card: none).
