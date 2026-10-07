@@ -16,13 +16,16 @@
 
 mod app;
 mod arenas;
+mod builds;
 mod games;
 mod gl;
 mod input;
 mod lang;
 mod lobby;
 mod netplay;
+mod paths;
 mod replays;
+mod settings;
 mod sound;
 mod stage;
 mod tour;
@@ -117,6 +120,14 @@ fn main() -> Result<(), slint::PlatformError> {
             state.borrow_mut().keys.release();
             EventResult::Propagate
         }
+        // (A save dropped on the window: a build of it.)
+        winit::event::WindowEvent::DroppedFile(path) => {
+            let path = path.clone();
+            let state = state.clone();
+            // (After this event: the app may open the system's windows.)
+            slint::Timer::single_shot(Duration::ZERO, move || state.borrow_mut().dropped(&path));
+            EventResult::Propagate
+        }
         _ => EventResult::Propagate,
     });
 
@@ -186,6 +197,12 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     ui.on_lobby_code(move |c| a.borrow_mut().lobby_code(&c));
     let a = app.clone();
     ui.on_lobby_game(move |g| a.borrow_mut().lobby_game(g.max(0) as usize));
+    let a = app.clone();
+    ui.on_lobby_build(move |b| a.borrow_mut().lobby_build(b.max(0) as usize));
+    let a = app.clone();
+    ui.on_lobby_code_done(move || a.borrow_mut().lobby_code_done());
+    let a = app.clone();
+    ui.on_play_build(move |b| a.borrow_mut().play_build(b.max(0) as usize));
     ui.on_lobby_ready(on(App::lobby_ready));
     ui.on_lobby_copy(on(App::lobby_copy));
     let a = app.clone();
@@ -194,4 +211,47 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     ui.on_settings_step(move |row, by| a.borrow_mut().settings_step(row, by));
     let a = app.clone();
     ui.on_set_name(move |n| a.borrow_mut().set_name(&n));
+
+    // The builds and the creator. (Each runs after the window's event: a
+    // file dialog it opens runs its own loop.)
+    let later = |app: &Rc<RefCell<App>>, f: Box<dyn FnOnce(&mut App)>| {
+        let app = app.clone();
+        slint::Timer::single_shot(Duration::ZERO, move || f(&mut app.borrow_mut()));
+    };
+    let a = app.clone();
+    ui.on_builds_nav(move |n| later(&a, Box::new(move |app| app.builds_nav(n))));
+    let a = app.clone();
+    ui.on_builds_game(move |i| a.borrow_mut().builds_game(i.max(0) as usize));
+    let a = app.clone();
+    ui.on_builds_point(move |i| a.borrow_mut().builds_point(i.max(0) as usize));
+    let a = app.clone();
+    ui.on_builds_activate(move |i| later(&a, Box::new(move |app| app.builds_activate(i.max(0) as usize))));
+    let a = app.clone();
+    ui.on_build_nav(move |n| later(&a, Box::new(move |app| app.build_nav(n))));
+    let a = app.clone();
+    ui.on_build_tab(move |i| a.borrow_mut().build_tab(i.max(0) as usize));
+    let a = app.clone();
+    ui.on_build_point(move |_, _, _| {
+        let _ = &a;
+    });
+    let a = app.clone();
+    ui.on_build_act(move |pane, i, o| later(&a, Box::new(move |app| app.build_act(pane, i, o))));
+    let a = app.clone();
+    ui.on_build_step(move |i, by| a.borrow_mut().build_step(i, by));
+    let a = app.clone();
+    ui.on_build_action(move |k| later(&a, Box::new(move |app| app.build_action(k.max(0) as usize))));
+    let a = app.clone();
+    ui.on_build_strip(move |k| a.borrow_mut().build_strip(k.max(0) as usize));
+    let a = app.clone();
+    ui.on_build_filter(move |k| a.borrow_mut().build_filter(k.max(0) as usize));
+    let a = app.clone();
+    ui.on_build_grid_hover(move |x, y| a.borrow_mut().build_grid_hover(x, y));
+    let a = app.clone();
+    ui.on_build_grid_press(move |x, y, right| a.borrow_mut().build_grid_press(x, y, right));
+    let a = app.clone();
+    ui.on_build_grid_wheel(move |up| a.borrow_mut().build_grid_wheel(up));
+    let a = app.clone();
+    ui.on_build_edited(move |t| a.borrow_mut().build_edited(&t));
+    let a = app.clone();
+    ui.on_build_edit_done(move |t| a.borrow_mut().build_edit_done(&t));
 }

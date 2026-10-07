@@ -4,6 +4,7 @@
 
 use nettai_battle::Content;
 use nettai_frontend::game::{self, Graphics, Loaded, Options};
+use nettai_battle::content::strings::Strings;
 use nettai_content::locale;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -145,13 +146,73 @@ impl<'a> Names<'a> {
         out
     }
 
-    pub fn navi(&self, navi: nettai_content_api::NaviHandle) -> String {
-        let key = &self.content.defs.navi(navi).key;
+    /// A name by `key` from the language's table, else the content's, else
+    /// the key, on one line.
+    fn pick(&self, key: &str, get: impl Fn(&Strings, &str) -> Option<String>) -> String {
         self.strings
-            .and_then(|s| s.navi(key))
-            .and_then(|n| n.name.clone())
-            .or_else(|| self.content.strings.navi(key).and_then(|n| n.name.clone()))
+            .and_then(|s| get(s, key))
+            .or_else(|| get(&self.content.strings, key))
             .map(|s| Names::line(&s))
-            .unwrap_or_else(|| key.clone())
+            .unwrap_or_else(|| nettai_match::ids::local(key).to_string())
     }
+
+    pub fn navi(&self, navi: nettai_content_api::NaviHandle) -> String {
+        self.pick(&self.content.defs.navi(navi).key, |s, k| s.navi(k).and_then(|n| n.name.clone()))
+    }
+
+    pub fn chip(&self, chip: nettai_content_api::ChipHandle) -> String {
+        self.pick(&self.content.defs.chip(chip).key, |s, k| s.chip(k).and_then(|n| n.name.clone()))
+    }
+
+    pub fn form(&self, form: nettai_content_api::FormHandle) -> String {
+        self.pick(&self.content.defs.form(form).key, |s, k| s.form(k).and_then(|n| n.name.clone()))
+    }
+
+    /// An entry of one of the game's collections (a card, a program).
+    pub fn entry(&self, entry: nettai_content_api::EntryHandle) -> String {
+        let d = self.content.defs.entry(entry);
+        self.pick(d.id(), |s, k| s.entry(&d.collection, k).and_then(|c| c.name.clone()))
+    }
+
+    /// An entry's description, its lines as the game's box breaks them;
+    /// none where the strings have none.
+    pub fn description(&self, entry: nettai_content_api::EntryHandle) -> Option<String> {
+        let d = self.content.defs.entry(entry);
+        let get = |s: &Strings| s.entry(&d.collection, d.id()).and_then(|x| x.description.clone());
+        self.strings.and_then(get).or_else(|| get(&self.content.strings))
+    }
+
+    /// Key `key` of the game's text table `table`, on one line; none where
+    /// neither the language's strings nor the content's have it.
+    pub fn text(&self, table: &str, key: &str) -> Option<String> {
+        self.strings.and_then(|s| s.text(table, key)).or_else(|| self.content.strings.text(table, key)).map(Names::line)
+    }
+
+    /// A definition of a registry, by its handle.
+    pub fn def(&self, registry: nettai_content_api::Registry, h: u16) -> String {
+        use nettai_content_api::Registry;
+        match registry {
+            Registry::Chip => self.chip(nettai_content_api::ChipHandle(h)),
+            Registry::Form => self.form(nettai_content_api::FormHandle(h)),
+            Registry::Navi => self.navi(nettai_content_api::NaviHandle(h)),
+            Registry::Entry => self.entry(nettai_content_api::EntryHandle(h)),
+            _ => nettai_match::ids::key_of(self.content, registry, h).map_or_else(|| h.to_string(), |k| nettai_match::ids::local(k).to_string()),
+        }
+    }
+}
+
+/// A description's lines as one: a space where a break falls between two
+/// Latin letters (`MegaBstr\nAttck +1`), none between others (Japanese
+/// lines run on: `ロックバスターの\n攻撃力が1アップ!`).
+pub fn one_line(d: &str) -> String {
+    let chars: Vec<char> = d.chars().collect();
+    let mut out = String::new();
+    for (i, &c) in chars.iter().enumerate() {
+        if c != '\n' {
+            out.push(c);
+        } else if i > 0 && chars[i - 1].is_ascii() && chars.get(i + 1).is_some_and(|n| n.is_ascii()) {
+            out.push(' ');
+        }
+    }
+    out
 }

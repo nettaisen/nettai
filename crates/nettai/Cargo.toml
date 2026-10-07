@@ -28,10 +28,18 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 png = "0.17"
 # Netplay's link: WebRTC through a room of the signaling server.
 nettai-rtc = { path = "../nettai-rtc" }
+# A build from a save: each game's own reader of its saves.
+exe6-compat = { path = "../exe6-compat" }
+exe5-compat = { path = "../exe5-compat" }
+# The builds' and the settings' files.
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 
 # The room's code, copied for the other player (the desktop's clipboard).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 arboard = { version = "3", default-features = false }
+# A save to make a build of, chosen in the system's file dialog.
+rfd = "0.15"
 # The picture's texture, kept and written in place in the window's OpenGL.
 glow = "0.16"
 

@@ -1,0 +1,35 @@
+[package]
+name = "nettai-tools"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The developer's and verification's command line over nettai-frontend, with no window: headless frames, the audits, the replay of the original's recordings, match setups and replays checked"
+
+[[bin]]
+name = "nettai-tool"
+path = "src/main.rs"
+
+[dependencies]
+nettai-frontend = { path = "../nettai-frontend" }
+nettai-battle = { path = "../nettai-battle" }
+nettai-render = { path = "../nettai-render" }
+# The recording replay (src/trace.rs): a recording is the original's
+# numbers, which a game's compat crate reads and compares.
+exe6-compat = { path = "../exe6-compat", features = ["trace"] }
+exe5-compat = { path = "../exe5-compat", features = ["trace"] }
+nettai-assets = { path = "../nettai-assets" }
+# The sound's lookups and the audit's mixing (no audio device).
+nettai-audio = { path = "../nettai-audio", default-features = false }
+nettai-content = { path = "../nettai-content" }
+nettai-match = { path = "../nettai-match" }
+nettai-content-api = { path = "../nettai-content-api" }
+m4a.workspace = true
+# A recording's setup line, for the game it states.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+# Reading the headless test's PNGs back.
+png = "0.17"
+nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
+nettai-match = { path = "../nettai-match", features = ["testing"] }

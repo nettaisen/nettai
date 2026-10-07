@@ -10,6 +10,8 @@ import { PlayScreen, GameCard, GameState, MatchPreview, RoundCard } from "play.s
 import { LobbyScreen, LinkState, Peer } from "lobby.slint";
 import { ReplaysScreen, ReplayRow, ReplayCheck } from "replays.slint";
 import { SettingsScreen } from "settings.slint";
+import { BuildsScreen, BuildCard } from "builds.slint";
+import { BuildScreen, BuildTab, TabKind, BuildAction, ActionButton, RowKind, FactRow, EntryRow, PickRow, CheckTile, FilterChip, Detail, StatRow, GridCell, GridPart, LeftKind, RightKind } from "build.slint";
 
 // The strings the host shows that it doesn't take from the content: here,
 // so they come from the same catalog as the rest.
@@ -22,6 +24,11 @@ export global Strings {
         @tr("Stand-in")
     }
 
+    // Your side as a match file states it.
+    pure public function from-the-match() -> string {
+        @tr("build" => "The match's")
+    }
+
     // The language's name, in itself (its catalog's translation of
     // "English"; the build reads it for the list of languages).
     pure public function language-name() -> string {
@@ -30,6 +37,7 @@ export global Strings {
 }
 
 export { Theme, NavAction, Screen, UiSound, Input, Format, BattleKind, Side, Playback, Connection, GameCard, GameState, MatchPreview, RoundCard, LinkState, Peer, ReplayRow, ReplayCheck }
+export { BuildCard, BuildTab, TabKind, BuildAction, ActionButton, RowKind, FactRow, EntryRow, PickRow, CheckTile, FilterChip, Detail, StatRow, GridCell, GridPart, LeftKind, RightKind }
 
 export component AppWindow inherits Window {
     title: "nettai";
@@ -68,6 +76,7 @@ export component AppWindow inherits Window {
     callback play-source(int);
     callback play-reroll();
     callback play-fight();
+    callback play-build(int);
 
     callback battle-resume();
     callback battle-restart();
@@ -78,6 +87,8 @@ export component AppWindow inherits Window {
     callback lobby-mode(int);
     callback lobby-code(string);
     callback lobby-game(int);
+    callback lobby-build(int);
+    callback lobby-code-done();
     callback lobby-ready();
     callback lobby-copy();
 
@@ -85,6 +96,25 @@ export component AppWindow inherits Window {
 
     callback settings-step(int, int);
     callback set-name(string);
+
+    // The builds' and the creator's: their navigation is the app's.
+    callback builds-nav(NavAction);
+    callback builds-game(int);
+    callback builds-point(int);
+    callback builds-activate(int);
+    callback build-nav(NavAction);
+    callback build-tab(int);
+    callback build-point(int, int, int);
+    callback build-act(int, int, int);
+    callback build-step(int, int);
+    callback build-action(int);
+    callback build-strip(int);
+    callback build-filter(int);
+    callback build-grid-hover(int, int);
+    callback build-grid-press(int, int, bool);
+    callback build-grid-wheel(bool);
+    callback build-edited(string);
+    callback build-edit-done(string);
 
     // A navigation action from the host (a gamepad's).
     public function nav(a: NavAction) {
@@ -103,6 +133,10 @@ export component AppWindow inherits Window {
             replays.nav(a);
         } else if root.screen == Screen.settings {
             settings.nav(a);
+        } else if root.screen == Screen.builds {
+            root.builds-nav(a);
+        } else if root.screen == Screen.build {
+            root.build-nav(a);
         }
     }
 
@@ -174,6 +208,10 @@ export component AppWindow inherits Window {
                 root.nav(NavAction.previous);
             } else if event.text == "s" || event.text == "S" || event.text == Key.PageDown {
                 root.nav(NavAction.next);
+            } else if event.text == "c" || event.text == "C" {
+                root.nav(NavAction.alternate);
+            } else if event.text == Key.Delete {
+                root.nav(NavAction.remove);
             } else if event.text == Key.Tab {
                 // (The next item; Slint's own focus would move into a
                 // screen not shown.)
@@ -198,10 +236,12 @@ export component AppWindow inherits Window {
                 if i == 0 {
                     root.go(Screen.play);
                 } else if i == 1 {
-                    root.go(Screen.lobby);
+                    root.go(Screen.builds);
                 } else if i == 2 {
-                    root.go(Screen.replays);
+                    root.go(Screen.lobby);
                 } else if i == 3 {
+                    root.go(Screen.replays);
+                } else if i == 4 {
                     root.go(Screen.settings);
                 } else {
                     root.quit();
@@ -227,6 +267,9 @@ export component AppWindow inherits Window {
             }
             reroll => {
                 root.play-reroll();
+            }
+            choose-build(b) => {
+                root.play-build(b);
             }
             fight => {
                 root.play-fight();
@@ -255,6 +298,12 @@ export component AppWindow inherits Window {
             }
             set-game(g) => {
                 root.lobby-game(g);
+            }
+            set-build(b) => {
+                root.lobby-build(b);
+            }
+            code-done => {
+                root.lobby-code-done();
             }
             ready => {
                 root.lobby-ready();
@@ -298,6 +347,69 @@ export component AppWindow inherits Window {
             }
             sound(s) => {
                 root.sound(s);
+            }
+        }
+
+        builds := BuildsScreen {
+            visible: root.screen == Screen.builds;
+            width: root.width;
+            height: root.height;
+            nav(a) => {
+                root.nav(a);
+            }
+            choose-game(i) => {
+                root.builds-game(i);
+            }
+            point(i) => {
+                root.builds-point(i);
+            }
+            activate(i) => {
+                root.builds-activate(i);
+            }
+        }
+
+        build := BuildScreen {
+            visible: root.screen == Screen.build;
+            width: root.width;
+            height: root.height;
+            nav(a) => {
+                root.nav(a);
+            }
+            choose-tab(i) => {
+                root.build-tab(i);
+            }
+            point(pane, i, o) => {
+                root.build-point(pane, i, o);
+            }
+            act(pane, i, o) => {
+                root.build-act(pane, i, o);
+            }
+            step(i, by) => {
+                root.build-step(i, by);
+            }
+            do-action(i) => {
+                root.build-action(i);
+            }
+            do-strip(i) => {
+                root.build-strip(i);
+            }
+            do-filter(i) => {
+                root.build-filter(i);
+            }
+            grid-hover(x, y) => {
+                root.build-grid-hover(x, y);
+            }
+            grid-press(x, y, right) => {
+                root.build-grid-press(x, y, right);
+            }
+            grid-wheel(up) => {
+                root.build-grid-wheel(up);
+            }
+            edited(t) => {
+                root.build-edited(t);
+            }
+            edit-done(t) => {
+                root.build-edit-done(t);
             }
         }
 
@@ -378,6 +490,11 @@ export component AppWindow inherits Window {
     in property <string> lobby-code-text <=> lobby.code;
     in property <[string]> lobby-games <=> lobby.games;
     in-out property <int> lobby-game-index <=> lobby.game;
+    in property <[string]> lobby-builds <=> lobby.builds;
+    in-out property <int> lobby-build-index <=> lobby.build;
+    in property <string> lobby-direct-address <=> lobby.direct-address;
+    in property <[string]> play-builds <=> play.builds;
+    in-out property <int> play-build-index <=> play.build;
     in property <Peer> lobby-me <=> lobby.me;
     in property <Peer> lobby-them <=> lobby.them;
     in property <LinkState> lobby-link <=> lobby.link;
@@ -395,8 +512,68 @@ export component AppWindow inherits Window {
     in property <bool> settings-crisp-text <=> settings.crisp-text;
     in property <bool> settings-sharp <=> settings.sharp;
     in-out property <int> settings-cursor <=> settings.cursor;
+    in property <[string]> builds-games <=> builds.games;
+    in property <int> builds-game-index <=> builds.game;
+    in property <[BuildCard]> builds-cards <=> builds.cards;
+    in property <int> builds-cursor <=> builds.cursor;
+    in property <string> builds-status <=> builds.status;
+    in property <string> builds-folder <=> builds.folder;
+    in property <bool> builds-imports <=> builds.imports;
+    in property <string> build-name <=> build.name;
+    in property <string> build-game <=> build.game;
+    in property <int> build-problem-count <=> build.problem-count;
+    in property <[BuildTab]> build-tabs <=> build.tabs;
+    in property <int> build-tab-index <=> build.tab;
+    in property <LeftKind> build-left <=> build.left-kind;
+    in property <RightKind> build-right <=> build.right-kind;
+    in property <int> build-pane <=> build.pane;
+    in property <int> build-cursor <=> build.cursor;
+    in property <int> build-pick <=> build.pick;
+    in property <int> build-option <=> build.option;
+    in property <[FactRow]> build-rows <=> build.rows;
+    in property <[EntryRow]> build-entries <=> build.entries;
+    in property <[CheckTile]> build-tiles <=> build.tiles;
+    in property <[PickRow]> build-picks <=> build.picks;
+    in property <[ActionButton]> build-actions <=> build.actions;
+    in property <[ActionButton]> build-strip-buttons <=> build.strip;
+    in property <[FilterChip]> build-filters <=> build.filters;
+    in property <[string]> build-notes <=> build.notes;
+    in property <[StatRow]> build-counts <=> build.counts;
+    in property <string> build-pick-hint <=> build.pick-hint;
+    in property <Detail> build-detail <=> build.detail;
+    in property <image> build-face <=> build.face;
+    in property <string> build-navi <=> build.navi;
+    in property <[StatRow]> build-stats <=> build.stats;
+    in property <string> build-stopped <=> build.stopped;
+    in property <[string]> build-problems <=> build.problems;
+    in property <int> build-board-n <=> build.board-n;
+    in property <string> build-board-size <=> build.board-size;
+    in property <[GridCell]> build-cells <=> build.cells;
+    in property <[GridPart]> build-parts <=> build.parts;
+    in property <[GridCell]> build-ghost <=> build.ghost;
+    in property <bool> build-ghost-fits <=> build.ghost-fits;
+    in property <color> build-ghost-color <=> build.ghost-color;
+    in property <int> build-cell-x <=> build.cell-x;
+    in property <int> build-cell-y <=> build.cell-y;
+    in property <int> build-hovered <=> build.hovered;
+    in property <bool> build-holding <=> build.holding;
+    in property <bool> build-compresses <=> build.compresses;
+    in property <string> build-status <=> build.status;
+    in property <bool> build-editing <=> build.editing;
+    in property <string> build-edit-label <=> build.edit-label;
+    in property <string> build-edit-hint <=> build.edit-hint;
+    in-out property <string> build-edit-text <=> build.edit-text;
+    out property <int> build-tile-columns: build.tile-columns;
 
     public function focus-keys() {
         keys.focus();
+    }
+
+    public function build-edit-focus() {
+        build.edit-focus();
+    }
+
+    public function build-edit-leave() {
+        build.edit-leave();
     }
 }

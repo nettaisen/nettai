@@ -4050,6 +4050,8 @@ version = "0.1.0"
 dependencies = [
  "arboard",
  "chrono",
+ "exe5-compat",
+ "exe6-compat",
  "gilrs",
  "glow 0.16.0",
  "nettai-audio",
@@ -4061,9 +4063,12 @@ dependencies = [
  "nettai-render",
  "nettai-rtc",
  "png 0.17.16",
+ "rfd",
+ "serde",
  "slint",
  "slint-build",
  "sys-locale",
+ "toml 0.8.23",
 ]
 
 [[package]]
@@ -4144,6 +4149,7 @@ dependencies = [
  "nettai-netplay",
  "nettai-render",
  "nettai-rtc",
+ "nettai-tools",
  "png 0.17.16",
  "rfd",
  "serde",
@@ -4248,6 +4254,26 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "web-time",
+]
+
+[[package]]
+name = "nettai-tools"
+version = "0.1.0"
+dependencies = [
+ "exe5-compat",
+ "exe6-compat",
+ "m4a",
+ "nettai-assets",
+ "nettai-audio",
+ "nettai-battle",
+ "nettai-content",
+ "nettai-content-api",
+ "nettai-frontend",
+ "nettai-match",
+ "nettai-render",
+ "png 0.17.16",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

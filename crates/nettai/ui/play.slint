@@ -102,6 +102,8 @@ component Choices {
     in property <[GameCard]> games;
     in property <int> game;
     in property <[string]> sources;
+    in property <[string]> builds;
+    in property <int> build;
     in property <int> source;
     in property <string> seed;
     in property <int> cursor;
@@ -172,6 +174,27 @@ component Choices {
                 }
             }
         }
+
+        OptionRow {
+            text: @tr("YOUR BUILD");
+            value: root.builds.length > 0 ? root.builds[root.build] : "—";
+            note: root.build > 0 ? @tr("One of your builds, in place of your side") : root.source == 0 ? @tr("A random side, from the seed") : @tr("Your side as the match file states it");
+            focused: root.cursor == 2;
+            enabled: root.game >= 0;
+            step(d) => {
+                root.point(2, root.game-cursor);
+                root.nav(d < 0 ? NavAction.left : NavAction.right);
+            }
+            activate => {
+                root.point(2, root.game-cursor);
+                root.nav(NavAction.right);
+            }
+            hover => {
+                if root.game >= 0 {
+                    root.point(2, root.game-cursor);
+                }
+            }
+        }
     }
 }
 
@@ -189,15 +212,15 @@ component Fight {
             text: @tr("FIGHT");
             primary: true;
             enabled: root.can-fight;
-            focused: root.cursor == 2;
+            focused: root.cursor == 3;
             width: 260px;
             activate => {
-                root.point(2, root.game-cursor);
+                root.point(3, root.game-cursor);
                 root.nav(NavAction.confirm);
             }
             hover => {
                 if root.can-fight {
-                    root.point(2, root.game-cursor);
+                    root.point(3, root.game-cursor);
                 }
             }
         }
@@ -329,6 +352,9 @@ export component PlayScreen {
     // The match: 0 random, then each match file of the game.
     in property <[string]> sources;
     in-out property <int> source;
+    // Your side: 0 a random one (or the match file's), then each build of the game.
+    in property <[string]> builds;
+    in-out property <int> build;
     in property <MatchPreview> preview;
     // The row focused: 0 the games, 1 the match, 2 FIGHT.
     in-out property <int> cursor;
@@ -339,6 +365,7 @@ export component PlayScreen {
 
     callback choose-game(int);
     callback choose-source(int);
+    callback choose-build(int);
     callback reroll();
     callback fight();
     callback back();
@@ -354,7 +381,7 @@ export component PlayScreen {
                 root.sound(UiSound.cursor);
             }
         } else if a == NavAction.down {
-            if root.cursor < 2 && root.game >= 0 {
+            if root.cursor < 3 && root.game >= 0 {
                 root.cursor += 1;
                 root.sound(UiSound.cursor);
             }
@@ -380,7 +407,13 @@ export component PlayScreen {
                 root.cursor = 2;
                 root.sound(UiSound.cursor);
             }
+        } else if root.cursor == 2 && (a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next) {
+            root.sound(UiSound.cursor);
+            root.choose-build(mod(root.build + (a == NavAction.left || a == NavAction.previous ? root.builds.length - 1 : 1), max(1, root.builds.length)));
         } else if root.cursor == 2 && a == NavAction.confirm {
+            root.cursor = 3;
+            root.sound(UiSound.cursor);
+        } else if root.cursor == 3 && a == NavAction.confirm {
             if root.can-fight {
                 root.sound(UiSound.pick);
                 root.fight();
@@ -426,6 +459,8 @@ export component PlayScreen {
                     game: root.game;
                     sources: root.sources;
                     source: root.source;
+                    builds: root.builds;
+                    build: root.build;
                     seed: root.preview.seed;
                     cursor: root.cursor;
                     game-cursor: root.game-cursor;
@@ -470,6 +505,8 @@ export component PlayScreen {
                 game: root.game;
                 sources: root.sources;
                 source: root.source;
+                builds: root.builds;
+                build: root.build;
                 seed: root.preview.seed;
                 cursor: root.cursor;
                 game-cursor: root.game-cursor;

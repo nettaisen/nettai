@@ -78,6 +78,7 @@ export component TitleScreen {
     property <bool> portrait: root.height > root.width;
     property <[MenuEntry]> entries: [
         { text: @tr("menu" => "PLAY"), caption: @tr("Fight the stand-in, offline"), enabled: true },
+        { text: @tr("menu" => "BUILDS"), caption: @tr("Your navi, folder, NaviCust and patch cards"), enabled: true },
         { text: @tr("menu" => "NETPLAY"), caption: @tr("Play another player with a room code"), enabled: true },
         { text: @tr("menu" => "REPLAYS"), caption: @tr("Watch the sets you've recorded"), enabled: true },
         { text: @tr("menu" => "SETTINGS"), caption: @tr("Language, sound and controls"), enabled: true },

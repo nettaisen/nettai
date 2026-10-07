@@ -1,0 +1,268 @@
+// Builds: the player's builds of each game, a new one, one from a save.
+// The app moves the cursor (the keys and the pad as navigation actions);
+// the mouse and touch point and confirm.
+
+import { Theme, NavAction } from "theme.slint";
+import { Slant, Label, Heading, Hints, Glyph } from "widgets.slint";
+
+export struct BuildCard {
+    name: string,
+    navi: string,
+    face: image,
+    // Its folder's chips, and its room.
+    chips: int,
+    total: int,
+    // What keeps it from playing: how many, the first said (-1: the file
+    // isn't one the game reads).
+    problems: int,
+    note: string,
+}
+
+component Card {
+    in property <BuildCard> card;
+    // 0 a build, 1 a new one, 2 one from a save.
+    in property <int> kind;
+    in property <bool> focused;
+    callback activate();
+    callback hover();
+
+    Slant {
+        lean: 18px;
+        color: root.focused ? @linear-gradient(90deg, Theme.cyan.with-alpha(0.28) 0%, Theme.raised 60%) : Theme.panel.with-alpha(root.kind == 0 ? 0.65 : 0.4);
+        stroke: root.focused ? Theme.cyan : Theme.line;
+        stroke-width: root.focused ? 2px : 1px;
+        animate color { duration: Theme.quick; }
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+        changed has-hover => {
+            if self.has-hover {
+                root.hover();
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 30px;
+        padding-right: 24px;
+        spacing: 18px;
+        Rectangle {
+            width: Theme.compact ? 64px : 96px;
+            if root.kind == 0: Image {
+                source: root.card.face;
+                width: parent.width;
+                height: parent.width / 2;
+                image-rendering: pixelated;
+            }
+            if root.kind != 0: Text {
+                text: root.kind == 1 ? "+" : "⇪";
+                color: root.focused ? Theme.cyan : Theme.text-dim;
+                font-size: 30px;
+                font-weight: Theme.black;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 2px;
+            Text {
+                text: root.kind == 1 ? @tr("NEW BUILD") : root.kind == 2 ? @tr("FROM A SAVE…") : root.card.name;
+                color: root.focused ? white : Theme.text;
+                font-size: Theme.compact ? 18px : 22px;
+                font-weight: Theme.black;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.kind == 1 ? @tr("Its navi, folder and the rest, from the start") : root.kind == 2 ? @tr("An original save (.sav), or drop one on the window") : root.card.navi + " · " + @tr("{0}/{1} chips", root.card.chips, root.card.total);
+                color: Theme.text-dim;
+                font-size: 12px;
+                overflow: elide;
+            }
+
+            if root.kind == 0 && root.card.note != "": Text {
+                text: root.card.note;
+                color: Theme.warn;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+
+        if root.kind == 0: Rectangle {
+            width: badge.preferred-width + 28px;
+            Slant {
+                height: 28px;
+                y: (parent.height - self.height) / 2;
+                lean: 8px;
+                color: root.card.problems == 0 ? Theme.ready.with-alpha(0.16) : Theme.warn.with-alpha(0.16);
+                stroke: root.card.problems == 0 ? Theme.ready : Theme.warn;
+                stroke-width: 1px;
+            }
+
+            badge := Text {
+                text: root.card.problems == 0 ? @tr("READY") : root.card.problems < 0 ? @tr("UNREADABLE") : @tr("{n} PROBLEM" | "{n} PROBLEMS" % root.card.problems);
+                color: root.card.problems == 0 ? Theme.ready : Theme.warn;
+                font-size: Theme.label;
+                font-weight: Theme.black;
+                letter-spacing: 1.5px * Theme.tracking;
+            }
+        }
+    }
+}
+
+export component BuildsScreen {
+    in property <[string]> games;
+    in property <int> game;
+    in property <[BuildCard]> cards;
+    // 0 a new build, 1 from a save, then each build.
+    in property <int> cursor;
+    in property <string> status;
+    in property <string> folder;
+    in property <bool> imports;
+    callback nav(NavAction);
+    callback choose-game(int);
+    callback point(int);
+    callback activate(int);
+    property <length> card-height: Theme.compact ? 68px : 84px;
+
+    VerticalLayout {
+        padding-left: Theme.gutter;
+        padding-right: Theme.gutter;
+        padding-top: Theme.gutter * 0.6;
+        spacing: Theme.gap;
+
+        Heading {
+            text: @tr("heading" => "BUILDS");
+            sub: @tr("YOUR SIDES, GAME BY GAME");
+            back => {
+                root.nav(NavAction.back);
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            height: 40px;
+            alignment: start;
+            Glyph {
+                key: "A";
+                button: "L";
+                y: (parent.height - self.height) / 2;
+            }
+
+            for g[i] in root.games: Rectangle {
+                width: label.preferred-width + 48px;
+                Slant {
+                    lean: 10px;
+                    color: i == root.game ? Theme.cyan : Theme.panel.with-alpha(0.7);
+                    stroke: i == root.game ? Theme.cyan : Theme.line;
+                    stroke-width: 1px;
+                }
+
+                label := Text {
+                    text: g;
+                    color: i == root.game ? Theme.ink : Theme.text-dim;
+                    font-size: Theme.label + 3px;
+                    font-weight: Theme.black;
+                    font-italic: true;
+                }
+
+                TouchArea {
+                    clicked => {
+                        root.choose-game(i);
+                    }
+                }
+            }
+
+            Glyph {
+                key: "S";
+                button: "R";
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        if root.games.length == 0: Text {
+            text: @tr("No game is ready yet: a game's asset pack is needed to make its builds.");
+            color: Theme.warn;
+            wrap: word-wrap;
+        }
+
+        list := Flickable {
+            vertical-stretch: 1;
+            property <length> top: root.cursor * (root.card-height + 8px);
+            changed top => {
+                if self.top < -self.content-y {
+                    self.content-y = -self.top;
+                } else if self.top + root.card-height > self.height - self.content-y {
+                    self.content-y = min(0px, self.height - self.top - root.card-height);
+                }
+            }
+            VerticalLayout {
+                alignment: start;
+                spacing: 8px;
+                if root.games.length > 0: Card {
+                    height: root.card-height;
+                    kind: 1;
+                    focused: root.cursor == 0;
+                    activate => {
+                        root.activate(0);
+                    }
+                    hover => {
+                        root.point(0);
+                    }
+                }
+                if root.games.length > 0: Card {
+                    height: root.card-height;
+                    kind: 2;
+                    focused: root.cursor == 1;
+                    opacity: root.imports ? 1 : 0.4;
+                    activate => {
+                        root.activate(1);
+                    }
+                    hover => {
+                        root.point(1);
+                    }
+                }
+                for c[i] in root.cards: Card {
+                    height: root.card-height;
+                    card: c;
+                    kind: 0;
+                    focused: root.cursor == i + 2;
+                    activate => {
+                        root.activate(i + 2);
+                    }
+                    hover => {
+                        root.point(i + 2);
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            height: 40px;
+            Hints {
+                visible: !Theme.portrait;
+                horizontal-stretch: 1;
+                hints: [
+                    { key: "↑↓", button: "✚", text: @tr("Choose") },
+                    { key: "Enter", button: "A", text: @tr("Open") },
+                    { key: "A S", button: "L R", text: @tr("Game") },
+                    { key: "Esc", button: "B", text: @tr("Back") },
+                ];
+            }
+
+            Text {
+                text: root.status != "" ? root.status : root.folder;
+                color: root.status != "" ? Theme.text : Theme.text-faint;
+                font-size: 12px;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}

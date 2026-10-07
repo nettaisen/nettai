@@ -8,6 +8,8 @@ description = "The desktop program over nettai-frontend: the match editor and th
 [dependencies]
 # What plays the battles: the program is a host of this library.
 nettai-frontend = { path = "../nettai-frontend" }
+# Its headless tools, which nettai-tools now holds.
+nettai-tools = { path = "../nettai-tools" }
 nettai-battle = { path = "../nettai-battle" }
 nettai-render = { path = "../nettai-render" }
 # The recording replay alone (src/trace.rs: `trace_rounds`): a recording is

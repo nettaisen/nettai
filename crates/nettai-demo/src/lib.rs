@@ -12,12 +12,11 @@
 // the compiler looks by default: `picture`.)
 #![recursion_limit = "256"]
 
-pub mod content_audit;
 pub mod editor;
-pub mod headless;
 pub mod net;
 mod picture;
 pub mod save_import;
-pub mod sound_lookups;
-pub mod trace;
 pub mod window;
+
+// (The headless tools are nettai-tools' now: nettai-demo is being retired.)
+pub use nettai_tools::{content_audit, headless, sound_lookups, trace};
