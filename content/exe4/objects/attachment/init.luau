@@ -1,6 +1,7 @@
 --!strict
--- EXE4's attachments (the actor kind 2 that 0x080CD6E0 spawns: init 0x080CD618, follow 0x080CD666): a
--- sprite a navi holds during an attack, such as the buster's muzzle flash. EXE4's own, not EXE5's and EXE6's
+-- EXE4's attachments (the attack pool's kind 2, 0x08003C40's, which 0x080CD6E0 spawns after its owner in the update
+-- order: init 0x080CD618, follow 0x080CD666): a sprite a navi holds during an attack, such as the buster's muzzle
+-- flash. EXE4's own, not EXE5's and EXE6's
 -- (@exelib/attachment): its row (0x080CD524, 4 bytes: the sprite's category and index, the palette, the lift) puts it
 -- at its owner's position, raised by the lift, never at an attach point; it follows its owner's visibility, color
 -- shader, palette, mosaic and flip; it runs while dimmed (header flag 0x10) but not while paused. What it shows is a
@@ -68,7 +69,7 @@ end
 
 attachment.kind = new.kind {
     id = "attachment",
-    pool = "actor",
+    pool = "attack",
     state = { slot = slot.TYPE, look = "record:attachment-look", anim = "u8", while_dimmed = "bool" },
     update = function(me: Object)
         local l = me.lifecycle

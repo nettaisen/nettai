@@ -296,6 +296,28 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// The sounds of navi `r`'s hit, as the rules' `intake.hit_sound` says: a
+/// player hears their own navi's as `own_hit` and another's as `hit`
+/// (EXE6's, EXE5's); or every console hears `hit`, or `auto_battle_hit` for
+/// a navi in auto battle (EXE4's 0x08013A8C).
+fn hit_sounds(b: &mut Battle, r: ObjectRef) {
+    use crate::content::{HitSound, SoundRole};
+    match b.game_rules().intake.hit_sound {
+        HitSound::ByConsole => {
+            let player = navi_record(b, r).actor_type == ActorType::Player;
+            let alliance = b.objects.get(r).alliance;
+            for side in 0..2 {
+                let own = player && side == alliance;
+                b.sound_for(side, if own { SoundRole::OwnHit } else { SoundRole::Hit });
+            }
+        }
+        HitSound::ByNavi => {
+            let role = if super::ai_navi::is_ai_navi(b, r) { SoundRole::AutoBattleHit } else { SoundRole::Hit };
+            b.sound(role);
+        }
+    }
+}
+
 /// `applyDamageToPlayer_801ba12`: subtract the final damage (Undershirt
 /// keeps 1 HP), then the element-5 damage; at 0 HP request deletion
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
@@ -313,14 +335,10 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
             d = hp - 1;
         }
         crate::kinds::subtract_hp(b, r, d);
-        // A player hears another sound when their own navi is hit;
+        // A player hears another sound when their own navi is hit (or, a hit
+        // that sounds by the navi, every console hears the navi's);
         // sprite_forceWhitePalette.
-        let player = navi_record(b, r).actor_type == ActorType::Player;
-        let alliance = b.objects.get(r).alliance;
-        for side in 0..2 {
-            let own = player && side == alliance;
-            b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
-        }
+        hit_sounds(b, r);
         b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
     }
@@ -360,12 +378,7 @@ fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
         }
         if crate::kinds::subtract_hp(b, r, d) {
             b.objects.sprite_mut(r).look.white = true;
-            let player = navi_record(b, r).actor_type == ActorType::Player;
-            let alliance = b.objects.get(r).alliance;
-            for side in 0..2 {
-                let own = player && side == alliance;
-                b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
-            }
+            hit_sounds(b, r);
         } else {
             fell = true;
         }

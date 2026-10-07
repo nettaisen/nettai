@@ -401,6 +401,9 @@ local status = {
         bugs_before_drain = true,
         no_charge_drive = false,
         hp_loss = "hp_alone",
+        -- Every console hears a navi's hit as `hit` (0x6B), a navi in auto battle's (NaviStats +0x26 = 1) as
+        -- `auto_battle_hit` (0x6D): its hit intake, 0x08013A8C.
+        hit_sound = "by_navi",
         -- EXE4's emotions (to read: exe4-map.md §7, §18): EXE5's until then.
         emotion = {
             mood_held = "at_zero",

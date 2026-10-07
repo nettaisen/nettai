@@ -2774,6 +2774,7 @@ export type RolesSpec = {
         panel_poison: Sound?,
         own_hit: Sound?,
         hit: Sound?,
+        auto_battle_hit: Sound?,
         damage: Sound?,
         guard: Sound?,
         counter_hit: Sound?,

@@ -524,6 +524,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         bugs_before_drain = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",
+        hit_sound = "by_console",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" } },
         form_break = "marked_forms",
         weakness_hit_breaks_form = true,
@@ -610,7 +611,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 69, "every field of every section");
+        assert_eq!(fields, 70, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
