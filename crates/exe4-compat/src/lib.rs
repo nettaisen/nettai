@@ -56,7 +56,9 @@ pub struct ChipEntry {
 
 /// EXE4's asset names (assets.toml): the names the extractor writes its
 /// assets under. Sprites as "cc-ii" (the category's byte offset in the
-/// sprite list and the index), sounds by the song table's numbers.
+/// sprite list and the index), sounds by the song table's numbers, battle
+/// backgrounds by the background loader's (0x08085430), banners by the
+/// banner block's (0x02037CE0's +1).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AssetNames {
@@ -64,6 +66,10 @@ pub struct AssetNames {
     pub sprites: BTreeMap<String, String>,
     #[serde(default)]
     pub sounds: BTreeMap<String, u16>,
+    #[serde(default)]
+    pub backgrounds: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub banners: BTreeMap<String, u8>,
 }
 
 /// EXE4's text encodings (text.toml): what each byte below `first_control`

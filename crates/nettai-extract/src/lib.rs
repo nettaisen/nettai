@@ -234,8 +234,9 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
 }
 
 impl Extraction {
-    /// The sprites and songs the pack has under a number (`sprite-cc-ii`,
-    /// `sound-nnn`): those compat/assets.toml names none of.
+    /// The sprites, songs and backgrounds the pack has under a number
+    /// (`sprite-cc-ii`, `sound-nnn`, `background-nn`): those
+    /// compat/assets.toml names none of.
     pub fn unnamed(&self) -> Vec<String> {
         let sprites = self
             .graphics
@@ -250,7 +251,14 @@ impl Extraction {
             .enumerate()
             .filter(|(id, s)| s.is_some() && !self.names.songs.contains_key(&(*id as u16)))
             .map(|(id, _)| format!("sound/{}", self.names.song(id as u16)));
-        sprites.chain(songs).collect()
+        let backgrounds = self
+            .graphics
+            .backgrounds
+            .iter()
+            .enumerate()
+            .filter(|(id, b)| b.is_some() && !self.names.backgrounds.contains_key(&(*id as u8)))
+            .map(|(id, _)| format!("background/{}", self.names.background(id as u8)));
+        sprites.chain(songs).chain(backgrounds).collect()
     }
 
     /// Open-format pack files, relative paths and bytes, for an application's own
