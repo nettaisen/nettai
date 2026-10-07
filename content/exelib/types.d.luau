@@ -181,8 +181,9 @@ export type TornadoBlowLook = { attachment: Kind, tornado: Kind }
 -- `kind`, a ball kind of its own (none: the game's).
 export type ThunderShot = { id: string?, ball: ThunderBall, kind: Kind? }
 
--- A game's thunder shots (@exelib/thunder/shoot): its buster (the arm) and its ball's kind.
-export type ThunderShotLook = { buster: Buster, ball: Kind }
+-- A game's thunder shots (@exelib/thunder/shoot): its buster (the arm it raises; none: EXE4's raises none), its
+-- ball's kind, and the navi's animation as it shoots (none: EXE6's and EXE5's 0x0E; EXE4's 0x12).
+export type ThunderShotLook = { buster: Buster?, ball: Kind, anim: number? }
 
 -- How a falling meteor's panel marker blinks (@exelib/meteors/marker; EXE6's `byte_80E4334`, by the original's first
 -- parameter): its lifetime, its blink period, the ticks lit each period, and how much each period shrinks the next
@@ -1248,14 +1249,16 @@ export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: num
 export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug: number? }
 
 -- A game's thunder ball (chips/thunder/ball, `make_kind`): its sprite and
--- animation small and big (fast, or DarkThnd's 12 panels), its collision
--- type (a 12-panel one's, if another), hit modifier and spark, its sound
--- (a 12-panel one's, if another).
+-- animation small and big (fast, or DarkThnd's 12 panels; none: a game
+-- whose ball is never big, EXE4's), its collision type (a 12-panel one's,
+-- if another), hit modifier and spark, its sound (a 12-panel one's, if
+-- another), and its own search for its target (none: `sub_80C95EC`'s,
+-- EXE6's and EXE5's).
 export type ThunderBallLook = {
     sprite: SpriteAsset,
     small_anim: number,
-    big_sprite: SpriteAsset,
-    big_anim: number,
+    big_sprite: SpriteAsset?,
+    big_anim: number?,
     is: CollisionType,
     dark_is: CollisionType?,
     target: CollisionType,
@@ -1263,6 +1266,7 @@ export type ThunderBallLook = {
     spark: Spark,
     sound: Sound,
     dark_sound: Sound?,
+    find_target: ((me: Object) -> (number, number))?,
 }
 
 -- ElemTrap's counterattack by element (chips/elemtrap/strike): its sound,
