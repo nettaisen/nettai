@@ -307,6 +307,7 @@ struct StatusSection {
     /// The status word a navi without collision data reads as.
     missing_collision_status: u32,
     reactions: super::rules::Reactions,
+    reaction_actions: super::rules::ReactionActions,
     bugs_before_drain: bool,
     no_charge_drive: bool,
     hp_loss: super::rules::HpLoss,
@@ -426,6 +427,7 @@ impl Stated {
                 flash_hides_on_clear: r.flash_hides_on_clear,
                 missing_collision_status: r.missing_collision_status.0,
                 reactions: r.reactions,
+                reaction_actions: r.reaction_actions,
                 bugs_before_drain: r.intake.bugs_before_drain,
                 no_charge_drive: r.intake.no_charge_drive,
                 hp_loss: r.intake.hp_loss,
@@ -477,6 +479,7 @@ impl Stated {
             flash_hides_on_clear: status.flash_hides_on_clear,
             missing_collision_status: super::rules::MissingCollisionStatus(status.missing_collision_status),
             reactions: status.reactions,
+            reaction_actions: status.reaction_actions,
             emotion: status.emotion,
             form_break: status.form_break,
             weakness_hit_breaks_form: status.weakness_hit_breaks_form,
