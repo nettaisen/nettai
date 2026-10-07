@@ -17,11 +17,14 @@ return {
     missing_collision_status = 0xE3A02004,
     -- A drag, the slides and a flinch, then the mercy flash's timer.
     reactions = "flash_timer_last",
+    -- The reaction actions mark the action in use, ground and count.
+    reaction_actions = "marked",
     -- The HP bug drains before a hit's NaviCust bug is taken; no no-charge
     -- drive; a loss of HP takes the HP alone.
     bugs_before_drain = false,
     no_charge_drive = false,
     hp_loss = "hp_alone",
+    hit_sound = "by_console",
     -- Worn out (exhausted, or a mood of 0) before anger, then held tired, Full
     -- Synchro, else normal; a navi held tired or exhausted holds its mood, and
     -- anger's end puts it at 0x80.

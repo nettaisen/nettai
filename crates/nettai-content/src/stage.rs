@@ -277,6 +277,12 @@ pub struct AnimDoc {
     pub tiles: Option<[u16; 2]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub palettes: Option<[u8; 2]>,
+    /// Or what each frame shifts by its `shift` color: palettes `[first,
+    /// count]` as shown, brightened or darkened.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brightens: Option<[u8; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub darkens: Option<[u8; 2]>,
     /// The frame playback returns to after the last (none: it stays on
     /// the last).
     pub repeat_from: Option<usize>,
@@ -291,6 +297,8 @@ pub struct AnimFrameDoc {
     pub ticks: u16,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub palettes: Vec<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shift: Option<String>,
 }
 
 pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
@@ -310,7 +318,15 @@ pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
     files.push(("map.tmj".into(), tiled_map(bg, iw, ih, all.len())));
     let mut anims = Vec::new();
     for (k, a) in bg.anims.iter().enumerate() {
-        let mut doc = AnimDoc { tiles: None, palettes: None, repeat_from: a.repeat_from, image: None, frames: Vec::new() };
+        let mut doc = AnimDoc {
+            tiles: None,
+            palettes: None,
+            brightens: None,
+            darkens: None,
+            repeat_from: a.repeat_from,
+            image: None,
+            frames: Vec::new(),
+        };
         match a.target {
             AnimTarget::Tiles { first, count } => {
                 doc.tiles = Some([first, count]);
@@ -331,12 +347,19 @@ pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
                 doc.image = Some(img);
             }
             AnimTarget::Palettes { first, count } => doc.palettes = Some([first, count]),
+            AnimTarget::PaletteShift { first, count, darken: false } => doc.brightens = Some([first, count]),
+            AnimTarget::PaletteShift { first, count, darken: true } => doc.darkens = Some([first, count]),
             AnimTarget::Nothing => {}
         }
+        let shifts = matches!(a.target, AnimTarget::PaletteShift { .. });
         doc.frames = a
             .frames
             .iter()
-            .map(|f| AnimFrameDoc { ticks: f.delay, palettes: f.palettes.iter().map(tiles::palette_text).collect() })
+            .map(|f| AnimFrameDoc {
+                ticks: f.delay,
+                palettes: f.palettes.iter().map(tiles::palette_text).collect(),
+                shift: shifts.then(|| tiles::color_text(f.shift)),
+            })
             .collect();
         anims.push(doc);
     }
@@ -368,12 +391,14 @@ pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Optio
     let (map, width, height) = read_tiled_map(&dir.join(&doc.map), &format!("{prefix}/{}", doc.map), report)?;
     let mut anims = Vec::new();
     for (k, a) in doc.anims.iter().enumerate() {
-        let target = match (a.tiles, a.palettes) {
-            (Some([first, count]), None) => AnimTarget::Tiles { first, count },
-            (None, Some([first, count])) => AnimTarget::Palettes { first, count },
-            (None, None) => AnimTarget::Nothing,
+        let target = match (a.tiles, a.palettes, a.brightens, a.darkens) {
+            (Some([first, count]), None, None, None) => AnimTarget::Tiles { first, count },
+            (None, Some([first, count]), None, None) => AnimTarget::Palettes { first, count },
+            (None, None, Some([first, count]), None) => AnimTarget::PaletteShift { first, count, darken: false },
+            (None, None, None, Some([first, count])) => AnimTarget::PaletteShift { first, count, darken: true },
+            (None, None, None, None) => AnimTarget::Nothing,
             _ => {
-                report.error(&name, format!("animation {k} replaces both tiles and palettes"));
+                report.error(&name, format!("animation {k} says more than one of tiles, palettes, brightens and darkens"));
                 continue;
             }
         };
@@ -401,6 +426,13 @@ pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Optio
             .map(|(f, tiles)| GfxAnimFrame {
                 tiles,
                 palettes: f.palettes.iter().map(|p| tiles::parse_palette(p, report, &name)).collect(),
+                shift: f.shift.as_deref().map_or(0, |c| match tiles::parse_color(c) {
+                    Ok((v, _)) => v,
+                    Err(e) => {
+                        report.error(&name, e);
+                        0
+                    }
+                }),
                 delay: f.ticks,
             })
             .collect();

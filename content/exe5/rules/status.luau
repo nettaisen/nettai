@@ -411,6 +411,8 @@ local status = {
         -- Its status block (0x08017CC8 on) runs the flash's timer first, whatever the battle's flags (0x080173C4),
         -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "flash_timer_first",
+        -- Its reaction actions mark the action in use, ground and count (0x08014132 on), as EXE6's.
+        reaction_actions = "marked",
         bugs_before_drain = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the rules (the
@@ -421,6 +423,8 @@ local status = {
         -- holds at 1 HP once a battle and asks for his last stand, the roles' `volley`; ./emotion/dark_survival), and
         -- a hit shows (white, its sounds) by their answer, the register that check leaves.
         hp_loss = "gauge",
+        -- A player hears its own navi's hit as `own_hit`, another's as `hit`, as EXE6's.
+        hit_sound = "by_console",
         -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi
         -- in a soul reads as normal (the soul's own face), then anger is read before a mood of 0 (a dark MegaMan's,
         -- worn out), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.

@@ -264,7 +264,13 @@ pub(crate) mod testing {
             matches!(id.0, 0x24 | 0x34)
         }
         fn banner_steps(&self) -> crate::content::BannerSteps {
-            crate::content::BannerSteps { slide_in: 5, hold: 0x30, slide_out: 5, release: crate::content::BannerRelease::HoldsThreeMore }
+            crate::content::BannerSteps {
+                slide_in: 5,
+                hold: 0x30,
+                slide_out: 5,
+                release: crate::content::BannerRelease::HoldsThreeMore,
+                bounces: true,
+            }
         }
         fn fade_clear(&self) -> crate::content::FadeClear {
             crate::content::FadeClear::AtTarget
