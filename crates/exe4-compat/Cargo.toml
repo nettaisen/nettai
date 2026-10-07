@@ -6,5 +6,6 @@ license.workspace = true
 description = "The original games' numbers for EXE4's content (content/exe4/compat), and what reads them. The engine never depends on it."
 
 [dependencies]
+nettai-battle.workspace = true
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
