@@ -433,6 +433,23 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         mixed_modifiers = false,"#,
             ),
             (
+                "custom_screen",
+                r#"
+        slots = row(12, { kind = "hidden", keys = { "a" } }),
+        emblem_at_window_return = false,
+        chatbox_commands_wait_for_text = true,
+        talking_characters = { only = "abc" },
+        first_choosing_tick_reads_keys = false,
+        run_message_at_key = true,
+        invalid_picks = "refused",
+        special_codes = "unstarred",
+        program_advances = { once_a_round = false, keeps_regular = true, clears_past_end = true },
+        modifier_passes_regular = true,
+        status_until = "sending",
+        hover = { runs = "while_choosing", to_dark = { {}, { music = 0x60, screen = 0xC0 } }, to_clear = { {} }, players = { 31, 9 }, sound = { counts = "while_dark", every = 61 } },
+        restore_players = { 9, 31 },"#,
+            ),
+            (
                 "effects",
                 r#"
         shake = "battle_rng",
@@ -572,6 +589,11 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             (ShakeRule::BattleRng, 0x7FF, 2, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
         );
         assert_eq!((r.chip_use.leave_on_use, r.chip_use.anti_navi_sparkle.z), (true, 16));
+        let s = &r.custom_screen;
+        assert_eq!((s.first_choosing_tick_reads_keys, s.status_until), (false, crate::content::StatusUntil::Sending));
+        assert!(matches!(&s.slots[11].moves, crate::content::SlotMoves::Candidates { keys, up, .. } if keys.len() == 1 && up.is_empty()));
+        assert_eq!((s.hover.to_dark.clone(), s.hover.to_clear.len(), s.hover.players, s.restore_players.clone()), (vec![None, Some([0x60, 0xC0])], 1, [31, 9], vec![9, 31]));
+        assert_eq!((s.hover.runs, s.hover.sound), (crate::content::HoverRuns::WhileChoosing, crate::content::HoverSound::WhileDark { every: 61 }));
         assert_eq!((r.push_reading.reads, r.push_reading.bits, r.overlay_restart, r.stance_counter), (PushSource::ByHitterFlip, 4, OverlayRestart::Reload, StanceCounter::NextTick));
         assert_eq!((r.hit_test.float_shoe_needs_self_bit, r.hit_test.elec_reaches_submerged, r.hit_test.guard_breaks_to), (true, true, 0x1002));
         assert!(!r.obstacle_slide_bounds);
@@ -610,7 +632,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 69, "every field of every section");
+        assert_eq!(fields, 82, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

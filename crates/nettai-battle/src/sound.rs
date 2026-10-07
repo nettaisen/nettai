@@ -34,14 +34,12 @@ pub enum SoundCue {
     /// or rose above it again (`false`). While it's low the music plays a
     /// semitone higher and 282/256 as fast.
     Pinch(bool),
-    /// `sub_802A3CC`: the custom screen closed; any volume change it made to
-    /// the music is undone.
-    RestoreVolume,
-    /// `sub_802A30C`, `sub_802A362`: the custom screen's cursor came to or
-    /// left a dark chip, and the music and the screen's player change volume
-    /// a step (volume control on players 31 and 22, all tracks; 0x100 is
-    /// full).
-    ScreenVolume { music: u16, screen: u16 },
+    /// Volume control on all of a sound player's tracks (0x100 is full):
+    /// the custom screen's hover over a dark chip ramps the music's and
+    /// the screen's player (EXE6's `sub_802A30C`, `sub_802A362`), and its
+    /// close sets them back (`sub_802A3CC`). The players are the rules'
+    /// (`custom_screen.hover.players`, `restore_players`).
+    Volume { player: u8, volume: u16 },
 }
 
 impl From<SoundId> for SoundCue {
