@@ -1,9 +1,11 @@
 # nettai-extract
 
-One Rust library and binary extracts EXE5 and EXE6 battle assets. ROM identification,
+One Rust library and binary extracts EXE4, EXE5 and EXE6 battle assets. ROM identification,
 LZ77, sprite/portrait archives, field and background formats, background animations,
 banners, custom-screen patch lists, placeholders, and pack export/verification are shared.
-The `exe5` and `exe6` modules retain game-specific addresses, layouts and source selection.
+The `exe4`, `exe5` and `exe6` modules retain game-specific addresses, layouts and source selection.
+EXE4's is partial while its port is under way: its sprites, chip pictures and icons, fonts and
+HUD text lines in both languages, and sound; the rest are placeholders its `extraction.txt` lists.
 
 ```sh
 cargo run --release -p nettai-extract -- exe6 new-pack falzar.gba gregar-jp.gba
@@ -15,6 +17,7 @@ truncated and duplicate images are errors. The supported originals are 8 MiB:
 
 | Game | Base US | Other US | Base Japanese | Other Japanese |
 | --- | --- | --- | --- | --- |
+| EXE4 | B4WE (Red Sun) | B4BE (Blue Moon) | B4WJ (Red Sun) | B4BJ (Blue Moon) |
 | EXE5 | BRBE (ProtoMan) | BRKE (Colonel) | BRBJ (Blues) | BRKJ (Colonel) |
 | EXE6 | BR6E (Falzar) | BR5E (Gregar) | BR6J (Falzar) | BR5J (Gregar) |
 
@@ -30,7 +33,9 @@ timing or the original appearance.
 
 Every pack includes `extraction.txt`. The library result exposes `missing_roms`, `warnings`
 and `placeholders` (named assets supplied by the completion pass; source-specific UI
-placeholders are covered by the missing-ROM diagnostics). No source ROM bytes are included
+placeholders are covered by the missing-ROM diagnostics), and `unnamed()`: the sprites and
+songs written under a number (`sprite-cc-ii`, `sound-nnn`) because compat names none of them,
+which `extraction.txt` lists too. No source ROM bytes are included
 in that report. Supplying all sources retains the original asset formats and identities.
 
 The CLI verifies that graphics, the asset index and sound structure read back. Optional

@@ -1,4 +1,4 @@
-//! Extract EXE5/EXE6 assets without launching a process or reading a content tree.
+//! Extract EXE4/EXE5/EXE6 assets without launching a process or reading a content tree.
 //!
 //! ROMs are identified by their headers, in any order. Missing sources produce
 //! checkerboard graphics and silent songs, with omissions recorded in the result.
@@ -17,6 +17,7 @@
 
 pub mod cli;
 mod decode;
+mod exe4;
 mod exe5;
 mod exe6;
 mod placeholders;
@@ -30,6 +31,7 @@ use std::{collections::BTreeMap, fmt, path::Path};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Game {
+    Exe4,
     Exe5,
     Exe6,
 }
@@ -37,6 +39,7 @@ pub enum Game {
 impl Game {
     pub fn id(self) -> &'static str {
         match self {
+            Self::Exe4 => "exe4",
             Self::Exe5 => "exe5",
             Self::Exe6 => "exe6",
         }
@@ -44,6 +47,7 @@ impl Game {
     /// Preferred base US ROM, other US version, then the corresponding JP ROMs.
     pub fn codes(self) -> [&'static str; 4] {
         match self {
+            Self::Exe4 => ["B4WE", "B4BE", "B4WJ", "B4BJ"],
             Self::Exe5 => ["BRBE", "BRKE", "BRBJ", "BRKJ"],
             Self::Exe6 => ["BR6E", "BR5E", "BR6J", "BR5J"],
         }
@@ -77,12 +81,12 @@ impl RomSet {
             .get(0xAC..0xB0)
             .and_then(|b| std::str::from_utf8(b).ok())
             .unwrap_or("");
-        if ![Game::Exe5, Game::Exe6]
+        if ![Game::Exe4, Game::Exe5, Game::Exe6]
             .iter()
             .any(|g| g.codes().contains(&code))
         {
             return Err(Error(format!(
-                "unsupported ROM game code {code:?}; expected an unmodified US or Japanese EXE5/EXE6 ROM"
+                "unsupported ROM game code {code:?}; expected an unmodified US or Japanese EXE4/EXE5/EXE6 ROM"
             )));
         }
         if bytes.len() != 8 * 1024 * 1024 {
@@ -136,6 +140,7 @@ pub fn extract(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
 
 fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
     let names = match game {
+        Game::Exe4 => exe4::names::asset_names(),
         Game::Exe5 => exe5::names::asset_names(),
         Game::Exe6 => exe6::names::asset_names(),
     };
@@ -150,7 +155,19 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
         .iter()
         .map(|c| format!("missing {c}: unavailable assets use generated placeholders"))
         .collect::<Vec<_>>();
+    if game == Game::Exe4 {
+        warnings.push(exe4::NOT_YET.into());
+    }
     let mut graphics = match game {
+        Game::Exe4 => exe4::graphics::bundle(
+            &exe4::rom::Roms {
+                redsun: sources[0],
+                bluemoon: sources[1],
+                redsun_jp: sources[2],
+                bluemoon_jp: sources[3],
+            },
+            &names,
+        ),
         Game::Exe5 => exe5::graphics::bundle(
             &exe5::rom::Roms {
                 protoman: sources[0],
@@ -217,6 +234,25 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
 }
 
 impl Extraction {
+    /// The sprites and songs the pack has under a number (`sprite-cc-ii`,
+    /// `sound-nnn`): those compat/assets.toml names none of.
+    pub fn unnamed(&self) -> Vec<String> {
+        let sprites = self
+            .graphics
+            .sprites
+            .iter()
+            .filter(|s| !self.names.sprites.contains_key(&(s.category, s.index)))
+            .map(|s| format!("sprite/{}", self.names.sprite(s.category, s.index)));
+        let songs = self
+            .sound
+            .songs
+            .iter()
+            .enumerate()
+            .filter(|(id, s)| s.is_some() && !self.names.songs.contains_key(&(*id as u16)))
+            .map(|(id, _)| format!("sound/{}", self.names.song(id as u16)));
+        sprites.chain(songs).collect()
+    }
+
     /// Open-format pack files, relative paths and bytes, for an application's own
     /// storage. This does not create directories or invoke the CLI.
     pub fn files(&self) -> Result<pack::Files, Error> {
@@ -247,6 +283,11 @@ impl Extraction {
         let mut diagnostics = self.warnings.join("\n");
         for name in &self.placeholders {
             diagnostics.push_str(&format!("\nplaceholder: {name}"));
+        }
+        // The assets written under a number, which no name in compat/assets.toml
+        // gives them yet (content may not use them).
+        for name in self.unnamed() {
+            diagnostics.push_str(&format!("\nunnamed: {name}"));
         }
         files.push(("extraction.txt".into(), diagnostics.into_bytes()));
         let mut paths = std::collections::HashSet::new();

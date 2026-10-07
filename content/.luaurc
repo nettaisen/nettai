@@ -1,5 +1,6 @@
 {
     "aliases": {
+        "exe4": "./exe4",
         "exe5": "./exe5",
         "exe6": "./exe6",
         "exelib": "./exelib"
