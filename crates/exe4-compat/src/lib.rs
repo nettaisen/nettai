@@ -24,6 +24,7 @@
 //! never reads any of it (a test guards it).
 
 pub mod codec;
+pub mod import;
 pub mod save;
 pub mod setup;
 #[cfg(feature = "trace")]
