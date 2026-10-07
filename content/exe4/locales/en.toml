@@ -85,6 +85,11 @@ language = "en"
 "protom-sp" = { name = "ProtoMSP", description = "Rush up\nto enemy\nand slice" }
 "protom-ds" = { name = "ProtoMDS", description = "Rush up\nto enemy\nand slice" }
 "deltaray" = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
+"elemflar" = { name = "ElemFlar", description = "3-sq atk\nPowerful\non magma!" }
+"elemice" = { name = "ElemIce", description = "3-sq atk\nPowerful\non ice" }
+"elemleaf" = { name = "ElemLeaf", description = "3-sq atk\nPowerful\non grass" }
+"elemsand" = { name = "ElemSand", description = "3-sq atk\nPowerful\non pitfal" }
+"elemdark" = { name = "ElemDark", description = "EvilChip!\nPowerful\novr swamp" }
 "serchman" = { name = "SerchMan", description = "Stop site\nand fire\n5 shots" }
 "srchmn-sp" = { name = "SrchMnSP", description = "Stop site\nand fire\n5 shots" }
 "srchmn-ds" = { name = "SrchMnDS", description = "Stop site\nand fire\n5 shots" }

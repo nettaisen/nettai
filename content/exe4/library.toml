@@ -151,6 +151,10 @@ standard = [
     "bubbler",
     "bub-v",
     "bublside",
+    "elemflar",
+    "elemice",
+    "elemleaf",
+    "elemsand",
     "minibomb",
     "sword",
     "wideswrd",
@@ -193,6 +197,7 @@ standard = [
 mega = [
     "fullcust",
     "atk-30",
+    "elemdark",
     "roll",
     "roll-sp",
     "roll-ds",
