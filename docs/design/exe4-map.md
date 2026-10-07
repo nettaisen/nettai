@@ -594,10 +594,16 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   (one and three chips), the chip name, damage and "×2", "PAUSE", "COUNTER HIT!" and the other player's used chip
   (emotions/counter, frames 410 to 441). flow/ko-cannon and buster-side1 differ only in an explosion and in the
   charge glow over the opponent, not the HUD.
-  Two pieces show 4 frames late in a replay: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the
-  full gauge's stripes and "L or R". The replay harness causes it: exe4-compat's screen takes the OK 4 frames late
-  (Round::screen_late), so the counter starts 4 later. Compared 4 frames apart, the full gauge's cells are exact on
-  all 10,509 full-gauge frames of flow/no-time-limit.
+  Two pieces show 4 frames late: "BUSY..." (custom/one-side-waits, second-screen; its 32 frames) and the full
+  gauge's stripes and "L or R". That is by design, not a replay fault: the engine's custom screen is part of the
+  shared simulation and acts on the link-delayed input every console has, where the original's local screen takes
+  its own joypad at once. The OK reaches it 4 frames later (Round::screen_late), so the counter they run on starts
+  4 frames later, in live play too. Compared 4 frames apart (verify tools/frontend-compare/offset-compare.py), the
+  full gauge's cells are exact on all 10,509 full-gauge frames of flow/no-time-limit.
+  The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
+  only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
+  clears the text a tick before the box closes and draws the cursor a frame sooner (group A's).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
