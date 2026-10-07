@@ -22,9 +22,12 @@ spreader.guns = {
 
 local LOOK: SpreaderLook = {
     sound = asset.sound("h-burst"),
-    attachment = attachment.kind,
+    -- Held in the overlay, its animation by the holder's AI index (the arms' table).
+    hold = attachment.holder(navi_arms.spreader),
+    slot = "overlay",
     bullet_kind = bullet.kind,
-    gun_anims = navi_arms.spreader,
+    -- The navi fires in its animation 0xB.
+    anim = 0xB,
 }
 
 -- A chip's spreader.
