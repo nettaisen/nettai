@@ -575,7 +575,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   parameter is the navi's level (0, an SP's 3, a DS's 4), which picks its palette (0x0800B950: the navi's palettes a
   variant times 0, 2 or 3). The SP chips' damage goes by the side's deletion time (rules/sp_chips, formulas 1 to 22),
   the DS chips' by the field's holes (formulas 23 to 44, 0x08019518: the count formula's `panels`). Roll (actor #0x2C)
-  is @exelib/roll's, with EXE4's differences as its spec's.
+  is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor #0x48) raises EXE5's Poltrgst's poltergeist
+  (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles by kind (attack objects #0x4C and #0x8C,
+  effect object #0x6E, 0x0800B3E8): their identities state `throwable = false` when they are ported. Its throws wait on
+  RockCube (the lab's junkman*/obstacle).
 
 **For the next steps:**
 
