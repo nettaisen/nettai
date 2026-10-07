@@ -35,7 +35,7 @@ local form: FormDef = {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
     },
-    grass_doubles = { family = "wood" },
+    panel_doubles = { panel = "grass", chips = { family = "wood" } },
     reset = function(navi: Object)
         grass.spawn(navi)
     end,

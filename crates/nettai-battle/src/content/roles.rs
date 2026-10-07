@@ -300,8 +300,6 @@ definition_roles! {
     SoundRole {
         /// A panel cracks or breaks.
         PanelCrack = "panel_crack",
-        /// A panel turns to poison (`sub_800C9CE`).
-        PanelPoison = "panel_poison",
         /// A player's own navi is hit (what its player hears), and the
         /// custom-HP bug's damage (`sub_8013FD0`).
         OwnHit = "own_hit",

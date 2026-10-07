@@ -128,15 +128,16 @@ pub fn set_action(b: &mut Battle, r: ObjectRef, action: u8) {
 }
 
 /// `object_calculateFinalDamage2`: total this tick's damage by element
-/// (halved, rounding up, on a holy panel) into `final_damage`.
+/// (divided, rounding up, by the shift of the panel's type: holy's
+/// halving) into `final_damage`.
 pub fn total_damage(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
-    let holy = b.field.panel(o.panel.x, o.panel.y).is_some_and(|p| b.content.rules().panels.is_named(p.kind, "holy")) as u32;
+    let k = b.field.panel(o.panel.x, o.panel.y).map_or(0, |p| b.content.rules().panels.rule(p.kind).damage_shift as u32);
     let c = o.collision.expect("object with collision data");
     let acc = &mut b.collision.get_mut(c).acc;
     let mut total = 0u32;
     for d in &mut acc.element_damage[..5] {
-        let v = (*d as u32 + holy) >> holy;
+        let v = (*d as u32 + (1 << k) - 1) >> k;
         *d = v as u16;
         total += v;
     }

@@ -79,7 +79,6 @@ return {
     -- look for).
     sounds = {
         panel_crack = asset.sound("test-sound-panel-crack"),
-        panel_poison = asset.sound("test-sound-panel-poison"),
         own_hit = asset.sound("test-sound-own-hit"),
         hit = asset.sound("test-sound-hit"),
         damage = asset.sound("test-sound-damage"),

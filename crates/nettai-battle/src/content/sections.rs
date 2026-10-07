@@ -58,6 +58,8 @@ struct PanelTypeSection {
     #[serde(default)]
     doubles: Option<String>,
     #[serde(default)]
+    damage_shift: u8,
+    #[serde(default)]
     unbreakable: bool,
     #[serde(default)]
     traps: bool,
@@ -679,6 +681,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         carries_by_move,
                         cleared_by,
                         doubles,
+                        damage_shift: rule.damage_shift,
                         unbreakable: rule.unbreakable,
                         traps: rule.traps,
                     });
