@@ -1695,7 +1695,8 @@ export type StateSchema = { [string]: SchemaField }
 export type SchemaList = { __list: boolean, of: SchemaField, max: number }
 -- A role's declaration (`schema.role(name, T)`): a field of type `T` the
 -- engine knows by the role `name` (a player's setup field it reads:
--- "form_list", the forms a form list window offers).
+-- "form_list", the forms a form list window offers; a state field a view
+-- shows: "form_list.cursor").
 export type SchemaRole = { __role: boolean, role: string, of: SchemaField }
 
 -- What a state's or a setup's declaration takes beside type names, lists of
@@ -1734,21 +1735,24 @@ export type Kind = KindSpec
 -- by the button's name (docs/design/rules-in-luau.md §4.8): "form_offer",
 -- it offers a form (the picked column shows the offered form's icon, and
 -- its picture is in its second palette for the form's alternate offer; the
--- rules' state keeps `offer`, a form, `offer_chaos`, a bool, and `turns`,
--- the turns left in the form it gave, which the emotion window counts);
+-- rules' state keeps the fields of the roles `form_offer.form`, a form,
+-- `form_offer.alternate`, a bool, and `form_offer.turns`, the turns left in
+-- the form it gave, which the emotion window counts: `schema.role`);
 -- "chip_picture", its picture in the chip window is also the picture of the
 -- chip the rules' role `button_chip` names.
 export type ButtonView = "form_offer" | "chip_picture"
 -- What a frontend draws while a window is up (§4.8). A list of forms to
 -- choose from, in its four windows: "form_list_opening", "form_list",
--- "form_list_closing" and "form_chosen" (the rules' state keeps
--- `offered`, a u8 array of the places offered, `offered_count`, `marked`, a
--- bool array, `window_cursor`, `cross_chosen`, a bool, and `chosen`).
+-- "form_list_closing" and "form_chosen" (the rules' state keeps the fields
+-- of the roles `form_list.offered`, a u8 array of the places offered,
+-- `form_list.count`, `form_list.marked`, a bool array, `form_list.cursor`,
+-- `form_list.chosen`, a bool, and `form_list.chosen_place`).
 -- "offer_flight": the form a "form_offer" button offers flies to the picked
--- column as its icon (the state keeps `unite_step` and `unite_count`).
--- "chip_flight": the chip a button shows flies there (`mix_capsule`, which
--- of the screen's buttons that show a chip, from 1, `mix_step` and
--- `mix_count`).
+-- column as its icon (`offer_flight.step` and `offer_flight.count`).
+-- "chip_flight": the chip a button shows flies there (`chip_flight.button`,
+-- which of the screen's buttons that show a chip, from 1,
+-- `chip_flight.step` and `chip_flight.count`). The engine finds each by its
+-- role (`schema.role(role, T)`), never by a field's name.
 export type WindowView = "form_list_opening" | "form_list" | "form_list_closing" | "form_chosen" | "offer_flight" | "chip_flight"
 -- A custom-screen button of the rules (docs/design/rules-in-luau.md §4.4).
 export type ButtonSpec = {
