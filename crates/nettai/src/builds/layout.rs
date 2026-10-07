@@ -301,7 +301,7 @@ mod tests {
                 }
                 _ => {
                     assert_eq!(keys, ["navi", "folder", "souls", "navicust_programs", "patch_cards", "auto_battle_places"]);
-                    assert_eq!(rows, ["chaos_unison", "karma"]);
+                    assert_eq!(rows, ["karma"]);
                 }
             }
             assert!(matches!(&l.tabs.iter().find(|t| t.key() == "patch_cards"), Some(Tab::Entries { total: Some(t), .. }) if t == "mb"));
