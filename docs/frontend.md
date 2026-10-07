@@ -1099,7 +1099,7 @@ them).
   icon. The frontend draws each soul's in the soul's own version's on either
   console, as a version's chips show that version's art (the user's choice):
   so nothing of an EXE5 match needs a console's version to draw it. A soul's
-  version is its place's among MegaMan's souls (`forms.souls` lists Team
+  version is its place's among MegaMan's souls (`forms.souls.form_list` lists Team
   ProtoMan's six, then Team Colonel's: `custom::soul_palette_row`); no
   field restates it. A console of the other version than the soul's shows
   the icon in its own outline: listed as known

@@ -233,6 +233,14 @@ local rules: Rules = {
             },
         },
         form = {
+            -- A soul (./souls): the family of the chips given up for it (0x08024BE0's table). A soul is named by its
+            -- form's key; the original's number for it (NaviStats +0x2C) is compat's.
+            soul = {
+                family = {
+                    "sword", "wind", "cursor", "fire", "elec", "recovery", "summon", "invisible", "plus", "aqua",
+                    "break", "wood",
+                },
+            },
             image = "record:soul-image",
             custom = "record:soul-custom",
             blade_anim = "u8",

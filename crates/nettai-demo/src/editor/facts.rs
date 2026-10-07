@@ -233,7 +233,9 @@ fn about(c: &Content, registry: Registry, h: u16) -> String {
     let form = c.form(FormHandle(h));
     let mut said: Vec<String> = Vec::new();
     said.extend(form.version.clone());
-    said.extend(form.soul.as_ref().map(|x| format!("for {:?} chips", x.family).to_lowercase()));
+    // (EXE5's souls: a form's `soul`, its rules' extension.)
+    let soul = c.defs.extension(Registry::Form, &c.defs.form(FormHandle(h)).key, "soul");
+    said.extend(soul.and_then(|s| s.field("family").str()).map(|family| format!("for {family} chips")));
     said.join(", ")
 }
 

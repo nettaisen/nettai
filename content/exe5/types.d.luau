@@ -151,6 +151,9 @@ export type SoulCustom = {
 -- while A is up (chips/varswrd, 0x080ED570); the cameras' shake as MegaMan
 -- emerges in it (rules/souls/change, 0x0801212C).
 export type Exe5FormFields = {
+    -- A soul (rules/souls), named by its form's id: the family of the chips
+    -- given up for it.
+    soul: { family: ChipFamily }?,
     image: SoulImage?,
     custom: SoulCustom?,
     blade_anim: number?,
