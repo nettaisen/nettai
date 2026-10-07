@@ -41,24 +41,26 @@ local navi: NaviDef = {
     -- His fresh stats, as a navi's stats start (0x080111BA from the table 0x0801D55F: his row, EXE6's):
     -- the stats a match's side starts him at.
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
-    -- His souls, which the custom screen's soul button offers (rules/souls), in the original's order of the navis he
-    -- unites with (0x0873BBC8's names: compat's records.toml has each form's number): the order of the soul button's
-    -- icons in a pack, where a frontend finds a soul's icon by its place here, and the place the round's souls given
-    -- are counted by (rules/souls/custom's `used_bit`).
+    -- His souls, which the custom screen's soul button offers (rules/souls): the set `souls`, its `form_list` in the
+    -- original's order of the navis he unites with (0x0873BBC8's names: compat's records.toml has each form's number):
+    -- the order of the soul button's icons in a pack, where a frontend finds a soul's icon by its place here, and the
+    -- place the round's souls given are counted by (rules/souls/custom's `used_bit`).
     forms = {
         souls = {
-            protosoul,
-            gyrosoul,
-            searchsoul,
-            napalmsoul,
-            magnetsoul,
-            meddysoul,
-            colonelsoul,
-            shadowsoul,
-            numbersoul,
-            tomahawksoul,
-            knightsoul,
-            toadsoul,
+            form_list = {
+                protosoul,
+                gyrosoul,
+                searchsoul,
+                napalmsoul,
+                magnetsoul,
+                meddysoul,
+                colonelsoul,
+                shadowsoul,
+                numbersoul,
+                tomahawksoul,
+                knightsoul,
+                toadsoul,
+            },
         },
     },
     identity = new.identity {

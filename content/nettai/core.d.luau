@@ -2274,13 +2274,13 @@ export type NaviDef = {
     idle: ((navi: Object) -> ())?,
     post_init: ((navi: Object) -> ())?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
-    -- MegaMan, the rules ask whether it has them. The engine reads
-    -- `souls` (EXE5's Soul Unison: forms with a `soul`, which the custom
-    -- screen's soul button offers); the rest is its game's: EXE6's sets by
-    -- game (`gregar`, `falzar`: the Crosses by their number on the custom
-    -- screen, Beast Out and Beast Over), which EXE6's rules and exe6-compat
-    -- read.
-    forms: { souls: { FormDef }?, [string]: any }?,
+    -- MegaMan, the rules ask whether it has them. The table is its game's,
+    -- sets by name, whose `form_list` the engine reads (a frontend numbers
+    -- a set's pictures by it): EXE6's by game (`gregar`, `falzar`: the
+    -- Crosses by their number on the custom screen, and its Beast Out and
+    -- Beast Over), EXE5's `souls` (Soul Unison's, which the custom screen's
+    -- soul button offers).
+    forms: { [string]: any }?,
     identity: Identity,
     -- What a navi switch brings it with: its weapons, the rest of its
     -- fresh stats, and its HP after the change, by side.
@@ -2482,9 +2482,6 @@ export type FormDef = {
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (EXE5's Soul Unison), named by its form's id: the chip family
-    -- the custom screen's soul button gives up for it.
-    soul: { family: ChipFamily }?,
     -- Its game's rules' fields (their `extends.form`: EXE6's `kind`,
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,
