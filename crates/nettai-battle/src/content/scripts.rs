@@ -519,7 +519,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 r#"
         push = row(10, none),
         push_reading = { reads = "by_hitter_flip", bits = 4, drag_bit = 0x40, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
-        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002, elec_bonus_on_sea = false },
+        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002 },
         obstacle_slide_bounds = false,
         ice = { slide = row(6, none) },
         move_direction = "by_side",

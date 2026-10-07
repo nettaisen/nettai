@@ -652,9 +652,6 @@ pub struct HitTest {
     /// The type bits a guard breaks to (EXE6's 0x2, EXE5's 0x1002); a type
     /// with 0x4000 breaks one by 0x1002 in either.
     pub guard_breaks_to: u32,
-    /// An elec hit counts once more as null damage on a body standing on a
-    /// sea panel, as a fire hit does on grass (EXE5's 0x08016AF6).
-    pub elec_bonus_on_sea: bool,
 }
 
 /// How a navi takes a hit's NaviCust bug, where games differ (`sub_801AC6C`,
@@ -1254,6 +1251,11 @@ pub struct PanelTypeRule {
     /// it (`sub_3007708`: fire grass, aqua the volcano, wood roads; EXE5's
     /// 0x08016D14: and aqua lava, wood metal).
     pub cleared_by: Option<u8>,
+    /// The element whose hits count once more, as null damage, on a body
+    /// standing on it (the hit kernel's `applyHeatOnGrassDamage_300766c`:
+    /// fire on grass; EXE5's 0x08016AF6 elec on its sea too, EXE4's
+    /// 0x08012CF2 elec on ice).
+    pub doubles: Option<u8>,
     /// Whether the game's own section names the type; one it doesn't is
     /// the first other loaded game's that does (docs/design/rules-in-luau.md
     /// §7.4).

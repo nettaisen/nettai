@@ -424,8 +424,25 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   sound EXE6's Beast Over burst). The rest (175 sprites, 387 sounds) are written under their numbers
   (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's extraction.txt (`unnamed:`), to name by what loads them
   as the port reads EXE4's own code.
-- **Placeholders** (extraction.txt's first line): the field, the backgrounds, the banners, the emotion faces, the
-  chatbox and the custom screen, whose routines are EXE4's own (§5, §7): the pack has the placeholder pass's.
+- **The field** (R, Red Sun US's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
+  its transfer list 0x08006A68: background palettes 1 to 8), the panel blocks (0x080093FC: 6 * type + 3 * owner + row
+  - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
+  edges by owner (0x080094C4, 0x08706F60), and the panel palettes that cycle (0x08009556, as the field is drawn: six,
+  each a frame every 14 ticks from a table of palette pointers, their timers starting at 14, 13, 12, 11, 10 and 9:
+  0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them);
+  type 11 has none yet. What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12 reads what
+  they do).
+- **The HUD** (R, Red Sun US's; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
+  counterpart) and the load list (0x08015A0C): the HUD layer's tiles from 0x130 and the gauge's from 0x80, both in
+  EXE6's order; the HP box (6x2, 0x08016B2C) and the gauge frame (18x2 with "CUSTOM", 0x08016B44); the HP box's palettes
+  (0x08708260, three colors); the opponents' HP digits (0x08014EB8: one color); the hidden chip's icon; "PAUSE"
+  (0x080166D0's list); "BUSY..." (0x08016710's list: 7x2, at column 22, row 4); the banners (0x0801617E: 41 records at
+  0x08016C04, EXE6's fifteen in EXE6's places, then the navis' wins and deletions; twenty glyphs each, no filler); the
+  emotion window (0x08014B78: MegaMan's five faces with their boxes, a version's six souls' faces beside a count box of
+  0 to 5); the chatbox (0x0804E3B4: one box, which descriptions show in too). The Japanese ROMs' banners and
+  "カスタム中…" are the pack's Japanese lettering. Not drawn yet: "PLAN-B..." (0x08016AE8's list, the other waiting
+  words, 作戦変更中… in Japanese), shown while the other player is in what group A's screen calls the second screen.
+- **Placeholders** (extraction.txt's first line): the custom screen, whose routines are EXE4's own (§5).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -582,9 +599,11 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    which the intake sets with a push's request, reads the same: no rule. (EXE4's reading stores the row even when
    its first panel is closed, which the slide then tests; EXE6's stores none: nothing reads the row after a failed
    slide.) Left of EXE4's slide and drag, as their own gaps: item 33.
-4. **Elec on ice.** 0x08012CF2: an elec hit counts once more on ice (panel 7), a fire hit on grass; the engine's bonus
-   is elec on the sea (`hit_test.elec_bonus_on_sea`). Shape: `hit_test.element_bonus = { {element, panel}, ... }`
-   (EXE6's {elec, sea}... as each states). Placeholder: `elec_bonus_on_sea = false` (EXE4 gives none on ice).
+4. **Done: elec on ice.** 0x08012CF2 (the hit kernel's and its unfiltered channel's): an elec hit counts once more,
+   as null damage, on a body standing on ice (panel 7), a fire hit on grass (6); EXE6's fire on grass alone
+   (`applyHeatOnGrassDamage_300766c`), EXE5's and elec on its sea (0x08016AF6). The panel type's rule
+   `doubles = element` (EXE4's grass fire, ice elec, gen_rules.py reading the kernel's comparisons); the reactions'
+   `hit_test.elec_bonus_on_sea` is gone.
 5. **The hit test.** 0x08012AFC: no FloatShoe self bit, no body under a sea; a guard breaks to types with 0x1002
    (0x08012F24) and turns aside what lacks 0x0C004000. Placeholder: the `hit_test` booleans as written, the guard's
    0x1002; the 0x0C004000 test is the engine's (to compare).
@@ -651,8 +670,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     (0x08085BAC, its table at the literal 0x08085BCC, default 3). Only 0x03 (`comp`) is named; name the rest by the
     areas that show them (tools/backgrounds/areas.py, as EXE5's and EXE6's) in gen_content.py's BACKGROUNDS. The
     background 0x17's scroll (0x08001F88) speeds up to 4 pixels a frame: the pack draws it at that speed.
-22. **The win banner** is settled (§16, `never`); **banners' pictures** aren't extracted (the HUD's banners are
-    placeholders): gen_content.py's BANNERS names 0x04, 0x08, 0x0C and 0x30 from the lab's recordings.
+22. **Done** (banners): the win banner is settled (§16, `never`); the banners' pictures are extracted (§14: the table at
+    0x08016C04) and each is named (gen_content.py's BANNERS: EXE6's names for EXE6's records, EXE4's navis' by their
+    words); a round's start is `battle-number-start` (0x30), EXE6's name for it.
 23. **The link record** (agent ae3a's reading, for step 3's codecs): built at 0x0203BD40 by 0x08008708: +0x00 the magic
     0x12345678, +0x04 the sender's RNG2, +0x08 BattleState +0x3C, +0x0C MegaMan's 0x40-byte NaviStats (+0x2A from event
     flag 0x1184 or the mode; +0x36 set to 500 when 0x08006570 says so), then 0x2C bytes from 0x02001610 (+0x4C) and
@@ -687,33 +707,33 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 32. **Roles not filled** (the content check lists them): every sound but `appear` and `custom_open`, the music but
     `link_battle`, the effects (deletion, recovery, the cut-in flash), sprites (charge glow, statuses), banners but
     `round_start`, `turn_start` and `win`, the kinds and actions EXE5's roles name. Name each EXE4 asset for the code
-    that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 7 problems
-    with the pack: the four named banners have no pictures, MegaMan and his base form no mugshot, MegaMan no emblem
-    (the HUD's and the custom screen's extraction, §14).
+    that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 1 problem
+    with the pack: MegaMan has no emblem (the custom screen's extraction, §14). The banners, the faces (MegaMan's
+    `forms`, so his faces are his base form's `mugshot`) and the warning marker are in.
 
 ### 18.6 Found by the replays
 
 What the lab's recordings showed past §18's first list (group B's replays, exe4-compat's `trace`). Each generalization
 is a rule field every game states, EXE6's and EXE5's unchanged.
 
-33. **The charge and its glow.** EXE4's navi init (0x0801079C) spawns no charge glow: the charge spawns its own
+39. **The charge and its glow.** EXE4's navi init (0x0801079C) spawns no charge glow: the charge spawns its own
     (0x0800BD88: effect 5, 0x080E215C, when the AI data's +0x0A or +0x0B has a level and +0x58 holds none; it reads
     which charge (+9) and its level, sounds 0x71 as it starts and 0x72 at the full charge, sits at a per-navi offset,
     0x080E2274, and frees itself when the charge goes). The charge itself counts per source (+0x0A, +0x0B levels;
     +0x30, +0x32 counters; 0x0800BDAA clears them), not EXE6's one counter. **Done:** the init's part,
     `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4). Open: the charge's counting and the glow
     kind (MegaMan's, §18.4).
-34. **The intro's first tick.** EXE4's intro (0x08007464) goes on from its init to the HUD's setup on the same tick
+40. **The intro's first tick.** EXE4's intro (0x08007464) goes on from its init to the HUD's setup on the same tick
     (state [4,0,4,4] after the round's first tick). **Done:** `flow.intro_steps_on_init`. (Its init's one RNG2 draw is
     the actors' spawn's last call, 0x080F576C, where EXE6's is `sub_8014178`'s: the same draw.)
-35. **The fade toward clear.** 0x08005BDE ends the fade on the step whose level would go under its target and keeps
+41. **The fade toward clear.** 0x08005BDE ends the fade on the step whose level would go under its target and keeps
     the last one, a step after EXE6's `sub_8006366` (the intro's fade takes 18 steps). **Done:** `effects.fade_clear`
     (the renderer's `Fade::intro_ticks` with it).
-36. **A paused navi.** EXE4's status block (its tail, 0x08013C2A) has no pause handler: the navi runs while paused
+42. **A paused navi.** EXE4's status block (its tail, 0x08013C2A) has no pause handler: the navi runs while paused
     only until it takes control, which clears its header flag 0x04 (0x08010A88), and the object loop skips it then.
     **Done:** `status.paused_navi` (`pause_handler`: EXE6, EXE5; `stops_at_control`: EXE4).
-37. **The banner's steps.** EXE4's banner task (0x08014904, 0x08014934; its steps from 0x08014994) slides in for 9
+43. **The banner's steps.** EXE4's banner task (0x08014904, 0x08014934; its steps from 0x08014994) slides in for 9
     ticks, holds 30, slides out for 9 (EXE6's 5, 0x30, 5); a holding banner (its table's state 2, 0x08016C04:
     banners 0x24, 0x28, 0x34) doesn't count its hold, and let go (0x0801616C) slides out at once. **Done:**
     `effects.banner`. Unread: a state 3 banner (shown without sliding), which no table entry has.
-38. **The HUD's banner task** is the HUD task mask's bit 5 (0x20; EXE6's bit 15): exe4-compat's comparison reads it.
+44. **The HUD's banner task** is the HUD task mask's bit 5 (0x20; EXE6's bit 15): exe4-compat's comparison reads it.

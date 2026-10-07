@@ -23,6 +23,10 @@ local navi: NaviDef = {
     banners = { win = asset.banner("megaman-deleted"), lose = asset.banner("megaman-deleted") },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
+    -- His forms (he is MegaMan: the rules ask whether a navi has them where the original asks whether it is
+    -- MegaMan), and so his faces are his forms' (forms/base's `mugshot`): the souls Double Soul gives (0x080184F0 by
+    -- soul), not yet ported (docs/design/exe4-map.md §18 item 25).
+    forms = { souls = { form_list = {} } },
     identity = new.identity {
         class = "player",
         version = 0,
