@@ -49,6 +49,8 @@ return {
         hit_mood = "counter_mark",
         full_synchro_spent = 0x80,
         anger_boost_sound = true,
+        -- A tick's hits of 300 damage or more ask for anger.
+        anger_damage = 300,
     },
     -- The weakness request breaks a Cross or a Beast to what it breaks to.
     form_break = "marked_forms",
