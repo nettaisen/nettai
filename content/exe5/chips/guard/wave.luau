@@ -144,7 +144,7 @@ local function init(me: Object)
 end
 
 wave.kind = new.kind {
-    id = "shock-wave",
+    id = "guard/wave",
     pool = "attack",
     state = { variant = "record:shock-wave-variant" },
     -- 0x080C739C.
