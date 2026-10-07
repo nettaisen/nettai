@@ -1378,6 +1378,10 @@ pub struct Rules {
     /// What a navi does while the battle is paused (rule section
     /// `status`): see [`PausedNavi`].
     pub paused_navi: PausedNavi,
+    /// A navi's status timers (paralysis and the rest, `sub_800E730`) count
+    /// while the battle is paused (rule section `status`): EXE4's
+    /// (0x0800AE58, no pause test); EXE6's and EXE5's (0x0800CB50) hold.
+    pub status_timers_while_paused: bool,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,
