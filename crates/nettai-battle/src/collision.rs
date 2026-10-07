@@ -115,7 +115,9 @@ pub struct CollisionData {
     pub barrier: u8,
     /// Counter strength (bits 0-6); bit 7 = can't counter.
     pub counter_byte: u8,
-    pub poison_timer: u8,
+    /// What a panel type counts while the body stands on it (poison's
+    /// drain, `sub_801A186`).
+    pub standing_count: u8,
     /// The spark its hits show, or none.
     pub hit_effect: Option<SparkHandle>,
     /// Region anchor.

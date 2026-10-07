@@ -28,7 +28,7 @@ use nettai_content_api::{
     ObstacleCrush, ObstacleRequest, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
-use nettai_content_api::{ObjectRef, RulesHook};
+use nettai_content_api::{ObjectRef, PanelHook, RulesHook};
 use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
@@ -930,6 +930,21 @@ impl UserData for Collision {
             let hitters = with(|api, _| api.collision_hit_by(this.0).map_err(api_error))?;
             lua.create_sequence_from(hitters.into_iter().map(Object))
         });
+        methods.add_method("add_damage", |_, this, (element, amount, raw): (LuaValue, LuaValue, bool)| {
+            let (element, amount) = (u8_arg(element, "element")?, u16_arg(amount, "amount")?);
+            if element > 5 {
+                return Err(mlua::Error::runtime(format!("add_damage: element {element} (0 to 4, 5 the sixth slot)")));
+            }
+            with(|api, _| Ok(api.add_damage(this.0, element, amount, raw)))
+        });
+        methods.add_method("add_mood_damage", |_, this, amount: LuaValue| {
+            let amount = u16_arg(amount, "amount")?;
+            with(|api, _| Ok(api.add_mood_damage(this.0, amount)))
+        });
+        methods.add_method("add_hit_mod", |_, this, bits: LuaValue| {
+            let bits = u8_arg(bits, "bits")?;
+            with(|api, _| Ok(api.add_hit_mod(this.0, bits)))
+        });
     }
 }
 
@@ -1763,6 +1778,20 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "cycle", |_, period: LuaValue| {
+        let period = u8_arg(period, "period")?;
+        if !matches!(period, 20 | 180) {
+            return Err(mlua::Error::runtime(format!("battle.cycle({period}): the battle counts 20 and 180")));
+        }
+        with(|api, _| Ok(api.cycle(period)))
+    });
+    lib_fn!(lua, t, "weakness", |_, (receiver, hitter): (LuaValue, LuaValue)| {
+        let (receiver, hitter) = (u8_arg(receiver, "receiver")?, u8_arg(hitter, "hitter")?);
+        if receiver > 5 || hitter > 5 {
+            return Err(mlua::Error::runtime(format!("battle.weakness({receiver}, {hitter}): elements are 0 to 5")));
+        }
+        with(|api, _| Ok(api.weakness(receiver, hitter)))
+    });
     lib_fn!(lua, t, "lose_round", |_, side: u8| with(|api, _| {
         api.lose_round(side & 1);
         Ok(())
@@ -2676,6 +2705,10 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
+        // A panel type's: the body, and whether it is a player's navi
+        // (`burn`'s).
+        HookCall::Panel { hook: PanelHook::Burn, body, player } => vec![obj(body)?, LuaValue::Boolean(player)],
+        HookCall::Panel { hook: PanelHook::Stand, body, .. } => vec![obj(body)?],
         HookCall::Given { side, chip } => {
             let chip = match chip {
                 Some(c) => LuaValue::Table(bound.def_value(Registry::Chip, c.0)?),
@@ -2734,9 +2767,11 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         }
         // A navi's role hook may hand back an object (`navi_deleted`'s).
         HookCall::RoleNavi { .. } => Ok(object_arg(&v, "the object a role hook returns")?.map_or(Value::Nil, Value::Object)),
-        HookCall::InstantChip { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } | HookCall::FormNavi { .. } => {
-            Ok(Value::Nil)
-        }
+        HookCall::InstantChip { .. }
+        | HookCall::RoleEncased { .. }
+        | HookCall::NaviLeft { .. }
+        | HookCall::FormNavi { .. }
+        | HookCall::Panel { .. } => Ok(Value::Nil),
         // What a side is given: a whole number, a flag or nil.
         HookCall::Given { .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
