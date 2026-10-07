@@ -199,4 +199,7 @@ return {
     -- The chatbox's end zero-fills the text's tiles in video memory itself (0x0805393C): the text is gone a frame before
     -- the box's first closing step, from the tick its wait for a key is answered.
     chatbox_end_clears_tiles = true,
+    -- A character printed ends the tick's printing (0x0804E1B2 goes on only while rushing, at speed 0 or after a
+    -- command that says so): a message prints a character every third tick.
+    chatbox_character_ends_tick = true,
 }
