@@ -77,6 +77,8 @@ local roles: RolesSpec = {
         -- The fight's: a navi's hit, every console's (0x08013A96: 0x6B), a navi in auto battle's (0x6D).
         hit = asset.sound("hit"),
         auto_battle_hit = asset.sound("auto-battle-hit"),
+        -- A hit turned aside (the guard's spark, 0x0800B0F6: 0x6E).
+        guard = asset.sound("guard"),
     },
     hooks = {
         -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the Mod Cards' aura): the
