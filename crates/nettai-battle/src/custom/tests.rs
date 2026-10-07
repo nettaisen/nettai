@@ -131,7 +131,7 @@ impl Player {
         Context {
             library: &self.lib,
             stats: self.stats,
-            emotion: Emotion::Normal,
+            emotion: Emotion::default(),
             turn: 1,
             own_gauges: false,
             random_battle: false,

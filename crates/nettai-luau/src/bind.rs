@@ -1671,7 +1671,7 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         let p = with(|api, _| api.custom_player(side).map_err(api_error))?;
         let t = lua.create_table()?;
-        t.raw_set("emotion", p.emotion.name())?;
+        t.raw_set("emotion", p.emotion.as_str())?;
         t.raw_set("random_battle", p.random_battle)?;
         Ok(t)
     });
@@ -1816,7 +1816,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "navi", |_, side: LuaValue| Ok(Navi(u8_arg(side, "side")? & 1)));
     lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.emotion(side).name()))
+        with(|api, _| Ok(api.emotion(side)))
     });
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);

@@ -811,21 +811,6 @@ named_flags! {
 }
 
 named_flags! {
-    /// A navi's emotion, as its mugshot shows it (`sub_8015B54`).
-    pub enum Emotion {
-        Normal = "normal",
-        /// The Beast Out counter is spent.
-        Tired = "tired",
-        FullSynchro = "full_synchro",
-        Angry = "angry",
-        /// Mood 0, or exhausted after Beast Over.
-        WornOut = "worn_out",
-        /// EXE5's mood under 65.
-        Worried = "worried",
-    }
-}
-
-named_flags! {
     /// A HUD part a chip's effect hides and shows (`sub_801DACC` and
     /// `sub_801DA48` with its draw task).
     pub enum HudPart {
@@ -872,8 +857,8 @@ pub struct CustomPick {
 /// What a side's custom screen reads of its player (`custom.player`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CustomPlayer {
-    /// The emotion the screen reads of its navi.
-    pub emotion: Emotion,
+    /// The emotion the screen reads of its navi (its game's name).
+    pub emotion: String,
     pub random_battle: bool,
 }
 
@@ -1269,7 +1254,7 @@ pub trait CoreApi {
     /// Change one of a side's navi stats (the writable ones).
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
     /// A side's emotion (`sub_8015B54`).
-    fn emotion(&self, side: u8) -> Emotion;
+    fn emotion(&self, side: u8) -> String;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
     /// Raise a side's mood by `n`, capped at 254; a mood of 0 or 0xFF

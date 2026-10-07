@@ -26,10 +26,15 @@ return {
     emotion = {
         mood_held = "tired_or_exhausted",
         anger_end = "resets_mood",
-        plain_in_battle_mode_1 = false,
-        normal_in_a_form = false,
-        anger_before_worn_out = false,
-        tired_and_exhausted = true,
+        -- EXE6's emotions, in its order.
+        order = {
+            { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } },
+            { emotion = "angry", when = { { angry = true } } },
+            { emotion = "tired", when = { { tired = true } } },
+            { emotion = "full_synchro", when = { { mood = 0xFF } } },
+            { emotion = "normal" },
+        },
+        roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },
     },
     -- The weakness request breaks a Cross or a Beast to what it breaks to.
     form_break = "marked_forms",
