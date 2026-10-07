@@ -97,6 +97,10 @@ pub enum NaviWinBanner {
     /// (EXE5's 0x080074D2: 0x080090E8, then 0x080090C0's table by the
     /// navi): a Team Battle's and a NetBattle's win shows the roles'.
     OperationBattle,
+    /// None (EXE4's 0x08007252 shows the navi's, 0x08008534, under event
+    /// flag 0x1187 alone, which its main subsystem 0x080406B0 sets and a
+    /// netbattle's doesn't): every link battle's win shows the roles'.
+    Never,
 }
 
 /// The result's wait, in ticks.
