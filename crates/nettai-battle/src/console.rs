@@ -317,6 +317,10 @@ impl Battle {
 
     /// The main loop's draw, once a frame after the battle's.
     pub(crate) fn end_console_frames(&mut self) {
+        // (The main loop's draw, where the game's makes one.)
+        if !self.content.rules().effects.rng1_per_frame {
+            return;
+        }
         for c in &mut self.consoles {
             c.rng.next();
         }

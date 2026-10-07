@@ -6,6 +6,7 @@
 -- for EXE4's definitions (docs/design/exe4-map.md §18); the content check lists them as unfilled, and a battle stops at
 -- the first it needs.
 
+local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
@@ -28,6 +29,10 @@ local roles: RolesSpec = {
     regions = {
         anchor = regions.single,
     },
+    kinds = {
+        -- The glow a navi's charge brings (effect object 5, 0x080E215C; the navi's tail spawns it, 0x0800BD88).
+        charge_glow = charge_glow.kind,
+    },
     sounds = {
         appear = asset.sound("appear"),
         -- What the custom screen can't pick or take back (0x08020386, 0x08020634).
@@ -46,6 +51,9 @@ local roles: RolesSpec = {
         custom_shade = asset.sound("dark-hover"),
         program_advance_part = asset.sound("program-advance-part"),
         program_advance = asset.sound("program-advance"),
+        -- The fight's: a navi's hit, every console's (0x08013A96: 0x6B), a navi in auto battle's (0x6D).
+        hit = asset.sound("hit"),
+        auto_battle_hit = asset.sound("auto-battle-hit"),
     },
     music = {
         link_battle = asset.sound("netbattle"),

@@ -38,10 +38,16 @@ return {
     -- A navi's init spawns no charge glow (0x0801079C): its charge brings its own (0x0800BD88, effect 5 0x080E215C,
     -- which goes with the charge; exe4-map.md §18 item 39).
     charge_glow = "with_charge",
+    -- Its buttons charge by the button held (0x0800BDE0, 0x0800BBA4, 0x0800BB50): B first, its count going on past
+    -- full; the buster on B's release; B then Left (whichever way the navi faces) for the B+Left special; L and R
+    -- are no navi's.
+    charge = "per_button",
     -- A screen fade toward clear ends on the step whose level would go under its target (0x08005BDE, which doesn't
     -- keep that level): a step after EXE6's, so its intro's fade from white takes 18 steps.
     fade_clear = "past_target",
     -- A banner (0x08014904, its steps from 0x08014994) slides in for 9 ticks, holds 30, slides out for 9; one that
     -- holds until let go (its table's state 2) doesn't count its hold, and let go (0x0801616C) slides out at once.
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out" },
+    -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
+    rng1_per_frame = false,
 }

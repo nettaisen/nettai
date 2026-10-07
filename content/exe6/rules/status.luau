@@ -117,9 +117,14 @@ local status = {
         -- A navi's status block runs a drag, the slides and a flinch, then the mercy flash's timer
         -- (`sub_801A5EE`, while the battle is fighting).
         reactions = "flash_timer_last",
+        -- Its reaction actions mark the action in use, ground and count, and the drag takes the paralyzed or
+        -- SuperArmor pose and turns to a paralysis that outlasts it (`sub_80174FE`, `sub_80175B8`, `sub_80178D4`).
+        reaction_actions = "marked",
         bugs_before_drain = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",
+        -- A player hears its own navi's hit as `own_hit`, another's as `hit` (`applyDamageToPlayer_801ba12`).
+        hit_sound = "by_console",
         -- Its emotions (`sub_8015B54`): worn out (exhausted, or a mood of 0) is read before anger, then held tired,
         -- Full Synchro (a mood of 0xFF), else normal, the same in every battle mode and every form; no mood is
         -- worried. A navi held tired or exhausted holds its mood against the setter (`sub_8015BEC`), and anger's

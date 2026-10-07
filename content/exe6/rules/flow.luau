@@ -22,4 +22,6 @@ return {
     navi_win_banner = "link_battle",
     -- The intro (`sub_80091F0`) returns after its init.
     intro_steps_on_init = false,
+    -- A turn starts with the transformation sequencer, run twice (fighting state 0, `sub_800840C`); its banner after.
+    sequencer_at_turn_start = true,
 }
