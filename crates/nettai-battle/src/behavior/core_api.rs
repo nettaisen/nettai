@@ -388,6 +388,16 @@ impl CoreApi for Battle {
         acc.mood_damage = acc.mood_damage.wrapping_add(amount);
     }
 
+    fn add_final_hit_mod(&mut self, o: ObjectRef, bits: u8) {
+        let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_final_hit_mod: {o:?} has no collision data"));
+        self.collision.get_mut(c).hit_mod_final |= bits;
+    }
+
+    fn form_trait(&self, o: ObjectRef, name: &str) -> ApiResult<bool> {
+        let bit = crate::content::FormTraits::named(name).ok_or_else(|| ApiError::Other(format!("no form trait is named {name:?}")))?;
+        Ok(kinds::player::form_of(self, o).traits.has(bit))
+    }
+
     fn add_hit_mod(&mut self, o: ObjectRef, bits: u8) {
         let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_hit_mod: {o:?} has no collision data"));
         let d = self.collision.get_mut(c);
@@ -1657,6 +1667,7 @@ impl CoreApi for Battle {
                 crate::object::DragStep::Slide => 1,
                 crate::object::DragStep::Recover => 2,
             }),
+            ObjectField::SlideType => i(ob.slide_type as i64),
             ObjectField::Active
             | ObjectField::Visible
             | ObjectField::RunWhilePaused
@@ -1718,6 +1729,7 @@ impl CoreApi for Battle {
                 use crate::object::DragStep;
                 ob.drag_step = [DragStep::Start, DragStep::Slide, DragStep::Recover][i as usize]
             }
+            (ObjectField::SlideType, FieldValue::Enum(i)) => ob.slide_type = i as u8,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1963,6 +1975,7 @@ impl CoreApi for Battle {
             ActorField::AttackCount => i(at.count as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
+            ActorField::SlideCooldown => i(a.slide_cooldown as i64),
             ActorField::TargetMarker => a.target_marker.into(),
             ActorField::ChargeGlow => a.charge_glow.into(),
             ActorField::FullSynchroAura => a.full_synchro_aura.into(),

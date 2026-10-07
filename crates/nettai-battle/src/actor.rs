@@ -327,7 +327,7 @@ pub struct ActorData {
     /// AIData+0x38: ticks before a road panel can start another slide
     /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
     /// by `sub_801A36A`).
-    pub road_cooldown: u16,
+    pub slide_cooldown: u16,
     /// AIData+0x3C: the height (Z, whole pixels) a bubble bobs around and
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.
