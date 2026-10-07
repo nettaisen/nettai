@@ -436,16 +436,16 @@ pub(crate) fn lose_hp_and_gauge(b: &mut Battle, r: ObjectRef, amount: u16) -> bo
 /// Presentation: whether side `side`'s emotion window shows its form's
 /// second set of faces, as the side's rules ask: while its navi's rules' B
 /// charge is armed, whatever its form (`face_charged`), or in the base form
-/// (`face_hub`).
+/// (`base_face_variant`).
 pub fn shows_face_variant(b: &Battle, side: u8) -> bool {
-    face_charged(b, side) || face_hub(b, side)
+    face_charged(b, side) || base_face_variant(b, side)
 }
 
 /// Presentation: the second set for the side's base form when its rules
 /// ask (`SideLooks::face_variant`: EXE5's Hub Style, 0x0801AF8E's picture 11
 /// on, which a soul's face doesn't take). Part of the picture as it is
 /// picked.
-pub fn face_hub(b: &Battle, side: u8) -> bool {
+pub fn base_face_variant(b: &Battle, side: u8) -> bool {
     let Some(p) = b.player(side) else { return false };
     b.looks[side as usize & 1].face_variant && form_of(b, p).base
 }

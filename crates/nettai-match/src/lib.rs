@@ -23,7 +23,8 @@ pub mod folders;
 #[cfg(test)]
 mod games;
 pub mod ids;
-pub mod link_navis;
+#[cfg(test)]
+mod link_navis;
 pub mod names;
 mod set;
 pub mod sp_times;
@@ -128,7 +129,7 @@ impl Side {
 /// received).
 pub fn level_required(content: &Content, navi: NaviHandle) -> bool {
     let n = content.navi(navi);
-    !n.changes_form() && (n.levels.is_some() || n.story.is_some())
+    !n.changes_form() && n.last_level().is_some()
 }
 
 /// The level a side of `navi` has where it states none: the highest (a
@@ -139,12 +140,7 @@ pub fn play_level(content: &Content, navi: NaviHandle) -> Option<u8> {
     if !level_required(content, navi) {
         return None;
     }
-    let n = content.navi(navi);
-    match (&n.levels, &n.story) {
-        (Some(levels), _) => Some(levels.by_level.len().saturating_sub(1) as u8),
-        (None, Some(story)) => Some(story.max_level),
-        (None, None) => None,
-    }
+    content.navi(navi).last_level()
 }
 
 
