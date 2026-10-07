@@ -33,6 +33,10 @@ netbattle-29 = { settings = [0x1c], layout = 0x26, actor_list = 0x080FC685 }
 netbattle-30 = { settings = [0x1d], layout = 0x26, actor_list = 0x080FC696 }
 netbattle-31 = { settings = [0x1e], layout = 0x26, actor_list = 0x080FC6A7 }
 netbattle-32 = { settings = [0x1f], layout = 0x26, actor_list = 0x080FC6B8 }
+netbattle-33 = { settings = [0x20], layout = 0x30, actor_list = 0x080FC6C9 }
+netbattle-34 = { settings = [0x21], layout = 0x30, actor_list = 0x080FC6DA }
+netbattle-35 = { settings = [0x22], layout = 0x31, actor_list = 0x080FC6C9 }
+netbattle-36 = { settings = [0x23], layout = 0x31, actor_list = 0x080FC6DA }
 netbattle-37 = { settings = [0x24], layout = 0x33, actor_list = 0x080FC5E9 }
 netbattle-38 = { settings = [0x25], layout = 0x33, actor_list = 0x080FC5F2 }
 netbattle-39 = { settings = [0x26], layout = 0x40, actor_list = 0x080FC60D }
