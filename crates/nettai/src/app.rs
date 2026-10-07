@@ -969,6 +969,14 @@ impl App {
         }
     }
 
+    /// The tour's game is ready: `NETTAI_TOUR_GAME`'s, else any.
+    pub fn tour_ready(&self) -> bool {
+        match std::env::var("NETTAI_TOUR_GAME") {
+            Ok(game) => self.games.ready(&game).is_some(),
+            Err(_) => self.first_ready().is_some(),
+        }
+    }
+
     /// The Builds screen of the first game ready, with a build of a random
     /// match's side there ("Tour", made again each time).
     pub fn tour_build(&mut self) {
