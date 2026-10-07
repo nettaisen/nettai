@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
 
 -- GridMan (EXE5 chip 0x113): GridMan cuts in, dashes across the field and strikes the whole enemy area (./navi).
@@ -19,7 +20,10 @@ local gridman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "gridman/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -39,7 +43,10 @@ local gridman_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "gridman-sp/controller",
+        summon = navi.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -58,7 +65,10 @@ local gridman_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
     megaman = "dark",
-    navi = navi.summon_dark,
+    navi = navi_chips.make {
+        id = "gridman-ds/controller",
+        summon = navi.summon_dark,
+    },
     auto_battle = { class = "at_once" },
 }
 

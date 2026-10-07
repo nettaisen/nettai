@@ -368,7 +368,7 @@ pub(crate) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     match content.defs.chip(chip).usage {
         ChipUsage::Action(h) => A::Content(h),
         ChipUsage::Dimming(_) => A::Engine(E::DimmingChip),
-        ChipUsage::Navi(_) => A::Engine(E::NaviChip),
+        ChipUsage::HandOff(_) => A::Engine(E::HandOffChip),
         ChipUsage::Instant(f) => {
             ai_mut(b, r).attack.instant = Some(Effect::Runs(f));
             A::Engine(E::InstantChip)

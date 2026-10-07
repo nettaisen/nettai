@@ -6,7 +6,7 @@
 "engine/dimming-chip" = 0x15
 "engine/instant-chip" = 0x1A
 "engine/form-change" = 0x1A
-"engine/navi-chip" = 0x41
+"engine/hand-off-chip" = 0x41
 # Soul Unison's change (the instant chips' number, as EXE6's form change is).
 "souls/change" = 0x1A
 # The buster's shot (EXE5's table's entry 1, 0x080EB9B2).
