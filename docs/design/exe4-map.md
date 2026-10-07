@@ -447,6 +447,14 @@ the equipped folder at 0x2132, the Regular chip at 0x214C; the NaviCust and Mod 
 netbattle saves (tango-gamesupport-bn4/src/saves): light with HP 1000 or 999 and dark with HP 997, for each version and
 region; with the .sav on disk (Blue Moon US), the chip lab's bases and the save import's tests have what EXE5's had.
 
+**The import** (exe4-compat's `import`, which the app's build creator calls): a .sav or a raw image (which says
+neither version nor region; the import reads neither) gives MegaMan, the equipped folder and its Regular chip, the
+NaviCust's programs, the base HP (0x21CA), the Regular memory, and from MegaMan's NaviStats block (0x4E60) the
+light/dark value and the Full Synchro at the start; the Mod Cards are said and left out until they are ported (item
+56). MegaMan's HP and maximum are the game state's (0x2150, 0x2152): the block's own HP words are stale in a save,
+and a battle copies the game state's in (0x0800D726). verify's exe4_navicust test imports each of Tango's twelve
+saves and compiles it: the stats match the block's (and the game state's maximum) in every byte the compile writes.
+
 ## 13. What to share, what is EXE4's own, and the next steps
 
 **Shared through the engine and exelib** (the same code in EXE4, by the maps): the object system and pools (with
@@ -985,8 +993,9 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     "null"`.
 30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
     neither, the lab's first batch's. **Done:** the NaviCust (§8: rules/navicust, the setup's `navicust_programs`,
-    exe4-compat's from a recording's list, the replays comparing the stats it compiles); the lab's navicust/
-    recordings whose programs are ported match. Open: the Mod Cards (items 56 to 58); the programs below.
+    exe4-compat's from a recording's list, the replays comparing the stats it compiles) and the save import (§12); the
+    lab's navicust/ recordings whose programs are ported match, and Tango's saves compile as their blocks say. Open:
+    the Mod Cards (items 56 to 58); the waiting programs (item 53).
 
 ### 18.5 Roles and the custom screen
 
