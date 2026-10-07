@@ -17,6 +17,8 @@ local SHOOT, RECOVER = 0x0, 0x4
 local SHOT_Z = 0x18_0000
 -- The flash's animation: NaviStats +0x23, the navi's number (MegaMan's 0).
 local NAVI_NUMBER = 0
+-- Its sound: the buster's shot (0x6A).
+local SHOT_SOUND = asset.sound("buster-shot")
 
 type State = { timer: number }
 
@@ -29,7 +31,7 @@ local function shoot(me: Object, s: State)
         s.timer = 0
     end
     if s.timer == 1 then
-        battle.play_sound(asset.sound("buster-shot"))
+        battle.play_sound(SHOT_SOUND)
         me.attack_count = projectile.fire(me, { variant = variants.charged, damage = me.attack_damage, z = SHOT_Z })
         attachment.attach(me, attachment.muzzle_flash, "related", NAVI_NUMBER)
     end
