@@ -587,9 +587,22 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
    (`applyHeatOnGrassDamage_300766c`), EXE5's and elec on its sea (0x08016AF6). The panel type's rule
    `doubles = element` (EXE4's grass fire, ice elec, gen_rules.py reading the kernel's comparisons); the reactions'
    `hit_test.elec_bonus_on_sea` is gone.
-5. **The hit test.** 0x08012AFC: no FloatShoe self bit, no body under a sea; a guard breaks to types with 0x1002
-   (0x08012F24) and turns aside what lacks 0x0C004000. Placeholder: the `hit_test` booleans as written, the guard's
-   0x1002; the 0x0C004000 test is the engine's (to compare).
+5. **Done: the hit test.** EXE4's kernel (0x08012AFC, from the pair test 0x08012AE0; its unfiltered channel
+   0x08012D1E), read against the engine's (EXE6's `sub_3007218`):
+   - as the rules said: no FloatShoe self bit, no body under a sea, elec reaching no submerged body; a guard breaks to
+     types with 0x1002 (0x08012B8C, with no 0x4000 case: the engine's 0x1002 either way) and turns aside what lacks
+     0x0C004000 (the engine's 0x0C005000, which a type with 0x1000 never reaches);
+   - its own: an untouchable receiver is tested with the invulnerable one (0x08012BDC: 0x08000008), after the guard
+     and the air/ground test, so its guard still turns a hit aside. The rule `hit_test.guard_before_untouchable`
+     (EXE4 true; EXE6, EXE5 false). (EXE4 sets the flag for soul 15: 0x0800E17E, from the souls' table at
+     0x0800E0A0, by NaviStats +0x24.)
+   - Nothing reads or can reach the rest, so no rule: it records no hitter bits (`hit_by`) and no hits by flip,
+     ORs no secondary element (its attacks have none), has no thaw or bubble multiplier (EXE4's flag 0x10000 is
+     not a freeze but a player action's, 0x080EBA84; its freeze is elsewhere, item 7), no aqua-on-ice freeze (the
+     role is EXE6's), and multiplies by a shift (0x08012CA4: 1 for a weakness, the engine's 1 + 1).
+   - For others: a guard marks the receiver's +0x26 with 1, not a bit by the hitter's flip (the chips wave: a guard
+     chip reading the engine's `guard_dirs`); the counter's mark (0xFF added to +0x38, 0x7F off the mood) and hit
+     flag 0x80 by the hitter's side's 0x0800F49C (2: the table at 0x08012CEC) are item 9's (group A).
 6. **Request clears.** 0x0800CA4A (an attack's end) zeroes the AI data's request halfword at +0x70; EXE4's exits
    0x0800CA28 and 0x0800C9FC (the latter also writes AIData +0x3A from the attack's +5) differ from EXE6's
    `object_exitAttackState`. Shape: `reactions.request_clears` rows per EXE4's, and the exit's extra write as a rule

@@ -2569,7 +2569,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `effects.palette_flash` | `exe6`, `exe5` | `mode_runs_through_pause`, `pause_holds` |
   | `effects.obstacle_actions` | `exe6`, `exe5` | `own_from_8`, `own_from_6` |
   | `reactions.push_reading` | `exe6`, `exe5` | `toward_front`, `by_hitter_flip`; since EXE4's port data: which modifier it `reads` (`final`, `by_hitter_flip`), how many `bits` from bit 2, a `shift` bit, an obstacle's rows |
-  | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to` (its `elec_bonus_on_sea` since a panel type's `doubles`) |
+  | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to` (its `elec_bonus_on_sea` since a panel type's `doubles`); since EXE4's port `guard_before_untouchable` |
   | `reactions.obstacle_slide_bounds` | part of `push_reading` | a setting of its own |
   | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
   | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge` |
