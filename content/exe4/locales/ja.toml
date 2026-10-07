@@ -69,6 +69,9 @@ language = "ja"
 "counter1" = { name = "カウンター1", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
 "counter2" = { name = "カウンター2", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
 "counter3" = { name = "カウンター3", description = "攻撃するしゅんかん\nのてきにカウンター\nどこからでもヒット" }
+"mokorus1" = { name = "モコラッシュ1", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"mokorus2" = { name = "モコラッシュ2", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
+"mokorus3" = { name = "モコラッシュ3", description = "マルモコが3たい\nたて1れつになって\nとっしんしていく!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

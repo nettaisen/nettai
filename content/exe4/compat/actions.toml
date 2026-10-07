@@ -70,6 +70,9 @@
 "counter1/action" = 0x20
 "counter2/action" = 0x20
 "counter3/action" = 0x20
+"mokorus1/action" = 0x20
+"mokorus2/action" = 0x20
+"mokorus3/action" = 0x20
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D

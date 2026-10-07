@@ -69,6 +69,9 @@ language = "en"
 "counter1" = { name = "Counter1", description = "Counter-\nattack to\nenemy" }
 "counter2" = { name = "Counter2", description = "Counter-\nattack to\nenemy" }
 "counter3" = { name = "Counter3", description = "Counter-\nattack to\nenemy" }
+"mokorus1" = { name = "MokoRus1", description = "3 Molokos\ncharge\nthe enemy" }
+"mokorus2" = { name = "MokoRus2", description = "3 Molokos\ncharge\nthe enemy" }
+"mokorus3" = { name = "MokoRus3", description = "3 Molokos\ncharge\nthe enemy" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
