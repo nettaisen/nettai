@@ -74,6 +74,7 @@ return {
     overlay_restart = "step",
     -- The counter a stance's caught hit starts runs from the next tick.
     stance_counter = "next_tick",
+    dead_player = "kept",
     -- A move's direction: up, down, back or forward by the side.
     move_direction = "by_side",
     -- What the ends of a navi's actions clear of its requests besides the attacks': both games' (the mode-9 A

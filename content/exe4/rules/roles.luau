@@ -8,6 +8,7 @@
 
 local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
+local deletion = require("./deletion")
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
@@ -30,6 +31,10 @@ local roles: RolesSpec = {
     },
     regions = {
         anchor = regions.single,
+    },
+    actions = {
+        -- A player's deletion (action 2, 0x08010850).
+        deletion = deletion.action,
     },
     kinds = {
         -- The glow a navi's charge brings (effect object 5, 0x080E215C; the navi's tail spawns it, 0x0800BD88).

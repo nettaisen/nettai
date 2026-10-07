@@ -413,6 +413,9 @@ local status = {
         reactions = "flash_timer_first",
         -- Its reaction actions mark the action in use, ground and count (0x08014132 on), as EXE6's.
         reaction_actions = "marked",
+        -- A drag takes SuperArmor's pose, else the flinch's, with no paralyzed one (0x08014304); at its end the navi
+        -- stands, whatever the paralysis (0x080144CE).
+        drag = { poses = { super_armor = 0, otherwise = 1 }, ending = "stands" },
         bugs_before_drain = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the rules (the
