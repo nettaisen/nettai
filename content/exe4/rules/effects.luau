@@ -75,9 +75,6 @@ return {
     used_chip_ticks = 33,
     -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
     bug_flicker = false,
-    -- An object's destroy (0x080D8C58) unregisters its collision first (0x080129FC: its panels refreshed, its hits
-    -- and the panels it clears resolved on them), then frees it.
-    destroy = "unregisters",
     -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
     -- not in update order: of two parts in one depth bucket the higher slot's is in front.
     draw_order = "slots",

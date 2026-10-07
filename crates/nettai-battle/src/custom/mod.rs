@@ -552,6 +552,14 @@ impl Battle {
         if self.custom.sides.iter().all(|s| s.sent.as_ref().is_some_and(|x| x.arrives <= now)) {
             let results = self.custom.sides.each_ref().map(|s| s.sent.as_ref().expect("sent").result.clone());
             self.install_exchange(results);
+            // Each side's rules, for a side with its navi (EXE4's dark chips'
+            // costs, 0x0801EA1E: the local side's, then the other's, each
+            // its own side's alone).
+            for side in 0..2 {
+                if self.player_actor(side).is_some() {
+                    self.notify_side(side, nettai_content_api::RulesHook::CustomResult);
+                }
+            }
             self.custom.committed = true;
             // loc_8026E14: the consoles' chip icons are back (sub_801DA48(2)).
             for hud in &mut self.chip_hud {

@@ -399,7 +399,7 @@ by the binding.
 | `turn_started(side)` | after the sequencer, at the turn's start (`sub_800840C`'s end) | a turn in Beast Out spends one (`sub_8015A38`) |
 | `custom_requested(side)` | when the custom screen is asked for (`sub_8008452`) | the Beast Out check comes due (`sub_8015A16`) |
 | `custom_closed(side)` | when both results are in and the fight resumes (`sub_8009338`) | the Beast Out check's delay is set to 1 |
-| `custom_result(side, result)` | when both results are in (`sub_800B3D8`) | |
+| `custom_result(side)` | when both results are in and each hand with chips is installed (`sub_800B3D8`), the tick before the fight resumes | EXE4's dark chips' costs (0x0801EA1E, rules/dark_chips) |
 | `round_end(side)` | once per side as the round finishes | Beast Out used and crossed, read after the battle |
 | `folder_check(side)` | only when a tool asks (`Battle::check_folder`: a match's checks, a netplay offer, the editor, live play's random folder), never in a simulation | the folder rules (rules/folder: the size, the chips the pack lists, codes, copies by MB, Mega, Giga and dark limits, the Regular memory, the tag chips' 60 MB) |
 
@@ -2611,9 +2611,6 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   EXE4's none).
 - **`status.timers_while_paused`, since EXE4's port**: whether a navi's status timers count while the battle is paused
   (EXE4's 0x0800AE58, before its navi takes control) or hold (EXE6's `sub_800E730`, EXE5's).
-- **`effects.destroy`, since EXE4's port**: what an object's destroy does with its collision before freeing it:
-  `frees` it as it is (EXE6's, after releasing what marked reservations hold; EXE5's), or `unregisters` it first
-  (EXE4's: `object_removeCollisionData`, its panels refreshed and its hits and clearings resolved on them).
 - **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
   poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
   EXE4's 0x23F5F (their sea's and metal's 0x20000 too).
