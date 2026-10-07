@@ -18,8 +18,7 @@ the start of every tick).
 | `Music(id)` | `PlayMusic(id)`: nothing if `id` is GameState's current-music byte; else sets it, and `m4aMPlayAllStop` for 0x63, `m4aSongNumStart(id)` otherwise | intro init `sub_80091F0` (0x15 in link battles, else the settings' music unless 0x63); win `sub_80081A4` (0x1F, or 0x19 with effects bit 1); loss `sub_800825A` (0x1A, link only) |
 | `StopMusic` | `musicGameState_8000784`: `m4aMPlayAllStop`, current music = 0xFF | fade-out done `sub_80094DA` |
 | `Pinch(true/false)` | `sub_8009158`: pitch control (all tracks, +0x100 or 0) and tempo control (0x11A or 0x100) on music player 31 | after the mode handler, link battles, when the local navi's HP crosses MaxHP/4 |
-| `RestoreVolume` | `sub_802A3CC`: volume control 0x100 on players 31 and 22 | custom screen closes (`sub_8026A6C`) |
-| `ScreenVolume { music, screen }` | `sub_802A30C`, `sub_802A362`: volume control on players 31 (`music`) and 22 (`screen`) | a step of the custom screen's dark-chip hover (custom-screen.md §9; no EXE6 chip is dark), heard by the screen's player |
+| `Volume { player, volume }` | `sub_8000642`: volume control on all of a player's tracks (0x100 full) | custom screen closes (`sub_8026A6C`: `sub_802A3CC` sets the rules' `custom_screen.restore_players` back to 0x100, EXE6's 31 and 22, EXE4's 9 and 31); a step of the custom screen's dark-chip hover (custom-screen.md §9; no EXE6 chip is dark), on the rules' `hover.players` (the music's and the screen's: EXE6's 31 and 22, EXE4's 31 and 9), heard by the screen's player |
 
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
 0x64 and up. The engine names none: the ruleset plays what content's roles

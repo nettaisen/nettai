@@ -334,8 +334,13 @@ impl Side {
             }
             None => {}
         }
-        if matches!(screen.phase, Phase::Closing { tick: 1 }) {
-            // The slide-out's first tick clears the status bit.
+        // The slide-out's first tick clears the status bit, or the send does
+        // (EXE4's 0x0801E986).
+        let cleared = match ctx.library.layout().status_until {
+            crate::content::StatusUntil::Closing => matches!(screen.phase, Phase::Closing { tick: 1 }),
+            crate::content::StatusUntil::Sending => request == Some(Request::Send),
+        };
+        if cleared {
             self.in_custom = false;
         }
         self.screen = Some(screen);
@@ -504,16 +509,14 @@ impl Battle {
             if let Some(screen) = &s.screen {
                 for call in screen.look.drawn.calls() {
                     match call {
-                        // (The dark chip hover's is EXE5's alone.)
-                        look::ScreenCall::Sound(look::ScreenSound::Shade) => {
-                            if let Some(id) = self.roles().try_sound(crate::content::SoundRole::CustomShade) {
-                                self.play_sound_for(side, id);
-                            }
-                        }
                         look::ScreenCall::Sound(look::ScreenSound::Rules(id)) => self.play_sound_for(side, id),
+                        // (A sound some game hasn't, the hover's among them,
+                        // plays none there: `SoundRole::optional`.)
                         look::ScreenCall::Sound(sound) => self.sound_for(side, sound.role().expect("a screen sound of a role")),
                         look::ScreenCall::Volume { music, screen } => {
-                            self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
+                            let [m, s] = self.content.rules().custom_screen.hover.players;
+                            self.play_sound_for(side, crate::sound::SoundCue::Volume { player: m, volume: music });
+                            self.play_sound_for(side, crate::sound::SoundCue::Volume { player: s, volume: screen });
                         }
                     }
                 }
