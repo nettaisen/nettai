@@ -44,6 +44,15 @@ pub enum Version {
 }
 
 impl Version {
+    /// Its name, as the pack names its versions' assets and the app its
+    /// team's preset: `protoman`, `colonel`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Version::Protoman => "protoman",
+            Version::Colonel => "colonel",
+        }
+    }
+
     /// The event flag of soul `number` (1 to 12) in this version's save, if
     /// it can have it (0x08024BF0, the soul button's table: Team
     /// ProtoMan's souls 1 to 6 flags 2 to 7, Team Colonel's 7 to 12 flags 8
@@ -391,11 +400,33 @@ pub struct AssetNames {
     pub sounds: BTreeMap<String, u16>,
     #[serde(default)]
     pub banners: BTreeMap<String, u8>,
+    /// A background's number, or the numbers that are one background: a
+    /// liberation's map's own number has its area's load data, scroll and
+    /// animations (`acdc-area = [0x08, 0x0c]`). The pack has the first
+    /// number's picture under the name.
     #[serde(default)]
-    pub backgrounds: BTreeMap<String, u8>,
+    pub backgrounds: BTreeMap<String, Numbers>,
     /// The emotion window's faces by the number exe5-extract gives them.
     #[serde(default)]
     pub mugshots: BTreeMap<String, u8>,
+}
+
+/// One number, or several that are one thing (`0x08`, `[0x08, 0x0c]`).
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum Numbers {
+    One(u8),
+    Many(Vec<u8>),
+}
+
+impl Numbers {
+    /// Every number, the first first.
+    pub fn all(&self) -> &[u8] {
+        match self {
+            Numbers::One(n) => std::slice::from_ref(n),
+            Numbers::Many(v) => v,
+        }
+    }
 }
 
 /// EXE5's text encodings (text.toml): what each byte below `first_control`
@@ -532,6 +563,17 @@ impl Compat {
             by_number.insert(n, p);
         }
         let assets: AssetNames = toml::from_str(&text("assets.toml")?).map_err(|e| format!("assets.toml: {e}"))?;
+        let mut background_numbers = BTreeMap::new();
+        for (name, numbers) in &assets.backgrounds {
+            if numbers.all().is_empty() {
+                return Err(format!("assets.toml: background {name} has no number"));
+            }
+            for &n in numbers.all() {
+                if let Some(other) = background_numbers.insert(n, name) {
+                    return Err(format!("assets.toml: backgrounds {name} and {other} are both {n:#04x}"));
+                }
+            }
+        }
         for (name, id) in &assets.sprites {
             parse_sprite(id).ok_or_else(|| format!("assets.toml: sprite {name} is {id:?}, not \"cc-ii\""))?;
         }
@@ -697,6 +739,17 @@ impl Compat {
     /// A status's id (`paralyze-90`) by a hit's status byte.
     pub fn status(&self, byte: u8) -> Option<String> {
         self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| k.clone())
+    }
+
+    /// The name of background number `n` (a settings record's byte 4).
+    pub fn background(&self, n: u8) -> Option<&str> {
+        self.assets.backgrounds.iter().find(|(_, numbers)| numbers.all().contains(&n)).map(|(k, _)| k.as_str())
+    }
+
+    /// The backgrounds' names by the number the pack has each under (its
+    /// first).
+    pub fn background_names(&self) -> BTreeMap<u8, String> {
+        self.assets.backgrounds.iter().map(|(k, numbers)| (numbers.all()[0], k.clone())).collect()
     }
 
     /// The sprites' names by (category, index).

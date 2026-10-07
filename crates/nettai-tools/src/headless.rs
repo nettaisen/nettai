@@ -104,6 +104,7 @@ pub fn render_frames_with(
     std::fs::create_dir_all(out)?;
     let _ = std::fs::remove_file(out.join("known.tsv"));
     let _ = std::fs::remove_file(out.join("marks.tsv"));
+    let _ = std::fs::remove_file(out.join("shifted.tsv"));
     let mut written = Vec::new();
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     let mut rest = rest.into_iter();
@@ -132,6 +133,28 @@ pub fn render_frames_with(
                     let mut file = std::fs::OpenOptions::new().create(true).append(true).open(out.join("marks.tsv"))?;
                     for m in &player.renderer().problems.marks {
                         writeln!(file, "{f}\t{}\t{}\t{}\t{}\t{}", m.x, m.y, m.width, m.height, m.what)?;
+                    }
+                }
+                // What a recording's replay shows later than the original
+                // (`shifted.tsv`: frame, what, frames late, x, y, width,
+                // height): the custom screen held back on its OK or late
+                // after it (the whole screen), the full gauge's stripes (the
+                // gauge's place), for the frame comparison to compare as the
+                // known shift (`Driver::feed_shift`).
+                let shift = player.session().driver.feed_shift();
+                if shift != Default::default() {
+                    use nettai_render::compose::{HEIGHT, WIDTH};
+                    use std::io::Write;
+                    let mut file = std::fs::OpenOptions::new().create(true).append(true).open(out.join("shifted.tsv"))?;
+                    if shift.held {
+                        writeln!(file, "{f}\theld\t0\t0\t0\t{WIDTH}\t{HEIGHT}")?;
+                    }
+                    if shift.late != 0 {
+                        writeln!(file, "{f}\tlate\t{}\t0\t0\t{WIDTH}\t{HEIGHT}", shift.late)?;
+                    }
+                    if shift.hud_late != 0 {
+                        let (x, y, w, h) = nettai_render::hud::GAUGE_AREA;
+                        writeln!(file, "{f}\tgauge\t{}\t{x}\t{y}\t{w}\t{h}", shift.hud_late)?;
                     }
                 }
                 if objects {

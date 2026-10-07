@@ -168,6 +168,13 @@ impl<'a> Names<'a> {
         self.pick(&self.content.defs.form(form).key, |s, k| s.form(k).and_then(|n| n.name.clone()))
     }
 
+    /// A background's name (its area's, as the game's menus name it), else
+    /// its asset name.
+    pub fn background(&self, background: nettai_battle::content::BackgroundId) -> String {
+        let key = nettai_match::ids::background_name(self.content, background).unwrap_or_default();
+        self.pick(key, |s, k| s.background(k).and_then(|b| b.name.clone()))
+    }
+
     /// An entry of one of the game's collections (a card, a program).
     pub fn entry(&self, entry: nettai_content_api::EntryHandle) -> String {
         let d = self.content.defs.entry(entry);
