@@ -401,14 +401,14 @@ language = "en"
 "end-area" = { name = "End Area" }
 "factory-comp" = { name = "FactoryComp" }
 "gargcastle-hp" = { name = "GargCastleHP" }
-"gargoyle-comp" = { name = "Gargoyle Comp" }
+"gargoyle-comp" = { name = "GargoylComp" }
 "lans-hp" = { name = "Lan's HP" }
 "main-comp" = { name = "MainComp" }
 "mayls-hp" = { name = "Mayl's HP" }
 "nebula-area" = { name = "NebulaArea" }
 "nebulagray" = { name = "NebulaGray" }
 "oran-area" = { name = "Oran Area" }
-"scilab-area" = { name = "SciLab Area" }
+"scilab-area" = { name = "SciLab" }
 "scilab-hp" = { name = "SciLab HP" }
 "ship-comp" = { name = "ShipComp" }
 "soulserv-comp" = { name = "SoulServComp" }

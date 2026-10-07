@@ -398,7 +398,7 @@ language = "en"
 [backgrounds]
 "acdc-area" = { name = "ACDC Area" }
 "acdc-hp" = { name = "ACDC HP" }
-"aquarium-comp" = { name = "Aquarium Comp" }
+"aquarium-comp" = { name = "AquarumComp" }
 "aquarium-hp" = { name = "Aquarium HP" }
 "central-area" = { name = "CentralArea" }
 "comp" = { name = "Comp" }
@@ -407,11 +407,11 @@ language = "en"
 "graveyard" = { name = "Graveyard" }
 "green-area" = { name = "Green Area" }
 "green-hp" = { name = "Green HP" }
-"judgetree-comp" = { name = "JudgeTreeComp" }
+"judgetree-comp" = { name = "JdgTreeComp" }
 "lans-hp" = { name = "Lan's HP" }
-"mr-weather-comp" = { name = "Mr.Weather Comp" }
-"mr-weather-comp-storm" = { name = "Mr.Weather Comp (Typhoon)" }
-"robot-control-comp" = { name = "Robot Control Comp" }
+"mr-weather-comp" = { name = "MrWeathrCmp" }
+"mr-weather-comp-storm" = { name = "MrWeathrCmp (Typhoon)" }
+"robot-control-comp" = { name = "RobCtrlComp" }
 "seaside-area" = { name = "SeasideArea" }
 "sky-area" = { name = "Sky Area" }
 "sky-hp" = { name = "Sky HP" }
