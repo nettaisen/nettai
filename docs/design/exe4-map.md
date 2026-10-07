@@ -358,10 +358,14 @@ Double Soul button and its window (the selection's states 0xC and 0x10).
   DrkVulcn: 720 ticks of confusion (status 0x21). DrkLance: the custom drain (+0x0F: 6, else 4 up to 6, else 3).
   DrkSpred: the panel trail, poison (+0x1B = 4). DrkStage: the custom level one less, down to 2. DrkRecov: the custom
   drain as DrkLance's and the HP drain (+0x0E: 10, else 6 up to 10, else 3). The mood: none (a mood of 0 stays).
-- **The chips**: on the families group A wrote with every branch (lib/cannon 0x0B on @exelib/cannon, lib/swords 0x0A, lib/bombs 0x09,
-  lib/vulcans 0x1F, lib/spreaders 0x1E, lib/recov 0x1D (on @exelib/recov/heal), lib/spawners 0x20 with chips/lance/lance (on @exelib/lance), and the dimming
-  action 0x0C with DrkStage's controller, effect #0x6A, and the panel changer, effect #0x1F), each chip composing its
-  variant's rows. DrkStage is EXE4's first dimming chip: its telop runs on the banner with no banner of its own (item 71).
+- **The chips**: laid out as EXE5's and EXE6's, each series in its folder with its action, the shared ones in lib/, on
+  @exelib where EXE4's routine is EXE5's or EXE6's code (its differences as the look's or game's data): lib/cannon
+  0x0B (@exelib/cannon), lib/swords 0x0A (@exelib/swords/slash), lib/bombs 0x09 (@exelib/bombs/throw and bomb),
+  chips/vulcan/vulcan 0x1F (@exelib/vulcan/action), chips/spreader/spreader 0x1E (@exelib/spreadr/action),
+  chips/recov/recov 0x1D (@exelib/recov/heal), chips/lance/lance (@exelib/lance) on lib/spawners 0x20 (EXE4's own,
+  emap: absent; lib/plus its variant 4), and the dimming action 0x0C with DrkStage's controller, effect #0x6A, and
+  the panel changer, effect #0x1F (@exelib/panel_changer). The records are tools/exe4/gen_content.py's. DrkStage
+  is EXE4's first dimming chip: its telop runs on the banner with no banner of its own (item 71).
 
 Checked: the lab's dark/offer, hover-long, hover-hide, hover-describe, hover-then-ok-fast, with-folder-chip, side1,
 bluemoon, drksword, darkbomb, drkvulcn, drkspred, drkstage, drkcanon and drkcanon-taunt match every frame; drklance
