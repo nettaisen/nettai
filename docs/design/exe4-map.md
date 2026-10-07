@@ -578,6 +578,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   0x080CCC08's code) on the other side's panels of row 1, 2 or 3, bodies with 1 HP that catch the other side's navi.
   They showed that EXE4's navi body hits for nothing in a link battle (`status.link_body_damage`: EXE4 has neither of
   EXE6's stores of 10).
+- **ElemFlar, ElemIce, ElemLeaf, ElemSand, ElemDark** (action 0x60's variants 0 to 4, `chips/elem`): EXE4's own action
+  with EXE5's ElemRage flame (attack 9), now @exelib/elemrage/flame: on the variant's panel the flames run five and
+  paralyze (no spreading to the rows beside, which EXE5's does). ElemDark's sound recordings differ only on the
+  custom screen (a music volume change the engine makes and the game doesn't, frame 290: the custom screen's).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
   navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,

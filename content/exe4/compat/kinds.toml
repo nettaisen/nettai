@@ -66,3 +66,5 @@
 "deltaray/navi" = { pool = "actor", index = 0x3D }
 # The follow effect (0x080E5B34): DeltaRay's burst.
 "follow-effect" = { pool = "effect", index = 0x31 }
+# The Elem chips' flame (action 0x60, 0x080CE49C).
+"elem/flame" = { pool = "attack", index = 0x09, scratch_position = true }
