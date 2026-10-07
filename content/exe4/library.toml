@@ -147,12 +147,14 @@ standard = [
     "recov150",
     "recov200",
     "recov300",
+    "repair",
     "panlgrab",
     "areagrab",
     "atk-10",
     "navi-20",
 ]
 mega = [
+    "fullcust",
     "atk-30",
 ]
 secret = [

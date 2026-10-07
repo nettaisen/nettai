@@ -55,6 +55,8 @@ language = "en"
 "boomer1" = { name = "Boomer1", description = "Boomerang\nencircles\nfield" }
 "boomer2" = { name = "Boomer2", description = "Boomerang\nencircles\nfield" }
 "boomer3" = { name = "Boomer3", description = "Boomerang\nencircles\nfield" }
+"repair" = { name = "Repair", description = "Recovers\nHP of \nitems" }
+"fullcust" = { name = "FullCust", description = "CustGauge\ninstantly\nrefills" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
