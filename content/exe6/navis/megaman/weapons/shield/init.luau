@@ -10,7 +10,9 @@
 -- ticks after it.
 
 local guard = require("../../../chips/rflectr/guard")
+local projectile = require("../../../lib/projectile")
 local reflector_shield = require("../../../chips/rflectr/shield")
+local variants = require("../../../objects/projectile/variants")
 
 local shield = {}
 
@@ -36,6 +38,14 @@ shield.reflect_look = reflector_shield.look {
     palette = 0,
 }
 
+-- The Reflect's counter: the charged shot's projectile (`sub_80C4FFE`) at
+-- this height. (The game passes the literal 2 its flag test loaded as the
+-- shot's element, which the shot's init replaces.)
+local SHOT_Z = 0x14_0000
+local function shoot(me: Object, x: number, y: number, damage: number)
+    projectile.spawn(me, x, y, { variant = variants.charged, damage = damage, z = SHOT_Z })
+end
+
 -- The guards (the original's action 0x2B with the params words 0x214 and
 -- 0x114).
 local SHIELD = guard.action {
@@ -48,7 +58,7 @@ local REFLECT = guard.action {
     id = "megaman/reflect/action",
     ticks = TICKS,
     look = shield.reflect_look,
-    counter = "shot",
+    counter = shoot,
 }
 
 -- The reflecting guard, which ProtoMan's B+Back raises too
