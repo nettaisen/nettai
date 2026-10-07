@@ -13,18 +13,7 @@
 //! such side from its fresh stats). An EXE5 team navi's level is its
 //! story's progress, which its attacks' damage reads; its HP is the save's
 //! (`story` gives what the story leaves it at a level, which a tool fills
-//! in).
-
-use nettai_battle::content::Content;
-use nettai_content_api::NaviHandle;
-
-/// Whether `navi` takes its stats from its level: a link navi's (it has
-/// levels and doesn't change form), or the story's (EXE5's team navis,
-/// `story`).
-pub fn has_levels(content: &Content, navi: NaviHandle) -> bool {
-    let data = content.navi(navi);
-    data.levels.is_some() && !data.changes_form() || data.story.is_some()
-}
+//! in). A tool reads a navi's levels' range by `NaviData::last_level`.
 
 #[cfg(test)]
 mod tests {

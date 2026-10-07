@@ -396,28 +396,28 @@ pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     !hud.warning.is_empty()
 }
 
-/// A Cross's name and colors in the Cross window: its version's pictures
-/// and its number among that version's Crosses as `navi` lists them
-/// (`custom::cross_picture`), with its name's tiles and colors there.
-pub fn cross_name<'a>(
+/// A form's name and colors in the form list's window: its version's
+/// pictures and its number among that version's forms as `navi` lists them
+/// (`custom::form_name_picture`), with its name's tiles and colors there.
+pub fn form_name<'a>(
     a: &'a CustomScreen,
     c: &Content,
     navi: NaviHandle,
     form: FormHandle,
     problems: &mut Problems,
 ) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
-    let found = crate::custom::cross_picture(c, a, navi, form);
-    if problems.lookup(Lookup::CrossName(form)) {
+    let found = crate::custom::form_name_picture(c, a, navi, form);
+    if problems.lookup(Lookup::FormName(form)) {
         let key = &c.defs.form(form).key;
         match found {
             None => {
                 let navi = &c.defs.navi(navi).key;
-                problems.note(format!("form {key:?} has no name on the custom screen (it says no `version`, or navi {navi:?} doesn't list it among that version's Crosses)"));
+                problems.note(format!("form {key:?} has no name on the custom screen (it says no `version`, or navi {navi:?} doesn't list it among that version's forms)"));
             }
             Some((own, number)) => {
-                let names = crate::custom::CROSS_NAME_TILES * (number + 5 + 1);
-                if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {
-                    problems.note(format!("form {key:?}: the custom screen has no name or colors for Cross {number}"));
+                let names = crate::custom::FORM_NAME_TILES * (number + 5 + 1);
+                if own.form_names.len() < names || own.form_name_palettes.len() < number + 5 + 1 {
+                    problems.note(format!("form {key:?}: the custom screen has no name or colors for its version's form {number}"));
                 }
             }
         }

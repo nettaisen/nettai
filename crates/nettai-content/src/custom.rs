@@ -13,9 +13,9 @@
 //! it for viewing only.
 //!
 //! What a game version shows of its own (`VersionPictures`: its own look
-//! of a button, its Crosses' names) is an image a version, each named with
-//! its version (`cross-names-falzar.png`, `cross-names-gregar.png`;
-//! without another version's, `cross-names.png`): the base game's in `own`
+//! of a button, its forms' names: EXE6's Crosses') is an image a version, each named with
+//! its version (`form-names-falzar.png`, `form-names-gregar.png`;
+//! without another version's, `form-names.png`): the base game's in `own`
 //! (its version `base_version`), the others' in `versions`.
 
 use crate::report::Report;
@@ -31,13 +31,16 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/custom";
-pub const VERSION: u32 = 1;
+/// 2: the form list window's pictures are named for it (`form_list_maps`,
+/// `form_list_patches`, `form-list-cursor.png`, `form-names*.png`, the
+/// layout's `form_names`), where 1 named them for EXE6's Cross window.
+pub const VERSION: u32 = 2;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 const ICONS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 2, height: 2, columns };
 const PICTURE: Layout = Layout::Blocks { width: 7, height: 6, columns: 1 };
-const CROSS_NAME: Layout = Layout::Blocks { width: 9, height: 2, columns: 1 };
-const CROSS_NAME_TILES: usize = 18;
+const FORM_NAME: Layout = Layout::Blocks { width: 9, height: 2, columns: 1 };
+const FORM_NAME_TILES: usize = 18;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CustomDoc {
@@ -55,10 +58,10 @@ pub struct CustomDoc {
     /// with the Cross tab; and the patches laid over them.
     pub window_maps: Vec<Vec<String>>,
     pub window_patches: PatchListDoc,
-    /// The Cross window's maps: its opening steps, then with one to five
-    /// Crosses; and its patches.
-    pub cross_maps: Vec<Vec<String>>,
-    pub cross_patches: PatchListDoc,
+    /// The form list window's maps (EXE6's Cross window): its opening
+    /// steps, then with one to five forms; and its patches.
+    pub form_list_maps: Vec<Vec<String>>,
+    pub form_list_patches: PatchListDoc,
     /// Background palettes 11 (the slot icons), 12 (grayed out) and 14.
     pub icon_palette: Vec<String>,
     pub gray_palette: Vec<String>,
@@ -83,10 +86,10 @@ pub struct CustomDoc {
     pub own: VersionDoc,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub versions: Vec<VersionEntry>,
-    /// Sprites: the cursor's corner (two frames), the Cross window's cursor
+    /// Sprites: the cursor's corner (two frames), the form list window's cursor
     /// (corner and edge, two frames), the Regular chip's frame (two frames).
     pub cursor: TileImage,
-    pub cross_cursor: TileImage,
+    pub form_list_cursor: TileImage,
     /// The navis' emblems by navi key, each with its palette (sprite
     /// palette 11: the cursor's and the Regular chip's frame's too).
     pub emblems: Vec<EmblemDoc>,
@@ -128,7 +131,7 @@ pub struct LayoutDoc {
     pub slots: u16,
     pub column_icons: u16,
     pub name_bar: u16,
-    pub cross_names: u16,
+    pub form_names: u16,
     pub slot_blank: u8,
     pub ok_cursor: CursorDoc,
 }
@@ -166,7 +169,7 @@ impl From<CustomLayout> for LayoutDoc {
             slots,
             column_icons,
             name_bar,
-            cross_names,
+            form_names,
             slot_blank,
             ok_cursor,
         } = l;
@@ -181,7 +184,7 @@ impl From<CustomLayout> for LayoutDoc {
             slots,
             column_icons,
             name_bar,
-            cross_names,
+            form_names,
             slot_blank,
             ok_cursor: ok_cursor.into(),
         }
@@ -201,7 +204,7 @@ impl From<LayoutDoc> for CustomLayout {
             slots,
             column_icons,
             name_bar,
-            cross_names,
+            form_names,
             slot_blank,
             ok_cursor,
         } = l;
@@ -216,7 +219,7 @@ impl From<LayoutDoc> for CustomLayout {
             slots,
             column_icons,
             name_bar,
-            cross_names,
+            form_names,
             slot_blank,
             ok_cursor: ok_cursor.into(),
         }
@@ -256,13 +259,13 @@ pub struct ButtonDoc {
 }
 
 /// Another language's pictures with words: its own files, named with the
-/// language (`pictures/ok-ja.png`, `cross-names-falzar-ja.png`,
+/// language (`pictures/ok-ja.png`, `form-names-falzar-ja.png`,
 /// `buttons/soul-ja.png`, `pictures/redeal-ja.png`).
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CustomLanguageDoc {
     pub pictures: PicturesDoc,
-    /// The Cross window's names by game version.
-    pub cross_names: BTreeMap<String, TileImage>,
+    /// The form list window's names by game version.
+    pub form_names: BTreeMap<String, TileImage>,
     /// What this language has of its own for a named button, by the
     /// button's name.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -287,7 +290,7 @@ pub struct ButtonLanguageDoc {
 pub struct VersionDoc {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub buttons: Vec<ButtonDoc>,
-    pub cross_names: TileImage,
+    pub form_names: TileImage,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -440,12 +443,12 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let other = picture("pictures/other.png", &p.other);
     let vs = &c.versioned;
     let mut version = |which: Option<&str>, v: &VersionPictures| {
-        let names = v.cross_names.len() / CROSS_NAME_TILES;
+        let names = v.form_names.len() / FORM_NAME_TILES;
         let file = |name: &str| format!("{}.png", vs.name(name, which));
         VersionDoc {
             buttons: v.buttons.iter().map(|(name, b)| button_doc(&mut image, name, &vs.name(name, which), b, frame0)).collect(),
-            cross_names: image(&file("cross-names"), &v.cross_names, CROSS_NAME, &v.cross_palettes, v.cross_palettes.len(), &|i| {
-                ((i / CROSS_NAME_TILES).min(names.saturating_sub(1))) as u8
+            form_names: image(&file("form-names"), &v.form_names, FORM_NAME, &v.form_name_palettes, v.form_name_palettes.len(), &|i| {
+                ((i / FORM_NAME_TILES).min(names.saturating_sub(1))) as u8
             }),
         }
     };
@@ -463,8 +466,8 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         .map(|e| EmblemDoc { navi: e.navi.clone(), image: image(&format!("emblems/{}.png", e.navi), &e.tiles, ICONS(1), &[e.palette], 1, &none) })
         .collect();
     let cursor = image("cursor.png", &c.cursor, Layout::Blocks { width: 1, height: 1, columns: 2 }, &[emblem0], 0, &none);
-    let cross_cursor =
-        image("cross-cursor.png", &c.cross_cursor, Layout::Blocks { width: 1, height: 1, columns: 4 }, &[c.cross_cursor_palette], 1, &none);
+    let form_list_cursor =
+        image("form-list-cursor.png", &c.form_list_cursor, Layout::Blocks { width: 1, height: 1, columns: 4 }, &[c.form_list_cursor_palette], 1, &none);
     let regular = image("regular.png", &c.regular, Layout::Blocks { width: 4, height: 4, columns: 2 }, &[emblem0], 0, &none);
     let mut languages = BTreeMap::new();
     for (lang, l) in &c.languages {
@@ -475,13 +478,13 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             ok_picked: picture("ok-picked", &p.ok_picked),
             other: picture("other", &p.other),
         };
-        let mut cross_names = BTreeMap::new();
-        for (version, names) in &l.cross_names {
+        let mut form_names = BTreeMap::new();
+        for (version, names) in &l.form_names {
             let own = vs.version(version).unwrap_or(&vs.base);
-            let n = names.len() / CROSS_NAME_TILES;
-            let file = format!("{}-{lang}.png", vs.name("cross-names", Some(version)));
-            let doc = image(&file, names, CROSS_NAME, &own.cross_palettes, 0, &|i| ((i / CROSS_NAME_TILES).min(n.saturating_sub(1))) as u8);
-            cross_names.insert(version.clone(), doc);
+            let n = names.len() / FORM_NAME_TILES;
+            let file = format!("{}-{lang}.png", vs.name("form-names", Some(version)));
+            let doc = image(&file, names, FORM_NAME, &own.form_name_palettes, 0, &|i| ((i / FORM_NAME_TILES).min(n.saturating_sub(1))) as u8);
+            form_names.insert(version.clone(), doc);
         }
         let mut buttons = BTreeMap::new();
         for (name, own) in &l.buttons {
@@ -491,7 +494,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             let picture = own.picture.as_ref().map(|p| image(&format!("pictures/{name}-{lang}.png"), &p.tiles, PICTURE, &[p.palette], 1, &none));
             buttons.insert(name.clone(), ButtonLanguageDoc { tiles, picture });
         }
-        languages.insert(lang.clone(), CustomLanguageDoc { pictures, cross_names, buttons });
+        languages.insert(lang.clone(), CustomLanguageDoc { pictures, form_names, buttons });
     }
     let buttons = c.buttons.iter().map(|(name, b)| button_doc(&mut image, name, name, b, frame0)).collect();
     let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
@@ -504,8 +507,8 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         name_bar,
         window_maps: maps(&c.window_maps),
         window_patches: patch_doc(&c.window_patches),
-        cross_maps: maps(&c.cross_maps),
-        cross_patches: patch_doc(&c.cross_patches),
+        form_list_maps: maps(&c.form_list_maps),
+        form_list_patches: patch_doc(&c.form_list_patches),
         icon_palette: tiles::palette_text(&c.icon_palette),
         gray_palette: tiles::palette_text(&c.gray_palette),
         other_palette: tiles::palette_text(&c.other_palette),
@@ -522,7 +525,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         own,
         versions,
         cursor,
-        cross_cursor,
+        form_list_cursor,
         emblems,
         regular,
         advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
@@ -612,12 +615,12 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         for b in &d.buttons {
             buttons.push(button(b, report)?);
         }
-        let (cross_names, cross_palettes) = img(&d.cross_names, report)?;
-        Some(VersionPictures { buttons, cross_names, cross_palettes })
+        let (form_names, form_name_palettes) = img(&d.form_names, report)?;
+        Some(VersionPictures { buttons, form_names, form_name_palettes })
     };
     let base = version(&doc.own, report)?;
-    let (cross_cursor, cross_cursor_palettes) = img(&doc.cross_cursor, report)?;
-    let cross_cursor_palette = cross_cursor_palettes.first().copied().unwrap_or([0; 16]);
+    let (form_list_cursor, form_list_cursor_palettes) = img(&doc.form_list_cursor, report)?;
+    let form_list_cursor_palette = form_list_cursor_palettes.first().copied().unwrap_or([0; 16]);
     let mut versioned = Versioned::new(&doc.base_version, base);
     for v in &doc.versions {
         versioned.versions.push((v.version.clone(), version(&v.own, report)?));
@@ -630,9 +633,9 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             ok_picked: one(img(&d.pictures.ok_picked, report)?),
             other: one(img(&d.pictures.other, report)?),
         };
-        let mut cross_names = Vec::new();
-        for (version, i) in &d.cross_names {
-            cross_names.push((version.clone(), img(i, report)?.0));
+        let mut form_names = Vec::new();
+        for (version, i) in &d.form_names {
+            form_names.push((version.clone(), img(i, report)?.0));
         }
         let mut buttons = Vec::new();
         for (name, own) in &d.buttons {
@@ -646,7 +649,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             };
             buttons.push((name.clone(), ButtonLettering { tiles, picture }));
         }
-        languages.push((lang.clone(), CustomLettering { pictures, cross_names, buttons }));
+        languages.push((lang.clone(), CustomLettering { pictures, form_names, buttons }));
     }
     let mut buttons = Vec::new();
     for b in &doc.buttons {
@@ -666,8 +669,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         name_bar: img(&doc.name_bar, report)?.0,
         window_maps: doc.window_maps.iter().map(|m| map(m, report)).collect(),
         window_patches: patch_list(&doc.window_patches),
-        cross_maps: doc.cross_maps.iter().map(|m| map(m, report)).collect(),
-        cross_patches: patch_list(&doc.cross_patches),
+        form_list_maps: doc.form_list_maps.iter().map(|m| map(m, report)).collect(),
+        form_list_patches: patch_list(&doc.form_list_patches),
         frame_palettes,
         icon_palette: palette(&doc.icon_palette, report),
         gray_palette: palette(&doc.gray_palette, report),
@@ -682,8 +685,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         empty_icon: img(&doc.empty_icon, report)?.0,
         versioned,
         cursor: img(&doc.cursor, report)?.0,
-        cross_cursor,
-        cross_cursor_palette,
+        form_list_cursor,
+        form_list_cursor_palette,
         emblems,
         regular: img(&doc.regular, report)?.0,
         advance_name_colors: doc
