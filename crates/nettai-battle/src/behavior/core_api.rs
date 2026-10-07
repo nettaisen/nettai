@@ -2855,6 +2855,7 @@ impl CoreApi for Battle {
             ObstacleCrush::Destroys => Crush::Destroys,
             ObstacleCrush::SparesBodies => Crush::SparesBodies,
             ObstacleCrush::Ignores => Crush::Ignores,
+            ObstacleCrush::DestroysSparingBodies => Crush::DestroysSparingBodies,
         };
         let hold = match hold {
             ObstacleHold::AfterAppearing => Hold::AfterAppearing,

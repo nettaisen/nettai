@@ -75,6 +75,12 @@ return {
     used_chip_ticks = 33,
     -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
     bug_flicker = false,
+    -- A step leaves its panel trail (NaviStats +0x1B) every time, unless it is 0xFF: no level and no draw; its kind 3
+    -- is a type set like any other (0x080EB264).
+    panel_trail = "always",
+    -- The status visual (effect 6, 0x080E22C8) sits at its navi's identity's `status_mark` from its position (the actor
+    -- record's +6 toward the enemy side and +7 up, 0x08011878), shown anywhere, with no shadow (0x080E2302).
+    status_visual = { place = "status_mark", shadow = false },
     -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
     -- not in update order: of two parts in one depth bucket the higher slot's is in front.
     draw_order = "slots",
