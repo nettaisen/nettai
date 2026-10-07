@@ -1677,8 +1677,10 @@ export type Cannonball = { kind: Kind, thrower: () -> Thrower }
 
 -- A game's Geyser (@exelib/geyser/geyser): its bomb's and water's kind keys, the bomb's and the geyser's sprites, the
 -- splash (on solid ground and where the water lands) and its sound, the eruption's sound, its hits' collision types
--- (what they are, what they hit) and spark, and whether the splash on solid ground takes the throw's Atk+ bonus
--- (EXE4's 0x080D5AA4 reads the spawn's +0x64; none: EXE5's, which stores it and never reads it).
+-- (what they are, what they hit) and spark, whether the splash on solid ground takes the throw's Atk+ bonus (EXE4's
+-- 0x080D5AA4 reads the spawn's +0x64; none: EXE5's, which stores it and never reads it), and its water's height: the
+-- register the geyser's update leaves for the water's spawn, the battle state's address (the battle-over test's r3:
+-- EXE5's 0x02034A90, EXE4's 0x02035810), at which the water's hits land and their sparks show, far above the field.
 export type GeyserLook = {
     id: string,
     water_id: string,
@@ -1691,6 +1693,7 @@ export type GeyserLook = {
     hits: CollisionType,
     spark: Spark,
     splash_bonus: boolean?,
+    water_height: number,
 }
 
 -- A game's Geyser kinds (the bomb and its water), and a thrower of the bomb at the panel three ahead of the user.

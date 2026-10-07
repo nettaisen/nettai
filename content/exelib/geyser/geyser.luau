@@ -109,10 +109,11 @@ function geyser.make(look: GeyserLook, aim: Trajectory): GeyserBomb
         end,
     }
 
-    -- `sub_80CC918`'s counterpart (EXE5's 0x080CDCD8): the water on (x, y), of the geyser's element and damage. (Its
-    -- position is the spawner's registers: the panel and the element.)
+    -- `sub_80CC918`'s counterpart (EXE5's 0x080CDCD8): the water on (x, y), of the geyser's element and damage. Its
+    -- position is the spawner's registers, which it keeps: its row, its element, and the look's water height (the
+    -- register the geyser's update leaves, which its hits take).
     local function water(me: Object, x: number, y: number)
-        local o = battle.spawn(water_kind, Vec3.new(x, y, me.element))
+        local o = battle.spawn(water_kind, Vec3.new(y, me.element, look.water_height))
         if o then
             o.panel_x, o.panel_y = x, y
             o:set_damage_word(int.u32(me.damage + me.stamina * 0x10000))
