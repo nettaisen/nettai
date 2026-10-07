@@ -9,6 +9,7 @@
 "engine/effect" = { pool = "effect", index = 0x00 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "engine/spark" = { pool = "effect", index = 0x04 }
+"engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
