@@ -979,16 +979,12 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat, status: 
             check(&format!("side {side}'s compiled stats"), compiled(b, &b.stats[side]), compiled_of(&crate::codec::navi_stats(&raw)));
         }
     }
-    // (A panel type the game numbers: its number in the rules' list.)
-    let numbers = &b.content.rules().panels.numbers;
+    // (A panel type is the game's number of it.)
     let panels: Vec<String> = (1..=3)
         .flat_map(|y| (1..=6).map(move |x| (x, y)))
         .map(|(x, y)| {
             let p = b.field.panel(x, y).expect("a field panel");
-            match numbers.iter().position(|&t| t == p.kind) {
-                Some(n) => format!("[{n}, {}]", p.alliance),
-                None => format!("[{:?}, {}]", p.kind, p.alliance),
-            }
+            format!("[{}, {}]", p.kind.0, p.alliance)
         })
         .collect();
     let theirs: Vec<String> = f.panels.iter().map(|[t, a]| format!("[{t}, {a}]")).collect();

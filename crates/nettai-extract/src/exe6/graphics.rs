@@ -175,8 +175,20 @@ fn field(rom: &Rom) -> Field {
             palette_anims: PANEL_PALETTE_ANIMS,
             palette_buffer: PALETTE_BUFFER,
         },
-        (0..13).collect(),
+        panel_names(),
     )
+}
+
+/// EXE6's 13 panel types' names by number (`word_3007924`'s order: its
+/// blocks', a panel trail's byte's; content/exe6/rules/panels.luau's
+/// `numbers`).
+pub fn panel_names() -> Vec<String> {
+    [
+        "missing", "broken", "normal", "cracked", "poison", "holy", "grass", "ice", "volcano", "road_up", "road_down", "road_left",
+        "road_right",
+    ]
+    .map(String::from)
+    .to_vec()
 }
 
 // ---- Backgrounds ---------------------------------------------------------------
