@@ -179,6 +179,9 @@ standard = [
 mega = [
     "fullcust",
     "atk-30",
+    "roll",
+    "roll-sp",
+    "roll-ds",
 ]
 secret = [
     "meteors1",

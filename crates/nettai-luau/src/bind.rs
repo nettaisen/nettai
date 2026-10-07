@@ -1373,6 +1373,11 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     lib_fn!(lua, navi_chip, "warp", |_, (user, out): (mlua::UserDataRef<Object>, bool)| {
         with(|api, _| Ok(api.navi_warp(user.0, out)))
     });
+    lib_fn!(lua, navi_chip, "spring_anti_recovery", |lua, (user, damage): (mlua::UserDataRef<Object>, LuaValue)| {
+        let damage = int(&damage, "damage")? as u32;
+        let c = with(|api, _| Ok(api.navi_spring_anti_recovery(user.0, damage)))?;
+        object_value(lua, c)
+    });
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.navi_chip_left(c.0)))
     });

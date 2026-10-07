@@ -395,6 +395,10 @@ fn counted(b: &Battle, side: u8, of: &crate::content::Counted) -> usize {
             .flat_map(|y| (1..=6u8).map(move |x| (x, y)))
             .filter(|&(x, y)| b.field.panel(x, y).is_some_and(|p| p.kind == t && p.alliance == side))
             .count(),
+        C::Panels(t) => (1..=3u8)
+            .flat_map(|y| (1..=6u8).map(move |x| (x, y)))
+            .filter(|&(x, y)| b.field.panel(x, y).is_some_and(|p| p.kind == t))
+            .count(),
         // 0x0800E994: the turn byte less one, compared unsigned.
         C::TurnsBefore => (b.round.turn as u32).wrapping_sub(1) as usize,
     }
