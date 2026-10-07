@@ -51,14 +51,14 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 
 | Feature | (a) | (b) | (c) | (d) | All |
 |---|---|---|---|---|---|
-| Beast Out and Beast Over | | | 1 | | 1 |
+| Beast Out and Beast Over | | | | | |
 | Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | | 1 | 3 | 4 |
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | | | 1 | | 1 |
 | The stat block and versions | | | | | |
 | Tools | | | 1 | | 1 |
-| **All** | | | **6** | **5** | **11** |
+| **All** | | | **5** | **5** | **10** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -67,10 +67,6 @@ rename left of EXE5's logic.
 
 ### Beast Out and Beast Over (EXE6)
 
-- **B6. The HUD's Beast Out count** (`beast_count_shown`, render hud.rs:926, which reads `PlayerFact::BeastOut`) and
-  that fact role (views.rs:124), which nothing else reads. (The count itself is read by its role since B3:
-  `StatRole::WindowCount`.) *(c)* A HUD view the rules fill (whether the count shows). The fact stays EXE6's setup
-  field, with no role.
 ### Crosses and the form framework (EXE6; the form break and the navi switch are both games')
 
 - **C7. The renderer's Cross window**. Pieces:
@@ -176,6 +172,11 @@ Each with what it was and what it is now.
   CrossWindowClose, CrossChosen}` and their `SoundRole::Custom*` roles are gone. The rules play their own sounds in
   the screen's order (`custom.play_sound`, `ScreenSound::Rules`): EXE6's beast/custom.luau and cross/window.luau
   hold them.
+- **B6.** Whether the emotion window shows its side's count is a look the rules push for the round
+  (`battle.set_window_count`, `SideLooks::window_count`): EXE6's rules/beast's `round_setup` says it from
+  `sub_801D814`'s rule (mode 5 always, mode 1 never, else the save's `beast_out`, no navi code's `level`, no
+  gauge of each side's own, not a random battle). `beast_count_shown` and the fact role `PlayerFact::BeastOut`
+  are gone; `beast_out` is EXE6's setup field with no role.
 - **B7.** `FormEffects::BERSERK` (`berserk`) is `CONTROLLER_RESTART` (`controller_restart`).
 - **B8.** `ActionRole::DustBeastScatter` is `Ungrounded` (`ungrounded`), and `ChargeTackle` is `Glowless`
   (`glowless`).

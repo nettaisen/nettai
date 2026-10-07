@@ -238,6 +238,8 @@ local rules: Rules = {
             navicust.round_setup(side)
             patch_cards.apply(side)
             dark_chips.round_setup(side)
+            -- Whether the emotion window shows the Beast Out count (./beast).
+            beast.round_setup(side)
         end,
         -- Tired at the start, and the NaviCust's swing bug (./emotion).
         round_start = emotion.round_start,

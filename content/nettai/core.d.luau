@@ -1275,6 +1275,9 @@ declare battle: {
     -- Presentation: whether the custom screen's enemy names show the side's navi by its variant name (the locale's
     -- `variant_name`: EXE5's Hub Style in a link battle).
     set_name_variant: (side: number, variant: boolean) -> (),
+    -- Presentation: whether the side's emotion window shows its count (its navi's stat of the role `window_count`:
+    -- EXE6's Beast Out turns), else its empty box.
+    set_window_count: (side: number, shown: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_802E04E`: take from a side's own custom gauge, down to empty.
