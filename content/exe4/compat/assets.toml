@@ -89,12 +89,12 @@ hit-marker = "14-07"
 charge-glow = "14-08"
 confusion = "14-0b"
 chip-destruction-spark = "14-0c"  # hit spark 9 (0x080E2090; EXE5's row 9)
+puff = "14-0d"  # effect rows 0x13 to 0x16 (0x080E1698): a thrown bomb gone as the battle ends (row 0x15, 0x080CE16A)
 vulcan-hit = "14-0f"
 energy-burst = "14-12"
 lightning = "14-14"
 charge-glow-a = "14-15"
 full-synchro-aura = "14-16"  # the Full Synchro aura: actor object 0x5E's init (0x080CD1A8), spawned for a navi in Full Synchro (0x0800D9C8)
-megaman-portrait = "20-40"  # the no-running message's speaker, F4 00 40 (0x0804F750): the mugshot table 0x08028038's 0x40, which 0x080028F2 loads
 
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
@@ -124,6 +124,7 @@ gauge-full = 0x081  # the custom gauge full as it fills (0x080147F4), or filled 
 low-hp = 0x082  # the HP box's alarm, every 45 ticks the console's navi is at a quarter of its HP or less (0x0801475E)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
 sword-swing = 0x08e  # a sword's swing: action 0x0A (0x080EB612)
+minibomb-throw = 0x090  # a bomb's throw: action 0x09 (0x080EB452)
 panel-crack = 0x095  # a panel cracked or broken (0x08009AEC: 0x08009B1C, 0x08009B38)
 program-advance = 0x097  # the Program Advance animation's Program Advance (0x0801E83A)
 appear = 0x0b0  # the navis' appearance as a round starts (the lab's flow/buster-duel, frame 148)
