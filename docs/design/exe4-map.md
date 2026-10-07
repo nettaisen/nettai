@@ -601,7 +601,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the nearest row distance so far: kept), flies 40 ticks and bursts where it lands in EXE4's sparkles (effect 0x11,
   objects/sparkles: @exelib/vdoll/sparkles whose look `stays` where its object was as they started, 0x080E3348).
   **Ball** (variant 4, `chips/ball`): EXE5's CannBall's cannonball (attack 0x35), now @exelib/cannball/ball, with
-  EXE4's look.
+  EXE4's look. **Geyser** (variant 5, `chips/geyser`): EXE5's Geyser bomb and water (attacks 0x42 and 0x43), now
+  @exelib/geyser/geyser, with EXE4's look; EXE4's splash on solid ground also takes the throw's Atk+ bonus (the
+  spawn's +0x64, which EXE5's stores and never reads: `splash_bonus`). The water keeps its spawn's registers as its
+  position, its height the battle state's address (the battle-over test's r3): its hits' sparks show far above the
+  field (`water_height`; the lab's panels/geyser-hole and geyser-atk10).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
