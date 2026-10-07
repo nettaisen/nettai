@@ -4,7 +4,7 @@
 -- HP Memories raise it) and the Regular memory (the save's 0x2148 plus 4: RegUps). The
 -- rest of a round's stats are the navi's fresh stats (`fresh_stats`, its definition).
 --
--- Not yet (docs/design/exe4-map.md §18): the NaviCust's compile and the Mod Cards, which change the stats after this.
+-- Not yet (docs/design/exe4-map.md §18): the NaviCust's compile and the patch cards, which change the stats after this.
 
 type Setup = { hp: number, reg_up: number }
 
