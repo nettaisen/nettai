@@ -1629,10 +1629,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     #d6d6d6 where mGBA has #fff729, #ded6d6, #ffffff), Roll and RollSP's not. Not the dark flag (the DS chips have
     none) nor the frame palette (EXE4's pack has one). B saw ElemDark's screen duck the music as the dark chip hover
     does (chips/0x0d5-elemdark, frame 290): likely the same cause. To find.
-76. **A telop leaves the other player's used-chip name** (B, chips/0x08e-antielec/sprung: mGBA shows "Thunder 140"
-    until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block (0x08016454)
-    and leaves the second block alone; EXE6's clears the name at every telop's start (`sub_801BED6(0x10000)`, the
-    engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
+76. **A telop leaves the other player's used-chip name** (B's, item 90; chips/0x08e-antielec/sprung: mGBA shows
+    "Thunder 140" until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block
+    (0x08016454) and leaves the second block alone; EXE6's clears the name at every telop's start
+    (`sub_801BED6(0x10000)`, the engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
 77. **The chips' own looks out of the shared libraries** (the brief's no-lookup-tables rule): lib/cannon's `arms`,
     lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants`: a maker each, every chip
     stating its own. Queued.
