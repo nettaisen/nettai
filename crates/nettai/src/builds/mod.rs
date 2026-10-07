@@ -1,5 +1,5 @@
 //! The build creator: a player's builds, each a side of one game they
-//! made, named and kept (`store`), chosen in Play and in the lobby. The
+//! made, named and kept (`store`), chosen in Training and in the lobby. The
 //! creator lays a build out from its game's rules' setup schema
 //! (`layout`), edits it through the facts' own writer (`edit`, `grid`,
 //! `auto`; a fact stated as one of a few presets, `presets`), shows what

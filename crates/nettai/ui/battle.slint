@@ -8,7 +8,7 @@ import { Slant, Label, Pip, Hints, Hint, Input } from "widgets.slint";
 import { Format } from "format.slint";
 
 export enum BattleKind {
-    // Against the stand-in, offline.
+    // Training: against the computer, offline.
     live,
     replay,
     netplay,
@@ -410,6 +410,16 @@ export component BattleScreen {
             color: Theme.text-dim;
             vertical-alignment: center;
         }
+    }
+
+    // Training's own key, beside the picture where there is room: the set
+    // again from its start.
+    if root.kind == BattleKind.live && !root.paused && !root.over && root.wide: Hints {
+        x: Theme.gutter;
+        y: root.height - 48px;
+        hints: [
+            { key: "R", button: "Y", text: @tr("Start over") },
+        ];
     }
 
     // The touch pad, under the picture when the phone is held upright.
