@@ -14,6 +14,7 @@ shot.kind = common.make_kind {
     land_sound = asset.sound("grab-shot"),
     target = collision.hits_navis,
     self_type = collision.thrown,
+    spares = "last_full_column",
 }
 
 -- `sub_80C6548`: a grab shot for `owner`'s side onto (x, y), with the

@@ -1,13 +1,17 @@
 --!strict
--- AreaGrab's and PanelGrab's dimming controller, as EXE5 and EXE6 share it
--- (EXE6's effect object #3, `sub_80E0710`; EXE5's #3): each game makes its
--- own (`grab.make`: its kind and its grab shot's). The usual dimming
--- phases (@exelib/dimming), with an effect that drops grab shots
--- (@exelib/grab/shot) on the first column in front
--- not wholly the user's side's (AreaGrab) or on the first panel past the
--- user's side's front in the user's row (PanelGrab), then waits 61 ticks.
--- See docs/engine/chips.md §3.6.8. Each chip's `dimming` hook is the made
--- controller's `area` or `panel` (`sub_80E07E0`, `off_802CCB4[0]`).
+-- AreaGrab's and PanelGrab's dimming controller, as EXE6, EXE5 and EXE4
+-- share it (EXE6's effect object #3, `sub_80E0710`; EXE5's #3; EXE4's #3,
+-- 0x080E1F64): each game makes its own (`grab.make`: its kind, its grab
+-- shot's and where it finds what to grab). The usual dimming phases
+-- (@exelib/dimming), with an effect that drops grab shots
+-- (@exelib/grab/shot) on a column in front (AreaGrab) or on the first panel
+-- past the user's side's front in the user's row (PanelGrab), then waits
+-- 61 ticks. Where: EXE6's and EXE5's finders (`grab.column_to_grab`,
+-- `grab.edge_panel`), or a game's own (EXE4's: the other side's front-most
+-- panel across the rows, 0x0800A1E4, and the user's from the far edge,
+-- 0x0800A1AE). See docs/engine/chips.md §3.6.8. Each chip's `dimming` hook
+-- is the made controller's `area` or `panel` (`sub_80E07E0`,
+-- `off_802CCB4[0]`).
 
 local dimming_chips = require("../dimming")
 local shot = require("./shot")
@@ -59,8 +63,9 @@ local function home_column(me: Object): number
 end
 
 -- `sub_800D58C`: from there, forward to the first column with a panel
--- that isn't the user's side's (nil past the field).
-local function column_to_grab(me: Object): number?
+-- that isn't the user's side's (nil past the field). EXE6's and EXE5's
+-- AreaGrab column.
+function grab.column_to_grab(me: Object): number?
     local side, front = me.alliance, me.facing
     local x = home_column(me)
     while foreign_panels(x, side) == 0 do
@@ -77,8 +82,9 @@ end
 local OWN_SIDE = { [0] = { require = 0, forbid = 0x20 }, [1] = { require = 0x20, forbid = 0 } }
 
 -- `object_getEdgePanelMatchingRow` (`sub_800D4D0`): in the controller's
--- row, the first panel past the user's side's front (nil if none).
-local function edge_panel(me: Object): (number?, number?)
+-- row, the first panel past the user's side's front (nil if none). EXE6's
+-- and EXE5's PanelGrab panel.
+function grab.edge_panel(me: Object): (number?, number?)
     local side, y, front = me.alliance, me.panel_y, me.facing
     -- sub_800D53C: from the far edge, back while the panels are the
     -- user's side's.
@@ -113,27 +119,27 @@ end
 -- runs out below 0).
 local WAIT = 0x3C
 
--- `sub_80E0754`: the grab shots (of `shot_kind`, running while dimmed),
--- then 61 ticks.
-local function effect(me: Object, shot_kind: Kind)
+-- `sub_80E0754`: the grab shots (of `spec`'s kind, running while dimmed)
+-- where `spec` finds them, then 61 ticks.
+local function effect(me: Object, spec: Spec)
     local s = me.state :: State
     if me.phase_init == 0 then
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16)) + s.bonus
         local function drop(x: number, y: number)
-            local o = shot.spawn(shot_kind, me, x, y, me.element, damage)
+            local o = shot.spawn(spec.shot, me, x, y, me.element, damage)
             if o then
                 o.run_while_dimmed = true
             end
         end
         if s.whole_column then
-            local x = column_to_grab(me)
+            local x = spec.column(me)
             if x then
                 for y = 1, 3 do
                     drop(x, y)
                 end
             end
         else
-            local x, y = edge_panel(me)
+            local x, y = spec.panel(me)
             if x and y then
                 drop(x, y)
             end
@@ -148,8 +154,14 @@ local function effect(me: Object, shot_kind: Kind)
     end
 end
 
--- A game's controller: its kind's key, and its grab shot's kind.
-export type Spec = { id: string, shot: Kind }
+-- A game's controller: its kind's key, its grab shot's kind, and where it
+-- grabs: AreaGrab's column (nil: none) and PanelGrab's panel (nil: none).
+export type Spec = {
+    id: string,
+    shot: Kind,
+    column: (me: Object) -> number?,
+    panel: (me: Object) -> (number?, number?),
+}
 
 export type Grab = {
     kind: Kind,
@@ -170,7 +182,7 @@ function grab.make(spec: Spec): Grab
         update = dimming_chips.phases {
             name = "AreaGrab",
             effect = function(me: Object)
-                effect(me, spec.shot)
+                effect(me, spec)
             end,
         },
     }
