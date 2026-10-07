@@ -68,22 +68,74 @@ charge-glow-a = "14-15"
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
 netbattle = 0x015  # a netbattle's music, which the fight's setup starts (the lab's flow/buster-duel, frame 130)
+description-open = 0x066  # R's description on the custom screen (0x080203C0)
 unselect-68 = 0x068
+refused = 0x069  # what the custom screen can't pick or take back, a soul it can't give (0x08020386, 0x08020634)
 buster-shot = 0x06a  # the buster shot and the charged shot (0x080EB372, 0x080ECC72)
 hit = 0x06b  # a navi's hit: the hit intake (0x08013A96), on every console
 auto-battle-hit = 0x06d  # a navi in auto battle hit (NaviStats +0x26 = 1): the hit intake (0x08013A9A)
 hit-bomb-0 = 0x06f
 hit-bomb-1 = 0x070
 log-in = 0x077
+program-advance-part = 0x079  # the Program Advance animation naming a chip of the recipe (0x0801E74E)
 custom-open = 0x07a  # the custom screen's opening (the lab's flow/buster-duel, frame 258)
+custom-cursor = 0x07d  # the custom screen's cursor moving (0x0802049C, 0x080206F6, 0x080207DC)
+custom-pick = 0x07e  # a chip picked on the custom screen (0x080203A0, from 0x080204B8)
+custom-back = 0x07f  # a pick taken back on the custom screen (0x080203A0, 0x0802066E, from 0x080204B8)
+custom-ok = 0x080  # OK on the custom screen (0x0802063E)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
+program-advance = 0x097  # the Program Advance animation's Program Advance (0x0801E83A)
 appear = 0x0b0  # the navis' appearance as a round starts (the lab's flow/buster-duel, frame 148)
+dark-hover = 0x100  # the custom screen's cursor resting on a dark chip, every 61 ticks (0x0801E4A6)
 buster-blank = 0x1c0  # the buster's blank shot (0x080EB39E)
 
-# Battle backgrounds: the loader's numbers (0x08085430, its descriptors at 0x0808563C: 0x00 to 0x1a), each
-# named for the in-game area that shows it (the rest wait: docs/design/exe4-map.md §18).
+# Battle backgrounds: the loader's numbers (0x08085430, its descriptors at 0x0808563C: 0x00 to 0x1a), each named
+# for the area whose maps draw it: a battle draws its settings' (their byte 5), or with 0xFF there its map's
+# (0x08085BAC: the table at 0x08085BD0 by map group and number; 0x03 for a real-world map), a link battle one of
+# 0x0803AA6C's table (0x0803AAA4: all but 0x0a, 0x11 and 0x17). The names are the menu's (0x0802DEB0) in lower
+# case with hyphens; the engine's docs/frontend.md §1 has the table of them, tools/backgrounds the names and their
+# areas from the ROM. No map draws five: two are named for the battles that state them (darksoul, duo), three
+# for the tournament venues whose scripts start theirs (stadium, air-stadium, colosseum).
 [backgrounds]
-comp = 0x03  # the default: a map the picker 0x08085BAC doesn't list (0x08085BC6), every netbattle's settings (0x080FC138's records' +5)
+eltwr-comp = 0x00  # ElTwrComp1 and 2
+toyrobo-comp = 0x01  # ToyRoboComp1 to 3
+lans-hp = 0x02  # Lan's HP
+# the default (every real-world map); the 44 comps of map groups 0x8c to 0x8e draw it too (MicrowvComp to VendMchComp,
+# CardComp to CookComp, WtrGodComp1 to 16), and every netbattle's settings state it
+comp = 0x03
+acdc-area = 0x04  # ACDC Area1 to 3
+town-area = 0x05  # Town Area1 to 4
+park-area = 0x06  # Park Area1 to 3
+yumland-area = 0x07  # YumLand Area
+undernet = 0x08  # Undernet1 to 6
+# no map's: the DarkSoul battle's settings state it (LaserMan's possessed GutsMan in Red Sun, AquaMan in Blue Moon:
+# records 58 and 59), on CastNBMComp (0x8c:6, whose own is 0x03; cutscene 0x080892DC)
+darksoul = 0x09
+meteor-comp = 0x0a  # MeteorComp1 to 4; ControlArea too
+mayls-hp = 0x0b  # Mayl's HP
+dexs-hp = 0x0c  # Dex's HP
+yais-hp = 0x0d  # Yai's HP
+hotel-hp = 0x0e  # Hotel HP
+castillo-hp = 0x0f  # Castillo HP
+jomonelec-hp = 0x10  # JomonElec HP
+black-earth = 0x11  # BlackEarth1 and 2
+toyrobo-comp4 = 0x12  # ToyRoboComp4 (0x01 is ToyRoboComp1 to 3); ShadeMan's battle states it too
+netopia-area = 0x13  # Netopia Area
+netfrica-area = 0x14  # NetFricaArea
+sharo-area = 0x15  # Sharo Area
+spacectr-hp = 0x16  # SpaceCtr HP
+# no map's: Duo's two battles' settings state it (records 93 and 94), on ControlArea (0x82:4, whose own is 0x0a;
+# cutscene 0x0808C2F4)
+duo = 0x17
+# no map's: the eight tournament battles the Stadium's scripts start (DenDome's, map 2:3: records 13, 14, 22, 30, 31,
+# 36, 46, 47)
+stadium = 0x18
+# no map's: the eight tournament battles the AirStadium's scripts start (map 3:3: records 63, 64, 66, 68, 69, 70, 71,
+# 76)
+air-stadium = 0x19
+# no map's: the eight tournament battles the Colosseum's scripts start (Netopia's, map 4:4: records 97, 103, 104, 120,
+# 132, 137, 161, 168)
+colosseum = 0x1a
 
 # Banners: the banner block's numbers (0x02037CE0's +1), by the banner table's records (0x08016C04, 0x0801617E): EXE6's
 # names for EXE6's records in EXE6's places (0x00 to 0x38), then EXE4's navis' wins and deletions (the navi banner

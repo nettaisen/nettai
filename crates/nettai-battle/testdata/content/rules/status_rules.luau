@@ -5,7 +5,9 @@
 -- are rules/status.luau's.
 
 return {
-    hp_bug_periods = { 0, 60, 50, 40, 30, 20, 10, 5 },
+    hp_drain = { periods = { 0, 60, 50, 40, 30, 20, 10, 5 }, stops_while_paused = true },
+    -- The custom screen's HP bug: EXE6's periods, while the screen is up.
+    custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = 0x5 },
     -- The per-form tick runs (the Fire chips' charge, a form's height).
     form_tick = true,
     -- The mercy flash hides the navi while its timer's bit 1 is set.

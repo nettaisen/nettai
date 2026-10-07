@@ -1451,6 +1451,24 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (a, b) = (place(&a, "a")?, place(&b, "b")?);
         with(|api, _| api.custom_swap_folder(side, a, b).map_err(api_error))
     });
+    lib_fn!(lua, t, "offer", |_, (side, slot, chip, code): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let slot = u8_arg(slot, "slot")?;
+        let chip = bound(|b| chip_arg(b, &chip, "chip"))?.ok_or_else(|| mlua::Error::runtime("custom.offer: no chip"))?;
+        let code = match &code {
+            LuaValue::Nil => None,
+            LuaValue::String(s) => {
+                let s = s.to_str()?.to_string();
+                match s.as_bytes() {
+                    [b'*'] => Some(26),
+                    [c] if c.is_ascii_uppercase() => Some(c - b'A'),
+                    _ => return Err(mlua::Error::runtime(format!("custom.offer: {s:?} is not a chip code (A-Z or *)"))),
+                }
+            }
+            other => return Err(mlua::Error::runtime(format!("custom.offer: a code is a letter or nil, not {}", other.type_name()))),
+        };
+        with(|api, _| api.custom_offer(side, slot, chip, code).map_err(api_error))
+    });
     lib_fn!(lua, t, "hand_size", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_hand_size(side).map_err(api_error))

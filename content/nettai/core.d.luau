@@ -2911,6 +2911,10 @@ declare custom: {
     -- its places swapped (1 to 30); how many chips the screen deals.
     folder: (side: number) -> { Chip | false },
     swap_folder: (side: number, a: number, b: number) -> (),
+    -- As the screen deals (the rules' `deal`): a chip from outside the folder
+    -- the screen shows in a slot (0 to 11) once laid out, in a code (a letter,
+    -- or nil: the code outside the alphabet, EXE4's dark chips').
+    offer: (side: number, slot: number, chip: Chip, code: string?) -> (),
     hand_size: (side: number) -> number,
     refuse: (side: number) -> (),
     sacrifice: (side: number) -> (),
