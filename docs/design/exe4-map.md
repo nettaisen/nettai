@@ -967,9 +967,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
     **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
     confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
-    recordings match. Open: with no key held (or sliding) 0x0800B4B0 steps by NaviStats +0x0D (bits 0x10 to 0x80, the
-    keys; 0 and 0xFF none), which a dark chip or Mod Card bug sets (the lab's dark/, modcards/ and navicust/ recordings
-    carry 0x10, 0x20, 0xFF), with step 2's NaviCust. The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
+    recordings match. **Done** too: the move bug, NaviStats +0x0D (`effects.steps.bug`, the rules' stat `move_bug`,
+    which the NaviCust's bugs write and a dark chip's or Mod Card's will): with no key held (or sliding) 0x0800B4B0
+    steps by its keys (bits 0x10 to 0x80; 0 and 0xFF none), and at 0xFF the init confuses the navi for 720 ticks
+    (0x0800D8B0). Open there: the confusion's visual at the start (item 59). The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
     1, as the engine's; by the +0x25 column (12 to 8) for param 2, and 20 under event flag 0x1187: neither is a
     netbattle's.
 25. **The buster bonus, element, weakness and souls.** EXE4's buster is Attack + 1 (0x0800CC2E) for every navi:
@@ -1091,3 +1092,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 57. **The ~50 Mod Cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
 58. **The 12 soul Mod Cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
+59. **The status timers while paused, and the status visual.** EXE4's status timers (0x0800AE58: paralysis +0x10,
+    confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
+    (EXE6's `sub_800E730` and EXE5's 0x0800CB50 return), so a navi confused at the start (the move bug, item 24) shows
+    the confusion's visual on the round's first tick, during the intro. The visual is effect 6 (0x080E22C8, EXE6's
+    `sub_80E08FC`): its sprites by row (0x080E22B8: 14-0B confusion, 14-09 blindness), its sound 0xAE every 60 ticks
+    (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
+    routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
