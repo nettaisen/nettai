@@ -2556,7 +2556,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
     EXE5's Luau), the custom screen's `redeal_kept` (none listed: a re-deal keeps none), `sp_chips.slots`,
     `banners.holding`;
   - an attribute of one entry: a panel type's `road_slide`, `trail_sound`, `expires`, `burn`, `drains`, `holds`,
-    `submerges`, `slide`, `cleared_by`; a status's `cancels_flinch` and `survives_counter`; a lock-on mode's
+    `submerges`, `slide`, `cleared_by`, `doubles`; a status's `cancels_flinch` and `survives_counter`; a lock-on mode's
     offsets and flags (`LockonRule::Stay`: the navi's own panel); `BoardCell::Off`;
   - zeros: `SparkleOffset`, `SlideVector`, `StepRuleSet`, `PanelSlide`, `EmptyHandChip`, `BerserkRules`.
 - **Named for what they do** (the routine addresses stay in the doc comments):
@@ -2569,7 +2569,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `effects.palette_flash` | `exe6`, `exe5` | `mode_runs_through_pause`, `pause_holds` |
   | `effects.obstacle_actions` | `exe6`, `exe5` | `own_from_8`, `own_from_6` |
   | `reactions.push_reading` | `exe6`, `exe5` | `toward_front`, `by_hitter_flip`; since EXE4's port data: which modifier it `reads` (`final`, `by_hitter_flip`), how many `bits` from bit 2, a `shift` bit, an obstacle's rows |
-  | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to`, `elec_bonus_on_sea` |
+  | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to` (its `elec_bonus_on_sea` since a panel type's `doubles`) |
   | `reactions.obstacle_slide_bounds` | part of `push_reading` | a setting of its own |
   | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
   | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge` |
@@ -2587,6 +2587,21 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   modifier it reads (the final one, or EXE5's by the hitters' flip), how many bits from bit 2 (the first set picks
   the row; none, the row past them), a shift bit (EXE6's 0x80, five rows on) and an obstacle's rows (EXE6's
   `byte_800F604`, once Rust's).
+- **`reactions.move_direction`, since EXE4's port**: how a move's direction goes into the collision record
+  (`object_updateCollisionPanels`), which ice, EXE5's metal and content reading the record read. `by_side` (EXE6's
+  `sub_800E994`, EXE5's the same: back and forward by the side, other for two panels or more right or down or a
+  diagonal move) or `absolute` (EXE4's 0x0800AF90: left and right whatever the side, across before up and down,
+  never other).
+- **`reactions.ice`, since EXE4's port**: what a move's end on ice does. `{ slide = rows }` (EXE6's `byte_800E4E8`,
+  EXE5's 0x0800C988: slide type 2, a row by direction) or `{ push = { side 0's, side 1's } }` (EXE4's 0x0801335A,
+  the table at 0x080133B4: a push bit by side and direction ORed into the final modifier, which the intake's
+  reading of the hit modifiers then turns into a slide, or a drag).
+- **`reactions.push_reading.drag_bit`, since EXE4's port**: the modifier bit that makes a push a drag (and an
+  obstacle's push): EXE6's and EXE5's 0x40, EXE4's 0x01, the flinch bit. The push bits are `bits` of them from
+  bit 2 (EXE6's 0x3C, EXE4's 0xFC, its 0x40 and 0x80 pushes up and down).
+- **A panel type's `doubles`, since EXE4's port** (was the hit test's `elec_bonus_on_sea`): the element whose hits
+  count once more, as null damage, on a body standing on it: fire on grass in all three games, and EXE5's elec on
+  its sea, EXE4's elec on ice (0x08012CF2).
 - **`status.emotions` had no honest short name** as one rule: it picked one of two whole emotion models. It has
   since been split into what it switched, each named for what it does ("`status.emotions`, split", below); no rule
   is named for a game now.

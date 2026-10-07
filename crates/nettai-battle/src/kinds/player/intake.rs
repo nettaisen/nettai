@@ -315,8 +315,8 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A36A`: start road slides, and ice slides at the end of a move
-/// (consuming MOVE_COMPLETE).
+/// `sub_801A36A`: start road slides, and what ice does at the end of a
+/// move (consuming MOVE_COMPLETE): a slide, or EXE4's push (the rule `ice`).
 fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let mut cooldown_ended = false;
     if !b.paused && !b.is_dimmed() && ai(b, r).road_cooldown != 0 {
@@ -358,11 +358,22 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     if kind != PanelType::Ice {
         return;
     }
-    // sub_801A3DA
+    // sub_801A3DA (EXE4's 0x0801335A)
     let f = flag1(b, r);
     if coll(b, r).element != 2 && f & 0x24 == 0 && f & f1::AFFECTED_BY_ICE != 0 {
-        set_flag2(b, r, 0x10);
-        b.objects.get_mut(r).slide_type = 2;
+        match b.game_rules().ice {
+            crate::content::IceRule::Slide(_) => {
+                set_flag2(b, r, 0x10);
+                b.objects.get_mut(r).slide_type = 2;
+            }
+            // EXE4's: a push bit by side and direction into the final
+            // modifier, which the hit modifiers' requests read below.
+            crate::content::IceRule::Push(bits) => {
+                let side = b.objects.get(r).alliance as usize & 1;
+                let c = coll_mut(b, r);
+                c.hit_mod_final |= bits[side].get(c.direction as usize).copied().unwrap_or(0);
+            }
+        }
     }
 }
 
@@ -569,8 +580,12 @@ pub fn take_navi_bug(b: &mut Battle, side: u8, bugs: u16) {
 
 // ---- Hit results -------------------------------------------------------------------
 
-/// `sub_801AEB0`: hit modifier bits to requests: 1 flinch (not with
-/// SuperArmor or anger), 2 flash, 0x04-0x20 push, with 0x40 drag.
+/// `sub_801AEB0` (EXE4's in 0x08013858): hit modifier bits to requests: 1
+/// flinch (not with SuperArmor or anger), 2 flash, a push (the rules'
+/// push bits: EXE6's 0x04-0x20, EXE4's 0x04-0x80) a slide, or with the
+/// rules' drag bit (EXE6's 0x40, EXE4's the flinch bit) a drag. (EXE4's
+/// sets no slide type: its slides read the push whatever the type, and
+/// none but the push's is set in it.)
 fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
     let hm = coll(b, r).hit_mod_final;
     if flag1(b, r) & (f1::SUPERARMOR | f1::ANGER) == 0 && hm & 1 != 0 {
@@ -579,10 +594,11 @@ fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
     if hm & 2 != 0 {
         set_flag2(b, r, 0x2);
     }
-    if hm & 0x3C == 0 {
+    let reading = &b.game_rules().push_reading;
+    if hm & reading.mask() == 0 {
         return;
     }
-    if hm & 0x40 != 0 {
+    if hm & reading.drag_bit != 0 {
         set_flag2(b, r, 0x100);
         clear_flag2(b, r, 0x4);
         b.objects.get_mut(r).slide_type = 1;
@@ -790,4 +806,86 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
     let spark = b.roles().spark(SparkRole::Guard);
     crate::kinds::spark::spawn(b, r, pos, spark);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::content::{Content, IceRule, testing};
+    use std::sync::Arc;
+
+    /// A fight on the test content whose ice does `ice`: the battle and side
+    /// 1's navi (at (5, 2)), standing on ice at a move's end, the move's
+    /// direction `direction`.
+    fn on_ice(ice: IceRule, direction: u8) -> (Battle, ObjectRef) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        c.rules_mut().ice = ice;
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        crate::content::testing::on(&mut setup, &c);
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let r = b.player(1).unwrap();
+        b.set_panel_type(5, 2, PanelType::Ice);
+        super::super::set_flag1(&mut b, r, f1::AFFECTED_BY_ICE | f1::MOVE_COMPLETE);
+        let c = coll_mut(&mut b, r);
+        c.direction = direction;
+        c.hit_mod_final = 0;
+        (b, r)
+    }
+
+    /// docs/design/exe4-map.md §18 item 1: EXE4's ice is a push (0x0801335A):
+    /// a move's end on it ORs the push bit of the side and the direction into
+    /// the final modifier, and starts no ice slide; EXE6's slides.
+    #[test]
+    fn ice_pushes_or_slides_by_the_rule() {
+        let push = IceRule::Push([[0, 0x40, 0x80, 0x20, 0x10], [0, 0x40, 0x80, 0x10, 0x20]]);
+        let (mut b, r) = on_ice(push, 3);
+        slide_triggers(&mut b, r);
+        assert_eq!(coll(&b, r).hit_mod_final, 0x10, "side 1's move left: its push forward");
+        assert_eq!((flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0), "no ice slide");
+        assert_eq!(flag1(&b, r) & f1::MOVE_COMPLETE, 0, "the move's end is taken");
+        // An aqua body stays.
+        let (mut b, r) = on_ice(push, 1);
+        coll_mut(&mut b, r).element = 2;
+        slide_triggers(&mut b, r);
+        assert_eq!(coll(&b, r).hit_mod_final, 0);
+        // The test content's ice (EXE6's) slides.
+        let (mut b, r) = on_ice(testing::rules().ice, 3);
+        slide_triggers(&mut b, r);
+        assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0x10, 2));
+    }
+
+    /// docs/design/exe4-map.md §18 items 2 and 3: a push is a drag with the
+    /// rules' drag bit: EXE6's 0x40 (its push bits 0x04 to 0x20), EXE4's the
+    /// flinch bit (its push bits 0x04 to 0x80, 0x40 a push up). The requests
+    /// of modifier `hm`: (flinch, slide, drag), and the slide type.
+    #[test]
+    fn a_push_drags_by_the_rules_bit() {
+        let requests = |exe4: bool, hm: u8| {
+            let (mut b, r) = on_ice(testing::rules().ice, 0);
+            if exe4 {
+                let mut c: Content = testing::build();
+                c.define().unwrap_or_else(|e| panic!("{e}"));
+                let rules = c.rules_mut();
+                rules.push_reading.bits = 6;
+                rules.push_reading.drag_bit = 0x01;
+                rules.push_reading.shift = None;
+                b.content = Arc::new(c);
+            }
+            coll_mut(&mut b, r).hit_mod_final = hm;
+            hit_modifier_requests(&mut b, r);
+            let f = flag2(&b, r);
+            ((f & 0x4 != 0, f & 0x10 != 0, f & 0x100 != 0), b.objects.get(r).slide_type)
+        };
+        assert_eq!(requests(false, 0x44), ((false, false, true), 1));
+        assert_eq!(requests(false, 0x05), ((true, true, false), 1));
+        assert_eq!(requests(false, 0x41), ((true, false, false), 0), "0x40 alone is no push");
+        assert_eq!(requests(true, 0x41), ((false, false, true), 1), "EXE4's push up with the flinch bit drags");
+        assert_eq!(requests(true, 0x40), ((false, true, false), 1), "EXE4's push up alone slides");
+        assert_eq!(requests(true, 0x01), ((true, false, false), 0));
+    }
 }

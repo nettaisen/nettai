@@ -36,7 +36,7 @@ return {
         stops_at_a_pause_in_the_fight = true,
     },
     -- A navi's init spawns no charge glow (0x0801079C): its charge brings its own (0x0800BD88, effect 5 0x080E215C,
-    -- which goes with the charge; exe4-map.md §18 item 33).
+    -- which goes with the charge; exe4-map.md §18 item 39).
     charge_glow = "with_charge",
     -- A screen fade toward clear ends on the step whose level would go under its target (0x08005BDE, which doesn't
     -- keep that level): a step after EXE6's, so its intro's fade from white takes 18 steps.

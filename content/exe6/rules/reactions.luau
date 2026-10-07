@@ -6,10 +6,12 @@
 return {
     -- A push reads the first of bits 2 to 5 of the hits' final modifier, toward the navi's front; the 0x80 bit picks the
     -- last five rows (`sub_800E548`). An obstacle's push reads the same bits from its own rows (`sub_800F598`,
-    -- `byte_800F604`), turned toward the pusher; with none set it reads past them, from the BIOS.
+    -- `byte_800F604`), turned toward the pusher; with none set it reads past them, from the BIOS. A push with 0x40 is
+    -- a drag (`sub_801AEB0`), and an obstacle's push (`sub_801AD9E`).
     push_reading = {
         reads = "final",
         bits = 4,
+        drag_bit = 0x40,
         shift = { bit = 0x80, rows = 5 },
         obstacle_rows = {
             { dx = -1, dy = 0, panels = 6 },
@@ -21,14 +23,16 @@ return {
     -- The hit test (`sub_3007218`), where games differ: a FloatShoe body (flag 0x20) meets only collision types
     -- with the 0x80 self bit; the flag 0x80000000 is a bubble, on which an elec hit counts once more (no body
     -- dives under a sea), and elec reaches a submerged body no more than another element; a guard breaks to types
-    -- with 0x2 (0x1002 for a type with 0x4000); no panel doubles an elec hit.
+    -- with 0x2 (0x1002 for a type with 0x4000).
     hit_test = {
         float_shoe_needs_self_bit = true,
         bubbled_as_submerged = false,
         elec_reaches_submerged = false,
         guard_breaks_to = 0x0002,
-        elec_bonus_on_sea = false,
     },
+    -- A move's direction in the collision record (`sub_800E994`, `object_updateCollisionPanels`): up, down, back
+    -- or forward by the side, other for a move of two panels or more right or down.
+    move_direction = "by_side",
     -- A pulled obstacle's slide stays out of the puller's area (`byte_8017F24`).
     obstacle_slide_bounds = true,
     -- A slide and a drag go 10 pixels a tick across and 6 in depth (`sub_8016730`, `sub_80178D4`).
@@ -58,13 +62,17 @@ return {
         { dx = 0, dy = 1, panels = 1 },
         { dx = 0, dy = 0, panels = 0 },
     },
+    -- A move's end on ice slides a body (`sub_801A3DA`), by the direction of the move (`byte_800E4E8`): none, up,
+    -- down, back, forward, other.
     ice = {
-        { dx = 0, dy = 0, panels = 0 },
-        { dx = 0, dy = -1, panels = 1 },
-        { dx = 0, dy = 1, panels = 1 },
-        { dx = -1, dy = 0, panels = 1 },
-        { dx = 1, dy = 0, panels = 1 },
-        { dx = 0, dy = 0, panels = 0 },
+        slide = {
+            { dx = 0, dy = 0, panels = 0 },
+            { dx = 0, dy = -1, panels = 1 },
+            { dx = 0, dy = 1, panels = 1 },
+            { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
+            { dx = 0, dy = 0, panels = 0 },
+        },
     },
     bubble_bob = {
         1,

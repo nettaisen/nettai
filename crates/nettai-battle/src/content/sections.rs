@@ -60,6 +60,9 @@ struct PanelTypeSection {
     /// An element by name.
     #[serde(default)]
     cleared_by: Option<String>,
+    /// An element by name.
+    #[serde(default)]
+    doubles: Option<String>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
     slide: Option<Vec<Vec<SlideStep>>>,
@@ -114,7 +117,8 @@ struct ReactionsSection {
     push_reading: super::rules::PushReading,
     hit_test: super::rules::HitTest,
     obstacle_slide_bounds: bool,
-    ice: [SlideVector; 6],
+    ice: super::rules::IceRule,
+    move_direction: super::rules::MoveDirection,
     bubble_bob: [i8; 32],
     slide_speed: super::rules::SlideSpeed,
     overlay_restart: super::rules::OverlayRestart,
@@ -267,7 +271,8 @@ impl Stated {
                 push_reading: r.push_reading.clone(),
                 hit_test: r.hit_test,
                 obstacle_slide_bounds: r.obstacle_slide_bounds,
-                ice: r.ice_vectors,
+                ice: r.ice,
+                move_direction: r.move_direction,
                 bubble_bob: r.bubble_bob,
                 slide_speed: r.slide_speed,
                 overlay_restart: r.overlay_restart,
@@ -358,7 +363,8 @@ impl Stated {
             push_reading: reactions.push_reading,
             hit_test: reactions.hit_test,
             obstacle_slide_bounds: reactions.obstacle_slide_bounds,
-            ice_vectors: reactions.ice,
+            ice: reactions.ice,
+            move_direction: reactions.move_direction,
             slide_speed: reactions.slide_speed,
             overlay_restart: reactions.overlay_restart,
             stance_counter: reactions.stance_counter,
@@ -452,6 +458,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     };
                     let drains = element("drains", &rule.drains)?;
                     let cleared_by = element("cleared_by", &rule.cleared_by)?;
+                    let doubles = element("doubles", &rule.doubles)?;
                     let slide = match &rule.slide {
                         Some(by_direction) => {
                             if by_direction.len() != 6 || by_direction.iter().any(|tries| tries.len() > 4) {
@@ -480,6 +487,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         submerges: rule.submerges,
                         slide,
                         cleared_by,
+                        doubles,
                         named: true,
                     };
                 }
