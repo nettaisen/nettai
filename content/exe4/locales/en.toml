@@ -115,6 +115,14 @@ language = "en"
 "thunder1" = { name = "Thunder1", description = "Pralyzing\nelectric\nattack!" }
 "thunder2" = { name = "Thunder2", description = "Pralyzing\nelectric\nattack!" }
 "thunder3" = { name = "Thunder3", description = "Pralyzing\nelectric\nattack!" }
+"antifire" = { name = "AntiFire", description = "Fire atk\ndamages\nyou" }
+"antiwatr" = { name = "AntiWatr", description = "Water atk\ndamages\nyou" }
+"antielec" = { name = "AntiElec", description = "Elec atk\ndamages\nyou" }
+"antiwood" = { name = "AntiWood", description = "Wood atk\ndamages\nyou" }
+"antinavi" = { name = "AntiNavi", description = "Takes the\nenemy's\nNavi away" }
+"antidmg" = { name = "AntiDmg", description = "Sets trap\nand throw\nstars" }
+"antiswrd" = { name = "AntiSwrd", description = "Retaliate\nfor sword\ndamage" }
+"antirecv" = { name = "AntiRecv", description = "Damages\nenemy in\nrecovery" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
