@@ -945,7 +945,10 @@ impl Screen {
             S::BannerOut => {
                 if self.hud.status() == BannerStatus::Done {
                     next(anim, S::FadeIn);
-                    anim.fade = FADE_IN_FRAMES;
+                    // (A fade toward clear that ends past its target takes a
+                    // step more: the rules' `effects.fade_clear`, EXE4's.)
+                    let past = view.library.fade_clear() == crate::content::FadeClear::PastTarget;
+                    anim.fade = FADE_IN_FRAMES + past as u8;
                     self.look.fade.start(FadeMode::ProgramAdvanceBack, PROGRAM_ADVANCE_FADE_SPEED);
                 }
             }
@@ -1060,6 +1063,9 @@ impl Screen {
                 // transform request, then the window slides out.
                 self.phase = Phase::Closing { tick: 0 };
                 self.look.play(ScreenSound::Ok);
+                if view.library.layout().fades_clear_at_ok {
+                    self.look.clear_fades();
+                }
                 return Some(Request::Confirm);
             }
             // A button of the rules (EXE6's: the scrap, `sub_8028E04`; the
