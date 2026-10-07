@@ -52,6 +52,10 @@ language = "ja"
 "roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-sp" = { name = "ロールSP", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-ds" = { name = "ロールDS", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"protoman" = { name = "ブルース", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"protom-sp" = { name = "ブルースSP", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"protom-ds" = { name = "ブルースDS", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

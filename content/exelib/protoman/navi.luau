@@ -13,7 +13,9 @@
 -- Each game makes his kind (`protoman.make`, a `ProtoManKind`: his sounds,
 -- attachment kind and slash's collision types); his look (sprite, palette,
 -- sword, the slash's effect, his spawner's address) is a chip's
--- (`summon_with(look)`).
+-- (`summon_with(look)`). EXE4's ProtoMan (its actor #0x3C, 0x080C6ED4) is
+-- this code with EXE4's differences as the kind's: his spawner, where he may
+-- land, and his slash all at once.
 
 local attachment = require("../attachment")
 local regions = require("../regions")
@@ -39,10 +41,11 @@ function protoman.look(look: ProtoManLook): ProtoManLook
 end
 
 -- A game's ProtoMan: his kind, and the chips' navi hook of a look.
-function protoman.make(spec: ProtoManKind): {
+function protoman.make(kind_spec: ProtoManKind): {
     kind: Kind,
     summon_with: (look: ProtoManLook) -> (user: Object, controller: Object, spec: NaviChipSpec) -> Object?,
 }
+    local spec = kind_spec
     -- His fade-in's starting gray.
     local FADE_GRAY = 0x1F
 
@@ -50,7 +53,10 @@ function protoman.make(spec: ProtoManKind): {
     -- he lands on must be (solid) and be free of (as words).
     local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
     local SOLID = 0x10
-    local OCCUPIED = 0x0F80_0000
+    local OCCUPIED = { [0] = 0x0F80_0000, 0x0F80_0000 }
+    local occupied = spec.occupied or OCCUPIED
+    local user_panel_free = spec.user_panel_free ~= false
+    local slash_at_once = spec.slash_at_once == true
 
     -- When his slash lands (the timer before its tick's count down).
     local SLASH_TICK = 0xA
@@ -118,11 +124,11 @@ function protoman.make(spec: ProtoManKind): {
     -- one.
     local function can_land(me: Object, x: number, y: number): boolean
         local lx = x - me.facing
-        local user = me.related1
+        local user = if user_panel_free then me.related1 else nil
         if user and lx == user.panel_x and y == user.panel_y then
             return true
         end
-        return field.check(lx, y, SOLID, OCCUPIED)
+        return field.check(lx, y, SOLID, occupied[me.alliance])
     end
 
     -- Action 4 (`sub_80C2854`): the slashes.
@@ -163,7 +169,9 @@ function protoman.make(spec: ProtoManKind): {
     local function blink_out(me: Object)
         if me.phase_init == 0 then
             me.anim = 4
-            me.related1 = nil
+            if not slash_at_once then
+                me.related1 = nil
+            end
         end
         if countdown(me, 3) then
             me.phase, me.phase_init = 8, 0
@@ -188,46 +196,72 @@ function protoman.make(spec: ProtoManKind): {
         end
     end
 
+    -- His sword in his first related slot, animating while dimmed.
+    local function hold_sword(me: Object, look: ProtoManLook)
+        local options: AttachmentOptions = { anim = look.sword_anim, while_dimmed = true }
+        if spec.attach then
+            spec.attach(me, look.sword, "related", options)
+        else
+            attachment.attach(spec.attachment, me, look.sword, "related", options)
+        end
+    end
+
+    -- The hit on a column of three 16 pixels up on the panel ahead (running
+    -- while dimmed, `sub_80C53A6`) and its effect.
+    local function strike(me: Object)
+        local x, y = me.panel_x + me.facing, me.panel_y
+        local box = battle.hitbox(me, {
+            panel_x = x,
+            panel_y = y,
+            element = 0,
+            z = 0x10_0000,
+            region = regions.wide,
+            hit_effect = nil,
+            target = spec.target,
+            self_type = spec.self_type,
+            damage = me.damage,
+            stamina = me.stamina,
+            hit_mod = 3,
+        })
+        if box then
+            box.run_while_dimmed = true
+        end
+        local cx, cy = field.center(x, y)
+        local s = me.state :: State
+        battle.effect(Vec3.new(cx, cy, 0x10_0000), s.look.slash, s.flip)
+    end
+
     -- `sub_80C296C`: the slash (his sword in his first related slot): at 10
-    -- left, a hit on a column of three 16 pixels up on the panel ahead
-    -- (running while dimmed, `sub_80C53A6`) and its effect; 20 ticks, then
-    -- the next search.
+    -- left, the strike; 20 ticks, then the next search. EXE4's (0x080C713E,
+    -- 0x080C71AA): the sword, the strike and the swing's sound as it starts;
+    -- at its end the sword goes.
     local function slash(me: Object)
         if me.phase_init == 0 then
             me.anim = 5
             me.anim_loaded = 6
             local look = (me.state :: State).look
-            attachment.attach(spec.attachment, me, look.sword, "related", { anim = look.sword_anim, while_dimmed = true })
-            battle.play_sound(spec.swing_sound)
-            me.timer = 0x14
+            if slash_at_once then
+                me.timer = 0x14
+                hold_sword(me, look)
+                strike(me)
+                battle.play_sound(spec.swing_sound)
+            else
+                hold_sword(me, look)
+                battle.play_sound(spec.swing_sound)
+                me.timer = 0x14
+            end
             me.phase_init = 4
             return
         end
-        if me.timer == SLASH_TICK then
-            local x, y = me.panel_x + me.facing, me.panel_y
-            local box = battle.hitbox(me, {
-                panel_x = x,
-                panel_y = y,
-                element = 0,
-                z = 0x10_0000,
-                region = regions.wide,
-                hit_effect = nil,
-                target = spec.target,
-                self_type = spec.self_type,
-                damage = me.damage,
-                stamina = me.stamina,
-                hit_mod = 3,
-            })
-            if box then
-                box.run_while_dimmed = true
-            end
-            local cx, cy = field.center(x, y)
-            local s = me.state :: State
-            battle.effect(Vec3.new(cx, cy, 0x10_0000), s.look.slash, s.flip)
+        if not slash_at_once and me.timer == SLASH_TICK then
+            strike(me)
         end
         local left = me.timer - 1
         me.timer = left
         if left <= 0 then
+            if slash_at_once then
+                me.related1 = nil
+            end
             me.phase, me.phase_init = 0, 0
         end
     end
@@ -236,7 +270,9 @@ function protoman.make(spec: ProtoManKind): {
     -- slot); 5 ticks, then hidden, and freed.
     local function leave(me: Object)
         if me.phase == 0 then
-            me.related1 = nil
+            if not slash_at_once then
+                me.related1 = nil
+            end
             me.anim, me.anim_loaded = 4, 0
             me.timer = 5
             me.phase = 4
@@ -287,8 +323,10 @@ function protoman.make(spec: ProtoManKind): {
         me.anim_loaded = 0
         sprite:set_animation(0)
         me:set_coordinates_from_panel()
-        local p = me.pos
-        me.pos = Vec3.new(p.x, p.y, 0)
+        if not spec.summoned_alone then
+            local p = me.pos
+            me.pos = Vec3.new(p.x, p.y, 0)
+        end
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         sprite.palette = look.palette
         sprite.color_shader = 0x7FFF
@@ -327,14 +365,21 @@ function protoman.make(spec: ProtoManKind): {
     -- (the ProtoMan chips' navi hook, `off_802CD5C[1]`).
     local function summon_with(look: ProtoManLook): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
         return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
-            local o = battle.spawn(kind, Vec3.new(spec.panel_y, spec.element, look.spawner_address))
+            local alone = kind_spec.summoned_alone == true
+            local pos = if alone
+                then Vec3.new(spec.panel_x + spec.panel_y * 0x100, spec.element, user.alliance)
+                else Vec3.new(spec.panel_y, spec.element, look.spawner_address)
+            local o = battle.spawn(kind, pos)
             if not o then
                 return nil
             end
             o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-            o.element = spec.element
-            o.alliance, o.flip = user.alliance, user.flip
-            o.related1 = user
+            o.alliance = user.alliance
+            if not alone then
+                o.element = spec.element
+                o.flip = user.flip
+                o.related1 = user
+            end
             o:set_damage_word(spec.damage)
             local s = o.state :: State
             s.controller = controller
