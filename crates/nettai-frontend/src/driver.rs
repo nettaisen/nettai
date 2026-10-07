@@ -102,6 +102,31 @@ pub trait Driver {
     /// The ticks that settled since the last call, for the recording, of a
     /// driver that runs the battle itself and records (`record`).
     fn take_recorded(&mut self, _out: &mut Vec<nettai_replay::Tick>) {}
+    /// How a recording's replay shifts what the recording console's screen
+    /// shows on the frame just played, against the original's, for the
+    /// frame comparison: none from a driver that replays no recording.
+    fn feed_shift(&self) -> FeedShift {
+        FeedShift::default()
+    }
+}
+
+/// What a recording's replay shows later than the original did
+/// (`Driver::feed_shift`). The engine has no link cable: a replay of a
+/// recording made over one feeds a side's custom screen OK the cable's
+/// delay late (compat's `Round::fed`), so that its result arrives, and the
+/// fight resumes, on the original's frame. The recording console's screen
+/// shows its OK that much later, and what counts from its send after it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FeedShift {
+    /// The custom screen holds back the OK the original's had taken (from
+    /// that OK until the replay feeds it): it shows the choosing on.
+    pub held: bool,
+    /// The custom screen runs this many frames behind the original's (from
+    /// the OK fed until the fight resumes).
+    pub late: u32,
+    /// What counts from the side's send (the full custom gauge's stripes)
+    /// runs this many frames behind the original's.
+    pub hud_late: u32,
 }
 
 /// How a netplay match's connection and rollback are doing
