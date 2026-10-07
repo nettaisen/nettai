@@ -222,4 +222,45 @@ function panel_types.freezes(freeze: Status): (Object, number) -> ()
     end
 end
 
+-- A pitfall's count's bit: armed, waiting for a grounded body (EXE4's panel +0x12 bit 15).
+local ARMED = 0x8000
+
+export type Crumbles = {
+    tick: (number, number) -> (),
+    changed: (number, number) -> (),
+    start: (number, number) -> (),
+}
+
+-- EXE4's pitfall's timers: it turns normal `ticks` after a type change makes it (its `changed`, 0x08009DC4); a stage's
+-- (its `start`: 0x08009120 arms every panel's count) waits, armed, until a grounded body stands on it, none floating
+-- (its `tick`, 0x0800980E), then counts; no blink.
+function panel_types.crumbles(ticks: number): Crumbles
+    return {
+        tick = function(x: number, y: number)
+            local t = field.timer(x, y)
+            if bit32.btest(t, ARMED) then
+                if not field.grounded_body(x, y) then
+                    return
+                end
+                t = bit32.band(t, ARMED - 1)
+                field.set_timer(x, y, t)
+            end
+            if t ~= 0 then
+                t -= 1
+                field.set_timer(x, y, t)
+                if t > 0 then
+                    return
+                end
+            end
+            field.set_type(x, y, "normal")
+        end,
+        changed = function(x: number, y: number)
+            field.set_timer(x, y, ticks)
+        end,
+        start = function(x: number, y: number)
+            field.set_timer(x, y, bit32.bor(ARMED, ticks))
+        end,
+    }
+end
+
 return panel_types

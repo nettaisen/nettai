@@ -1434,6 +1434,15 @@ declare field: {
     -- `object_isPanelSolid`: something can stand on it (not missing or
     -- broken).
     solid: (x: number, y: number) -> boolean,
+    -- What the panel's type counts (an `expires` type's ticks left, EXE4's
+    -- pitfall's crumble), and setting it.
+    timer: (x: number, y: number) -> number,
+    set_timer: (x: number, y: number, ticks: number) -> (),
+    -- The field's cycle (the panel rules' `cycle`: EXE6's volcanos erupt by
+    -- it), counted down each panel update; 0 in a game without one.
+    cycle: () -> number,
+    -- A grounded body stands on the panel: a body, none floating.
+    grounded_body: (x: number, y: number) -> boolean,
     -- Drawn only.
     highlight: (x: number, y: number) -> (),
     -- Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
@@ -2795,12 +2804,11 @@ export type RolesSpec = {
         burst: Effect?,
     }?,
     -- The hit sparks the rules show themselves: a new registration's until
-    -- its owner names another, a blocked hit's, an eruption's, a thrown
-    -- obstacle's landing's.
+    -- its owner names another, a blocked hit's, a thrown obstacle's
+    -- landing's.
     sparks: {
         plain: Spark?,
         guard: Spark?,
-        eruption: Spark?,
         thrown_obstacle: Spark?,
     }?,
     -- The hit regions the rules register themselves: a registration's own
@@ -2809,14 +2817,12 @@ export type RolesSpec = {
         anchor: Region?,
     }?,
     -- The collision types the rules register themselves: a navi's body
-    -- (floating or not) and what it reacts to, an eruption and a thrown
-    -- obstacle's landing and what they reach.
+    -- (floating or not) and what it reacts to, a thrown obstacle's landing
+    -- and what it reaches.
     collision: {
         navi: CollisionType?,
         floating_navi: CollisionType?,
         navi_target: CollisionType?,
-        eruption: CollisionType?,
-        eruption_target: CollisionType?,
         thrown_obstacle: CollisionType?,
         thrown_obstacle_target: CollisionType?,
     }?,
@@ -2882,7 +2888,7 @@ export type RolesSpec = {
     }?,
     -- The sprites of the engine's own kinds: the charge glows, the Full
     -- Synchro aura, the status visuals, the ice block and the bubble, the
-    -- hit marker, the eruption, the target marker. (The Beast head and the
+    -- hit marker, the target marker. (The Beast head and the
     -- idle overlay are the parts of the identities that wear them.)
     sprites: {
         charge_glow: SpriteAsset?,
@@ -2894,7 +2900,6 @@ export type RolesSpec = {
         ice: SpriteAsset?,
         bubble: SpriteAsset?,
         hit_marker: SpriteAsset?,
-        eruption: SpriteAsset?,
         target_marker: SpriteAsset?,
     }?,
     -- The banners the rules show themselves: a round's start, a turn's, the

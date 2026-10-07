@@ -58,7 +58,6 @@ return {
     sparks = {
         plain = spark(),
         guard = spark(),
-        eruption = spark(),
         thrown_obstacle = spark(),
     },
     regions = {
@@ -72,8 +71,6 @@ return {
         navi_target = collision("navi-target", 0x02, function(side)
             return bit32.bor(ATTACK[1 - side], others(side))
         end),
-        eruption = collision("eruption", 0x48, attack),
-        eruption_target = collision("eruption-target", 0x2A, others),
         thrown_obstacle = collision("thrown-obstacle", 0x06, attack),
         thrown_obstacle_target = collision("thrown-obstacle-target", 0x05, others),
     },
@@ -143,7 +140,6 @@ return {
         ice = asset.sprite("test-sprite-ice"),
         bubble = asset.sprite("test-sprite-bubble"),
         hit_marker = asset.sprite("test-sprite-hit-marker"),
-        eruption = asset.sprite("test-sprite-eruption"),
         target_marker = asset.sprite("test-sprite-lockon-marker"),
     },
     banners = {
