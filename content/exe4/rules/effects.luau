@@ -70,4 +70,7 @@ return {
     -- its hold of 30 (0x080149CE) and the tick it lets go of its sprites (0x080149E6), 32 frames (the count includes the
     -- tick it starts on, as EXE6's 0x3C does).
     used_chip_ticks = 33,
+    -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
+    -- not in update order: of two parts in one depth bucket the higher slot's is in front.
+    draw_order = "slots",
 }
