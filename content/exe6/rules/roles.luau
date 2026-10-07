@@ -92,8 +92,6 @@ local roles: RolesSpec = {
         damage_word_paralysis = statuses.paralyze_90,
         -- What a counter hit lands instead of a flinch.
         counter_paralysis = statuses.paralyze_150,
-        -- What an aqua hit gives a body standing on ice.
-        ice_freeze = statuses.freeze_150,
     },
     effects = {
         -- A navi deleted (its two explosions), a cross merged into MegaMan,
