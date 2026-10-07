@@ -1,6 +1,7 @@
 --!strict
 -- ElemTrap's counterattack, as EXE5 and EXE6 share it (EXE6's effect object
--- #0x2B, `sub_80E35A4`; EXE5's #0x2B, 0x080E3818): a dimming controller its
+-- #0x2B, `sub_80E35A4`; EXE5's #0x2B, 0x080E3818; EXE4's #0x2B, 0x080E51BC, the
+-- Anti chips', striking and bursting where its look says): a dimming controller its
 -- trap (./trap) starts when it
 -- springs, right after the trap in the update list (the Japanese games'
 -- placement; see `strike.spawn`). The usual dimming phases
@@ -32,9 +33,8 @@ local STRUCK: { [number]: number } = { [0] = 0x01A0_0000, [1] = 0x02C0_0000 }
 -- The bursts go over the whole field, one every 2 ticks.
 local BURST_INTERVAL = 2
 
--- `sub_80E362C`: strike the panels, from (6, 3) back to (1, 1), then the
--- bursts. (Nothing to strike: nothing happens.)
-local function hit_panels(me: Object, look: ElemTrapStrikeLook)
+-- The panels struck (`byte_80E36E4`'s mask over the field, in its order).
+local function struck(me: Object): { { x: number, y: number } }
     local mask = STRUCK[me.alliance]
     local list: { { x: number, y: number } } = {}
     for x = 1, 6 do
@@ -44,6 +44,14 @@ local function hit_panels(me: Object, look: ElemTrapStrikeLook)
             end
         end
     end
+    return list
+end
+
+-- `sub_80E362C`: strike the panels, from the list's last to its first (the
+-- mask's: (6, 3) back to (1, 1)), the look's step after them, then the
+-- bursts. (Nothing to strike: nothing happens.)
+local function hit_panels(me: Object, look: ElemTrapStrikeLook)
+    local list = (look.targets or struck)(me)
     if #list == 0 then
         return
     end
@@ -78,7 +86,11 @@ local function hit_panels(me: Object, look: ElemTrapStrikeLook)
             box.run_while_dimmed = true
         end
     end
-    panel_bursts.spawn(look.bursts, me, regions.field, BURST_INTERVAL, 0, by_element.burst)
+    if look.after then
+        look.after(me)
+    end
+    local over = if look.bursts_over then look.bursts_over(me) else regions.field
+    panel_bursts.spawn(look.bursts, me, over, BURST_INTERVAL, 0, by_element.burst)
 end
 
 -- A counterattack kind (`id`) of `look`.
