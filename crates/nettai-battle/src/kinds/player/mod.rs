@@ -610,13 +610,14 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
     // What else the end clears of the requests is its game's (EXE6's
     // 0x1000003F, EXE5's 0x1803F: the reactions section's).
     let clears = b.game_rules().request_clears.attack.0;
+    let hands_on = b.game_rules().attack_end_lockouts;
     let a = ai_mut(b, r);
     a.attack.special_source = 0;
     let kind = a.attack.kind;
     if kind != 4 {
         match kind {
-            2 => a.lockout = a.attack.lockout,
-            3 => a.back_special_cooldown = a.attack.lockout,
+            2 if hands_on => a.lockout = a.attack.lockout,
+            3 if hands_on => a.back_special_cooldown = a.attack.lockout,
             // (EXE5's 0x0800F2D0 drops its Chaos Unison charge at the end
             // of its failure, slot 6: the failure's revert dropped it with
             // its status reset already, rules/souls/chaos.)
