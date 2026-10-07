@@ -53,9 +53,12 @@ pub struct DimmingRecord {
 /// undim 17.
 const FADE_SPEED: u8 = 4;
 
-/// The telops: the local player's, and the other player's.
-pub(crate) fn telop_banner(b: &Battle, remote: bool) -> BannerId {
-    b.roles().banner(if remote { BannerRole::TelopRemote } else { BannerRole::Telop })
+/// The telops' banners: the local player's, and the other player's; none
+/// where the game's telop has no banner of its own (the roles leave them
+/// unfilled: EXE4's 0x0801650C lays the chip's name on the banner block,
+/// or the other player's on the second block, in the banners' steps).
+pub(crate) fn telop_banner(b: &Battle, remote: bool) -> Option<BannerId> {
+    b.roles().try_banner(if remote { BannerRole::TelopRemote } else { BannerRole::Telop })
 }
 
 /// What every controller knows about its chip (object +0x30 / +0x32): for
@@ -260,7 +263,7 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     let telop =
         Telop { side, chip, damage: damage & 0x7FF, doubled: damage & 0x8000 != 0, bonus: bonus & !0x7800, hidden };
     let banner = telop_banner(b, b.is_remote(side));
-    if b.start_banner(banner) {
+    if b.start_telop_banner(banner) {
         b.banner.telop = Some(telop);
     }
     // sub_801BED6(0x10000): a used chip's name makes way.
@@ -363,7 +366,7 @@ fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
         // (AntiNavi: the chip its user's record holds.)
         let chip = b.linked[(side ^ 1) as usize & 1].chip;
         let telop = Telop { side: side ^ 1, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No };
-        if b.start_banner(banner) {
+        if b.start_telop_banner(banner) {
             b.banner.telop = Some(telop);
         }
         b.used_chips = [None; 2];

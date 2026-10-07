@@ -82,8 +82,6 @@ local roles: RolesSpec = {
         plain = sparks.plain,
         guard = sparks.guard,
         thrown_obstacle = sparks.plain,
-        -- A lava panel's burn (the sparks' row 1, the fire spark: 0x08016D80).
-        panel_burn = sparks.fire,
     },
     effects = {
         -- A navi deleted, HP recovered, the flash where a side cut in: EXE5's effects 3, 6 and 0x1E are EXE6's

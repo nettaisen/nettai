@@ -1,8 +1,8 @@
 --!strict
--- Lance (EXE4 chip 0x051): the spawners' action 0x20, its variant 6: three lances in the far column (objects/lance),
--- its parameters' first byte 0, their first palette.
+-- Lance (EXE4 chip 0x051): the spawners' action 0x20, its variant 6: three lances in the far column (./lance), its
+-- parameters' first byte 0, their first palette.
 
-local lance = require("../objects/lance")
+local lance = require("@self/lance")
 local spawners = require("../lib/spawners")
 
 local chip: Chip = {
