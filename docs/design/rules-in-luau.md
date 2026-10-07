@@ -2611,6 +2611,9 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   EXE4's none).
 - **`status.timers_while_paused`, since EXE4's port**: whether a navi's status timers count while the battle is paused
   (EXE4's 0x0800AE58, before its navi takes control) or hold (EXE6's `sub_800E730`, EXE5's).
+- **The obstacle reaction `destroys_sparing_bodies`, since EXE4's port** (a kind's choice, as `destroys` is): EXE4's
+  0x08014058, EXE6's `sub_801B4D4` but for the hits that destroy it (an obstacle's touch or a breaking hit, no body's:
+  0x00800002) and no removal request read. EXE4's boulder reacts by it.
 - **`panels.type_mask`, since EXE4's port**: the flags word's bits a panel's type owns, which a crack, a break or
   poison clears before it sets its own (a crack keeps the solidity and the crack bit): EXE6's 0x3F5F, EXE5's and
   EXE4's 0x23F5F (their sea's and metal's 0x20000 too).

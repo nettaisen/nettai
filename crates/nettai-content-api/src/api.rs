@@ -952,6 +952,11 @@ named_flags! {
         /// `sub_801B878` while its object's ExtraVars+4 is set (LilBoiler
         /// erupting): such a touch is as any hit.
         Ignores = "ignores",
+        /// EXE4's 0x08014058 (EXE6's `sub_801B4D4` but for these): an
+        /// obstacle's touch or a breaking hit destroys it, the HP as it is,
+        /// but no body's (hit flags 0x00800002, EXE6's 0x0C800002); and no
+        /// removal request is read.
+        DestroysSparingBodies = "destroys_sparing_bodies",
     }
 }
 

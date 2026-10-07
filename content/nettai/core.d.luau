@@ -1519,7 +1519,7 @@ export type PlaceSpec = {
 -- original's test).
 export type AbsorbedLook = { sprite: SpriteAsset, keeps_parts: boolean?, own_facing: boolean? }
 
-export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores"
+export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores" | "destroys_sparing_bodies"
 -- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
 export type ObstacleHold = "after_appearing" | "always"
 export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
@@ -1558,7 +1558,9 @@ declare obstacle: {
     -- or a breaking hit's touch drops the HP to 0), `sub_801B4D4`
     -- ("destroys": destroyed, the HP as it is) or `sub_801B610`
     -- ("spares_bodies": bodies don't break it) or ("ignores": `sub_801B878`
-    -- while LilBoiler erupts, such a touch is as any hit): damage, removal
+    -- while LilBoiler erupts, such a touch is as any hit) or
+    -- ("destroys_sparing_bodies": EXE4's 0x08014058, "destroys" but no
+    -- body's touch and no removal request): damage, removal
     -- and status;
     -- the action the kind's table runs now, nil when a status routine ran.
     -- While dimmed it holds the obstacle still once it has appeared
