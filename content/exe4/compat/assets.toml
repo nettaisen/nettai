@@ -99,6 +99,7 @@ blindness = "14-09"  # the blindness's visual: effect 6's row 1 (0x080E22B8)
 confusion = "14-0b"
 chip-destruction-spark = "14-0c"  # hit spark 9 (0x080E2090; EXE5's row 9)
 puff = "14-0d"  # effect rows 0x13 to 0x16 (0x080E1698): a thrown bomb gone as the battle ends (row 0x15, 0x080CE16A); row 21 (animation 2), a stage boulder removed (0x080DB216)
+dust = "14-0e"  # a crack's dust: attack 0x18's init (0x080CFE86), the cracks' (action 0x21), EXE5's crack's
 vulcan-hit = "14-0f"
 heat-burst = "14-11"  # a HeatShot's bullet's burst: effect row 0x29 (0x080E1698), bullet rows 8 to 11 (0x080CF3DC)
 energy-burst = "14-12"
@@ -153,6 +154,8 @@ counter-hit = 0x10a  # a counter hit (0x08013410: 0x0801342A)
 panel-poison = 0x124  # a panel turned to poison (0x08009D68: 0x08009D8C)
 barrier = 0x125  # a barrier's visual coming up, and back up (effect 7: 0x080E2496, 0x080E25E4)
 gear = 0x149  # the gear stages' gear starting to roll (0x080DBF66)
+crack-shot = 0x1a9  # a panel broken or cracked by a crack (0x08009D04: 0x08009D30, 0x08009D4C), EXE5's crack's break
+bblstar1 = 0x1ba  # a crack coming: attack 0x18's init (0x080CFEB0), EXE5's crack's
 damage-bonus = 0x1bb  # Full Synchro's boost of a chip (0x0800D54E: 0x0800D572)
 buster-blank = 0x1c0  # the buster's blank shot (0x080EB39E)
 

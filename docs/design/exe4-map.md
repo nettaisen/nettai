@@ -481,6 +481,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (12, not 9), the shooter (an attachment of EXE4's kind, row 9, not an overlay), the shot's tick and the recovery
   (none for variant 0: the store of 10 overwritten, 0x080ECC0A); the projectile (exelib's, EXE4's row 4: hit
   modifier 0x21, EXE5's 0x61) and its spawn are shared.
+- **CrakOut** (and DublCrak and TripCrak: action 0x21, `lib/cracks`): EXE5's code, moved to exelib
+  (@exelib/crack, EXE5's on it). EXE4's look: the pointing animation (16, EXE5's 12), the crack's dust and sounds
+  (0x1BA, the break's 0x1A9: 0x08009D04), and a spawner (0x080CFF1A) that places a crack on every panel of the
+  pattern where EXE5's keeps to the field (no recording yet reaches a crack off the field: TripCrak from the top or
+  bottom row).
 
 **For the next steps:**
 
