@@ -430,7 +430,10 @@ fn form_place(b: &Battle, side: u8, form: Option<FormHandle>) -> Option<(usize, 
 /// x 0x60), drawn from the tick after it is loaded (0x08023360) through the
 /// white flashes, rising 2 pixels a tick for 8 ticks onto the first cell
 /// (0x0802337A), whitened by its flash (fades 0x34 and 0x30, the sprite
-/// palette's), until the form takes the first cell (0x080233E0).
+/// palette's), until the form takes the first cell (0x080233E0). A screen
+/// whose windows are states of the choosing draws a state's sprites after
+/// its step, the icon from the tick it is loaded on (EXE4's soul choice,
+/// 0x08020DE2: steps 4 to 0x14).
 fn offered_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let (tiles, first) = offered_icon(v)?;
     let form = v.b.offer(v.side)?.form;
@@ -499,8 +502,9 @@ fn capsule_flight<'a>(v: &View<'a>, packs: &crate::packs::Packs<'a>, problems: &
 /// it is a known difference.
 fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Option<FormHandle>, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let screen = v.screen;
+    let after_step = v.b.content.rules().custom_screen.states_in_choosing;
     let rise = match at.step {
-        4 if at.count > 0 => 0,
+        4 if at.count > 0 || after_step => 0,
         8 => 2 * at.count as i32,
         12 | 16 | 20 => 16,
         _ => return None,
