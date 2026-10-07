@@ -567,6 +567,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   field's middle; the chip's parameter is their palette.
 - **SidBmbo1** (with 2 and 3: action 0x20's variant 5, which holds the user 40 ticks, `chips/sidbmbo`): EXE4's own
   bamboo (attack 0x44) swings down three columns ahead, its two hitboxes on rows 1 and 2.
+- **WhitWeb1** (with 2 and 3: action 0x20's variants 8 to 10, `chips/whitweb`): webs (attack 0x3D, EXE5's
+  0x080CCC08's code) on the other side's panels of row 1, 2 or 3, bodies with 1 HP that catch the other side's navi.
+  They showed that EXE4's navi body hits for nothing in a link battle (`status.link_body_damage`: EXE4 has neither of
+  EXE6's stores of 10).
 
 **For the next steps:**
 

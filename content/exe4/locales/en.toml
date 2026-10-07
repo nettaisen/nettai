@@ -75,6 +75,9 @@ language = "en"
 "sidbmbo1" = { name = "SidBmbo1", description = "Lance\nattck 3sq\nahead" }
 "sidbmbo2" = { name = "SidBmbo2", description = "Lance\nattck 3sq\nahead" }
 "sidbmbo3" = { name = "SidBmbo3", description = "Lance\nattck 3sq\nahead" }
+"whitweb1" = { name = "WhitWeb1", description = "Stretches\nweb over\nenmy area" }
+"whitweb2" = { name = "WhitWeb2", description = "Stretches\nweb on\nenmy area" }
+"whitweb3" = { name = "WhitWeb3", description = "Stretches\nweb under\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
