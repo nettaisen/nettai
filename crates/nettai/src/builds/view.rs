@@ -9,7 +9,7 @@ use crate::builds::{auto, cards, grid, import, presets, store};
 use crate::games::{Names, one_line};
 use crate::{
     BuildCard, BuildTab, CheckTile, Detail, EntryRow, FactRow, FilterChip, GridCell, GridPart, LeftKind, NavAction, PickRow, RowKind,
-    Screen, StatRow, TabKind, UiSound,
+    Screen, Sheet, SheetChip, SheetLine, StatRow, TabKind, UiSound,
 };
 use nettai_battle::content::{ChipClass, ChipFlags, Content, PlayerFact};
 use nettai_content_api::{ChipHandle, EntryHandle, FieldType, FormHandle, Registry};
@@ -59,6 +59,62 @@ fn card_lines(names: &Names, h: EntryHandle) -> (String, String) {
     let Some(lines) = cards::lines(names, h) else { return Default::default() };
     let join = |bug: bool| lines.iter().filter(|l| l.bug == bug).map(|l| l.text.as_str()).collect::<Vec<_>>().join(" · ");
     (join(false), join(true))
+}
+
+/// What a round starts a navi with, as the creator and the sheet show it.
+pub fn stat_rows(st: &nettai_battle::setup::NaviStats) -> Vec<StatRow> {
+    let row = |key: &str, value: String| StatRow { key: key.into(), value: value.into() };
+    let mut out = vec![
+        row("hp", st.max_hp.to_string()),
+        row("attack", (st.attack + 1).to_string()),
+        row("rapid", (st.rapid + 1).to_string()),
+        row("charge", (st.charge + 1).to_string()),
+        row("custom", st.custom_level.to_string()),
+        row("mega", st.mega_level.to_string()),
+        row("giga", st.giga_level.to_string()),
+        row("regular", format!("{} MB", st.reg_up)),
+    ];
+    let mut abilities: Vec<&str> = [(st.super_armor, "SuperArmor"), (st.float_shoes, "FloatShoes"), (st.air_shoes, "AirShoes"), (st.undershirt, "UnderShirt")]
+        .iter()
+        .filter(|x| x.0)
+        .map(|x| x.1)
+        .collect();
+    if let Some(s) = st.support {
+        abilities.extend([(s.rush, "Rush"), (s.beat, "Beat"), (s.tango, "Tango")].iter().filter(|x| x.0).map(|x| x.1));
+}
+    if !abilities.is_empty() {
+        out.push(row("abilities", abilities.join(", ")));
+}
+    let b = &st.bugs;
+    for (on, key) in [
+        (b.processing != 0, "processing"),
+        (b.panel_trail_level != 0, "panel_trail"),
+        (b.buster_blanks != 0, "buster_blanks"),
+        (b.hit_status != 0, "hit_status"),
+        (b.hp_drain != 0, "hp_drain"),
+        (b.custom_drain != 0, "custom_drain"),
+        (b.battle_start != 0, "battle_start"),
+        (b.emotion != 0, "emotion"),
+        (b.hand_shrink_turn != 0, "hand_shrink"),
+        (b.custom_damage != 0, "custom_damage"),
+        (st.support.is_none(), "support"),
+    ] {
+        if on {
+            out.push(row("bug", key.to_string()));
+        }
+}
+    out
+}
+
+/// A sheet with nothing to show yet (no game ready): its places held, the
+/// folder's 30 entries and the stats' rows, so nothing moves when one comes.
+pub fn empty_sheet() -> Sheet {
+    let stats = ["hp", "attack", "rapid", "charge", "custom", "mega", "giga", "regular"].map(|k| StatRow { key: k.into(), value: "—".into() });
+    Sheet {
+        folder: model(vec![SheetChip { empty: true, ..SheetChip::default() }; nettai_battle::custom::folder::FOLDER_SIZE]),
+        stats: model(stats.to_vec()),
+        ..Sheet::default()
+    }
 }
 
 /// What the creator shows of the editor's tab, in the window's language.
@@ -418,48 +474,7 @@ impl View<'_> {
 
     /// What the round starts the navi with.
     fn stats(&self) -> Vec<StatRow> {
-        let Some(st) = self.e.stats() else { return Vec::new() };
-        let row = |key: &str, value: String| StatRow { key: key.into(), value: value.into() };
-        let mut out = vec![
-            row("hp", st.max_hp.to_string()),
-            row("attack", (st.attack + 1).to_string()),
-            row("rapid", (st.rapid + 1).to_string()),
-            row("charge", (st.charge + 1).to_string()),
-            row("custom", st.custom_level.to_string()),
-            row("mega", st.mega_level.to_string()),
-            row("giga", st.giga_level.to_string()),
-            row("regular", format!("{} MB", st.reg_up)),
-        ];
-        let mut abilities: Vec<&str> = [(st.super_armor, "SuperArmor"), (st.float_shoes, "FloatShoes"), (st.air_shoes, "AirShoes"), (st.undershirt, "UnderShirt")]
-            .iter()
-            .filter(|x| x.0)
-            .map(|x| x.1)
-            .collect();
-        if let Some(s) = st.support {
-            abilities.extend([(s.rush, "Rush"), (s.beat, "Beat"), (s.tango, "Tango")].iter().filter(|x| x.0).map(|x| x.1));
-        }
-        if !abilities.is_empty() {
-            out.push(row("abilities", abilities.join(", ")));
-        }
-        let b = &st.bugs;
-        for (on, key) in [
-            (b.processing != 0, "processing"),
-            (b.panel_trail_level != 0, "panel_trail"),
-            (b.buster_blanks != 0, "buster_blanks"),
-            (b.hit_status != 0, "hit_status"),
-            (b.hp_drain != 0, "hp_drain"),
-            (b.custom_drain != 0, "custom_drain"),
-            (b.battle_start != 0, "battle_start"),
-            (b.emotion != 0, "emotion"),
-            (b.hand_shrink_turn != 0, "hand_shrink"),
-            (b.custom_damage != 0, "custom_damage"),
-            (st.support.is_none(), "support"),
-        ] {
-            if on {
-                out.push(row("bug", key.to_string()));
-            }
-        }
-        out
+        self.e.stats().map(stat_rows).unwrap_or_default()
     }
 
     /// The tab's counts: the folder's chips and limits, a list's room.
@@ -587,7 +602,7 @@ impl App {
     }
 
     /// The game the Builds screen shows.
-    fn builds_game_id(&self) -> Option<String> {
+    pub fn builds_game_id(&self) -> Option<String> {
         self.ready_games().get(self.builds.game).cloned()
     }
 
@@ -659,6 +674,10 @@ impl App {
         let n = self.builds.shown.len() + 2;
         let games = self.ready_games().len();
         match a {
+            NavAction::Up if self.builds.cursor == 0 => {
+                self.ui().set_bar_focus(true);
+                return;
+            }
             NavAction::Up | NavAction::Down => {
                 let to = if a == NavAction::Up { self.builds.cursor.checked_sub(1) } else { (self.builds.cursor + 1 < n).then_some(self.builds.cursor + 1) };
                 if let Some(to) = to {
@@ -676,7 +695,7 @@ impl App {
             NavAction::Confirm => return self.builds_activate(self.builds.cursor),
             NavAction::Back => {
                 self.sound.play(UiSound::Back);
-                self.go(Screen::Title);
+                self.ui().set_bar_focus(true);
                 return;
             }
             _ => return,
@@ -734,14 +753,104 @@ impl App {
         }
     }
 
-    /// Open a build in the creator (`new`: write it first).
-    fn open_build(&mut self, kit: Rc<Kit>, game: &str, path: PathBuf, name: String, side: Side, new: bool) {
+    /// Open a build in the creator (`new`: write it first); it goes back to
+    /// the screen it was opened from.
+    pub fn open_build(&mut self, kit: Rc<Kit>, game: &str, path: PathBuf, name: String, side: Side, new: bool) {
         let mut e = Editor::new(kit, game, path, name, side);
         if new {
             e.save();
         }
         self.builds.editor = Some(e);
+        let from = self.ui().get_screen();
+        self.builds.from = if from == Screen::Build { self.builds.from } else { from };
         self.go(Screen::Build);
+    }
+
+    /// Open the strip's build in the creator, or a new build of its game.
+    pub fn edit_selected(&mut self, game: &str, chosen: Option<(PathBuf, String, Side)>) {
+        let Some(kit) = self.kit(game) else { return self.sound.play(UiSound::Refused) };
+        self.sound.play(UiSound::Pick);
+        match chosen {
+            Some((path, name, side)) => self.open_build(kit, game, path, name, side, false),
+            None => {
+                let Ok(side) = Side::fresh(kit.content(), game) else { return self.sound.play(UiSound::Refused) };
+                let taken: Vec<String> = store::list(game).into_iter().map(|l| l.name).collect();
+                let name = store::new_name("Build", &taken);
+                let path = store::new_path(game, &name);
+                self.open_build(kit, game, path, name, side, true);
+            }
+        }
+    }
+
+    /// A build's sheet (the selector strip's, Tango's save view): its navi,
+    /// its folder, what the round starts it with and the rest it states.
+    /// `name`: the build's, or what the side is.
+    pub fn sheet(&mut self, game: &str, side: &Side, name: &str) -> Sheet {
+        let Some(kit) = self.kit(game) else { return empty_sheet() };
+        let c = kit.content().clone();
+        let graphics = kit.ready.graphics(self.lang);
+        let names = Names::of(&c, &graphics);
+        let navi = side.navi(&c);
+        let folder = side.folder(&c);
+        let chips: Vec<SheetChip> = folder
+            .chips
+            .iter()
+            .enumerate()
+            .map(|(i, chip)| {
+                let mut marks = Vec::new();
+                if folder.regular == Some(i as u8) {
+                    marks.push("REG");
+                }
+                if folder.tags.is_some_and(|(a, b)| a == i as u8 || b == i as u8) {
+                    marks.push("TAG");
+                }
+                match chip {
+                    Some(chip) => SheetChip {
+                        icon: kit.pictures.icon(chip.id),
+                        name: names.chip(chip.id).into(),
+                        code: chip.code.letter().to_string().into(),
+                        marks: marks.join(" ").into(),
+                        empty: false,
+                    },
+                    None => SheetChip { empty: true, ..SheetChip::default() },
+                }
+            })
+            .collect();
+        let (problems, round) = checked(&c, game, side);
+        let l = layout::layout(&c, game, side, kit.grid.as_ref(), kit.auto.as_ref());
+        let mut lines = Vec::new();
+        for f in &l.rows {
+            let (text, kind) = match (crate::builds::presets::of(game, f), side.facts.get(&c, f)) {
+                (Some(p), _) => (crate::builds::presets::current(&c, side, f, p).map(|p| p.choice.clone()).unwrap_or_default(), 2),
+                (None, Some(Stated::Flag(on))) => ((on as u8).to_string(), 1),
+                (None, Some(Stated::Variant(v))) => (v.as_deref().unwrap_or("—").to_uppercase(), 0),
+                (None, Some(v)) => (facts::shown(&c, &v), 0),
+                (None, None) => continue,
+            };
+            lines.push(SheetLine { key: f.as_str().into(), fallback: layout::title(f).into(), text: text.into(), kind });
+        }
+        for t in &l.tabs {
+            let field = match t {
+                Tab::Checklist(f) | Tab::Entries { field: f, .. } => f,
+                _ => continue,
+            };
+            let held = side.facts.get(&c, field).map(|v| v.defs()).unwrap_or_default();
+            let FieldType::Ref(registry, _) = layout::element(&facts::field(&c, field).map(|f| f.ty.clone()).unwrap_or(FieldType::Bool)).clone() else { continue };
+            let said: Vec<String> = held.iter().map(|&h| names.def(registry, h)).collect();
+            let text = if said.is_empty() { "—".to_string() } else { said.join(", ") };
+            lines.push(SheetLine { key: field.as_str().into(), fallback: layout::title(field).into(), text: text.into(), kind: 0 });
+        }
+        Sheet {
+            shown: true,
+            face: kit.pictures.navi(navi),
+            navi: names.navi(navi).into(),
+            name: name.into(),
+            sub: game_names(game).0.into(),
+            stats: model(round.as_ref().map(|r| stat_rows(&r.stats)).unwrap_or_default()),
+            folder: model(chips),
+            lines: model(lines),
+            problem: problems.first().map(|p| p.text.clone()).unwrap_or_default().into(),
+        }
     }
 
     /// A save made into a new build of the Builds screen's game (`path`:
@@ -840,7 +949,7 @@ impl App {
         match did.then {
             Then::Nothing => {}
             Then::Leave => {
-                self.go(Screen::Builds);
+                self.go(self.builds.from);
                 return;
             }
             Then::FromSave => return self.build_from_save(None, false),
@@ -863,7 +972,7 @@ impl App {
                     e.status = format!("{}: {why}", path.display());
                 } else {
                     self.builds.editor = None;
-                    self.go(Screen::Builds);
+                    self.go(self.builds.from);
                     return;
                 }
             }
@@ -1130,15 +1239,15 @@ fn pick_save() -> Option<PathBuf> {
 }
 
 impl BuildsState {
-    /// The builds of a game a player can choose (Training's, the lobby's):
-    /// their names and sides, those its game reads.
-    pub fn choices(content: &Content, game: &str) -> Vec<(String, Side)> {
+    /// The builds of a game a player can choose (the selector strip's):
+    /// their files, names and sides, those its game reads.
+    pub fn choices(content: &Content, game: &str) -> Vec<(PathBuf, String, Side)> {
         store::list(game)
             .into_iter()
-            .filter_map(|l| store::read(content, game, &l.text).ok())
-            .map(|(name, mut side)| {
+            .filter_map(|l| store::read(content, game, &l.text).ok().map(|r| (l.path, r)))
+            .map(|(path, (name, mut side))| {
                 layout::as_built(content, game, &mut side);
-                (name, side)
+                (path, name, side)
             })
             .collect()
     }

@@ -19,7 +19,7 @@ export component Backdrop inherits Rectangle {
     in property <float> calm: 0;
     property <length> cell: Theme.compact ? 36px : 48px;
     // (Still behind the battle: nothing of it is re-evaluated each frame.)
-    property <float> drift: root.calm >= 1 ? 0 : mod(animation-tick() / 1ms, 6000) / 6000;
+    property <float> drift: root.calm >= 1 || Theme.still ? 0 : mod(animation-tick() / 1ms, 6000) / 6000;
     background: @linear-gradient(170deg, Theme.night 0%, Theme.ink 85%);
     clip: true;
 
@@ -58,13 +58,13 @@ export component Backdrop inherits Rectangle {
     }
 
     // A streak of light that crosses now and then, along the net.
-    property <float> streak: root.calm >= 1 ? 0 : mod(animation-tick() / 1ms, 7000) / 7000;
+    property <float> streak: root.calm >= 1 || Theme.still ? 0 : mod(animation-tick() / 1ms, 7000) / 7000;
     Rectangle {
         x: (root.streak * 1.6 - 0.3) * root.width;
         y: root.height * 0.72;
         width: root.width * 0.25;
         height: 2px;
-        opacity: 1 - root.calm;
+        opacity: Theme.still ? 0 : 1 - root.calm;
         background: @linear-gradient(90deg, transparent 0%, Theme.cyan.with-alpha(0.7) 80%, white 100%);
     }
 
@@ -244,6 +244,9 @@ export component OptionRow {
     in property <bool> enabled: true;
     // The value can be stepped (draws the arrows).
     in property <bool> steps: true;
+    // The value's column: fixed, so the arrows stay where they are whatever
+    // the value says.
+    in property <length> value-width: Theme.compact ? 136px : 210px;
     callback step(int);
     callback activate();
     callback hover();
@@ -289,7 +292,8 @@ export component OptionRow {
                 overflow: elide;
             }
 
-            if root.note != "": Text {
+            // (Its line is kept when there is no note: the label stays put.)
+            Text {
                 text: root.note;
                 color: Theme.text-faint;
                 font-size: Theme.label;
@@ -309,6 +313,7 @@ export component OptionRow {
             }
         }
         Text {
+            width: root.value-width;
             text: root.value;
             color: root.enabled ? Theme.text : Theme.text-faint;
             font-size: Theme.compact ? 17px : 20px;
@@ -516,7 +521,7 @@ export component Heading {
                 letter-spacing: 1px * Theme.tracking;
             }
 
-            if root.sub != "": Label {
+            Label {
                 text: root.sub;
             }
         }
