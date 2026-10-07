@@ -25,6 +25,7 @@ language = "ja"
 "custom2" = { name = "カスタム2", description = "カスタム画面で\nさいしょにえらべる\nチップ枚数が+2" }
 "fish" = { name = "アイムフィッシュ", description = "さかなになりきって\n水属性のウイルスから\nみつけられやすくなる" }
 "flotshoe" = { name = "フロートシューズ", description = "地面からすこしういて\nいるのでパネルの\nえいきょうをうけない" }
+"fstbarr" = { name = "ファーストバリア", description = "さいしょからバリアが\nそうびされている!" }
 "gigfldr1" = { name = "ギガフォルダ1", description = "フォルダに入れられる\nギガクラスチップの\n枚数が+1" }
 "hp-100" = { name = "HP+100", description = "マックスHPが\n100ふえる!" }
 "hp-200" = { name = "HP+200", description = "マックスHPが\n200ふえる!" }

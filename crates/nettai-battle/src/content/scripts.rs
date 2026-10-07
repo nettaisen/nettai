@@ -476,7 +476,6 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         used_chip_ticks = 0x3C,
         bug_flicker = true,
         panel_trail = "by_chance",
-        destroy = "frees",
         draw_order = "update_list","#,
             ),
             (
@@ -560,6 +559,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         no_charge_drive = false,
         hp_loss = "hp_alone",
         hit_sound = "by_console",
+        barrier = { stops_while_paused = true, wind = "pops" },
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "hitter_gains", full_synchro_spent = 0x99, anger_boost_sound = false },
         form_break = "marked_forms",
         weakness_hit_breaks_form = true,

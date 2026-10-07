@@ -6,6 +6,7 @@
 -- for EXE4's definitions (docs/design/exe4-map.md §18); the content check lists them as unfilled, and a battle stops at
 -- the first it needs.
 
+local barriers = require("../lib/barriers")
 local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
 local deletion = require("./deletion")
@@ -72,6 +73,16 @@ local roles: RolesSpec = {
         -- The fight's: a navi's hit, every console's (0x08013A96: 0x6B), a navi in auto battle's (0x6D).
         hit = asset.sound("hit"),
         auto_battle_hit = asset.sound("auto-battle-hit"),
+    },
+    hooks = {
+        -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the Mod Cards' aura): the
+        -- navi enters with the barrier its stats name, and its visual (../lib/barriers).
+        first_barrier = function(navi: Object)
+            local barrier = battle.navi(navi.alliance).first_barrier
+            if barrier then
+                barriers.raise(navi, barrier)
+            end
+        end,
     },
     sprites = {
         -- The Full Synchro aura (actor object 0x5E, 0x080CD1A8: 14-16, EXE5's and EXE6's numbers too).

@@ -78,9 +78,6 @@ return {
     -- A step leaves its panel trail (NaviStats +0x1B) every time, unless it is 0xFF: no level and no draw; its kind 3
     -- is a type set like any other (0x080EB264).
     panel_trail = "always",
-    -- An object's destroy (0x080D8C58) unregisters its collision first (0x080129FC: its panels refreshed, its hits
-    -- and the panels it clears resolved on them), then frees it.
-    destroy = "unregisters",
     -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
     -- not in update order: of two parts in one depth bucket the higher slot's is in front.
     draw_order = "slots",
