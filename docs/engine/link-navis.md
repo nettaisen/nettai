@@ -140,7 +140,7 @@ in the internet, each block's HP is cut to its maximum.
   link navi checks the reload against the console's: the lab's link navi sides and the 2022 rounds' all match, but
   the one scenario that pokes the level alone (`navis/navi-05-volcchrg/charge-family-chip-level-1`, which no save
   the game makes holds).
-- **Match files and the editor**: a side states its navi and its level, and no stats; the editor's stats pane shows
+- **Match files and the build creator**: a side states its navi and its level, and no stats; the build creator's NAVI tab shows
   what the round's setup builds.
 - **MegaMan's level** (a MegaMan received from a navi code): the rules' `round_setup` adds the level's
   gains over what his NaviCust made (§4), and the HP is the maximum again; without a NaviCust in the setup his

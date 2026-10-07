@@ -446,7 +446,7 @@ recording's setup.
 | Bug group 10 (`unread`, NaviStats+0x62) | No part has the group and no color count brings it; nothing reads the stat. |
 | Bug groups 13 to 15 | No part has one; the original's bug table would read past its end. |
 | The smaller boards (4x4 and 5x4, key item 0x71 below 2), and a program on the frame of one | Every save the lab has is fully expanded; a match file can name a smaller board (`expansions`). |
-| Overlapping programs (a later program's cell over an earlier one's) | The game's own placing refuses them, and so do a match's checks and the editor. |
+| Overlapping programs (a later program's cell over an earlier one's) | The game's own placing refuses them, and so do a match's checks and the build creator. |
 | An uncompressed program on a save whose flag compresses it | The engine compiles a placed program as the setup says. A save keeps one flag for each program and color, and the original reads that flag. A match file keeps the copies of a program in one color the same. |
 
 ## A link navi's stats at its level (link-navis.md)

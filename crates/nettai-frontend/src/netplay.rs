@@ -10,7 +10,7 @@
 //! at the stall guard meanwhile, and rennet sends again what was lost.
 //! Before the match, the players'
 //! peers agree it in the lobby and the handshake (`crate::lobby`, over the
-//! host's datagrams: the program's is nettai-demo's `net`): both run the
+//! host's datagrams: the app's are nettai's `netplay`): both run the
 //! same engine and play the same content, agree the match's settings (its
 //! game and its rounds) and swap their sides (their facts as the game's
 //! rules take them, in nettai-match's binary; the language is each
@@ -1008,7 +1008,7 @@ mod tests {
     /// play that match.
     #[test]
     fn two_players_with_match_files() {
-        // Each player's file, as the editor or --save-match writes one.
+        // Each player's file, as --save-match writes one.
         fn file(content: &Arc<Content>, seed: u32) -> Match {
             let text = nettai_match::write(content, &nettai_match::pick::live(content, "exe6", seed, None).unwrap());
             nettai_match::parse(content, &text).unwrap()

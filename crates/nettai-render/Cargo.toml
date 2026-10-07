@@ -6,7 +6,7 @@ license.workspace = true
 description = "Draws nettai battles into frames: the stage, the objects, the HUD, the custom screen and the text, from engine state and the packs' graphics"
 
 # Drawing only: no window, sound, network or command line (nettai-frontend
-# plays the battles it draws; nettai-demo is the program around both).
+# plays the battles it draws; nettai and nettai-tools are the programs around both).
 [dependencies]
 nettai-battle = { path = "../nettai-battle" }
 nettai-assets = { path = "../nettai-assets" }

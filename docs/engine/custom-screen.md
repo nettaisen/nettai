@@ -399,7 +399,7 @@ the window lists them, filled from the front. There are no flags in a setup.
   place than the original's.
 - **A list left out is none.** Nothing is read as "the version's own five": an empty list is no Crosses (a save
   before its first one), and so is a setup that doesn't state the list (the user's ruling of 2026-10-05; the list
-  was required before). Tools state it for a person: the editor's "Its version's own" states the version's own
+  was required before). Tools state it for a person: the build creator's ITS VERSION'S OWN states the version's own
   five, a random match states the five it picked.
 - **Not the original's: Crosses of either game.** A list may hold any of MegaMan's ten. nettai-frontend's live
   play picks five of them for each player (docs/frontend.md §2). Every recording's, the chip lab's and the netplay

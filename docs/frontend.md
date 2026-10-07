@@ -1,22 +1,24 @@
-# The frontend (`nettai-render`, `nettai-frontend` and `nettai-demo`)
+# The frontend (`nettai-render` and `nettai-frontend`)
 
-A desktop program, `nettai-demo`, that runs a battle through the native engine and draws it the
+The library that runs a battle through the native engine and draws it the
 way the original does, in its 240x160 frame scaled up by the largest whole
-factor the window has room for. It draws from engine state: the field's
+factor its host has room for. It draws from engine state: the field's
 panels, each object's sprite, animation frame and look, HP, the custom
 gauge, banners and the flow's screen fades. Nothing emulates the GBA's
 video hardware; the frontend composes tile layers and sprite parts itself
 with the original's ordering and blending rules. The strings that come
 from content or vary (chip names, the telop, the chatbox, the HUD's lines)
-are drawn by default with a vector font at the window's resolution over
+are drawn by default with a vector font at the host's resolution over
 the scaled frame (§3, "Text"); `--text original` draws them in the game's
 own fonts, exactly as the original does.
 
-It replays a golden trace (the recorded inputs of a real match) or is
-played live from the keyboard, and can render chosen frames to PNG.
+It plays a set live from a player's buttons, or against another player over
+the network, replays a golden trace (the recorded inputs of a real match) or
+a replay, and draws chosen frames to PNG. Its hosts are nettai, the app
+(docs/app.md), and nettai-tools, the command line with no window
+(docs/tools.md); the commands in this document are nettai-tool's.
 
-Three crates make it up: the drawing, the playing, and the program around
-them. The commands in this document are the program's (`nettai-demo`).
+Two crates make it up: the drawing and the playing.
 
 - **nettai-render** draws a battle into frames, and nothing else: it
   composes the layers (`compose`), draws the stage and the field
@@ -28,8 +30,8 @@ them. The commands in this document are the program's (`nettai-demo`).
   the packs and the content (`lookups`), each noted and checked once a run
   (`audit`); `Renderer`, which draws a frame, and `present`, which scales
   one to an output of any size, or writes it as a PNG; and a chip's
-  pictures on their own (`pictures`, which the editor shows). It has no
-  window, sound, network, netplay or command line.
+  pictures on their own (`pictures`, which the build creator shows). It has
+  no window, sound, network, netplay or command line.
 - **nettai-frontend** plays a battle for a host to show, as a library: it
   has no window, no audio device and no command line, and nothing in it
   prints or exits (§7). It loads a game (`game`: the packs found, the
@@ -38,17 +40,9 @@ them. The commands in this document are the program's (`nettai-demo`).
   (`session`), the renderer and the audio, and gives a host the picture and
   the sound as it is driven; what drives a session is a driver (`driver`:
   live play of a set from the GBA button mask; `netplay`: another player,
-  over a channel the host provides: it has no socket). It draws the
-  battle's picture and nothing over it: it has no text of its own.
-- **nettai-demo** is the desktop program, a host of that library: the
-  window and the keys, a loop over the player (`app`); the command line
-  (`main`); the audio device the player's samples go to, and the audio's
-  own lookups (`sound_lookups`); headless output (`headless`) and the audits
-  (`content_audit`, `headless::audit_traces`); the replay of the
-  original's recordings (`trace`, the one place that depends on the compat
-  crates); and netplay's transport, a WebRTC link (nettai-rtc: a data
-  channel, met in a room of the signaling server or directly) and the
-  handshake (`net`).
+  over a channel the host provides: it has no socket; `replay`: a replay).
+  It draws the battle's picture and nothing over it: it has no text of its
+  own.
 
 ## 1. The content pack
 
@@ -71,9 +65,9 @@ The output directory must be new or empty. (`data/` is gitignored.) **You play o
 is of one game (§6), which a match file names (`game = "exe6"`) and a
 trace states (its setup line's `"game"`: one that states none is refused;
 nothing takes a recording for a game it doesn't name). There is no default
-game: the frontend requires a match file or a trace. The battle is that
+game: the frontend requires a build, a match file, a replay or a trace. The battle is that
 game's content, drawn and heard from its pack: there is no mixing of games,
-no other game's chip, navi or field art. The frontend (and the editor)
+no other game's chip, navi or field art. The frontend
 finds at start-up
 **every pack in the packs directory**, `$NETTAI_PACKS`, else
 `data`: each folder with a pack manifest, by the game the manifest
@@ -263,74 +257,33 @@ rules' `backgrounds`).
   table's pictures, which are a link battle's.
 - 0x1B and 0x1C are not among a link battle's, and no recording has shown them: their drawing isn't compared.
 
-## 2. Running
+## 2. Playing
 
-    cargo run -p nettai-demo -- <trace.jsonl>              # watch a trace
-    cargo run -p nettai-demo -- --match match.toml           # play a match file (§6)
-    cargo run -p nettai-demo -- --match match.toml --show-folders
-    cargo run -p nettai-demo -- --match match.toml --save-match played.toml   # keep the seed played
-    cargo run -p nettai-demo -- <trace.jsonl> --headless 150,300,600 --out <dir>
-    cargo run -p nettai-demo -- --match match.toml --audit-content   # what is missing?
-    cargo run -p nettai-demo -- --audit <trace.jsonl>...   # and in these traces?
-    cargo run -p nettai-demo -- --match match.toml --pack <dir>        # a pack elsewhere
-    cargo run -p nettai-demo -- --match match.toml --room abc --signal wss://<server>   # netplay, in a room
-    cargo run -p nettai-demo -- --match match.toml --host 7777         # netplay directly: host...
-    cargo run -p nettai-demo -- --match match.toml --join 192.0.2.10:7777   # ...and join
-    cargo run -p nettai-demo -- --match match.toml --record set.ntrp   # record the set (§8)
-    cargo run -p nettai-demo -- --replay set.ntrp --side right   # watch it again, the right navi's console
+How a player plays is the hosts': nettai's screens, keys and pad (docs/app.md
+§2), and nettai-tool's frames, keys by tick and audits (docs/tools.md). What
+the library plays is the same for both.
 
-Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
-the battle content (see above), `--mute` turns the sound off, `--round N`
-starts a trace at round N (later rounds follow when a round's input runs
-out), `--scale N` sets the window's first size to play in (default 4 times
-240x160; the window can be resized, and the picture keeps whole pixels,
-centered on black), `--paused` starts paused, `--png-scale N` scales headless output
-(the text layer is drawn at that scale too), `--quit-after N` closes the
-window after N ticks (with `NETTAI_WINDOW_SHOT=<file>` set, the window's
-last picture is written there as a PNG; with `NETTAI_PLAY_STATS` set, what
-each picture costs to show is printed every two seconds), `--text font|original` chooses
-how strings are drawn (default `font`; the frame comparison uses
-`original`), `--font <file>` puts another TrueType or OpenType font in the
-bundled one's place, `--lang en|ja` the language of the battle's words
-(default `en`; §3, "Languages"). `--match FILE` plays a match file (§6: you
-are its left side). The file sets the game, its rounds, both sides and the optional
-`seed` for the battle's RNG (default: from the clock; each start prints it).
-Edit those settings in the file or with the editor (nettai-demo with nothing
-to play, or `--edit FILE`), which plays the match in the same window; its
-Random button creates a random setup. `--show-folders` prints both folders, and with
-`--headless`, `--keys` holds buttons on given ticks (below). `--save-match FILE`
-writes the match played, the file's setup or the one netplay agreed, with its
-seed, as a match file. `--record FILE` writes a replay of the set played (alone
-or netplay), and `--replay FILE` plays one, shown from the side that
-recorded it or `--side left|right`; with `--headless F` it renders the set's
-ticks F (§8).
+**Trace playback** runs a golden trace's rounds at the original's 59.73
+frames per second, their recorded inputs driving the battle, until the input
+ends or the engine hits something it doesn't implement yet; the first
+difference from the trace's recorded state is reported (`Player::diverged`).
+Frame numbers are the trace's.
 
-Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
-Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
-`=` change speed (1/8x to 16x of 59.73 Hz), F5 starts over (a recording's
-round; live play's set, from its first round) (none of these in netplay),
-Esc stops (back to the editor when the editor's Play started it, else the
-window closes). The battle's language is `--lang`'s alone. Nothing is
-written over the battle's picture: the window's title says where playback
-is, its speed, a pause, why it stopped, and in netplay the connection's
-figures and the result.
-
-**Trace playback** runs at the original's 59.73 frames per second until the
-input ends or the engine hits something it doesn't implement yet. Then it
-stops, with the reason in the window's title and printed; the first difference from
-the trace's recorded state is printed too. Frame numbers are the trace's.
-
-**Live play** (`--match FILE`): you are the left navi; the right one stands
-still. The match file sets up the battle (§6), including its game, rounds,
-each side's navi, folder, forms, patch cards, NaviCust and stats. Use the
-editor to create, randomize or edit a match before playing it.
+**Live play** (a match, docs/app.md's Training or `nettai-tool --match FILE`):
+you are the left navi; the right one is an opponent's (`driver::Opponent`,
+its buttons alone, as a player's are): by default the stand-in, which stands
+still and picks its first chip; a dummy, which picks none; a mover, which
+moves about at random; a masher, which moves, shoots and uses its chips at
+random (a mover's and a masher's presses seeded, from the set's seed in
+nettai). The match sets up the battle (§6), including its game, rounds, each
+side's navi, folder, forms, patch cards, NaviCust and stats.
 
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number
 from 1 to 99): when a round ends the
 next one starts, on the next round's place, with the score carried and each
 folder shuffled again by its console's RNG, and when the set is decided play
-stops with the result in the window's title and printed (`the match is over: you won`). A set
+stops with the result (`the match is over: you won`). A set
 of `n` rounds is decided once one side can no longer be caught, or after its
 last round, drawn if the sides are level (`sub_800AF50`, with `n` for three: an
 even number of rounds may end drawn, as three may on a drawn round); each
@@ -354,16 +307,16 @@ over, and the frames go on being numbered from the set's first tick.
   test checks them against every recording's rounds. (EXE5's are its own: 96
   indices over 82 stages, the first twelve records twice and twelve stages
   never, as its 0x08129F2C picks; and 27 backgrounds.)
-- **A folder for each player**: 30 chips that keep EXE6's folder rules
-  (`nettai_match::folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
-  of a chip by its MB, five up to 19 MB down to one from 50; Mega and Giga
-  chips within the fresh navi's levels; a code each chip comes in; a
-  Regular chip within the fresh navi's Regular memory, if a chip fits it; no
-  tag chips in a draw), from
-  the chips the chip pack lists (Standard, Mega and Giga, not the dark
-  chips, and not the five the US game has no routine for). The codes lean to
-  two the folder favors, and `*`. Each console shuffles its folder from
-  the seed at the round's init, as before.
+- **A random folder for each player** (a random match's): 30 chips that keep
+  EXE6's folder rules (`nettai_match::folders`: the folder editor's,
+  `sub_8135080` with `sub_8135500`: copies of a chip by its MB, five up to 19
+  MB down to one from 50; Mega and Giga chips within the fresh navi's levels;
+  a code each chip comes in; a Regular chip within the fresh navi's Regular
+  memory, if a chip fits it; no tag chips in a draw), from the chips the chip
+  pack lists (Standard, Mega and Giga, not the dark chips, and not the five
+  the US game has no routine for). The codes lean to two the folder favors,
+  and `*`. Each console shuffles its folder from the seed at the round's
+  init, as before.
 - **Five Crosses for each Cross window**, picked from MegaMan's ten, both
   games' (the setup's list of the player's Crosses; one of both games is
   nettai's: docs/engine/custom-screen.md §4.1). A Cross of the other game is its own
@@ -377,183 +330,97 @@ The draw is the frontend's, made before the battle; the battle is then a
 function of its setup and the buttons, as rollback needs. The same seed
 gives the same setup.
 
-The custom screen is the engine's (docs/engine/custom-screen.md), drawn, and
-also shown as text: the dealt chips in the grid's order (`>` the cursor,
-`+` picked, `-` grayed), OK and Beast Out, the picks and the Cross window's
-Crosses by name. The keys are the game's (A picks, B takes back, START goes
-to OK, UP from the top row opens the Cross window, R describes, SELECT
-hides). The right navi's screen picks its first chip and presses OK. As in
-the original's netbattles, the fight gets your buttons 4 ticks late (the
-link). F5 starts over with the same setup.
+The custom screen is the engine's (docs/engine/custom-screen.md), drawn. The
+keys are the game's (A picks, B takes back, START goes to OK, UP from the top
+row opens the Cross window, R describes, SELECT hides). The right navi's
+screen picks its first chip and presses OK. As in the original's netbattles,
+the fight gets your buttons 4 ticks late (the link). Restarting starts the
+same setup over.
 
-**Netplay** (`--match FILE` with `--room CODE`, `--host PORT` or `--join ADDR:PORT`)
-plays another player over the network, with rollback (docs/design/rollback.md §4;
-the frontend's side is `netplay`), on a WebRTC data channel (nettai-rtc,
-rollback.md §4.8):
+**Netplay** plays another player over the network, with rollback
+(docs/design/rollback.md §4; the frontend's side is `netplay`), on a WebRTC
+data channel (nettai-rtc, rollback.md §4.8), which the host makes: nettai's
+lobby (docs/app.md §4) meets the other player in a room of the signaling
+server, or directly.
 
-- **In a room**: `--room abc` meets the other player in room `abc` of the
-  signaling server (`--signal wss://...`, or `$NETTAI_SIGNAL`), both giving
-  the same code (1 to 64 letters, digits, `_` and `-`). The first in the
-  room hosts (the left navi, side 0) and waits for a player (`--wait
-  SECONDS`, default 300), the window open and blank meanwhile, its title
-  saying what it waits for (Esc gives up); the second joins (`--wait`,
-  default 30). The connection finds its way through NATs: each side offers
-  its addresses and the one a STUN server sees (`--stun URL`, again for
-  more; default `stun:stun.l.google.com:19302`; `none` for none), and with
-  `--turn turn:HOST[:PORT] --turn-user U --turn-pass P` relays through a TURN
-  server when no direct path is found (Cloudflare's TURN service hands out
-  short-lived credentials from its API, with a TURN key of one's account:
-  get a pair, give it here). The signaling server is `signaling/`, a
-  Cloudflare Worker (`npx wrangler dev` there runs it locally, at
-  `ws://127.0.0.1:8787`; deploying it, `npx wrangler deploy`, is on your own
-  account). A room's connection checks the certificates its descriptions
-  name.
-- **Hosting directly**: `--host 7777` listens on UDP port 7777 of every IPv4
-  interface and waits for a player as a room's host does. On a LAN the
-  other player joins this machine's address; over the Internet, forward the
-  UDP port on the host's router to the host's machine, and the other player
-  joins the router's public address. The host is the left navi (side 0).
-  Nothing is exchanged before the connection: each side makes up the
-  other's description, so direct connect authenticates nobody, as plain UDP
-  doesn't.
-- **Joining directly**: `--join 192.0.2.10:7777` (a name works too) reaches
-  the host and waits for its answer (`--wait`, default 30). The joiner is
-  the right navi (side 1), and sees the battle from its side: its navi on
-  the left of the field, mirrored as the original's second console shows
-  it, its own custom screen, HUD and sounds.
+- **In a room**, both players give the same code. The first in the room
+  hosts (the left navi, side 0); the second joins. The connection finds its
+  way through NATs: each side offers its addresses and the one a STUN server
+  sees (nettai-rtc's `Config`: by default `stun:stun.l.google.com:19302`),
+  and relays through a TURN server, where one is configured, when no direct
+  path is found. The signaling server is `signaling/`, a Cloudflare Worker
+  (`npx wrangler dev` there runs it locally, at `ws://127.0.0.1:8787`;
+  deploying it, `npx wrangler deploy`, is on your own account). A room's
+  connection checks the certificates its descriptions name.
+- **Directly**, one player hosts on a UDP port of every IPv4 interface and
+  waits; the other joins its address. On a LAN that is the host's machine's;
+  over the Internet, forward the UDP port on the host's router to the host's
+  machine, and the other player joins the router's public address. The host
+  is the left navi (side 0). Nothing is exchanged before the connection: each
+  side makes up the other's description, so direct connect authenticates
+  nobody, as plain UDP doesn't. The joiner is the right navi (side 1), and
+  sees the battle from its side: its navi on the left of the field, mirrored
+  as the original's second console shows it, its own custom screen, HUD and
+  sounds.
 - **When the connection drops** (its state, its data channel, or nothing
   from the other side for 3 seconds), it is made again, through the room or
   to the same address: the battle stops within half a second (both players
-  wait at the stall guard), the title says "the connection dropped:
-  reconnecting (Ns)", and when it is back the battle goes on where it was,
-  in the same match (what was lost on the way is sent again). After 30
-  seconds it gives up and the match ends, saying so.
-- **The handshake** checks that both players run the same netplay protocol,
-  the same engine, the same game (a match is of one: "can't play: the other
-  side plays exe5, this one exe6: a match is of one game, both sides playing
-  it") and the same content (`Content::hash`: the definitions, scripts and
-  rule tables, and what the battle reads of the pack, the asset names and
-  the animations' timing), and refuses a mismatch on both sides with what
-  differs ("can't play: the other side plays other content (its hash ...,
-  this one's ...)"). Each player then brings their own side of the match (an
-  offer, in nettai-match's binary against the content both play,
-  `nettai_match::binary`: the side's facts in the order of the game's rules'
-  setup, each definition by its handle, which the content hash pins): a
-  match file's left side (`--match`), its facts all (folder, version, forms,
-  patch cards...);
-  the other player's is checked against the content as a match
+  wait at the stall guard), the host is told how long it has been down
+  (`NetStatus::reconnecting`), and when it is back the battle goes on where
+  it was, in the same match (what was lost on the way is sent again). After
+  30 seconds it gives up and the match ends, saying so.
+- **The lobby and the handshake** (`nettai_frontend::lobby`) check that both
+  players run the same netplay protocol, the same engine, the same game (a
+  match is of one: "can't play: the other side plays exe5, this one exe6: a
+  match is of one game, both sides playing it") and the same content
+  (`Content::hash`: the definitions, scripts and rule tables, and what the
+  battle reads of the pack, the asset names and the animations' timing), and
+  refuse a mismatch on both sides with what differs ("can't play: the other
+  side plays other content (its hash ..., this one's ...)"). Each player
+  brings their own side (an offer, in nettai-match's binary against the
+  content both play, `nettai_match::binary`: the side's facts in the order of
+  the game's rules' setup, each definition by its handle, which the content
+  hash pins); the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
-  rules (a game has one ruleset). The language (`--lang`) is each player's own. The players
+  rules (a game has one ruleset). The language is each player's own, and so
+  is each player's name, which the lobby carries to be shown. The players
   agree the match's settings, its game and its rounds (each round's stage and
-  background stated, or left to the seed), in a symmetric lobby
-  (`nettai_frontend::lobby`): each proposes and readies, any change by either
-  clears both readies, and the settings are agreed when both are ready on the
-  same. The program proposes each player's match file's settings: two files
-  that state other rounds stop it, saying what differs ("the rounds: 3 here,
-  5 there", "round 2's stage: ..."). Then each commits (a Hello: SHA-256 of
-  the agreed settings' hash and what it will reveal) before either reveals
-  its half of the seed and its side, and each checks the other's Reveal
-  against its commitment; the battle's RNG comes from both halves, and each
-  part the rounds leave is picked from it alike on both. Both print what was
-  agreed, and `--save-match` writes it; a recording keeps every round's place.
+  background stated, or left to the seed), in a symmetric lobby: each
+  proposes and readies, any change by either clears both readies, and the
+  settings are agreed when both are ready on the same; two proposals that
+  differ say what differs ("the rounds: 3 here, 5 there", "round 2's stage:
+  ..."). Then each commits (a Hello: SHA-256 of the agreed settings' hash and
+  what it will reveal) before either reveals its half of the seed and its
+  side, and each checks the other's Reveal against its commitment; the
+  battle's RNG comes from both halves, and each part the rounds leave is
+  picked from it alike on both. A recording keeps every round's place.
 - **Playing**: the match is a set of the rounds it lists; its rounds follow one
   another (the folders shuffled again by each console's RNG). Every frame the
-  frontend sends your buttons and shows the frame its rollback session
-  presents: by default the newest (`--present-delay N`, default 0: the
-  frame N ticks behind your newest input, so that fewer corrections show
-  and your own input shows that much later; `[` and `]` change it during
-  the match; it is yours alone, never sent, and the other player picks
-  theirs). The other player's input is predicted until it arrives, and the
-  frame is simulated again when a prediction was wrong. A cue played on a wrong
-  prediction is stopped or taken back (rollback.md §3.2). There is no pause,
-  speed change or restart (F5) in netplay.
-- **The window's title** shows the connection's figures (the library's
-  `Player::net_status`, values the program words itself): `ping` (the round
-  trip, in milliseconds), `loss` (the share of the other player's datagrams
-  that were lost), `present delay` (the present delay), `rollback` (the last
-  rollback's depth, then the deepest and how many in all) and `waits`
-  (frames held for clock sync or the stall guard); while the connection is
-  down, how long it has been (`NetStatus::reconnecting`).
-- **The end**: when the set is over the result shows in the title and
-  the window stays open; Esc leaves, and tells the other player. If the
+  host sends your buttons and shows the frame the rollback session presents:
+  by default the newest (`Player::set_present_delay(N)`: the frame N ticks
+  behind your newest input, so that fewer corrections show and your own input
+  shows that much later; it is yours alone, never sent). The other player's
+  input is predicted until it arrives, and the frame is simulated again when a
+  prediction was wrong. A cue played on a wrong prediction is stopped or taken
+  back (rollback.md §3.2). There is no pause, speed change or restart in
+  netplay.
+- **The connection's figures** (`Player::net_status`, values a host words
+  itself): the ping (the round trip, in milliseconds), the loss (the share of
+  the other player's datagrams that were lost), the present delay, the last
+  rollback's depth, the deepest and how many in all, and the frames held for
+  clock sync or the stall guard; while the connection is down, how long it
+  has been.
+- **The end**: when the set is over the result is the host's to show. If the
   other player leaves, nothing arrives from them for 10 seconds while the
   connection is up, the connection doesn't come back in 30 seconds, or their
-  input falls more than the rollback horizon behind, the match stops with
-  the reason in the title and printed.
-
-The stand-in bot (the right navi standing still, picking its first chip)
-stays for playing alone.
-
-**Headless mode** renders the listed frames (`a,b,c-d`; trace frame
-numbers, or tick numbers in live play) to `frame_NNNNN.png`. It exits
-non-zero if some frames couldn't be rendered (the engine stopped first).
-With `--objects` it also lists every rendered frame's objects as the
-renderer sees them: kind, screen position, sprite, animation and frame, and
-look (palette, shadow, flips, white, shader, hidden parts, whether it is
-drawn at all), and what its console shows of its chips; and its text items
-(the words, the role, the box, the depth key, how many of the box's pixels
-something in front covers, the squash, the fades). In live play
-`--keys` gives your buttons by tick (`headless::KeyScript`): for instance
-`--keys 160-161:up,215:a,260:start,266:a` opens the first screen's Cross
-window (a direction acts on a hold's second tick), chooses its first Cross
-and presses OK.
-
-**The audits** list what the drawing code and the audio look up that the
-packs or the content don't have: a sprite that isn't in its pack, an
-animation or palette the sprite doesn't have, a chip without an icon or a
-picture or with a name the font can't spell, a face, an emblem, a banner
-without glyphs, a telop's banner that is no telop's, a text line, a song.
-Each exits 1 if there was any; drawing itself skips what it can't find,
-so nothing else notices. Every such lookup goes through one module
-(nettai-render's `lookups.rs`; the audio's, a cue's song, nettai-demo's
-`sound_lookups.rs`), which notes it (`audit::Lookup`) and checks it once a
-run, so both audits make the lookups a frame makes, through the same
-functions:
-
-- `--audit-content` (`content_audit.rs`) makes every lookup for everything
-  the content defines, in every language it has strings in: every chip's
-  icon, picture, name, its window's class,
-  element and code pictures, its description in the dialogue font; every
-  navi's face, emblem, name and no-running message
-  with its portrait (a navi a side can start that has no message, or none
-  to say it, is a problem where the game's roles fill the message's sound:
-  the custom screen opens no box for it, so L would do nothing); every
-  form's face for each emotion, every Cross's name
-  and description; every custom-screen button's look (a button the pack
-  has none for is drawn as nothing, unless it shows a chip), on a console
-  of each of the pack's versions; and every asset of the loaded packs (each sprite with
-  every animation, its frames and their own palettes; each song, banner,
-  background, mugshot), the HUD's text lines, the custom screen, the
-  chatbox. It checks the field too: each loaded game's pack must draw
-  the panel types its game names; then, in an arena of each game, every
-  panel type a loaded game names and both highlights are drawn as the
-  stage draws them, and a tinted one is said as a note. It takes a
-  second or two, and a lookup by the wrong key fails it for every chip,
-  not only for those a trace shows (its test:
-  `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
-  language's table lacks shows in the content's own, by design: it is said,
-  not counted. A language the content has strings in and its pack no
-  lettering for is a problem (a console in it can't be shown): both games'
-  packs have their Japanese. It audits the
-  match file's one game (`--match FILE`); the match's sides aren't played or validated.
-- `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
-  default one a core), and makes the lookups their frames and sound cues
-  make, without drawing: no stage, no composing, no sound synthesis
-  (`Renderer::set_lookups_only`). It catches what the content can't say
-  beforehand: the palette an object picks, a telop of a chip the engine
-  wasn't told. Each problem is listed with its trace and the frame it was
-  first seen on. `--draw` draws every frame and plays every cue into nothing
-  besides (the audit as it was before: some ten times slower). `--lookups
-  FILE` writes each trace's distinct lookups, by name (and with
-  `--audit-content`, the static audit's), for the verification's trace
-  cover: the few golden traces that, with the static audit, make every
-  lookup all of them make.
+  input falls more than the rollback horizon behind, the match stops with the
+  reason.
 
 **Sound**: the player renders each tick's sound cues with the pack's sound
-(nettai-audio's `BattleAudio`) and the window plays the samples through the
-audio device (`nettai_audio::Output`), unless `--mute`; headless rendering
-never plays sound. In netplay the player renders the cue actions of each
-frame (plays, and cancels of cues played on a wrong prediction).
+(nettai-audio's `BattleAudio`), and the host plays the samples
+(nettai's through the audio device, `nettai_audio::Output`; headless
+rendering never plays sound). In netplay the player renders the cue actions
+of each frame (plays, and cancels of cues played on a wrong prediction).
 `Output` takes the samples into a lock-free ring (the device's callback
 never waits on the window) and keeps about three ticks queued (50 ms): the
 ticks come on the display's frames, a frame's together, and the window's
@@ -565,6 +432,11 @@ are queued, and what a catching-up window then queues past 200 ms is
 skipped back to the target. (Before, the queue was a locked one with no
 rate control, and running dry cut the sound to silence until three ticks
 were queued again.)
+
+**Headless frames and the audits** are nettai-tool's (docs/tools.md): the
+listed frames to PNGs, with the objects, the marks and the keys by tick; and
+the content and trace audits of every lookup the drawing code and the audio
+make.
 
 ## 3. What is drawn, and how
 
@@ -1013,7 +885,7 @@ deletion's result. What still differs:
 
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
--p nettai-frontend -p nettai-demo`) use a small synthetic asset set and a live battle
+-p nettai-frontend -p nettai-tools`) use a small synthetic asset set and a live battle
 built in code, and the bundled font for the text layer (its layout and the
 depth test; not its pixels, which are floating-point arithmetic).
 
@@ -1086,7 +958,7 @@ them).
   BassAnly as Bass, Phoenix as DethPhnx; Team Colonel's the other way).
   The pack has each chip's picture and icon once, from its own version's
   ROM (the one whose library lists it), marked with that version
-  (`ChipArt::version`), and the frontend and the editor show it on either
+  (`ChipArt::version`), and the frontend and the build creator show it on either
   console (the user's choice: a version's chips show that version's art
   always). A console of the other version shows the counterpart's there:
   the chip window's picture, the icons in the custom screen's slots and
@@ -1166,14 +1038,16 @@ once at the file's top: everything else is a name in that game's namespace
 (`nettai_match::ids`), so a match can't name another game's chip, navi,
 soul, patch card or stage: a name the game hasn't is said as any unknown
 name is ("left: folder entry 3: no chip \"darkthnd\" in exe6"), whether
-another game has it or not. `--match FILE` plays one (you are its left
-side), `--save-match FILE` writes the match played, and the editor (nettai-demo
-with nothing to play, or `--edit FILE`) makes and edits them (README.md, "The
-match editor"). The crate `nettai-match`
-reads, checks and writes them, and builds the round (`Match::round`); the
-editor's random pick is a match too (`nettai_match::pick::live`), so a random
-setup written out and played again is the same battle (the frontend's test
-`a_saved_match_plays_the_same_battle` compares the digest every tick).
+another game has it or not. nettai's Training plays one from its matches folder
+(you are its left side; docs/app.md §2), `nettai-tool --match FILE` renders
+one or says its setup and `--save-match FILE` writes the match with its seed
+(docs/tools.md), and a side of one is what nettai's build creator makes (a
+build is a side, written as a match file writes one: docs/app.md §8). The
+crate `nettai-match` reads, checks and writes them, and builds the round
+(`Match::round`); live play's random pick is a match too
+(`nettai_match::pick::live`), so a random setup written out and played again
+is the same battle (the frontend's test `a_saved_match_plays_the_same_battle`
+compares the digest every tick).
 
 ```toml
 game = "exe6"                               # the match's game and its rules: everything below is its
@@ -1226,7 +1100,7 @@ game may state, as a key of its table by the field's name. `nettai-match`
 names none of them (`nettai_match::facts`): a side holds its facts as that
 setup block, the round's setup hands the engine the block as it is, and a
 game that declares another fact has it in its match files, its
-descriptions and the editor without a line of Rust.
+descriptions and the build creator without a line of Rust.
 
 - A fact's value is its field's type's: a flag `true` or `false`; a whole
   number in the type's range; an enum's variant by the name the rules give
@@ -1258,11 +1132,11 @@ descriptions and the editor without a line of Rust.
   player's setup leaves it unstated, and a file without one is refused
   with what is missing ("left: no version: a side of exe6 states its own
   (gregar or falzar); none is assumed"). A new match's sides have none
-  until they are given theirs: the editor shows nothing chosen; a random
+  until they are given theirs: the build creator shows none chosen; a random
   match picks each side's from its seed and writes it.
 - A list a side leaves out is its default, else empty: EXE6's `crosses`
   left out is no Crosses (nothing is read as "its version's own five";
-  the editor's "Its version's own" states those, and a random match the
+  the build creator's ITS VERSION'S OWN states those, as choosing a version does where none are stated, and a random match the
   five it picked).
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
   key the rules' setup doesn't declare ("left: no field \"karm\" (a side of
@@ -1276,7 +1150,7 @@ descriptions and the editor without a line of Rust.
   beyond the type's.
 - Facts known by role (`PlayerFact`): the version, Beast Out and the form
   list, which the battle and its frontend read; the level and MegaMan's base
-  HP, which tools read (the checks, the editor). Where a tool needs one it
+  HP, which tools read (the checks, the build creator). Where a tool needs one it
   asks by the role: a navi's version byte in its stats, the forms a random
   match's form list is picked from, the level's range.
 
@@ -1337,7 +1211,7 @@ build the rest as the round is set up (`round_setup`), in the order their code s
 The navi's version byte (+0x20) is the version the side states, which the
 battle's start sets. Another navi than the one that compiles a NaviCust
 takes its HP from its level, so the checks refuse a side of one that
-states `hp`. The editor's stats pane shows the stats a round starts with,
+states `hp`. The build creator's NAVI tab shows the stats a round starts with,
 and nothing of them is edited: a test that needs an odd stat pokes the
 built `RoundSetup`. (A recording's stats are its console's block:
 exe6-compat and exe5-compat state the save's facts from it, start the sides
@@ -1394,17 +1268,20 @@ rules like any other (`sp_times`, a list of `{ chip, frames }` records: the
 engine knows it as `PlayerFact::SpTimes`), an entry each SP navi chip, by
 the chip's name, the frames the save took to delete its navi. A side that
 states none has the rules' default, every SP chip of its game in no time;
-one that states some has those alone (a chip it leaves out: in no time). The
-editor shows each as the game does, `mm:ss.cc` rounded down to the
-hundredth (`sub_8000D84`), and a time typed there is the fewest frames that
-show as it. The SP navi chips' damage goes by them (rules/sp_chips.luau,
+one that states some has those alone (a chip it leaves out: in no time).
+A time reads as the game shows it, `mm:ss.cc` rounded down to the
+hundredth (`sub_8000D84`), and one written so is the fewest frames that
+show as it (`nettai_match::sp_times`). A build in nettai states none: every
+SP navi in no time (docs/app.md §8). The SP navi chips' damage goes by them (rules/sp_chips.luau,
 `sub_8010AE4`). A fact that is a record is a table of its fields, and a list
 of records an array of tables, as above.
 
-**A save** (the editor's "Import from save…", nettai-demo's
-`save_import`, a save of the arena's game: one of another game is refused;
-each game's compat crate imports its own, `exe6_compat::import` and
-`exe5_compat::import`) gives a whole side.
+**A save** (the build creator's FROM A SAVE…, nettai's `builds::import`, a
+save of the build's game: one of another game is refused; each game's
+compat crate imports its own, `exe6_compat::import` and
+`exe5_compat::import`) gives a whole side. (A build in nettai then sets
+what it never states to the rules' defaults, and says which: docs/app.md
+§8.)
 Of EXE6, a .sav as an emulator keeps it or a raw image as Tango's netplay
 templates hold, read by `exe6_compat::save` (a Japanese image's region from
 the US's 0x414C sits 0x40 earlier): the navi it operates; its version,
@@ -1428,8 +1305,8 @@ and color name (one of the program's `colors`), and its board; without
 them, none on the largest board. The game's
 `navicust` part makes the stats it gives (the maximum HP, the abilities,
 levels, weapons and bugs) from the programs as the round is set up, over
-what the save brings (`hp`, `reg_up`, `sun`). The editor's NaviCust pane (its
-own grid, docs/design/navicust.md) places the programs on the board as the
+what the save brings (`hp`, `reg_up`, `sun`). The build creator's NAVICUST
+tab (its own grid: docs/app.md §8) places the programs on the board as the
 game does, and shows what they make.
 
 **The karma** (`karma`, `nettai_match::facts`) is EXE5's light/dark value
@@ -1438,7 +1315,8 @@ game does, and shows what they make.
 cleared. Under 470 a dark MegaMan (mood 0, the dark face and palette, dark
 chips usable in a link battle, no soul button); 499 or under clears holy
 panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
-light templates). Like EXE6's `version`, `crosses` and `beast_out` (S6c's
+light templates; a build in nettai is one of Tango's two, light or dark:
+docs/app.md §8). Like EXE6's `version`, `crosses` and `beast_out` (S6c's
 facts), the round's setup writes it into the rules' setup, where they declare
 the field (`PlayerSetup::set_fact`): EXE5's light and dark module's
 `karma`. A game whose rules take none refuses one other than 500.
@@ -1475,7 +1353,7 @@ setup writes it into the souls part's setup (its default, on, for a setup
 that says nothing). A game whose rules don't take it refuses one off. The
 netplay offer carries it.
 
-**An EXE5 save** (the editor's "Import from save…" in an EXE5 match,
+**An EXE5 save** (the build creator's FROM A SAVE… in an EXE5 build,
 `exe5_compat::import`: a .sav, or a raw save image as Tango's netplay
 templates hold, read by `exe5_compat::save`) gives the navi it operates, its equipped folder with its Regular
 chip, MegaMan's NaviCust (the board of its ExpMemry and the programs as
@@ -1490,10 +1368,11 @@ records.toml gives it, in the slots' order; 0xFFFF, a navi never deleted,
 stated as it is, which the damage reads as the slowest time, as the game
 does). What a match can't state of a block is left empty and
 said: a chip number the game has no chip for, and an entry for a pattern
-past the eighth. The editor's Auto battle pane takes that data alone from
-a save ("From a save…", `exe5_compat::import::auto_battle_of_save`), and edits
-it: the 42 places in their six lists, the eight records, and the game's
-chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
+past the eighth. The build creator's AUTO BATTLE tab takes that data alone from
+a save (FROM A SAVE…, `exe5_compat::import::auto_battle_of_save`), and edits
+its places: the 42 places in their six lists, each a chip, a program advance,
+a 0 or empty (a build's records are the rules' default, nothing learned, and
+no place points at one: docs/app.md §8). A side that operates a team navi takes
 the save's level (its story flags' count), whose HP the story gives (EXE5's
 save module), and, where the save's version has the navi, the light/dark
 value of the navi's own block.
@@ -1600,7 +1479,7 @@ the send writes, and the block's last eight bytes, which nothing reads.
 itself and through a match file, to the same places and records, over
 blocks of each awkward shape.
 
-A random match (`nettai_match::pick`, the editor's Random) states none: its
+A random match (`nettai_match::pick`, Training's Random) states none: its
 sides have the rules' default, what the game's battle end writes of a player
 it has learned nothing of (empty places, zeroed records). The user: "i don't
 think you need learning right? since the battles are one-off": the data
@@ -1608,7 +1487,7 @@ comes into a match from a match file, a save (the import) or a recording
 (compat), never from the game's learning. A netplay offer carries the data.
 
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
-offer arrives (the same `check_side`), and live in the editor; each problem
+offer arrives (the same `check_side`), and live in the build creator; each problem
 is said with where it is:
 
 - the game is one the content has, and every name names a definition of
@@ -1661,24 +1540,29 @@ is said with where it is:
 - karma 0 to 1000, and other than 500 only with rules that take it;
 - the round starts (`Battle::new` doesn't stop).
 
-**Netplay with a match file** (`--match FILE` with `--room`, `--host` or
-`--join`): the file's left side is what you bring, wherever netplay puts
-you, and the host's file's rounds are the match's (the joiner's are sent,
-and must be as many: the handshake stops on two numbers of rounds). The
-battle's RNG still comes from both players' halves of the seed.
+**Netplay** brings a side (nettai's lobby: the build chosen, else a random
+side; docs/app.md §4), wherever netplay puts you, and the settings both
+propose are the match's (a triple battle with each place left to the seed;
+two proposals that differ stop the agreeing, saying what differs). The
+battle's RNG comes from both players' halves of the seed.
 
 ## 7. Embedding
 
 nettai-frontend is a library a larger app depends on to play battles in its
 own window: it has no window toolkit, no audio device and no command line in
-it (`cargo tree -p nettai-frontend` names neither iced nor cpal), and
-nothing in it prints or exits. Every failure is a value. The host owns the
-window, the keys, the sound output and what it tells its user; nettai-demo is
-one such host (its window, `window.rs`, an iced program whose frame is the
-loop below; the editor is in the same window), and
-`crates/nettai-frontend/examples/embed.rs` another, with no window at all.
+it (`cargo tree -p nettai-frontend` names neither a window toolkit nor cpal),
+and nothing in it prints or exits. Every failure is a value. The host owns the
+window, the keys, the sound output and what it tells its user; nettai is one
+such host (a Slint window whose rendering is the loop below: docs/app.md §1),
+nettai-tools another (the command line, with no window: docs/tools.md), and
+`crates/nettai-frontend/examples/embed.rs` a third, with no window at all.
 
-**How nettai-demo shows the picture.** Each frame (the display's rate) it
+How nettai shows the picture (one OpenGL texture written in place), keeps
+its clock and measures its input's latency (`NETTAI_PLAY_STATS`,
+`NETTAI_KEY_PROBE`) is docs/app.md's, §1 and §5. What the first desktop host
+learned on the way (nettai-demo, an iced program, retired 2026-10-06):
+
+**How nettai-demo showed the picture.** Each frame (the display's rate) it
 advances the player; when a tick ran, the window's
 size or the language changed, it presents into a buffer of the window's size
 in logical pixels (as the earlier minifb window had it; a HiDPI display scales
@@ -1738,7 +1622,7 @@ that says which step failed (`Failed::Packs`, `Content`, `NoPack`, `Part`,
 `Language`, `Font`) and carries what the loaders reported up to there; a
 `Loaded` carries their warnings too (`Loaded::report`). The steps are public
 one by one for a host that wants them apart (`Found::find`, `Game::load`,
-`Game::graphics`, `font`, `Game::sound`), as the program does, which loads no
+`Game::graphics`, `font`, `Game::sound`), as nettai-tool does, which loads no
 sound for frames it only writes.
 
 **What is played** is a driver's: `LivePlayer` plays a set of a match
@@ -1752,11 +1636,11 @@ library has no socket).
 The lobby and the handshake that agree the match are the library's,
 without IO (`lobby::Lobby`: datagrams in, datagrams out), and so is the set
 played from the agreement (`netplay::netplay_setup`); the transport is the
-host's. The program's is nettai-demo's `net`: a WebRTC link (nettai-rtc's
-`Link`, which another host can use too: in a room of the signaling server,
-natively or in a browser, or directly, natively), and the lobby the window
-polls each frame, so it stays responsive while it waits. A host may bring a
-driver of its own (`Driver`): the program's replays the original's
+host's. nettai's is a WebRTC link (nettai-rtc's `Link`, which another host
+can use too: in a room of the signaling server, natively or in a browser, or
+directly, natively), and the lobby its frame polls, so it stays responsive
+while it waits (nettai's `netplay` and `lobby`: docs/app.md §4). A host may
+bring a driver of its own (`Driver`): nettai-tools' replays the original's
 recordings.
 
 **The player** (`Player`) is what the host drives. It owns the session, the
@@ -1812,8 +1696,8 @@ renderer, the font mode's text renderer and the battle's audio:
   it is over), `diverged()` (the first difference from a recording) and
   `net_status()` (a netplay connection's figures: ping, loss, present delay,
   the last and deepest rollback and their count, frames waited).
-  nettai-demo puts them in its window's title and prints a stop and a
-  difference.
+  nettai shows them on its battle screen (the result, a stop, the
+  connection's line); nettai-tool prints a stop and a difference.
 - `set_paused`, `slower`, `faster` and `restart` are the controls; each
   returns false and does nothing while the battle runs in real time with
   another player (`real_time()`: netplay). `set_present_delay(ticks)` is
@@ -1844,11 +1728,11 @@ resampling the sound to its device's rate; where a match comes from.
 **Its dependencies** are the engine's crates alone, with nettai-audio taken
 without its `playback` feature; no compat crate is in its tree (a host that
 imports saves takes each game's compat crate, whose `import` it is, as
-nettai-demo does). The library itself reads no recording and no save.
+nettai does: `builds::import`). The library itself reads no recording and no save.
 
 **The proof that it embeds** is the example: it plays a seeded random match
 with scripted buttons a tick at a time, with no window, and checks every
-frame it takes against the PNG the program writes headless for the same seed
+frame it takes against the PNG nettai-tool writes headless for the same seed
 and buttons, byte for byte, and its samples against a second rendition from
 the battle's cues. The verification workspace runs it against both games
 (`tools/embed-against.sh`).
@@ -1863,8 +1747,9 @@ battle's digest now and then, to tell a replay that reproduces from one that
 doesn't. A replay plays only on the engine and the content it was made with;
 it names them, and another build or pack refuses it with what differs.
 
-**Recording.** `nettai-demo --match FILE --record set.ntrp` (alone, or with
-`--room`, `--host` or `--join`) writes the set as it is played; in the library,
+**Recording.** nettai records every set it plays, alone or netplay, to its
+replays folder (docs/app.md §2), and `nettai-tool --match FILE --headless F
+--record set.ntrp` a set played headless; in the library,
 `Player::record(Recorder::new(sink, &content, &m, &info)?)` before the first
 tick. Live play writes each tick as it runs; netplay each as it settles
 (confirmed, never a prediction), so both players' replays of a match hold the
@@ -1874,9 +1759,10 @@ short. A round of netplay ends on the tick it ended on, which both peers know
 however late they see it settle (rollback.md §4.6, "Rounds"), so the replay's
 marks are the simulation's.
 
-**Playing back.** `nettai-demo --replay set.ntrp` (`--side left|right`: the
-console shown; default the recorder's; `--headless F` renders the set's ticks
-F); in the library, `ReplayPlayer::new(&content, &replay, side)?` is a driver
+**Playing back.** nettai's Replays screen watches one from either console;
+`nettai-tool --replay set.ntrp` plays one out and says whether it reproduces,
+and with `--headless F` renders the set's ticks F (`--side left|right`: the
+console shown; default the recorder's); in the library, `ReplayPlayer::new(&content, &replay, side)?` is a driver
 like any other, and `replay::play_out(&content, &replay)` plays one to its end
 with no picture or sound (the ticks, each round's winner, the set's result,
 how the file ends, and the first difference). In a release build it plays

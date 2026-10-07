@@ -6,7 +6,8 @@ recorded case. This note covers what is the engine's, what is content, and how E
 routine. It also covers how EXE5 or BN4 would slot in, how the compile is verified, and what no recording reaches.
 
 The request came from the match editor ("it configures e.g. ruleset, arena, chips, navicust, patch cards"). A match
-file gives each side its NaviCust (docs/frontend.md §6), and the editor (nettai-demo) edits it as the game does.
+file gives each side its NaviCust (docs/frontend.md §6), and nettai's build creator edits a build's as the game does
+(docs/app.md §8).
 
 ## 1. The model
 
@@ -15,16 +16,16 @@ file gives each side its NaviCust (docs/frontend.md §6), and the editor (nettai
 | A program: its colors, shape, compressed shape, whether it is a plus part | an entry of the game's root's collection `navicust_programs` (data the core reads none of, `Registry::Entry`; content-model-v2.md §3.11) | content/exe6/navicust/<name>/init.luau |
 | What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | EXE6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
 | A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
-| The board: which cells a program may cover, its frame, the command line | the game's rules | rules/navicust/board.luau, which the compile and `validate` read, and the editor's grid reads as data |
+| The board: which cells a program may cover, its frame, the command line | the game's rules | rules/navicust/board.luau, which the compile and `validate` read, and the build creator's grid reads as data |
 | The compile: placement into stats and bugs | the game's rules | EXE6's `navicust` part (`round_setup`) |
-| A program's name and description | the locales | `[navicust_programs]` in locales/<lang>.toml (`name`, `description`: the US ROMs' and the Japanese ROMs' archives, an entry a program number; the editor's grid shows them) |
+| A program's name and description | the locales | `[navicust_programs]` in locales/<lang>.toml (`name`, `description`: the US ROMs' and the Japanese ROMs' archives, an entry a program number; the build creator's grid shows them) |
 | A program's number (a save's part id is 4 × it + the color variant) | compat | content/exe6/compat/navicust.toml |
 
 So the engine knows nothing of a NaviCust since step c3b: the grid, a program's shape centered on its middle cell,
 its quarter turns, the boards of `o` (board), `f` (frame) and `.` (no cell) cells and the placement rule (EXE6's
 `sub_813BB00`: each covered cell is a board or frame cell, and not all of them are frame) are the game's rules'
-(@exelib/navicust/compile, with each game's board). The editor draws the NaviCust as a grid of its own, reading
-what it needs as data (crates/nettai-demo's editor/navicust.rs): the boards and the command line from the game's
+(@exelib/navicust/compile, with each game's board). The build creator draws the NaviCust as a grid of its own,
+reading what it needs as data (crates/nettai's builds/grid.rs): the boards and the command line from the game's
 rules/navicust/board module as it loaded (`Battle::module_data`), each program's `shape`, `compressed`, `colors`
 and `plus` from its entry; where a game's data don't fit, the programs are a plain list. The definition's fields are the game's, which its rules read with the side's setup (`rules.setup_of(side)`: since step c3 a player's NaviCust is two facts of the rules'
 setup, `navicust_expansions` and `navicust_programs`, a list of `{ program, color, x, y, rotation, compressed }`,
@@ -148,9 +149,9 @@ flag is read outside battle only). (EXE5's compile leaves the HP for a console i
 real world's ending alone, which no link battle can tell from it: exe5-map.md §15.13.) The programs' effects are
 shared constructors (@exelib/navicust/effects). EXE5's board
 has no frame and grows as EXE6's does (4x4, 5x4, 5x5 by its ExpMemry, key item 0x61), on its 5x5 grid, the middle of
-the engine's 7x7. The engine's model, the match file and the editor take it
-as they are. The editor draws whichever board the side's game's board module gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts: its
-board module would name two rows, and the editor's grid would read a list of them.
+the engine's 7x7. The engine's model, the match file and the build creator take it
+as they are. The build creator draws whichever board the side's game's board module gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts: its
+board module would name two rows, and the build creator's grid would read a list of them.
 
 ## 5. Verification
 
@@ -185,4 +186,4 @@ checks that each part is on it.
 - Bug groups 13 to 15: no part has one. The original's table would read past its end.
 - The smaller boards (4x4, 5x4: key item 0x71 below 2). Every recorded save has the full board. A match file can
   name one (`expansions`).
-- Overlapping programs: the editor and a match's checks refuse them, as `sub_813BB68` does when placing.
+- Overlapping programs: the build creator and a match's checks refuse them, as `sub_813BB68` does when placing.

@@ -17,12 +17,21 @@ pub fn side_of_save(content: &Content, game: &str, file: &[u8]) -> Result<(Side,
         other => return Err(format!("{other} has no save import")),
     };
     // (What a build in the app never states is the rules' defaults: a save's
-    // HP, Regular memory, times and patterns are none of a build's.)
-    let reset = crate::builds::layout::as_built(content, game, &mut side);
-    if !reset.is_empty() {
-        notes.push(format!("set to the defaults, as every build in the app: {}", reset.join(", ")));
-    }
+    // HP, Regular memory, times and patterns are none of a build's. What it
+    // states as a preset is the preset on its side: EXE5's light/dark value.)
+    notes.extend(built(content, game, &mut side));
     Ok((side, notes))
+}
+
+/// The side set to what a build in the app is (`layout::as_built`), and
+/// what that changed, said.
+fn built(content: &Content, game: &str, side: &mut Side) -> Vec<String> {
+    let built = crate::builds::layout::as_built(content, game, side);
+    let mut notes: Vec<String> = built.taken.iter().map(|t| format!("{}, as every build in the app", t.said())).collect();
+    if !built.reset.is_empty() {
+        notes.push(format!("set to the defaults, as every build in the app: {}", built.reset.join(", ")));
+    }
+    notes
 }
 
 /// Whether game `game`'s saves can be read.
@@ -37,10 +46,7 @@ pub fn auto_battle_of_save(content: &Content, game: &str, file: &[u8], side: &mu
         exe5_compat::ROOT => exe5_compat::import::auto_battle_of_save(content, game, file, side)?,
         other => return Err(format!("{other}'s saves keep no auto battle data")),
     };
-    let reset = crate::builds::layout::as_built(content, game, side);
-    if !reset.is_empty() {
-        notes.push(format!("set to the defaults, as every build in the app: {}", reset.join(", ")));
-    }
+    notes.extend(built(content, game, side));
     Ok(notes)
 }
 
@@ -54,16 +60,19 @@ mod tests {
     use nettai_match::testing::{exe5_content, exe6_content};
 
     /// A save of the build's game gives the side; one of the other game is
-    /// refused.
+    /// refused. Its light/dark value takes the preset on its side of the
+    /// game's line (100: dark), and the import says so.
     #[test]
     fn a_save_gives_its_games_side() {
+        use nettai_match::facts::Stated;
         let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
         image[0x554C..0x554C + 0xE0].fill(0xFF);
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
         let five = exe5_content();
-        let (side, _) = side_of_save(&five, "exe5", &image).unwrap();
-        assert_eq!(side.facts.get(&five, "karma"), Some(nettai_match::facts::Stated::Number(100)));
+        let (side, notes) = side_of_save(&five, "exe5", &image).unwrap();
+        assert_eq!((side.facts.get(&five, "karma"), side.facts.get(&five, "hp")), (Some(Stated::Number(0)), Some(Stated::Number(997))));
+        assert!(notes.iter().any(|n| n == "karma 100 is dark's: the dark preset (hp 997, karma 0), as every build in the app"), "{notes:?}");
         let six = exe6_content();
         let e = side_of_save(&six, "exe6", &image).unwrap_err();
         assert!(e.starts_with("not a save of exe6"), "{e}");

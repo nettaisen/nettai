@@ -454,7 +454,7 @@ impl Battle {
     /// `validate`): each problem, in their order; nothing when they find
     /// none, or have no `validate`. The rules read the setup and the stats
     /// as the round set them up. For tools (a match's checks, netplay's
-    /// offer, the editor): no part of the simulation.
+    /// offer, the build creator): no part of the simulation.
     pub fn validate(&mut self, side: u8) -> Vec<Problem> {
         self.validation = Some(Vec::new());
         self.notify_side(side & 1, RulesHook::Validate);
@@ -463,7 +463,7 @@ impl Battle {
 
     /// For tools: what module `module` of the content (by its name,
     /// `exe6:rules/navicust/board`) returned as it loaded, as plain data, a
-    /// function in it left out; nothing is called (the editor reads the
+    /// function in it left out; nothing is called (the build creator reads the
     /// NaviCust's boards so). None: no module of that name.
     pub fn module_data(&self, module: &str) -> Option<Result<nettai_content_api::Data, String>> {
         crate::behavior::module_data(self, module)
