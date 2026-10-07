@@ -321,22 +321,31 @@ fn depart(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_8013CC4`: the NaviCust panel-trail bugs and programs (stats 0x12,
-/// 0x13): at a chance of level in 8, the panel a player steps off (unless
-/// it is missing or broken) breaks (kind 1), cracks (3) or turns to the
-/// kind's panel type, with the type's trail sound (`byte_8013D44`, the
-/// panel rules' `trail_sound`) when the type changes.
+/// 0x13): at a chance of level in 8 (EXE4's: every step, its kind not
+/// 0xFF; the rules' `effects.panel_trail`), the panel a player steps off
+/// (unless it is missing or broken) breaks (kind 1), cracks (3, by chance
+/// alone) or turns to the kind's panel type, with the type's trail sound
+/// (`byte_8013D44`, the panel rules' `trail_sound`) when the type changes.
 pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
+    use crate::content::PanelTrail;
     if ai(b, r).actor_type != ActorType::Player {
         return;
     }
-    let level = stats(b, r).bugs.panel_trail_level;
-    if level == 0 {
-        return;
-    }
-    if (b.rng.next_positive() & 7) as i32 > level as i32 - 1 {
-        return;
-    }
+    let rule = b.game_rules().effects.panel_trail;
     let kind = stats(b, r).bugs.panel_trail_kind;
+    match rule {
+        PanelTrail::ByChance => {
+            let level = stats(b, r).bugs.panel_trail_level;
+            if level == 0 {
+                return;
+            }
+            if (b.rng.next_positive() & 7) as i32 > level as i32 - 1 {
+                return;
+            }
+        }
+        PanelTrail::Always if kind == 0xFF => return,
+        PanelTrail::Always => {}
+    }
     let Some(panel) = b.field.panel(from.x, from.y) else {
         panic!("the panel trail reads the type of panel {from:?}, off the field (sub_8013CC4)");
     };
@@ -348,7 +357,7 @@ pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
         1 => {
             b.break_panel(from.x, from.y);
         }
-        3 => {
+        3 if rule == PanelTrail::ByChance => {
             b.crack_panel(from.x, from.y);
         }
         _ => {

@@ -2619,6 +2619,10 @@ export type IdentitySpec = {
     -- the screen, y down), where the rules' `effects.chip_icons` is
     -- "navi_offset" (EXE4's table by navi number).
     chip_icons_at: { number }?,
+    -- Where its status visual sits from its position (x toward the enemy
+    -- side, z up), where the rules' `effects.status_visual.place` is
+    -- `status_mark` (EXE4's actor record's +6 and +7).
+    status_mark: { number }?,
     -- The ice block that fits it (none: small).
     ice: ("small" | "medium" | "large")?,
     -- What it is as a navi no player controls (actor type navi, which a
