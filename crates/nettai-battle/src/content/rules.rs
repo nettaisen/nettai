@@ -240,6 +240,9 @@ pub struct EffectsRules {
     /// When a player's step leaves its stats' panel trail on the panel it
     /// leaves (`bugs.panel_trail_kind`).
     pub panel_trail: PanelTrail,
+    /// The status visual over a navi (effect object #6): where it sits
+    /// and whether it casts a shadow.
+    pub status_visual: StatusVisualRules,
     /// The order the objects of a pool are drawn in. Presentation: the
     /// renderer's.
     pub draw_order: DrawOrder,
@@ -1080,6 +1083,31 @@ pub enum HitMood {
     /// wear the receiver's (a counter hit's 0x7F): EXE4's hit kernel
     /// (0x08012C10) and status routine (0x080131E4). No `countered`.
     HitterGains,
+}
+
+/// The status visual over a navi (effect object #6, `sub_80E08FC`): the
+/// confusion's stars and the blindness's mark.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StatusVisualRules {
+    /// Where it sits on the navi.
+    pub place: StatusVisualPlace,
+    /// It casts its sprite's shadow (EXE6's `sub_80E091C`, EXE5's); EXE4's
+    /// none (0x080E2302).
+    pub shadow: bool,
+}
+
+/// Where the status visual sits.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StatusVisualPlace {
+    /// At the navi's sprite attach point 5, hidden off the field (EXE6's
+    /// `sub_80E0954`, EXE5's).
+    AttachPoint,
+    /// At its identity's `status_mark` from its position, x toward the
+    /// enemy side, shown anywhere (EXE4's 0x080E235A: its actor record's
+    /// +6 and +7, 0x08011878).
+    StatusMark,
 }
 
 /// When a player's step leaves its panel trail (the rule section `effects`'
