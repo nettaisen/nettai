@@ -194,7 +194,8 @@ pub enum Removal {
     Absorbed { side: u8 },
 }
 
-/// Hit modifier bit of a pushing hit.
+/// Hit modifier bit of a pushing hit, as a [`Push::AnyHit`] obstacle
+/// (EXE6's and EXE5's) tests it.
 const PUSHING_HIT: u8 = 0x40;
 
 /// Collision types that break an obstacle outright when they touch it:
@@ -334,7 +335,9 @@ pub fn absorb_all(b: &mut Battle, absorber: ObjectRef) {
 
 /// `sub_801AD9E` and its variants (`push`): the hit flash ends; once the
 /// fight is on, resolve this tick's hits and total the damage. A pushing
-/// hit (hit modifier 0x40) asks for a push, unless the obstacle is moving.
+/// hit (a push with the rules' drag bit: EXE6's 0x40, which no hit has
+/// without a push; EXE4's 0x0801393E the flinch bit) asks for a push,
+/// unless the obstacle is moving.
 pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     // sprite_clearFinalPalette
     b.objects.sprite_mut(r).look.white = false;
@@ -356,7 +359,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     }
     let hit_mod = b.collision.get(c).hit_mod_final;
     // (f1 0x40 marks objects that can't be pushed.)
-    if push != Push::Ignored && f1_of(b, r) & f1::MOVING == 0 && hit_mod & PUSHING_HIT != 0 {
+    if push != Push::Ignored && f1_of(b, r) & f1::MOVING == 0 && b.game_rules().push_reading.drags(hit_mod) {
         set_f2(b, r, f2::PUSHED);
         clear_f2(b, r, f2::FLINCH);
         if push == Push::ForgetsDamage {
