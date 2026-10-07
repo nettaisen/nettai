@@ -404,13 +404,13 @@ fn soul_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
 const CHAOS_ICON: usize = 13;
 
 /// A soul's icon among the pack's soul button's: its place among its
-/// side's navi's souls, from 1 (the navi's `forms.souls` lists them in the
+/// side's navi's souls, from 1 (the navi's `forms.souls.form_list` lists them in the
 /// icons' order, the original's soul numbers'); 0, the empty icon, for no
 /// soul or one the navi hasn't.
 fn soul_place(b: &Battle, side: u8, soul: Option<FormHandle>) -> usize {
     let navi = b.stats[side as usize & 1].navi;
     match (soul, &b.content.navi(navi).forms) {
-        (Some(f), Some(forms)) => forms.souls.iter().position(|&s| s == f).map_or(0, |i| i + 1),
+        (Some(f), Some(forms)) => forms.listed("souls").iter().position(|&s| s == f).map_or(0, |i| i + 1),
         _ => 0,
     }
 }
@@ -437,14 +437,15 @@ pub const OTHER_VERSIONS_SOUL: &str = "a soul's icon in its own version's outlin
 /// The row of the soul button's icon palettes that is `soul`'s own
 /// version's, of `rows` (the pack's base version's, then each other
 /// version's: `icon_palettes`). A soul's version is its place's among its
-/// navi's souls, which `forms.souls` lists a version after another in
+/// navi's souls, which `forms.souls.form_list` lists a version after another in
 /// equal runs (the original's soul numbers: Team ProtoMan's six, then Team
 /// Colonel's): no field restates it. No soul, or one the navi hasn't: the
 /// base version's.
 fn soul_palette_row(b: &Battle, side: u8, soul: Option<FormHandle>, rows: usize) -> usize {
     let navi = b.stats[side as usize & 1].navi;
     let Some(forms) = &b.content.navi(navi).forms else { return 0 };
-    version_run(soul.and_then(|f| forms.souls.iter().position(|&s| s == f)), forms.souls.len(), rows)
+    let souls = forms.listed("souls");
+    version_run(soul.and_then(|f| souls.iter().position(|&s| s == f)), souls.len(), rows)
 }
 
 /// Which of `versions` equal runs of a list of `len` place `place` (from
