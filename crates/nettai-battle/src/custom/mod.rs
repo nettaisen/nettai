@@ -130,11 +130,14 @@ pub struct CustomScreens {
     pub ticks: u32,
     /// Both results are in; the screen closes next tick.
     pub committed: bool,
+    /// The custom gauge as the screens opened (what a console that keeps
+    /// it until its own send holds: `Battle::gauge_for`).
+    pub gauge_at_open: u16,
 }
 
 impl CustomScreens {
     pub fn new(players: &[PlayerSetup; 2]) -> CustomScreens {
-        CustomScreens { sides: [Side::new(&players[0]), Side::new(&players[1])], ticks: 0, committed: false }
+        CustomScreens { sides: [Side::new(&players[0]), Side::new(&players[1])], ticks: 0, committed: false, gauge_at_open: 0 }
     }
 }
 
@@ -465,7 +468,9 @@ impl Battle {
     /// The custom screen opens (`sub_8009338`'s first tick, `sub_8026840`).
     pub(crate) fn open_custom_screens(&mut self) {
         // Shared: the turn count, the gauge (a game that keeps it full until
-        // the send, EXE4's, empties it there: `restart_gauge`).
+        // the send, EXE4's, empties it at the first: `restart_gauge`; each
+        // console its own at its own, `Battle::gauge_for`).
+        self.custom.gauge_at_open = self.gauge.value;
         if self.content.rules().custom_screen.gauge_empties_at_open {
             self.gauge.value = 0;
             self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
@@ -552,6 +557,23 @@ impl Battle {
             for hud in &mut self.chip_hud {
                 hud.icons = true;
             }
+        }
+    }
+
+    /// The custom gauge as `side`'s console holds it: the battle's, but in a
+    /// game whose screen keeps it until its own send (the rules'
+    /// `custom_screen.gauge_empties_at_open` false: EXE4's 0x0801E1B4), what
+    /// it was at the opening while that side's screen hasn't sent (the
+    /// battle's empties at the first send; nothing reads it until the fight
+    /// resumes, after both). Presentation (the HUD's gauge) and the
+    /// recordings' comparison.
+    pub fn gauge_for(&self, side: u8) -> u16 {
+        let s = &self.custom.sides[side as usize & 1];
+        let keeps = !self.content.rules().custom_screen.gauge_empties_at_open;
+        if keeps && self.round.mode == crate::battle::mode::CUSTOM && s.screen.is_some() && s.sent.is_none() {
+            self.custom.gauge_at_open
+        } else {
+            self.gauge.value
         }
     }
 
