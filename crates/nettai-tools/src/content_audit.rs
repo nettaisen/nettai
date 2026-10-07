@@ -283,12 +283,12 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         let navi = NaviHandle(n as u16);
         for i in 0..c.defs.forms.len() {
             let form = FormHandle(i as u16);
-            if nettai_render::custom::cross_picture(c, a, navi, form).is_none() {
+            if nettai_render::custom::form_name_picture(c, a, navi, form).is_none() {
                 continue;
             }
-            lookups::cross_name(a, c, navi, form, p);
+            lookups::form_name(a, c, navi, form, p);
             if let Some(said) = text.form_description(c, form) {
-                lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
+                lookups::dialogue(font, Lookup::FormDescription(form), said.text, p);
             }
         }
     }

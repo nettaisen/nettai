@@ -87,7 +87,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
             // A form a window of the rules describes (EXE6's Cross window: the
             // Cross under its cursor, of whichever game it is).
             let said = form.and_then(|f| strings.form_description(&b.content, f));
-            (chatbox, said, None, form.map(Lookup::CrossDescription))
+            (chatbox, said, None, form.map(Lookup::FormDescription))
         }
         Phase::RunMessage { chatbox: Some(chatbox) } => {
             let said = strings.run_message(&b.content, navi);
