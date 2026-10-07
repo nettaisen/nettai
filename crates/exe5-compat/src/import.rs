@@ -391,7 +391,7 @@ mod tests {
     /// it is compat's (records.toml's forms). MegaMan lists his souls in
     /// the order of those numbers, 1 to 12: the order of the soul button's
     /// icons in a pack, which the frontend takes an icon by
-    /// (nettai-render's `soul_place`).
+    /// (nettai-render's `offer_icon`).
     #[test]
     fn megamans_souls_are_in_the_order_of_their_numbers() {
         let content = exe5_content();

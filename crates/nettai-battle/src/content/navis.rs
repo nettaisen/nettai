@@ -221,6 +221,12 @@ impl NaviForms {
     pub fn listed(&self, set: &str) -> &[FormHandle] {
         self.lists.iter().find(|(v, _)| v == set).map_or(&[], |(_, forms)| forms)
     }
+
+    /// The first of the lists that holds `form`, with the form's place in
+    /// it (from 0).
+    pub fn holding(&self, form: FormHandle) -> Option<(usize, &[FormHandle])> {
+        self.lists.iter().find_map(|(_, forms)| Some((forms.iter().position(|&f| f == form)?, forms.as_slice())))
+    }
 }
 
 /// A navi's stats when a navi switch brings it fresh (`byte_80210DD`,
