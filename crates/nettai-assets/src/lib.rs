@@ -265,27 +265,32 @@ pub struct Background {
     pub palette: Option<Palette>,
     /// Scroll per frame in 1/16 pixel (the game's scroll counters).
     pub scroll: (i32, i32),
-    /// Or a scroll that speeds up from the battle's first frame
-    /// ([`Speeding`]); with it, `scroll` is none.
+    /// Or a scroll that speeds up ([`Speeding`]); with it, `scroll` is
+    /// none.
     pub speeding: Option<Speeding>,
     pub anims: Vec<GfxAnim>,
 }
 
-/// A scroll that speeds up (EXE5's BG1 callback 0x080019EC, which moves
-/// the picture only while battle flag 0x40 is set, and the battle's intro
-/// sets it on the battle's first frame, 0x080E06A0): on the battle's `k`th
-/// frame its speed is `k * step`, at most `top`, both in 1/65536 pixel a
-/// frame, and the picture moves by the speed's whole pixels, a part of one
-/// counting whole (the game's arithmetic shift of its negated counter).
+/// A scroll that speeds up (a BG1 callback that takes a step from its
+/// counter each frame, to a top, and moves the picture by the counter's
+/// whole pixels: EXE5's 0x080019EC, EXE4's the scrollers' +0xB8): on its
+/// `k`th frame its speed is `k * step`, at most `top` (its sign `step`'s),
+/// both in 1/65536 pixel a frame, and the picture moves by the speed's whole
+/// pixels, a part of one counting whole (the game's arithmetic shift of a
+/// counter that falls). Its frames are the background's own from its load,
+/// or with `from_battle` the battle's from its first (EXE5's moves the
+/// picture only while battle flag 0x40 is set, which the battle's intro sets
+/// on the battle's first frame, 0x080E06A0).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Speeding {
     pub step: (i32, i32),
     pub top: (i32, i32),
+    pub from_battle: bool,
 }
 
 impl Speeding {
-    /// How far the picture has moved by the end of the battle's `k`th
-    /// frame (the first frame's 1), on each axis.
+    /// How far the picture has moved by the end of its `k`th frame (the
+    /// first frame's 1), on each axis.
     pub fn offset(&self, k: u32) -> (i32, i32) {
         fn axis(step: i32, top: i32, k: u32) -> i32 {
             if step == 0 {
@@ -721,7 +726,7 @@ mod tests {
     /// the custom screen and the pause.
     #[test]
     fn a_speeding_scroll_moves_as_nebulagray_does() {
-        let s = Speeding { step: (0, 0x400), top: (0, 0x4_0000) };
+        let s = Speeding { step: (0, 0x400), top: (0, 0x4_0000), from_battle: true };
         let y = |k: u32| s.offset(k).1 & 0xFF;
         let shots = [(19, 19), (59, 59), (109, 154), (159, 29), (209, 196), (215, 220), (279, 220), (759, 92), (1129, 36)];
         for (k, vofs) in shots {
