@@ -29,12 +29,13 @@ return {
     -- The hit test (0x0801691C), where games differ: a FloatShoe body is hit by all (EXE5's collision types have no
     -- 0x80 self bit); the flag 0x80000000 is a body under the sea's surface, tested as a submerged one, and elec
     -- reaches either; a guard breaks to types with 0x1002 (so its own turn-aside mask, 0x0C004000, is the engine's
-    -- 0x0C005000 here).
+    -- 0x0C005000 here); an untouchable body is hit by none, guarding or not.
     hit_test = {
         float_shoe_needs_self_bit = false,
         bubbled_as_submerged = true,
         elec_reaches_submerged = true,
         guard_breaks_to = 0x1002,
+        guard_before_untouchable = false,
     },
     -- A move's direction in the collision record (0x0800CC92, EXE6's `sub_800E994`): up, down, back or forward by
     -- the side, other for a move of two panels or more right or down.

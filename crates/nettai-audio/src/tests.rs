@@ -87,18 +87,8 @@ fn pinch_and_volume_cues_are_player_controls() {
         [Request::Pitch { player: m, tracks: 0xFFFF, pitch: 0 }, Request::Tempo { player: m, tempo: 0x100 }]
     );
     assert_eq!(
-        requests(&mut c, SoundCue::RestoreVolume),
-        [
-            Request::Volume { player: m, tracks: 0xFFFF, volume: 0x100 },
-            Request::Volume { player: CUSTOM_SCREEN_PLAYER, tracks: 0xFFFF, volume: 0x100 }
-        ]
-    );
-    assert_eq!(
-        requests(&mut c, SoundCue::ScreenVolume { music: 0xE0, screen: 0x80 }),
-        [
-            Request::Volume { player: m, tracks: 0xFFFF, volume: 0xE0 },
-            Request::Volume { player: CUSTOM_SCREEN_PLAYER, tracks: 0xFFFF, volume: 0x80 }
-        ]
+        requests(&mut c, SoundCue::Volume { player: 22, volume: 0x80 }),
+        [Request::Volume { player: PlayerId(22), tracks: 0xFFFF, volume: 0x80 }]
     );
 }
 
