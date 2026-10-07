@@ -32,13 +32,75 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         let path = dir.join(format!("{name}.png"));
         Box::new(move |ui: &AppWindow, _: &Rc<RefCell<App>>| write(ui, &path)) as Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>)>
     };
+    // (`NETTAI_TOUR_ONLY=builds`: the builds' screens alone.)
+    let only = std::env::var("NETTAI_TOUR_ONLY").ok();
+    let walks = |part: &str| only.as_deref().is_none_or(|o| o.split(',').any(|p| p == part));
     // (The games load first.)
-    add(5000, Box::new(|ui, _| ui.window().set_size(LogicalSize::new(1280.0, 800.0))));
+    add(if only.is_some() { 12000 } else { 5000 }, Box::new(|ui, _| ui.window().set_size(LogicalSize::new(1280.0, 800.0))));
     for (size, w, h) in [("desktop", 1280.0, 800.0), ("phone", 390.0, 844.0)] {
         add(600, Box::new(move |ui, _| ui.window().set_size(LogicalSize::new(w, h))));
         for &lang in &languages {
             let tag = |screen: &str| format!("{screen}-{lang}-{size}");
             add(400, Box::new(move |_, app| app.borrow_mut().set_language(lang)));
+            if walks("builds") {
+                add(100, Box::new(|_, app| app.borrow_mut().tour_build()));
+                add(900, shot(&dir, tag("builds")));
+                add(100, Box::new(|_, app| app.borrow_mut().builds_activate(2)));
+                add(900, shot(&dir, tag("build-navi")));
+                for t in 1..8 {
+                    add(100, Box::new(move |_, app| app.borrow_mut().build_tab(t)));
+                    add(500, Box::new(move |ui, app| {
+                        let (key, lang) = {
+                            let a = app.borrow();
+                            (a.builds.editor.as_ref().and_then(|e| e.layout.tabs.get(t).map(|t| t.key().to_string())), a.lang)
+                        };
+                        if let Some(key) = key {
+                            write(ui, &dir_of(ui, &key, t, lang));
+                        }
+                    }));
+                }
+                // The folder's strip, the board with a piece in hand.
+                add(100, Box::new(|_, app| {
+                    let mut app = app.borrow_mut();
+                    app.build_tab(1);
+                    app.build_act(0, 3, -1);
+                    app.build_act(0, 3, -1);
+                }));
+                add(500, shot(&dir, tag("build-folder-strip")));
+                add(100, Box::new(|_, app| {
+                    let mut app = app.borrow_mut();
+                    let grid = app.builds.editor.as_ref().and_then(|e| e.layout.tabs.iter().position(|t| *t == crate::builds::layout::Tab::Grid));
+                    if let Some(g) = grid {
+                        app.build_tab(g);
+                        app.build_act(1, 4, 0);
+                        app.build_grid_hover(2, 2);
+                    }
+                }));
+                add(500, shot(&dir, tag("build-grid-held")));
+                add(100, Box::new(|_, app| app.borrow_mut().go(Screen::Builds)));
+                add(900, Box::new(|_, _| {}));
+                // The build chosen in Play, and in the lobby linked directly.
+                add(100, Box::new(|ui, app| {
+                    let mut app = app.borrow_mut();
+                    app.enter(Screen::Play);
+                    let game = app.builds_game_index();
+                    app.play_game(game);
+                    app.play_build(1);
+                    ui.set_play_cursor(2);
+                }));
+                add(900, shot(&dir, tag("play-build")));
+                add(100, Box::new(|ui, app| {
+                    let mut app = app.borrow_mut();
+                    app.enter(Screen::Lobby);
+                    app.lobby_mode(2);
+                    app.lobby_build(1);
+                    ui.set_lobby_cursor(4);
+                }));
+                add(900, shot(&dir, tag("lobby-direct")));
+                if only.is_some() {
+                    continue;
+                }
+            }
             add(300, Box::new(|ui, app| {
                 app.borrow_mut().enter(Screen::Title);
                 ui.set_title_started(false);
@@ -87,6 +149,14 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         let _ = slint::quit_event_loop();
     }));
     run(ui.as_weak(), app.clone(), Rc::new(steps), 0);
+}
+
+/// Where a tab of the creator's picture goes: by the tab, the language and
+/// the window's size.
+fn dir_of(ui: &AppWindow, key: &str, tab: usize, lang: &str) -> PathBuf {
+    let dir = std::env::var_os("NETTAI_TOUR").map(PathBuf::from).unwrap_or_default();
+    let size = if (ui.window().size().width as f32) < 800.0 * ui.window().scale_factor() { "phone" } else { "desktop" };
+    dir.join(format!("build-{tab}-{key}-{lang}-{size}.png"))
 }
 
 fn run(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, steps: Rc<Vec<Step>>, at: usize) {
