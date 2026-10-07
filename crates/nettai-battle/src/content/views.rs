@@ -119,9 +119,6 @@ pub enum PlayerFact {
     /// The version of the game they play, one of the names its field lists
     /// (EXE6's "gregar" or "falzar": the version's own pictures).
     Version,
-    /// Their save has Beast Out (EXE6's event flag 0xE0: the emotion window
-    /// shows its count).
-    BeastOut,
     /// The forms they have for their form list, in its order: the forms a
     /// form list window offers (EXE6's Crosses, up to five of either
     /// version, its setup field `crosses`): an empty list is none.
@@ -148,7 +145,6 @@ impl PlayerFact {
             PlayerFact::RegularChip,
             PlayerFact::TagChips,
             PlayerFact::Version,
-            PlayerFact::BeastOut,
             PlayerFact::FormList,
             PlayerFact::Level,
             PlayerFact::BaseHp,
@@ -164,7 +160,6 @@ impl PlayerFact {
             PlayerFact::RegularChip => "regular_chip",
             PlayerFact::TagChips => "tag_chips",
             PlayerFact::Version => "version",
-            PlayerFact::BeastOut => "beast_out",
             PlayerFact::FormList => "form_list",
             PlayerFact::Level => "level",
             PlayerFact::BaseHp => "hp",
@@ -191,7 +186,6 @@ impl PlayerFact {
             PlayerFact::RegularChip => matches!(ty, FieldType::OptionalU8),
             PlayerFact::TagChips => matches!(ty, FieldType::List(e, 2) if matches!(**e, FieldType::U8)),
             PlayerFact::Version => matches!(ty, FieldType::Enum(_)),
-            PlayerFact::BeastOut => matches!(ty, FieldType::Bool),
             PlayerFact::FormList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
             PlayerFact::Level => matches!(ty, FieldType::OptionalU8),
             PlayerFact::BaseHp => matches!(ty, FieldType::U16),
@@ -205,7 +199,6 @@ impl PlayerFact {
             PlayerFact::RegularChip => "a u8? (an entry of the folder, or none)",
             PlayerFact::TagChips => "a list of two u8 (entries of the folder)",
             PlayerFact::Version => "a list of the versions' names",
-            PlayerFact::BeastOut => "a bool",
             PlayerFact::FormList => "an array of forms",
             PlayerFact::Level => "a u8? (a level, or none)",
             PlayerFact::BaseHp => "a u16",

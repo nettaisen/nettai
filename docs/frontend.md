@@ -144,7 +144,10 @@ is the pack's image under the chip's key; whether its damage shows is its
 definition's flag. The emotion window shows the face the navi's form names
 for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
 (`NaviData::mugshot`); mugshot numbers from `nettai_assets::NAVI_MUGSHOTS`
-are the link navis' faces, with their Full Synchro palettes.
+are the link navis' faces, with their Full Synchro palettes. The box beside
+the face shows its side's count (the stat of the role `window_count`) where
+the side's rules say so for the round (`battle.set_window_count`: EXE6's
+Beast Out turns, `sub_801D814`), else the empty box.
 
 ### The battle backgrounds, by area
 
@@ -1274,8 +1277,8 @@ descriptions and the editor without a line of Rust.
   form list, EXE6's `crosses`), a form that is none of the side's navi's
   own lists. What a value means is the rules' alone: no range is checked
   beyond the type's.
-- Facts known by role (`PlayerFact`): the version, Beast Out and the form
-  list, which the battle and its frontend read; the level and MegaMan's base
+- Facts known by role (`PlayerFact`): the version and the form list,
+  which the battle and its frontend read; the level and MegaMan's base
   HP, which tools read (the checks, the editor). Where a tool needs one it
   asks by the role: a navi's version byte in its stats, the forms a random
   match's form list is picked from, the level's range.
