@@ -29,8 +29,6 @@ export type Setup = {
     -- 500 (0x0800D6BE, 0x0800D6CA), the setup's default. (A match's side's `karma`, which nettai-match writes by this
     -- field's name.)
     karma: number,
-    -- The save's Full Synchro at the start (NaviStats +0x1F: patch card 45's), none by default.
-    full_synchro_start: boolean,
 }
 
 -- 0x0800F56A: the starting mood by the value and the Full Synchro at the start.
@@ -50,10 +48,11 @@ local light_dark = {}
 -- A value at or below this is a dark MegaMan's (0x08013306 and 0x08013348: 0x1F3); above it a navi closes a hole.
 local DARK_AT_MOST = 499
 
--- 0x0800D872: MegaMan's starting mood.
-function light_dark.starting_mood(_side: number): number?
+-- 0x0800D872: MegaMan's starting mood, by the light/dark value and the Full Synchro at the start (NaviStats +0x1F:
+-- the rules' stat, patch card 45's, ../patch_cards).
+function light_dark.starting_mood(side: number): number?
     local setup = rules.setup() :: Setup
-    return starting_mood(setup.karma, setup.full_synchro_start)
+    return starting_mood(setup.karma, battle.navi(side).full_synchro_start)
 end
 
 -- Each tick of the navi's intake: 0x080132E6, the holy panel under a dark MegaMan turns normal; 0x08013318, a navi

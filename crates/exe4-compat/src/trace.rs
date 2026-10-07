@@ -681,10 +681,9 @@ impl Round {
             // What the save brings to the stats (EXE4's rules/save): the base
             // HP, which the rules write into the HP.
             player.set_fact(content, "hp", &[Fact::Value(Value::Int(d.navi_stats[side].max_base_hp as i64))])?;
-            // MegaMan's light/dark value and the Full Synchro at the start
-            // (EXE4's rules/light_dark: the starting mood).
+            // MegaMan's light/dark value (EXE4's rules/light_dark: the
+            // starting mood).
             player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
-            player.set_fact(content, "full_synchro_start", &[Fact::Value(Value::Bool(d.navi_stats[side].full_synchro))])?;
             // His save's NaviCust, which the rules compile (rules/navicust).
             if let Some(n) = &self.setup.navicusts {
                 let list = unhex(&n[side].parts)?;
@@ -788,6 +787,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.undershirt = s.undershirt;
     stats.set_game_stat(content, "weapon_level", Value::Int(s.weapon_level as i64))?;
     stats.set_game_stat(content, "move_bug", Value::Int(s.move_bug as i64))?;
+    stats.set_game_stat(content, "full_synchro_start", Value::Bool(s.full_synchro))?;
     stats.attack = s.attack;
     stats.rapid = s.rapid;
     stats.charge = s.charge;

@@ -1255,13 +1255,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 56. **The patch cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
     group): the cards' content, their handlers (0x08041E8C), the setup's `patch_cards`, exe4-compat's from a recording's
     slots (a recording with a card on stops at its setup until then). **Done** (§8): tools/exe4/gen_patch_cards.py
-    (verify) decodes the four ROMs' handlers; content/exe4/patch_cards (the 56 cards whose effects EXE4's content can
+    (verify) decodes the four ROMs' handlers; content/exe4/patch_cards (the 57 cards whose effects EXE4's content can
     do), rules/patch_cards (their constructors and their part of the reload), the setup's `patch_cards` (a card and its
     slot), exe4-compat's numbers (compat/patch-cards.toml), a recording's slots and a save's into the setup; the lab's
     modcards/ recordings whose cards are ported compile as recorded (exe4_navicust) and replay. The cards that wait,
     each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
-    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); Full Synchro at the start (card 45,
-    +0x1F: `full_synchro_start` turns from a setup fact into a rules stat the card writes, item 60); MegaMan's color
+    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); MegaMan's color
     (59, 60, 89, 90: +0x27, item 60); the pairs, each half applying when the other sits in its slot (0x08042504):
     Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item 60), Charge FullCustom (103, 104:
     the charged shot FullCustom, item 57).
@@ -1276,8 +1275,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
     routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
 60. **The patch cards' own bytes.** Card 45 sets NaviStats +0x1F, the Full Synchro at the start, which the reload's
-    reset doesn't keep (0x08036CC0): the setup fact `full_synchro_start` is the card's, so it becomes a rules stat the
-    card writes and rules/light_dark reads (the fact gone from exe4-compat and the import). Cards 59, 60, 89 and 90 set
+    reset doesn't keep (0x08036CC0): **done**, the rules' stat `full_synchro_start`, which the card writes and
+    rules/light_dark's starting mood reads (no setup fact: exe4-compat reads +0x1F into the stat where a recording's
+    stats aren't compiled). Cards 59, 60, 89 and 90 set
     +0x27, MegaMan's color, which rules/light_dark's palette reads (+0x27 x 5): a rules stat. Cards 76 and 77 (All
     Guard) set +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up from the start, so
     it turns aside every hit that doesn't break guards, 0x08012B84).
