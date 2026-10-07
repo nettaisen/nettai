@@ -3,11 +3,10 @@
 -- docs/engine/shot-chips.md §10): the shared action
 -- (@exelib/widesht/action) with EXE6's wide shooter, attachment and wave.
 --
--- These are their actions; the chips are ./chip and chips/suprspr
--- (WideSht is SuprSpr's Program Advance ingredient).
+-- Each chip states its action with its own wave (WideSht's ./init,
+-- SuprSpr's chips/suprspr).
 
 local attachment = require("../../objects/attachment")
-local collision = require("../../rules/collision")
 local common = require("@exelib/widesht/action")
 local wave = require("./wave")
 
@@ -26,14 +25,7 @@ function widesht.action(spec: WideShotSpec): Action
     return common.action(spec, LOOK)
 end
 
--- The waves: WideSht's (the original's kind 3, by `byte_80CB58C`), and
--- SuprSpr's (kind 6), which goes through.
-local WIDE = wave.variant { speed = 0x6_0000, pierces = false, holds = false, trails = false, collision = collision.attack }
-local SUPER = wave.variant { speed = 0x6_0000, pierces = true, holds = false, trails = false, collision = collision.attack }
-
-widesht.actions = {
-    widesht = widesht.action { id = "widesht/action", wave = WIDE, waves = 1 },
-    suprspr = widesht.action { id = "suprspr/action", wave = SUPER, waves = 3 },
-}
+-- A wave variant.
+widesht.variant = wave.variant
 
 return widesht
