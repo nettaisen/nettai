@@ -1070,6 +1070,10 @@ pub struct EmotionRules {
     /// Anger's boost plays the boost's sound, as Full Synchro's does (EXE6's,
     /// EXE5's); else none (EXE4's 0x0800D57C ends the anger alone).
     pub anger_boost_sound: bool,
+    /// A tick's damage that asks for anger, this much or more (EXE6's
+    /// `sub_80142DC` and EXE5's 0x080119C4: half of it against 0x96, 300);
+    /// none, only 120 ticks stunned do (EXE4's 0x0800C540).
+    pub anger_damage: Option<u16>,
 }
 
 /// What a hit's counter byte (the hitter's collision +5's low bits) does
@@ -1096,9 +1100,6 @@ pub enum HitMood {
 pub struct StatusVisualRules {
     /// Where it sits on the navi.
     pub place: StatusVisualPlace,
-    /// It casts its sprite's shadow (EXE6's `sub_80E091C`, EXE5's); EXE4's
-    /// none (0x080E2302).
-    pub shadow: bool,
 }
 
 /// Where the status visual sits.
@@ -1278,6 +1279,8 @@ struct EmotionSection {
     hit_mood: HitMood,
     full_synchro_spent: u8,
     anger_boost_sound: bool,
+    #[serde(default)]
+    anger_damage: Option<u16>,
 }
 
 #[derive(Deserialize)]
@@ -1294,7 +1297,13 @@ impl TryFrom<EmotionSection> for EmotionRules {
     fn try_from(s: EmotionSection) -> Result<EmotionRules, String> {
         let order = s.order.into_iter().map(|c| (c.emotion, c.when)).collect();
         let rules = EmotionRules::new(s.mood_held, s.anger_end, order, s.roles.into_iter().collect())?;
-        Ok(EmotionRules { hit_mood: s.hit_mood, full_synchro_spent: s.full_synchro_spent, anger_boost_sound: s.anger_boost_sound, ..rules })
+        Ok(EmotionRules {
+            hit_mood: s.hit_mood,
+            full_synchro_spent: s.full_synchro_spent,
+            anger_boost_sound: s.anger_boost_sound,
+            anger_damage: s.anger_damage,
+            ..rules
+        })
     }
 }
 
@@ -1343,6 +1352,7 @@ impl EmotionRules {
             hit_mood: HitMood::CounterMark,
             full_synchro_spent: 0x80,
             anger_boost_sound: true,
+            anger_damage: Some(300),
         })
     }
 }

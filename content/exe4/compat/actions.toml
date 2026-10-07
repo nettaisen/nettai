@@ -4,16 +4,44 @@
 # EXE4 recordings and code: edit it when content is renamed or added.
 
 "engine/move" = 0x07
+# A dimming chip's (0x080EB9EA).
+"engine/dimming-chip" = 0x0C
 # The buster's shot (0x080EB316).
 "megaman/buster/shot" = 0x08
-# The Cannon chip's use (the chips' action 0x0B, 0x080EB894).
+# The vulcans' (the chips' action 0x1F, 0x080EC842).
+"drkvulcn/action" = 0x1F
+# The spreaders' (the chips' action 0x1E, 0x080EC760).
+"drkspred/action" = 0x1E
+# The throws' (the chips' action 0x09, 0x080EB3FE).
+"darkbomb/action" = 0x09
+# The swords' (the chips' action 0x0A, 0x080EB51E).
+"drksword/action" = 0x0A
+# The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
+"hicannon/action" = 0x0B
+"m-cannon/action" = 0x0B
+"drkcanon/action" = 0x0B
 # AirShot (the chips' action 0x23, 0x080ECB74).
 "airshot/action" = 0x23
 # The cracks (the chips' action 0x21, 0x080ECA14).
 "crakout/action" = 0x21
 "dublcrak/action" = 0x21
 "tripcrak/action" = 0x21
+# The spawners (the chips' action 0x20, 0x080EC972).
+"lance/action" = 0x20
+"drklance/action" = 0x20
+# The recoveries (the chips' action 0x1D, 0x080EC71A).
+"recov10/action" = 0x1D
+"recov30/action" = 0x1D
+"recov50/action" = 0x1D
+"recov80/action" = 0x1D
+"recov120/action" = 0x1D
+"recov150/action" = 0x1D
+"recov200/action" = 0x1D
+"recov300/action" = 0x1D
+"drkrecov/action" = 0x1D
+# The taunt (weapon routine 0x21's action 0x2A, 0x080ED0FE).
+"megaman/taunt/action" = 0x2A
 # The charged shot.
 "megaman/charged-shot/action" = 0x24
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.

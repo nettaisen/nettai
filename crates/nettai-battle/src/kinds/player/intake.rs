@@ -779,13 +779,16 @@ fn count_stun_ticks(b: &mut Battle, r: ObjectRef) {
     a.stun_ticks = if stunned { a.stun_ticks.wrapping_add(1) } else { 0 };
 }
 
-/// `sub_80142DC`: anger after 120 stunned ticks or a 300+ damage hit
-/// (base MegaMan only).
+/// `sub_80142DC`: anger after 120 stunned ticks or, where the rules say
+/// (`emotion.anger_damage`: EXE6's and EXE5's 300; EXE4's 0x0800C540 none),
+/// a tick's hits of that much damage (base MegaMan only).
 fn anger_trigger(b: &mut Battle, r: ObjectRef) {
     if battle_mode(b) == 1 || !super::is_megaman(b, r) || !super::in_base_form(b, r) || flag1(b, r) & f1::ANGER != 0 {
         return;
     }
-    if ai(b, r).stun_ticks as i32 >= 0x78 || coll(b, r).acc.final_damage >> 1 >= 0x96 {
+    let damage = b.game_rules().emotion.anger_damage;
+    let hurt = damage.is_some_and(|d| coll(b, r).acc.final_damage >> 1 >= d >> 1);
+    if ai(b, r).stun_ticks as i32 >= 0x78 || hurt {
         set_flag2(b, r, 0x200);
     }
 }
