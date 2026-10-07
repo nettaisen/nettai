@@ -180,7 +180,8 @@ its own phase (`navi:run_wrapped()`), watches for it to end, then chains the nex
 ruleset's, and wraps whatever action content defines; a chip says how it is wrapped in its record (`beast = {
 lockon, rush }`) and its `no_chain` trait. Two actions ask for another mode than their chip's: the part
 recognizes them (the Beast claw's and SlashCross's charged sword), and one gives its mode itself
-(`rush_lockon`). (rules-in-luau.md, As built S3.)
+(`rush_lockon`). (rules-in-luau.md, As built S3. Since rust-and-luau.md's B2 the search is EXE6's Luau, and the
+rush reads the charged sword's mode from its slash, in the action's state.)
 
 ### 4.4 Content reaching into other objects
 

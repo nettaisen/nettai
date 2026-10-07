@@ -83,10 +83,10 @@ local function hold(navi: Object, s: State)
 end
 
 -- The lock-on mode: none (stay) while blind or confused outside Beast
--- Over; else the claw's own (`sub_80EAF1A`: the role `lockon.beast_claw`),
+-- Over; else the claw's own (`sub_80EAF1A`: ../lockon's `beast_claw`),
 -- the charged sword's (`sub_80EAF26`: a table by the attack's variant in
--- the original; here the mode the charged sword's setup gave with its
--- slash, `rush_lockon`), and failing those, the chip's.
+-- the original; here its slash's, which the action keeps in its state),
+-- and failing those, the chip's.
 local function lockon_mode(navi: Object): Lockon?
     local over = kind.beast_over(navi.alliance)
     if not over and (navi:status("blind") or navi:status("confused")) then
@@ -97,7 +97,7 @@ local function lockon_mode(navi: Object): Lockon?
     if action == beast_claw.action then
         special = lockon.beast_claw
     elseif action == slash_charge.action then
-        special = navi.rush_lockon
+        special = (navi:action_state(slash_charge.action :: Action) :: { slash: ChargedSlash }).slash.lockon
     end
     if special ~= nil then
         return special
@@ -158,7 +158,7 @@ local function warp(navi: Object, s: State)
         tx, ty = marker.panel_x, marker.panel_y
     end
     -- (No panel fits: the navi stays.)
-    local dx, dy = navi:lockon_panel(tx, ty, mode)
+    local dx, dy = lockon.panel(navi, tx, ty, mode)
     if dy == 0x7F then
         dx, dy = hx, hy
     end

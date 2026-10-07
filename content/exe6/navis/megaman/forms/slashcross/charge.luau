@@ -53,13 +53,13 @@ local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0xFFE0, 0x14
 local WAVE_TICK = 12
 
 -- The charged slash as `slash`, with a dash first or not: its action, for
--- `navi` to start. The Beast Out rush locks on in the slash's mode (the
--- original's table by the variant, `sub_80EAF26`).
+-- `navi` to start. (The Beast Out rush locks on in the slash's mode, which
+-- it reads from this state: the original's table by the variant,
+-- `sub_80EAF26`.)
 function slash_charge.begin(navi: Object, slash: ChargedSlash, dash: boolean): Action
     local s = navi:action_state(slash_charge.action) :: State
     s.slash = slash
     s.dash = dash
-    navi.rush_lockon = slash.lockon
     return slash_charge.action
 end
 

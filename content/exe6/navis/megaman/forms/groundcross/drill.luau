@@ -139,7 +139,7 @@ local function burrow(me: Object, s: State)
         end
         x = closest(bit32.bxor(me.alliance, 1), y, rule)
     end
-    me.panel_x, me.panel_y = me:lockon_panel(x, y, LOCKON)
+    me.panel_x, me.panel_y = lockon.panel(me, x, y, LOCKON)
     me:set_coordinates_from_panel()
     me:update_collision_panels()
     me.collision.region = regions.single

@@ -1865,7 +1865,6 @@ impl CoreApi for Battle {
             ActorField::Ticked => Value::Bool(a.ticked),
             ActorField::Exhausted => Value::Bool(a.exhausted),
             ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
-            ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
             ActorField::ThrownLook => at.thrown_look.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
@@ -1925,19 +1924,6 @@ impl CoreApi for Battle {
             }
             _ => None,
         };
-        // The Beast rush's lock-on mode by definition, or none.
-        let rush_lockon = match (f, v) {
-            (ActorField::RushLockon, FieldValue::Ref(Some((Registry::Record, h)))) => {
-                if self.content.lockon(nettai_content_api::RecordHandle(h)).is_none() {
-                    return Err(ApiError::Other(format!("rush_lockon: record {h} is no lock-on mode (a \"lockon\" record)")));
-                }
-                Some(nettai_content_api::RecordHandle(h))
-            }
-            (ActorField::RushLockon, FieldValue::Ref(Some((other, _)))) => {
-                return Err(ApiError::Other(format!("rush_lockon: a {other} is not a lock-on mode")));
-            }
-            _ => None,
-        };
         // A thrown obstacle's look: an absorbed-look record, or none.
         let thrown_look = match (f, v) {
             (ActorField::ThrownLook, FieldValue::Ref(Some((Registry::Record, h)))) => Some(self.absorbed_look(h)?),
@@ -1965,7 +1951,6 @@ impl CoreApi for Battle {
             (ActorField::ControllerFresh, FieldValue::Bool(x)) => a.controller_fresh = x,
             (ActorField::Ticked, FieldValue::Bool(x)) => a.ticked = x,
             (ActorField::Exhausted, FieldValue::Bool(x)) => a.exhausted = x,
-            (ActorField::RushLockon, FieldValue::Ref(_)) => at.rush_lockon = rush_lockon,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
             (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
@@ -2289,10 +2274,6 @@ impl CoreApi for Battle {
 
     fn start_move(&mut self, o: ObjectRef, dir: u8) {
         kinds::player::idle::start_move(self, o, dir);
-    }
-
-    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<nettai_content_api::RecordHandle>) -> PanelPos {
-        kinds::player::actions::lockon::lockon_panel(self, o, target, mode)
     }
 
     fn next_chip(&self, o: ObjectRef) -> ApiResult<Option<ChipHandle>> {

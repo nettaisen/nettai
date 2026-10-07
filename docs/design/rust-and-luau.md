@@ -51,14 +51,14 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 
 | Feature | (a) | (b) | (c) | (d) | All |
 |---|---|---|---|---|---|
-| Beast Out and Beast Over | | 1 | 1 | | 2 |
+| Beast Out and Beast Over | | | 1 | | 1 |
 | Crosses and the form framework | | | 2 | | 2 |
 | Emotions | | 1 | 1 | 3 | 5 |
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
 | The stat block and versions | | | 1 | | 1 |
 | Tools | | | 1 | | 1 |
-| **All** | **1** | **3** | **7** | **5** | **16** |
+| **All** | **1** | **2** | **7** | **5** | **15** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -67,16 +67,6 @@ rename left of EXE5's logic.
 
 ### Beast Out and Beast Over (EXE6)
 
-- **B2. The lock-on** (`ho_8026554`). Pieces:
-  - actions/lockon.rs (131 lines);
-  - the `lockon` section (`Lockon`, rules.rs:1065; sections.rs:616);
-  - the `lockon` records (`LockonDef`, defs.rs:2113; `Content::lockon`);
-  - the actor's `rush_lockon` (actor.rs:199; `ActorField::RushLockon`);
-  - `CoreApi::lockon_panel`.
-
-  Only content asks for it: EXE6's rush, the Beast claw, the lunge and GroundCross's drill. *(b)* An EXE6
-  rules/lockon module: the records as plain data, the routine in Luau, `rush_lockon` a field of the rush's state.
-  About 190 lines of Rust. It runs once per rush step or attack setup, never per tick.
 - **B6. The HUD's Beast Out count** (`beast_count_shown`, render hud.rs:926, which reads `PlayerFact::BeastOut`) and
   that fact role (views.rs:124), which nothing else reads. (The count itself is read by its role since B3:
   `StatRole::WindowCount`.) *(c)* A HUD view the rules fill (whether the count shows). The fact stays EXE6's setup
@@ -197,6 +187,13 @@ Each with what it was and what it is now.
 
 - **B1.** The `berserk` rule section (`BerserkRules`) is gone. EXE6's rules/berserk.luau is a record of type
   `berserk`, which its berserk controller reads and gen-content checks against the ROM.
+- **B2.** The lock-on is EXE6's Luau: rules/lockon_search (`ho_8026554`'s search, which rules/lockon's `panel(navi,
+  x, y, mode)` runs for the rush, the Beast claw, the lunge and GroundCross's drill), the modes records only it reads
+  (type "lockon"), and what they share a record of its own (`lockon-search`: the column shifts, the clear-path
+  condition). The rush reads the charged sword's mode from its slash, in the action's state, so `rush_lockon` went
+  with no field in its place. actions/lockon.rs, `LockonMode`, `LockonRule`, `Lockon`, `LockonDef`,
+  `Content::lockon`, the rules' `lockon` section, `ActorField::RushLockon` and `CoreApi::lockon_panel` leave Rust;
+  the `Lockon` type is exelib's. gen-content checks the records' data against the ROM's modes.
 - **B3.** Beast Out's turns are EXE6's own stat `beast_out_counter` (V1's way), 3 fresh (its `fresh_stats`), which
   rules/beast spends and rules/emotion reads; the HUD reads the count by its role (`StatRole::WindowCount`,
   `schema.role("window_count", "u8")`), and exe6-compat maps NaviStats+0x21 to it.
@@ -284,7 +281,7 @@ Each with what it was and what it is now.
   `half_out`, ...; were `SoulFlash*`, `BeastOut*`), and D1's. A `fades` rule section stays §3.3's way for a fade of a
   game's own, which none needs yet.
 - **X2.** `flash_timer_first_reactions`, `apply_damage_gauge_and_last_stand` and `lose_hp_gauge_and_last_stand`.
-- **X3.** What it named goes with its entry: `berserk` (B1) went; `lockon` (B2), `chaos_cycle` (S1),
+- **X3.** What it named goes with its entry: `berserk` (B1) and `lockon` (B2) went; `chaos_cycle` (S1),
   `effects.full_synchro_aura` (E3) and the `emotion` variants (E1) go with theirs.
 - **X4.** The obstacles' soldiers are their conversion: `obstacle_arm_conversion`, `obstacle_disarm_conversion`,
   `obstacle_conversion` (Luau `obstacle.arm_conversion`, ...), `effects.obstacle_conversion`,

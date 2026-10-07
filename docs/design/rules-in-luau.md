@@ -2215,6 +2215,9 @@ plain Luau library with a single definition.
     beast system's chip extension is `beast = { lockon = "record:lockon", rush = "bool" }`.
   - The stock ruleset's `lockon` section (the column shifts, the clear-path condition) stays: the search reads
     it.
+  - (Since rust-and-luau.md's B2 the search is EXE6's Luau, rules/lockon_search, which `lockon.panel(navi, x, y,
+    mode)` runs; the engine reads no "lockon" record, the section is the record `lockon-search`, and the charged
+    sword's mode is its slash's, read from the action's state: `rush_lockon` is gone.)
 - **The Cross special's rows are the beast system's data**: a record of type "cross-special" (`cross-special`,
   rules/cross_special.luau), which its controller requires. `Rules::cross_special`, the stock ruleset's
   `cross_special` section and `SpecialChip` are gone. gen-content reads the record's rows.
@@ -2256,7 +2259,8 @@ system. The point of S7/S8 is an engine with no EXE6 resources, and a guarded ac
   `special_volley`, `charged_sword_rush`, `extra_chips`, `scrap_button` (`Exe6FormFields`), and `FormSet`. The
   engine's `ChipSpec`, `FormDef` and a navi's `forms` take the systems' extension fields untyped (`[string]: any`);
   an EXE6 module that wants them typed casts (`(chip :: any) :: Exe6ChipFields`, the Beast rush's lock-on mode).
-  `LockonDef` stays the engine's: its search reads it.
+  `LockonDef` stays the engine's: its search reads it. (Since rust-and-luau.md's B2, exelib's types: the search is
+  EXE6's Luau.)
 - **A system's chips in a folder**: EXE6's folder rules (rules/folder/init.luau) list the chips a system plays
   (MstrCros, the cross system's) and refuse one in a folder whose side's ruleset lacks the system (rule `system`).
   BeastOut, the beast system's, is past the chip pack already.

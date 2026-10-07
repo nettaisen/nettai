@@ -57,9 +57,9 @@ local function target(me: Object): (number, number)
     end
     local mx, my = marker.panel_x, marker.panel_y
     if my == me.panel_y then
-        return me:lockon_panel(mx, my, SAME_ROW)
+        return lockon.panel(me, mx, my, SAME_ROW)
     end
-    return me:lockon_panel(mx, me.panel_y, OWN_ROW)
+    return lockon.panel(me, mx, me.panel_y, OWN_ROW)
 end
 
 -- `sub_80EEE88`: fade out (its panel reserved); 3 ticks later, over to

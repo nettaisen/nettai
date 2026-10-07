@@ -204,8 +204,6 @@ pub struct NaviGivenFns {
     pub fire_charge: Option<FnId>,
 }
 
-/// The record type of a lock-on mode (`new.record("lockon", ...)`).
-pub const LOCKON_RECORD: &str = "lockon";
 
 /// One of MegaMan's forms (the root's `forms`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -246,15 +244,6 @@ pub struct StageDef {
 pub struct StatusDef {
     pub key: String,
     pub effect: super::StatusEffect,
-}
-
-/// A Beast Out lock-on mode: a record of type "lockon" (`LOCKON_RECORD`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LockonDef {
-    /// Its record (a record of type "lockon").
-    pub record: RecordHandle,
-    pub key: String,
-    pub mode: super::LockonMode,
 }
 
 /// A collision type content defines (`new.collision`): what an object is
@@ -537,7 +526,6 @@ pub struct Defs {
     pub forms: Vec<FormDef>,
     pub stages: Vec<StageDef>,
     /// The Beast Out lock-on modes, by handle.
-    pub lockons: Vec<LockonDef>,
     /// The identities, by handle (`new.identity`, in key order).
     pub identities: Vec<super::Identity>,
     /// The status effects, by handle.
@@ -735,11 +723,6 @@ impl Defs {
     /// The identity with this key.
     pub fn identity_by_key(&self, key: &str) -> Option<nettai_content_api::IdentityHandle> {
         self.identities.binary_search_by(|i| i.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::IdentityHandle(i as u16))
-    }
-
-    /// The lock-on mode with this key.
-    pub fn lockon_by_key(&self, key: &str) -> Option<RecordHandle> {
-        self.lockons.iter().find(|l| l.key == key).map(|l| l.record)
     }
 
     pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
@@ -1127,7 +1110,7 @@ fn read_roles(
                 }
                 _ => {
                     return Err(what(format!(
-                        "the rules have no role group `{group}` (it has actions, kinds, hooks, chips, lockon, statuses, effects, sparks, regions, collision, sounds, music, sprites, banners)"
+                        "the rules have no role group `{group}` (it has actions, kinds, hooks, chips, statuses, effects, sparks, regions, collision, sounds, music, sprites, banners)"
                     )));
                 }
             }
@@ -2161,19 +2144,6 @@ impl Defs {
             .iter()
             .map(|d| RecordDef { key: d.key.clone(), record_type: d.record_type.clone().unwrap_or_default() })
             .collect();
-        // The lock-on modes (`ho_8026554`'s, which `navi:lockon_panel` reads):
-        // the records of type "lockon", by handle.
-        let mut lockons = Vec::new();
-        for (i, d) in definitions.of(Registry::Record).iter().enumerate().filter(|(_, d)| d.record_type.as_deref() == Some(LOCKON_RECORD)) {
-            let what = |e: String| ContentError::new(format!("{}.luau: lockon record {}: {e}", d.module, d.key));
-            let mut spec = d.spec.clone();
-            if let Data::Map(entries) = &mut spec {
-                entries.retain(|(k, _)| !matches!(k, nettai_content_api::DataKey::Str(s) if s == "id"));
-            }
-            let mode: super::LockonMode = reader.read(&spec, &d.key).map_err(what)?;
-            lockons.push(LockonDef { record: RecordHandle(i as u16), key: d.key.clone(), mode });
-        }
-
         // The entries of the game's collections: data only content reads.
         let mut entries = Vec::new();
         for d in definitions.of(Registry::Entry) {
@@ -2228,7 +2198,6 @@ impl Defs {
             navis,
             forms,
             stages,
-            lockons,
             identities,
             statuses,
             records,

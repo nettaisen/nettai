@@ -150,7 +150,6 @@ local rules_: Rules = {
     fresh_stats = fresh_stats,
     -- (Its own: no stage and no background, so no random pick.)
     link_pick = { stages = {}, first_round_stages = 0, backgrounds = {}, match_stages = {} },
-    lockon = require("@self/lockon").rules,
     math = require("@self/math"),
     panels = require("@self/panels"),
     pools = require("@self/pools"),

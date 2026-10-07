@@ -462,9 +462,6 @@ declare extern type Object with
     -- What a step or the wrapper turns to face in the panel patterns 0x23,
     -- 0x31 and 0x33 (read-only; only the unused `sub_80116F6` sets one).
     face_target: Object?
-    -- The lock-on mode the attack's own action asks the Beast Out rush for
-    -- (the charged sword's, by its slash); nil: the chip's.
-    rush_lockon: Lockon?
     -- A per-action word some actions keep.
     marker: number
     -- The absorbed obstacle a throw carries (the marker word, as
@@ -781,10 +778,6 @@ declare extern type Object with
     function step_target(self, dir: number): (number?, number?)
     -- `sub_80116AE`: start a step toward dir.
     function start_move(self, dir: number): ()
-    -- `ho_8026554`: the panel the navi would attack (x, y) from in Beast
-    -- Out lock-on mode `mode` (rules/lockon; its own for no mode or a
-    -- target off the field; (0, 0x7F) when no panel fits).
-    function lockon_panel(self, x: number, y: number, mode: Lockon?): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
     -- `sub_800EDD0`'s chip: the hand's chip at the cursor (nil: the hand is
@@ -2006,7 +1999,6 @@ export type RulesSpec = {
     buster: any?,
     custom_screen: any?,
     elements: any?,
-    lockon: any?,
     math: any?,
     navicust: any?,
     roles: RolesSpec?,
@@ -2532,16 +2524,6 @@ export type StatusDef = {
     survives_counter: boolean?,
 }
 export type Status = StatusDef
--- A Beast Out lock-on mode (EXE6's rules/lockon: a record of type "lockon",
--- `define.record("lockon", { id = ..., ... })`): how the rush picks the panel to
--- attack a target from. `stay`: the navi's own panel. `row`: along the
--- target's row counting from the navi's own column (`same_row_offsets`
--- when they share a row), then the rows `row_shifts` away. `near`: the
--- first of `offsets` (dx toward the user's front) next to the target the
--- navi can stand on (`far_column_offsets` for a target in the column
--- farthest ahead), then with the rules' column shifts, with a clear path
--- to the target if asked; afterwards the middle row of that column, if
--- preferred and free.
 -- A problem of a side's setup (the rules' `validate`): a sentence, or with the setup field it is of and the entry
 -- of a list field (from 1), which a tool shows it at.
 export type SetupProblem = string | { text: string, field: string?, entry: number? }
@@ -2554,19 +2536,6 @@ export type CheckedFolder = {
     tags: { number }?,
     complete: boolean,
 }
-
-export type LockonDef = {
-    id: string?,
-    rule: "stay" | "row" | "near",
-    offsets: { { number } }?,
-    same_row_offsets: { { number } }?,
-    row_shifts: { number }?,
-    far_column_offsets: { { number } }?,
-    column_shifts: boolean?,
-    clear_path: boolean?,
-    prefers_middle_row: boolean?,
-}
-export type Lockon = LockonDef
 
 -- What an object is taken for (§3.2): the original's NameID record. A
 -- navi's and a form's is nested in its definition (`identity =
