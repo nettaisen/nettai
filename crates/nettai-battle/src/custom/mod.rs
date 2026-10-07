@@ -318,6 +318,7 @@ impl Side {
         self.emotion = ctx.emotion;
         let Some(mut screen) = self.screen else { return None };
         let mut folder = self.folder;
+        let settling = screen.phase == Phase::Settling;
         let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console, extras);
         match request {
             Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage, extras),
@@ -342,6 +343,17 @@ impl Side {
         };
         if cleared {
             self.in_custom = false;
+        }
+        // EXE4's selection says it runs from its first tick (its state 0,
+        // 0x08020348: the screen's settling tick) to OK (0x08020652); its
+        // description, SELECT's hiding and L's message leave it set.
+        if ctx.library.layout().status_until == crate::content::StatusUntil::Sending {
+            if settling {
+                self.selecting = true;
+            }
+            if request == Some(Request::Confirm) {
+                self.selecting = false;
+            }
         }
         self.screen = Some(screen);
         self.folder = folder;
