@@ -118,7 +118,8 @@ struct PanelsSection {
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
     type_mask: u32,
-    standing: super::rules::StandingRule,
+    #[serde(default)]
+    grass_heal_slows_at: Option<u16>,
 }
 
 #[derive(Deserialize)]
@@ -694,7 +695,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     numbers,
                     reservations: s.reservations,
                     type_mask: s.type_mask,
-                    standing: s.standing,
+                    grass_heal_slows_at: s.grass_heal_slows_at,
                 });
             }
             "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),

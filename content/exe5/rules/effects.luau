@@ -74,4 +74,6 @@ return {
     used_chip_ticks = 0x3C,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (0x08019780, EXE6's).
     bug_flicker = true,
+    -- An object's destroy (0x080138F2) frees its collision as it is.
+    destroy = "frees",
 }
