@@ -333,7 +333,9 @@ from the ROM and its code, read routine by routine):
   tick (players 31 and 9, the table 0x0801E584); its sound 0x100 on the tick after the shade settles and every 61;
   OK clears the fades at once (`fades_clear_at_ok`); the close sets players 9 and 31 back (`restore_players`).
 - **Drawing** (presentation): the tick a key leaves the choosing draws what its new state draws, no cursor
-  (`cursor_after_leaving`, 0x0801E412).
+  (`cursor_after_leaving`, 0x0801E412). The choosing tick draws the last turns' block and counts its frame before
+  its keys (`frame_counts_first`, 0x0801E3DA, 0x0801E3DE): the cursor blinks a frame further on than EXE6's, and the
+  Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0.
 - **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape.
 - **Sounds** (named for their code in gen_content.py's BY_USE): open 0x7A, cursor 0x7D, pick 0x7E, back 0x7F, OK 0x80,
   refused 0x69, description 0x66, the hover 0x100, the Program Advance's parts 0x79 and its result 0x97, the gauge full

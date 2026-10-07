@@ -178,6 +178,12 @@ pub struct CustomScreenLayout {
     /// state its keys left it in draws: no cursor, the block taken off for
     /// OK and SELECT (EXE4's 0x0801E412). Presentation.
     pub cursor_after_leaving: bool,
+    /// The choosing state draws the last turns' block and counts its frame
+    /// (the control block's +0x40, which the cursor blinks by) before its
+    /// keys and the rest of what it draws (EXE4's 0x0801E3DA, 0x0801E3DE:
+    /// the cursor a frame further on); else after them (EXE6's
+    /// `sub_8026CCC`). Presentation.
+    pub frame_counts_first: bool,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -346,6 +352,7 @@ impl Default for CustomScreenLayout {
             gauge_empties_at_open: true,
             fades_clear_at_ok: false,
             cursor_after_leaving: true,
+            frame_counts_first: false,
         }
     }
 }
