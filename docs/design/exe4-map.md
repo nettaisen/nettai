@@ -585,6 +585,21 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   ElemDark's, the poison its raging flames leave (the flame's `leaves`, the panel type Param4's high nibble names:
   the lab's panels/elemdark-poison). ElemDark's sound recordings differ only on the custom screen (a music volume
   change the engine makes and the game doesn't, frame 290: the custom screen's).
+- **The throws** (action 0x09, `lib/bombs`: EXE6's throw on @exelib/bombs/throw): each variant's thrower
+  (0x080EB4C4) and what the navi holds (0x080EB4EC: an attachment row and its animation). Variants 0 to 2 (MiniBomb,
+  EnergBom and MegEnBom, DarkBomb) all throw the bomb (attack 8, @exelib/bombs/bomb) of the row their parameter names
+  (0x080CE088, with its blast region at 0x080CE270 and explosion at 0x080CE277), each chip's own. **EnergBom,
+  MegEnBom** (`chips/energbom`): bomb row 2 blasts nothing and leaves an energy burst (attack 0x11, @exelib/energbom's,
+  EXE6's code with EXE4's sprite and sound 0xBD). (Row 1's landing spawns 0x080CE58E's object, which no chip throws.)
+  **Binder1** (with 2 and 3: variant 3, `chips/binder`): EXE4's own binder (attack 0x2D) hops along the row two
+  panels a hop (in place over the other side's navi after its first landing), aimed by `sub_8001330` (EXE4's
+  lib/trajectory over its sine table), hitting each panel it lands on; it goes on a hole, halfway through its fourth
+  hop, or past the field's sides. Its element is the byte its thrower stores from the register holding the release
+  point's Y (none for a navi at rest).
+  **SeekBom1** (with 2 and 3: variant 9, `chips/seekbom`): EXE4's own seeking bomb (attack 0x8D), aimed by its
+  thrower at the other side's navi ahead nearest in columns (between equally near ones it compares the row itself with
+  the nearest row distance so far: kept), flies 40 ticks and bursts where it lands in EXE4's sparkles (effect 0x11,
+  objects/sparkles: @exelib/vdoll/sparkles whose look `stays` where its object was as they started, 0x080E3348).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -1467,13 +1482,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
-    `WEAPONS`; the 18 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    `WEAPONS`; the 20 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
     the routines of chips still to port (0x2D Thunder1, 0x37 CopyDmg, 0x38 WideSht1, 0x3A Thunder2, 0x42 Hole, 0x43
-    WideSht2, 0x44 SandRing, 0x45 EnergBom, 0x46 Thunder3, 0x4C WideSht3, 0x4E WindRack, 0x4F MegEnBom, 0x50 Ball, 0x51
-    BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
+    WideSht2, 0x44 SandRing, 0x46 Thunder3, 0x4C WideSht3, 0x4E WindRack, 0x50 Ball, 0x51 BugBomb, 0x54 NrthWind, 0x55
+    PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).

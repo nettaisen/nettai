@@ -102,6 +102,14 @@ language = "en"
 "junkman" = { name = "JunkMan", description = "Throw any\nobjects\non field" }
 "junkmn-sp" = { name = "JunkMnSP", description = "Throw any\nobjects\non field" }
 "junkmn-ds" = { name = "JunkMnDS", description = "Throw any\nobjects\non field" }
+"energbom" = { name = "EnergBom", description = "Throws\nbomb 3sq\nahead" }
+"megenbom" = { name = "MegEnBom", description = "Throws\nbomb 3sq\nahead" }
+"binder1" = { name = "Binder1", description = "Fires a\nsonic\nblast" }
+"binder2" = { name = "Binder2", description = "Fires a\nsonic\nblast" }
+"binder3" = { name = "Binder3", description = "Fires a\nsonic\nblast" }
+"seekbom1" = { name = "SeekBom1", description = "Throws a\nbomb at\nthe enemy" }
+"seekbom2" = { name = "SeekBom2", description = "Throws a\nbomb at\nthe enemy" }
+"seekbom3" = { name = "SeekBom3", description = "Throws a\nbomb at\nthe enemy" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -230,12 +238,14 @@ language = "en"
 "065-max-hp-up" = { name = "Max HP Up" }
 "066-max-hp-up" = { name = "Max HP Up" }
 "067-max-hp-up" = { name = "Max HP Up" }
+"068-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "076-all-guard-1-2" = { name = "All Guard 1/2" }
 "077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
+"083-charge-shot-switch" = { name = "Charge Shot Switch" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
 "086-charge-shot-switch" = { name = "Charge Shot Switch" }
 "087-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -262,6 +272,7 @@ language = "en"
 "110-custom3" = { name = "Custom3" }
 "111-gigafolder1" = { name = "GigaFolder1" }
 "112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"116-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
 "133-weapon-change" = { name = "Weapon Change" }
