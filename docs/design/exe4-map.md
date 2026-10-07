@@ -1470,13 +1470,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
-    `WEAPONS`; the 18 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    `WEAPONS`; the 20 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
     the routines of chips still to port (0x2D Thunder1, 0x37 CopyDmg, 0x38 WideSht1, 0x3A Thunder2, 0x42 Hole, 0x43
-    WideSht2, 0x44 SandRing, 0x45 EnergBom, 0x46 Thunder3, 0x4C WideSht3, 0x4E WindRack, 0x4F MegEnBom, 0x50 Ball, 0x51
-    BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
+    WideSht2, 0x44 SandRing, 0x46 Thunder3, 0x4C WideSht3, 0x4E WindRack, 0x50 Ball, 0x51 BugBomb, 0x54 NrthWind, 0x55
+    PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).

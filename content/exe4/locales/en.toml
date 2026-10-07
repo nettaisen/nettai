@@ -232,12 +232,14 @@ language = "en"
 "065-max-hp-up" = { name = "Max HP Up" }
 "066-max-hp-up" = { name = "Max HP Up" }
 "067-max-hp-up" = { name = "Max HP Up" }
+"068-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "076-all-guard-1-2" = { name = "All Guard 1/2" }
 "077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
+"083-charge-shot-switch" = { name = "Charge Shot Switch" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
 "086-charge-shot-switch" = { name = "Charge Shot Switch" }
 "087-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -264,6 +266,7 @@ language = "en"
 "110-custom3" = { name = "Custom3" }
 "111-gigafolder1" = { name = "GigaFolder1" }
 "112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"116-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
 "133-weapon-change" = { name = "Weapon Change" }
