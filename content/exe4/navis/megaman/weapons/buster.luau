@@ -22,6 +22,9 @@ local SHOOT, RECOVER = 0x0, 0x4
 local SHOT_Z = 0x18_0000
 -- The flash's animation: NaviStats +0x23, the navi's number (MegaMan's 0, the one navi EXE4's netbattles have).
 local NAVI_NUMBER = 0
+-- Its sounds: the shot (0x6A) and a blank's click (0x1C0).
+local SHOT_SOUND = asset.sound("buster-shot")
+local BLANK_SOUND = asset.sound("buster-blank")
 
 type State = { timer: number }
 
@@ -36,12 +39,12 @@ local function shoot(me: Object, s: State)
     if s.timer == 1 then
         local blanks = battle.navi(me.alliance).buster_blanks
         if bit32.band(battle.rng(), 0xF) + 1 > blanks then
-            battle.play_sound(asset.sound("buster-shot"))
+            battle.play_sound(SHOT_SOUND)
             local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
             me.attack_count = projectile.fire(me, { variant = variants.plain, damage = damage, z = SHOT_Z })
             attachment.attach(me, attachment.muzzle_flash, "related", NAVI_NUMBER)
         else
-            battle.play_sound(asset.sound("buster-blank"))
+            battle.play_sound(BLANK_SOUND)
         end
     end
     s.timer += 1

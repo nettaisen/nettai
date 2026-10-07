@@ -19,6 +19,8 @@ local SHOT_Z = 0x18_0000
 local NAVI_NUMBER = 0
 
 local held = attachment.look { sprite = asset.sprite("cannon"), palette = 0 }
+-- The cannon's sound (0x8C).
+local CANNON_SOUND = asset.sound("cannon")
 
 type State = { timer: number }
 
@@ -33,7 +35,7 @@ local function shoot(me: Object, s: State)
         return
     end
     if s.timer == 15 then
-        battle.play_sound(asset.sound("cannon"))
+        battle.play_sound(CANNON_SOUND)
         local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
         projectile.spawn(me, me.panel_x + me.facing, me.panel_y, { variant = variants.cannon, damage = damage, z = SHOT_Z })
     end
