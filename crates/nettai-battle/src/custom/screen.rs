@@ -692,13 +692,17 @@ impl Screen {
                 None
             }
             Phase::Settling => {
-                // EXE4's 0x08020340 (the cursor's state put back), then
-                // 0x0801E3D8's frame count, the Regular chip's frame and no
-                // cursor (0x0801EEB8).
+                // EXE4's 0x08020340 (the cursor's state put back, its keys
+                // unread), then the rest of 0x0801E3D8's tick: the last
+                // turns' block, the frame count, the emblem's spin, the
+                // Regular chip's frame and the cursor its state draws
+                // (0x0801E41E).
                 self.phase = Phase::Choosing;
-                self.look.draw_regular(folder.regular_pending);
                 self.look.draw_turn_limit();
                 self.look.frame += 1;
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending);
+                self.look.draw_cursor();
                 None
             }
             Phase::Choosing => {
@@ -710,12 +714,23 @@ impl Screen {
                 // frame is drawn: `sub_80293F8`.)
                 let regular_taken = request == Some(Request::Confirm)
                     && self.selection().iter().any(|&s| matches!(self.slots[s as usize].kind, SlotKind::Chip { regular: true, .. }));
-                self.look.draw_cursor();
+                // (A screen that draws by the state its keys left it in,
+                // EXE4's, draws no cursor on the tick a key leaves the
+                // choosing, and takes the last turns' block off where the
+                // key leaves the window, OK or SELECT: 0x0801E412.)
+                let drawn_after = view.library.layout().cursor_after_leaving || self.phase == Phase::Choosing;
+                if drawn_after {
+                    self.look.draw_cursor();
+                }
                 self.look.draw_emblem(0);
                 self.look.draw_regular(folder.regular_pending && !regular_taken);
                 // (EXE5's 0x08023012: the chip a button holds, over it.)
                 self.look.draw_held(self.hold.is_some());
-                self.look.draw_turn_limit();
+                if drawn_after {
+                    self.look.draw_turn_limit();
+                } else if matches!(self.phase, Phase::Closing { .. } | Phase::Hidden { .. }) {
+                    self.look.turn_limit = false;
+                }
                 self.look.frame += 1;
                 request
             }
