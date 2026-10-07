@@ -4149,6 +4149,7 @@ dependencies = [
  "nettai-netplay",
  "nettai-render",
  "nettai-rtc",
+ "nettai-tools",
  "png 0.17.16",
  "rfd",
  "serde",
@@ -4253,6 +4254,26 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "web-time",
+]
+
+[[package]]
+name = "nettai-tools"
+version = "0.1.0"
+dependencies = [
+ "exe5-compat",
+ "exe6-compat",
+ "m4a",
+ "nettai-assets",
+ "nettai-audio",
+ "nettai-battle",
+ "nettai-content",
+ "nettai-content-api",
+ "nettai-frontend",
+ "nettai-match",
+ "nettai-render",
+ "png 0.17.16",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
