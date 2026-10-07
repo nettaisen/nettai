@@ -1556,9 +1556,8 @@ export type PlaceSpec = {
     -- Which of the kind's variants the stage names (a record of the
     -- kind's: one of chips/rockcube/rock's `variants`).
     variant: any?,
-    -- The entry's raw argument (0 unless the stage gives one), for a
-    -- spawner that only leaves it in a register.
-    argument: number,
+    -- The HP the entry gives it, if it states one.
+    hp: number?,
 }
 
 -- How an absorbed obstacle looks (objects/absorbed_obstacle's `look`, an
@@ -2542,14 +2541,14 @@ export type FormDef = {
 }
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's
--- variants or a raw argument where the kind takes one.
+-- variants, its side or its HP where the kind takes one.
 export type StageActor = {
     place: "navi" | Kind,
     side: number?,
     x: number,
     y: number,
     variant: any?,
-    argument: number?,
+    hp: number?,
 }
 -- A stage (§3.7): its panels, three rows of six panel types (`"normal
 -- normal cracked ..."`), which columns are whose, its music outside link

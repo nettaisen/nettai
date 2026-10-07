@@ -5,6 +5,16 @@
 
 local guard = require("@self/guard")
 local shield = require("@self/shield")
+local shot = require("@self/shot")
+
+-- Their counter: the Reflectors' wave (shot.luau) back along the row, 16
+-- pixels up, with its sound.
+local WAVE_Z = 0x10_0000
+local WAVE_SOUND = asset.sound("wave")
+local function wave(me: Object, x: number, y: number, damage: number)
+    shot.spawn(me, x, y, WAVE_Z, damage)
+    battle.play_sound(WAVE_SOUND)
+end
 
 -- Their shields' looks (`byte_80C9664`'s rows 0, 7 and 8).
 local function look(anim: number): ReflectorShieldLook
@@ -19,7 +29,7 @@ local chips: { [string]: Chip } = {
         rarity = 0, mb = 7, damage = 60, hit_param = 20, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = guard.action { ticks = 60, look = RFLECTR1, counter = "wave" },
+        action = guard.action { ticks = 60, look = RFLECTR1, counter = wave },
     },
     rflectr2 = {
         codes = { "B", "G", "Y", "*" },
@@ -27,7 +37,7 @@ local chips: { [string]: Chip } = {
         rarity = 1, mb = 16, damage = 120, hit_param = 20, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = guard.action { ticks = 60, look = RFLECTR2, counter = "wave" },
+        action = guard.action { ticks = 60, look = RFLECTR2, counter = wave },
     },
     rflectr3 = {
         codes = { "E", "F", "O", "*" },
@@ -35,7 +45,7 @@ local chips: { [string]: Chip } = {
         rarity = 2, mb = 25, damage = 200, hit_param = 20, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = guard.action { ticks = 60, look = RFLECTR3, counter = "wave" },
+        action = guard.action { ticks = 60, look = RFLECTR3, counter = wave },
     },
 }
 

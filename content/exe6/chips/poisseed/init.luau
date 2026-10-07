@@ -24,7 +24,8 @@ local chip: Chip = {
             element = 0,
             palette = 3,
             panel = "poison",
-            effect = seed.sprout,
+            -- Its sprout (effect 0x3B).
+            effect = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 },
             sound = asset.sound("panel-poison"),
         }),
     },

@@ -9,6 +9,7 @@
 local attachment = require("../objects/attachment")
 local bullet = require("../objects/bullet")
 local navi_arms = require("../lib/navi_arms")
+local regions = require("@exelib/regions")
 local spreader = require("@exelib/spreadr/action")
 
 local LOOK: SpreaderLook = {
@@ -19,6 +20,14 @@ local LOOK: SpreaderLook = {
     bullet_kind = bullet.kind,
     -- The navi fires in its animation 0xB.
     anim = 0xB,
+}
+
+-- Its bullet (row 3: EXE6's with EXE5's flash, effect 0x21, and sound): a burst over the 3x3 around the panel found.
+local BURST = bullet.variant {
+    region = regions.square,
+    hit_mod = 0,
+    effect = new.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 },
+    sound = asset.sound("h-burst"),
 }
 
 local chip: Chip = {
@@ -36,7 +45,7 @@ local chip: Chip = {
     action = spreader.action({
         gun = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
         z = 0x10_0000,
-        bullet = bullet.variants.spreader,
+        bullet = BURST,
     }, LOOK),
     auto_battle = { class = "behind_target" },
 }
