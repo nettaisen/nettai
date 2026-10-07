@@ -98,4 +98,6 @@ return {
     mend = { normal = 0x258, battle_mode_1 = 0x1E0 },
     -- A reservation marks its holder, whose destroy releases it.
     reservations = "marked",
+    -- The flags' bits a type owns, which a crack, a break or poison clears.
+    type_mask = 0x00003F5F,
 }
