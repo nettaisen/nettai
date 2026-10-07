@@ -23,9 +23,10 @@ export type Counter = { kind: "none" } | { kind: "shot" }
 
 export type Spec = {
     id: string,
-    -- The guard's ticks and its shield's look row (its parameters word's two bytes), and its counter.
+    -- The guard's ticks (its parameters word's first byte), its shield's look (../objects/shield's, the look row its
+    -- second byte names), and its counter.
     ticks: number,
-    row: number,
+    shield: ReflectorShieldLook,
     counter: Counter,
 }
 
@@ -53,7 +54,7 @@ function guard.action(spec: Spec): Action
 
     local function guarding(me: Object, s: State)
         if me.step_init == 0 then
-            shield.spawn(me, Vec3.px(SHIELD_X * me.facing, 0, SHIELD_Z), spec.row)
+            shield.spawn(me, Vec3.px(SHIELD_X * me.facing, 0, SHIELD_Z), spec.shield)
             me:set_status("guard", true)
             me:set_status("using_action", true)
             me.anim = 0
