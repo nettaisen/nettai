@@ -146,11 +146,11 @@ mod tests {
     fn the_content_reads_from_its_games_packs() {
         let mut r = Report::default();
         let read = read_all(&content(), &mut r).unwrap_or_else(|| panic!("{r}"));
-        assert_eq!(read.games(), ["exe5", "exe6"]);
+        assert_eq!(read.games(), ["exe4", "exe5", "exe6"]);
         assert_eq!(read.packs[0].id, "exelib", "the support pack first");
         let scripts = read.scripts();
         assert!(scripts.modules.is_empty(), "nothing is read ahead");
-        assert_eq!(scripts.dirs.0.0.keys().collect::<Vec<_>>(), ["exe5", "exe6", "exelib"]);
+        assert_eq!(scripts.dirs.0.0.keys().collect::<Vec<_>>(), ["exe4", "exe5", "exe6", "exelib"]);
     }
 
     /// A game without its top module, a require of no module, and a require

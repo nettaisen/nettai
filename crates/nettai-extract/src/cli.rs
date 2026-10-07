@@ -2,7 +2,7 @@
 use crate::{Error, Game, RomSet, extract};
 use std::{ffi::OsString, path::PathBuf, process::ExitCode};
 
-const USAGE: &str = "usage: nettai-extract <exe5|exe6> <pack-dir> [ROM ...] [--content <dir>]\n\
+const USAGE: &str = "usage: nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...] [--content <dir>]\n\
 ROMs may be supplied in any order. Missing ROMs generate placeholders.\n\
 The output must be a new or empty directory. --content also checks battle definitions.";
 
@@ -15,6 +15,7 @@ struct Args {
 fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, Error> {
     let mut args = args.into_iter();
     let game = match args.next().as_deref().and_then(|a| a.to_str()) {
+        Some("exe4") => Game::Exe4,
         Some("exe5") => Game::Exe5,
         Some("exe6") => Game::Exe6,
         _ => return Err(Error(USAGE.into())),
@@ -115,6 +116,7 @@ mod tests {
     #[test]
     fn partial_and_empty_sets() {
         assert!(args(&["exe5", "pack"]).unwrap().roms.is_empty());
+        assert_eq!(args(&["exe4", "pack"]).unwrap().game, Game::Exe4);
         let a = args(&[
             "exe6",
             "pack",
@@ -134,7 +136,7 @@ mod tests {
     fn invalid_arguments() {
         for a in [
             vec![],
-            vec!["exe4", "pack"],
+            vec!["exe3", "pack"],
             vec!["exe5"],
             vec!["exe6", "pack", "--content"],
             vec!["exe6", "pack", "--unknown"],

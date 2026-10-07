@@ -1,0 +1,65 @@
+# EXE4's asset names, written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs:
+# a battle sprite whose archive is a named EXE5 or EXE6 sprite's takes its name; a sprite or sound EXE4's
+# code uses where EXE5's or EXE6's same code uses a named one takes that name (gen_content.py's
+# `asset_names`). The extractor writes each asset under its name here, the rest under a number
+# (`sprite-cc-ii`, `sound-nnn`), which it lists in its extraction.txt and content may not use.
+
+# Sprites: "cc-ii", the category's byte offset in the sprite list (0x0802793C) and the index.
+[sprites]
+megaman = "00-00"
+instrument = "04-08"
+bomb = "0c-02"
+aura = "0c-07"
+grab-shot = "0c-13"
+sword-slash = "0c-14"
+black-bomb = "0c-24"
+geyser = "0c-25"
+meta-gel = "0c-26"
+wind-rack = "0c-27"
+swirl = "0c-28"
+gust = "0c-2e"
+shuriken = "0c-2f"
+anubis = "0c-30"
+voodoo-doll = "0c-34"
+guardian-statue = "0c-35"
+sun-beam = "0c-3c"
+barrier = "0c-3d"
+holy-dream-shot = "0c-3e"
+bug-curse = "0c-3f"
+black-wing = "0c-42"
+pile-driver = "0c-46"
+sun-beam-ex = "0c-47"
+rush = "0c-48"
+pile-beam = "0c-4a"
+beat = "0c-4b"
+tango = "0c-4c"
+tango-heal = "0c-4d"
+rock = "10-02"
+number-ball = "10-05"
+rock-debris = "10-09"
+django-rubble = "10-0e"
+thunder-ball = "10-11"
+hockey-puck = "10-12"
+boomerang = "10-14"
+element-pillar-lightning = "10-1a"
+satellite-beam = "10-1f"
+satellite-flare = "10-21"
+heart = "10-26"
+follow-effect = "10-34"
+cross-slash = "10-35"
+small-puff = "14-02"
+hit-sparks = "14-05"
+hit-marker = "14-07"
+charge-glow = "14-08"
+confusion = "14-0b"
+vulcan-hit = "14-0f"
+energy-burst = "14-12"
+lightning = "14-14"
+charge-glow-a = "14-15"
+
+# Sounds: the song table's numbers (0x08155FF8), music and sound effects.
+[sounds]
+unselect-68 = 0x068
+hit-bomb-0 = 0x06f
+hit-bomb-1 = 0x070
+log-in = 0x077
