@@ -1584,3 +1584,15 @@ export type LockonDef = {
     prefers_middle_row: boolean?,
 }
 export type Lockon = LockonDef
+
+-- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
+-- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
+-- after the navi), the controller's state, and what a game's `make` hands back.
+export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
+export type NaviChipShortCourse = { out: number, after: number }
+export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean, level: number, which: number }
+export type NaviChipController = {
+    kind: Kind,
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+    hook_for: (level: number, which: number?) -> (user: Object, spec: DimmingChipSpec) -> Object?,
+}
