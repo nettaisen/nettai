@@ -39,12 +39,14 @@ netplay needs.
   line in it: it loads a game (its content, graphics, strings and sound), and its player runs a set live or over the
   network from the buttons, by the clock or a tick at a time, and gives the host the picture (`nettai-render`'s) and
   the sound as samples ([docs/frontend.md](docs/frontend.md) §7, with the host loop).
-- `nettai-demo`: the desktop program over `nettai-frontend`: the match editor and the battle played in its window
-  (iced) with its keys, the command line, headless frames, the audits, the replay of recorded matches, and the sound
-  through the audio device.
-- `nettai`: the app (Slint, a prototype): a title, offline play against the stand-in, the netplay lobby (rooms
-  through `nettai-rtc`) and the replays around the battle, navigated by keys, a gamepad or touch, in each
-  language its catalogs have ([docs/app.md](docs/app.md)).
+- `nettai-demo`: the desktop program over `nettai-frontend`, being retired ([docs/app.md](docs/app.md) §10): the
+  match editor and the battle played in its window (iced) with its keys, and its command line.
+- `nettai`: the app (Slint, a prototype): a title, offline play against the stand-in, the build creator, the
+  netplay lobby (rooms through `nettai-rtc`, or a direct link) and the replays around the battle, navigated by keys,
+  a gamepad or touch, in each language its catalogs have ([docs/app.md](docs/app.md)).
+- `nettai-tools`: `nettai-tool`, the command line with no window: headless frames (a trace's, a match file's, a
+  replay's), the content and trace audits, the replay of recorded matches, match setups and replays checked; its
+  options are nettai-demo's for the same.
 - `nettai-match`: match files, everything a round needs by content key, checked; the editor's random pick.
 - `nettai-extract`: shared EXE5/EXE6 asset extraction library and CLI, including placeholders for missing ROMs.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
@@ -85,7 +87,7 @@ Create a match file with the match editor below, then run the frontend:
 
     cargo run --release -p nettai-demo -- --match match.toml                              # play live
     cargo run --release -p nettai-demo -- <trace.jsonl>                                    # replay a recorded match
-    cargo run --release -p nettai-demo -- --match match.toml --headless 1-120 --out <dir>  # render frames to PNG
+    cargo run --release -p nettai-tools -- --match match.toml --headless 1-120 --out <dir> # render frames to PNG
 
 In live play alone you are the left navi, and the right one is a stand-in that stands still. The match file sets
 the game, its rounds (one `[[round]]` each: the set is as many rounds, three for the original's best of three), each side's navi, folder, version, forms, patch cards, NaviCust and what its save brings to the

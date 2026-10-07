@@ -469,8 +469,13 @@ What nettai-demo does, and where each part goes:
 | `--audit`, `--audit-content` | nettai-tools |
 | `--show-folders`, `--save-match`, setup dumps | nettai-tools |
 
-nettai-tools is a small CLI crate (binary `nettai-tool`, no window toolkit) taking nettai-demo's headless modules
-as they are, with the same flags, so verify's scripts (lab-compare.sh, identity.sh, consoles.py, the merge
-checks) switch from `nettai-demo …` to `nettai-tool …` mechanically. The order: the build creator; nettai-tools;
+nettai-tools is a small CLI crate (binary `nettai-tool`, no window toolkit) holding nettai-demo's headless modules
+as they were (`headless`, `trace`, `content_audit`, `sound_lookups`; nettai-demo re-exports them until it goes),
+with the same flags, so verify's scripts (lab-compare.sh, lab-batch.sh, identity.sh, compare.sh,
+play-headless.sh, embed-against.sh, audit-against.sh, and the merge checks) switch from `nettai-demo …` to
+`nettai-tool …` (built with `-p nettai-tools`) mechanically. Its frames, marks and audits are nettai-demo's, byte
+for byte. Without frames, `--match FILE` says the setup (`--show-folders`, `--save-match`) and `--replay FILE` plays
+the replay to its end and says whether it reproduces. A trace is rendered or audited; watching one in a window
+stays nettai-demo's until the window goes. The order: the build creator; nettai-tools;
 verify's scripts and the merge checks switched (on a verify branch); then nettai-demo and iced deleted from the
 workspace, and docs/frontend.md's program sections moved here and to nettai-tools' own doc.
