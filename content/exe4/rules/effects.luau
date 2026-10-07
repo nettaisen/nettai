@@ -45,11 +45,14 @@ return {
     charge = "per_button",
     -- A held direction steps by the first of right, left, up, down held (0x0800B4B0); confused, down steps left, up
     -- right, left down, right up (0x0800B550); the idle starts a step only toward a panel the navi may step to
-    -- (0x080EEC82). (With no key held, 0x0800B4B0 steps by NaviStats +0x0D, a story script's; a netbattle's is 0.)
+    -- (0x080EEC82). The move bug (NaviStats +0x0D, the stat `move_bug`: ./navicust's) confuses the navi for 720
+    -- ticks as the round starts at 0xFF (0x0800D8B0); else, with no key held (or sliding), its keys step it
+    -- (0x0800B4DA: 0x10 right, 0x20 left).
     steps = {
         keys = { "right", "left", "up", "down" },
         confused = { up = "right", down = "left", left = "down", right = "up" },
         idle_checks_target = true,
+        bug = { stat = "move_bug", confused = 720 },
     },
     -- A screen fade toward clear ends on the step whose level would go under its target (0x08005BDE, which doesn't
     -- keep that level): a step after EXE6's, so its intro's fade from white takes 18 steps.
@@ -70,6 +73,11 @@ return {
     -- its hold of 30 (0x080149CE) and the tick it lets go of its sprites (0x080149E6), 32 frames (the count includes the
     -- tick it starts on, as EXE6's 0x3C does).
     used_chip_ticks = 33,
+    -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
+    bug_flicker = false,
+    -- An object's destroy (0x080D8C58) unregisters its collision first (0x080129FC: its panels refreshed, its hits
+    -- and the panels it clears resolved on them), then frees it.
+    destroy = "unregisters",
     -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
     -- not in update order: of two parts in one depth bucket the higher slot's is in front.
     draw_order = "slots",
