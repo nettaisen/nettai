@@ -100,6 +100,14 @@ local roles: RolesSpec = {
                 barriers.raise(navi, barrier)
             end
         end,
+        -- All Guard (0x0800D8E4: NaviStats +0x28 at 1, the rules' stat `all_guard`): as the navi's abilities reset
+        -- (its init, 0x0800D8C2), the guard the reset took down goes up again: every hit that doesn't break guards is
+        -- turned aside (0x08012B84).
+        abilities_reset = function(navi: Object)
+            if battle.navi(navi.alliance).all_guard then
+                navi:set_status("guard", true)
+            end
+        end,
     },
     sprites = {
         -- The Full Synchro aura (actor object 0x5E, 0x080CD1A8: 14-16, EXE5's and EXE6's numbers too).

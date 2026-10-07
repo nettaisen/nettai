@@ -1393,20 +1393,21 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     modcards/ recordings whose cards are ported compile as recorded (exe4_navicust) and replay. The cards that wait,
     each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
     chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); the pairs, each half applying when the
-    other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item
-    60); Charge FullCustom (103, 104: the charged shot FullCustom) is in (item 57).
+    other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54); All Guard (76, 77: +0x28, item
+    60) and Charge FullCustom (103, 104: the charged shot FullCustom, item 57) are in.
 57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
     `WEAPONS`; the 18 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
-    only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet. Waiting:
+    only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
+    Guard's too: item 60). Waiting:
     the routines of chips still to port (0x2D Thunder1, 0x37 CopyDmg, 0x38 WideSht1, 0x3A Thunder2, 0x42 Hole, 0x43
     WideSht2, 0x44 SandRing, 0x45 EnergBom, 0x46 Thunder3, 0x4C WideSht3, 0x4E WindRack, 0x4F MegEnBom, 0x50 Ball, 0x51
     BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
-    others' own actions), Triple Supporter's pair (item 54) and All Guard's (item 60).
+    others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
@@ -1422,7 +1423,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     which the reset clears too: **done**, the rules' stat `color`, which the cards write and rules/light_dark's palette
     reads (5 more a step of it, 0x0800C03A, but in a soul other than 15); the lab's modcards/059, 060, 089 and 090.
     Cards 76 and 77 (All Guard) set +0x28, which the navi's init reads (0x0800D8E4: at 1 its guard flag, f1 0x1, is up
-    from the start, so it turns aside every hit that doesn't break guards, 0x08012B84).
+    from the start, so it turns aside every hit that doesn't break guards, 0x08012B84): **done**, the rules' stat
+    `all_guard`, which the pair's half writes (`cards.pair`, item 57) and the role hook `abilities_reset` reads: the
+    engine's `sub_801390C` (EXE4's 0x0800D8C2, the init's and a form change's) takes the guard down, the hook raises it
+    again; the lab's modcards/076.
 61. **Done: the idle stands the navi** (from AirShot's replays). MegaMan's idle (0x080EEB38) puts animation 0 on each
     tick past its first phase (0x080EEB7C: 0x080EEBAC), the 10 ticks after a reaction's end; EXE6's (`sub_80F0354`)
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
