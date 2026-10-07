@@ -1,0 +1,10 @@
+# English: EXE4's strings by definition key. A definition holds no display text. So far MegaMan's and Cannon's names;
+# the rest come with the chips.
+
+language = "en"
+
+[chips]
+"cannon" = { name = "Cannon" }
+
+[navis]
+"megaman" = { name = "MegaMan" }
