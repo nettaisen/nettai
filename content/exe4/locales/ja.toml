@@ -115,6 +115,9 @@ language = "ja"
 "thunder1" = { name = "サンダーボール1", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 "thunder2" = { name = "サンダーボール2", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 "thunder3" = { name = "サンダーボール3", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"topman" = { name = "タップマン", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
+"topmn-sp" = { name = "タップマンSP", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
+"topmn-ds" = { name = "タップマンDS", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
