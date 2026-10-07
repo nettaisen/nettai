@@ -36,6 +36,7 @@ return merge {
     require("@self/036_max_hp_up"),
     require("@self/037_max_hp_up"),
     require("@self/038_max_hp_up"),
+    require("@self/045_default_full_synchro"),
     require("@self/046_first_barrier200"),
     require("@self/049_buster_attack_15"),
     require("@self/050_gigafolder1"),
