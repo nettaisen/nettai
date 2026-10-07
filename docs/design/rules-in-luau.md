@@ -1213,7 +1213,7 @@ EXE6 stays byte-identical; EXE5's side is unit tests and asm citations, and the 
   reversions), `escape_check` (EXE5 has no `sub_800AAD6`), `result_wait` (102 ticks, 94 in a special battle and for a
   win in battle modes 4, 5 and 8: `sub_80081A4` and `sub_800825A`, whose short wait the engine had left out; EXE5's
   special 65), `navi_win_banner` (the battles whose win shows the winner's navi's banner: EXE6's every link battle,
-  EXE5's the operation battles alone, 0x080074D2; any other win shows the banner role `win`'s, or `win_judged`'s on
+  EXE5's the operation battles alone, 0x080074D2, EXE4's none, `never`; any other win shows the banner role `win`'s, or `win_judged`'s on
   the judge's ruling: exe5-map.md §15.4; a rule each game states, with no default). The EXE5 replays: 115 past setup matched their first 219 frames, now 284 to 428 (4 match every frame;
   32,959 frames match in all, 25,170 before); the next stop is the panels at frame 426 (exe5-compat's).
 - **Collision words (item 9).** No engine change: `lint::self_bit_targets` reports a collision type that tests

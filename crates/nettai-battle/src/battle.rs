@@ -1957,7 +1957,7 @@ impl Battle {
     /// - A win's is the navi's (`sub_800A8D4`'s table; EXE5's 0x080090C0)
     ///   in the link battles the flow's `navi_win_banner` names: every one
     ///   of EXE6's, whatever the result; of EXE5's the operation battles
-    ///   alone.
+    ///   alone; none of EXE4's.
     /// - Any other win's is "ENEMY DELETED", or "YOU WIN" on the judge's
     ///   ruling.
     pub fn result_banner(&self, side: u8, won: bool) -> BannerId {
@@ -1972,6 +1972,7 @@ impl Battle {
             && match self.game_rules().flow.navi_win_banner {
                 NaviWinBanner::LinkBattle => true,
                 NaviWinBanner::OperationBattle => self.round.flags & battle_flags::OWN_GAUGES != 0,
+                NaviWinBanner::Never => false,
             };
         if navis {
             navi.win_banner

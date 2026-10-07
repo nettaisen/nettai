@@ -305,6 +305,12 @@ mod tests {
         b.round.time_up = 0;
         b.round.actor_count = [1, 0];
         assert_eq!(b.result_banner(0, true), navi.win_banner);
+        // EXE4's: "ENEMY DELETED" in every link battle, operation battle
+        // or not.
+        let mut b = with(&content(NaviWinBanner::Never), true);
+        b.round.actor_count = [1, 0];
+        b.round.flags |= battle_flags::OWN_GAUGES;
+        assert_eq!((b.result_banner(0, true), b.result_banner(1, false)), (role(&b, BannerRole::Win), navi.lose_banner));
     }
 
     /// Each viewer sees the objects as its own console would: a blind

@@ -242,25 +242,50 @@ pub fn map_entries(rom: &Rom, a: u32, n: usize) -> Vec<MapEntry> {
         .collect()
 }
 type BackgroundPicture = (Tiles, u16, Vec<MapEntry>, u16, u16, Option<Palette>);
+
+/// Where a background's load descriptor keeps what it copies: the tiles'
+/// archive, their VRAM destination, the map's archive and the palette's
+/// source, as byte offsets into the descriptor. EXE6's and EXE5's
+/// (`DIRECT`) copy each straight to its place; EXE4's (0x08026234,
+/// 0x08026266) decompresses into a buffer first, each source followed by
+/// its buffer.
+#[derive(Clone, Copy)]
+pub struct BackgroundDescriptor {
+    pub gfx: u32,
+    pub dest: u32,
+    pub map: u32,
+    pub palette: u32,
+}
+
+impl BackgroundDescriptor {
+    /// EXE6's (`off_8080F98`'s) and EXE5's.
+    pub const DIRECT: Self = Self { gfx: 0, dest: 4, map: 8, palette: 0x10 };
+}
+
 pub fn background_picture(rom: &Rom, d: u32) -> Option<BackgroundPicture> {
+    background_picture_by(rom, d, BackgroundDescriptor::DIRECT)
+}
+
+/// A background's picture from its descriptor at `d`, laid out as `at`.
+pub fn background_picture_by(rom: &Rom, d: u32, at: BackgroundDescriptor) -> Option<BackgroundPicture> {
     if d == 0 {
         return None;
     }
-    let gfx = rom.u32(d);
+    let gfx = rom.u32(d + at.gfx);
     if gfx == 0 {
         return None;
     }
     let size = rom.u32(gfx) as usize * 4;
     let raw = rom.lz77(gfx + rom.u32(gfx + 4))?;
     let tiles = Tiles::from_4bpp(&raw[..size.min(raw.len())]);
-    let first_tile = ((rom.u32(d + 4) & 0xFFFF) / 32) as u16;
-    let map_src = rom.u32(d + 8);
+    let first_tile = ((rom.u32(d + at.dest) & 0xFFFF) / 32) as u16;
+    let map_src = rom.u32(d + at.map);
     let (w, h) = (rom.u8(map_src) as u16, rom.u8(map_src + 1) as u16);
     let map_raw = rom.lz77(map_src + 0xC)?;
     let map = (0..(w * h) as usize)
         .map(|i| MapEntry::from_gba(u16::from_le_bytes([map_raw[2 * i], map_raw[2 * i + 1]])))
         .collect();
-    let pal_src = rom.u32(d + 0x10);
+    let pal_src = rom.u32(d + at.palette);
     let palette = (pal_src != 0).then(|| palettes_from_bytes(rom.bytes(pal_src + 4, 32))[0]);
     Some((tiles, first_tile, map, w, h, palette))
 }
