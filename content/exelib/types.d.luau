@@ -1584,3 +1584,13 @@ export type LockonDef = {
     prefers_middle_row: boolean?,
 }
 export type Lockon = LockonDef
+
+-- A soul's navi's image as MegaMan unites with it (@exelib/souls/image: EXE5's actor object 0x2A, EXE4's effect object
+-- 0x13; a soul's form's `image`): the navi's sprite, and what the image puts on as it comes in and takes off as it goes
+-- (EXE5's 0x0800EDBC's and 0x0800EEBE's routines by soul: GyroMan's propeller, NapalmMan's cannon, Colonel's cape,
+-- KnightMan's ball and chain, NumberMan's face; EXE4's part by 0x080E36AC's table; none: it wears nothing).
+export type SoulImage = {
+    sprite: SpriteAsset,
+    put_on: ((image: Object) -> ())?,
+    take_off: ((image: Object) -> ())?,
+}
