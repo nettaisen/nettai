@@ -46,4 +46,30 @@ return {
     modifier_passes_regular = false,
     -- The console says its custom screen is open until the window starts sliding out (`sub_8026BF4`).
     status_until = "closing",
+    -- The cursor's hover over a dark chip (`sub_802A2B0`, after every tick's state): the volume calls of its ramps,
+    -- the music's player's and the screen's, a tick at a time while the window's fade runs (`sub_802A30C`,
+    -- `sub_802A362`: `byte_802A3F4`, `byte_802A400`), 5 ticks toward the shade and 6 back (the fade back holds its
+    -- first frame); its sound's counter steps every tick from the opening, 0 to 63.
+    hover = {
+        runs = "every_tick",
+        to_dark = {
+            { music = 0x100, screen = 0x80 },
+            { music = 0xE0, screen = 0x80 },
+            { music = 0xC0, screen = 0xA0 },
+            { music = 0xA0, screen = 0xC0 },
+            { music = 0x80, screen = 0xE0 },
+        },
+        to_clear = {
+            { music = 0x80, screen = 0x100 },
+            { music = 0x80, screen = 0xE0 },
+            { music = 0xA0, screen = 0xC0 },
+            { music = 0xC0, screen = 0xA0 },
+            { music = 0xE0, screen = 0x80 },
+            { music = 0x100, screen = 0x80 },
+        },
+        players = { 31, 22 },
+        sound = { counts = "from_opening", every = 64 },
+    },
+    -- The players the close sets back to full volume (`sub_802A3CC`).
+    restore_players = { 31, 22 },
 }

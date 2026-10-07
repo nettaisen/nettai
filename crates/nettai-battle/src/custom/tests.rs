@@ -921,11 +921,12 @@ fn the_dark_hover_sounds_every_64_ticks() {
 fn the_dark_hover_sets_its_volumes_before_it_sounds() {
     use super::look::{ScreenCall, ScreenLook, ScreenSound};
     let mut look = ScreenLook::new(false, false, None);
+    let rules = crate::content::testing::rules().custom_screen.hover;
     // A tick of the look as the screen's tick runs it: the hover, then the
     // fades' steps; what it asked of the sound driver, in order.
     let tick = |look: &mut ScreenLook, on_dark: bool| {
         look.drawn = Default::default();
-        look.hover(on_dark);
+        look.hover(Some(on_dark), &rules);
         look.fade.step();
         look.window_fade.step();
         look.drawn.calls().collect::<Vec<_>>()
@@ -945,4 +946,55 @@ fn the_dark_hover_sets_its_volumes_before_it_sounds() {
         [ScreenCall::Volume { music: 0xC0, screen: 0xA0 }, ScreenCall::Sound(ScreenSound::Shade)]
     );
     assert_eq!(look.hover_count, 0);
+}
+
+/// EXE4's hover (0x0801E478): a ramp of 11 ticks with a volume call every
+/// other tick, the sound on the tick after the shade settles and every 61
+/// after that, counted only while it stays (none while it ramps back).
+#[test]
+fn a_hover_that_sounds_while_dark() {
+    use super::look::{ScreenCall, ScreenLook, ScreenSound};
+    use crate::content::{HoverRules, HoverRuns, HoverSound};
+    let calls = |music: u16, screen: u16| Some([music, screen]);
+    let gaps = |v: [Option<[u16; 2]>; 5]| -> Vec<Option<[u16; 2]>> { v.into_iter().flat_map(|c| [None, c]).chain([None]).collect() };
+    let rules = HoverRules {
+        runs: HoverRuns::WhileChoosing,
+        to_dark: gaps([calls(0xE0, 0xE0), calls(0xC0, 0x100), calls(0xA0, 0x100), calls(0x80, 0xE0), calls(0x60, 0xC0)]),
+        to_clear: gaps([calls(0xE0, 0xE0), calls(0x100, 0xC0), calls(0x100, 0xA0), calls(0xE0, 0x80), calls(0xC0, 0x60)]),
+        players: [31, 9],
+        sound: HoverSound::WhileDark { every: 61 },
+    };
+    let mut look = ScreenLook::new(false, false, None);
+    let tick = |look: &mut ScreenLook, on_dark: Option<bool>| {
+        look.drawn = Default::default();
+        look.hover(on_dark, &rules);
+        look.drawn.calls().collect::<Vec<_>>()
+    };
+    assert_eq!(tick(&mut look, Some(false)), []);
+    // The turn, then 11 ticks of ramp, the volumes on every other.
+    assert_eq!(tick(&mut look, Some(true)), []);
+    let ramp: Vec<_> = (0..11).map(|_| tick(&mut look, Some(true))).collect();
+    assert_eq!(ramp[0], []);
+    assert_eq!(ramp[1], [ScreenCall::Volume { music: 0xE0, screen: 0xE0 }]);
+    assert_eq!(ramp[9], [ScreenCall::Volume { music: 0x60, screen: 0xC0 }]);
+    assert_eq!(ramp[10], []);
+    // Settled: the sound at once, then every 61 ticks.
+    assert_eq!(tick(&mut look, Some(true)), [ScreenCall::Sound(ScreenSound::Shade)]);
+    for _ in 0..60 {
+        assert_eq!(tick(&mut look, Some(true)), []);
+    }
+    assert_eq!(tick(&mut look, Some(true)), [ScreenCall::Sound(ScreenSound::Shade)]);
+    // A tick whose state left the chips turns nothing.
+    assert_eq!(tick(&mut look, None), []);
+    assert_eq!(look.shade, super::ChipShade::Shaded);
+    // Off it: the sound's counter waits again; back on it after the ramp,
+    // the sound on the first settled tick.
+    assert_eq!(tick(&mut look, Some(false)), []);
+    assert!((0..11).all(|_| { tick(&mut look, Some(false)); true }));
+    assert_eq!(look.shade, super::ChipShade::Clear);
+    assert_eq!(tick(&mut look, Some(true)), []);
+    for _ in 0..11 {
+        assert!(!tick(&mut look, Some(true)).contains(&ScreenCall::Sound(ScreenSound::Shade)));
+    }
+    assert_eq!(tick(&mut look, Some(true)), [ScreenCall::Sound(ScreenSound::Shade)]);
 }

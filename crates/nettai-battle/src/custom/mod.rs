@@ -503,16 +503,14 @@ impl Battle {
             if let Some(screen) = &s.screen {
                 for call in screen.look.drawn.calls() {
                     match call {
-                        // (The dark chip hover's is EXE5's alone.)
-                        look::ScreenCall::Sound(look::ScreenSound::Shade) => {
-                            if let Some(id) = self.roles().try_sound(crate::content::SoundRole::CustomShade) {
-                                self.play_sound_for(side, id);
-                            }
-                        }
                         look::ScreenCall::Sound(look::ScreenSound::Rules(id)) => self.play_sound_for(side, id),
+                        // (A sound some game hasn't, the hover's among them,
+                        // plays none there: `SoundRole::optional`.)
                         look::ScreenCall::Sound(sound) => self.sound_for(side, sound.role().expect("a screen sound of a role")),
                         look::ScreenCall::Volume { music, screen } => {
-                            self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
+                            let [m, s] = self.content.rules().custom_screen.hover.players;
+                            self.play_sound_for(side, crate::sound::SoundCue::Volume { player: m, volume: music });
+                            self.play_sound_for(side, crate::sound::SoundCue::Volume { player: s, volume: screen });
                         }
                     }
                 }

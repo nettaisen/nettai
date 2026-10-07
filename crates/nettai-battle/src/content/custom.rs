@@ -159,6 +159,58 @@ pub struct CustomScreenLayout {
     /// Until when a player's console says its custom screen is open (the
     /// status bits the other console's fight reads).
     pub status_until: StatusUntil,
+    /// The shade the cursor casts resting on a dark chip (presentation).
+    pub hover: HoverRules,
+    /// The sound players the close sets back to full volume, in its order
+    /// (EXE6's `sub_802A3CC`: 31, 22; EXE4's 0x0801E194: 9, 31).
+    pub restore_players: Vec<u8>,
+}
+
+/// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
+/// 0x0801E478): the screen darkens, the music's volume and the screen's
+/// player's ramp, and its sound plays now and then. Presentation.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct HoverRules {
+    /// On which ticks it runs.
+    pub runs: HoverRuns,
+    /// The volume calls of its ramp toward the shade and back: by tick
+    /// from the one after the hover turns, the music's player's and the
+    /// screen's, or none that tick. It settles on the last.
+    pub to_dark: Vec<Option<[u16; 2]>>,
+    pub to_clear: Vec<Option<[u16; 2]>>,
+    /// The players it ramps: the music's, the screen's.
+    pub players: [u8; 2],
+    /// When its sound plays.
+    pub sound: HoverSound,
+}
+
+/// On which ticks the hover runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HoverRuns {
+    /// After every tick's state (EXE6's `sub_802A2B0`): whatever is up
+    /// that isn't the chips or a chip's description clears it.
+    EveryTick,
+    /// After the state of a tick the screen begins choosing (EXE4's call
+    /// in its choosing state, 0x0801E40E): it stands still while the
+    /// window slides, is hidden, the Program Advance plays or the result is
+    /// sent; a tick whose state left choosing changes nothing of it but a
+    /// ramp's step (0x0801E4B6).
+    WhileChoosing,
+}
+
+/// When the hover's sound plays.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "counts", deny_unknown_fields)]
+pub enum HoverSound {
+    /// A counter from the screen's opening, every tick the hover runs,
+    /// after its ramp: the sound as it wraps to 0 every `every` ticks
+    /// unless the hover is clear (EXE5's 0x08025A80).
+    FromOpening { every: u8 },
+    /// A counter from each turn of the hover, before it: on the tick
+    /// after the shade settles and every `every` ticks the shade stays
+    /// (EXE4's +0x5C, 0x0801E49C).
+    WhileDark { every: u8 },
 }
 
 /// What becomes of a pick of a chip that counts as the invalid chip
@@ -267,6 +319,14 @@ impl Default for CustomScreenLayout {
             program_advances: ProgramAdvanceRules { once_a_round: true, keeps_regular: true, clears_past_end: false },
             modifier_passes_regular: false,
             status_until: StatusUntil::Closing,
+            hover: HoverRules {
+                runs: HoverRuns::EveryTick,
+                to_dark: Vec::new(),
+                to_clear: Vec::new(),
+                players: [31, 22],
+                sound: HoverSound::FromOpening { every: 64 },
+            },
+            restore_players: vec![31, 22],
         }
     }
 }
