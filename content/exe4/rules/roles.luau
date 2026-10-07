@@ -6,6 +6,7 @@
 -- for EXE4's definitions (docs/design/exe4-map.md §18); the content check lists them as unfilled, and a battle stops at
 -- the first it needs.
 
+local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
@@ -27,6 +28,10 @@ local roles: RolesSpec = {
     },
     regions = {
         anchor = regions.single,
+    },
+    kinds = {
+        -- The glow a navi's charge brings (effect object 5, 0x080E215C; the navi's tail spawns it, 0x0800BD88).
+        charge_glow = charge_glow.kind,
     },
     sounds = {
         appear = asset.sound("appear"),
