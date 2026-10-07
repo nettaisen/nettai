@@ -916,3 +916,36 @@ fn exe4s_ice_pushes() {
     nettai_battle::kinds::player::update(&mut b, navi);
     assert_eq!(b.objects.get(navi).slide_type, 1, "a push's slide");
 }
+
+/// docs/design/exe4-map.md §18 item 12: EXE4's pitfall turns normal 190
+/// ticks after a type change makes it (its `changed`, 0x08009DC4); a stage's
+/// waits, armed (its `start`, 0x08009120), until a grounded body stands on it
+/// (its `tick`, 0x0800980E).
+#[test]
+fn exe4s_pitfall_crumbles() {
+    use nettai_battle::Battle;
+    let content = exe4_content();
+    let panels = &content.rules().panels;
+    let (pitfall, normal) = (panels.named("pitfall").expect("EXE4's pitfall"), panels.roles.normal);
+    let m = crate::pick::live(&content, "exe4", 3, None).unwrap();
+    let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
+    b.set_panel_type(2, 1, pitfall);
+    assert_eq!(b.field.panels[1][2].timer, 190);
+    for _ in 0..189 {
+        b.tick_panels();
+    }
+    assert_eq!(b.field.panels[1][2].kind, pitfall);
+    b.tick_panels();
+    assert_eq!(b.field.panels[1][2].kind, normal, "190 ticks after it was made");
+    // Armed, as a stage's: nothing stands on it, so it waits.
+    b.set_panel_type(2, 1, pitfall);
+    b.field.panels[1][2].timer = 0x8000 | 190;
+    for _ in 0..300 {
+        b.tick_panels();
+    }
+    assert_eq!((b.field.panels[1][2].kind, b.field.panels[1][2].timer), (pitfall, 0x8000 | 190));
+    // A grounded body stands on it: the count starts that tick.
+    b.field.panels[1][2].flags |= nettai_battle::field::pflags::BODY_SIDE0;
+    b.tick_panels();
+    assert_eq!(b.field.panels[1][2].timer, 189);
+}

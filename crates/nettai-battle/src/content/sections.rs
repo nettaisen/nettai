@@ -61,8 +61,6 @@ struct PanelTypeSection {
     unbreakable: bool,
     #[serde(default)]
     traps: bool,
-    #[serde(default)]
-    crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
     carries_by_move: Option<Vec<Vec<SlideStep>>>,
@@ -111,6 +109,8 @@ struct PanelsSection {
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
     type_mask: u32,
+    #[serde(default)]
+    cycle: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -678,7 +678,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         doubles,
                         unbreakable: rule.unbreakable,
                         traps: rule.traps,
-                        crumbles: rule.crumbles,
                     });
                 }
                 if types.len() > 16 {
@@ -703,6 +702,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 let names = s.numbers.clone();
                 stated.panels = Some(PanelRules {
                     types,
+                    cycle: s.cycle,
                     names,
                     roles,
                     start_visible: s.start_visible,

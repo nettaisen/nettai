@@ -98,6 +98,7 @@ fn battles_run_the_content_scripts() {
             "eraseman/beam",
             "eraseman/mark",
             "eraseman/navi",
+            "eruption",
             "falling-rock",
             "falling-rock/chip",
             "falzar/controller",

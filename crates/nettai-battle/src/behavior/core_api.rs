@@ -1424,6 +1424,26 @@ impl CoreApi for Battle {
         self.field.is_solid(p.x, p.y)
     }
 
+    fn panel_timer(&self, p: PanelPos) -> u16 {
+        self.field.panel(p.x, p.y).map_or(0, |p| p.timer)
+    }
+
+    fn set_panel_timer(&mut self, p: PanelPos, ticks: u16) {
+        if let Some(p) = self.field.panel_mut(p.x, p.y) {
+            p.timer = ticks;
+        }
+    }
+
+    fn field_cycle(&self) -> u32 {
+        self.field.cycle
+    }
+
+    fn panel_body_grounded(&self, p: PanelPos) -> bool {
+        use crate::field::pflags;
+        let f = self.field.flags(p.x, p.y);
+        f & pflags::BODY != 0 && f & pflags::FLOATING == 0
+    }
+
     fn highlight_panel(&mut self, p: PanelPos) {
         common::highlight_panel(self, p.x, p.y);
     }

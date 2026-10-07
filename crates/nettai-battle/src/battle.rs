@@ -836,8 +836,9 @@ impl Battle {
         // Then what the content gives each side for the round (its navi's
         // and the chips' functions of the side: what its level gives it).
         b.given = crate::given::Given::ask(&mut b);
-        // Init's last steps: refresh every panel, then one unpaused panel
-        // update.
+        // Init's last steps: the panels' types' starts, refresh every panel,
+        // then one unpaused panel update.
+        b.start_panels();
         b.field.refresh_all(&b.content.rules().panels, &b.collision);
         b.tick_panels();
         b

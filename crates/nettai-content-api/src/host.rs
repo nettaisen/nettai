@@ -190,7 +190,7 @@ pub enum HookCall {
     /// A hook of a panel type's (its rules' `panels.types.<name>.<hook>`):
     /// what the type does where the engine meets it, with the body it
     /// meets there (docs/design/rules-in-luau.md, "Panels into Luau").
-    Panel { body: ObjectRef, call: PanelCall },
+    Panel(PanelCall),
 }
 
 /// Which hook of a panel type's is called: where the engine meets the type,
@@ -226,12 +226,33 @@ pub enum PanelHook {
     /// ice: an aqua attack freezes the body and the panel turns normal). Its
     /// result is unused.
     Hit,
+    /// `tick(x, y)`: each panel update (`sub_800C380`), for a panel of the
+    /// type that isn't missing, broken or cracked (EXE6's volcano erupts,
+    /// EXE4's pitfall crumbles); a type without one that expires counts down
+    /// its `expires`. Its result is unused.
+    Tick,
+    /// `changed(x, y)`: the panel became the type (`_object_setPanelType`,
+    /// EXE4's 0x08009DC4: the pitfall counts at once). Its result is unused.
+    Changed,
+    /// `start(x, y)`: the round's field starts with the panel of the type
+    /// (EXE4's 0x08009120: a stage's pitfall waits, armed). Its result is
+    /// unused.
+    Start,
 }
 
 impl PanelHook {
     /// Every hook, in order.
-    pub const ALL: [PanelHook; 6] =
-        [PanelHook::Burn, PanelHook::Stand, PanelHook::Rest, PanelHook::MoveEnd, PanelHook::Slide, PanelHook::Hit];
+    pub const ALL: [PanelHook; 9] = [
+        PanelHook::Burn,
+        PanelHook::Stand,
+        PanelHook::Rest,
+        PanelHook::MoveEnd,
+        PanelHook::Slide,
+        PanelHook::Hit,
+        PanelHook::Tick,
+        PanelHook::Changed,
+        PanelHook::Start,
+    ];
 
     /// The hook's name in a panel type's table.
     pub fn name(self) -> &'static str {
@@ -242,19 +263,26 @@ impl PanelHook {
             PanelHook::MoveEnd => "move_end",
             PanelHook::Slide => "slide",
             PanelHook::Hit => "hit",
+            PanelHook::Tick => "tick",
+            PanelHook::Changed => "changed",
+            PanelHook::Start => "start",
         }
     }
 }
 
-/// A panel hook's call, with its arguments past the body.
+/// A panel hook's call, with its arguments: the body it meets, or the
+/// panel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PanelCall {
-    Burn { player: bool },
-    Stand,
-    Rest,
-    MoveEnd,
-    Slide { how: SlideHow },
-    Hit { element: u8 },
+    Burn { body: ObjectRef, player: bool },
+    Stand { body: ObjectRef },
+    Rest { body: ObjectRef },
+    MoveEnd { body: ObjectRef },
+    Slide { body: ObjectRef, how: SlideHow },
+    Hit { body: ObjectRef, element: u8 },
+    Tick { x: u8, y: u8 },
+    Changed { x: u8, y: u8 },
+    Start { x: u8, y: u8 },
 }
 
 impl PanelCall {
@@ -262,11 +290,14 @@ impl PanelCall {
     pub fn hook(self) -> PanelHook {
         match self {
             PanelCall::Burn { .. } => PanelHook::Burn,
-            PanelCall::Stand => PanelHook::Stand,
-            PanelCall::Rest => PanelHook::Rest,
-            PanelCall::MoveEnd => PanelHook::MoveEnd,
+            PanelCall::Stand { .. } => PanelHook::Stand,
+            PanelCall::Rest { .. } => PanelHook::Rest,
+            PanelCall::MoveEnd { .. } => PanelHook::MoveEnd,
             PanelCall::Slide { .. } => PanelHook::Slide,
             PanelCall::Hit { .. } => PanelHook::Hit,
+            PanelCall::Tick { .. } => PanelHook::Tick,
+            PanelCall::Changed { .. } => PanelHook::Changed,
+            PanelCall::Start { .. } => PanelHook::Start,
         }
     }
 }
