@@ -17,7 +17,6 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi" },
     slot_in_limit = 1,
-    traits = { "not_navi_slot" },
     dimming = controller.hook,
     auto_battle = { class = "at_once" },
 }

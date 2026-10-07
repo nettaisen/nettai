@@ -1329,6 +1329,8 @@ pub fn scripts() -> Scripts {
                 // The navi chips' navis: each navi and his kinds, which
                 // the test navi chips summon.
                 ("lib/navi_chips/navi", "lib/navi_chips/navi"),
+                // (Each test navi chip's own controller.)
+                ("lib/navi_chips/chip", "lib/navi_chips/chip"),
                 ("chips/elmntman/navi", "chips/elmntman/navi"),
                 ("chips/elmntman/meteor", "chips/elmntman/meteor"),
                 ("chips/elmntman/ice", "chips/elmntman/ice"),

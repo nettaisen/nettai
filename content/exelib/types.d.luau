@@ -1618,6 +1618,29 @@ export type LockonDef = {
 }
 export type Lockon = LockonDef
 
+-- What a navi chip's navi is spawned with (@exelib/navi_chips/chip: the registers `sub_80E1880` passes to
+-- `off_802CD5C[subtype]`): the controller's panel and element, and the damage word with the bonus.
+export type NaviChipSpec = {
+    panel_x: number,
+    panel_y: number,
+    element: number,
+    damage: number,
+}
+
+-- An EXE6 or EXE5 navi chip's navi (@exelib/navi_chips/chip): for `user`, reporting to `controller`, as `spec` says.
+export type NaviChipSummon = (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+
+-- What an EXE6 or EXE5 navi chip's `navi` is (@exelib/navi_chips/chip): its controller's spawner (`hook`), its
+-- navi's summon and its course, which EXE5's DethPhnx reads, and the rest of its spec.
+export type NaviChip = {
+    kind: Kind,
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+    summon: NaviChipSummon,
+    course: { NaviChipStep },
+    navi_block: boolean?,
+    heals: boolean?,
+}
+
 -- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
 -- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
 -- after the navi), the controller's state, and what a game's `make` hands back.

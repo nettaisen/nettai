@@ -8,7 +8,7 @@ marked **verified** or **unverified** in each section.
 
 | subtype | chips | controller | objects | section | port (content/exe6) |
 |---|---|---|---|---|---|
-| (service) | AntiNavi 0xBA against navi chips 0xDD..0x118 | the navi chip controller T4#0x10 | effect #0 | §2 | crates/nettai-battle/src/dimming.rs |
+| (service) | AntiNavi 0xBA against navi chips 0xDD..0x118 | the navi chip controller T4#0x10 | effect #0 | §2 | @exelib/navi_chips/controller (each navi chip's own controller), on crates/nettai-battle/src/dimming.rs's steps |
 | 4 | 0xB2 Barrier, 0xB3 Barr100, 0xB4 Barr200, 0xB5 BblWrap, 0xB6 LifeAur | T4#0x2F | the barrier visual T4#7 | §3 | lib/barriers, chips/barrier, chips/bblwrap, chips/lifeaur; FirstBarrier: rules/roles |
 | 5 | 0xA6 PnlRetrn, 0xA8 HolyPanl, 0xA9 Snctuary, 0xAA ComingRd, 0xAB GoingRd | T4#0x20 | the panel changer T4#0x1F | §4 | lib/panel_chips, objects/panel_changer, chips/{pnlretrn,holypanl,snctuary,comingrd,goingrd} |
 | 26 | 0xB0 BugFix | T4#0x3B | the glow T1#0x5D | §5 | chips/bugfix |
@@ -92,7 +92,8 @@ and the other side's state is not 0 or 5, own state = 3 and retry. Else own stat
 
 The end (`object_timefreezeEnd`) then runs for T: T started the dimming, so it ends it.
 
-Port: crates/nettai-battle/src/dimming.rs (`check_anti_navi`, `show_navi_telop`), with unit tests
+Port: content/exelib/navi_chips/controller.luau (`anti_navi`, `name`; on the dimming service's generic steps,
+crates/nettai-battle/src/dimming.rs: `telop_running`, `run`, `chip_telop`, `turn`), with unit tests
 (`anti_navi_turns_a_navi_chip_around`, `two_anti_navis_send_the_chip_back`). **Verified** against two scenarios
 recorded for it, in the lab library as `chips/0x0ba-antinavi/heatman` and `chips/0x0ba-antinavi/bounce`: AntiNavi
 (side 1) then HeatMan (side 0), 1170/1170 frames; both AntiNavis armed, then HeatMan, 1708/1708 frames (the

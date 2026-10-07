@@ -4,7 +4,7 @@ Chips, weapons, navi-chip navis, the link navis' attacks and the object kinds th
 modules in the content root, running on a typed content API. The engine is a content-independent core (object
 pools, collision, the damage pipeline, statuses, battle flow, rollback) plus the EXE6 ruleset's frameworks in
 Rust (the navi framework, movement, the custom screen, and the services content calls: dimming, form changes,
-the navi-chip controller, the Beast rush wrapper, the one-tick hitbox, effects and sparks, obstacles, the
+the Beast rush wrapper, the one-tick hitbox, effects and sparks, obstacles, the
 intro). docs/design/core-content-boundary.md draws that line; docs/design/rollback.md covers rollback netplay;
 docs/design/content-pack.md the content root and the pack; docs/design/content-migration.md how to write
 content.
@@ -164,7 +164,7 @@ other definitions by key, functions as slots (`kind bomb`'s `update`). The engin
 and plans what the runtime binds (`BindPlan`): each function it will call, by definition and path, and each
 state layout. `behavior::Behaviors` holds the runtime; `kinds::update` runs a content kind's `update`,
 `actions::dispatch` a content action's, and the ruleset's hook sites (a weapon's setup, the dimming chip action,
-the navi chip controller, the instant chip action, a stage's placements, the roles' hooks) call their slots.
+the hand-off chip action, the instant chip action, a stage's placements, the roles' hooks) call their slots.
 What the ruleset implements itself (its own object kinds, keyed `engine/...`, and its own navi actions: the
 step, the three chip-use actions, the form change, the Cross special) runs as Rust.
 
@@ -423,8 +423,8 @@ local eraseman: Chip = {
 return { eraseman = eraseman, ["erasemn-ex"] = erasemn_ex, ["erasemn-sp"] = erasemn_sp }
 ```
 
-The navi chip controller (the ruleset's, Rust) calls the chip's hook when the navi comes, and waits for
-`navi_chip.navi_left(controller)`. What differs between the chips of the series is the hook's argument and the
+Each chip's controller (@exelib/navi_chips/chip, the chip's `navi`) calls the chip's summon when the navi comes,
+and waits for `navi_chip.navi_left(controller)`. What differs between the chips of the series is the hook's argument and the
 record; a routine's own immediates (his 0x168-tick aim limit, his aim table) are the script's constants, as
 they are the routine's in the game.
 
