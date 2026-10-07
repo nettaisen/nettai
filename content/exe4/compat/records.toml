@@ -6,11 +6,12 @@
 "megaman" = 0
 
 # Weapons: the weapon routine numbers NaviStats +0x09 (the B button's), +0x0A (the charged weapon's) and +0x0C (B+Left's)
-# name (the routines at 0x0800CA7C: 0 the buster, 0x0800CC2E; 1 the charged shot, 0x0800CC54; 0x25 Shield's guard,
-# 0x0800CF88; 0x26 Reflect's, 0x0800CFA8).
+# name (the routines at 0x0800CA7C: 0 the buster, 0x0800CC2E; 1 the charged shot, 0x0800CC54; 0x21 the taunt
+# DrkCanon's cost leaves, 0x0800CFEC; 0x25 Shield's guard, 0x0800CF88; 0x26 Reflect's, 0x0800CFA8).
 [weapons]
 "megaman/buster" = [0]
 "megaman/charged-shot" = [1]
+"megaman/taunt" = [0x21]
 "megaman/shield" = [0x25]
 "megaman/reflect" = [0x26]
 

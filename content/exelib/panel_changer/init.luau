@@ -133,9 +133,12 @@ local function tick(me: Object)
     me:set_lifecycle("destroy")
 end
 
--- `sub_80E28C8`: list the panels; the timer; and the first update at once.
+-- `sub_80E28C8`: the change's start sound, if any (EXE4's); list the panels; the timer; and the first update at once.
 local function init(me: Object)
     local s = me.state :: State
+    if s.change.start_sound then
+        battle.play_sound(s.change.start_sound)
+    end
     local list = collect(me, s.change)
     for i, p in list do
         s.list[i] = p
