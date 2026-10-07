@@ -27,12 +27,13 @@ local form: FormDef = {
     sprite = asset.sprite("tomahawksoul"),
     element = "wood",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x33 (0x0800FA52): DrkLance (chip 0xBF), the charge table's row 0x33.
+    chaos = { weapon = chaos.weapon(drklance, { 40, 60, 90, 120, 150, 40 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
-        -- Routine 0x33 (0x0800FA52): DrkLance (chip 0xBF), the charge table's row 0x33.
-        chaos = chaos.weapon(drklance, { 40, 60, 90, 120, 150, 40 }),
     },
     grass_doubles = { family = "wood" },
     reset = function(navi: Object)

@@ -283,11 +283,6 @@ pub enum ChipMatch {
 #[serde(deny_unknown_fields)]
 pub struct SoulData {
     pub family: ChipFamily,
-    /// The chaos cycle's row its Chaos Unison charges by whatever the
-    /// chaos level (0x080106BC: MeddySoul's 2); none: the level's, at
-    /// most 2.
-    #[serde(default)]
-    pub chaos_cycle: Option<u8>,
 }
 
 /// One of MegaMan's forms. (What a game's rules say of their game's
@@ -738,14 +733,11 @@ pub struct FormWeapons {
     pub back_special: Option<WeaponHandle>,
     /// The A-button charge for Null-family chips in Beast forms.
     pub alt_a_charge: Option<WeaponHandle>,
-    /// An EXE5 soul's Chaos Unison weapon (AIData +0x11): what a full B
-    /// charge released in the chaos cycle's window fires.
-    pub chaos: Option<WeaponHandle>,
 }
 
 impl FormWeapons {
     /// The slots' names in a definition's `weapons`.
-    pub const SLOTS: [&'static str; 7] = ["mode9_a", "a_charge", "buster", "charge_shot", "back_special", "alt_a_charge", "chaos"];
+    pub const SLOTS: [&'static str; 6] = ["mode9_a", "a_charge", "buster", "charge_shot", "back_special", "alt_a_charge"];
 
     /// The slot named `slot`.
     pub fn slot_mut(&mut self, slot: &str) -> Option<&mut Option<WeaponHandle>> {
@@ -756,7 +748,6 @@ impl FormWeapons {
             "charge_shot" => &mut self.charge_shot,
             "back_special" => &mut self.back_special,
             "alt_a_charge" => &mut self.alt_a_charge,
-            "chaos" => &mut self.chaos,
             _ => return None,
         })
     }

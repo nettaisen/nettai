@@ -509,11 +509,14 @@ declare extern type Object with
     -- Writable: EXE5's DarkPlus tint (AIData+0x3C; 0 none), which picks the
     -- navi's status shader.
     plus_tint: number
-    -- Writable: EXE5's Chaos Unison charge, armed (AIData+0x12; the chaos
-    -- change arms it, a weapons' load and the failure's end disarm it), and
-    -- its level (AIData+0x6C: releases that succeeded, at most 4).
-    chaos_armed: boolean
-    chaos_level: number
+    -- A B charge the side's rules arm in place of the charged shot's (EXE5's Chaos Unison charge,
+    -- AIData+0x12): the ticks to a full charge (in place of the charged shot's by the Charge stat), the
+    -- glow it shows (seen and heard by its side alone) and the glow's animation once full. Nil: no such
+    -- charge (a weapons' load drops them all); armed while the time is set. A full charge's release is
+    -- the rules' (`charge_released`, then `release_taken` from idle).
+    b_charge_time: number?
+    b_charge_glow: SpriteAsset?
+    b_charge_anim: number?
     -- Writable: EXE5's priming (AIData+0x0D): a form's `priming` chip used,
     -- its next doubling waiting.
     primed: boolean
@@ -1263,9 +1266,10 @@ declare battle: {
     -- makes for a navi no buttons drive (EXE5's auto battle draws it).
     sword_pick: (side: number) -> number,
     set_sword_pick: (side: number, pick: number) -> (),
-    -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:
-    -- EXE5's Hub Style).
-    set_face_variant: (side: number, variant: boolean) -> (),
+    -- Presentation: whether the side's emotion window shows its form's second set of faces (`mugshot.variant`): in the
+    -- base form ("base", the default: EXE5's Hub Style), or whatever the form while its navi's rules' B charge is
+    -- armed ("charged": EXE5's Chaos Unison look).
+    set_face_variant: (side: number, variant: boolean, mode: ("base" | "charged")?) -> (),
     -- Presentation: whether the custom screen's enemy names show the side's navi by its variant name (the locale's
     -- `variant_name`: EXE5's Hub Style in a link battle).
     set_name_variant: (side: number, variant: boolean) -> (),
@@ -1956,6 +1960,11 @@ export type RulesSpec = {
         -- `sub_801A720`: the HP bug's level, paralysis and blindness), before its status and damage; asked when a hit
         -- brought a code.
         hit_bug: ((side: number, navi: Object) -> ())?,
+        -- A full B charge is released while the rules' own B charge is armed (`navi.b_charge_time`; EXE5's Chaos
+        -- Unison, 0x0801086E): they note what it does, which idle then has them start (`release_taken`, the navi out
+        -- of idle: EXE5's 0x080F034E and 0x080F0382).
+        charge_released: ((side: number, navi: Object) -> ())?,
+        release_taken: ((side: number, navi: Object) -> ())?,
         -- Whether the navi's hit's bug shows the HP bug's marker (`sub_801A4A6`), as its hits' effects show; asked
         -- when a hit brought a code.
         bug_mark: ((side: number, navi: Object) -> boolean?)?,
@@ -2181,8 +2190,8 @@ export type MugshotFaces = {
     full_synchro: Mugshot?,
     worn_out: Mugshot?,
     worried: Mugshot?,
-    -- A second set, shown while the navi's Chaos Unison charge is armed (EXE5's soul's chaos look), or in the base form
-    -- when the side's rules ask (`battle.set_face_variant`: EXE5's Hub Style).
+    -- A second set, shown where the side's rules ask (`battle.set_face_variant`): while the navi's rules' B charge is
+    -- armed (EXE5's soul's Chaos Unison look), or in the base form (EXE5's Hub Style).
     variant: FaceSet?,
 }
 
@@ -2334,9 +2343,6 @@ export type FormWeapons = {
     a_charge: Weapon?,
     alt_a_charge: Weapon?,
     mode9_a: Weapon?,
-    -- An EXE5 soul's Chaos Unison weapon: what an armed full B charge
-    -- released in the chaos cycle's window fires.
-    chaos: Weapon?,
 }
 -- What a form's status reset gives the navi (`sub_8014536`).
 export type FormEffect =
@@ -2475,10 +2481,8 @@ export type FormDef = {
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
     -- A soul (EXE5's Soul Unison), named by its form's id: the chip family
-    -- the custom screen's soul button gives up for it, and the chaos
-    -- cycle's row its Chaos Unison charge keeps whatever the chaos level
-    -- (MeddySoul's; none: the level's, at most 2).
-    soul: { family: ChipFamily, chaos_cycle: number? }?,
+    -- the custom screen's soul button gives up for it.
+    soul: { family: ChipFamily }?,
     -- Its game's rules' fields (their `extends.form`: EXE6's `kind`,
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,
@@ -2697,7 +2701,6 @@ export type RolesSpec = {
         ungrounded: Action?,
         glowless: Action?,
         wrapper: Action?,
-        chaos_failure: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,
@@ -2836,7 +2839,6 @@ export type RolesSpec = {
     sprites: {
         charge_glow: SpriteAsset?,
         charge_glow_a: SpriteAsset?,
-        charge_glow_chaos: SpriteAsset?,
         full_synchro_aura: SpriteAsset?,
         confusion: SpriteAsset?,
         blindness: SpriteAsset?,

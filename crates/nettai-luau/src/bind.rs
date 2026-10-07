@@ -2009,9 +2009,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, pick) = (u8_arg(side, "side")? & 1, u8_arg(pick, "sword pick")?);
         with(|api, _| Ok(api.set_sword_pick(side, pick)))
     });
-    lib_fn!(lua, t, "set_face_variant", |_, (side, variant): (LuaValue, bool)| {
+    lib_fn!(lua, t, "set_face_variant", |_, (side, variant, mode): (LuaValue, bool, Option<mlua::LuaString>)| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.set_face_variant(side, variant)))
+        let charged = match mode.as_ref().map(|m| m.to_str().map(|s| s.to_string())).transpose()?.as_deref() {
+            None | Some("base") => false,
+            Some("charged") => true,
+            Some(other) => return Err(mlua::Error::runtime(format!("set_face_variant: a mode is \"base\" or \"charged\", not {other:?}"))),
+        };
+        with(|api, _| Ok(api.set_face_variant(side, variant, charged)))
     });
     lib_fn!(lua, t, "set_name_variant", |_, (side, variant): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;

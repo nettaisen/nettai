@@ -33,7 +33,8 @@ local function dark_arm(navi: Object): number
     return battle.navi(navi.alliance).hub_style
 end
 local function chaos_charge(navi: Object): number
-    return if navi.chaos_armed then 1 else 0
+    -- (The rules' own B charge: ../rules/souls/chaos_charge.)
+    return if navi.b_charge_time ~= nil then 1 else 0
 end
 
 -- 0x080EBABE: the arm `navi` calls for, held in `which` (its r9, Param3, by 16: the arm animates while dimmed) of

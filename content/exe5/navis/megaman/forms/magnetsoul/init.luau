@@ -25,14 +25,15 @@ local form: FormDef = {
     sprite = asset.sprite("magnetsoul"),
     element = "elec",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x35 (0x0800FA66): DarkThnd (chip 0xC1), the charge table's row 0x35.
+    chaos = { weapon = chaos.weapon(darkthnd, { 40, 60, 90, 120, 150, 70 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x16 (0x0800F520, empty: the charged chip is the chip with the bonus), the charge table's row 0x16.
         a_charge = charged_chips.routine({ 80, 80, 80, 80, 80, 70 }),
         back_special = back.weapon,
-        -- Routine 0x35 (0x0800FA66): DarkThnd (chip 0xC1), the charge table's row 0x35.
-        chaos = chaos.weapon(darkthnd, { 40, 60, 90, 120, 150, 70 }),
     },
     charged_chips = { { family = "elec", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },

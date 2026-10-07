@@ -32,12 +32,13 @@ local form: FormDef = {
     sprite = asset.sprite("gyrosoul"),
     element = "null",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x39 (0x0800FA8E): DarkTorn (chip 0xC5), the charge table's row 0x39.
+    chaos = { weapon = chaos.weapon(darktorn, { 40, 60, 90, 120, 150, 40 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
-        -- Routine 0x39 (0x0800FA8E): DarkTorn (chip 0xC5), the charge table's row 0x39.
-        chaos = chaos.weapon(darktorn, { 40, 60, 90, 120, 150, 40 }),
     },
     status_reset = { "float_shoes", "floating_body", "air_shoes" },
     tick = function(navi: Object)

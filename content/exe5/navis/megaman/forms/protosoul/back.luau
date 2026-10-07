@@ -33,7 +33,8 @@ local function setup(navi: Object): Action
     navi.hit_param = 0
     navi.attack_damage = DAMAGE
     navi.attack_lockout = LOCKOUT
-    return if navi.chaos_armed then CHAOS_REFLECT else REFLECT
+    -- (The Chaos Unison charge armed: the rules' own B charge, rules/souls/chaos_charge.)
+    return if navi.b_charge_time ~= nil then CHAOS_REFLECT else REFLECT
 end
 
 back.weapon = new.weapon {

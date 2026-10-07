@@ -25,13 +25,14 @@ local form: FormDef = {
     sprite = asset.sprite("toadsoul"),
     element = "aqua",
     buster_bonus = 0,
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
+    -- routine 0x34 (0x0800FA5C): DarkWide (chip 0xC0), the charge table's row 0x34.
+    chaos = { weapon = chaos.weapon(darkwide, { 40, 60, 90, 120, 150, 40 }) },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x1B (0x0800F520, empty: the charged chip is the chip with the bonus), the charge table's row 0x1B.
         a_charge = charged_chips.routine({ 20, 20, 20, 20, 20, 20 }),
-        -- Routine 0x34 (0x0800FA5C): DarkWide (chip 0xC0), the charge table's row 0x34.
-        chaos = chaos.weapon(darkwide, { 40, 60, 90, 120, 150, 40 }),
     },
     charged_chips = { { family = "aqua", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },

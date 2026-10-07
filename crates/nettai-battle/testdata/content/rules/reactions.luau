@@ -62,7 +62,7 @@ return {
     -- What the ends of a navi's actions clear of its requests besides the attacks': both games' (the mode-9 A
     -- press and the Chaos Unison releases at an attack's end; the anti-sword trigger at a flinch's and a drag's).
     request_clears = {
-        attack = { "mode9_a", "chaos_success", "chaos_failure" },
+        attack = { "mode9_a", "rules_release" },
         paralysis = { "mode9_a" },
         flinch = { "anti_sword_triggered", "mode9_a" },
         drag = { "anti_sword_triggered", "mode9_a" },
