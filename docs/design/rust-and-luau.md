@@ -53,12 +53,12 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 |---|---|---|---|---|---|
 | Beast Out and Beast Over | | | | | |
 | Crosses and the form framework | | | 2 | | 2 |
-| Emotions | | | 1 | 3 | 4 |
+| Emotions | | | | 3 | 3 |
 | NaviCust | | | | 2 | 2 |
 | Souls and Chaos Unison | | | | | |
 | The stat block and versions | | | | | |
 | Tools | | | 1 | | 1 |
-| **All** | | | **4** | **5** | **9** |
+| **All** | | | **3** | **5** | **8** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
 dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
@@ -107,15 +107,6 @@ rename left of EXE5's logic.
   `emotion_window_glitch` API, api.rs:1286, :2038; `HudPart::EmotionWindow`). It checks every tick on both consoles
   and draws the console's RNG, which the digest covers. *(d)* It stays simulated. At most the HUD part gets a neutral
   name.
-- **E5. Faces by emotion**:
-  - `FaceSet` (navis.rs:450–495: normal, angry, tired, full_synchro, worn_out, worried);
-  - the HUD's pick and mood flash (render hud.rs:94–104, :210–230, :846–868);
-  - `face_hub` and `face_charged` (player/mod.rs);
-  - render audit's `emotion_number`.
-
-  *(c)* Faces keyed by the game's emotion names. Since E1 a face is looked up by its emotion's name, through
-  `FaceSet`'s fields (named for both games' emotions); what is left is a set keyed by the game's own names. The
-  second set of faces is a look the rules push (`face_hub`, and since S1 `face_charged`).
 
 ### NaviCust (both games)
 
@@ -212,6 +203,12 @@ Each with what it was and what it is now.
   the form: some fifteen places, a missed one a stale emotion), where the order read on each read keeps nothing
   in step (rules-in-luau.md §4.6), stays exact by construction, costs no Luau call and serves the presentation's
   read-only readers too.
+- **E5.** A form's faces are keyed by its game's emotion names (`FaceSet::by_emotion`, and the Luau `FaceSet` an
+  indexer by `Emotion`): an emotion without a face shows the set's one face, else the game's default emotion's.
+  `Content::define` holds every set to the rules' emotions (`check_faces`: names among them, a face for the
+  default). The HUD and the lookups pass the `Emotion` (`Faces::shown`), the audit's lookup is
+  `Lookup::FormFace(form, Emotion, second set)` described by name (`emotion_number` is gone), and `face_hub` is
+  `base_face_variant`, the base form's second set the rules push.
 - **E6.** EXE5's last stand is its rules' `hp_emptied(side, navi)` hook (EXE5's rules/emotion/dark_survival: the check
   0x0802C16C, the hold at 1 HP and the volley's request), which a loss of HP to 0 asks under `status.hp_loss =
   "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.

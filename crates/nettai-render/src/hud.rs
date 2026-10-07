@@ -79,7 +79,9 @@ struct Face {
     /// look's is the moment's, as the window draws).
     form: FormHandle,
     emotion: Emotion,
-    hub: bool,
+    /// The base form's second set, as the side's rules ask
+    /// (`base_face_variant`: EXE5's Hub Style).
+    base_variant: bool,
 }
 
 impl Face {
@@ -93,10 +95,10 @@ impl Face {
         let side = b.objects.get(r).alliance;
         let emotion = emotion(b, side);
         let variant = nettai_battle::kinds::player::shows_face_variant(b, side);
-        let hub = nettai_battle::kinds::player::face_hub(b, side);
+        let base_variant = nettai_battle::kinds::player::base_face_variant(b, side);
         let f = b.content.form(form);
         Face {
-            picture: f.mugshot.and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(b.game_rules().emotion.name(emotion), variant))),
+            picture: f.mugshot.as_ref().and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(&b.game_rules().emotion, emotion, variant))),
             own: f.base,
             full_synchro: b.game_rules().emotion.role(emotion) == Some(EmotionRole::FullSynchro),
             // (The count the emotion window's box shows: a stat of the
@@ -107,7 +109,7 @@ impl Face {
             },
             form,
             emotion,
-            hub,
+            base_variant,
         }
     }
 }
@@ -222,9 +224,10 @@ impl HudState {
             if m.now.own && m.blink > 0 {
                 let on = m.blink & 2 != 0;
                 m.blink -= 1;
-                if m.now.full_synchro && m.now.hub {
-                    // Hub Style's Full Synchro face (EXE5's picture 14,
-                    // 0x08019614) is among the faces that blink back to
+                if m.now.full_synchro && m.now.base_variant {
+                    // The second set's Full Synchro face (EXE5's Hub
+                    // Style's, picture 14, 0x08019614) is among the faces
+                    // that blink back to
                     // the picture before and among those that flash white,
                     // and each takes a tick off the blink: six ticks,
                     // white and the picture before by turns.
@@ -864,8 +867,8 @@ fn mugshot_parts<'a>(
         packs,
         &b.content,
         face.form,
-        b.game_rules().emotion.name(face.emotion),
-        face.hub || nettai_battle::kinds::player::face_charged(b, side as u8),
+        face.emotion,
+        face.base_variant || nettai_battle::kinds::player::face_charged(b, side as u8),
         problems,
     ) else { return };
     // (The white of a change to Full Synchro: `byte_801CD80`.)

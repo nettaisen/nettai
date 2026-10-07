@@ -420,109 +420,115 @@ pub struct Priming {
 }
 
 /// A form's faces in the emotion window, by its navi's emotion
-/// (`sub_8015B54`): the mugshots' numbers. An emotion without a face of
-/// its own shows the normal one. (In EXE6 the base form has MegaMan's five,
-/// a Cross a tired one besides, a Beast a Full Synchro one: `sub_801E6A8`
-/// adds 5 or 1 to `byte_801E700`'s picture. EXE5's MegaMan has a worried
-/// one besides, and a second set: his Hub Style's, 0x0801AF64.)
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize)]
+/// (`sub_8015B54`): the mugshots' numbers. (In EXE6 the base form has
+/// MegaMan's five, a Cross a tired one besides, a Beast a Full Synchro one:
+/// `sub_801E6A8` adds 5 or 1 to `byte_801E700`'s picture. EXE5's MegaMan
+/// has a worried one besides, and a second set: his Hub Style's,
+/// 0x0801AF64.)
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 pub struct Faces {
     pub own: FaceSet,
     /// The second set, which the side's rules may show instead
-    /// (`SideLooks::face_variant`).
+    /// (`SideLooks::face_variant`, `face_variant_charged`).
     pub variant: Option<FaceSet>,
 }
 
-/// One set of faces, by emotion.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+/// One set of faces, keyed by its game's emotions' names (the rules'
+/// `emotion` order's: `Content::define` holds a set to them). An emotion
+/// without a face of its own shows the set's one face, else its game's
+/// default emotion's (`Emotion(0)`'s: EXE6's and EXE5's normal).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 pub struct FaceSet {
-    pub normal: super::MugshotId,
-    #[serde(default)]
-    pub angry: Option<super::MugshotId>,
-    #[serde(default)]
-    pub tired: Option<super::MugshotId>,
-    #[serde(default)]
-    pub full_synchro: Option<super::MugshotId>,
-    #[serde(default)]
-    pub worn_out: Option<super::MugshotId>,
-    #[serde(default)]
-    pub worried: Option<super::MugshotId>,
+    /// The faces by their emotion's name, in the definition's order.
+    pub by_emotion: Vec<(String, super::MugshotId)>,
+    /// The face of every emotion (a definition's one face, `mugshot = ...`).
+    pub every: Option<super::MugshotId>,
 }
 
 impl FaceSet {
-    /// The face for the emotion named `emotion` (its game's name; the
-    /// set's fields are named for the games' emotions, rust-and-luau.md's
-    /// E5); none of its own: the normal face.
-    pub fn of(&self, emotion: &str) -> super::MugshotId {
-        let face = match emotion {
-            "angry" => self.angry,
-            "tired" => self.tired,
-            "full_synchro" => self.full_synchro,
-            "worn_out" => self.worn_out,
-            "worried" => self.worried,
-            _ => None,
-        };
-        face.unwrap_or(self.normal)
+    /// The face for emotion `emotion` of its game's (`emotions`): its own,
+    /// else the set's one face, else the default emotion's.
+    pub fn of(&self, emotions: &super::EmotionRules, emotion: super::Emotion) -> super::MugshotId {
+        let named = |name: &str| self.by_emotion.iter().find(|(n, _)| n == name).map(|&(_, face)| face);
+        named(emotions.name(emotion))
+            .or(self.every)
+            .or_else(|| named(emotions.name(super::Emotion::default())))
+            .unwrap_or_default()
+    }
+
+    /// Why the set doesn't fit its game's emotions (`emotions`): a name
+    /// that isn't one of them, or no face for an emotion without one of its
+    /// own.
+    fn check(&self, emotions: &super::EmotionRules) -> Result<(), String> {
+        if let Some((name, _)) = self.by_emotion.iter().find(|(n, _)| emotions.by_name(n).is_none()) {
+            return Err(format!("{name:?} is none of its game's emotions ({})", emotions.names.join(", ")));
+        }
+        let default = emotions.name(super::Emotion::default());
+        if self.every.is_none() && !self.by_emotion.iter().any(|(n, _)| n == default) {
+            return Err(format!("no face for {default:?}, the face of an emotion without one of its own"));
+        }
+        Ok(())
     }
 }
 
 impl Faces {
-    /// The face for the emotion named `emotion` (the own set's).
-    pub fn of(&self, emotion: &str) -> super::MugshotId {
-        self.own.of(emotion)
-    }
-
     /// The face for `emotion` in the set the side shows: the second set's
     /// when `variant` and the form has one.
-    pub fn shown(&self, emotion: &str, variant: bool) -> super::MugshotId {
-        match self.variant {
-            Some(v) if variant => v.of(emotion),
-            _ => self.own.of(emotion),
+    pub fn shown(&self, emotions: &super::EmotionRules, emotion: super::Emotion, variant: bool) -> super::MugshotId {
+        match &self.variant {
+            Some(v) if variant => v.of(emotions, emotion),
+            _ => self.own.of(emotions, emotion),
         }
     }
 }
 
-/// A form definition's `mugshot`: one face, or faces by emotion (and a
-/// second set, `variant`).
+/// Every form's faces fit its game's emotions (the rules' `emotion`): each
+/// set's names are the game's emotions', and an emotion without a face
+/// of its own has one to show.
+pub(crate) fn check_faces(content: &super::Content) -> Result<(), nettai_content_api::ContentError> {
+    let Some(rules) = &content.rules else { return Ok(()) };
+    for d in &content.defs.forms {
+        let Some(faces) = &d.record.mugshot else { continue };
+        for (set, at) in [(Some(&faces.own), "mugshot"), (faces.variant.as_ref(), "mugshot.variant")] {
+            if let Some(Err(m)) = set.map(|s| s.check(&rules.emotion)) {
+                return Err(nettai_content_api::ContentError::new(format!("form {}: {at}: {m}", d.key)));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// A form definition's `mugshot`: one face, or faces by emotion name (and
+/// a second set, `variant`).
 fn faces<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Faces>, D::Error> {
+    use serde::de::Error;
     #[derive(Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct ByEmotion {
-        normal: super::MugshotId,
-        #[serde(default)]
-        angry: Option<super::MugshotId>,
-        #[serde(default)]
-        tired: Option<super::MugshotId>,
-        #[serde(default)]
-        full_synchro: Option<super::MugshotId>,
-        #[serde(default)]
-        worn_out: Option<super::MugshotId>,
-        #[serde(default)]
-        worried: Option<super::MugshotId>,
-        #[serde(default)]
-        variant: Option<FaceSet>,
+    #[serde(untagged)]
+    enum Entry {
+        Face(super::MugshotId),
+        Set(std::collections::BTreeMap<String, super::MugshotId>),
     }
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum Spec {
         One(super::MugshotId),
-        ByEmotion(ByEmotion),
+        ByEmotion(std::collections::BTreeMap<String, Entry>),
     }
-    Ok(Option::<Spec>::deserialize(d)?.map(|s| match s {
-        Spec::One(normal) => Faces { own: FaceSet { normal, ..FaceSet::default() }, variant: None },
-        Spec::ByEmotion(f) => Faces {
-            own: FaceSet {
-                normal: f.normal,
-                angry: f.angry,
-                tired: f.tired,
-                full_synchro: f.full_synchro,
-                worn_out: f.worn_out,
-                worried: f.worried,
-            },
-            variant: f.variant,
-        },
-    }))
+    let Some(spec) = Option::<Spec>::deserialize(d)? else { return Ok(None) };
+    let entries = match spec {
+        Spec::One(face) => return Ok(Some(Faces { own: FaceSet { every: Some(face), ..FaceSet::default() }, variant: None })),
+        Spec::ByEmotion(entries) => entries,
+    };
+    let mut faces = Faces::default();
+    for (name, entry) in entries {
+        match (name.as_str(), entry) {
+            ("variant", Entry::Set(set)) => faces.variant = Some(FaceSet { by_emotion: set.into_iter().collect(), every: None }),
+            ("variant", Entry::Face(_)) => return Err(D::Error::custom("`variant` is a set of faces by emotion")),
+            (_, Entry::Face(face)) => faces.own.by_emotion.push((name, face)),
+            (_, Entry::Set(_)) => return Err(D::Error::custom(format!("`{name}` is a face, not a set (only `variant` is)"))),
+        }
+    }
+    Ok(Some(faces))
 }
 
 /// A navi's no-running message (L on the custom screen in a netbattle).
@@ -1048,25 +1054,39 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_form_shows_its_face_for_an_emotion_or_its_normal_one() {
+    fn a_form_shows_its_face_for_an_emotion_or_its_default_ones() {
         #[derive(Deserialize)]
         struct Form {
             #[serde(default, deserialize_with = "faces")]
             mugshot: Option<Faces>,
         }
         let read = |json: &str| serde_json::from_str::<Form>(json).unwrap().mugshot;
+        // (A game's emotions: the last case's, the default, is normal.)
+        use super::super::{AngerEnd, EmotionRules, EmotionWhen, MoodHeld};
+        let when = || vec![EmotionWhen { angry: Some(true), ..Default::default() }];
+        let mut cases: Vec<_> = ["tired", "angry", "full_synchro", "worried"].map(|n| (n.to_string(), when())).to_vec();
+        cases.push(("normal".to_string(), Vec::new()));
+        let emotions = EmotionRules::new(MoodHeld::AtZero, AngerEnd::ThroughSetter, cases, Vec::new()).unwrap();
+        let e = |name: &str| emotions.by_name(name).unwrap();
         // One face, whatever the emotion.
         let one = read(r#"{ "mugshot": 15 }"#).unwrap();
-        assert_eq!(["normal", "tired", "full_synchro"].map(|e| one.of(e).0), [15; 3]);
+        assert_eq!(["normal", "tired", "full_synchro"].map(|n| one.shown(&emotions, e(n), false).0), [15; 3]);
         // A Cross's: its own, and a tired one.
         let cross = read(r#"{ "mugshot": { "normal": 5, "tired": 10 } }"#).unwrap();
-        assert_eq!(["normal", "angry", "tired"].map(|e| cross.of(e).0), [5, 5, 10]);
+        assert_eq!(["normal", "angry", "tired"].map(|n| cross.shown(&emotions, e(n), false).0), [5, 5, 10]);
         assert_eq!(read("{}"), None);
         // EXE5's MegaMan: a worried face, and a second set the side may show.
         let exe5 = read(r#"{ "mugshot": { "normal": 0, "worried": 2, "variant": { "normal": 11, "worried": 13 } } }"#).unwrap();
-        assert_eq!(["worried", "angry"].map(|e| exe5.shown(e, false).0), [2, 0]);
-        assert_eq!(["worried", "angry"].map(|e| exe5.shown(e, true).0), [13, 11]);
-        assert_eq!(cross.shown("tired", true).0, 10);
+        assert_eq!(["worried", "angry"].map(|n| exe5.shown(&emotions, e(n), false).0), [2, 0]);
+        assert_eq!(["worried", "angry"].map(|n| exe5.shown(&emotions, e(n), true).0), [13, 11]);
+        assert_eq!(cross.shown(&emotions, e("tired"), true).0, 10);
+        // A set holds to its game's emotions: their names, and a face for
+        // the default (the first's).
+        assert!(exe5.own.check(&emotions).is_ok() && one.own.check(&emotions).is_ok());
+        let wrong = read(r#"{ "mugshot": { "normal": 0, "dark": 2 } }"#).unwrap();
+        assert!(wrong.own.check(&emotions).unwrap_err().contains("\"dark\" is none of its game's emotions"));
+        let defaultless = read(r#"{ "mugshot": { "tired": 2 } }"#).unwrap();
+        assert!(defaultless.own.check(&emotions).unwrap_err().contains("no face for \"normal\""));
     }
 
     #[test]

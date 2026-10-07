@@ -62,7 +62,7 @@ pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
 /// picture for a tool.
 pub fn form_face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle) -> Option<Image> {
     // (The emotion when nothing else holds: the plain one.)
-    let plain = c.rules().emotion.name(nettai_battle::kinds::player::Emotion::default());
+    let plain = nettai_battle::kinds::player::Emotion::default();
     let (_, face) = crate::lookups::form_face(packs, c, form, plain, false, &mut Problems::default());
     let (tiles, palettes) = face?;
     image(tiles, 4, 2, palettes.first()?)
