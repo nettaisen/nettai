@@ -24,9 +24,10 @@ local navi: NaviDef = {
     -- The no-running message, L on the custom screen in a netbattle (0x080205C6: the script archive 0x08749294's entry
     -- 3; its words are locales/<lang>.toml's). Its script is EXE6's shape: the portrait (F4 00 40: the chatbox's
     -- mugshot 0x40), the box opening (E7 00), the two lines, the wait for A or B (E6 00), the end (E5). (Its first
-    -- command, EE 01, would jump to entry 0x38 at the save's progress 0x7C, whose words are the same; the portrait
-    -- isn't extracted yet, docs/design/exe4-map.md §18.)
-    run_message = {},
+    -- command, EE 01, would jump to entry 0x38 at the save's progress 0x7C, whose words are the same.)
+    run_message = {
+        portrait = asset.sprite("megaman-portrait"),
+    },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His forms (he is MegaMan: the rules ask whether a navi has them where the original asks whether it is

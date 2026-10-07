@@ -1075,7 +1075,7 @@ impl CoreApi for Battle {
             .with_custom_screen(side, |screen, view, _, _, _| {
                 // (Three lines for a form the content has no description of.)
                 let lines = form.map_or(3, |f| view.library.form_description_lines(f));
-                screen.describe_form(&joy, lines, form)
+                screen.describe_form(&joy, lines, form, view.library.layout().chatbox_end_clears_tiles)
             })
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
         if !described {

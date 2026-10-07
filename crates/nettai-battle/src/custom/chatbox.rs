@@ -13,7 +13,10 @@
 //!   fade-in (seven ticks once the box is open), the close for its
 //!   fade-out (three);
 //! - text: at print speed 0 a whole line a tick; otherwise a character
-//!   every `speed + 1` ticks, and at once from the tick B is held or A is
+//!   every `speed` ticks, its delay counting down on its own tick too (or
+//!   every `speed + 1`, where a character ends the tick's printing: the
+//!   rule `custom_screen.chatbox_character_ends_tick`, EXE4's), and at
+//!   once from the tick B is held or A is
 //!   pressed (`chatbox_8040154`), which the box only looks for once it has
 //!   run four ticks without waiting on a command;
 //! - a command after a character, which waits out the character's delay
@@ -23,7 +26,11 @@
 //! - a line break (`E9`), which ends the tick's printing;
 //! - the wait for a key (`E7`): six ticks before it takes one, then A or B
 //!   (or any key) pressed, or B held for eleven ticks;
-//! - the end (`E6`), which closes the box.
+//! - the end (`E6`), which closes the box; its clear of the text, where a
+//!   game's clears the text's tiles in video memory itself (the rule
+//!   `custom_screen.chatbox_end_clears_tiles`: EXE4's), shows a frame
+//!   before the box's first closing step: from the tick the wait for a key
+//!   is answered.
 //!
 //! Verified against chip-lab recordings (docs/engine/custom-screen.md
 //! §3.5): the tick a description takes keys from by its line breaks, a
@@ -256,6 +263,12 @@ pub struct Chatbox {
     /// A command waits out the character printed before it (the game's
     /// rule, `CustomScreenLayout::chatbox_commands_wait_for_text`).
     commands_wait: bool,
+    /// The end clears the text's tiles in video memory itself (the game's
+    /// rule, `CustomScreenLayout::chatbox_end_clears_tiles`). Presentation.
+    end_clears_tiles: bool,
+    /// A character printed ends the tick's printing (the game's rule,
+    /// `CustomScreenLayout::chatbox_character_ends_tick`).
+    character_ends_tick: bool,
     /// What it shows (presentation).
     look: ChatboxLook,
 }
@@ -283,6 +296,8 @@ impl Chatbox {
             count: 1,
             halt: 0,
             commands_wait: false,
+            end_clears_tiles: false,
+            character_ends_tick: false,
             look: ChatboxLook::default(),
         }
     }
@@ -291,6 +306,20 @@ impl Chatbox {
     /// game's rule `custom_screen.chatbox_commands_wait_for_text`).
     pub fn commands_wait_for_text(mut self, wait: bool) -> Chatbox {
         self.commands_wait = wait;
+        self
+    }
+
+    /// Whether the end clears the text's tiles in video memory itself (the
+    /// game's rule `custom_screen.chatbox_end_clears_tiles`).
+    pub fn end_clears_tiles(mut self, clears: bool) -> Chatbox {
+        self.end_clears_tiles = clears;
+        self
+    }
+
+    /// Whether a character printed ends the tick's printing (the game's
+    /// rule `custom_screen.chatbox_character_ends_tick`).
+    pub fn character_ends_tick(mut self, ends: bool) -> Chatbox {
+        self.character_ends_tick = ends;
         self
     }
 
@@ -409,7 +438,8 @@ impl Chatbox {
                         if self.printed >= n {
                             self.next();
                         }
-                        true
+                        // (EXE4's 0x0804E1B2 stops at a character.)
+                        !self.character_ends_tick
                     } else {
                         self.char_wait -= 1;
                         false
@@ -551,6 +581,12 @@ impl Chatbox {
                     self.halt = 0;
                     self.count = 0;
                     self.next();
+                    // (An end that clears the text's tiles itself, EXE4's
+                    // 0x0805393C, does so next tick, which the frame shows
+                    // before the box's first step: from now, as drawn.)
+                    if self.end_clears_tiles && !self.hidden && self.script.op(self.at) == Op::End {
+                        self.look.text = None;
+                    }
                 }
                 false
             }
@@ -561,6 +597,9 @@ impl Chatbox {
                     // chatbox_8041090: the text is cleared, the portrait
                     // fades out, then the box closes step by step.
                     self.look.cleared = true;
+                    if self.end_clears_tiles {
+                        self.look.text = None;
+                    }
                     self.fading_out = true;
                     if self.portrait {
                         return false;
@@ -660,6 +699,49 @@ mod tests {
             assert_eq!(closes(script, press(keys::A, first - 1)), None, "{breaks} breaks");
             assert_eq!(closes(script, press(keys::A, first)), Some(first + 4), "{breaks} breaks");
             assert_eq!(closes(script, press(keys::SELECT, first + 9)), Some(first + 13));
+        }
+    }
+
+    /// A message's characters come every second tick where the
+    /// interpreter goes on after one (its delay counting down on its own
+    /// tick: EXE6's), every third where a character ends the tick's
+    /// printing (EXE4's: its recording prints one every third tick).
+    #[test]
+    fn a_character_that_ends_the_tick_comes_every_third_tick() {
+        for (ends, gap) in [(false, 2), (true, 3)] {
+            let mut c = Chatbox::new(Script::RunMessage { lines: [6, 0, 0] }).character_ends_tick(ends);
+            let mut at = Vec::new();
+            for t in 0..80 {
+                let before = c.printed_text();
+                c.update(0, 0);
+                if c.printed_text() != before && c.printed_text().1 != 0 {
+                    at.push(t);
+                }
+            }
+            assert!(at.len() >= 3, "{at:?}");
+            assert!(at.windows(2).all(|w| w[1] - w[0] == gap), "a character ends the tick: {ends}: {at:?}");
+        }
+    }
+
+    /// An end that clears the text's tiles itself (EXE4's) shows the text
+    /// gone from the tick the wait for a key is answered, a tick before the
+    /// box's first closing step; one that clears its buffers only (EXE6's)
+    /// with that step.
+    #[test]
+    fn an_end_that_clears_the_tiles_shows_the_text_gone_from_the_answer() {
+        for clears in [false, true] {
+            let mut c = Chatbox::new(Script::Description { breaks: 0 }).end_clears_tiles(clears);
+            for _ in 0..6 {
+                c.update(0, 0);
+            }
+            assert!(c.look().text.is_some() && c.shows_contents());
+            // The key answers the wait; the box is still open.
+            c.update(keys::A, keys::A);
+            assert!(c.shows_contents());
+            assert_eq!(c.look().text.is_none(), clears, "end clears the tiles: {clears}");
+            // The end's first tick: the box's first closing step.
+            c.update(0, 0);
+            assert!(!c.shows_contents());
         }
     }
 
