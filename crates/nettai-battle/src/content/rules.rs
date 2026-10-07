@@ -652,6 +652,64 @@ pub struct HitTest {
     /// The type bits a guard breaks to (EXE6's 0x2, EXE5's 0x1002); a type
     /// with 0x4000 breaks one by 0x1002 in either.
     pub guard_breaks_to: u32,
+    /// An untouchable receiver (flag 0x08000000) is tested with the
+    /// invulnerable one, after its guard and the air/ground test, so its
+    /// guard still turns hits aside (EXE4's 0x08012BDC: 0x08000008); else
+    /// with the other states before the guard (EXE6's and EXE5's).
+    pub guard_before_untouchable: bool,
+}
+
+/// How often a NaviCust bug drains a point of HP (the status section's
+/// `hp_drain` and `custom_drain`): a period by the bug's stat (its level,
+/// 0 none), or the stat itself the period. In a content file, a list of
+/// eight periods or `"stat"`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(untagged)]
+pub enum DrainPeriods {
+    /// By level (EXE6's `byte_80102A4` and `byte_80102F8`, EXE5's the same).
+    ByLevel([u8; 8]),
+    /// The stat is the period (EXE4's 0x0800C164 and 0x0800C194).
+    Stat(StatIsPeriod),
+}
+
+/// `"stat"`: the bug's stat is its drain's period (`DrainPeriods::Stat`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StatIsPeriod {
+    Stat,
+}
+
+impl DrainPeriods {
+    /// The period of a bug whose stat is `stat` (0: no drain).
+    pub fn period(&self, stat: u8) -> u8 {
+        match self {
+            DrainPeriods::ByLevel(table) => *table.get(stat as usize).expect("a drain bug's level"),
+            DrainPeriods::Stat(_) => stat,
+        }
+    }
+}
+
+/// The NaviCust's HP bug (`sub_8010230`, EXE4's 0x0800C164): a point of HP
+/// every period, never below 1, while the battle isn't dimmed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HpDrainRule {
+    pub periods: DrainPeriods,
+    /// It waits while the battle is paused (EXE6's and EXE5's); EXE4's
+    /// drains through a pause.
+    pub stops_while_paused: bool,
+}
+
+/// The custom screen's HP bug (`sub_80102AC`, EXE5's 0x0800E034, EXE4's
+/// 0x0800C194): a point of HP every period while the side's status (the
+/// link's status byte, BattleState +0x14) has one of `status`'s bits: bit
+/// 2 its screen is up, bit 0 its selection runs (EXE6's and EXE5's 5,
+/// EXE4's 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CustomDrainRule {
+    pub periods: DrainPeriods,
+    pub status: u8,
 }
 
 /// How a navi takes a hit's NaviCust bug, where games differ (`sub_801AC6C`,
@@ -987,8 +1045,10 @@ pub struct Rules {
     pub panels: PanelRules,
     /// Banners that stay up until removed.
     pub holding_banners: Vec<BannerId>,
-    /// The HP bug's drain period by bug level.
-    pub hp_bug_periods: [u8; 8],
+    /// The NaviCust's HP bug's drain (rule section `status`).
+    pub hp_drain: HpDrainRule,
+    /// The custom screen's HP bug's drain (rule section `status`).
+    pub custom_drain: CustomDrainRule,
     /// EXE6's per-form tick runs (`off_80EA93C`: `sub_80F0608`, MegaMan's
     /// and ChargeMan's: the Fire chips' charge, a form's height); EXE5's
     /// table (0x080EB1E8) has none of it (rule section `status`), its
