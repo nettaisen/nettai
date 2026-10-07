@@ -34,13 +34,14 @@ local WAIT = 1
 -- A game's projectile: its kind's key, and a bursting variant's burst
 -- (`sub_80C5014`, `sub_80C5050`): its sound, the effect it shows over the
 -- panels, and its hit's collision types (the hit reaches as far as the
--- effects but the panel the projectile hit itself).
+-- effects but the panel the projectile hit itself). A game whose projectile
+-- has no burst (EXE4's, 0x080CD3D4) states none.
 export type Look = {
     id: string,
-    burst_sound: Sound,
-    burst_effect: Effect,
-    burst_target: CollisionType,
-    burst_self_type: CollisionType,
+    burst_sound: Sound?,
+    burst_effect: Effect?,
+    burst_target: CollisionType?,
+    burst_self_type: CollisionType?,
 }
 
 local BURST_HIT_MOD = 3
@@ -70,17 +71,21 @@ end
 -- the `shown` region's panels and a hit over `hit`'s. (And a camera
 -- shake, which only draws.)
 local function burst(me: Object, look: Look, x: number, y: number, shown: Region, hit: Region)
+    local sound, effect, target, self_type = look.burst_sound, look.burst_effect, look.burst_target, look.burst_self_type
+    if not (sound and effect and target and self_type) then
+        error(string.format("a bursting projectile variant, and %s bursts none", look.id))
+    end
     battle.shake_camera(3, 0x28)
-    battle.play_sound(look.burst_sound)
-    battle.region_effects(x, y, shown, me.alliance, look.burst_effect)
+    battle.play_sound(sound)
+    battle.region_effects(x, y, shown, me.alliance, effect)
     battle.hitbox(me, {
         panel_x = x,
         panel_y = y,
         element = me.element,
         region = hit,
         hit_effect = nil,
-        target = look.burst_target,
-        self_type = look.burst_self_type,
+        target = target,
+        self_type = self_type,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = BURST_HIT_MOD,
