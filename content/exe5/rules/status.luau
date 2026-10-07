@@ -457,6 +457,8 @@ local status = {
             hit_mood = "counter_mark",
             full_synchro_spent = 0x80,
             anger_boost_sound = true,
+            -- A tick's hits of 300 damage or more ask for anger, as 120 ticks stunned do (0x080119C4, as EXE6's).
+            anger_damage = 300,
         },
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
         form_break = "any_form",

@@ -341,7 +341,32 @@ from the ROM and its code, read routine by routine):
 
 Checked against the chip lab's custom/ recordings (every one whose chips the content has matches every frame and
 every sound call; with exe4-compat's harness comparing the gauge as the recording console holds it). Not yet: the
-Double Soul button and its window (the selection's states 0xC and 0x10), the dark chip offer (§18, group A's step 4).
+Double Soul button and its window (the selection's states 0xC and 0x10).
+
+**The dark chips** (group A; rules/dark_chips, the chips' own modules):
+
+- **The offer** (0x0801DE90, from the screen's opening, 0x0801DD02): in a netbattle (battle type 0x46 and on) to a
+  MegaMan worn out (emotion 5, a mood of 0: a dark MegaMan's) alone; the other branches are the story's. Two
+  different draws of the console's RNG1 (the low six bits) from a list of 64 (0x0801ECB0, or with the navi's HP at
+  half its maximum or less 0x0801ECF0), shown in slots 8 and 9 in code 27 with the flags 0x21: the second only while
+  the side has been sent fewer than nine this battle, neither from ten (0x0203F6D0; the draws are drawn all the same).
+  The cursor starts on slot 8 (0x0801E110). OK counts the offered chips the hand takes (0x0801EF92).
+- **The costs** (0x0801EA1E as each side's hand is installed; the rules' `custom_result` hook): by 0x0801EAF4, each a
+  NaviStats byte of the user's through 0x0801EA9A's rules. DrkCanon: the charged shot becomes weapon routine 0x21,
+  the taunt (action 0x2A, 0x080ED0FE: its mark, sound 0xC1, and in a netbattle the other side's anger request); the
+  weapons reload every fighting tick (0x0800D9E8 from the intake). DrkSword and DarkBomb: the move bug, 0x10 and 0x20.
+  DrkVulcn: 720 ticks of confusion (status 0x21). DrkLance: the custom drain (+0x0F: 6, else 4 up to 6, else 3).
+  DrkSpred: the panel trail, poison (+0x1B = 4). DrkStage: the custom level one less, down to 2. DrkRecov: the custom
+  drain as DrkLance's and the HP drain (+0x0E: 10, else 6 up to 10, else 3). The mood: none (a mood of 0 stays).
+- **The chips**: on the families group A wrote with every branch (lib/cannons 0x0B, lib/swords 0x0A, lib/bombs 0x09,
+  lib/vulcans 0x1F, lib/spreaders 0x1E, lib/recoveries 0x1D, lib/spawners 0x20 with objects/lance, and the dimming
+  action 0x0C with DrkStage's controller, effect #0x6A, and the panel changer, effect #0x1F), each chip composing its
+  variant's rows. DrkStage is EXE4's first dimming chip: its telop runs as banner 0 (the roles' `telop`, item 71).
+
+Checked: the lab's dark/offer, hover-long, hover-hide, hover-describe, hover-then-ok-fast, with-folder-chip, side1,
+bluemoon, drksword, darkbomb, drkvulcn, drkspred, drkstage, drkcanon and drkcanon-taunt match every frame; drklance
+and drkrecov match through the chip's use and the next turn and stop at the screen after on the custom drain (item
+72). Their sound calls match but for the hover's music fades after OK, which the harness's late OK shifts (item 72).
 
 ## 6. Transformations
 
@@ -372,8 +397,9 @@ and faces are its own table, to read.
   0x0800F56A) by the light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F, a patch card's):
   under 470 0, the start 0xFF, from 1000 190, else value / 20 + 128. A hit's counter byte (the hitter's collision +5)
   raises the hitter's mood and wears the receiver's (0x08012C10, 0x080131E4: `hit_mood = "hitter_gains"`), a counter
-  hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks paralyzed (0x0800C540) asks for it; it sets the mood 0x80
-  and lasts 600 ticks (0x0800C560); its end sets 0x80 through the setter.
+  hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks flinching or paralyzed (0x0800C540) ask for it, and no
+  damage does (EXE6's and EXE5's 300 do: `emotion.anger_damage`, none for EXE4's); it sets the mood 0x80 and lasts
+  600 ticks (0x0800C560); its end sets 0x80 through the setter.
 - **Full Synchro**: a chip's boost doubles it, leaves the mood at 0x99 and sounds 0x1BB; anger's boost ends the anger
   without a sound (0x0800D54E). The aura (actor 0x5E, 0x080CD180, EXE5's code) spawns for a navi in Full Synchro
   (0x0800D9AE) and waits while paused (0x080CD276 sets no header flag). The window's faces: the base form's mugshots
@@ -384,8 +410,8 @@ and faces are its own table, to read.
 - **Light and dark** (rules/light_dark): a dark MegaMan clears the holy panel he stands on (0x080132E6); a navi that
   isn't dark closes a hole (0x08013318, §18 item 12).
 
-Checked: the lab's emotions/counter, counter-side1, counter-buster, full-synchro-hit and full-synchro-card match every
-frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's battle-over gate and the 0x73 sound
+Checked: the lab's emotions/counter, counter-side1, counter-buster, full-synchro-hit, full-synchro-card and worried
+(M-Cannon's) match every frame and sound call. Not yet: the COUNTER text's battle-over gate and the 0x73 sound
 (presentation).
 
 ## 8. NaviCust and patch cards
@@ -1308,7 +1334,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
-59. **The status timers while paused, and the status visual.** EXE4's status timers (0x0800AE58: paralysis +0x10,
+59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
+    the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
     (EXE6's `sub_800E730` and EXE5's 0x0800CB50 return), so a navi confused at the start (the move bug, item 24) shows
     the confusion's visual on the round's first tick, during the intro. The visual is effect 6 (0x080E22C8, EXE6's
@@ -1328,6 +1355,20 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
     `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
 
+70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
+    from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannons). Wire
+    them with the souls (item 25).
+71. **The telops' two blocks.** EXE4 lays the user's telop on the banner block (0x08016454, HUD task 0x100) and the
+    other player's on the second block (0x080164B4, task 0x8000), each in the banners' steps; the engine runs both on
+    its one banner (the roles' `telop` and `telop_remote`, banner 0), which is the same while no other banner shows.
+    What differs: a banner on the banner block and the other player's telop at once, and a telop that starts while
+    one shows (0x08016454 restarts it; the engine's start fails). exe4-compat compares a telop by its own task bit.
+    The telop plays no sound (the role `sounds.telop` is optional).
+72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
+    status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
+    engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
+    1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
+    harness question (raised with the coordinator), not the engine's.
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's

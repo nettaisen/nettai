@@ -157,6 +157,8 @@ local status = {
             hit_mood = "counter_mark",
             full_synchro_spent = 0x80,
             anger_boost_sound = true,
+            -- A tick's hits of 300 damage or more ask for anger, as 120 ticks stunned do (`sub_80142DC`).
+            anger_damage = 300,
         },
         form_break = "marked_forms",
         -- A damaging weakness hit asks for that break (`sub_801A506`, a step of its status routine).
