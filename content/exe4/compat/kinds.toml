@@ -44,3 +44,5 @@
 "towers/controller" = { pool = "attack", index = 0x93, scratch_position = true }
 "tower" = { pool = "attack", index = 0x92, scratch_position = true }
 "lightning" = { pool = "attack", index = 0x8E, scratch_position = true }
+# The Counters' strike (action 0x20's variant 0, 0x080CFDE4).
+"counter/strike" = { pool = "attack", index = 0x17, scratch_position = true }
