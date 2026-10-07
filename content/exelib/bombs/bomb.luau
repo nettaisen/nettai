@@ -4,7 +4,8 @@
 -- `BombLook`: its kind, sprite, sound and effects). MiniBomb,
 -- EnergBom, MegEnBom and BigBomb. It flies three panels ahead in an arc for
 -- 40 ticks, then lands: on a solid panel it blasts its variant's region
--- (with an explosion on each panel) and a tick later ends, leaving what its
+-- (with an explosion on each panel: the look's, or the variant's own, EXE4's
+-- DarkBomb's) and a tick later ends, leaving what its
 -- variant leaves; off the field or on a hole it just ends (a splash in the
 -- hole). What differs between the chips is its variant, a record
 -- (`bomb.variant { ... }`, `byte_80C5BA0` with the blast regions of
@@ -65,7 +66,7 @@ local function fly(me: Object, look: BombLook, v: BombVariant)
     end
     me.collision:set_region(v.blast)
     if v.blast then
-        battle.region_effects(x, y, v.blast, me.alliance, look.explosion, 0)
+        battle.region_effects(x, y, v.blast, me.alliance, v.explosion or look.explosion, 0)
     end
     battle.play_sound(look.hit_sound)
     me.action = 4
