@@ -113,9 +113,9 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   sets), the 5x3 panel blocks by type, owner and row (`byte_86DFA98`),
   highlight blocks and front edges.
 - **Backgrounds** by id (`off_8080F98`): tiles, tile map, palette, scroll
-  speed (`off_8080E34`), or a scroll that speeds up from the battle's first
-  frame (`speeding`: EXE5's 0x080019EC, §3), and tile/palette animations
-  (`off_8081220`).
+  speed (`off_8080E34`), or a scroll that speeds up (`speeding`, read from
+  the callback's code: EXE5's 0x080019EC, EXE4's the scrollers' +0xB8, §3),
+  and tile/palette animations (`off_8081220`).
 - **HUD**: the HP box and its digits, gauge tiles and frame, the 8x16 font
   with what each glyph draws, chip icons by chip, the HP digits shown under
   objects, the emotion window's faces and count boxes, the link navis'
@@ -535,16 +535,23 @@ enemy names).
 **Field and background** (`stage.rs`): each panel's block by displayed type
 and owner (from the viewer's side), highlights, missing panels, front
 edges, the cycling panel palettes; the background's scroll and tile
-animations. A speeding scroll (EXE5's nebulagray, 0x1B: its BG1 callback
-0x080019EC, `nettai_assets::Speeding`) runs on the battle's ticks, not the
-background's clock: the callback moves the picture only while battle flag
-0x40 is set (BattleState+0x5C), which the battle's intro sets on the
-battle's first frame (0x080E06A0, where EXE6's sets 0x10) and which stays
-set through the custom screen and the pause. The picture moves down a pixel
-a frame for 64 frames, then 2, then 3, and 4 a frame from the 193rd on
-(each frame's move its speed rounded up), as the chip lab's
-backgrounds/0x1b and 0x1b-turns show (the link pick's table patched to 0x1B
-on both consoles). The field is the match's game's pack's: a match is of one game,
+animations. A speeding scroll (`nettai_assets::Speeding`: a BG1 callback
+that takes a step from its counter each frame, to a top, and moves the
+picture by the counter's whole pixels) runs on the background's clock, or,
+`from_battle`, on the battle's ticks:
+- EXE5's nebulagray (0x1B: its callback 0x080019EC) moves the picture only
+  while battle flag 0x40 is set (BattleState+0x5C), which the battle's intro
+  sets on the battle's first frame (0x080E06A0, where EXE6's sets 0x10) and
+  which stays set through the custom screen and the pause: down a pixel a
+  frame for 64 frames, then 2, then 3, and 4 a frame from the 193rd on (each
+  frame's move its speed rounded up).
+- EXE4's duo (0x17: the scrollers' +0xB8, Red Sun US's 0x08001F88) moves it
+  from the background's load, left, a pixel a frame for 16 frames, then 2,
+  then 3, and 4 a frame from the 49th on.
+
+The chip lab's backgrounds/0x1b and 0x1b-turns (EXE5) and backgrounds/0x17
+and 0x17-turns (EXE4) show them, the link pick's table patched to that
+background on both consoles. The field is the match's game's pack's: a match is of one game,
 so its field draws its panels. `FieldArt` says, for each panel type and
 highlight, whether the field draws it (field.json's `panel_types`); one it
 doesn't is the owner's normal panel,
