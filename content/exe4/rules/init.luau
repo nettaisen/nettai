@@ -6,6 +6,7 @@
 -- custom screen's own states, the chips).
 
 local dark_chips = require("@self/dark_chips")
+local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
 local light_dark = require("@self/light_dark")
 local patch_cards = require("@self/patch_cards")
@@ -96,8 +97,11 @@ local rules: Rules = {
             save.validate(side, problem)
             navicust.validate(side, problem)
             patch_cards.validate(side, problem)
+            folder.validate(side, problem)
             return out
         end,
+        -- What rules a folder a tool asks of breaks (./folder).
+        folder_check = folder.check,
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),
