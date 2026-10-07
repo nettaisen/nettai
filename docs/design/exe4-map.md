@@ -708,7 +708,9 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     stripes and "L or R" go by +0x18. "BUSY..." runs the same counter (update 13, 0x08014ADC: +1 & 63 a tick, from 63
     at its start, 0x080166F0) until the exchange is done (0x0801E9B6). Drawn as EXE6's.
   - 2 **the HP numbers under objects** (0x08014EB8; rolled by update 2, 0x08014800: an eighth plus 2): one color,
-    at priority 1 (the pack's `layout.hp_number_priority`).
+    at priority 1 (the pack's `layout.hp_number_priority`), under the HUD's BG3 at priority 0 (the battle's video
+    init's table at 0x08006AD4: BG3CNT 0x1F00, then 0x1F08; EXE6's is 1): the custom screen covers a flag's number
+    there (the pack's `layout.hud_priority`; the screen's cursor and element icon are sprites at priority 0).
   - 3 **the chip icons**, over the local navi alone. Update 3 (0x08014860) places them at its place on the screen
     plus the per-navi offset 0x0800B9E4 (which 0x08015B24 keeps at +0x1B, +0x1C): navi 0, MegaMan, (0, -55); 1 to
     12, the souls in navi order, (0, -67), (-8, -59), (-12, -84), (0, -64), (3, -72), (-4, -72), (-1, -62),
