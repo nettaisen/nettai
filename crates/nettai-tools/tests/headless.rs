@@ -5,7 +5,7 @@
 use nettai_assets::{Bundle, Field, MapEntry, SpriteFrame, SpritePart, SpriteSheet, Tiles};
 use nettai_battle::content::testing;
 use nettai_frontend::driver::{LivePlayer, folder_of, live_setup};
-use nettai_demo::headless;
+use nettai_tools::headless;
 use nettai_frontend::Renderer;
 use nettai_frontend::player::Player;
 use std::collections::BTreeSet;
