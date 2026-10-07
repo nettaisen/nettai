@@ -3,15 +3,14 @@
 -- him: EXE6's and EXE5's (@exelib/deltaray/navi; the same code) with EXE4's constants (ProtoMan's sprite 08-07 in the
 -- chip's palette, 0x0800B950: two palettes a variant; his sounds; his flash, effect row 3; his mark, row 0x60; his
 -- slash, row 0x5E; his sword, attachment row 3, in its animation 7; his finish's animation 15; the follow effect's look
--- 4 for his burst, objects/follow_effect) and its differences: his spawner (0x080C76CE) keeps neither his user, nor its
--- facing, nor the element, his height his side; his search starts at column 2, or 5 for side 1 (0x080C73D6), his first
--- candidate behind the enemy navi (EXE6's); his strike is ProtoMan's slash (0x080C71AA), all at once, his sword away as
--- it ends; no white flashes.
+-- 4 for his burst) and its differences: his spawner (0x080C76CE) keeps neither his user, nor its facing, nor the
+-- element, his height his side; his search starts at column 2, or 5 for side 1 (0x080C73D6), his first candidate behind
+-- the enemy navi (EXE6's); his strike is ProtoMan's slash (0x080C71AA), all at once, his sword away as it ends; no
+-- white flashes.
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
-local follow_effect = require("../../objects/follow_effect")
 local navi_chips = require("../../lib/navi_chips")
 
 -- 0x080CD6E0, as his strike asks (attachment row 3, his sword's animation, animating while dimmed).
@@ -41,9 +40,8 @@ local deltaray = common.make {
     self_type = collision.slash,
     target = collision.hits_navis,
     finish_anim = 15,
-    burst = function(owner: Object, pos: Vec3, flip: number): Object?
-        return follow_effect.spawn(owner, pos, follow_effect.looks.burst, flip)
-    end,
+    -- His bursts (the follow effect's look 4, 0x080E58B4, which isn't shown as he is).
+    burst = { id = "deltaray/burst", sprite = asset.sprite("follow-effect"), copies_visibility = false },
     flashes = false,
     candidate_x = common.behind,
     tracks = false,

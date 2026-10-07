@@ -1,6 +1,6 @@
 --!strict
 -- MetalMan, the navi of EXE4's MetalMan chips (EXE4's actor object #0x40, 0x080C7D44: EXE4's own), and each chip's
--- controller, which brings him, with his fist (the follow effect's look 5, objects/follow_effect). He fades in on his
+-- controller, which brings him, with his fist (the follow effect's look 5). He fades in on his
 -- user's panel; while the battle is dimmed his user aims his punch: with A held, the d-pad moves a target over the
 -- field (highlighted), from his own panel; A let go fixes it. 22 ticks after he came he blinks to the target's column
 -- (unless it is his own panel), 3 ticks out, 3 in, a hit of no damage on the target; then, unless that is the field's
@@ -8,7 +8,7 @@
 -- left: it breaks a solid panel, with a shake, a flash and a sound); else he waits 61 ticks. Then he goes.
 
 local collision = require("../../rules/collision")
-local follow_effect = require("../../objects/follow_effect")
+local follow_effect = require("@exelib/follow_effect")
 local navi_chips = require("../../lib/navi_chips")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
@@ -33,6 +33,34 @@ export type State = {
 local SPRITE = asset.sprite("metalman")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_WIND_UP = asset.sound("metal-fist")
+
+-- His fist: the follow effect's look 5 (sprite 10-39), whose routine (0x080E5AC8) hides it but while he stands in his
+-- animation 0, then shows it as he is, on his panel a pixel up, with his blending and mosaic; once the fight is on it
+-- no longer runs while paused.
+local FIST = follow_effect.make {
+    id = "metalman/fist",
+    sprite = asset.sprite("metalman-fist"),
+    anim = 0,
+    palette = 0,
+    copies_visibility = false,
+    update = function(me: Object)
+        if battle.fighting() then
+            me.run_while_paused = false
+        end
+        me.visible = false
+        local owner = me.related1 :: Object
+        if owner.anim ~= 0 then
+            return
+        end
+        me:copy_visibility(owner)
+        me.panel_x, me.panel_y = owner.panel_x, owner.panel_y
+        me:set_coordinates_from_panel()
+        me.sprite.alpha = owner.sprite.alpha
+        me.sprite.mosaic = owner.sprite.mosaic
+        local p = me.pos
+        me.pos = Vec3.new(p.x, p.y - 0x10000, p.z)
+    end,
+}
 local SOUND_PUNCH = asset.sound("metal-punch")
 -- The punch's flash on a solid panel (effect row 0x47).
 local FLASH = new.effect { sprite = asset.sprite("strike-flash"), anim = 0, palette = 0 }
@@ -333,7 +361,7 @@ local function init(me: Object)
     me.visible = true
     -- 0x080C79A0.
     local p = me.pos
-    local fist = follow_effect.spawn(me, Vec3.new(p.x, p.y - 0x10000, p.z), follow_effect.looks.metal_fist, me.alliance)
+    local fist = FIST.spawn(me, Vec3.new(p.x, p.y - 0x10000, p.z), me.alliance)
     if fist then
         fist.run_while_paused = true
     end
