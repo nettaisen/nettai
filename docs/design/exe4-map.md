@@ -335,8 +335,15 @@ from the ROM and its code, read routine by routine):
 - **Drawing** (presentation): the tick a key leaves the choosing draws what its new state draws, no cursor
   (`cursor_after_leaving`, 0x0801E412). The choosing tick draws the last turns' block and counts its frame before
   its keys (`frame_counts_first`, 0x0801E3DA, 0x0801E3DE): the cursor blinks a frame further on than EXE6's, and the
-  Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0.
-- **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape.
+  Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0. R's
+  description and L's message are states of the choosing (`description_in_choosing`: the selection's 0x18 and 0x1C):
+  their ticks draw the last turns' block and count the frame, and the tick one sees its chatbox closed goes back to
+  the state it came from and draws its cursor (0x08020A0A, 0x0801E412).
+- **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape, its
+  portrait `megaman-portrait` (F4 00 40: the mugshot table 0x08028038's 0x40); a character ends the tick's printing
+  (`chatbox_character_ends_tick`, 0x0804E1B2: a character every third tick, where EXE6's interpreter goes on and
+  counts the next one's delay down on the same tick). Checked against custom/run-message, run-message-b and
+  run-message-ok: every frame while it is up, its portrait's fades and faces too.
 - **Sounds** (named for their code in gen_content.py's BY_USE): open 0x7A, cursor 0x7D, pick 0x7E, back 0x7F, OK 0x80,
   refused 0x69, description 0x66, the hover 0x100, the Program Advance's parts 0x79 and its result 0x97, the gauge full
   0x81; the hide, the description's close, L's message and the pause play none (optional roles).
@@ -539,6 +546,25 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   10, 4 to 6); nothing of their own.
 - **Navi+20** (action 0x20's variant 4, its parameter 1: the Navi+ bonus, `modifier = "navi_plus"`): lib/plus, as
   Atk+10's.
+- **Meteors1** (with Meteors2 and 3: action 0x20's variant 0x11, `chips/meteors`): the spawner and its dropper
+  (effect object 0x81) are EXE5's code that no EXE5 chip uses (0x080E9DA2, 0x080E9D04), ported here; the target's
+  panel is found with @exelib/panels' `closest_in_row`. The meteor and its marker are @exelib/meteors' with EXE4's
+  look, which states two differences: the hit is set on the meteor's panel whether it bursts there or not
+  (`hit_on = "landing"`), and the marker is left side 0 (`marker_takes_side = false`).
+- **Boomer1** (with Boomer2 and 3: action 0x20's variant 2, `chips/boomer`): @exelib/boomer's boomerang, which is
+  EXE5's code with EXE4's constants (its sound, 0xAB) and EXE5's variant rows; thrown from the back column by the side
+  alone (EXE4 objects have no flip).
+- **FullCust** (action 0x20's variant 7) and **Repair** (its variant 0x0B): EXE5's routines (FullCust's 0x080096C4,
+  0x0800E26C) as spawners, on the engine's gauge and its field object registry; FullCust's branch for a navi whose
+  NaviStats +0x26 is 2 (a story's other navi) has no netbattle navi to take it.
+- **AquaUp1, GreenWd1, Ligtnin1** (with their 2 and 3: action 0x20's variant 0x0C, their parameter 0, 1, 2,
+  `lib/towers`): EXE4's own. A controller (attack object 0x93) sweeps the columns from the user's back one, a column
+  every 11 ticks, raising an aqua tower from each cracked panel of the other side's holding its navi, a wood tower from
+  each grass one (objects/tower, attack 0x92's rows 0 and 1), or striking a lightning onto each panel holding an
+  obstacle (objects/lightning, attack 0x8E: EXE5's unused code; its eight hits around and its ring of sparks). The
+  lightning waits on RockCube's recordings (the lab's ligtnin*/obstacle). The towers' frames differ from mGBA's on a
+  few ticks where mGBA shows the tower's previous frame or a mix of two (big sprites: the original's display falling
+  a frame behind, not its state).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its
   navi's controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -727,8 +753,10 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   knows the shift itself (§17's known deviations: `shifted.tsv`, "exact at the replay's known shift").
   The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
   only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
-  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). At its end the original
-  clears the text a tick before the box closes and draws the cursor a frame sooner (group A's).
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
+  text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
+  zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
+  on the tick the screen sees the box closed (`description_in_choosing`).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -1388,9 +1416,19 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
     chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); the pairs, each half applying when the
     other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54), All Guard (76, 77: +0x28, item
-    60), Charge FullCustom (103, 104: the charged shot FullCustom, item 57).
+    60); Charge FullCustom (103, 104: the charged shot FullCustom) is in (item 57).
 57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
-    buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
+    buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
+    that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
+    (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
+    `WEAPONS`; the 18 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
+    only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet. Waiting:
+    the routines of chips still to port (0x2D Thunder1, 0x37 CopyDmg, 0x38 WideSht1, 0x3A Thunder2, 0x42 Hole, 0x43
+    WideSht2, 0x44 SandRing, 0x45 EnergBom, 0x46 Thunder3, 0x4C WideSht3, 0x4E WindRack, 0x4F MegEnBom, 0x50 Ball, 0x51
+    BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
+    the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
+    others' own actions), Triple Supporter's pair (item 54) and All Guard's (item 60).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,

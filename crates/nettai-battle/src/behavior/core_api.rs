@@ -1075,7 +1075,7 @@ impl CoreApi for Battle {
             .with_custom_screen(side, |screen, view, _, _, _| {
                 // (Three lines for a form the content has no description of.)
                 let lines = form.map_or(3, |f| view.library.form_description_lines(f));
-                screen.describe_form(&joy, lines, form)
+                screen.describe_form(&joy, lines, form, view.library.layout().chatbox_end_clears_tiles)
             })
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
         if !described {
@@ -1422,6 +1422,26 @@ impl CoreApi for Battle {
 
     fn panel_solid(&self, p: PanelPos) -> bool {
         self.field.is_solid(p.x, p.y)
+    }
+
+    fn panel_timer(&self, p: PanelPos) -> u16 {
+        self.field.panel(p.x, p.y).map_or(0, |p| p.timer)
+    }
+
+    fn set_panel_timer(&mut self, p: PanelPos, ticks: u16) {
+        if let Some(p) = self.field.panel_mut(p.x, p.y) {
+            p.timer = ticks;
+        }
+    }
+
+    fn field_cycle(&self) -> u32 {
+        self.field.cycle
+    }
+
+    fn panel_body_grounded(&self, p: PanelPos) -> bool {
+        use crate::field::pflags;
+        let f = self.field.flags(p.x, p.y);
+        f & pflags::BODY != 0 && f & pflags::FLOATING == 0
     }
 
     fn highlight_panel(&mut self, p: PanelPos) {

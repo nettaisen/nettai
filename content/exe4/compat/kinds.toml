@@ -33,6 +33,17 @@
 "flag" = { pool = "attack", index = 0x9C }
 # The gear stages' gears (the actor lists' entry type 5, 0x080068C0).
 "gear" = { pool = "attack", index = 0x76 }
+# The Meteors' meteor (0x080D877C), its panel marker (0x080E5EEA) and their dropper (action 0x20's variant 0x11,
+# 0x080EAE6C).
+"meteor" = { pool = "attack", index = 0x56, scratch_position = true }
+"meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
+"meteors/dropper" = { pool = "effect", index = 0x81, scratch_position = true }
+# The Boomers' boomerang (action 0x20's variant 2, 0x080D3430).
+"boomer/boomerang" = { pool = "attack", index = 0x32, scratch_position = true }
+# The towers' controller (action 0x20's variant 0x0C, 0x080DF98C), its towers (0x080DF7D0) and lightning (0x080DF108).
+"towers/controller" = { pool = "attack", index = 0x93, scratch_position = true }
+"tower" = { pool = "attack", index = 0x92, scratch_position = true }
+"lightning" = { pool = "attack", index = 0x8E, scratch_position = true }
 # The navi chips (the dimming chips' navi variants): the user's warp (0x080E2D26's effect #0x0C, 0x080E2C24) and each
 # navi's controller and objects.
 "navi-chip-warp" = { pool = "effect", index = 0x0C }

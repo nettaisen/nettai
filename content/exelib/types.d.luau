@@ -687,6 +687,9 @@ export type PatchCardEffect = {
     -- The group its card screen lists it in, as the effect's constructor says: "parameter" (a stat's change) or
     -- "ability" (the rest, the bugs among them).
     group: ("parameter" | "ability")?,
+    -- A pair's half (EXE4's, kind "pair"): its `effects`, which apply only while the card `card` (its key) sits in
+    -- slot `slot`.
+    pair: { slot: number, card: string, effects: { PatchCardEffect } }?,
 }
 
 -- What a game's patch cards' application (@exelib/patch_cards/apply) reads of the game: its kinds in the order they
@@ -1387,6 +1390,12 @@ export type MeteorLook = {
     -- Its landing's burst, and its panel marker's kind.
     burst: Effect,
     marker: Kind,
+    -- Where its hit is set as it lands: only where it bursts (EXE5's and EXE6's), or on its panel either way (EXE4's
+    -- 0x080D873A).
+    hit_on: "burst" | "landing",
+    -- Whether its marker takes its side (EXE5's and EXE6's spawn sets it); EXE4's sets none, leaving side 0
+    -- (0x080E5EEA).
+    marker_takes_side: boolean,
 }
 
 -- How a game's drill is: its hit's spark, what the first and second are

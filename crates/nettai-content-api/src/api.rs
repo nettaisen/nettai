@@ -1573,6 +1573,17 @@ pub trait CoreApi {
     fn panel_type_named(&self, name: &str) -> Option<u8>;
     /// The name of the game's panel type numbered `kind`.
     fn panel_type_name(&self, kind: u8) -> String;
+    /// Panel `p`'s timer: what its type counts (an `expires` type's ticks
+    /// left; EXE4's pitfall's crumble), and setting it.
+    fn panel_timer(&self, p: PanelPos) -> u16;
+    fn set_panel_timer(&mut self, p: PanelPos, ticks: u16);
+    /// The field's cycle (EXE6's volcanos erupt by it: the panel rules'
+    /// `cycle`, counted down each panel update and back to its period at 0);
+    /// 0 in a game without one.
+    fn field_cycle(&self) -> u32;
+    /// A grounded body stands on panel `p`: one of its flags' bodies, and
+    /// none floating.
+    fn panel_body_grounded(&self, p: PanelPos) -> bool;
     /// `_object_setPanelType` (`kind` the game's number of the type).
     fn set_panel_type(&mut self, p: PanelPos, kind: u8);
     /// `object_crackPanel`: crack a solid panel, or break a cracked,

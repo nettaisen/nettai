@@ -49,6 +49,23 @@ language = "ja"
 "bub-v" = { name = "バブルブイ", description = "ヒットすると\nななめおく2マスに\nゆうばくする" }
 "bublside" = { name = "バブルサイド", description = "ヒットすると\n上下の2マスに\nゆうばくする" }
 "navi-20" = { name = "ナビ+20", description = "ナビチップの\nあとにえらぶと\n攻撃力を+20!" }
+"meteors1" = { name = "メテオレイン1", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
+"meteors2" = { name = "メテオレイン2", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
+"meteors3" = { name = "メテオレイン3", description = "前方のちかいてきの\nいるマスにメテオを\n5発ふらせる!" }
+"boomer1" = { name = "ブーメラン1", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"boomer2" = { name = "ブーメラン2", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"boomer3" = { name = "ブーメラン3", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"repair" = { name = "リペア-", description = "キューブなどの\nおきもののHPを\nかいふくさせる" }
+"fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
+"ligtnin1" = { name = "ライトニング1", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"ligtnin2" = { name = "ライトニング2", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"ligtnin3" = { name = "ライトニング3", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
+"aquaup1" = { name = "アクアアッパー1", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"aquaup2" = { name = "アクアアッパー2", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"aquaup3" = { name = "アクアアッパー3", description = "てきのいる\nヒビわれたマスから\nアクアタワー発生!" }
+"greenwd1" = { name = "グリーンウッド1", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"greenwd2" = { name = "グリーンウッド2", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
+"greenwd3" = { name = "グリーンウッド3", description = "てきのいる\nくさむらのマスに\nウッディタワー!" }
 "roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-sp" = { name = "ロールSP", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-ds" = { name = "ロールDS", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
@@ -150,6 +167,12 @@ language = "ja"
 "017-custom2" = { name = "カスタム2" }
 "018-megafolder2" = { name = "メガフォルダ2" }
 "019-buster-attack-10" = { name = "バスター攻撃力10" }
+"021-charge-shot-switch" = { name = "チャージ武器を変更" }
+"022-charge-shot-switch" = { name = "チャージ武器を変更" }
+"023-charge-shot-switch" = { name = "チャージ武器を変更" }
+"024-charge-shot-switch" = { name = "チャージ武器を変更" }
+"026-charge-shot-switch" = { name = "チャージ武器を変更" }
+"027-charge-shot-switch" = { name = "チャージ武器を変更" }
 "028-pet-menu-color-change" = { name = "PET画面カラー変更" }
 "029-pet-menu-color-change" = { name = "PET画面カラー変更" }
 "030-pet-menu-color-change" = { name = "PET画面カラー変更" }
@@ -161,10 +184,14 @@ language = "ja"
 "036-max-hp-up" = { name = "マックスHPを強化" }
 "037-max-hp-up" = { name = "マックスHPを強化" }
 "038-max-hp-up" = { name = "マックスHPを強化" }
+"039-b-left-ability-activation" = { name = "B+左で技発動" }
+"042-b-left-ability-activation" = { name = "B+左で技発動" }
 "045-default-full-synchro" = { name = "デフォルトフルシンクロ" }
 "046-first-barrier200" = { name = "ファーストバリア200" }
+"048-weapon-change" = { name = "ウェポンチェンジ" }
 "049-buster-attack-15" = { name = "バスター攻撃力15" }
 "050-gigafolder1" = { name = "ギガフォルダ1" }
+"058-charge-shot-switch" = { name = "チャージ武器を変更" }
 "059-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "060-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "061-max-hp-up" = { name = "マックスHPを強化" }
@@ -174,7 +201,13 @@ language = "ja"
 "065-max-hp-up" = { name = "マックスHPを強化" }
 "066-max-hp-up" = { name = "マックスHPを強化" }
 "067-max-hp-up" = { name = "マックスHPを強化" }
+"069-b-left-ability-activation" = { name = "B+左で技発動" }
+"072-b-left-ability-activation" = { name = "B+左で技発動" }
+"073-b-left-ability-activation" = { name = "B+左で技発動" }
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }
+"085-charge-shot-switch" = { name = "チャージ武器を変更" }
+"086-charge-shot-switch" = { name = "チャージ武器を変更" }
+"087-charge-shot-switch" = { name = "チャージ武器を変更" }
 "088-pet-menu-color-change" = { name = "PET画面カラー変更" }
 "089-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "090-megaman-color-change" = { name = "ロックマンカラーを変更" }
@@ -189,8 +222,15 @@ language = "ja"
 "099-max-hp-up" = { name = "マックスHPを強化" }
 "100-max-hp-up" = { name = "マックスHPを強化" }
 "101-max-hp-up" = { name = "マックスHPを強化" }
+"103-fullcustom-charge-1-2" = { name = "チャージフルカスタム1/2" }
+"104-fullcustom-charge-2-2" = { name = "チャージフルカスタム2/2" }
 "105-panel-change" = { name = "パネルチェンジ" }
 "106-weapon-change" = { name = "ウェポンチェンジ" }
+"107-weapon-change" = { name = "ウェポンチェンジ" }
 "109-megafolder3" = { name = "メガフォルダ3" }
 "110-custom3" = { name = "カスタム3" }
 "111-gigafolder1" = { name = "ギガフォルダ1" }
+"112-b-left-ability-activation" = { name = "B+左で技発動" }
+"119-charge-shot-switch" = { name = "チャージ武器を変更" }
+"120-charge-shot-switch" = { name = "チャージ武器を変更" }
+"133-weapon-change" = { name = "ウェポンチェンジ" }

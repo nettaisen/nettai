@@ -665,6 +665,23 @@ impl Screen {
         self.look.draw_turn_limit();
     }
 
+    /// EXE4's choosing tick's start (0x0801E3DA, 0x0801E3DE), whatever its
+    /// selection's state: the last turns' block by the frame so far, then
+    /// the frame counts on.
+    fn count_choosing_frame(&mut self) {
+        self.look.draw_turn_limit();
+        self.look.frame += 1;
+    }
+
+    /// EXE4's 0x08020A0A: a state of the choosing (a description, L's
+    /// message) gives way to the one it came from, which the choosing's
+    /// tick then draws (0x0801E3F2, 0x0801E412): the Regular chip's frame
+    /// and the cursor, by the frame counted.
+    fn draw_choosing_return(&mut self, folder: &BattleFolder) {
+        self.look.draw_regular(folder.regular_pending, true);
+        self.look.draw_cursor();
+    }
+
     /// `sub_802A394`: choosing chips or reading a chip's description, the
     /// cursor rests on a dark chip (as it counts in a selection).
     fn on_shading_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
@@ -698,8 +715,7 @@ impl Screen {
                 // Regular chip's frame and the cursor its state draws
                 // (0x0801E41E).
                 self.phase = Phase::Choosing;
-                self.look.draw_turn_limit();
-                self.look.frame += 1;
+                self.count_choosing_frame();
                 self.look.draw_emblem(0);
                 self.look.draw_regular(folder.regular_pending, true);
                 self.look.draw_cursor();
@@ -713,8 +729,7 @@ impl Screen {
                 // draws the rest: the rule `frame_counts_first`.)
                 let counts_first = view.library.layout().frame_counts_first;
                 if counts_first {
-                    self.look.draw_turn_limit();
-                    self.look.frame += 1;
+                    self.count_choosing_frame();
                 }
                 let request = self.choose(joy, view, folder, extras);
                 // (OK takes the Regular chip out of the folder before the
@@ -779,7 +794,13 @@ impl Screen {
                 // The screen sees the chatbox closed the tick after it
                 // closes, and reads keys again the tick after that; the
                 // chatbox runs after the screen, each tick. The emblem is
-                // drawn every tick (`sub_8026E4C`).
+                // drawn every tick (`sub_8026E4C`). (A description that is
+                // a state of the choosing, EXE4's, runs the choosing's tick
+                // around it: the rule `description_in_choosing`.)
+                let in_choosing = window.is_none() && view.library.layout().description_in_choosing;
+                if in_choosing {
+                    self.count_choosing_frame();
+                }
                 self.look.draw_emblem(0);
                 if !chatbox.is_open() {
                     self.look.play(ScreenSound::DescriptionClose);
@@ -789,6 +810,9 @@ impl Screen {
                         Some(window) => Phase::Window { window, tick: 0 },
                         None => Phase::Choosing,
                     };
+                    if in_choosing {
+                        self.draw_choosing_return(folder);
+                    }
                     return None;
                 }
                 chatbox.update(joy.held, joy.pressed);
@@ -796,9 +820,16 @@ impl Screen {
                 None
             }
             Phase::RunMessage { chatbox } => {
+                let in_choosing = view.library.layout().description_in_choosing;
+                if in_choosing {
+                    self.count_choosing_frame();
+                }
                 self.look.draw_emblem(0);
                 if chatbox.is_some_and(|c| !c.is_open()) {
                     self.phase = Phase::Choosing;
+                    if in_choosing {
+                        self.draw_choosing_return(folder);
+                    }
                     return None;
                 }
                 self.step_run_message(joy, view);
@@ -886,6 +917,8 @@ impl Screen {
                 let navi = view.stats.navi;
                 Chatbox::new(Script::RunMessage { lines: view.library.run_message(navi) })
                     .commands_wait_for_text(view.library.layout().chatbox_commands_wait_for_text)
+                    .end_clears_tiles(view.library.layout().chatbox_end_clears_tiles)
+                    .character_ends_tick(view.library.layout().chatbox_character_ends_tick)
                     .talking(view.library.run_message_talking(navi))
             }
         };
@@ -1030,13 +1063,13 @@ impl Screen {
                 // invalid chip's description.
                 if let Some(c) = self.chip_in(self.cursor, folder) {
                     let lines = view.library.chip(checked(c, view).id).description_lines;
-                    self.describe(joy, lines, None, None);
+                    self.describe(joy, lines, None, None, layout.chatbox_end_clears_tiles);
                     self.look.play(ScreenSound::Description);
                 } else if let Some(c) = self.slots[self.cursor as usize].face {
                     // A button that shows a chip (EXE5's capsules, 0x0802487C: the
                     // slot's kinds 6 and 7): the chip's description.
                     let lines = view.library.chip(c).description_lines;
-                    self.describe(joy, lines, None, None);
+                    self.describe(joy, lines, None, None, layout.chatbox_end_clears_tiles);
                     self.look.play(ScreenSound::Description);
                 }
             }
@@ -1390,8 +1423,8 @@ impl Screen {
 
     /// R: a description's chatbox (`chatbox_runScript` in the key's
     /// handler), which runs its first tick this tick.
-    fn describe(&mut self, joy: &Joypad, lines: u8, window: Option<WindowHandle>, form: Option<nettai_content_api::FormHandle>) {
-        let mut chatbox = Chatbox::new(Script::Description { breaks: lines.saturating_sub(1) });
+    fn describe(&mut self, joy: &Joypad, lines: u8, window: Option<WindowHandle>, form: Option<nettai_content_api::FormHandle>, end_clears_tiles: bool) {
+        let mut chatbox = Chatbox::new(Script::Description { breaks: lines.saturating_sub(1) }).end_clears_tiles(end_clears_tiles);
         chatbox.update(joy.held, joy.pressed);
         self.phase = Phase::Description { window, form, chatbox };
     }
@@ -1399,9 +1432,9 @@ impl Screen {
     /// `custom.describe`: R in the window up, `form`'s description (`lines`
     /// long), back to the window when it closes. False when no window is
     /// up.
-    pub fn describe_form(&mut self, joy: &Joypad, lines: u8, form: Option<nettai_content_api::FormHandle>) -> bool {
+    pub fn describe_form(&mut self, joy: &Joypad, lines: u8, form: Option<nettai_content_api::FormHandle>, end_clears_tiles: bool) -> bool {
         let Phase::Window { window, .. } = self.phase else { return false };
-        self.describe(joy, lines, Some(window), form);
+        self.describe(joy, lines, Some(window), form, end_clears_tiles);
         true
     }
 

@@ -61,8 +61,6 @@ struct PanelTypeSection {
     unbreakable: bool,
     #[serde(default)]
     traps: bool,
-    #[serde(default)]
-    crumbles: Option<u16>,
     /// By the direction of the move, the steps tried in turn.
     #[serde(default)]
     carries_by_move: Option<Vec<Vec<SlideStep>>>,
@@ -111,6 +109,8 @@ struct PanelsSection {
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
     type_mask: u32,
+    #[serde(default)]
+    cycle: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -184,6 +184,9 @@ struct CustomScreenSection {
     fades_clear_at_ok: bool,
     cursor_after_leaving: bool,
     frame_counts_first: bool,
+    description_in_choosing: bool,
+    chatbox_end_clears_tiles: bool,
+    chatbox_character_ends_tick: bool,
 }
 
 #[derive(Deserialize)]
@@ -678,7 +681,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         doubles,
                         unbreakable: rule.unbreakable,
                         traps: rule.traps,
-                        crumbles: rule.crumbles,
                     });
                 }
                 if types.len() > 16 {
@@ -703,6 +705,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 let names = s.numbers.clone();
                 stated.panels = Some(PanelRules {
                     types,
+                    cycle: s.cycle,
                     names,
                     roles,
                     start_visible: s.start_visible,
@@ -756,6 +759,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     fades_clear_at_ok: s.fades_clear_at_ok,
                     cursor_after_leaving: s.cursor_after_leaving,
                     frame_counts_first: s.frame_counts_first,
+                    description_in_choosing: s.description_in_choosing,
+                    chatbox_end_clears_tiles: s.chatbox_end_clears_tiles,
+                    chatbox_character_ends_tick: s.chatbox_character_ends_tick,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,
