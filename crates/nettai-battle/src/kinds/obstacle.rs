@@ -24,7 +24,7 @@ use nettai_content_api::RecordHandle;
 
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionId, f1};
-use crate::content::{CollisionRole, EffectRole, PushReading, SoundRole, SparkRole};
+use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
 use crate::field::{self, PanelType, pflags};
 use crate::kinds::common::{self, Progress};
 use crate::object::{DragStep, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3, flags};
@@ -349,9 +349,9 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     // (EXE5's lava burns first: 0x08017A18 and its variants.)
     common::panel_burn(b, r);
     if push == Push::AnyHit {
-        match b.game_rules().push_reading {
-            PushReading::TowardFront => push_on_any_hit(b, c),
-            PushReading::ByHitterFlip => push_on_any_hit_by_flip(b, c),
+        match b.game_rules().push_reading.reads {
+            PushSource::Final => push_on_any_hit(b, c),
+            PushSource::ByHitterFlip => push_on_any_hit_by_flip(b, c),
         }
     }
     let hit_mod = b.collision.get(c).hit_mod_final;
@@ -920,7 +920,7 @@ struct PushVector {
 /// obstacle held still in one (`object_updateSprite` leaves it): no pusher
 /// bits either way, so it's left out.
 fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
-    if b.game_rules().push_reading == PushReading::ByHitterFlip {
+    if b.game_rules().push_reading.reads == PushSource::ByHitterFlip {
         return push_vector_by_flip(b, r);
     }
     let d = b.collision.get(collision(b, r));
@@ -930,15 +930,13 @@ fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
         (false, true) => -1,
         _ => return PushVector { pusher: 0, dx: 0, dy: 0, panels: 0 },
     };
-    // byte_800F604: (dx, dy, panels) for hit modifier 0x04, 0x08, 0x10,
-    // 0x20.
-    const VECTORS: [(i8, i8, u8); 4] = [(-1, 0, 6), (1, 0, 6), (-1, 0, 1), (1, 0, 1)];
-    let bits = d.hit_mod_final >> 2;
-    let Some(i) = (0..4).find(|&i| bits & (1 << i) != 0) else {
+    // The rules' obstacle rows (EXE6's `byte_800F604`: for hit modifier
+    // 0x04, 0x08, 0x10, 0x20; EXE4's six from 0x04 to 0x80, then none).
+    let reading = &b.game_rules().push_reading;
+    let Some(v) = reading.obstacle_rows.get(reading.first(d.hit_mod_final)) else {
         panic!("sub_800F598: a push without a direction reads its vector from the BIOS (address 4)");
     };
-    let (dx, dy, panels) = VECTORS[i];
-    PushVector { pusher, dx: dx * pusher, dy, panels }
+    PushVector { pusher, dx: v.dx * pusher, dy: v.dy, panels: v.tiles }
 }
 
 /// EXE5's `sub_800F598` (0x0800D4B0): the pusher is side 0 when its hits
@@ -959,15 +957,17 @@ fn push_vector_by_flip(b: &Battle, r: ObjectRef) -> PushVector {
     } else {
         -1
     };
-    const VECTORS: [(i8, i8, u8); 5] = [(-1, 0, 6), (1, 0, 6), (-1, 0, 1), (1, 0, 1), (0, 0, 0)];
-    let first = |hm: u8| (0..4).find(|&i| (hm >> 2) & (1 << i) != 0);
+    // (The rules' obstacle rows: EXE5's table, 0x0800D53B, with a fifth of
+    // nothing.)
+    let reading = &b.game_rules().push_reading;
+    let none = reading.bits as usize;
     let [unflipped, flipped] = d.hit_mod_by_side;
-    let (i, sign) = match first(unflipped) {
-        Some(i) => (i, pusher),
-        None => (first(flipped).unwrap_or(4), -pusher),
+    let (i, sign) = match reading.first(unflipped) {
+        i if i == none => (reading.first(flipped), -pusher),
+        i => (i, pusher),
     };
-    let (dx, dy, panels) = VECTORS[i];
-    PushVector { pusher, dx: dx * sign, dy, panels }
+    let v = reading.obstacle_rows[i];
+    PushVector { pusher, dx: v.dx * sign, dy: v.dy, panels: v.tiles }
 }
 
 /// The panel `(dx, dy)` from `p`, if it's on the field.
