@@ -131,3 +131,8 @@ standard = [
     "panlgrab",
     "areagrab",
 ]
+mega = [
+    "roll",
+    "roll-sp",
+    "roll-ds",
+]

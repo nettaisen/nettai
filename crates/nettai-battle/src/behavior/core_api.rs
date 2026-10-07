@@ -2892,6 +2892,10 @@ impl CoreApi for Battle {
         spawn(self, user, if out { Warp::Out } else { Warp::In });
     }
 
+    fn navi_spring_anti_recovery(&mut self, user: ObjectRef, damage: u32) -> Option<ObjectRef> {
+        kinds::navi_chip::spring_anti_recovery_with(self, user, damage)
+    }
+
     // ---- Obstacles ----------------------------------------------------------------------
 
     fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8) {

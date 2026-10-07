@@ -2105,6 +2105,13 @@ pub trait CoreApi {
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
     /// navi warp, actor 0x2D).
     fn navi_warp(&mut self, user: ObjectRef, out: bool);
+    /// A navi chip's use springs the other side's armed AntiRecv (EXE4's
+    /// Roll chips' spawner, 0x080E5554): the trap's mark over `user`
+    /// (`sub_800ABC6`), the other side's defensive-chip record spent
+    /// (`sub_802CEA6`), and AntiRecv's counterattack (the role
+    /// `kinds.anti_recovery`, `sub_80E37D2`) against `user` with the damage
+    /// word `damage`: the counterattack, none when the pool is full.
+    fn navi_spring_anti_recovery(&mut self, user: ObjectRef, damage: u32) -> Option<ObjectRef>;
 
     // ---- Obstacles (the obstacle framework) -------------------------------
 

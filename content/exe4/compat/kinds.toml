@@ -33,3 +33,10 @@
 "flag" = { pool = "attack", index = 0x9C }
 # The gear stages' gears (the actor lists' entry type 5, 0x080068C0).
 "gear" = { pool = "attack", index = 0x76 }
+# The navi chips (the dimming chips' navi variants): the user's warp (0x080E2D26's effect #0x0C, 0x080E2C24) and each
+# navi's controller and objects.
+"navi-chip-warp" = { pool = "effect", index = 0x0C }
+# Roll's chips (action 0x0C's variant 0x14, 0x080E5516): her controller, Roll and her heart.
+"roll/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
+"roll/navi" = { pool = "actor", index = 0x2C }
+"roll/heart" = { pool = "attack", index = 0x4E }

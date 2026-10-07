@@ -1521,6 +1521,13 @@ declare navi_chip: {
     last: () -> LastNaviChip?,
     -- `sub_80E1332`: the user warps out (`out`) or back in.
     warp: (user: Object, out: boolean) -> (),
+    -- A navi chip's use springs the other side's armed AntiRecv (EXE4's Roll
+    -- chips' spawner, 0x080E5554): the trap's mark over `user`, the other
+    -- side's defensive-chip record spent, and AntiRecv's counterattack (the
+    -- role `kinds.anti_recovery`) against `user` with the damage word
+    -- `damage`, its telop the record's chip: the counterattack (nil: the pool
+    -- is full). The caller starts its dimming.
+    spring_anti_recovery: (user: Object, damage: number) -> Object?,
 }
 
 -- What a stage places a field object with (the original's spawner for
@@ -2144,8 +2151,9 @@ export type DamageFormula =
     | { formula: "count", of: DamageCount, by_count: { number }, operation_battle: number? }
 
 -- What a count formula counts: a side statistic, the side's panels of a
--- type, the turns before this one.
-export type DamageCount = { side_stat: number } | { own_panels: PanelType } | "turns_before"
+-- type, the field's panels of a type (either side's), the turns before this
+-- one.
+export type DamageCount = { side_stat: number } | { own_panels: PanelType } | { panels: PanelType } | "turns_before"
 
 export type ChipSpec = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
