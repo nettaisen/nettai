@@ -5,15 +5,15 @@
 -- the column past it too.
 
 local action = require("@self/action")
-local beam = require("@self/beam")
 local lockon = require("../rules/lockon")
+local regions = require("@exelib/regions")
 
--- The beams (the original's looks and palettes): in the shade, and in the
--- sun.
-local BEAM: SunBeam = { sprite = beam.sprites.plain, palette = 0 }
-local BEAM_IN_SUN: SunBeam = { sprite = beam.sprites.plain, palette = 2 }
-local WIDE_BEAM: SunBeam = { sprite = beam.sprites.wide, palette = 0 }
-local WIDE_BEAM_IN_SUN: SunBeam = { sprite = beam.sprites.wide, palette = 3 }
+-- The beams (the original's looks, `dword_80E5C28`, and palettes): in the
+-- shade, and in the sun; GunDelEX's wider.
+local BEAM: SunBeam = { sprite = asset.sprite("sun-beam"), palette = 0 }
+local BEAM_IN_SUN: SunBeam = { sprite = asset.sprite("sun-beam"), palette = 2 }
+local WIDE_BEAM: SunBeam = { sprite = asset.sprite("sun-beam-ex"), palette = 0 }
+local WIDE_BEAM_IN_SUN: SunBeam = { sprite = asset.sprite("sun-beam-ex"), palette = 3 }
 
 local chips: { [string]: Chip } = {
     gundels1 = {
@@ -29,6 +29,7 @@ local chips: { [string]: Chip } = {
             firing_ticks = 60,
             beam = BEAM,
             beam_in_sun = BEAM_IN_SUN,
+            region = regions.wide,
         },
     },
     gundels2 = {
@@ -44,6 +45,7 @@ local chips: { [string]: Chip } = {
             firing_ticks = 90,
             beam = BEAM,
             beam_in_sun = BEAM_IN_SUN,
+            region = regions.wide,
         },
     },
     gundels3 = {
@@ -59,6 +61,7 @@ local chips: { [string]: Chip } = {
             firing_ticks = 120,
             beam = BEAM,
             beam_in_sun = BEAM_IN_SUN,
+            region = regions.wide,
         },
     },
     -- (The record's extra flag 0x01 has no battle reader, and no name.)
@@ -78,7 +81,7 @@ local chips: { [string]: Chip } = {
             firing_ticks = 120,
             beam = WIDE_BEAM,
             beam_in_sun = WIDE_BEAM_IN_SUN,
-            wide = true,
+            region = regions.wide_long,
         },
     },
 }
