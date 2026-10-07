@@ -812,6 +812,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let form = stats(b, r).starting_form;
     stats_mut(b, r).form = form;
     load_sprite(b, r);
+    // sub_801002C, sprite_setPalette.
+    let palette = palette_pick(b, r);
+    b.objects.sprite_mut(r).look.palette = palette;
     // sub_80142B0: bodies deal 10 in link battles.
     if is_link(b) {
         b.objects.get_mut(r).damage = 10;
@@ -1249,18 +1252,24 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 ///   navi's palette step (`byte_80212BB`: every navi's is 1 in EXE6; EXE5's
 ///   0x0801D737).
 fn navi_palette(b: &mut Battle, r: ObjectRef) {
-    let s = *stats(b, r);
     if let Some(glow) = &form_of(b, r).glow {
         let shader = glow[(b.round.battle_time % glow.len() as u32) as usize];
         b.objects.sprite_mut(r).look.color_shader = shader;
         return;
     }
+    let palette = palette_pick(b, r);
+    b.objects.sprite_mut(r).look.palette = palette;
+}
+
+/// `sub_801002C`: the navi's sprite palette (`navi_palette`'s), which its
+/// init sets too, as its sprite loads.
+fn palette_pick(b: &mut Battle, r: ObjectRef) -> u8 {
+    let s = *stats(b, r);
     // The side's rules may pick it (EXE5's 0x0800DD94: its light and dark
-    // part's).
+    // part's; EXE4's 0x0800BFFE).
     let side = b.objects.get(r).alliance;
     if let Some(palette) = b.rules_navi_palette(side, r) {
-        b.objects.sprite_mut(r).look.palette = palette;
-        return;
+        return palette;
     }
     let (base, mood_palette, form_palette) = {
         let form = form_of(b, r);
@@ -1291,7 +1300,7 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
             form_palette
         }
     };
-    b.objects.sprite_mut(r).look.palette = palette;
+    palette
 }
 
 /// `off_80EA93C[AIIndex]`: the per-form tick hook, which only MegaMan's
