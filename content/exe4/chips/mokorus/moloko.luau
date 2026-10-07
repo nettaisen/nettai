@@ -1,7 +1,7 @@
 --!strict
 -- MokoRus's Molokos (attack object 0x2C, 0x080D235C: EXE4's own), which the spawners' variant 1 puts out
 -- (0x080D252A): one on each row, the rows shuffled (0x08000AAA: three swaps of RNG2's draws), the first at once and the
--- next 10 and 20 ticks later. A Moloko (04-11 in its level's palette, its parameter's twice; turned to its side, its
+-- next 10 and 20 ticks later. A Moloko (04-11 in its chip's palette, its parameter's twice; turned to its side, its
 -- shadow on the ground) waits 140 pixels behind the field's middle, then charges along its row 3 pixels a tick with
 -- its sound (0xC7), a dust puff every 10 ticks (effect row 1, jittered by 7), an attack hitting navis (modifier 0x21,
 -- the heavy spark) on the panel it is over. It goes at its first hit; at a panel holding an obstacle of the other
@@ -29,8 +29,8 @@ local SOLID = 0x10
 
 local WAIT, CHARGE = 0x0, 0x4
 
--- Its level (its Param1, the chip's parameter): its palette.
-type State = { level: number }
+-- Its palette (twice its Param1, the chip's parameter).
+type State = { palette: number }
 
 local function gone(me: Object)
     me.collision:set_region(nil)
@@ -123,7 +123,7 @@ local function init(me: Object)
     local p = me.pos
     me.pos = Vec3.new(-me.facing * REACH * 0x10000, p.y, 0)
     me:set_panel_from_coordinates()
-    sprite.palette = (me.state :: State).level * 2
+    sprite.palette = (me.state :: State).palette
     sprite:set_flip(me.alliance)
     if not me:create_collision() then
         me:free()
@@ -140,7 +140,7 @@ end
 moloko.kind = new.kind {
     id = "mokorus/moloko",
     pool = "attack",
-    state = { level = "u8" },
+    state = { palette = "u8" },
     -- 0x080D235C: then the sprite.
     update = function(me: Object)
         local l = me.lifecycle
@@ -155,9 +155,9 @@ moloko.kind = new.kind {
     end,
 }
 
--- 0x080D252A, the spawners' variant 1: a Moloko of level `level` (the chip's parameter: its palette) on each row,
--- the rows shuffled, each 10 ticks after the one before, with the attack's element and damage word.
-function moloko.spawner(level: number): (user: Object, element: number, damage: number) -> ()
+-- 0x080D252A, the spawners' variant 1: a Moloko in `palette` (twice the chip's parameter) on each row, the rows
+-- shuffled, each 10 ticks after the one before, with the attack's element and damage word.
+function moloko.spawner(palette: number): (user: Object, element: number, damage: number) -> ()
     return function(user: Object, element: number, damage: number)
         local rows = { 1, 2, 3 }
         panels.shuffle(rows, 3, 3)
@@ -171,7 +171,7 @@ function moloko.spawner(level: number): (user: Object, element: number, damage: 
                 o:set_damage_word(damage)
                 o.timer = 10 * (i - 1)
                 local s = o.state :: State
-                s.level = level
+                s.palette = palette
             end
         end
     end

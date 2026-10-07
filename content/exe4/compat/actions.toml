@@ -79,6 +79,11 @@
 "whitweb1/action" = 0x20
 "whitweb2/action" = 0x20
 "whitweb3/action" = 0x20
+"elemflar/action" = 0x60
+"elemice/action" = 0x60
+"elemleaf/action" = 0x60
+"elemsand/action" = 0x60
+"elemdark/action" = 0x60
 # The recoveries (the chips' action 0x1D, 0x080EC71A).
 "recov10/action" = 0x1D
 "recov30/action" = 0x1D

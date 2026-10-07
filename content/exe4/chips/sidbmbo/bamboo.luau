@@ -1,7 +1,7 @@
 --!strict
 -- SidBmbo's bamboo (attack object 0x44, 0x080D5C50: EXE4's own, its update EXE5's crack bomb's 0x080C920A but for its
 -- constants), which the spawners' variant 5 puts out (0x080D5DDA): above the field (row 0) three columns ahead of the
--- user, 8 pixels lower, its shadow drawn with it, in its level's palette (its parameter's twice), turned to its side.
+-- user, 8 pixels lower, its shadow drawn with it, in its chip's palette (its parameter's twice), turned to its side.
 -- On its first tick it swings (the sword's swing sound, 0x8E: its animation 2, 31 ticks), a hitbox on row 1 four ticks
 -- in and on row 2 two ticks later (the wood spark, modifier 1, each lasting 20 ticks unless it hits); then its
 -- animation 3 for 30 ticks and it goes in a puff (effect row 0x15). As the battle is over it goes in a puff where it
@@ -21,8 +21,8 @@ local SWING_TICKS, FIRST_HIT, SECOND_HIT, AFTER_TICKS = 0x1F, 0x1B, 0x19, 0x1E
 local HITBOX_TICKS, HIT_MOD = 20, 1
 local LOWER = 8
 
--- Its level (its Param1, the chip's parameter): its palette.
-type State = { level: number }
+-- Its palette (twice its Param1, the chip's parameter).
+type State = { palette: number }
 
 local WAIT, SWING = 0x0, 0x4
 local SWINGING, AFTER = 0x0, 0x4
@@ -118,7 +118,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y + LOWER * 0x10000, 0)
-    sprite.palette = (me.state :: State).level * 2
+    sprite.palette = (me.state :: State).palette
     sprite:set_flip(me.alliance)
     me.timer = 0
     me:set_lifecycle("update")
@@ -128,7 +128,7 @@ end
 bamboo.kind = new.kind {
     id = "sidbmbo/bamboo",
     pool = "attack",
-    state = { level = "u8" },
+    state = { palette = "u8" },
     -- 0x080D5C50: then the sprite.
     update = function(me: Object)
         local l = me.lifecycle
@@ -143,10 +143,10 @@ bamboo.kind = new.kind {
     end,
 }
 
--- 0x080D5DDA, the spawners' variant 5: the bamboo of level `level` (the chip's parameter) three columns ahead of the
--- user, on row 0, with the attack's element and damage word. (Its position is the registers until its init places
--- it.)
-function bamboo.spawner(level: number): (user: Object, element: number, damage: number) -> ()
+-- 0x080D5DDA, the spawners' variant 5: the bamboo in `palette` (twice the chip's parameter) three columns ahead of
+-- the user, on row 0, with the attack's element and damage word. (Its position is the registers until its init
+-- places it.)
+function bamboo.spawner(palette: number): (user: Object, element: number, damage: number) -> ()
     return function(user: Object, element: number, damage: number)
         local o = battle.spawn(bamboo.kind, Vec3.new(user.panel_y, element, 3 * user.facing))
         if o then
@@ -155,7 +155,7 @@ function bamboo.spawner(level: number): (user: Object, element: number, damage: 
             o.alliance = user.alliance
             o:set_damage_word(damage)
             local s = o.state :: State
-            s.level = level
+            s.palette = palette
         end
     end
 end
