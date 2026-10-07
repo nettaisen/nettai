@@ -316,7 +316,7 @@ pub fn emblem<'a>(a: &'a CustomScreen, c: &Content, navi: NaviHandle, problems: 
 }
 
 /// The pack's look of the button named `name`: the version's own (`own`:
-/// the pictures of the version the screen draws, `custom::beast_pictures`),
+/// the pictures of the version the screen draws, `custom::button_pictures`),
 /// else the pack's.
 pub fn button_of<'a>(a: &'a CustomScreen, own: &'a VersionPictures, name: &str) -> Option<&'a ButtonPictures> {
     own.button(name).or_else(|| a.button(name))

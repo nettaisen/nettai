@@ -732,7 +732,7 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
-  navi goes into (`custom::beast_pictures`: the player's version's from
+  navi goes into (`custom::button_pictures`: the player's version's from
   the base form, and a form's own version's from a Cross), so a
   Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
