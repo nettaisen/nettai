@@ -421,9 +421,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   name, and a sprite or sound EXE4's code loads where EXE5's or EXE6's same code loads a named one (the place votes
   of tools/exe5/assetmap.py over both maps; a pair the same but for constants votes only where the asset's number is
   the same: such pairs in the object code are often other objects on one skeleton, and would have named an EXE4
-  sound EXE6's Beast Over burst). The rest (175 sprites, 387 sounds) are written under their numbers
-  (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's extraction.txt (`unnamed:`), to name by what loads them
-  as the port reads EXE4's own code.
+  sound EXE6's Beast Over burst). Then what EXE4's own code says (gen_content.py's BY_USE): the assets the ported
+  content uses, each by the code that loads it; the navis' sprites by navi number (0x0800B90A's table 0x08017F98:
+  navis 1 to 14, Roll to HealNavi, named by their win banners, 0x08008524) and MegaMan's in each soul by soul
+  number (RollSoul to WoodSoul, the navis' order: the chip names' list from MegaSoul has them so). The rest (142
+  sprites, 368 sounds: the story navis' 0x0E to 0x19, the viruses', the chips' objects and effects, and the sounds
+  of what isn't ported) are written under their numbers (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's
+  extraction.txt (`unnamed:`), to name by what loads them as the port reads EXE4's own code (the verification
+  workspace's tools/exe4/assetloads.py lists each one's loads).
 - **The field** (R, Red Sun US's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
   its transfer list 0x08006A68: background palettes 1 to 8), the panel blocks (0x080093FC: 6 * type + 3 * owner + row
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
@@ -819,9 +824,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 32. **Roles not filled** (the content check lists them): every sound but `appear` and `custom_open`, the music but
     `link_battle`, the effects (deletion, recovery, the cut-in flash), sprites (charge glow, statuses), banners but
     `round_start`, `turn_start` and `win`, the kinds and actions EXE5's roles name. Name each EXE4 asset for the code
-    that uses it (gen_content.py's BY_USE, with the address) and fill the role. EXE4's content audit lists 1 problem
-    with the pack: MegaMan has no emblem (the custom screen's extraction, §14). The banners, the faces (MegaMan's
-    `forms`, so his faces are his base form's `mugshot`) and the warning marker are in.
+    that uses it (gen_content.py's BY_USE, with the address; tools/exe4/assetloads.py lists where each unnamed one is
+    loaded) and fill the role. EXE4's content audit lists no problem with the pack (the custom screen's emblem is the
+    window's own, §14). The banners, the faces (MegaMan's `forms`, so his faces are his base form's `mugshot`), the
+    warning marker, the navis' sprites and MegaMan's souls' are in.
 
 ### 18.6 Found by the replays
 
