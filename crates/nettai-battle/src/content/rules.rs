@@ -224,6 +224,11 @@ pub struct EffectsRules {
     /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
     /// draws it.
     pub rng1_per_frame: bool,
+    /// Each console's emotion window checks its navi's NaviCust bugs and
+    /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
+    /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
+    /// RNG1 never moves in a bugged navi's fight.
+    pub bug_flicker: bool,
 }
 
 /// A banner's steps, in ticks (`hud::Banner::tick`): it slides in, holds,

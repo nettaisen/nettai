@@ -68,4 +68,6 @@ return {
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
     -- Each console's RNG1 advances once a frame after the battle's (`main_`'s `GetRNG1`).
     rng1_per_frame = true,
+    -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (`sub_801CC94`).
+    bug_flicker = true,
 }
