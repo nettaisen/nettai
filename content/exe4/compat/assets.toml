@@ -39,7 +39,7 @@ sword = "0c-00"  # the blade a sword holds: attachment row 3 (0x080CD524), actio
 cannon = "0c-01"  # the Cannon held: attachment row 0 (0x080CD524), action 0x0B's variant 0 (0x080EB894)
 bomb = "0c-02"
 muzzle-flash = "0c-06"  # the buster's flash: attachment row 0x10 (0x080CD524), 0x080EB396
-aura = "0c-07"
+aura = "0c-07"  # an aura of types 5 to 7: its visual's look (effect 7, 0x080E23D8)
 grab-shot = "0c-13"
 sword-slash = "0c-14"
 big-slash = "0c-15"  # a big slash over two columns: effect rows 0x1D and 0x1E (0x080E1698), the swords' variants 5, 6 and 11 (0x080EB7E4)
@@ -54,7 +54,7 @@ anubis = "0c-30"
 voodoo-doll = "0c-34"
 guardian-statue = "0c-35"
 sun-beam = "0c-3c"
-barrier = "0c-3d"
+barrier = "0c-3d"  # a barrier of types 1 to 3: its visual's look (effect 7, 0x080E23D8)
 holy-dream-shot = "0c-3e"
 bug-curse = "0c-3f"
 black-wing = "0c-42"
@@ -95,6 +95,7 @@ energy-burst = "14-12"
 lightning = "14-14"
 charge-glow-a = "14-15"
 full-synchro-aura = "14-16"  # the Full Synchro aura: actor object 0x5E's init (0x080CD1A8), spawned for a navi in Full Synchro (0x0800D9C8)
+megaman-portrait = "20-40"  # the no-running message's speaker, F4 00 40 (0x0804F750): the mugshot table 0x08028038's 0x40, which 0x080028F2 loads
 
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
@@ -132,6 +133,7 @@ big-sword-swing = 0x0b4  # a big sword's swing: action 0x0A's variants 5 and 11 
 dark-hover = 0x100  # the custom screen's cursor resting on a dark chip, every 61 ticks (0x0801E4A6)
 counter-hit = 0x10a  # a counter hit (0x08013410: 0x0801342A)
 panel-poison = 0x124  # a panel turned to poison (0x08009D68: 0x08009D8C)
+barrier = 0x125  # a barrier's visual coming up, and back up (effect 7: 0x080E2496, 0x080E25E4)
 damage-bonus = 0x1bb  # Full Synchro's boost of a chip (0x0800D54E: 0x0800D572)
 buster-blank = 0x1c0  # the buster's blank shot (0x080EB39E)
 
