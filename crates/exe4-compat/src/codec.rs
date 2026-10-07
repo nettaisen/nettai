@@ -23,6 +23,12 @@ pub struct NaviStats {
     /// +0x00: the mood (a new block's 0x99; the round's start sets it from
     /// the light/dark value).
     pub mood: u8,
+    /// +0x01 to +0x04: SprArmr's super armor, FlotShoe's, AirShoes' and
+    /// UnderSht's (the NaviCust's, 0x08041A50's handlers).
+    pub super_armor: bool,
+    pub float_shoes: bool,
+    pub air_shoes: bool,
+    pub undershirt: bool,
     /// +0x05, +0x06, +0x07: the buster's attack, rapid and charge levels
     /// (EXE6's +0x01 to +0x03).
     pub attack: u8,
@@ -35,8 +41,13 @@ pub struct NaviStats {
     /// table at 0x0800CA7C: 0 the buster, 1 the charged shot).
     pub buster_weapon: u8,
     pub charged_weapon: u8,
+    /// +0x0B: BustPack's weapon level (0 to 2), which the charged shot reads.
+    pub weapon_level: u8,
     /// +0x0C: B+Left's routine (Mod Card 0x0C; 0xFF none).
     pub back_special: Option<u8>,
+    /// +0x0D: the move bug (0xFF confused at the start, 0x10 and 0x20 steps
+    /// of its own right and left; 0 none).
+    pub move_bug: u8,
     /// +0x0E, +0x0F: the HP drain and the custom gauge drain bugs (EXE6's
     /// +0x18, +0x19).
     pub hp_drain: u8,
@@ -84,7 +95,7 @@ pub struct NaviStats {
 /// The offsets [`NaviStats`] names (the rest of the block isn't read yet:
 /// exe4-map.md §3.3).
 pub const NAMED_OFFSETS: &[usize] = &[
-    0x00, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0C, 0x0E, 0x0F, 0x12, 0x13, 0x14, 0x18, 0x1B, 0x1F, 0x21, 0x23, 0x24, 0x25, 0x27,
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x12, 0x13, 0x14, 0x18, 0x1B, 0x1F, 0x21, 0x23, 0x24, 0x25, 0x27,
     0x28, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
 ];
 
@@ -94,13 +105,19 @@ pub fn navi_stats(b: &[u8; NAVI_STATS]) -> NaviStats {
     let unless_ff = |i: usize| (b[i] != 0xFF).then_some(b[i]);
     NaviStats {
         mood: b[0x00],
+        super_armor: b[0x01] != 0,
+        float_shoes: b[0x02] != 0,
+        air_shoes: b[0x03] != 0,
+        undershirt: b[0x04] != 0,
         attack: b[0x05],
         rapid: b[0x06],
         charge: b[0x07],
         buster_blanks: b[0x08],
         buster_weapon: b[0x09],
         charged_weapon: b[0x0A],
+        weapon_level: b[0x0B],
         back_special: unless_ff(0x0C),
+        move_bug: b[0x0D],
         hp_drain: b[0x0E],
         custom_drain: b[0x0F],
         custom_level: b[0x12],

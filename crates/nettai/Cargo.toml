@@ -31,6 +31,7 @@ nettai-rtc = { path = "../nettai-rtc" }
 # A build from a save: each game's own reader of its saves.
 exe6-compat = { path = "../exe6-compat" }
 exe5-compat = { path = "../exe5-compat" }
+exe4-compat = { path = "../exe4-compat" }
 # The builds' and the settings' files.
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"

@@ -474,6 +474,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         rng1_per_frame = true,
         chip_icons = "attach_point",
         used_chip_ticks = 0x3C,
+        bug_flicker = true,
+        destroy = "frees",
         draw_order = "update_list","#,
             ),
             (
@@ -517,8 +519,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         dash_step = step,
         any_side_step = step,
         reservations = "unmarked",
-        type_mask = 0x3F5F,
-        standing = { stops_while_paused = true },"#,
+        type_mask = 0x3F5F,"#,
             ),
             (
                 "pools",
@@ -651,7 +652,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 99, "every field of every section");
+        assert_eq!(fields, 100, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

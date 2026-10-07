@@ -190,8 +190,13 @@ charged weapon's routines (0x0800BD62: copied to the AI data's +0x0D and +0x0F, 
 0x0800BD1C; the routines at 0x0800CA7C: 0 the buster, 0x0800CC2E, 1 the charged shot, 0x0800CC54); +0x25 is the move
 lag's column (0x0800C208).
 
-The rest (+0x01 to +0x04, +0x0B, +0x0D, +0x15, +0x16, +0x19, +0x1C to +0x1E, +0x22, +0x26, +0x29, +0x2B) is used and
-unread yet: the step that ports what reads it names it.
+The NaviCust's handlers and bugs (§8) write: +0x01 to +0x04 super armor, FloatShoes, AirShoes, Undershirt; +0x0B
+BustPack's weapon level (0 to 2, copied to the AI data's +8 at the init, 0x0800D8D2); +0x0D the move bug (0xFF
+confused 720 ticks as the round starts, 0x0800D8B0; else its high nibble, in the keys' bits, is held when no direction
+is, 0x0800B4DA); +0x15 the encounter bug; +0x16 SneakRun; +0x17's bits 1 to 4 OilBody, Fish, Battery, Jungle; +0x19
+Collect (bit 1) and the result bug (1); +0x1C Humor; +0x1D BugStop; +0x1E SoulClen (read by the light/dark value's
+update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x29, +0x2B) is used and unread yet: the step that
+ports what reads it names it.
 
 ### 3.4 RAM
 
@@ -386,10 +391,25 @@ frame and sound call. Not yet: the worried case (M-Cannon), the COUNTER text's b
 ## 8. NaviCust and Mod Cards
 
 The NaviCust compile EXE5 and EXE6 share (`sub_813C458`) and its placement checks have no counterpart: EXE4's compile
-is its own. 47 programs, four color variants each (188 parts, T; the part table at 0x0804563C in Red Sun US, 0x08045644
-in Blue Moon US). The save's NaviCust: its list at 0x4564 and the 5x5 grid at 0x4540 (T). **Mod Cards** (EXE4's patch
-cards): 134 by Tango's count, six slots in the save (0x464C on, 0x4653 off, T), whose effects set NaviStats bytes by
-number (§3.3); the cards' routine is to find (EXE5's 0x08138214 has no counterpart).
+is its own (R). 47 programs, four color variants each (188 parts; the part table at 0x0804563C in Red Sun US,
+0x08045644 in Blue Moon US, 0x08045538 and 0x08045540 in the Japanese: EXE5's format, +1 the plus flag, +3 the color,
++4 the bug, +8 and +0xC the shapes, its +0 group never read). The save's NaviCust: its list at 0x4564 (25 parts of 8
+bytes) and the 5x5 grid at 0x4540 (T). **Mod Cards** (EXE4's patch cards): 134 by Tango's count, six slots in the save
+(0x464C on, 0x4653 off, T), whose effects set NaviStats bytes by number (§3.3), their handlers the table at
+0x08041E8C, their bugs counted with the NaviCust's (0x080476E0).
+
+**The reload** (0x08035130; as ported: content/exe4/rules/navicust): the analysis (0x08047344) counts each program's
+bug by where it is (the command line, the third row, right to left: a plus part on it; off it, a program), by its
+neighbors (its shape uncompressed, moved a cell each way: one of its color counts that one's bug), by HubBatc (once
+more) and by the colors (0x08047644: five bring the move and custom bugs once, six twice); the stats reset keeping
++0x00, +0x20, +0x29 and +0x36 (0x08036CC0); the programs' handlers (0x08041974, the table 0x08041A50: the command
+line's right to left, a part already run to the right skipped; the plus parts off it in the list's order, then on it
+left to right), the HP programs' sum making the maximum (0x08042FD0: the HP left as it was); the bugs (0x08042A94:
+BugStop, +0x1D, drops the counts instead), each at its count's level, 1 to 3, by the table 0x08042B18; the Mod Cards
+from the last slot to the first (0x08041E6A), the maximum again after each; the bugs again, all of them (0x08042A58).
+tools/exe4/gen_navicust.py (verify) writes the programs (content/exe4/navicust), their numbers
+(compat/navicust.toml) and names from the part tables; programs 29 to 33 and 40 (the elements' charged shots and
+WeapLV+1) have no colored part, so no save holds them, and have no definition.
 
 ## 9. The link exchange
 
@@ -426,6 +446,14 @@ from 0x2130 to 0x5E20 moves by it, up to 0x1FC, a multiple of 4), the checksum a
 the equipped folder at 0x2132, the Regular chip at 0x214C; the NaviCust and Mod Cards (§8). Tango ships twelve raw
 netbattle saves (tango-gamesupport-bn4/src/saves): light with HP 1000 or 999 and dark with HP 997, for each version and
 region; with the .sav on disk (Blue Moon US), the chip lab's bases and the save import's tests have what EXE5's had.
+
+**The import** (exe4-compat's `import`, which the app's build creator calls): a .sav or a raw image (which says
+neither version nor region; the import reads neither) gives MegaMan, the equipped folder and its Regular chip, the
+NaviCust's programs, the base HP (0x21CA), the Regular memory, and from MegaMan's NaviStats block (0x4E60) the
+light/dark value and the Full Synchro at the start; the Mod Cards are said and left out until they are ported (item
+56). MegaMan's HP and maximum are the game state's (0x2150, 0x2152): the block's own HP words are stale in a save,
+and a battle copies the game state's in (0x0800D726). verify's exe4_navicust test imports each of Tango's twelve
+saves and compiles it: the stats match the block's (and the game state's maximum) in every byte the compile writes.
 
 ## 13. What to share, what is EXE4's own, and the next steps
 
@@ -672,9 +700,12 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
-- Panels through a pause and a dimming (§18 item 13): a navi on poison loses HP while the battle is paused, a wood
-  navi on grass heals then, and a player on lava burns while the battle is dimmed (as EXE4's code reads; a lab
-  scenario on `poison-middle` or `lava-middle-close` with a pause, and a dimming chip over lava, would show it).
+- Settled: panels through a pause and a dimming (§18 item 13, a95f's `panels/` recordings). Poison doesn't drain
+  through a pause (`poison-pause`: the player doesn't run paused); a player landing on lava burns the tick after
+  it lands even while the battle is dimmed (`lava-dimming-33`, RockCube's dimming: the burn at 418, its flinch at
+  565 as the dimming ends; `-32` and `-34` the dimming before the landing and after the burn), not while it blinks
+  (`lava-blinking`: the burn on the tick f1's 0x200 clears). The lava ones wait for their stage (layout 0x71,
+  §18 item 19) and RockCube.
 
 ## 17. The recordings
 
@@ -938,12 +969,13 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       player's has no dimming test (any body's has). A panel type's `burn` is a table now: `damage`, `spared_by`,
       `mood`, `players_while_dimmed` (EXE5's `{ damage = 50, spared_by = 0x88000206 }`).
     - **Poison and grass** (0x08012FF2, EXE6's `sub_801A186`): the same tests (poison's 0x08000028 immunity, the grass
-      test reading the status word after an immune body, as EXE6's), but no pause test, and grass heals a wood body on
-      the battle's 20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less). The rule
-      `panels.standing` (`stops_while_paused`, `slow_heal_at`: EXE6's and EXE5's true and 9, EXE4's false and none).
-      EXE4's player intake runs while paused (only the fight's flag 1 gates it, 0x08013858), so its poison drains and
-      its grass heals through a pause (§16). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the
-      whole byte too): EXE4's objects have no high nibble.
+      test reading the status word after an immune body, as EXE6's), and grass heals a wood body on the battle's
+      20-tick count at any HP (EXE6's and EXE5's on the 180-tick one at 9 HP or less): the rule
+      `panels.grass_heal_slows_at` (theirs 9, EXE4's none). It has no pause test, but EXE4's player never runs paused
+      once in control (its header flag 0x04 cleared, `paused_navi = "stops_at_control"`): a95f's
+      `panels/poison-pause` holds its HP through a START pause, the drain due at the pause landing the tick after it
+      (and replays every frame). Its element test reads the whole byte (EXE6's the low nibble; EXE5's the whole byte
+      too): EXE4's objects have no high nibble.
     - **What passes over a panel** (0x08013058, from the collision's removal, 0x08012A50): grass of fire and lava of
       aqua turn normal (`cleared_by`, EXE5's 0x08016D14 less its metal of wood), unless the hitbox has 0x0C000000. It
       has no pause test (EXE5's and EXE6's have): no hitbox is removed while paused (frozen objects), so no rule.
@@ -958,9 +990,23 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       not the crack routine), sounding 0x124 for poison onto a panel that wasn't (and 0x95 when the type change's
       return, the panel's occupants' collision bits, is 3: never with the navi's own body on it); EXE6's trail (a
       NaviCust bug, a chance by level) isn't it: to port with the Mod Cards.
-14. **Start-visible panels and front edges.** EXE5's tables (0x0800ABAC, 0x0800ABD4) aren't in EXE4's ROM as bytes;
-    find EXE4's drawing of them. Placeholder: EXE5's grids. The any-side step rows are EXE5's too.
-15. **Battle mode 1's mend** and **reservations**: EXE5's until read.
+14. **Done** (start-visible panels and front edges). EXE4 keeps no grids: its field's init (0x08009120) marks all 40
+    panels visible (0x08009186: 0x40 into each flags byte at 0x02037B36), its drawing (0x080092AC) draws each valid
+    panel (x 1 to 6, y 1 to 3) while visible, and the front edges under row 3 alone (0x0800937A), each by its row-3
+    panel's visibility (0x080094C4, else 0x080094FC blanks it), as the engine draws a panel's `front_edge` with it.
+    Stated: `start_visible` all true (what the engine reads of it, the valid panels', is EXE5's grid), `front_edges`
+    row 3, written by gen_rules.py from that code. The any-side step: EXE4 has no `sub_800E680` (EXE5 neither), so its
+    rows are EXE6's, for EXE6's code (a chip's) in an EXE4 arena.
+15. **Done** (battle mode 1's mend and the reservations).
+    - **The mend:** 600 ticks in every battle: the field's init (0x08009132) and the panel tick (0x0800976C) store
+      the one constant whatever the battle's mode (`mend = { normal = 600, battle_mode_1 = 600 }`, now asserted).
+    - **Reservations:** EXE4's `object_reservePanel` (0x080143A8) marks the panel alone (no header flag 0x20 on the
+      holder, as EXE5's), `reservations = "unmarked"`.
+    - **The destroy** (found here): EXE4's `object_genericDestroy` (0x080D8C58) unregisters the object's collision
+      (`object_removeCollisionData`, 0x080129FC: its panels refreshed, its hits and the panels it clears resolved on
+      them) before freeing it, where EXE6's releases its reservations and EXE5's (0x080138F2) frees it as it is
+      (its registrations stale on the panels until the slot is next registered). The rule `effects.destroy`
+      (`frees`, EXE6's and EXE5's; `unregisters`, EXE4's).
 
 ### 18.3 Flow, stages and the link
 
@@ -1018,9 +1064,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     use 0x0800AD2A, 0x0800B4B0 and 0x0800C9BA with the move lag 0x0800C208, as the idle does (0x080EEC82).
     **Done:** 0x0800B4B0, the held direction and its panel, is `effects.steps` (EXE4's keys right, left, up, down; its
     confused keys; the idle starting only a step that can go), which `held_direction` and the idle read; the flow/move
-    recordings match. Open: with no key held (or sliding) 0x0800B4B0 steps by NaviStats +0x0D (bits 0x10 to 0x80, the
-    keys; 0 and 0xFF none), which a dark chip or Mod Card bug sets (the lab's dark/, modcards/ and navicust/ recordings
-    carry 0x10, 0x20, 0xFF), with step 2's NaviCust. The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
+    recordings match. **Done** too: the move bug, NaviStats +0x0D (`effects.steps.bug`, the rules' stat `move_bug`,
+    which the NaviCust's bugs write and a dark chip's or Mod Card's will): with no key held (or sliding) 0x0800B4B0
+    steps by its keys (bits 0x10 to 0x80; 0 and 0xFF none), and at 0xFF the init confuses the navi for 720 ticks
+    (0x0800D8B0). Open there: the confusion's visual at the start (item 59). The move lag (0x0800C208) is MegaMan's 4 for a player of param 0 or
     1, as the engine's; by the +0x25 column (12 to 8) for param 2, and 20 under event flag 0x1187: neither is a
     netbattle's.
 25. **The buster bonus, element, weakness and souls.** EXE4's buster is Attack + 1 (0x0800CC2E) for every navi:
@@ -1038,7 +1085,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     is its action (`cannon/action`). Double Soul's table 0x08020008 reads the same byte as a soul's kind (gen_rules.py
     holds the families to it). 0x0800BA66 opens the counter window (§7).
 30. **NaviCust, Mod Cards**: the compile and the cards apply after the save (rules/save). Tango's light save has
-    neither, the lab's first batch's.
+    neither, the lab's first batch's. **Done:** the NaviCust (§8: rules/navicust, the setup's `navicust_programs`,
+    exe4-compat's from a recording's list, the replays comparing the stats it compiles) and the save import (§12); the
+    lab's navicust/ recordings whose programs are ported match, and Tango's saves compile as their blocks say. Open:
+    the Mod Cards (items 56 to 58); the waiting programs (item 53).
 
 ### 18.5 Roles and the custom screen
 
@@ -1126,6 +1176,31 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
     slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
     of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
+53. **FirstBarrier, HubBatc, Shield, Reflect, AntiMagc.** FstBarr's handler sets the aura at the start (+0x21 = 1, the
+    Barrier chip's barrier: the init raises it, 0x0800D894, 0x08012DCE, its visual 0x080E2622), which the Mod Cards'
+    Barrier100, Barrier200 and LifeAura set too (2, 3, 6); Shield, Reflect and AntiMagc set B+Left (+0x0C = 0x25,
+    0x26, 0x27: weapon routines of the table at 0x0800CA7C); HubBatc runs FstBarr's and Shield's handlers among its
+    eight. Until they are ported the five programs have no definition (tools/exe4/gen_navicust.py's `WAITING`), and the
+    recordings that carry them stop at their setup.
+54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
+    controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
+    a recording with a support stops at its setup.
+55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
+    bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
+    RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
+56. **The Mod Cards** (Tango's patch_cards.rs: 134 cards, their effects by NaviStats offset and value, their bugs by
+    group): the cards' content, their handlers (0x08041E8C), the setup's `mod_cards`, exe4-compat's from a recording's
+    slots (a recording with a card on stops at its setup until then).
+57. **The ~50 Mod Cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
+    buster's): each waits on its chip as a weapon routine; the chips' work picks them up.
+58. **The 12 soul Mod Cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
+59. **The status timers while paused, and the status visual.** EXE4's status timers (0x0800AE58: paralysis +0x10,
+    confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
+    (EXE6's `sub_800E730` and EXE5's 0x0800CB50 return), so a navi confused at the start (the move bug, item 24) shows
+    the confusion's visual on the round's first tick, during the intro. The visual is effect 6 (0x080E22C8, EXE6's
+    `sub_80E08FC`): its sprites by row (0x080E22B8: 14-0B confusion, 14-09 blindness), its sound 0xAE every 60 ticks
+    (EXE6's 0x88), its place the owner's position and a per-navi offset (0x08011878's +6, +7), spawned at the status
+    routine's registers (0x080E23B2). The lab's navicust/bug-humor and bug-undersht stop on its first tick.
 
 ### 18.7 The HUD
 
