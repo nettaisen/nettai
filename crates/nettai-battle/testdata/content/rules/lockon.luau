@@ -4,16 +4,18 @@
 -- to the target with the column shifts; `thunder` beside the target or
 -- diagonally behind it; `beast_lunge` a panel or two in front of it (only
 -- two away in the far column); `beast_claw` next to it; the rest stay.
--- `rules` is the rules' `lockon` section: the column shifts toward the
--- user tried when no panel next to the target fits, and what every panel
--- between the chosen one and the target must be for a clear path (free).
+-- `search`: the column shifts toward the user tried when no panel next to
+-- the target fits, and what every panel between the chosen one and the
+-- target must be for a clear path (free); `panel`, EXE6's search
+-- (rules/lockon_search) with them.
 
-local function stay(id: string): LockonDef
-    local mode: LockonDef = { id = id, rule = "stay" }
-    return new.record("lockon", mode)
+local lockon_search = require("./lockon_search")
+
+local function stay(id: string): any
+    return new.record("lockon", { id = id, rule = "stay" })
 end
 
-return {
+local lockon = {
     stay = stay("stay"),
     cannon = new.record("lockon", { id = "cannon", rule = "near", offsets = { { -1, 0 } }, column_shifts = true }),
     thunder = new.record("lockon", { id = "thunder", rule = "near", offsets = { { -1, 0 }, { -1, 1 } } }),
@@ -38,7 +40,7 @@ return {
     gundelex = stay("gundelex"),
     elcpuls1 = stay("elcpuls1"),
     moonbld = stay("moonbld"),
-    rules = {
+    search = {
         column_shifts = { -1, -2 },
         clear_path = {
             { require = 0x00000000, forbid = 0x0F880080 },
@@ -46,3 +48,9 @@ return {
         },
     },
 }
+
+function lockon.panel(navi: Object, x: number, y: number, mode: any): (number, number)
+    return lockon_search.panel(navi, x, y, mode, lockon.search)
+end
+
+return lockon

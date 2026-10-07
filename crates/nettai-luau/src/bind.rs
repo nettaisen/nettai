@@ -695,18 +695,6 @@ impl UserData for Object {
             let dir = u8_arg(dir, "direction")?;
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
-        methods.add_method("lockon_panel", |_, this, (x, y, mode): (LuaValue, LuaValue, LuaValue)| {
-            let p = panel(x, y)?;
-            // A lock-on mode (a record of type "lockon": EXE6's rules/lockon), or
-            // nil: the navi's own panel.
-            let mode = bound(|b| match (&mode, b.def(&mode)) {
-                (LuaValue::Nil, _) => Ok(None),
-                (_, Some((Registry::Record, h))) => Ok(Some(nettai_content_api::RecordHandle(h))),
-                _ => Err(mlua::Error::runtime("lockon_panel: expected a lock-on mode (a \"lockon\" record) or nil")),
-            })?;
-            let p = with(|api, _| Ok(api.lockon_panel(this.0, p, mode)))?;
-            Ok((p.x, p.y))
-        });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
         // A controller's (the rules' `controller` hook).
         methods.add_method("next_chip", |_, this, ()| {

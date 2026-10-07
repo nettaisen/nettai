@@ -411,12 +411,6 @@ impl Content {
         self.defs.statuses[h.index()].effect
     }
 
-    /// A Beast Out lock-on mode.
-    /// The lock-on mode record `h` is, if it is one (a record of type
-    /// "lockon").
-    pub fn lockon(&self, h: nettai_content_api::RecordHandle) -> Option<&LockonMode> {
-        self.defs.lockons.iter().find(|l| l.record == h).map(|l| &l.mode)
-    }
 
     /// A stage.
     pub fn stage(&self, h: StageHandle) -> &StageData {

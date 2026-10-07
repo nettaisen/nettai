@@ -288,7 +288,6 @@ local rules: Rules = {
     flow = require("@self/flow"),
     fresh_stats = fresh_stats,
     link_pick = require("@self/link_pick"),
-    lockon = require("@self/lockon").rules,
     math = require("@self/math"),
     -- What a tool shows of a side's setup, pane by pane (./panes).
     panels = require("@self/panels"),
