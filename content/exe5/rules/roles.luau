@@ -93,8 +93,6 @@ local roles: RolesSpec = {
         -- sparks, animation 7), where rules/chip_use's `anti_navi_sparkle` puts it (EXE5's on the panel's center,
         -- 16 pixels up; EXE6's 16 pixels down the field and 32 up).
         trap_mark = effects.trap_mark,
-        -- The splash of a body a sea panel holds at a move's end (effect 0x63: 0x0801715E).
-        panel_splash = new.effect { sprite = asset.sprite("splash"), anim = 0, palette = 0 },
     },
     collision = {
         -- A navi's body, its body when it floats, and what it reacts to.

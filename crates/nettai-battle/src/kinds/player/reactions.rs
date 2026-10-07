@@ -9,7 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::content::{DragEnding, IceRule, PushSource, ReactionActions, SlideVector};
+use crate::content::{DragEnding, PushSource, ReactionActions, SlideVector};
 use crate::field;
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
@@ -475,13 +475,16 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
         return;
     }
     b.unreserve_panel(r, fp.x, fp.y);
+    // The type's `slide`: ice's one panel further, EXE4's pitfall's stop
+    // (0x08010B54).
     let kind = panel_kind(b, fp);
-    if b.game_rules().panels.is_named(kind, "ice") && coll(b, r).element != 2 {
-        let o = b.objects.get_mut(r);
-        o.timer2 = o.timer2.wrapping_add(1);
-    } else if b.game_rules().panels.rule(kind).stops_slides && flag1(b, r) & f1::FLOATSHOE == 0 {
-        // EXE4's pitfall stops a drag (0x08010B54).
-        b.objects.get_mut(r).timer2 = 0;
+    match b.panel_slide(kind, r, nettai_content_api::SlideHow::Drag) {
+        Some(nettai_content_api::SlideAnswer::On) => {
+            let o = b.objects.get_mut(r);
+            o.timer2 = o.timer2.wrapping_add(1);
+        }
+        Some(nettai_content_api::SlideAnswer::Stop) => b.objects.get_mut(r).timer2 = 0,
+        Some(nettai_content_api::SlideAnswer::Carry) | None => {}
     }
     let o = b.objects.get_mut(r);
     let left = o.timer2 as i32 - 1;
@@ -590,16 +593,16 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
                 }
             }
         }
-        2 => match b.game_rules().ice {
-            IceRule::Slide(rows) => facing(*rows.get(coll(b, r).direction as usize).expect("ice slide direction")),
-            // (Ice that pushes starts no ice slide: its push is slide type 1.)
-            IceRule::Push(_) => SlideVector::NONE,
+        // (A game without rows starts no such slide: EXE4's ice pushes.)
+        2 => match b.game_rules().slide_rows {
+            Some(rows) => facing(*rows.get(coll(b, r).direction as usize).expect("a slide row's direction")),
+            None => SlideVector::NONE,
         },
         3 => {
             let kind = panel_kind(b, o.panel);
-            // EXE5's metal (0x0800C8A8): the steps its slide tries by the
+            // EXE5's magnet (0x0800C8A8): the steps its slide tries by the
             // direction of the move, the first the navi can slide to.
-            if let Some(slide) = b.game_rules().panels.rule(kind).slide {
+            if let Some(slide) = b.game_rules().panels.rule(kind).carries_by_move {
                 let tries = slide.tries.get(coll(b, r).direction as usize).copied().unwrap_or_default();
                 return tries
                     .into_iter()
@@ -608,7 +611,7 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
                     .find(|v| can_slide_to(b, r, PanelPos { x: (o.panel.x as i8 + v.dx) as u8, y: (o.panel.y as i8 + v.dy) as u8 }))
                     .unwrap_or(SlideVector::NONE);
             }
-            b.game_rules().panels.road_slide(kind).unwrap_or(SlideVector::NONE)
+            b.game_rules().panels.rule(kind).carries.unwrap_or(SlideVector::NONE)
         }
         t => panic!("slide type {t} reads past its table"),
     };
@@ -805,14 +808,14 @@ mod tests {
         assert_eq!(b.field.panels[2][5].kind, crate::content::testing::panel("lava"));
     }
 
-    /// EXE5's metal (0x0800C8A8, the tables at 0x0800C920 and 0x0800C9C0):
+    /// EXE5's magnet (0x0800C8A8, the tables at 0x0800C920 and 0x0800C9C0):
     /// its slide tries steps by the direction of the move, the first the
     /// navi can slide to: after a move up, forward (side 1's front is -x),
     /// then up; after a move forward, down first.
     #[test]
-    fn metal_slides_by_the_direction_of_the_move() {
+    fn magnet_slides_by_the_direction_of_the_move() {
         let (mut b, [_, r]) = fight(PushSource::Final);
-        b.set_panel_type(5, 2, crate::content::testing::panel("metal"));
+        b.set_panel_type(5, 2, crate::content::testing::panel("magnet"));
         b.objects.get_mut(r).slide_type = 3;
         coll_mut(&mut b, r).direction = 1;
         assert_eq!(slide_vector(&b, r), SlideVector { dx: -1, dy: 0, tiles: 1 });
@@ -823,18 +826,17 @@ mod tests {
         assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: 1, tiles: 1 });
     }
 
-    /// docs/design/exe4-map.md §18 item 12: a drag that reaches a panel
-    /// whose type stops slides (EXE4's pitfall, 0x08010B54) stops there,
-    /// unless the navi floats.
+    /// A drag that reaches a panel whose type's `slide` answers goes as it
+    /// says: the test content's ice one panel further (an aqua navi as any
+    /// panel); its sea, which stops only a slide, as any panel. (EXE4's
+    /// pitfall's stop: its lab's drag/ recordings.)
     #[test]
-    fn a_pitfall_stops_a_drag_unless_the_navi_floats() {
-        let run = |floats: bool| {
-            // (The test content's sea, made a type that stops slides.)
-            let pitfall = crate::content::testing::panel("sea");
-            let (mut b, [_, r]) = fight_with(|r| r.panels.types[pitfall.0 as usize].stops_slides = true);
-            b.set_panel_type(5, 2, pitfall);
-            if floats {
-                set_flag1(&mut b, r, f1::FLOATSHOE);
+    fn a_drag_goes_as_the_panels_slide_says() {
+        let run = |kind: &str, aqua: bool| {
+            let (mut b, [_, r]) = fight_with(|_| {});
+            b.set_panel_type(5, 2, crate::content::testing::panel(kind));
+            if aqua {
+                coll_mut(&mut b, r).element = 2;
             }
             let (from, to) = (panel_coordinates(4, 2), panel_coordinates(5, 2));
             let o = b.objects.get_mut(r);
@@ -847,10 +849,11 @@ mod tests {
             o.drag_step = DragStep::Slide;
             step_drag(&mut b, r);
             let o = b.objects.get(r);
-            (o.drag_step, o.future_panel.x)
+            (o.drag_step, o.timer2, o.future_panel.x)
         };
-        assert_eq!(run(false), (DragStep::Recover, 5), "stopped on the pitfall");
-        assert_eq!(run(true), (DragStep::Slide, 6), "floating over it");
+        assert_eq!(run("ice", false), (DragStep::Slide, 3, 6), "a panel further on ice");
+        assert_eq!(run("ice", true), (DragStep::Slide, 2, 6), "an aqua navi");
+        assert_eq!(run("sea", false), (DragStep::Slide, 2, 6), "the sea stops only a slide");
     }
 
     /// docs/design/exe5-map.md §15.3 item 17: a drag goes at the arena's
