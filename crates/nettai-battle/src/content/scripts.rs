@@ -445,7 +445,10 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         afterimages_wear_overlays = true,
         load_sets_part_palette = true,
         obstacle_actions = "own_from_6",
-        full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false },"#,
+        full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false },
+        charge_glow = "with_navi",
+        fade_clear = "at_target",
+        banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more" },"#,
             ),
             (
                 "flow",
@@ -456,7 +459,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         result_wait = { normal = 100, special = 90 },
         intro_from_black = false,
         low_hp_music = true,
-        navi_win_banner = "operation_battle","#,
+        navi_win_banner = "operation_battle",
+        intro_steps_on_init = false,"#,
             ),
             (
                 "fresh_stats",
@@ -522,7 +526,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" } },
         form_break = "marked_forms",
         weakness_hit_breaks_form = true,
-        weakness_mark = "weak_element_damage","#,
+        weakness_mark = "weak_element_damage",
+        paused_navi = "pause_handler","#,
             ),
         ];
         assert_eq!(STATED.iter().map(|(name, _)| *name).collect::<Vec<_>>(), crate::content::sections::REQUIRED);
@@ -604,7 +609,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 63, "every field of every section");
+        assert_eq!(fields, 68, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

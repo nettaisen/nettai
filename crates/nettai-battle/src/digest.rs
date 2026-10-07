@@ -322,10 +322,11 @@ impl Hash for Sprite {
     }
 }
 
-/// A banner's lifetime (flow code waits on it), without which banner it is.
+/// A banner's lifetime (flow code waits on it), without which banner it is
+/// or its steps (its game's, the content's).
 impl Hash for Banner {
     fn hash<H: Hasher>(&self, h: &mut H) {
-        let Banner { active, step, timer, holds, id: _, telop: _ } = self;
+        let Banner { active, step, timer, holds, steps: _, id: _, telop: _ } = self;
         (active, step, timer, holds).hash(h);
     }
 }

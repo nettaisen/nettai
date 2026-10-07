@@ -316,8 +316,10 @@ impl Fade {
         self.active
     }
 
-    /// One step of the running fade (`off_8005FB4[mode]`), once per frame.
-    pub fn step(&mut self) {
+    /// One step of the running fade (`off_8005FB4[mode]`), once per frame,
+    /// a fade toward clear ending as the game's does (`clear`: the rules'
+    /// `effects.fade_clear`).
+    pub fn step(&mut self, clear: crate::content::FadeClear) {
         if !self.active {
             return;
         }
@@ -335,19 +337,34 @@ impl Fade {
             // sub_8006366: the first step holds the level.
             let mut level = self.level as i32;
             if self.stepped {
-                level = (level - self.speed as i32).max(0);
+                level -= self.speed as i32;
             }
             self.stepped = true;
-            self.level = level as u16;
-            if level <= target as i32 {
-                self.active = false;
+            match clear {
+                // (The level reaching the target ends it.)
+                crate::content::FadeClear::AtTarget => {
+                    let level = level.max(0);
+                    self.level = level as u16;
+                    if level <= target as i32 {
+                        self.active = false;
+                    }
+                }
+                // (EXE4's 0x08005BDE: a level under the target ends it, and
+                // isn't kept.)
+                crate::content::FadeClear::PastTarget => {
+                    if level < target as i32 {
+                        self.active = false;
+                    } else {
+                        self.level = level as u16;
+                    }
+                }
             }
         }
     }
 
     /// Steps left before the running fade is done (0 when it isn't
-    /// running).
-    pub fn remaining(&self) -> u8 {
+    /// running), a fade toward clear ending as `clear` says.
+    pub fn remaining(&self, clear: crate::content::FadeClear) -> u8 {
         if !self.active || self.speed == 0 {
             return 0;
         }
@@ -356,9 +373,19 @@ impl Fade {
         let left = if up {
             steps(target.saturating_sub(self.level))
         } else {
-            steps(self.level.saturating_sub(target)) + u16::from(!self.stepped)
+            let past = u16::from(clear == crate::content::FadeClear::PastTarget);
+            steps(self.level.saturating_sub(target)) + u16::from(!self.stepped) + past
         };
         left.min(0xFF) as u8
+    }
+
+    /// The intro's fade's ticks (from a fully faded screen, at the speed
+    /// battles use), a fade toward clear ending as `clear` says.
+    pub fn intro_ticks(clear: crate::content::FadeClear) -> u8 {
+        match clear {
+            crate::content::FadeClear::AtTarget => Fade::TICKS,
+            crate::content::FadeClear::PastTarget => Fade::TICKS + 1,
+        }
     }
 }
 
@@ -855,7 +882,7 @@ impl Battle {
     /// Start a banner unless one is showing (`Banner::start`). Returns
     /// false if one was.
     pub fn start_banner(&mut self, id: BannerId) -> bool {
-        self.banner.start(id, self.content.rules().banner_holds(id))
+        self.banner.start(id, self.content.rules().banner_holds(id), self.content.rules().effects.banner)
     }
 
     pub fn is_dimmed(&self) -> bool {
@@ -967,7 +994,7 @@ impl Battle {
         }
         self.end_console_frames();
         self.round.frames = self.round.frames.wrapping_add(1);
-        self.fade.step();
+        self.fade.step(self.content.rules().effects.fade_clear);
     }
 
     /// Both custom screens' joypads read this tick's buttons. (The
@@ -1206,6 +1233,7 @@ impl Battle {
             self.spawn_actors();
             self.notify_rules(nettai_content_api::RulesHook::RoundStart);
             // Reward-chip pick: draws once; netbattle navis have no rewards.
+            // (EXE4's is the actors' spawn's last call, 0x080F576C.)
             self.rng.next_positive();
             self.paused = true;
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
@@ -1219,7 +1247,9 @@ impl Battle {
                 self.play_sound(SoundCue::Music(music));
             }
             self.round.init = 4;
-            return;
+            if !self.content.rules().flow.intro_steps_on_init {
+                return;
+            }
         }
         if self.round.sub == 0 {
             // sub_800927C: the HUD's setup.
@@ -2276,7 +2306,7 @@ mod tests {
         f.start(mode, speed);
         let mut n = 1;
         while f.active() {
-            f.step();
+            f.step(crate::content::FadeClear::AtTarget);
             n += 1;
         }
         n
@@ -2375,11 +2405,22 @@ mod tests {
         assert_eq!(fade_updates(&mut f, FadeMode::Dim, 4), 2);
         // The undim: its first step holds the level.
         f.start(FadeMode::Undim, 4);
-        assert_eq!(f.remaining(), 17);
+        assert_eq!(f.remaining(crate::content::FadeClear::AtTarget), 17);
         assert_eq!(fade_updates(&mut f, FadeMode::Undim, 4), 18);
         assert_eq!(f.level, 0);
         f.start(FadeMode::TransformOut, 0x10);
-        assert_eq!(f.remaining(), 16);
+        assert_eq!(f.remaining(crate::content::FadeClear::AtTarget), 16);
+        // EXE4's fade toward clear ends a step later, on the level it would
+        // take under its target, and keeps the last one.
+        let mut f = Fade::default();
+        f.start(FadeMode::IntroFromWhite, 0x10);
+        assert_eq!(f.remaining(crate::content::FadeClear::PastTarget), Fade::intro_ticks(crate::content::FadeClear::PastTarget));
+        let mut n = 1;
+        while f.active() {
+            f.step(crate::content::FadeClear::PastTarget);
+            n += 1;
+        }
+        assert_eq!((n, f.level), (19, 0));
     }
 
     /// A best-of-three netbattle round about to leave its end state, with

@@ -35,4 +35,13 @@ return {
         steps_while_paused = true,
         stops_at_a_pause_in_the_fight = true,
     },
+    -- A navi's init spawns no charge glow (0x0801079C): its charge brings its own (0x0800BD88, effect 5 0x080E215C,
+    -- which goes with the charge; exe4-map.md §18 item 39).
+    charge_glow = "with_charge",
+    -- A screen fade toward clear ends on the step whose level would go under its target (0x08005BDE, which doesn't
+    -- keep that level): a step after EXE6's, so its intro's fade from white takes 18 steps.
+    fade_clear = "past_target",
+    -- A banner (0x08014904, its steps from 0x08014994) slides in for 9 ticks, holds 30, slides out for 9; one that
+    -- holds until let go (its table's state 2) doesn't count its hold, and let go (0x0801616C) slides out at once.
+    banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out" },
 }
