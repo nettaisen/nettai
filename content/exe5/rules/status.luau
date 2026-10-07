@@ -475,6 +475,9 @@ local status = {
         timers_while_paused = false,
         -- Its idle (0x080F0254) leaves the navi's pose, as EXE6's.
         idle_stands = false,
+        -- In a link battle a navi's body hits for 10, its damage as it is set up (0x080119AC, EXE6's `sub_80142B0`);
+        -- its status reset (0x08011B3C) doesn't set it again (EXE6's `sub_80142C2` has no counterpart).
+        link_body_damage = { damage = 10, again_at_reset = false },
     },
 }
 
