@@ -1,6 +1,6 @@
 //! A chip's pictures on their own, outside a frame: its icon and its
 //! custom screen picture as RGBA images, for a tool that shows them (the
-//! editor). They are looked up as a frame looks them up
+//! build creator). They are looked up as a frame looks them up
 //! ([`crate::lookups`]: a chip's game's pack's, under its key there) and
 //! colored as a frame colors them.
 
@@ -63,7 +63,14 @@ pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
 pub fn form_face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle) -> Option<Image> {
     // (The emotion when nothing else holds: the plain one.)
     let plain = c.rules().emotion.name(nettai_battle::kinds::player::Emotion::default());
-    let (_, face) = crate::lookups::form_face(packs, c, form, plain, false, &mut Problems::default());
+    face(packs, c, form, plain, false)
+}
+
+/// A form's face in the emotion window for `emotion` (by its name in the
+/// game's rules), of its second set with `variant`, 32x16, in its first
+/// palette: what a round shows of a navi, for a tool.
+pub fn face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle, emotion: &str, variant: bool) -> Option<Image> {
+    let (_, face) = crate::lookups::form_face(packs, c, form, emotion, variant, &mut Problems::default());
     let (tiles, palettes) = face?;
     image(tiles, 4, 2, palettes.first()?)
 }

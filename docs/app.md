@@ -418,7 +418,8 @@ dropped on the window. Builds are chosen in Play and in the lobby (§4).
 the rules declare no views), a tab for each kind of fact:
 
 - **NAVI:** the build's name, the navi (by its face), and each fact of one value: a flag, a number, an enum's
-  variants (EXE6's version, Beast Out, bug frags; EXE5's light/dark value and Chaos Unison). Then FROM A SAVE…,
+  variants (EXE6's version, Beast Out, bug frags), or a fact's presets (EXE5's light or dark MegaMan, with the face
+  the round starts him with: below). Then FROM A SAVE…,
   DUPLICATE and DELETE (confirmed twice). Beside them, what the round starts the navi with (HP, the buster, the
   custom screen, the Mega and Giga limits, the Regular memory, the abilities and the NaviCust's bugs) and every
   problem the rules see.
@@ -451,10 +452,22 @@ sides of a match of its game, each problem beside its field and entry (a tab wit
 **What a build never states.** Every build in the app plays at the most its game allows, and states only what a
 player chooses. The facts kept at the rules' defaults (`layout::at_defaults`) are those of the engine's level and
 base HP roles, and the ones the app lists by game in `crates/nettai/builds.toml`: what a save brings to the
-navi's stats (HP, the Regular memory, the sun, the level), the SP navi times, and EXE5's auto battle records.
-The creator neither shows nor edits them. A navi that must have a level has its last. A build made new, read
-from a file or made from a save is set to them (`layout::as_built`), and a place of the auto battle data that
-pointed at a record is emptied; a save's import says which facts were set to the defaults.
+navi's stats (HP, the Regular memory, the sun, the level), the SP navi times, EXE5's auto battle records and its
+Chaos Unison (always on: the user, "chaos unison should always be enabled in a build"). The creator neither shows
+nor edits them. A navi that must have a level has its last. A build made new, read from a file or made from a save
+is set to them (`layout::as_built`), and a place of the auto battle data that pointed at a record is emptied; a
+save's import says which facts were set to the defaults.
+
+**Presets** (`builds::presets`, the same file's `presets`): a fact a build states only as one of a few presets,
+each of which sets several facts together. EXE5's are its light and dark MegaMan, as Tango's EXE5 save templates
+have them, the only two (the user: "there's only 2 karma save presets in bn5, and they also end up setting
+megaman's base hp"): LIGHT, the light/dark value 1000 and the base HP 1000, and DARK, 0 and 997. The value's row
+steps between them and shows the face the round starts MegaMan with (`screen::Face`: the round's first tick, the
+dark one's his dark face); the base HP is no row of its own. A team navi's base HP stays the rules' default (its
+HP is its story's: `edit::without_forms`). A build whose value is another (made new, read from a file, made from
+a save) takes the preset on its side of the game's line, 470 (content/exe5/rules/light_dark's `LIGHT_CHIPS`): a
+new build's 500 is light's, and a save's import says which it took ("karma 100 is dark's: the dark preset (hp 997,
+karma 0)").
 
 **From a save** (`builds::import`): each game's compat crate reads its own saves (`exe6_compat::import`,
 `exe5_compat::import`); a save of another game is refused.

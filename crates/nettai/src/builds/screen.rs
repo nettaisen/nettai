@@ -9,13 +9,13 @@
 
 use crate::builds::layout::{self, Layout, Tab};
 use crate::builds::pictures::Pictures;
-use crate::builds::{auto, edit, grid, import, order::Order, store};
+use crate::builds::{auto, edit, grid, import, order::Order, presets, store};
 use crate::games::{Names, Ready};
 use crate::{ActionButton, BuildAction, LeftKind, NavAction, RightKind, UiSound};
 use nettai_battle::content::strings::Strings;
 use nettai_battle::content::{ChipClass, Content, PlayerFact};
 use nettai_battle::setup::NaviStats;
-use nettai_content_api::{ChipHandle, EntryHandle, FieldType, Registry};
+use nettai_content_api::{ChipHandle, EntryHandle, FieldType, FormHandle, NaviHandle, Registry};
 use nettai_match::Side;
 use nettai_match::check::Problem;
 use nettai_match::facts::{self, Stated};
@@ -72,18 +72,58 @@ pub struct BuildsState {
     pub kits: HashMap<String, Rc<Kit>>,
 }
 
+/// The face the emotion window shows of a navi: its form's for an emotion
+/// (by its name in the game's rules; of the form's second set where its
+/// rules ask), or a navi's own where it doesn't change form.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Face {
+    Form(FormHandle, String, bool),
+    Navi(NaviHandle),
+}
+
+/// What the round a build starts shows of it: its navi's stats, the chips
+/// its rules let a folder hold, and the face its navi starts with (none:
+/// no navi on the field by then).
+pub struct Round {
+    pub stats: NaviStats,
+    pub pool: Vec<ChipHandle>,
+    pub face: Option<Face>,
+}
+
+/// The ticks a round runs before its navi's face is read: the first puts
+/// the navi on the field, whose start sets its mood (EXE5's light or dark
+/// MegaMan's, 0x08010EC8).
+const FACE_TICKS: u32 = 1;
+
 /// What a build is checked as: the side on both sides of a match of its
-/// game (what side 0's rules say of it; the round it starts, for its stats
-/// and the chips its rules let a folder hold).
-pub fn checked(content: &Arc<Content>, game: &str, side: &Side) -> (Vec<Problem>, Result<(NaviStats, Vec<ChipHandle>), String>) {
+/// game (what side 0's rules say of it; the round it starts, for its stats,
+/// the chips its rules let a folder hold and the face its navi starts
+/// with).
+pub fn checked(content: &Arc<Content>, game: &str, side: &Side) -> (Vec<Problem>, Result<Round, String>) {
     let Ok(mut m) = nettai_match::Match::empty(content, game) else { return (Vec::new(), Err(String::new())) };
     m.sides = [side.clone(), side.clone()];
     let problems = nettai_match::check::problems(content, &m).into_iter().filter(|p| p.side != Some(1)).collect();
     let round = nettai_match::check::start(content, &m).map(|mut b| {
         let pool = nettai_match::folders::pool(content, game, &mut b, 0);
-        (b.stats[0], pool)
+        let stats = b.stats[0];
+        Round { stats, pool, face: starting_face(&mut b) }
     });
     (problems, round)
+}
+
+/// The face side 0's navi shows once the round has started.
+fn starting_face(b: &mut nettai_battle::Battle) -> Option<Face> {
+    use nettai_battle::kinds::player;
+    for _ in 0..FACE_TICKS {
+        b.tick(&Default::default(), Default::default());
+    }
+    b.player(0)?;
+    let stats = &b.stats[0];
+    if !b.content.navi(stats.navi).changes_form() {
+        return Some(Face::Navi(stats.navi));
+    }
+    let emotion = b.game_rules().emotion.name(player::emotion(b, 0)).to_string();
+    Some(Face::Form(stats.form, emotion, player::shows_face_variant(b, 0)))
 }
 
 /// A row of a rows tab: what it is.
@@ -92,6 +132,8 @@ pub enum RowSpec {
     Name,
     Navi,
     Fact(String),
+    /// A fact stated as one of its presets.
+    Preset(String),
     FromSave,
     Duplicate,
     Delete,
@@ -210,7 +252,7 @@ pub struct Editor {
     pub editing: Option<Editing>,
     pub delete_armed: bool,
     pub problems: Vec<Problem>,
-    pub round: Result<(NaviStats, Vec<ChipHandle>), String>,
+    pub round: Result<Round, String>,
     pub status: String,
     /// The tiles in a row, as the window fits them.
     pub columns: usize,
@@ -279,7 +321,7 @@ impl Editor {
     /// in the app has (`layout::as_built`): whether that changed it.
     pub fn check(&mut self) -> bool {
         let content = self.content();
-        let reset = !layout::as_built(&content, &self.game, &mut self.side).is_empty();
+        let reset = layout::as_built(&content, &self.game, &mut self.side).changed;
         let (problems, round) = checked(&content, &self.game, &self.side);
         self.problems = problems;
         self.round = round;
@@ -311,11 +353,11 @@ impl Editor {
     }
 
     pub fn stats(&self) -> Option<&NaviStats> {
-        self.round.as_ref().ok().map(|(s, _)| s)
+        self.round.as_ref().ok().map(|r| &r.stats)
     }
 
     fn pool(&self) -> &[ChipHandle] {
-        self.round.as_ref().map_or(&[], |(_, p)| p)
+        self.round.as_ref().map_or(&[], |r| &r.pool)
     }
 
     fn names(&self) -> Names<'_> {
@@ -339,7 +381,8 @@ impl Editor {
             Tab::Navi => {
                 self.rows.push(RowSpec::Name);
                 self.rows.push(RowSpec::Navi);
-                self.rows.extend(self.layout.rows.iter().map(|f| RowSpec::Fact(f.clone())));
+                let game = &self.game;
+                self.rows.extend(self.layout.rows.iter().map(|f| if presets::of(game, f).is_some() { RowSpec::Preset(f.clone()) } else { RowSpec::Fact(f.clone()) }));
                 if import::reads_saves(&self.game) {
                     self.rows.push(RowSpec::FromSave);
                 }
@@ -753,6 +796,7 @@ impl Editor {
                 quiet(Did::edit(edit::switch_navi(c, &mut self.side, next)))
             }
             RowSpec::Fact(f) => quiet(Did::edit(edit::fact(c, &self.game, &mut self.side, f, &edit::FactEdit::Step(by as i64)))),
+            RowSpec::Preset(f) => quiet(Did::edit(presets::step(c, &self.game, &mut self.side, f, by as i64))),
             RowSpec::Time(f, i) => {
                 let frames = self.time_of(f, *i).unwrap_or(0) as i32;
                 let next = (frames + by * 60).clamp(0, u16::MAX as i32) as u16;
@@ -767,7 +811,7 @@ impl Editor {
         let c = &*content;
         match row {
             RowSpec::Name => self.start_editing(Editing::Name),
-            RowSpec::Navi => self.step_row(row, 1),
+            RowSpec::Navi | RowSpec::Preset(_) => self.step_row(row, 1),
             RowSpec::Fact(f) => match facts::field(c, f).map(|f| f.ty.clone()) {
                 Some(ty) if facts::range(&ty).is_some() => self.start_editing(Editing::Number(f.clone())),
                 _ => self.step_row(row, 1),
@@ -1244,5 +1288,34 @@ fn step(a: NavAction) -> (i32, i32) {
         NavAction::Down => (0, 1),
         NavAction::Left => (-1, 0),
         _ => (1, 0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The round a build starts shows the face its navi starts with:
+    /// EXE5's dark MegaMan his dark one, the light one his plain one; a
+    /// team navi its own.
+    #[test]
+    fn a_round_shows_the_face_its_navi_starts_with() {
+        let five = nettai_match::testing::exe5_content();
+        let m = nettai_match::pick::live(&five, "exe5", 3, None).unwrap();
+        let face = |navi: &str, dark: bool| {
+            let mut side = m.sides[0].clone();
+            edit::switch_navi(&five, &mut side, nettai_match::ids::navi(&five, "exe5", navi).unwrap());
+            layout::as_built(&five, "exe5", &mut side);
+            if dark {
+                presets::step(&five, "exe5", &mut side, "karma", 1);
+            }
+            checked(&five, "exe5", &side).1.map(|r| r.face).unwrap_or_else(|e| panic!("{navi}: {e}"))
+        };
+        let (light, dark) = (face("megaman", false), face("megaman", true));
+        let (Some(Face::Form(form, plain, false)), Some(Face::Form(dark_form, gloom, false))) = (&light, &dark) else { panic!("{light:?} {dark:?}") };
+        assert_eq!(form, dark_form);
+        assert_ne!(plain, gloom, "the dark MegaMan's face is his own");
+        let protoman = nettai_match::ids::navi(&five, "exe5", "protoman").unwrap();
+        assert_eq!(face("protoman", true), Some(Face::Navi(protoman)));
     }
 }

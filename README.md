@@ -173,7 +173,7 @@ To check every module with import resolution, regenerate the definitions and run
 
 A build is a player's side of one game, named and kept in the app's data folder ([docs/app.md](docs/app.md) §8):
 the navi, the folder, the patch cards and NaviCust, and what the game's rules take of a side besides (its facts:
-EXE6's version, Crosses and Beast Out, EXE5's karma and souls), each by its name in the game, written as a match
+EXE6's version, Crosses and Beast Out, EXE5's light or dark MegaMan and souls), each by its name in the game, written as a match
 file writes a side ([docs/frontend.md](docs/frontend.md) §6). A side states no stats: the game's rules build them
 as the round is set up.
 
@@ -184,9 +184,10 @@ their pictures and codes, and the limits counted live; a checklist of faces (EXE
 NaviCust's board, placed with the keys, a pad or the mouse; the patch cards with their effects; EXE5's auto battle
 data. FROM A SAVE… reads a whole side from a save of the build's game (a .sav, or a raw save image as Tango's
 netplay templates hold), or the auto battle data alone; a save of another game is refused. Every build plays at the
-most its game allows: what a save brings to the stats, the navi code's level, the SP navi times and EXE5's auto
-battle records stay at the rules' defaults, and an import says which of the save's it set so. Builds are chosen in
-Play and in the lobby.
+most its game allows: what a save brings to the stats, the navi code's level, the SP navi times, EXE5's auto battle
+records and its Chaos Unison stay at the rules' defaults. EXE5's light/dark value is one of Tango's two presets,
+LIGHT or DARK, each with MegaMan's base HP (1000 and 1000, 0 and 997); a save's is the one on its side of the game's
+line. An import says which of the save's facts it set so. Builds are chosen in Play and in the lobby.
 
 A whole match file (both sides and the rounds) is written by hand, or by `nettai-tool --match FILE --save-match OUT`
 (the match with its seed), and Play plays one from the app's matches folder.
