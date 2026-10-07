@@ -221,9 +221,6 @@ pub struct Identity {
     /// end fades to white (`sub_800A7A6`: the Cybeasts, NameIDs 0x173 to
     /// 0x17E; EXE5's 0x173 to 0x176).
     pub quiet_win: bool,
-    /// The NaviCust bug 0xF6 doesn't blind it (`sub_801A77A`: the
-    /// Cybeasts).
-    pub bug_blind_immune: bool,
     /// The animation in which the target marker over it isn't raised to
     /// its attach point (Gregar's 0x4F, `sub_80E1520`).
     pub marker_flat_anim: Option<u8>,
@@ -255,7 +252,6 @@ impl Identity {
             changes_form: false,
             breaks_on_weakness: false,
             quiet_win: false,
-            bug_blind_immune: false,
             marker_flat_anim: None,
             owner: None,
             body: None,
@@ -540,7 +536,6 @@ pub(crate) fn read(
         changes_form: flag(spec.field("changes_form"), "changes_form", false)?,
         breaks_on_weakness: flag(spec.field("breaks_on_weakness"), "breaks_on_weakness", false)?,
         quiet_win: flag(spec.field("quiet_win"), "quiet_win", false)?,
-        bug_blind_immune: flag(spec.field("bug_blind_immune"), "bug_blind_immune", false)?,
         marker_flat_anim: match spec.field("marker_flat_anim") {
             Data::Nil => None,
             v => Some(byte(v, "marker_flat_anim")?),

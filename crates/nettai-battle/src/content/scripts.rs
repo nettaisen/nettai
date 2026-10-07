@@ -516,7 +516,6 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         missing_collision_status = 7,
         reactions = "flash_timer_first",
         bugs_before_drain = false,
-        drain_bug_flags = true,
         no_charge_drive = false,
         hp_loss = "hp_alone",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", plain_in_battle_mode_1 = false, normal_in_a_form = true, anger_before_worn_out = false, tired_and_exhausted = true, worried_below = 40 },
@@ -577,7 +576,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((m.plain_in_battle_mode_1, m.normal_in_a_form, m.anger_before_worn_out, m.tired_and_exhausted), (false, true, false, true));
         let aura = r.effects.full_synchro_aura;
         assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight), (true, true, false));
-        assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0, r.intake.drain_bug_flags), (false, true, 7, true));
+        assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0), (false, true, 7));
         assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
         let f = r.fresh_stats;
         assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
@@ -603,7 +602,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 63, "every field of every section");
+        assert_eq!(fields, 62, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
