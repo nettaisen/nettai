@@ -90,6 +90,18 @@ language = "en"
 "elemleaf" = { name = "ElemLeaf", description = "3-sq atk\nPowerful\non grass" }
 "elemsand" = { name = "ElemSand", description = "3-sq atk\nPowerful\non pitfal" }
 "elemdark" = { name = "ElemDark", description = "EvilChip!\nPowerful\novr swamp" }
+"serchman" = { name = "SerchMan", description = "Stop site\nand fire\n5 shots" }
+"srchmn-sp" = { name = "SrchMnSP", description = "Stop site\nand fire\n5 shots" }
+"srchmn-ds" = { name = "SrchMnDS", description = "Stop site\nand fire\n5 shots" }
+"thunman" = { name = "ThunMan", description = "Lightning\nstrikes\n3sq ahead" }
+"thunmn-sp" = { name = "ThunMnSP", description = "Lightning\nstrikes\n3sq ahead" }
+"thunmn-ds" = { name = "ThunMnDS", description = "Lightning\nstrikes\n3sq ahead" }
+"metalman" = { name = "MetalMan", description = "Iron fist\ncrushes\n1sq ahead" }
+"metlmn-sp" = { name = "MetlMnSP", description = "Iron fist\ncrushes\n1sq ahead" }
+"metlmn-ds" = { name = "MetlMnDS", description = "Iron fist\ncrushes\n1sq ahead" }
+"junkman" = { name = "JunkMan", description = "Throw any\nobjects\non field" }
+"junkmn-sp" = { name = "JunkMnSP", description = "Throw any\nobjects\non field" }
+"junkmn-ds" = { name = "JunkMnDS", description = "Throw any\nobjects\non field" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

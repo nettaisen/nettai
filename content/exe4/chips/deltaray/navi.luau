@@ -3,7 +3,7 @@
 -- controller (objects/navi_chip_controller, its entry 0xC) brings: EXE6's and EXE5's (@exelib/deltaray/navi; the same
 -- code) with EXE4's constants (ProtoMan's sprite 08-07 in the chip's palette, 0x0800B950: two palettes a variant;
 -- his sounds; his flash, effect row 3; his mark, row 0x60; his slash, row 0x5E; his sword, attachment row 3, in its
--- animation 7; his finish's animation 15; the follow effect's look 4 for his burst, ./follow_effect) and its
+-- animation 7; his finish's animation 15; the follow effect's look 4 for his burst, objects/follow_effect) and its
 -- differences: his spawner (0x080C76CE) keeps neither his user, nor its facing, nor the element, his height his side;
 -- his search starts at column 2, or 5 for side 1 (0x080C73D6), his first candidate behind the enemy navi (EXE6's);
 -- his strike is ProtoMan's slash (0x080C71AA), all at once, his sword away as it ends; no white flashes.
@@ -11,7 +11,7 @@
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
-local follow_effect = require("./follow_effect")
+local follow_effect = require("../../objects/follow_effect")
 local navi_chips = require("../../lib/navi_chips")
 
 -- His palettes a variant (0x0800B9B1's entry 7, ProtoMan's).
