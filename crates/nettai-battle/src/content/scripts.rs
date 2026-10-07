@@ -466,7 +466,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         charge_glow = "with_navi",
         charge = "hold_flags",
         fade_clear = "at_target",
-        banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more" },
+        banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
         rng1_per_frame = true,"#,
             ),
             (

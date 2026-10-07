@@ -76,15 +76,24 @@ fn bundle() -> Bundle {
             GfxAnim {
                 target: AnimTarget::Tiles { first: 2, count: 3 },
                 frames: vec![
-                    GfxAnimFrame { tiles: tiles(3, 5), palettes: vec![], delay: 64 },
-                    GfxAnimFrame { tiles: tiles(3, 6), palettes: vec![], delay: 1 },
+                    GfxAnimFrame { tiles: tiles(3, 5), palettes: vec![], shift: 0, delay: 64 },
+                    GfxAnimFrame { tiles: tiles(3, 6), palettes: vec![], shift: 0, delay: 1 },
                 ],
                 repeat_from: Some(1),
             },
             GfxAnim {
                 target: AnimTarget::Palettes { first: 0, count: 1 },
-                frames: vec![GfxAnimFrame { tiles: Tiles::default(), palettes: vec![palette(30)], delay: 12 }],
+                frames: vec![GfxAnimFrame { tiles: Tiles::default(), palettes: vec![palette(30)], shift: 0, delay: 12 }],
                 repeat_from: None,
+            },
+            // A palette darkened by a color that changes (EXE4's background 0x09).
+            GfxAnim {
+                target: AnimTarget::PaletteShift { first: 0, count: 1, darken: true },
+                frames: vec![
+                    GfxAnimFrame { shift: 0x2228, delay: 8, ..Default::default() },
+                    GfxAnimFrame { shift: 0x2669, delay: 60, ..Default::default() },
+                ],
+                repeat_from: Some(0),
             },
         ],
     };
@@ -226,6 +235,8 @@ fn custom() -> CustomScreen {
             name_bar: 0x1D6,
             form_names: 0x139,
             slot_blank: 1,
+            detail_blank: 8,
+            empty_palette: None,
             ok_cursor: cursor(0),
         },
         // A special slot's button with icons, and two over the slots' row
@@ -323,7 +334,38 @@ fn custom() -> CustomScreen {
                 ],
             },
         )],
+        element_sprite: None,
+        cursor_palette: None,
+        window_emblem: None,
     }
+}
+
+/// A custom screen drawn as EXE4's: the element icon a sprite in its own
+/// palette (no colors in the window's), the cursor in its own palette, the
+/// emblem on the window's map in frames that turn, and the soul button at a
+/// place of its own on the map.
+fn custom_exe4() -> CustomScreen {
+    let mut c = custom();
+    c.element_colors.clear();
+    c.layout.element = 0;
+    c.layout.detail_blank = 7;
+    c.layout.empty_palette = Some(9);
+    c.element_sprite = Some(ElementSprite { x: 24, y: 80, palette: palette(110) });
+    c.cursor_palette = Some(palette(111));
+    c.emblems.clear();
+    let frame = |seed: u16| (0..6u16).map(|i| entry(0x5E + (i + seed) % 18, 9, seed == 2 && i % 2 == 0, false)).collect();
+    c.window_emblem = Some(WindowEmblem {
+        x: 12,
+        y: 0,
+        width: 2,
+        height: 3,
+        first_tile: 0x5E,
+        tiles: tiles(18, 112),
+        frames: (0..4).map(frame).collect(),
+        steps: vec![Some(1), Some(2), Some(3), None, Some(0), None, Some(1), None, None],
+    });
+    c.buttons[0].1.place = Some(ButtonPlace { x: 11, y: 17, first_tile: 0x52, palette: 9 });
+    c
 }
 
 /// A fresh directory for one test.
@@ -360,6 +402,17 @@ fn graphics_read_back_exactly() {
     let anims = std::fs::read_to_string(dir.join("graphics/sprites/sprite-00-01/animations.json")).unwrap();
     assert!(anims.contains(r#"{"ticks":250,"flags":["last","loop"],"tileset":1,"layout":2}"#), "{anims}");
     assert!(anims.contains(r#""flags":[4]"#));
+}
+
+#[test]
+fn an_exe4_custom_screen_reads_back_exactly() {
+    let dir = temp("exe4-custom");
+    let b = Bundle { custom: custom_exe4(), ..bundle() };
+    write_pack(&dir, &b);
+    let (back, report) = import(&dir);
+    assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");
+    assert_eq!(back.unwrap().custom, b.custom);
+    assert!(dir.join("graphics/custom/window-emblem.png").is_file());
 }
 
 /// Assets are written under the names given them; each file holds its

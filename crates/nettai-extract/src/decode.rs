@@ -41,6 +41,16 @@ fn gfx_anim(rom: &Rom, p: u32, palette_buffer: u32) -> Option<GfxAnim> {
             first: ((param1 & 0xFFFF) / 32) as u16,
             count: param2 as u16,
         },
+        // A palette transform (EXE4's 0x080024BC): its mode (0 adds, 4 takes
+        // away), over the palettes shown (the buffer's copy 0x200 on, which
+        // 0x0800258C makes each frame and shifts).
+        0xC => {
+            let first = param1.checked_sub(palette_buffer + 0x200)? / 32;
+            if first >= 16 || !matches!(param0, 0 | 4) {
+                return None;
+            }
+            AnimTarget::PaletteShift { first: first as u8, count: param2, darken: param0 == 4 }
+        }
         _ => return None,
     };
     let mut frames = Vec::new();
@@ -71,6 +81,8 @@ fn gfx_anim(rom: &Rom, p: u32, palette_buffer: u32) -> Option<GfxAnim> {
                 seen.insert(e, frames.len());
                 let delay = rom.u32(e + 4) as u16;
                 let frame = match target {
+                    // (The color, its word's top bit set.)
+                    AnimTarget::PaletteShift { .. } => GfxAnimFrame { shift: (data & 0x7FFF) as u16, delay, ..Default::default() },
                     AnimTarget::Palettes { count, .. } => GfxAnimFrame {
                         palettes: palettes_from_bytes(rom.bytes(data, 32 * count as usize)),
                         delay,

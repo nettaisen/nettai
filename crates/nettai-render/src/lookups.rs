@@ -219,7 +219,10 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
         ChipClass::Giga => Some(2),
         _ => None,
     };
+    // (A pack with one frame color draws every chip in it: EXE4's, which
+    // its screen loads once, 0x0801DC28.)
     let frame = match class {
+        _ if a.frame_palettes.len() == 1 => 0,
         Some(_) if data.flags.has(ChipFlags::DARK) => 3,
         Some(n) => n,
         None => 0,
@@ -232,7 +235,8 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
         // (A family past the elements with colors shows none: the
         // original's.)
         let family = data.family as usize;
-        if family < a.element_colors.len() && a.elements.len() < 4 * (family + 1) {
+        let has_icon = family < a.element_colors.len() || a.element_sprite.is_some();
+        if has_icon && a.elements.len() < 4 * (family + 1) {
             problems.note(format!("chip {key:?}: the custom screen has no icon for its element ({family})"));
         }
         if a.codes.len() < 2 * (code.min(crate::custom::NO_CODE) as usize + 1) {
@@ -305,8 +309,13 @@ pub fn form_face<'a>(
 
 /// A navi's emblem on the custom screen: the pack's under the navi's key
 /// (`CustomScreen::emblems`), its tiles and its palette. None: the pack has
-/// none for the navi (nothing is drawn, and the cursor has no colors).
+/// none for the navi (nothing is drawn, and the cursor has no colors), or
+/// the screen has an emblem of its own and its cursor its own colors
+/// (EXE4's `window_emblem` and `cursor_palette`), and draws no navi's.
 pub fn emblem<'a>(a: &'a CustomScreen, c: &Content, navi: NaviHandle, problems: &mut Problems) -> Option<&'a Emblem> {
+    if a.window_emblem.is_some() && a.cursor_palette.is_some() {
+        return None;
+    }
     let key = &c.defs.navi(navi).key;
     let found = a.emblem(key).filter(|e| e.tiles.len() >= 4);
     if problems.lookup(Lookup::Emblem(navi)) && found.is_none() {

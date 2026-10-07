@@ -442,7 +442,36 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   0 to 5); the chatbox (0x0804E3B4: one box, which descriptions show in too). The Japanese ROMs' banners and
   "カスタム中…" are the pack's Japanese lettering. Not drawn yet: "PLAN-B..." (0x08016AE8's list, the other waiting
   words, 作戦変更中… in Japanese), shown while the other player is in what group A's screen calls the second screen.
-- **Placeholders** (extraction.txt's first line): the custom screen, whose routines are EXE4's own (§5).
+- **The custom screen** (R, Red Sun US's; exe4/custom.rs), as EXE5's in its parts, from EXE4's own routines: the
+  window (0x0801DC28: the map 0x0870CC80, its patch list 0x0801DD90 from tile 0x9C, one frame color for every chip,
+  0x0870C340) and the HUD's load list (the frame's tiles, the picked column's cells, "FINAL TURN", the UNITE button's
+  and the emblem's tiles); the chip window (0x0801FC40: the name, picture, code and damage; the element icon a sprite
+  of its own palette, 0x0801EECC, by the record's element byte in EXE5's order); the slots (0x0801FB00: palettes 11,
+  12 gray, 9 picked); OK's two pictures; the cursor's corners (0x0801EDB4's tables, its own palette 0x0870C360,
+  sprite palette 13); the Regular chip's frame. What EXE5 doesn't have, the pack says (`CustomScreen`'s
+  `element_sprite`, `cursor_palette`, `window_emblem`, a button's `place`): the emblem over the picked column is the
+  window's own orb (0x08020028: four frames of 2x3 on the map at column 12, row 0, turned by the steps of 0x08020078
+  as a chip is picked), no navi's; the UNITE button (`soul`) is drawn at its own place (0x0801FF14: 3x2 at column
+  11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) over
+  slots 8 and 9 (0x08709E00, three states). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
+  button's tiles are the pack's Japanese lettering. Also the layout's `detail_blank` (a blank code or damage cell is
+  solid 7, 0x08020E5C: 0x0801FD08, 0x0801FE2A) and `empty_palette` (the empty icon in palette 9: the slots' patches'
+  own, which 0x0801FB00 leaves on an empty slot and sets on a picked one; 0x0801FB6E sets it on the picked column's
+  empty cells, 11 on a filled one).
+- **Drawn as the original** (frames compared with the lab's mGBA shots, tools/frontend-compare: custom/cannon,
+  describe, pause, three-picks and flow/buster-side1, as far as each plays): the field and its panels; the
+  backgrounds, 0x02's and 0x09's with their animations (0x09 is 0x03's picture darkened each frame by a color that
+  changes, GFX animation command 0x0C: a palette transform, 0x080024BC, subtracting per channel, mode 4, which
+  0x0800258C runs each frame on the palettes shown: the pack's `darkens`), the background's clock without the first
+  round's head start (`StageClock`); the emotion window's face; the banners as they unsquash and squash (0x08014994:
+  from 0xC0 to 0x40 over the slide's 9 ticks, a line, as EXE6's over its 5; no bounce in the hold: the rules'
+  `effects.banner.bounces`); the custom screen as it opens, while picking and on OK (the window, the chip window and
+  OK's pictures, the slots' palettes, the picked column, the element sprite, the window's emblem). What still
+  differs is not the drawing's: the HP box (the intro doesn't show it yet); MegaMan's colors (the original draws
+  him in his sprite's palette row 4, 0x0821B854, with the normal face, where the base form says row 0); the UNITE
+  button (content/exe4 registers no `soul` button yet); the second row's slots 8 and 9 (dealt empty where the
+  original hides them); the cursor on OK after it is pressed (the original hides it); the chatbox's description
+  (content/exe4's Cannon has none).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
