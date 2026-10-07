@@ -1,6 +1,6 @@
 //! The picture on femtovg's OpenGL: one texture, kept from picture to
 //! picture and written in place, which the window draws as a borrowed
-//! texture. (nettai-demo's lesson: an image made anew each picture costs an
+//! texture. (The retired nettai-demo's lesson: an image made anew each picture costs an
 //! allocation, a conversion and a texture made and dropped each time.)
 //!
 //! The presented pixels go as they are: 0x00RRGGBB in memory is B, G, R and

@@ -2,7 +2,7 @@
 //! library screens list its chips in, by category, and the order of the
 //! entries of each of the game's collections (EXE6's `navicust_programs`
 //! and `patch_cards`), by their ids there. Menus list things in
-//! it (the editor's chip, program and card lists); the battle reads none of
+//! it (the build creator's chip, program and card lists); the battle reads none of
 //! it, so it stays out of the content's hash. The verification workspace's
 //! generators write it from the ROMs and their checks compare it with them.
 //!

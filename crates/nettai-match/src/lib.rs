@@ -5,9 +5,9 @@
 //! the round it plays ([`Match::round`]). Live play's random pick of one
 //! is here too (`pick`), so a random setup can be written out and edited.
 //!
-//! nettai-demo plays a match file (`--match`), and netplay's offers are
-//! a side of one: the same checks refuse a bad file and a bad offer.
-//! the editor (nettai-demo) edits them.
+//! nettai plays a match file (Play), nettai-tool renders one (`--match`),
+//! and netplay's offers are a side of one: the same checks refuse a bad
+//! file and a bad offer. nettai's build creator makes sides.
 //!
 //! A match is of one game (`Match::game`): a
 //! game is its rules (it has one rules definition), and both sides play by them
@@ -27,7 +27,6 @@ pub mod link_navis;
 pub mod names;
 mod set;
 pub mod sp_times;
-pub mod stats;
 pub mod story;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;

@@ -1,7 +1,7 @@
 //! nettai's frontend as a library: it plays battles for a host app to
 //! show. It has no window, no audio device and no command line in it, and
-//! nothing in it prints or exits: the host owns those (nettai-demo is the
-//! desktop program over it).
+//! nothing in it prints or exits: the host owns those (nettai is the app
+//! over it, nettai-tools the command line).
 //!
 //! What it gives a host:
 //!

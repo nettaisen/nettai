@@ -876,7 +876,7 @@ a few seconds. It is the only extraction.
 ## 10. Commands
 
     cargo run -p nettai-extract -- exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>    # ROMs -> pack
-    cargo run -p nettai-demo -- <trace.jsonl>                          # every pack in data
+    cargo run -p nettai-tools -- <trace.jsonl> --headless 100 --out <dir>   # a frame, from every pack in data
     cargo run -p nettai-content -- check data/exe6            # lint every file
     cargo run -p nettai-content -- verify data/exe6 <reference-pack> [--seconds N]
     cargo run -p nettai-content -- aseprite-export data/exe6 [NAME ...]

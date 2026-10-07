@@ -3,7 +3,7 @@ name = "nettai-frontend"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "Plays nettai battles for a host app to show: loads a game, runs a set live or over the network, and gives its frames and sound. A library with no window, audio device or command line in it (nettai-demo is a desktop program over it)"
+description = "Plays nettai battles for a host app to show: loads a game, runs a set live or over the network, and gives its frames and sound. A library with no window, audio device or command line in it (nettai is the app over it, nettai-tools the command line)"
 
 [dependencies]
 nettai-battle = { path = "../nettai-battle" }

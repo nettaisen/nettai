@@ -1,6 +1,6 @@
 # nettai's signaling server (src/index.ts): rooms where two players meet and
 # trade their WebRTC offer, answer and candidates. Run it here with
-# `npx wrangler dev` (http://127.0.0.1:8787; nettai-demo's --signal
+# `npx wrangler dev` (http://127.0.0.1:8787; nettai with NETTAI_SIGNAL=
 # ws://127.0.0.1:8787). Deploying it is `npx wrangler deploy`, on your own
 # Cloudflare account.
 name = "nettai-signal"

@@ -4,8 +4,9 @@
 webviews, and chose Slint ("it should be very polished though"). `crates/nettai` is that app. It runs on the
 desktop (built and measured on macOS). §6 records what the web build needs and §7 what mobile would take.
 
-nettai is the player's host of nettai-frontend; nettai-demo is being retired (its plan: §10). It wraps the
-battle in the screens a player sees:
+nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
+the command line with no window, for frames, audits and checks (docs/tools.md). nettai-demo, the first desktop
+host, is retired (§10). nettai wraps the battle in the screens a player sees:
 
 - a title screen, with a battle playing itself on its monitor;
 - Play: the game, a random match or a match file, your build, and a preview of who fights in which arenas,
@@ -21,7 +22,8 @@ catalogs, one for each language; the content's names come from its locales.
 
     NETTAI_PACKS=<packs> cargo run --release -p nettai
 
-The packs are found as nettai-demo finds them (`$NETTAI_PACKS`, else `data`). What the player makes is kept in
+The packs are found as nettai-tool finds them (`$NETTAI_PACKS`, else `data`, each pack by the game it says;
+written by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`). What the player makes is kept in
 the app's data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
 `$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are
 in `builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), match files are
@@ -232,7 +234,7 @@ datagrams of `nettai_frontend::lobby`):
 3. Readiness is each player's toggle, and each sees the other's. Changing the game or the build clears both.
 4. Once both are ready on the same settings, the match is agreed and the battle is a `NetPlayer` over the link
    (`netplay::Framed`: the link as the library's `Channel`, frames told from the lobby's datagrams by their first
-   byte, as nettai-demo's connection does). It is recorded, with both names.
+   byte, as nettai-demo's connection did). It is recorded, with both names.
 
 The battle shows the connection's figures (ping, present delay, rollbacks) and "reconnecting (N s)" while the link
 is down (`NetStatus::reconnecting`). Netplay can't pause: the pause's panel says so and holds no buttons.
@@ -246,11 +248,20 @@ Without `$NETTAI_SIGNAL` the lobby says there is none (a direct link still works
 meet with `NETTAI_NETPLAY=exe6:make:ROOM42` and `NETTAI_NETPLAY=exe6:join:ROOM42`, or directly with
 `NETTAI_NETPLAY=exe6:host:` and `NETTAI_NETPLAY=exe6:direct:127.0.0.1:47474`.
 
-What's missing: the present delay can't be set on the screen.
+A room's link finds its way through NATs with nettai-rtc's default STUN server (`stun:stun.l.google.com:19302`)
+and checks the certificates its descriptions name; a direct link authenticates nobody, as plain UDP doesn't. Over
+the Internet, the host forwards UDP port 47474 on its router to its machine, and the other player joins the
+router's public address. What the library does when the link drops, and what the handshake checks, is
+docs/frontend.md §2's.
+
+What's missing: the present delay can't be set on the screen (the library's `Player::set_present_delay`), and no
+TURN server can be given, so two players whose NATs need a relay can't meet (nettai-rtc's `Config` takes
+one, an `IceServer` with its credentials, in its `ice_servers`; Cloudflare's TURN service hands out short-lived
+credentials from its API).
 
 ## 5. Latency and smoothness
 
-Measured as nettai-demo measures (docs/frontend.md §7). `NETTAI_KEY_PROBE` presses the right arrow every 300 to
+Measured as nettai-demo measured (docs/frontend.md §7, its lessons). `NETTAI_KEY_PROBE` presses the right arrow every 300 to
 400 ms, through the event loop as a key's event arrives, at no particular point between frames.
 `NETTAI_PLAY_STATS` prints, every two seconds:
 
@@ -469,13 +480,15 @@ What nettai-demo does, and where each part goes:
 | `--audit`, `--audit-content` | nettai-tools |
 | `--show-folders`, `--save-match`, setup dumps | nettai-tools |
 
-nettai-tools is a small CLI crate (binary `nettai-tool`, no window toolkit) holding nettai-demo's headless modules
-as they were (`headless`, `trace`, `content_audit`, `sound_lookups`; nettai-demo re-exports them until it goes),
-with the same flags, so verify's scripts (lab-compare.sh, lab-batch.sh, identity.sh, compare.sh,
-play-headless.sh, embed-against.sh, audit-against.sh, and the merge checks) switch from `nettai-demo …` to
-`nettai-tool …` (built with `-p nettai-tools`) mechanically. Its frames, marks and audits are nettai-demo's, byte
-for byte. Without frames, `--match FILE` says the setup (`--show-folders`, `--save-match`) and `--replay FILE` plays
-the replay to its end and says whether it reproduces. A trace is rendered or audited; watching one in a window
-stays nettai-demo's until the window goes. The order: the build creator; nettai-tools;
-verify's scripts and the merge checks switched (on a verify branch); then nettai-demo and iced deleted from the
-workspace, and docs/frontend.md's program sections moved here and to nettai-tools' own doc.
+nettai-tools is a small CLI crate (binary `nettai-tool`, no window toolkit; docs/tools.md) holding nettai-demo's
+headless modules as they were (`headless`, `trace`, `content_audit`, `sound_lookups`), with the same flags, so
+verify's scripts (lab-compare.sh, lab-batch.sh, identity.sh, compare.sh, play-headless.sh, embed-against.sh,
+audit-against.sh, and the merge checks) switched from `nettai-demo …` to `nettai-tool …` (built with
+`-p nettai-tools`) mechanically. Its frames, marks and audits are nettai-demo's, byte for byte. Without frames,
+`--match FILE` says the setup (`--show-folders`, `--save-match`) and `--replay FILE` plays the replay to its end
+and says whether it reproduces. A trace is rendered or audited: the user wanted no trace viewer ("i don't think you
+really need a trace viewer").
+
+The order was: the build creator; nettai-tools; verify's scripts and the merge checks switched; then, on
+2026-10-06, nettai-demo deleted from the workspace with iced and what only it pulled in (`Cargo.lock`: 824
+packages, then 738), and docs/frontend.md's program sections moved here and to docs/tools.md.
