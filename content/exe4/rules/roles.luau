@@ -45,6 +45,8 @@ local roles: RolesSpec = {
     },
     sounds = {
         appear = asset.sound("appear"),
+        -- An obstacle taking damage (0x08014058: the stages' boulder).
+        damage = asset.sound("damage"),
         -- The custom gauge fills (0x080147F4); the HP box's alarm (0x0801475E).
         gauge_full = asset.sound("gauge-full"),
         low_hp = asset.sound("low-hp"),
