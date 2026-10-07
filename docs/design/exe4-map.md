@@ -771,8 +771,25 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       the paralysis snaps it sliding or not and counts no reaction (the side's stat 3); the drag takes the flinch's
       pose (EXE6's 2 paralyzed, 0 with SuperArmor), keeps the height, counts none, and at its end clears the drag alone
       (no slide, paralysis, heat-trap or flag2 0x10 clears) and goes to idle in its pose, paralyzed or not. The rule
-      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is.
-      (EXE5's drag has no paralyzed pose either, 0x08014304: an EXE5 difference no recording has shown, left as it is.)
+      `status.reaction_actions` (`marked`, EXE6's and EXE5's; `plain`, EXE4's), a bundle as `status.reactions` is;
+      the drag's pose and end are `status.drag` (below).
+    - **Done: the drag's pose and end, each game's** (`status.drag`: `poses`, the first that holds of a paralyzed
+      navi's and a SuperArmor one's, else `otherwise`; `ending`). EXE6's (`sub_80178D4`, `sub_8017A38`): paralyzed
+      2, SuperArmor 0, else 1; at its end a paralysis that outlasts it goes on as the paralysis action, else the
+      slide, the paralysis, the heat trap, a slide request and the slide's state are cleared, the navi stands, its
+      overlay refreshed (`resumes_paralysis`). EXE5's (0x08014304, 0x080144CE): SuperArmor 0, else 1, no paralyzed
+      pose; at its end the drag and its use are cleared, its requests, and the navi stands, whatever the paralysis
+      (`stands`): the engine had EXE6's. EXE4's (0x08010ABC, 0x08010C16): 1, kept to its end (`keeps_pose`). EXE5's
+      paralyzed start is barely reachable: its status block ends a paralysis at a drag's request unless a counter made
+      it that tick (flag2 0x8000), and a counter's own paralysis waits for the drag's end (the lab's
+      `drag/counter-push`, a95f's: the drag starts at 457 without it, the paralysis at 483; with SprArmr,
+      `counter-push-superarmor`, the same); a navi already paralyzed when a counter push lands would show it. Both
+      recordings match every frame, before the rule and after. Read beside it, EXE5's own: its flinch, paralysis and
+      drag starts call 0x0802D644, which resets the side's state block (`sub_802E070`'s) at +0x0B and +0x2E (the mode
+      chips' mode and ticks, which nothing in a battle reads), +0x0F and +0x50 (the SELECT special's, the operation
+      battle's: the user declined that mode), then calls 0x0802FB9C and 0x0802FD50 (EXE6's `sub_802F084`), both
+      unported; its drag start resets the facing (flip 0 and 0x0800D1EA) where turning is off (AIData status 0x400
+      clear: every netbattle's), which leaves a navi facing as it started.
     - Read and the same: the per-navi flinch, paralysis and drag hooks (0x0800DC9C, 0x0800DD14, 0x0800DD82: the
       identities' `overlay_hooks`), the requests their ends clear (item 6), the drag's speed and its step (ice a panel
       more); the slide's start and step (0x08010294, 0x080102FC) as EXE6's (item 3).

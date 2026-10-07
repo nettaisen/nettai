@@ -1206,6 +1206,8 @@ pub struct Rules {
     pub reactions: Reactions,
     /// How a navi's reaction actions run (rule section `status`).
     pub reaction_actions: ReactionActions,
+    /// A drag's pose and its end (rule section `status`).
+    pub drag: DragRule,
     /// A side's emotions where games differ (rule section `status`'s
     /// `emotion`): how one is read off the navi, what holds a mood, how
     /// anger leaves it.
@@ -1389,21 +1391,68 @@ pub enum ReactionActions {
     /// 0x400000) and leaves it at its end; a flinch and a paralysis snap the
     /// body to its panel, on the ground, unless it slides; each counts a
     /// reaction (the side's stat 3) and lets go of the navi's overlay link;
-    /// the drag takes the paralyzed pose (2) or SuperArmor's (0) where they
-    /// hold, else the flinch's, puts the body on the panel's ground line,
-    /// and at its end clears the slide, the paralysis and the drag's own
-    /// states, the pose back to standing, or turns to a paralysis that
-    /// outlasts it. (EXE5's drag has no paralyzed pose, 0x08014304: a
-    /// difference no recording has shown.)
+    /// the drag puts the body on the panel's ground line (its pose and its
+    /// end are the status section's `drag`).
     Marked,
     /// EXE4's (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks
     /// the action in use or lets go of the overlay link; the flinch keeps
     /// the body's height as it snaps it, and the paralysis snaps it, at its
-    /// height, sliding or not, and counts no reaction; the drag takes the
-    /// flinch's pose, keeps the height, counts no reaction, and at its end
-    /// clears the drag alone and goes to idle in the pose it had, paralyzed
-    /// or not.
+    /// height, sliding or not, and counts no reaction; the drag keeps the
+    /// height and counts no reaction (its pose and its end are the status
+    /// section's `drag`).
     Plain,
+}
+
+/// A drag's pose and its end (the status section's `drag`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DragRule {
+    pub poses: DragPoses,
+    pub ending: DragEnding,
+}
+
+/// The pose a drag starts in: the first that holds of a paralyzed navi's
+/// and a SuperArmor one's (each a game's, or none), else `otherwise`.
+/// EXE6's `sub_80178D4`: paralyzed 2, SuperArmor 0, else 1; EXE5's
+/// 0x08014304: SuperArmor 0, else 1; EXE4's 0x08010ABC: 1.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DragPoses {
+    #[serde(default)]
+    pub paralyzed: Option<u8>,
+    #[serde(default)]
+    pub super_armor: Option<u8>,
+    pub otherwise: u8,
+}
+
+impl DragPoses {
+    /// The pose for a navi of status word `status`.
+    pub fn pose(&self, status: u32) -> u8 {
+        use crate::collision::f1;
+        match (self.paralyzed, self.super_armor) {
+            (Some(p), _) if status & f1::PARALYZED != 0 => p,
+            (_, Some(s)) if status & f1::SUPERARMOR != 0 => s,
+            _ => self.otherwise,
+        }
+    }
+}
+
+/// What a drag's end does once its ticks are up (each clears the drag, the
+/// action's use where the reaction actions mark it, and the drag's
+/// requests, then idles).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DragEnding {
+    /// EXE6's (`sub_8017A38`): a paralysis that outlasts the drag goes on,
+    /// as the paralysis action; else it also clears the slide and the
+    /// paralysis, the heat trap and a slide request, the slide's state, the
+    /// pose back to standing, the form's overlay refreshed.
+    ResumesParalysis,
+    /// EXE5's (0x080144CE): the pose back to standing, whatever the
+    /// paralysis.
+    Stands,
+    /// EXE4's (0x08010C16): in the pose it has.
+    KeepsPose,
 }
 
 /// What reserving a panel does to its holder (the panels section's
