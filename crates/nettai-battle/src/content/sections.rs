@@ -346,6 +346,7 @@ struct StatusSection {
     paused_navi: super::rules::PausedNavi,
     timers_while_paused: bool,
     idle_stands: bool,
+    link_body_damage: Option<super::rules::LinkBodyDamage>,
 }
 
 /// The `fresh_stats` section but its weapon (`mode9_a`, a definition) and
@@ -465,6 +466,7 @@ impl Stated {
                 paused_navi: r.paused_navi,
                 timers_while_paused: r.status_timers_while_paused,
                 idle_stands: r.idle_stands,
+                link_body_damage: r.link_body_damage,
             }),
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
@@ -517,6 +519,7 @@ impl Stated {
             paused_navi: status.paused_navi,
             status_timers_while_paused: status.timers_while_paused,
             idle_stands: status.idle_stands,
+            link_body_damage: status.link_body_damage,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
                 no_charge_drive: status.no_charge_drive,

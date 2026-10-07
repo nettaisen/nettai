@@ -66,6 +66,18 @@ language = "en"
 "greenwd1" = { name = "GreenWd1", description = "Raises\nWoodTowrs\nfrm grass" }
 "greenwd2" = { name = "GreenWd2", description = "Raises\nWoodTowrs\nfrm grass" }
 "greenwd3" = { name = "GreenWd3", description = "Raises\nWoodTowrs\nfrm grass" }
+"counter1" = { name = "Counter1", description = "Counter-\nattack to\nenemy" }
+"counter2" = { name = "Counter2", description = "Counter-\nattack to\nenemy" }
+"counter3" = { name = "Counter3", description = "Counter-\nattack to\nenemy" }
+"mokorus1" = { name = "MokoRus1", description = "3 Molokos\ncharge\nthe enemy" }
+"mokorus2" = { name = "MokoRus2", description = "3 Molokos\ncharge\nthe enemy" }
+"mokorus3" = { name = "MokoRus3", description = "3 Molokos\ncharge\nthe enemy" }
+"sidbmbo1" = { name = "SidBmbo1", description = "Lance\nattck 3sq\nahead" }
+"sidbmbo2" = { name = "SidBmbo2", description = "Lance\nattck 3sq\nahead" }
+"sidbmbo3" = { name = "SidBmbo3", description = "Lance\nattck 3sq\nahead" }
+"whitweb1" = { name = "WhitWeb1", description = "Stretches\nweb over\nenmy area" }
+"whitweb2" = { name = "WhitWeb2", description = "Stretches\nweb on\nenmy area" }
+"whitweb3" = { name = "WhitWeb3", description = "Stretches\nweb under\nenmy area" }
 "roll" = { name = "Roll", description = "Attcks an\nenmy,then\nheals you" }
 "roll-sp" = { name = "RollSP", description = "Attcks an\nenmy,then\nheals you" }
 "roll-ds" = { name = "RollDS", description = "Attcks an\nenmy,then\nheals you" }
@@ -216,6 +228,8 @@ language = "en"
 "069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"076-all-guard-1-2" = { name = "All Guard 1/2" }
+"077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
 "086-charge-shot-switch" = { name = "Charge Shot Switch" }
