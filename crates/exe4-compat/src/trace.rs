@@ -474,11 +474,50 @@ impl Round {
     pub fn screen_late(&self, i: usize, frames: &[&Frame]) -> u32 {
         let d = self.link_delay() as u32;
         let frame = frames[i].frame;
-        let local = decode_setup(&self.setup).map_or(0, |d| d.local());
-        match self.screen_opened(frame).and_then(|o| self.screen_ok(o, local)) {
+        match self.local_ok(frame) {
             Some(ok) if frame >= ok + d => d,
             _ => 0,
         }
+    }
+
+    /// The recording console's side (its setup's BattleState +0x0D).
+    fn local_side(&self) -> usize {
+        decode_setup(&self.setup).map_or(0, |d| d.local())
+    }
+
+    /// The recording console's side's OK on the custom screen open on frame
+    /// `frame`, if the side has pressed it by the screen's end (none while
+    /// the fight runs): the frame the original's screen took it, which the
+    /// replay feeds the engine's `link_delay` frames later ([`Round::fed`]).
+    /// For the frame comparison's known shift: from it until the engine's
+    /// screen takes it, that screen holds the OK back; then it runs
+    /// `link_delay` frames behind the original's until the fight resumes
+    /// ([`Round::screen_late`]).
+    pub fn local_ok(&self, frame: u32) -> Option<u32> {
+        self.screen_opened(frame).and_then(|o| self.screen_ok(o, self.local_side()))
+    }
+
+    /// The recording console's side's first OK of the round ([`Round::local_ok`]
+    /// of its first screen it pressed OK on): from `link_delay` frames
+    /// after it on, what counts from that side's send (the HUD's full
+    /// gauge's stripes, which "waiting" sets) runs that many frames behind
+    /// the original's, to the round's end.
+    pub fn first_local_ok(&self) -> Option<u32> {
+        let custom = |f: &Frame| f.state[0] == 4 && f.state[1] == 8;
+        let mut i = 0;
+        while i < self.frames.len() {
+            if custom(&self.frames[i]) {
+                if let Some(ok) = self.screen_ok(i, self.local_side()) {
+                    return Some(ok);
+                }
+                while i < self.frames.len() && custom(&self.frames[i]) {
+                    i += 1;
+                }
+                continue;
+            }
+            i += 1;
+        }
+        None
     }
 
     /// The index of frame `number` in the round's frames.
