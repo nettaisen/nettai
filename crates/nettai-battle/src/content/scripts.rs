@@ -502,7 +502,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 r#"
         push = row(10, none),
         push_reading = { reads = "by_hitter_flip", bits = 4, drag_bit = 0x40, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
-        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002 },
+        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002, guard_before_untouchable = false },
         obstacle_slide_bounds = false,
         ice = { slide = row(6, none) },
         move_direction = "by_side",
@@ -515,7 +515,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             (
                 "status",
                 r#"
-        hp_bug_periods = row(8, 30),
+        hp_drain = { periods = row(8, 30), stops_while_paused = true },
+        custom_drain = { periods = "stat", status = 5 },
         form_tick = false,
         flash_hides_on_clear = true,
         missing_collision_status = 7,
@@ -609,7 +610,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 68, "every field of every section");
+        assert_eq!(fields, 69, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
