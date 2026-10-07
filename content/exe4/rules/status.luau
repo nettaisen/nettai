@@ -409,8 +409,10 @@ local status = {
         reactions = "flash_timer_first",
         -- Its reaction actions are plain (0x08010960, 0x080109FA, 0x08010ABC, 0x08010C16): none marks the action in
         -- use; the flinch and the paralysis keep the height, the paralysis snaps sliding or not and counts no
-        -- reaction; the drag takes the flinch's pose, counts none, and at its end clears itself alone, to idle.
+        -- reaction; the drag counts none.
         reaction_actions = "plain",
+        -- A drag takes the flinch's pose (0x08010ABC), and keeps it to its end, to idle (0x08010C16).
+        drag = { poses = { otherwise = 1 }, ending = "keeps_pose" },
         -- A hit's NaviCust bug is taken (0x0800D9E8) before the HP bug drains (0x0800C164); no no-charge drive.
         bugs_before_drain = true,
         no_charge_drive = false,
@@ -420,20 +422,31 @@ local status = {
         -- Every console hears a navi's hit as `hit` (0x6B), a navi in auto battle's (NaviStats +0x26 = 1) as
         -- `auto_battle_hit` (0x6D): its hit intake, 0x08013A8C.
         hit_sound = "by_navi",
-        -- EXE4's emotions (to read: exe4-map.md §7, §18): EXE5's until then.
+        -- EXE4's emotions (0x0800F49C, in its order: the first that holds is the side's): in a soul (NaviStats +0x24,
+        -- neither 0 nor 15) the soul's (its face the soul form's); angry (AIData +0x2E, anger's ticks); a mood of 0
+        -- (the dark MegaMan's: worn out); Full Synchro (0xFF); a mood under 65 worried; else normal. Its setter
+        -- (0x0800F4DE) leaves a mood of 0, and anger's end goes through it (0x0800C608).
         emotion = {
             mood_held = "at_zero",
             anger_end = "through_setter",
             order = {
-                { emotion = "full_synchro", when = { { battle_mode = 1, mood = 0xFF } } },
-                { emotion = "normal", when = { { battle_mode = 1 }, { in_form = true } } },
+                { emotion = "soul", when = { { in_form = true } } },
                 { emotion = "angry", when = { { angry = true } } },
                 { emotion = "worn_out", when = { { mood = 0 } } },
                 { emotion = "full_synchro", when = { { mood = 0xFF } } },
                 { emotion = "worried", when = { { mood_below = 65 } } },
                 { emotion = "normal" },
             },
-            roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
+            -- What the framework does by them: Full Synchro and anger double the next damaging chip (0x0800D54E), Full
+            -- Synchro with its aura besides (0x0800D9AE); worn out or in a soul, anger doesn't start (0x0800C56E: the
+            -- soul, 0x0800C57E: the emotion 5; the framework's `tired`). The buster knows no emotion.
+            roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "tired", soul = "tired" },
+            -- A hit's counter byte raises the hitter's mood and wears the receiver's, a counter hit's counting 0xFF
+            -- (Full Synchro) and wearing 0x7F (0x08012C10, 0x080131E4). A chip's use leaves Full Synchro at 0x99
+            -- (0x0800D568) and plays the boost's sound for it alone (anger's ends silent, 0x0800D57C).
+            hit_mood = "hitter_gains",
+            full_synchro_spent = 0x99,
+            anger_boost_sound = false,
         },
         -- (A soul's break by a weakness hit: EXE5's until the souls are read.)
         form_break = "any_form",
