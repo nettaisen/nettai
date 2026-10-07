@@ -61,9 +61,10 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | **All** | | | | **5** | **5** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
-dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
-the kind (b) entries one at a time. They are listed under [Done](#done) with their new names. X5 is new: what X4's
-rename left of EXE5's logic.
+dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 did
+the kind (b) entries one at a time, and step 3 the kind (c) ones (presentation: the renderer and tools draw views by
+role, the pack names the form list window's pictures for it), each frame for frame alike. They are listed under
+[Done](#done) with their new names. X5 is new: what X4's rename left of EXE5's logic. What is left is kind (d).
 
 ### Beast Out and Beast Over (EXE6)
 
