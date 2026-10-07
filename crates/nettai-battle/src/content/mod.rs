@@ -441,9 +441,15 @@ impl Content {
     /// every point of a field object is (0, 7), which the caller handles.
     pub fn attach_point(&self, h: Option<nettai_content_api::IdentityHandle>, index: usize) -> AttachPoint {
         let id = self.identity(h);
-        *id.attach_points.get(index).unwrap_or_else(|| {
+        self.try_attach_point(h, index).unwrap_or_else(|| {
             panic!("identity {:?} has no attach point {index} (sub_8018810 reads another actor's table)", id.key)
         })
+    }
+
+    /// [`Content::attach_point`], none where the identity states none
+    /// (presentation: what draws by one says so rather than stop).
+    pub fn try_attach_point(&self, h: Option<nettai_content_api::IdentityHandle>, index: usize) -> Option<AttachPoint> {
+        self.identity(h).attach_points.get(index).copied()
     }
 
     /// The identity with this key (tools and tests).
