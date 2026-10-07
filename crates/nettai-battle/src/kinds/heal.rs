@@ -58,6 +58,27 @@ fn spring_anti_recovery(b: &mut Battle, r: ObjectRef, amount: u16) {
     b.clear_linked(alliance ^ 1);
 }
 
+/// A chip's use springs the other side's armed AntiRecv (EXE6's
+/// `loc_80E1968`, Roll's chips' spawn; EXE4's Roll chips' spawner,
+/// 0x080E5554): the trap's mark over `user` (`sub_800ABC6`), the other
+/// side's record spent (`sub_802CEA6`), and AntiRecv's counterattack
+/// (`sub_80E37D2`) against `user` with the damage word `damage` (the
+/// caller's to work out), at the mark's height; `names_trap`: its telop
+/// names the record's chip (EXE6's `sub_80E37D2` with r7 0xBD, AntiRecv;
+/// EXE4's), else none (the caller's own telop then). None when the pool is
+/// full. (Its dimming is the caller's to register.)
+pub(crate) fn spring_anti_recovery_on(b: &mut Battle, user: ObjectRef, damage: u32, names_trap: bool) -> Option<ObjectRef> {
+    let side = b.objects.get(user).alliance;
+    let trap = b.linked[(side ^ 1) as usize & 1].chip;
+    let z = trap_mark(b, user);
+    b.clear_linked(side ^ 1);
+    let c = spawn_counterattack(b, user, damage, z)?;
+    if names_trap {
+        b.objects.get_mut(c).telop_chip = trap.map(|chip| crate::hud::TelopChip { chip: Some(chip), ..Default::default() });
+    }
+    Some(c)
+}
+
 /// `sub_80E37D2`: AntiRecv's counterattack (the role `kinds.anti_recovery`:
 /// EXE6's chips/antirecv/controller, the original's effect #0x2C) against
 /// `healer`, on its panel and side, dealing the damage word `damage`

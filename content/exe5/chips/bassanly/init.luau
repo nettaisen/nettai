@@ -3,6 +3,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "F" },
@@ -18,8 +19,11 @@ local chip: Chip = {
     extra_flags = { 8, 16 },
     slot_in_limit = 1,
     -- (Past the navi chips' block: AntiNavi lets it through, and it isn't kept as the last navi chip.)
-    traits = { "not_navi_slot" },
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "bassanly/controller",
+        summon = navi.summon,
+        navi_block = false,
+    },
     auto_battle = { class = "at_once" },
 }
 

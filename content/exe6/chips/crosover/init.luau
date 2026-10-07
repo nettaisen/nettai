@@ -4,6 +4,7 @@
 
 local django_chips = require("./django")
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -20,7 +21,10 @@ local chip: Chip = {
     program_advances = {
         { order = 11, sequence = { django_chips.django, django_chips.django2, django_chips.django3 } },
     },
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "crosover/controller",
+        summon = navi.summon,
+    },
 }
 
 return { crosover = chip }

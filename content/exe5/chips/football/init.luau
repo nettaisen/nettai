@@ -4,6 +4,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local football = require("@self/football")
+local navi_chips = require("../lib/navi_chips/chip")
 local recipe_gridman_ds = require("./gridman")["gridman-ds"]
 local recipe_gridman_sp = require("./gridman")["gridman-sp"]
 local recipe_mrkcan2 = require("./mrkcan").mrkcan2
@@ -27,7 +28,10 @@ local chip: Chip = {
         { order = 30, sequence = { recipe_mrkcan2, recipe_mrkcan2, recipe_gridman_sp } },
         { order = 31, sequence = { recipe_mrkcan2, recipe_mrkcan2, recipe_gridman_ds } },
     },
-    navi = football.summon,
+    navi = navi_chips.make {
+        id = "football/controller",
+        summon = football.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 

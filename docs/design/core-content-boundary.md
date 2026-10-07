@@ -60,7 +60,7 @@ crates/nettai-battle/src:
 | dimming.rs | ruleset service | The per-side dimming records, the telop, the cut-in, AntiNavi |
 | kinds/common.rs | core | Sprite-step wrappers and their gating, panel and coordinate conversion |
 | kinds/hitbox.rs, effect.rs, spark.rs, afterimage.rs, palette_flash.rs, form_overlay.rs, body_overlay.rs, ... | ruleset primitives | The engine's own object kinds (keyed `engine/...`): what content's calls spawn (`battle.hitbox`, `battle.effect`, `battle.spark`, `battle.afterimage`) and what the navi framework spawns itself |
-| kinds/obstacle.rs, navi_chip.rs, heal.rs | ruleset services | The obstacle framework, the navi-chip controller, recovery |
+| kinds/obstacle.rs, heal.rs | ruleset services | The obstacle framework, recovery (and AntiRecv's spring) |
 | kinds/player/ | ruleset | The navi framework: spawn and init, input, intake, status, reactions, idle, chip use, and the ruleset's own actions (the step, the three chip-use actions, the form change, the Cross change and special, the Beast rush, the reactive counters' start) |
 | content/ | the content's typed form | `Content`: the registries the definitions build (`defs`), the roles, the typed records the ruleset reads (chips, navis, forms, stages, rules) |
 | behavior/ | the boundary | `impl CoreApi for Battle` and the dispatch of kinds, actions and hooks to the runtime |
@@ -241,8 +241,9 @@ routine's order); the service owns the per-side records, the flag, the telop and
 dimming starts in the middle of the object loop, so later objects that don't run while dimmed are skipped for
 the rest of that tick. A cut-in prepares the cutting-in side's chip into a detached attack header, so the
 navi's own attack and action are untouched, and the two sides' controllers wait on each other. A navi chip's
-controller is the ruleset's (kinds/navi_chip.rs): it brings the chip's navi through the chip's `navi` hook and
-waits for `navi_chip.navi_left`.
+controller is content too, each chip's own (@exelib/navi_chips/controller: the course, AntiNavi, the name): the
+chip's `navi` spawns it, as a dimming chip's `dimming` does, through the engine's generic action that hands a chip off
+to its controller; it brings the chip's navi and waits for `navi_chip.navi_left`.
 
 ### 4.11 Content the ruleset knows
 

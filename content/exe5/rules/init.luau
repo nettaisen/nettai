@@ -79,6 +79,10 @@ local state: StateSchema = {
     chaos_counter = "u8",
     chaos_window = "u8",
     chaos_success = "bool",
+    -- The last navi chip used, of either side (0x0203C430, cleared as the battle starts): the navi chip controllers
+    -- keep a chip of the navi chips' block as its navi comes, in both sides' states (./api); DethPhnx brings its navi
+    -- again.
+    last_navi_chip = { chip = "chip", element = "u8", damage = "u32" } :: StateSchema,
 }
 
 local rules: Rules = {
