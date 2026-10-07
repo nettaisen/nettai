@@ -37,7 +37,7 @@ const WINDOW_TILE: u16 = 0x01;
 /// A chip picture's tiles (7x6).
 const PICTURE_TILES: u16 = 42;
 /// The forms' names in the form list's window (9x2 each, EXE6's Cross
-/// window's, `byte_8029DF8`, from the layout's `cross_names`).
+/// window's, `byte_8029DF8`, from the layout's `form_names`).
 pub(crate) const FORM_NAME_TILES: usize = 18;
 /// The form list window's maps: three opening steps, then the window with
 /// one to five forms (EXE6's Cross window's).
@@ -567,9 +567,9 @@ pub fn version_forms<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> &'c
 /// form's own version (a Gregar Cross shows Gregar's name in any player's
 /// window): its version's custom-screen pictures (the form's `version`) and
 /// its number among that version's forms as `navi`, whose form it is, lists
-/// them (`version_forms`). Its name is `cross_names`' 18 tiles from
+/// them (`version_forms`). Its name is `form_names`' 18 tiles from
 /// `18 * number` on the cursor's row (`18 * (number + 5)` on the others'),
-/// its colors `cross_palettes[number]` (`[number + 5]` once used). None: a
+/// its colors `form_name_palettes[number]` (`[number + 5]` once used). None: a
 /// form of no version, or one the navi doesn't list.
 pub fn form_name_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
     let version = c.form(form).version.as_deref()?;
@@ -729,7 +729,7 @@ impl Window {
         // Cross tab) or without; or the form list window's.
         let form_list = form_list_map(v);
         let (map, patches) = match form_list {
-            Some(i) => (a.cross_maps.get(i), &a.cross_patches),
+            Some(i) => (a.form_list_maps.get(i), &a.form_list_patches),
             // (A game without the tab has one map: EXE5.)
             None => (a.window_maps.get(v.screen.look.form_list_tab as usize).or(a.window_maps.first()), &a.window_patches),
         };
@@ -871,8 +871,8 @@ impl Window {
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };
             let name = number + if slot == w.cursor as usize { 0 } else { 5 };
-            let at = self.layout.cross_names + (FORM_NAME_TILES * slot) as u16;
-            self.tiles.put_part(at, &own.cross_names, FORM_NAME_TILES * name, FORM_NAME_TILES);
+            let at = self.layout.form_names + (FORM_NAME_TILES * slot) as u16;
+            self.tiles.put_part(at, &own.form_names, FORM_NAME_TILES * name, FORM_NAME_TILES);
             for i in 0..FORM_NAME_TILES {
                 let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
                 self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
@@ -881,7 +881,7 @@ impl Window {
         let c = w.cursor as usize;
         if let Some((own, number)) = picture(c) {
             let index = number + if w.marked[c] { 5 } else { 0 };
-            if let Some(p) = own.cross_palettes.get(index) {
+            if let Some(p) = own.form_name_palettes.get(index) {
                 self.palettes[10] = *p;
             }
         }
@@ -1356,14 +1356,14 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
     let corners = [(2, 3, false, false), (2, 0x43, true, false), (0xC, 0x43, true, true), (0xC, 3, false, true)];
     let edges = (0..7).map(|i| (2, 0xB + 8 * i, false, false)).chain((0..7).map(|i| (0xC, 0xB + 8 * i, false, true)));
     let pieces = corners.into_iter().map(|c| (c, 0)).chain(edges.map(|e| (e, 1)));
-    let palette = a.cross_cursor_palette;
+    let palette = a.form_list_cursor_palette;
     pieces
         .map(|((dy, dx, hflip, vflip), edge)| SpritePart {
             x: ((x + dx) & 0x1FF) as u16,
             y: (y + dy) as u8,
             width: 8,
             height: 8,
-            tiles: &a.cross_cursor,
+            tiles: &a.form_list_cursor,
             first_tile: 2 * (frame as usize & 1) + edge,
             hflip,
             vflip,
