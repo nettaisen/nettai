@@ -272,10 +272,8 @@ local rules: Rules = {
         navi_bug = function(side: number, navi: Object): ("edited" | "spared")?
             return light_dark.navi_bug(side, navi) or navicust_bugs.navi_bug(side, navi)
         end,
-        -- The HP bug's codes, its marker, and the hit bug as damage lands (./navicust/bugs).
-        hit_bug = navicust_bugs.hit_bug,
-        bug_mark = navicust_bugs.bug_mark,
-        navi_damaged = navicust_bugs.navi_damaged,
+        -- The NaviCust's hit bug, whenever a hit asks a flinch or a drag (./navicust/bugs).
+        navi_flinched = navicust_bugs.navi_flinched,
         navi_intake = light_dark.navi_intake,
         chip_cost = light_dark.chip_cost,
         chip_check = light_dark.chip_check,

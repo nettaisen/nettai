@@ -1,14 +1,14 @@
 --!strict
--- EXE5's bugs a hit inflicts (@exelib/navicust/bugs, EXE6's): 0x0801103E's NaviCust bugs (a code below 0x64 names a
--- NaviStats byte; EXE5's own stats' by their names), where a drain's argument goes by its flags, and its special
--- codes, which are EXE6's but 0xF5 and 0xF8 (no chip gives them: they write their bytes as any other code, not
--- ported); the codes 0xFD and 0xFC are its light and dark part's (../light_dark), before these. The HP bug's codes,
--- the paralyzing, blinding one, the HP bug's marker and the NaviCust's hit bug are EXE6's.
+-- EXE5's NaviCust bugs a hit inflicts (@exelib/navicust/bugs, EXE6's): 0x0801103E, after its light and dark part
+-- (../light_dark: the codes 0xFD and 0xFC, and hit flag 0x400): the drains by their argument's flags, its own codes
+-- (EXE6's but 0xF5 and 0xF8), and any other code's byte written at NaviStats + the code, past the side's block too
+-- (0x08011142); then the NaviCust's hit bug (0x0801156E), whenever a hit asks a flinch or a drag. EXE5's intake has
+-- none of EXE6's HP bug codes or its paralyzing, blinding one (its battle code tests none of 0xF4, 0xF6 and 0xF7).
 
 local bugs = require("@exelib/navicust/bugs")
 local statuses = require("../status")
 
-return bugs.hooks({
+local GAME: NaviCustBugTable = {
     -- The rules' `stats` by their bytes: the sun (+0x22), what the NaviCust does to the drops and the encounters
     -- (+0x26, +0x28), the soul's extra turns (+0x32, signed) and Hub Style (+0x4C).
     own = {
@@ -24,15 +24,22 @@ return bugs.hooks({
         [0xFE] = bugs.panel_trail(4, 4),
         [0xFA] = bugs.panel_trail(4, 2),
         [0xF9] = bugs.panel_trail(4, 1),
-        [0xF5] = { kind = "unported" },
         [0xFB] = { kind = "strip" },
-        [0xF8] = { kind = "unported" },
     },
-    -- (The hit bug's: status bytes 0x32 and 0x22.)
-    statuses = {
-        paralyze = statuses.paralyze_150,
-        blind = statuses.blind_1200,
-        hit_blind = statuses.blind_1200,
-        hit_confuse = statuses.confuse_960,
-    },
-})
+    block = 0x60,
+    past_block = "written",
+    -- (Status bytes 0x32 and 0x22.)
+    statuses = { hit_blind = statuses.blind_1200, hit_confuse = statuses.confuse_960 },
+}
+
+local navicust_bugs = {}
+
+-- The rules' `navi_bug` (../light_dark's part first: ../init.luau).
+navicust_bugs.navi_bug = bugs.navi_bug(GAME)
+
+-- The rules' `navi_flinched`: the hit bug, with no gate of its own (0x0801156E).
+function navicust_bugs.navi_flinched(side: number, navi: Object)
+    bugs.hit_status_bug(GAME, side, navi)
+end
+
+return navicust_bugs

@@ -1,8 +1,10 @@
 //! EXE5's NaviCust bugs a hit inflicts (0x0801103E: content/exe5/rules/
 //! navicust/bugs with @exelib/navicust/bugs, docs/design/exe5-map.md): a
 //! drain's argument goes by its flags, a code names EXE5's own stats by
-//! their bytes, and the codes EXE5 writes as any other code's byte past
-//! the block (0xF5, 0xF8) are refused.
+//! their bytes, and any other code's byte is written past the side's
+//! block too (0x08011142: NaviStats, 0x60 a side, at 0x0203C880): side
+//! 0's codes 0x60 to 0xBF are side 1's bytes, and the rest (0xF5 and 0xF8
+//! among them, which EXE5 has no bug of its own for) RAM no stat holds.
 
 use nettai_battle::Battle;
 use nettai_battle::kinds::player::take_navi_bug;
@@ -25,15 +27,20 @@ fn battle() -> Battle {
     panic!("side 0's navi has no collision data after 600 ticks");
 }
 
-/// Side 0's stats after its navi takes `code` with `arg`, or none where
-/// the rules refused it.
-fn bugged(b: &Battle, code: u8, arg: u8) -> Option<NaviStats> {
+/// Both sides' stats after side `side`'s navi takes `code` with `arg`, or
+/// none where the rules refused it.
+fn bugged_by(b: &Battle, side: u8, code: u8, arg: u8) -> Option<[NaviStats; 2]> {
     let mut b = b.clone();
     catch_unwind(AssertUnwindSafe(move || {
-        take_navi_bug(&mut b, 0, u16::from_le_bytes([code, arg]));
-        b.stats[0]
+        take_navi_bug(&mut b, side, u16::from_le_bytes([code, arg]));
+        b.stats
     }))
     .ok()
+}
+
+/// Side 0's stats after its navi takes `code` with `arg`.
+fn bugged(b: &Battle, code: u8, arg: u8) -> Option<NaviStats> {
+    bugged_by(b, 0, code, arg).map(|s| s[0])
 }
 
 #[test]
@@ -63,8 +70,18 @@ fn codes_name_exe5s_own_stats() {
     assert_eq!(stat(&s, "soul_turn_bonus"), Some(FieldValue::I8(-2)));
     let s = bugged(&b, 0x4C, 1).unwrap();
     assert_eq!(stat(&s, "hub_style"), Some(FieldValue::U8(1)));
-    std::panic::set_hook(Box::new(|_| {}));
-    let (f5, f8) = (bugged(&b, 0xF5, 0), bugged(&b, 0xF8, 0));
-    let _ = std::panic::take_hook();
-    assert_eq!((f5, f8), (None, None), "0xF5 and 0xF8 aren't EXE5's own bugs: not ported");
+}
+
+#[test]
+fn codes_past_the_block_are_written_past_it() {
+    let b = battle();
+    // Side 0's code 0x62 is side 1's byte 2, its Rapid.
+    let s = bugged_by(&b, 0, 0x62, 0x2A).unwrap();
+    assert_eq!((s[0], s[1].rapid), (b.stats[0], 0x2A));
+    assert_eq!(s[1], nettai_battle::setup::NaviStats { rapid: 0x2A, ..b.stats[1] });
+    // Side 1's, and side 0's from 0xC0 (0xF5 and 0xF8 among them), are RAM
+    // past both blocks: no stat changes.
+    for (side, code) in [(1, 0x62), (0, 0xC0), (0, 0xF5), (0, 0xF8), (1, 0xF8)] {
+        assert_eq!(bugged_by(&b, side, code, 7), Some(b.stats), "side {side}, code {code:#x}");
+    }
 }

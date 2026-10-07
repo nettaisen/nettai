@@ -236,16 +236,20 @@ Each with what it was and what it is now.
   "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.
   `LastStand`, `last_stand` and `hold_last_stand` are gone; the HP loss is `lose_hp_and_gauge` and
   `apply_damage_shown_by_hp` (X2's names before). A Luau call per navi whose HP reaches 0, only in EXE5.
-- **N2.** The bugs a hit inflicts are each game's rules' (@exelib/navicust/bugs, which a game's
-  rules/navicust/bugs hands its part): `navi_bug` takes the NaviCust code table (a code below 0x64 names a stat byte,
-  written by the stat's name, the game's own by its `stats`' names; the drains add, by EXE5's flags or EXE6's sum;
-  the codes from 0xF5, the game's own bugs), and answers "edited" or "spared"; `hit_bug` the HP bug's codes and the
-  paralyzing, blinding one, for any navi; `bug_mark` the HP bug's marker; `navi_damaged` the hit bug as damage lands.
-  The engine asks them only on a tick a hit landed or brought a code. `set_byte_by_bug_code`, `drain_bug_flags`, the
+- **N2.** The bugs a hit inflicts are each game's rules' (@exelib/navicust/bugs, which a game's rules/navicust/bugs
+  hands its part): `navi_bug` takes the NaviCust code table (a code names a stat byte, written by the stat's name, the
+  game's own by its `stats`' names; the drains add, by EXE5's flags or EXE6's sum; the game's own codes), and answers
+  "edited" or "spared"; EXE6's codes stop at its block (0x64), EXE5's write past it as its routine does (0x08011142:
+  side 0's codes 0x60 to 0xBF are side 1's bytes, the rest RAM no stat holds). `navi_flinched` takes the hit bug where
+  a hit asks a flinch or a drag, behind EXE6's gate (a hit, damage, once a hit sequence: its latch, AIData+0x1C, is
+  its rules state's) and EXE5's none. EXE6's alone: `hit_bug` (the HP bug's codes and the paralyzing, blinding one,
+  for any navi) and `bug_mark` (the HP bug's marker); EXE5's battle code has neither. The engine asks them only on a
+  tick a hit landed or brought a code, or asked a flinch. `set_byte_by_bug_code`, `drain_bug_flags`, the latch, the
   hit bug's status roles, the uninstall's spark role and the identity's `bug_blind_immune` (which the rules read)
-  leave Rust; the API gains `strip_body_programs`, `refresh_form_flags`, `take_status`, the collision's
-  `status_final` and the stats a byte names (`base_form`, `auto_step`, `starting_damage`, the folders', the A
-  weapons). exe6-compat's tests/bug_codes.rs checks EXE6's table byte for byte against the codec.
+  leave Rust; the API gains `strip_body_programs`, `refresh_form_flags`, `take_status`, the collision's `status_final`
+  and the stats a byte names (`base_form`, `auto_step`, `starting_damage`, the folders', the A weapons). exe6-compat's
+  tests/bug_codes.rs checks EXE6's table byte for byte against the codec; exe5-compat's checks EXE5's drains, own
+  stats and writes past the block.
 - **N4.** NumbrOpn left the framework's hand size (EXE6's rules/cross deals its ten, with ChargeCross's chips; the
   framework's is the custom level and the hand-shrink bug), and ChpShufl's and NumbrOpn's flags are EXE6's own stats
   (V1's way: `chip_shuffle`, `number_open`).

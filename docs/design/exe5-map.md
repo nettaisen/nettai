@@ -1391,7 +1391,12 @@ EXE6's `sub_801AC6C` drains first, and a drain bug's argument goes by its flags 
 subtracts them, else the level rises to them): the status section's `bugs_before_drain` and rules/navicust/bugs's
 `drain_by_flags` (MoonBld's bug 0x18 drains a tick sooner; BugBomb's codes are its own, argument 0x12). The rest of
 0x0801103E is EXE6's `sub_80139F6` but for codes 0xFD and 0xFC (a drain of 1 on conditions: the light and dark part's,
-below) and 0xF8 and 0xF5, which set their bytes as any other code: no chip here gives them, not ported.
+below), no own bugs for 0xF8 and 0xF5, and no bound: its other codes (0x08011142) write the argument at NaviStats + the
+code (0x08010DD6: 0x0203C880 + 0x60 a side), past the side's 0x60 bytes too, where EXE6's stop at 0x64
+(rules/navicust/bugs's `past_block`: side 0's codes 0x60 to 0xBF are side 1's bytes; the rest RAM from 0x0203C940, which
+no hit of the content brings a code for). Its intake has no step for EXE6's codes 0xF4, 0xF6 and 0xF7 (`sub_801A6B4`,
+`sub_801A720`: its battle code tests none of them), and its NaviCust hit bug (0x0801156E) takes whenever a hit asks a
+flinch or a drag, without EXE6's damage test and latch (`sub_8013F1E`).
 
 Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's and MoonBld's charged step;
 Slasher's request 0x80000 (`actions.stun_strike`, EXE5's action 0x49: DarkInvs's drive's end, which only that drive's
