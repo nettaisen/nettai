@@ -957,6 +957,21 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   stepping on) through the form's `put_on`, so FireSoul's and NumberSoul's (item 74) come with their overlays. The
   lab's chips/0x085-invis and chips/0x086-popup (hit, miss, adjacent, side1) replay every frame; the hit recordings'
   fight frames, the glow and the hole among them, are pixel-exact.
+- **BugFix** (the dimming chips' variant 0x1D, `chips/bugfix`, group B): EXE5's and EXE6's controller (effect #0x3B,
+  0x080E6388: @exelib/bugfix/controller, each game stating its glow and its fix) with EXE4's glow (objects/glow, its
+  first row: BugFix's flashes, 0x080CD058, the three games' alike but for the sound, 0x15C; then 30 ticks,
+  0x080CD0A6) and EXE4's own fix (0x080E641E, rules/navicust's `fix_bugs`): the move bug (+0x0D), the buster's
+  blanks (+0x08), the HP and custom drains (+0x0E, +0x0F) and the panel trail (+0x1B = 0xFF, a patch card's too) go,
+  and the charged shot is the battle's first again (+0x0A from the battle's start copy of the stats, 0x0203BCC0 +
+  0x40 a side, 0x0800D81E; written with the battle's at its init, 0x080087A8: a NaviCust weapon bug stays, a raised
+  one or DrkCanon's taunt goes: the rules' state `start_charge_shot`, kept as the round's stats are made); the bugs'
+  counts stay. No Beast Out and no emotion window glitch to clear (EXE4's window has no bug flicker). The lab's
+  chips/0x0ce-bugfix (hit, miss, adjacent, side1; bugs: the buster's, HP, move and panel trail's; weapon-bug:
+  BugBomb's raised weapon bug, the rock cube, then BugFix and a plain charged shot) replay every frame with the same
+  sounds; the fight frames, the glow among them, are pixel-exact but for the custom screens' known shift and, in
+  bugs, frame 868: a cracked panel broken by a step off it shows its break a frame early, as in panels/cracked-step-off
+  (frame 384), which the panels' drawing has. (The custom drain's fix has no replay: that bug meets the replay's known
+  deviation at the first custom screen.)
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
