@@ -64,6 +64,7 @@ return merge {
     require("@self/invalid"),
     require("@self/invis"),
     require("@self/junkman"),
+    require("@self/kendoman"),
     require("@self/lance"),
     require("@self/lifesrd"),
     require("@self/ligtnin"),
