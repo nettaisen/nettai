@@ -209,6 +209,9 @@ language = "en"
 "discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
 "timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
 "silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
+"gutsman" = { name = "GutsMan", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-sp" = { name = "GutsMnSP", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-ds" = { name = "GutsMnDS", description = "GutsHammr\ndestroys\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
