@@ -257,6 +257,9 @@ named_fields! {
         AttackLockout = "attack_lockout", U8, rw;
         /// The Atk+ / cross bonus.
         Extra = "extra", U16, rw;
+        /// The attack parameters' fourth byte (+0x0F): a dimming chip's
+        /// telop hidden from its user too.
+        TelopHidden = "telop_hidden", Bool, rw;
         SpecialSource = "special_source", U8, rw;
         /// Which `set_attack` kind started the action (0..5).
         AttackKind = "attack_kind", U8, ro;
@@ -1225,6 +1228,9 @@ pub trait CoreApi {
     /// sixth slot), and to its raw damage too where `raw` (what barriers
     /// and traps see).
     fn add_damage(&mut self, o: ObjectRef, element: u8, amount: u16, raw: bool);
+    /// Add `amount` to `o`'s raw damage alone this window in `element`
+    /// (what barriers and traps see; none to its damage).
+    fn add_raw_damage(&mut self, o: ObjectRef, element: u8, amount: u16);
     /// Add to `o`'s mood damage this window.
     fn add_mood_damage(&mut self, o: ObjectRef, amount: u16);
     /// Set hit modifier bits on `o` this window, both sides' too.

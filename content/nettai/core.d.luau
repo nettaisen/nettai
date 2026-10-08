@@ -344,6 +344,9 @@ declare extern type Collision with
     -- Add to the damage taken this window in an element (0 to 4, 5 the
     -- sixth slot), and to the raw damage barriers and traps see where `raw`.
     function add_damage(self, element: number, amount: number, raw: boolean): ()
+    -- Add to the raw damage alone (what barriers and traps see) this window
+    -- in an element.
+    function add_raw_damage(self, element: number, amount: number): ()
     -- Add to the mood damage taken this window.
     function add_mood_damage(self, amount: number): ()
     -- Set hit modifier bits this window, both sides' too.
@@ -451,6 +454,10 @@ declare extern type Object with
     -- The Atk+ / cross bonus.
     extra: number
     special_source: number
+    -- The attack parameters' fourth byte (+0x0F): the telop of the dimming
+    -- chip it uses hidden from its user too (`sub_800BBA8`). Loading a chip
+    -- clears it.
+    telop_hidden: boolean
     -- Which set_attack kind started it (read-only).
     attack_kind: number
     -- 1 while the action runs inside the side's wrapper (the role
@@ -2525,6 +2532,8 @@ export type FormDef = {
     -- the base HP.
     charge_doubles: ChipMatch?,
     chip_heals: ChipMatch?,
+    -- The families whose damaging chips, not dimming chips, paralyze when used uncharged.
+    paralyzing_chips: { ChipFamily }?,
     -- Its A charge builds up the next Fire chip's damage, up to this much.
     fire_charge: number?,
     -- What its status reset gives the navi, and what a NaviCust change

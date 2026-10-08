@@ -382,6 +382,14 @@ impl CoreApi for Battle {
         }
     }
 
+    fn add_raw_damage(&mut self, o: ObjectRef, element: u8, amount: u16) {
+        let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_raw_damage: {o:?} has no collision data"));
+        let acc = &mut self.collision.get_mut(c).acc;
+        let e = element as usize;
+        assert!(e < acc.raw_element_damage.len(), "add_raw_damage: element {element}");
+        acc.raw_element_damage[e] = acc.raw_element_damage[e].wrapping_add(amount);
+    }
+
     fn add_mood_damage(&mut self, o: ObjectRef, amount: u16) {
         let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_mood_damage: {o:?} has no collision data"));
         let acc = &mut self.collision.get_mut(c).acc;
@@ -2009,6 +2017,7 @@ impl CoreApi for Battle {
             ActorField::Charged => i(at.charged as i64),
             ActorField::AttackLockout => i(at.lockout as i64),
             ActorField::Extra => i(at.extra as i64),
+            ActorField::TelopHidden => Value::Bool(at.telop_hidden),
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
             ActorField::Wrapped => i(at.wrapped as i64),
@@ -2103,6 +2112,7 @@ impl CoreApi for Battle {
             (ActorField::Charged, FieldValue::U8(x)) => at.charged = x,
             (ActorField::AttackLockout, FieldValue::U8(x)) => at.lockout = x,
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
+            (ActorField::TelopHidden, FieldValue::Bool(x)) => at.telop_hidden = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
             (ActorField::Wrapped, FieldValue::U8(x)) => at.wrapped = x,
             (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
