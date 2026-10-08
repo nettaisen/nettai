@@ -280,7 +280,8 @@ pub struct Extension {
 }
 
 /// An extension field's type: a state field's (`"u8"`, `"chip"`, a list of
-/// variants), or a table of such fields.
+/// variants, a list holding a list of variants: a list of those names), or a
+/// table of such fields.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtensionType {
     Value(nettai_content_api::FieldType),
@@ -297,6 +298,13 @@ impl ExtensionType {
                 .filter(|ty| unknown_collection(ty, collections).is_none())
                 .map(ExtensionType::Value)
                 .ok_or_else(|| format!("{at}: no type is named {name:?}")),
+            // A list holding a list of variants: a list of those names.
+            Data::List(items) if items.len() == 1 && matches!(&items[0], Data::List(_)) => {
+                let ExtensionType::Value(elem) = ExtensionType::read(&items[0], at, collections)? else {
+                    unreachable!("a list of variants reads as a value's type")
+                };
+                Ok(ExtensionType::Value(FieldType::Array(Box::new(elem), nettai_content_api::MAX_ARRAY as u8)))
+            }
             Data::List(variants) if !variants.is_empty() => {
                 let names = variants
                     .iter()
@@ -310,7 +318,7 @@ impl ExtensionType {
                     .map(|(k, v)| Ok((k.to_string(), ExtensionType::read(v, &format!("{at}.{k}"), collections)?)))
                     .collect::<Result<_, String>>()?,
             )),
-            _ => Err(format!("{at}: a type name, a list of variants or a table of fields")),
+            _ => Err(format!("{at}: a type name, a list of variants, a list holding one, or a table of fields")),
         }
     }
 
