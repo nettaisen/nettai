@@ -88,6 +88,8 @@
 "longswrd/action" = 0x0A
 "wideblde/action" = 0x0A
 "longblde/action" = 0x0A
+"custswrd/action" = 0x0A
+"muramasa/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
 "hicannon/action" = 0x0B

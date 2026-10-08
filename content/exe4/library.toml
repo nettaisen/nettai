@@ -208,6 +208,7 @@ standard = [
     "longswrd",
     "wideblde",
     "longblde",
+    "custswrd",
     "airhoc1",
     "airhoc2",
     "airhoc3",
@@ -260,6 +261,7 @@ standard = [
 mega = [
     "fullcust",
     "atk-30",
+    "muramasa",
     "elemdark",
     "roll",
     "roll-sp",
