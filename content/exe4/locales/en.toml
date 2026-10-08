@@ -210,6 +210,7 @@ language = "en"
 "timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
 "silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
 "copydmg" = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
+"windrack" = { name = "WindRack", description = "Blow enmy\nin front!\nRange: 3" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
