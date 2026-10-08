@@ -128,6 +128,7 @@ search-scope = "10-22"  # SearchMan's scope: effect #0x43's init (0x080E6B66)
 seek-bomb = "10-24"  # the SeekBoms' bomb: attack 0x8D's init (0x080DED8C)
 heart = "10-26"
 twin-fang = "10-27"  # the TwnFngs' fang: attack 0x51's init (0x080D79E6)
+windman-swirl = "10-28"  # the swirl WindMan's soul image holds: attachment row 0x34 (0x080CD524), 0x080E36AC's for WindMan (0x080E3682)
 prop-bomb = "10-2b"  # the PropBoms' bomb: attack 0x8C's init (0x080DEBA0)
 boulder = "10-31"  # the stages' boulder: attack object #0x6E's init (0x080DB114), the actor lists' entry type 3
 flag = "10-32"  # the flag stages' flag: attack object #0x9C's init (0x080E06D4), the actor lists' entry type 7

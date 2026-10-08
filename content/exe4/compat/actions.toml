@@ -183,6 +183,8 @@
 # 0x10, 0x080EBDC0), which request 0x20 starts.
 "gutssoul/charged-shot/action" = 0x12
 "gutssoul/machine-gun" = 0x10
+# WindSoul's AirShot on B (weapon routine 0x6B's action 0x23, AirShot's, its variant 1's recovery).
+"windsoul/buster/action" = 0x23
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
