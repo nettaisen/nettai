@@ -25,7 +25,9 @@ local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8318, 0x1E
 -- frames show it), then its cannon where the navi stands. (Then, in a soul, the soul's part by 0x08018068: the
 -- souls' to wire, docs/design/exe4-map.md §18 item 70.)
 local function afterimages(me: Object, spec: CannonSpec, flip: number)
+    -- (Of the navi's sprite in its form, 0x0800B90A.)
     battle.afterimage(me, me.pos, {
+        sprite = battle.navi(me.alliance).form.sprite,
         anim = 9,
         flip = flip,
         lifetime = AFTERIMAGE_TICKS,

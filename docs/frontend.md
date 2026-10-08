@@ -961,13 +961,13 @@ console's RNG1 is the engine's: the dark chip offer, exe5-map.md §15.3
 item 13), the custom screen with its picks, Soul Unison's choice and a
 dark chip's hover, its close (the hand's name and icons on the tick the
 results are in), the chatbox, the banners, the mercy flash and a
-deletion's result. What still differs:
-
-- the UNITE button for a soul not offered yet (HeatSoul for AntiFire, a
-  pick in custom/picks) is gray where EXE5's is lit;
-- a soul's buster shot's flame is whiter for a few frames (Soul and Chaos
-  Unison, the auto-battling navi's Chaos);
-- an explosion's colors in two frames of AntiFire's.
+deletion's result. The three differences it found then (the UNITE button
+for a soul not offered yet, gray where EXE5's is lit; a soul's buster
+shot's flame, whiter for a few frames; an explosion's colors in two frames
+of AntiFire's) are gone: the drawing sweep (verification's
+tools/frontend-compare/exe5-sweep.tsv) finds custom/picks, every soul's
+Soul and Chaos Unison, chaos-ai/cannon and chips/0x08c-antifire/sprung
+pixel-exact.
 
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
