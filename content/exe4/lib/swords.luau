@@ -30,6 +30,10 @@ local GAME: SlashGame = {
     blade_anim = function(_me: Object): number
         return NAVI_NUMBER
     end,
+    -- 0x080EB590, 0x080EB676: the afterimages of the navi, of its sprite in its form (0x0800B90A).
+    navi_afterimage = function(me: Object): SpriteAsset
+        return battle.navi(me.alliance).form.sprite
+    end,
     hold = function(me: Object, blade: AttachmentLook, anim: number)
         attachment.attach(me, blade, "related", anim)
     end,
