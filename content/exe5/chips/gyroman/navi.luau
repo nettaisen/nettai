@@ -9,9 +9,10 @@
 -- flies off the field.
 --
 -- GyroMan the navi's own chip, Airforce (navis/gyroman/chip), flies the same object in his place (its fourth
--- parameter 1, by another spawner, 0x080BAE8A): it starts at the take-off, with no bombing run; it stands still
--- while the battle is dimmed; its bombs are the variant that waits while dimmed too; its propeller's sprite doesn't
--- step while paused; and it reports to no controller: the navi watches for it to go.
+-- parameter 1, by another spawner, 0x080BAE8A), its own kind of this maker (`gyroman.make`, compat's same number): it
+-- starts at the take-off, with no bombing run; it stands still while the battle is dimmed; its bombs are the variant
+-- that waits while dimmed too; its propeller's sprite doesn't step while paused; and it reports to no controller: the
+-- navi watches for it to go.
 
 local navi_chips = require("@exelib/navi_chips/navi")
 local bomb = require("./bomb")
@@ -26,9 +27,13 @@ export type State = {
     run: boolean,
     -- The bombs left to drop on his run (+6).
     bombs: number,
-    -- Its fourth parameter (+7): GyroMan the navi's own flight (Airforce).
-    airforce: boolean,
 }
+
+-- How a GyroMan flies, his user's (the original's fourth parameter, +7: the chips' 0, Airforce's 1): his kind's key;
+-- he appears and stands first, or starts at the take-off; L and R held as he takes off send him on a bombing run; he
+-- acts while the battle is dimmed (his bombs too, the variant 1, and his propeller steps even while paused), or
+-- stands still then (his bombs the variant 2).
+export type Flight = { id: string, appears: boolean, runs: boolean, while_dimmed: boolean }
 
 local gyroman = {}
 
@@ -56,267 +61,272 @@ local ENEMY_AREA = { [0] = 0x20, 0 }
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- His speed (16.16 a tick, forward), and the ticks between bombs on his run.
 local SPEED, BETWEEN = 0x3_0000, 0xF
--- His bombs' variant (his +7 and 1): the chips' 1, which runs while dimmed, Airforce's 2, which doesn't.
-
-local function damage_word(me: Object): number
-    return bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-end
-
--- A bomb on his panel (a sound).
-local function drop(me: Object)
-    battle.play_sound(SOUND_DROP)
-    bomb.drop(me, me.panel_x, me.panel_y, me.element, not (me.state :: State).airforce, damage_word(me))
-end
-
--- The flight: forward one tick; whether he passed his panel's center (from off it) this tick.
-local function fly(me: Object): boolean
-    local cx = field.center(me.panel_x, me.panel_y)
-    local p = me.pos
-    local x = int.i32(p.x + me.vel.x)
-    me.pos = Vec3.new(x, p.y, p.z)
-    return cx ~= p.x and navi_chips.between(x, p.x, cx)
-end
-
--- At the field's edge column.
-local function at_edge(me: Object): boolean
-    return me.panel_x == 0 or me.panel_x == 7
-end
-
--- 0x080BAEF4: as he takes off, L and R held (by his user, +0x4C) start his bombing run, with a sound. (Not
--- Airforce's flight.)
-local function check_run(me: Object)
-    local s = me.state :: State
-    if s.airforce or s.run then
-        return
+-- A GyroMan of `flight`.
+function gyroman.make(flight: Flight): Kind
+    local function damage_word(me: Object): number
+        return bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
     end
-    local user = me.related1 :: Object
-    if user:held("l") and user:held("r") then
-        s.run = true
-        battle.play_sound(SOUND_RUN)
-    end
-end
 
--- 0x080BAEB2: the enemy panels of row `y` (columns 1 to 6).
-local function enemy_panels(me: Object, y: number): number
-    local set, clear = ENEMY_AREA[me.alliance], bit32.bxor(ENEMY_AREA[me.alliance], 0x20)
-    local n = 0
-    for x = 1, 6 do
-        if field.check(x, y, set, clear) then
-            n += 1
-        end
+    -- A bomb on his panel (a sound).
+    local function drop(me: Object)
+        battle.play_sound(SOUND_DROP)
+        bomb.drop(me, me.panel_x, me.panel_y, me.element, flight.while_dimmed, damage_word(me))
     end
-    return n
-end
 
--- Action 0 (0x080BAB50): he appears (animation 3, a sound); 4 ticks.
-local function appear(me: Object)
-    if me.phase_init == 0 then
-        me.anim = 3
-        battle.play_sound(SOUND_APPEAR)
-        me.visible = true
-    end
-    if navi_chips.wait_on_init(me, 4, true) then
-        me:set_action(4)
-    end
-end
-
--- Action 4 (0x080BAB86): 40 ticks standing.
-local function stand(me: Object)
-    if me.phase_init == 0 then
-        me.anim = 0
-    end
-    if navi_chips.wait_on_init(me, 0x28, true) then
-        me:set_action(8)
-    end
-end
-
--- Action 8 (0x080BABAE): he rises (animation 4), 30 ticks (a halfword store), vanishing 4 in.
-local function rise(me: Object)
-    if me.phase_init == 0 then
-        me.anim = 4
-    end
-    local left = navi_chips.countdown_on_init(me, 0x1E)
-    if left == nil then
-        return
-    end
-    if left == 0x1A then
-        me.visible = false
-    elseif left <= 0 then
-        me:set_action(0xC)
-    end
-end
-
--- Action 0xC (0x080BABE6): at his side's back column (animation 20), 4 pixels further back and a pixel up, shown,
--- his speed set; 16 ticks, watching for L and R; then (a sound) off he flies: on his run if they were held.
-local function take_off(me: Object)
-    local s = me.state :: State
-    if me.phase_init == 0 then
-        me.phase_init = 4
-        me.anim = 0x14
-        me.panel_x = if bit32.bxor(me.alliance, me.flip) ~= 0 then 6 else 1
-        me:set_coordinates_from_panel()
+    -- The flight: forward one tick; whether he passed his panel's center (from off it) this tick.
+    local function fly(me: Object): boolean
+        local cx = field.center(me.panel_x, me.panel_y)
         local p = me.pos
-        me.pos = Vec3.new(int.i32(p.x - me.facing * 0x4_0000), int.i32(p.y + 0x1_0000), int.i32(p.z - 0x1_0000))
-        me.visible = true
-        me.vel = Vec3.new(me.facing * SPEED, me.vel.y, me.vel.z)
-        me.timer, me.timer2 = 0xF, 0
+        local x = int.i32(p.x + me.vel.x)
+        me.pos = Vec3.new(x, p.y, p.z)
+        return cx ~= p.x and navi_chips.between(x, p.x, cx)
     end
-    check_run(me)
-    local left = me.timer - 1
-    me.timer = int.u16(left)
-    if left >= 0 then
-        return
-    end
-    battle.play_sound(SOUND_TAKEOFF)
-    me:set_action(if s.run and not s.airforce then 0x14 else 0x10)
-end
 
--- Action 0x10 (0x080BAC7A): he flies, dropping a bomb on each enemy panel whose center he passes, to the edge.
-local function bomb_row(me: Object)
-    if fly(me) then
-        if at_edge(me) then
-            me:set_action(0x18)
+    -- At the field's edge column.
+    local function at_edge(me: Object): boolean
+        return me.panel_x == 0 or me.panel_x == 7
+    end
+
+    -- 0x080BAEF4: as he takes off, L and R held (by his user, +0x4C) start his bombing run, with a sound. (Not
+    -- Airforce's flight.)
+    local function check_run(me: Object)
+        local s = me.state :: State
+        if not flight.runs or s.run then
             return
         end
-        if bit32.band(field.flags(me.panel_x, me.panel_y), 0x20) == ENEMY_AREA[me.alliance] then
-            drop(me)
+        local user = me.related1 :: Object
+        if user:held("l") and user:held("r") then
+            s.run = true
+            battle.play_sound(SOUND_RUN)
         end
     end
-    me:set_panel_from_coordinates()
-end
 
--- Run phase 0 (0x080BAD14): he flies on to the first panel holding an enemy navi, and stops over it; or to the edge.
-local function seek(me: Object)
-    if fly(me) then
-        if at_edge(me) then
-            me:set_action(0x18)
-            return
+    -- 0x080BAEB2: the enemy panels of row `y` (columns 1 to 6).
+    local function enemy_panels(me: Object, y: number): number
+        local set, clear = ENEMY_AREA[me.alliance], bit32.bxor(ENEMY_AREA[me.alliance], 0x20)
+        local n = 0
+        for x = 1, 6 do
+            if field.check(x, y, set, clear) then
+                n += 1
+            end
         end
-        if bit32.band(field.flags(me.panel_x, me.panel_y), ENEMY_NAVI[me.alliance]) ~= 0 then
-            me.phase, me.phase_init = 4, 0
-            return
+        return n
+    end
+
+    -- Action 0 (0x080BAB50): he appears (animation 3, a sound); 4 ticks.
+    local function appear(me: Object)
+        if me.phase_init == 0 then
+            me.anim = 3
+            battle.play_sound(SOUND_APPEAR)
+            me.visible = true
+        end
+        if navi_chips.wait_on_init(me, 4, true) then
+            me:set_action(4)
         end
     end
-    me:set_panel_from_coordinates()
-end
 
--- Run phase 4 (0x080BAD7C): a bomb at once and every 16 ticks, one for each enemy panel in his row.
-local function bombard(me: Object)
-    local s = me.state :: State
-    if me.phase_init == 0 then
-        me.phase_init = 4
-        s.bombs = enemy_panels(me, me.panel_y)
-        if s.bombs == 0 then
-            me.phase, me.phase_init = 8, 0
+    -- Action 4 (0x080BAB86): 40 ticks standing.
+    local function stand(me: Object)
+        if me.phase_init == 0 then
+            me.anim = 0
+        end
+        if navi_chips.wait_on_init(me, 0x28, true) then
+            me:set_action(8)
+        end
+    end
+
+    -- Action 8 (0x080BABAE): he rises (animation 4), 30 ticks (a halfword store), vanishing 4 in.
+    local function rise(me: Object)
+        if me.phase_init == 0 then
+            me.anim = 4
+        end
+        local left = navi_chips.countdown_on_init(me, 0x1E)
+        if left == nil then
             return
         end
-    else
+        if left == 0x1A then
+            me.visible = false
+        elseif left <= 0 then
+            me:set_action(0xC)
+        end
+    end
+
+    -- Action 0xC (0x080BABE6): at his side's back column (animation 20), 4 pixels further back and a pixel up, shown,
+    -- his speed set; 16 ticks, watching for L and R; then (a sound) off he flies: on his run if they were held.
+    local function take_off(me: Object)
+        local s = me.state :: State
+        if me.phase_init == 0 then
+            me.phase_init = 4
+            me.anim = 0x14
+            me.panel_x = if bit32.bxor(me.alliance, me.flip) ~= 0 then 6 else 1
+            me:set_coordinates_from_panel()
+            local p = me.pos
+            me.pos = Vec3.new(int.i32(p.x - me.facing * 0x4_0000), int.i32(p.y + 0x1_0000), int.i32(p.z - 0x1_0000))
+            me.visible = true
+            me.vel = Vec3.new(me.facing * SPEED, me.vel.y, me.vel.z)
+            me.timer, me.timer2 = 0xF, 0
+        end
+        check_run(me)
         local left = me.timer - 1
         me.timer = int.u16(left)
         if left >= 0 then
             return
         end
+        battle.play_sound(SOUND_TAKEOFF)
+        me:set_action(if s.run then 0x14 else 0x10)
     end
-    drop(me)
-    me.timer, me.timer2 = BETWEEN, 0
-    local left = s.bombs - 1
-    s.bombs = int.u8(left)
-    if left <= 0 then
-        me.phase, me.phase_init = 8, 0
-    end
-end
 
--- Run phase 8 (0x080BADD4): his timer runs out (16 ticks after his last bomb); then he flies off to the edge.
-local function fly_off(me: Object)
-    if me.phase_init == 0 then
-        local left = me.timer - 1
-        me.timer = int.u16(left)
-        if left >= 0 then
-            return
+    -- Action 0x10 (0x080BAC7A): he flies, dropping a bomb on each enemy panel whose center he passes, to the edge.
+    local function bomb_row(me: Object)
+        if fly(me) then
+            if at_edge(me) then
+                me:set_action(0x18)
+                return
+            end
+            if bit32.band(field.flags(me.panel_x, me.panel_y), 0x20) == ENEMY_AREA[me.alliance] then
+                drop(me)
+            end
         end
-        me.phase_init = 4
+        me:set_panel_from_coordinates()
     end
-    if fly(me) and at_edge(me) then
-        me:set_action(0x18)
-        return
+
+    -- Run phase 0 (0x080BAD14): he flies on to the first panel holding an enemy navi, and stops over it; or to the
+    -- edge.
+    local function seek(me: Object)
+        if fly(me) then
+            if at_edge(me) then
+                me:set_action(0x18)
+                return
+            end
+            if bit32.band(field.flags(me.panel_x, me.panel_y), ENEMY_NAVI[me.alliance]) ~= 0 then
+                me.phase, me.phase_init = 4, 0
+                return
+            end
+        end
+        me:set_panel_from_coordinates()
     end
-    me:set_panel_from_coordinates()
-end
 
-local RUN = { [0] = seek, [4] = bombard, [8] = fly_off }
-
--- Action 0x14 (0x080BACF4): his bombing run, by its phase.
-local function run(me: Object)
-    local phase = RUN[me.phase]
-    if not phase then
-        error(string.format("GyroMan's run: phase %#x reads past its table (0x080BAD08)", me.phase))
-    end
-    phase(me)
-end
-
--- Action 0x18 (0x080BAE22): he vanishes and takes off his propeller; 31 ticks; then the controller moves on, and he
--- goes.
-local function leave(me: Object)
-    if me.phase_init == 0 then
-        me.visible = false
-        me:remove_parts(PROPELLER)
-    end
-    local left = navi_chips.countdown_on_init(me, 0x1E, true)
-    if left == nil or left >= 0 then
-        return
-    end
-    navi_chips.leave(me, (me.state :: State).controller)
-end
-
-local ACTIONS = {
-    [0] = appear,
-    [4] = stand,
-    [8] = rise,
-    [0xC] = take_off,
-    [0x10] = bomb_row,
-    [0x14] = run,
-    [0x18] = leave,
-}
-
--- 0x080BAAA4: on his panel, on the ground; his sprite (animation 0, his shadow), his chip's palette, facing
--- his side's way; his propeller on (its sprite stepping even while paused, but Airforce's). Airforce's flight
--- starts at the take-off.
-local function init(me: Object)
-    navi_chips.stand(me, SPRITE, "ground", true)
-    local s = me.state :: State
-    me.sprite.palette = s.palette
-    me:add_parts(PROPELLER, if s.airforce then 0 else 1)
-    s.run, s.bombs = false, 0
-    me:set_lifecycle("update")
-    if s.airforce then
-        me.action = 0xC
-    end
-end
-
-gyroman.kind = new.kind {
-    id = "gyroman/navi",
-    pool = "actor",
-    state = { controller = "object", palette = "u8", run = "bool", bombs = "u8", airforce = "bool" },
-    -- 0x080BAA80.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            -- 0x080BAB16: Airforce's flight stands still while the battle is dimmed.
-            if not ((me.state :: State).airforce and battle.dimmed()) then
-                local action = ACTIONS[me.action]
-                if not action then
-                    error(string.format("GyroMan action %#x reads past his table (0x080BAB34)", me.action))
-                end
-                action(me)
+    -- Run phase 4 (0x080BAD7C): a bomb at once and every 16 ticks, one for each enemy panel in his row.
+    local function bombard(me: Object)
+        local s = me.state :: State
+        if me.phase_init == 0 then
+            me.phase_init = 4
+            s.bombs = enemy_panels(me, me.panel_y)
+            if s.bombs == 0 then
+                me.phase, me.phase_init = 8, 0
+                return
             end
         else
-            me:free()
+            local left = me.timer - 1
+            me.timer = int.u16(left)
+            if left >= 0 then
+                return
+            end
         end
-        me:update_sprite_while_dimmed()
-    end,
-}
+        drop(me)
+        me.timer, me.timer2 = BETWEEN, 0
+        local left = s.bombs - 1
+        s.bombs = int.u8(left)
+        if left <= 0 then
+            me.phase, me.phase_init = 8, 0
+        end
+    end
+
+    -- Run phase 8 (0x080BADD4): his timer runs out (16 ticks after his last bomb); then he flies off to the edge.
+    local function fly_off(me: Object)
+        if me.phase_init == 0 then
+            local left = me.timer - 1
+            me.timer = int.u16(left)
+            if left >= 0 then
+                return
+            end
+            me.phase_init = 4
+        end
+        if fly(me) and at_edge(me) then
+            me:set_action(0x18)
+            return
+        end
+        me:set_panel_from_coordinates()
+    end
+
+    local RUN = { [0] = seek, [4] = bombard, [8] = fly_off }
+
+    -- Action 0x14 (0x080BACF4): his bombing run, by its phase.
+    local function run(me: Object)
+        local phase = RUN[me.phase]
+        if not phase then
+            error(string.format("GyroMan's run: phase %#x reads past its table (0x080BAD08)", me.phase))
+        end
+        phase(me)
+    end
+
+    -- Action 0x18 (0x080BAE22): he vanishes and takes off his propeller; 31 ticks; then the controller moves on, and he
+    -- goes.
+    local function leave(me: Object)
+        if me.phase_init == 0 then
+            me.visible = false
+            me:remove_parts(PROPELLER)
+        end
+        local left = navi_chips.countdown_on_init(me, 0x1E, true)
+        if left == nil or left >= 0 then
+            return
+        end
+        navi_chips.leave(me, (me.state :: State).controller)
+    end
+
+    local ACTIONS = {
+        [0] = appear,
+        [4] = stand,
+        [8] = rise,
+        [0xC] = take_off,
+        [0x10] = bomb_row,
+        [0x14] = run,
+        [0x18] = leave,
+    }
+
+    -- 0x080BAAA4: on his panel, on the ground; his sprite (animation 0, his shadow), his chip's palette, facing
+    -- his side's way; his propeller on (its sprite stepping even while paused, but Airforce's). Airforce's flight
+    -- starts at the take-off.
+    local function init(me: Object)
+        navi_chips.stand(me, SPRITE, "ground", true)
+        local s = me.state :: State
+        me.sprite.palette = s.palette
+        me:add_parts(PROPELLER, if flight.while_dimmed then 1 else 0)
+        s.run, s.bombs = false, 0
+        me:set_lifecycle("update")
+        if not flight.appears then
+            me.action = 0xC
+        end
+    end
+
+    return new.kind {
+        id = flight.id,
+        pool = "actor",
+        state = { controller = "object", palette = "u8", run = "bool", bombs = "u8" },
+        -- 0x080BAA80.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me)
+            elseif l == "update" then
+                -- 0x080BAB16: Airforce's flight stands still while the battle is dimmed.
+                if flight.while_dimmed or not battle.dimmed() then
+                    local action = ACTIONS[me.action]
+                    if not action then
+                        error(string.format("GyroMan action %#x reads past his table (0x080BAB34)", me.action))
+                    end
+                    action(me)
+                end
+            else
+                me:free()
+            end
+            me:update_sprite_while_dimmed()
+        end,
+    }
+end
+
+-- The chips' GyroMan.
+gyroman.kind = gyroman.make { id = "gyroman/navi", appears = true, runs = true, while_dimmed = true }
 
 -- 0x080BAE60: GyroMan for `user`, reporting to `controller` (the summon table's entry 6), in his chip's `palette`.
 function gyroman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
@@ -332,14 +342,13 @@ function gyroman.summon(palette: number): (user: Object, controller: Object, spe
     end
 end
 
--- 0x080BAE8A: GyroMan the navi's flight for `user` (himself), along row `y` from column `x`, with the element and
--- the damage word: the same object with its fourth parameter 1, its first his user's (a player's: 0, palette 0),
--- and no controller.
-function gyroman.fly(user: Object, x: number, y: number, element: number, damage: number): Object?
-    local o = battle.spawn(gyroman.kind, Vec3.new(y, element, 0))
+-- 0x080BAE8A: GyroMan the navi's flight of `kind` (Airforce's) for `user` (himself), along row `y` from column `x`,
+-- with the element and the damage word: the same object with its fourth parameter 1, its first his user's (a
+-- player's: 0, palette 0), and no controller.
+function gyroman.fly(kind: Kind, user: Object, x: number, y: number, element: number, damage: number): Object?
+    local o = battle.spawn(kind, Vec3.new(y, element, 0))
     if o then
         local s = o.state :: State
-        s.airforce = true
         s.palette = 0
         o.panel_x, o.panel_y = x, y
         o.element = element

@@ -2,8 +2,8 @@
 -- GyroMan's own chip, Airforce (EXE5 chip 0x192), which his custom screen offers until it is picked (the navi's
 -- `own_chip`): his own action 7 (0x080F0A74). He goes from the field (animation 4 on a solid panel, off his panel's
 -- collision, 4 ticks; then off the field with his panel reserved and the chips' icons hidden) and flies his row
--- from his side's back column as the GyroMan chips' navi does (chips/gyroman/navi, in its Airforce mode: a bomb on
--- every enemy panel he passes, no bombing run), with the attack's damage and bonus; when the flight is gone he is
+-- from his side's back column as the GyroMan chips' navi does (chips/gyroman/navi, Airforce's own kind of it: a bomb
+-- on every enemy panel he passes, no bombing run), with the attack's damage and bonus; when the flight is gone he is
 -- back on his panel (animation 3 on a solid one; 4 ticks) and to idle with his animation left as set. His tick
 -- (./hover) rests meanwhile. Its damage is by his level (the chips' damage formula 52: the damage rows' row 3).
 --
@@ -15,6 +15,10 @@
 local navi_level = require("../../lib/navi_level")
 local flight = require("../../chips/gyroman/navi")
 local regions = require("@exelib/regions")
+
+-- His flight (the chips' GyroMan's object with its fourth parameter 1): from the take-off, no bombing run, standing
+-- still while the battle is dimmed.
+local FLIGHT = flight.make { id = "gyroman/airforce", appears = false, runs = false, while_dimmed = false }
 
 export type State = {
     -- AIAttackVars +0x10: the step's ticks left.
@@ -66,7 +70,7 @@ local action = new.action {
             -- 0x080F0AEA: from his side's back column, along the row he left.
             local x = if me.alliance == 0 then 1 else 6
             local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-            s.flight = flight.fly(me, x, me.future_panel_y, me.attack_element, damage)
+            s.flight = flight.fly(FLIGHT, me, x, me.future_panel_y, me.attack_element, damage)
             me.step, me.step_init = AWAY, 0
         elseif step == AWAY then
             -- 0x080F0B0C: until the flight is going (a flight that never came keeps him away).
