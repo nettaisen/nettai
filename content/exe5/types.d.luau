@@ -149,9 +149,11 @@ export type Exe5FormFields = {
     var_sword_waits: boolean?,
     emerge_shake: boolean?,
     -- Its Chaos Unison (rules/souls/chaos_charge): the weapon its charge
-    -- fires, and its own cycle (MeddySoul's: the period, then the windows'
-    -- bounds; none: the chaos level's row, at most 2).
-    chaos: { weapon: Weapon, cycle: { number }? }?,
+    -- fires, its own cycle (MeddySoul's: the period, then the windows'
+    -- bounds; none: the chaos level's row, at most 2), and the blade its
+    -- swords hold while the charge is armed (lib/swords' `held_blade`; none:
+    -- the swords' own).
+    chaos: { weapon: Weapon, cycle: { number }?, blade: AttachmentLook? }?,
 }
 
 -- What a dark chip's use costs its user (rules/light_dark, its chip's

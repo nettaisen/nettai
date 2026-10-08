@@ -263,6 +263,8 @@ standard = [
     "boybomb1",
     "boybomb2",
     "boybomb3",
+    "timebomb",
+    "mine",
     "wind",
     "fan",
     "fanfare",
@@ -295,6 +297,7 @@ standard = [
     "geddon3",
     "slogauge",
     "fstgauge",
+    "blinder",
     "nrthwind",
     "holypanl",
     "hole",
@@ -387,6 +390,7 @@ mega = [
 giga = [
     "bass",
     "blakbarr",
+    "bassanly",
     "deltaray",
 ]
 secret = [
