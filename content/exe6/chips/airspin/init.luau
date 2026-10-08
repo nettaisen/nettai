@@ -21,7 +21,7 @@ local chips: { [string]: Chip } = {
         rarity = 2, mb = 29, damage = 50, hit_param = 10, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = action.action { whirlwind = top.sender(1, 3) },
+        action = action.action { whirlwind = top.sender(4, 3) },
     },
     airspin3 = {
         codes = { "N", "O", "T" },
@@ -29,7 +29,7 @@ local chips: { [string]: Chip } = {
         rarity = 3, mb = 36, damage = 50, hit_param = 10, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = action.action { whirlwind = top.sender(2, 4) },
+        action = action.action { whirlwind = top.sender(8, 4) },
     },
 }
 
