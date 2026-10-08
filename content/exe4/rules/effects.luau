@@ -87,6 +87,9 @@ return {
     -- its hold of 30 (0x080149CE) and the tick it lets go of its sprites (0x080149E6), 32 frames (the count includes the
     -- tick it starts on, as EXE6's 0x3C does).
     used_chip_ticks = 33,
+    -- A dimming chip's telop (0x08008CF6, 0x08008DE0) takes the banner block and leaves the second block's name be:
+    -- the other player's chip stays named beside it.
+    telop_ends_used_chips = false,
     -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
     bug_flicker = false,
     -- A step leaves its panel trail (NaviStats +0x1B) every time, unless it is 0xFF: no level and no draw; its kind 3

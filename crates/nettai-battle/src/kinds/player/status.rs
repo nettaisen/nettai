@@ -1241,8 +1241,9 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
     if f & (f1::FLASHING | f1::INVISIBLE) != 0 && bit != b.game_rules().flash_hides_on_clear {
         b.objects.get_mut(r).set_visible(false);
     }
-    // On its own side's console: HUD markers only. On the other's, hidden
-    // while that console's navi is blind.
+    // On its own side's console: the HUD's HP numbers, which it shows and
+    // ends while blind (the frontend's, `nettai_render::hud`), and markers.
+    // On the other's, hidden while that console's navi is blind.
     let alliance = b.objects.get(r).alliance;
     let hidden = [0u8, 1].map(|viewer| {
         viewer != alliance & 1
