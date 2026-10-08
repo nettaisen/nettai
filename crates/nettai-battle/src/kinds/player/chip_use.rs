@@ -469,6 +469,7 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     a.extra = 0;
     a.element = cd.element as u8 | family;
     a.charged = 0;
+    a.telop_hidden = false;
 }
 
 /// `sub_800EF34` (EXE5's 0x0800D0A6, `charge` its argument): the damage

@@ -1928,7 +1928,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Guard's too: item 60). Waiting:
     the routines of chips still to port (0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51
     BugBomb and 0x55 PnlRetrn are in, cards 41, 51, 57, 70, 79, 82, 115 and 118 matching),
-    the routines that load no chip (0x04, 0x28, 0x31: others' own actions; 0x20, the bubble, is in: card 108; the
+    the routines that load no chip (0x04: others' own actions; 0x20, the bubble, is in: card 108; 0x28, GutsSoul's
+    machine gun with no attack variable set, is in: card 20, navis/megaman/weapons/machine_gun; 0x31, one of the eight
+    Anti chips at random with its telop hidden from its user too (AIAttackVars +0x0F: the attack's `telop_hidden`), is
+    in: card 40; the
     buster patches 0x34, 0x35, 0x5A, 0x68 and 0x69, navis/megaman/weapons/buster_patches, are in: cards 12, 13, 43, 44
     and 102, the buster's shot with projectile rows 7, 8, 0x0B, 0x0D and 0x0E: cracking, poison, blinding (row 0x0B's
     status 0x32, 0x080CD3BC; row 0x0A's 0x22 no routine fires), grass and ice) and Triple Supporter's pair (item
