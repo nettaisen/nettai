@@ -2,9 +2,11 @@
 -- BassAnly's shot, as EXE6 and EXE5 share it (EXE6's attack object #0xC1,
 -- `sub_80DD34C`; EXE5's #0x73, its code EXE6's but for its sprite): a dark
 -- ball that starts 24 pixels ahead, kicks back and accelerates forward
--- along a slant (up or down; its level picks its speeds, 3 twice as fast),
--- its body a hit region (hit, it goes off until it reaches another panel).
--- After its first stretch (32 ticks, 16 at level 3) it flies straight
+-- along a slant (up or down), its body a hit region (hit, it goes off
+-- until it reaches another panel). Its speeds are BassAnly's: the original
+-- reads them by its level (Param1), and BassAnly throws only level 3, twice
+-- as fast as the rest (its rows 0 to 2, which nothing throws, are left
+-- out). After its first stretch (16 ticks) it flies straight
 -- ahead, turning (its homing: "diagonal" toward the enemy navi on a
 -- diagonal, "seeking" toward an enemy navi one or two panels up or down the
 -- slant ahead, picked at random) to run diagonally, a panel every few
@@ -36,8 +38,6 @@ export type State = {
     trails: boolean,
     -- Ticks since its last afterimage (ExtraVars[2]).
     trail_ticks: number,
-    -- Its level, 0 to 3 (Param1): its speeds.
-    level: number,
     -- Up (-1) or down (1) the slant (Param2).
     slant: number,
     -- Its homing, until it turns (Param3: 0, 1, 2).
@@ -52,10 +52,9 @@ local KICK = 0x3_8000
 local PUSH = 0x4000
 local SLANT = 0xC000
 
--- By level, its speed up or down the slant and forward once turned
--- (EXE6's `byte_80DD6A8`, `byte_80DD6D0`).
-local TURN_Y: { [number]: number } = { [0] = 0x2_6666, 0x2_B333, 0x3_0000, 0x7_8000 }
-local TURN_X: { [number]: number } = { [0] = 0x3_8000, 0x4_8000, 0x5_0000, 0xC_8000 }
+-- Its speed up or down the slant and forward once turned (EXE6's
+-- `byte_80DD6A8`, `byte_80DD6D0`: level 3's rows).
+local TURN_Y, TURN_X = 0x7_8000, 0xC_8000
 
 -- What homing 2 looks for, by side (EXE6's `off_80DD6BC`): an enemy navi's
 -- body; and where, along the slant (`byte_80DD6E8` going down,
@@ -67,8 +66,11 @@ local LOOK_UP = { { 1, 1 }, { 2, 2 } }
 -- What a hit must include to take its region off (as one word).
 local HIT_MASK = 0x1E80_0000
 
--- Its hit's modifier, and the level whose speeds are doubled.
-local HIT_MOD, FASTEST = 3, 3
+-- Its hit's modifier.
+local HIT_MOD = 3
+-- Its first stretch's ticks and push's (Timer2: 0x1C and twice its level),
+-- and the ticks of each diagonal step (10 less twice its level).
+local FIRST_TICKS, PUSH_TICKS, STEP_TICKS = 0x10, 0x1C + 3 * 2, 0xA - 3 * 2
 
 -- Its afterimages: every 6 ticks, 12 ticks each, tinted.
 local TRAIL_EVERY, TRAIL_TICKS, TRAIL_SHADER = 6, 0xC, 0xA94A
@@ -83,11 +85,7 @@ function shot.make_kind(look: Look): Kind
         local p = me.pos
         me.pos = Vec3.new(p.x + f * 0x18_0000, p.y, p.z)
         local s = me.state :: State
-        local fast = s.level == FASTEST
-        local vy = int.mul32(SLANT, s.slant)
-        if fast then
-            vy = int.shl(vy, 1)
-        end
+        local vy = int.shl(int.mul32(SLANT, s.slant), 1)
         me.vel = Vec3.new(int.mul32(KICK * f, -1), vy, me.vel.z)
         local sprite = me.sprite
         sprite:load(look.sprite)
@@ -106,8 +104,8 @@ function shot.make_kind(look: Look): Kind
         me.collision:set_hit_effect(nil)
         me.collision:present()
         s.trails = s.homing == "seeking"
-        me.timer = if fast then 0x10 else 0x20
-        me.timer2 = 0x1C + s.level * 2
+        me.timer = FIRST_TICKS
+        me.timer2 = PUSH_TICKS
         battle.play_sound(look.sound)
         me:set_lifecycle("update")
     end
@@ -146,10 +144,7 @@ function shot.make_kind(look: Look): Kind
             return
         end
         me.timer2 = left - 1
-        local push = PUSH
-        if (me.state :: State).level == FASTEST then
-            push *= 2
-        end
+        local push = PUSH * 2
         local v = me.vel
         me.vel = Vec3.new(v.x + push * me.facing, v.y, v.z)
     end
@@ -161,20 +156,11 @@ function shot.make_kind(look: Look): Kind
         end
     end
 
-    -- A speed by level.
-    local function speed(t: { [number]: number }, level: number, name: string): number
-        local v = t[level]
-        if v == nil then
-            error(string.format("BassAnly's shot %d reads past %s", level, name))
-        end
-        return v
-    end
-
     -- The turn: up or down the slant at `vy` and forward, a panel every few
     -- ticks after the next center (5 to the first).
     local function turn(me: Object, vy: number)
         local s = me.state :: State
-        me.vel = Vec3.new(int.mul32(me.facing, speed(TURN_X, s.level, "byte_80DD6D0")), vy, me.vel.z)
+        me.vel = Vec3.new(int.mul32(me.facing, TURN_X), vy, me.vel.z)
         s.turn = 5
     end
 
@@ -186,7 +172,6 @@ function shot.make_kind(look: Look): Kind
             return
         end
         local x, y = me.panel_x, me.panel_y
-        local p1 = s.level
         if mode ~= "diagonal" then
             if battle.over() then
                 -- On its own side's panels it keeps going.
@@ -209,7 +194,7 @@ function shot.make_kind(look: Look): Kind
                 end
                 battle.rng_positive()
             end
-            turn(me, int.mul32(speed(TURN_Y, p1, "byte_80DD6A8"), -s.slant))
+            turn(me, int.mul32(TURN_Y, -s.slant))
             s.homing = "none"
             return
         end
@@ -230,7 +215,7 @@ function shot.make_kind(look: Look): Kind
             if math.abs(ex - x) ~= math.abs(ey - y) then
                 return
             end
-            local vy = speed(TURN_Y, p1, "byte_80DD6A8")
+            local vy = TURN_Y
             if y ~= 1 then
                 vy = -vy
             end
@@ -279,7 +264,7 @@ function shot.make_kind(look: Look): Kind
     end
 
     -- `sub_80DD538`: the diagonal run, a panel forward and up or down every
-    -- 10 - 2 * its level ticks.
+    -- step's ticks.
     local function diagonal(me: Object)
         trail(me)
         local p, v = me.pos, me.vel
@@ -290,7 +275,7 @@ function shot.make_kind(look: Look): Kind
             me.panel_x += me.facing
             me.panel_y += if v.y < 0 then -1 else 1
             me:update_collision_panels()
-            me.timer = 0xA - 2 * (me.state :: State).level
+            me.timer = STEP_TICKS
         end
         check_floor(me)
     end
@@ -344,7 +329,6 @@ function shot.make_kind(look: Look): Kind
             hit_panel = "u32",
             trails = "bool",
             trail_ticks = "u32",
-            level = "u8",
             slant = "i8",
             homing = { "none", "diagonal", "seeking" },
             turn = "u8",
@@ -380,7 +364,6 @@ function shot.spawn(
     local o = battle.spawn(kind, Vec3.new(y, element, z))
     if o then
         local s = o.state :: State
-        s.level = what.level
         s.slant = what.slant
         s.homing = what.homing
         o.panel_x, o.panel_y = x, y
