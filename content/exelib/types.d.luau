@@ -1316,9 +1316,9 @@ export type ElemTrapLook = {
 -- and its collision types.
 export type FireHitFistLook = { sprite: SpriteAsset, sound: Sound, spark: Spark, target: CollisionType, self_type: CollisionType }
 
--- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
--- together), the panels it rolls out and its spinning rounds.
-export type YoyoSpec = { great: boolean?, panels: number, rounds: number }
+-- How a yoyo flies (EXE6's chips/yoyo/yoyo): the panels it rolls out and
+-- its spinning rounds.
+export type YoyoSpec = { panels: number, rounds: number }
 
 -- A Reflector's shield's look (chips/rflectr/shield, a row of the
 -- original's `byte_80C9664`): the sprite, its animation while up, the
