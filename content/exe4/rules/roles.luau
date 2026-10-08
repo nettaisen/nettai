@@ -20,6 +20,7 @@ local sparks = require("../lib/sparks")
 local statuses = require("./status")
 local support_chips = require("../chips/supports")
 local supports = require("../lib/supports/controller")
+local underground_hole = require("../objects/underground_hole")
 
 local roles: RolesSpec = {
     chips = {
@@ -66,6 +67,9 @@ local roles: RolesSpec = {
         anti_recovery = anti_recovery.kind,
         -- The NaviCust supports' controller (Rush's, Beat's and Tango's: effect object 0x74, lib/supports).
         support = supports.kind,
+        -- The hole over a navi under the ground (effect object 0x3E, 0x080E64FC), which the navi's tail keeps
+        -- (0x0800C0A6).
+        dive_ripple = underground_hole.kind,
     },
     sounds = {
         appear = asset.sound("appear"),

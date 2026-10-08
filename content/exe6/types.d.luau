@@ -100,14 +100,20 @@ export type FlashBombVariant = {
 -- ---- The field objects (chips/rockcube/rock, objects/boulder) ---------------
 
 -- What an element pillar is spawned with (objects/element_pillar; the
--- original's four parameters): lightning (it paralyzes and cracks its
--- panel) rather than flames; how long it stands; the ticks it is left once
--- its owner's action is over; `back`: it stands 8 pixels ahead of its
--- panel's center, less 7 for each step back; `owner_state`: its owner is no
--- navi, and it lasts through that action of the owner's own (by default
--- the navi action its owner runs as it sends the pillar).
+-- original's four parameters): its look (`element_pillar.look`: flames or
+-- lightning, the first parameter's pick); how long it stands; the ticks it
+-- is left once its owner's action is over; `back`: it stands 8 pixels
+-- ahead of its panel's center, less 7 for each step back; `owner_state`:
+-- its owner is no navi, and it lasts through that action of the owner's
+-- own (by default the navi action its owner runs as it sends the pillar).
+-- An element pillar's look (objects/element_pillar's `look`): its sprite,
+-- its hit's modifier, spark and status, and whether it cracks its panel
+-- (the flames': 3, fire, none, no; the lightning's: 1, elec, paralysis,
+-- yes).
+export type ElementPillarLook = { sprite: SpriteAsset, hit_mod: number, spark: Spark, status: Status?, cracks: boolean }
+
 export type ElementPillar = {
-    lightning: boolean?,
+    look: ElementPillarLook,
     ticks: number,
     after: number,
     back: number?,
@@ -127,14 +133,28 @@ export type ShockWaveVariant = { anim: number, ticks: number, panel: PanelType?,
 
 -- A hockey puck (chips/airhocky/puck, a row of the original's
 -- `byte_80C9818`): the steps it lasts (0: no limit), how it bounces (1:
--- off its own side too once across, 0: not), the ticks per step, and
--- whether it leaves an afterimage trail.
-export type HockeyPuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+-- off its own side too once across, 0: not), the ticks per step, and the
+-- tint of its afterimage trail if it leaves one.
+export type HockeyPuckVariant = { steps: number, own_side: number, ticks: number, trail: number? }
 
 -- How an iron shell slides (chips/ironshl/shell): its palette and speed
--- (16.16 a tick), how many times it bumps at the far column, and whether
--- it is ParaShl's (four panels, then back).
-export type IronShell = { palette: number, speed: number, bumps: number, para: boolean? }
+-- (16.16 a tick), how many times it bumps at the far column, and its
+-- chip's variant.
+export type IronShell = { palette: number, speed: number, bumps: number, variant: IronShellVariant }
+
+-- A chip's iron shells (chips/ironshl/shell's `variant`; the original's
+-- third parameter, IronShl's or ParaShl's): where its throw puts them
+-- (`throw`, given the spawn of one on a panel), the ticks one stops at the
+-- end, how many panels it slides (none: to the opponent's back column),
+-- whether it knocks back thrown onto a middle column, and what it does
+-- once its bumps are done.
+export type IronShellVariant = {
+    throw: (me: Object, place: (x: number, y: number) -> ()) -> (),
+    stop: number,
+    panels: number?,
+    pushes: boolean,
+    done: (me: Object) -> (),
+}
 
 -- What a flame burns like (lib/burner/flame): its ticks, the panels it
 -- spreads forward, whether its first spread takes three rows (`wide`),
@@ -190,12 +210,15 @@ export type RollingLogSpec = {
     log: RollingLog,
 }
 
--- DolThdr (chips/dolthdr, action 0x3E): the thunder's ticks, and whether
--- the navi holds the buster arm rather than the doll (no chip does).
+-- DolThdr (chips/dolthdr, action 0x3E): the thunder's ticks, and what the
+-- navi holds out, in which animation (the original's third parameter picks
+-- it: DolThdr's doll; ElecCross's charged shot's buster arm, animation
+-- 0x19).
 export type DollThunderSpec = {
     id: string?,
     ticks: number,
-    holds_arm: boolean?,
+    held: AttachmentLook,
+    held_anim: number?,
 }
 
 -- WindRack (chips/windrack, action 0x3F): the rack the navi swings.
@@ -337,10 +360,12 @@ export type DblBeastHit = {
 -- ---- The navi chips' navis (content model v2: the earlier navis) ---------
 
 -- A thunderbolt (chips/elecman/thunder): whether it acts while the battle
--- is dimmed (the navi chip's; one that doesn't cracks its panel), and
--- whether it also hits the eight panels around it.
+-- is dimmed (the navi chip's), whether it cracks its panel as it strikes
+-- (ElecMan's own AI's), and whether it also hits the eight panels around
+-- it (the original's Param1 0, 1 or 2 gives them).
 export type Thunderbolt = {
     while_dimmed: boolean?,
+    cracks: boolean?,
     spreads: boolean?,
 }
 
@@ -357,12 +382,14 @@ export type SlashWave = {
     while_dimmed: boolean?,
 }
 
--- A train car (chips/chrgeman/car): whether it is the navi chip's (it
--- waits before it rolls, and acts while the battle is dimmed), its place
--- in the train, the ticks it waits, and its owner's action it is tied to
--- (none: it never checks).
+-- A train car (chips/chrgeman/car): whether it acts while the battle is
+-- dimmed (the navi chip's), its hit's modifier (the navi chip's 3, else 1:
+-- the original's by Param1), its place in the train, the ticks it waits
+-- before it rolls (0: it rolls at once, ChargeMan's own), and its owner's
+-- action it is tied to (none: it never checks).
 export type ChargeCar = {
     while_dimmed: boolean?,
+    hit_mod: number,
     place: number,
     wait: number,
     owner_action: number?,
@@ -446,8 +473,12 @@ export type EraseBeam = {
     aim: number,
     -- How long it stands.
     ticks: number,
-    -- A navi's own segment (EDeletBm's).
-    navis: boolean,
+    -- It acts and steps its sprite while the battle is dimmed (the EraseMan
+    -- chips'), or stands still then (a navi's own, EDeletBm's); and it goes
+    -- once its owner is out of the action that slashed it (EDeletBm's).
+    -- (The original's third parameter, a navi's own, gives both.)
+    while_dimmed: boolean,
+    tied: boolean,
 }
 
 -- How a dust storm blows (lib/instant/dust_storm, the original's Param2 and
@@ -508,7 +539,9 @@ export type Exe6ChipFields = {
 -- whether its charged sword runs inside the Beast Out rush (SlashCross in
 -- Beast Out; rules/beast's); the custom screen dealing one more chip
 -- for each screen spent in it, up to three (ChargeCross), or the scrap
--- button (DustCross; rules/cross's).
+-- button (DustCross; rules/cross's); VarSwrd's wait while A is up
+-- (lib/swords/vari); the Falzar Beast buster's shots' palette in it;
+-- EraseCross's charged shot's own beam in it (EraseCross).
 export type Exe6FormFields = {
     kind: ("cross" | "beast" | "cross_beast" | "beast_over")?,
     cross_of: NaviDef?,
@@ -518,6 +551,14 @@ export type Exe6FormFields = {
     charged_sword_rush: boolean?,
     extra_chips: boolean?,
     scrap_button: boolean?,
+    var_sword_waits: boolean?,
+    beast_shot_palette: number?,
+    plain_erase_beam: boolean?,
+}
+
+-- A navi's: VarSwrd's sword stays plain for it (lib/swords/vari).
+export type Exe6NaviFields = {
+    var_sword_plain: boolean?,
 }
 
 -- A navi's forms by game: the Crosses by their number on the custom

@@ -30,7 +30,7 @@ local form: FormDef = {
     -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
     -- routine 0x36 (0x0800FA70): DrkRecov (chip 0xC2), the charge table's row 0x36; its charge cycles in the cycle's
     -- row 2 whatever the chaos level (0x080106BC).
-    chaos = { weapon = chaos.weapon(drkrecov, { 70, 90, 110, 130, 150, 70 }), cycle = 2 },
+    chaos = { weapon = chaos.weapon(drkrecov, { 70, 90, 110, 130, 150, 70 }), cycle = { 27, 9, 9, 27 } },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,

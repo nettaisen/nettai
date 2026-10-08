@@ -14,16 +14,23 @@ local attachment = require("../attachment")
 export type State = {
     -- Ticks into the shot, then ticks of recovery left (AIAttackVars+0x10).
     timer: number,
-    -- What it fires (the original's attack variant 0, 1 or 2): the shot,
-    -- the spread (two more shots a row up and down), or the obstacle the
-    -- navi absorbed.
-    mode: "shot" | "spread" | "throw",
+    -- What it fires, as its setup states (the original's attack variant 0,
+    -- 1 or 2): the shot; the spread, two more shots a row up and down
+    -- (`spread`); or the setup's throw (`throw`: EXE6's of the obstacle the
+    -- navi absorbed).
+    spread: boolean,
+    throw: MegaManBusterThrow?,
     -- The projectile (the original's first attack parameter, a row of the
     -- projectile's table), which a throw doesn't read.
     projectile: ProjectileVariant?,
 }
 
 local buster = {}
+
+-- A setup's throw: what flies instead of the shot (its sound, then it).
+function buster.throw(run: (me: Object) -> ()): MegaManBusterThrow
+    return new.record("megaman-buster-throw", { run = run })
+end
 
 -- The phases, on the attack's step.
 local SHOOT, RECOVER = 0x0, 0x4
@@ -79,20 +86,16 @@ local function shoot(me: Object, s: State, look: MegaManBusterLook)
     if s.timer == 1 then
         battle.play_sound(look.shot_sound)
         local flash = look.buster.flash
-        if s.mode == "throw" then
-            battle.play_sound(look.throw_sound)
-            local throw = look.throw
-            if not throw then
-                error("a buster shot throws an absorbed obstacle, and its game throws none")
-            end
-            throw(me)
+        local throw = s.throw
+        if throw then
+            throw.run(me)
             flash = look.buster.arm
         else
             -- (Without a setup's projectile, the table's first row.)
             local variant, damage = s.projectile or look.plain, damage_word(me)
             local projectile = look.projectiles
             me.attack_count = projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z })
-            if s.mode == "spread" then
+            if s.spread then
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = 1 })
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = -1 })
                 -- (EXE5's spread has its own flash: 0x080EBA30.)
@@ -141,7 +144,12 @@ end
 function buster.shot_action(look: MegaManBusterLook): Action
     return new.action {
         id = look.id,
-        state = { timer = "u16", mode = { "shot", "spread", "throw" }, projectile = "record:projectile-variant" },
+        state = {
+            timer = "u16",
+            spread = "bool",
+            throw = "record:megaman-buster-throw",
+            projectile = "record:projectile-variant",
+        },
         update = function(me: Object, s: State)
             update(me, s, look)
         end,

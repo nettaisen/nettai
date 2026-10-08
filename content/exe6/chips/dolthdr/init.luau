@@ -3,11 +3,14 @@
 -- (./action, ./doll). The levels differ only in damage.
 
 local action = require("@self/action")
+local attachment = require("../objects/attachment")
 local lockon = require("../rules/lockon")
 
 -- Every level's thunder lasts 15 ticks (the original's second
 -- parameter).
 local TICKS = 0x0F
+-- The doll the navi holds out (the original's attachment row 0x29).
+local DOLL = attachment.look { sprite = asset.sprite("thunder-doll-hand"), palette = 0, attach_point = 0x0E }
 
 local chips: { [string]: Chip } = {
     dolthdr1 = {
@@ -18,7 +21,7 @@ local chips: { [string]: Chip } = {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
-        action = action.action { ticks = TICKS },
+        action = action.action { ticks = TICKS, held = DOLL },
     },
     dolthdr2 = {
         codes = { "C", "L", "P" },
@@ -28,7 +31,7 @@ local chips: { [string]: Chip } = {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
-        action = action.action { ticks = TICKS },
+        action = action.action { ticks = TICKS, held = DOLL },
     },
     dolthdr3 = {
         codes = { "B", "R", "V" },
@@ -38,7 +41,7 @@ local chips: { [string]: Chip } = {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
-        action = action.action { ticks = TICKS },
+        action = action.action { ticks = TICKS, held = DOLL },
     },
 }
 

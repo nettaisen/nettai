@@ -7,19 +7,18 @@
 -- 1, when that many are left). Lightning paralyzes and cracks its panel.
 --
 -- What the original's parameters said is the spawner's `ElementPillar`:
--- its first picked flames or lightning, whether it stands back, and the
+-- its first picked flames or lightning (its user's look,
+-- `element_pillar.look`), whether it stands back, and the
 -- owner's action it lasts through (`byte_80D0794`: the Beast charged
 -- chips' for 0 and 1, an owner's own action for 2 to 5; past the table it
 -- reads on); the others its ticks, the ticks it is left once the owner's
 -- action is over, and how far back it stands.
 
 local collision = require("../rules/collision")
-local sparks = require("../lib/sparks")
-local statuses = require("../rules/status")
 
 export type State = {
-    -- Lightning (it paralyzes and cracks its panel), or flames.
-    lightning: boolean,
+    -- Its look: flames or lightning (it paralyzes and cracks its panel).
+    look: ElementPillarLook,
     -- How long it stands, and the ticks left once its owner's action is
     -- over.
     ticks: number,
@@ -36,10 +35,9 @@ export type State = {
 
 local element_pillar = {}
 
-local FLAMES, LIGHTNING = asset.sprite("element-pillar-flames"), asset.sprite("element-pillar-lightning")
-
--- Lightning's paralysis (a status byte).
-local PARALYZE = statuses.paralyze_150
+function element_pillar.look(look: ElementPillarLook): ElementPillarLook
+    return new.record("element-pillar-look", look)
+end
 
 -- `sub_80D0766`: once the owner's action is over, `after` more ticks; the
 -- flames die down with that many left.
@@ -85,16 +83,16 @@ local function tick(me: Object)
 end
 
 -- `sub_80D0634`: on its panel (not off the field), raised 2 pixels, with
--- its collision; lightning cracks the panel.
+-- its collision; lightning (a look that does) cracks the panel.
 local function init(me: Object)
     if not field.valid(me.panel_x, me.panel_y) then
         me:free()
         return
     end
     local s = me.state :: State
-    local lightning = s.lightning
+    local look = s.look
     local sprite = me.sprite
-    sprite:load(if lightning then LIGHTNING else FLAMES)
+    sprite:load(look.sprite)
     sprite.shadow = "with_sprite"
     me.visible = true
     me.anim = 0
@@ -115,13 +113,13 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(collision.attack, collision.hits_navis, if lightning then 1 else 3)
-    me.collision:set_hit_effect(if lightning then sparks.elec else sparks.fire)
-    if lightning then
-        me.collision.status_base = PARALYZE
+    me:setup_collision(collision.attack, collision.hits_navis, look.hit_mod)
+    me.collision:set_hit_effect(look.spark)
+    if look.status then
+        me.collision.status_base = look.status
     end
     me.collision:present()
-    if lightning then
+    if look.cracks then
         field.crack(me.panel_x, me.panel_y)
     end
     me:set_lifecycle("update")
@@ -145,7 +143,7 @@ element_pillar.kind = new.kind {
     id = "element-pillar",
     pool = "attack",
     state = {
-        lightning = "bool",
+        look = "record:element-pillar-look",
         ticks = "u8",
         after = "u8",
         stands_back = "bool",
@@ -172,7 +170,7 @@ function element_pillar.spawn(
     local o = battle.spawn(element_pillar.kind, Vec3.new(y, element, z or 0))
     if o then
         local s = o.state :: State
-        s.lightning = pillar.lightning == true
+        s.look = pillar.look
         s.ticks, s.after = pillar.ticks, pillar.after
         local back = pillar.back
         s.stands_back = back ~= nil

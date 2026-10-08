@@ -40,6 +40,9 @@ return {
     -- A sprite updated through the dimming (0x08014446, `object_updateSpriteTimestop`) only loads a new animation,
     -- stepping it from the next tick (its `object_updateSprite`, 0x080143FC, steps as it loads).
     dimmed_update_steps_on_load = false,
+    -- An immobilized navi doesn't blink: its tail (0x08013BEC) has no step for it (EXE6's `sub_801690A`), nor for a
+    -- freeze (EXE4 has none).
+    immobilized_blinks = false,
     -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (the player's
     -- table, 0x080EAEFC: six framework states; an obstacle's to confirm, exe4-map.md §16).
     obstacle_actions = "own_from_6",

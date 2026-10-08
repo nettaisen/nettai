@@ -27,8 +27,9 @@ pub mod f1 {
     /// 0x1000, in both directions (`sub_3007218`). DiveMan's AI sets it
     /// while he dives (`sub_80FDEFC`). The timed form (`timer::SUBMERGED`)
     /// is held while its timer runs and no action is in use (`sub_8010162`);
-    /// its only starter, actor #0x5D variant 1 (`sub_80C49E4`), is never
-    /// spawned. See field-collision-damage.md §4.10.1.
+    /// its only starter, actor #0x5D variant 1 (`sub_80C49E4`), EXE6 never
+    /// spawns, EXE4's PopUp does (0x080CD0E2). See
+    /// field-collision-damage.md §4.10.1.
     pub const SUBMERGED: u32 = 0x4;
     pub const INVULNERABLE: u32 = 0x8;
     pub const AIRSHOE: u32 = 0x10;
@@ -175,8 +176,8 @@ pub mod link {
     pub const FREEZE: usize = 2;
     /// +0x60: bubble.
     pub const BUBBLE: usize = 3;
-    /// EXE5's +0x50: the ripple over a body under the sea's surface
-    /// (0x0800DEB2).
+    /// +0x50 (EXE4's +0x7C): the mark over a body that is under
+    /// (`sub_801012C`: EXE5's ripple, EXE4's hole).
     pub const RIPPLE: usize = 4;
 }
 

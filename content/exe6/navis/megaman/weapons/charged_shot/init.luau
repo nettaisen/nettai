@@ -32,13 +32,6 @@ export type State = {
 
 local charged_shot = {}
 
--- The charged-shot programs that come on 1 draw in 8 (the others on 1 in
--- 2): the original's rows 9 and 0x23.
-local RARE: { [ProjectileVariant]: boolean } = {
-    [variants.chip_destruction] = true,
-    [variants.charged_hp_bug_marked] = true,
-}
-
 -- `sub_8011A7E`.
 function charged_shot.setup(navi: Object): Action
     local side = navi.alliance
@@ -54,7 +47,9 @@ function charged_shot.setup(navi: Object): Action
     local program = stats.charge_shot_kind
     local shot = variants.charged
     if program and program ~= variants.charged then
-        local mask = if RARE[program] then 7 else 1
+        -- (1 in 8 for one that says it is rare: the original's rows 9 and
+        -- 0x23.)
+        local mask = if program.rare_charged_shot then 7 else 1
         if bit32.band(battle.rng_positive(), mask) == 0 then
             shot = program
         end

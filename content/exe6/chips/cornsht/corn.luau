@@ -13,9 +13,11 @@ local regions = require("@exelib/regions")
 local corn = {}
 
 export type State = {
-    -- Its generation (Param1): 0 the probe; a spread corn's is its
-    -- parent's + 1; 0xFF bursts without spreading (CornFsta's).
-    generation: number,
+    -- It is the probe (Param1 0: CornSht's first), and it spreads (Param1
+    -- not 0xFF; CornFsta's bursts don't). (A spread corn's Param1 is its
+    -- parent's + 1, which nothing else reads.)
+    probe: boolean,
+    spreads: boolean,
     -- Bursts left (Param2).
     bursts: number,
     -- Whether its first burst has passed (and grassed its panel), and a
@@ -27,9 +29,6 @@ export type State = {
     spread: { number },
     count: number,
 }
-
--- A generation that bursts and doesn't spread.
-corn.NO_SPREAD = 0xFF
 
 local BURSTS = 2
 -- Each burst's ticks (less one), and the tick of the first the spread
@@ -76,15 +75,15 @@ local function taken(x: number, y: number): boolean
     return false
 end
 
--- `sub_80C6774`: a corn of the next generation on each panel found, last
--- first, unless one stands there.
+-- `sub_80C6774`: a corn of the next generation (a spreading burst) on each
+-- panel found, last first, unless one stands there.
 local function spread(me: Object, s: State)
     local damage = int.u32(me.damage + me.stamina * 0x10000)
     for i = s.count, 1, -1 do
         local p = s.spread[i]
         local x, y = panels.x(p), panels.y(p)
         if not taken(x, y) then
-            corn.spawn(me, x, y, 0, me.element, damage, bit32.band(s.generation + 1, 0xFF))
+            corn.spawn(me, x, y, 0, me.element, damage, false, true)
         end
     end
 end
@@ -198,9 +197,9 @@ local function init(me: Object)
     s.bursts = BURSTS
     me.timer2 = SPREAD_TICKS
     me:set_lifecycle("update")
-    if s.generation ~= 0 then
+    if not s.probe then
         me.action = 4
-        if s.generation ~= corn.NO_SPREAD then
+        if s.spreads then
             find_spread(me, s)
         end
     end
@@ -209,7 +208,7 @@ end
 corn.kind = new.kind {
     id = "cornsht/corn",
     pool = "attack",
-    state = { generation = "u8", bursts = "u8", grassed = "bool", ticks = "u32", spread = "u8[3]", count = "u8" },
+    state = { probe = "bool", spreads = "bool", bursts = "u8", grassed = "bool", ticks = "u32", spread = "u8[3]", count = "u8" },
     -- `sub_80C6580`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -223,14 +222,24 @@ corn.kind = new.kind {
     end,
 }
 
--- `sub_80C67D8`: a corn of `generation` from `owner` on panel (x, y) at
--- height `z` (16.16), with `element` and the damage word; nil if the
--- attack pool is full. It takes the owner's side and flip, runs later
--- this tick, right after its spawner, and keeps its Z.
-function corn.spawn(owner: Object, x: number, y: number, z: number, element: number, damage: number, generation: number): Object?
+-- `sub_80C67D8`: a corn (the probe, or a burst; spreading or not) from
+-- `owner` on panel (x, y) at height `z` (16.16), with `element` and the
+-- damage word; nil if the attack pool is full. It takes the owner's side
+-- and flip, runs later this tick, right after its spawner, and keeps its Z.
+function corn.spawn(
+    owner: Object,
+    x: number,
+    y: number,
+    z: number,
+    element: number,
+    damage: number,
+    probe: boolean,
+    spreads: boolean
+): Object?
     local o = battle.spawn(corn.kind, Vec3.new(0, 0, z))
     if o then
-        (o.state :: State).generation = generation
+        local s = o.state :: State
+        s.probe, s.spreads = probe, spreads
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)

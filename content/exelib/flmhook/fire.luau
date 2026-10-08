@@ -9,16 +9,23 @@
 -- take their facing and a big one's palette, and center their arcs from
 -- their columns; EXE5's (the big kind alone) do none of that, their centers
 -- set by swing. Each game makes its kind (`fire.make`: its kind and its
--- swing).
+-- swing); each chip states its flames (`fire.variant`).
 
 local regions = require("../regions")
 
 local fire = {}
 
 -- What a flame is swung with: which way it turns (`swing` 0 or 1, its
--- Param1), whether it is a big one (EXE6's Param2), its hit spark (EXE6's
+-- Param1), its chip's variant (Param2's rows), its hit spark (EXE6's
 -- Param3).
-export type Swing = { swing: number, big: boolean, spark: Spark }
+export type Swing = { swing: number, variant: Variant, spark: Spark }
+
+-- A chip's flames (`FlameHookVariant`).
+export type Variant = FlameHookVariant
+
+function fire.variant(v: Variant): Variant
+    return new.record("flmhook-fire-variant", v)
+end
 
 -- A game's flames.
 export type Look = {
@@ -27,27 +34,17 @@ export type Look = {
     sound: Sound,
     self_type: CollisionType,
     target: CollisionType,
-    -- By size: four bytes per facing (right, left), the start angle (high
-    -- byte) by swing and then the lifetime by swing; and how fast its angle
-    -- turns.
-    arcs: (big: boolean) -> { number },
-    turn: (big: boolean) -> number,
     -- Its arc's center's x (16.16), from its facing, swing and column.
     center_x: (me: Object, swing: number, turn: number) -> number,
-    -- EXE6's afterimages: every few ticks by size, their shader by size, how
-    -- long they last.
-    trail: { every: (big: boolean) -> number, shader: (big: boolean) -> number, ticks: number }?,
-    -- EXE6's: it takes its facing and a big one's palette.
+    -- EXE6's: it takes its facing and its variant's palette.
     sets_look: boolean,
     -- EXE5's: a hit shakes the camera too.
     hit_shakes: boolean,
-    -- Whether one runs while dimmed (EXE6's big ones, EXE5's all).
-    while_dimmed: (big: boolean) -> boolean,
 }
 
 export type State = {
     swing: number,
-    big: boolean,
+    variant: Variant,
     spark: Spark?,
     -- The arc's center (ExtraVars, ExtraVars+4), 16.16.
     center_x: number,
@@ -73,20 +70,20 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
     swing: (owner: Object, x: number, y: number, element: number, damage: number, how: Swing) -> Object?,
 }
     -- `sub_80DE9E4`: an afterimage where it is (its sprite; a shadow at its
-    -- height; a big one's palette, `sub_80E3428`).
+    -- height; its variant's palette, `sub_80E3428`).
     local function afterimage(me: Object)
-        local trail = look.trail
+        local v = (me.state :: State).variant
+        local trail = v.trail
         if not trail then
             return
         end
-        local big = (me.state :: State).big
         battle.afterimage(me, me.pos, {
             sprite = look.sprite,
             anim = me.anim,
             flip = bit32.bxor(me.alliance, me.flip),
             lifetime = trail.ticks,
-            color_shader = trail.shader(big),
-            palette = if big then 1 else 0,
+            color_shader = trail.shader,
+            palette = v.palette,
         })
     end
 
@@ -97,10 +94,10 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
         local c, sn = sine(angle + 64), sine(angle)
         local p = me.pos
         me.pos = Vec3.new(int.mul32(RADIUS, c) + s.center_x, int.mul32(RADIUS, sn) + s.center_y, p.z)
-        -- The game reads the swing and the size (Param1 and Param2) as one
-        -- halfword here: a big one turns hundreds of times further, wrapping.
-        local way = (s.swing + (if s.big then 0x100 else 0)) * 2 - 1
-        me.timer = me.timer + look.turn(s.big) * way * me.facing
+        -- The game reads the swing and Param2 as one halfword here: a big
+        -- one turns hundreds of times further, wrapping.
+        local way = (s.swing + s.variant.swing_high * 0x100) * 2 - 1
+        me.timer = me.timer + s.variant.turn * way * me.facing
         local left = me.timer2 - 1
         me.timer2 = left
         return left
@@ -108,13 +105,13 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
 
     -- `sub_80DE924`.
     local function burn(me: Object, s: State)
-        local trail = look.trail
+        local trail = s.variant.trail
         if trail then
             if s.trail == 1 then
                 afterimage(me)
             end
             local n = s.trail + 1
-            if n >= trail.every(s.big) then
+            if n >= trail.every then
                 n = 0
             end
             s.trail = n
@@ -158,7 +155,7 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
     local function init(me: Object)
         local s = me.state :: State
         local turn = bit32.bxor(me.alliance, me.flip)
-        local arc = look.arcs(s.big)
+        local arc = s.variant.arcs
         local at = turn * 4 + s.swing + 1
         if arc[at + 2] == nil then
             error(string.format("The hook's flame swing %d reads past its arc table", s.swing))
@@ -180,7 +177,7 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
         me:setup_collision(look.self_type, look.target, HIT_MOD)
         if look.sets_look then
             sprite:set_flip(turn)
-            sprite.palette = if s.big then 1 else 0
+            sprite.palette = s.variant.palette
         end
         local c = me.collision
         c:set_hit_effect(s.spark :: Spark)
@@ -193,7 +190,7 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
     local kind = new.kind {
         id = look.id,
         pool = "attack",
-        state = { swing = "u8", big = "bool", spark = "spark", center_x = "i32", center_y = "i32", trail = "u32" },
+        state = { swing = "u8", variant = "record:flmhook-fire-variant", spark = "spark", center_x = "i32", center_y = "i32", trail = "u32" },
         -- `sub_80DE7F4`.
         update = function(me: Object)
             local l = me.lifecycle
@@ -209,7 +206,7 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
     }
 
     -- `sub_80DE960` and `sub_801155A`: a flame `owner`'s (the hook) on
-    -- (x, y), running while dimmed if its game says. (It spawns at the
+    -- (x, y), running while dimmed if its variant says. (It spawns at the
     -- registers' values, which its update replaces.)
     local function swing_from(owner: Object, x: number, y: number, element: number, damage: number, how: Swing): Object?
         local o = battle.spawn(kind, Vec3.new(y, element, 0))
@@ -220,8 +217,8 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
             o.alliance, o.flip = owner.alliance, owner.flip
             o.related1 = owner
             local s = o.state :: State
-            s.swing, s.big, s.spark = how.swing, how.big, how.spark
-            if look.while_dimmed(how.big) then
+            s.swing, s.variant, s.spark = how.swing, how.variant, how.spark
+            if how.variant.while_dimmed then
                 o.run_while_dimmed = true
             end
         end
