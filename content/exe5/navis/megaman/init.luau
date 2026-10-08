@@ -63,6 +63,13 @@ local navi: NaviDef = {
             },
         },
     },
+    -- His post-init hook (0x080EB2A8's row 0, 0x080F04EE): in a soul (NaviStats +0x2C not 0), the status reset again
+    -- (0x08011B20, EXE6's `sub_80144C0`). (His init has put him in his base form by then: it never runs.)
+    post_init = function(navi: Object)
+        if not battle.navi(navi.alliance).form.base then
+            navi:reset_status()
+        end
+    end,
     identity = new.identity {
         class = "player",
         changes_form = true,

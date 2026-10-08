@@ -122,7 +122,7 @@ end
 -- user stands, the user gone); its facing kept (+0x40); the scan from the far end's column (6 for side 0, 1 for
 -- side 1), row 1, toward the user.
 local function init(me: Object)
-    stand_in.init(me)
+    stand_in.init(me, stand_in.overlay)
     local s = me.state :: State
     me.vel = Vec3.new(me.facing, me.vel.y, me.vel.z)
     s.dx = -me.facing

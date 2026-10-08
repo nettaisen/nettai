@@ -218,7 +218,7 @@ gunner.kind = new.kind {
         local l = me.lifecycle
         if l == "init" then
             -- 0x080B8CCC: drawn as the user, who vanishes.
-            stand_in.init(me)
+            stand_in.init(me, stand_in.overlay)
             -- (`object_getEnemyDirection`: by side, whatever its facing.)
             s.dir = 1 - 2 * me.alliance
             me:set_lifecycle("update")

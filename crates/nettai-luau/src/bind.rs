@@ -409,6 +409,10 @@ impl UserData for Object {
                 with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false), stepping.unwrap_or(false))))
             },
         );
+        methods.add_method("add_overlay_of", |_, this, owner: mlua::UserDataRef<Object>| {
+            let owner = owner.0;
+            with(|api, _| Ok(api.add_overlay_of(this.0, owner)))
+        });
         methods.add_method("remove_parts_of", |_, this, owner: mlua::UserDataRef<Object>| {
             let owner = owner.0;
             with(|api, _| Ok(api.remove_parts_of(this.0, owner)))
