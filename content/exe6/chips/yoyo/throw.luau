@@ -9,7 +9,6 @@
 
 local attachment = require("../../objects/attachment")
 local common = require("@exelib/yoyo/throw")
-local yoyo = require("./yoyo")
 
 local throw = {}
 
@@ -19,19 +18,15 @@ throw.STATE = common.STATE
 -- The yoyo arm (the original's attachment row 0x0E).
 local ARM = attachment.look { sprite = asset.sprite("yoyo-arm"), palette = 0, attach_point = 0x0F }
 
--- A chip's throw: how its yoyos fly (a GreatYo's throws the controller);
--- `id`, the action's key (its compat key: both chips are records).
-function throw.action(spec: { id: string, yoyo: YoyoSpec }): Action
+-- A chip's throw: what it throws (`yoyo.one`, YoYo's; `yoyo.three`, the
+-- controller, GreatYo's); `id`, the action's key (its compat key: both
+-- chips are records).
+function throw.action(spec: { id: string, throw: (me: Object, x: number, y: number, z: number, damage: number) -> Object? }): Action
     return common.action {
         id = spec.id,
         arm = ARM,
         attachment = attachment.kind,
-        throw = function(me: Object, x: number, y: number, z: number, damage: number): Object?
-            if spec.yoyo.great then
-                return yoyo.spawn_controller(me, x, y, 0, z, damage, spec.yoyo)
-            end
-            return yoyo.spawn(me, x, y, 0, z, damage, spec.yoyo, "related")
-        end,
+        throw = spec.throw,
     }
 end
 

@@ -8,7 +8,7 @@ local puck = require("./airhocky/puck")
 local airhocky = require("./airhocky").airhocky
 
 -- The puck (`byte_80C9818`'s row 3): 18 steps, with a trail.
-local PUCK = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = true }
+local PUCK = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = 0x8318 }
 
 local chip: Chip = {
     codes = {},

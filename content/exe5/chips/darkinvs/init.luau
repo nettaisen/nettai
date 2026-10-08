@@ -4,6 +4,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local controller = require("@self/controller")
+local dark_costs = require("../lib/dark_costs")
 
 local chip: Chip = {
     codes = { "I", "*" },
@@ -18,6 +19,8 @@ local chip: Chip = {
     flags = { "dimming", "dark" },
     slot_in_limit = 1,
     dimming = controller.hook,
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.step_bug,
     auto_battle = { class = "at_once" },
 }
 

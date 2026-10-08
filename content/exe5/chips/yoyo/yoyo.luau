@@ -9,6 +9,9 @@
 -- its next panel once it has hit, and the leader's hit (or turn) tells the other two (0x080E8A5A: each yoyo its
 -- controller holds is marked as having hit). When it goes it clears the slot that holds it, if that still does.
 --
+-- Its slot says which it is (the original's Param2 by the slot its spawner fills): YoYo's (0) its thrower's first
+-- related object; GreatYo's leader (1) its controller's middle one, the followers (2) the ones below and above.
+--
 -- Unlike EXE6's: its collision is row 0x40 (EXE6's slash), no snapping to the panel on another yoyo's hit, and no
 -- skipped spin tick.
 
@@ -19,9 +22,8 @@ local attachment = require("../../objects/attachment")
 
 local yoyo = {}
 
--- How a yoyo flies (its Param2 to Param4): YoYo's (0), a GreatYo leader's (1) or follower's (2), the panels it rolls
--- out and its spinning rounds.
-export type Spec = { mode: number, panels: number, rounds: number }
+-- How a yoyo flies (its Param3 and Param4): the panels it rolls out and its spinning rounds.
+export type Spec = { panels: number, rounds: number }
 
 -- Which slot holds it (ExtraVars+4, a pointer in the game): its thrower's first related object, or one of its
 -- controller's (ExtraVars+0, +4, +8: `middle`, `below`, `above`).
@@ -44,15 +46,23 @@ local SOUND = asset.sound("set-down")
 local HIT_MOD = 1
 local SPEED, ROUND = 0x5_0000, 8
 local OUT, SPIN, BACK = 0, 4, 8
-local PLAIN, LEADER, FOLLOWER = 0, 1, 2
 
--- Its region by its mode (none for a follower).
+-- A GreatYo yoyo: one its controller holds.
+local function great(s: State): boolean
+    return s.slot ~= "related"
+end
+
+-- A GreatYo follower: the controller's yoyo below or above.
+local function follower(s: State): boolean
+    return s.slot == "below" or s.slot == "above"
+end
+
+-- Its region: YoYo's the panel, the leader's a column of three, a follower's none.
 local function arm(me: Object, s: State)
-    local mode = s.spec.mode
-    if mode == FOLLOWER then
+    if follower(s) then
         return
     end
-    me.collision:set_region(if mode == PLAIN then regions.single else regions.wide)
+    me.collision:set_region(if great(s) then regions.wide else regions.single)
 end
 
 -- 0x080E8A5A: the controller's three yoyos are told they hit.
@@ -96,7 +106,7 @@ local function turn(me: Object, s: State)
     s.back = s.spec.panels - s.left
     s.turned = 1
     set_action(me, SPIN)
-    if s.spec.mode == LEADER then
+    if s.slot == "middle" then
         tell_all(me)
     end
 end
@@ -109,7 +119,7 @@ local function out(me: Object, s: State)
         me.timer = ROUND
         s.left = s.spec.panels
         me.phase, me.phase_init = 4, 0
-        if s.spec.mode ~= PLAIN and s.hit ~= 0 then
+        if great(s) and s.hit ~= 0 then
             turn(me, s)
         end
     elseif phase == 4 then
@@ -123,7 +133,7 @@ local function out(me: Object, s: State)
         me:set_coordinates_from_panel()
         local left = s.left - 1
         s.left = left
-        if left <= 0 or (s.spec.mode ~= PLAIN and s.hit ~= 0) then
+        if left <= 0 or (great(s) and s.hit ~= 0) then
             turn(me, s)
             return
         end
@@ -250,7 +260,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     local v = me.vel
     me.vel = Vec3.new(me.facing * SPEED, v.y, v.z)
-    if (me.state :: State).spec.mode == FOLLOWER then
+    if follower(me.state :: State) then
         me.collision:set_region(nil)
     end
     me.collision:present()

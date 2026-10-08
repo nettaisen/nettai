@@ -186,6 +186,15 @@ language = "ja"
 "propbom3" = { name = "プロペラボム3", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
 "tornado" = { name = "トルネード", description = "2マス前方に\n8ヒットのたつまき\nを発生させる!" }
 "static" = { name = "ノイズストーム", description = "2マス前にノイズの\nアラシ!バグがある\nとパワーアップする" }
+"burnman" = { name = "バーナーマン", description = "2マス前方めがけて\n3方からバーナーで\nしゅうちゅう攻撃" }
+"burnmn-sp" = { name = "バーナーマンSP", description = "2マス前方めがけて\n3方からバーナーで\nしゅうちゅう攻撃" }
+"burnmn-ds" = { name = "バーナーマンDS", description = "2マス前方めがけて\n3方からバーナーで\nしゅうちゅう攻撃" }
+"grabrvng" = { name = "スチールリベンジ", description = "ぬすまれたパネルの\nかずだけ あいてに\nてんばつがくだる!" }
+"grabbnsh" = { name = "スチールパニシュ", description = "ぬすまれたパネルの\nかずだけ あいてに\nてんばつがくだる!" }
+"custswrd" = { name = "カスタムソード", description = "カスタムゲージが\nマンタンにちかい\nほど攻撃力アップ!" }
+"muramasa" = { name = "ムラマサブレード", description = "あんこくチップ!\nへっているHP分が\n攻撃力になる" }
+"slasher" = { name = "イアイフォーム", description = "Aボタンをおして\nいる間に入ってくる\nてきをきる!" }
+"suprvulc" = { name = "スーパーバルカン", description = "きょういの\n12れんしゃ\nバルカンほう!" }
 "hole" = { name = "ダークホール", description = "目の前のマスに\nダークホールを\nしゅつげんさせる!" }
 "pnlretrn" = { name = "パネルリターン", description = "自分のエリアの\nパネルをノーマルに\nもどす!" }
 "holypanl" = { name = "ホーリーパネル", description = "目の前のパネルを\nダメージはんげんの\nホーリーパネルに!" }
@@ -200,6 +209,11 @@ language = "ja"
 "discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
 "timpani" = { name = "ティンパニー", description = "ララボーンをおく\nえんそうちゅう\nじしんであしどめ!" }
 "silence" = { name = "サイレンス", description = "ララミュートをおく\nえんそうちゅう\nあいてはもうもくに" }
+"gutsman" = { name = "ガッツマン", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
+"gutsmn-sp" = { name = "ガッツマンSP", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
+"gutsmn-ds" = { name = "ガッツマンDS", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
+"copydmg" = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
+"windrack" = { name = "フウジンラケット", description = "目の前のてきを\n風でふきとばす!\nはんいはたて3マス" }
 "bighamr1" = { name = "ビッグハンマー1", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
 "bighamr2" = { name = "ビッグハンマー2", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
 "bighamr3" = { name = "ビッグハンマー3", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
@@ -212,6 +226,14 @@ language = "ja"
 "circgun1" = { name = "サークルガン1", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
 "circgun2" = { name = "サークルガン2", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
 "circgun3" = { name = "サークルガン3", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"varswrd" = { name = "バリアブルソード", description = "へんげんじざいの\nテクニカルソード" }
+"neovari" = { name = "ネオバリアブル", description = "へんげんじざいの\nテクニカルソード\nじょうきゅうへん" }
+"lifesrd" = { name = "ドリームソード", description = "よこ2たて3の\nきょだいソードで\nてきをぶったぎる!" }
+"ftrsword" = { name = "ファイターソード", description = "" }
+"sonicbom" = { name = "ソニックブーム", description = "" }
+"crosswrd" = { name = "クロスソード", description = "" }
+"sprsonic" = { name = "スーパーソニック", description = "" }
+"dbldream" = { name = "ダブルドリーム", description = "" }
 "gutpnch1" = { name = "ガッツパンチ1", description = "目の前のマスに\nガッツパンチ!" }
 "gutpnch2" = { name = "ガッツパンチ2", description = "目の前のマスに\nガッツストレート!" }
 "gutpnch3" = { name = "ガッツパンチ3", description = "目の前のマスに\nガッツインパクト!" }

@@ -329,9 +329,9 @@ export type Trap = {
 }
 
 -- A hockey puck's variant (@exelib/airhocky/puck: a row of EXE6's `byte_80C9818`, EXE5's 0x080CA3A4): the steps it
--- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and whether it
--- leaves a trail.
-export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+-- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and the tint of
+-- its trail if it leaves one (PitHocky's).
+export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: number? }
 
 -- How a gust blows (@exelib/gust/gust, the original's first parameter): `pulls` turns it back toward its side, a
 -- weaker push; `unseen` hides it and lets it blow through any panel.
@@ -350,7 +350,7 @@ export type GustLook = {
 }
 
 -- A game's hockey puck: its sprite (the trail's too), its sound and the bounce's, what it is and reaches, its hits'
--- spark, the effect it bursts in, and its trail's tint.
+-- spark, and the effect it bursts in.
 export type PuckLook = {
     sprite: SpriteAsset,
     sound: Sound,
@@ -359,7 +359,6 @@ export type PuckLook = {
     hits: CollisionType,
     spark: Spark,
     burst: Effect,
-    trail_tint: number?,
 }
 
 -- A game's magnet field (@exelib/magbolt/magnet): its key, what it is and hits, its spark by its element, the paralysis
@@ -741,9 +740,12 @@ export type CopyDamageSpec = {
 }
 
 -- A game's CopyDmg mark (@exelib/copydmg/mark): its kind's id, sprite and
--- animation, its hit's sound and types; EXE5's reloads its animation at its
--- init and hits its panel each tick it marks in the own-gauges mode
--- (the hit's spark and types).
+-- animation, its hit's sound and types; how long it marks a navi and how it
+-- sits over it ("attach_point": at the navi's attach point 0x1B, shown as the
+-- navi is, EXE6's and EXE5's; "position": at the navi's position, shown from
+-- the mark on, EXE4's); EXE5's and EXE4's reload its animation at its init;
+-- EXE5's hits its panel each tick it marks in the own-gauges mode (the hit's
+-- spark and types).
 export type CopyDamageMarkLook = {
     id: string,
     sprite: SpriteAsset,
@@ -751,8 +753,30 @@ export type CopyDamageMarkLook = {
     sound: Sound,
     is: CollisionType,
     hits: CollisionType,
+    ticks: number,
+    over_navi: "attach_point" | "position",
     reload_anim: boolean,
     own_gauges_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
+}
+
+-- A VarSwrd-like chip's action (@exelib/varswrd/action): its sequences by the
+-- navi's direction flip, as joypad words with A held, each ending in 0; what
+-- they give, in order, and what the countdown or A let go gives.
+export type VarSwordSpec = {
+    id: string?,
+    sequences: { [number]: { { number } } },
+    picks: { Chip },
+    sword: Chip,
+}
+
+-- A game's part of VarSwrd's action: the pick's sound, whether the navi
+-- waits while A is up (in the souls that do), and a navi in auto battle's
+-- pick (the side's sword pick: one past the picks a Sword; nil: none, or not
+-- in auto battle).
+export type VarSwordGame = {
+    sound: Sound,
+    waits: (me: Object) -> boolean,
+    auto_pick: ((me: Object) -> number?)?,
 }
 
 -- A CopyDmg mark made for a game (@exelib/copydmg/mark).
@@ -869,6 +893,10 @@ export type ProjectileVariant = {
     hit_panel: PanelHit?,
     bursts: boolean?,
     climbs: boolean?,
+    -- EXE6's: as the buster-shot program (its rows from 0x1E on) or the charged-shot program (rows 9 and 0x23), it
+    -- comes on 1 draw in 8, not 1 in 2.
+    rare_buster_shot: boolean?,
+    rare_charged_shot: boolean?,
 }
 
 -- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
@@ -1355,9 +1383,9 @@ export type ElemTrapLook = {
 -- and its collision types.
 export type FireHitFistLook = { sprite: SpriteAsset, sound: Sound, spark: Spark, target: CollisionType, self_type: CollisionType }
 
--- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
--- together), the panels it rolls out and its spinning rounds.
-export type YoyoSpec = { great: boolean?, panels: number, rounds: number }
+-- How a yoyo flies (EXE6's chips/yoyo/yoyo): the panels it rolls out and
+-- its spinning rounds.
+export type YoyoSpec = { panels: number, rounds: number }
 
 -- A Reflector's shield's look (chips/rflectr/shield, a row of the
 -- original's `byte_80C9664`): the sprite, its animation while up, the
@@ -1624,6 +1652,8 @@ export type NaviCustProgramSpec = {
     exclusive: string?,
     anywhere: boolean?,
     effects: { NaviCustEffect }?,
+    -- EXE5's HubBatc: its own bug counts once more (0x0813F5A8).
+    counts_own_bug: boolean?,
 }
 export type NaviCustProgram = NaviCustProgramSpec
 
@@ -1722,9 +1752,9 @@ export type NaviChipController = {
 -- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the
 -- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), Param4's flags: it paralyzes (bit 2: hit
 -- modifier 1, its hit back 12 ticks after one), its self type is the look's `attack_480` (bit 3: row 0x25, EXE4's
--- ElemDark's), and the panel type it leaves (the panel type the high nibble names; none, or as its state holds it
--- "none", leaves none). (Bit 0, which runs it while dimmed, no spawner sets.) Its palette (EXE5's +0x0D, EXE4's
--- +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
+-- ElemDark's), it runs while dimmed (bit 0: EXE4's FireMan's), and the panel type it leaves (the panel type the high
+-- nibble names; none, or as its state holds it "none", leaves none). Its palette (EXE5's +0x0D, EXE4's +0x0E), it has
+-- hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
 export type ElemFlameState = {
     count: number,
     spread: boolean,
@@ -1732,6 +1762,7 @@ export type ElemFlameState = {
     offset: number,
     paralyzes: boolean,
     attack_480: boolean,
+    while_dimmed: boolean,
     leaves: PanelType?,
     palette: number,
     hit: boolean,
@@ -1947,3 +1978,26 @@ export type ShadeMan = { kind: Kind, summoned: (o: Object, controller: Object, p
 -- What BugFix's glow (@exelib/bugfix/glow) does first, its spawner's (`glow.start`): its first action, which sets
 -- action 4 when it is done.
 export type BugFixGlowStart = { run: (me: Object) -> () }
+
+-- A chip's flames of the hook (@exelib/flmhook/fire's `variant`; the original's Param2 picks EXE6's rows: FlmHook's
+-- 0, BigHook's 1): the swing's high byte (Param2: the game reads Param1 and Param2 as one halfword, so EXE6's big
+-- ones turn hundreds of times further, wrapping); four bytes per facing (right, left), the start angle (high byte)
+-- by swing and then the lifetime by swing; how fast the angle turns; EXE6's afterimages (every few ticks, their
+-- shader, how long they last; none: EXE5's leave none); EXE6's palette (a big one's 1); and whether it runs while
+-- dimmed (EXE6's big ones, EXE5's).
+export type FlameHookVariant = {
+    swing_high: number,
+    arcs: { number },
+    turn: number,
+    trail: { every: number, shader: number, ticks: number }?,
+    palette: number,
+    while_dimmed: boolean,
+}
+
+-- What a chip's hook swings (@exelib/flmhook/hook's `flames`): its flames' columns (the first's, the second's: FlmHook's
+-- ahead of its user, BigHook's fixed), their variant and hit spark.
+export type FlameHookFlames = {
+    columns: (me: Object) -> (number, number),
+    variant: FlameHookVariant,
+    spark: Spark,
+}

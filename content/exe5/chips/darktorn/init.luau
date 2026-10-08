@@ -5,6 +5,7 @@
 
 local attachment = require("../objects/attachment")
 local tornado = require("./tornado/tornado")
+local dark_costs = require("../lib/dark_costs")
 
 -- Its blow (subtype 3, EXE6's action's third form): HP-bug tornadoes (row 3: bug 0x54, argument 5) spreading back
 -- toward the navi by its side's statistic 3 (0x080CAE7E, EXE6's `sub_80CA19E`: the same tables, `off_80CA1F8`), the
@@ -42,6 +43,8 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     action = BLOW,
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.custom_damage,
     auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 

@@ -16,7 +16,7 @@ local guts = {}
 
 local SPRITE = asset.sprite("gutsman")
 local APPEAR_SOUND = asset.sound("appear")
-local PUNCH_SOUND = asset.sound("guts-punch")
+local PUNCH_SOUND = asset.sound("fist-swing")
 -- His palette (0x0800B950: navi 2's palettes, 1, times the chip's level's, 0).
 local PALETTE = 0
 -- The animations: standing, appearing, leaving, punching.

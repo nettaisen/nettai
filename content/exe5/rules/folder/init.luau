@@ -29,15 +29,8 @@
 -- as a chip is used. A chip of another game (a mixed folder) is held to these rules by its record: its class, its
 -- codes, its MB, its dark flag.
 
-local batcan1 = require("../chips/batcan").batcan1
-local batcan2 = require("../chips/batcan").batcan2
-local batcan3 = require("../chips/batcan").batcan3
-local batcan4 = require("../chips/batcan").batcan4
-
 local SIZE = 30
 local DARK_CHIPS = 3
--- The chip pack's last chip is 0x13A: these come after it.
-local PAST_THE_PACK: { Chip } = { batcan1, batcan2, batcan3, batcan4 }
 
 -- How many copies of a chip a folder holds, by its class (a dark chip one).
 local COPIES: { [string]: number } = { standard = 4, mega = 1, giga = 1 }
@@ -57,7 +50,8 @@ end
 
 -- What the chip pack lists: a chip a folder can hold.
 local function in_pack(c: Chip): boolean
-    return COPIES[class(c)] ~= nil and c.codes ~= nil and #c.codes > 0 and table.find(PAST_THE_PACK, c) == nil
+    -- (The chip pack's last chip is 0x13A: a chip past it says so, `past_the_pack`.)
+    return COPIES[class(c)] ~= nil and c.codes ~= nil and #c.codes > 0 and (c :: any).past_the_pack ~= true
 end
 
 local function copies_allowed(c: Chip): number
