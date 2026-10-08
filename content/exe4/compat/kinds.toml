@@ -11,6 +11,7 @@
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
+"engine/afterimage" = { pool = "effect", index = 0x28 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
 "charge-glow" = { pool = "effect", index = 0x05 }
