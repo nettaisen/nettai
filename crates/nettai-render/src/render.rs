@@ -272,10 +272,12 @@ impl Renderer {
             _ => custom_hud,
         };
         // (The custom screen's fades of palettes 0-13 and 9-13 leave the
-        // HUD's 14 and 15: the flash's and the transformation's reach them.)
+        // HUD's 14 and 15: the flash's, the transformation's and the custom
+        // screen's white, which takes every palette, reach them.)
         let hud_past_ranged = match flash {
             Some(1) => Fade::White(16),
-            _ => transform,
+            _ if transform != Fade::None => transform,
+            _ => crate::custom::sprite_fade(b).unwrap_or_default(),
         };
         let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         // (The chatbox's palette is past every ranged fade's palettes: a
