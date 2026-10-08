@@ -242,6 +242,9 @@ language = "ja"
 "gutpnch1" = { name = "ガッツパンチ1", description = "目の前のマスに\nガッツパンチ!" }
 "gutpnch2" = { name = "ガッツパンチ2", description = "目の前のマスに\nガッツストレート!" }
 "gutpnch3" = { name = "ガッツパンチ3", description = "目の前のマスに\nガッツインパクト!" }
+"windman" = { name = "ウインドマン", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-sp" = { name = "ウインドマンSP", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-ds" = { name = "ウインドマンDS", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
