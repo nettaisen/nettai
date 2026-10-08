@@ -287,6 +287,8 @@ language = "en"
 "blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
 "mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
 "anubis" = { name = "Anubis", description = "EvilChip!\nAnubis\npoisons" }
+"guardian" = { name = "Guardian", description = "Statue\nretaliate\nwhen hit" }
+"punisher" = { name = "Punisher", description = "" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
