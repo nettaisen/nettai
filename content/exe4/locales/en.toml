@@ -219,6 +219,7 @@ language = "en"
 "crosswrd" = { name = "CrosSwrd", description = "" }
 "sprsonic" = { name = "SprSonic", description = "" }
 "dbldream" = { name = "DblDream", description = "" }
+"sandring" = { name = "SandRing", description = "Opens a\npitfall\ntrap" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -367,6 +368,7 @@ language = "en"
 "078-first-life-aura" = { name = "First Life Aura" }
 "079-charge-shot-switch" = { name = "Charge Shot Switch" }
 "080-charge-shot-switch" = { name = "Charge Shot Switch" }
+"082-charge-shot-switch" = { name = "Charge Shot Switch" }
 "083-charge-shot-switch" = { name = "Charge Shot Switch" }
 "084-charge-shot-switch" = { name = "Charge Shot Switch" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
