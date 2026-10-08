@@ -432,5 +432,10 @@ secret = [
     "z-saver",
 ]
 program_advance = [
+    "gigacan1",
+    "gigacan2",
+    "gigacan3",
+    "heatsprd",
+    "bubsprd",
     "lifesrd",
 ]

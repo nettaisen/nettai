@@ -287,6 +287,11 @@ language = "en"
 "blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
 "mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
 "bassanly" = { name = "BassAnly", description = "A ring\nthat hits\n4 times" }
+"gigacan1" = { name = "GigaCan1", description = "A cannon\ndriven by\nGigaPower" }
+"gigacan2" = { name = "GigaCan2", description = "A cannon\ndriven by\nGigaPower" }
+"gigacan3" = { name = "GigaCan3", description = "A cannon\ndriven by\nGigaPower" }
+"heatsprd" = { name = "HeatSprd", description = "Explosion\nby Wide\nattack" }
+"bubsprd" = { name = "BubSprd", description = "Bubbles\nby Wide\nattack" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

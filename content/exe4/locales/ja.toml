@@ -287,6 +287,11 @@ language = "ja"
 "blinder" = { name = "ブラインド", description = "きょうりょくな光で\nあいてをもうもく\nじょうたいにする!" }
 "mine" = { name = "ステルスマイン", description = "てきエリアのどこか\nに見えないじらいを\nセットする!" }
 "bassanly" = { name = "フォルテアナザー", description = "いちどだけまがる\nリングを4発\nなげつける!" }
+"gigacan1" = { name = "ギガキャノン1", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
+"gigacan2" = { name = "ギガキャノン2", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
+"gigacan3" = { name = "ギガキャノン3", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
+"heatsprd" = { name = "ヒートスプレッド", description = "まわり1マスに\nばくえんがひろがる\nこうはんい攻撃!" }
+"bubsprd" = { name = "バブルスプレッド", description = "まわり1マスに\nあわがひろがる\nこうはんい攻撃!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
