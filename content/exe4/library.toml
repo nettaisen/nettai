@@ -208,6 +208,8 @@ standard = [
     "longswrd",
     "wideblde",
     "longblde",
+    "custswrd",
+    "slasher",
     "airhoc1",
     "airhoc2",
     "airhoc3",
@@ -244,6 +246,8 @@ standard = [
     "repair",
     "panlgrab",
     "areagrab",
+    "grabbnsh",
+    "grabrvng",
     "invis",
     "popup",
     "antifire",
@@ -258,8 +262,10 @@ standard = [
     "navi-20",
 ]
 mega = [
+    "suprvulc",
     "fullcust",
     "atk-30",
+    "muramasa",
     "elemdark",
     "roll",
     "roll-sp",

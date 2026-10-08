@@ -13,6 +13,7 @@
 "vulcan1/action" = 0x1F
 "vulcan2/action" = 0x1F
 "vulcan3/action" = 0x1F
+"suprvulc/action" = 0x1F
 # The spreaders' (the chips' action 0x1E, 0x080EC760).
 "drkspred/action" = 0x1E
 "spreader/action" = 0x1E
@@ -55,6 +56,8 @@
 "magbolt1/action" = 0x59
 "magbolt2/action" = 0x59
 "magbolt3/action" = 0x59
+# Slasher's (the chips' action 0x35, 0x080ED572).
+"slasher/action" = 0x35
 # The TwnFngs' (the chips' action 0x34, 0x080ED4C6).
 "twnfng1/action" = 0x34
 "twnfng2/action" = 0x34
@@ -88,6 +91,8 @@
 "longswrd/action" = 0x0A
 "wideblde/action" = 0x0A
 "longblde/action" = 0x0A
+"custswrd/action" = 0x0A
+"muramasa/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
 "hicannon/action" = 0x0B
