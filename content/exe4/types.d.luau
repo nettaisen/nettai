@@ -7,6 +7,16 @@
 -- programs and the cards add.
 export type PatchCardWork = { hp: number }
 
+-- A breath chip's breath (chips/breath, attack object 0x36): its own panel was hit (+0x60), and the column's three
+-- ahead (+0x64, +0x68, +0x6C: level, up, down); its sound's count (+0x22).
+export type BreathState = {
+    hit: boolean,
+    ahead: boolean,
+    above: boolean,
+    below: boolean,
+    count: number,
+}
+
 -- The NaviCust's bug counts (rules/navicust's), which a card raises or clears.
 export type PatchCardCounts = {
     add: (bug: string, n: number) -> (),
