@@ -785,6 +785,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   EXE4's look (a puff, effect row 2, with 0x95; a rising bubble with 0x124), each chip its change (crack, break,
   poison). The lab's chips/ (12), panels/geddon1 and geddon2 and status/poison-geddon3 replay every frame; the hit
   recordings are pixel-exact.
+- **GutPnch1 to GutPnch3** (the dimming chips' variant 0x36, `chips/gutpnch`: EXE4's own): a controller (effect
+  #0x64, 0x080E90CC) run as the navi chips' (lib/navi_chips, its course 0x080E9124): the user warps out (30 ticks),
+  GutsMan comes (actor #0x42, 0x080C83F8, sheet 08-02 in palette 0), 30 ticks, and the user warps back in with the
+  appearing sound (0x080E91BC: a course's wait may play a sound as it starts, `sound`). GutsMan appears (5 ticks),
+  on a solid panel stands a tick and punches (0xA4, `fist-swing`): as the punch's timer reads 12, a hit on the panel
+  ahead (modifier 0x21, height the raw 16: 0x080CD7E2 drops r3) that runs while dimmed; 20 ticks more, he leaves (5
+  ticks) and goes by a byte store (his action stays). On a hole he leaves at once. The lab's chips/ (12),
+  drag/gutpunch, drag/gutpunch-edge, hits/guard-gutpnch and ice/gutpunch replay every frame; GutPnch1's hit is
+  pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
