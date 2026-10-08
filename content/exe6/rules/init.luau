@@ -193,6 +193,19 @@ local rules: Rules = {
             beast = "form",
             special_volley = "u16",
             charged_sword_rush = "bool",
+            -- VarSwrd's wait for its sequence while A is up (lib/swords/vari: SlashCross and its Beast form), and
+            -- the Falzar Beast buster's shots' palette in the form (weapons/falzar_beast_buster, `byte_80EC784`: the
+            -- Falzar Crosses' own in Beast Out; none, 0).
+            var_sword_waits = "bool",
+            beast_shot_palette = "u8",
+            -- EraseCross's charged shot fires its own beam in it (navis/megaman/forms/erasecross/charge: EraseCross;
+            -- in any other form, its Beast form's).
+            plain_erase_beam = "bool",
+        },
+        navi = {
+            -- VarSwrd's sword stays plain (lib/swords/vari): the navi waits for its sequence while A is up and gets
+            -- neither the charged sword nor the Beast lock-on (ProtoMan).
+            var_sword_plain = "bool",
         },
     },
     -- Its own actions, which reach its state: the change into a form (./forms), the Beast rush and the Cross

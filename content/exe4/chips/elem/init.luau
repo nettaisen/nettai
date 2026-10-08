@@ -2,7 +2,7 @@
 -- ElemFlar, ElemIce, ElemLeaf, ElemSand and ElemDark (EXE4 chips 0x019, 0x01A, 0x07E, 0x080 and 0x0D5; their records at
 -- 0x080197EC + n * 0x2C): action 0x60 (./elem), its variants 0 to 4: three flames along the row for 60 ticks each,
 -- five and paralyzing on the chip's panel (their parameters: 3 flames, 60 ticks; ElemDark's flames row 0x25 attacks,
--- its flag 8). The variants' rows: the panel (0x080EE3EF), the flames' palette (0x080EE3EA) and, ElemDark's, the poison
+-- its flags 8: `attack_480`). The variants' rows: the panel (0x080EE3EF), the flames' palette (0x080EE3EA) and, ElemDark's, the poison
 -- its raging flames leave (0x080EE3F4).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
@@ -17,7 +17,6 @@ local elemflar: Chip = {
         palette = 0,
         count = COUNT,
         ticks = TICKS,
-        flags = 0,
     },
     codes = { "K", "N", "P" },
     element = "fire",
@@ -38,7 +37,6 @@ local elemice: Chip = {
         palette = 1,
         count = COUNT,
         ticks = TICKS,
-        flags = 0,
     },
     codes = { "H", "Q", "V" },
     element = "aqua",
@@ -59,7 +57,6 @@ local elemleaf: Chip = {
         palette = 2,
         count = COUNT,
         ticks = TICKS,
-        flags = 0,
     },
     codes = { "C", "D", "I" },
     element = "wood",
@@ -80,7 +77,6 @@ local elemsand: Chip = {
         palette = 3,
         count = COUNT,
         ticks = TICKS,
-        flags = 0,
     },
     codes = { "A", "L", "S", "*" },
     element = "null",
@@ -102,7 +98,7 @@ local elemdark: Chip = {
         raging_leaves = "poison",
         count = COUNT,
         ticks = TICKS,
-        flags = 8,
+        attack_480 = true,
     },
     codes = { "E" },
     element = "null",

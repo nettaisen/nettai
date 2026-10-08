@@ -39,6 +39,10 @@ local BOARD: { string } = board.boards[1]
 -- What a program's handler and a bug's routine work on besides the stats: the HP programs' sum, BugStop.
 export type Work = { hp: number, bug_stop: boolean }
 
+-- What a side keeps of its NaviCust through the round: its bugs' counts by kind as the compile left them (the battle's
+-- copy, 0x0203F6E0, side 1's 0x0203F6F0), which a hit's bug code 0xFF raises (`raise_bug`).
+type State = { bug_counts: { [string]: number } }
+
 local function filled(rows: { string }, x: number, y: number): boolean
     return string.sub(rows[y + 1], x + 1, x + 1) == "#"
 end
@@ -159,8 +163,8 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
     panel = function(stats, level)
         stats.panel_trail = ({ 3, 1, 4 })[level]
     end,
-    encounter = function(_stats, _level)
-        -- (+0x15 = 1: no netbattle reads it.)
+    encounter = function(stats, _level)
+        stats.encounter_bug = true
     end,
     buster = function(stats, level)
         stats.buster_blanks = ({ 4, 8, 10 })[level]
@@ -168,8 +172,8 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
     support = function(stats, _level)
         stats.rush, stats.beat, stats.tango, stats.support_bug = false, false, false, true
     end,
-    result = function(_stats, _level)
-        -- (+0x19 = 1: no netbattle reads it.)
+    result = function(stats, _level)
+        stats.result_bug = true
     end,
     hub = function(stats, _level, work)
         stats.max_hp = bit32.band(math.max(bit32.rshift(stats.max_base_hp, 1), 1) + work.hp, 0xFFFF)
@@ -335,6 +339,26 @@ local function run(side: number)
         end,
     })
     bugs()
+    local kept = (rules.state() :: State).bug_counts
+    for _, bug in programs.BUGS do
+        kept[bug] = math.min(counts[bug] or 0, 0xFF)
+    end
+end
+
+-- 0x0804770C, then 0x08042AE0: side `side`'s bug `bug` one count more, and every bug of the side's at its count's level
+-- (1 to 3) again, on the battle's stats. (Their routines for the battle write its stats, but HubBatc's, which writes
+-- the game state's maximum HP, which no battle reads.)
+local function raise_bug(side: number, bug: string)
+    local kept = (rules.state() :: State).bug_counts
+    kept[bug] = int.u8(kept[bug] + 1)
+    local stats = battle.navi(side)
+    local work: Work = { hp = 0, bug_stop = false }
+    for _, b in programs.BUGS do
+        local level = math.min(kept[b], 3)
+        if level > 0 and b ~= "hub" then
+            BUG_WORK[b](stats, level, work)
+        end
+    end
 end
 
 -- `validate`'s part: each program in one of its colors, turned 0 to 3 quarters, every cell it covers on the board, over
@@ -380,7 +404,57 @@ local function validate(side: number, problem: (text: string, field: string?, en
     end
 end
 
+-- The bytes of the navi's stats that hold a kind of bug, and the values that are one (0x08043070, 0x0804304C).
+local MOVE_BUGS, HP_DRAINS, CUSTOM_DRAINS = { 0x20, 0x10, 0xFF }, { 0x0A, 6, 3 }, { 6, 4, 3 }
+local PANEL_BUGS, BLANKS = { 3, 4 }, { 4, 8, 0x0A }
+-- The weapon bug's charged shots (+0x0A = 0x1F, 0x20, 0x21: of them the content has the taunt alone).
+local taunt = require("../navis/megaman/weapons/taunt").weapon
+
+-- 0x08043014: how many kinds of bug side `side`'s navi has, of EXE4's nine (the move, HP and custom drains, the
+-- panel trail, the encounter, the buster's blanks, the support, the charged weapon, the result), each by its byte's
+-- value (Static's spread reads it).
+local function bug_kinds(side: number): number
+    local s = battle.navi(side)
+    local function of(v: number, values: { number }): boolean
+        return table.find(values, v) ~= nil
+    end
+    local kinds = {
+        of(s.move_bug, MOVE_BUGS),
+        of(s.hp_drain, HP_DRAINS),
+        of(s.custom_drain, CUSTOM_DRAINS),
+        of(s.panel_trail, PANEL_BUGS),
+        s.encounter_bug,
+        of(s.buster_blanks, BLANKS),
+        s.support_bug,
+        s.charge_shot_weapon == taunt,
+        s.result_bug,
+    }
+    local n = 0
+    for _, k in kinds do
+        if k then
+            n += 1
+        end
+    end
+    return n
+end
+
 return {
     run = run,
     validate = validate,
+    raise_bug = raise_bug,
+    -- The side's state (./init.luau gathers it).
+    state = {
+        bug_counts = {
+            move = "u8",
+            hp = "u8",
+            custom = "u8",
+            panel = "u8",
+            encounter = "u8",
+            buster = "u8",
+            support = "u8",
+            result = "u8",
+            hub = "u8",
+        },
+    } :: StateSchema,
+    bug_kinds = bug_kinds,
 }

@@ -423,8 +423,9 @@ local status = {
         -- `auto_battle_hit` (0x6D): its hit intake, 0x08013A8C.
         hit_sound = "by_navi",
         -- A barrier (0x08012DF8) runs whenever its navi does (its timer counts in the intro's pause); wind takes it
-        -- away at once (0x08012E1E), the hit absorbed all the same.
-        barrier = { stops_while_paused = false, wind = "takes_away" },
+        -- away at once (0x08012E1E), the hit absorbed all the same. A regrowing one (type 4, BlakBarr's: 0x08012E44),
+        -- worn down, is back with 150 HP 180 ticks later.
+        barrier = { stops_while_paused = false, wind = "takes_away", regrowing = { after = 180, hp = 150 } },
         -- Its defensive chips (0x08023048): AntiDmg catches a hit of any damage (one of none passes), AntiSwrd any
         -- sword's hit (the hit flags 0x2000); no status arms a trap.
         anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },

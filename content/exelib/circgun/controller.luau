@@ -34,16 +34,22 @@ local function foreign(x: number, side: number): boolean
     return false
 end
 
--- A game's controller (kind `id`) putting guns of `gun_kind`: its chips'
--- hook of a gun variant.
-local function make(id: string, gun_kind: Kind): { hook: (CircGunVariant) -> (user: Object, spec: DimmingChipSpec) -> Object? }
+-- A game's controller (kind `id`) putting guns of `gun_kind`, with its
+-- differences (`look`, none: EXE6's): its chips' hook of a gun variant.
+local function make(
+    id: string,
+    gun_kind: Kind,
+    look: CircGunControllerLook?
+): { hook: (CircGunVariant) -> (user: Object, spec: DimmingChipSpec) -> Object? }
+    local always = look ~= nil and look.always_sets_gun == true
+    local side_only = look ~= nil and look.side_only == true
     -- `sub_80E75AC`: the gun on the first tick; the effect ends once it is
     -- done (at once if it couldn't be spawned).
     local function effect(me: Object)
         local s = me.state :: State
         if me.phase_init == 0 then
             local start = START[bit32.bxor(me.alliance, me.flip)]
-            if not foreign(start[1], me.alliance) then
+            if not always and not foreign(start[1], me.alliance) then
                 dimming_chips.done(me)
                 return
             end
@@ -67,7 +73,7 @@ local function make(id: string, gun_kind: Kind): { hook: (CircGunVariant) -> (us
     -- `variant`.
     local function hook(variant: CircGunVariant): (user: Object, spec: DimmingChipSpec) -> Object?
         return function(user: Object, spec: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, spec)
+            local o = dimming_chips.spawn(kind, user, spec, side_only)
             if o then
                 local s = o.state :: State
                 s.variant, s.bonus = variant, spec.bonus

@@ -18,7 +18,7 @@ local drilarm1: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = drill.action(false),
+    action = drill.action { ticks = 24 },
     auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
@@ -36,7 +36,7 @@ local drilarm2: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = drill.action(false),
+    action = drill.action { ticks = 24 },
     auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
@@ -54,7 +54,7 @@ local drilarm3: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = drill.action(false),
+    action = drill.action { ticks = 24 },
     auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 

@@ -21,8 +21,8 @@ local charge = {}
 -- The phases, on the attack's step.
 local FIRE, HOLD = 0x0, 0x4
 
--- EraseCross's form; its hit parameter.
-local ERASE_CROSS, HIT_PARAM = "erasecross", 0x94
+-- Its hit parameter.
+local HIT_PARAM = 0x94
 
 local SOUND = asset.sound("moon-beam")
 
@@ -30,13 +30,14 @@ local SOUND = asset.sound("moon-beam")
 local BEAST_Z = -0x4_0000
 
 -- `sub_8011CF8`: 40 damage and 20 more per point of buster Attack (up to
--- 5), Null; the beam: EraseCross's, or in any other form (its Beast form)
--- the second.
+-- 5), Null; the beam: EraseCross's in a form that says so (its
+-- `plain_erase_beam`: EraseCross), or in any other (its Beast form) the
+-- second.
 local function setup(navi: Object): Action
     navi.attack_damage = weapon.charge_damage(navi, 0x28, 0x14)
     navi.hit_param = HIT_PARAM
     local s = navi:action_state(charge.action) :: State
-    s.beast = battle.navi(navi.alliance).form.id ~= ERASE_CROSS
+    s.beast = ((battle.navi(navi.alliance).form :: any) :: Exe6FormFields).plain_erase_beam ~= true
     navi.attack_element = 0
     return charge.action
 end

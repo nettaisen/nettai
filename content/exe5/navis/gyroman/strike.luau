@@ -2,8 +2,8 @@
 -- A strike from the air (EXE5's attack object #0x1C, 0x080C7EA0; EXE6 keeps its code, `sub_80C7C18`, which no EXE6
 -- content spawns): a burst of dust (sprite 10-0F) on a panel, up to 15 pixels across and 7 in depth from its center
 -- by two draws, that hits navis there on the tick it appears and goes at its first update (it sets a timer of 10,
--- and its update ends it while the timer hasn't run out). Its hit modifier is by its first parameter: 1 for none, 0
--- otherwise (GyroMan's shots from the air, ./buster).
+-- and its update ends it while the timer hasn't run out). Its hit modifier is its spawner's (by its first parameter:
+-- 1 for 0, 0 otherwise; GyroMan's shots from the air, ./buster, 0).
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
@@ -11,8 +11,8 @@ local sparks = require("../../lib/sparks")
 local strike = {}
 
 export type State = {
-    -- Its first parameter.
-    variant: number,
+    -- Its hit modifier.
+    hit_mod: number,
 }
 
 local SPRITE = asset.sprite("air-strike")
@@ -38,7 +38,7 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(collision.attack, collision.hits_navis, if (me.state :: State).variant == 0 then 1 else 0)
+    me:setup_collision(collision.attack, collision.hits_navis, (me.state :: State).hit_mod)
     me.collision:set_hit_effect(sparks.plain)
     me.collision:present()
     me.timer = TICKS
@@ -69,7 +69,7 @@ end
 strike.kind = new.kind {
     id = "gyroman/strike",
     pool = "attack",
-    state = { variant = "u8" },
+    state = { hit_mod = "u8" },
     -- 0x080C7EA0.
     update = function(me: Object)
         local l = me.lifecycle
@@ -89,11 +89,12 @@ strike.kind = new.kind {
     end,
 }
 
--- 0x080C7F94: a strike of `owner`'s side and facing on panel (x, y), with the element and the damage word.
-function strike.spawn(owner: Object, x: number, y: number, element: number, variant: number, damage: number): Object?
+-- 0x080C7F94: a strike of `owner`'s side and facing on panel (x, y), with the element, its hit modifier and the
+-- damage word.
+function strike.spawn(owner: Object, x: number, y: number, element: number, hit_mod: number, damage: number): Object?
     local o = battle.spawn(strike.kind, Vec3.zero)
     if o then
-        (o.state :: State).variant = variant
+        (o.state :: State).hit_mod = hit_mod
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)

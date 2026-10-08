@@ -8,13 +8,12 @@
 -- The noise, ShadeMan's image (08-0d's animation 12) 40 pixels ahead of its panel, hits navis (piercing, or a plain
 -- attack in a battle of mode 1, a netbattle) over the three columns ahead of it and its own (region 0x1B: with its
 -- Param2, no hit modifier and paralysis for 150 ticks), highlighting them, for 60 ticks. (Without its Param2, the
--- one EXE5's ShadeMan the virus sends, it starts on its panel with hit modifier 3 and grows: the fan at 2 ticks, two
--- columns at 4, three at 6, four at 8.)
+-- one EXE5's ShadeMan the virus sends, which no netbattle reaches, it starts on its panel with hit modifier 3 and
+-- grows: the fan at 2 ticks, two columns at 4, three at 6, four at 8, region 0x1C.)
 
 local collision = require("../../rules/collision")
 local navi_chips = require("@exelib/navi_chips/navi")
 local panels = require("@exelib/panels")
-local regions = require("@exelib/regions")
 local statuses = require("../../rules/status")
 
 local bignoise = {}
@@ -23,40 +22,14 @@ local SPRITE = asset.sprite("shademan")
 
 -- ---- The noise ------------------------------------------------------------------------------------------------------
 
--- Regions 0x1B and 0x1C (the region table's rows: the deep fan and one or two columns more).
+-- Region 0x1B (the region table's row: the deep fan and a column more).
 local THREE_COLUMNS = new.region {
     panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 } },
-}
-local FOUR_COLUMNS = new.region {
-    panels = {
-        { 0, 0 },
-        { 1, -1 },
-        { 1, 0 },
-        { 1, 1 },
-        { 2, -1 },
-        { 2, 0 },
-        { 2, 1 },
-        { 3, -1 },
-        { 3, 0 },
-        { 3, 1 },
-        { 4, -1 },
-        { 4, 0 },
-        { 4, 1 },
-    },
-}
--- The growth of the one without Param2 (0x080C4F14): (its tick, its region).
-local GROWTH: { { any } } = {
-    { 2, regions.fan },
-    { 4, regions.deep_fan },
-    { 6, THREE_COLUMNS },
-    { 8, FOUR_COLUMNS },
 }
 local SOUND = asset.sound("elec-pulse")
 local TICKS, AHEAD = 60, 40
 
 export type NoiseState = {
-    -- Its Param2: the navi chip's.
-    navi: boolean,
     -- The region it has (the collision's region byte, for the highlight).
     region: Region?,
 }
@@ -66,20 +39,8 @@ local function set_region(me: Object, r: Region?)
     ;(me.state :: NoiseState).region = r
 end
 
--- 0x080C4EE4: the one without Param2 grows its region at its ticks (while it has one).
-local function grow(me: Object, s: NoiseState)
-    if s.navi or s.region == nil then
-        return
-    end
-    for _, g in GROWTH do
-        if me.timer == g[1] then
-            set_region(me, g[2])
-            return
-        end
-    end
-end
-
--- 0x080C4E6A: a hit takes its region off; 60 ticks, growing and highlighting its region (by its side); then gone.
+-- 0x080C4E6A: a hit takes its region off; 60 ticks, highlighting its region (by its side); then gone. (0x080C4EE4,
+-- the growth, is the one's without Param2.)
 local function noise_tick(me: Object)
     local c = me.collision
     c:remove()
@@ -96,7 +57,6 @@ local function noise_tick(me: Object)
         me:set_lifecycle("destroy")
     else
         me.timer += 1
-        grow(me, s)
         local r = s.region
         if r then
             panels.highlight_region(me.panel_x, me.panel_y, r, panels.side_direction(me.alliance))
@@ -105,11 +65,10 @@ local function noise_tick(me: Object)
     c:present()
 end
 
--- 0x080C4E04: its look and collision (piercing, a plain attack in a mode 1 battle; hitting navis, hit modifier 3; the
--- navi chip's over region 0x1B, no hit modifier, paralysis 150); shown 40 pixels ahead of its panel; the sound; the
--- first update at once.
+-- 0x080C4E04: its look and collision (piercing, a plain attack in a mode 1 battle; hitting navis; with its Param2
+-- over region 0x1B, no hit modifier, paralysis 150); shown 40 pixels ahead of its panel; the sound; the first update
+-- at once.
 local function noise_init(me: Object)
-    local s = me.state :: NoiseState
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite.shadow = "with_sprite"
@@ -121,12 +80,9 @@ local function noise_init(me: Object)
     local is = if battle.mode() == 1 then collision.attack else collision.piercing
     me:setup_collision(is, collision.hits_navis, 3)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    s.region = regions.single
-    if s.navi then
-        set_region(me, THREE_COLUMNS)
-        me.collision.hit_mod_base = 0
-        me.collision.status_base = statuses.paralyze_150
-    end
+    set_region(me, THREE_COLUMNS)
+    me.collision.hit_mod_base = 0
+    me.collision.status_base = statuses.paralyze_150
     me.collision:present()
     me.visible = true
     me:set_coordinates_from_panel()
@@ -140,7 +96,7 @@ end
 bignoise.noise = new.kind {
     id = "bignoise/noise",
     pool = "attack",
-    state = { navi = "bool", region = "region" },
+    state = { region = "region" },
     -- 0x080C4DE0: by its lifecycle, then a sprite step.
     update = function(me: Object)
         local l = me.lifecycle
@@ -210,7 +166,6 @@ local function attack(me: Object)
                 o.alliance, o.flip = me.alliance, me.flip
                 o.related1 = me
                 o.run_while_dimmed = true
-                ;(o.state :: NoiseState).navi = true
             end
             -- (And his +0x1A byte cleared, which nothing here reads.)
         end

@@ -18,7 +18,6 @@ puck.kind = common.make_kind("airhoc/puck", {
     hits = collision.hits_navis,
     spark = sparks.breaking,
     burst = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
-    trail_tint = 0x8318,
 })
 
 -- A puck's row.

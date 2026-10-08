@@ -323,8 +323,9 @@ fn accumulate_charge(b: &mut Battle, r: ObjectRef) {
 /// unless a buster or charged shot is asked already, charged with a full B
 /// charge from last tick; B then Left within 8 ticks the B+Left special; a
 /// chip on A's press (its release when the chip charges), charged with a
-/// full A charge. (Its souls' own branches, soul 2's B presses and soul
-/// 15's, come with the souls.)
+/// full A charge; at each ask, B's charge level kept (`b_charge_at_ask`).
+/// (Its souls' own branches, soul 2's B presses and soul 15's, come with
+/// the souls: soul 2's ask keeps it too, 0x0800BE8E.)
 fn decode_per_button(b: &mut Battle, r: ObjectRef) {
     let f0 = ai(b, r).requests;
     if b.is_dimmed() {
@@ -340,9 +341,15 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
         let a = ai(b, r);
         (a.pad.pressed, a.pad.released, a.charge_source, a.charge_level)
     };
+    // At each ask the decode keeps the charge levels (0x0800BE48,
+    // 0x0800BF10): B's is the charging source's level when B charges, else
+    // none (only the charging source's count is ever nonzero).
+    let b_level = if source == 2 { level } else { 0 };
     if f0 & (request::BUSTER | request::CHARGED_SHOT) == 0 && released & keys::B != 0 {
         let full = source == 2 && level == 2;
-        ai_mut(b, r).requests |= if full { request::CHARGED_SHOT } else { request::BUSTER };
+        let a = ai_mut(b, r);
+        a.requests |= if full { request::CHARGED_SHOT } else { request::BUSTER };
+        a.b_charge_at_ask = b_level;
     }
     // (0x0800BE50: a form's rapid presses, GutsSoul's. A press counts and
     // opens the window; the window running out drops the count; at the
@@ -392,7 +399,9 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let full = source == 1 && level == 2;
-    ai_mut(b, r).requests |= if full { request::CHARGED_CHIP } else { request::CHIP };
+    let a = ai_mut(b, r);
+    a.requests |= if full { request::CHARGED_CHIP } else { request::CHIP };
+    a.b_charge_at_ask = b_level;
 }
 
 /// EXE4's 0x0800BBA4 and 0x0800BB50: the charge, by the button held. Not

@@ -10,8 +10,9 @@
 -- the slot that holds it lets go of it: its navi's first related object,
 -- or, for the second, the first drill's link, which the first clears when
 -- it goes. A hit also shakes the camera. Each game's drill is a kind of its
--- look (`drill.make_kind`: its spark, its collision, what its third
--- parameter means, and what its spawn keeps; EXE5's DrilArm and DarkDril).
+-- look (`drill.make_kind`: its spark, its collision and what its spawn
+-- keeps; EXE5's DrilArm and DarkDril). Its third parameter is its user's:
+-- EXE6's makes a light one, EXE5's a dark one (`Spec`).
 
 local regions = require("../regions")
 
@@ -24,15 +25,19 @@ export type State = {
     -- The second drill (ExtraVars+8).
     child: Object?,
     -- It is the second (Param1 1), its ticks of hitting (Param2), and
-    -- Param3: EXE6's light one that hits once, with hit modifier 3; EXE5's
-    -- dark one, whose hit carries a bug.
+    -- its Param3 (see `Spec`).
     second: boolean,
     ticks: number,
     light: boolean,
+    bugs: number,
 }
 
--- How long a drill hits, and its Param3 (`light`).
-export type Spec = { ticks: number, light: boolean? }
+-- How long a drill hits, and what its Param3 makes it, its user's: EXE6's
+-- light one (`light`), which hits once, with hit modifier 3 (MstrCros's
+-- GroundCross); EXE5's dark one, whose hit carries a bug (`bugs`, the
+-- collision's bug word, the bug in its low byte and its argument above:
+-- DarkDril's; EXE5's 0x080D4154, `sub_801A4D0`).
+export type Spec = { ticks: number, light: boolean?, bugs: number? }
 
 
 -- Ticks between hits.
@@ -87,7 +92,7 @@ function drill.make_kind(
                 me.timer = t
                 if t <= 0 then
                     me.timer = PERIOD
-                    if not (s.light and look.param3 == "light") then
+                    if not s.light then
                         c:set_region(regions.single)
                     end
                 end
@@ -123,7 +128,7 @@ function drill.make_kind(
             o.related1 = owner
             o:set_damage_word(damage)
             local s = o.state :: State
-            s.second, s.ticks, s.light = second, spec.ticks, spec.light or false
+            s.second, s.ticks, s.light, s.bugs = second, spec.ticks, spec.light or false, spec.bugs or 0
             s.slot = slot
             if slot == "related" then
                 owner.related1 = o
@@ -139,7 +144,7 @@ function drill.make_kind(
         local s = me.state :: State
         if not s.second then
             local damage = me.damage + me.stamina * 0x10000
-            local o = spawn(me, me.element, me.pos.z, damage, { ticks = s.ticks, light = s.light }, true, "child")
+            local o = spawn(me, me.element, me.pos.z, damage, { ticks = s.ticks, light = s.light, bugs = s.bugs }, true, "child")
             if o and look.keeps_element then
                 o.run_while_dimmed = me.run_while_dimmed
             end
@@ -149,8 +154,7 @@ function drill.make_kind(
             me:free()
             return
         end
-        local light = s.light and look.param3 == "light"
-        local hit_mod = if light then LIGHT_HIT_MOD else HIT_MOD
+        local hit_mod = if s.light then LIGHT_HIT_MOD else HIT_MOD
         me:setup_collision(if s.second then look.second else look.first, look.hits, hit_mod)
         me.timer2 = s.ticks
         me.timer = PERIOD
@@ -158,10 +162,9 @@ function drill.make_kind(
         local c = me.collision
         c:set_region(regions.single)
         c:set_hit_effect(look.spark)
-        local dark = look.param3
-        if s.light and type(dark) == "table" then
+        if s.bugs ~= 0 then
             -- (EXE5's 0x080D4154: sub_801A4D0.)
-            c.bugs = dark.bug + bit32.lshift(dark.bug_arg, 8)
+            c.bugs = s.bugs
         end
         me:set_lifecycle("update")
         tick(me)
@@ -176,6 +179,7 @@ function drill.make_kind(
             second = "bool",
             ticks = "u8",
             light = "bool",
+            bugs = "u16",
         },
         -- `sub_80D2A94`.
         update = function(me: Object)

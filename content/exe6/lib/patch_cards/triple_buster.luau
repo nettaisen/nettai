@@ -15,7 +15,7 @@ local SHOT: Action = buster.shot :: any
 local function setup(navi: Object): Action
     local action: Action = buster.setup(navi)
     if action == SHOT then
-        (navi:action_state(SHOT) :: { mode: string }).mode = "spread"
+        (navi:action_state(SHOT) :: { spread: boolean }).spread = true
     end
     return action
 end
