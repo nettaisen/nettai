@@ -3,9 +3,10 @@
 -- attack variable 0) and the shot it starts (action 8, 0x080EB316), EXE4's own: no arm is raised (animation 0x12), and
 -- on the shot's second tick a draw of the battle's RNG2 decides whether it fires: a draw of 1 to 16 no greater than
 -- the navi's blank count (NaviStats +0x08, the NaviCust's and patch cards' bug) clicks (sound 0x1C0) and fires nothing;
--- else the shot (sound 0x6A), the plain projectile from the panel in front, and the muzzle flash in the navi's first
--- related slot (attachment row 0x10, its animation the navi's number). After five ticks, the recovery the shot
--- counted (a blank waits the last shot's), which a move may cut short.
+-- else the shot (sound 0x6A), the projectile row its attack parameter names (the plain one, row 0) from the panel in
+-- front, and the muzzle flash in the navi's first related slot (attachment row 0x10, its animation the navi's number).
+-- After five ticks, the recovery the shot counted (a blank waits the last shot's), which a move may cut short. The
+-- buster patches (./buster_patches) are the same action with another row (`buster.shot_action`).
 --
 -- Nearest the engine can say (docs/design/exe4-map.md §18): the attack's exit (0x0800CA28) and the move that cuts the
 -- recovery short (0x0800AD2A, 0x0800B4B0, 0x0800C9BA) as the engine's.
@@ -40,7 +41,7 @@ local BLANK_SOUND = asset.sound("buster-blank")
 type State = { timer: number }
 
 -- 0x080EB334.
-local function shoot(me: Object, s: State)
+local function shoot(me: Object, s: State, variant: ProjectileVariant)
     if me.step_init == 0 then
         me:set_animation(0x12)
         me:set_status("using_action", true)
@@ -52,7 +53,7 @@ local function shoot(me: Object, s: State)
         if bit32.band(battle.rng(), 0xF) + 1 > blanks then
             battle.play_sound(SHOT_SOUND)
             local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
-            me.attack_count = projectile.fire(me, { variant = SHOT, damage = damage, z = SHOT_Z })
+            me.attack_count = projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z })
             attachment.attach(me, attachment.muzzle_flash, "related", NAVI_NUMBER)
         else
             battle.play_sound(BLANK_SOUND)
@@ -91,20 +92,25 @@ local function recover(me: Object, s: State)
     me:start_move(dir)
 end
 
-buster.shot = new.action {
-    id = "megaman/buster/shot",
-    state = { timer = "i16" },
-    update = function(me: Object, s: State)
-        local step = me.step
-        if step == SHOOT then
-            shoot(me, s)
-        elseif step == RECOVER then
-            recover(me, s)
-        else
-            error(string.format("buster shot phase %#x reads past its phase table", step))
-        end
-    end,
-}
+-- The buster's shot (action 8) as `id`, firing projectiles of `variant` (its attack parameter's row).
+function buster.shot_action(id: string, variant: ProjectileVariant): Action
+    return new.action {
+        id = id,
+        state = { timer = "i16" },
+        update = function(me: Object, s: State)
+            local step = me.step
+            if step == SHOOT then
+                shoot(me, s, variant)
+            elseif step == RECOVER then
+                recover(me, s)
+            else
+                error(string.format("buster shot phase %#x reads past its phase table", step))
+            end
+        end,
+    }
+end
+
+buster.shot = buster.shot_action("megaman/buster/shot", SHOT)
 
 -- 0x0800CC2E.
 function buster.setup(navi: Object): Action
