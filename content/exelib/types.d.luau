@@ -893,6 +893,10 @@ export type ProjectileVariant = {
     hit_panel: PanelHit?,
     bursts: boolean?,
     climbs: boolean?,
+    -- EXE6's: as the buster-shot program (its rows from 0x1E on) or the charged-shot program (rows 9 and 0x23), it
+    -- comes on 1 draw in 8, not 1 in 2.
+    rare_buster_shot: boolean?,
+    rare_charged_shot: boolean?,
 }
 
 -- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
@@ -1648,6 +1652,8 @@ export type NaviCustProgramSpec = {
     exclusive: string?,
     anywhere: boolean?,
     effects: { NaviCustEffect }?,
+    -- EXE5's HubBatc: its own bug counts once more (0x0813F5A8).
+    counts_own_bug: boolean?,
 }
 export type NaviCustProgram = NaviCustProgramSpec
 

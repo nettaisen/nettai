@@ -16,6 +16,7 @@ local flying_shot = require("../../../objects/flying_shot")
 local sparks = require("../../../lib/sparks")
 local weapon = require("../../../lib/weapon")
 local chip_gate_battle = require("../../../lib/chip_gate_battle")
+local kind = require("../../../rules/forms/kind")
 
 export type State = {
     -- Ticks into the shot, then ticks of recovery (AIAttackVars+0x10).
@@ -73,24 +74,16 @@ local HEIGHT = 0x16
 -- 12 lower.
 local VOLLEY_BACK, VOLLEY_SIDE, VOLLEY_DROP = 0x1E_0000, 0x18_0000, 0xC_0000
 
--- The shots' palette by Beast form (`byte_80EC784`): the Falzar Crosses'
--- own in Beast Out, else 0.
-local PALETTES: { [string]: number } = {
-    ["gregar-beast"] = 0,
-    ["falzar-beast"] = 0,
-    ["heatcross-beast"] = 0,
-    ["eleccross-beast"] = 0,
-    ["slashcross-beast"] = 0,
-    ["erasecross-beast"] = 0,
-    ["chargecross-beast"] = 0,
-    ["spoutcross-beast"] = 1,
-    ["tomahawkcross-beast"] = 2,
-    ["tengucross-beast"] = 3,
-    ["groundcross-beast"] = 4,
-    ["dustcross-beast"] = 5,
-    ["gregar-beast-over"] = 0,
-    ["falzar-beast-over"] = 0,
-}
+-- The shots' palette (`byte_80EC784`, by Beast form): the form's
+-- `beast_shot_palette`, the Falzar Crosses' own in Beast Out, else 0. Its
+-- table holds the Beast forms alone (rules/forms/kind).
+local function palette_of(side: number): number
+    local form = battle.navi(side).form
+    if not kind.beast(side) then
+        error(string.format("form %s reads outside sub_80EC710's palette table", form.id :: string))
+    end
+    return ((form :: any) :: Exe6FormFields).beast_shot_palette or 0
+end
 
 -- The repeats a Beast Over's buster (or a Cross special's) fires.
 local REPEATS = 8
@@ -130,11 +123,7 @@ end
 -- cycle on, the two behind it. (`sub_80C6248`: its spawner's word is the
 -- shot's height here, which only a thrown obstacle reads.)
 local function shoot_volley(me: Object, s: State, falls: boolean, z: number, damage: number)
-    local form = battle.navi(me.alliance).form.id :: string
-    local palette = PALETTES[form]
-    if palette == nil then
-        error(string.format("form %s reads outside sub_80EC710's palette table", form))
-    end
+    local palette = palette_of(me.alliance)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     flying_shot.launch(me, Vec3.new(x, y, z), { variant = SHOT, falls = falls, palette = palette, damage = damage })
     if s.cycle == 0 then

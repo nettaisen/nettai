@@ -7,6 +7,7 @@
 local attachment = require("../objects/attachment")
 local collision = require("../rules/collision")
 local widesht = require("./widesht/wave")
+local dark_costs = require("../lib/dark_costs")
 
 -- Its wave (kind 9, which EXE6's table has and no EXE6 chip fires): it goes through, trails afterimages of its own
 -- sprite (animation 1: 0x080CC9A6's word 0x11D10, EXE6's rock cubes 0x10010) and carries bug 0x14 with argument 2, as
@@ -38,6 +39,8 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     action = widesht.action { wave = WAVE, waves = 1, z = 0, shooter = SHOOTER },
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.buster_blanks,
     auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
