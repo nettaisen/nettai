@@ -15,7 +15,10 @@ local glow = {}
 local made = common.make {
     id = "bugfix/glow",
     offset = 1,
-    exe5_parts = false,
+    -- The navi's parts, stepping on.
+    wear = function(me: Object, navi: Object)
+        me:add_parts_of(navi, true)
+    end,
 }
 glow.kind = made.kind
 glow.spawn = made.spawn

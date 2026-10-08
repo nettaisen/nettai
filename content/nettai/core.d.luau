@@ -583,6 +583,13 @@ declare extern type Object with
     -- record's first byte (the dimming chips' stand-ins): the parts step
     -- even while paused.
     function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
+    -- `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'): what
+    -- `owner`'s navi wears, put on this object as on an image of it: a navi
+    -- that changes form its form's `put_on` (EXE5's NumberSoul's layer, the
+    -- base form's Hub Style shade), else the parts its form's identity
+    -- wears; any other navi its identity's parts. Their sprites step even
+    -- while paused.
+    function add_overlay_of(self, owner: Object): ()
     -- `sub_8011044` with `owner`'s identity: take them off.
     function remove_parts_of(self, owner: Object): ()
 
