@@ -43,6 +43,8 @@ return {
     overlay_restart = "step",
     -- The counter a stance's caught hit starts runs from the next tick (`sub_80105F2`).
     stance_counter = "next_tick",
+    -- The counter a trap's catch starts runs its first step at once (`sub_801056A`).
+    trap_counter = "at_once",
     -- A deleted player's object lets go of its reservations and collision data and counts one actor fewer, then stays
     -- in its slot (`sub_8016C4E`).
     dead_player = "kept",
