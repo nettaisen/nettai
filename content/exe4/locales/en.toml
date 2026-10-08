@@ -253,6 +253,10 @@ language = "en"
 "videmn-sp" = { name = "VideMnSP", description = "Attack\ntape slam\n2.5 in" }
 "videmn-ds" = { name = "VideMnDS", description = "Attack\ntape slam\n2.5 in" }
 "bugbomb" = { name = "BugBomb", description = "Throws a\nbug-bomb\n3sq ahead" }
+"kendoman" = { name = "KendoMan", description = "Attck hit\nan enemy\nin front" }
+"kendmn-sp" = { name = "KendMnSP", description = "Attck hit\nan enemy\nin front" }
+"kendmn-ds" = { name = "KendMnDS", description = "Attck hit\nan enemy\nin front" }
+"nrthwind" = { name = "NrthWind", description = "Wind blws\noff aura,\nbarriers" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
