@@ -52,6 +52,7 @@ return merge {
     require("@self/navi-20"),
     require("@self/numbrman"),
     require("@self/panlgrab"),
+    require("@self/propbom"),
     require("@self/protoman"),
     require("@self/recov"),
     require("@self/repair"),
