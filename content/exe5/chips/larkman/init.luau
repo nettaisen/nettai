@@ -5,6 +5,18 @@
 local navi = require("@self/navi")
 local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
+local swoop = require("@self/swoop")
+
+-- LarkMan's swoop (its variant 5).
+local SWOOP = swoop.variant {
+    speed_x = 0x8_0000,
+    speed_y = 0x4_CCCC,
+    turn_step = 0xD_AC50,
+    shorter = 1,
+    longer = 0,
+    wild_turn = false,
+    commanded = true,
+}
 
 -- LarkMan (EXE5 chip 0x110): LarkMan cuts in and sends his swoop round the field (./navi).
 local larkman: Chip = {
@@ -22,7 +34,7 @@ local larkman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "larkman/controller",
-        summon = navi.summon,
+        summon = navi.summon { palette = 0, swoop = SWOOP },
     },
     auto_battle = { class = "at_once" },
 }
@@ -45,7 +57,7 @@ local larkman_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "larkman-sp/controller",
-        summon = navi.summon,
+        summon = navi.summon { palette = 0, swoop = SWOOP },
     },
     auto_battle = { class = "at_once" },
 }
@@ -67,7 +79,7 @@ local larkman_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "larkman-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon { palette = 4, swoop = SWOOP },
     },
     auto_battle = { class = "at_once" },
 }

@@ -2,7 +2,7 @@
 -- An aqua needle (attack object #0x50, `sub_80CE530`): AquaNdl's. It
 -- flies down onto its panel in 12 ticks, hits there for one tick, and
 -- blinks out over 12 more (cracking the panel first when it was spawned
--- to). Its palette is the chip's (times 4). It hangs still while the
+-- to). Its palette is the chip's (four times its first parameter). It hangs still while the
 -- battle is dimmed, and goes in a puff when the battle ends under it.
 
 local collision = require("../../rules/collision")
@@ -13,7 +13,7 @@ local sparks = require("../../lib/sparks")
 local needle = {}
 
 export type State = {
-    -- Its palette, before the times 4 (the original's first parameter),
+    -- Its palette (the chip's: four times the original's first parameter),
     -- and whether it cracks its panel as it goes (its second).
     palette: number,
     cracks: boolean,
@@ -127,7 +127,7 @@ local function init(me: Object)
     sprite:load(SPRITE)
     sprite.shadow = "with_sprite"
     me.visible = true
-    sprite.palette = (me.state :: State).palette * 4
+    sprite.palette = (me.state :: State).palette
     me:set_coordinates_from_panel()
     local vx = me.facing * SPEED
     me.timer = FLIGHT

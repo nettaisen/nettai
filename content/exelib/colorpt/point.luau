@@ -144,7 +144,7 @@ function point.make(look: Look): Point
         end
         s.target_x, s.target_y = navi.panel_x, navi.panel_y
         me.visible = true
-        sprite.palette = s.palette * 4
+        sprite.palette = s.palette
         me:set_coordinates_from_panel()
         battle.play_sound(look.sounds.appear)
         me:set_lifecycle("update")

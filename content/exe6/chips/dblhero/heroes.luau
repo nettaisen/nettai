@@ -16,6 +16,9 @@ local regions = require("@exelib/regions")
 local parts = require("../../lib/swords/parts")
 local protoman = require("../../navis/protoman").protoman
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local heroes = {}
 
 export type State = {
@@ -54,7 +57,7 @@ local SOUND_VOLLEY = asset.sound("buster-shot")
 local SOUND_SLASH = asset.sound("sword-swing")
 local SOUND_APPEAR = asset.sound("appear")
 -- MegaMan's flash, ProtoMan's (effects 0x21, 0x16).
-local FLASH = { megaman = effects.flash, protoman = parts.effects.wide }
+local FLASH = { megaman = effects.flash, protoman = WIDE_SLASH }
 -- ProtoMan's sword (attachment row 3, animation 0xB).
 local ANIM_IDLE, ANIM_LEAVE, ANIM_SLASH, ANIM_VOLLEY = 0, 4, 5, 0xE
 local PROTOMAN_LEAVES = 4
@@ -261,7 +264,7 @@ local function slash(me: Object)
     if me.phase_init == 0 then
         me.anim, me.anim_loaded = ANIM_SLASH, 0xFF
         detach(s.held)
-        attachment.attach(me, parts.blades.sword, "held", { anim = 0xB, while_dimmed = true })
+        attachment.attach(me, parts.blade, "held", { anim = 0xB, while_dimmed = true })
         battle.play_sound(SOUND_SLASH)
         me.timer = VOLLEY_TICKS
         flash(me)
