@@ -935,6 +935,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   adds the bubble), which waits 59 ticks and over 5 ticks hits once a tick with its four bugs (0x080DD494: kinds 2,
   3, 4, 6, each the hit word's byte 3 after 0xFF, as BugBomb's), then lets the controller go on. The lab's chips/ (4)
   and status/bugcurse replay every frame; the hit is pixel-exact but for the custom screen's known shift.
+- **LifeSync** (the dimming chips' variant 0x30, `chips/lifesync`): EXE4's own controller (#0x5C, 0x080E8784),
+  which EXE5's reworks, with the shared marker (@exelib/lifesync/marker, #0x60, 0x080E8C78: EXE4's in palette 7, 10
+  pixels over the panel two ahead, which it never leaves). In a link battle (0x08007EEC's battle flags' 8, or a battle
+  type of 70 and on: every netbattle's) it only waits 81 ticks: no marker, no sound. Else the marker and its sound
+  (0x12F), the enemy navi there (0x080E89BA: BattleState +0x44's list, content/exe4/lib/navi_list), and after 21
+  ticks a warning (0x08008424's 0x79) over each it syncs for 61: BattleState +0x44's entries past the first (the
+  other console's navi, whatever the user's side; two slots read, a third written), each taking the target's HP,
+  uncapped (0x10E up, 0x13A down). Under event flag 0x1187 (lib/main_started, also the plus chips') the link battle
+  doesn't stop it and the enemy navi there takes a hit of 50 instead (0x080E8A48): EXE5's operation battle's. The
+  lab's chips/ (4) and status/lifesync replay every frame; chips/0x01c-lifesync/hit is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
