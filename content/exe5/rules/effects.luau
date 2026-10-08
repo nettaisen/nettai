@@ -85,6 +85,8 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second, as EXE6's.
     used_chip_ticks = 0x3C,
+    -- A dimming chip's telop ends those names as it starts (0x0800A0FC, 0x0800A218: EXE6's `sub_801BED6(0x10000)`).
+    telop_ends_used_chips = true,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (0x08019780, EXE6's).
     bug_flicker = true,
     -- A step leaves its NaviCust panel trail at a chance of its level in 8, an RNG2 draw, as EXE6's.

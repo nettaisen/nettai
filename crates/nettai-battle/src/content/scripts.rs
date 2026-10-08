@@ -481,6 +481,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         rng1_per_frame = true,
         chip_icons = "attach_point",
         used_chip_ticks = 0x3C,
+        telop_ends_used_chips = true,
         bug_flicker = true,
         panel_trail = "by_chance",
         status_visual = { place = "attach_point" },
