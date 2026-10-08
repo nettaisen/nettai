@@ -229,6 +229,12 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         a.damage = a.damage.wrapping_add(add);
         b.sound(BONUS_SOUND);
     }
+    // EXE4's 0x0800C4C4: an uncharged use of a damaging chip, not a dimming
+    // chip, of a family the form's `paralyzing_chips` names paralyzes.
+    if charge == 0 && deals_damage(cd.flags) && form_of(b, r).paralyzing_chips.contains(&cd.family) {
+        let a = &mut ai_mut(b, r).attack;
+        a.damage = a.damage.wrapping_add(damage_flags::PARALYZE);
+    }
     ai_mut(b, r).attack.extra = e.extra;
     let (damage, boost) = double_damage(b, r, e.chip, ai(b, r).attack.damage, charge);
     ai_mut(b, r).attack.damage = damage;
