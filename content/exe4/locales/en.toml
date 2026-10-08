@@ -185,6 +185,7 @@ language = "en"
 "grabbnsh" = { name = "GrabBnsh", description = "Retaliate\nstolen\npanels!" }
 "custswrd" = { name = "CustSwrd", description = "Cust\nGauge=\nAtk Str" }
 "muramasa" = { name = "Muramasa", description = "EvilChip!\nPower=\nHP lost" }
+"slasher" = { name = "Slasher", description = "Cut while\nA Button\nis held!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
