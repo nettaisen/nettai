@@ -1944,6 +1944,23 @@ impl CoreApi for Battle {
         }
     }
 
+    fn add_overlay_of(&mut self, o: ObjectRef, owner: ObjectRef) {
+        let side = self.objects.get(owner).alliance;
+        let s = &self.stats[side as usize & 1];
+        let (navi, form) = (s.navi, s.form);
+        if self.content.navi(navi).changes_form() {
+            if let Some(f) = self.content.defs.form(form).put_on {
+                crate::behavior::call_hook(self, f, nettai_content_api::HookCall::FormNavi { navi: o });
+                return;
+            }
+            let identity = self.content.form(form).identity;
+            kinds::player::form::put_on_parts(self, o, identity, 1);
+            return;
+        }
+        let identity = self.objects.get(owner).identity;
+        kinds::player::form::put_on_parts(self, o, identity, 1);
+    }
+
     fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef) {
         let identity = self.objects.get(owner).identity;
         kinds::player::form::navi_death_hook(self, o, identity);
@@ -2012,11 +2029,11 @@ impl CoreApi for Battle {
             ActorField::SlideCooldown => i(a.slide_cooldown as i64),
             ActorField::TargetMarker => a.target_marker.into(),
             ActorField::ChargeGlow => a.charge_glow.into(),
+            ActorField::ResetLinkedObject => a.reset_linked_object.into(),
             ActorField::FullSynchroAura => a.full_synchro_aura.into(),
             ActorField::ChargeLevel => i(a.charge_level as i64),
             ActorField::ChargeSource => i(a.charge_source as i64),
             ActorField::ChargeCounter => i(a.charge_counter as i64),
-            ActorField::BChargeAtAsk => i(a.b_charge_at_ask as i64),
             ActorField::RapidPresses => i(a.rapid_presses as i64),
             ActorField::RapidWindow => i(a.rapid_window as i64),
             ActorField::BufferedMove => i(a.buffered_move as i64),
@@ -2101,6 +2118,7 @@ impl CoreApi for Battle {
             (ActorField::AttackCount, FieldValue::U16(x)) => at.count = x,
             (ActorField::TargetMarker, FieldValue::Object(r)) => a.target_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
+            (ActorField::ResetLinkedObject, FieldValue::Object(r)) => a.reset_linked_object = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
             (ActorField::RapidPresses, FieldValue::U8(x)) => a.rapid_presses = x,
@@ -3113,6 +3131,10 @@ impl CoreApi for Battle {
 
     fn obstacle_disarm_conversion(&mut self, side: u8) {
         self.obstacle_conversion[side as usize & 1].armed = false;
+    }
+
+    fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32) {
+        self.obstacle_conversion[side as usize & 1].words = [melee, ranged];
     }
 
     fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32) {

@@ -309,6 +309,9 @@ named_fields! {
         TargetMarker = "target_marker", Object, rw;
         /// The charge glow.
         ChargeGlow = "charge_glow", Object, rw;
+        /// AIData+0x50 (EXE4's +0x5C): an object tied to the navi that the
+        /// full status reset ends (`sub_801390C`): EXE4's WindSoul's wind.
+        ResetLinkedObject = "reset_linked_object", Object, rw;
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura", Object, rw;
         /// The charge: 0 none, 1 charging, 2 full; its source (0 none, 1
@@ -316,11 +319,6 @@ named_fields! {
         ChargeLevel = "charge_level", U8, ro;
         ChargeSource = "charge_source", U8, ro;
         ChargeCounter = "charge_counter", U8, ro;
-        /// The B charge's level (0 none, 1 charging, 2 full) as the navi
-        /// last asked for an attack, kept until its next ask (EXE4's
-        /// AIData +0x15, which its decode copies at each ask: 0x0800BE48,
-        /// 0x0800BF10); 0 in a game whose decode keeps none.
-        BChargeAtAsk = "b_charge_at_ask", U8, ro;
         /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
         /// counted toward a form's `rapid_presses`, and the ticks left for
         /// the next (the forced charged shot clears both as it ends).
@@ -1828,6 +1826,13 @@ pub trait CoreApi {
     /// first byte (the dimming chips' stand-ins): the parts step even while
     /// paused.
     fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool);
+    /// `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'):
+    /// what `owner`'s navi wears put on `o`, as on an image of it: a navi
+    /// that changes form its form's put-on routine (its `put_on`: EXE5's
+    /// NumberSoul's layer, the base form's Hub Style shade), else the
+    /// parts its form's identity wears; any other navi its identity's
+    /// parts. Their sprites step even while paused.
+    fn add_overlay_of(&mut self, o: ObjectRef, owner: ObjectRef);
     /// `sub_8011044` with `owner`'s NameID record: take them off.
     fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef);
 
@@ -2275,6 +2280,10 @@ pub trait CoreApi {
     fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32);
     /// 0x080CAC30: disarm side `side`; its words stay.
     fn obstacle_disarm_conversion(&mut self, side: u8);
+    /// 0x080CABF8 alone: side `side`'s soldiers' damage words (the sword
+    /// soldier's and the gun soldier's) become these, armed or not (EXE5's
+    /// BusterUp in ColonelSoul, 0x08011C50).
+    fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32);
     /// Whether side `side` is armed, and its words (0x080CAC06,
     /// 0x080CAC12): what its soldiers strike with as they read them.
     fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32);

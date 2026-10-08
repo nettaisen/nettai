@@ -539,7 +539,9 @@ export type Exe6ChipFields = {
 -- whether its charged sword runs inside the Beast Out rush (SlashCross in
 -- Beast Out; rules/beast's); the custom screen dealing one more chip
 -- for each screen spent in it, up to three (ChargeCross), or the scrap
--- button (DustCross; rules/cross's).
+-- button (DustCross; rules/cross's); VarSwrd's wait while A is up
+-- (lib/swords/vari); the Falzar Beast buster's shots' palette in it;
+-- EraseCross's charged shot's own beam in it (EraseCross).
 export type Exe6FormFields = {
     kind: ("cross" | "beast" | "cross_beast" | "beast_over")?,
     cross_of: NaviDef?,
@@ -549,6 +551,14 @@ export type Exe6FormFields = {
     charged_sword_rush: boolean?,
     extra_chips: boolean?,
     scrap_button: boolean?,
+    var_sword_waits: boolean?,
+    beast_shot_palette: number?,
+    plain_erase_beam: boolean?,
+}
+
+-- A navi's: VarSwrd's sword stays plain for it (lib/swords/vari).
+export type Exe6NaviFields = {
+    var_sword_plain: boolean?,
 }
 
 -- A navi's forms by game: the Crosses by their number on the custom

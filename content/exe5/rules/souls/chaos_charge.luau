@@ -5,7 +5,7 @@
 -- or the soul's own), which the glow shows (0x080E0E10: animation 2 + the window); its time is the soul's chaos
 -- weapon's by the chaos level (0x0801067E). Released in the window (0x0801086E: window 2), the chaos weapon fires
 -- (0x080F034E: the chaos level up, at most 4; the side's statistic 0; `set_attack` slot 5); out of it, the failure
--- (0x080F0382: uninterruptible, ./chaos, slot 6). The soul's weapon and its own row are its form's `chaos`
+-- (0x080F0382: uninterruptible, ./chaos, slot 6). The soul's weapon and its own cycle are its form's `chaos`
 -- (`Exe5FormFields`).
 
 local chaos = require("./chaos")
@@ -36,8 +36,8 @@ local CYCLE: { { number } } = {
 -- The armed charge's glow (0x080E0EA4).
 local GLOW = asset.sprite("chaos-charge-glow")
 
--- The navi's soul's Chaos Unison: its weapon, and its own row of the cycle (none: the level's).
-local function soul_chaos(side: number): { weapon: Weapon, cycle: number? }?
+-- The navi's soul's Chaos Unison: its weapon, and its own cycle (none: the level's row).
+local function soul_chaos(side: number): { weapon: Weapon, cycle: { number }? }?
     return (battle.navi(side).form :: any).chaos
 end
 
@@ -81,13 +81,9 @@ function chaos_charge.navi_tick(side: number, navi: Object)
         s.chaos_counter = 0
         return
     end
-    -- 0x080106BC: the level's row, at most 2, unless the soul has its own.
+    -- 0x080106BC: the level's row, at most 2, unless the soul has its own (MeddySoul's: the table's row 2).
     local soul = soul_chaos(side)
-    local row = (soul and soul.cycle) or math.min(s.chaos_level, 2)
-    local cycle = CYCLE[row + 1]
-    if cycle == nil then
-        error(string.format("the chaos cycle's row %d reads past its table (0x08010650)", row))
-    end
+    local cycle = (soul and soul.cycle) or CYCLE[math.min(s.chaos_level, 2) + 1]
     local counter = (s.chaos_counter + 1) % 0x100
     if counter >= cycle[1] then
         counter = 0

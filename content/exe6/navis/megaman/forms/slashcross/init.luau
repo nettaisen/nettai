@@ -12,6 +12,8 @@ local forms = require("../../../rules/forms")
 
 local form: FormDef = {
     kind = "cross",
+    -- VarSwrd waits for its sequence while A is up (lib/swords/vari).
+    var_sword_waits = true,
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
     version = "gregar",

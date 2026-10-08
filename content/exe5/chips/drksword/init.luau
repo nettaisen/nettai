@@ -8,6 +8,7 @@
 local collision = require("../rules/collision")
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
+local dark_costs = require("../lib/dark_costs")
 
 -- Its dark big slash (effect 0x1C).
 local DARK_SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 2 }
@@ -37,6 +38,8 @@ local chip: Chip = {
         effect = DARK_SLASH,
         sound = swords.big_swing,
     },
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.buster_blanks,
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 

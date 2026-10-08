@@ -43,6 +43,8 @@ local form: FormDef = {
     traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time" },
     -- Its charged sword runs inside the Beast Out rush (rules/beast's, `sub_800FB54`).
     charged_sword_rush = true,
+    -- VarSwrd waits for its sequence while A is up (lib/swords/vari).
+    var_sword_waits = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 15, palette_add = 7 },
     identity = new.identity {

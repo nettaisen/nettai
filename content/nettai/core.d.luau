@@ -508,14 +508,14 @@ declare extern type Object with
     charge_level: number
     charge_source: number
     charge_counter: number
-    -- The B charge's level (0 none, 1 charging, 2 full) as the navi last asked for an attack, kept until its next
-    -- ask (EXE4's AIData +0x15); 0 in a game whose decode keeps none (read-only).
-    b_charge_at_ask: number
     -- Writable: EXE4's rapid presses (AIData +0x12, +0x11), the B presses
     -- counted toward a form's `rapid_presses` and the ticks left for the
     -- next (the forced charged shot clears both as it ends).
     rapid_presses: number
     rapid_window: number
+    -- Writable: an object tied to the navi that the full status reset ends
+    -- (AIData+0x50, EXE4's +0x5C: WindSoul's wind).
+    reset_linked_object: Object?
     -- Writable: a buffered auto-step's direction, the chip lockout, the
     -- B+Back special's cooldown.
     buffered_move: number
@@ -587,6 +587,13 @@ declare extern type Object with
     -- record's first byte (the dimming chips' stand-ins): the parts step
     -- even while paused.
     function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
+    -- `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'): what
+    -- `owner`'s navi wears, put on this object as on an image of it: a navi
+    -- that changes form its form's `put_on` (EXE5's NumberSoul's layer, the
+    -- base form's Hub Style shade), else the parts its form's identity
+    -- wears; any other navi its identity's parts. Their sprites step even
+    -- while paused.
+    function add_overlay_of(self, owner: Object): ()
     -- `sub_8011044` with `owner`'s identity: take them off.
     function remove_parts_of(self, owner: Object): ()
 
@@ -1714,6 +1721,9 @@ declare obstacle: {
     arm_conversion: (side: number, melee: number, ranged: number) -> (),
     -- 0x080CAC30: disarm side `side`; its words stay.
     disarm_conversion: (side: number) -> (),
+    -- 0x080CABF8 alone: side `side`'s soldiers' damage words become these,
+    -- armed or not (EXE5's BusterUp in ColonelSoul, 0x08011C50).
+    set_conversion_words: (side: number, melee: number, ranged: number) -> (),
     -- Whether side `side` is armed, and its words (0x080CAC06,
     -- 0x080CAC12): what its soldiers strike with as they read them.
     conversion: (side: number) -> (boolean, number, number),
@@ -2564,6 +2574,9 @@ export type FormDef = {
     -- Its own part of the per-form tick (EXE5's MegaMan's, 0x080F04CE:
     -- GyroSoul's propeller by the priming), each tick.
     tick: ((navi: Object) -> ())?,
+    -- What a chip's use from idle does besides in it, as the hand moves on past the chip (`navi.attack_chip`): EXE4's
+    -- RollSoul's heal (0x080EED04).
+    chip_used: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.

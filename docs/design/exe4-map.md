@@ -788,6 +788,54 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   content each chip states its own (`breath.make`), each its own kind mapped to attack 0x36. WoodPwdr's hits confuse
   (hit modifier 1, status 0x20); ElecShok's highlight the panels they hit. A parameter of 4 and on would leave a trail
   (0x080D3C10): no chip has one.
+- **CircGun1 to CircGun3** (the dimming chips' variant 0x33, `chips/circgun`): @exelib/circgun (EXE6's code) with
+  EXE4's look: the sight SearchMan's scope's sheet (10-22), its sounds (0x128, 0x12F, 0xBB), the flash effect row 0x27,
+  four thrown shots each (the chip's parameter is its period: 6, 4, 2); the gun going back along a row turns on a
+  column with any of the user's side's panels (0x080DE7AA, `turns_on_own_column`); the controller (effect #0x5E)
+  sets the gun whatever the far column holds and takes the user's side alone (`always_sets_gun`, `side_only`). The
+  lab's chips/ (15) replay every frame; CircGun1's hit and CircGun3's back-column are pixel-exact.
+- **Wind, Fan** (the dimming chips' variant 0x0F, `chips/wind`): @exelib/wind's controller (effect #0x25, 0x080E4AD4,
+  its spawn taking the user's side alone: `side_only`) and fan (attack #0x48, 0x080D6488) with EXE4's look: sheet
+  0c-21 (`fan`), rising with 0x121; 100 HP (0x080D6480's rows, EXE5's 40); no NameID (no identity); its leaving an
+  explosion whatever removes it (`removal_explodes`); its gust EXE4's (objects/gust, untracked: the fan gives its ROM
+  row for the gust's slot) on EXE4's own column (0x080D6688, the look's `column`): the enemy's front column of the
+  row, none when an obstacle stands there; Fan's from there to the far edge or the panel before an obstacle. The
+  lab's chips/ (8), drag/ and ice/ wind and fan recordings and every stage replay every frame; the hit recordings are
+  pixel-exact.
+- **Geddon1 to Geddon3** (the dimming chips' variant 0x0A, `chips/geddon`): EXE5's Geddon on @exelib/geddon: the
+  controller (effect #0x1D, 0x080E400C) holding no panel, the quake (effect #0x1E, 0x080E40E4: EXE6's code) with
+  EXE4's look (a puff, effect row 2, with 0x95; a rising bubble with 0x124), each chip its change (crack, break,
+  poison). The lab's chips/ (12), panels/geddon1 and geddon2 and status/poison-geddon3 replay every frame; the hit
+  recordings are pixel-exact.
+- **GutPnch1 to GutPnch3** (the dimming chips' variant 0x36, `chips/gutpnch`: EXE4's own): a controller (effect
+  #0x64, 0x080E90CC) run as the navi chips' (lib/navi_chips, its course 0x080E9124): the user warps out (30 ticks),
+  GutsMan comes (actor #0x42, 0x080C83F8, sheet 08-02 in palette 0), 30 ticks, and the user warps back in with the
+  appearing sound (0x080E91BC: a course's wait may play a sound as it starts, `sound`). GutsMan appears (5 ticks),
+  on a solid panel stands a tick and punches (0xA4, `fist-swing`): as the punch's timer reads 12, a hit on the panel
+  ahead (modifier 0x21, height the raw 16: 0x080CD7E2 drops r3) that runs while dimmed; 20 ticks more, he leaves (5
+  ticks) and goes by a byte store (his action stays). On a hole he leaves at once. The lab's chips/ (12),
+  drag/gutpunch, drag/gutpunch-edge, hits/guard-gutpnch and ice/gutpunch replay every frame; GutPnch1's hit is
+  pixel-exact.
+- **NumbrBl1 to NumbrBl3** (the dimming chips' variant 0x3A, `chips/numbrbl`): EXE5's NumbrBl. The controller
+  (effect #0x69, 0x080E9838) is @exelib/numbrbl/controller with EXE5's effect (0x080E9754, `controller.warping`, now
+  shared) and EXE4's warp (lib/navi_chips): the user warps out (30 ticks), NumberMan comes, 30 ticks, the user warps
+  back in (30). NumberMan (actor #0x45, 0x080C8CC4) is @exelib/numbrbl/numberman (EXE5's code, now shared) with
+  EXE4's look: sheet 08-08 in palette 0, appearing with 0xB0, throwing in his animation 7, and his init loading his
+  standing animation (`loads_standing`; EXE5's leaves the byte 0xFF). His balls (attack #0x91, 0x080DF4E4) are
+  @exelib/numbrbl/ball with EXE5's numbers (30 ticks sitting with 0xAA, parts 2 to 21 hidden) and EXE4's sheet 10-05,
+  explosion (effect row 0) and 0xC8. Each chip states its balls (its first parameter and three: 3, 4, 5). Damage is
+  formula 49 (power 1049, 0x0801963E): the last two digits of the user's HP (`hp_last_digits`). The lab's chips/ (15)
+  replay every frame; NumbrBl3's hit is pixel-exact.
+- **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
+  (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
+  100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
+  hammer waits 10 ticks, winds up 24 (BigHamr's blinking), swings (0x122) and lands 5 ticks later on the panel
+  ahead, then goes 60 ticks on, in an explosion whatever ends it. Each chip states its look (`hammer.make`: palette,
+  standing animation, blinking) and its landing: BigHamr's cracks two of the other side's solid panels at random on a
+  solid panel and hits the panel ahead (breaking); GodHammr's quakes every solid panel (collision type 0x26) on a
+  solid panel, else hits the panel ahead; a solid panel shakes the camera (by 1, 2, 3; GodHammr's 3) with 0xA2. The
+  lab's chips/ (19) and hits/guard-bighamr replay every frame; the hit recordings (and BigHamr1's two-ahead,
+  GodHammr's miss) are pixel-exact.
 - **Silence, Fanfare, Discord, Timpani** (the dimming chips' variant 0x24, `chips/silence` and on): the instruments'
   controller (effect #0x4A, 0x080E7310) and instrument (attack #0x78, 0x080DC33C), @exelib/instruments (EXE6's code,
   as EXE5's) with EXE4's look (lib/instruments): the sheet 04-08, its sounds (0xB0 appearing, 0x70 leaving), no NameID
@@ -816,6 +864,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   normal), HolyPanl row 6 (the panel in front to holy), Snctuary row 7 (the own area to holy). The lab's chips/ (20),
   panels/holypanl and pnlretrn, status/holy-panel and sanctuary and the GunSols' (whose light fills Hole's holes)
   replay every frame; the hit recordings' fight frames are pixel-exact.
+- **NrthWind** (the dimming chips' variant 0x1C, `chips/nrthwind`): EXE6's and EXE5's controller (effect #0x39,
+  0x080E622C: @exelib/nrthwind/controller, now shared, its spawn the user's side alone) blowing EXE4's north wind
+  (objects/north_wind, WindSoul's change's). The lab's chips/0x08a-nrthwind (4) replay every frame and are
+  pixel-exact; EXE5's NrthWind recordings still match.
 - **Invis** (the dimming chips' action 0x0C, its variant 0x31, `chips/invis`): EXE6's Invisibl (@exelib/invisibl:
   effect object #0x5D, 0x080E8A68), 360 ticks, its sound EXE4's (0x109, in 0x0800C6BC). **PopUp** (variant 0x1E,
   `chips/popup`: EXE4's own controller, effect #0x3D, 0x080E6470) puts EXE4's glow over its user's navi (actor #0x5D,
@@ -864,6 +916,60 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its ticks held while its owner is paralyzed, dragged or sliding; EXE6's #0x7C is another object), which AquaMan's
   controller (0x080BB4E8) and 0x080D4010 spawn too. The engine's objects tell whether they have a collision record
   (`has_collision`), which that hold reads.
+  GutsMan (actor #0x14) and his quake (attack #0x1C, 0x080D055C) are EXE4's own: his hammer strikes the panel ahead
+  (a heavy hit, modifier 1) and sets off the quake there, which cracks the solid panels ahead (six at random; the SP's
+  and the DS's all) and 30 ticks later drops rocks on two of the other side's free panels and on its navi's. The rocks
+  are EXE6's falling rock and its chips (EXE4's attack #0x1D and effect #9, the same code but for their constants),
+  now @exelib/rock/falling and falling_chip (EXE4's objects/falling_rock: 160 pixels up, 1/16 pixel a tick faster, an
+  attack, modifier 3; EXE6's 104, 1/8, a thrown breaking attack, modifier 1), which actor #0x29 (0x080BFCC8) drops
+  too. The controller gives GutsMan B's charge at the ask as his Param2, which he never reads. Action 0x44 (a navi's
+  hammer, 0x080F050A, which no netbattle starts) spawns the quake with a Param1 of its own; given 0 it cracks Param2
+  of the other side's panels and drops its rocks around that side's navi or 0x0800C456's target, by its owner's
+  flags 0xA000 (0x080D05FE, 0x080D06BE, 0x080D0740): it waits on action 0x44. With fewer than six solid panels ahead,
+  GutsMan's quake reads the rest of its six off the stack past its list (0x080D06AC): what its crash's sound left
+  there, the sound queue's (0x0800073C) saved r7, the object loop's node of the quake itself (0x0203C070 + 0xD8 by its
+  slot: its low byte, then 0xC0 to 0xDA, 0x03, 0x02), and its return address's low bytes (0xAB, 0x05). As panels
+  (x the low three bits, y the high nibble) the five it can reach are all off the field (y 12 or 13, 0, 0, 10, 0; the
+  low byte only with no panel listed, when it cracks none), and a crack off the field does nothing: the port cracks
+  only those it found, which is the same. (Only an interrupt in the few instructions between the sound's return and
+  the list, whose handler runs on this stack in system mode as EXE6's does, could leave other bytes there; the
+  engine has no interrupts.) The lab's chips/0x0e0-gutsman/few-panels (the quake finding five) replays every
+  frame and its fight frames are pixel-exact.
+  AquaMan (actor #0x1A) and his water gun (attack #0x33, 0x080D3468) are EXE4's own: on a solid panel nothing stands
+  on (else gone at once in a puff) the gun pops up and sprays the panel ahead of it once and the one past it twice
+  (aqua hits, modifier 3), then sinks; AquaMan waits for it to go. While it readies, it counts its side's presses of A
+  while dimmed into a strength nothing reads (0x080D362C loads it and sprays twice). The spout on AquaMan's head is
+  NumberMan's face's object (actor #0x5C) with its sprite row 1 (10-0C), his own kind of @exelib/numbrman/face. His
+  controller, like GutsMan's, gives him B's charge at the ask as his Param2, which he never reads: no EXE4 object
+  reads `b_charge_at_ask` (item 50's), as no other code reads the AI data's +0x15.
+  WindMan (actor #0x34), his tornadoes (attack #0x6B, 0x080DAC54) and their sand (attack #0x6C, 0x080DAF54) are
+  EXE4's own; his controller (effect #0x46) waits 61 ticks after him, not 31. He blows three tornadoes; each goes
+  from the panel ahead a row down (on the bottom row at once on), two panels ahead, back up its column to the field's
+  edge, then back toward his side, a hit (collision row 0x20, modifier 3) on each panel it enters, till it leaves
+  the screen or, seven panels entered, four ticks into the next. Reaching a row's or a column's center it moves on in
+  the same tick (0x080DAE2E, 0x080DAE8E). On a pitfall (type 10, SandRing's sand) it picks up the sand: palette 1,
+  the panel to normal, and from then on sand on each panel it enters (a hit 11 ticks later). The swirl on his head is
+  actor #0x5C's row 2 (10-28, the one his soul image holds). The lab's chips/0x0e3-windman/sand (the typeA stage's pitfalls) replays every frame and is
+  pixel-exact, as the other twelve recordings are.
+  VideoMan (actor #0x3E) and his tapes (attack #0x5D, 0x080D90C8) are EXE4's own; his controller (effect #0x5F) runs
+  the short course. As his swing ends a tape covers the square two panels ahead of him (three back for side 1: a
+  square spreads to the right) and a row up, unless he is on the top row; 45 ticks into it another covers the square
+  in his row, unless he is on the bottom row. A tape (sheet 08-17, 20 pixels right, 46 down and 24 up of its panel)
+  winds in and three times, 15 ticks apart, hits its four panels (no element, modifier 3, at its height). The tapes'
+  Param3 0 course is actor #0x2F's (EXE4's other VideoMan, 0x080C2FC8), which no netbattle spawns. The lab's
+  chips/0x116-videoman/top-row (no upper tape) and the twelve recordings replay every frame and are pixel-exact.
+  KendoMan (actor #0x43, 0x080C85E8) is EXE4's own; his controller (effect #0x66) runs the short course. He dashes
+  along his row to the panel before the first enemy body (or the field's edge, where he falls off solid ground and
+  goes), afterimages every other tick, and slashes the panel ahead (modifier 1); vanishes, reappears two panels on
+  facing back (on a solid panel with no body), glides and cuts the column behind him (region 4, no spark, effect row
+  0x17 with palette 2 added); then rushes home with his sword out (attachment row 0x2D, his own sheet 08-0D) and a hit
+  following him (attack #0x7C, the lingering hit, 100 ticks), afterimages of his side turned every fourth tick, until
+  he leaves solid ground. The rush's hit is spawned with its holder's slot at the address 0x60 (a constant where
+  0x080CC036 adds his own address): no holder keeps it, so nothing ends it early. His afterimages are the engine's
+  (effect #0x28, compat's `engine/afterimage`), with their shadow hidden: 0x080E5020's r7 byte 2 (1) hides it, as the
+  frames show (`shadow = "ground"`, as lib/cannon has for the GigaCans' first afterimage, draws one the original
+  doesn't). Sheet 08-0D, navi 13's in 0x08017F98 with NormalNavi's win banner, is KendoMan's: `kendoman` (BY_USE now
+  wins over the navi table's names). The lab's chips/0x113 to 0x115 (12) replay every frame and are pixel-exact.
 
 **For the next steps:**
 
@@ -1707,13 +1813,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (its one setter, 0x080069BE, gives the story's navis 1; a netbattle's NaviStats are MegaMan's, the link record's,
     whose +0x26 his console never sets), so no setup can say it and the engine keeps no field for it (the minimal
     fields rule). Port it with a setup that can.
-50. **Done: the levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an
-    attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after the decode and the
-    charge: 0, 1 charging, 3 full). B's (+0x15) is read by the dimming chips' variants 5 and 7 (GutsMan's 0x080E328A,
-    AquaMan's 0x080E39FA: full, 3, picks the strong version); nothing reads A's (+0x14). The engine keeps B's as the
-    actor field `b_charge_at_ask` (the engine's levels: 0 none, 1 charging, 2 full), set at the buster's and the chip's
-    asks (soul 2's six-press ask, 0x0800BE8E, keeps it too: item 48's); a controller reads it off the side's navi
-    (`battle.player(side).b_charge_at_ask == 2`, as 0x0800BFF4 takes the AI data by side).
+50. **Closed: the levels at the ask, kept by nothing.** The decode copies the charge levels to AIData +0x14 and +0x15
+    as it asks for an attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after
+    the decode and the charge: 0, 1 charging, 3 full). Nothing reads A's (+0x14). B's (+0x15) is read by the dimming
+    chips' variants 5 and 7 alone: GutsMan's controller (0x080E328A) and AquaMan's (0x080E39FA) take it off the side's
+    AI data (0x0800BFF4) and hand their navi `full << 8 | Param1` (r4: 1 in the high byte when B was full, 3) as his
+    Param1 and Param2; neither navi ever reads Param2 (his level is Param1 alone), and nothing else in EXE4 reads
+    +0x15. So the engine keeps no field for it (the minimal fields rule): the copies and the controllers' read are
+    stores nothing observes. (An engine field for it, `b_charge_at_ask`, came and went in this port.)
 51. **A player's deletion.** EXE4's (action 2, 0x08010850) is its own, not EXE6's `sub_80173F4`: the hurt animation
     as it starts (EXE6's with the explosions); the alive count alone (0x080079C6), never the alive lists; no chip count,
     charge glow link or tracking let go; its second related and barrier byte at the start, AIData +0x60 with the
@@ -1830,20 +1937,40 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
     shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
     `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
-62. **The sprite tile copy queue's 96 and the tile cap** (low priority: netbattles rarely reach them). A sprite whose
-    frame's tiles change (the sprite draw, IWRAM 0x03005C00) reserves its VRAM tiles (0x03005FD4: past 0x2FF tiles,
-    0x2CF in mode 8, the sprite isn't drawn: its flag 0x10) and queues one copy (0x0800087C) on a queue of 96 entries
-    (0x0200D120, its count 0x0200B134), which the main loop drains after the VBlank wait (0x08000808, called at
-    0x080002C8). A copy past the 96th is dropped, not deferred, and the sprite's last uploaded frame (its +0x24)
-    advances anyway, so it shows stale tiles until its frame changes again. nettai's renderer models neither (it draws
-    each frame's tiles as they are); EXE5's and EXE6's counterparts to check when someone takes it. (What the towers'
-    frame compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
-    display, tearing, which is left.) Open, last (group C, 2026-10-07): no recording reaches either cap. 96 copies on
-    one tick takes 96 sprites changing frames together, past the 128 hardware parts the renderer already caps; 767
-    tiles some 25 large sprites at once, where the lab's busiest fights (two navis and a field of bursts) reach about
-    200. The packs carry each frame's tile count (a tileset's `tiles`); the port: the renderer keeps each sprite's
-    last uploaded tileset, draws a frame's layout with it when the copy was dropped, and leaves out a sprite past the
-    cap, by each game's numbers.
+62. **The sprite draw's caps: tiles, palette slots and the transfer queue's 96** (low priority: netbattles rarely
+    reach them). The sprite draw (IWRAM 0x03005C00; EXE4's IWRAM code is the boot's copy of ROM 0x08212700 to
+    0x03005800, gba.py's `iwram`) runs in draw order and has three caps the renderer models none of (it draws each
+    frame's tiles and palette as they are):
+    - **Tiles.** A sprite reserves VRAM tiles for its frame each frame (0x03005D80, 0x03005DA0), a frame some sprite
+      already reserved this frame shared through a cache (count 0x02009E64, entries 0x0200AE50, both cleared by
+      0x080029E0; the allocator's halfword at 0x02010B90 reset to 1 by 0x0800294C). Past the cap (0x03005FD4: the
+      halfword less 0x30 plus the frame's tiles against 0x32F, 0x2FF in mode 8: the byte at [sl]'s first word) the
+      sprite is flagged 0x10 and not drawn, its last uploaded frame (+0x24) cleared. Its tile index (+8) changing
+      clears +0x24 too, so the frame is copied again. EXE5's (IWRAM 0x0300656C, its code ROM 0x081C7A00 to
+      0x03005C00) and EXE6's (0x03006404, ROM 0x081D6000 to 0x03005B00) do the same against a variable cap, the
+      halfword at 0x0200A948+2 and 0x020098A8+2.
+    - **Palette slots** (0x03005CE0): a sprite with its own palette (+6) shares the slot of a sprite with the same
+      32 bytes or takes a new one (count 0x02010B80): 12 at most, 10 in mode 8 (0x03006010), past which it is
+      flagged 0x10 and not drawn (a count already at 15 would give it slot 15, drawn). EXE5's (0x030062AE,
+      0x03006590) and EXE6's (0x03006146, 0x03006428) read their limit from the byte at 0x0200A948 and 0x020098A8.
+      Their presets set both caps (and the byte at +1): EXE5's 0x08002730 (12, 0x32F), 0x08002740 (10, 0x2FF),
+      0x08002750 (8, 0x2FF); EXE6's 0x080027D4 (10, 0x2FF), 0x080027E4 (8, 0x2FF), 0x080027F4 (16, 0x2FF). Which a
+      battle sets is the port's to read (EXE4's: mode 8's 10 and 0x2FF, else 12 and 0x32F).
+    - **The transfer queue** (0x0800087C, 96 entries at 0x0200D120, count 0x0200B134; drained after the VBlank wait,
+      0x08000808 at 0x080002C8): a sprite whose frame differs from its last uploaded one (+0x24) queues its tiles'
+      copy there, and +0x24 advances whether or not the copy was queued. The queue is the game's one graphics
+      transfer queue (bn6f's QueueEightWordAlignedGFXTransfer), with some 150 callers besides the sprite draw (the
+      HUD, text, icons, backgrounds), so its 96 is a budget for every transfer of the frame. EXE5's (0x080009E8,
+      count 0x0200B8AC) and EXE6's (0x08000AC8, count 0x0200AC1C) hold 96 too. A dropped copy leaves the
+      tiles VRAM held at the sprite's tile index, which may be another sprite's (the index moves when an earlier
+      sprite's count changes) until its frame changes again.
+    Open (group C, 2026-10-07): no recording reaches any of them; the lab's busiest fights (two navis and a field of
+    bursts) reserve about 200 tiles and a few palettes. To port (group C, after its chips): the tile and palette caps
+    as per-frame budgets in the renderer's draw order, each game's numbers in its rules, frame-compared with a
+    scenario built to reach them. The queue stays open: it needs a model of sprite VRAM and of every transfer the
+    game queues. (What the towers' frame
+    compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
+    display, tearing, which is left.)
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
@@ -1871,13 +1998,80 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     known shift; the change exact, its HUD too (the chip name through it, the soul chip's icon left out, the emotion
     window's soul face and its turns), to the charged shots. The revert is checked by state only once the charged
     shots let turns recordings run to it (item 74).
-74. **The souls' abilities** (with item 25's weapons and item 48's buttons): each soul's status routine (0x0800E0A0 by
-    soul, from the status reset), its charged shot and B+Left, its chip charges (0x0800BC78), the image's parts
-    (0x080E36AC: WindMan's 0x34, FireMan's 0x12, NumberMan's 0x14, AquaMan's 0x13), WindSoul's change object (0x5A,
-    0x080D8C94), FireSoul's and NumberSoul's overlays (0x08018068; PopUp's glow, objects/glow, puts its copy on
-    through the form's `put_on` and must have it step on, its Param3 1: 0x0800B812), NumberSoul's hand of ten
-    (0x0801DC92). The lab's
-    souls/<soul>/hit and side1 recordings, and fire, aqua, wind's unison (their changes' first differences).
+74. **The souls' abilities** (group A; with item 25's weapons and item 48's buttons). Every read of the soul
+    (NaviStats +0x24: the 49 calls of the byte getters 0x0800D7CA and 0x0800D772 with 0x24) and every table by soul,
+    one line an ability; each gets a lab scenario of its own (`gen_exe4.SOUL_ABILITIES`, souls/<soul>/<ability>) and a
+    frame comparison. *done* is ported with its recording matched, *ported* without its own recording yet, *open* to
+    port.
+   - **Every soul.** Its weapons, 0x080184F0's row (0x0800BD48: AIData +0x0D the B routine, +0x0E the A charge, +0x0F
+     the charged shot) *done*; its turns, 0x080180A8 (0x0800BA3C), and the revert at their end (0x0800B658) *done*;
+     MegaMan's sprite, his entry plus the soul (0x0800B90A, 0x0801079C) *done*; the emotion 4 (0x0800F49C), no anger
+     (0x0800C560) and no Full Synchro aura (0x0800D98A) *done*; the palette 0 (0x0800BFFE) *done*; the status reset's
+     routine by soul (0x0800E05C, table 0x0800E0A0), its element by soul (0x0800C93C, table 0x0800C964: Fire fire,
+     Thunder elec, Aqua aqua, Wood wood, the rest null) *open*; the overlay by soul (0x0800B7E8, table 0x08018068: Fire
+     0x10, Number 0x110; `effects.form_overlay`; PopUp's glow, objects/glow, puts its copy on through the form's
+     `put_on` and must have it step on, its Param3 1: 0x0800B812) *open*; the image's part (0x080E3674, table
+     0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
+     *done* for WindMan, *open* for the rest; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
+     `charged_chips`) *open*; a charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage
+     itself, item 28) *open*; MegaMan's look by soul in what copies it (the
+     image 0x080E2C44, the swords' and cannons' afterimages 0x080EB548, 0x080EB5FA, 0x080EB874, the GigaCan's part
+     0x080EB93A, the objects 0x080CB4B0, 0x080CC648, 0x080CC750, 0x080CC960, 0x080CCAF0, 0x080CCF7C, 0x080D7590,
+     0x080DD7BC, 0x080EA744) *open*: each with the chip that spawns it.
+   - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
+     that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
+     (souls/roll/heal).
+   - **GutsSoul (2).** GutsMan's fist charged (0x24, 0x0800CF62) *done* (souls/guts/hit); six B presses within 10
+     ticks of each other ask for the machine gun (0x0800BE50, action 0x10) *done* (souls/guts/rapid); the status
+     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *done* (souls/guts/bonus).
+   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94), which takes a barrier away
+     (wind: the raw hit flags' 0x20, 0x08012E0C) *done* (souls/wind/barrier); the status reset (0x0800E0F4): float
+     and air shoes (flag1 0x20, 0x10) *done* (souls/wind/cracked, broken), a floating navi's body (row 0x10), its wind
+     (0x080E68F8, held at AIData +0x5C; none beside a Fan's) *done* (souls/wind/wind, fan), 10 more on each damaging
+     Wind chip (0x0800E208) *done* (souls/wind/chips); the image's part (row 0x34) *done* (souls/wind/hit); B's AirShot
+     (0x6B, 0x0800D3E8: variant 1, a 30-tick recovery) and WindRack charged (0x09, 0x0800D204) *done* (souls/wind/side1,
+     unison).
+   - **SearchSoul (4).** The status reset's reveal (effect 0x44: 0x080E6E4C, 0x080E6D74): the scope's mark (effect
+     row 0x52, 10-23) over the other side's navi when invisible, submerged or flashing (flag1 0x206; a netbattle's
+     one slot, `sub_800A832` 70 and on), then on its next update a hit over the field for no damage through
+     invisibility (0x2C05FF80: row 0x2C at navis), running while dimmed (0x080CD81E) *done* (souls/search/reveal);
+     its scope charged (0x0A, 0x0800CDC4; action 0x3E, 0x080EDB5C: 0x0800FB3C's find, five shots, the first through
+     invisibility, row 0x19, the rest row 0x0A, the last flinching) *done* (souls/search/scope, unison, side1).
+     Presentation, open: in souls/search/side1 (frames 491 to 498) mGBA draws the opponent's HP number in front of
+     the spiraling image, the engine behind it; the RAM's sprite list (0x03002000 at that tick) has the image's parts
+     (80 to 84) at priority 0 before the number's 32x16 (85, priority 1), which mGBA's rule (priority, then index)
+     would put behind the image: what the hardware takes is to find.
+   - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
+     panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle row and four more panels turn grass, blinking
+     10 ticks) *open*; a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged
+     use is a 150 flame in its place (0x0800B76C, 0x0800D638: action 25, hit 0xA8, params 0x1E05) *open*; the flame
+     charged (0x0C, 0x0800CCAE: 50, hit 0x9E, params 0x1E03, action 25) *open*; lava heals it 50 and turns normal,
+     with the heal's sparkle and sound (0x0801313E, 0x080131B8) *open*.
+   - **ThunderSoul (6).** Elec (0x0800C964) *open*; an uncharged damaging Null or Elec chip that isn't a dimming chip
+     paralyzes (0x0800C4C4: the damage's 0x4000) *open*; charged 0x58 (0x0800D298) *open*.
+   - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0) *open*; a sword chip that
+     isn't a dimming chip charges on A (0x0F) and doubles charged (0x0800C47A) *open*; WideSwrd charged (0x3E,
+     0x0800D148) *open*; the swords' blade 13 (0x080EB628, 0x080EB6AC, 0x080ED89C, 0x080EE822) and their hit modifiers
+     from 0x080EB7FE (0x080EB6E8, item 70) *open*; VarSwrd's and NeoVari's command window waits out its ticks without
+     A held (0x080ED776, 0x080EE240) *ported* (chips/varswrd's `waits`).
+   - **NumberSoul (8).** Its overlay 0x110 and image part 0x14 *open*; the status reset's 10 more on each damaging
+     Null chip (0x0800E194) *open*; charged 0x11 (0x0800CE08) *open*; the hand of ten (0x0801DC92) *open*.
+   - **MetalSoul (9).** B's routine 0x0B (0x0800CDE2) *open*; a damaging Metal or Null chip that isn't a dimming chip
+     charges on A (0x0D) and doubles charged (0x0800C47A) *open*; charged 0x13 (0x0800CE28) *open*.
+   - **JunkSoul (10).** No shadow (0x0801079C and the look copies) *open*; the status reset's hitbox on his panel
+     (0x0800E146: params 0x1705FF85 or 0x1705FF84 by side, 0x2100) *open*; charged 0x61 (0x0800CE4C) *open*.
+   - **AquaSoul (11).** Aqua (0x0800C964) *open*; its image part 0x13 *open*; an aqua chip that isn't a dimming chip
+     charges on A (0x15) and doubles charged (0x0800C47A) *open*; charged 0x23 (0x0800CF42) *open*.
+   - **WoodSoul (12).** Wood (0x0800C964) *open*; the status reset's merge (0x0800E294: a Wood chip takes the damage
+     and bonuses of a damaging Null chip after it, which leaves the hand) *open*; grass heals 1 (0x08012FD6) *open*;
+     a hit's status doesn't take (0x08013904 skips 0x08013470: `status_immune`) *open*; charged 0x57 (0x0800D270)
+     *open*.
+   - **The dark soul (15).** A worn-out MegaMan (emotion 5) at 0 HP, once a battle, holds at 1 HP and asks for it
+     (0x0800EBC8, 0x08013AB8: request 0x1000, then 0x0800B8CA: soul 15); its status reset (0x0800E17E: the mood 0,
+     flag1 0x08000000, 0x0800EAC6); 960 ticks (0x0800B93C, 0x08018088) counted down to the revert (0x0800B6A4) with
+     the tail's shader its last 90 (0x0800BB18, item 39); its collision (0x0800C43C: +0x18 3, flag1 2); no buster,
+     B+Left or charge (0x0800BBB2, 0x0800BE28); its chip use (0x080EEC78: 0x0800E4F8), no hand advance after the change
+     (0x080EBC8E), GunSol without A held (0x080EDF12) *open*.
 75. **Done: DS chips' code and damage on the custom screen** (group A; F's frame comparisons, chips/0x0df-rollds and
     the other DS chips, frames 269 to 283). The DS scenarios' MegaMan is dark, so the screen offers dark chips and the
     cursor starts on one: the hover (0x0801E478) darkens the screen, its window fade (0x0801E520's second slot)
