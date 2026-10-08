@@ -288,6 +288,7 @@ language = "en"
 "mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
 "bassanly" = { name = "BassAnly", description = "A ring\nthat hits\n4 times" }
 "bugfix" = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
+"metagel" = { name = "MetaGel", description = "Gel attck\nsteals a\npanel!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
