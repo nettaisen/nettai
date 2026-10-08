@@ -31,9 +31,9 @@ local SHIELD = guard.action {
     id = "megaman/shield/action",
     ticks = TICKS,
     shield = shield.look { anim = 4 },
-    counter = { kind = "none" },
+    counter = nil,
 }
--- What Reflect fires back: the charged shot's projectile (row 6, 0x080ECEC2).
+-- What Reflect fires back: the charged shot's projectile (row 6, 0x080ECEC2), 20 pixels up.
 local REFLECTED = projectile.variant {
     id = "megaman/reflect/shot",
     collision = { is = collision.attack, hits = collision.hits_navis },
@@ -41,11 +41,14 @@ local REFLECTED = projectile.variant {
     element = "null",
     spark = sparks.charged,
 }
+local REFLECTED_Z = 0x14_0000
 local REFLECT = guard.action {
     id = "megaman/reflect/action",
     ticks = TICKS,
     shield = shield.look { anim = 2 },
-    counter = { kind = "shot", shot = REFLECTED },
+    counter = function(me: Object, x: number, y: number, damage: number)
+        projectile.spawn(me, x, y, { variant = REFLECTED, damage = damage, z = REFLECTED_Z })
+    end,
 }
 
 local function raise(navi: Object, variant: number, damage: number)
