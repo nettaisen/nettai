@@ -1587,6 +1587,11 @@ pub struct Rules {
     /// table (0x080EB1E8) has none of it (rule section `status`), its
     /// MegaMan's routine being the forms' own (`FormDef::tick`).
     pub form_tick: bool,
+    /// A form's weapon load leaves the B+Left special as the status reset
+    /// loaded it (rule section `status`): EXE4's (0x0800BD48 in a soul sets
+    /// only AIData +0x0C to +0x0F; +0x00 is the navi's, 0x0800D8C2, or the
+    /// soul's own routine's: ProtoSoul's). EXE6's and EXE5's set the form's.
+    pub form_keeps_back_special: bool,
     /// Which ticks of the mercy flash show the navi (rule section `status`):
     /// EXE6's hides it while the flash timer's bit 1 is set
     /// (`sub_8016934`), EXE5's while it is clear (0x080137B6): the same
