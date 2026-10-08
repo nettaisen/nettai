@@ -1698,9 +1698,9 @@ export type NaviChipController = {
 -- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the
 -- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), Param4's flags: it paralyzes (bit 2: hit
 -- modifier 1, its hit back 12 ticks after one), its self type is the look's `attack_480` (bit 3: row 0x25, EXE4's
--- ElemDark's), and the panel type it leaves (the panel type the high nibble names; none, or as its state holds it
--- "none", leaves none). (Bit 0, which runs it while dimmed, no spawner sets.) Its palette (EXE5's +0x0D, EXE4's
--- +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
+-- ElemDark's), it runs while dimmed (bit 0: EXE4's FireMan's), and the panel type it leaves (the panel type the high
+-- nibble names; none, or as its state holds it "none", leaves none). Its palette (EXE5's +0x0D, EXE4's +0x0E), it has
+-- hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
 export type ElemFlameState = {
     count: number,
     spread: boolean,
@@ -1708,6 +1708,7 @@ export type ElemFlameState = {
     offset: number,
     paralyzes: boolean,
     attack_480: boolean,
+    while_dimmed: boolean,
     leaves: PanelType?,
     palette: number,
     hit: boolean,
