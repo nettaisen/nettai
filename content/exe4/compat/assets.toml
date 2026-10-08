@@ -1,9 +1,9 @@
 # EXE4's asset names, written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs:
 # a battle sprite whose archive is a named EXE5 or EXE6 sprite's takes its name; a sprite or sound EXE4's
 # code uses where EXE5's or EXE6's same code uses a named one takes that name (gen_content.py's
-# `asset_names`); one named for the EXE4 code that uses it says where (BY_USE). The extractor writes each asset
-# under its name here, the rest under a number (`sprite-cc-ii`, `sound-nnn`, `background-nn`), which it lists in
-# its extraction.txt and content may not use.
+# `asset_names`); one named for the EXE4 code that uses it says where (BY_USE, over those names). The
+# extractor writes each asset under its name here, the rest under a number (`sprite-cc-ii`, `sound-nnn`,
+# `background-nn`), which it lists in its extraction.txt and content may not use.
 
 # Sprites: "cc-ii", the category's byte offset in the sprite list (0x0802793C) and the index.
 [sprites]
@@ -109,7 +109,7 @@ numberman-face = "10-06"  # NumberMan's face: actor 0x5C's sprite row 0 (0x080CC
 fireman-flame = "10-08"  # the flame on FireMan's head: his form overlay (actor 0x57, 0x080B9302)
 rock-debris = "10-09"
 flame-line = "10-0a"  # the FlmLines' flame: attack 0x19's init (0x080CFFAE)
-django-rubble = "10-0e"
+falling-rock = "10-0e"  # a falling rock: attack 0x1D's init (0x080D090C), its chips' (effect 9's, 0x080E2944); EXE5's Django's rubble's archive
 thunder-ball = "10-11"
 hockey-puck = "10-12"
 boomerang = "10-14"

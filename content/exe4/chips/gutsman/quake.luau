@@ -38,7 +38,9 @@ end
 
 -- 0x080D0654: the solid panels from its column on toward the other side, rows 3 to 1 of each column, while the
 -- column is -1 to 6; all of them cracked (last listed first), or six after a shuffle (the sixth first). (With
--- fewer than six the game reads stale stack bytes as the rest; the port cracks only those it listed.)
+-- fewer than six the game reads on into stale stack: what its crash's sound queued there, 0x0800073C's saved r7 (the
+-- quake's own list node, 0x0203C070 on by 0xD8) and return address (0x080005AB). As panels (x the low three bits, y
+-- the high nibble) each it reaches is off the field, which a crack leaves be: the port cracks only those it listed.)
 local function crack(me: Object, all: boolean)
     local dir = panels.side_direction(me.alliance)
     local list: { number } = {}
