@@ -913,7 +913,7 @@ mod tests {
             let o = b.objects.get_mut(r);
             o.element = 4;
             (o.hp, o.max_hp) = (hp, 100);
-            (b.round.cycle20, b.round.cycle180) = (0, 1);
+            b.round.cycles = [0, 1];
             let mut drained = Vec::new();
             for _ in 0..8 {
                 standing_effects(&mut b, r);

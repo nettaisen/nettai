@@ -1166,9 +1166,10 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
-    -- The battle's count of fight ticks modulo `period` (20 or 180), which
-    -- grass heals by.
-    cycle: (period: number) -> number,
+    -- The battle's count `which` (1 or 2) of fight ticks, modulo its period
+    -- (the rules' `flow.fight_cycles`: EXE6's and EXE5's 20 and 180, EXE4's
+    -- 10 and 2), which grass heals by.
+    cycle: (which: number) -> number,
     -- The shift a hit of element `hitter` takes against a body of element
     -- `receiver` (the rules' `elements.weakness`).
     weakness: (receiver: number, hitter: number) -> number,
