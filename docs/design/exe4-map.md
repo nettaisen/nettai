@@ -1037,6 +1037,14 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   charged shot (0x0A, 1), left the custom level less one but not below 2 (0x12, 0xFE's word), each then the hit. The
   lab's chips/0x111-lasrmnsp/aim-up, aim-down, aim-right and aim-left and the twelve recordings replay every frame and
   are pixel-exact.
+  Bass (actor #0x4F, 0x080CADC0) is EXE6's and EXE5's (@exelib/bass/navi) with EXE4's parts: his sheet 08-19, his
+  cape's animation offset 0x0E (the form overlay, actor #0x57), EXE5's animations and ending, his shots' flash (effect
+  row 0x6D) jittered by 0x1F (0x080CB0EA; EXE6's and EXE5's 0xF: the maker's `flash_jitter`), his smoke (row 0x13).
+  His shot (attack #0x72, 0x080DB6FC) is EXE4's own: a pixel down on its panel, highlighting it 10 ticks, then on a
+  solid panel his burst (row 0x57: his sheet's animation 28) and a thrown hit of no element (modifier 3, the plain
+  spark; its hitbox runs while dimmed as the shot does) with the vulcan's sound. His controller (effect #0x76) runs the
+  short course. The lab's chips/0x12d-bass (4) replay every frame and are pixel-exact but for the custom screens'
+  known shift (the Giga chip is dug over turns); EXE6's Bass traces (49) and EXE5's (4) still match.
 
 **For the next steps:**
 
