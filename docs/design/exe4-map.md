@@ -671,6 +671,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **BugBomb** (the throw's variant 7, `chips/bugbomb`: @exelib/bugbomb/bomb, attack 0x77, which EXE5's grew from, in
+  EXE4's look): one of six NaviCust bugs at random (0x080DC134: 1, 2, 3, 4, 6, 8, RNG2), whatever its target has,
+  raised by code 0xFF; a crushing hit as it sits bursts it at once (0x080DC23A) where EXE5's explodes it; its burst
+  hits with its sitting types (no retype). Bug 8, the weapon bug (rules/navicust's `weapon`: 0x08042E44, levels 1 to
+  3 the charged shot's routine 0x1F, 0x20, 0x21), is in: navis/megaman/weapons/bug_shots's rock cube (routine 0x1F,
+  action 0x73: EXE4's rock, objects/rock, row 1, @exelib/rock in EXE4's look) and bubble (routine 0x20, action 0x29;
+  card 108's B button too), and the taunt (whose charge row was misread: row 0x21 is 180 at Charge 0 to 4). It takes
+  effect at the weapons' next reload (the next custom screen): chips/0x029-bugbomb/weapon-bug (seed 41 draws bug 8)
+  charges the rock cube after it.
 - **BlkBomb** (the throw's variant 6, `chips/blkbomb`: @exelib/blkbomb/bomb, attack 0x47, which EXE5's grew from, in
   EXE4's look): no identity of its own, no field-object tracking (EXE5's 0x0802EFFA), a fire hit leaving its HP, a
   touch destroying it with its HP as it is (0x0801416C reads no removal request), its destroyed action (0x080D6320)
@@ -1887,10 +1896,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
-    the routines of chips still to port (0x51 BugBomb, 0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E
-    WindRack and 0x55 PnlRetrn are in, cards 51, 57, 70, 79, 82 and 115 matching),
-    the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
-    others' own actions) and Triple Supporter's pair (item 54).
+    the routines of chips still to port (0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51
+    BugBomb and 0x55 PnlRetrn are in, cards 41, 51, 57, 70, 79, 82, 115 and 118 matching),
+    the routines that load no chip (0x04, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and others'
+    own actions; 0x20, the bubble, is in: card 108) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
@@ -1915,20 +1924,40 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
     shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
     `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
-62. **The sprite tile copy queue's 96 and the tile cap** (low priority: netbattles rarely reach them). A sprite whose
-    frame's tiles change (the sprite draw, IWRAM 0x03005C00) reserves its VRAM tiles (0x03005FD4: past 0x2FF tiles,
-    0x2CF in mode 8, the sprite isn't drawn: its flag 0x10) and queues one copy (0x0800087C) on a queue of 96 entries
-    (0x0200D120, its count 0x0200B134), which the main loop drains after the VBlank wait (0x08000808, called at
-    0x080002C8). A copy past the 96th is dropped, not deferred, and the sprite's last uploaded frame (its +0x24)
-    advances anyway, so it shows stale tiles until its frame changes again. nettai's renderer models neither (it draws
-    each frame's tiles as they are); EXE5's and EXE6's counterparts to check when someone takes it. (What the towers'
-    frame compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
-    display, tearing, which is left.) Open, last (group C, 2026-10-07): no recording reaches either cap. 96 copies on
-    one tick takes 96 sprites changing frames together, past the 128 hardware parts the renderer already caps; 767
-    tiles some 25 large sprites at once, where the lab's busiest fights (two navis and a field of bursts) reach about
-    200. The packs carry each frame's tile count (a tileset's `tiles`); the port: the renderer keeps each sprite's
-    last uploaded tileset, draws a frame's layout with it when the copy was dropped, and leaves out a sprite past the
-    cap, by each game's numbers.
+62. **The sprite draw's caps: tiles, palette slots and the transfer queue's 96** (low priority: netbattles rarely
+    reach them). The sprite draw (IWRAM 0x03005C00; EXE4's IWRAM code is the boot's copy of ROM 0x08212700 to
+    0x03005800, gba.py's `iwram`) runs in draw order and has three caps the renderer models none of (it draws each
+    frame's tiles and palette as they are):
+    - **Tiles.** A sprite reserves VRAM tiles for its frame each frame (0x03005D80, 0x03005DA0), a frame some sprite
+      already reserved this frame shared through a cache (count 0x02009E64, entries 0x0200AE50, both cleared by
+      0x080029E0; the allocator's halfword at 0x02010B90 reset to 1 by 0x0800294C). Past the cap (0x03005FD4: the
+      halfword less 0x30 plus the frame's tiles against 0x32F, 0x2FF in mode 8: the byte at [sl]'s first word) the
+      sprite is flagged 0x10 and not drawn, its last uploaded frame (+0x24) cleared. Its tile index (+8) changing
+      clears +0x24 too, so the frame is copied again. EXE5's (IWRAM 0x0300656C, its code ROM 0x081C7A00 to
+      0x03005C00) and EXE6's (0x03006404, ROM 0x081D6000 to 0x03005B00) do the same against a variable cap, the
+      halfword at 0x0200A948+2 and 0x020098A8+2.
+    - **Palette slots** (0x03005CE0): a sprite with its own palette (+6) shares the slot of a sprite with the same
+      32 bytes or takes a new one (count 0x02010B80): 12 at most, 10 in mode 8 (0x03006010), past which it is
+      flagged 0x10 and not drawn (a count already at 15 would give it slot 15, drawn). EXE5's (0x030062AE,
+      0x03006590) and EXE6's (0x03006146, 0x03006428) read their limit from the byte at 0x0200A948 and 0x020098A8.
+      Their presets set both caps (and the byte at +1): EXE5's 0x08002730 (12, 0x32F), 0x08002740 (10, 0x2FF),
+      0x08002750 (8, 0x2FF); EXE6's 0x080027D4 (10, 0x2FF), 0x080027E4 (8, 0x2FF), 0x080027F4 (16, 0x2FF). Which a
+      battle sets is the port's to read (EXE4's: mode 8's 10 and 0x2FF, else 12 and 0x32F).
+    - **The transfer queue** (0x0800087C, 96 entries at 0x0200D120, count 0x0200B134; drained after the VBlank wait,
+      0x08000808 at 0x080002C8): a sprite whose frame differs from its last uploaded one (+0x24) queues its tiles'
+      copy there, and +0x24 advances whether or not the copy was queued. The queue is the game's one graphics
+      transfer queue (bn6f's QueueEightWordAlignedGFXTransfer), with some 150 callers besides the sprite draw (the
+      HUD, text, icons, backgrounds), so its 96 is a budget for every transfer of the frame. EXE5's (0x080009E8,
+      count 0x0200B8AC) and EXE6's (0x08000AC8, count 0x0200AC1C) hold 96 too. A dropped copy leaves the
+      tiles VRAM held at the sprite's tile index, which may be another sprite's (the index moves when an earlier
+      sprite's count changes) until its frame changes again.
+    Open (group C, 2026-10-07): no recording reaches any of them; the lab's busiest fights (two navis and a field of
+    bursts) reserve about 200 tiles and a few palettes. To port (group C, after its chips): the tile and palette caps
+    as per-frame budgets in the renderer's draw order, each game's numbers in its rules, frame-compared with a
+    scenario built to reach them. The queue stays open: it needs a model of sprite VRAM and of every transfer the
+    game queues. (What the towers' frame
+    compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
+    display, tearing, which is left.)
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
@@ -1989,8 +2018,16 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      Wind chip (0x0800E208) *done* (souls/wind/chips); the image's part (row 0x34) *done* (souls/wind/hit); B's AirShot
      (0x6B, 0x0800D3E8: variant 1, a 30-tick recovery) and WindRack charged (0x09, 0x0800D204) *done* (souls/wind/side1,
      unison).
-   - **SearchSoul (4).** The status reset's effect 0x44 (0x080E6E4C, 0x080E6D74): a mark (effect row 0x52) over each
-     enemy navi with flag 0x206, then after 10 ticks a hitbox (0x2C05FF80) *open*; charged 0x0A (0x0800CDC4) *open*.
+   - **SearchSoul (4).** The status reset's reveal (effect 0x44: 0x080E6E4C, 0x080E6D74): the scope's mark (effect
+     row 0x52, 10-23) over the other side's navi when invisible, submerged or flashing (flag1 0x206; a netbattle's
+     one slot, `sub_800A832` 70 and on), then on its next update a hit over the field for no damage through
+     invisibility (0x2C05FF80: row 0x2C at navis), running while dimmed (0x080CD81E) *done* (souls/search/reveal);
+     its scope charged (0x0A, 0x0800CDC4; action 0x3E, 0x080EDB5C: 0x0800FB3C's find, five shots, the first through
+     invisibility, row 0x19, the rest row 0x0A, the last flinching) *done* (souls/search/scope, unison, side1).
+     Presentation, open: in souls/search/side1 (frames 491 to 498) mGBA draws the opponent's HP number in front of
+     the spiraling image, the engine behind it; the RAM's sprite list (0x03002000 at that tick) has the image's parts
+     (80 to 84) at priority 0 before the number's 32x16 (85, priority 1), which mGBA's rule (priority, then index)
+     would put behind the image: what the hardware takes is to find.
    - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
      panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle row and four more panels turn grass, blinking
      10 ticks) *open*; a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged

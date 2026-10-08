@@ -53,8 +53,8 @@ end
 
 -- The bugs, in the order the bugs' routines run them (0x08042A94 and 0x08042A58, their table 0x08042B18 by bug group
 -- and level): a program's `bug` names the one it brings, the colors' count brings `move` and `custom`. Each writes the
--- navi's stats by its level, 1 to 3 (./init.luau). (Group 8, the weapon's: +0x0A = 0x1F, 0x20, 0x21, comes from
--- WeapLV+1 alone, which no save can hold: no part of it has a color. Group 11's routines do nothing.)
+-- navi's stats by its level, 1 to 3 (./init.luau). (Group 8, the weapon's, no program a save can hold brings:
+-- WeapLV+1 alone, no part of which has a color; a BugBomb's burst raises it. Group 11's routines do nothing.)
 programs.BUGS = {
     -- 1: confused at the start (+0x0D = 0xFF: 720 ticks, 0x0800D8B0), or steps of its own, right or left (0x10, 0x20).
     "move",
@@ -70,6 +70,8 @@ programs.BUGS = {
     "buster",
     -- 7: the support corrupted (+0x18 = 0xFF).
     "support",
+    -- 8: the charged shot a rock cube, a bubble or the taunt (+0x0A = 0x1F, 0x20, 0x21: 0x08042E44).
+    "weapon",
     -- 9: Zenny for chips (+0x19 = 1).
     "result",
     -- 10: HubBatc's: the maximum HP half the base (at least 1) and the HP programs (0x08042EF4).

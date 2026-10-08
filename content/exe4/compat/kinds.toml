@@ -24,6 +24,8 @@
 # registers.
 "north-wind/wind" = { pool = "attack", index = 0x5A, scratch_position = true }
 "north-wind/streak" = { pool = "effect", index = 0x3A }
+# SearchSoul's reveal (0x080E6D74), spawned at the status reset's registers.
+"searchsoul/reveal" = { pool = "effect", index = 0x44, scratch_position = true }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
@@ -75,6 +77,10 @@
 "elecshok/breath" = { pool = "attack", index = 0x36 }
 # Geyser's bomb (0x080D5B44) and its water (0x080D5C30: its position the registers, which its look states).
 "geyser/bomb" = { pool = "attack", index = 0x42 }
+# The rocks (0x080D89D8): the weapon bug's rock cube, RockCube's, an ice block.
+"rock" = { pool = "attack", index = 0x59 }
+# BugBomb's bug bomb (0x080DC048).
+"bugbomb/bomb" = { pool = "attack", index = 0x77 }
 # BlkBomb's black bomb (0x080D6120).
 "blkbomb/bomb" = { pool = "attack", index = 0x47 }
 "geyser/water" = { pool = "attack", index = 0x43 }
