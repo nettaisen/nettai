@@ -163,8 +163,8 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
     panel = function(stats, level)
         stats.panel_trail = ({ 3, 1, 4 })[level]
     end,
-    encounter = function(_stats, _level)
-        -- (+0x15 = 1: no netbattle reads it.)
+    encounter = function(stats, _level)
+        stats.encounter_bug = true
     end,
     buster = function(stats, level)
         stats.buster_blanks = ({ 4, 8, 10 })[level]
@@ -172,8 +172,8 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
     support = function(stats, _level)
         stats.rush, stats.beat, stats.tango, stats.support_bug = false, false, false, true
     end,
-    result = function(_stats, _level)
-        -- (+0x19 = 1: no netbattle reads it.)
+    result = function(stats, _level)
+        stats.result_bug = true
     end,
     hub = function(stats, _level, work)
         stats.max_hp = bit32.band(math.max(bit32.rshift(stats.max_base_hp, 1), 1) + work.hp, 0xFFFF)
@@ -404,6 +404,40 @@ local function validate(side: number, problem: (text: string, field: string?, en
     end
 end
 
+-- The bytes of the navi's stats that hold a kind of bug, and the values that are one (0x08043070, 0x0804304C).
+local MOVE_BUGS, HP_DRAINS, CUSTOM_DRAINS = { 0x20, 0x10, 0xFF }, { 0x0A, 6, 3 }, { 6, 4, 3 }
+local PANEL_BUGS, BLANKS = { 3, 4 }, { 4, 8, 0x0A }
+-- The weapon bug's charged shots (+0x0A = 0x1F, 0x20, 0x21: of them the content has the taunt alone).
+local taunt = require("../navis/megaman/weapons/taunt").weapon
+
+-- 0x08043014: how many kinds of bug side `side`'s navi has, of EXE4's nine (the move, HP and custom drains, the
+-- panel trail, the encounter, the buster's blanks, the support, the charged weapon, the result), each by its byte's
+-- value (Static's spread reads it).
+local function bug_kinds(side: number): number
+    local s = battle.navi(side)
+    local function of(v: number, values: { number }): boolean
+        return table.find(values, v) ~= nil
+    end
+    local kinds = {
+        of(s.move_bug, MOVE_BUGS),
+        of(s.hp_drain, HP_DRAINS),
+        of(s.custom_drain, CUSTOM_DRAINS),
+        of(s.panel_trail, PANEL_BUGS),
+        s.encounter_bug,
+        of(s.buster_blanks, BLANKS),
+        s.support_bug,
+        s.charge_shot_weapon == taunt,
+        s.result_bug,
+    }
+    local n = 0
+    for _, k in kinds do
+        if k then
+            n += 1
+        end
+    end
+    return n
+end
+
 return {
     run = run,
     validate = validate,
@@ -422,4 +456,5 @@ return {
             hub = "u8",
         },
     } :: StateSchema,
+    bug_kinds = bug_kinds,
 }
