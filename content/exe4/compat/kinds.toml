@@ -143,6 +143,13 @@
 "firemn-ds/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
 "fireman/navi" = { pool = "actor", index = 0x12 }
 "fireman/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+# ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
+# original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
+"shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }
+"shadmn-sp/controller" = { pool = "effect", index = 0x15, scratch_position = true }
+"shadmn-ds/controller" = { pool = "effect", index = 0x15, scratch_position = true }
+"shademan/navi" = { pool = "actor", index = 0x19 }
+"shademan/crush" = { pool = "attack", index = 0x34 }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the

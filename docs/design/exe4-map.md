@@ -735,6 +735,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the engine's form overlay (actor #0x57, `effects.form_overlay`) and breathes the Elem chips' flame (attack #9,
   @exelib/elemrage/flame, his own kind); his command (Down, then Right, each held alone through the dimmed record,
   0x080B94A8) makes the flames leave lava, which no recording has used yet.
+  ShadeMan (actor #0x19) and his crush (attack #0x34) are EXE5's (@exelib/shademan), EXE4's differences their specs':
+  his commands give the crush 0x1207 and 0x2208, and without one it carries a move bug (code 0x0D) in a direction he
+  draws as he appears (rules/navicust/bugs takes it); he goes without the bow, in a puff; his figure stands 8 pixels
+  left and 12 up and strikes again with 40 ticks left, highlighting nothing.
 
 **For the next steps:**
 
