@@ -507,6 +507,9 @@ declare extern type Object with
     -- next (the forced charged shot clears both as it ends).
     rapid_presses: number
     rapid_window: number
+    -- Writable: an object tied to the navi that the full status reset ends
+    -- (AIData+0x50, EXE4's +0x5C: WindSoul's wind).
+    reset_linked_object: Object?
     -- Writable: a buffered auto-step's direction, the chip lockout, the
     -- B+Back special's cooldown.
     buffered_move: number
