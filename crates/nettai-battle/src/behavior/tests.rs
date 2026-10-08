@@ -1006,7 +1006,7 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     run_only(&mut b, &KINDS);
     assert_eq!(b.field.objects.class_of(r), Some(0), "a stage rock takes a class-0 slot");
     let c = b.objects.get(r).collision.unwrap();
-    b.collision.get_mut(c).f2 |= if ice { f2::ENCASED_IN_ICE } else { 0x2000 };
+    b.collision.get_mut(c).f2 |= if ice { f2::ENCASED_IN_ICE } else { f2::ENCASED_IN_BUBBLE };
     run_only(&mut b, &KINDS);
     assert_eq!(b.collision.get(c).f2 & f2::ENCASED, 0);
     let held = if ice { obstacle_f1::ENCASED_ICE } else { obstacle_f1::ENCASED_BUBBLE };
