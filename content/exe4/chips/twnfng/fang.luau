@@ -12,7 +12,7 @@ local sparks = require("../../lib/sparks")
 local fang = {}
 
 local SPRITE = asset.sprite("twin-fang")
-local SOUND = asset.sound("twin-fang")
+local SOUND = asset.sound("set-down")
 -- The puff it goes in as the battle ends (effect row 0x15).
 local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- Its speeds, 16.16: across, and up or down.
