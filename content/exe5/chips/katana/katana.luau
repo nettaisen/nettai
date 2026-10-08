@@ -14,6 +14,11 @@ local regions = require("@exelib/regions")
 local stepsword = require("../../lib/stepsword")
 local swords = require("../../lib/swords")
 
+-- The slash over two panels (effect 0x17).
+local LONG_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 0 }
+-- The slash over a column (effect 0x16).
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local katana = {}
 
 export type State = {
@@ -31,8 +36,8 @@ local START, SET_UP, SWING, STEP_BACK, RECOVER = 0x0, 0x4, 0x8, 0xC, 0x10
 -- The swings' hits and slashes, the last swing first (0x080EFBC4, 0x080EFBE0): the long slash (region 2, hit
 -- modifier 3, effect 0x17) and before it the wide one (region 4, hit modifier 1, effect 0x16).
 local SWINGS = {
-    [1] = { region = regions.long, hit_mod = 3, effect = swords.effects.long },
-    [2] = { region = regions.wide, hit_mod = 1, effect = swords.effects.wide },
+    [1] = { region = regions.long, hit_mod = 3, effect = LONG_SLASH },
+    [2] = { region = regions.wide, hit_mod = 1, effect = WIDE_SLASH },
 }
 
 local function set_step(me: Object, step: number)

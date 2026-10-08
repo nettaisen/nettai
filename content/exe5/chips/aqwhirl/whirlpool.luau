@@ -4,7 +4,7 @@
 -- into (a hit turning a solid panel it is on to sea), it goes round a loop at its speed (its second parameter, times
 -- 0x1000 a tick, both ways): down its column to the field's edge, forward to the first column holding an enemy navi
 -- (or the edge), up to the edge, back to its first column and down to its first row; there it is gone, as it is off
--- a solid panel. Its palette is its first parameter's double.
+-- a solid panel. Its palette is its chip's (twice the chip's first parameter).
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
@@ -12,7 +12,7 @@ local regions = require("@exelib/regions")
 local whirlpool = {}
 
 export type State = {
-    -- Its palette (Param0) and speed (Param1), and the panel it heads for (+0x60, +0x64).
+    -- Its palette (its chip's: twice its Param0) and speed (Param1), and the panel it heads for (+0x60, +0x64).
     palette: number,
     speed: number,
     tx: number,
@@ -206,7 +206,7 @@ local function init(me: Object)
     local s = me.state :: State
     local speed = s.speed * 0x1000
     me.vel = Vec3.new(me.facing * speed, speed, me.vel.z)
-    sprite.palette = s.palette * 2
+    sprite.palette = s.palette
     battle.play_sound(SOUND)
     me:set_lifecycle("update")
     tick(me)

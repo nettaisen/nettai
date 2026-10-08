@@ -24,7 +24,7 @@ local numbrman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "numbrman/controller",
-        summon = navi.summon,
+        summon = navi.summon { palette = 0 },
     },
     auto_battle = { class = "into_reach", range = "ring_three_ahead" },
 }
@@ -49,7 +49,7 @@ local numbrmn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "numbrmn-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon { palette = 2 },
     },
     auto_battle = { class = "into_reach", range = "ring_three_ahead" },
 }
@@ -72,7 +72,7 @@ local numbrmn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "numbrmn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon { palette = 3 },
     },
     auto_battle = { class = "into_reach", range = "ring_three_ahead" },
 }

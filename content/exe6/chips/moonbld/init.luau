@@ -3,8 +3,25 @@
 -- navi (./action, ./blade).
 
 local action = require("@self/action")
-local slashes = require("../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../rules/lockon")
+local parts = require("../lib/swords/parts")
+local regions = require("@exelib/regions")
+local slashes = require("../navis/megaman/forms/slashcross/slashes")
+
+-- Its charged slash in SlashCross: the moon blade's ring, its hits giving
+-- a bug (code 0x18, argument 1); no blade.
+local CHARGED = slashes.slash {
+    wave = slashes.wave {
+        region = regions.ring,
+        sprite = asset.sprite("moon-blade"),
+        anim = 0,
+        animates = true,
+        bug = 0x18,
+        bug_arg = 1,
+    },
+    sound = parts.swing,
+    lockon = lockon.moonbld,
+}
 
 local chip: Chip = {
     codes = { "A", "M", "T" },
@@ -20,7 +37,7 @@ local chip: Chip = {
     beast = { lockon = lockon.moonbld },
     slot_in_limit = 3,
     -- (SlashCross's A-charge sends its ring as a sword wave.)
-    action = action.action { id = "moonbld/action", charged = slashes.moon },
+    action = action.action { id = "moonbld/action", charged = CHARGED },
 }
 
 return { moonbld = chip }

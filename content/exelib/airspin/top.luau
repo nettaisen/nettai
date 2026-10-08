@@ -28,8 +28,8 @@ export type State = {
     target_x: number,
     -- Ticks between its hits (ExtraVars+4).
     interval: number,
-    -- Spins left (the original's second parameter), and its palette
-    -- (before the times 4: its first).
+    -- Spins left (the original's second parameter), and its palette (its
+    -- chip's: four times the original's first parameter).
     spins: number,
     palette: number,
 }
@@ -352,7 +352,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         me.hp = look.hp
         me.max_hp = look.hp
         aim(me)
-        sprite.palette = (me.state :: State).palette * 4
+        sprite.palette = (me.state :: State).palette
         battle.play_sound(look.sounds.set_down)
         me:set_lifecycle("update")
         tick(me)

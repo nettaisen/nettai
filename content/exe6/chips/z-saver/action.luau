@@ -21,7 +21,7 @@ return {
         swing_sound = asset.sound("z-saver"),
         command_sound = asset.sound("ok-8b"),
         attachment = attachment.kind,
-        blade = parts.blades.sword,
+        blade = parts.blade,
         blade_anim = parts.blade_anim,
         is = collision.slash,
         hits = collision.hits_navis,

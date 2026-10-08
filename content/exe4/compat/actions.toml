@@ -40,6 +40,15 @@
 "antiswrd/counter" = 0x39
 # AntiMagc's stance (0x080EE9EE).
 "megaman/anti-magic/action" = 0x72
+# The FlmLines' (the chips' action 0x22, 0x080ECAAE).
+"flmline1/action" = 0x22
+"flmline2/action" = 0x22
+"flmline3/action" = 0x22
+# The GunSols' (the chips' action 0x58, 0x080EDE0E).
+"gunsol1/action" = 0x58
+"gunsol2/action" = 0x58
+"gunsol3/action" = 0x58
+"gunsolex/action" = 0x58
 # The breath chips' (the chips' action 0x33, 0x080ED412).
 "heatbrth/action" = 0x33
 "blizzard/action" = 0x33
@@ -125,6 +134,9 @@
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
+"guard1/action" = 0x25
+"guard2/action" = 0x25
+"guard3/action" = 0x25
 # Double Soul's (rules/souls): each soul's change, its chip's use (action 0x0D, 0x080EBA44), and the revert out of a
 # soul (action 0x11, 0x080EBE90).
 "rollsoul/change" = 0x0D

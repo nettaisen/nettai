@@ -24,7 +24,7 @@ local knightmn: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "knightmn/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "around" },
 }
@@ -49,7 +49,7 @@ local knigtmn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "knigtmn-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "around" },
 }
@@ -72,7 +72,7 @@ local knigtmn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "knigtmn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(3),
     },
     auto_battle = { class = "into_reach", range = "around" },
 }

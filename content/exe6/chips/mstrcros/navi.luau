@@ -59,6 +59,19 @@ local TENGUCROSS = require("../../navis/megaman/forms/tengucross").tengucross
 local GROUNDCROSS = require("../../navis/megaman/forms/groundcross").groundcross
 local DUSTCROSS = require("../../navis/megaman/forms/dustcross").dustcross
 
+-- Sword's slash over the panel ahead.
+local SWORD_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 2, palette = 0 }
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+-- AquaSwrd's blade (row 0x1A).
+local AQUA_BLADE = attachment.look { sprite = asset.sprite("aqua-sword"), palette = 0 }
+-- BambSwrd's blade (row 0x1C: the sword in palette 2).
+local BAMBOO_BLADE = attachment.look { sprite = asset.sprite("sword"), palette = 2 }
+-- ElecSwrd's blade (row 0x1B).
+local ELEC_BLADE = attachment.look { sprite = asset.sprite("elec-sword"), palette = 0 }
+-- FireSwrd's blade (the original's attachment row 0x19).
+local FIRE_BLADE = attachment.look { sprite = asset.sprite("fire-sword"), palette = 0 }
+
 -- A sword's look (`byte_80BEDC6`: attachments 3, 3, 0x19 to 0x1C): its
 -- blade; its hit's region (`byte_80BEDA8`: the plain sword's one panel,
 -- else a column); its slash (`byte_80BEDC0`: effect 0x18, else 0x16 in the
@@ -70,12 +83,12 @@ local function sword_look(v: Sword): Sword
 end
 
 -- The looks, `byte_80BEDC6`'s 0 to 5.
-local PLAIN = sword_look { blade = parts.blades.sword, region = regions.single, slash = parts.effects.slash, palette = 0 }
-local WIDE = sword_look { blade = parts.blades.sword, region = regions.wide, slash = parts.effects.wide, palette = 0 }
-local FIRE = sword_look { blade = parts.blades.fire, region = regions.wide, slash = parts.effects.wide, palette = 1 }
-local AQUA = sword_look { blade = parts.blades.aqua, region = regions.wide, slash = parts.effects.wide, palette = 2 }
-local ELEC = sword_look { blade = parts.blades.elec, region = regions.wide, slash = parts.effects.wide, palette = 3 }
-local BAMBOO = sword_look { blade = parts.blades.bamboo, region = regions.wide, slash = parts.effects.wide, palette = 4 }
+local PLAIN = sword_look { blade = parts.blade, region = regions.single, slash = SWORD_SLASH, palette = 0 }
+local WIDE = sword_look { blade = parts.blade, region = regions.wide, slash = WIDE_SLASH, palette = 0 }
+local FIRE = sword_look { blade = FIRE_BLADE, region = regions.wide, slash = WIDE_SLASH, palette = 1 }
+local AQUA = sword_look { blade = AQUA_BLADE, region = regions.wide, slash = WIDE_SLASH, palette = 2 }
+local ELEC = sword_look { blade = ELEC_BLADE, region = regions.wide, slash = WIDE_SLASH, palette = 3 }
+local BAMBOO = sword_look { blade = BAMBOO_BLADE, region = regions.wide, slash = WIDE_SLASH, palette = 4 }
 
 -- A wave's Cross: his form, move and sword (none: not a sword), which side
 -- of his target he stands on (`beside`: 1 in front of it, 0 behind it),
@@ -501,7 +514,7 @@ local function sword(me: Object)
     end
     if me.phase_init == 0 then
         me.anim = 5
-        battle.play_sound(parts.sounds.swing)
+        battle.play_sound(parts.swing)
         attachment.attach(me, look.blade, "held", { anim = 0, while_dimmed = true })
         me.timer = 0
         me.phase_init = 4
