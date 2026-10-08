@@ -16,13 +16,32 @@ local panel_types = require("@exelib/panel_types")
 local sparks = require("../lib/sparks")
 
 -- Lava's burn (0x08013128, 0x0801309E: hit effect 1, jittered by 15, from 0x080E2140).
-local LAVA_BURN = panel_types.burn {
+local BURN = panel_types.burn {
     damage = 50,
     spared_by = { "invisible", "submerged", "flashing" },
     mood = 20,
     players_while_dimmed = true,
     spark = sparks.fire,
 }
+-- What a player takes in from lava, and in which form: FireSoul (NaviStats +0x24 5, 0x0801313E).
+local LAVA_HEAL = 50
+local FIRE = 1
+local TAKES_LAVA_IN = "firesoul"
+
+-- 0x08013128: a player in FireSoul takes the lava in before anything else is asked (0x080131B8): 50 HP back with the
+-- heal's sparkle and sound (effect row 7, 0x9A), as raw fire damage what a barrier sees (the collision's +0x3E, and
+-- none to its damage), and the panel normal; any other body burns.
+local function LAVA_BURN(me: Object, player: boolean)
+    if player and battle.navi(me.alliance).form.id == TAKES_LAVA_IN then
+        local c = me.collision
+        local x, y = c.panel_x, c.panel_y
+        me:heal(LAVA_HEAL, false)
+        c:add_raw_damage(FIRE, LAVA_HEAL)
+        field.set_type(x, y, "normal")
+        return
+    end
+    BURN(me, player)
+end
 
 -- The pitfall turns normal 190 ticks after a type change makes it; a stage's waits for a grounded body
 -- (0x0800980E, 0x08009DC4, 0x08009120).
