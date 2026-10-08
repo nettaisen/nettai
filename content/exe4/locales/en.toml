@@ -138,6 +138,9 @@ language = "en"
 "antidmg" = { name = "AntiDmg", description = "Sets trap\nand throw\nstars" }
 "antiswrd" = { name = "AntiSwrd", description = "Retaliate\nfor sword\ndamage" }
 "antirecv" = { name = "AntiRecv", description = "Damages\nenemy in\nrecovery" }
+"numbrman" = { name = "NumbrMan", description = "Bomb 3\nahead!\nHits 9sq" }
+"numbmn-sp" = { name = "NumbMnSP", description = "Bomb 3\nahead!\nHits 9sq" }
+"numbmn-ds" = { name = "NumbMnDS", description = "Bomb 3\nahead!\nHits 9sq" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

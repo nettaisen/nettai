@@ -44,6 +44,7 @@ return merge {
     require("@self/minibomb"),
     require("@self/mokorus"),
     require("@self/navi-20"),
+    require("@self/numbrman"),
     require("@self/panlgrab"),
     require("@self/protoman"),
     require("@self/recov"),
