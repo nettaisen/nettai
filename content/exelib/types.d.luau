@@ -1371,10 +1371,10 @@ export type LanceHit = {
     bug_arg: number?,
 }
 
--- How a game's lance looks and hits: its sprite, its sound, and either its
--- hit on its seventh tick by its palette (Param1: EXE6's, EXE5's `hits`) or
--- an attack the whole time it shows (EXE4's `attack`).
-export type LanceLook = { sprite: SpriteAsset, sound: Sound, hits: { [number]: LanceHit }?, attack: LanceAttack? }
+-- How a game's lance looks: its sprite, its sound, and an attack the whole
+-- time it shows (EXE4's `attack`; none: the chip's hit on its seventh tick,
+-- EXE6's and EXE5's).
+export type LanceLook = { sprite: SpriteAsset, sound: Sound, attack: LanceAttack? }
 
 -- A lance that is an attack the whole time it shows (EXE4's, 0x080D73F8):
 -- its collision registration from its init, what it is and hits and its
