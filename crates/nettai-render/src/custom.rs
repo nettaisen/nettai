@@ -1241,7 +1241,8 @@ impl Window {
             for x in place.from..place.to {
                 let e = self.map[y * COLUMNS + x];
                 let Some(px) = screen_x(x as i32, place.scroll) else { continue };
-                layer.draw_tile(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], px, 8 * y as i32, e.hflip, e.vflip);
+                let past_ranged = e.palette & 15 >= 14;
+                layer.draw_tile_past(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], past_ranged, px, 8 * y as i32, e.hflip, e.vflip);
             }
         }
     }
@@ -1305,7 +1306,8 @@ impl Window {
     /// Draw a tile of the layer's character block at a cell of the layer.
     fn cell(&self, layer: &mut Layer, e: MapEntry, col: i32, row: i32, scroll: u32) {
         if let Some(px) = screen_x(col, scroll) {
-            layer.draw_tile(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], px, 8 * row, e.hflip, e.vflip);
+            let past_ranged = e.palette & 15 >= 14;
+            layer.draw_tile_past(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], past_ranged, px, 8 * row, e.hflip, e.vflip);
         }
     }
 
@@ -1330,7 +1332,8 @@ impl Window {
         let (Some(&x0), Some(&x1)) = (along.first(), along.last()) else { return };
         let item = TextItem::new(name.as_str(), Role::Cell, Rect::new(x, 8 * row as i32, 8 * *cells as i32, 16), palette[1 + shift], Some(palette[2 + shift]));
         let clip = Rect::new(x0, 0, x1 + 8 - x0, crate::compose::HEIGHT as i32);
-        text.push(Plane::Hud, TextItem { clip, ..item });
+        let past_ranged = self.map[i].palette & 15 >= 14;
+        text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
     }
 }
 
@@ -1694,10 +1697,11 @@ pub fn draw<'a>(
         if let Some(Some((name, cells, code))) = w.advance_names.get(k) {
             let colors = &w.palettes[palette as usize & 15];
             let at = |c: i32, n: usize| Rect::new(layer_x(col + c, place.scroll), 8 * row, 8 * n as i32, 16);
-            text.push(Plane::Hud, TextItem::new(name.as_str(), Role::Cell, at(0, *cells), colors[1], Some(colors[2])));
+            let past_ranged = palette & 15 >= 14;
+            text.push(Plane::Hud, TextItem { past_ranged, ..TextItem::new(name.as_str(), Role::Cell, at(0, *cells), colors[1], Some(colors[2])) });
             if let Some(code) = code {
                 let last = ADVANCE_NAME_CELLS as i32 - 1;
-                text.push(Plane::Hud, TextItem::new(code.as_str(), Role::Cell, at(last, 1), colors[1], Some(colors[2])));
+                text.push(Plane::Hud, TextItem { past_ranged, ..TextItem::new(code.as_str(), Role::Cell, at(last, 1), colors[1], Some(colors[2])) });
             }
         }
     }

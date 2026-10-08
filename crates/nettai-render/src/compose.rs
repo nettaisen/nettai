@@ -23,6 +23,12 @@ pub struct Layer {
     /// The palettes it draws with (which fades reach it).
     pub palettes: Palettes,
     pub pixels: Vec<u16>,
+    /// Which pixels were drawn with background palettes 14 and 15, past the
+    /// custom screen's ranged fades (Beast Out's and a dark chip's of
+    /// palettes 0-13, the hover's 9-13): only a fade of every palette
+    /// reaches them (`Fades::hud_past_ranged`: EXE4's chip window draws a
+    /// chip's code and damage in palette 14).
+    pub past_ranged: Vec<bool>,
     /// Whether tiles are drawn into it (not while a frame makes only its
     /// lookups, `Renderer::set_lookups_only`).
     pub drawn: bool,
@@ -30,12 +36,13 @@ pub struct Layer {
 
 impl Layer {
     pub fn new(priority: u8, order: u8) -> Layer {
-        Layer { priority, order, palettes: Palettes::Stage, pixels: vec![CLEAR; PIXELS], drawn: true }
+        Layer { priority, order, palettes: Palettes::Stage, pixels: vec![CLEAR; PIXELS], past_ranged: vec![false; PIXELS], drawn: true }
     }
 
     pub fn clear(&mut self) {
         if self.drawn {
             self.pixels.fill(CLEAR);
+            self.past_ranged.fill(false);
         }
     }
 
@@ -46,6 +53,7 @@ impl Layer {
             return;
         }
         let old = std::mem::replace(&mut self.pixels, vec![CLEAR; PIXELS]);
+        let old_past = std::mem::replace(&mut self.past_ranged, vec![false; PIXELS]);
         for y in 0..HEIGHT as i32 {
             let sy = y - dy;
             if !(0..HEIGHT as i32).contains(&sy) {
@@ -55,6 +63,7 @@ impl Layer {
                 let sx = x - dx;
                 if (0..WIDTH as i32).contains(&sx) {
                     self.pixels[y as usize * WIDTH + x as usize] = old[sy as usize * WIDTH + sx as usize];
+                    self.past_ranged[y as usize * WIDTH + x as usize] = old_past[sy as usize * WIDTH + sx as usize];
                 }
             }
         }
@@ -62,6 +71,13 @@ impl Layer {
 
     /// Draw one 8x8 tile at (x, y), clipped to the screen.
     pub fn draw_tile(&mut self, tile: &[u8], palette: &Palette, x: i32, y: i32, hflip: bool, vflip: bool) {
+        self.draw_tile_past(tile, palette, false, x, y, hflip, vflip);
+    }
+
+    /// [`draw_tile`](Self::draw_tile) in a palette past the ranged fades'
+    /// (background palette 14 or 15: `past_ranged`) or not.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_tile_past(&mut self, tile: &[u8], palette: &Palette, past_ranged: bool, x: i32, y: i32, hflip: bool, vflip: bool) {
         if !self.drawn {
             return;
         }
@@ -80,6 +96,7 @@ impl Layer {
                 let i = tile[row * 8 + col];
                 if i != 0 {
                     self.pixels[sy as usize * WIDTH + sx as usize] = palette[i as usize] & 0x7FFF;
+                    self.past_ranged[sy as usize * WIDTH + sx as usize] = past_ranged;
                 }
             }
         }
@@ -152,6 +169,8 @@ pub enum Fade {
 pub struct Fades {
     pub stage: Fade,
     pub hud: Fade,
+    /// The HUD layer's pixels in palettes 14 and 15 (`Layer::past_ranged`).
+    pub hud_past_ranged: Fade,
     pub dialogue: Fade,
     pub sprites: Fade,
     pub screen: Fade,
@@ -235,6 +254,7 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
             if c != CLEAR {
                 let fade = match l.palettes {
                     Palettes::Stage => fades.stage,
+                    Palettes::Hud if l.past_ranged[i] => fades.hud_past_ranged,
                     Palettes::Hud => fades.hud,
                     Palettes::Dialogue => fades.dialogue,
                 };
@@ -603,5 +623,27 @@ mod tests {
         assert_eq!(out[20], dimmed, "the backdrop is the stage's");
         assert_eq!(apply_fade(0x7FFF, Fade::Black(16)), 0);
         assert_eq!(to_rgb(0x7FFF), 0xFFFFFF);
+    }
+
+    /// The HUD's pixels in palettes 14 and 15 (EXE4's chip window's code
+    /// and damage) are past the custom screen's ranged fades: the HUD's
+    /// fade leaves them, the fade of every palette reaches them.
+    #[test]
+    fn the_hud_fade_leaves_palettes_14_and_15() {
+        let tile = [1u8; 64];
+        let mut hud = Layer::new(1, 3);
+        hud.palettes = Palettes::Hud;
+        let white = [0x7FFF; 16];
+        hud.draw_tile(&tile, &white, 0, 0, false, false);
+        hud.draw_tile_past(&tile, &white, true, 8, 0, false, false);
+        let dimmed = 24 | 24 << 5 | 24 << 10;
+        let out = compose(0, &[&hud], &[], Fades { hud: Fade::Black(4), ..Fades::default() });
+        assert_eq!((out[0], out[8]), (dimmed, 0x7FFF));
+        let out = compose(0, &[&hud], &[], Fades { hud: Fade::Black(4), hud_past_ranged: Fade::Black(4), ..Fades::default() });
+        assert_eq!((out[0], out[8]), (dimmed, dimmed));
+        // (A tile drawn over it in a ranged palette is the fade's again.)
+        hud.draw_tile(&tile, &white, 8, 0, false, false);
+        let out = compose(0, &[&hud], &[], Fades { hud: Fade::Black(4), ..Fades::default() });
+        assert_eq!(out[8], dimmed);
     }
 }
