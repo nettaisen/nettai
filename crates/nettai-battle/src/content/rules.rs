@@ -1255,11 +1255,13 @@ pub enum HitMood {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StatusVisualRules {
-    /// Where it sits on the navi.
+    /// Where it sits on the navi, and the hit marker with it.
     pub place: StatusVisualPlace,
 }
 
-/// Where the status visual sits.
+/// Where the status visual sits, and the hit marker (`sub_80E8124`'s
+/// offset: EXE6's and EXE5's attach point 5, EXE4's actor record's +6 and
+/// +7, 0x080133E8).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatusVisualPlace {
