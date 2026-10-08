@@ -1132,6 +1132,24 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (effect #0x77, 0x080EA598) runs the short course. The lab's chips/0x132-bassanly (4) replay every frame, sound the
   same and are pixel-exact but for the custom screens' known shift; EXE6's BassAnly recordings (21) and EXE5's (4)
   still match.
+  ColdMan (actor #0x56, 0x080CC04C) is EXE4's own (no counterpart in EXE5 or EXE6); his controller (effect #0x7B,
+  0x080EAA88) runs the short course. 11 ticks after he appears (gone off solid ground) he looks over the field-object
+  registry's six side slots (0x080CC2E4), leaving out the kinds 0x0800B3E8 leaves (the poltergeist's
+  `obstacle.throwable`: attack objects #0x4C and #0x8C, effect object #0x6E; PropBom's bomb, #0x8C, is ported with no
+  identity, so both take it: its identity should state `throwable = false`). An obstacle with his own panel or free
+  solid ground behind it (as he faces) takes his side and damage word and is encased in a bubble; any other is encased
+  in ice (0x0800B44C: flag2 0x4000 or 0x2000, the engine's `obstacle.encase_in_bubble` and `encase_in_ice`). Some
+  found, the place sound and his stops sorted (0x080CC388: the farthest toward his enemy visited first, top row first
+  in a column); 60 ticks later (1 with none) he visits each (vanishing and appearing 3 ticks each) and punches what is
+  ahead: by then the ice cube its encasing became (attack #0xA3: EXE6's encased bubble, now @exelib/ice_cube for
+  both). Last, on his own panel, he forms a cube on the free solid panel ahead (gone if there is none) and 15 ticks
+  later punches it. His punch is a hit of 1 (aqua, no spark, at navis, hit modifier 0x21: the push) on the panel
+  ahead, resolving while dimmed. The encasing's end is the role `hooks.encased` (objects/ice_cube: EXE4's ice block,
+  rock row 3, or the cube, formed) and its flicker the role `effects.encased` (row 0x6E). The lab's
+  chips/0x10a-coldman (with `obstacle`: the opponent's BigHamr1 hammer turned and punched into it; `ice`: on the
+  holes-columns stage, the hole behind the opponent's hammer leaves it an ice block), 0x10b-coldmnsp and
+  0x10c-coldmnds (14) replay every frame and sound the same; their fights are pixel-exact but for one frame of `ice`
+  (440: the user's chip label goes a frame late as the opponent, just moved, uses BigHamr1: the HUD's, not ColdMan's).
 
 **For the next steps:**
 

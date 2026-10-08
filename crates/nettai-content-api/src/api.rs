@@ -1052,12 +1052,18 @@ named_flags! {
 
 named_flags! {
     /// What a chip asks of an obstacle (`sub_800F884`, `sub_800F898`,
-    /// `sub_800F8B0`).
+    /// `sub_800F8B0`; EXE4's 0x0800B44C, ColdMan's: its flag2 0x2000 or
+    /// 0x4000, EXE6's 0x1000 or 0x2000).
     pub enum ObstacleRequest {
         Remove = "remove",
         Vanish = "vanish",
         /// Absorbed by the requester's side's navi.
         Absorb = "absorb",
+        /// Encased in ice: the role `hooks.encased` then puts an ice block
+        /// in its place.
+        EncaseInIce = "encase_in_ice",
+        /// Encased in a bubble: the role puts the bubble in its place.
+        EncaseInBubble = "encase_in_bubble",
     }
 }
 

@@ -1695,6 +1695,11 @@ declare obstacle: {
     remove: (obj: Object) -> (),
     vanish: (obj: Object) -> (),
     absorb: (obj: Object, absorber: Object) -> (),
+    -- EXE4's 0x0800B44C (ColdMan's): encase it in ice or in a bubble; at
+    -- its next reaction it flickers 60 ticks, then the role `hooks.encased`
+    -- puts an ice block or the bubble in its place.
+    encase_in_ice: (obj: Object) -> (),
+    encase_in_bubble: (obj: Object) -> (),
     -- `sub_80EFD74`: `absorber` pulls in every registered field object
     -- (but NameID 0xDA and those already leaving); each flies to its
     -- side's navi as an absorbed obstacle.
