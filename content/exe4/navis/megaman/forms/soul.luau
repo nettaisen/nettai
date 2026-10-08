@@ -49,4 +49,26 @@ function soul.image(sprite: SpriteAsset, part: AttachmentLook?): SoulImage
     }
 end
 
+-- What a soul wears (0x0800B7E8: 0x08018068 by the soul, FireSoul's and NumberSoul's; its form's `put_on` and
+-- `take_off`): a form overlay (actor 0x57) of `sprite` in the wearer's second related slot (the original's AIData
+-- +0x48), stepping as any object; on a copy of the navi (PopUp's glow, 0x0800B812) stepping on through the dimming
+-- (its Param3 1). Taken off, it ends (0x080CC614: its state 8).
+export type SoulOverlay = { put_on: (me: Object) -> (), take_off: (me: Object) -> () }
+
+function soul.overlay(sprite: SpriteAsset): SoulOverlay
+    return {
+        put_on = function(me: Object)
+            local stepping: FormOverlayStepping = if battle.player(me.alliance) == me then "normal" else "while_dimmed"
+            me.related2 = battle.form_overlay(me, { sprite = sprite, stepping = stepping })
+        end,
+        take_off = function(me: Object)
+            local o = me.related2
+            if o ~= nil then
+                o:set_lifecycle("destroy")
+            end
+            me.related2 = nil
+        end,
+    }
+end
+
 return soul
