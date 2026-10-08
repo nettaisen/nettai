@@ -664,6 +664,14 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   EXE4's look says: the other side's navi's panels only, then that side's mood to 1, and bursts (objects/panel_bursts)
   over that side's area alone. AntiNavi, AntiDmg, AntiSwrd and AntiRecv (4 to 7) set only the record (their springs:
   see §18 item 90).
+- **HeatBrth, Blizzard, ElecShok and WoodPwdr** (action 0x33, `chips/breath`: EXE4's own): the navi holds the nozzle
+  (attachment rows 0x18 to 0x1B, the original's 0x17 and the attack's element) and breathes the breath (attack 0x36,
+  0x080D3A7C: unseen, 55 ticks) on the panel ahead, then 15 ticks later on the column beyond, a hit of the chip's
+  element on each solid panel it reaches for 40 ticks, and leaves them lava, ice, cracked or grass. The original
+  picks the breath's look, hit, panel type, step and sound by the chip's parameter (0, 1, 3, 2) from its tables: in the
+  content each chip states its own (`breath.make`), each its own kind mapped to attack 0x36. WoodPwdr's hits confuse
+  (hit modifier 1, status 0x20); ElecShok's highlight the panels they hit. A parameter of 4 and on would leave a trail
+  (0x080D3C10): no chip has one.
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -1561,12 +1569,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
-    `WEAPONS`; the 24 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    `WEAPONS`; the 28 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
     the routines of chips still to port (0x37 CopyDmg, 0x38 WideSht1, 0x42 Hole, 0x43 WideSht2, 0x44 SandRing, 0x4C
-    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x5B Blizzard, 0x5C HeatBrth, 0x5D WoodPwdr, 0x60 ElecShok, 0x62 Guard1),
+    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x62 Guard1),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
@@ -1655,10 +1663,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (attack 0x5C, @exelib/bodygrd/shuriken); AntiSwrd's (action 0x39, @exelib/antiswrd/counter, plain as EXE5's) holds
     EXE4's own blade and throws booms (attack 0x58, objects/sonic_boom) all of hit modifier 1. AntiRecv's
     counterattack (effect 0x2C, @exelib/antirecv/controller) takes no mood (the role `kinds.anti_recovery`). AntiWood's
-    spring waits on WoodPwdr (the lab's chips/0x08f-antiwood/sprung), AntiMagc on its stance (weapon routine 0x27).
+    spring on WoodPwdr (the lab's chips/0x08f-antiwood/sprung) matches, AntiMagc's on its stance (weapon routine
+    0x27) too.
     A telop doesn't take the other player's used-chip name off the screen in EXE4 (item 71: the user's telop goes on
     the banner block, the name stays on the second; EXE6's `sub_801BED6(0x10000)` clears it): the lab's
-    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine (group A's).
+    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine, and
+    chips/0x08f-antiwood/sprung WoodPwdr's 7 (609 to 615) (group A's).
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's
