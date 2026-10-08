@@ -20,6 +20,9 @@ local charge = require("@self/charge")
 local layer = require("./megaman/forms/numbersoul/layer")
 local numtrap = require("@self/chip").numtrap
 
+-- His face: the layer's row 0's sprite (0x080C32C0).
+local FACE = asset.sprite("numberman-face")
+
 
 local navi: NaviDef = {
     sprite = asset.sprite("numberman"),
@@ -52,7 +55,7 @@ local navi: NaviDef = {
         parts = {
             -- 0x0800EE6E
             own = function(wearer: Object)
-                wearer.related2 = layer.spawn(wearer, layer.numberman_face)
+                wearer.related2 = layer.spawn(wearer, FACE)
             end,
         },
         overlay_hooks = { "death" },

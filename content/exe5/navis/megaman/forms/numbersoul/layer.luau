@@ -13,10 +13,6 @@ export type State = {
     sprite: SpriteAsset,
 }
 
--- The rows' sprites (0x080C32C0): NumberMan's face, and MegaMan's in NumberSoul.
-layer.numberman_face = asset.sprite("numberman-face")
-layer.numbersoul_face = asset.sprite("numbersoul-face")
-
 -- 0x080C3332: on its owner, wearing his look; out of sight unless he is in his animation 0.
 local function follow(me: Object)
     local owner = me.related1 :: Object
@@ -71,8 +67,8 @@ layer.kind = new.kind {
     end,
 }
 
--- 0x080C33BE: a layer of `sprite` (its row's) on `owner`, at his position, of his side (its facing his from its first
--- update), running while paused and dimmed (kept in his second related slot by its callers).
+-- 0x080C33BE: a layer of `sprite` (its row's, which each wearer states) on `owner`, at his position, of his side (its
+-- facing his from its first update), running while paused and dimmed (kept in his second related slot by its callers).
 function layer.spawn(owner: Object, sprite: SpriteAsset): Object?
     local o = battle.spawn(layer.kind, owner.pos)
     if o then
