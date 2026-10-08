@@ -309,6 +309,11 @@ named_fields! {
         ChargeLevel = "charge_level", U8, ro;
         ChargeSource = "charge_source", U8, ro;
         ChargeCounter = "charge_counter", U8, ro;
+        /// The B charge's level (0 none, 1 charging, 2 full) as the navi
+        /// last asked for an attack, kept until its next ask (EXE4's
+        /// AIData +0x15, which its decode copies at each ask: 0x0800BE48,
+        /// 0x0800BF10); 0 in a game whose decode keeps none.
+        BChargeAtAsk = "b_charge_at_ask", U8, ro;
         /// A buffered auto-step's direction (0 none).
         BufferedMove = "buffered_move", U8, rw;
         /// Ticks before the next chip can be used.

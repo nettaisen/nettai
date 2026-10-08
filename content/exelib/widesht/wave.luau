@@ -1,7 +1,10 @@
 --!strict
 -- The wide wave, as EXE5 and EXE6 share it (EXE6's attack object #0x3B,
--- `sub_80CB49C`; EXE5's #0x3B, the same code but for its sprite): each game
--- makes its own kind (`wave.make_kind`, a `WideWaveLook`). It
+-- `sub_80CB49C`; EXE5's #0x3B, the same code but for its sprite; EXE4's #0x3B,
+-- 0x080D4914, the same but for what it has none of: trails, bugs, palettes,
+-- a hit modifier of its spawner's): each game makes its own kind
+-- (`wave.make_kind`, a `WideWaveLook`: a game with no trailing variant states
+-- no trail sprite). It
 -- rises over the navi's column, and when its rising animation ends it
 -- slides forward over a column of three panels. What differs between its
 -- uses is its variant (`byte_80CB58C`'s speed and the routine's tests of

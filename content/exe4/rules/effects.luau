@@ -23,6 +23,17 @@ return {
     palette_flash_order = "before_fades",
     -- Its afterimages and form overlays don't run while paused (EXE5's code).
     overlays_run_while_paused = false,
+    -- A form overlay (actor 0x57, 0x080CC3D8) follows from its first update with the fight on (0x080CC440: its action 8;
+    -- else it waits, its sprite stepping, 0x080CC4D4). It takes its owner's palette and its own side's facing once, at
+    -- its init (0x080CC40C, 0x080CC42C), and each tick only records its owner's animation (0x080CC46E), which its
+    -- sprite's update loads.
+    form_overlay = {
+        start = "at_once_in_fight",
+        reloads_animation = false,
+        palette_each_tick = false,
+        facing_each_tick = false,
+        waiting_steps = true,
+    },
     afterimages_wear_overlays = false,
     -- Its sprites' frame load (IWRAM 0x0300632C) is EXE5's code.
     load_sets_part_palette = false,
@@ -76,6 +87,9 @@ return {
     -- its hold of 30 (0x080149CE) and the tick it lets go of its sprites (0x080149E6), 32 frames (the count includes the
     -- tick it starts on, as EXE6's 0x3C does).
     used_chip_ticks = 33,
+    -- A dimming chip's telop (0x08008CF6, 0x08008DE0) takes the banner block and leaves the second block's name be:
+    -- the other player's chip stays named beside it.
+    telop_ends_used_chips = false,
     -- Its emotion window has no bug check: a bugged navi's face doesn't flicker, and RNG1 doesn't move for it.
     bug_flicker = false,
     -- A step leaves its panel trail (NaviStats +0x1B) every time, unless it is 0xFF: no level and no draw; its kind 3

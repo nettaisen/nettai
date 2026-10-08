@@ -12,9 +12,9 @@ local projectile = {}
 -- What stops the recovery's count of open panels (0x0800B6DC: one mask whichever side shoots, EXE5's).
 local CLOSED = 0x0F880080
 
--- 0x0800B6DC: the ticks of recovery by the shooter's Rapid and the open panels ahead of (x, y), counted on from it
--- (5 at most).
-local function recovery(navi: Object, x: number, y: number): number
+-- 0x0800B6DC: the ticks of recovery by a Rapid (the recovery table's row: the buster's the shooter's Rapid, other
+-- shots' their own) and the open panels ahead of (x, y), counted on from it (5 at most).
+function projectile.recovery(navi: Object, x: number, y: number, rapid: number): number
     local open = 0
     while true do
         local f = field.flags(x, y)
@@ -24,7 +24,6 @@ local function recovery(navi: Object, x: number, y: number): number
         open += 1
         x += navi.facing
     end
-    local rapid = battle.navi(navi.alliance).rapid
     local row = recovery_rows[rapid + 1]
     if row == nil then
         error(string.format("Rapid %d reads past the buster's recovery table", rapid))
@@ -42,7 +41,7 @@ end
 function projectile.fire(navi: Object, s: ProjectileShot): number
     local x, y = navi.panel_x + navi.facing, navi.panel_y
     common.spawn(shot.kind, navi, x, y, s)
-    return recovery(navi, x, y)
+    return projectile.recovery(navi, x, y, battle.navi(navi.alliance).rapid)
 end
 
 return projectile

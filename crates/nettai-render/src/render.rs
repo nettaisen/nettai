@@ -181,7 +181,16 @@ impl Renderer {
             }
         }
         let draw = !self.lookups_only;
-        let stage = draw.then(|| Stage::new(&packs, &b.content, background, StageClock::of(b)));
+        // (A flash fills the stage's palettes with its white through a
+        // palette transform's slot, and a dimming is one of the fade
+        // system's transforms: where the game's flash comes before the
+        // fades, EXE5's and EXE4's, its white is the stage's palettes, which
+        // a background's palette shift shifts and a dimming darkens a
+        // quarter down; where it comes after, EXE6's, the white stands.)
+        let flash = objects::palette_flash(b);
+        let flash_order = b.content.rules().effects.palette_flash_order;
+        let flashed = flash.is_some() && flash_order == PaletteFlashOrder::BeforeFades;
+        let stage = draw.then(|| Stage::new(&packs, &b.content, background, StageClock::of(b), flashed));
         match &stage {
             Some(stage) => {
                 self.background.clear();
@@ -241,18 +250,10 @@ impl Renderer {
         let transform = layer_fade(b);
         let custom = crate::custom::fade(b).unwrap_or_default();
         let custom_hud = crate::custom::hud_fade(b).unwrap_or_default();
-        let flash = objects::palette_flash(b);
-        // (A flash fills the stage's palettes with its white through a
-        // palette transform's slot, and a dimming is one of the fade
-        // system's transforms: where the game's flash comes before the
-        // fades, EXE5's, a dimming darkens the white with the rest, a
-        // quarter down; where it comes after, EXE6's, the white stands.)
-        let flash_order = b.content.rules().effects.palette_flash_order;
-        let stage = if flash.is_some() {
-            match (flash_order, dim_fade(b)) {
-                (PaletteFlashOrder::BeforeFades, Fade::Black(n)) => Fade::Flash(n),
-                _ => Fade::White(16),
-            }
+        let stage = if flashed {
+            dim_fade(b)
+        } else if flash.is_some() {
+            Fade::White(16)
         } else if transform != Fade::None {
             transform
         } else if custom != Fade::None {
@@ -271,10 +272,12 @@ impl Renderer {
             _ => custom_hud,
         };
         // (The custom screen's fades of palettes 0-13 and 9-13 leave the
-        // HUD's 14 and 15: the flash's and the transformation's reach them.)
+        // HUD's 14 and 15: the flash's, the transformation's and the custom
+        // screen's white, which takes every palette, reach them.)
         let hud_past_ranged = match flash {
             Some(1) => Fade::White(16),
-            _ => transform,
+            _ if transform != Fade::None => transform,
+            _ => crate::custom::sprite_fade(b).unwrap_or_default(),
         };
         let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         // (The chatbox's palette is past every ranged fade's palettes: a
