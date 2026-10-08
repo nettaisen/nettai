@@ -20,8 +20,8 @@ local follower = require("./follower")
 local swoop = {}
 
 export type State = {
-    -- The navi chip's level, which picks the palette (+0x30), and its variant (Param1).
-    level: number,
+    -- The navi chip's palette (+0x30: the original's by its level), and its variant (Param1).
+    palette: number,
     variant: LarkSwoopVariant,
     -- It faces left (+5: its side ^ flip).
     left: boolean,
@@ -45,8 +45,6 @@ local SPRITE = asset.sprite("larkman")
 local SOUND_SWOOP = asset.sound("swoop")
 local HIT_MOD = 3
 
--- By the level (0x080DD844): the dark palette for DS's 4.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 4 }
 -- By look (0x080DD850: 0 and 2, from above the field, are the virus's).
 local ANIMS: { [number]: number } = { [0] = 8, 6, 9, 0xB }
 -- A swoop's variant.
@@ -98,7 +96,7 @@ local function init(me: Object)
     me.anim, me.anim_loaded = anim, anim
     sprite:set_animation(anim)
     s.anim_step = 0
-    sprite.palette = PALETTES[s.level] or 0
+    sprite.palette = s.palette
     local v = variant(s)
     me.vel = Vec3.new(if s.left then -v.speed_x else v.speed_x, if me.panel_y == 4 then -v.speed_y else v.speed_y, me.vel.z)
     s.powered = false
@@ -312,7 +310,7 @@ swoop.kind = new.kind {
     id = "larkman/swoop",
     pool = "attack",
     state = {
-        level = "u8",
+        palette = "u8",
         variant = "record:larkman-swoop-variant",
         left = "bool",
         start_x = "u8",
@@ -340,12 +338,12 @@ swoop.kind = new.kind {
     end,
 }
 
--- 0x080DDA60: LarkMan's swoop from `navi` of `variant`, the chip's level, element and damage word.
-function swoop.spawn(navi: Object, level: number, element: number, damage: number, variant: LarkSwoopVariant): Object?
+-- 0x080DDA60: LarkMan's swoop from `navi` of `variant`, in the chip's palette, with its element and damage word.
+function swoop.spawn(navi: Object, palette: number, element: number, damage: number, variant: LarkSwoopVariant): Object?
     local o = battle.spawn(swoop.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.level = level
+        s.palette = palette
         s.variant = variant
         o.element = element
         o.related1 = navi
