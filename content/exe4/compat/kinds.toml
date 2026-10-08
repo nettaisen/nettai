@@ -79,6 +79,9 @@
 "geyser/bomb" = { pool = "attack", index = 0x42 }
 # The rocks (0x080D89D8): the weapon bug's rock cube, RockCube's, an ice block.
 "rock" = { pool = "attack", index = 0x59 }
+# VDoll's doll (0x080DC7AC) and its curse (0x080E77E8: its position the spawner's registers).
+"vdoll/doll" = { pool = "attack", index = 0x7A }
+"vdoll/curse" = { pool = "effect", index = 0x4E, scratch_position = true }
 # BugBomb's bug bomb (0x080DC048).
 "bugbomb/bomb" = { pool = "attack", index = 0x77 }
 # BlkBomb's black bomb (0x080D6120).
