@@ -9,6 +9,9 @@ local collision = require("../rules/collision")
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
+-- Its dark big slash (effect 0x1C).
+local DARK_SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 2 }
+
 local chip: Chip = {
     codes = { "Z" },
     element = "null",
@@ -31,7 +34,7 @@ local chip: Chip = {
             bug = 0x14,
             bug_arg = 2,
         },
-        effect = swords.effects.dark,
+        effect = DARK_SLASH,
         sound = swords.big_swing,
     },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
