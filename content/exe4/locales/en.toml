@@ -271,6 +271,7 @@ language = "en"
 "laserman" = { name = "LaserMan", description = "A laser\npierces\n1 thru!" }
 "lasrmn-sp" = { name = "LasrMnSP", description = "A laser\npierces\n1 thru!" }
 "lasrmn-ds" = { name = "LasrMnDS", description = "A laser\npierces\n1 thru!" }
+"bass" = { name = "Bass", description = "Buster\nrake half\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
