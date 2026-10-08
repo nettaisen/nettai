@@ -502,6 +502,11 @@ declare extern type Object with
     charge_level: number
     charge_source: number
     charge_counter: number
+    -- Writable: EXE4's rapid presses (AIData +0x12, +0x11), the B presses
+    -- counted toward a form's `rapid_presses` and the ticks left for the
+    -- next (the forced charged shot clears both as it ends).
+    rapid_presses: number
+    rapid_window: number
     -- Writable: a buffered auto-step's direction, the chip lockout, the
     -- B+Back special's cooldown.
     buffered_move: number
@@ -1372,6 +1377,10 @@ declare battle: {
     add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
     -- EXE5's DarkPlus: the Atk+ bonus of a hand's chip at i becomes n.
     set_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- Adding to the charge bonus of a hand's chip at i (what a form's A
+    -- charge builds up, and EXE4's souls' status resets give: the status
+    -- reset clears it).
+    add_hand_charge_bonus: (side: number, i: number, n: number) -> (),
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
@@ -2517,6 +2526,10 @@ export type FormDef = {
     -- The ticks a damaging chip (not a dimming chip) used with the panel
     -- ahead not its side's keeps it invulnerable (EXE5's KnightSoul).
     front_guard: number?,
+    -- The B presses that ask for the forced charged shot (the role
+    -- `actions.forced_charged_shot`), each within `window` ticks of the
+    -- last (EXE4's GutsSoul: six within 10).
+    rapid_presses: { presses: number, window: number }?,
     -- The action its charged chips start in place of their own (EXE5's
     -- NapalmSoul's).
     charged_action: Action?,

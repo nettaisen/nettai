@@ -1185,6 +1185,12 @@ impl CoreApi for Battle {
         }
     }
 
+    fn add_hand_charge_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].charge_bonus.get_mut(i as usize) {
+            *b = b.wrapping_add(n);
+        }
+    }
+
     fn hand_left(&self, side: u8) -> u8 {
         let h = &self.hands[side as usize & 1];
         h.ids.iter().skip(h.cursor as usize).take_while(|c| c.is_some()).count() as u8
@@ -2004,6 +2010,8 @@ impl CoreApi for Battle {
             ActorField::ChargeLevel => i(a.charge_level as i64),
             ActorField::ChargeSource => i(a.charge_source as i64),
             ActorField::ChargeCounter => i(a.charge_counter as i64),
+            ActorField::RapidPresses => i(a.rapid_presses as i64),
+            ActorField::RapidWindow => i(a.rapid_window as i64),
             ActorField::BufferedMove => i(a.buffered_move as i64),
             ActorField::ChipLockout => i(a.lockout as i64),
             ActorField::BackSpecialCooldown => i(a.back_special_cooldown as i64),
@@ -2087,6 +2095,8 @@ impl CoreApi for Battle {
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
+            (ActorField::RapidPresses, FieldValue::U8(x)) => a.rapid_presses = x,
+            (ActorField::RapidWindow, FieldValue::U8(x)) => a.rapid_window = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
             (ActorField::BusterWeapon, FieldValue::Ref(_)) => a.buster = weapon,
