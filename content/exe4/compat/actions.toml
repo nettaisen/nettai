@@ -213,6 +213,8 @@
 # action 0x14, 0x080EC0A4).
 "metalsoul/buster/shot" = 0x08
 "metalsoul/charged-shot/action" = 0x14
+# AquaSoul's charged shot (weapon routine 0x23's action 0x1E, the spreaders', as Bubbler's).
+"aquasoul/charged-shot/action" = 0x1E
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
