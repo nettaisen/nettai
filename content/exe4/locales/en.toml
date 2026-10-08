@@ -178,6 +178,11 @@ language = "en"
 "magbolt3" = { name = "MagBolt3", description = "Shocks an\nenemy\nahead" }
 "invis" = { name = "Invis", description = "Invisible\nfor a\nwhile" }
 "popup" = { name = "PopUp", description = "Attacks\nfrm under\nground" }
+"hole" = { name = "Hole", description = "Appears\nHole\nin front" }
+"pnlretrn" = { name = "PnlRetrn", description = "Fix your\narea's\npanels" }
+"holypanl" = { name = "HolyPanl", description = "Creates a\nHolyPanl\nin front" }
+"snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
+"drkline" = { name = "DrkLine", description = "Turns all\nrows into\nHoles" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

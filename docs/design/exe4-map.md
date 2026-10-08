@@ -709,6 +709,14 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   content each chip states its own (`breath.make`), each its own kind mapped to attack 0x36. WoodPwdr's hits confuse
   (hit modifier 1, status 0x20); ElecShok's highlight the panels they hit. A parameter of 4 and on would leave a trail
   (0x080D3C10): no chip has one.
+- **Hole, PnlRetrn, HolyPanl, Snctuary, DrkLine** (the dimming chips' variant 0x0B, `chips/hole` and on): the panel
+  chips' controller (effect #0x20, 0x080E4584: @exelib/panel_chips/controller, EXE6's code, its spawn taking the
+  user's side alone: `side_only`, EXE4's lib/panel_chips) with EXE4's panel changer (objects/panel_changer), each
+  chip stating its change, a row of 0x080E423C by its first parameter: Hole row 9 (the panel in front to a hole, 64
+  ticks, unflickering, the start sound alone), DrkLine row 10 (the user's row), PnlRetrn row 0 (the own area to
+  normal), HolyPanl row 6 (the panel in front to holy), Snctuary row 7 (the own area to holy). The lab's chips/ (20),
+  panels/holypanl and pnlretrn, status/holy-panel and sanctuary and the GunSols' (whose light fills Hole's holes)
+  replay every frame; the hit recordings' fight frames are pixel-exact.
 - **Invis** (the dimming chips' action 0x0C, its variant 0x31, `chips/invis`): EXE6's Invisibl (@exelib/invisibl:
   effect object #0x5D, 0x080E8A68), 360 ticks, its sound EXE4's (0x109, in 0x0800C6BC). **PopUp** (variant 0x1E,
   `chips/popup`: EXE4's own controller, effect #0x3D, 0x080E6470) puts EXE4's glow over its user's navi (actor #0x5D,
@@ -1706,7 +1714,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     advances anyway, so it shows stale tiles until its frame changes again. nettai's renderer models neither (it draws
     each frame's tiles as they are); EXE5's and EXE6's counterparts to check when someone takes it. (What the towers'
     frame compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
-    display, tearing, which is left.)
+    display, tearing, which is left.) Open, last (group C, 2026-10-07): no recording reaches either cap. 96 copies on
+    one tick takes 96 sprites changing frames together, past the 128 hardware parts the renderer already caps; 767
+    tiles some 25 large sprites at once, where the lab's busiest fights (two navis and a field of bursts) reach about
+    200. The packs carry each frame's tile count (a tileset's `tiles`); the port: the renderer keeps each sprite's
+    last uploaded tileset, draws a frame's layout with it when the copy was dropped, and leaves out a sprite past the
+    cap, by each game's numbers.
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
