@@ -1246,29 +1246,34 @@ export type TornadoLook = {
 -- inflict (0: none) and its ticks.
 export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: number }
 
--- A thunder ball (chips/thunder/ball): fast or not, the panels it drifts
--- (12 makes DarkThnd's look and sound), the status its hits inflict and
--- their bug (none by default).
-export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug: number? }
+-- A thunder ball (chips/thunder/ball): fast or not, the panels it drifts,
+-- the status its hits inflict and their bug (none by default).
+export type ThunderBall = {
+    fast: boolean?,
+    panels: number,
+    status: Status?,
+    bug: number?,
+    -- Its chip's: big (DarkThnd's; a fast one is anyway), and its collision
+    -- type and sound where they aren't the look's.
+    big: boolean?,
+    is: CollisionType?,
+    sound: Sound?,
+}
 
 -- A game's thunder ball (chips/thunder/ball, `make_kind`): its sprite and
--- animation small and big (fast, or DarkThnd's 12 panels; none: a game
--- whose ball is never big, EXE4's), its collision type (a 12-panel one's,
--- if another), hit modifier and spark, its sound (a 12-panel one's, if
--- another), and its own search for its target (none: `sub_80C95EC`'s,
--- EXE6's and EXE5's).
+-- animation small and big (none: a game whose ball is never big, EXE4's),
+-- its collision type, hit modifier and spark, its sound, and its own search
+-- for its target (none: `sub_80C95EC`'s, EXE6's and EXE5's).
 export type ThunderBallLook = {
     sprite: SpriteAsset,
     small_anim: number,
     big_sprite: SpriteAsset?,
     big_anim: number?,
     is: CollisionType,
-    dark_is: CollisionType?,
     target: CollisionType,
     hit_mod: number,
     spark: Spark,
     sound: Sound,
-    dark_sound: Sound?,
     find_target: ((me: Object) -> (number, number))?,
 }
 
