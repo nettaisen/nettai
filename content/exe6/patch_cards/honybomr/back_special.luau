@@ -14,7 +14,8 @@ local rskyhny_chips = require("../../chips/rskyhny")
 -- it to 0x39.)
 local HONEY = rskyhny.action {
     id = "patch-cards/honybomr/back-special/action",
-    bee = rskyhny.bees[1],
+    -- RskyHny1's bees (`byte_80D3164`'s first row).
+    bee = { palette = 0, speed = 0x2_8000, turn_speed = 0x1_8000 },
     drags = true,
 }
 

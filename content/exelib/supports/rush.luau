@@ -48,7 +48,7 @@ local function enemy_direction(me: Object): number
 end
 
 -- A game's Rush, of `look`.
-function rush.make(look: RushLook): Rush
+function rush.make(look: RushLook): SupportActor
     -- Action 0 (`sub_80C32D8`): his animation 0 plays out, then his bark
     -- (animation 1) for 60 ticks.
     local function appear(me: Object)
@@ -255,7 +255,8 @@ function rush.make(look: RushLook): Rush
         return o
     end
 
-    return { kind = kind, spawn = spawn }
+    -- His host warps out while he comes and back in after.
+    return { kind = kind, spawn = spawn, warps = true }
 end
 
 return rush

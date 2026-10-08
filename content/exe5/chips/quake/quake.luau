@@ -1,9 +1,10 @@
 --!strict
 -- EXE5's Quake bomb (attack object #0x51, 0x080CFE0C; EXE5's own, thrown by action 0x12's subtype 11, 0x080D007C):
--- lobbed at the panel three ahead at 4 pixels a tick, it hangs there 48 pixels up as a weight in its level's colors
+-- lobbed at the panel three ahead at 4 pixels a tick, it hangs there 48 pixels up as a weight in its chip's colors
 -- for 25 ticks, then drops 8 pixels a tick. Landing on a solid panel, it shakes the screen, cracks the panel and hits
--- its level's region around it (Quake1 the panel, Quake2 the column, Quake3 the panel and its four neighbors), an
--- explosion on each panel; off solid ground it hits the panel alone. Then it goes in a puff. Off the field, it goes
+-- its chip's region around it (Quake1 the panel, Quake2 the column, Quake3 the panel and its four neighbors), an
+-- explosion on each panel; off solid ground it hits the panel alone. (The original reads both by the chip's level,
+-- Param1: 0x080CFFE4, 0x080D0060.) Then it goes in a puff. Off the field, it goes
 -- before it drops.
 
 local collision = require("../../rules/collision")
@@ -13,8 +14,9 @@ local trajectory = require("../../lib/trajectory")
 local quake = {}
 
 export type State = {
-    -- Its level (Param1: 0 to 2).
-    level: number,
+    -- Its chip's palette and region.
+    palette: number,
+    region: Region,
 }
 
 -- 0x080CFE2C: the thrown bomb, sprite 0c-02 in animation 1; 0x080CFF9A: the weight, 04-02 in animation 3.
@@ -22,10 +24,6 @@ local BOMB, WEIGHT = asset.sprite("bomb"), asset.sprite("quake-drop")
 -- Its speed along the ground and its fall while lobbed (16.16), its height over the panel, and its drop.
 local SPEED, GRAVITY, HANG_Z, DROP = 0x40000, -0x3C00, 0x30 * 0x10000, -0x80000
 local HANG_TICKS = 25
--- The weight's palette by level (0x080CFFE4).
-local PALETTES = { [0] = 0, [1] = 6, [2] = 12, [3] = 0 }
--- Its hit's region by level (0x080D0060: regions 1, 4 and 9).
-local REGIONS = { [0] = regions.single, [1] = regions.wide, [2] = regions.plus }
 -- Effect 0 (the explosion) on each panel it hits; effect 0x12 (a puff) as it goes.
 local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
 local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
@@ -69,7 +67,7 @@ local function fly(me: Object)
     me:set_lifecycle("destroy")
 end
 
--- 0x080CFF9A: the weight in its level's colors.
+-- 0x080CFF9A: the weight in its chip's colors.
 local function hang(me: Object, s: State)
     local sprite = me.sprite
     sprite:load(WEIGHT)
@@ -77,7 +75,7 @@ local function hang(me: Object, s: State)
     me.anim, me.anim_loaded = 3, 0xFF
     sprite:set_animation(0xFF)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    sprite.palette = PALETTES[s.level]
+    sprite.palette = s.palette
     -- (In the operation battle, which a netbattle never sets, 0x080E9FA4 spawns effect object 0x83 at the panel for 60
     -- ticks: not ported, exe5-map.md §15.6.)
     me.action = 8
@@ -115,10 +113,7 @@ local function drop(me: Object, s: State)
     if field.solid(me.panel_x, me.panel_y) then
         battle.shake_camera(2, 35)
         field.crack(me.panel_x, me.panel_y)
-        region = REGIONS[s.level]
-        if region == nil then
-            error(string.format("Quake's level %d reads past its regions", s.level))
-        end
+        region = s.region
     end
     local c = me.collision
     c:set_region(region)
@@ -158,7 +153,7 @@ end
 quake.kind = new.kind {
     id = "quake/bomb",
     pool = "attack",
-    state = { level = "u8" },
+    state = { palette = "u8", region = "region" },
     -- 0x080CFE0C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -192,8 +187,8 @@ quake.kind = new.kind {
     end,
 }
 
--- 0x080D007C: a thrower of level `level` bombs.
-function quake.thrower(level: number): Thrower
+-- 0x080D007C: a thrower of bombs whose weight is in `palette` and hits `region`.
+function quake.thrower(palette: number, region: Region): Thrower
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
             local o = battle.spawn(quake.kind, pos)
@@ -203,7 +198,7 @@ function quake.thrower(level: number): Thrower
                 o:set_damage_word(damage)
                 o.related1 = user
                 local s = o.state :: State
-                s.level = level
+                s.palette, s.region = palette, region
             end
             return o
         end,

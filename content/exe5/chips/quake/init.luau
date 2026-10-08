@@ -4,6 +4,7 @@
 
 local bombs = require("../lib/bombs")
 local quake = require("@self/quake")
+local regions = require("@exelib/regions")
 
 -- Quake1 (EXE5 chip 0x023): a bomb lobbed three panels ahead that drops a weight there and, landing on solid ground,
 -- cracks the panel and hits around it (level 0): EXE5's throw (lib/bombs, action 0x12 subtype 11) and its Quake bomb
@@ -20,7 +21,7 @@ local quake1: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = bombs.throw { held = bombs.held, thrower = quake.thrower(0) },
+    action = bombs.throw { held = bombs.held, thrower = quake.thrower(0, regions.single) },
     auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
@@ -39,7 +40,7 @@ local quake2: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = bombs.throw { held = bombs.held, thrower = quake.thrower(1) },
+    action = bombs.throw { held = bombs.held, thrower = quake.thrower(6, regions.wide) },
     auto_battle = { class = "into_reach", range = "column_three_ahead" },
 }
 
@@ -58,7 +59,7 @@ local quake3: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = bombs.throw { held = bombs.held, thrower = quake.thrower(2) },
+    action = bombs.throw { held = bombs.held, thrower = quake.thrower(12, regions.plus) },
     auto_battle = { class = "into_reach", range = "cross_three_ahead" },
 }
 

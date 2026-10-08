@@ -17,7 +17,8 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
-    dimming = controller.hook(2),
+    -- Five balls (the original's by the chip's level, its first parameter 2, and three).
+    dimming = controller.hook(5),
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 

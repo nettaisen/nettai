@@ -20,7 +20,7 @@ local puck = {}
 export type Variant = PuckVariant
 
 -- A game's puck: its sprite (the trail's too), its sound and the bounce's, what it is and reaches, its hits'
--- spark, the effect it bursts in, and its trail's tint.
+-- spark, the effect it bursts in, and its trail's tint (a game with no chip whose puck leaves a trail states none).
 export type Look = PuckLook
 
 export type State = {
