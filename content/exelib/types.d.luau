@@ -284,10 +284,11 @@ export type RapidBusterLook = {
 -- navi absorbed (none: the game throws none), and the spread's muzzle flash (none: the shot's; EXE5's own, its
 -- attachment row 0x39).
 export type MegaManBusterLook = MegaManShotLook & {
-    throw_sound: Sound,
-    throw: ((me: Object) -> ())?,
     spread_flash: AttachmentLook?,
 }
+
+-- A buster setup's throw (@exelib/megaman/buster's `throw`): what flies instead of the shot (its sound, then it).
+export type MegaManBusterThrow = { run: (me: Object) -> () }
 
 -- What a spreader fires (@exelib/spreadr/action): its gun (EXE6's attachment rows 0x15 and 0x2F, by `dword_80ECC54`),
 -- the bullet's height (16.16, by `dword_80ECC5C`), and the bullet; its own bullet kind and shot sound (none: the
