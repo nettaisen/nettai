@@ -15,7 +15,7 @@
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
-"attachment" = { pool = "attack", index = 0x02 }
+"attachment" = { pool = "attack", index = 0x02, scratch_with_owner = true }
 # The flying shot (0x080CE6E0): RollSoul's arrow.
 "flying-shot" = { pool = "attack", index = 0x0B }
 # The north wind (0x080D8BC8: WindSoul's change's) and its streaks (0x080E62C0); the wind spawned at the spawner's
