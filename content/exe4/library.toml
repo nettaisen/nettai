@@ -193,6 +193,8 @@ standard = [
     "magbolt1",
     "magbolt2",
     "magbolt3",
+    "tornado",
+    "static",
     "minibomb",
     "energbom",
     "megenbom",
