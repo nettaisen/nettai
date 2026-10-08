@@ -13,6 +13,9 @@ local recipe_sword = require("./sword").sword
 local recipe_wideblde = require("./wideblde").wideblde
 local recipe_wideswrd = require("./wideswrd").wideswrd
 
+-- The big slash over two columns (effect 0x1B).
+local BIG_SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 0 }
+
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
@@ -36,7 +39,7 @@ local chip: Chip = {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.wide_long, collision = swords.slashes_navis, hit_mod = 3 },
-        effect = swords.effects.big,
+        effect = BIG_SLASH,
         sound = swords.big_swing,
     },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },

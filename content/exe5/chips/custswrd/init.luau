@@ -8,6 +8,9 @@
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
+-- Its big slash over two columns (effect 0x28).
+local BIG_SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 3 }
+
 local chip: Chip = {
     codes = { "E", "L", "R" },
     element = "null",
@@ -26,7 +29,7 @@ local chip: Chip = {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.wide_long, collision = swords.slashes_navis, hit_mod = 3 },
-        effect = swords.effects.custom,
+        effect = BIG_SLASH,
         sound = swords.swing,
     },
     auto_battle = { class = "gauge_into_reach" },
