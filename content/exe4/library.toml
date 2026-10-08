@@ -230,6 +230,8 @@ standard = [
     "bighamr1",
     "bighamr2",
     "bighamr3",
+    "wind",
+    "fan",
     "fanfare",
     "discord",
     "timpani",
