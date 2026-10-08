@@ -5,6 +5,7 @@
 local attachment = require("../objects/attachment")
 local common = require("@exelib/protoman/navi")
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 local sp_chips = require("../rules/sp_chips")
 
 -- ProtoMan (EXE5 chip 0x0ef): ProtoMan cuts in and slashes each enemy navi he can reach: the shared navi
@@ -35,7 +36,10 @@ local protoman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon_with(LOOK),
+    navi = navi_chips.make {
+        id = "protoman/controller",
+        summon = navi.summon_with(LOOK),
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -66,7 +70,10 @@ local protomn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
     megaman = "light",
-    navi = navi.summon_with(LOOK_PROTOMN_SP),
+    navi = navi_chips.make {
+        id = "protomn-sp/controller",
+        summon = navi.summon_with(LOOK_PROTOMN_SP),
+    },
     auto_battle = { class = "at_once" },
 }
 
@@ -98,7 +105,10 @@ local protomn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
     megaman = "dark",
-    navi = navi.summon_with(LOOK_PROTOMN_DS),
+    navi = navi_chips.make {
+        id = "protomn-ds/controller",
+        summon = navi.summon_with(LOOK_PROTOMN_DS),
+    },
     auto_battle = { class = "at_once" },
 }
 

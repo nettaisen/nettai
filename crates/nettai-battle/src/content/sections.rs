@@ -142,6 +142,7 @@ struct ReactionsSection {
     dead_player: super::rules::DeadPlayer,
     attack_end_lockout: super::rules::AttackEndLockout,
     request_clears: super::rules::RequestClears,
+    status_end: super::rules::StatusEnd,
 }
 
 #[derive(Deserialize)]
@@ -187,7 +188,7 @@ struct CustomScreenSection {
     fades_clear_at_ok: bool,
     cursor_after_leaving: bool,
     frame_counts_first: bool,
-    description_in_choosing: bool,
+    states_in_choosing: bool,
     chatbox_end_clears_tiles: bool,
     chatbox_character_ends_tick: bool,
 }
@@ -442,6 +443,7 @@ impl Stated {
                 dead_player: r.dead_player,
                 attack_end_lockout: r.attack_end_lockout,
                 request_clears: r.request_clears,
+                status_end: r.status_end,
             }),
             sine: Some(r.sine.clone()),
             pools: Some(r.pools),
@@ -555,6 +557,7 @@ impl Stated {
             dead_player: reactions.dead_player,
             attack_end_lockout: reactions.attack_end_lockout,
             request_clears: reactions.request_clears,
+            status_end: reactions.status_end,
             bubble_bob: reactions.bubble_bob,
             flow,
             effects,
@@ -771,7 +774,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     fades_clear_at_ok: s.fades_clear_at_ok,
                     cursor_after_leaving: s.cursor_after_leaving,
                     frame_counts_first: s.frame_counts_first,
-                    description_in_choosing: s.description_in_choosing,
+                    states_in_choosing: s.states_in_choosing,
                     chatbox_end_clears_tiles: s.chatbox_end_clears_tiles,
                     chatbox_character_ends_tick: s.chatbox_character_ends_tick,
                     left_scan_top: s.left_scan_top,

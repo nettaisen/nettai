@@ -270,114 +270,78 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     b.used_chips = [None; 2];
 }
 
-/// The navi chips AntiNavi turns back: the original's block of them in its
-/// chip table (`ChipTraits::in_navi_block`): the chips with the `navi`
-/// flag but those with the `not_navi_slot` trait (EXE5's version navi
-/// chips), and the chips with the `navi_slot` trait (the US games' records
-/// of Django's three lack the flag; EXE6's content has the Japanese games',
-/// which have it).
-fn is_navi_chip(b: &Battle, chip: Option<ChipHandle>) -> bool {
-    chip.is_some_and(|h| {
-        let c = b.content.chip(h);
-        c.traits.in_navi_block(c.flags)
-    })
-}
-
-/// AntiNavi (the trap that turns a navi chip around) is the other side's
-/// defensive chip.
-fn anti_navi_waits(b: &Battle, side: u8) -> bool {
-    b.linked_trap(side ^ 1) == Some(Trap::AntiNavi)
-}
-
-/// How long the sparkle shows before AntiNavi's telop, in ticks after the
-/// first.
-const ANTI_NAVI_WAIT: u16 = 0x1E;
-
-/// `sub_800BDB2` (a navi chip's action after the dim; `off_800BDC4` by
-/// phase): on to the name, unless the other side's AntiNavi turns the
-/// chip around: a sparkle on the controller's panel, 31 ticks, AntiNavi's
-/// telop, then the controller changes sides and runs for AntiNavi's user.
-/// See docs/engine/dimming-chips.md §2.
-pub fn check_anti_navi(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
-    match b.objects.get(r).phase {
-        0 => anti_navi_check(b, r, chip),
-        4 => anti_navi_wait(b, r),
-        8 => anti_navi_turn(b, r),
-        p => panic!("navi chip controller phase {p:#x} reads past sub_800BDB2's table (off_800BDC4)"),
-    }
-}
-
-/// Set the controller's phase, not yet entered.
-fn set_phase(b: &mut Battle, r: ObjectRef, phase: u8) {
-    let o = b.objects.get_mut(r);
-    o.phase = phase;
-    o.phase_init = 0;
-}
-
-/// `sub_800BDD0`: the other side's AntiNavi springs on a navi chip (the
-/// side's dimming runs its effect from now on; a sparkle on the
-/// controller's panel), or the name comes next.
-fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
+/// A telop for a controller whose effect may already run (`sub_800BA8A`,
+/// the controller's name after the chip's own check): on its first tick,
+/// once the other side isn't mid-dimming (a record already running stays
+/// so), the telop, naming `chip` unless the controller's names one, and its
+/// sound; then, once the banner is done and no cut-in holds the side, the
+/// side's dimming runs: true. What follows is the caller's (unlike
+/// `show_telop`, the chip's cut-in rule doesn't decide it).
+pub fn telop_running(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
     let side = b.objects.get(r).alliance;
-    if !(is_navi_chip(b, chip) && anti_navi_waits(b, side)) {
-        return advance(b, r, 1);
-    }
-    b.dimming(side).state = DimmingState::Running;
-    let p = b.objects.get(r).panel;
-    // sub_800ABC6: facing the local side's way (presentation).
-    let (x, y) = crate::kinds::player::panel_coordinates(p.x, p.y);
-    let local = b.round.local_side;
-    let look = b.roles().effect(crate::content::EffectRole::TrapMark);
-    // `sub_800ABC6`'s sparkle (the role `effects.trap_mark`), where
-    // AntiNavi's game puts it from the panel's center (EXE6: 16 pixels down
-    // the field and 32 up), with its sound (the role `sounds.cut_in`).
-    let at = b.game_rules().chip_use.anti_navi_sparkle;
-    let (dy, z) = ((at.dy as i32) << 16, (at.z as i32) << 16);
-    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y: y + dy, z }, look, local, 0, 0);
-    b.sound(SoundRole::CutIn);
-    set_phase(b, r, 4);
-}
-
-/// `sub_800BE0C`: 31 ticks after the first.
-fn anti_navi_wait(b: &mut Battle, r: ObjectRef) {
-    let o = b.objects.get_mut(r);
-    if o.phase_init == 0 {
-        o.timer = ANTI_NAVI_WAIT;
-        o.phase_init = 4;
-        return;
-    }
-    let left = o.timer as i32 - 1;
-    o.timer = left as u16;
-    if left < 0 {
-        set_phase(b, r, 8);
-    }
-}
-
-/// `sub_800BE2C`: AntiNavi's telop (as its user's side sees it, without
-/// damage), then the chip changes sides: the side's dimming is over, the
-/// controller takes the other side, which now owns and started the
-/// dimming (its own controller, if any, is told to end), with AntiNavi's
-/// user as the navi chip's user (on its panel), and AntiNavi is spent.
-/// The name follows, now the other side's.
-fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
-    let side = b.objects.get(r).alliance;
+    let other = side ^ 1;
     if b.objects.get(r).phase_init == 0 {
-        let banner = telop_banner(b, b.is_remote(side ^ 1));
-        // (AntiNavi: the chip its user's record holds.)
-        let chip = b.linked[(side ^ 1) as usize & 1].chip;
-        let telop = Telop { side: side ^ 1, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No };
-        if b.start_telop_banner(banner) {
-            b.banner.telop = Some(telop);
+        if b.dimming[side as usize].state != DimmingState::Running {
+            b.dimming(side).state = DimmingState::ShowingName;
+            if !matches!(b.dimming[other as usize].state, DimmingState::Waiting | DimmingState::Idle) {
+                return false;
+            }
         }
-        b.used_chips = [None; 2];
+        if b.objects.get(r).telop_chip.is_none() {
+            b.objects.get_mut(r).telop_chip = Some(TelopChip { chip, bonus: 0, damage: None });
+        }
+        start_telop(b, r, side, TelopHidden::No);
         b.sound(SoundRole::Telop);
         b.objects.get_mut(r).phase_init = 4;
-        return;
+        return false;
     }
     if b.banner.status() != BannerStatus::Done {
-        return;
+        return false;
     }
-    // sub_800B89C: the side's dimming is over (its user stays recorded).
+    if b.dimming[side as usize].owner != side && !out_of_the_way(b.dimming[other as usize].state) {
+        b.dimming(side).state = DimmingState::Waiting;
+        return false;
+    }
+    b.dimming(side).state = DimmingState::Running;
+    true
+}
+
+/// The navi that used `side`'s dimming chip (the record's +0xC; none once
+/// the dimming changed sides, `turn`).
+pub fn user(b: &Battle, side: u8) -> Option<ObjectRef> {
+    b.dimming[side as usize & 1].user
+}
+
+/// `side`'s dimming runs its effect from now (the record's state 4).
+pub fn run(b: &mut Battle, side: u8) {
+    b.dimming(side & 1).state = DimmingState::Running;
+}
+
+/// A telop for `side` naming `chip`, without damage (`sub_801E792` with
+/// the side's banner), and its sound; a used chip's name makes way.
+pub fn chip_telop(b: &mut Battle, side: u8, chip: Option<ChipHandle>) {
+    let side = side & 1;
+    let banner = telop_banner(b, b.is_remote(side));
+    let telop = Telop { side, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No };
+    if b.start_telop_banner(banner) {
+        b.banner.telop = Some(telop);
+    }
+    b.used_chips = [None; 2];
+    b.sound(SoundRole::Telop);
+}
+
+/// The telop's banner is done.
+pub fn telop_done(b: &Battle) -> bool {
+    b.banner.status() == BannerStatus::Done
+}
+
+/// The dimming changes sides (`sub_800BE2C`'s): controller `r`'s side's
+/// dimming is over (its user stays recorded), and `r` takes the other side,
+/// which now owns, runs and started the dimming (its own controller, if
+/// any, is told to end).
+pub fn turn(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance & 1;
+    // sub_800B89C
     b.clear_dimming(side);
     let taker = side ^ 1;
     b.objects.get_mut(r).alliance = taker;
@@ -392,65 +356,9 @@ fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
     for rec in &mut b.dimming {
         rec.initiator = taker;
     }
-    // sub_802CE78: AntiNavi's record's user.
-    if let Some(owner) = b.linked[taker as usize].owner {
-        let panel = b.objects.get(owner).panel;
-        let o = b.objects.get_mut(r);
-        o.panel = panel;
-        o.related[0] = Some(owner);
-    }
-    // sub_802CEA6
-    b.clear_linked(taker);
-    advance(b, r, 1);
 }
 
-/// `sub_800BA8A`: a navi chip's name, like `show_telop`, but the
-/// effect runs whether or not the chip can be cut in on, and is skipped
-/// only if the user was deleted.
-pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
-    let side = b.objects.get(r).alliance;
-    let other = side ^ 1;
-    if b.objects.get(r).phase_init == 0 {
-        if b.dimming[side as usize].state != DimmingState::Running {
-            b.dimming(side).state = DimmingState::ShowingName;
-            if !matches!(b.dimming[other as usize].state, DimmingState::Waiting | DimmingState::Idle) {
-                return;
-            }
-        }
-        if b.objects.get(r).telop_chip.is_none() {
-            b.objects.get_mut(r).telop_chip = Some(TelopChip { chip, bonus: 0, damage: None });
-        }
-        start_telop(b, r, side, TelopHidden::No);
-        b.sound(SoundRole::Telop);
-        b.objects.get_mut(r).phase_init = 4;
-        return;
-    }
-    if b.banner.status() != BannerStatus::Done {
-        return;
-    }
-    if b.dimming[side as usize].owner != side && !out_of_the_way(b.dimming[other as usize].state) {
-        b.dimming(side).state = DimmingState::Waiting;
-        return;
-    }
-    b.dimming(side).state = DimmingState::Running;
-    // After AntiNavi turned the chip around, the side's record has no user:
-    // the game reads the HP through the null pointer, from the BIOS, whose
-    // open-bus value is never 0 (so the navi comes).
-    let user_alive = b.dimming[side as usize].user.is_none_or(|u| b.objects.get(u).hp != 0);
-    if !user_alive {
-        // (dword_200F3B8[side] = 1: never read.)
-        return advance(b, r, 2);
-    }
-    if is_navi_chip(b, chip) && anti_navi_waits(b, side) {
-        // The other side's AntiNavi turns it around again: back to
-        // `sub_800BDB2` from its first phase.
-        let a = b.objects.get(r).action;
-        return common::set_action(b, r, a - 4);
-    }
-    advance(b, r, 1);
-}
-
-/// `sub_80E1352(user, 0)`: the user vanishes while its navi chip's navi
+/// `sub_80E1352(user, 0)`: the user vanishes while what its chip brought
 /// acts (its barrier visual, status visuals, charge glow, Full Synchro
 /// aura and the HUD with it).
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
@@ -655,8 +563,8 @@ mod tests {
     use crate::content::testing;
     use crate::scenario;
 
-    /// The navi chip controller, and the test navi chip's navi.
-    const CONTROLLER: &str = "engine/navi-chip";
+    /// The test navi chip's controller, and its navi.
+    const CONTROLLER: &str = "test/heat/controller";
     const HEAT_NAVI: &str = "heatman/navi";
 
     /// Play a duel with the test navi chip; once a side uses it, the other

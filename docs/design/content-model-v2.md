@@ -651,10 +651,12 @@ stage, and gives the address its actor list goes by. Stages are named by what th
 
 **As built** (step 12). A stage is `StageData` (content/stages.rs): its panel layout, pattern, music (a sound
 asset, or none), background, mode, battle number, effects and `actors`, each `{ place = "navi", side, x, y }` or
-`{ place = <kind>, x, y, variant = <a record of the kind's>, argument = n }`. The round's spawn loop
+`{ place = <kind>, x, y, variant = <a record of the kind's>, side, hp }`. The round's spawn loop
 (`Battle::spawn_actors`) places a navi itself and anything else through its kind's `place(spec: PlaceSpec)`,
-which gets the panel, the entry's side, the variant record and the raw argument (the Guardian statue's spawner
-only leaves it in a register); a stage that names a kind without a `place` is a load error. The roles
+which gets the panel, the entry's side, the variant record and the HP it states (EXE4's flags'); a stage that
+names a kind without a `place` is a load error. No entry carries the original's raw bytes: a generator writes
+what the kind's spawner reads of them by name (2026-10-07: the Guardian statue's raw argument, only a register
+its spawner leaves and 0 in every record, went with EXE4's flag's packed side and HP). The roles
 `kinds.rock`, `kinds.boulder` and `kinds.statue`, `rock.by_number`, the numbered panel layouts and actor lists
 (`Content::panel_layouts`, `Rules::stages`), `StageSettings`, `ActorKind` and the `v1/stage-NN` records are
 gone, and the definitions carry no legacy marker. The numbers are compat's: stages.toml has each stage's

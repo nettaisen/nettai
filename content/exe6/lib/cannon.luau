@@ -2,7 +2,9 @@
 -- EXE6's cannons' action (the original's action 0x14, `sub_80EBC0E`): the
 -- shared action (@exelib/cannon) with EXE6's sound, attachment and
 -- projectile. Each chip composes its own (`cannon.action { arm = ...,
--- shot = ... }`): what it holds and what it fires.
+-- shot = ... }`): what it holds (Cannon's, HiCannon's and M-Cannon's the
+-- original's attachment rows 0 to 2 by `byte_80EBD2C`, at the navi's attach
+-- point 7) and what it fires.
 
 local attachment = require("../objects/attachment")
 local common = require("@exelib/cannon")
@@ -13,15 +15,6 @@ local cannon = {}
 
 -- One state for every cannon.
 cannon.STATE = common.STATE
-
--- The cannons' looks: the arm the navi holds (the original's attachment
--- rows 0 to 2, by `byte_80EBD2C`), at its attach point 7.
-local CANNON = asset.sprite("cannon")
-cannon.arms = {
-    cannon = attachment.look { sprite = CANNON, palette = 0, attach_point = 7 },
-    hicannon = attachment.look { sprite = CANNON, palette = 1, attach_point = 7 },
-    m_cannon = attachment.look { sprite = CANNON, palette = 2, attach_point = 7 },
-}
 
 local LOOK: CannonLook = {
     sound = asset.sound("cannon"),

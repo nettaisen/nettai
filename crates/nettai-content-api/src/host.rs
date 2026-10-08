@@ -92,17 +92,6 @@ pub struct DimmingChipSpec {
     pub bonus: u16,
 }
 
-/// What a navi chip's navi is spawned with (the registers
-/// `sub_80E1880` passes to `off_802CD5C[subtype]`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct NaviChipSpec {
-    /// Where the navi appears (the user's panel when the chip was used).
-    pub panel: PanelPos,
-    pub element: u8,
-    /// The damage word with the bonus added.
-    pub damage: u32,
-}
-
 /// What an instant chip's effect runs with (the registers `sub_80EC39C`
 /// passes to `off_80EC3F0[subtype]`: the user's panel and Z, and its
 /// attack).
@@ -130,9 +119,6 @@ pub struct PlaceSpec {
     /// Which of the kind's variants the stage names (a record of the
     /// kind's: a rock's).
     pub variant: Option<crate::RecordHandle>,
-    /// The entry's raw argument (what a spawner that ignores it leaves in
-    /// a register: the Guardian statue's).
-    pub argument: u8,
     /// The HP the entry gives it, if it states one.
     pub hp: Option<u16>,
 }
@@ -142,18 +128,16 @@ pub struct PlaceSpec {
 pub enum HookCall {
     /// `setup(navi)`: returns the action it starts (an action definition).
     Weapon { navi: ObjectRef },
-    /// `dimming_chip(user, spec)`: returns the controller, or nil.
+    /// `dimming_chip(user, spec)`: returns the controller, or nil (a cut-in
+    /// chip's `dimming`, a handed-off chip's `navi`).
     DimmingChip { user: ObjectRef, spec: DimmingChipSpec },
-    /// `navi_chip(user, controller, spec)`: returns the navi, or nil. The
-    /// navi calls `navi_chip.navi_left(controller)` when it is done.
-    NaviChip { user: ObjectRef, controller: ObjectRef, spec: NaviChipSpec },
     /// `instant_chip(user, spec)`: its result is unused.
     InstantChip { user: ObjectRef, spec: InstantChipSpec },
     /// A kind's `place(spec)`: returns what it placed, or nil.
     Place { spec: PlaceSpec },
-    /// A kind's `navi_left(controller)`: the navi chip's navi an object of
-    /// the kind brought (EXE5's DethPhnx: the last navi chip's) is done. Its
-    /// result is unused.
+    /// A kind's `navi_left(controller)`: what an object of the kind brought
+    /// (a navi chip's navi, EXE5's DethPhnx's the last navi chip's) is done.
+    /// Its result is unused.
     NaviLeft { controller: ObjectRef },
     /// A role hook the rules call with a navi (the roles' `hooks`):
     /// its result is unused.
@@ -568,6 +552,10 @@ pub enum RulesHook {
     /// shows, if any (EXE5's capsules: the chip window shows it, R describes
     /// it).
     ButtonChip,
+    /// A button's `hand_chip(side)`, at OK while it is picked: the chip it
+    /// puts in the hand in its place, if any (EXE4's soul button: the soul's
+    /// chip, which changes the navi as the turn starts).
+    ButtonHandChip,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
     /// base form, its form not yet changed (`sub_80158CC`): EXE6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
@@ -634,11 +622,12 @@ impl RulesHook {
             RulesHook::ButtonState => "button.state",
             RulesHook::ButtonPressed => "button.pressed",
             RulesHook::ButtonChip => "button.chip",
+            RulesHook::ButtonHandChip => "button.hand_chip",
             RulesHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [RulesHook; 46] = [
+    pub const ALL: [RulesHook; 47] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -675,6 +664,7 @@ impl RulesHook {
         RulesHook::ButtonState,
         RulesHook::ButtonPressed,
         RulesHook::ButtonChip,
+        RulesHook::ButtonHandChip,
         RulesHook::CustomOpen,
         RulesHook::CustomDeal,
         RulesHook::CustomConfirmed,

@@ -6,6 +6,7 @@
 -- ticks and spreads two panels forward, leaving the panels as they were.
 -- HeatCross's form definition names it as its charged shot.
 
+local attachment = require("../../../../objects/attachment")
 local burn = require("../../../../lib/burner/burn")
 local weapon = require("../../../../lib/weapon")
 
@@ -15,7 +16,8 @@ local heat_charge = {}
 -- (its attack variant 1).
 local FLAME = burn.action {
     id = "heatcross/charge/action",
-    burner = burn.burners.heat,
+    -- HeatCross's burner (the original's attachment row 0x1E).
+    burner = attachment.look { sprite = asset.sprite("heatcross-burner"), palette = 0, attach_point = 0x16 },
     flame = { ticks = 0x3C, spread = 2 },
 }
 

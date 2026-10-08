@@ -24,13 +24,6 @@ export type State = {
 -- variables, as the original's one action does.
 action.STATE = { timer = "u16" }
 
--- What the navi swings: WindRack's rack (the original's attachment row
--- 0x2A, variant 0) and TenguCross's fan (row 0x33, the other variants).
-action.racks = {
-    wind_rack = attachment.look { sprite = asset.sprite("wind-rack"), palette = 0 },
-    tengu_fan = attachment.look { sprite = asset.sprite("tengu-fan"), palette = 0 },
-}
-
 -- The phases, on the attack's step.
 local SWING, RECOVER = 0x0, 0x4
 

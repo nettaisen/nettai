@@ -14,12 +14,11 @@
 
 local projectile = require("./projectile")
 local shield = require("../objects/shield")
-local variants = require("../objects/projectile/variants")
 
 local guard = {}
 
--- What a guard counters with.
-export type Counter = { kind: "none" } | { kind: "shot" }
+-- What a guard counters with: nothing, or a shot of its own (its user's projectile row).
+export type Counter = { kind: "none" } | { kind: "shot", shot: ProjectileVariant }
 
 export type Spec = {
     id: string,
@@ -72,7 +71,7 @@ function guard.action(spec: Spec): Action
                 local x, y = me.panel_x + me.facing, me.panel_y
                 local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
                 if counter.kind == "shot" then
-                    projectile.spawn(me, x, y, { variant = variants.charged, damage = damage, z = SHOT_Z })
+                    projectile.spawn(me, x, y, { variant = counter.shot, damage = damage, z = SHOT_Z })
                 end
             end
         end

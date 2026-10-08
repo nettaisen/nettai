@@ -10,7 +10,7 @@
 pub mod navi_switch;
 pub mod instant;
 pub mod movement;
-pub mod navi_chip;
+pub mod hand_off_chip;
 pub mod reactive;
 pub mod dimming_chip;
 #[cfg(test)]
@@ -44,12 +44,16 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
     use super::{EngineAction as E, NaviAction as A};
     match action {
         // (Unpaused, a form change's CurAction is the instant chips': a
-        // form's change action runs only from the pause handler.)
-        A::Content(h) if b.content.defs.is_change_action(h) => instant::update(b, r),
+        // form's change action runs only from the pause handler. A game with
+        // no transformation sequencer at a turn's start runs it as the
+        // navi's action, unpaused: EXE4's soul change, action 0x0D.)
+        A::Content(h) if b.content.defs.is_change_action(h) && b.game_rules().flow.sequencer_at_turn_start => {
+            instant::update(b, r)
+        }
         A::Content(h) => crate::behavior::run_action(b, h, r),
         A::Engine(E::Move) => movement::update(b, r),
         A::Engine(E::DimmingChip) => dimming_chip::update(b, r),
-        A::Engine(E::NaviChip) => navi_chip::update(b, r),
+        A::Engine(E::HandOffChip) => hand_off_chip::update(b, r),
         // (Unpaused, the form change's CurAction is the instant chips'.)
         A::Engine(E::InstantChip | E::FormChange) => instant::update(b, r),
         state => unreachable!("{state:?} is not an attack"),

@@ -17,7 +17,8 @@ local chip: Chip = {
             element = 4,
             palette = 2,
             panel = "grass",
-            effect = seed.green_sprout,
+            -- Its green sprout (effect 0x3C).
+            effect = new.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 8 },
             sound = asset.sound("grass"),
         }),
     },

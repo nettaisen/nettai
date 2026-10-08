@@ -9,6 +9,7 @@
 -- - TimeBom+'s bomb's HP: 300 (EXE6's 200, 0x080CEEE4's row 1);
 -- - the bombs' identities (actor records 0xD8 and 0xD9): field objects of AI index 0x21 (EXE6's 1), which nothing
 --   of EXE5's reads but the record (their hooks are none, 0x0800ED30 and 0x0800EEE0);
+-- - each chip's bomb (./init: a row of 0x080CEEE4), which the controller places (`timebom.controller.hook(bomb)`);
 -- - EXE5's look and collision types, and its action table of 8 rows (no frozen or bubbled: the countdown and the
 --   blink are its 6 and 7, EXE6's 8 and 9, the same actions).
 
@@ -39,40 +40,6 @@ timebom.kind = countdown.make_kind("timebom/countdown", {
     puff = effects.puff,
     bursts = panel_bursts.kind,
 })
-
--- What the bombs are and what they react to: a neutral body, hit by everything (rows 0xE and 0xF).
-local BODY = { is = collision.neutral_body, hits = collision.everything }
-
--- The bombs (0x080CEEE4's rows 0 and 1).
-timebom.variants = {
-    bomb = countdown.variant {
-        appear_anim = 0,
-        idle_anim = 1,
-        hp = 50,
-        identity = new.identity {
-            class = "field_object",
-            version = 5,
-            ai_index = 0x21,
-            look = { sprite = SPRITE, anim = 1, palette = 0, shadow = true, keeps_flip = true },
-        },
-        class = 1,
-        collision = BODY,
-    },
-    big = countdown.variant {
-        appear_anim = 2,
-        idle_anim = 3,
-        hp = 300,
-        identity = new.identity {
-            class = "field_object",
-            version = 0,
-            ai_index = 0x21,
-            look = { sprite = SPRITE, anim = 3, palette = 0, shadow = true, keeps_flip = true },
-        },
-        class = 1,
-        collision = BODY,
-        strong_shake = true,
-    },
-}
 
 -- Where the search for each row's panel starts and what it looks for, by side (0x080E351C: the other side's
 -- panels; 0x080E34B0: the user's), and what the panel the bomb goes on must be.

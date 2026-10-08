@@ -1286,8 +1286,10 @@ springs the trap instead (`loc_80E1968`): the trap's mark over the user (`sub_80
 spent (`sub_802CEA6`), and AntiRecv's counterattack (T4 0x2C, `sub_80E37D2`; below) comes for the user with three
 times Roll's damage (`sub_80E199A`: the damage word's low 11 bits, doubled when it has the double-damage flag 0x8000)
 and hit parameter 0x1E, in the chip's parameters (Z = the mark's, left in r3). Action 0x1B registers it as the side's
-dimming like the navi chip's controller; nothing else starts one (unlike a recovery chip's heal). Port:
-`kinds::navi_chip`, `kinds::heal`.
+dimming like the navi chip's controller; nothing else starts one (unlike a recovery chip's heal). Port: the engine's
+generic action that hands a chip off to its controller (`engine/hand-off-chip`, kinds/player/actions/hand_off_chip.rs:
+the chip's `navi` hook spawns the controller, as a dimming chip's `dimming`), each chip's controller
+@exelib/navi_chips/chip's (AntiRecv's spring with it), `kinds::heal`.
 
 **AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; EXE6's chips/antirecv/controller, which the ruleset spawns by the role `kinds.anti_recovery`).** Spawned by `sub_80E37D2`
 (r0/r1 the healer's panel, r2 element 0, r6 the damage word, r7 = 0xBD for the telop; RelatedObject1 = the healer,
@@ -1302,7 +1304,10 @@ Roll (this branch) or Recov10 (the heal's) springs it; both match every frame (1
 double-damage flag is verified too (`chips/0x0bd-antirecv/roll-full-synchro`: Roll used in Full Synchro, 120 for
 60). Unverified: a full effect pool.
 
-**The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
+**The controller, T4 0x10 (`sub_80E17E8`).** Content: each navi chip's own controller (`navi = navi_chips.make {
+id, summon, course, ... }`: @exelib/navi_chips/chip, on @exelib/navi_chips/controller with the course below as data:
+`PLAIN`, `USER_STAYS`, `USER_RETURNED`), which compat maps to T4 0x10 (kinds.toml, written by bn6battle-verify's
+tools/content/navi_chip_kinds.py). Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
 a flag its navi clears. Actions: 0 `object_dimScreen`; 4 `sub_800BDB2` (AntiNavi: for chips 0xDD..0x118 when the
 other side's defensive chip is 0xBA, the controller changes sides and the navi comes for AntiNavi's user,
@@ -1312,7 +1317,8 @@ dimming-chips.md §2; otherwise straight on); 8 `sub_800BA8A` (the name, as
 - 0 (`sub_80E1854`): 30 ticks; at its start the user warps out (`sub_80C0F52(user, 1)`), except for navi 0x17.
 - 4 (`sub_80E1880`): the navi's spawner `off_802CD5C[+0x19]` with r5 = the user, r4 = the params, r6 = damage +
   bonus, r7 = &controller+0x18 (the spawner sets it to 1). Chips 0xDD..0x118 are also recorded at `byte_203C960`
-  (for chips that copy the last navi chip). Then it waits while +0x18 is set.
+  (for chips that copy the last navi chip: EXE5's DethPhnx, whose rules keep it, rules/api's `last_navi_chip`;
+  nothing in EXE6 reads it, so EXE6's content doesn't keep it). Then it waits while +0x18 is set.
 - 8 (`sub_80E18DA`): 30 ticks. 0xC (`sub_80E18F8`): the user warps back in (except navis 0 and 0x17), 30 ticks.
 
 **The warp, T1 0x2D (`sub_80C0E04`), Param4 = 1 out / 0 in.** For a player: the navi's sprite (navi, form), its

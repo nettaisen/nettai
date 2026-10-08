@@ -83,7 +83,7 @@
 "batcan3/action" = 0x19
 "batcan4/action" = 0x19
 "groundcross-beast/dash/action" = 0x1A
-"engine/navi-chip" = 0x1B
+"engine/hand-off-chip" = 0x1B
 "engine/form-change" = 0x1C
 "engine/instant-chip" = 0x1C
 "forms/change" = 0x1C

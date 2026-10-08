@@ -450,8 +450,9 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
 - EXE4's `custom.json` (docs/design/exe4-map.md §14) says what its screen
   draws otherwise, each left out of the others': its layout's
   `detail_blank` (the color a blank code or damage cell is, 7 where
-  EXE6's and EXE5's are 8) and `empty_palette` (the empty icon's palette in
-  a slot or cell without a chip, 9); `element_sprite` (the element icon
+  EXE6's and EXE5's are 8), `turn_limit_palette` (the "FINAL TURN" block's
+  palette, 14 where EXE6's and EXE5's are 9) and `empty_palette` (the empty
+  icon's palette in a slot or cell without a chip, 9); `element_sprite` (the element icon
   drawn as a 16x16 sprite at a place and in a palette of its own, not as
   window tiles in palette 11 with `elements.png`'s colors); `cursor_palette`
   (the cursor's and the Regular chip's frame's own sprite palette, not a

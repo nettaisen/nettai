@@ -42,6 +42,13 @@ local SLASH_Z = 0x10_0000
 -- The shots: the Vulcans' bullets (row 0xC), three 10 ticks apart, at one of four heights (0x080CAA84, pixels).
 local SHOTS, SHOT_TICKS = 3, 10
 local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
+-- The bullet: the panel found and the one behind it, staggering, its hit (the Vulcans') shown once at the bullet.
+local SHOT = bullet.variant {
+    region = regions.long,
+    hit_mod = 1,
+    effect = new.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 0 },
+    single = true,
+}
 -- Before striking, each marks the panel ahead in the operation battle (0x080E9FD2: ticks, style).
 local DRAW_TICKS, AIM_TICKS = 15, 15
 local LEAVE_TICKS = 30
@@ -135,7 +142,7 @@ local function fire(me: Object)
     me.timer = SHOT_TICKS
     local _, _, word = obstacle.conversion(me.alliance)
     local z = bit32.lshift(HEIGHTS[bit32.band(battle.rng_positive(), 3)], 16)
-    common_bullet.fire(bullet.kind, me, me.panel_x + me.facing, me.panel_y, z, bullet.variants.vulcan, 0, word)
+    common_bullet.fire(bullet.kind, me, me.panel_x + me.facing, me.panel_y, z, SHOT, 0, word)
     battle.play_sound(SHOT_SOUND)
     local left = me.timer2 - 1
     me.timer2 = int.u16(left)

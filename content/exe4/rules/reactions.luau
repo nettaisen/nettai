@@ -49,6 +49,14 @@ return {
         flinch = { "anti_sword_triggered" },
         drag = { "anti_sword_triggered" },
     },
+    -- What a navi's statuses' end clears (0x08013218): EXE4 has no freeze and no bubble, the other four statuses'
+    -- flags (0xE800), the requests 0x8068 and the four timers (its flag 0x10000 holds a navi changing into a soul:
+    -- rules/souls/change).
+    status_end = {
+        flags = { "paralyzed", "blind", "immobilized", "confused" },
+        requests = 0x8068,
+        timers = { "paralyze", "confuse", "blind", "immobilize" },
+    },
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },
