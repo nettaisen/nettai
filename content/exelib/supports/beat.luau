@@ -167,7 +167,8 @@ function beat.make(look: BeatLook): SupportActor
         return o
     end
 
-    return { kind = kind, spawn = spawn }
+    -- His host warps out while he comes and back in after.
+    return { kind = kind, spawn = spawn, warps = true }
 end
 
 return beat
