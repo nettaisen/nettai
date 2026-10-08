@@ -2,8 +2,9 @@
 -- EXE4's cannons' action (the chips' action 0x0B, 0x080EB854): EXE6's and EXE5's (@exelib/cannon) with EXE4's look:
 -- its sound (0x8C); the navi holds the cannon in its related slot as EXE4's own attachment, its animation the navi's
 -- number (NaviStats +0x23, MegaMan's 0); its projectile; the navi raises it in animation 9 and lowers it in 8; and a
--- GigaCan's afterimages its own (0x080EB8BE). Each chip composes its own (`cannon.action { arm = ..., shot = ... }`):
--- the cannon by its variant (0x080EB9B4, an attachment row) and the shot (0x080EB9BB, a projectile row).
+-- GigaCan's afterimages its own (0x080EB8BE). Each chip composes its own (`cannon.action { arm = ..., shot = ... }`),
+-- stating its cannon (its variant's attachment row, 0x080EB9B4: the cannon sprite 0c-01 in a palette) and its shot
+-- (a projectile row, 0x080EB9BB).
 
 local attachment = require("../objects/attachment")
 local common = require("@exelib/cannon")
@@ -13,16 +14,6 @@ local cannon = {}
 
 -- One state for every cannon.
 cannon.STATE = common.STATE
-
--- The cannons (attachment rows 0, 1, 2 and 0x30: 0c-01 in palettes 0 to 3): Cannon's, HiCannon's, M-Cannon's,
--- DrkCanon's.
-local CANNON = asset.sprite("cannon")
-cannon.arms = {
-    cannon = attachment.look { sprite = CANNON, palette = 0 },
-    hicannon = attachment.look { sprite = CANNON, palette = 1 },
-    m_cannon = attachment.look { sprite = CANNON, palette = 2 },
-    drkcanon = attachment.look { sprite = CANNON, palette = 3 },
-}
 
 -- The navi's number: what it holds animates by it (NaviStats +0x23, MegaMan's 0).
 local NAVI_NUMBER = 0

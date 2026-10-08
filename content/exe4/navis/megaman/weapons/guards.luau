@@ -10,8 +10,11 @@
 --
 -- (AntiMagc, routine 0x27, waits on the AntiDmg chip whose trap it arms: docs/design/exe4-map.md §18 item 53.)
 
+local collision = require("../../../rules/collision")
 local guard = require("../../../lib/guard")
+local projectile = require("../../../objects/projectile")
 local shield = require("../../../objects/shield")
+local sparks = require("../../../lib/sparks")
 
 local guards = {}
 
@@ -27,11 +30,19 @@ local SHIELD = guard.action {
     shield = shield.look { anim = 4 },
     counter = { kind = "none" },
 }
+-- What Reflect fires back: the charged shot's projectile (row 6, 0x080ECEC2).
+local REFLECTED = projectile.variant {
+    id = "megaman/reflect/shot",
+    collision = { is = collision.attack, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+}
 local REFLECT = guard.action {
     id = "megaman/reflect/action",
     ticks = TICKS,
     shield = shield.look { anim = 2 },
-    counter = { kind = "shot" },
+    counter = { kind = "shot", shot = REFLECTED },
 }
 
 local function raise(navi: Object, variant: number, damage: number)
