@@ -15,8 +15,9 @@
 -- EXE4's (attack object #0x59, 0x080D89D8) is the same code but for what its look states besides: its init
 -- (0x080D89F8) writes no NameID and its animation's load is not forced; the panel it takes needn't be free of
 -- neutral objects or reservations (0x0F800000); its own action table (0x080D8ABC: 7 rows, its row 1 also stops it
--- running while paused and its row 3 does nothing); and it leaves releasing no tracking, by its HP alone (left, a
--- puff; none, the debris). It never falls, and no stage places one.
+-- running while paused and its row 3 does nothing); a touch destroys it with its HP as it is (0x08013F3E); and it
+-- leaves releasing no tracking, by its HP alone (left, a puff; none, the debris). It never falls, and no stage places
+-- one.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
@@ -64,6 +65,8 @@ export type Look = {
     -- It leaves releasing no tracking, by its HP alone: left, a puff; none, the debris (EXE4's 0x080D8B28); none: by
     -- how it was removed.
     leaves_by_hp: boolean?,
+    -- How a touch crushes it (none: the framework's "breaks"; EXE4's 0x08013F3E "destroys", its HP as it is).
+    crush: ObstacleCrush?,
 }
 
 export type Rock = {
@@ -219,7 +222,7 @@ function rock.make(look: Look): Rock
         obstacle.take_hits(me)
         me:hit_spark()
         obstacle.tick_lifetime(me)
-        local a = obstacle.react(me)
+        local a = obstacle.react(me, look.crush)
         if a then
             local action = ACTIONS[a]
             if not action then
