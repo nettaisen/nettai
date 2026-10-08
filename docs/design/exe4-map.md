@@ -840,6 +840,24 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   of its side's field objects) on the other side's solid, free panel of the user's row nearest that side's far edge
   (0x0800A1AE), with the chip's damage and no telop bonus, and 0xA0; then 60 ticks. The lab's chips/ (12) and
   stages/type5 replay every frame; MetlGer1's hit is pixel-exact.
+- **BoyBomb1 to BoyBomb3** (the dimming chips' variant 0x38, `chips/boybomb`): EXE5's BoyBomb with EXE4's numbers.
+  The controller (effect #0x67, 0x080E94CC, the usual dimming phases, its spawn taking the user's side alone) sets
+  the bomb on one of the user's side's front panels at random (0x080E956C: each row's front-most panel of the side,
+  0x0800A244, kept when solid and free; none such, any of them), then 30 ticks. The bomb (attack #0x3E, 0x080D4F40)
+  is @exelib/boybomb/bomb (EXE6's leftover code, EXE5's numbers; now shared) with EXE4's look: no NameID, its effects
+  (rows 7, 0, 0x0F) and sounds (0xAA, 0xBC, 0x70), where it may stand (0x080D53AC: side 1's forbids 0x01000000 too),
+  its hits taken keeping a push's damage (0x0801393E), EXE4's obstacle rows (row 3 nothing, no frozen or bubbled),
+  no panel reserved, no tracking released, no removal read (it always breaks), a bad panel or the battle's end
+  breaking it even while dimmed. EXE4's obstacle intake 0x0801393E also takes the end of the obstacle's moves
+  (0x0801335A: MOVE_COMPLETE consumed, the panel's `move_end`, ice's push): the rules' `push_reading.
+  obstacle_move_end` (EXE6's `sub_801AD12` and EXE5's don't). The lab's chips/ (12) replay every frame; BoyBomb1's hit
+  is pixel-exact.
+- **HawkCut1 to HawkCut3** (the dimming chips' variant 0x39, `chips/hawkcut`: EXE4's own): a controller (effect
+  #0x68, 0x080E95E0) run as the navi chips' on the long course, bringing ProtoMan (actor #0x44, 0x080C8A28, sheet 08-07
+  in palette 0, on GutPnch's GutsMan's template): he appears (0xB0), stands a tick and slashes twice with his sword
+  (attachment row 3, animation 7, while dimmed; 0x8E each): a wide slash (region 4, effect row 0x17) and a long one
+  (region 2, row 0x18), each as its timer reads 12, running while dimmed; 20 ticks on, his sword away, he leaves by a
+  byte store. The lab's chips/ (12) replay every frame; HawkCut1's hit is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The

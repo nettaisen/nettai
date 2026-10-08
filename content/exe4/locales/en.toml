@@ -265,6 +265,12 @@ language = "en"
 "metlger1" = { name = "MetlGer1", description = "Gear\ncrushes\nenmy area" }
 "metlger2" = { name = "MetlGer2", description = "Gear\ncrushes\nenmy area" }
 "metlger3" = { name = "MetlGer3", description = "Gear\ncrushes\nenmy area" }
+"boybomb1" = { name = "BoyBomb1", description = "Places\nBoyBom in\nyour area" }
+"boybomb2" = { name = "BoyBomb2", description = "Places\nBoyBom in\nyour area" }
+"boybomb3" = { name = "BoyBomb3", description = "Places\nBoyBom in\nyour area" }
+"hawkcut1" = { name = "HawkCut1", description = "Cut twice\nonce wide\nonce long" }
+"hawkcut2" = { name = "HawkCut2", description = "Cut twice\nonce wide\nonce long" }
+"hawkcut3" = { name = "HawkCut3", description = "Cut twice\nonce wide\nonce long" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
