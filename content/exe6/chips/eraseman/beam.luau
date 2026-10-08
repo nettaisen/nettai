@@ -1,11 +1,11 @@
 --!strict
 -- A segment of an erase slash (the original's attack object #0xC3,
 -- `sub_80DD940`): it stands on its panel with its collision on (status
--- 0x10) for its time, or until it has hit something. EraseMan's (the
--- EraseMan chips') run while dimmed; a navi's own (EraseMan's EDeletBm)
--- stand still while dimmed, and go once their owner is out of the action
--- that slashed them (his chip's, the original's action 0xA). See
--- docs/engine/chips.md §3.6.10.
+-- 0x10) for its time, or until it has hit something. As its spawner says:
+-- EraseMan's (the EraseMan chips') run while dimmed; a navi's own
+-- (EraseMan's EDeletBm) stand still while dimmed, and go once their owner
+-- is out of the action that slashed them (his chip's, the original's action
+-- 0xA). See docs/engine/chips.md §3.6.10.
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
@@ -19,8 +19,9 @@ type Spec = EraseBeam
 export type State = {
     aim: number,
     ticks: number,
-    navis: boolean,
-    -- A navi's own segment's: the action its owner slashed it in.
+    while_dimmed: boolean,
+    tied: boolean,
+    -- A tied segment's: the action its owner slashed it in.
     action: Action?,
 }
 
@@ -75,7 +76,7 @@ local function finish(me: Object)
 end
 
 -- `sub_80DDA08`: resolve the hits; once it hit something its region goes;
--- after its time (or, a navi's, once the navi's action is over) it ends.
+-- after its time (or, a tied one, once the navi's action is over) it ends.
 local function tick(me: Object)
     local s = me.state :: State
     local c = me.collision
@@ -87,10 +88,10 @@ local function tick(me: Object)
     if c.hit_flags ~= 0 then
         c:set_region(nil)
     end
-    if s.navis and (me.related1 :: Object):navi_action() ~= s.action then
+    if s.tied and (me.related1 :: Object):navi_action() ~= s.action then
         return finish(me)
     end
-    if s.navis and battle.dimmed() then
+    if not s.while_dimmed and battle.dimmed() then
         return
     end
     local left = me.timer - 1
@@ -105,7 +106,7 @@ end
 beam.kind = new.kind {
     id = "eraseman/beam",
     pool = "attack",
-    state = { aim = "u8", ticks = "u8", navis = "bool", action = "action" },
+    state = { aim = "u8", ticks = "u8", while_dimmed = "bool", tied = "bool", action = "action" },
     -- `sub_80DD940`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -116,10 +117,10 @@ beam.kind = new.kind {
         else
             me:destroy()
         end
-        if (me.state :: State).navis then
-            me:update_sprite_while_paused()
-        else
+        if (me.state :: State).while_dimmed then
             me:update_sprite_while_dimmed()
+        else
+            me:update_sprite_while_paused()
         end
     end,
 }
@@ -137,8 +138,8 @@ function beam.spawn(owner: Object, x: number, y: number, element: number, spec: 
         o.alliance, o.flip = owner.alliance, owner.flip
         o.run_while_dimmed = true
         local s = o.state :: State
-        s.aim, s.ticks, s.navis = spec.aim, spec.ticks, spec.navis
-        if spec.navis then
+        s.aim, s.ticks, s.while_dimmed, s.tied = spec.aim, spec.ticks, spec.while_dimmed, spec.tied
+        if spec.tied then
             s.action = owner:navi_action() :: Action
         end
     end

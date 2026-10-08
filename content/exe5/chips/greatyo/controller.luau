@@ -10,15 +10,15 @@ local yoyo = require("../yoyo/yoyo")
 local controller = {}
 
 -- How a yoyo flies (chips/yoyo/yoyo's `Spec`).
-type YoyoSpec = { mode: number, panels: number, rounds: number }
+type YoyoSpec = { panels: number, rounds: number }
 
 export type State = {
-    -- The yoyos it holds (+0x60, +0x64, +0x68): what each clears when it goes.
+    -- The yoyos it holds (+0x60, +0x64, +0x68): what each clears when it goes. (The middle one is the leader, the
+    -- others the followers: the yoyo knows by its slot.)
     middle: Object?,
     below: Object?,
     above: Object?,
-    leader: YoyoSpec,
-    follower: YoyoSpec,
+    spec: YoyoSpec,
 }
 
 -- 0x080E89F0: the three yoyos; then wait until all are gone.
@@ -27,9 +27,9 @@ local function update(me: Object)
     if me.phase_init == 0 then
         local x, y, z = me.panel_x, me.panel_y, me.pos.z
         local damage = int.u32(me.damage + me.stamina * 0x10000)
-        s.below = yoyo.spawn(me, x, y + 1, me.element, z, damage, s.follower, "below")
-        s.above = yoyo.spawn(me, x, y - 1, me.element, z, damage, s.follower, "above")
-        s.middle = yoyo.spawn(me, x, y, me.element, z, damage, s.leader, "middle")
+        s.below = yoyo.spawn(me, x, y + 1, me.element, z, damage, s.spec, "below")
+        s.above = yoyo.spawn(me, x, y - 1, me.element, z, damage, s.spec, "above")
+        s.middle = yoyo.spawn(me, x, y, me.element, z, damage, s.spec, "middle")
         me.phase_init = 4
     end
     if s.middle == nil and s.below == nil and s.above == nil then
@@ -46,7 +46,7 @@ end
 controller.kind = new.kind {
     id = "greatyo/controller",
     pool = "effect",
-    state = { middle = "object", below = "object", above = "object", leader = "record:exe5-yoyo", follower = "record:exe5-yoyo" },
+    state = { middle = "object", below = "object", above = "object", spec = "record:exe5-yoyo" },
     -- 0x080E89C4.
     update = function(me: Object)
         local l = me.lifecycle
@@ -62,9 +62,9 @@ controller.kind = new.kind {
     end,
 }
 
--- 0x080E8A42: a controller for `thrower` on (x, y), `z` up, with the damage word, its yoyos the leader `leader` and
--- the followers `follower`. (Its position is the spawner's registers: Y, 0 and the height.)
-function controller.spawn(thrower: Object, x: number, y: number, z: number, damage: number, leader: YoyoSpec, follower: YoyoSpec): Object?
+-- 0x080E8A42: a controller for `thrower` on (x, y), `z` up, with the damage word, its yoyos flying as `spec` says.
+-- (Its position is the spawner's registers: Y, 0 and the height.)
+function controller.spawn(thrower: Object, x: number, y: number, z: number, damage: number, spec: YoyoSpec): Object?
     local o = battle.spawn(controller.kind, Vec3.new(y, 0, z))
     if o then
         o.panel_x, o.panel_y = x, y
@@ -73,7 +73,7 @@ function controller.spawn(thrower: Object, x: number, y: number, z: number, dama
         o.alliance, o.flip = thrower.alliance, thrower.flip
         o.related1 = thrower
         local s = o.state :: State
-        s.leader, s.follower = leader, follower
+        s.spec = spec
     end
     return o
 end

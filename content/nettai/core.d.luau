@@ -404,6 +404,8 @@ declare extern type Object with
     related2: Object?
     -- The slot is in use (read-only).
     active: boolean
+    -- It has a collision record (read-only): `collision`'s fields and methods need one.
+    has_collision: boolean
     -- Drawn (for every viewer, when set; read: the local side's console's).
     -- What a console's rule hides per viewer is `hide_from_blind`, and an
     -- attachment follows its owner with `copy_visibility`.
@@ -505,6 +507,11 @@ declare extern type Object with
     -- The B charge's level (0 none, 1 charging, 2 full) as the navi last asked for an attack, kept until its next
     -- ask (EXE4's AIData +0x15); 0 in a game whose decode keeps none (read-only).
     b_charge_at_ask: number
+    -- Writable: EXE4's rapid presses (AIData +0x12, +0x11), the B presses
+    -- counted toward a form's `rapid_presses` and the ticks left for the
+    -- next (the forced charged shot clears both as it ends).
+    rapid_presses: number
+    rapid_window: number
     -- Writable: a buffered auto-step's direction, the chip lockout, the
     -- B+Back special's cooldown.
     buffered_move: number
@@ -1277,6 +1284,10 @@ declare battle: {
     linked: (side: number) -> LinkedChip,
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
+    -- `sub_801EB18`: the other player's console names `chip` as used by
+    -- `side` again, with its damage and bonus (presentation only: EXE4's
+    -- Slasher as it slashes).
+    show_used_chip: (side: number, chip: Chip, damage: number, bonus: number) -> (),
     -- `sub_800ABC6`: the trap's mark over `o`'s panel (the role
     -- `effects.trap_mark`, facing the local side's way, where the chip-use
     -- rules' `anti_navi_sparkle` puts it from the panel's center), with its
@@ -1376,6 +1387,10 @@ declare battle: {
     add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
     -- EXE5's DarkPlus: the Atk+ bonus of a hand's chip at i becomes n.
     set_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- Adding to the charge bonus of a hand's chip at i (what a form's A
+    -- charge builds up, and EXE4's souls' status resets give: the status
+    -- reset clears it).
+    add_hand_charge_bonus: (side: number, i: number, n: number) -> (),
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
@@ -2152,7 +2167,8 @@ export type WeaponSpec = {
 export type Weapon = WeaponSpec
 
 -- A chip: its record, and exactly one use.
--- A chip's damage by formula: the opponent's HP; the custom gauge's; the HP
+-- A chip's damage by formula: the opponent's HP; the custom gauge's (a full
+-- gauge's `full`: EXE4's 0, none EXE6's and EXE5's 10); the HP
 -- the user has lost (at most `cap`: EXE6's 500 when none); the last two
 -- digits of the user's HP; half the opponent's max HP; a link navi's own
 -- chip's, by its buster's attack level; by a count of the user's side
@@ -2164,7 +2180,7 @@ export type Weapon = WeaponSpec
 -- time, rules/sp_chips.)
 export type DamageFormula =
     { formula: "opponent_hp" }
-    | { formula: "gauge" }
+    | { formula: "gauge", full: number? }
     | { formula: "gauge_level", base: number }
     | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }
@@ -2521,6 +2537,10 @@ export type FormDef = {
     -- The ticks a damaging chip (not a dimming chip) used with the panel
     -- ahead not its side's keeps it invulnerable (EXE5's KnightSoul).
     front_guard: number?,
+    -- The B presses that ask for the forced charged shot (the role
+    -- `actions.forced_charged_shot`), each within `window` ticks of the
+    -- last (EXE4's GutsSoul: six within 10).
+    rapid_presses: { presses: number, window: number }?,
     -- The action its charged chips start in place of their own (EXE5's
     -- NapalmSoul's).
     charged_action: Action?,
@@ -2540,6 +2560,9 @@ export type FormDef = {
     -- Its own part of the per-form tick (EXE5's MegaMan's, 0x080F04CE:
     -- GyroSoul's propeller by the priming), each tick.
     tick: ((navi: Object) -> ())?,
+    -- What a chip's use from idle does besides in it, as the hand moves on past the chip (`navi.attack_chip`): EXE4's
+    -- RollSoul's heal (0x080EED04).
+    chip_used: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.

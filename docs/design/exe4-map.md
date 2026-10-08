@@ -671,6 +671,45 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **VarSwrd and NeoVari** (actions 0x36 and 0x5A, `chips/varswrd`, `chips/neovari`: @exelib/varswrd/action, which
+  EXE5's grew from): EXE4's part is the pick's sound (0x10B), ProtoSoul's wait while A is up (NaviStats +0x24 7, the
+  form's id) and no auto battle's pick (NaviStats +0x26, the story's navis'); EXE4 has no flip, so one set of
+  sequences. The match (0x0800D486) also tests, as a step matches, the word at the sequence's next step and picks at
+  once at 0, which no step of the two tables reaches (each test reads a step before or after it). Their picks past
+  the library are chips of their own (gen_content.py's USED_CHIPS: FtrSword, SonicBom, CrosSwrd, SprSonic, DblDream;
+  LifeSrd a Program Advance's, without its recipes): the swords' variants 9, 10, 11 and 5 (lib/swords), and SonicBom's
+  and SprSonic's action 0x37 (`chips/sonicbom/action`: EXE4's own, EXE5's 0x2B grew from it; a charged one steps two
+  panels ahead, without afterimages; ProtoSoul's blade 13). The chips/0x037-varswrd and 0x0d9-neovari `cmd-*`
+  scenarios enter each sequence.
+- **WindRack** (action 0x32, `chips/windrack`: EXE4's own, EXE5's action 0x26 grew from it): the rack (attachment
+  row 0x17, by the navi's number) and the swirl (effect row 0x40, turned to its side), a null-element pushing hit on
+  the column ahead for 10 ticks with hit modifier 9 (EXE5's 0x49); no gusts (EXE6's), no arm to drop.
+- **CopyDmg** (action 0x2B, `chips/copydmg`: EXE4's own action, EXE5's 0x24 grew from it; its mark attack 0x28 is
+  @exelib/copydmg/mark in EXE4's look): animation 0x12, no arm, the damage word without the Atk+ bonus; the mark
+  marks the first navi it hits for 90 ticks, shown at the navi's position (`over_navi = "position"`; EXE5's and
+  EXE6's 180 at the attach point 0x1B, shown as the navi is). The carry record (0x0203C050, two of 12 bytes by the
+  marked side) and its routines (0x08022246 each tick, 0x08022258 in the intake's final damage, 0x0802222E,
+  0x08022278) are EXE5's and EXE6's: the engine's `damage_carry`. Only a navi's intake (0x0800AC3A) records a
+  side's damage, so only another navi of the marked side feeds the carry (none in the recordings). Under event flag
+  0x1187, which no netbattle sets, the mark also hits its panel for 50 as it marks (0x080D1D06): unreachable, so no
+  look field (the shared mark's comment names it).
+- **SuprVulc** (the vulcans' variant 3, `chips/suprvulc`): 12 shots of bullet row 16 (the Vulcans' hit in palette 1).
+- **Slasher** (action 0x35, `chips/slasher`: EXE4's own, EXE5's action 0x29 grew from it): while A is held it waits for
+  an enemy navi on its side's area, then slashes that column (the region word 0x0705FF04, 16 pixels up), naming
+  Slasher to the other player again as it slashes (0x080164B4: `battle.show_used_chip`, new); no invulnerability, no
+  stun strike. In chips/0x038-slasher/side1 the original doesn't name Slasher as side 1 uses it (frames 384 to 415),
+  where the engine's chip use does (its `show_used_chip` at a chip's start): which EXE4 code names a used chip, and
+  why not this one, is the HUD's to read (group A's; item 71).
+- **CustSwrd and Muramasa** (the swords' variants 7 and 8, `chips/custswrd`, `chips/muramasa`): their slashes by the
+  variants' rows (region 0x11 and region 2, effect rows 0x41 and 0x4A), their damage formulas 45 (the gauge's, a full
+  gauge giving 0 where EXE6's and EXE5's give 10: the formula's `full`) and 46 (the HP lost, at most 999). The lab's
+  chips/0x036-custswrd/full-gauge matches.
+- **GrabRvng and GrabBnsh** (the dimming chips' variant 0x0D, `chips/grabbnsh`): @exelib/grabbnsh's controller (effect
+  0x22) and hand (attack 0x46) with EXE4's look (the hand from 256 pixels, a thrown break of hit modifier 0x0B) and its
+  own taking back (0x080E4836: it counts the panels of the user's home columns the other side holds, each flashing,
+  and returns none), the wait after the strikes 90 ticks set as they end. The lab's 10 recordings match; in
+  chips/0x076-grabrvng/stolen and 0x077-grabbnsh/stolen the used chip's name at the bottom left goes at frame 385 in
+  the original, while the engine shows it through the dimming's end (532): the HUD's (group A's).
 - **Tornado and Static** (action 0x28, `chips/tornado`: EXE4's own action and tornado, attack 0x31, 0x080D2FDC: a
   pitfall under it doubles its re-arms and turns normal as it ends, where EXE5's and EXE6's take a panel's look):
   Tornado's one two panels ahead; Static's spread by the navi's kinds of NaviCust bug (0x08043014: the rules'
@@ -742,7 +781,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   #0x64, 0x080E90CC) run as the navi chips' (lib/navi_chips, its course 0x080E9124): the user warps out (30 ticks),
   GutsMan comes (actor #0x42, 0x080C83F8, sheet 08-02 in palette 0), 30 ticks, and the user warps back in with the
   appearing sound (0x080E91BC: a course's wait may play a sound as it starts, `sound`). GutsMan appears (5 ticks),
-  on a solid panel stands a tick and punches (0xA4, `guts-punch`): as the punch's timer reads 12, a hit on the panel
+  on a solid panel stands a tick and punches (0xA4, `fist-swing`): as the punch's timer reads 12, a hit on the panel
   ahead (modifier 0x21, height the raw 16: 0x080CD7E2 drops r3) that runs while dimmed; 20 ticks more, he leaves (5
   ticks) and goes by a byte store (his action stays). On a hole he leaves at once. The lab's chips/ (12),
   drag/gutpunch, drag/gutpunch-edge, hits/guard-gutpnch and ice/gutpunch replay every frame; GutPnch1's hit is
@@ -828,6 +867,22 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   his commands give the crush 0x1207 and 0x2208, and without one it carries a move bug (code 0x0D) in a direction he
   draws as he appears (rules/navicust/bugs takes it); he goes without the bow, in a puff; his figure stands 8 pixels
   left and 12 up and strikes again with 40 ticks left, highlighting nothing.
+  BurnMan (actor #0x23), his pillars (attack #0x3A) and his flame (attack #0x37) are EXE4's own; their hits linger on
+  their panels as attack #0x7C (0x080DCC5C, objects/lingering_hit: a region set off its owner's panel, following it,
+  its ticks held while its owner is paralyzed, dragged or sliding; EXE6's #0x7C is another object), which AquaMan's
+  controller (0x080BB4E8) and 0x080D4010 spawn too. The engine's objects tell whether they have a collision record
+  (`has_collision`), which that hold reads.
+  GutsMan (actor #0x14) and his quake (attack #0x1C, 0x080D055C) are EXE4's own: his hammer strikes the panel ahead
+  (a heavy hit, modifier 1) and sets off the quake there, which cracks the solid panels ahead (six at random; the SP's
+  and the DS's all) and 30 ticks later drops rocks on two of the other side's free panels and on its navi's. The rocks
+  are EXE6's falling rock and its chips (EXE4's attack #0x1D and effect #9, the same code but for their constants),
+  now @exelib/rock/falling and falling_chip (EXE4's objects/falling_rock: 160 pixels up, 1/16 pixel a tick faster, an
+  attack, modifier 3; EXE6's 104, 1/8, a thrown breaking attack, modifier 1), which actor #0x29 (0x080BFCC8) drops
+  too. The controller gives GutsMan B's charge at the ask as his Param2, which he never reads. Action 0x44 (a navi's
+  hammer, 0x080F050A, which no netbattle starts) spawns the quake with a Param1 of its own; given 0 it cracks Param2
+  of the other side's panels and drops its rocks around that side's navi or 0x0800C456's target, by its owner's
+  flags 0xA000 (0x080D05FE, 0x080D06BE, 0x080D0740): it waits on action 0x44. With fewer than six solid panels ahead,
+  GutsMan's quake reads stale stack bytes as the rest of its six (0x080D06AC): the port cracks only those it found.
 
 **For the next steps:**
 

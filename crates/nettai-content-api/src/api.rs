@@ -208,6 +208,8 @@ named_fields! {
         Related2 = "related2", Object, rw;
         /// The slot is in use.
         Active = "active", Bool, ro;
+        /// It has a collision record (its CollisionData pointer is set).
+        HasCollision = "has_collision", Bool, ro;
         /// Drawn this frame.
         Visible = "visible", Bool, rw;
         /// Keeps updating while the battle is paused.
@@ -316,6 +318,11 @@ named_fields! {
         /// AIData +0x15, which its decode copies at each ask: 0x0800BE48,
         /// 0x0800BF10); 0 in a game whose decode keeps none.
         BChargeAtAsk = "b_charge_at_ask", U8, ro;
+        /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
+        /// counted toward a form's `rapid_presses`, and the ticks left for
+        /// the next (the forced charged shot clears both as it ends).
+        RapidPresses = "rapid_presses", U8, rw;
+        RapidWindow = "rapid_window", U8, rw;
         /// A buffered auto-step's direction (0 none).
         BufferedMove = "buffered_move", U8, rw;
         /// Ticks before the next chip can be used.
@@ -1468,6 +1475,11 @@ pub trait CoreApi {
     /// EXE5's DarkPlus (0x0800E1D6): the Atk+ bonus of a hand's chip at `i`
     /// becomes `n`.
     fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
+    /// Add to the charge bonus of the chip at `i` of a side's hand (the
+    /// hand's +0x26: what a form's A charge builds up, and what EXE4's
+    /// souls' status resets give their chips, 0x0800E1CA), wrapping. The
+    /// status reset clears it.
+    fn add_hand_charge_bonus(&mut self, side: u8, i: u8, n: u16);
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
@@ -1482,6 +1494,10 @@ pub trait CoreApi {
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
     /// `sub_802CEA6`: clear it, telling its object to end.
     fn clear_linked(&mut self, side: u8);
+    /// `sub_801EB18` (EXE4's 0x080164B4): the other player's console names
+    /// `chip` as used by `side` again, with its damage and bonus (the
+    /// rules' `effects.used_chip_ticks`): presentation only.
+    fn show_used_chip(&mut self, side: u8, chip: crate::ChipHandle, damage: u16, bonus: u16);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
     /// `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0

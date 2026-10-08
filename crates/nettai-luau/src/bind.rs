@@ -2031,6 +2031,13 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.clear_linked(side)))
     });
+    lib_fn!(lua, t, "show_used_chip", |_, (side, chip, damage, bonus): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let chip = bound(|b| chip_arg(b, &chip, "battle.show_used_chip's chip"))?
+            .ok_or_else(|| mlua::Error::runtime("battle.show_used_chip: a chip, not nil"))?;
+        let (damage, bonus) = (u16_arg(damage, "damage")?, u16_arg(bonus, "bonus")?);
+        with(|api, _| Ok(api.show_used_chip(side, chip, damage, bonus)))
+    });
     lib_fn!(lua, t, "trap_mark", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.trap_mark(o.0))));
     lib_fn!(lua, t, "clear_bugs", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -2272,6 +2279,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_hand_attack_bonus", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?, u16_arg(n, "bonus")?);
         with(|api, _| Ok(api.set_hand_attack_bonus(side, i, n)))
+    });
+    lib_fn!(lua, t, "add_hand_charge_bonus", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
+        let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?, u16_arg(n, "bonus")?);
+        with(|api, _| Ok(api.add_hand_charge_bonus(side, i, n)))
     });
     lib_fn!(lua, t, "hand_chip_damages", |_, (side, i): (LuaValue, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);

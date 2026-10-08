@@ -6,6 +6,25 @@ local hook = require("./flmhook/hook")
 local navi_chips = require("../lib/navi_chips/chip")
 local sparks = require("../lib/sparks")
 
+-- Its hook's flames, the big ones (the flames' Param2 1, `off_80DE88C`'s
+-- and the others' second rows): from columns 4 then 5 (side 1: 3 then 2);
+-- their arcs, a turn of 0x280 a tick, an afterimage every 6 ticks (shader
+-- 0xA1EF, 14 ticks), palette 1, running while dimmed; breaking.
+local FLAMES = hook.flames {
+    columns = function(me: Object): (number, number)
+        return 4 - me.alliance, 5 - me.alliance * 3
+    end,
+    variant = hook.fire {
+        swing_high = 1,
+        arcs = { 0x16, 0xD2, 0x1E, 0x1E, 0x6A, 0x8A, 0x1E, 0x1E },
+        turn = 0x280,
+        trail = { every = 6, shader = 0xA1EF, ticks = 0xE },
+        palette = 1,
+        while_dimmed = true,
+    },
+    spark = sparks.breaking,
+}
+
 local chip: Chip = {
     codes = { "H" },
     element = "null",
@@ -22,7 +41,7 @@ local chip: Chip = {
     -- (Its user stays on the field while the hook strikes.)
     navi = navi_chips.make {
         id = "bighook/controller",
-        summon = hook.summon { big = true, spark = sparks.breaking },
+        summon = hook.summon(FLAMES),
         course = navi_chips.USER_STAYS,
     },
 }

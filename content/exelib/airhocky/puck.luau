@@ -16,11 +16,11 @@ local puck = {}
 
 -- A puck's variant (a row of EXE6's `byte_80C9818`, EXE5's 0x080CA3A4): the steps it lasts (0: no limit), how
 -- it bounces (1: off its own side too, once across; the game also divides by it, see `slide`), the ticks per
--- step, and whether it leaves a trail.
+-- step, and the tint of its trail if it leaves one (PitHocky's).
 export type Variant = PuckVariant
 
 -- A game's puck: its sprite (the trail's too), its sound and the bounce's, what it is and reaches, its hits'
--- spark, the effect it bursts in, and its trail's tint (a game with no chip whose puck leaves a trail states none).
+-- spark, and the effect it bursts in.
 export type Look = PuckLook
 
 export type State = {
@@ -142,7 +142,8 @@ end
 
 -- `sub_80C9B64`: the trail.
 local function trail(me: Object, look: Look, s: State)
-    if not s.variant.trail then
+    local tint = s.variant.trail
+    if not tint then
         return
     end
     local t = int.u16(me.timer2 + 1)
@@ -154,7 +155,7 @@ local function trail(me: Object, look: Look, s: State)
         sprite = look.sprite,
         flip = bit32.bxor(me.alliance, me.flip),
         lifetime = TRAIL_TICKS,
-        color_shader = look.trail_tint,
+        color_shader = tint,
     })
 end
 

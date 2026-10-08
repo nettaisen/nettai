@@ -400,6 +400,11 @@ pub struct FormData {
     /// 0x08010392).
     #[serde(default)]
     pub front_guard: Option<u16>,
+    /// B presses that ask for the forced charged shot (the role
+    /// `actions.forced_charged_shot`), each within the window of the last
+    /// (EXE4's GutsSoul: six, 10 ticks; 0x0800BE50).
+    #[serde(default)]
+    pub rapid_presses: Option<RapidPresses>,
     #[serde(default)]
     pub traits: FormTraits,
     /// (This and what follows are read from the definition by handle, not
@@ -426,6 +431,15 @@ pub struct FormData {
     /// Its identity (the base form has none of its own: the navi's).
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
+}
+
+/// A form's rapid presses (`FormData::rapid_presses`): how many B presses
+/// ask, and the ticks each may follow the last in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RapidPresses {
+    pub presses: u8,
+    pub window: u8,
 }
 
 /// A form's priming (EXE5's GyroSoul: AIData +0x0D): the use of a chip it
@@ -811,11 +825,14 @@ impl<'de> Deserialize<'de> for AttachPoint {
     }
 }
 
-/// A navi definition's record: what it gives by value. (What it names by
-/// handle is read with the registries: `Defs::build`.)
+/// A navi definition's record: what it gives by value, past `extended`:
+/// the fields its game's rules extend navis with (theirs to check,
+/// `SystemDef::extends`). (What it names by handle is read with the
+/// registries: `Defs::build`.)
 pub(crate) fn read_navi(
     d: &nettai_content_api::Definition,
     r: &super::reader::SpecReader,
+    extended: &[&str],
 ) -> Result<NaviData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     let err = |m: String| super::reader::err(d, m);
@@ -832,14 +849,12 @@ pub(crate) fn read_navi(
         }
     }
     let d = &d;
-    let mut o = super::reader::fields(
-        d,
-        r,
-        &[
-            "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "switch_hp", "levels", "story", "forms", "tick",
-            "idle", "post_init", "fire_charge",
-        ],
-    )?;
+    let own = [
+        "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "switch_hp", "levels", "story", "forms", "tick", "idle",
+        "post_init", "fire_charge",
+    ];
+    let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
+    let mut o = super::reader::fields(d, r, &skip)?;
     let banners = d.spec.field("banners");
     for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
         let b = r.json(banners.field(which), &format!("navi {}.banners.{which}", d.key)).map_err(err)?;
@@ -874,6 +889,7 @@ pub(crate) fn read_form(
         "put_on",
         "take_off",
         "tick",
+        "chip_used",
     ];
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
     let o = super::reader::fields(d, r, &skip)?;

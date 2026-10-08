@@ -11,6 +11,7 @@ local collision = require("../rules/collision")
 local instrument = require("@exelib/instruments/instrument")
 local regions = require("@exelib/regions")
 local statuses = require("../rules/status")
+local dark_costs = require("../lib/dark_costs")
 
 -- The sixth element: the hit's damage is 0.
 local ELEMENT_NONE = 5
@@ -63,6 +64,8 @@ local chip: Chip = {
         tune = asset.sound("dark-sonic"),
         effect = stun,
     }),
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.step_bug,
     auto_battle = { class = "landing_ahead" },
 }
 

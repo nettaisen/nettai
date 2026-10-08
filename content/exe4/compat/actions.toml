@@ -13,6 +13,7 @@
 "vulcan1/action" = 0x1F
 "vulcan2/action" = 0x1F
 "vulcan3/action" = 0x1F
+"suprvulc/action" = 0x1F
 # The spreaders' (the chips' action 0x1E, 0x080EC760).
 "drkspred/action" = 0x1E
 "spreader/action" = 0x1E
@@ -55,6 +56,18 @@
 "magbolt1/action" = 0x59
 "magbolt2/action" = 0x59
 "magbolt3/action" = 0x59
+# CopyDmg's (the chips' action 0x2B, 0x080ED1D2).
+"copydmg/action" = 0x2B
+# WindRack's (the chips' action 0x32, 0x080ED330).
+"windrack/action" = 0x32
+# VarSwrd's and NeoVari's (the chips' actions 0x36, 0x080ED6BE, and 0x5A, 0x080EE1A2).
+"varswrd/action" = 0x36
+"neovari/action" = 0x5A
+# SonicBom's and SprSonic's (the chips' action 0x37, 0x080ED7E6).
+"sonicbom/action" = 0x37
+"sprsonic/action" = 0x37
+# Slasher's (the chips' action 0x35, 0x080ED572).
+"slasher/action" = 0x35
 # The TwnFngs' (the chips' action 0x34, 0x080ED4C6).
 "twnfng1/action" = 0x34
 "twnfng2/action" = 0x34
@@ -88,6 +101,12 @@
 "longswrd/action" = 0x0A
 "wideblde/action" = 0x0A
 "longblde/action" = 0x0A
+"custswrd/action" = 0x0A
+"muramasa/action" = 0x0A
+"lifesrd/action" = 0x0A
+"ftrsword/action" = 0x0A
+"crosswrd/action" = 0x0A
+"dbldream/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
 "hicannon/action" = 0x0B
@@ -156,6 +175,10 @@
 "megaman/charged-shot/action" = 0x24
 # The souls' charged shots: RollSoul's arrow (weapon routine 0x22's action 0x1B, 0x080EC574).
 "rollsoul/charged-shot/action" = 0x1B
+# GutsSoul's fist (weapon routine 0x24's action 0x12, 0x080EBF6A: EXE4's punch, lib/punch), and its machine gun (action
+# 0x10, 0x080EBDC0), which request 0x20 starts.
+"gutssoul/charged-shot/action" = 0x12
+"gutssoul/machine-gun" = 0x10
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
