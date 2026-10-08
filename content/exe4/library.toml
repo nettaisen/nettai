@@ -193,6 +193,8 @@ standard = [
     "magbolt1",
     "magbolt2",
     "magbolt3",
+    "tornado",
+    "static",
     "minibomb",
     "energbom",
     "megenbom",
@@ -297,6 +299,9 @@ giga = [
     "deltaray",
 ]
 secret = [
+    "propbom1",
+    "propbom2",
+    "propbom3",
     "seekbom1",
     "seekbom2",
     "seekbom3",

@@ -671,6 +671,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **Tornado and Static** (action 0x28, `chips/tornado`: EXE4's own action and tornado, attack 0x31, 0x080D2FDC: a
+  pitfall under it doubles its re-arms and turns normal as it ends, where EXE5's and EXE6's take a panel's look):
+  Tornado's one two panels ahead; Static's spread by the navi's kinds of NaviCust bug (0x08043014: the rules'
+  `navicust.bug_kinds`, EXE4's nine by their NaviStats bytes, the encounter and result bugs, +0x15 and +0x19, now the
+  rules' stats `encounter_bug` and `result_bug`), up to six tornadoes paralyzing 90 to 150 ticks. The lab's
+  chips/0x01b-static/bugs (two kinds: four tornadoes, 120 ticks) matches.
+- **PropBom1 to PropBom3** (action 0x62, `chips/propbom`: EXE4's own): a propeller bomb (attack 0x8C, 0x080DEB70: a
+  field object of its user's side, class 1, with 10 HP) flying 20 pixels up from the panel ahead at 1.5 pixels a tick;
+  a body, attack or navi it meets (or its HP gone) explodes it where it is; off the screen it bursts over the other
+  side's back two columns (region 0x11) with its damage.
 - **MagBolt1 to MagBolt3** (action 0x59, `chips/magbolt`: EXE4's own action, which EXE5's MagnetSoul's charged shot
   grew from): the magnet held (attachment rows 0x23 to 0x25), its field (attack 0x75: EXE5's MagnetSoul's, now
   @exelib/magbolt/magnet, whose EXE4 spawn only watches the magnet's slot: `watches`) on the panel ahead for 30 ticks,
