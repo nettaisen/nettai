@@ -44,6 +44,10 @@
 "flmline1/action" = 0x22
 "flmline2/action" = 0x22
 "flmline3/action" = 0x22
+# The PropBoms' (the chips' action 0x62, 0x080EE532).
+"propbom1/action" = 0x62
+"propbom2/action" = 0x62
+"propbom3/action" = 0x62
 # The MagBolts' (the chips' action 0x59, 0x080EE012).
 "magbolt1/action" = 0x59
 "magbolt2/action" = 0x59
