@@ -409,6 +409,10 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
         let side = b.objects.get(r).alliance;
         b.show_used_chip(side, used, damage, bonus);
     }
+    // The form's own part (EXE4's RollSoul's heal, 0x080EED04).
+    if let Some(f) = b.content.defs.form(stats(b, r).form).chip_used {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+    }
     let a = &ai(b, r).attack;
     if a.special_source == 0 && a.kind != 5 {
         // sub_800FC7C
