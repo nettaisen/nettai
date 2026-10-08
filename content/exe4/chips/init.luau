@@ -68,6 +68,7 @@ return merge {
     require("@self/junkman"),
     require("@self/kendoman"),
     require("@self/lance"),
+    require("@self/laserman"),
     require("@self/lifesrd"),
     require("@self/ligtnin"),
     require("@self/magbolt"),
