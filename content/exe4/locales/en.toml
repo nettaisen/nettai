@@ -431,6 +431,7 @@ language = "en"
 "068-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "070-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"071-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "076-all-guard-1-2" = { name = "All Guard 1/2" }
@@ -438,6 +439,7 @@ language = "en"
 "078-first-life-aura" = { name = "First Life Aura" }
 "079-charge-shot-switch" = { name = "Charge Shot Switch" }
 "080-charge-shot-switch" = { name = "Charge Shot Switch" }
+"081-charge-shot-switch" = { name = "Charge Shot Switch" }
 "082-charge-shot-switch" = { name = "Charge Shot Switch" }
 "083-charge-shot-switch" = { name = "Charge Shot Switch" }
 "084-charge-shot-switch" = { name = "Charge Shot Switch" }
