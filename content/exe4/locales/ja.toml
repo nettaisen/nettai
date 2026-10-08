@@ -181,6 +181,11 @@ language = "ja"
 "shademan" = { name = "シェードマン", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
 "shadmn-sp" = { name = "シェードマンSP", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
 "shadmn-ds" = { name = "シェードマンDS", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"propbom1" = { name = "プロペラボム1", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"propbom2" = { name = "プロペラボム2", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"propbom3" = { name = "プロペラボム3", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"tornado" = { name = "トルネード", description = "2マス前方に\n8ヒットのたつまき\nを発生させる!" }
+"static" = { name = "ノイズストーム", description = "2マス前にノイズの\nアラシ!バグがある\nとパワーアップする" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

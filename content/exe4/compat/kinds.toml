@@ -35,6 +35,10 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# Tornado's and Static's tornado (0x080D3130).
+"tornado/tornado" = { pool = "attack", index = 0x31 }
+# The PropBoms' propeller bomb (0x080DED30).
+"propbom/bomb" = { pool = "attack", index = 0x8C }
 # The MagBolts' magnet field (0x080DBD72).
 "magbolt/magnet" = { pool = "attack", index = 0x75 }
 # The TwnFngs' fang (0x080D7B3A).
