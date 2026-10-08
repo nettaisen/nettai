@@ -1,7 +1,8 @@
 --!strict
 -- AntiSwrd's counter, as EXE5 and EXE6 share it (EXE6's navi action 0x48,
--- `sub_80EEA3C`; EXE5's 0x48): each game makes its own (`counter.action_with`:
--- its key, blade, booms, sounds and attachment kind). When
+-- `sub_80EEA3C`; EXE5's 0x48; EXE4's 0x39, 0x080EDA68, where its spec says):
+-- each game makes its own (`counter.action_with`: its key, blade, booms,
+-- sounds and attachment kind or its own hold). When
 -- an AntiSwrd trap (or the AntiDmg program's stance, struck by a sword)
 -- catches a hit, the navi, invulnerable, swings a blade three times, each
 -- swing sending a sonic boom (@exelib/swords/sonic_boom) along its row; the
@@ -27,7 +28,14 @@ export type Spec = {
     boom: Kind,
     start_sound: Sound,
     swing_sound: Sound,
-    attachment: Kind,
+    -- The blade's attachment kind, or the game's own hold of it (EXE4's
+    -- attachment in the related slot, its animation the navi's number:
+    -- 0x080EDAC2).
+    attachment: Kind?,
+    hold: ((me: Object, blade: AttachmentLook) -> ())?,
+    -- Every boom's hit modifier (EXE4's 1: 0x080EDB00; none: by the swings
+    -- left, `dword_80EEB14`, the last one's knocking back).
+    boom_hit_mod: number?,
     -- The blade's animation by its holder (none: the shared one's,
     -- @exelib/swords/parts; EXE6's gives its Beast forms' arms).
     blade_anim: ((Object) -> number)?,
@@ -76,15 +84,19 @@ local function swing(me: Object, s: State, spec: Spec)
         end
         battle.clear_linked(me.alliance)
         battle.play_sound(spec.swing_sound)
-        local blade_anim = spec.blade_anim
-        parts.hold(spec.attachment, me, spec.blade, 0, if blade_anim ~= nil then blade_anim(me) else nil)
+        if spec.hold then
+            spec.hold(me, spec.blade)
+        else
+            local blade_anim = spec.blade_anim
+            parts.hold(spec.attachment :: Kind, me, spec.blade, 0, if blade_anim ~= nil then blade_anim(me) else nil)
+        end
         me:set_status("using_action", true)
         s.timer = SWING_TICKS
         me.step_init = 4
     end
     if s.timer == WAVE_AT then
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        local boom = BOOMS[me.attack_count]
+        local boom = if spec.boom_hit_mod then { hit_mod = spec.boom_hit_mod, pierces = false } else BOOMS[me.attack_count]
         if boom == nil then
             error(string.format("AntiSwrd's counter: swing %d reads past dword_80EEB14", me.attack_count))
         end

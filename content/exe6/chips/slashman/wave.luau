@@ -30,22 +30,13 @@ local HEIGHT = 0x14
 -- Its own hit's modifier, and its wind-up hits'.
 local HIT_MOD, EARLY_HIT_MOD = 3, 1
 
--- The variants (the original's rows of `byte_80D0914`, the wind-up,
--- `byte_80D0950`, the swing, and `byte_80D0A54`, the speed, 16.16):
--- SlashMan's own AI's, and the navi chip's.
-wave.plain = new.record("slashman-wave", {
-    wind_up = 0x14,
-    swing = 0xA,
-    speed = 0x6_0000,
-    hits_early = true,
-} :: SlashWave)
-wave.chip = new.record("slashman-wave", {
-    wind_up = 0x28,
-    swing = 0xF,
-    speed = 0xC_0000,
-    steers = true,
-    while_dimmed = true,
-} :: SlashWave)
+-- A variant (the original's rows of `byte_80D0914`, the wind-up,
+-- `byte_80D0950`, the swing, and `byte_80D0A54`, the speed, 16.16), its
+-- user's: SlashMan's own AI's (navis/slashman/charge), the navi chip's
+-- (./navi).
+function wave.variant(v: SlashWave): SlashWave
+    return new.record("slashman-wave", v)
+end
 
 -- Its actions.
 local WIND_UP, SWING, FLY = 0, 4, 8

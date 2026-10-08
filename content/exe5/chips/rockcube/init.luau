@@ -4,6 +4,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local cube = require("@self/cube")
+local rock = require("../objects/rock")
 
 local chip: Chip = {
     codes = { "*" },
@@ -18,7 +19,7 @@ local chip: Chip = {
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
-    dimming = cube.hook,
+    dimming = cube.places { variant = rock.variants.cube },
     auto_battle = { class = "landing_ahead" },
 }
 

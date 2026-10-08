@@ -57,6 +57,17 @@ local function wind_up(me: Object, s: State)
     me.step_init = 0
 end
 
+-- The tomahawk (the boomerang's row 4): its own sprite with its shadow its
+-- own part, in its animation 1 off row 1.
+local TOMAHAWK = boomerang.variant {
+    speed = 0x8_0000,
+    turn_speed = 314573,
+    grass = false,
+    sprite = asset.sprite("boomerang-tomahawk"),
+    shadow = "with_sprite",
+    off_row_1_anim = 1,
+}
+
 -- `sub_80EF248`: the swing; the tomahawks fly from the side's back column
 -- (whichever way the navi faces).
 local function swing(me: Object, s: State)
@@ -65,7 +76,7 @@ local function swing(me: Object, s: State)
     if row then
         local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
         local x = me.alliance * 5 + 1
-        boomerang.spawn(me, x, row, me.attack_element, 0x10_0000, { variant = boomerang.tomahawk }, damage)
+        boomerang.spawn(me, x, row, me.attack_element, 0x10_0000, { variant = TOMAHAWK }, damage)
     end
     local left = s.timer - 1
     s.timer = left

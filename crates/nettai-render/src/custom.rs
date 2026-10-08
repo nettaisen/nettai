@@ -1702,9 +1702,9 @@ pub fn draw<'a>(
         }
     }
     if screen.look.turn_limit && place.to == COLUMNS {
-        // sub_8029D34: 7x2 at column 15, row 4.
+        // sub_8029D34: 7x2 at column 15, row 4, in the layout's palette.
         for i in 0..14u16 {
-            let e = MapEntry { tile: w.layout.turn_limit + i, hflip: false, vflip: false, palette: 9 };
+            let e = MapEntry { tile: w.layout.turn_limit + i, hflip: false, vflip: false, palette: w.layout.turn_limit_palette };
             w.cell(hud_layer, e, 15 + (i % 7) as i32, 4 + (i / 7) as i32, place.scroll);
         }
     }

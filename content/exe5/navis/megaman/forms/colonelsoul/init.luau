@@ -9,7 +9,6 @@
 
 local arm_change = require("@self/arm_change")
 local attach_points = require("@self/attach_points")
-local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
@@ -19,12 +18,15 @@ local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
+-- Colonel's cape on the soul's image (the body overlays' row 3, 0x0800EE5E): in front.
+local CAPE: BodyPart = { sprite = asset.sprite("colonel-cape"), anims = 41 }
+
 local form: FormDef = {
     soul = { family = "summon" },
     change = soul_change.action,
     revert = soul_revert.action,
     -- Colonel's image as MegaMan unites with him (rules/souls/image), in his cape (0x0800EDBC's routine for the soul).
-    image = soul_image.wearing(asset.sprite("colonel"), body_overlays.colonel),
+    image = soul_image.wearing(asset.sprite("colonel"), CAPE),
     -- What it adds to the custom screen (rules/souls gathers it, rules/souls/custom): Arm Change (./arm_change).
     custom = arm_change.custom,
     sprite = asset.sprite("colonelsoul"),
