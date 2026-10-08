@@ -1109,7 +1109,9 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     // has none to disarm.
     b.obstacle_conversion[side & 1].armed = false;
     ai_mut(b, r).status &= !0x20;
-    // (Netbattle, local player: removes the opponent's HUD entry.)
+    // (Netbattle, local player: removes the opponent's HUD entry: its chip
+    // icons, which EXE5's SearchSoul's reset below puts back.)
+    b.chip_hud[side & 1].opponent = false;
     // EXE5's 0x08011B74: a form's priming is spent (EXE6 never primes).
     ai_mut(b, r).primed = false;
     let hm = body_hit_modifier(b);
