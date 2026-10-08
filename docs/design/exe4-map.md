@@ -748,6 +748,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the engine's form overlay (actor #0x57, `effects.form_overlay`) and breathes the Elem chips' flame (attack #9,
   @exelib/elemrage/flame, his own kind); his command (Down, then Right, each held alone through the dimmed record,
   0x080B94A8) makes the flames leave lava, which no recording has used yet.
+  ShadeMan (actor #0x19) and his crush (attack #0x34) are EXE5's (@exelib/shademan), EXE4's differences their specs':
+  his commands give the crush 0x1207 and 0x2208, and without one it carries a move bug (code 0x0D) in a direction he
+  draws as he appears (rules/navicust/bugs takes it); he goes without the bow, in a puff; his figure stands 8 pixels
+  left and 12 up and strikes again with 40 ticks left, highlighting nothing.
 
 **For the next steps:**
 
@@ -1204,9 +1208,18 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      action. That is the engine's `volley` request and its status (`action_requests`: the roles' `volley`, EXE5's
      last stand's), which EXE4's `hp_emptied` hook asks for with the dark chips (group A); AIData +0x10's other
      values (a soul's change, likely) are the souls'.
-   - The hit's bug (0x0800D9E8): NaviStats' byte by the code (collision +0x48) gets its argument (+0x49), 0xFF by
-     0x0804770C; the rules' `navi_bug` hook, to write with the first EXE4 chip that carries a code (the damage word
-     has none).
+   - **Done: the hit's bug** (0x0800D9E8): NaviStats' byte by the code (collision +0x48) gets its argument (+0x49);
+     code 0xFF raises the NaviCust bug the argument numbers (0x0804770C: the side's bug counts, 0x0203F6E0 and
+     0x0203F6F0, kept from the compile as the rules state's `bug_counts`) and runs every bug at its count's level
+     again (0x08042AE0, the battle's stats; HubBatc's writes the game state's maximum HP, which no battle reads); then
+     the abilities come back (0x0800D906, EXE6's `sub_801393A`: the answer "edited"). The rules' `navi_bug`
+     (content/exe4/rules/navicust/bugs), an if-chain on the codes EXE4's objects set: ShadeMan's crush 0x0D (the move
+     bug); RedSun's stripping hits (attack 0x87) 1 to 7 and 0x0A; attack 0x41's (effect 0x1B) those, 0x0C and 0x12;
+     weapon routine 0x5C's hit 0x0E (the HP bug's period); BugBomb (attack 0x77: kinds 1, 2, 3, 4, 6, 8) and BugCurse
+     (attack 0x80: kinds 2, 3, 4, 6) 0xFF. The original allows any other code (the byte it numbers); no object sets
+     one. Kind 8 (the weapon bug: the charged shot becomes weapon routine 0x1F, 0x20 or 0x21) waits on routines 0x1F
+     and 0x20, which BugBomb's port brings. Open: 0x0800D906 copies the weapon bytes in any form where the engine's
+     refresh keeps a form's own, which no recording tells apart yet.
    - With others: the emotions (item 8, group A); a soul's break by a weakness hit (`form_break`,
      `weakness_hit_breaks_form`: EXE5's until the souls are read).
 8. **Emotions.** **Done** (group A; §7 "As ported"): EXE4's order, mood rules, Full Synchro and its aura, the
