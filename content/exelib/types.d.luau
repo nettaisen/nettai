@@ -699,6 +699,25 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
+-- A game's NumbrBl NumberMan (@exelib/numbrbl/numberman): his kind's id, sprite and palette, his appearing sound, his
+-- throwing animation, his balls, and whether his init loads his standing animation (EXE4's) or leaves his animation
+-- byte 0xFF (EXE5's).
+export type NumbrBlNumberManLook = {
+    id: string,
+    sprite: SpriteAsset,
+    palette: number,
+    appear: Sound,
+    throw_anim: number,
+    ball: NumberBall,
+    loads_standing: boolean?,
+}
+
+-- NumbrBl's NumberMan made for a game (@exelib/numbrbl/numberman): his kind, and his spawn for a controller.
+export type NumbrBlNumberMan = {
+    kind: Kind,
+    spawn: (controller: Object, x: number, y: number, damage: number, balls: number) -> Object?,
+}
+
 -- A patch card's effect (@exelib/patch_cards/effects' constructors make them; a game's rules/patch_cards applies
 -- them, @exelib/patch_cards/apply): its kind, and the kind's fields.
 export type PatchCardEffect = {
