@@ -247,3 +247,6 @@
 # Geddon's controller (0x080E400C) and its quake (0x080E40E4): their positions the spawners' registers.
 "geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
 "geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }
+# Wind's and Fan's controller (0x080E4AD4; its position the spawner's registers) and their fan (0x080D6488).
+"wind/controller" = { pool = "effect", index = 0x25, scratch_position = true }
+"wind/fan" = { pool = "attack", index = 0x48 }
