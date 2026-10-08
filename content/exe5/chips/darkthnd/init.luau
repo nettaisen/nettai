@@ -4,6 +4,7 @@
 -- screen's HP drain (rules/light_dark).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local collision = require("../rules/collision")
 local statuses = require("../rules/status")
 local thunder = require("./thunder/ball")
 
@@ -20,7 +21,8 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     action = thunder.shoot {
-        ball = { panels = 0x0C, status = statuses.paralyze_90, bug = 0x19 },
+        -- Its ball (12 panels, the original's DarkThnd's): big, of EXE5's row 0x2B.
+        ball = { panels = 0x0C, status = statuses.paralyze_90, bug = 0x19, big = true, is = collision.collision_2b },
     },
     auto_battle = { class = "to_front" },
 }
