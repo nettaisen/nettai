@@ -392,6 +392,7 @@ mega = [
 giga = [
     "bass",
     "blakbarr",
+    "bugcurse",
     "deltaray",
 ]
 secret = [

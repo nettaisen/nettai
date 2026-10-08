@@ -28,6 +28,7 @@ return merge {
     require("@self/breath"),
     require("@self/bubbler"),
     require("@self/bugbomb"),
+    require("@self/bugcurse"),
     require("@self/burnman"),
     require("@self/cannon"),
     require("@self/circgun"),
