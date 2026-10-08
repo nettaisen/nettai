@@ -1,7 +1,7 @@
 --!strict
--- VDoll's doll (attack object #0x7A: EXE6's `sub_80D46B8`, EXE5's 0x080D5618; the same code but where the look says):
--- a field object with 50 HP thrown three panels ahead in a 60-tick arc, which can hit in its last five ticks. Where
--- it lands the panel turns to poison. The first damage it takes after landing curses the other side (the game's
+-- VDoll's doll (attack object #0x7A: EXE6's `sub_80D46B8`, EXE5's 0x080D5618, EXE4's 0x080DC7AC; the same code but
+-- where the look says): a field object with 50 HP thrown three panels ahead in a 60-tick arc, which can hit in its
+-- last five ticks. Where it lands the panel turns to poison (EXE4's to its hole, type 11). The first damage it takes after landing curses the other side (the game's
 -- curse): a dimming that hits the other side with that damage. See docs/engine/shot-chips.md §14.2. A maker taking
 -- a game's look.
 --
@@ -15,15 +15,17 @@ local doll = {}
 -- sound.
 export type DollExe5Leaving = { flash: Effect, sound: Sound }
 
--- A game's doll: its kind's id, sheet and identity; how it looks absorbed (EXE6's, which absorbs it); its collision
--- types and hit modifier from the start, and its spark; the ones it takes as it sets down (EXE6's: an obstacle of no
--- side that anything can hit; EXE5's has them from the start); the hits whose types break it at no damage (EXE5's
--- 0x0C800002, 0x080D56D4); the poisoning's sound; the puff (effect 0x14); the game's aim; its curse; and EXE5's
--- leaving (none: EXE6's, `sub_80D48AE`).
+-- A game's doll: its kind's id, sheet and identity (none: EXE4's, no NameID); how it looks absorbed (EXE6's, which
+-- absorbs it); its collision types and hit modifier from the start, and its spark; the ones it takes as it sets down
+-- (EXE6's: an obstacle of no side that anything can hit; EXE5's has them from the start); the hits whose types break
+-- it at no damage (EXE5's 0x0C800002, 0x080D56D4); the panel it leaves where it lands and that change's sound; the
+-- puff (effect 0x14); the game's aim; its curse; whether it has field-object tracking to release (none: true; EXE4's
+-- has none); its action table by the framework's numbers given its flight, leaving and setting down (none: EXE6's
+-- `off_80D479C`); and EXE5's or EXE4's leaving (none: EXE6's, `sub_80D48AE`).
 export type DollLook = {
     id: string,
     sprite: SpriteAsset,
-    identity: Identity,
+    identity: Identity?,
     absorbed: AbsorbedLook?,
     is: CollisionType,
     hits: CollisionType,
@@ -31,11 +33,15 @@ export type DollLook = {
     spark: Spark,
     set_down: { is: CollisionType, hits: CollisionType, hit_mod: number }?,
     breaking_hits: number?,
-    poison_sound: Sound,
+    landing_panel: PanelType,
+    landing_sound: Sound,
     puff: Effect,
     trajectory: Trajectory,
     curse: { spawn: (doll: Object, damage: number) -> Object?, telop: DimmingTelop },
+    tracked: boolean?,
+    actions: ((fly: (Object) -> (), destroyed: (Object) -> (), set_down: (Object) -> ()) -> { [number]: (Object) -> () })?,
     exe5_leaving: DollExe5Leaving?,
+    exe4_leaving: DollExe5Leaving?,
 }
 
 -- The doll made for a game.
@@ -63,12 +69,14 @@ local PUFF_UP, CURSE_PUFF_UP = 0x10_0000, 0xC_0000
 local DESTROYED, SET = 2, 8
 
 function doll.make(look: DollLook): Doll
-    -- The destroyed action's phases: EXE6's start, leaving and cursing (`JumpTable80D489C`); EXE5's leaving (its
-    -- first tick a wait) and cursing (0x080D57E8).
+    -- The destroyed action's phases: EXE6's start, leaving and cursing (`JumpTable80D489C`); EXE5's and EXE4's
+    -- leaving (its first tick a wait) and cursing (0x080D57E8, 0x080DC968).
     local LEAVING, CURSING = 0x4, 0x8
-    if look.exe5_leaving then
+    local own_leaving = look.exe5_leaving ~= nil or look.exe4_leaving ~= nil
+    if own_leaving then
         LEAVING, CURSING = 0x0, 0x4
     end
+    local tracked = look.tracked ~= false
 
     -- (The HUD element it turns on with the curse and off as it goes, `sub_801DACC(0x40)` and `sub_801DA48(0x40)`,
     -- is drawn only, and so is `sprite_clearFinalPalette`.)
@@ -109,8 +117,8 @@ function doll.make(look: DollLook): Doll
         local p = me.pos
         me.pos = Vec3.new(p.x, p.y, 0)
         me:update_collision_panels()
-        field.set_type(me.panel_x, me.panel_y, "poison")
-        battle.play_sound(look.poison_sound)
+        field.set_type(me.panel_x, me.panel_y, look.landing_panel)
+        battle.play_sound(look.landing_sound)
         s.flying = false
         me.action = obstacle.action_byte(me, SET)
         me.phase, me.phase_init = 0, 0
@@ -128,7 +136,9 @@ function doll.make(look: DollLook): Doll
 
     -- Gone quietly: out of the field's bookkeeping, and freed at the next update.
     local function go(me: Object)
-        obstacle.release_tracking(me)
+        if tracked then
+            obstacle.release_tracking(me)
+        end
         obstacle.unregister(me)
         me.collision:set_region(nil)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
@@ -153,7 +163,41 @@ function doll.make(look: DollLook): Doll
         local s = me.state :: State
         local controller = look.curse.spawn(me, int.u32(CURSE_HIT_PARAM + s.damage_taken))
         dimming.start(me.alliance, true, controller, me, look.curse.telop)
-        obstacle.release_tracking(me)
+        if tracked then
+            obstacle.release_tracking(me)
+        end
+    end
+
+    -- EXE4's 0x080DC974: a tick's wait; then carried off (gone); held while dimmed; the battle over or not hit (a
+    -- puff); flying (gone); else the curse, with EXE4's look's flash 16 pixels up and its sound. (No check of the
+    -- damage taken: a hit is damage taken there; no removal's puff.)
+    local function leave_exe4(me: Object)
+        local s = me.state :: State
+        local exe4 = look.exe4_leaving :: DollExe5Leaving
+        if me.phase_init == 0 then
+            me.phase_init = 4
+            return
+        end
+        if me:status("carried") then
+            go(me)
+            return
+        end
+        if battle.dimmed() then
+            return
+        end
+        if battle.over() or not s.hit then
+            puff(me)
+            return
+        end
+        if s.flying then
+            go(me)
+            return
+        end
+        me.phase, me.phase_init = CURSING, 0
+        me.visible = false
+        effect_up(me, exe4.flash, PUFF_UP)
+        battle.play_sound(exe4.sound)
+        start_curse(me)
     end
 
     -- EXE6's `sub_80D48AE`: how it leaves: blinking out; carried off; a chip's removal (absorbed, or a puff); or,
@@ -257,12 +301,14 @@ function doll.make(look: DollLook): Doll
         if phase == LEAVING then
             if look.exe5_leaving then
                 leave_exe5(me)
+            elseif look.exe4_leaving then
+                leave_exe4(me)
             else
                 leave_exe6(me)
             end
         elseif phase == CURSING then
             cursing(me)
-        elseif phase == 0 and not look.exe5_leaving then
+        elseif phase == 0 and not own_leaving then
             -- (EXE6's start.)
             me.phase, me.phase_init = LEAVING, 0
         else
@@ -271,18 +317,21 @@ function doll.make(look: DollLook): Doll
     end
 
     -- Its action table (EXE6's `off_80D479C`; EXE5's 0x080D5704, EXE6's numbers here): its own actions and the
-    -- framework's shared ones.
-    local ACTIONS: { [number]: (Object) -> () } = {
-        [0] = fly,
-        [1] = obstacle.return_to_idle,
-        [2] = destroyed,
-        [3] = obstacle.flinch,
-        [4] = obstacle.paralyzed,
-        [5] = obstacle.knocked_back,
-        [6] = obstacle.frozen,
-        [7] = obstacle.bubbled,
-        [8] = set_down,
-    }
+    -- framework's shared ones (or its look's).
+    local own = look.actions
+    local ACTIONS: { [number]: (Object) -> () } = if own
+        then own(fly, destroyed, set_down)
+        else {
+            [0] = fly,
+            [1] = obstacle.return_to_idle,
+            [2] = destroyed,
+            [3] = obstacle.flinch,
+            [4] = obstacle.paralyzed,
+            [5] = obstacle.knocked_back,
+            [6] = obstacle.frozen,
+            [7] = obstacle.bubbled,
+            [8] = set_down,
+        }
 
     -- EXE6's `sub_80D4754`, EXE5's 0x080D56B4: any damage it takes this tick breaks it, and is kept for the curse
     -- (EXE5's: a hit of the look's breaking types breaks it too, as damage 0).
@@ -325,7 +374,9 @@ function doll.make(look: DollLook): Doll
         sprite:step()
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         me:set_panel_from_coordinates()
-        me.identity = look.identity
+        if look.identity then
+            me.identity = look.identity
+        end
         me.hp, me.max_hp = HP, HP
         me.element = 0
         me.timer = LIFETIME
