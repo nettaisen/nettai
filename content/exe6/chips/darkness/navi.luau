@@ -15,6 +15,9 @@ local navi_chips = require("../../lib/navi_chips/navi")
 local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")
 
+-- The big slash.
+local BIG_SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 0 }
+
 local darkness = {}
 
 export type State = {
@@ -370,7 +373,7 @@ local function slash(me: Object)
     if me.phase_init == 0 then
         me.anim = 5
         me.timer = 0
-        attachment.attach(me, parts.blades.sword, "held", { anim = 0xE, while_dimmed = true })
+        attachment.attach(me, parts.blade, "held", { anim = 0xE, while_dimmed = true })
         battle.play_sound(SOUND_SLASH)
         me.phase_init = 4
     end
@@ -393,7 +396,7 @@ local function slash(me: Object)
             box.run_while_dimmed = true
         end
         local cx, cy = field.center(x, y)
-        battle.effect(Vec3.new(cx, cy, 0x10_0000), parts.effects.big, flip_of(me), 4)
+        battle.effect(Vec3.new(cx, cy, 0x10_0000), BIG_SLASH, flip_of(me), 4)
         battle.shake_camera(2, 0x28)
         battle.palette_flash(0, 0x1E, true, false)
     end
