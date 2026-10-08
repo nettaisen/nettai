@@ -161,6 +161,9 @@ language = "en"
 "gunsol2" = { name = "GunSol2", description = "Sunshine\nappear w/\nButton" }
 "gunsol3" = { name = "GunSol3", description = "Sunshine\nappear w/\nButton" }
 "gunsolex" = { name = "GunSolEX", description = "Fires a\nspread\nsunbeam" }
+"fireman" = { name = "FireMan", description = "Fire burn\nto front\nside" }
+"firemn-sp" = { name = "FireMnSP", description = "Fire burn\nto front\nside" }
+"firemn-ds" = { name = "FireMnDS", description = "Fire burn\nto front\nside" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
