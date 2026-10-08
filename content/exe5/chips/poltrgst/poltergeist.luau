@@ -66,8 +66,9 @@ local function stand_in_init(me: Object)
     me:set_panel_from_coordinates()
     -- sub_801002C: the user's navi palette.
     sprite.palette = user.sprite.palette
+    -- 0x080C39A0: a player user's overlay (0x0800F0EC: its soul's put-on, NumberSoul's layer).
     if user.actor_type == "player" then
-        me:add_parts_of(user, false, true)
+        me:add_overlay_of(user)
     end
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     dimming.hide_user_sparing(user)
