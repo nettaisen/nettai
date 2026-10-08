@@ -73,7 +73,7 @@ local function cars(me: Object): number
             return n
         end
         -- r3 (0xFF << 24) becomes the car's Z.
-        car.spawn(me, x, y, me.element, { while_dimmed = true, place = n, wait = CAR_WAIT }, damage_word(me), SPEED, 0xFF00_0000)
+        car.spawn(me, x, y, me.element, { while_dimmed = true, hit_mod = 3, place = n, wait = CAR_WAIT }, damage_word(me), SPEED, 0xFF00_0000)
         n += 1
     end
     return n

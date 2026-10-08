@@ -360,10 +360,12 @@ export type DblBeastHit = {
 -- ---- The navi chips' navis (content model v2: the earlier navis) ---------
 
 -- A thunderbolt (chips/elecman/thunder): whether it acts while the battle
--- is dimmed (the navi chip's; one that doesn't cracks its panel), and
--- whether it also hits the eight panels around it.
+-- is dimmed (the navi chip's), whether it cracks its panel as it strikes
+-- (ElecMan's own AI's), and whether it also hits the eight panels around
+-- it (the original's Param1 0, 1 or 2 gives them).
 export type Thunderbolt = {
     while_dimmed: boolean?,
+    cracks: boolean?,
     spreads: boolean?,
 }
 
@@ -380,12 +382,14 @@ export type SlashWave = {
     while_dimmed: boolean?,
 }
 
--- A train car (chips/chrgeman/car): whether it is the navi chip's (it
--- waits before it rolls, and acts while the battle is dimmed), its place
--- in the train, the ticks it waits, and its owner's action it is tied to
--- (none: it never checks).
+-- A train car (chips/chrgeman/car): whether it acts while the battle is
+-- dimmed (the navi chip's), its hit's modifier (the navi chip's 3, else 1:
+-- the original's by Param1), its place in the train, the ticks it waits
+-- before it rolls (0: it rolls at once, ChargeMan's own), and its owner's
+-- action it is tied to (none: it never checks).
 export type ChargeCar = {
     while_dimmed: boolean?,
+    hit_mod: number,
     place: number,
     wait: number,
     owner_action: number?,
