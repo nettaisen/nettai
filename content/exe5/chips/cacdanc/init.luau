@@ -58,7 +58,7 @@ local cacdanc2: Chip = {
         { order = 16, sequence = { recipe_woodnos2, recipe_woodnos2, recipe_cactbal2 }, operation_battle_only = true },
         { order = 52, code_run = { chip = recipe_cactbal2, count = 3 } },
     },
-    instant = cacdanc.instant(1),
+    instant = cacdanc.instant(2),
     auto_battle = { class = "at_once" },
 }
 
@@ -84,7 +84,7 @@ local cacdanc3: Chip = {
         { order = 17, sequence = { recipe_woodnos3, recipe_woodnos3, recipe_cactbal3 }, operation_battle_only = true },
         { order = 53, code_run = { chip = recipe_cactbal3, count = 3 } },
     },
-    instant = cacdanc.instant(2),
+    instant = cacdanc.instant(4),
     auto_battle = { class = "at_once" },
 }
 

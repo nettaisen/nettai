@@ -23,7 +23,7 @@ local magnetmn: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "magnetmn/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
@@ -47,7 +47,7 @@ local magntmn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "magntmn-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
@@ -70,7 +70,7 @@ local magntmn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "magntmn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(6),
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }

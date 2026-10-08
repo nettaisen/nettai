@@ -1,11 +1,22 @@
 --!strict
 -- WideBlde: WideSwrd's slash, stronger.
 
+local lockon = require("../rules/lockon")
 local parts = require("../lib/swords/parts")
 local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
-local lockon = require("../rules/lockon")
+
+-- WideBlde's slash.
+local WIDE_BLADE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 5 }
+
+-- Its charged slash in SlashCross: over a column, in palette 5.
+local CHARGED = slashes.slash {
+    wave = slashes.wave { region = regions.wide, sprite = asset.sprite("sword-slash"), anim = 0, palette = 5 },
+    blade = parts.blade,
+    sound = parts.swing,
+    lockon = lockon.widesht,
+}
 
 local chip: Chip = {
     codes = { "B", "R", "W" },
@@ -22,11 +33,11 @@ local chip: Chip = {
     slot_in_limit = 3,
     action = slash.action {
         id = "wideblde/action",
-        blade = parts.blades.sword,
+        blade = parts.blade,
         hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 3 },
-        effect = parts.effects.wide_blade,
-        sound = parts.sounds.swing,
-        charged = slashes.wide_blade,
+        effect = WIDE_BLADE_SLASH,
+        sound = parts.swing,
+        charged = CHARGED,
     },
 }
 

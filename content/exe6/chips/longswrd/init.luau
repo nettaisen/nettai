@@ -1,11 +1,22 @@
 --!strict
 -- LongSwrd: a slash on the two panels ahead.
 
+local lockon = require("../rules/lockon")
 local parts = require("../lib/swords/parts")
 local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
-local lockon = require("../rules/lockon")
+
+-- The slash over two panels.
+local LONG_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 0 }
+
+-- Its charged slash in SlashCross: over two panels.
+local CHARGED = slashes.slash {
+    wave = slashes.wave { region = regions.long, sprite = asset.sprite("sword-slash"), anim = 1 },
+    blade = parts.blade,
+    sound = parts.swing,
+    lockon = lockon.firebrn1,
+}
 
 local chip: Chip = {
     codes = { "H", "L", "S", "*" },
@@ -22,11 +33,11 @@ local chip: Chip = {
     slot_in_limit = 3,
     action = slash.action {
         id = "longswrd/action",
-        blade = parts.blades.sword,
+        blade = parts.blade,
         hit = { region = regions.long, collision = parts.slashes_navis, hit_mod = 3 },
-        effect = parts.effects.long,
-        sound = parts.sounds.swing,
-        charged = slashes.long,
+        effect = LONG_SLASH,
+        sound = parts.swing,
+        charged = CHARGED,
     },
 }
 

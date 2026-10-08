@@ -13,8 +13,8 @@ local collision = require("../../rules/collision")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's 0x080BC178 by the chip's level).
+    palette: number,
 }
 
 local blizman = {}
@@ -22,8 +22,6 @@ local blizman = {}
 local SPRITE = asset.sprite("blizzardman")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_ROLL = asset.sound("blizzard-windup")
--- By the level (0x080BC178): DS's 3 (SP's level is 0).
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 3 }
 local SOLID = 0x10
 -- When the ball goes and his arm comes down (ticks left of his windup).
 local THROW, DOWN = 0x40, 0x22
@@ -118,18 +116,18 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = roll, [0xC] = leave }
 
--- 0x080BC124: on his panel, on the ground; his sprite (animation 0, his shadow), his palette by the level, facing
+-- 0x080BC124: on his panel, on the ground; his sprite (animation 0, his shadow), his chip's palette, facing
 -- his side's way.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
-    me.sprite.palette = PALETTES[(me.state :: State).level] or 0
+    me.sprite.palette = (me.state :: State).palette
     me:set_lifecycle("update")
 end
 
 blizman.kind = new.kind {
     id = "blizman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8" },
+    state = { controller = "object", palette = "u8" },
     -- 0x080BC100.
     update = function(me: Object)
         local l = me.lifecycle
@@ -148,8 +146,8 @@ blizman.kind = new.kind {
     end,
 }
 
--- 0x080BC2B6: BlizzardMan for `user`, reporting to `controller` (the summon table's entry 14), of a chip of `level`.
-function blizman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BC2B6: BlizzardMan for `user`, reporting to `controller` (the summon table's entry 14), in his chip's `palette`.
+function blizman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(blizman.kind, user, spec)
         if not o then
@@ -157,14 +155,10 @@ function blizman.summon_at(level: number): (user: Object, controller: Object, sp
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- BlizMan's and BlizManSP's (their Param1s 0), BlizManDS's (4).
-blizman.summon = blizman.summon_at(0)
-blizman.summon_sp = blizman.summon_at(0)
-blizman.summon_dark = blizman.summon_at(4)
 
 return blizman

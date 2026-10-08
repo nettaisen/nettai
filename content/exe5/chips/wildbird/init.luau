@@ -9,6 +9,18 @@ local navi_chips = require("../lib/navi_chips/chip")
 local recipe_katana1 = require("./katana").katana1
 local recipe_larkman_ds = require("./larkman")["larkman-ds"]
 local recipe_larkman_sp = require("./larkman")["larkman-sp"]
+local swoop = require("./larkman/swoop")
+
+-- LarkMan's swoop (its variant 6): faster, a longer turn of its own, no command.
+local SWOOP = swoop.variant {
+    speed_x = 0xC_0000,
+    speed_y = 0x7_3333,
+    turn_step = 0x14_8278,
+    shorter = 0,
+    longer = 25,
+    wild_turn = true,
+    commanded = false,
+}
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -31,7 +43,7 @@ local chip: Chip = {
     },
     navi = navi_chips.make {
         id = "wildbird/controller",
-        summon = navi.summon_wild,
+        summon = navi.summon { palette = 0, swoop = SWOOP },
     },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }

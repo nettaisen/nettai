@@ -16,6 +16,9 @@ local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 local swords = require("../../lib/swords/parts")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 export type State = {
     timer: number,
     -- His glow (AIAttackVars+0x30).
@@ -137,7 +140,7 @@ local function strike(me: Object)
         status = SLASH_HIT.status,
     })
     local cx, cy = field.center(me.panel_x + me.facing, me.panel_y)
-    battle.effect(Vec3.new(cx, cy, SLASH_Z), swords.effects.wide, link.flip(me), SLASH_PALETTE)
+    battle.effect(Vec3.new(cx, cy, SLASH_Z), WIDE_SLASH, link.flip(me), SLASH_PALETTE)
 end
 
 -- `sub_80F0A7A`: the slash; 20 ticks.
