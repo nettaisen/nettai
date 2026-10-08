@@ -12,7 +12,7 @@
 [at_defaults]
 exe6 = ["hp", "reg_up", "sun", "level", "sp_times"]
 exe5 = ["reg_up", "sun", "level", "sp_times", "auto_battle_records", "chaos_unison"]
-exe4 = ["reg_up", "double_soul"]
+exe4 = ["reg_up", "sun", "double_soul"]
 
 # A fact a build states only as one of a few presets, by game and the fact's name: each preset (`choice`, its name)
 # sets the facts under `set` together, a value as the fact's own (a number, a flag, a variant's name, a list of
