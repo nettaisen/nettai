@@ -30,7 +30,17 @@ bugfix.glow = common_glow.make {
     end,
 }
 
-bugfix.controller = controller.make { id = "bugfix/controller", glow = bugfix.glow.spawn, flash = FLASH, beast_out = false }
+-- The glow's flashes (`off_80C4930`'s first row, `sub_80C4958`: EXE5's 0x080C4420).
+local FLASHES = common_glow.start(controller.flashes(FLASH, common_glow.hide_navi))
+
+bugfix.controller = controller.make {
+    id = "bugfix/controller",
+    glow = function(spawner: Object, holder: Object): Object?
+        return bugfix.glow.spawn(spawner, FLASHES, holder)
+    end,
+    fix = controller.clear_bugs,
+    beast_out = false,
+}
 
 export type LiberationState = {
     -- The glow runs (Param2, which the glow clears).

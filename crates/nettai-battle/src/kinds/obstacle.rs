@@ -120,7 +120,8 @@ pub mod f2 {
     pub const THROWN: u32 = 0xC00;
     /// Encased in ice (0x1000) or a bubble (0x2000).
     pub const ENCASED_IN_ICE: u32 = 0x1000;
-    pub const ENCASED: u32 = 0x3000;
+    pub const ENCASED_IN_BUBBLE: u32 = 0x2000;
+    pub const ENCASED: u32 = ENCASED_IN_ICE | ENCASED_IN_BUBBLE;
     /// Removed by a chip.
     pub const REMOVED: u32 = 0x8000;
     /// Removed by blinking out.
@@ -304,6 +305,15 @@ pub fn vanish(b: &mut Battle, obj: ObjectRef) {
     remove(b, obj);
     if b.objects.get(obj).collision.is_some() {
         set_f2(b, obj, f2::VANISH);
+    }
+}
+
+/// EXE4's 0x0800B44C (ColdMan's, its flag2 0x2000 or 0x4000): `obj` is
+/// encased in ice or in a bubble ([`encased`] at its next reaction).
+/// (Without a collision the original writes into the BIOS: nothing.)
+pub fn encase(b: &mut Battle, obj: ObjectRef, ice: bool) {
+    if b.objects.get(obj).collision.is_some() {
+        set_f2(b, obj, if ice { f2::ENCASED_IN_ICE } else { f2::ENCASED_IN_BUBBLE });
     }
 }
 
