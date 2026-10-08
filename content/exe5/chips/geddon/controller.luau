@@ -1,8 +1,9 @@
 --!strict
 -- EXE5's Geddon controller (effect object #0x1D, 0x080E2718): EXE6's (@exelib/geddon/controller) without holding the
 -- user's panel (0x080E275C), setting off the shared quake (@exelib/geddon/quake, EXE5's effect #0x1E, the same code:
--- 0x080E27F0; its rows, by the chip's first parameter, crack, break or poison every solid panel) with EXE5's rising
--- bubble and sounds (its puff the sheet 14-02, EXE6's small puff).
+-- 0x080E27F0; its rows, by the chip's first parameter, crack, break or poison every solid panel: each chip's change,
+-- ./init) with EXE5's rising bubble and sounds (its puff the sheet 14-02, EXE6's small puff), which the controller
+-- gives as `quake`.
 
 local common = require("@exelib/geddon/controller")
 local quake = require("@exelib/geddon/quake")
@@ -15,4 +16,6 @@ local quakes = quake.make {
     sounds = { puff = asset.sound("panel-crack"), bubble = asset.sound("panel-poison"), poison = asset.sound("panel-poison") },
 }
 
-return common.make { id = "geddon/controller", name = "Geddon", quake = quakes.spawn, hold_panel = false }
+local made = common.make { id = "geddon/controller", name = "Geddon", quake = quakes.spawn, hold_panel = false }
+
+return { kind = made.kind, hook = made.hook, quake = quakes }

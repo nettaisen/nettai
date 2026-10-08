@@ -2,9 +2,8 @@
 -- Geddon's quake (the original's effect object #0x1E, `sub_80E25D0`;
 -- docs/engine/dimming-chip-effects.md §12): it lists the field's solid
 -- panels, shuffles them, and changes one every 8 ticks, the last listed
--- first (Geddon breaks them, the capsules crack them, a third change no
--- chip uses poisons them), with a puff over each that changed; then it
--- lets its holder go on. Geddon's and the capsules' controller
+-- first, as its chip says (Geddon breaks them, the capsules crack them),
+-- with a puff over each that changed; then it lets its holder go on. Geddon's and the capsules' controller
 -- (./controller) spawns it. The behavior is EXE5's too
 -- (@exelib/geddon/quake), made here with EXE6's look.
 

@@ -6,9 +6,10 @@
 -- until it is done. The behavior is EXE5's too (@exelib/geddon/controller,
 -- which EXE5's Geddons make without holding the panel).
 --
--- A chip's `dimming` hook is `controller.hook(change)`: Geddon's breaks
--- the panels, PrpCapsl's, HealBall's, MagPanl's and the BeastOut records'
--- crack them (the chips' first parameter, 1 or 0, picked the quake's row).
+-- A chip's `dimming` hook is `controller.hook(change)`, its quake's change
+-- its own (`quake.change`, ./quake): Geddon's breaks the panels,
+-- PrpCapsl's, HealBall's, MagPanl's and the BeastOut records' crack them
+-- (the original's rows by the chips' first parameter, 1 or 0).
 
 local common = require("@exelib/geddon/controller")
 local quake = require("./quake")

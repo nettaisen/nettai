@@ -3,8 +3,21 @@
 -- second palette with the bug 0x16 (chips/lance/lance). Its use costs a hit status (rules/light_dark).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local collision = require("../rules/collision")
 local exe5_lance = require("./lance/lance")
 local lance = require("@exelib/lance")
+local sparks = require("../lib/sparks")
+
+-- Its hit (0x080CF904's row 1): EXE5's row 0x25 against attacks, hit modifier 0x10, the wood spark, with bug 0x16
+-- (argument 2).
+local HIT = lance.hit {
+    is = collision.attack_480,
+    hits = collision.attack,
+    spark = sparks.wood,
+    hit_mod = 0x10,
+    bug = 0x16,
+    bug_arg = 2,
+}
 
 local chip: Chip = {
     codes = { "W" },
@@ -18,7 +31,7 @@ local chip: Chip = {
     lockout = 20,
     flags = { "has_damage", "dark", "variable_damage" },
     slot_in_limit = 1,
-    instant = lance.instant_of(exe5_lance.kind, 1),
+    instant = lance.instant_of(exe5_lance.kind, 1, HIT),
     auto_battle = { class = "at_once" },
 }
 
