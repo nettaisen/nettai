@@ -120,8 +120,14 @@ export type Trajectory = {
 }
 
 -- A game's wide wave (@exelib/widesht/wave): its kind's key, its sprite and sound, its afterimages' sprite (a
--- variant's own overrides both), and what it hits.
-export type WideWaveLook = { id: string, sprite: SpriteAsset, sound: Sound, trail_sprite: SpriteAsset, target: CollisionType }
+-- variant's own overrides both; a game with no trailing variant, EXE4, states none), and what it hits.
+export type WideWaveLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    trail_sprite: SpriteAsset?,
+    target: CollisionType,
+}
 
 -- A game's wide shots (@exelib/widesht/action): its wide shooter (a spec's own overrides it), its attachment kind and
 -- its wave's kind.
