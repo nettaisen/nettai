@@ -241,6 +241,9 @@ mega = [
     "junkman",
     "junkmn-sp",
     "junkmn-ds",
+    "topman",
+    "topmn-sp",
+    "topmn-ds",
 ]
 giga = [
     "deltaray",

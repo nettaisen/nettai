@@ -4,6 +4,7 @@
 -- row 12 (their parameter +0x10).
 -- Their records are written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
+local attachment = require("../objects/attachment")
 local bullet = require("../objects/bullet")
 local regions = require("@exelib/regions")
 local vulcan = require("@self/vulcan")
@@ -16,8 +17,11 @@ local SHOT = bullet.variant {
     single = true,
 }
 
+-- Their gun (attachment row 13: 0c-1d in palette 0).
+local GUN = attachment.look { sprite = asset.sprite("vulcan"), palette = 0 }
+
 local function fire(id: string, shots: number): Action
-    return vulcan.action { id = id, gun = vulcan.guns.vulcan, shots = shots, shot = SHOT }
+    return vulcan.action { id = id, gun = GUN, shots = shots, shot = SHOT }
 end
 
 local vulcan1: Chip = {

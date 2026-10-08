@@ -127,6 +127,9 @@ language = "ja"
 "thunder1" = { name = "サンダーボール1", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 "thunder2" = { name = "サンダーボール2", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 "thunder3" = { name = "サンダーボール3", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"topman" = { name = "タップマン", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
+"topmn-sp" = { name = "タップマンSP", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
+"topmn-ds" = { name = "タップマンDS", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
 "antifire" = { name = "カキゲンキン", description = "てきにワナをはる\n炎の攻撃をだすと\n自分がダメージ!" }
 "antiwatr" = { name = "ダイコウズイ", description = "てきにワナをはる\n水の攻撃をだすと\n自分がダメージ!" }
 "antielec" = { name = "ヒライシン", description = "てきにワナをはる\n電気の攻撃をだすと\n自分がダメージ!" }

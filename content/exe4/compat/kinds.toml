@@ -86,6 +86,13 @@
 "roll-ds/controller" = { pool = "effect", index = 0x2D, scratch_position = true }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "roll/heart" = { pool = "attack", index = 0x4E }
+# TopMan's chips (action 0x0C's variant 0x01, 0x080E2C02): each chip's controller (the content's own; the original's
+# one object, effect #0x0B, 0x080E2B54), TopMan and his tops.
+"topman/controller" = { pool = "effect", index = 0x0B, scratch_position = true }
+"topmn-sp/controller" = { pool = "effect", index = 0x0B, scratch_position = true }
+"topmn-ds/controller" = { pool = "effect", index = 0x0B, scratch_position = true }
+"topman/navi" = { pool = "actor", index = 0x0E }
+"topman/top" = { pool = "attack", index = 0x29 }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the
