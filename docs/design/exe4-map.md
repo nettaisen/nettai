@@ -984,6 +984,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   frames show (`shadow = "ground"`, as lib/cannon has for the GigaCans' first afterimage, draws one the original
   doesn't). Sheet 08-0D, navi 13's in 0x08017F98 with NormalNavi's win banner, is KendoMan's: `kendoman` (BY_USE now
   wins over the navi table's names). The lab's chips/0x113 to 0x115 (12) replay every frame and are pixel-exact.
+  WoodMan (actor #0x49, 0x080C980C) and his wood towers (attack #0x07, 0x080CDEB8; EXE6's #7 is the volcanos'
+  eruption) are EXE4's own; his controller (effect #0x70) runs the short course. He leaps (27 pixels a tick up, a
+  pixel a tick more down, 54 ticks) and lands with a shake (2, 15 ticks); as his landing ends and 10 ticks on he
+  raises four or five towers (a draw's low bit) on the other side's solid panels at random (a shuffle), the set's last
+  with its sound: each waits 31 ticks blinking its panel's highlight, then, on a solid panel with no body or blocker,
+  rises as a thrown body (the wood spark, modifier 1), 11 and 21 ticks, sinks 10. His command, Down, A and B pressed
+  within five ticks of each other while dimmed in his leap's last 4 ticks or his landing (0x080C9A94), raises a second
+  set. The lab's chips/0x0fe-woodman/command (the second set) and the twelve recordings replay every frame and are
+  pixel-exact.
 
 **For the next steps:**
 
