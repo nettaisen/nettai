@@ -24,12 +24,8 @@ export type State = {
 -- One state for every burn.
 burn.STATE = { timer = "u16" }
 
--- The burners (the original's attachment rows 0x16 and 0x1E): FireBrn's
--- and WideBrn's, and HeatCross's, in their animation 1.
-burn.burners = {
-    fire = attachment.look { sprite = asset.sprite("burner"), palette = 0, attach_point = 0x14 },
-    heat = attachment.look { sprite = asset.sprite("heatcross-burner"), palette = 0, attach_point = 0x16 },
-}
+-- The burner, its user's (FireBrn's and WideBrn's the original's attachment
+-- row 0x16, HeatCross's 0x1E), held in its animation 1.
 local BURNER_ANIM = 1
 
 -- The phases, on the attack's step.
