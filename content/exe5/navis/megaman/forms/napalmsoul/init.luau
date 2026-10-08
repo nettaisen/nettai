@@ -5,7 +5,8 @@
 -- bullets (0x19, ./charge), Fire chips charged with A (0x27: any Fire chip but a dimming or dark one, 0x0801090A;
 -- their damage doubled, 0x080103D0, and each lobbed as a napalm bomb, ./charged-chip: 0x08010442), Chaos Unison's
 -- (0x37: DarkMetr); no B+Back (0xFF). Its Fire chips with damage, dimming chips too, hit 40 harder used uncharged
--- with the A charge not full (0x0800D0A6).
+-- with the A charge not full (0x0800D0A6). Standing on lava with a chip that deals damage next in the hand, that chip
+-- gains 10 and the lava turns normal (0x08012602, `tick`).
 
 local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
@@ -45,6 +46,27 @@ local form: FormDef = {
         a_charge = charged_chips.routine({ 120, 120, 120, 120, 120, 80 }),
     },
     chip_bonus = { family = "fire", damage = 40, dimming_chips = true, uncharged = true },
+    -- 0x08012602, at the start of MegaMan's tick (0x0800E53A, right after this per-form tick: 0x080EAD88), not while
+    -- paused or dimmed: standing on lava (the panel's type 8) with a chip whose record says it deals damage (+0x09's
+    -- 0x02) at the hand's cursor, that chip's Atk+ bonus grows by 10 and his panel turns normal. (The game reads the
+    -- cursor's slot of an empty hand all the same; the engine's hand has no chip there.)
+    tick = function(navi: Object)
+        if battle.paused() or battle.dimmed() then
+            return
+        end
+        local x, y = navi.panel_x, navi.panel_y
+        local p = field.panel(x, y)
+        if p == nil or p.kind ~= "lava" then
+            return
+        end
+        local side = navi.alliance
+        local i = battle.hand_cursor(side)
+        if not battle.hand_chip_damages(side, i) then
+            return
+        end
+        battle.add_hand_attack_bonus(side, i, 10)
+        field.set_type(x, y, "normal")
+    end,
     charged_chips = { { family = "fire", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },
     charged_action = charged_chip.action,

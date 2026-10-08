@@ -234,6 +234,11 @@ language = "ja"
 "crosswrd" = { name = "クロスソード", description = "" }
 "sprsonic" = { name = "スーパーソニック", description = "" }
 "dbldream" = { name = "ダブルドリーム", description = "" }
+"aquaman" = { name = "アクアマン", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
+"aquamn-sp" = { name = "アクアマンSP", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
+"aquamn-ds" = { name = "アクアマンDS", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
+"sandring" = { name = "サンドリング", description = "あたるとアリジゴク\nを発生させる\nリングを前方へ!" }
+"z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
 "gutpnch1" = { name = "ガッツパンチ1", description = "目の前のマスに\nガッツパンチ!" }
 "gutpnch2" = { name = "ガッツパンチ2", description = "目の前のマスに\nガッツストレート!" }
 "gutpnch3" = { name = "ガッツパンチ3", description = "目の前のマスに\nガッツインパクト!" }
@@ -361,11 +366,13 @@ language = "ja"
 "048-weapon-change" = { name = "ウェポンチェンジ" }
 "049-buster-attack-15" = { name = "バスター攻撃力15" }
 "050-gigafolder1" = { name = "ギガフォルダ1" }
+"051-charge-shot-switch" = { name = "チャージ武器を変更" }
 "052-charge-shot-switch" = { name = "チャージ武器を変更" }
 "053-charge-shot-switch" = { name = "チャージ武器を変更" }
 "054-charge-shot-switch" = { name = "チャージ武器を変更" }
 "055-charge-shot-switch" = { name = "チャージ武器を変更" }
 "056-charge-shot-switch" = { name = "チャージ武器を変更" }
+"057-charge-shot-switch" = { name = "チャージ武器を変更" }
 "058-charge-shot-switch" = { name = "チャージ武器を変更" }
 "059-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "060-megaman-color-change" = { name = "ロックマンカラーを変更" }
@@ -378,12 +385,15 @@ language = "ja"
 "067-max-hp-up" = { name = "マックスHPを強化" }
 "068-b-left-ability-activation" = { name = "B+左で技発動" }
 "069-b-left-ability-activation" = { name = "B+左で技発動" }
+"070-b-left-ability-activation" = { name = "B+左で技発動" }
 "072-b-left-ability-activation" = { name = "B+左で技発動" }
 "073-b-left-ability-activation" = { name = "B+左で技発動" }
 "076-all-guard-1-2" = { name = "オールガード1/2" }
 "077-all-guard-2-2" = { name = "オールガード1/2" }
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }
+"079-charge-shot-switch" = { name = "チャージ武器を変更" }
 "080-charge-shot-switch" = { name = "チャージ武器を変更" }
+"082-charge-shot-switch" = { name = "チャージ武器を変更" }
 "083-charge-shot-switch" = { name = "チャージ武器を変更" }
 "084-charge-shot-switch" = { name = "チャージ武器を変更" }
 "085-charge-shot-switch" = { name = "チャージ武器を変更" }
@@ -414,6 +424,7 @@ language = "ja"
 "112-b-left-ability-activation" = { name = "B+左で技発動" }
 "113-charge-shot-switch" = { name = "チャージ武器を変更" }
 "114-charge-shot-switch" = { name = "チャージ武器を変更" }
+"115-charge-shot-switch" = { name = "チャージ武器を変更" }
 "116-charge-shot-switch" = { name = "チャージ武器を変更" }
 "117-charge-shot-switch" = { name = "チャージ武器を変更" }
 "119-charge-shot-switch" = { name = "チャージ武器を変更" }
