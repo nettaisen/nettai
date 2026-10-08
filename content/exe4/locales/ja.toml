@@ -148,6 +148,9 @@ language = "ja"
 "sparkman" = { name = "スパークマン", description = "前方すべてに\nスパークウェーブ!\nあいてをもうもくに" }
 "sprkmn-sp" = { name = "スパークマンSP", description = "前方すべてに\nスパークウェーブ!\nあいてをもうもくに" }
 "sprkmn-ds" = { name = "スパークマンDS", description = "前方すべてに\nスパークウェーブ!\nあいてをもうもくに" }
+"rush" = { name = "ラッシュサポート", description = "" }
+"beat" = { name = "ビートサポート", description = "" }
+"tango" = { name = "タンゴサポート", description = "" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

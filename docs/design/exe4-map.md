@@ -1554,9 +1554,23 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Guard chips' variants 0 to 2 of the guard counter with a shock wave (0x080CFD2A, its row 6): with the Guard chips.
     EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
     is never turned aside while paused in a netbattle (nothing hits then).
-54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
-    controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
-    a recording with a support stops at its setup.
+54. **Done: Rush, Beat and Tango in battle.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF), which
+    exe4-compat maps to the stats' supports as EXE6's +0x0D. Their triggers are EXE6's (the engine's): Tango at a
+    quarter of the navi's HP (0x0800C7D8, in the idle after the reactive chips: EXE6's `sub_8010660`), Beat then Rush as
+    the opponent uses a chip (0x0800C838, 0x0800C8C0: `sub_80106C0`, `sub_8010740`), each once, in a battle of type 0x46
+    or more; EXE4's Beat lets a dark chip go (0x0800C86C tests the record's flag 0x20: the rules'
+    `chip_use.beat_spares_dark`). Their controller (effect object #0x74, 0x080EA2BC), spawned by 0x080EA3D6 with a
+    dimming no one can cut in on, is @exelib/supports/controller with EXE4's warp (0x080E2D26, by its side); Rush (actor
+    #0x4B, 0x080CA4C4), Beat (#0x4C, 0x080CA76C), Tango (#0x4D, 0x080CA9B4) and Tango's heal (attack #0x9F, 0x080E0CD4)
+    are EXE6's code (@exelib/supports) in EXE4's looks (content/exe4/lib/supports), but for: Rush and Tango add no pixel
+    where EXE6's do (0x080CA60C, 0x080CAB88), Rush's appearance panel reads its table's forbidden flags two bytes in
+    (0x080CA70A: side 0's 0x1, side 1's 0x00200001), the effect rows one further on (21, 22: EXE4's table has a row
+    more), and the heal's 100-HP barrier is EXE4's type 2 (its old visual ending first, 0x080E264A). The chips the
+    telops name, 0x17F to 0x181 (chips/supports), are dimming chips of the variant 0x42, the same spawner, which no
+    folder holds. The lab's navicust/beat-takes, beat-once, beat-spares-dark and tango-heals (and navicust/rush, beat,
+    tango and bug-rush, where none comes) replay every frame and compare every fight frame; rush-eats-invis and
+    rush-eats-popup wait for Invis and PopUp (0x085, 0x086, the two chips Rush cancels), and
+    modcards/074-triple-supporter for its patch card.
 55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
     bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
     RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
