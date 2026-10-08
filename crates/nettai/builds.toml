@@ -72,7 +72,9 @@ set = { karma = 0, hp = 997 }
 # the light_hp_1000 and dark_hp_997 ones, every version and region alike; the base HP at the image's 0x21CA, the
 # light/dark value at MegaMan's NaviStats +0x36, 0x4E96): 1000 and 1000, or 460 and 997. The line is the game's: a
 # value of 500 or more is a light MegaMan's, 499 and under a dark one's (content/exe4/rules/light_dark:
-# `DARK_AT_MOST`, the tests at 0x08013306 and 0x08013348). A new build's 500 (the rules' default) is light's.
+# `DARK_AT_MOST`, the tests at 0x08013306 and 0x08013348). A new build's 500 (the rules' default) is light's. EXE4's
+# setup states no version (it is save data: Red Sun and Blue Moon play alike but for the souls a save can have and
+# their navi chips, by the folder), so its version is its souls' preset.
 [[presets.exe4.karma]]
 choice = "light"
 from = 500
@@ -83,13 +85,16 @@ choice = "dark"
 from = 0
 set = { karma = 460, hp = 997 }
 
-# EXE4's version, Red Sun or Blue Moon, with its six souls: MegaMan's form list of that version (content/exe4/navis/
-# megaman: his `redsun` and `bluemoon` lists; a save's are its version's six it has, the soul button's flags,
-# 0x08020018: Red Sun's souls 1 to 6, Blue Moon's 7 to 12).
-[[presets.exe4.version]]
+# EXE4's version, Red Sun or Blue Moon: EXE4's rules have no version, so the version is its souls, the six a save of
+# that version can have (0x08020018, the UNITE button's table: Red Sun's souls 1 to 6, Blue Moon's 7 to 12, by
+# content/exe4/compat/records.toml's numbers; exe4-compat's `Version::soul_flag`). The content names no soul's
+# version, so they are named here.
+[[presets.exe4.souls]]
 choice = "redsun"
-set = { version = "redsun", souls = { forms_of = "redsun" } }
+title = "version"
+set = { souls = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"] }
 
-[[presets.exe4.version]]
+[[presets.exe4.souls]]
 choice = "bluemoon"
-set = { version = "bluemoon", souls = { forms_of = "bluemoon" } }
+title = "version"
+set = { souls = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"] }

@@ -407,8 +407,10 @@ EXE5's and EXE6's turn-start transformation sequencer (`sub_801483C`, `sub_80148
 the transform records' copy `sub_80147E4`) and the transform record's writer (`sub_8015952`) have no counterpart in
 EXE4 in either map. So Double Soul's change is EXE4's own path.
 
-**As ported** (group A, rules/souls; item 73). A soul is a form of MegaMan's, his lists by version (`redsun`, `bluemoon`:
-the setup's `version` and its `souls`, the engine's form list); each soul's folder holds its form and its chip
+**As ported** (group A, rules/souls; item 73). A soul is a form of MegaMan's, his one list of the twelve in their
+numbers' order (compat's numbers, records.toml); the souls a side has are its setup's `souls` (the content has no
+version: a save's version is the boundary's, exe4-compat's, which maps it to its souls, and the app's presets name
+each version's six); each soul's folder holds its form and its chip
 (navis/megaman/forms/<soul>/chip: chips 0x161 to 0x16C), whose use is the soul's own change (rules/souls/change's
 maker; compat names them all action 0x0D, their images all effect 0x13).
 
@@ -1604,8 +1606,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
     harness question (raised with the coordinator), not the engine's.
 73. **Done: Double Soul** (group A; §5's Double Soul part, §6): the UNITE button, its offer and the soul's choice,
-    OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's version,
-    souls and Double Soul (exe4-compat from a recording's version and a save's event flags; the app's version preset).
+    OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's souls and
+    Double Soul (no version in the content: exe4-compat maps a recording's version and a save's event flags to the
+    souls; the app's presets name each version's six).
     Checked: the lab's souls/roll, guts and proto (unison, side1, turns) match every state through the change, and
     stop at the souls' charged shots (item 74); souls/refused's refusal. Frame comparisons (souls/roll, guts and proto
     unison, souls/refused): the UNITE button, the soul's choice and every custom screen frame exact but the late OK's
