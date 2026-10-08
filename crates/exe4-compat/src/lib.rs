@@ -217,6 +217,12 @@ pub struct KindEntry {
     /// The fraction of its Z is register garbage.
     #[serde(default)]
     pub scratch_z_fraction: bool,
+    /// Its position is its owner's (its first related object's), so it is
+    /// garbage where its owner's kind's is (an attachment a soul's image
+    /// holds, at the image's spawn registers on its first tick: a code
+    /// address of the change's, another on each console's ROM).
+    #[serde(default)]
+    pub scratch_with_owner: bool,
 }
 
 /// Where a ROM other than Red Sun's US one has what compat names by that
