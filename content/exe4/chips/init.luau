@@ -37,6 +37,7 @@ return merge {
     require("@self/flmline"),
     require("@self/fullcust"),
     require("@self/geyser"),
+    require("@self/grabbnsh"),
     require("@self/greenwd"),
     require("@self/guard"),
     require("@self/gunsol"),
