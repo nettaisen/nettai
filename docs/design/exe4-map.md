@@ -857,6 +857,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   normal), HolyPanl row 6 (the panel in front to holy), Snctuary row 7 (the own area to holy). The lab's chips/ (20),
   panels/holypanl and pnlretrn, status/holy-panel and sanctuary and the GunSols' (whose light fills Hole's holes)
   replay every frame; the hit recordings' fight frames are pixel-exact.
+- **NrthWind** (the dimming chips' variant 0x1C, `chips/nrthwind`): EXE6's and EXE5's controller (effect #0x39,
+  0x080E622C: @exelib/nrthwind/controller, now shared, its spawn the user's side alone) blowing EXE4's north wind
+  (objects/north_wind, WindSoul's change's). The lab's chips/0x08a-nrthwind (4) replay every frame and are
+  pixel-exact; EXE5's NrthWind recordings still match.
 - **Invis** (the dimming chips' action 0x0C, its variant 0x31, `chips/invis`): EXE6's Invisibl (@exelib/invisibl:
   effect object #0x5D, 0x080E8A68), 360 ticks, its sound EXE4's (0x109, in 0x0800C6BC). **PopUp** (variant 0x1E,
   `chips/popup`: EXE4's own controller, effect #0x3D, 0x080E6470) puts EXE4's glow over its user's navi (actor #0x5D,
@@ -947,6 +951,18 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   winds in and three times, 15 ticks apart, hits its four panels (no element, modifier 3, at its height). The tapes'
   Param3 0 course is actor #0x2F's (EXE4's other VideoMan, 0x080C2FC8), which no netbattle spawns. The lab's
   chips/0x116-videoman/top-row (no upper tape) and the twelve recordings replay every frame and are pixel-exact.
+  KendoMan (actor #0x43, 0x080C85E8) is EXE4's own; his controller (effect #0x66) runs the short course. He dashes
+  along his row to the panel before the first enemy body (or the field's edge, where he falls off solid ground and
+  goes), afterimages every other tick, and slashes the panel ahead (modifier 1); vanishes, reappears two panels on
+  facing back (on a solid panel with no body), glides and cuts the column behind him (region 4, no spark, effect row
+  0x17 with palette 2 added); then rushes home with his sword out (attachment row 0x2D, his own sheet 08-0D) and a hit
+  following him (attack #0x7C, the lingering hit, 100 ticks), afterimages of his side turned every fourth tick, until
+  he leaves solid ground. The rush's hit is spawned with its holder's slot at the address 0x60 (a constant where
+  0x080CC036 adds his own address): no holder keeps it, so nothing ends it early. His afterimages are the engine's
+  (effect #0x28, compat's `engine/afterimage`), with their shadow hidden: 0x080E5020's r7 byte 2 (1) hides it, as the
+  frames show (`shadow = "ground"`, as lib/cannon has for the GigaCans' first afterimage, draws one the original
+  doesn't). Sheet 08-0D, navi 13's in 0x08017F98 with NormalNavi's win banner, is KendoMan's: `kendoman` (BY_USE now
+  wins over the navi table's names). The lab's chips/0x113 to 0x115 (12) replay every frame and are pixel-exact.
 
 **For the next steps:**
 

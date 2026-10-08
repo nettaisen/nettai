@@ -12,6 +12,8 @@
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
+# The afterimage (effect #0x28, 0x080E503C: EXE6's `sub_80E33FA` object): KendoMan's dash's and rush's.
+"engine/afterimage" = { pool = "effect", index = 0x28 }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
@@ -205,6 +207,17 @@
 "videmn-ds/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
 "videoman/navi" = { pool = "actor", index = 0x3E }
 "videoman/tape" = { pool = "attack", index = 0x5D }
+# KendoMan's chips (action 0x0C's variant 0x37, 0x080E94AA): each chip's controller (the content's own; the original's
+# one object, effect #0x66, 0x080E9430), KendoMan and his rush's hit (attack #0x7C, 0x080DCC5C: his own kind of
+# objects/lingering_hit). His sword is the shared attachment.
+"kendoman/controller" = { pool = "effect", index = 0x66, scratch_position = true }
+"kendmn-sp/controller" = { pool = "effect", index = 0x66, scratch_position = true }
+"kendmn-ds/controller" = { pool = "effect", index = 0x66, scratch_position = true }
+"kendoman/navi" = { pool = "actor", index = 0x43 }
+"kendoman/rush-hit" = { pool = "attack", index = 0x7C, scratch_position = true }
+# NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
+# objects/north_wind's.
+"nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
 # original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
 "shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }
