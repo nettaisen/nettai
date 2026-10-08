@@ -22,6 +22,7 @@ return merge {
     require("@self/bubbler"),
     require("@self/burnman"),
     require("@self/cannon"),
+    require("@self/copydmg"),
     require("@self/counter"),
     require("@self/crakout"),
     require("@self/custswrd"),
