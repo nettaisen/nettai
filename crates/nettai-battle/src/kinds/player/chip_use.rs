@@ -42,9 +42,10 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     let mut charge = 0;
     if requested & request::CHARGED_CHIP != 0 {
         // The form's A-charge routine decides what the charged chip does;
-        // for the Null family the attack's chip id is cleared.
+        // for the Null family the attack's chip id is cleared (where the
+        // rules' `chip_use.charged_null_alt_routine` says).
         let chip = hand_entry(b, r, 0).chip;
-        let null = super::null_family(b, chip);
+        let null = b.game_rules().chip_use.charged_null_alt_routine && super::null_family(b, chip);
         let routine = if null {
             ai_mut(b, r).attack.chip = None;
             ai(b, r).alt_a_charge
@@ -565,7 +566,13 @@ fn charged_bonus(b: &Battle, r: ObjectRef, charge: u8) -> u16 {
     }
     let form = form_of(b, r).charged_bonus;
     let bonus = if form == Default::default() { navi_of(b, r).charged_bonus.unwrap_or_default() } else { form };
-    if bonus.paralyzes { damage_flags::PARALYZE } else { bonus.damage }
+    if bonus.paralyzes {
+        damage_flags::PARALYZE
+    } else if bonus.doubles {
+        damage_flags::DOUBLE
+    } else {
+        bonus.damage
+    }
 }
 
 /// Whether a chip is one a navi's or a form's rule is about.

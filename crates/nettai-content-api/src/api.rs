@@ -330,11 +330,12 @@ named_fields! {
         ChipLockout = "chip_lockout", U8, rw;
         /// Ticks before the B+Back special can be input again.
         BackSpecialCooldown = "back_special_cooldown", U8, rw;
-        /// The weapons the navi's buttons run (none: no weapon; the
-        /// buster's and charged shot's writable: chips change them).
+        /// The weapons the navi's buttons run (none: no weapon; writable:
+        /// chips change the buster's and charged shot's, EXE4's ProtoSoul's
+        /// status reset the B+Left special's, 0x0800E12C).
         BusterWeapon = "buster_weapon", Ref(Registry::Weapon, None), rw;
         ChargeShotWeapon = "charge_shot_weapon", Ref(Registry::Weapon, None), rw;
-        BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), ro;
+        BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), rw;
         /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
         /// the navi's counter, `sub_8014446` / `sub_801443C`).
         Tired = "tired", Bool, rw;
@@ -1051,12 +1052,18 @@ named_flags! {
 
 named_flags! {
     /// What a chip asks of an obstacle (`sub_800F884`, `sub_800F898`,
-    /// `sub_800F8B0`).
+    /// `sub_800F8B0`; EXE4's 0x0800B44C, ColdMan's: its flag2 0x2000 or
+    /// 0x4000, EXE6's 0x1000 or 0x2000).
     pub enum ObstacleRequest {
         Remove = "remove",
         Vanish = "vanish",
         /// Absorbed by the requester's side's navi.
         Absorb = "absorb",
+        /// Encased in ice: the role `hooks.encased` then puts an ice block
+        /// in its place.
+        EncaseInIce = "encase_in_ice",
+        /// Encased in a bubble: the role puts the bubble in its place.
+        EncaseInBubble = "encase_in_bubble",
     }
 }
 
