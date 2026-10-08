@@ -138,10 +138,29 @@ language = "en"
 "antidmg" = { name = "AntiDmg", description = "Sets trap\nand throw\nstars" }
 "antiswrd" = { name = "AntiSwrd", description = "Retaliate\nfor sword\ndamage" }
 "antirecv" = { name = "AntiRecv", description = "Damages\nenemy in\nrecovery" }
+"numbrman" = { name = "NumbrMan", description = "Bomb 3\nahead!\nHits 9sq" }
+"numbmn-sp" = { name = "NumbMnSP", description = "Bomb 3\nahead!\nHits 9sq" }
+"numbmn-ds" = { name = "NumbMnDS", description = "Bomb 3\nahead!\nHits 9sq" }
 "heatbrth" = { name = "HeatBrth", description = "Magma\nFirestorm\nattack!" }
 "blizzard" = { name = "Blizzard", description = "Snowstorm\nattack!\nIce Panel" }
 "elecshok" = { name = "ElecShok", description = "Cracker\nElectric\nblast" }
 "woodpwdr" = { name = "WoodPwdr", description = "Changes\npanels\nto grass" }
+"sparkman" = { name = "SparkMan", description = "SparkWave\nblinds\nenemy!" }
+"sprkmn-sp" = { name = "SprkMnSP", description = "SparkWave\nblinds\nenemy!" }
+"sprkmn-ds" = { name = "SprkMnDS", description = "SparkWave\nblinds\nenemy!" }
+"rush" = { name = "Rush", description = "" }
+"beat" = { name = "Beat", description = "" }
+"tango" = { name = "Tango", description = "" }
+"guard1" = { name = "Guard1", description = "Repels\nenemy's\nattack" }
+"guard2" = { name = "Guard2", description = "Repels\nenemy's\nattack" }
+"guard3" = { name = "Guard3", description = "Repels\nenemy's\nattack" }
+"flmline1" = { name = "FlmLine1", description = "Firebeam\n2sq ahead\n3sq long!" }
+"flmline2" = { name = "FlmLine2", description = "Firebeam\n2sq ahead\n3sq long!" }
+"flmline3" = { name = "FlmLine3", description = "Firebeam\n2sq ahead\n3sq long!" }
+"gunsol1" = { name = "GunSol1", description = "Sunshine\nappear w/\nButton" }
+"gunsol2" = { name = "GunSol2", description = "Sunshine\nappear w/\nButton" }
+"gunsol3" = { name = "GunSol3", description = "Sunshine\nappear w/\nButton" }
+"gunsolex" = { name = "GunSolEX", description = "Fires a\nspread\nsunbeam" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -259,6 +278,7 @@ language = "en"
 "042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
+"047-weapon-change" = { name = "Weapon Change" }
 "048-weapon-change" = { name = "Weapon Change" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }

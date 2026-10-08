@@ -22,7 +22,7 @@ local gridman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "gridman/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "at_once" },
 }
@@ -45,7 +45,7 @@ local gridman_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "gridman-sp/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "at_once" },
 }
@@ -67,7 +67,7 @@ local gridman_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "gridman-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(5),
     },
     auto_battle = { class = "at_once" },
 }

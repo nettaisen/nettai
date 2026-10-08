@@ -15,6 +15,9 @@ local navi_chips = require("../../lib/navi_chips/navi")
 local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local twinldrs = {}
 
 export type State = {
@@ -135,7 +138,7 @@ local function afterimages(me: Object, anim: number)
     local flip = flip_of(me)
     if anim == 5 then
         battle.afterimage(me, me.pos, {
-            sprite = parts.blades.sword.sprite,
+            sprite = parts.blade.sprite,
             anim = 0xB,
             flip = flip,
             lifetime = AFTERIMAGE_TICKS,
@@ -324,8 +327,8 @@ local function slash(me: Object)
     if me.phase_init == 0 then
         me.anim = 5
         me.anim_loaded = 6
-        attachment.attach(me, parts.blades.sword, "held", { anim = 0xB, while_dimmed = true })
-        battle.play_sound(parts.sounds.swing)
+        attachment.attach(me, parts.blade, "held", { anim = 0xB, while_dimmed = true })
+        battle.play_sound(parts.swing)
         me.timer = 0xA
         afterimages(me, 5)
         me.phase_init = 4
@@ -335,7 +338,7 @@ local function slash(me: Object)
         local x, y = me.panel_x + me.facing, me.panel_y
         hit(me, x, y, me.element, 0x10_0000, regions.wide)
         local cx, cy = field.center(x, y)
-        battle.effect(Vec3.new(cx, cy, 0x10_0000), parts.effects.wide, flip_of(me))
+        battle.effect(Vec3.new(cx, cy, 0x10_0000), WIDE_SLASH, flip_of(me))
         battle.shake_camera(1, 0xA)
         battle.palette_flash(0, 0xA, true, false)
     end
