@@ -416,6 +416,7 @@ language = "ja"
 "068-b-left-ability-activation" = { name = "B+左で技発動" }
 "069-b-left-ability-activation" = { name = "B+左で技発動" }
 "070-b-left-ability-activation" = { name = "B+左で技発動" }
+"071-b-left-ability-activation" = { name = "B+左で技発動" }
 "072-b-left-ability-activation" = { name = "B+左で技発動" }
 "073-b-left-ability-activation" = { name = "B+左で技発動" }
 "076-all-guard-1-2" = { name = "オールガード1/2" }

@@ -1926,8 +1926,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
-    the routines of chips still to port (0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51
-    BugBomb and 0x55 PnlRetrn are in, cards 41, 51, 57, 70, 79, 82, 115 and 118 matching),
+    the routines of chips (all in: 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind
+    and 0x55 PnlRetrn, cards 41, 51, 57, 70, 71, 79, 82, 115 and 118 matching),
     the routines that load no chip (0x04: others' own actions; 0x20, the bubble, is in: card 108; 0x28, GutsSoul's
     machine gun with no attack variable set, is in: card 20, navis/megaman/weapons/machine_gun; 0x31, one of the eight
     Anti chips at random with its telop hidden from its user too (AIAttackVars +0x0F: the attack's `telop_hidden`), is
