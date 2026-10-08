@@ -9,6 +9,7 @@
 
 local airshot = require("../../../chips/airshot").airshot
 local ball = require("../../../chips/ball").ball
+local breath_chips = require("../../../chips/breath")
 local bubbler = require("../../../chips/bubbler").bubbler
 local cannon = require("../../../chips/cannon").cannon
 local crakout_chips = require("../../../chips/crakout")
@@ -37,8 +38,9 @@ local function fires(id: string, chip: Chip, ticks: { number }): Weapon
     }
 end
 
--- Rows 0x29 to 0x5F of the charge table: 60 ticks at every Charge, but the Thunders' 120, 150 and 180, FullCust's 90,
--- and the Charge 5 of Bubbler, EnergBom and FullCust (rows 0x2D's, 0x46's and 0x4C's first entries).
+-- Rows 0x29 to 0x60 of the charge table: 60 ticks at every Charge, but the Thunders' 120, 150 and 180, FullCust's 90,
+-- and the Charge 5 of Bubbler, EnergBom, FullCust and ElecShok (rows 0x2D's, 0x46's, 0x4C's and 0x61's first
+-- entries).
 local SIXTY: { number } = { 60, 60, 60, 60, 60, 60 }
 
 chips.cannon = fires("megaman/cannon", cannon, SIXTY) -- 0x29
@@ -63,7 +65,11 @@ chips.megenbom = fires("megaman/megenbom", energbom_chips.megenbom, SIXTY) -- 0x
 chips.ball = fires("megaman/ball", ball, SIXTY) -- 0x50
 chips.wideblde = fires("megaman/wideblde", sword_chips.wideblde, SIXTY) -- 0x52
 chips.longblde = fires("megaman/longblde", sword_chips.longblde, SIXTY) -- 0x53
+chips.blizzard = fires("megaman/blizzard", breath_chips.blizzard, SIXTY) -- 0x5B
+chips.heatbrth = fires("megaman/heatbrth", breath_chips.heatbrth, SIXTY) -- 0x5C
+chips.woodpwdr = fires("megaman/woodpwdr", breath_chips.woodpwdr, SIXTY) -- 0x5D
 chips.repair = fires("megaman/repair", repair, SIXTY) -- 0x5E
 chips.airshot = fires("megaman/airshot", airshot, SIXTY) -- 0x5F
+chips.elecshok = fires("megaman/elecshok", breath_chips.elecshok, { 60, 60, 60, 60, 60, 80 }) -- 0x60
 
 return chips
