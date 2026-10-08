@@ -74,6 +74,7 @@ return merge {
     require("@self/muramasa"),
     require("@self/navi-20"),
     require("@self/neovari"),
+    require("@self/numbrbl"),
     require("@self/numbrman"),
     require("@self/panlgrab"),
     require("@self/pnlretrn"),
