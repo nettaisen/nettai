@@ -11,4 +11,6 @@ return {
     mixed_modifiers = false,
     -- Beat takes any Mega or Giga chip, dark or not.
     beat_spares_dark = false,
+    -- A dimming's start hides the chip window on its starter's console only (`object_timefreezeBegin`).
+    dimming_hides_every_window = false,
 }

@@ -174,6 +174,11 @@ pub struct ChipUseRules {
     /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
     /// only if it isn't dark; EXE6's `sub_80106C0` and EXE5's take any.
     pub beat_spares_dark: bool,
+    /// A dimming's start hides the chip window on every console: EXE4's
+    /// (0x08008BD8 calls `sub_801DACC(0x10)` whoever started it); EXE6's
+    /// and EXE5's `object_timefreezeBegin` only on its starter's
+    /// (`battle_networkInvert`). Presentation: the HUD's (`ChipHud`).
+    pub dimming_hides_every_window: bool,
 }
 
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and

@@ -298,6 +298,12 @@ pub struct ActorData {
     /// and 0x080E39FA: full or not); nothing reads A's. Kept until the
     /// next ask; EXE6's and EXE5's decodes keep none.
     pub b_charge_at_ask: u8,
+    /// EXE4's rapid presses (AIData +0x12, the count, and +0x11, the
+    /// ticks left for the next): a form's `rapid_presses` asks for the
+    /// forced charged shot at its count (GutsSoul's, 0x0800BE50); the shot
+    /// clears both as it ends (action 0x10, 0x080EBE84).
+    pub rapid_presses: u8,
+    pub rapid_window: u8,
     pub total_damage_taken: u16,
     pub pad: Pad,
     /// Mirror of `pad` maintained while dimmed.
