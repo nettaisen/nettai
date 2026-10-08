@@ -239,7 +239,4 @@ regions.field_solid_left = new.region { field = { require = 0x00000010, forbid =
 -- Region 0x88: the field's panels with every `require` bit and no `forbid` bit.
 regions.field_solid_right = new.region { field = { require = 0x00000030, forbid = 0x00000000 } }
 
--- The anchor and the panel below it (region 0x19: EXE4's BurnMan's upper pillar's flame).
-regions.low = new.region { panels = { { 0, 0 }, { 0, 1 } } }
-
 return regions
