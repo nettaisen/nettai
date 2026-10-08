@@ -360,6 +360,11 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# Snake's controller (0x080E5B50; its position the dimming handler's registers), its nest (0x080D7DB8) and its snakes
+# (0x080D80E4).
+"snake/controller" = { pool = "effect", index = 0x32, scratch_position = true }
+"snake/nest" = { pool = "attack", index = 0x53 }
+"snake/snake" = { pool = "attack", index = 0x54 }
 # Jealousy's controller (0x080E5EF4; its position the dimming handler's registers).
 "jealousy/controller" = { pool = "effect", index = 0x36, scratch_position = true }
 # Guardian's controller (0x080E7ED0; its position the dimming handler's registers), its statue (0x080DCDA8) and its
