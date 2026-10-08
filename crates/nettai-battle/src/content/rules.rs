@@ -179,6 +179,11 @@ pub struct ChipUseRules {
     /// and EXE5's `object_timefreezeBegin` only on its starter's
     /// (`battle_networkInvert`). Presentation: the HUD's (`ChipHud`).
     pub dimming_hides_every_window: bool,
+    /// A charged use of a Null-family chip runs the form's alternative
+    /// A-charge routine, the attack's chip cleared (EXE6's `sub_800FB54`:
+    /// the Beast forms'); EXE5's (0x0800D9CC) and EXE4's (0x0800B72C) use
+    /// any charged chip with its charge, Null or not.
+    pub charged_null_alt_routine: bool,
 }
 
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and
