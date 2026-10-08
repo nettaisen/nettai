@@ -23,8 +23,20 @@ export type State = {
 }
 
 -- A game's controller: its kind's key, its hand's kind, the flash on each
--- panel taken back (EXE6's effect 0x3B) and the sound of the taking back.
-export type Spec = { id: string, hand: Kind, returned: Effect, return_sound: Sound }
+-- panel taken back (EXE6's effect 0x3B) and the sound of the taking back;
+-- the game's own taking back where it isn't EXE6's (EXE4's counts the
+-- other side's panels in the user's home columns, 0x080E4836, and takes
+-- none back: how many), and its wait after the strikes where it isn't
+-- EXE6's 60 ticks set as the wait starts (EXE4's 90, set as the strikes
+-- end, 0x080E47FA).
+export type Spec = {
+    id: string,
+    hand: Kind,
+    returned: Effect,
+    return_sound: Sound,
+    take_back: ((me: Object) -> number)?,
+    after_strikes: number?,
+}
 
 local INTERVAL, AFTER = 0x1E, 0x3C
 -- Where the hands go (`byte_80E2E24`, by side): the other side's player
@@ -77,7 +89,7 @@ local function effect(me: Object, spec: Spec)
     local s = me.state :: State
     local phase = me.phase
     if phase == 0 then
-        s.strikes = take_back(me, spec.returned)
+        s.strikes = if spec.take_back then spec.take_back(me) else take_back(me, spec.returned)
         me.timer = INTERVAL
         if s.strikes == 0 then
             dimming_chips.done(me)
@@ -99,8 +111,11 @@ local function effect(me: Object, spec: Spec)
             end
         end
         me.phase, me.phase_init = 8, 0
+        if spec.after_strikes then
+            me.timer = spec.after_strikes
+        end
     elseif phase == 8 then
-        if me.phase_init == 0 then
+        if me.phase_init == 0 and not spec.after_strikes then
             me.timer = AFTER
             me.phase_init = 4
         end
