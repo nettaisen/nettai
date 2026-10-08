@@ -195,16 +195,18 @@ impl HudState {
             let closing = b.round.mode == mode::CUSTOM && icons;
             let banner = fighting
                 && matches!(b.fight.state, fight::CUSTOM_REVERT | fight::CUSTOM_SEQUENCE | fight::SETUP | fight::START_BANNER);
-            // (A navi changing form as the fight runs, EXE4's soul change
+            // (A navi changing form as the fight starts, EXE4's soul change
             // from its status routine, decides nothing until it is done:
             // the task the screen's close started stays on through it and
             // the tick after, 0x080EBA44; the next tick's decision sets the
-            // window. A change done before the fight runs, EXE5's soul
-            // change through the turn's banner, leaves the fight its first
-            // ticks as any turn's.)
+            // window.)
+            // (A change the turn's sequencer runs before the fight, EXE5's
+            // Soul Unison through the banner, is no such change: the fight's
+            // first ticks keep the window as ever.)
             let in_fight = fighting && b.fight.state == fight::FIGHTING;
-            let changing = in_fight && b.player(b.setup.local_side).is_some_and(|r| nettai_battle::kinds::player::changing_form(b, r));
-            let ended = self.changing_was && !changing;
+            let changing =
+                in_fight && b.player(b.setup.local_side).is_some_and(|r| nettai_battle::kinds::player::changing_form(b, r));
+            let ended = self.changing_was && !changing && in_fight;
             let undecided = in_fight
                 && !b.chip_hud_for(b.setup.local_side).window
                 && (self.early_fight_ticks < 4 || changing || ended);

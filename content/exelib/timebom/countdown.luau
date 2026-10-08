@@ -1,6 +1,6 @@
 --!strict
--- The countdown bomb, as EXE5 and EXE6 share it (EXE6's attack object #0x4B,
--- `sub_80CD8EC`; EXE5's)
+-- The countdown bomb, as the three games share it (EXE6's attack object
+-- #0x4B, `sub_80CD8EC`; EXE5's; EXE4's 0x080D6BF8, the older code)
 -- the TimeBom chips set (./controller): a field obstacle that counts 3, 2,
 -- 1 and blows up the whole enemy area (a hit over it and bursts over its
 -- panels: objects/panel_bursts), unless it is broken first (a small puff,
@@ -20,6 +20,11 @@
 -- of its look (`countdown.make_kind`): its sprite, sounds, the blast's
 -- collision, how it looks absorbed, whether any removal just puffs (no
 -- absorbing, no blinking out), its effects and its panel bursts' kind.
+-- EXE4's older code is a look too: no NameID (a variant's `identity`
+-- none), no tracking released (`untracked`), its blast even once the
+-- battle is over (`blasts_after_battle`), no removal read as it goes, a
+-- puff only when broken (`reads_no_removal`), and its own obstacle rows
+-- (`actions`: no frozen, bubbled or blink-away ones).
 
 local panel_bursts = require("../panel_bursts")
 local regions = require("../regions")
@@ -60,7 +65,7 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
     -- enemy area, for the side opposite its panel's, bursts over it, a camera
     -- shake (two for TimeBom+), the sound.
     local function explode(me: Object)
-        if battle.over() then
+        if battle.over() and not look.blasts_after_battle then
             return
         end
         me.visible = false
@@ -97,7 +102,9 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
     -- Gone: hidden, out of the field-object slots, destroyed next update.
     local function leave(me: Object)
         me.visible = false
-        obstacle.release_tracking(me)
+        if not look.untracked then
+            obstacle.release_tracking(me)
+        end
         obstacle.unregister(me)
         me:set_lifecycle("destroy")
     end
@@ -196,6 +203,16 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
     -- chip removed it.
     local function destroyed(me: Object)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
+        if look.reads_no_removal then
+            -- (EXE4's 0x080D6E6C: broken, a puff; blown up, nothing.)
+            if me.hp == 0 then
+                battle.play_sound(PUFF_SOUND)
+                battle.effect(me.pos, look.explosion)
+            end
+            me.collision:set_region(nil)
+            leave(me)
+            return
+        end
         me.collision:set_region(nil)
         local how = obstacle.removal(me)
         if how == "broken" then
@@ -229,6 +246,15 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
     -- The bomb's action table (`off_80CD9F4`): its own actions and the
     -- framework's shared ones.
     local function act(me: Object, a: number)
+        local own = look.actions
+        if own and a ~= APPEAR and a ~= DESTROYED and a ~= COUNTDOWN then
+            local f = own[a]
+            if not f then
+                error(string.format("countdown bomb action %d reads past its table", a))
+            end
+            f(me)
+            return
+        end
         if a == APPEAR then
             appear(me)
         elseif a == 1 then
@@ -284,7 +310,9 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
         me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
         me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
         battle.play_sound(PLACE_SOUND)
-        me.identity = v.identity
+        if v.identity then
+            me.identity = v.identity
+        end
         me.hp, me.max_hp = v.hp, v.hp
         if not me:create_collision() then
             me:free()

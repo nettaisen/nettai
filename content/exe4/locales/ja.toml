@@ -259,6 +259,34 @@ language = "ja"
 "nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
 "vdoll" = { name = "ワラニンギョウ", description = "おそろしいノロイの\nワラニンギョウを\n3マス前方になげる" }
 "curse" = { name = "ノロイ", description = "" }
+"rollaro1" = { name = "ロールアロー1", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"rollaro2" = { name = "ロールアロー2", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"rollaro3" = { name = "ロールアロー3", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"metlger1" = { name = "メタルギア1", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"metlger2" = { name = "メタルギア2", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"metlger3" = { name = "メタルギア3", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"woodman" = { name = "ウッドマン", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"woodmn-sp" = { name = "ウッドマンSP", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"woodmn-ds" = { name = "ウッドマンDS", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"laserman" = { name = "レーザーマン", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
+"lasrmn-sp" = { name = "レーザーマンSP", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
+"lasrmn-ds" = { name = "レーザーマンDS", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
+"boybomb1" = { name = "ボーイズボム1", description = "自分のエリアないに\nボーイズボム!\nおすとてきエリアへ" }
+"boybomb2" = { name = "ボーイズボム2", description = "自分のエリアないに\nボーイズボム!\nおすとてきエリアへ" }
+"boybomb3" = { name = "ボーイズボム3", description = "自分のエリアないに\nボーイズボム!\nおすとてきエリアへ" }
+"hawkcut1" = { name = "ハヤブサギリ1", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
+"hawkcut2" = { name = "ハヤブサギリ2", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
+"hawkcut3" = { name = "ハヤブサギリ3", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
+"panlsht1" = { name = "パネルシュート1", description = "目の前のパネルを\nうきあがらせて\n前方にとばして攻撃" }
+"panlsht2" = { name = "パネルシュート2", description = "前後のパネルを\nうきあがらせて\n前方にとばして攻撃" }
+"panlsht3" = { name = "パネルシュート3", description = "上下左右のパネルを\nうきあがらせて\n前方にとばして攻撃" }
+"slogauge" = { name = "ヘビーゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがおちる" }
+"fstgauge" = { name = "クイックゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがあがる" }
+"bass" = { name = "フォルテ", description = "バトルフィールドの\n右はんぶんにはなつ\nフォルテバスター!" }
+"timebomb" = { name = "カウントボム", description = "てきエリアにじげん\nばくだんをセットし\nエリア中にばくはつ" }
+"blinder" = { name = "ブラインド", description = "きょうりょくな光で\nあいてをもうもく\nじょうたいにする!" }
+"mine" = { name = "ステルスマイン", description = "てきエリアのどこか\nに見えないじらいを\nセットする!" }
+"bassanly" = { name = "フォルテアナザー", description = "いちどだけまがる\nリングを4発\nなげつける!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
@@ -356,6 +384,7 @@ language = "ja"
 "017-custom2" = { name = "カスタム2" }
 "018-megafolder2" = { name = "メガフォルダ2" }
 "019-buster-attack-10" = { name = "バスター攻撃力10" }
+"020-charge-shot-switch" = { name = "チャージ武器を変更" }
 "021-charge-shot-switch" = { name = "チャージ武器を変更" }
 "022-charge-shot-switch" = { name = "チャージ武器を変更" }
 "023-charge-shot-switch" = { name = "チャージ武器を変更" }
@@ -375,6 +404,7 @@ language = "ja"
 "037-max-hp-up" = { name = "マックスHPを強化" }
 "038-max-hp-up" = { name = "マックスHPを強化" }
 "039-b-left-ability-activation" = { name = "B+左で技発動" }
+"040-b-left-ability-activation" = { name = "B+左で技発動" }
 "041-b-left-ability-activation" = { name = "B+左で技発動" }
 "042-b-left-ability-activation" = { name = "B+左で技発動" }
 "043-buster-patch" = { name = "バスターを改造" }
@@ -405,6 +435,7 @@ language = "ja"
 "068-b-left-ability-activation" = { name = "B+左で技発動" }
 "069-b-left-ability-activation" = { name = "B+左で技発動" }
 "070-b-left-ability-activation" = { name = "B+左で技発動" }
+"071-b-left-ability-activation" = { name = "B+左で技発動" }
 "072-b-left-ability-activation" = { name = "B+左で技発動" }
 "073-b-left-ability-activation" = { name = "B+左で技発動" }
 "076-all-guard-1-2" = { name = "オールガード1/2" }
@@ -412,6 +443,7 @@ language = "ja"
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }
 "079-charge-shot-switch" = { name = "チャージ武器を変更" }
 "080-charge-shot-switch" = { name = "チャージ武器を変更" }
+"081-charge-shot-switch" = { name = "チャージ武器を変更" }
 "082-charge-shot-switch" = { name = "チャージ武器を変更" }
 "083-charge-shot-switch" = { name = "チャージ武器を変更" }
 "084-charge-shot-switch" = { name = "チャージ武器を変更" }

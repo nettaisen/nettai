@@ -259,6 +259,34 @@ language = "en"
 "nrthwind" = { name = "NrthWind", description = "Wind blws\noff aura,\nbarriers" }
 "vdoll" = { name = "VDoll", description = "Throws\nVDoll\nahead" }
 "curse" = { name = "Curse", description = "" }
+"rollaro1" = { name = "RollAro1", description = "RollArrow\ndestroys\nchips" }
+"rollaro2" = { name = "RollAro2", description = "RollArrow\ndestroys\nchips" }
+"rollaro3" = { name = "RollAro3", description = "RollArrow\ndestroys\nchips" }
+"metlger1" = { name = "MetlGer1", description = "Gear\ncrushes\nenmy area" }
+"metlger2" = { name = "MetlGer2", description = "Gear\ncrushes\nenmy area" }
+"metlger3" = { name = "MetlGer3", description = "Gear\ncrushes\nenmy area" }
+"woodman" = { name = "WoodMan", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-sp" = { name = "WoodMnSP", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-ds" = { name = "WoodMnDS", description = "WoodTowr\npierce in\nenmy area" }
+"laserman" = { name = "LaserMan", description = "A laser\npierces\n1 thru!" }
+"lasrmn-sp" = { name = "LasrMnSP", description = "A laser\npierces\n1 thru!" }
+"lasrmn-ds" = { name = "LasrMnDS", description = "A laser\npierces\n1 thru!" }
+"boybomb1" = { name = "BoyBomb1", description = "Places\nBoyBom in\nyour area" }
+"boybomb2" = { name = "BoyBomb2", description = "Places\nBoyBom in\nyour area" }
+"boybomb3" = { name = "BoyBomb3", description = "Places\nBoyBom in\nyour area" }
+"hawkcut1" = { name = "HawkCut1", description = "Cut twice\nonce wide\nonce long" }
+"hawkcut2" = { name = "HawkCut2", description = "Cut twice\nonce wide\nonce long" }
+"hawkcut3" = { name = "HawkCut3", description = "Cut twice\nonce wide\nonce long" }
+"panlsht1" = { name = "PanlSht1", description = "Lifts\npanel and\nthrows it" }
+"panlsht2" = { name = "PanlSht2", description = "Lifts\npanel and\nthrows it" }
+"panlsht3" = { name = "PanlSht3", description = "Lifts\npanel and\nthrows it" }
+"slogauge" = { name = "SloGauge", description = "CustGauge\nTemporary\nslow-down" }
+"fstgauge" = { name = "FstGauge", description = "CustGauge\nTemporary\nspeed-up" }
+"bass" = { name = "Bass", description = "Buster\nrake half\nenmy area" }
+"timebomb" = { name = "TimeBomb", description = "An area-\nwide time\nbomb" }
+"blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
+"mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
+"bassanly" = { name = "BassAnly", description = "A ring\nthat hits\n4 times" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -356,6 +384,7 @@ language = "en"
 "017-custom2" = { name = "Custom2" }
 "018-megafolder2" = { name = "MegaFolder2" }
 "019-buster-attack-10" = { name = "Buster Attack 10" }
+"020-charge-shot-switch" = { name = "Charge Shot Switch" }
 "021-charge-shot-switch" = { name = "Charge Shot Switch" }
 "022-charge-shot-switch" = { name = "Charge Shot Switch" }
 "023-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -375,6 +404,7 @@ language = "en"
 "037-max-hp-up" = { name = "Max HP Up" }
 "038-max-hp-up" = { name = "Max HP Up" }
 "039-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"040-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "041-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "043-buster-patch" = { name = "Buster Patch" }
@@ -405,6 +435,7 @@ language = "en"
 "068-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "070-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"071-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "076-all-guard-1-2" = { name = "All Guard 1/2" }
@@ -412,6 +443,7 @@ language = "en"
 "078-first-life-aura" = { name = "First Life Aura" }
 "079-charge-shot-switch" = { name = "Charge Shot Switch" }
 "080-charge-shot-switch" = { name = "Charge Shot Switch" }
+"081-charge-shot-switch" = { name = "Charge Shot Switch" }
 "082-charge-shot-switch" = { name = "Charge Shot Switch" }
 "083-charge-shot-switch" = { name = "Charge Shot Switch" }
 "084-charge-shot-switch" = { name = "Charge Shot Switch" }

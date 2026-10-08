@@ -664,6 +664,9 @@ export type ZSaverLook = {
     refreshes_form_overlay: boolean,
     recovery_clears_moving: boolean,
     blade: AttachmentLook,
+    -- The blade by its holder in the overlay slot (EXE5's 0x080EC082: a
+    -- soul's Chaos Unison blade); none: `blade`.
+    held_blade: ((me: Object) -> AttachmentLook)?,
     blade_anim: (me: Object) -> number,
     is: CollisionType,
     hits: CollisionType,
@@ -701,6 +704,49 @@ export type NumberBallLook = {
 export type NumberBall = {
     kind: Kind,
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
+}
+
+-- A game's Blinder (@exelib/blinder/controller): its controller kind's id, its sound, and the blinding hit's self
+-- type, target and status.
+export type BlinderLook = {
+    id: string,
+    sound: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+    status: Status,
+}
+
+-- A game's BoyBomb bomb (@exelib/boybomb/bomb): its kind's id, sprite and NameID (none: none); its body's collision
+-- types and its blast's (and the blast's effect, laid over the 3x3, and sound); the effect and sound as it comes, and
+-- its breaking's; the effect when a chip removed it (none: it reads no removal and always breaks); what may not be on
+-- its panel for it to stand there, by its side; how it takes hits; the game's obstacle rows (1, 3 to 7, by the
+-- framework's numbers); and EXE5's additions: its panel reserved until it stands, the tracking it releases as it goes,
+-- and its HP dropped for a bad panel or the battle's end only while not dimmed (EXE4's `breaks_while_dimmed`); its
+-- spawn taking its side alone (EXE4's `side_only`).
+export type BoyBombLook = {
+    id: string,
+    sprite: SpriteAsset,
+    identity: Identity?,
+    body: { is: CollisionType, hits: CollisionType },
+    blast: { is: CollisionType, hits: CollisionType, effect: Effect, sound: Sound },
+    comes: Effect,
+    place_sound: Sound,
+    broken: Effect,
+    break_sound: Sound,
+    removed: Effect?,
+    stand_forbid: { [number]: number },
+    push: ObstaclePush,
+    actions: { [number]: (Object) -> () },
+    reserves_panel: boolean?,
+    releases_tracking: boolean?,
+    breaks_while_dimmed: boolean?,
+    side_only: boolean?,
+}
+
+-- BoyBomb's bomb made for a game (@exelib/boybomb/bomb): its kind, and its spawn for a controller on (x, y).
+export type BoyBomb = {
+    kind: Kind,
+    spawn: (controller: Object, x: number, y: number, element: number, damage: number) -> Object?,
 }
 
 -- A game's NumbrBl NumberMan (@exelib/numbrbl/numberman): his kind's id, sprite and palette, his appearing sound, his
@@ -1338,7 +1384,7 @@ export type CountdownVariant = {
     appear_anim: number,
     idle_anim: number,
     hp: number,
-    identity: Identity,
+    identity: Identity?,
     class: number,
     collision: { is: CollisionType, hits: CollisionType },
     strong_shake: boolean?,
@@ -1504,6 +1550,13 @@ export type CountdownLook = {
     explosion: Effect,
     puff: Effect,
     bursts: Kind,
+    -- EXE4's older code: it releases no tracking as it goes; it blows up even once the battle is over; it reads no
+    -- removal as it goes (broken, a puff; blown up, nothing); its own obstacle rows (1, 3 to 7, by the framework's
+    -- numbers) in place of the shared ones and the blink-away.
+    untracked: boolean?,
+    blasts_after_battle: boolean?,
+    reads_no_removal: boolean?,
+    actions: { [number]: (Object) -> () }?,
 }
 
 -- A lance's hit: what it is and hits, its spark, hit modifier and bug.
