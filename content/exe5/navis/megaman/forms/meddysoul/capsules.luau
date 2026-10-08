@@ -33,17 +33,10 @@ type Screen = {
 local SLOTS = { 8, 9 }
 local BUTTONS = { "capsule_1", "capsule_2" }
 
--- What each capsule mixes into a chip (0x08023824): the hand's modifier bits, which the chip's use turns into its
--- damage word's confusion (0x2000), blindness (0x1000), paralysis (0x4000) or HP bug (0x0800), 0x08010368, or into
--- its user's heal, a tenth of its HP (0x0800FFF6); the chip-use rules' `mixed_modifiers`.
--- (By the capsule's id: a chip the state holds is its definition, not this module's table.)
-local MIXES: { [string]: number } = {
-    yelcapsl = 0x04,
-    blkcapsl = 0x08,
-    whicapsl = 0x02,
-    prpcapsl = 0x20,
-    pnkcapsl = 0x10,
-}
+-- What a capsule mixes into a chip (0x08023824, the capsule's `capsule_mix`): the hand's modifier bits, which the
+-- chip's use turns into its damage word's confusion (0x2000), blindness (0x1000), paralysis (0x4000) or HP bug
+-- (0x0800), 0x08010368, or into its user's heal, a tenth of its HP (0x0800FFF6); the chip-use rules'
+-- `mixed_modifiers`.
 -- The capsules a screen may offer (0x08025E60), and under a quarter of the HP (0x08025E80).
 local OFFERED = {
     whicapsl, yelcapsl, blkcapsl, prpcapsl, pnkcapsl, blkcapsl, blkcapsl, whicapsl,
@@ -145,7 +138,7 @@ local window: SoulWindow = {
             -- 0x080237B4
             if not fading then
                 local chip = (if st.mix_capsule == 1 then st.capsule_1 else st.capsule_2) :: Chip
-                local mix = MIXES[chip.id :: string]
+                local mix = (chip :: any).capsule_mix :: number?
                 if mix == nil then
                     error(string.format("%s is no capsule (0x08023824 has five entries)", chip.id :: string))
                 end
