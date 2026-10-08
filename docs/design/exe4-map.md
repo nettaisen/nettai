@@ -2083,8 +2083,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      *done* (souls/fire/chip); the flame charged (0x0C, 0x0800CCAE: 50, hit 0x9E, three panels, action 0x19) *done*
      (souls/fire/unison); lava heals it 50, as raw fire damage (a barrier takes it), and turns normal, with the heal's
      sparkle and sound (0x0801313E, 0x080131B8: rules/panels) *done* (souls/fire/lava, lava-barrier).
-   - **ThunderSoul (6).** Elec (0x0800C964) *open*; an uncharged damaging Null or Elec chip that isn't a dimming chip
-     paralyzes (0x0800C4C4: the damage's 0x4000) *open*; charged 0x58 (0x0800D298) *open*.
+   - **ThunderSoul (6).** Elec (0x0800C964) *done* (souls/thunder/weakness: Lance's wood); an uncharged damaging Null
+     or Elec chip that isn't a dimming chip paralyzes (0x0800C4C4: the damage's 0x4000; the form's `paralyzing_chips`)
+     *done* (souls/thunder/paralyze); the row shot charged (0x58, 0x0800D298: 20, elec, hit 0x8A; action 0x47 and
+     attack 0x6D, objects/row_shot's row 0: the hand, 0c-36, and the elec shot, 0c-37, paralyzing 90 ticks) *done*
+     (souls/thunder/unison, side1). The image against the HP number (SearchSoul's below) shows in
+     souls/thunder/side1 too, frames 494 to 532, ThunderMan's blinking image.
    - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0) *open*; a sword chip that
      isn't a dimming chip charges on A (0x0F) and doubles charged (0x0800C47A) *open*; WideSwrd charged (0x3E,
      0x0800D148) *open*; the swords' blade 13 (0x080EB628, 0x080EB6AC, 0x080ED89C, 0x080EE822) and their hit modifiers
