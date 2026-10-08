@@ -442,6 +442,15 @@ export type SnakeState = { target_x: number, target_y: number, nest: Object?, sl
 -- A nest's scan: where it is (bytes, the column stepping off the field when the scan ends).
 export type SnakeScan = { scan_x: number, scan_y: number }
 
+-- A game's Snake on the batch nest (@exelib/snake/batch): its nest's and controller's kind ids, its snake kind, and
+-- EXE4's target slip (@exelib/snake's `best_row_slip`).
+export type SnakeBatchSpec = { nest_id: string, controller_id: string, snake: Kind, best_row_slip: boolean? }
+export type SnakeBatch = {
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+    nest: Kind,
+    controller: Kind,
+}
+
 -- A game's tank shell (@exelib/tankcan/shell): what it is and hits, its sounds (the shot, a hit or blast), the
 -- edge blast's look and collision type, the explosions' and a hit's burst's effects.
 export type TankShellLook = {
