@@ -156,7 +156,7 @@
 "fireman/navi" = { pool = "actor", index = 0x12 }
 "fireman/flame" = { pool = "attack", index = 0x09, scratch_position = true }
 # GutsMan's chips (action 0x0C's variant 0x05, 0x080E3304): each chip's controller (the content's own; the original's
-# one object, effect #0x10, 0x080E3200), GutsMan, his quake, and its falling rocks and their chips (attack #0x1D,
+# one object, effect #0x10, 0x080E31E8), GutsMan, his quake, and its falling rocks and their chips (attack #0x1D,
 # 0x080D08BC, and effect #9, 0x080E2914: the content's own kinds of objects/falling_rock).
 "gutsman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
 "gutsmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
@@ -165,6 +165,15 @@
 "gutsman/quake" = { pool = "attack", index = 0x1C, scratch_position = true }
 "gutsman/rock" = { pool = "attack", index = 0x1D }
 "gutsman/rock-chip" = { pool = "effect", index = 0x09 }
+# AquaMan's chips (action 0x0C's variant 0x07, 0x080E3A74): each chip's controller (the content's own; the original's
+# one object, effect #0x16, 0x080E3958), AquaMan, the spout on his head (actor #0x5C, NumberMan's face's object, its
+# sprite row 1: his own kind of @exelib/numbrman/face) and his water gun.
+"aquaman/controller" = { pool = "effect", index = 0x16, scratch_position = true }
+"aquamn-sp/controller" = { pool = "effect", index = 0x16, scratch_position = true }
+"aquamn-ds/controller" = { pool = "effect", index = 0x16, scratch_position = true }
+"aquaman/navi" = { pool = "actor", index = 0x1A }
+"aquaman/spout" = { pool = "actor", index = 0x5C }
+"aquaman/water-gun" = { pool = "attack", index = 0x33 }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
 # original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
 "shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }

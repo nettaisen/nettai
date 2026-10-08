@@ -882,6 +882,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the list, whose handler runs on this stack in system mode as EXE6's does, could leave other bytes there; the
   engine has no interrupts.) The lab's chips/0x0e0-gutsman/few-panels (the quake finding five) replays every
   frame and its fight frames are pixel-exact.
+  AquaMan (actor #0x1A) and his water gun (attack #0x33, 0x080D3468) are EXE4's own: on a solid panel nothing stands
+  on (else gone at once in a puff) the gun pops up and sprays the panel ahead of it once and the one past it twice
+  (aqua hits, modifier 3), then sinks; AquaMan waits for it to go. While it readies, it counts its side's presses of A
+  while dimmed into a strength nothing reads (0x080D362C loads it and sprays twice). The spout on AquaMan's head is
+  NumberMan's face's object (actor #0x5C) with its sprite row 1 (10-0C), his own kind of @exelib/numbrman/face. His
+  controller, like GutsMan's, gives him B's charge at the ask as his Param2, which he never reads: no EXE4 object
+  reads `b_charge_at_ask` (item 50's), as no other code reads the AI data's +0x15.
 
 **For the next steps:**
 
