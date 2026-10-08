@@ -1349,8 +1349,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.3 Flow, stages and the link
 
-16. **The time limit: done; no double KO: open** (the lab's first batch: when both navis are deleted on the same tick
-    side 1's shot resolves first and side 1 survives; shape: the KO order as data). **Done: the turn timer and the
+16. **Done: the time limit and the double KO.** No double KO: when both navis' shots are due on one tick, side 1's
+    lands first, side 0's deletion ends the battle and side 0's shot, whose tick tests the battle's end first
+    (0x080CD3DE), goes without landing (the lab's flow/ko-double: both at 1 HP shooting on the fight's first tick).
+    The engine's update order and the projectile's own test give it, no rule: flow/ko-double replays every frame. **Done: the turn timer and the
     judge** (the lab's timer/win, loss and draw, each on a Red Sun and a Blue Moon console: single battles, battle type
     0x47, played to the 15th custom screen; every frame replays and every frame compares). EXE4's is EXE6's machine: the
     fight's timer runs (0x08007E4E) where event flag 0x1187 is clear (the main subsystem's, not a netbattle's), the
@@ -1576,7 +1578,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     nor the B+Left special and charges nothing (0x0800BBB2); whether a chip charges on A is 0x0800BC78's test by soul and
     the chip's +7 and +9 (souls 5, 7, 9, 11), which the engine asks of the form's `charged_chips`.
 49. **Controller 2** (NaviStats +0x26 = 2; 0x0800BF1C, 0x0800BCD4): Right and Left presses move a per-side column
-    (0x0802E070's +0x11) and the B count runs only under request 0x80. No netbattle sets it; the engine has none.
+    (0x0802E070's +0x11) and the B count runs only under request 0x80. Unreachable: nothing in EXE4 sets +0x26 to 2
+    (its one setter, 0x080069BE, gives the story's navis 1; a netbattle's NaviStats are MegaMan's, the link record's,
+    whose +0x26 his console never sets), so no setup can say it and the engine keeps no field for it (the minimal
+    fields rule). Port it with a setup that can.
 50. **Done: the levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an
     attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after the decode and the
     charge: 0, 1 charging, 3 full). B's (+0x15) is read by the dimming chips' variants 5 and 7 (GutsMan's 0x080E328A,
@@ -1593,8 +1598,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     0x11 and a 90-tick explosion), which EXE4's content doesn't reach (its players are MegaMan, by a player).
 52. **The dead player's object.** EXE4's destroy state (0x0801052C) lets go of the collision data, frees the object and
     counts one actor fewer at once, its reservations left as they are; EXE6's (`sub_8016C4E`) keeps the object in its
-    slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Open: 0x0801052C's branch for a player
-    of param 2 (an owner's count, at the object's +0x78, one less), which no player the engine spawns has.
+    slot. **Done:** `reactions.dead_player` (`kept`: EXE6, EXE5; `freed`: EXE4). Unreachable: 0x0801052C's branch for a
+    player of param 2 (an owner's count, at the object's +0x78, one less): the engine spawns its players itself, by
+    side, with no param or owner, and no content spawns one.
 53. **FirstBarrier, HubBatc, Shield, Reflect, AntiMagc.** FstBarr's handler sets the aura at the start (+0x21 = 1, the
     Barrier chip's barrier: the init raises it, 0x0800D894, 0x08012DCE, its visual 0x080E2622), which the patch cards'
     Barrier100, Barrier200 and LifeAura set too (2, 3, 6); Shield, Reflect and AntiMagc set B+Left (+0x0C = 0x25,
