@@ -111,6 +111,7 @@ return merge {
     require("@self/silence"),
     require("@self/slasher"),
     require("@self/slogauge"),
+    require("@self/snake"),
     require("@self/snctuary"),
     require("@self/sonicbom"),
     require("@self/sparkman"),

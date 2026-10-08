@@ -920,6 +920,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   any of its listed actors holds (+0x48 on: a navi its hand from the cursor, another actor 1 for a chip at +0x2A); in
   a netbattle each is the other side's navi. No operation battle. The lab's chips/ (5) replay every frame; the hit is
   pixel-exact.
+- **Snake** (the dimming chips' variant 0x17, `chips/snake`): EXE5's Snake: its controller (#0x32, 0x080E5B50) and
+  batch nest (#0x53, 0x080D7DB8: three snakes at once, a flag each), now shared as @exelib/snake/batch, with EXE4's
+  snakes (#0x54, 0x080D80E4: @exelib/snake): sheet 0c-2c, rising with 0xA0, leaping with 0x91, 48 ticks' wait,
+  striking null with spark 4 and hit modifier 1. EXE4 picks a snake's target with one more slip than EXE5 (0x080D8014:
+  the best's distance in columns reads its row, `best_row_slip`) and walks its columns past the field's edge, where no
+  panel holds a target. The lab's chips/ (5, holes among them) replay every frame; holes is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
