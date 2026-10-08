@@ -4,7 +4,7 @@
 -- slanting down the field or up; it bounces around the field, a panel per 6 ticks. 31 ticks in all.
 --
 -- EXE5's recovery sets its 16 ticks when it starts (0x080ECD28) where EXE6's flick sets them as it ends: the same
--- ticks.
+-- ticks. EXE4's (action 0x27, 0x080ECEAE) is EXE5's but for the navi's animation (its 0x10: `anim`).
 
 local puck = require("./puck")
 
@@ -20,6 +20,8 @@ flick.STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local FLICK, RECOVER = 0x0, 0x4
+-- The navi's animation as it flicks (EXE6's and EXE5's).
+local ANIM = 0x0C
 -- The tick (timer value) the puck goes.
 local FLICK_AT = 0x0D
 -- The puck's height at the spawn (the registers; its init lands it).
@@ -32,7 +34,7 @@ function flick.action(spec: Spec): Action
     -- `sub_80ECCCC`: flick the puck on the timer's 0xD, then recover.
     local function flicking(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_animation(0x0C)
+            me:set_animation(spec.anim or ANIM)
             me:open_counter_window()
             me:set_status("using_action", true)
             me.step_init = 4

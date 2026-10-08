@@ -750,7 +750,7 @@ fn the_spread_fires_two_more_shots_a_row_up_and_down() {
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
     // The spread (no weapon routine sets it up for MegaMan).
-    set_attack_state_field(&mut b, p0, "mode", 1);
+    set_attack_state_value(&mut b, p0, "spread", nettai_content_api::Value::Bool(true));
     run_to(&mut b, p, &mut t, 2, 0);
     let shots = of_kind(&b, "projectile");
     assert_eq!(shots.len(), 3);
@@ -894,8 +894,9 @@ fn a_throw_waits_the_last_shots_recovery() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    // (The shot's mode 2: the throw.)
-    assert_eq!((runs(&b, p0), attack_state_field(&b, p0, "mode")), ("megaman/buster/shot".to_string(), 2));
+    // (The shot throws: its setup states its throw.)
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
+    assert!(attack_state_def(&b, p0, "throw").is_some());
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
@@ -1695,8 +1696,8 @@ fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
     b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { look, anim: 1 });
     start_weapon(&mut b, p0, "dustcross-beast/throw-absorbed");
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
-    // (The shot's mode 2: the throw.)
-    assert_eq!(attack_state_field(&b, p0, "mode"), 2);
+    // (The shot throws: its setup states its throw.)
+    assert!(attack_state_def(&b, p0, "throw").is_some());
     let a = &ai_mut(&mut b, p0).attack;
     assert_eq!((a.damage, a.thrown_look, a.thrown_anim), (200, Some(look), 1));
     assert!(b.actors.get(actor).absorbed.is_empty());
@@ -2165,14 +2166,13 @@ fn attack_state_field(b: &Battle, r: ObjectRef, name: &str) -> i64 {
     s.get(schema, schema.index_of(name).expect("the field")).load().int().expect("an integer")
 }
 
-/// Set an integer (or enum, by its variant's index) field of the attack
-/// state the navi's content action keeps.
-fn set_attack_state_field(b: &mut Battle, r: ObjectRef, name: &str, value: i64) {
+/// Set a field of the attack state the navi's content action keeps.
+fn set_attack_state_value(b: &mut Battle, r: ObjectRef, name: &str, value: nettai_content_api::Value) {
     let actor = b.objects.get(r).actor.expect("a navi");
     let defs = b.content.clone();
     let Some(mut s) = b.actors.action_state_mut(actor) else { panic!("{r:?} runs no content action") };
     let schema = defs.defs.schema(s.id());
-    s.set(schema, schema.index_of(name).expect("the field"), nettai_content_api::Value::Int(value)).expect("the field's type");
+    s.set(schema, schema.index_of(name).expect("the field"), value).expect("the field's type");
 }
 
 /// A reference field of the attack state the navi's content action keeps,
