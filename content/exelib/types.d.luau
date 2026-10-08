@@ -1845,3 +1845,7 @@ export type NumberManSpec = {
 
 -- A game's NumberMan kind, and what makes one just spawned his chip's: the controller he reports to, his palette.
 export type NumberMan = { kind: Kind, summoned: (o: Object, controller: Object, palette: number) -> () }
+
+-- A Geddon chip's quake's change (@exelib/geddon/quake's `change`): what it does to a panel, whether it changed, and
+-- what shows over a panel that did.
+export type GeddonChange = { apply: (x: number, y: number) -> boolean, show: (at: Vec3) -> () }
