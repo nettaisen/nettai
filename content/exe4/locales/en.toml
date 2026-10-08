@@ -127,6 +127,9 @@ language = "en"
 "thunder1" = { name = "Thunder1", description = "Pralyzing\nelectric\nattack!" }
 "thunder2" = { name = "Thunder2", description = "Pralyzing\nelectric\nattack!" }
 "thunder3" = { name = "Thunder3", description = "Pralyzing\nelectric\nattack!" }
+"topman" = { name = "TopMan", description = "Attck hit\n3 panels\nahead" }
+"topmn-sp" = { name = "TopMnSP", description = "Attck hit\n3 panels\nahead" }
+"topmn-ds" = { name = "TopMnDS", description = "Attck hit\n3 panels\nahead" }
 "antifire" = { name = "AntiFire", description = "Fire atk\ndamages\nyou" }
 "antiwatr" = { name = "AntiWatr", description = "Water atk\ndamages\nyou" }
 "antielec" = { name = "AntiElec", description = "Elec atk\ndamages\nyou" }
