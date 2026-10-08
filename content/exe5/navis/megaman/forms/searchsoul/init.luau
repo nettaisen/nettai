@@ -3,8 +3,9 @@
 -- sprite in it is 00-03 (0x0800DA58[3]), his element Null (0x0800E634 by soul); he wears nothing over it. Its weapons
 -- (0x0801CA1C's row 3, loaded by 0x0800DCA0): the buster (routine 0), the scope's shots (8, ./charge), routine 1 on A
 -- (the charged shot's: no chip charges in SearchSoul, 0x0801090A), Chaos Unison's (0x30: DarkCirc); no B+Back (0xFF).
--- Its status reset (0x08011C00) reveals the other side's invisible navis (./reveal); on a netbattle's console the
--- other side's HP shows over its navi (by MegaMan's attach point 3: drawn only, which the engine has not).
+-- Its status reset (0x08011C00) reveals the other side's invisible navis (./reveal); in a link battle its console shows
+-- the other side's chip icons over its navi too (0x08011C0C: the opponent added to the console's chip-icon table, by
+-- its attach point 3; its icons the hidden chip's outside battle mode 1, 0x08018B48).
 
 local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
@@ -38,6 +39,11 @@ local form: FormDef = {
         a_charge = charged_shot.weapon,
     },
     reset = function(navi: Object)
+        -- 0x08011C02: in a link battle (effect 8), the opponent's navi (when there is one) among the console's chip
+        -- icons.
+        if battle.link() and battle.player(1 - navi.alliance) then
+            battle.show_opponent_chip_icons(navi.alliance)
+        end
         reveal.spawn(navi)
     end,
     palette = 0,
