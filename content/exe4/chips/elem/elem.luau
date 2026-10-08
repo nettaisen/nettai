@@ -4,7 +4,7 @@
 -- 0c-45, its animation three times the navi's number, in the related slot) and sends a flame (attack object 9:
 -- @exelib/elemrage/flame, EXE5's ElemRage flame) along its row from the panel ahead, 4 pixels back and 26 up
 -- (0x080EE3D0 by the navi's number: MegaMan's). On the chip's panel (lava, ice, grass, sand, poison: 0x080EE3EF) its
--- flames run five panels and paralyze (each variant's flags 4, 0x080EE3F4; ElemDark's also leave poison, the high
+-- flames run five panels and paralyze (each variant's flag 4, 0x080EE3F4; ElemDark's also leave poison, the high
 -- nibble's 4), and its own panel turns back to normal (the panel changer's row 11). The flames are the chip's palette
 -- (0x080EE3EA). Its roar sounds every 16 ticks; 6 ticks in its claw's animation steps on; 30 ticks in, then 6 more
 -- with the claw stepped again, and it is back to idle.
@@ -48,12 +48,13 @@ local RESTORE = panel_changer.change {
 }
 local ANIM = 13
 local CLAW_STEP, LAST_TICK, RECOVER_TICKS = 6, 30, 5
--- A raging flame's count (0x080EE2F6) and the flag it takes (0x080EE3F4: 4, paralyzing, each variant's).
-local RAGING_COUNT, RAGING_FLAGS = 5, 4
+-- A raging flame's count (0x080EE2F6); it paralyzes (0x080EE3F4's flag 4, each variant's).
+local RAGING_COUNT = 5
 
 -- A chip's Elem action: its key, the panel that rages it (0x080EE3EF), its flames' palette (0x080EE3EA) and the panel
--- type its raging flames leave (0x080EE3F4's high nibble: ElemDark's poison), and its flames' count, time and flags
--- (the record's parameters +0x10 to +0x13).
+-- type its raging flames leave (0x080EE3F4's high nibble: ElemDark's poison), its flames' count and time (the record's
+-- parameters +0x10 to +0x12), and whether its flames' self type is row 0x25 (`attack_480`: its flags, +0x13, 8:
+-- ElemDark's; else 0).
 type ElemSpec = {
     id: string,
     rages_on: PanelType,
@@ -61,11 +62,12 @@ type ElemSpec = {
     raging_leaves: PanelType?,
     count: number,
     ticks: number,
-    flags: number,
+    attack_480: boolean?,
 }
 
 type State = {
-    -- Ticks into the action (AIAttackVars+0x10), the roar's count (+0x12), and whether it raged (Param4's bit 2).
+    -- Ticks into the action (AIAttackVars+0x10), the roar's count (+0x12), and whether it raged (its flames' Param4's
+    -- bit 2).
     timer: number,
     roar: number,
     raged: boolean,
@@ -76,23 +78,24 @@ function elem.action(spec: ElemSpec): Action
     -- the claw's step 6 ticks in; on after the 30th.
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
-            local count, flags = spec.count, spec.flags
+            local count = spec.count
             local leaves: PanelType? = nil
             local p = field.panel(me.panel_x, me.panel_y)
-            if p and p.kind == spec.rages_on then
-                flags = bit32.bor(flags, RAGING_FLAGS)
+            local raged = p ~= nil and p.kind == spec.rages_on
+            if raged then
                 leaves = spec.raging_leaves
                 count = RAGING_COUNT
                 panel_changer.spawn(me, me.panel_x, me.panel_y, RESTORE, nil)
             end
-            s.raged = bit32.btest(flags, 4)
+            s.raged = raged
             local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
             FLAME.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, HEIGHT * 0x10000, {
                 count = bit32.band(count, 0x7F),
                 spread = bit32.btest(count, 0x80),
                 ticks = spec.ticks,
                 offset = OFFSET,
-                flags = flags,
+                paralyzes = raged,
+                attack_480 = spec.attack_480 == true,
                 leaves = leaves,
                 palette = spec.palette,
                 hit = false,

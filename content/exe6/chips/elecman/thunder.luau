@@ -6,8 +6,8 @@
 -- with is a `Thunderbolt` (types.d.luau; the original's Param1): the navi
 -- chip's (1 and 2) act and step their sprite while dimmed, and the second
 -- strike's (2) also hit the eight panels around them once (status 0x12);
--- one that doesn't (0: ElecMan's own AI's) cracks its panel and waits a
--- dimming out (collision off). See docs/engine/chips.md §3.6.16.
+-- ElecMan's own AI's (0) crack their panel and wait a dimming out
+-- (collision off). See docs/engine/chips.md §3.6.16.
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
@@ -17,8 +17,9 @@ local thunder = {}
 
 export type State = {
     -- It acts, and animates, while the battle is dimmed (Param1 1 and 2);
-    -- else it cracks its panel as it strikes (Param1 0).
+    -- it cracks its panel as it strikes (Param1 0).
     while_dimmed: boolean,
+    cracks: boolean,
     -- It also hits the eight panels around it (Param1 2).
     spreads: boolean,
 }
@@ -125,7 +126,7 @@ local function strike(me: Object)
         me.timer = 0x1E
         me.timer2 = 0x14
         local s = me.state :: State
-        if not s.while_dimmed then
+        if s.cracks then
             field.crack(me.panel_x, me.panel_y)
         end
         if s.spreads then
@@ -180,7 +181,7 @@ end
 thunder.kind = new.kind {
     id = "elecman/thunder",
     pool = "attack",
-    state = { while_dimmed = "bool", spreads = "bool" },
+    state = { while_dimmed = "bool", cracks = "bool", spreads = "bool" },
     -- `sub_80D0D7C`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -212,6 +213,7 @@ function thunder.spawn(owner: Object, x: number, y: number, element: number, wha
         o.run_while_dimmed = true
         local s = o.state :: State
         s.while_dimmed = what.while_dimmed == true
+        s.cracks = what.cracks == true
         s.spreads = what.spreads == true
     end
     return o
