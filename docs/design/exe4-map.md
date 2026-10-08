@@ -2085,8 +2085,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     display, tearing, which is left.)
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
-    from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
-    them with the souls (item 25).
+    from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
+    (0x08018068, lib/cannon) *open*. Wire them with the souls (item 25).
 71. **The telops' two blocks.** EXE4 lays the user's telop on the banner block (0x08016454, HUD task 0x100) and the
     other player's on the second block (0x080164B4, task 0x8000), each in the banners' steps; the engine runs both on
     its one banner, with no banner of their own (the roles leave `telop` and `telop_remote` unfilled; the HUD draws
@@ -2125,11 +2125,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      `put_on` and must have it step on, its Param3 1: 0x0800B812) *open*; the image's part (0x080E3674, table
      0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
      *done* for WindMan, *open* for the rest; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
-     `charged_chips`) *open*; a charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage
-     itself, item 28) *open*; MegaMan's look by soul in what copies it (the
-     image 0x080E2C44, the swords' and cannons' afterimages 0x080EB548, 0x080EB5FA, 0x080EB874, the GigaCan's part
+     `charged_chips`; the A routine forms/soul's `chip_charge`) *done* for Fire and Proto, *open* for the rest; a
+     charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage itself, item 28; the
+     form's `charged_bonus.doubles`) *done* (souls/proto/chip); MegaMan's look by soul in what copies it (the image
+     0x080E2C44, the swords' and cannons' afterimages 0x080EB548, 0x080EB5FA, 0x080EB874, the GigaCan's part
      0x080EB93A, the objects 0x080CB4B0, 0x080CC648, 0x080CC750, 0x080CC960, 0x080CCAF0, 0x080CCF7C, 0x080D7590,
-     0x080DD7BC, 0x080EA744) *open*: each with the chip that spawns it.
+     0x080DD7BC, 0x080EA744): the swords' and cannons' afterimages *done* (the form's sprite: lib/swords'
+     `navi_afterimage`, lib/cannon; souls/proto/chip), the rest *open*: each with the chip that spawns it.
    - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
      that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
      (souls/roll/heal).
@@ -2169,11 +2171,15 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      paralyzing 90 ticks; SandRing's and weapon routine 0x04's the same throw and ring) *done*
      (souls/thunder/unison, side1). The image against the HP number (SearchSoul's below) shows in
      souls/thunder/side1 too, frames 494 to 532, ThunderMan's blinking image.
-   - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0) *open*; a sword chip that
-     isn't a dimming chip charges on A (0x0F) and doubles charged (0x0800C47A) *open*; WideSwrd charged (0x3E,
-     0x0800D148) *open*; the swords' blade 13 (0x080EB628, 0x080EB6AC, 0x080ED89C, 0x080EE822) and their hit modifiers
-     from 0x080EB7FE (0x080EB6E8, item 70) *open*; VarSwrd's and NeoVari's command window waits out its ticks without
-     A held (0x080ED776, 0x080EE240) *ported* (chips/varswrd's `waits`).
+   - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0: the guard, action 0x25, as
+     Reflect's, 50 damage, cooldown 40; a soul's weapon load leaves AIData +0x00, the rule
+     `status.form_keeps_back_special`) *done* (souls/proto/special); a sword chip that isn't a dimming chip charges on
+     A (0x0F: 30 ticks a level, 80 the last) and doubles charged (0x0800C47A), a charged slash stepping two panels
+     ahead (0x080EB548, lib/swords' steps) *done* (souls/proto/chip); WideSwrd charged (0x3E, 0x0800D148) *done*
+     (souls/proto/unison, side1); the swords' blade 13 (0x080EB628, 0x080EB6AC, 0x080ED89C, 0x080EE822) and their hit
+     modifiers from 0x080EB7FE (0x080EB6E8, item 70) *done* (souls/proto/chip, side1); VarSwrd's and NeoVari's
+     command window waits out its ticks without A held (0x080ED776, 0x080EE240) *ported* (chips/varswrd's `waits`).
+     Z Saver, a Sword chip it charges, reads no charge (0x080EE774).
    - **NumberSoul (8).** Its overlay 0x110 and image part 0x14 *open*; the status reset's 10 more on each damaging
      Null chip (0x0800E194) *open*; charged 0x11 (0x0800CE08) *open*; the hand of ten (0x0801DC92) *open*.
    - **MetalSoul (9).** B's routine 0x0B (0x0800CDE2) *open*; a damaging Metal or Null chip that isn't a dimming chip

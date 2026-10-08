@@ -212,6 +212,8 @@
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
+# ProtoSoul's B+Left special (weapon routine 0x6A's guard, 0x0800D3C0).
+"protosoul/reflect/action" = 0x25
 "guard1/action" = 0x25
 "guard2/action" = 0x25
 "guard3/action" = 0x25

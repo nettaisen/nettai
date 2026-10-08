@@ -1158,7 +1158,10 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         a.a_charge = w.a_charge;
         a.buster = w.buster;
         set_charge_shot_routine(a, w.charge_shot, &content);
-        a.back_special = w.back_special;
+        // (EXE4's leaves it: the rule `status.form_keeps_back_special`.)
+        if !content.rules().form_keeps_back_special {
+            a.back_special = w.back_special;
+        }
         a.alt_a_charge = w.alt_a_charge;
     }
     // The load drops the rules' own B charge (EXE5's 0x0800DCD8 disarms its
