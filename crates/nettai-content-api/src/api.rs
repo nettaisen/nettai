@@ -1825,6 +1825,13 @@ pub trait CoreApi {
     /// first byte (the dimming chips' stand-ins): the parts step even while
     /// paused.
     fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool);
+    /// `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'):
+    /// what `owner`'s navi wears put on `o`, as on an image of it: a navi
+    /// that changes form its form's put-on routine (its `put_on`: EXE5's
+    /// NumberSoul's layer, the base form's Hub Style shade), else the
+    /// parts its form's identity wears; any other navi its identity's
+    /// parts. Their sprites step even while paused.
+    fn add_overlay_of(&mut self, o: ObjectRef, owner: ObjectRef);
     /// `sub_8011044` with `owner`'s NameID record: take them off.
     fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef);
 

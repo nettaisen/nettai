@@ -1944,6 +1944,23 @@ impl CoreApi for Battle {
         }
     }
 
+    fn add_overlay_of(&mut self, o: ObjectRef, owner: ObjectRef) {
+        let side = self.objects.get(owner).alliance;
+        let s = &self.stats[side as usize & 1];
+        let (navi, form) = (s.navi, s.form);
+        if self.content.navi(navi).changes_form() {
+            if let Some(f) = self.content.defs.form(form).put_on {
+                crate::behavior::call_hook(self, f, nettai_content_api::HookCall::FormNavi { navi: o });
+                return;
+            }
+            let identity = self.content.form(form).identity;
+            kinds::player::form::put_on_parts(self, o, identity, 1);
+            return;
+        }
+        let identity = self.objects.get(owner).identity;
+        kinds::player::form::put_on_parts(self, o, identity, 1);
+    }
+
     fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef) {
         let identity = self.objects.get(owner).identity;
         kinds::player::form::navi_death_hook(self, o, identity);
