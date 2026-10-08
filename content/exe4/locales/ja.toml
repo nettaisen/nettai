@@ -249,6 +249,9 @@ language = "ja"
 "numbrbl2" = { name = "ナンバーボール2", description = "4れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
 "numbrbl3" = { name = "ナンバーボール3", description = "5れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
 "blkbomb" = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
+"videoman" = { name = "ビデオマン", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"videmn-sp" = { name = "ビデオマンSP", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"videmn-ds" = { name = "ビデオマンDS", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
