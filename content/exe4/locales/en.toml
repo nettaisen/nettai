@@ -287,6 +287,9 @@ language = "en"
 "blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
 "mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
 "bassanly" = { name = "BassAnly", description = "A ring\nthat hits\n4 times" }
+"rockcube" = { name = "RockCube", description = "Places a\nrock cube\nin front" }
+"colorpt" = { name = "ColorPt", description = "+10 for\nnext chip\nattack" }
+"dblpoint" = { name = "DblPoint", description = "+20 for\nnext chip\nattack" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
