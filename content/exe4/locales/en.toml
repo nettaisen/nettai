@@ -148,6 +148,9 @@ language = "en"
 "sparkman" = { name = "SparkMan", description = "SparkWave\nblinds\nenemy!" }
 "sprkmn-sp" = { name = "SprkMnSP", description = "SparkWave\nblinds\nenemy!" }
 "sprkmn-ds" = { name = "SprkMnDS", description = "SparkWave\nblinds\nenemy!" }
+"rush" = { name = "Rush", description = "" }
+"beat" = { name = "Beat", description = "" }
+"tango" = { name = "Tango", description = "" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
