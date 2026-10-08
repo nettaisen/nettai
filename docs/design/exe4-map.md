@@ -692,6 +692,9 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   reached); the die states its own 40 HP and hit modifier 3, places itself on its panel, has no markers and no face 9,
   and multiplies its damage's whole halfword by its face. The die's other throwers, the NumberMan boss's (0x080EC1E4,
   0x080F3336), aren't ported.
+  SparkMan (actor #0x10) and his sparks (attack #0x22, which zigzag up and down each column) are EXE4's own; his
+  flash is the engine's palette flash (effect #0x0A, compat's `engine/palette-flash`) and a blinding hit of no damage
+  on the other side's navi (region 0x85 or 0x84, blindness 0x30).
 
 **For the next steps:**
 
@@ -936,7 +939,10 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   shows banner 4, "ENEMY DELETED" (the banner block's +1 from frame 1057), the loser's banner 8, "MEGAMAN DELETED"
   (`flow/buster-duel-bluemoon`, frame 1056): event flag 0x1187 isn't a netbattle's. The flow states `never` (a new
   choice of `navi_win_banner`, EXE6's and EXE5's unchanged).
-- The palette flash before the fades: EXE4's fade slots (§15 effects).
+- The palette flash before the fades: EXE4's fade slots (§15 effects). SparkMan's flash under his dimming (the lab's
+  chips/0x10d-sparkman, frames 506 to 524) shows the field's panels white darkened a quarter, as the frontend draws
+  them, but the background a flat (18, 9, 18) where the frontend whitens it too; and a blinded console hides the
+  other side's navi's HP number (chips/0x10d-sparkman/side1, frames 653 to 754), which the frontend still draws.
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).

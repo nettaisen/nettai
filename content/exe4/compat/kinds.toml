@@ -10,6 +10,7 @@
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
+"engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
@@ -113,6 +114,13 @@
 "numbrman/navi" = { pool = "actor", index = 0x0F }
 "numbrman/face" = { pool = "actor", index = 0x5C }
 "numbrman/dice" = { pool = "attack", index = 0x05 }
+# SparkMan's chips (action 0x0C's variant 0x03, 0x080E309A): each chip's controller (the content's own; the
+# original's one object, effect #0x0E, 0x080E2FEC), SparkMan and his sparks.
+"sparkman/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
+"sprkmn-sp/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
+"sprkmn-ds/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
+"sparkman/navi" = { pool = "actor", index = 0x10 }
+"sparkman/spark" = { pool = "attack", index = 0x22 }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the

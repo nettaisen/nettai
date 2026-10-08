@@ -54,6 +54,7 @@ return merge {
     require("@self/seekbom"),
     require("@self/serchman"),
     require("@self/sidbmbo"),
+    require("@self/sparkman"),
     require("@self/spreader"),
     require("@self/sword"),
     require("@self/thunder"),
