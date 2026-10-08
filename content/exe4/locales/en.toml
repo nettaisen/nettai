@@ -138,6 +138,10 @@ language = "en"
 "antidmg" = { name = "AntiDmg", description = "Sets trap\nand throw\nstars" }
 "antiswrd" = { name = "AntiSwrd", description = "Retaliate\nfor sword\ndamage" }
 "antirecv" = { name = "AntiRecv", description = "Damages\nenemy in\nrecovery" }
+"heatbrth" = { name = "HeatBrth", description = "Magma\nFirestorm\nattack!" }
+"blizzard" = { name = "Blizzard", description = "Snowstorm\nattack!\nIce Panel" }
+"elecshok" = { name = "ElecShok", description = "Cracker\nElectric\nblast" }
+"woodpwdr" = { name = "WoodPwdr", description = "Changes\npanels\nto grass" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -258,6 +262,10 @@ language = "en"
 "048-weapon-change" = { name = "Weapon Change" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }
+"053-charge-shot-switch" = { name = "Charge Shot Switch" }
+"054-charge-shot-switch" = { name = "Charge Shot Switch" }
+"055-charge-shot-switch" = { name = "Charge Shot Switch" }
+"056-charge-shot-switch" = { name = "Charge Shot Switch" }
 "058-charge-shot-switch" = { name = "Charge Shot Switch" }
 "059-megaman-color-change" = { name = "MegaMan Color Change" }
 "060-megaman-color-change" = { name = "MegaMan Color Change" }
