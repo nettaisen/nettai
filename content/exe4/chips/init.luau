@@ -80,6 +80,7 @@ return merge {
     require("@self/lance"),
     require("@self/laserman"),
     require("@self/lifesrd"),
+    require("@self/lifesync"),
     require("@self/ligtnin"),
     require("@self/magbolt"),
     require("@self/metalman"),
