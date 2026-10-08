@@ -740,9 +740,12 @@ export type CopyDamageSpec = {
 }
 
 -- A game's CopyDmg mark (@exelib/copydmg/mark): its kind's id, sprite and
--- animation, its hit's sound and types; EXE5's reloads its animation at its
--- init and hits its panel each tick it marks in the own-gauges mode
--- (the hit's spark and types).
+-- animation, its hit's sound and types; how long it marks a navi and how it
+-- sits over it ("attach_point": at the navi's attach point 0x1B, shown as the
+-- navi is, EXE6's and EXE5's; "position": at the navi's position, shown from
+-- the mark on, EXE4's); EXE5's and EXE4's reload its animation at its init;
+-- EXE5's hits its panel each tick it marks in the own-gauges mode (the hit's
+-- spark and types).
 export type CopyDamageMarkLook = {
     id: string,
     sprite: SpriteAsset,
@@ -750,6 +753,8 @@ export type CopyDamageMarkLook = {
     sound: Sound,
     is: CollisionType,
     hits: CollisionType,
+    ticks: number,
+    over_navi: "attach_point" | "position",
     reload_anim: boolean,
     own_gauges_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
 }
