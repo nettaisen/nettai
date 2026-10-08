@@ -31,6 +31,7 @@
 "darkbomb/action" = 0x09
 "geyser/action" = 0x09
 "blkbomb/action" = 0x09
+"bugbomb/action" = 0x09
 "energbom/action" = 0x09
 "megenbom/action" = 0x09
 "minibomb/action" = 0x09
@@ -176,6 +177,10 @@
 "drkrecov/action" = 0x1D
 # The taunt (weapon routine 0x21's action 0x2A, 0x080ED0FE).
 "megaman/taunt/action" = 0x2A
+# The weapon bug's rock cube (weapon routine 0x1F's action 0x73, 0x080EEA56) and bubble (routine 0x20's action 0x29,
+# 0x080ED02A).
+"megaman/rock-cube/action" = 0x73
+"megaman/bubble/action" = 0x29
 # The charged shot.
 "megaman/charged-shot/action" = 0x24
 # The souls' charged shots: RollSoul's arrow (weapon routine 0x22's action 0x1B, 0x080EC574).
