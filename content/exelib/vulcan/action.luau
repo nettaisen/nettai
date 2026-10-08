@@ -40,7 +40,7 @@ function vulcan.action(spec: VulcanSpec, look: VulcanLook): Action
         if me.step_init == 0 then
             me:set_animation(look.hold_anim)
             me:open_counter_window()
-            look.hold(me, spec.arm or VULCAN, look.slot)
+            look.hold(me, assert(spec.arm or VULCAN, "a vulcan names its gun"), look.slot)
             me:set_status("using_action", true)
             me.step_init = 4
             s.timer = 1
