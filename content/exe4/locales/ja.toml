@@ -212,6 +212,8 @@ language = "ja"
 "gutsman" = { name = "ガッツマン", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
 "gutsmn-sp" = { name = "ガッツマンSP", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
 "gutsmn-ds" = { name = "ガッツマンDS", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
+"copydmg" = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
+"windrack" = { name = "フウジンラケット", description = "目の前のてきを\n風でふきとばす!\nはんいはたて3マス" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
