@@ -153,6 +153,16 @@
 "firemn-ds/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
 "fireman/navi" = { pool = "actor", index = 0x12 }
 "fireman/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+# GutsMan's chips (action 0x0C's variant 0x05, 0x080E3304): each chip's controller (the content's own; the original's
+# one object, effect #0x10, 0x080E3200), GutsMan, his quake, and its falling rocks and their chips (attack #0x1D,
+# 0x080D08BC, and effect #9, 0x080E2914: the content's own kinds of objects/falling_rock).
+"gutsman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gutsmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gutsmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gutsman/navi" = { pool = "actor", index = 0x14 }
+"gutsman/quake" = { pool = "attack", index = 0x1C, scratch_position = true }
+"gutsman/rock" = { pool = "attack", index = 0x1D }
+"gutsman/rock-chip" = { pool = "effect", index = 0x09 }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
 # original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
 "shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }
