@@ -26,6 +26,9 @@ export type SlashGame = {
     blade_anim: ((Object) -> number)?,
     -- The hit modifier its hits take, by its holder and the chip's (none: the chip's; EXE4's ProtoSoul's, 0x080EB7FE).
     hit_mod: ((me: Object, chip_hit_mod: number) -> number)?,
+    -- The sprite its afterimages of the navi show (none: a copy of the navi's NameID's, EXE6's and EXE5's; EXE4's its
+    -- sprite in its form, 0x0800B90A).
+    navi_afterimage: ((me: Object) -> SpriteAsset)?,
     stays: ((side: number) -> boolean)?,
     -- The game's step (EXE5's by the attack's charge: lib/swords); none: EXE6's, by the chip's `step`.
     steps: SlashSteps?,
