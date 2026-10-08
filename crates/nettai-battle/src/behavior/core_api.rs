@@ -3115,6 +3115,10 @@ impl CoreApi for Battle {
         self.obstacle_conversion[side as usize & 1].armed = false;
     }
 
+    fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32) {
+        self.obstacle_conversion[side as usize & 1].words = [melee, ranged];
+    }
+
     fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32) {
         let s = self.obstacle_conversion[side as usize & 1];
         (s.armed, s.words[0], s.words[1])

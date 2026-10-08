@@ -1713,6 +1713,9 @@ declare obstacle: {
     arm_conversion: (side: number, melee: number, ranged: number) -> (),
     -- 0x080CAC30: disarm side `side`; its words stay.
     disarm_conversion: (side: number) -> (),
+    -- 0x080CABF8 alone: side `side`'s soldiers' damage words become these,
+    -- armed or not (EXE5's BusterUp in ColonelSoul, 0x08011C50).
+    set_conversion_words: (side: number, melee: number, ranged: number) -> (),
     -- Whether side `side` is armed, and its words (0x080CAC06,
     -- 0x080CAC12): what its soldiers strike with as they read them.
     conversion: (side: number) -> (boolean, number, number),

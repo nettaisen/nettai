@@ -30,6 +30,9 @@ local form: FormDef = {
     -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
     -- routine 0x33 (0x0800FA52): DrkLance (chip 0xBF), the charge table's row 0x33.
     chaos = { weapon = chaos.weapon(drklance, { 40, 60, 90, 120, 150, 40 }) },
+    -- A hit's status doesn't take (the hit intake, 0x08017942: soul 10 skips 0x0801733C, a counter's paralysis
+    -- with it).
+    traits = { "status_immune" },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
