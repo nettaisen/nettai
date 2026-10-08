@@ -183,6 +183,15 @@ language = "en"
 "holypanl" = { name = "HolyPanl", description = "Creates a\nHolyPanl\nin front" }
 "snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
 "drkline" = { name = "DrkLine", description = "Turns all\nrows into\nHoles" }
+"barrier" = { name = "Barrier", description = "Nullifies\n10 HP of\ndamage" }
+"barr100" = { name = "Barr100", description = "Nullifies\n100 HP of\ndamage" }
+"barr200" = { name = "Barr200", description = "Nullifies\n200 HP of\ndamage" }
+"lifeaura" = { name = "LifeAura", description = "Repels\nall attck\nunder 200" }
+"blakbarr" = { name = "BlakBarr", description = "A dark\nbarrier\nregenrate" }
+"fanfare" = { name = "Fanfare", description = "Take no\ndmg for a\nwhile" }
+"discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
+"timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
+"silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
