@@ -1154,7 +1154,8 @@ export type RockVariant = {
     element: string,
     debris_palette: number,
     break_sound: Sound,
-    identity: Identity,
+    -- What it is taken for (none: EXE4's, whose init writes no NameID).
+    identity: Identity?,
 }
 
 -- How a rock comes onto the field (chips/rockcube/rock, the original's
