@@ -578,8 +578,17 @@ pub fn draw<'a>(
             }
         }
     }
-    // The HP numbers, each place in turn (`sub_801C202`).
-    for e in state.hp_numbers.iter().flatten() {
+    // The HP numbers, each place in turn (`sub_801C202`), but none while
+    // the console's navi is blind: its visibility routine (`sub_8016934`,
+    // EXE4's 0x08010430) shows their draw task each tick and ends it while
+    // the navi is blind (`sub_801DA48`, `sub_801DACC` with task 2; EXE6's
+    // and EXE5's only while the navi has an action, as a fighting navi
+    // has). The places stay, and their numbers roll on (the update task).
+    let blind = b
+        .player(local)
+        .and_then(|p| b.objects.get(p).collision)
+        .is_some_and(|c| b.collision.get(c).f1 & nettai_battle::collision::f1::BLIND != 0);
+    for e in state.hp_numbers.iter().flatten().filter(|_| !blind) {
         // Under the object wherever its position is on the screen, seen or
         // not (`sub_800362C`): a navi that blinks after a hit or is
         // invisible keeps its number.
