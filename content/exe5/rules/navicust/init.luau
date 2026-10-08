@@ -77,18 +77,15 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     end,
 }
 
--- HubBatc (program 27), which bugs itself.
-local HUBBATC = "hubbatc"
-
 -- EXE5's compile.
 local EXE5: NaviCustGame = {
     name = "EXE5",
     board = board,
     bugs = programs.BUGS,
     bug_work = BUG_WORK,
-    -- 0x0813F5A8: HubBatc (in any color) counts its own bug once more.
+    -- 0x0813F5A8: a program that says so (HubBatc, in any color) counts its own bug once more.
     extra = function(part: PlacedProgram, count: (bug: string?, n: number?) -> ())
-        if part.program.id == HUBBATC then
+        if part.program.counts_own_bug then
             count(part.program.bug)
         end
     end,
