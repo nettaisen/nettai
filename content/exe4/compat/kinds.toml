@@ -360,6 +360,14 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# Mine's controller (0x080E4F5C; its position the dimming handler's registers) and its mine (0x080D6ED4).
+"mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
+"mine/land-mine" = { pool = "attack", index = 0x4C }
+# Blinder's controller (0x080E48EC; its position the dimming handler's registers).
+"blinder/controller" = { pool = "effect", index = 0x23, scratch_position = true }
+# TimeBomb's controller (0x080E4C3C; its position the dimming handler's registers) and its bomb (0x080D6BF8).
+"timebomb/controller" = { pool = "effect", index = 0x27, scratch_position = true }
+"timebomb/countdown" = { pool = "attack", index = 0x4B }
 # SloGauge's and FstGauge's controller (0x080E3F0C; its position the dimming handler's registers).
 "gauge-speed" = { pool = "effect", index = 0x1C, scratch_position = true }
 # PanlSht's controller (0x080E79B8; its position the dimming handler's registers), each chip's own kind, and its
