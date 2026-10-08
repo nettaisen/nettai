@@ -919,14 +919,16 @@ restating theirs the same.
 - **chip_use**: a dimming chip's action (0x0C, 0x080EB9EA) is EXE5's dimming handler and leaves the action on the
   frame it runs (`leave_on_use`); AntiNavi's sparkle (0x0800815C) is EXE5's, the panel's center 16 up; no mixed
   modifiers (EXE4 has no capsules).
-- **effects**: the shake (0x08025FE0) draws from RNG2 and holds while paused without dimming (EXE5's
-  `battle_rng`); a hit spark (EXE5's 0x080E0870, the same code), afterimages and overlays (the same code) as EXE5's;
-  the retype (0x08012ED0) EXE5's, storing what it hits to the row number plus 0x5C (`is_alone`); the palette
-  flash (0x080E2A34) EXE5's hold, in palette slot 9 (`before_fades`, the fades' slots to confirm); the sprite frame
-  load (IWRAM 0x0300632C) EXE5's code; the obstacles' actions from 6 (the player's table, 0x080EAEFC: six framework
-  states, entry, take control, deletion, flinch, paralysis, drag, then the kind's own); the Full Synchro aura
-  (0x080CD180) EXE5's. **The damage word** (0x08012860) is EXE4's own: the damage the low 14 bits, 0x8000 doubling,
-  and 0x4000 status 0x12 without a flinch, nothing else.
+- **effects**: the shake (0x08025FE0) draws from RNG2 and holds while paused without dimming (EXE5's `battle_rng`); a
+  hit spark (EXE5's 0x080E0870, the same code), afterimages (the same code) as EXE5's; the retype
+  (0x08012ED0) EXE5's, storing what it hits to the row number plus 0x5C (`is_alone`); the palette flash (0x080E2A34)
+  EXE5's hold, in palette slot 9 (`before_fades`, the fades' slots to confirm); the form overlay (actor 0x57,
+  0x080CC3D8) its own start and follow (`effects.form_overlay`: following from its first update with the fight on, as
+  action 8; its palette and facing taken once; no animation restarted each tick; its wait stepping its sprite); the
+  sprite frame load (IWRAM 0x0300632C) EXE5's code; the obstacles' actions from 6 (the player's table, 0x080EAEFC: six
+  framework states, entry, take control, deletion, flinch, paralysis, drag, then the kind's own); the Full Synchro aura
+  (0x080CD180) EXE5's. **The damage word** (0x08012860) is EXE4's own: the damage the low 14 bits, 0x8000 doubling, and
+  0x4000 status 0x12 without a flinch, nothing else.
 - **reactions**: the slide and drag speeds 0xA0000 and 0x80000 (0x0801077C, 0x080111E8: EXE5's); **the push**
   (0x0800ACAA, an obstacle's 0x0800B1C0) reads the final modifier's bits 2 to 7: back, forward, a panel back, a
   panel forward, up, down (0x0800ACDC, an obstacle's copy 0x0800B218), times the front (0x0800AB88) or the pusher's
