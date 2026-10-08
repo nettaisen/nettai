@@ -20,7 +20,7 @@ local colonel: Chip = {
     slot_in_limit = 1,
     navi = navi_chips.make {
         id = "colonel/controller",
-        summon = navi.summon { palette = 0, cross = false },
+        summon = navi.summon { palette = 0, strike = navi.screen_divide },
     },
 }
 
@@ -38,7 +38,7 @@ local colonel_ex: Chip = {
     slot_in_limit = 1,
     navi = navi_chips.make {
         id = "colonel-ex/controller",
-        summon = navi.summon { palette = 0, cross = false },
+        summon = navi.summon { palette = 0, strike = navi.screen_divide },
     },
 }
 
@@ -57,7 +57,7 @@ local colonel_sp: Chip = {
     slot_in_limit = 1,
     navi = navi_chips.make {
         id = "colonel-sp/controller",
-        summon = navi.summon { palette = 3, cross = false },
+        summon = navi.summon { palette = 3, strike = navi.screen_divide },
     },
 }
 

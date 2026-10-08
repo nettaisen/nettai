@@ -8,6 +8,17 @@ local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
+-- Its charged slash in SlashCross: over a column.
+local CHARGED = slashes.slash {
+    wave = slashes.wave { region = regions.wide, sprite = asset.sprite("sword-slash"), anim = 0 },
+    blade = parts.blade,
+    sound = parts.swing,
+    lockon = lockon.widesht,
+}
+
 local chip: Chip = {
     codes = { "B", "L", "P" },
     element = "null", family = "sword", class = "standard",
@@ -17,12 +28,12 @@ local chip: Chip = {
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.gundelex },
     action = slash.action {
-        blade = parts.blades.sword,
+        blade = parts.blade,
         hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 3 },
-        effect = parts.effects.wide,
-        sound = parts.sounds.swing,
+        effect = WIDE_SLASH,
+        sound = parts.swing,
         step = true,
-        charged = slashes.wide,
+        charged = CHARGED,
     },
 }
 

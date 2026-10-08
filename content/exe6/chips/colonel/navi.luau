@@ -4,25 +4,27 @@
 -- controller. He fades in on his user's panel with his cape (a form
 -- overlay of his own sprite) and leaves at once if the panel isn't solid;
 -- he draws his sword (in his first related slot, which held his user) and
--- strikes: the Colonel chips' ScreenDivide, an X of hit regions over the
--- middle row of the first column ahead that is wholly the enemy's;
--- CrossDiv's, a cross (an X and its center) on the first panel ahead
--- holding an enemy navi (or three columns ahead). A flash, and a camera
--- shake. Then he goes, and the controller moves on. See
+-- strikes his chip's strike: the Colonel chips' ScreenDivide, an X of hit
+-- regions over the middle row of the first column ahead that is wholly
+-- the enemy's (`colonel.screen_divide`); CrossDiv's own (chips/crossdiv).
+-- A camera shake. Then he goes, and the controller moves on. See
 -- docs/engine/chips.md §3.6.22.
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local regions = require("@exelib/regions")
+
+-- What a chip's strike does as it lands (`colonel.strike`, its own: the
+-- original picks it by the chip's third parameter).
+export type Strike = { run: (me: Object) -> () }
 
 -- What a chip summons him with: his palette (the chips' first parameter
--- picks it), and whether he strikes CrossDiv's cross (their third).
-export type Summon = { palette: number, cross: boolean? }
+-- picks it), and his strike.
+export type Summon = { palette: number, strike: Strike }
 
 export type State = {
-    -- His palette, and his strike (from the chip's parameters).
+    -- His palette, and his strike (his chip's).
     palette: number,
-    cross: boolean,
+    strike: Strike,
     -- The gray of his color shader, fading in (object +0x19).
     gray: number,
     -- His cape (ExtraVars[0]).
@@ -48,16 +50,11 @@ local SWORD = attachment.look { sprite = asset.sprite("colonel-sword"), palette 
 local SWORD_ANIM = 0x1C
 
 -- ScreenDivide's X (region 0x29: the diagonals of a column of three
--- panels, three columns deep), and its effect (0x38); CrossDiv's two
--- effects (0x36, 0x37).
+-- panels, three columns deep), and its effect (0x38).
 local SCREEN_DIVIDE = new.region {
     panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } },
 }
 local DIVIDE = new.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
-local CROSS = {
-    new.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
-    new.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
-}
 
 -- His fade-in's starting gray.
 local FADE_GRAY = 0x1F
@@ -72,9 +69,6 @@ local SOLID = 0x10
 -- The column ScreenDivide looks for (`byte_80B8494`): all three of its
 -- panels the enemy's (panel flag 0x20 set for side 0, clear for side 1).
 local ENEMY_COLUMN = { [0] = { 0x20, 0 }, { 0, 0x20 } }
-
--- What CrossDiv looks for (`byte_80B84E4`: an enemy navi's body).
-local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 
 -- When his strike lands (the timer before its tick's count down).
 local STRIKE_TICK = 0x20
@@ -164,30 +158,9 @@ local function enemy_column(me: Object): number
     end
 end
 
--- `sub_80B84A4`: CrossDiv's panel: the first ahead in his row holding an
--- enemy navi, or three columns ahead.
-local function enemy_panel(me: Object): number
-    local want = ENEMY_NAVI[me.alliance]
-    local x = me.panel_x + me.facing
-    while true do
-        if bit32.band(field.flags(x, me.panel_y), want) ~= 0 then
-            return x
-        end
-        x += me.facing
-        if x == 0 or x > 6 then
-            return me.panel_x + me.facing * 3
-        end
-        if x < 0 then
-            -- Started left of column 1 facing left (never at his side's
-            -- own columns): the game loops forever.
-            error("CrossDiv's search (sub_80B84A4) never ends")
-        end
-    end
-end
-
 -- A hit region on (x, y) 16 pixels up, running while dimmed
 -- (`sub_80C53A6`): `region`, no hit spark.
-local function hit(me: Object, x: number, y: number, region: Region)
+function colonel.hit(me: Object, x: number, y: number, region: Region)
     local box = battle.hitbox(me, {
         panel_x = x,
         panel_y = y,
@@ -207,39 +180,29 @@ local function hit(me: Object, x: number, y: number, region: Region)
 end
 
 -- The column of the enemy's back row, where he doesn't strike.
-local function at_back(me: Object): boolean
+function colonel.at_back(me: Object): boolean
     return bit32.bxor(me.alliance, 1) * 5 + 1 == me.panel_x
 end
 
--- `sub_80B8512`: ScreenDivide: an X over the middle of the enemy's first
--- column, its effect a column on, a 20-tick flash.
-local function screen_divide(me: Object)
-    if at_back(me) then
+-- A chip's strike, as it lands.
+function colonel.strike(run: (me: Object) -> ()): Strike
+    return new.record("colonel-strike", { run = run })
+end
+
+-- `sub_80B8512`: ScreenDivide, the Colonel chips' strike: an X over the
+-- middle of the enemy's first column, its effect a column on, a 20-tick
+-- flash.
+colonel.screen_divide = colonel.strike(function(me: Object)
+    if colonel.at_back(me) then
         return
     end
     local x = enemy_column(me)
     local y = 2
-    hit(me, x, y, SCREEN_DIVIDE)
+    colonel.hit(me, x, y, SCREEN_DIVIDE)
     local cx, cy = field.center(x + me.facing, y)
     battle.effect(Vec3.new(cx, cy, 0), DIVIDE, me.alliance)
     battle.palette_flash(0, 0x14, true, false)
-end
-
--- `sub_80B8564`: CrossDiv: a cross on the enemy's panel (an X, then its
--- center again), its two effects 12 pixels up, a 40-tick flash.
-local function cross_divide(me: Object)
-    if at_back(me) then
-        return
-    end
-    local x, y = enemy_panel(me), me.panel_y
-    hit(me, x, y, regions.x)
-    hit(me, x, y, regions.single)
-    local cx, cy = field.center(x, y)
-    local pos = Vec3.new(cx, cy, 0xC_0000)
-    battle.effect(pos, CROSS[1], me.alliance)
-    battle.effect(pos, CROSS[2], me.alliance)
-    battle.palette_flash(0, 0x28, true, false)
-end
+end)
 
 -- Action 4 (`sub_80B8376`): the strike.
 -- `sub_80B8390`: 40 ticks raising his hand (animation 6), then his sword
@@ -269,11 +232,7 @@ local function strike(me: Object)
         me.phase_init = 4
     end
     if me.timer == STRIKE_TICK then
-        if (me.state :: State).cross then
-            cross_divide(me)
-        else
-            screen_divide(me)
-        end
+        (me.state :: State).strike.run(me)
         battle.shake_camera(3, 0x23)
     end
     local left = me.timer - 1
@@ -348,7 +307,7 @@ colonel.kind = new.kind {
         cape = "object",
         controller = "object",
         palette = "u8",
-        cross = "bool",
+        strike = "record:colonel-strike",
     },
     -- `sub_80B8210`.
     update = function(me: Object)
@@ -379,7 +338,7 @@ function colonel.summon(args: Summon): (user: Object, controller: Object, spec: 
         local s = o.state :: State
         s.controller = controller
         s.palette = args.palette
-        s.cross = args.cross == true
+        s.strike = args.strike
         return o
     end
 end

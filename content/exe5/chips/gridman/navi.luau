@@ -15,8 +15,8 @@ local grid = require("./grid")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x60).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's 0x080BDF0C by the chip's level).
+    palette: number,
     -- The column he strikes from (+5) and the columns he has crossed (+6).
     end_x: number,
     crossed: number,
@@ -35,20 +35,18 @@ local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, pal
 local PUFF = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
 local HIT_MOD = 3
 
--- By the level (0x080BDF0C): the dark palette for DS's 4.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 5 }
 -- His dash: 4 pixels a tick forward, 2.5 up or down.
 local DASH_X, DASH_Y = 0x4_0000, 0x2_8000
 -- What a panel he crosses must be (solid) and be free of (as words).
 local SOLID = 0x10
 local OCCUPIED = 0x0F80_0000
 
--- 0x080BDE80: on his panel, on the ground, his palette by the level; his dash's speeds (up from the top row, else
+-- 0x080BDE80: on his panel, on the ground, his chip's palette; his dash's speeds (up from the top row, else
 -- down), the far column (6 facing right, else 1) and his grid on its middle row.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
     local s = me.state :: State
-    me.sprite.palette = PALETTES[s.level] or 0
+    me.sprite.palette = s.palette
     me.vel = Vec3.new(me.facing * DASH_X, if me.panel_y == 1 then DASH_Y else -DASH_Y, me.vel.z)
     s.end_x = if bit32.bxor(me.alliance, me.flip) == 0 then 6 else 1
     local g = grid.spawn(me, s.end_x, 2)
@@ -223,7 +221,7 @@ local ACTIONS = { [0] = appear, [4] = stand, [8] = dash, [0xC] = strike, [0x10] 
 gridman.kind = new.kind {
     id = "gridman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8", end_x = "u8", crossed = "u8", grid = "object" },
+    state = { controller = "object", palette = "u8", end_x = "u8", crossed = "u8", grid = "object" },
     -- 0x080BDE5C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -251,8 +249,8 @@ gridman.kind = new.kind {
     end,
 }
 
--- 0x080BE154: GridMan for `user`, reporting to `controller` (the summon table's entry 18), of a chip of `level`.
-function gridman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BE154: GridMan for `user`, reporting to `controller` (the summon table's entry 18), in his chip's `palette`.
+function gridman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(gridman.kind, user, spec)
         if not o then
@@ -260,13 +258,10 @@ function gridman.summon_at(level: number): (user: Object, controller: Object, sp
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- GridMan's and GridMnSP's (levels 0); GridMnDS's (4).
-gridman.summon = gridman.summon_at(0)
-gridman.summon_dark = gridman.summon_at(4)
 
 return gridman

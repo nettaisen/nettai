@@ -11,8 +11,8 @@ local navi = require("./navi")
 local controller = {}
 
 export type State = {
-    -- The chip's variant: the navi's look (EV+0, Param1).
-    variant: number,
+    -- The navi's palette (EV+0: the original keeps the chip's Param1 there; the palette is three times it).
+    palette: number,
     -- The navi is out (EV+4, which the navi clears).
     busy: boolean,
     -- The telop's bonus (+0x32), which goes into the damage.
@@ -37,24 +37,24 @@ local function effect(me: Object)
         return
     end
     local word = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    navi.spawn(me, x, y, me.element, s.variant, int.u32(word + s.bonus))
+    navi.spawn(me, x, y, me.element, s.palette, int.u32(word + s.bonus))
     me.phase_init = 4
 end
 
 controller.kind = new.kind {
     id = "sumnblk/controller",
     pool = "effect",
-    state = { variant = "u8", busy = "bool", bonus = "u16" },
+    state = { palette = "u8", busy = "bool", bonus = "u16" },
     update = dimming_chips.phases { name = "SumnBlk", effect = effect },
 }
 
--- `sub_80E91B8`: a SumnBlk chip's `dimming` hook, for its variant.
-function controller.hook(variant: number): (user: Object, spec: DimmingChipSpec) -> Object?
+-- `sub_80E91B8`: a SumnBlk chip's `dimming` hook, its navi in its `palette`.
+function controller.hook(palette: number): (user: Object, spec: DimmingChipSpec) -> Object?
     return function(user: Object, spec: DimmingChipSpec): Object?
         local o = dimming_chips.spawn(controller.kind, user, spec)
         if o then
             local s = o.state :: State
-            s.variant, s.bonus = variant, spec.bonus
+            s.palette, s.bonus = palette, spec.bonus
         end
         return o
     end

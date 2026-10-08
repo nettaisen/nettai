@@ -22,7 +22,7 @@ local gyroman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "gyroman/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
@@ -45,7 +45,7 @@ local gyroman_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "gyroman-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon(2),
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
@@ -67,7 +67,7 @@ local gyroman_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "gyroman-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(3),
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }

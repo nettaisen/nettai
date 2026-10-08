@@ -14,8 +14,8 @@ export type State = {
     controller: Object?,
     -- Which of his he is (the flag he gave it, 0 to 2).
     index: number,
-    -- The chip's level (Param0: 0, 3 for SP, 4 for DS), which picks the palette.
-    level: number,
+    -- Its chip's palette (the original's 0x0800DA8A: navi 8's count, 1, by 0x0800DAE8's row, by the chip's level).
+    palette: number,
     -- Sent by the unseen one (Param1), its delay (Param2) and its target, x | y << 4 (Param3).
     sent: boolean,
     delay: number,
@@ -31,8 +31,6 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_THROW = asset.sound("boomerang")
 -- The effect table's row 2: the puff he vanishes in, 32 pixels up.
 local PUFF = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
--- By the level (0x0800DA8A: navi 8's count, 1, by 0x0800DAE8's row): SP's 2, DS's 3.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 2, 3 }
 -- Where the three appear (0x080BA158): the first panel of his user's side, by side, as { require, forbid }.
 local OWN_AREA = { [0] = { 0, 0x20 }, { 0x20, 0 } }
 local RISE = 0x20_0000
@@ -110,7 +108,9 @@ local function send(me: Object)
         if x ~= 0 then
             local target = pick_target(me, x, targeted)
             local user = me.related1 :: Object
-            local o = battle.spawn(shadoman.kind, Vec3.new(y, me.element, s.level))
+            -- (Its position is the spawner's registers: the row, the element, and the chip's level, Param0, which its
+            -- init replaces before anything reads them.)
+            local o = battle.spawn(shadoman.kind, Vec3.new(y, me.element, 0))
             if o then
                 o.panel_x, o.panel_y = x, y
                 o.element = me.element
@@ -120,7 +120,7 @@ local function send(me: Object)
                 local c = o.state :: State
                 c.controller = me
                 c.index = i - 1
-                c.level = s.level
+                c.palette = s.palette
                 c.sent = true
                 c.delay = delay
                 c.target = target
@@ -294,7 +294,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = attack, [0xC] = leave }
 
--- 0x080B9EC8: its sprite (animation 3, its shadow), its palette by the level, facing its side's way, on its panel,
+-- 0x080B9EC8: its sprite (animation 3, its shadow), its chip's palette, facing its side's way, on its panel,
 -- on the ground.
 local function init(me: Object)
     local s = me.state :: State
@@ -303,7 +303,7 @@ local function init(me: Object)
     sprite.shadow = "ground"
     me.anim, me.anim_loaded = 3, 3
     sprite:set_animation(3)
-    sprite.palette = PALETTES[s.level] or 0
+    sprite.palette = s.palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_coordinates_from_panel()
     local p = me.pos
@@ -317,7 +317,7 @@ shadoman.kind = new.kind {
     state = {
         controller = "object",
         index = "u8",
-        level = "u8",
+        palette = "u8",
         sent = "bool",
         delay = "u8",
         target = "u8",
@@ -345,11 +345,11 @@ shadoman.kind = new.kind {
     end,
 }
 
--- 0x080BA25A: ShadowMan (the unseen one) for `user`, reporting to `controller` (the summon table's entry 11), of a
--- chip of `level`. (His position is the spawner's registers, which nothing moves: the row, the element and the
+-- 0x080BA25A: ShadowMan (the unseen one) for `user`, reporting to `controller` (the summon table's entry 11), in its
+-- chip's `palette`. (His position is the spawner's registers, which nothing moves: the row, the element and the
 -- address the controller called him through.)
 -- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
-function shadoman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+function shadoman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(shadoman.kind, user, spec, 0x080BA25B)
         if not o then
@@ -357,13 +357,10 @@ function shadoman.summon_at(level: number): (user: Object, controller: Object, s
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
-shadoman.summon = shadoman.summon_at(0)
-shadoman.summon_sp = shadoman.summon_at(3)
-shadoman.summon_dark = shadoman.summon_at(4)
 
 return shadoman

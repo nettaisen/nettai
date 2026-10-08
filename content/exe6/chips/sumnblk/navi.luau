@@ -15,8 +15,8 @@ export type State = {
     -- Its controller, whose `busy` it clears when it is gone (ExtraVars+0
     -- points at the flag).
     holder: Object?,
-    -- Its look (+0x64: the chip's variant; palette three a variant).
-    variant: number,
+    -- Its palette (its chip's; +0x64 the original's chip's variant, three palettes a variant).
+    palette: number,
     -- The panel it strikes from (+0x65, +0x66).
     target_x: number,
     target_y: number,
@@ -264,7 +264,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    sprite.palette = s.variant * 3
+    sprite.palette = s.palette
     me.visible = false
     me:set_lifecycle("update")
     tick(me)
@@ -273,7 +273,7 @@ end
 navi.kind = new.kind {
     id = "sumnblk/navi",
     pool = "actor",
-    state = { holder = "object", variant = "u8", target_x = "u8", target_y = "u8" },
+    state = { holder = "object", palette = "u8", target_x = "u8", target_y = "u8" },
     -- `sub_80C1570`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -292,10 +292,10 @@ navi.kind = new.kind {
     end,
 }
 
--- `sub_80C17F4`: the navi of `variant` on panel (`x`, `y`) for
+-- `sub_80C17F4`: the navi in `palette` on panel (`x`, `y`) for
 -- `controller` (its side and facing), with `element` and the damage word;
 -- the controller is busy until it is gone.
-function navi.spawn(controller: Object, x: number, y: number, element: number, variant: number, damage: number): Object?
+function navi.spawn(controller: Object, x: number, y: number, element: number, palette: number, damage: number): Object?
     local o = battle.spawn(navi.kind, Vec3.zero)
     if not o then
         return nil
@@ -306,7 +306,7 @@ function navi.spawn(controller: Object, x: number, y: number, element: number, v
     o.related1 = controller
     o:set_damage_word(damage)
     local s = o.state :: State
-    s.variant = variant
+    s.palette = palette
     s.holder = controller
     controller.state.busy = true
     return o

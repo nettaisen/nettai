@@ -6,8 +6,8 @@
 --
 -- What it is comes with its variant (a `SwordWaveVariant` record, a row
 -- of the original's `byte_80D7F4C` by the first parameter): its
--- collision, look, speed and reach. `sword_wave.waves` are the rows by
--- name; each charged slash (./slashes) names its own.
+-- collision, look, speed and reach. Each charged slash (./slashes) states
+-- its own (`sword_wave.wave`, the rows' usual make).
 
 local collision = require("../../../../rules/collision")
 local regions = require("@exelib/regions")
@@ -220,11 +220,10 @@ end
 -- ---- The waves of the swords SlashCross charges ----------------------------
 
 local SLASH = { is = collision.slash, hits = collision.hits_navis }
-local SWORD_SLASH, BIG_SLASH = asset.sprite("sword-slash"), asset.sprite("big-slash")
 
 -- A wave of the rows' usual make: a slash that reaches navis, 8 pixels a
 -- tick, over 8 panel centers.
-local function wave(v: {
+function sword_wave.wave(v: {
     region: Region,
     sprite: SpriteAsset,
     anim: number,
@@ -253,40 +252,5 @@ local function wave(v: {
         bug_arg = v.bug_arg,
     }
 end
-
--- The waves, by the sword the slash is of (the original's rows: the
--- charged sword chip's subtype, then the charge's own). `charge`: the
--- charged shot's own short wave, whose sprite also steps after each
--- update; `moon`: the moon blade's ring, whose hits give a bug (code 0x18,
--- argument 1); `unused`: row 7, a sword no chip is.
-sword_wave.waves = {
-    sword = wave { region = regions.single, sprite = SWORD_SLASH, anim = 2 },
-    wide = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0 },
-    long = wave { region = regions.long, sprite = SWORD_SLASH, anim = 1 },
-    wide_blade = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 5 },
-    long_blade = wave { region = regions.long, sprite = SWORD_SLASH, anim = 1, palette = 5 },
-    life = wave { region = regions.wide_long, sprite = BIG_SLASH, anim = 0 },
-    dark = wave { region = regions.wide_long, sprite = BIG_SLASH, anim = 0, palette = 10 },
-    unused = wave { region = regions.wide_long, sprite = BIG_SLASH, anim = 0 },
-    muramasa = wave { region = regions.long, sprite = SWORD_SLASH, anim = 1, palette = 6 },
-    fighter = wave { region = regions.line, sprite = SWORD_SLASH, anim = 3 },
-    cross = wave { region = regions.x, sprite = asset.sprite("cross-slash"), anim = 0, animates = true },
-    double_dream = wave { region = regions.wide_long, sprite = BIG_SLASH, anim = 0, hit_mod = 1 },
-    fire = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 1 },
-    aqua = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 2 },
-    -- (It paralyzes.)
-    elec = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 3, hit_mod = 1, status = statuses.paralyze_90 },
-    bamboo = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 4, hit_mod = 1 },
-    charge = wave { region = regions.wide, sprite = asset.sprite("charged-slash"), anim = 0, reach = 1, steps = true },
-    moon = wave {
-        region = regions.ring,
-        sprite = asset.sprite("moon-blade"),
-        anim = 0,
-        animates = true,
-        bug = 0x18,
-        bug_arg = 1,
-    },
-    double_dream_second = wave { region = regions.wide_long, sprite = BIG_SLASH, anim = 0 },
-}
 
 return sword_wave

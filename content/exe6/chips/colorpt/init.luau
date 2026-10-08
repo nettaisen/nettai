@@ -20,7 +20,7 @@ local chips: { [string]: Chip } = {
         rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 0,
         flags = { "dimming", "standard_library", "library" },
         slot_in_limit = 1,
-        dimming = controller.hook { palette = 1, bonus = 20 },
+        dimming = controller.hook { palette = 4, bonus = 20 },
     },
 }
 

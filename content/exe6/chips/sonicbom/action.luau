@@ -50,8 +50,8 @@ function sonicbom.action(id: string, boom: SonicBoom, charged: Charged?): Action
         if me.step_init == 0 then
             me:set_animation(ANIM_SWING)
             me:open_counter_window()
-            battle.play_sound(parts.sounds.swing)
-            parts.hold(me, parts.blades.sword, 0)
+            battle.play_sound(parts.swing)
+            parts.hold(me, parts.blade, 0)
             me:set_status("using_action", true)
             s.timer = SWING_TICKS
             me.step_init = 4

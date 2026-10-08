@@ -23,8 +23,11 @@ local otenko = require("../otenko/identity")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette and his first hit's bug.
-    level: number,
+    -- His chip's palette, and the bug its first purifying hit gives, with its argument (the original's by the chip's
+    -- level, its Param1: DjangoDS's 4 the dark palette, 0x080BF290, and bug).
+    palette: number,
+    bug: number,
+    bug_arg: number,
     -- Otenko blesses his side (+5): the drain doubles, the sun and lights brighten.
     blessed: boolean,
     -- How long the drain lasts (+0x70: the chip's damage).
@@ -44,16 +47,12 @@ local SOUND_CHARGE = asset.sound("django-charge")
 local SOUND_LAND = asset.sound("rockfall")
 local SOUND_BEAM = asset.sound("sun-beam")
 
--- By the level (0x080BF290): the dark palette for DS's 4.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 3 }
 -- What he looks for ahead in his row (0x080BF594): an enemy navi's body.
 local ENEMY_NAVI = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 -- Where the rubble falls (0x080BF608): beside the coffin's panel.
 local RUBBLE_AT = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }
--- The purifying hits: element 5 (the sun's), on the coffin's 3x3, no spark; the first bugs (0xFD with 0x11, DS's
--- 0xFC).
+-- The purifying hits: element 5 (the sun's), on the coffin's 3x3, no spark; the first bugs its chip's.
 local SUN_ELEMENT = 5
-local BUG, BUG_ARG, DARK_BUG = 0xFD, 0x11, 0xFC
 local SOLID = 0x10
 
 -- 0x080BF542: the panel of the first enemy navi ahead in his row; x 0 when none is before the edge.
@@ -250,11 +249,7 @@ local function drain(me: Object)
         me.timer = int.u16(s.drain_ticks)
         me.timer2 = 0xB
         s.lights = lights.spawn(me, tx, ty, s.blessed)
-        if s.level >= 4 then
-            purify(me, tx, ty, DARK_BUG, 0)
-        else
-            purify(me, tx, ty, BUG, BUG_ARG)
-        end
+        purify(me, tx, ty, s.bug, s.bug_arg)
         local c = s.coffin
         if c then
             coffin.set_anim(c, 2)
@@ -342,7 +337,7 @@ local function act(me: Object)
     action(me)
 end
 
--- 0x080BF238: his look (animation 1, loaded with the sprite update), his palette by the level, on his panel; his
+-- 0x080BF238: his look (animation 1, loaded with the sprite update), his chip's palette, on his panel; his
 -- target, the drain's ticks (his damage: 1 a hit, 2 with Otenko's blessing); and his first action at once.
 local function init(me: Object)
     local s = me.state :: State
@@ -351,7 +346,7 @@ local function init(me: Object)
     sprite.shadow = "ground"
     me.anim, me.anim_loaded = 1, 0xFF
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    sprite.palette = PALETTES[s.level] or 0
+    sprite.palette = s.palette
     me:set_coordinates_from_panel()
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
@@ -372,7 +367,9 @@ django.kind = new.kind {
     pool = "actor",
     state = {
         controller = "object",
-        level = "u8",
+        palette = "u8",
+        bug = "u8",
+        bug_arg = "u8",
         blessed = "bool",
         drain_ticks = "u16",
         sun = "object",
@@ -394,8 +391,11 @@ django.kind = new.kind {
     end,
 }
 
--- 0x080BF51C: Django for `user`, reporting to `controller` (the summon table's entry 19), of a chip of `level`.
-function django.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- What a chip's Django is: his palette, and the bug his first purifying hit gives, with its argument.
+export type Summon = { palette: number, bug: number, bug_arg: number }
+
+-- 0x080BF51C: Django for `user`, reporting to `controller` (the summon table's entry 19), as his chip's `summon` says.
+function django.summon(summon: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(django.kind, user, spec)
         if not o then
@@ -403,14 +403,9 @@ function django.summon_at(level: number): (user: Object, controller: Object, spe
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette, s.bug, s.bug_arg = summon.palette, summon.bug, summon.bug_arg
         return o
     end
 end
-
--- Django's, DjangoSP's and DjangoDS's (their Param1s 0, 3 and 4).
-django.summon = django.summon_at(0)
-django.summon_sp = django.summon_at(3)
-django.summon_dark = django.summon_at(4)
 
 return django

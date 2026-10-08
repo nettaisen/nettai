@@ -6,6 +6,9 @@
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
+-- The slash over two panels (effect 0x17).
+local LONG_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 0 }
+
 local chip: Chip = {
     codes = { "C", "M", "S" },
     element = "null",
@@ -22,7 +25,7 @@ local chip: Chip = {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.long, collision = swords.slashes_navis, hit_mod = 3 },
-        effect = swords.effects.long,
+        effect = LONG_SLASH,
         sound = swords.swing,
     },
     auto_battle = { class = "into_reach", range = "two_in_row" },

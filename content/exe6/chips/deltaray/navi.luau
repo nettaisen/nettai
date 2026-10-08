@@ -16,6 +16,9 @@ local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
 local parts = require("../../lib/swords/parts")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 -- What a chip summons him with: his palette (the chip's first parameter
 -- picks it).
 export type Summon = { palette: number }
@@ -27,18 +30,18 @@ return common.make {
         appear = asset.sound("appear"),
         arrive = asset.sound("log-in"),
         mark = asset.sound("mark"),
-        swing = parts.sounds.swing,
+        swing = parts.swing,
         burst = asset.sound("delta-ray-2"),
     },
     -- The flash above him as he arrives (effect 0x03), and the mark on his
     -- target (effect 0x28); his slash drawn over the column (effect 0x27).
     flash = new.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 },
     mark = new.effect { sprite = asset.sprite("hit-sparks"), anim = 11, palette = 1 },
-    slash = parts.effects.wide,
+    slash = WIDE_SLASH,
     -- His sword: the swords' blade (the original's attachment 3), its
     -- animation 0x0B, stepping while dimmed.
     attach = attachment.attach,
-    sword = parts.blades.sword,
+    sword = parts.blade,
     sword_anim = 0x0B,
     self_type = collision.slash,
     target = collision.hits_navis,
