@@ -40,6 +40,10 @@ local rules: Rules = {
         -- Fighting in the sun (+0x29: the overworld sets it by the map, 0x0802A770, and the reset keeps it: ./save),
         -- which GunSol reads.
         sun = "bool",
+        -- The NaviCust's encounter and result bugs (+0x15 = 1, +0x19 = 1: ./navicust), which no netbattle feels but
+        -- the count of the navi's kinds of bug reads (./navicust's `bug_kinds`: Static's).
+        encounter_bug = "bool",
+        result_bug = "bool",
     },
     -- What a player brings (nettai-match from a match's side, exe4-compat from a recording): a side's facts.
     setup = {
