@@ -142,6 +142,9 @@ language = "ja"
 "blizzard" = { name = "ブリザード", description = "ほうしゃじょうに\nふぶき攻撃!\nパネルをこおりに" }
 "elecshok" = { name = "エレキショック", description = "ほうしゃじょうに\nほうでん攻撃!\nパネルをヒビに" }
 "woodpwdr" = { name = "ウッディパウダー", description = "ほうしゃじょうに\nほうし攻撃!\nパネルをくさむらに" }
+"rush" = { name = "ラッシュサポート", description = "" }
+"beat" = { name = "ビートサポート", description = "" }
+"tango" = { name = "タンゴサポート", description = "" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

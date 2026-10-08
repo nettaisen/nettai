@@ -788,10 +788,8 @@ fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)
 /// mood, the buster's levels and blank count, the weapons by compat
 /// (records.toml), the bugs' drains, the custom level and chip limits, the
 /// move lag's column (the engine's navi variant), the soul (the form), the
-/// aura, the HP, and the rules' stats (the weapon level, the move bug, the
-/// Full Synchro at the start, MegaMan's color, All Guard). A block that
-/// holds what the port can't say yet (the supports: patch cards to come) is
-/// an error, which `Round::needs` lists.
+/// aura, the HP, the supports, and the rules' stats (the weapon level, the
+/// move bug, the Full Synchro at the start, MegaMan's color, All Guard).
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
@@ -806,9 +804,13 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         None => None,
         Some(k) => Some(content.defs.record(&k).ok_or_else(|| format!("the content has no aura {k}"))?),
     };
-    if s.supports != 0 {
-        return Err("supports (+0x18): not ported yet (docs/design/exe4-map.md §18)".to_string());
-    }
+    // The supports (+0x18): 0xFF the support bug, else a bit each (Rush 1,
+    // Beat 2, Tango 4), as EXE6's +0x0D.
+    stats.support = (s.supports != 0xFF).then(|| nettai_battle::setup::Supports {
+        rush: s.supports & 1 != 0,
+        beat: s.supports & 2 != 0,
+        tango: s.supports & 4 != 0,
+    });
     stats.mood = s.mood;
     stats.super_armor = s.super_armor;
     stats.float_shoes = s.float_shoes;
