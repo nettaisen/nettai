@@ -2177,13 +2177,15 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      MegaMan's sprite, his entry plus the soul (0x0800B90A, 0x0801079C) *done*; the emotion 4 (0x0800F49C), no anger
      (0x0800C560) and no Full Synchro aura (0x0800D98A) *done*; the palette 0 (0x0800BFFE) *done*; the status reset's
      routine by soul (0x0800E05C, table 0x0800E0A0), its element by soul (0x0800C93C, table 0x0800C964: Fire fire,
-     Thunder elec, Aqua aqua, Wood wood, the rest null) *open*; the overlay by soul (0x0800B7E8, table 0x08018068: Fire
+     Thunder elec, Aqua aqua, Wood wood, the rest null) *done* for Fire, Thunder and Aqua, *open* for Wood; the
+     overlay by soul (0x0800B7E8, table 0x08018068: Fire
      0x10, Number 0x110; `effects.form_overlay`; PopUp's glow, objects/glow, puts its copy on through the form's
-     `put_on` and must have it step on, its Param3 1: 0x0800B812) *open*; the image's part (0x080E3674, table
+     `put_on` and must have it step on, its Param3 1: 0x0800B812) *done* for Fire, *open* for Number; the image's
+     part (0x080E3674, table
      0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
-     *done* for WindMan, *open* for the rest; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
+     *done* for WindMan, FireMan and AquaMan, *open* for NumberMan; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
      `charged_chips`; the A routine forms/soul's `chip_charge`; any charged chip used with its charge, Null or not,
-     0x0800B72C: the rule `chip_use.charged_null_alt_routine`) *done* for Fire, Proto and Metal, *open* for Aqua; a
+     0x0800B72C: the rule `chip_use.charged_null_alt_routine`) *done* (Fire, Proto, Metal, Aqua); a
      charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage itself, item 28; the
      form's `charged_bonus.doubles`) *done* (souls/proto/chip); MegaMan's look by soul in what copies it (the image
      0x080E2C44, the swords' and cannons' afterimages 0x080EB548, 0x080EB5FA, 0x080EB874, the GigaCan's part
@@ -2249,8 +2251,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      reset runs nothing of its own (0x0800E0A0's row 9).
    - **JunkSoul (10).** No shadow (0x0801079C and the look copies) *open*; the status reset's hitbox on his panel
      (0x0800E146: params 0x1705FF85 or 0x1705FF84 by side, 0x2100) *open*; charged 0x61 (0x0800CE4C) *open*.
-   - **AquaSoul (11).** Aqua (0x0800C964) *open*; its image part 0x13 *open*; an aqua chip that isn't a dimming chip
-     charges on A (0x15) and doubles charged (0x0800C47A) *open*; charged 0x23 (0x0800CF42) *open*.
+   - **AquaSoul (11).** Aqua (0x0800C964) *done* (souls/aqua/weakness: Thunder1's elec on it); its image part 0x13
+     (10-0c) *done* (souls/aqua/hit, unison); an aqua chip that isn't a dimming chip (every one deals damage) charges
+     on A (0x15: 20 ticks a level, 60 the last) and doubles charged (0x0800C47A) *done* (souls/aqua/chip, a Bubbler);
+     Bubbler's spreader charged (0x23, 0x0800CF42: 20 aqua, hit 0x94, action 0x1E's variant 2, bullet row 0x0D: the
+     burst on the first thing found and the panel behind, hit modifier 3) *done* (souls/aqua/unison, side1). Its status
+     reset runs nothing of its own (0x0800E0A0's row 11).
    - **WoodSoul (12).** Wood (0x0800C964) *open*; the status reset's merge (0x0800E294: a Wood chip takes the damage
      and bonuses of a damaging Null chip after it, which leaves the hand) *open*; grass heals 1 (0x08012FD6) *open*;
      a hit's status doesn't take (0x08013904 skips 0x08013470: `status_immune`) *open*; charged 0x57 (0x0800D270)
