@@ -44,6 +44,9 @@
 "flmline1/action" = 0x22
 "flmline2/action" = 0x22
 "flmline3/action" = 0x22
+# The fans' (the chips' action 0x28, 0x080ECF44).
+"tornado/action" = 0x28
+"static/action" = 0x28
 # The PropBoms' (the chips' action 0x62, 0x080EE532).
 "propbom1/action" = 0x62
 "propbom2/action" = 0x62
