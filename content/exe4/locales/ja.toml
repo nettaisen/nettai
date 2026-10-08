@@ -207,6 +207,8 @@ language = "ja"
 "geddon1" = { name = "デスマッチ1", description = "パネルのあるマスが\nすべてヒビに!" }
 "geddon2" = { name = "デスマッチ2", description = "あいているマスが\nすべてこわれる!" }
 "geddon3" = { name = "デスマッチ3", description = "パネルのあるマスが\nすべてどくぬまに!" }
+"wind" = { name = "トップウ", description = "ウインドボックスを\nおき てきエリアに\n風をふかせる" }
+"fan" = { name = "スイコミ", description = "バキュームファンを\nおき 風でてきを\nすいよせる" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

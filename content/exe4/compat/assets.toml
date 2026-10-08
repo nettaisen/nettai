@@ -68,6 +68,7 @@ bubbler = "0c-1c"  # the Bubblers' gun: attachment row 0x0E (0x080CD524), action
 vulcan = "0c-1d"  # the vulcans' gun: attachment rows 13 and 49 (0x080CD524), action 0x1F (0x080EC896)
 flame-line-burner = "0c-1e"  # the FlmLines' burner: attachment row 0x0C (0x080CD524), action 0x22 (0x080ECAF6)
 taunt = "0c-1f"  # the taunt's mark: attachment row 21 (0x080CD524), action 0x2A (0x080ED150)
+fan = "0c-21"  # Wind's and Fan's fan: attack 0x48's init (0x080D64B2)
 black-bomb = "0c-24"
 geyser = "0c-25"
 meta-gel = "0c-26"
