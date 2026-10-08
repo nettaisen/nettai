@@ -120,8 +120,14 @@ export type Trajectory = {
 }
 
 -- A game's wide wave (@exelib/widesht/wave): its kind's key, its sprite and sound, its afterimages' sprite (a
--- variant's own overrides both), and what it hits.
-export type WideWaveLook = { id: string, sprite: SpriteAsset, sound: Sound, trail_sprite: SpriteAsset, target: CollisionType }
+-- variant's own overrides both; a game with no trailing variant, EXE4, states none), and what it hits.
+export type WideWaveLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    trail_sprite: SpriteAsset?,
+    target: CollisionType,
+}
 
 -- A game's wide shots (@exelib/widesht/action): its wide shooter (a spec's own overrides it), its attachment kind and
 -- its wave's kind.
@@ -352,12 +358,35 @@ export type PuckLook = {
     hits: CollisionType,
     spark: Spark,
     burst: Effect,
-    trail_tint: number,
+    trail_tint: number?,
 }
 
--- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, and whether it
--- goes down the field.
-export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean }
+-- A game's magnet field (@exelib/magbolt/magnet): its key, what it is and hits, its spark by its element, the paralysis
+-- it carries when its parameter says, and whether it only watches its owner's first related object (EXE4's) rather
+-- than being stored there (EXE5's).
+export type MagnetLook = {
+    id: string,
+    attack: CollisionType,
+    hits: CollisionType,
+    spark_of: (element: number) -> Spark,
+    paralysis: Status,
+    watches: boolean,
+}
+
+-- A game's magnet field's spawn: `owner`'s, at (dx, dy) from his panel, of an element and a damage word, paralyzing or
+-- not.
+export type MagnetSpawn = (
+    owner: Object,
+    dx: number,
+    dy: number,
+    element: number,
+    paralyzes: boolean,
+    damage: number
+) -> Object?
+
+-- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, whether it goes down
+-- the field, and the navi's animation as it flicks (none: EXE6's and EXE5's 0x0C).
+export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean, anim: number? }
 
 -- A sun beam's look (@exelib/gundels/beam): its sprite and palette.
 export type SunBeamLook = { sprite: SpriteAsset, palette: number }

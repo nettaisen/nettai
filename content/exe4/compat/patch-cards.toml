@@ -45,6 +45,7 @@
 "048-weapon-change" = 48
 "049-buster-attack-15" = 49
 "050-gigafolder1" = 50
+"052-charge-shot-switch" = 52
 "053-charge-shot-switch" = 53
 "054-charge-shot-switch" = 54
 "055-charge-shot-switch" = 55
@@ -66,6 +67,7 @@
 "076-all-guard-1-2" = 76
 "077-all-guard-2-2" = 77
 "078-first-life-aura" = 78
+"080-charge-shot-switch" = 80
 "083-charge-shot-switch" = 83
 "084-charge-shot-switch" = 84
 "085-charge-shot-switch" = 85
@@ -94,6 +96,7 @@
 "110-custom3" = 110
 "111-gigafolder1" = 111
 "112-b-left-ability-activation" = 112
+"113-charge-shot-switch" = 113
 "114-charge-shot-switch" = 114
 "116-charge-shot-switch" = 116
 "117-charge-shot-switch" = 117
