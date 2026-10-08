@@ -56,6 +56,8 @@
 "boulder" = { pool = "attack", index = 0x6E }
 "rock/debris" = { pool = "effect", index = 0x38 }
 "guard-shield" = { pool = "attack", index = 0x2B }
+# The Guard chips' shock wave (0x080CFD2A).
+"guard/wave" = { pool = "attack", index = 0x16 }
 # The cracks' crack (CrakOut and its kin, action 0x21: 0x080CFEFC).
 "crack" = { pool = "attack", index = 0x18 }
 # AreaGrab's and PanlGrab's grab shot (0x080CF108) and their dimming controller (action 0x0C's variant 0, 0x080E206C).

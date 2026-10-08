@@ -142,6 +142,9 @@ language = "en"
 "blizzard" = { name = "Blizzard", description = "Snowstorm\nattack!\nIce Panel" }
 "elecshok" = { name = "ElecShok", description = "Cracker\nElectric\nblast" }
 "woodpwdr" = { name = "WoodPwdr", description = "Changes\npanels\nto grass" }
+"guard1" = { name = "Guard1", description = "Repels\nenemy's\nattack" }
+"guard2" = { name = "Guard2", description = "Repels\nenemy's\nattack" }
+"guard3" = { name = "Guard3", description = "Repels\nenemy's\nattack" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -259,6 +262,7 @@ language = "en"
 "042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
+"047-weapon-change" = { name = "Weapon Change" }
 "048-weapon-change" = { name = "Weapon Change" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }
