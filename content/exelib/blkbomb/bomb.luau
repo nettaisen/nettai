@@ -1,6 +1,7 @@
 --!strict
 -- A BlkBomb, as EXE5 and EXE6 share it (EXE6's attack object #0x4A,
--- `sub_80CD4EC`; EXE5's #0x47). Lobbed at
+-- `sub_80CD4EC`; EXE5's #0x47; EXE4's #0x47, 0x080D6120, which EXE5's grew
+-- from). Lobbed at
 -- the panel three ahead, it sits there as an obstacle with 100 HP (one to a
 -- side, `obstacle.register` class 1) until a fire hit sets it off: it
 -- bursts over the whole of the side opposite its panel's owner (one hit,
@@ -14,6 +15,15 @@
 -- sprite, hit spark, sounds, its and its burst's collision types, how a
 -- pushing hit treats it, and the objects and helpers it uses (the game's
 -- rising bubble, panel bursts and trajectory).
+--
+-- EXE4's (its look's differences): no identity of its own (no NameID set);
+-- no field-object tracking to release (EXE5's 0x0802EFFA, EXE6's); a fire
+-- hit sets it off without emptying its HP; and its destroyed action bursts
+-- it as it finishes (0x080D63A8), its last update freeing it alone (EXE6's
+-- and EXE5's burst there). (Its collision's damage is 100 plus the low half
+-- of its thrower's X, 0x080D61DC: 0 for a navi throwing from its panel.)
+-- Its reaction (0x0801416C) reads no removal request and leaves its HP as
+-- it is when a touch destroys it (its look's `crush`).
 
 local panel_bursts = require("../panel_bursts")
 local regions = require("../regions")
@@ -21,29 +31,8 @@ local rising_bubble = require("../rising_bubble")
 
 local black_bomb = {}
 
--- A game's BlkBomb: its destroyed action (2), identity (a field object,
--- with the look something that takes its place shows: DustMan's junk) and
--- sprite, hit spark, collision type, what it hits and its burst's, what a
--- pushing hit does to it, the sounds of its landing and its burst, the
--- burst's explosions, the bubble it leaves in a hole, its panel bursts'
--- kind and its trajectory.
-export type Look = {
-    destroyed: (Object) -> (),
-    identity: Identity,
-    sprite: SpriteAsset,
-    spark: Spark,
-    is: CollisionType,
-    target: CollisionType,
-    burst_is: CollisionType,
-    burst_target: CollisionType,
-    push: ObstaclePush,
-    land_sound: Sound,
-    burst_sound: Sound,
-    burst_effect: Effect,
-    bubble: Kind,
-    bursts: Kind,
-    trajectory: Trajectory,
-}
+-- (A game's BlkBomb is a `BlackBombLook`, @exelib's types.)
+type Look = BlackBombLook
 
 -- A kind's look and its action table.
 type Kinded = Look & { actions: { [number]: (Object) -> () } }
@@ -82,6 +71,14 @@ function black_bomb.finish(me: Object)
     obstacle.unregister(me)
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
     me:set_lifecycle("destroy")
+end
+
+-- Out of the field-object registry (and its tracking, where the game has it).
+local function forget(me: Object, look: Look)
+    if look.tracked then
+        obstacle.release_tracking(me)
+    end
+    obstacle.unregister(me)
 end
 
 -- Set down (`loc_80CD6BC`): on its panel for good.
@@ -130,15 +127,17 @@ local function fly(me: Object, look: Look)
     rising_bubble.spawn(look.bubble, Vec3.new(p.x, p.y, 0), 0)
     me.collision:set_region(nil)
     obstacle.unregister(me)
-    obstacle.release_tracking(me)
+    if look.tracked then
+        obstacle.release_tracking(me)
+    end
     me.lifecycle = "destroy"
 end
 
 -- `sub_80CD6FC`: set down, nothing to do.
 local function idle(_me: Object) end
 
--- `sub_80CD7A0`: a fire hit sets it off.
-local function catch_fire(me: Object)
+-- `sub_80CD7A0`: a fire hit sets it off (its HP emptied but EXE4's).
+local function catch_fire(me: Object, look: Look)
     local s = me.state :: State
     if s.set_off or me.collision:element_damage(FIRE) == 0 then
         return
@@ -146,7 +145,9 @@ local function catch_fire(me: Object)
     s.set_off = true
     me.collision:set_region(nil)
     me.visible = false
-    me.hp = 0
+    if look.set_off_empties_hp then
+        me.hp = 0
+    end
     me.action = DESTROYED
     me.phase, me.phase_init = 0, 0
 end
@@ -156,11 +157,11 @@ local function tick(me: Object, k: Kinded)
     me.visible = true
     obstacle.take_hits(me, k.push)
     me:hit_spark()
-    catch_fire(me)
+    catch_fire(me, k)
     if not (me.state :: State).placed then
         obstacle.tick_lifetime(me)
     end
-    local a = obstacle.react(me, "breaks", "always")
+    local a = obstacle.react(me, k.crush, "always")
     if a then
         local action = k.actions[a]
         if not action then
@@ -172,9 +173,9 @@ local function tick(me: Object, k: Kinded)
     me.collision:present()
 end
 
--- `sub_80CD7D0`: set off, it bursts over the side opposite its panel's
--- owner.
-local function burst(me: Object, k: Kinded)
+-- `sub_80CD7D0` (EXE4's 0x080D63A8): set off, it bursts over the side
+-- opposite its panel's owner.
+local function burst(me: Object, k: Look)
     if not (me.state :: State).set_off then
         return
     end
@@ -213,7 +214,9 @@ local function init(me: Object, s: State, k: Kinded)
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
     sprite.shadow = "ground"
-    me.identity = k.identity
+    if k.identity then
+        me.identity = k.identity
+    end
     if not s.placed then
         local x, y = s.target_x, s.target_y
         me.future_panel_x, me.future_panel_y = x, y
@@ -228,8 +231,7 @@ local function init(me: Object, s: State, k: Kinded)
         me.timer = ticks
         if ticks == 0 then
             me.pos = Vec3.new(tx, ty, 0)
-            obstacle.release_tracking(me)
-            obstacle.unregister(me)
+            forget(me, k)
             me:destroy()
             return
         end
@@ -237,8 +239,7 @@ local function init(me: Object, s: State, k: Kinded)
     me.hp, me.max_hp = HP, HP
     me.timer = LIFETIME
     if not me:create_collision() then
-        obstacle.release_tracking(me)
-        obstacle.unregister(me)
+        forget(me, k)
         me:free()
         return
     end
@@ -274,6 +275,10 @@ function black_bomb.make_kind(id: string, look: Look): Kind
     local k: Kinded = {
         destroyed = look.destroyed,
         identity = look.identity,
+        tracked = look.tracked,
+        set_off_empties_hp = look.set_off_empties_hp,
+        bursts_as_freed = look.bursts_as_freed,
+        crush = look.crush,
         sprite = look.sprite,
         spark = look.spark,
         is = look.is,
@@ -300,14 +305,22 @@ function black_bomb.make_kind(id: string, look: Look): Kind
                 init(me, me.state :: State, k)
             elseif l == "update" then
                 tick(me, k)
-            else
+            elseif k.bursts_as_freed then
                 -- `sub_80CD78E`.
                 burst(me, k)
                 me.collision:free()
                 me:free()
+            else
+                -- (EXE4's: 0x08010560.)
+                me:destroy()
             end
         end,
     }
+end
+
+-- EXE4's: the burst its destroyed action makes as it finishes (0x080D6368).
+function black_bomb.burst(me: Object, look: Look)
+    burst(me, look)
 end
 
 -- `sub_80CD886`: a thrower for `throw.action` that throws a BlkBomb at the

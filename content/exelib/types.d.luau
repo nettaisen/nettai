@@ -402,8 +402,12 @@ export type BugBombLook = {
     is: CollisionType,
     hit_by: CollisionType,
     status: Status,
-    burst_is: CollisionType,
-    burst_hits: CollisionType,
+    -- What it bursts as and reaches (none: EXE4's, the types it sits with).
+    burst_is: CollisionType?,
+    burst_hits: CollisionType?,
+    -- A crushing hit (0x3F800000) "explodes" it whenever it comes (EXE6's, EXE5's) or "bursts" it at once as it
+    -- sits (EXE4's).
+    crushing_hit: "explodes" | "bursts",
     crushed: Effect,
     burst: Effect,
     land_sound: Sound,
@@ -651,7 +655,14 @@ export type ZSaverLook = {
     id: string?,
     swing_sound: Sound,
     command_sound: Sound,
-    attachment: Kind,
+    -- The blade's attachment kind in the overlay slot (EXE6's, EXE5's), or
+    -- how the navi holds it in its related slot instead (EXE4's `hold`).
+    attachment: Kind?,
+    hold: ((me: Object, blade: AttachmentLook, anim: number) -> ())?,
+    -- Each swing refreshes a form's overlay; the recovery clears the moving
+    -- flag and lets go of the overlay (EXE6's, EXE5's; not EXE4's).
+    refreshes_form_overlay: boolean,
+    recovery_clears_moving: boolean,
     blade: AttachmentLook,
     blade_anim: (me: Object) -> number,
     is: CollisionType,
@@ -690,6 +701,25 @@ export type NumberBallLook = {
 export type NumberBall = {
     kind: Kind,
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
+}
+
+-- A game's NumbrBl NumberMan (@exelib/numbrbl/numberman): his kind's id, sprite and palette, his appearing sound, his
+-- throwing animation, his balls, and whether his init loads his standing animation (EXE4's) or leaves his animation
+-- byte 0xFF (EXE5's).
+export type NumbrBlNumberManLook = {
+    id: string,
+    sprite: SpriteAsset,
+    palette: number,
+    appear: Sound,
+    throw_anim: number,
+    ball: NumberBall,
+    loads_standing: boolean?,
+}
+
+-- NumbrBl's NumberMan made for a game (@exelib/numbrbl/numberman): his kind, and his spawn for a controller.
+export type NumbrBlNumberMan = {
+    kind: Kind,
+    spawn: (controller: Object, x: number, y: number, damage: number, balls: number) -> Object?,
 }
 
 -- A patch card's effect (@exelib/patch_cards/effects' constructors make them; a game's rules/patch_cards applies
@@ -777,6 +807,38 @@ export type VarSwordGame = {
     sound: Sound,
     waits: (me: Object) -> boolean,
     auto_pick: ((me: Object) -> number?)?,
+}
+
+-- A game's BlkBomb (@exelib/blkbomb/bomb): its destroyed action (2), its
+-- identity (a field object, with the look something that takes its place
+-- shows: DustMan's junk; EXE4's none), whether it has field-object tracking
+-- to release (EXE6's, EXE5's), whether a fire hit empties its HP as it sets
+-- it off, whether it bursts as its last update frees it (EXE6's, EXE5's;
+-- EXE4's destroyed action bursts it), how a touch crushes it (the obstacle
+-- reaction's), its sprite, hit spark, collision type, what it hits and its
+-- burst's, what a pushing hit does to it, the sounds of its landing and its
+-- burst, the burst's explosions, the bubble it leaves in a hole, its panel
+-- bursts' kind and its trajectory.
+export type BlackBombLook = {
+    destroyed: (Object) -> (),
+    identity: Identity?,
+    tracked: boolean,
+    set_off_empties_hp: boolean,
+    bursts_as_freed: boolean,
+    crush: ObstacleCrush,
+    sprite: SpriteAsset,
+    spark: Spark,
+    is: CollisionType,
+    target: CollisionType,
+    burst_is: CollisionType,
+    burst_target: CollisionType,
+    push: ObstaclePush,
+    land_sound: Sound,
+    burst_sound: Sound,
+    burst_effect: Effect,
+    bubble: Kind,
+    bursts: Kind,
+    trajectory: Trajectory,
 }
 
 -- A CopyDmg mark made for a game (@exelib/copydmg/mark).
@@ -1123,7 +1185,8 @@ export type RockVariant = {
     element: string,
     debris_palette: number,
     break_sound: Sound,
-    identity: Identity,
+    -- What it is taken for (none: EXE4's, whose init writes no NameID).
+    identity: Identity?,
 }
 
 -- How a rock comes onto the field (chips/rockcube/rock, the original's
@@ -1739,7 +1802,9 @@ export type NaviChip = {
 -- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
 -- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
 -- after the navi), the controller's state, and what a game's `make` hands back.
-export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
+-- A navi chip controller's step: a wait (the user warping out or back in as it starts, a sound then: EXE4's GutPnch's
+-- warp back, 0x080E91BC), or the navi.
+export type NaviChipStep = { wait: number, warp: ("out" | "in")?, sound: Sound? } | "navi"
 export type NaviChipShortCourse = { out: number, after: number }
 export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean }
 export type NaviChipController = {

@@ -40,7 +40,8 @@ return common.make {
     -- 0x08016C3C(0): hit effect 0.
     spark = sparks.plain,
     breaking_hits = 0x0C80_0002,
-    poison_sound = asset.sound("panel-poison"),
+    landing_panel = "poison",
+    landing_sound = asset.sound("panel-poison"),
     puff = effects.puff,
     trajectory = trajectory,
     curse = curse,

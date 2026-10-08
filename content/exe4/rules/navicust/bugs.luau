@@ -15,8 +15,8 @@ local navicust = require("./init")
 
 local bugs = {}
 
--- The NaviCust bugs by the number a code 0xFF's argument gives (0x08042B18's rows: 8, the weapon's, and 11, which does
--- nothing, are no program's here), as their names.
+-- The NaviCust bugs by the number a code 0xFF's argument gives (0x08042B18's rows: 11, which does nothing, is no
+-- program's here), as their names.
 local function bug_named(kind: number): string?
     if kind == 1 then
         return "move"
@@ -32,6 +32,8 @@ local function bug_named(kind: number): string?
         return "buster"
     elseif kind == 7 then
         return "support"
+    elseif kind == 8 then
+        return "weapon"
     elseif kind == 9 then
         return "result"
     elseif kind == 10 then
@@ -52,10 +54,6 @@ function bugs.navi_bug(side: number, navi: Object): ("edited" | "spared")?
         local bug = bug_named(arg)
         if bug then
             navicust.raise_bug(side, bug)
-        elseif arg == 8 then
-            -- (Its levels set the charged shot to weapon routines 0x1F, 0x20 and 0x21, of which the content has 0x21,
-            -- DrkCanon's taunt, alone.)
-            error("a hit's bug raises the NaviCust's weapon bug (8): its weapon routines 0x1F and 0x20 aren't content")
         elseif arg ~= 11 then
             error(string.format("a hit's bug raises NaviCust bug %d, which reads past 0x08042B18's table", arg))
         end

@@ -1032,11 +1032,20 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
         .collect();
     let theirs: Vec<String> = f.panels.iter().map(|[t, a]| format!("[{t}, {a}]")).collect();
     check("panels", panels.join(", "), theirs.join(", "));
-    let entries: Vec<Option<&crate::KindEntry>> =
-        b.objects.in_order().map(|o| compat.kinds.get(&b.content.defs.kind(b.objects.get(o).kind).key)).collect();
+    let entry_of = |o: nettai_battle::object::ObjectRef| compat.kinds.get(&b.content.defs.kind(b.objects.get(o).kind).key);
+    let entries: Vec<Option<&crate::KindEntry>> = b.objects.in_order().map(entry_of).collect();
+    // (Whether each object's owner, its first related object, is of a kind
+    // whose position is scratch.)
+    let owners_scratch: Vec<bool> = b
+        .objects
+        .in_order()
+        .map(|o| b.objects.get(o).related[0].and_then(entry_of).is_some_and(|k| k.scratch_position))
+        .collect();
     let skip = |i: usize, flags: u8| -> (bool, bool) {
         let Some(Some(k)) = entries.get(i) else { return (false, false) };
-        let garbage = k.scratch_position || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0);
+        let garbage = k.scratch_position
+            || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0)
+            || (k.scratch_with_owner && owners_scratch.get(i).copied().unwrap_or(false));
         (garbage, k.scratch_z_fraction)
     };
     let pos = |p: [i32; 3], garbage: bool, xy_unknown: bool, z_fraction: bool| {
