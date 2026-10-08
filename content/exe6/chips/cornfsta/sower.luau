@@ -40,10 +40,10 @@ local ENEMY_BODY = { [0] = 0x04000000, [1] = 0x08000000 }
 local AT_ENEMY = 6
 
 -- `sub_80C67D8` (with flags |= 0x10): a burst on (x, y) that doesn't
--- spread, running while dimmed; the camera shakes.
+-- spread (Param1 0xFF), running while dimmed; the camera shakes.
 local function burst(me: Object, x: number, y: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local o = corn.spawn(me, x, y, 0, me.element, damage, corn.NO_SPREAD)
+    local o = corn.spawn(me, x, y, 0, me.element, damage, false, false)
     if o then
         o.run_while_dimmed = true
     end
