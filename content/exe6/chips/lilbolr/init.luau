@@ -2,15 +2,16 @@
 -- LilBolr1-3: a boiler (boiler.luau) lobbed three panels ahead, that grows
 -- its damage with every hit it takes and erupts over the eight panels
 -- around it (the original's action 0x12 with subtype 3). The three differ
--- in their damage and level (the boiler's palette and the damage its body
--- deals: the original's first parameter, 0, 2, 3).
+-- in their damage, the boiler's palette and the damage its body deals (the
+-- original's by its first parameter, 0, 2, 3: palettes 0, 6, 9 and
+-- `dword_80D7748`'s 50, 70, 90).
 
 local bomb = require("../lib/bombs/bomb")
 local boiler = require("@self/boiler")
 local throw = require("../lib/bombs/throw")
 
-local function boiler_throw(level: number): Action
-    return throw.action { held = bomb.held, thrower = boiler.thrower(level) }
+local function boiler_throw(palette: number, body_damage: number): Action
+    return throw.action { held = bomb.held, thrower = boiler.thrower(palette, body_damage) }
 end
 
 local chips: { [string]: Chip } = {
@@ -20,7 +21,7 @@ local chips: { [string]: Chip } = {
         rarity = 0, mb = 18, damage = 100, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = boiler_throw(0),
+        action = boiler_throw(0, 50),
     },
     lilbolr2 = {
         codes = { "E", "M", "V" },
@@ -28,7 +29,7 @@ local chips: { [string]: Chip } = {
         rarity = 1, mb = 23, damage = 140, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = boiler_throw(2),
+        action = boiler_throw(6, 70),
     },
     lilbolr3 = {
         codes = { "G", "S", "Z" },
@@ -36,7 +37,7 @@ local chips: { [string]: Chip } = {
         rarity = 2, mb = 28, damage = 180, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = boiler_throw(3),
+        action = boiler_throw(9, 90),
     },
 }
 
