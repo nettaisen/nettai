@@ -703,6 +703,39 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
+-- A game's BoyBomb bomb (@exelib/boybomb/bomb): its kind's id, sprite and NameID (none: none); its body's collision
+-- types and its blast's (and the blast's effect, laid over the 3x3, and sound); the effect and sound as it comes, and
+-- its breaking's; the effect when a chip removed it (none: it reads no removal and always breaks); what may not be on
+-- its panel for it to stand there, by its side; how it takes hits; the game's obstacle rows (1, 3 to 7, by the
+-- framework's numbers); and EXE5's additions: its panel reserved until it stands, the tracking it releases as it goes,
+-- and its HP dropped for a bad panel or the battle's end only while not dimmed (EXE4's `breaks_while_dimmed`); its
+-- spawn taking its side alone (EXE4's `side_only`).
+export type BoyBombLook = {
+    id: string,
+    sprite: SpriteAsset,
+    identity: Identity?,
+    body: { is: CollisionType, hits: CollisionType },
+    blast: { is: CollisionType, hits: CollisionType, effect: Effect, sound: Sound },
+    comes: Effect,
+    place_sound: Sound,
+    broken: Effect,
+    break_sound: Sound,
+    removed: Effect?,
+    stand_forbid: { [number]: number },
+    push: ObstaclePush,
+    actions: { [number]: (Object) -> () },
+    reserves_panel: boolean?,
+    releases_tracking: boolean?,
+    breaks_while_dimmed: boolean?,
+    side_only: boolean?,
+}
+
+-- BoyBomb's bomb made for a game (@exelib/boybomb/bomb): its kind, and its spawn for a controller on (x, y).
+export type BoyBomb = {
+    kind: Kind,
+    spawn: (controller: Object, x: number, y: number, element: number, damage: number) -> Object?,
+}
+
 -- A game's NumbrBl NumberMan (@exelib/numbrbl/numberman): his kind's id, sprite and palette, his appearing sound, his
 -- throwing animation, his balls, and whether his init loads his standing animation (EXE4's) or leaves his animation
 -- byte 0xFF (EXE5's).
