@@ -723,7 +723,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
   #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
   by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
-  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle).
+  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle). NumberMan (actor #0x0F), his face
+  (actor #0x5C) and his die (attack #5) are EXE5's (@exelib/numbrman), EXE4's differences their specs': the face, with
+  the fight on, follows him from its first update (its action 8; its action 4, a random battle's intro, is never
+  reached); the die states its own 40 HP and hit modifier 3, places itself on its panel, has no markers and no face 9,
+  and multiplies its damage's whole halfword by its face. The die's other throwers, the NumberMan boss's (0x080EC1E4,
+  0x080F3336), aren't ported.
+  SparkMan (actor #0x10) and his sparks (attack #0x22, which zigzag up and down each column) are EXE4's own; his
+  flash is the engine's palette flash (effect #0x0A, compat's `engine/palette-flash`) and a blinding hit of no damage
+  on the other side's navi (region 0x85 or 0x84, blindness 0x30).
 
 **For the next steps:**
 
@@ -968,7 +976,10 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   shows banner 4, "ENEMY DELETED" (the banner block's +1 from frame 1057), the loser's banner 8, "MEGAMAN DELETED"
   (`flow/buster-duel-bluemoon`, frame 1056): event flag 0x1187 isn't a netbattle's. The flow states `never` (a new
   choice of `navi_win_banner`, EXE6's and EXE5's unchanged).
-- The palette flash before the fades: EXE4's fade slots (§15 effects).
+- The palette flash before the fades: EXE4's fade slots (§15 effects). SparkMan's flash under his dimming (the lab's
+  chips/0x10d-sparkman, frames 506 to 524) shows the field's panels white darkened a quarter, as the frontend draws
+  them, but the background a flat (18, 9, 18) where the frontend whitens it too; and a blinded console hides the
+  other side's navi's HP number (chips/0x10d-sparkman/side1, frames 653 to 754), which the frontend still draws.
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
@@ -1580,9 +1591,23 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Guard chips' variants 0 to 2 of the guard counter with a shock wave (chips/guard: 0x080CFD2A, its row 6; each user of
     lib/guard states its own counter). EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
     is never turned aside while paused in a netbattle (nothing hits then).
-54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
-    controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
-    a recording with a support stops at its setup.
+54. **Done: Rush, Beat and Tango in battle.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF), which
+    exe4-compat maps to the stats' supports as EXE6's +0x0D. Their triggers are EXE6's (the engine's): Tango at a
+    quarter of the navi's HP (0x0800C7D8, in the idle after the reactive chips: EXE6's `sub_8010660`), Beat then Rush as
+    the opponent uses a chip (0x0800C838, 0x0800C8C0: `sub_80106C0`, `sub_8010740`), each once, in a battle of type 0x46
+    or more; EXE4's Beat lets a dark chip go (0x0800C86C tests the record's flag 0x20: the rules'
+    `chip_use.beat_spares_dark`). Their controller (effect object #0x74, 0x080EA2BC), spawned by 0x080EA3D6 with a
+    dimming no one can cut in on, is @exelib/supports/controller with EXE4's warp (0x080E2D26, by its side); Rush (actor
+    #0x4B, 0x080CA4C4), Beat (#0x4C, 0x080CA76C), Tango (#0x4D, 0x080CA9B4) and Tango's heal (attack #0x9F, 0x080E0CD4)
+    are EXE6's code (@exelib/supports) in EXE4's looks (content/exe4/lib/supports), but for: Rush and Tango add no pixel
+    where EXE6's do (0x080CA60C, 0x080CAB88), Rush's appearance panel reads its table's forbidden flags two bytes in
+    (0x080CA70A: side 0's 0x1, side 1's 0x00200001), the effect rows one further on (21, 22: EXE4's table has a row
+    more), and the heal's 100-HP barrier is EXE4's type 2 (its old visual ending first, 0x080E264A). The chips the
+    telops name, 0x17F to 0x181 (chips/supports), are dimming chips of the variant 0x42, the same spawner, which no
+    folder holds. The lab's navicust/beat-takes, beat-once, beat-spares-dark and tango-heals (and navicust/rush, beat,
+    tango and bug-rush, where none comes) replay every frame and compare every fight frame; rush-eats-invis and
+    rush-eats-popup wait for Invis and PopUp (0x085, 0x086, the two chips Rush cancels), and
+    modcards/074-triple-supporter for its patch card.
 55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
     bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
     RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
@@ -1656,8 +1681,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
     status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
-    1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
-    harness question (raised with the coordinator), not the engine's.
+    1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way (the
+    sound comparison counts those as the shift's: item 75). A harness question (raised with the coordinator), not
+    the engine's.
 73. **Done: Double Soul** (group A; §5's Double Soul part, §6): the UNITE button, its offer and the soul's choice,
     OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's souls and
     Double Soul (no version in the content: exe4-compat maps a recording's version and a save's event flags to the
@@ -1673,18 +1699,25 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x080E36AC: WindMan's 0x34, FireMan's 0x12, NumberMan's 0x14, AquaMan's 0x13), WindSoul's change object (0x5A,
     0x080D8C94), FireSoul's and NumberSoul's overlays (0x08018068), NumberSoul's hand of ten (0x0801DC92). The lab's
     souls/<soul>/hit and side1 recordings, and fire, aqua, wind's unison (their changes' first differences).
-75. **DS chips' code and damage on the custom screen** (F's frame comparisons, chips/0x0df-rollds and the other DS
-    chips, frames 269 to 283): the engine draws the chip window's code and damage dimmed (#d6ce29, #b5b5b5,
-    #d6d6d6 where mGBA has #fff729, #ded6d6, #ffffff), Roll and RollSP's not. Not the dark flag (the DS chips have
-    none) nor the frame palette (EXE4's pack has one). B saw ElemDark's screen duck the music as the dark chip hover
-    does (chips/0x0d5-elemdark, frame 290): likely the same cause. To find.
+75. **Done: DS chips' code and damage on the custom screen** (group A; F's frame comparisons, chips/0x0df-rollds and
+    the other DS chips, frames 269 to 283). The DS scenarios' MegaMan is dark, so the screen offers dark chips and the
+    cursor starts on one: the hover (0x0801E478) darkens the screen, its window fade (0x0801E520's second slot)
+    palettes 9 to 13. The chip window draws a chip's code and damage in palette 14, past that range; the frontend
+    faded the whole HUD layer. Now a HUD pixel drawn in background palette 14 or 15 takes only the fades of every
+    palette (the flash's, the transformation's: `Fades::hud_past_ranged`), the text layer's items alike. The DS
+    chips' and ElemDark's recordings match every frame but the late OK's known shift.
+    The music's duck at frame 290 that only the engine made (F's sound lab, every DS chip recording and ElemDark's:
+    players 0x1F and 9 at 0xC0 and 0x60) is the replay's shift (item 72): the original's hover runs only in the
+    choosing state (0x0801E40E), so its OK at 288 stops the ramp a step short, where the engine's screen chooses on
+    until the replay feeds the OK and takes that step. Verify's sound comparison counts such a step as the shift's
+    (`Compared::shifted`, the held-back frames' `Shift`).
 76. **A telop leaves the other player's used-chip name** (B's, item 90; chips/0x08e-antielec/sprung: mGBA shows
     "Thunder 140" until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block
     (0x08016454) and leaves the second block alone; EXE6's clears the name at every telop's start
     (`sub_801BED6(0x10000)`, the engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
-77. **The chips' own looks out of the shared libraries** (the brief's no-lookup-tables rule): lib/cannon's `arms`,
-    lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants`: a maker each, every chip
-    stating its own. Queued.
+77. **Done: the chips' own looks out of the shared libraries** (group A; the brief's no-lookup-tables rule):
+    lib/cannon's `arms`, lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants` are
+    gone: a maker each, every chip stating its own.
 90. **Done: the Anti chips' springs** (group B, chips/anti). AntiNavi springs as EXE5's (0x08008F80, EXE5's
     `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the navi chips', with no block of
     chip numbers): the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle 0x0800815C: effect row 0x48, sound

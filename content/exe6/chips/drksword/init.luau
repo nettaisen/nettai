@@ -1,12 +1,23 @@
 --!strict
 -- DrkSword: a dark big slash on the two columns ahead (a dark chip: without bug frags, its user gets a Sword).
 
+local lockon = require("../rules/lockon")
 local parts = require("../lib/swords/parts")
 local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
-local lockon = require("../rules/lockon")
 local sword = require("./sword").sword
+
+-- The dark big slash.
+local DARK_SLASH = new.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 2 }
+
+-- Its charged slash in SlashCross: the big slash over two columns, in palette 10.
+local CHARGED = slashes.slash {
+    wave = slashes.wave { region = regions.wide_long, sprite = asset.sprite("big-slash"), anim = 0, palette = 10 },
+    blade = parts.blade,
+    sound = parts.big_swing,
+    lockon = lockon.drksword,
+}
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -26,11 +37,11 @@ local chip: Chip = {
     hp_bug = 2,
     action = slash.action {
         id = "drksword/action",
-        blade = parts.blades.sword,
+        blade = parts.blade,
         hit = { region = regions.wide_long, collision = parts.slashes_navis, hit_mod = 3 },
-        effect = parts.effects.dark,
-        sound = parts.sounds.big_swing,
-        charged = slashes.dark,
+        effect = DARK_SLASH,
+        sound = parts.big_swing,
+        charged = CHARGED,
     },
 }
 

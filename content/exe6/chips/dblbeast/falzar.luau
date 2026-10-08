@@ -14,6 +14,11 @@ local sparks = require("../../lib/sparks")
 local falzar_beast = require("../../navis/megaman/forms/falzar_beast")["falzar-beast"]
 local parts = require("../../lib/swords/parts")
 
+-- The slash over two panels.
+local LONG_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 0 }
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local falzar = {}
 
 local SPRITE = asset.sprite("falzar-beast")
@@ -148,7 +153,7 @@ local function strike(me: Object, pattern: DblBeastPattern, swipe: Effect, hit: 
         if beast.take_panel(me, pattern, true) then
             battle.play_sound(SOUND_WING)
             me.anim = ANIM_WING
-            attachment.attach(me, parts.blades.sword, "held", { anim = 0xD, while_dimmed = true })
+            attachment.attach(me, parts.blade, "held", { anim = 0xD, while_dimmed = true })
         else
             beast.rest(me, false)
         end
@@ -202,11 +207,11 @@ local function tick(me: Object)
     elseif a == 0xC then
         beast.wait(me, 0x10)
     elseif a == 0x10 then
-        strike(me, WING, parts.effects.long, HITS.wing, 0x14)
+        strike(me, WING, LONG_SLASH, HITS.wing, 0x14)
     elseif a == 0x14 then
         beast.wait(me, 0x18)
     elseif a == 0x18 then
-        strike(me, STRIKE, parts.effects.wide, HITS.strike, 0x1C)
+        strike(me, STRIKE, WIDE_SLASH, HITS.strike, 0x1C)
     elseif a == 0x1C then
         leave(me)
     else

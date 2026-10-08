@@ -11,16 +11,14 @@ local cloud = require("./cloud")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's 0x080BC37C by the chip's level).
+    palette: number,
 }
 
 local cloudman = {}
 
 local SPRITE = asset.sprite("cloudman")
 local SOUND_APPEAR = asset.sound("appear")
--- By the level (0x080BC37C): DS's 6 (SP's level is 0).
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 6 }
 -- A panel a cloud takes: any but one with these flags (as one word).
 local TAKEN = 0x3F800000
 -- How long he holds his arms up, and when (ticks left) he lowers them.
@@ -107,18 +105,18 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = raise, [0xC] = hold, [0x10] = leave }
 
--- 0x080BC328: on his panel, on the ground; his sprite (animation 0, his shadow), his palette by the level, facing
+-- 0x080BC328: on his panel, on the ground; his sprite (animation 0, his shadow), his chip's palette, facing
 -- his side's way.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
-    me.sprite.palette = PALETTES[(me.state :: State).level] or 0
+    me.sprite.palette = (me.state :: State).palette
     me:set_lifecycle("update")
 end
 
 cloudman.kind = new.kind {
     id = "cloudman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8" },
+    state = { controller = "object", palette = "u8" },
     -- 0x080BC304.
     update = function(me: Object)
         local l = me.lifecycle
@@ -137,8 +135,8 @@ cloudman.kind = new.kind {
     end,
 }
 
--- 0x080BC4A6: CloudMan for `user`, reporting to `controller` (the summon table's entry 15), of a chip of `level`.
-function cloudman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BC4A6: CloudMan for `user`, reporting to `controller` (the summon table's entry 15), in his chip's `palette`.
+function cloudman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(cloudman.kind, user, spec)
         if not o then
@@ -146,14 +144,10 @@ function cloudman.summon_at(level: number): (user: Object, controller: Object, s
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- CloudMan's and CloudManSP's (their Param1s 0), CloudManDS's (4).
-cloudman.summon = cloudman.summon_at(0)
-cloudman.summon_sp = cloudman.summon_at(0)
-cloudman.summon_dark = cloudman.summon_at(4)
 
 return cloudman

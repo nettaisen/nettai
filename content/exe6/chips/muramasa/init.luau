@@ -1,11 +1,22 @@
 --!strict
 -- Muramasa: a slash on the two panels ahead, as strong as the HP its user lost.
 
+local lockon = require("../rules/lockon")
 local parts = require("../lib/swords/parts")
 local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
-local lockon = require("../rules/lockon")
+
+-- Muramasa's slash.
+local MURAMASA_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 6 }
+
+-- Its charged slash in SlashCross: over two panels, in palette 6.
+local CHARGED = slashes.slash {
+    wave = slashes.wave { region = regions.long, sprite = asset.sprite("sword-slash"), anim = 1, palette = 6 },
+    blade = parts.blade,
+    sound = parts.swing,
+    lockon = lockon.firebrn1,
+}
 
 local chip: Chip = {
     codes = { "M" },
@@ -25,11 +36,11 @@ local chip: Chip = {
     slot_in_limit = 1,
     action = slash.action {
         id = "muramasa/action",
-        blade = parts.blades.sword,
+        blade = parts.blade,
         hit = { region = regions.long, collision = parts.slashes_navis, hit_mod = 3 },
-        effect = parts.effects.muramasa,
-        sound = parts.sounds.swing,
-        charged = slashes.muramasa,
+        effect = MURAMASA_SLASH,
+        sound = parts.swing,
+        charged = CHARGED,
     },
 }
 

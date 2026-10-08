@@ -170,6 +170,10 @@ pub struct ChipUseRules {
     /// word's 0x1000 and 0x0800, and 0x0800FFF6 heals the user a tenth of
     /// its HP on 0x10); EXE6's `sub_8012C34` knows bits 0x02 and 0x04 alone.
     pub mixed_modifiers: bool,
+    /// The opponent's NaviCust support Beat lets a dark chip go: EXE4's
+    /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
+    /// only if it isn't dark; EXE6's `sub_80106C0` and EXE5's take any.
+    pub beat_spares_dark: bool,
 }
 
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and

@@ -23,7 +23,7 @@ local meddy: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "meddy/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "at_once" },
 }
@@ -46,7 +46,7 @@ local meddy_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "meddy-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "at_once" },
 }
@@ -68,7 +68,7 @@ local meddy_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "meddy-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(6),
     },
     auto_battle = { class = "at_once" },
 }

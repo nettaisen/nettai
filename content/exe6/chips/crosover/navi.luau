@@ -19,6 +19,9 @@ local variants = require("../../objects/projectile/variants")
 local regions = require("@exelib/regions")
 local sun_beam = require("../gundels/beam")
 
+-- Sword's slash over the panel ahead.
+local SWORD_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 2, palette = 0 }
+
 local crosover = {}
 
 export type State = {
@@ -65,7 +68,7 @@ local DRAIN_ELEMENT, DRAIN_DAMAGE, DRAIN_TICKS = 5, 3, 0x78
 
 -- The slashes: a plain one, or half of an X when the other stands in
 -- place too (effects 0x18 and 0x36).
-local SLASH = { effect = parts.effects.slash, region = regions.single }
+local SLASH = { effect = SWORD_SLASH, region = regions.single }
 local CROSS_HALF = {
     effect = new.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
     region = regions.falling,
@@ -356,8 +359,8 @@ end
 local function slash(me: Object)
     if me.phase_init == 0 then
         me.anim = 5
-        battle.play_sound(parts.sounds.swing)
-        attachment.attach(me, parts.blades.sword, "held", {
+        battle.play_sound(parts.swing)
+        attachment.attach(me, parts.blade, "held", {
             anim = parts.base_blade_anim(me.alliance),
             while_dimmed = true,
         })
@@ -525,7 +528,7 @@ end
 local function django_slash(me: Object)
     if me.phase_init == 0 then
         me.anim = 5
-        battle.play_sound(parts.sounds.swing)
+        battle.play_sound(parts.swing)
         me.timer = 0
         me.phase_init = 4
     end

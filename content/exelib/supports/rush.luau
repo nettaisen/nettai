@@ -22,17 +22,17 @@ local rush = {}
 
 -- `byte_80C34A8` (EXE5's 0x080C2494, the same words): what his navi's
 -- panel must be for him to appear there, by side (else at his side's
--- middle).
-local STAND = {
+-- middle), where the game's look says nothing else.
+local STAND: RushStand = {
     [0] = { require = 0x0001_0000, forbid = 0x20 },
     [1] = { require = 0x0001_0020, forbid = 0 },
 }
 
--- `sub_80C3460` (EXE5's 0x080C244C): on his navi's panel if it will do,
--- else at (1 or 6, 2); on the ground.
-local function place(me: Object)
+-- `sub_80C3460` (EXE5's 0x080C244C): on his navi's panel if it will do
+-- (`stand`), else at (1 or 6, 2); on the ground.
+local function place(me: Object, stand: RushStand)
     local navi = battle.player(me.alliance)
-    local cond = STAND[me.alliance]
+    local cond = stand[me.alliance]
     local x, y = me.alliance * 5 + 1, 2
     if navi and field.check(navi.panel_x, navi.panel_y, cond.require, cond.forbid) then
         x, y = navi.panel_x, navi.panel_y
@@ -118,9 +118,12 @@ function rush.make(look: RushLook): Rush
             me.panel_x, me.panel_y = target.panel_x, target.panel_y
             me.collision.panel_x, me.collision.panel_y = target.panel_x, target.panel_y
             me:set_coordinates_from_panel()
-            -- The whole-pixel halves of Y and Z go up by one.
-            local at = me.pos
-            me.pos = Vec3.new(at.x, int.i32(at.y + 0x1_0000), int.i32(at.z + 0x1_0000))
+            -- The whole-pixel halves of Y and Z go up by one (but where
+            -- the look says not: EXE4's 0x080CA60C).
+            if look.pixel_nudge ~= false then
+                local at = me.pos
+                me.pos = Vec3.new(at.x, int.i32(at.y + 0x1_0000), int.i32(at.z + 0x1_0000))
+            end
             me.timer = 3
             me.phase, me.phase_init = 8, 0
         elseif p == 8 then
@@ -186,7 +189,7 @@ function rush.make(look: RushLook): Rush
         sprite:set_animation(0)
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         me.visible = true
-        place(me)
+        place(me, look.stand or STAND)
         battle.play_sound(look.appear_sound)
         me.element = 0
         me.damage, me.stamina = 0, 0

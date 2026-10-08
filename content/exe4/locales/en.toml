@@ -138,10 +138,19 @@ language = "en"
 "antidmg" = { name = "AntiDmg", description = "Sets trap\nand throw\nstars" }
 "antiswrd" = { name = "AntiSwrd", description = "Retaliate\nfor sword\ndamage" }
 "antirecv" = { name = "AntiRecv", description = "Damages\nenemy in\nrecovery" }
+"numbrman" = { name = "NumbrMan", description = "Bomb 3\nahead!\nHits 9sq" }
+"numbmn-sp" = { name = "NumbMnSP", description = "Bomb 3\nahead!\nHits 9sq" }
+"numbmn-ds" = { name = "NumbMnDS", description = "Bomb 3\nahead!\nHits 9sq" }
 "heatbrth" = { name = "HeatBrth", description = "Magma\nFirestorm\nattack!" }
 "blizzard" = { name = "Blizzard", description = "Snowstorm\nattack!\nIce Panel" }
 "elecshok" = { name = "ElecShok", description = "Cracker\nElectric\nblast" }
 "woodpwdr" = { name = "WoodPwdr", description = "Changes\npanels\nto grass" }
+"sparkman" = { name = "SparkMan", description = "SparkWave\nblinds\nenemy!" }
+"sprkmn-sp" = { name = "SprkMnSP", description = "SparkWave\nblinds\nenemy!" }
+"sprkmn-ds" = { name = "SprkMnDS", description = "SparkWave\nblinds\nenemy!" }
+"rush" = { name = "Rush", description = "" }
+"beat" = { name = "Beat", description = "" }
+"tango" = { name = "Tango", description = "" }
 "guard1" = { name = "Guard1", description = "Repels\nenemy's\nattack" }
 "guard2" = { name = "Guard2", description = "Repels\nenemy's\nattack" }
 "guard3" = { name = "Guard3", description = "Repels\nenemy's\nattack" }

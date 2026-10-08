@@ -10,7 +10,6 @@
 -- what becomes the charged slash (lib/swords/vari).
 
 local slash_charge = require("../forms/slashcross/charge")
-local slashes = require("../forms/slashcross/slashes")
 
 local slash_a_charge = {}
 
@@ -22,7 +21,7 @@ local function setup(navi: Object): Action
     if action == nil then
         -- (A chip with no action of its own: the plain slash where the
         -- navi stands, what the original's row 0 gives.)
-        return slash_charge.begin(navi, slashes.sword, false)
+        return slash_charge.begin(navi, slash_charge.plain, false)
     end
     local spec = action.args :: { charged: (ChargedSlash | "own")? }?
     if spec and spec.charged == "own" then

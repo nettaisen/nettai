@@ -37,7 +37,7 @@ local aqwhirl2: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = action.action { whirlwind = whirlpool.sender(1, 0x30) },
+    action = action.action { whirlwind = whirlpool.sender(2, 0x30) },
     auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
@@ -55,7 +55,7 @@ local aqwhirl3: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = action.action { whirlwind = whirlpool.sender(2, 0x50) },
+    action = action.action { whirlwind = whirlpool.sender(4, 0x50) },
     auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
