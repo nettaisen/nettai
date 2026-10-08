@@ -18,6 +18,10 @@
 "attachment" = { pool = "attack", index = 0x02 }
 # The flying shot (0x080CE6E0): RollSoul's arrow.
 "flying-shot" = { pool = "attack", index = 0x0B }
+# The north wind (0x080D8BC8: WindSoul's change's) and its streaks (0x080E62C0); the wind spawned at the spawner's
+# registers.
+"north-wind/wind" = { pool = "attack", index = 0x5A, scratch_position = true }
+"north-wind/streak" = { pool = "effect", index = 0x3A }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
