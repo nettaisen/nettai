@@ -523,8 +523,8 @@ declare extern type Object with
     buffered_move: number
     chip_lockout: number
     back_special_cooldown: number
-    -- The weapons the navi's buttons run (nil: none; the buster's and the
-    -- charged shot's writable).
+    -- The weapons the navi's buttons run (nil: none; writable: EXE4's
+    -- ProtoSoul's status reset sets its B+Left special's, 0x0800E12C).
     buster_weapon: Weapon?
     charge_shot_weapon: Weapon?
     back_special_weapon: Weapon?
