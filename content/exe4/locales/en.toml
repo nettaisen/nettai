@@ -234,6 +234,11 @@ language = "en"
 "crosswrd" = { name = "CrosSwrd", description = "" }
 "sprsonic" = { name = "SprSonic", description = "" }
 "dbldream" = { name = "DblDream", description = "" }
+"aquaman" = { name = "AquaMan", description = "Water Gun\nsprays\n2sq ahead" }
+"aquamn-sp" = { name = "AquaMnSP", description = "Water Gun\nsprays\n2sq ahead" }
+"aquamn-ds" = { name = "AquaMnDS", description = "Water Gun\nsprays\n2sq ahead" }
+"sandring" = { name = "SandRing", description = "Opens a\npitfall\ntrap" }
+"z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 "gutpnch1" = { name = "GutPnch1", description = "Launches\nGutPunch\nahead" }
 "gutpnch2" = { name = "GutPnch2", description = "Launches\nGutStrgt\nahead" }
 "gutpnch3" = { name = "GutPnch3", description = "Launches\nGutImpct\nahead" }
@@ -361,11 +366,13 @@ language = "en"
 "048-weapon-change" = { name = "Weapon Change" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }
+"051-charge-shot-switch" = { name = "Charge Shot Switch" }
 "052-charge-shot-switch" = { name = "Charge Shot Switch" }
 "053-charge-shot-switch" = { name = "Charge Shot Switch" }
 "054-charge-shot-switch" = { name = "Charge Shot Switch" }
 "055-charge-shot-switch" = { name = "Charge Shot Switch" }
 "056-charge-shot-switch" = { name = "Charge Shot Switch" }
+"057-charge-shot-switch" = { name = "Charge Shot Switch" }
 "058-charge-shot-switch" = { name = "Charge Shot Switch" }
 "059-megaman-color-change" = { name = "MegaMan Color Change" }
 "060-megaman-color-change" = { name = "MegaMan Color Change" }
@@ -378,12 +385,15 @@ language = "en"
 "067-max-hp-up" = { name = "Max HP Up" }
 "068-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"070-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "076-all-guard-1-2" = { name = "All Guard 1/2" }
 "077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
+"079-charge-shot-switch" = { name = "Charge Shot Switch" }
 "080-charge-shot-switch" = { name = "Charge Shot Switch" }
+"082-charge-shot-switch" = { name = "Charge Shot Switch" }
 "083-charge-shot-switch" = { name = "Charge Shot Switch" }
 "084-charge-shot-switch" = { name = "Charge Shot Switch" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -414,6 +424,7 @@ language = "en"
 "112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "113-charge-shot-switch" = { name = "Charge Shot Switch" }
 "114-charge-shot-switch" = { name = "Charge Shot Switch" }
+"115-charge-shot-switch" = { name = "Charge Shot Switch" }
 "116-charge-shot-switch" = { name = "Charge Shot Switch" }
 "117-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
