@@ -355,6 +355,9 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     }
     // (EXE5's lava burns first: 0x08017A18 and its variants.)
     common::panel_burn(b, r, false);
+    if push == Push::KeepsDamage && b.game_rules().push_reading.obstacle_move_end {
+        move_end(b, r, c);
+    }
     if push == Push::AnyHit {
         match b.game_rules().push_reading.reads {
             PushSource::Final => push_on_any_hit(b, c),
@@ -379,6 +382,19 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     }
     common::total_damage(b, r);
     common::spawn_guard_spark(b, r);
+}
+
+/// EXE4's 0x0801335A (its rules' `obstacle_move_end`): a move's end
+/// (MOVE_COMPLETE) is consumed, and the panel under the obstacle's
+/// collision has its say (its type's `move_end`: ice pushes it on).
+fn move_end(b: &mut Battle, r: ObjectRef, c: CollisionId) {
+    if f1_of(b, r) & f1::MOVE_COMPLETE == 0 {
+        return;
+    }
+    clear_f1(b, r, f1::MOVE_COMPLETE);
+    let p = b.collision.get(c).panel;
+    let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
+    b.call_panel(kind, nettai_content_api::PanelCall::MoveEnd { body: r });
 }
 
 /// `sub_801AE56`: a hit from one side only (and not of type 0x1000, nor
