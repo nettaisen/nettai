@@ -361,6 +361,29 @@ export type PuckLook = {
     trail_tint: number?,
 }
 
+-- A game's magnet field (@exelib/magbolt/magnet): its key, what it is and hits, its spark by its element, the paralysis
+-- it carries when its parameter says, and whether it only watches its owner's first related object (EXE4's) rather
+-- than being stored there (EXE5's).
+export type MagnetLook = {
+    id: string,
+    attack: CollisionType,
+    hits: CollisionType,
+    spark_of: (element: number) -> Spark,
+    paralysis: Status,
+    watches: boolean,
+}
+
+-- A game's magnet field's spawn: `owner`'s, at (dx, dy) from his panel, of an element and a damage word, paralyzing or
+-- not.
+export type MagnetSpawn = (
+    owner: Object,
+    dx: number,
+    dy: number,
+    element: number,
+    paralyzes: boolean,
+    damage: number
+) -> Object?
+
 -- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, whether it goes down
 -- the field, and the navi's animation as it flicks (none: EXE6's and EXE5's 0x0C).
 export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean, anim: number? }
