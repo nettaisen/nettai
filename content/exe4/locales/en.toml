@@ -294,6 +294,9 @@ language = "en"
 "snake" = { name = "Snake", description = "Snake\nfrom hole\nin area" }
 "bugcurse" = { name = "BugCurse", description = "EvilChip!\nMake enmy\nbuggy!" }
 "bugfix" = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
+"coldman" = { name = "ColdMan", description = "Ices over\nall and\nslides!" }
+"coldmn-sp" = { name = "ColdMnSP", description = "Ices over\nall and\nslides!" }
+"coldmn-ds" = { name = "ColdMnDS", description = "Ices over\nall and\nslides!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
