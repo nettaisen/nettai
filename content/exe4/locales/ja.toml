@@ -265,6 +265,9 @@ language = "ja"
 "metlger1" = { name = "メタルギア1", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
 "metlger2" = { name = "メタルギア2", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
 "metlger3" = { name = "メタルギア3", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"woodman" = { name = "ウッドマン", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"woodmn-sp" = { name = "ウッドマンSP", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"woodmn-ds" = { name = "ウッドマンDS", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
