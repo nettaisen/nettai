@@ -200,6 +200,10 @@ language = "en"
 "discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
 "timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
 "silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
+"bighamr1" = { name = "BigHamr1", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr2" = { name = "BigHamr2", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr3" = { name = "BigHamr3", description = "Hammr atk\nsmashes\nin front!" }
+"godhammr" = { name = "GodHammr", description = "Places a\nstone\nstatue" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
