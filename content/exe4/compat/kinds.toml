@@ -11,7 +11,6 @@
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
-"engine/afterimage" = { pool = "effect", index = 0x28 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
 # The afterimage (effect #0x28, 0x080E503C: EXE6's `sub_80E33FA` object): KendoMan's dash's and rush's.
