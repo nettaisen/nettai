@@ -271,6 +271,7 @@ language = "ja"
 "laserman" = { name = "レーザーマン", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
 "lasrmn-sp" = { name = "レーザーマンSP", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
 "lasrmn-ds" = { name = "レーザーマンDS", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
+"bass" = { name = "フォルテ", description = "バトルフィールドの\n右はんぶんにはなつ\nフォルテバスター!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

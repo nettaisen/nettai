@@ -376,6 +376,7 @@ mega = [
     "videmn-ds",
 ]
 giga = [
+    "bass",
     "blakbarr",
     "deltaray",
 ]
