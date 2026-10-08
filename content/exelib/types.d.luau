@@ -1740,3 +1740,71 @@ export type GeyserLook = {
 
 -- A game's Geyser kinds (the bomb and its water), and a thrower of the bomb at the panel three ahead of the user.
 export type GeyserBomb = { kind: Kind, water: Kind, thrower: () -> Thrower }
+
+-- A game's NumberMan's face (@exelib/numbrman/face): its kind's key, its sprite, and EXE4's start (0x080CCD0A: with
+-- the fight on it follows from its first update, its follow its action 8; none: EXE5's, which waits for every navi to
+-- be in first).
+export type NumberManFaceSpec = { id: string, sprite: SpriteAsset, follows_in_fight: boolean? }
+
+-- A game's NumberMan's face kind, and its spawn on its owner.
+export type NumberManFace = { kind: Kind, spawn: (owner: Object) -> Object? }
+
+-- A die's throw (@exelib/numbrman/dice): its face (1 to 6, or EXE5's 9), its target panel, whether it is NumberMan's
+-- (an attack at navis running while dimmed: its Param1), its HP, its hits' status and hit modifier, its damage word,
+-- and the object waiting on it (its state's `busy`, set until it goes).
+export type DieThrow = {
+    face: number,
+    target_x: number,
+    target_y: number,
+    dimmed: boolean,
+    hp: number,
+    status: Status?,
+    hit_mod: number,
+    damage: number,
+    holder: Object?,
+}
+
+-- A game's die (@exelib/numbrman/dice): its kind's key and sprite; the explosion it bursts and blows up in, the puff
+-- it goes in off solid ground and the one as the battle ends; EXE5's face 9's explosion (its palette 1, effect row
+-- 0x24; none: EXE4's, whose faces are 1 to 6); its sounds as it blows up, bounces and bursts; its collision types
+-- (NumberMan's: what it is and what it hits; the others': its body and what hits it); EXE5's markers over its target
+-- (lib/navi_chips/marker; none: EXE4's, which has none); whether its burst keeps the damage's top bit apart (EXE5's
+-- 0x080C51F2; none: EXE4's, the halfword's product whole); whether its init places it on its panel (EXE4's
+-- 0x080CDA4A).
+export type DiceSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    explosion: Effect,
+    puff: Effect,
+    gone: Effect,
+    nine: { explosion: Effect }?,
+    blow_up: Sound,
+    bounce: Sound,
+    burst: Sound,
+    attack: CollisionType,
+    hits_navis: CollisionType,
+    body: CollisionType,
+    hit_by: CollisionType,
+    marker: ((owner: Object, x: number, y: number, ticks: number, style: number, flip: boolean) -> Object?)?,
+    keeps_top_bit: boolean?,
+    places_itself: boolean?,
+}
+
+-- A game's die kind, and its spawn by `owner` at `pos`.
+export type Dice = { kind: Kind, spawn: (owner: Object, pos: Vec3, throw: DieThrow) -> Object? }
+
+-- A game's NumberMan (@exelib/numbrman/navi): his kind's key, his sprite, his appearance's and throw's sounds, his face
+-- and his die, and what his throw gives the die (EXE5's 0x080BB4C2 word 0x30014: 20 HP, no status, hit modifier 3;
+-- EXE4's die states its own, 0x080CDA44: 40 HP, hit modifier 3).
+export type NumberManSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    appear: Sound,
+    throw: Sound,
+    face: NumberManFace,
+    dice: Dice,
+    die: { hp: number, status: Status?, hit_mod: number },
+}
+
+-- A game's NumberMan kind, and what makes one just spawned his chip's: the controller he reports to, his palette.
+export type NumberMan = { kind: Kind, summoned: (o: Object, controller: Object, palette: number) -> () }
