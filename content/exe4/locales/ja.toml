@@ -283,6 +283,9 @@ language = "ja"
 "slogauge" = { name = "ヘビーゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがおちる" }
 "fstgauge" = { name = "クイックゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがあがる" }
 "bass" = { name = "フォルテ", description = "バトルフィールドの\n右はんぶんにはなつ\nフォルテバスター!" }
+"timebomb" = { name = "カウントボム", description = "てきエリアにじげん\nばくだんをセットし\nエリア中にばくはつ" }
+"blinder" = { name = "ブラインド", description = "きょうりょくな光で\nあいてをもうもく\nじょうたいにする!" }
+"mine" = { name = "ステルスマイン", description = "てきエリアのどこか\nに見えないじらいを\nセットする!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
