@@ -1,9 +1,12 @@
 --!strict
 -- WindSoul (soul 3): EXE4's Double Soul with WindMan, for a wind chip given up (0x08020008[2]). MegaMan's
--- sprite in it is 00-03, his face picture 7 (0x08014B78), WindMan's image windman (08-03). (What the souls share:
--- forms/soul.)
+-- sprite in it is 00-03, his face picture 7 (0x08014B78), WindMan's image windman (08-03). Its weapons (0x080184F0's
+-- row 3): AirShot on B (routine 0x6B, ./buster), no A charge, WindRack charged (routine 0x09, ./charge). (What the
+-- souls share: forms/soul.)
 
 local attachment = require("../../../objects/attachment")
+local buster = require("@self/buster")
+local charge = require("@self/charge")
 local chip = require("@self/chip").windsoul
 local collision = require("../../../rules/collision")
 local soul = require("./soul")
@@ -22,7 +25,7 @@ local form: FormDef = {
     sprite = asset.sprite("windsoul"),
     element = "null",
     buster_bonus = 0,
-    weapons = soul.weapons,
+    weapons = { buster = buster.weapon, charge_shot = charge.weapon },
     -- 0x0800E0F4: air and float shoes (flags 0x10, 0x20), a floating navi's body (row 0x10; EXE4's retype sets what it
     -- is alone), its wind (objects/wind: a navi's, pulling), which the next status reset ends (AIData +0x5C), and 10
     -- more on each damaging Wind chip of the hand from its cursor on (0x0800E208).
