@@ -118,7 +118,14 @@ function fan.make(look: FanLook): Fan
                 row = 3
             end
             s.row_counter = row
-            local x = if s.variant.pulls then pull_column(me, row) else push_column(me, row)
+            local x
+            if look.column then
+                x = look.column(me, row, s.variant.pulls)
+            elseif s.variant.pulls then
+                x = pull_column(me, row)
+            else
+                x = push_column(me, row)
+            end
             if x == 0 then
                 return
             end
@@ -135,17 +142,27 @@ function fan.make(look: FanLook): Fan
         end
     end
 
+    -- The puff a removal leaves, 12 pixels up.
+    local function puff(me: Object)
+        local effect = look.puff
+        if not effect then
+            error(string.format("%s's fan is removed, and its look has no puff", look.id))
+        end
+        local p = me.pos
+        battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effect)
+    end
+
     -- `sub_80CD1BE`: leave the field: broken (an explosion), removed by a chip
-    -- (a puff, or blinking out: EXE6's), or absorbed (EXE6's); no longer its side's wind.
+    -- (a puff, or blinking out: EXE6's), or absorbed (EXE6's); no longer its side's wind. (EXE4's, 0x080D664C,
+    -- always as broken: `removal_explodes`.)
     local function destroyed(me: Object)
-        local how = obstacle.removal(me)
+        local how = if look.removal_explodes then "broken" else obstacle.removal(me)
         if how == "broken" then
             battle.play_sound(look.break_sound)
             battle.effect(me.pos, look.explosion)
         elseif not look.absorbs then
             -- EXE5's (0x080CE90E): any removal leaves a puff.
-            local p = me.pos
-            battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.puff)
+            puff(me)
         elseif how == "absorbed" then
             local absorbed = (me.state :: State).variant.absorbed
             if absorbed == nil then
@@ -157,8 +174,7 @@ function fan.make(look: FanLook): Fan
             if blink == "blinking" then
                 return
             elseif blink == "no" then
-                local p = me.pos
-                battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.puff)
+                puff(me)
             end
         end
         obstacle.release_tracking(me)
