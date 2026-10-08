@@ -1418,16 +1418,14 @@ export type MeteorLook = {
 }
 
 -- How a game's drill is: its hit's spark, what the first and second are
--- and hit, what Param3 means ("light", EXE6's; or the bug a dark one's hit
--- carries, EXE5's), and whether its spawn keeps the user's element and the
--- second takes the first's running while dimmed (EXE6's do; EXE5's
--- 0x080D41C8 and 0x080D4100 don't).
+-- and hit, and whether its spawn keeps the user's element and the second
+-- takes the first's running while dimmed (EXE6's do; EXE5's 0x080D41C8 and
+-- 0x080D4100 don't).
 export type DrillLook = {
     spark: Spark,
     first: CollisionType,
     second: CollisionType,
     hits: CollisionType,
-    param3: "light" | { bug: number, bug_arg: number },
     keeps_element: boolean,
 }
 
