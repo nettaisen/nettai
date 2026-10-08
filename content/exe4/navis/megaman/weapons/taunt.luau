@@ -93,8 +93,8 @@ end
 
 taunt.weapon = new.weapon {
     id = "megaman/taunt",
-    -- The charge table's row 0x21 (0x0801820A), by Charge 0 to 4; Charge 5 reads on into row 0x22's first entry.
-    charge_ticks = { 180, 60, 60, 60, 60, 60 },
+    -- The charge table's row 0x21 (0x08018202), by Charge 0 to 4; Charge 5 reads on into row 0x22's first entry.
+    charge_ticks = { 180, 180, 180, 180, 180, 60 },
     setup = taunt.setup,
 }
 

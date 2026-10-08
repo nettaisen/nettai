@@ -671,6 +671,28 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **VDoll** (the throw's variant 8, `chips/vdoll`: @exelib/vdoll/doll, attack 0x7A, and @exelib/vdoll/curse, effect
+  0x4E, both of which EXE5's grew from, in EXE4's look): the doll writes no NameID, turns its landing panel to its hole
+  (type 11) with the holes' sound, has EXE4's 7-row action table, no tracking, a touch destroying it with its HP as it
+  is (0x08013F3E, as EXE4's rock); its leaving (0x080DC974) holds while dimmed before its other tests, checks no
+  damage taken and no removal, and curses with effect row 0x2B and sound 0x141. The curse is EXE5's code (its
+  telop EXE4's Curse, chip 0x174, a USED_CHIPS chip on SonicBom's action), EXE4's warning sound (0x79) and its
+  staying sparkles. chips/0x067-vdoll/curse hurts a doll on an empty panel with a buster shot.
+- **BugBomb** (the throw's variant 7, `chips/bugbomb`: @exelib/bugbomb/bomb, attack 0x77, which EXE5's grew from, in
+  EXE4's look): one of six NaviCust bugs at random (0x080DC134: 1, 2, 3, 4, 6, 8, RNG2), whatever its target has,
+  raised by code 0xFF; a crushing hit as it sits bursts it at once (0x080DC23A) where EXE5's explodes it; its burst
+  hits with its sitting types (no retype). Bug 8, the weapon bug (rules/navicust's `weapon`: 0x08042E44, levels 1 to
+  3 the charged shot's routine 0x1F, 0x20, 0x21), is in: navis/megaman/weapons/bug_shots's rock cube (routine 0x1F,
+  action 0x73: EXE4's rock, objects/rock, row 1, @exelib/rock in EXE4's look) and bubble (routine 0x20, action 0x29;
+  card 108's B button too), and the taunt (whose charge row was misread: row 0x21 is 180 at Charge 0 to 4). It takes
+  effect at the weapons' next reload (the next custom screen): chips/0x029-bugbomb/weapon-bug (seed 41 draws bug 8)
+  charges the rock cube after it.
+- **BlkBomb** (the throw's variant 6, `chips/blkbomb`: @exelib/blkbomb/bomb, attack 0x47, which EXE5's grew from, in
+  EXE4's look): no identity of its own, no field-object tracking (EXE5's 0x0802EFFA), a fire hit leaving its HP, a
+  touch destroying it with its HP as it is (0x0801416C reads no removal request), its destroyed action (0x080D6320)
+  bursting it as it finishes, a neutral body. Its collision's damage is 100 plus the low half of its thrower's X
+  (0x080D61DC, the throw's r0): 0 from a navi on its panel, so not ported. chips/0x02e-blkbomb/fire sets one off with a
+  HeatShot.
 - **Z Saver** (action 0x70, `chips/z-saver`: @exelib/zsaver/action, which EXE5's grew from, in EXE4's look): the
   blade in the related slot as EXE4's own attachment (lib/swords' `blade_anim`: ProtoSoul's 13, 0x080EE820), let go of
   at each swing's end; no form overlay refreshed, no moving flag or overlay cleared in the recovery; the command's
@@ -856,6 +878,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   normal), HolyPanl row 6 (the panel in front to holy), Snctuary row 7 (the own area to holy). The lab's chips/ (20),
   panels/holypanl and pnlretrn, status/holy-panel and sanctuary and the GunSols' (whose light fills Hole's holes)
   replay every frame; the hit recordings' fight frames are pixel-exact.
+- **NrthWind** (the dimming chips' variant 0x1C, `chips/nrthwind`): EXE6's and EXE5's controller (effect #0x39,
+  0x080E622C: @exelib/nrthwind/controller, now shared, its spawn the user's side alone) blowing EXE4's north wind
+  (objects/north_wind, WindSoul's change's). The lab's chips/0x08a-nrthwind (4) replay every frame and are
+  pixel-exact; EXE5's NrthWind recordings still match.
 - **Invis** (the dimming chips' action 0x0C, its variant 0x31, `chips/invis`): EXE6's Invisibl (@exelib/invisibl:
   effect object #0x5D, 0x080E8A68), 360 ticks, its sound EXE4's (0x109, in 0x0800C6BC). **PopUp** (variant 0x1E,
   `chips/popup`: EXE4's own controller, effect #0x3D, 0x080E6470) puts EXE4's glow over its user's navi (actor #0x5D,
@@ -930,6 +956,34 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   NumberMan's face's object (actor #0x5C) with its sprite row 1 (10-0C), his own kind of @exelib/numbrman/face. His
   controller, like GutsMan's, gives him B's charge at the ask as his Param2, which he never reads: no EXE4 object
   reads `b_charge_at_ask` (item 50's), as no other code reads the AI data's +0x15.
+  WindMan (actor #0x34), his tornadoes (attack #0x6B, 0x080DAC54) and their sand (attack #0x6C, 0x080DAF54) are
+  EXE4's own; his controller (effect #0x46) waits 61 ticks after him, not 31. He blows three tornadoes; each goes
+  from the panel ahead a row down (on the bottom row at once on), two panels ahead, back up its column to the field's
+  edge, then back toward his side, a hit (collision row 0x20, modifier 3) on each panel it enters, till it leaves
+  the screen or, seven panels entered, four ticks into the next. Reaching a row's or a column's center it moves on in
+  the same tick (0x080DAE2E, 0x080DAE8E). On a pitfall (type 10, SandRing's sand) it picks up the sand: palette 1,
+  the panel to normal, and from then on sand on each panel it enters (a hit 11 ticks later). The swirl on his head is
+  actor #0x5C's row 2 (10-28, the one his soul image holds). The lab's chips/0x0e3-windman/sand (the typeA stage's pitfalls) replays every frame and is
+  pixel-exact, as the other twelve recordings are.
+  VideoMan (actor #0x3E) and his tapes (attack #0x5D, 0x080D90C8) are EXE4's own; his controller (effect #0x5F) runs
+  the short course. As his swing ends a tape covers the square two panels ahead of him (three back for side 1: a
+  square spreads to the right) and a row up, unless he is on the top row; 45 ticks into it another covers the square
+  in his row, unless he is on the bottom row. A tape (sheet 08-17, 20 pixels right, 46 down and 24 up of its panel)
+  winds in and three times, 15 ticks apart, hits its four panels (no element, modifier 3, at its height). The tapes'
+  Param3 0 course is actor #0x2F's (EXE4's other VideoMan, 0x080C2FC8), which no netbattle spawns. The lab's
+  chips/0x116-videoman/top-row (no upper tape) and the twelve recordings replay every frame and are pixel-exact.
+  KendoMan (actor #0x43, 0x080C85E8) is EXE4's own; his controller (effect #0x66) runs the short course. He dashes
+  along his row to the panel before the first enemy body (or the field's edge, where he falls off solid ground and
+  goes), afterimages every other tick, and slashes the panel ahead (modifier 1); vanishes, reappears two panels on
+  facing back (on a solid panel with no body), glides and cuts the column behind him (region 4, no spark, effect row
+  0x17 with palette 2 added); then rushes home with his sword out (attachment row 0x2D, his own sheet 08-0D) and a hit
+  following him (attack #0x7C, the lingering hit, 100 ticks), afterimages of his side turned every fourth tick, until
+  he leaves solid ground. The rush's hit is spawned with its holder's slot at the address 0x60 (a constant where
+  0x080CC036 adds his own address): no holder keeps it, so nothing ends it early. His afterimages are the engine's
+  (effect #0x28, compat's `engine/afterimage`), with their shadow hidden: 0x080E5020's r7 byte 2 (1) hides it, as the
+  frames show (`shadow = "ground"`, as lib/cannon has for the GigaCans' first afterimage, draws one the original
+  doesn't). Sheet 08-0D, navi 13's in 0x08017F98 with NormalNavi's win banner, is KendoMan's: `kendoman` (BY_USE now
+  wins over the navi table's names). The lab's chips/0x113 to 0x115 (12) replay every frame and are pixel-exact.
 
 **For the next steps:**
 
@@ -1863,10 +1917,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
-    the routines of chips still to port (0x51 BugBomb, 0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E
-    WindRack and 0x55 PnlRetrn are in, cards 51, 57, 70, 79, 82 and 115 matching),
-    the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
-    others' own actions) and Triple Supporter's pair (item 54).
+    the routines of chips still to port (0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51
+    BugBomb and 0x55 PnlRetrn are in, cards 41, 51, 57, 70, 79, 82, 115 and 118 matching),
+    the routines that load no chip (0x04, 0x28, 0x31: others' own actions; 0x20, the bubble, is in: card 108; the
+    buster patches 0x34, 0x35, 0x5A, 0x68 and 0x69, navis/megaman/weapons/buster_patches, are in: cards 12, 13, 43, 44
+    and 102, the buster's shot with projectile rows 7, 8, 0x0B, 0x0D and 0x0E: cracking, poison, blinding (row 0x0B's
+    status 0x32, 0x080CD3BC; row 0x0A's 0x22 no routine fires), grass and ice) and Triple Supporter's pair (item
+    54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
@@ -1977,13 +2034,24 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      (souls/roll/heal).
    - **GutsSoul (2).** GutsMan's fist charged (0x24, 0x0800CF62) *done* (souls/guts/hit); six B presses within 10
      ticks of each other ask for the machine gun (0x0800BE50, action 0x10) *done* (souls/guts/rapid); the status
-     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *ported*.
-   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94) *done* (souls/wind/hit); the
-     status reset (0x0800E0F4): air and float shoes (flag1 0x30), a floating navi's body (row 0x10), its wind
-     (0x080E68F8, held at AIData +0x5C), 10 more on each damaging Wind chip (0x0800E208) *ported*; the image's part (row
-     0x34) *done* (souls/wind/hit); B's AirShot (0x6B, 0x0800D3E8) *open*; WindRack charged (0x09, 0x0800D204) *open*.
-   - **SearchSoul (4).** The status reset's effect 0x44 (0x080E6E4C, 0x080E6D74): a mark (effect row 0x52) over each
-     enemy navi with flag 0x206, then after 10 ticks a hitbox (0x2C05FF80) *open*; charged 0x0A (0x0800CDC4) *open*.
+     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *done* (souls/guts/bonus).
+   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94), which takes a barrier away
+     (wind: the raw hit flags' 0x20, 0x08012E0C) *done* (souls/wind/barrier); the status reset (0x0800E0F4): float
+     and air shoes (flag1 0x20, 0x10) *done* (souls/wind/cracked, broken), a floating navi's body (row 0x10), its wind
+     (0x080E68F8, held at AIData +0x5C; none beside a Fan's) *done* (souls/wind/wind, fan), 10 more on each damaging
+     Wind chip (0x0800E208) *done* (souls/wind/chips); the image's part (row 0x34) *done* (souls/wind/hit); B's AirShot
+     (0x6B, 0x0800D3E8: variant 1, a 30-tick recovery) and WindRack charged (0x09, 0x0800D204) *done* (souls/wind/side1,
+     unison).
+   - **SearchSoul (4).** The status reset's reveal (effect 0x44: 0x080E6E4C, 0x080E6D74): the scope's mark (effect
+     row 0x52, 10-23) over the other side's navi when invisible, submerged or flashing (flag1 0x206; a netbattle's
+     one slot, `sub_800A832` 70 and on), then on its next update a hit over the field for no damage through
+     invisibility (0x2C05FF80: row 0x2C at navis), running while dimmed (0x080CD81E) *done* (souls/search/reveal);
+     its scope charged (0x0A, 0x0800CDC4; action 0x3E, 0x080EDB5C: 0x0800FB3C's find, five shots, the first through
+     invisibility, row 0x19, the rest row 0x0A, the last flinching) *done* (souls/search/scope, unison, side1).
+     Presentation, open: in souls/search/side1 (frames 491 to 498) mGBA draws the opponent's HP number in front of
+     the spiraling image, the engine behind it; the RAM's sprite list (0x03002000 at that tick) has the image's parts
+     (80 to 84) at priority 0 before the number's 32x16 (85, priority 1), which mGBA's rule (priority, then index)
+     would put behind the image: what the hardware takes is to find.
    - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
      panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle row and four more panels turn grass, blinking
      10 ticks) *open*; a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged

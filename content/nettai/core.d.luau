@@ -583,6 +583,13 @@ declare extern type Object with
     -- record's first byte (the dimming chips' stand-ins): the parts step
     -- even while paused.
     function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
+    -- `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'): what
+    -- `owner`'s navi wears, put on this object as on an image of it: a navi
+    -- that changes form its form's `put_on` (EXE5's NumberSoul's layer, the
+    -- base form's Hub Style shade), else the parts its form's identity
+    -- wears; any other navi its identity's parts. Their sprites step even
+    -- while paused.
+    function add_overlay_of(self, owner: Object): ()
     -- `sub_8011044` with `owner`'s identity: take them off.
     function remove_parts_of(self, owner: Object): ()
 
@@ -1302,6 +1309,10 @@ declare battle: {
     -- every console's emotion window, which then flickers (and draws its
     -- console's RNG1) for NaviCust bugs only.
     clear_emotion_window_glitch: () -> (),
+    -- EXE5's SearchSoul's status reset (0x08011C0C-0x08011C36): `side`'s
+    -- console's chip-icon table gets the opponent's navi (presentation: its
+    -- icons show over it; a status reset takes it out again).
+    show_opponent_chip_icons: (side: number) -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),

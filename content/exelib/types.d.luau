@@ -402,8 +402,12 @@ export type BugBombLook = {
     is: CollisionType,
     hit_by: CollisionType,
     status: Status,
-    burst_is: CollisionType,
-    burst_hits: CollisionType,
+    -- What it bursts as and reaches (none: EXE4's, the types it sits with).
+    burst_is: CollisionType?,
+    burst_hits: CollisionType?,
+    -- A crushing hit (0x3F800000) "explodes" it whenever it comes (EXE6's, EXE5's) or "bursts" it at once as it
+    -- sits (EXE4's).
+    crushing_hit: "explodes" | "bursts",
     crushed: Effect,
     burst: Effect,
     land_sound: Sound,
@@ -805,6 +809,38 @@ export type VarSwordGame = {
     auto_pick: ((me: Object) -> number?)?,
 }
 
+-- A game's BlkBomb (@exelib/blkbomb/bomb): its destroyed action (2), its
+-- identity (a field object, with the look something that takes its place
+-- shows: DustMan's junk; EXE4's none), whether it has field-object tracking
+-- to release (EXE6's, EXE5's), whether a fire hit empties its HP as it sets
+-- it off, whether it bursts as its last update frees it (EXE6's, EXE5's;
+-- EXE4's destroyed action bursts it), how a touch crushes it (the obstacle
+-- reaction's), its sprite, hit spark, collision type, what it hits and its
+-- burst's, what a pushing hit does to it, the sounds of its landing and its
+-- burst, the burst's explosions, the bubble it leaves in a hole, its panel
+-- bursts' kind and its trajectory.
+export type BlackBombLook = {
+    destroyed: (Object) -> (),
+    identity: Identity?,
+    tracked: boolean,
+    set_off_empties_hp: boolean,
+    bursts_as_freed: boolean,
+    crush: ObstacleCrush,
+    sprite: SpriteAsset,
+    spark: Spark,
+    is: CollisionType,
+    target: CollisionType,
+    burst_is: CollisionType,
+    burst_target: CollisionType,
+    push: ObstaclePush,
+    land_sound: Sound,
+    burst_sound: Sound,
+    burst_effect: Effect,
+    bubble: Kind,
+    bursts: Kind,
+    trajectory: Trajectory,
+}
+
 -- A CopyDmg mark made for a game (@exelib/copydmg/mark).
 export type CopyDamageMark = {
     kind: Kind,
@@ -1149,7 +1185,8 @@ export type RockVariant = {
     element: string,
     debris_palette: number,
     break_sound: Sound,
-    identity: Identity,
+    -- What it is taken for (none: EXE4's, whose init writes no NameID).
+    identity: Identity?,
 }
 
 -- How a rock comes onto the field (chips/rockcube/rock, the original's

@@ -242,9 +242,23 @@ language = "ja"
 "gutpnch1" = { name = "ガッツパンチ1", description = "目の前のマスに\nガッツパンチ!" }
 "gutpnch2" = { name = "ガッツパンチ2", description = "目の前のマスに\nガッツストレート!" }
 "gutpnch3" = { name = "ガッツパンチ3", description = "目の前のマスに\nガッツインパクト!" }
+"windman" = { name = "ウインドマン", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-sp" = { name = "ウインドマンSP", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-ds" = { name = "ウインドマンDS", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
 "numbrbl1" = { name = "ナンバーボール1", description = "3れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
 "numbrbl2" = { name = "ナンバーボール2", description = "4れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
 "numbrbl3" = { name = "ナンバーボール3", description = "5れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
+"blkbomb" = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
+"videoman" = { name = "ビデオマン", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"videmn-sp" = { name = "ビデオマンSP", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"videmn-ds" = { name = "ビデオマンDS", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"bugbomb" = { name = "バグボム", description = "あいてをバグらせる\nバグボムを3マス前\nになげつける" }
+"kendoman" = { name = "ケンドーマン", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"kendmn-sp" = { name = "ケンドーマンSP", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"kendmn-ds" = { name = "ケンドーマンDS", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
+"vdoll" = { name = "ワラニンギョウ", description = "おそろしいノロイの\nワラニンギョウを\n3マス前方になげる" }
+"curse" = { name = "ノロイ", description = "" }
 "rollaro1" = { name = "ロールアロー1", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
 "rollaro2" = { name = "ロールアロー2", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
 "rollaro3" = { name = "ロールアロー3", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
@@ -340,6 +354,8 @@ language = "ja"
 "009-max-hp-up" = { name = "マックスHPを強化" }
 "010-max-hp-up" = { name = "マックスHPを強化" }
 "011-first-barrier-100" = { name = "ファーストバリア100" }
+"012-buster-patch" = { name = "バスターを改造" }
+"013-buster-patch" = { name = "バスターを改造" }
 "014-panel-change" = { name = "パネルチェンジ" }
 "015-panel-change" = { name = "パネルチェンジ" }
 "016-panel-change" = { name = "パネルチェンジ" }
@@ -365,7 +381,10 @@ language = "ja"
 "037-max-hp-up" = { name = "マックスHPを強化" }
 "038-max-hp-up" = { name = "マックスHPを強化" }
 "039-b-left-ability-activation" = { name = "B+左で技発動" }
+"041-b-left-ability-activation" = { name = "B+左で技発動" }
 "042-b-left-ability-activation" = { name = "B+左で技発動" }
+"043-buster-patch" = { name = "バスターを改造" }
+"044-buster-patch" = { name = "バスターを改造" }
 "045-default-full-synchro" = { name = "デフォルトフルシンクロ" }
 "046-first-barrier200" = { name = "ファーストバリア200" }
 "047-weapon-change" = { name = "ウェポンチェンジ" }
@@ -419,11 +438,13 @@ language = "ja"
 "099-max-hp-up" = { name = "マックスHPを強化" }
 "100-max-hp-up" = { name = "マックスHPを強化" }
 "101-max-hp-up" = { name = "マックスHPを強化" }
+"102-buster-patch" = { name = "バスターを改造" }
 "103-fullcustom-charge-1-2" = { name = "チャージフルカスタム1/2" }
 "104-fullcustom-charge-2-2" = { name = "チャージフルカスタム2/2" }
 "105-panel-change" = { name = "パネルチェンジ" }
 "106-weapon-change" = { name = "ウェポンチェンジ" }
 "107-weapon-change" = { name = "ウェポンチェンジ" }
+"108-weapon-change" = { name = "ウェポンチェンジ" }
 "109-megafolder3" = { name = "メガフォルダ3" }
 "110-custom3" = { name = "カスタム3" }
 "111-gigafolder1" = { name = "ギガフォルダ1" }
@@ -433,6 +454,7 @@ language = "ja"
 "115-charge-shot-switch" = { name = "チャージ武器を変更" }
 "116-charge-shot-switch" = { name = "チャージ武器を変更" }
 "117-charge-shot-switch" = { name = "チャージ武器を変更" }
+"118-charge-shot-switch" = { name = "チャージ武器を変更" }
 "119-charge-shot-switch" = { name = "チャージ武器を変更" }
 "120-charge-shot-switch" = { name = "チャージ武器を変更" }
 "133-weapon-change" = { name = "ウェポンチェンジ" }

@@ -242,9 +242,23 @@ language = "en"
 "gutpnch1" = { name = "GutPnch1", description = "Launches\nGutPunch\nahead" }
 "gutpnch2" = { name = "GutPnch2", description = "Launches\nGutStrgt\nahead" }
 "gutpnch3" = { name = "GutPnch3", description = "Launches\nGutImpct\nahead" }
+"windman" = { name = "WindMan", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"windmn-sp" = { name = "WindMnSP", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"windmn-ds" = { name = "WindMnDS", description = "Whirlwind\nthat spin\nacrss 3sq" }
 "numbrbl1" = { name = "NumbrBl1", description = "3-shot\nball atk\nreduce HP" }
 "numbrbl2" = { name = "NumbrBl2", description = "4-shot\nball atk\nreduce HP" }
 "numbrbl3" = { name = "NumbrBl3", description = "5-shot\nball atk\nreduce HP" }
+"blkbomb" = { name = "BlkBomb", description = "Firebomb\nhits 3rd\nsq ahead!" }
+"videoman" = { name = "VideoMan", description = "Attack\ntape slam\n2.5 in" }
+"videmn-sp" = { name = "VideMnSP", description = "Attack\ntape slam\n2.5 in" }
+"videmn-ds" = { name = "VideMnDS", description = "Attack\ntape slam\n2.5 in" }
+"bugbomb" = { name = "BugBomb", description = "Throws a\nbug-bomb\n3sq ahead" }
+"kendoman" = { name = "KendoMan", description = "Attck hit\nan enemy\nin front" }
+"kendmn-sp" = { name = "KendMnSP", description = "Attck hit\nan enemy\nin front" }
+"kendmn-ds" = { name = "KendMnDS", description = "Attck hit\nan enemy\nin front" }
+"nrthwind" = { name = "NrthWind", description = "Wind blws\noff aura,\nbarriers" }
+"vdoll" = { name = "VDoll", description = "Throws\nVDoll\nahead" }
+"curse" = { name = "Curse", description = "" }
 "rollaro1" = { name = "RollAro1", description = "RollArrow\ndestroys\nchips" }
 "rollaro2" = { name = "RollAro2", description = "RollArrow\ndestroys\nchips" }
 "rollaro3" = { name = "RollAro3", description = "RollArrow\ndestroys\nchips" }
@@ -340,6 +354,8 @@ language = "en"
 "009-max-hp-up" = { name = "Max HP Up" }
 "010-max-hp-up" = { name = "Max HP Up" }
 "011-first-barrier-100" = { name = "First Barrier 100" }
+"012-buster-patch" = { name = "Buster Patch" }
+"013-buster-patch" = { name = "Buster Patch" }
 "014-panel-change" = { name = "Panel Change" }
 "015-panel-change" = { name = "Panel Change" }
 "016-panel-change" = { name = "Panel Change" }
@@ -365,7 +381,10 @@ language = "en"
 "037-max-hp-up" = { name = "Max HP Up" }
 "038-max-hp-up" = { name = "Max HP Up" }
 "039-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"041-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"043-buster-patch" = { name = "Buster Patch" }
+"044-buster-patch" = { name = "Buster Patch" }
 "045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
 "047-weapon-change" = { name = "Weapon Change" }
@@ -419,11 +438,13 @@ language = "en"
 "099-max-hp-up" = { name = "Max HP Up" }
 "100-max-hp-up" = { name = "Max HP Up" }
 "101-max-hp-up" = { name = "Max HP Up" }
+"102-buster-patch" = { name = "Buster Patch" }
 "103-fullcustom-charge-1-2" = { name = "FullCustom Charge 1/2" }
 "104-fullcustom-charge-2-2" = { name = "FullCustom Charge 2/2" }
 "105-panel-change" = { name = "Panel Change" }
 "106-weapon-change" = { name = "Weapon Change" }
 "107-weapon-change" = { name = "Weapon Change" }
+"108-weapon-change" = { name = "Weapon Change" }
 "109-megafolder3" = { name = "MegaFolder3" }
 "110-custom3" = { name = "Custom3" }
 "111-gigafolder1" = { name = "GigaFolder1" }
@@ -433,6 +454,7 @@ language = "en"
 "115-charge-shot-switch" = { name = "Charge Shot Switch" }
 "116-charge-shot-switch" = { name = "Charge Shot Switch" }
 "117-charge-shot-switch" = { name = "Charge Shot Switch" }
+"118-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
 "133-weapon-change" = { name = "Weapon Change" }
