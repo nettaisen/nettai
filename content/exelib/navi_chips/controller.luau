@@ -211,10 +211,13 @@ function controller.make(spec: Spec): Controller
             end
             return
         end
-        local wait = step :: { wait: number, warp: ("out" | "in")? }
+        local wait = step :: { wait: number, warp: ("out" | "in")?, sound: Sound? }
         if me.phase_init == 0 then
             if wait.warp then
                 warp(me, wait.warp == "out")
+            end
+            if wait.sound then
+                battle.play_sound(wait.sound)
             end
             me.timer = wait.wait
             me.phase_init = 4

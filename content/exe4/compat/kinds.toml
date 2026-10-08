@@ -15,9 +15,13 @@
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
-"attachment" = { pool = "attack", index = 0x02 }
+"attachment" = { pool = "attack", index = 0x02, scratch_with_owner = true }
 # The flying shot (0x080CE6E0): RollSoul's arrow.
 "flying-shot" = { pool = "attack", index = 0x0B }
+# The north wind (0x080D8BC8: WindSoul's change's) and its streaks (0x080E62C0); the wind spawned at the spawner's
+# registers.
+"north-wind/wind" = { pool = "attack", index = 0x5A, scratch_position = true }
+"north-wind/streak" = { pool = "effect", index = 0x3A }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
@@ -37,6 +41,8 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# SandRing's ring (0x080DAFBC).
+"sandring/ring" = { pool = "attack", index = 0x6D }
 # CopyDmg's mark (0x080D1C24).
 "copydmg/mark" = { pool = "attack", index = 0x28 }
 # Tornado's and Static's tornado (0x080D3130).
@@ -175,13 +181,13 @@
 "aquaman/spout" = { pool = "actor", index = 0x5C }
 "aquaman/water-gun" = { pool = "attack", index = 0x33 }
 # WindMan's chips (action 0x0C's variant 0x21, 0x080E6F70): each chip's controller (the content's own; the original's
-# one object, effect #0x46, 0x080E6E68), WindMan, the plume on his head (actor #0x5C, NumberMan's face's object, its
+# one object, effect #0x46, 0x080E6E68), WindMan, the swirl on his head (actor #0x5C, NumberMan's face's object, its
 # sprite row 2: his own kind of @exelib/numbrman/face), his tornadoes and their sand.
 "windman/controller" = { pool = "effect", index = 0x46, scratch_position = true }
 "windmn-sp/controller" = { pool = "effect", index = 0x46, scratch_position = true }
 "windmn-ds/controller" = { pool = "effect", index = 0x46, scratch_position = true }
 "windman/navi" = { pool = "actor", index = 0x34 }
-"windman/plume" = { pool = "actor", index = 0x5C }
+"windman/swirl" = { pool = "actor", index = 0x5C }
 "windman/tornado" = { pool = "attack", index = 0x6B }
 "windman/sand" = { pool = "attack", index = 0x6C }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
@@ -299,3 +305,9 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# GutPnch's controller (0x080E90CC; its position the spawner's registers), each chip's own kind, and its GutsMan
+# (0x080C83F8; spawned at the controller's registers).
+"gutpnch1/controller" = { pool = "effect", index = 0x64, scratch_position = true }
+"gutpnch2/controller" = { pool = "effect", index = 0x64, scratch_position = true }
+"gutpnch3/controller" = { pool = "effect", index = 0x64, scratch_position = true }
+"gutpnch/guts" = { pool = "actor", index = 0x42 }
