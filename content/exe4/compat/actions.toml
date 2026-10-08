@@ -40,6 +40,10 @@
 "antiswrd/counter" = 0x39
 # AntiMagc's stance (0x080EE9EE).
 "megaman/anti-magic/action" = 0x72
+# The FlmLines' (the chips' action 0x22, 0x080ECAAE).
+"flmline1/action" = 0x22
+"flmline2/action" = 0x22
+"flmline3/action" = 0x22
 # The breath chips' (the chips' action 0x33, 0x080ED412).
 "heatbrth/action" = 0x33
 "blizzard/action" = 0x33

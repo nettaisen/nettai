@@ -668,6 +668,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **FlmLine1 to FlmLine3** (action 0x22, `chips/flmline`: EXE4's own): the navi holds the burner (attachment row
+  0x0C) and raises flames (attack 0x19, 0x080CFF80) on the column two panels ahead, each burning the chip's 40 ticks
+  (its parameters' second byte) between 3 rising and 3 dying down. The action's variant 1 (a cross of five,
+  0x080D00F8) has no chip.
 - **HeatBrth, Blizzard, ElecShok and WoodPwdr** (action 0x33, `chips/breath`: EXE4's own): the navi holds the nozzle
   (attachment rows 0x18 to 0x1B, the original's 0x17 and the attack's element) and breathes the breath (attack 0x36,
   0x080D3A7C: unseen, 55 ticks) on the panel ahead, then 15 ticks later on the column beyond, a hit of the chip's
