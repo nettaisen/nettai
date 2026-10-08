@@ -16,6 +16,7 @@ return merge {
     require("@self/atk-30"),
     require("@self/ball"),
     require("@self/barrier"),
+    require("@self/bighamr"),
     require("@self/binder"),
     require("@self/boomer"),
     require("@self/breath"),
