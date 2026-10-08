@@ -44,6 +44,7 @@
 "megaman/repair" = [0x5E]
 "megaman/airshot" = [0x5F]
 "megaman/elecshok" = [0x60]
+"megaman/guard1" = [0x62]
 
 # MegaMan's forms by soul number (NaviStats +0x24: 0 his base form; 1 to 12 his souls, in the order of the navis he
 # unites with, the soul chips' 0x161 to 0x16C: Red Sun's 1 to 6, Blue Moon's 7 to 12). The original numbers a soul

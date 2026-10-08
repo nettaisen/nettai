@@ -664,6 +664,14 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   EXE4's look says: the other side's navi's panels only, then that side's mood to 1, and bursts (objects/panel_bursts)
   over that side's area alone. AntiNavi, AntiDmg, AntiSwrd and AntiRecv (4 to 7) set only the record (their springs:
   see §18 item 90).
+- **Guard1 to Guard3** (action 0x25's variants 0 to 2, `chips/guard`): EXE4's guard (lib/guard) with a shock wave for
+  its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
+  gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
+  (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **FlmLine1 to FlmLine3** (action 0x22, `chips/flmline`: EXE4's own): the navi holds the burner (attachment row
+  0x0C) and raises flames (attack 0x19, 0x080CFF80) on the column two panels ahead, each burning the chip's 40 ticks
+  (its parameters' second byte) between 3 rising and 3 dying down. The action's variant 1 (a cross of five,
+  0x080D00F8) has no chip.
 - **HeatBrth, Blizzard, ElecShok and WoodPwdr** (action 0x33, `chips/breath`: EXE4's own): the navi holds the nozzle
   (attachment rows 0x18 to 0x1B, the original's 0x17 and the attack's element) and breathes the breath (attack 0x36,
   0x080D3A7C: unseen, 55 ticks) on the panel ahead, then 15 ticks later on the column beyond, a hit of the chip's
@@ -1550,9 +1558,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x6E) is the roles' `sounds.guard`. HubBatc has its definition. The lab's navicust/shield, reflect and hubbatc
     match, sounds too. **Done** (group B): AntiMagc (routine 0x27, guards' `anti_magic`: its stance, action 0x72 at
     0x080EE9EE, makes AntiDmg its side's defensive chip for 13 ticks, 0x08022FDE with chip 0x91, and a catch hands over
-    to the trap's counter, 0x0800C780); the lab's stance/antimagc-* match and draw as mGBA's. Open: the
-    Guard chips' variants 0 to 2 of the guard counter with a shock wave (0x080CFD2A, its row 6): with the Guard chips.
-    EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
+    to the trap's counter, 0x0800C780); the lab's stance/antimagc-* match and draw as mGBA's. **Done** (group B): the
+    Guard chips' variants 0 to 2 of the guard counter with a shock wave (chips/guard: 0x080CFD2A, its row 6; each user of
+    lib/guard states its own counter). EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
     is never turned aside while paused in a netbattle (nothing hits then).
 54. **Done: Rush, Beat and Tango in battle.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF), which
     exe4-compat maps to the stats' supports as EXE6's +0x0D. Their triggers are EXE6's (the engine's): Tango at a
@@ -1589,12 +1597,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
-    `WEAPONS`; the 28 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    `WEAPONS`; the 29 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
     the routines of chips still to port (0x37 CopyDmg, 0x38 WideSht1, 0x42 Hole, 0x43 WideSht2, 0x44 SandRing, 0x4C
-    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x62 Guard1),
+    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
