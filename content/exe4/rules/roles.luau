@@ -21,9 +21,12 @@ local statuses = require("./status")
 local support_chips = require("../chips/supports")
 local supports = require("../lib/supports/controller")
 local underground_hole = require("../objects/underground_hole")
+local zeroed = require("../chips/zeroed").zeroed
 
 local roles: RolesSpec = {
     chips = {
+        -- What a zeroed chip field reads (EXE4's chip 0: chips/zeroed).
+        zeroed = zeroed,
         -- What a pick the custom screen refuses counts as (EXE4's chip 0x184, past the named ones: chips/invalid).
         invalid = invalid,
         -- The chips the NaviCust supports' telops name (EXE4's 0x17F to 0x181: chips/supports).
@@ -144,6 +147,9 @@ local roles: RolesSpec = {
         -- routine spawns none for the immobilized).
         confusion = asset.sprite("confusion"),
         blindness = asset.sprite("blindness"),
+        -- The mark over a navi a weakness hit damaged (effect 0x6B, 0x080E9900: 14-07, its animation 0 whatever the
+        -- spawn's).
+        hit_marker = asset.sprite("hit-marker"),
     },
     music = {
         link_battle = asset.sound("netbattle"),

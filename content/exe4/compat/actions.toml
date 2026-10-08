@@ -123,6 +123,7 @@
 "dbldream/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
+"zeroed/action" = 0x0B
 "hicannon/action" = 0x0B
 "m-cannon/action" = 0x0B
 "drkcanon/action" = 0x0B
@@ -201,6 +202,10 @@
 "windsoul/buster/action" = 0x23
 # SearchSoul's scope (weapon routine 0x0A's action 0x3E, 0x080EDB5C).
 "searchsoul/charged-shot/action" = 0x3E
+# FireSoul's flame (action 0x19, 0x080EC44A): its charged shot's (weapon routine 0x0C) and its charged fire chips'
+# (0x0800D638).
+"firesoul/charged-shot/action" = 0x19
+"firesoul/charged-chip/action" = 0x19
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
