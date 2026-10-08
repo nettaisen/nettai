@@ -2066,7 +2066,9 @@ impl CoreApi for Battle {
     fn actor_set(&mut self, o: ObjectRef, f: ActorField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
         let weapon = match f {
-            ActorField::BusterWeapon | ActorField::ChargeShotWeapon => self.weapon_from_api(f.name(), v)?,
+            ActorField::BusterWeapon | ActorField::ChargeShotWeapon | ActorField::BackSpecialWeapon => {
+                self.weapon_from_api(f.name(), v)?
+            }
             _ => None,
         };
         // The attack's chip by definition: a chip, or none.
@@ -2135,6 +2137,7 @@ impl CoreApi for Battle {
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
             (ActorField::BusterWeapon, FieldValue::Ref(_)) => a.buster = weapon,
             (ActorField::ChargeShotWeapon, FieldValue::Ref(_)) => a.charge_shot = weapon,
+            (ActorField::BackSpecialWeapon, FieldValue::Ref(_)) => a.back_special = weapon,
             (ActorField::Tired, FieldValue::Bool(x)) => a.tired = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,

@@ -49,6 +49,14 @@ function soul.image(sprite: SpriteAsset, part: AttachmentLook?): SoulImage
     }
 end
 
+-- A soul's A charge: the weapon routine (its row of 0x080184F0's +0x0E: ProtoSoul's 0x0F, MetalSoul's 0x0D, AquaSoul's
+-- 0x15) whose charge times charge the chip in hand (the charge table's row by Charge 0 to 4, Charge 5 reading on into
+-- the next row's first entry); the routine itself does nothing (0x0800CC2C): the charged use is the chip's (0x0800D4B4
+-- with the charge, the form's `charged_bonus`).
+function soul.chip_charge(id: string, ticks: { number }): Weapon
+    return new.weapon { id = id, charge_ticks = ticks, charged_chip = "bonus" }
+end
+
 -- What a soul wears (0x0800B7E8: 0x08018068 by the soul, FireSoul's and NumberSoul's; its form's `put_on` and
 -- `take_off`): a form overlay (actor 0x57) of `sprite` in the wearer's second related slot (the original's AIData
 -- +0x48), stepping as any object; on a copy of the navi (PopUp's glow, 0x0800B812) stepping on through the dimming

@@ -330,6 +330,7 @@ struct StatusSection {
     hp_drain: super::rules::HpDrainRule,
     custom_drain: super::rules::CustomDrainRule,
     form_tick: bool,
+    form_keeps_back_special: bool,
     flash_hides_on_clear: bool,
     /// The status word a navi without collision data reads as.
     missing_collision_status: u32,
@@ -454,6 +455,7 @@ impl Stated {
                 hp_drain: r.hp_drain,
                 custom_drain: r.custom_drain,
                 form_tick: r.form_tick,
+                form_keeps_back_special: r.form_keeps_back_special,
                 flash_hides_on_clear: r.flash_hides_on_clear,
                 missing_collision_status: r.missing_collision_status.0,
                 reactions: r.reactions,
@@ -513,6 +515,7 @@ impl Stated {
             hp_drain: status.hp_drain,
             custom_drain: status.custom_drain,
             form_tick: status.form_tick,
+            form_keeps_back_special: status.form_keeps_back_special,
             flash_hides_on_clear: status.flash_hides_on_clear,
             missing_collision_status: super::rules::MissingCollisionStatus(status.missing_collision_status),
             reactions: status.reactions,

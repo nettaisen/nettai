@@ -330,11 +330,12 @@ named_fields! {
         ChipLockout = "chip_lockout", U8, rw;
         /// Ticks before the B+Back special can be input again.
         BackSpecialCooldown = "back_special_cooldown", U8, rw;
-        /// The weapons the navi's buttons run (none: no weapon; the
-        /// buster's and charged shot's writable: chips change them).
+        /// The weapons the navi's buttons run (none: no weapon; writable:
+        /// chips change the buster's and charged shot's, EXE4's ProtoSoul's
+        /// status reset the B+Left special's, 0x0800E12C).
         BusterWeapon = "buster_weapon", Ref(Registry::Weapon, None), rw;
         ChargeShotWeapon = "charge_shot_weapon", Ref(Registry::Weapon, None), rw;
-        BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), ro;
+        BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), rw;
         /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
         /// the navi's counter, `sub_8014446` / `sub_801443C`).
         Tired = "tired", Bool, rw;
