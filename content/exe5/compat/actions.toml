@@ -17,8 +17,9 @@
 "megaman/charged-shot/action" = 0x1E
 # An auto-battling navi's buster attack (the attack table's row 6, 0x080EC3BC: EXE5's own).
 "auto-battle/buster" = 0x16
-# ProtoSoul's B+Back (the guard's action, as the Reflect program's).
+# ProtoSoul's B+Back (the guard's action, as the Reflect program's), with the Chaos Unison charge armed too.
 "protosoul/back/action" = 0x1F
+"protosoul/back/chaos-action" = 0x1F
 # The trap chips' counters, which a sprung trap starts.
 "antidmg/counter" = 0x2C
 "antiswrd/counter" = 0x2D
