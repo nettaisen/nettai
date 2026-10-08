@@ -211,6 +211,14 @@ language = "en"
 "silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
 "copydmg" = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
 "windrack" = { name = "WindRack", description = "Blow enmy\nin front!\nRange: 3" }
+"varswrd" = { name = "VarSwrd", description = "A magical\nshifting\nsword" }
+"neovari" = { name = "NeoVari", description = "A magical\nshifting\nsword" }
+"lifesrd" = { name = "LifeSrd", description = "Big sword\n2 long\n3 wide!" }
+"ftrsword" = { name = "FtrSword", description = "" }
+"sonicbom" = { name = "SonicBom", description = "" }
+"crosswrd" = { name = "CrosSwrd", description = "" }
+"sprsonic" = { name = "SprSonic", description = "" }
+"dbldream" = { name = "DblDream", description = "" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

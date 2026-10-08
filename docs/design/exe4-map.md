@@ -671,6 +671,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **VarSwrd and NeoVari** (actions 0x36 and 0x5A, `chips/varswrd`, `chips/neovari`: @exelib/varswrd/action, which
+  EXE5's grew from): EXE4's part is the pick's sound (0x10B), ProtoSoul's wait while A is up (NaviStats +0x24 7, the
+  form's id) and no auto battle's pick (NaviStats +0x26, the story's navis'); EXE4 has no flip, so one set of
+  sequences. The match (0x0800D486) also tests, as a step matches, the word at the sequence's next step and picks at
+  once at 0, which no step of the two tables reaches (each test reads a step before or after it). Their picks past
+  the library are chips of their own (gen_content.py's USED_CHIPS: FtrSword, SonicBom, CrosSwrd, SprSonic, DblDream;
+  LifeSrd a Program Advance's, without its recipes): the swords' variants 9, 10, 11 and 5 (lib/swords), and SonicBom's
+  and SprSonic's action 0x37 (`chips/sonicbom/action`: EXE4's own, EXE5's 0x2B grew from it; a charged one steps two
+  panels ahead, without afterimages; ProtoSoul's blade 13). The chips/0x037-varswrd and 0x0d9-neovari `cmd-*`
+  scenarios enter each sequence.
 - **WindRack** (action 0x32, `chips/windrack`: EXE4's own, EXE5's action 0x26 grew from it): the rack (attachment
   row 0x17, by the navi's number) and the swirl (effect row 0x40, turned to its side), a null-element pushing hit on
   the column ahead for 10 ticks with hit modifier 9 (EXE5's 0x49); no gusts (EXE6's), no arm to drop.

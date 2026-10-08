@@ -239,6 +239,7 @@ panel-change = 0x107  # panels changing: the panel changer's (0x080E447A) but in
 delta-ray-burst = 0x108  # DeltaRay's burst as he finishes (0x080F2F96)
 invisible = 0x109  # a navi turning invisible (0x0800C6BC, EXE6's sub_8010474: Invis) or going under the ground (the glow, actor 0x5D, 0x080CD13A: PopUp)
 counter-hit = 0x10a  # a counter hit (0x08013410: 0x0801342A)
+sword-pick = 0x10b  # VarSwrd's and NeoVari's pick of a sequence's sword: actions 0x36 and 0x5A (0x080ED7B4, 0x080EE27E)
 dimming-sparkle = 0x10d  # a sparkle on a sprung trap's target: 0x0800815C (effect row 0x48), EXE5's 0xA5
 breath = 0x11f  # a breath chip's breath coming out: attack 0x36's init (0x080D3AB6)
 geyser = 0x120  # a geyser rising: Geyser's (attack 0x42, 0x080D5A80; EXE5's) and AquaUp's aqua tower (attack 0x92's row 0, 0x080DF674)
