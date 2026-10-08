@@ -671,6 +671,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **BlkBomb** (the throw's variant 6, `chips/blkbomb`: @exelib/blkbomb/bomb, attack 0x47, which EXE5's grew from, in
+  EXE4's look): no identity of its own, no field-object tracking (EXE5's 0x0802EFFA), a fire hit leaving its HP, a
+  touch destroying it with its HP as it is (0x0801416C reads no removal request), its destroyed action (0x080D6320)
+  bursting it as it finishes, a neutral body. Its collision's damage is 100 plus the low half of its thrower's X
+  (0x080D61DC, the throw's r0): 0 from a navi on its panel, so not ported. chips/0x02e-blkbomb/fire sets one off with a
+  HeatShot.
 - **Z Saver** (action 0x70, `chips/z-saver`: @exelib/zsaver/action, which EXE5's grew from, in EXE4's look): the
   blade in the related slot as EXE4's own attachment (lib/swords' `blade_anim`: ProtoSoul's 13, 0x080EE820), let go of
   at each swing's end; no form overlay refreshed, no moving flag or overlay cleared in the recovery; the command's
@@ -794,6 +800,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   ticks) and goes by a byte store (his action stays). On a hole he leaves at once. The lab's chips/ (12),
   drag/gutpunch, drag/gutpunch-edge, hits/guard-gutpnch and ice/gutpunch replay every frame; GutPnch1's hit is
   pixel-exact.
+- **NumbrBl1 to NumbrBl3** (the dimming chips' variant 0x3A, `chips/numbrbl`): EXE5's NumbrBl. The controller
+  (effect #0x69, 0x080E9838) is @exelib/numbrbl/controller with EXE5's effect (0x080E9754, `controller.warping`, now
+  shared) and EXE4's warp (lib/navi_chips): the user warps out (30 ticks), NumberMan comes, 30 ticks, the user warps
+  back in (30). NumberMan (actor #0x45, 0x080C8CC4) is @exelib/numbrbl/numberman (EXE5's code, now shared) with
+  EXE4's look: sheet 08-08 in palette 0, appearing with 0xB0, throwing in his animation 7, and his init loading his
+  standing animation (`loads_standing`; EXE5's leaves the byte 0xFF). His balls (attack #0x91, 0x080DF4E4) are
+  @exelib/numbrbl/ball with EXE5's numbers (30 ticks sitting with 0xAA, parts 2 to 21 hidden) and EXE4's sheet 10-05,
+  explosion (effect row 0) and 0xC8. Each chip states its balls (its first parameter and three: 3, 4, 5). Damage is
+  formula 49 (power 1049, 0x0801963E): the last two digits of the user's HP (`hp_last_digits`). The lab's chips/ (15)
+  replay every frame; NumbrBl3's hit is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
@@ -1765,13 +1781,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (its one setter, 0x080069BE, gives the story's navis 1; a netbattle's NaviStats are MegaMan's, the link record's,
     whose +0x26 his console never sets), so no setup can say it and the engine keeps no field for it (the minimal
     fields rule). Port it with a setup that can.
-50. **Done: the levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an
-    attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after the decode and the
-    charge: 0, 1 charging, 3 full). B's (+0x15) is read by the dimming chips' variants 5 and 7 (GutsMan's 0x080E328A,
-    AquaMan's 0x080E39FA: full, 3, picks the strong version); nothing reads A's (+0x14). The engine keeps B's as the
-    actor field `b_charge_at_ask` (the engine's levels: 0 none, 1 charging, 2 full), set at the buster's and the chip's
-    asks (soul 2's six-press ask, 0x0800BE8E, keeps it too: item 48's); a controller reads it off the side's navi
-    (`battle.player(side).b_charge_at_ask == 2`, as 0x0800BFF4 takes the AI data by side).
+50. **Closed: the levels at the ask, kept by nothing.** The decode copies the charge levels to AIData +0x14 and +0x15
+    as it asks for an attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after
+    the decode and the charge: 0, 1 charging, 3 full). Nothing reads A's (+0x14). B's (+0x15) is read by the dimming
+    chips' variants 5 and 7 alone: GutsMan's controller (0x080E328A) and AquaMan's (0x080E39FA) take it off the side's
+    AI data (0x0800BFF4) and hand their navi `full << 8 | Param1` (r4: 1 in the high byte when B was full, 3) as his
+    Param1 and Param2; neither navi ever reads Param2 (his level is Param1 alone), and nothing else in EXE4 reads
+    +0x15. So the engine keeps no field for it (the minimal fields rule): the copies and the controllers' read are
+    stores nothing observes. (An engine field for it, `b_charge_at_ask`, came and went in this port.)
 51. **A player's deletion.** EXE4's (action 2, 0x08010850) is its own, not EXE6's `sub_80173F4`: the hurt animation
     as it starts (EXE6's with the explosions); the alive count alone (0x080079C6), never the alive lists; no chip count,
     charge glow link or tracking let go; its second related and barrier byte at the start, AIData +0x60 with the
@@ -1948,11 +1965,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      (souls/roll/heal).
    - **GutsSoul (2).** GutsMan's fist charged (0x24, 0x0800CF62) *done* (souls/guts/hit); six B presses within 10
      ticks of each other ask for the machine gun (0x0800BE50, action 0x10) *done* (souls/guts/rapid); the status
-     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *ported*.
-   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94) *done* (souls/wind/hit); the
-     status reset (0x0800E0F4): air and float shoes (flag1 0x30), a floating navi's body (row 0x10), its wind
-     (0x080E68F8, held at AIData +0x5C), 10 more on each damaging Wind chip (0x0800E208) *ported*; the image's part (row
-     0x34) *done* (souls/wind/hit); B's AirShot (0x6B, 0x0800D3E8) *open*; WindRack charged (0x09, 0x0800D204) *open*.
+     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *done* (souls/guts/bonus).
+   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94), which takes a barrier away
+     (wind: the raw hit flags' 0x20, 0x08012E0C) *done* (souls/wind/barrier); the status reset (0x0800E0F4): float
+     and air shoes (flag1 0x20, 0x10) *done* (souls/wind/cracked, broken), a floating navi's body (row 0x10), its wind
+     (0x080E68F8, held at AIData +0x5C; none beside a Fan's) *done* (souls/wind/wind, fan), 10 more on each damaging
+     Wind chip (0x0800E208) *done* (souls/wind/chips); the image's part (row 0x34) *done* (souls/wind/hit); B's AirShot
+     (0x6B, 0x0800D3E8: variant 1, a 30-tick recovery) and WindRack charged (0x09, 0x0800D204) *done* (souls/wind/side1,
+     unison).
    - **SearchSoul (4).** The status reset's effect 0x44 (0x080E6E4C, 0x080E6D74): a mark (effect row 0x52) over each
      enemy navi with flag 0x206, then after 10 ticks a hitbox (0x2C05FF80) *open*; charged 0x0A (0x0800CDC4) *open*.
    - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
