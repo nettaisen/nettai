@@ -671,6 +671,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **BlkBomb** (the throw's variant 6, `chips/blkbomb`: @exelib/blkbomb/bomb, attack 0x47, which EXE5's grew from, in
+  EXE4's look): no identity of its own, no field-object tracking (EXE5's 0x0802EFFA), a fire hit leaving its HP, a
+  touch destroying it with its HP as it is (0x0801416C reads no removal request), its destroyed action (0x080D6320)
+  bursting it as it finishes, a neutral body. Its collision's damage is 100 plus the low half of its thrower's X
+  (0x080D61DC, the throw's r0): 0 from a navi on its panel, so not ported. chips/0x02e-blkbomb/fire sets one off with a
+  HeatShot.
 - **Z Saver** (action 0x70, `chips/z-saver`: @exelib/zsaver/action, which EXE5's grew from, in EXE4's look): the
   blade in the related slot as EXE4's own attachment (lib/swords' `blade_anim`: ProtoSoul's 13, 0x080EE820), let go of
   at each swing's end; no form overlay refreshed, no moving flag or overlay cleared in the recovery; the command's

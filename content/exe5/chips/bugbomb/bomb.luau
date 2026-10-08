@@ -56,6 +56,7 @@ bug_bomb.kind = common.make_kind("bugbomb/bomb", {
     status = statuses.confuse_480,
     burst_is = collision.attack,
     burst_hits = collision.hits_navis,
+    crushing_hit = "explodes",
     crushed = EXPLOSION,
     burst = EXPLOSION,
     land_sound = asset.sound("bug-bomb-land"),

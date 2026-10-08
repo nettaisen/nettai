@@ -12,6 +12,12 @@
 -- landing sound, how it looks absorbed (EXE6's; EXE5 neither absorbs nor blinks obstacles out: a removal leaves a
 -- puff, 0x080D1170) and the damage a stage's rocks are thrown for. Its variants are the game's (`rock.variant`).
 --
+-- EXE4's (attack object #0x59, 0x080D89D8) is the same code but for what its look states besides: its init
+-- (0x080D89F8) writes no NameID and its animation's load is not forced; the panel it takes needn't be free of
+-- neutral objects or reservations (0x0F800000); its own action table (0x080D8ABC: 7 rows, its row 1 also stops it
+-- running while paused and its row 3 does nothing); and it leaves releasing no tracking, by its HP alone (left, a
+-- puff; none, the debris). It never falls, and no stage places one.
+--
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
 local debris = require("@self/debris")
@@ -30,6 +36,8 @@ export type Look = {
     id: string,
     -- The cubes' sheet (animation 0 a cube rising; the rows' are the cubes standing).
     sprite: SpriteAsset,
+    -- Its init forces its animation's load (none: true; EXE4's doesn't).
+    reloads_anim: boolean?,
     -- The game's debris kind (@exelib/rock/debris), and the effects it leaves: a puff when removed, dust when
     -- broken.
     debris: Kind,
@@ -39,12 +47,23 @@ export type Look = {
     -- What it is and reaches (a neutral body that everything reaches, while dimmed too).
     is: CollisionType,
     hits: CollisionType,
-    land_sound: Sound,
+    -- As it lands from a fall (none: EXE4's, whose rocks never fall).
+    land_sound: Sound?,
     -- How it looks absorbed (EXE6's obstacle kind 4: its own sprite, in the animation it stood in); none (EXE5's): a
     -- removal leaves a puff.
     absorbed: AbsorbedLook?,
-    -- The damage a stage's rocks do when thrown (EXE6's 200; EXE5's the same, 0x08006910).
-    stage_damage: number,
+    -- The damage a stage's rocks do when thrown (EXE6's 200; EXE5's the same, 0x08006910); none: no stage of the
+    -- game places one (EXE4's).
+    stage_damage: number?,
+    -- What on the panel it appears on breaks it (none: bodies, neutral objects, blockers and reservations,
+    -- 0x0F880080; EXE4's bodies and blockers, 0x0F800000).
+    occupied: number?,
+    -- Its action table by the framework's numbers, given its appearing, leaving and standing (EXE4's 0x080D8ABC);
+    -- none: EXE6's `off_80CFA48`.
+    actions: ((appear: (Object) -> (), destroyed: (Object) -> (), standing: (Object) -> ()) -> { [number]: (Object) -> () })?,
+    -- It leaves releasing no tracking, by its HP alone: left, a puff; none, the debris (EXE4's 0x080D8B28); none: by
+    -- how it was removed.
+    leaves_by_hp: boolean?,
 }
 
 export type Rock = {
@@ -81,6 +100,8 @@ end
 
 function rock.make(look: Look): Rock
     local absorbed = look.absorbed
+    local occupied = look.occupied or OCCUPIED
+    local by_hp = look.leaves_by_hp == true
 
     -- Stand on the panel: the standing animation, collision on the panel, and the normal pause behavior.
     local function stand(me: Object)
@@ -109,7 +130,11 @@ function rock.make(look: Look): Rock
                 battle.shake_camera(1, 0x14)
                 me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
                 me.collision:set_region(regions.single)
-                battle.play_sound(look.land_sound)
+                local land = look.land_sound
+                if land == nil then
+                    error("a rock falls in a game whose rocks never fall (its look has no landing sound)")
+                end
+                battle.play_sound(land)
                 me:set_action(obstacle.action_byte(me, STANDING))
             end
         end
@@ -126,21 +151,27 @@ function rock.make(look: Look): Rock
         if entrance == "rise" and not bit32.btest(me.sprite.frame_flags, LAST_FRAME) then
             return
         end
-        if not field.check(me.panel_x, me.panel_y, SOLID, OCCUPIED) then
+        if not field.check(me.panel_x, me.panel_y, SOLID, occupied) then
             me:set_action(DESTROYED)
             return
         end
         stand(me)
     end
 
-    -- `sub_80CFB2C`: leave the field, breaking into debris unless a chip removed it.
+    -- `sub_80CFB2C`: leave the field, breaking into debris unless a chip removed it (or by its HP alone,
+    -- `leaves_by_hp`).
     local function destroyed(me: Object)
         me.collision:set_region(nil)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
-        obstacle.release_tracking(me)
+        if not by_hp then
+            obstacle.release_tracking(me)
+        end
         obstacle.unregister(me)
-        local how = obstacle.removal(me)
-        if absorbed and how == "absorbed" then
+        local how = if by_hp then (if me.hp ~= 0 then "removed" else "broken") else obstacle.removal(me)
+        if by_hp and how == "removed" then
+            local p = me.pos
+            battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.effects.puff)
+        elseif absorbed and how == "absorbed" then
             obstacle.fly_to_absorber(me, absorbed)
         elseif how ~= "broken" then
             local blink = if absorbed then obstacle.blink_out(me) else "no"
@@ -166,18 +197,21 @@ function rock.make(look: Look): Rock
     -- `sub_80CFB28`.
     local function standing(_me: Object) end
 
-    -- The rock's action table (`off_80CFA48`): its own actions and the framework's shared ones.
-    local ACTIONS: { [number]: (Object) -> () } = {
-        [APPEAR] = appear,
-        [1] = obstacle.return_to_idle,
-        [DESTROYED] = destroyed,
-        [3] = obstacle.flinch,
-        [4] = obstacle.paralyzed,
-        [5] = obstacle.slide,
-        [6] = obstacle.frozen,
-        [7] = obstacle.bubbled,
-        [STANDING] = standing,
-    }
+    -- The rock's action table (`off_80CFA48`): its own actions and the framework's shared ones (or its look's).
+    local own = look.actions
+    local ACTIONS: { [number]: (Object) -> () } = if own
+        then own(appear, destroyed, standing)
+        else {
+            [APPEAR] = appear,
+            [1] = obstacle.return_to_idle,
+            [DESTROYED] = destroyed,
+            [3] = obstacle.flinch,
+            [4] = obstacle.paralyzed,
+            [5] = obstacle.slide,
+            [6] = obstacle.frozen,
+            [7] = obstacle.bubbled,
+            [STANDING] = standing,
+        }
 
     -- `sub_80CFA18`.
     local function tick(me: Object)
@@ -205,8 +239,8 @@ function rock.make(look: Look): Rock
         me.visible = true
         local sprite = me.sprite
         sprite:load(look.sprite)
-        me.anim_loaded = 0xFF
         local anim = if s.entrance == "placed" then v.anim else RISING
+        me.anim_loaded = if look.reloads_anim == false then anim else 0xFF
         me.anim = anim
         sprite:set_animation(anim)
         sprite:step()
@@ -216,7 +250,9 @@ function rock.make(look: Look): Rock
         me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
         me.element = element.byte(v.element)
         me.hp, me.max_hp = v.hp, v.hp
-        me.identity = v.identity
+        if v.identity then
+            me.identity = v.identity
+        end
         me.timer = LIFETIME
         if not me:create_collision() then
             me:free()
@@ -279,8 +315,12 @@ function rock.make(look: Look): Rock
             if not v then
                 error("a stage's rock needs its `variant` (one of its game's rock variants)")
             end
+            local damage = look.stage_damage
+            if damage == nil then
+                error("a stage places a rock in a game whose stages place none (its look has no stage damage)")
+            end
             local placed: RockSpec = { variant = v, entrance = "placed" }
-            return spawn(x, y, panel.alliance, placed, look.stage_damage)
+            return spawn(x, y, panel.alliance, placed, damage)
         end,
     }
 
