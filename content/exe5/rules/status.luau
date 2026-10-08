@@ -402,6 +402,7 @@ local status = {
         hp_drain = { periods = { 0, 40, 35, 30, 25, 20, 15, 10 }, stops_while_paused = true },
         custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = 0x5 },
         form_tick = false,
+        form_keeps_back_special = false,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x080137B6; EXE6's while it is set).
         flash_hides_on_clear = true,
         -- A navi's status word read before its init made its collision data (through the null pointer, from the

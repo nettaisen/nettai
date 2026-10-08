@@ -399,6 +399,9 @@ local status = {
         custom_drain = { periods = "stat", status = 0x1 },
         -- No per-form tick (the player's update, 0x080EAECC, runs none: a soul's is its own, to read with the souls).
         form_tick = false,
+        -- A soul's weapon load (0x0800BD48) sets AIData +0x0C to +0x0F alone: its B+Left special (+0x00) stays as the
+        -- status reset loaded it, the navi's (0x0800D8C2), or the soul's own routine's (ProtoSoul's).
+        form_keeps_back_special = true,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x08010430).
         flash_hides_on_clear = true,
         -- What a navi's status word reads as before its init made its collision data: EXE5's open-bus value, to
