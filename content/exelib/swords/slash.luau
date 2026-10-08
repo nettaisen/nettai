@@ -73,6 +73,10 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
     -- The blade's animation (`sub_80EBAE8`, or the spec's game's own).
     local blade_anim = spec.blade_anim or rules.blade_anim or parts.blade_anim
     local in_place = rules.stays
+    -- The sprite of its afterimages of the navi (none: a copy).
+    local function navi_afterimage(me: Object): SpriteAsset?
+        return if rules.navi_afterimage then rules.navi_afterimage(me) else nil
+    end
     local refreshes_overlay = rules.refreshes_form_overlay ~= false
     local clears_moving = rules.recovery_clears_moving ~= false
     -- How the navi holds the blade (`sub_80B8E30`, or the game's own).
@@ -159,6 +163,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
             return
         end
         battle.afterimage(me, me.pos, {
+            sprite = navi_afterimage(me),
             anim = 0,
             flip = flip(me),
             color_shader = AFTERIMAGE_SHADER,
@@ -241,6 +246,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
         end
         if s.timer == 0x10 and stepping(me) then
             battle.afterimage(me, me.pos, {
+                sprite = navi_afterimage(me),
                 anim = 5,
                 flip = flip(me),
                 color_shader = AFTERIMAGE_SHADER,
