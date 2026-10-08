@@ -1219,9 +1219,9 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
-    /// The battle's count of fight ticks modulo `period` (20 or 180: the
-    /// round's two counts), which grass heals by.
-    fn cycle(&self, period: u8) -> u8;
+    /// The battle's count `which` (1 or 2) of fight ticks, modulo its
+    /// period (the rules' `flow.fight_cycles`), which grass heals by.
+    fn cycle(&self, which: u8) -> u8;
     /// The shift a hit of element `hitter` takes against a body of element
     /// `receiver` (the rules' `elements.weakness`).
     fn weakness(&self, receiver: u8, hitter: u8) -> u8;
