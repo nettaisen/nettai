@@ -402,8 +402,12 @@ export type BugBombLook = {
     is: CollisionType,
     hit_by: CollisionType,
     status: Status,
-    burst_is: CollisionType,
-    burst_hits: CollisionType,
+    -- What it bursts as and reaches (none: EXE4's, the types it sits with).
+    burst_is: CollisionType?,
+    burst_hits: CollisionType?,
+    -- A crushing hit (0x3F800000) "explodes" it whenever it comes (EXE6's, EXE5's) or "bursts" it at once as it
+    -- sits (EXE4's).
+    crushing_hit: "explodes" | "bursts",
     crushed: Effect,
     burst: Effect,
     land_sound: Sound,
