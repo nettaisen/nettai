@@ -13,6 +13,7 @@ local barriers = require("../lib/barriers")
 local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
 local deletion = require("./deletion")
+local ice_cube = require("../objects/ice_cube")
 local invalid = require("../chips/invalid").invalid
 local machine_gun = require("../navis/megaman/forms/gutssoul/machine_gun")
 local regions = require("@exelib/regions")
@@ -43,11 +44,16 @@ local roles: RolesSpec = {
     sparks = {
         plain = sparks.plain,
         guard = sparks.guard,
+        -- A thrown obstacle's landing hit (0x080116CA: the region word 0x06050001, its spark row 0, its collision
+        -- rows 6 and 5).
+        thrown_obstacle = sparks.plain,
     },
     collision = {
         navi = collision.navi,
         floating_navi = collision.floating_navi,
         navi_target = collision.navi_target,
+        thrown_obstacle = collision.breaking,
+        thrown_obstacle_target = collision.hits_navis,
     },
     regions = {
         anchor = regions.single,
@@ -115,12 +121,19 @@ local roles: RolesSpec = {
         recovery = asset.sound("heal"),
         -- A trap springs (the trap's mark, 0x0800815C: 0x10D).
         cut_in = asset.sound("dimming-sparkle"),
+        -- A thrown obstacle (JunkMan's, the obstacles' throw request) lifted (0x08011616: 0xFA, ColorPt's points' rise)
+        -- and flying (0x08011690: 0x146, the meteors' fall).
+        obstacle_lift = asset.sound("point-rise"),
+        obstacle_throw = asset.sound("justice-one"),
     },
     effects = {
         -- HP recovered (the heal, 0x0800ABCA: effect row 7, 0x080E16B4).
         recovery = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
         -- A sprung trap's mark (0x0800815C: effect row 0x48, 14-05's animation 7): AntiNavi's over the turned chip.
         trap_mark = new.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 },
+        -- What an obstacle encased in ice or a bubble flickers with (0x08011764: effect row 0x6E, the rock sheet's
+        -- ice block, 10-02's animation 2).
+        encased = new.effect { sprite = asset.sprite("rock"), anim = 2, palette = 0 },
     },
     hooks = {
         -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the patch cards' aura): the
@@ -139,6 +152,9 @@ local roles: RolesSpec = {
                 navi:set_status("guard", true)
             end
         end,
+        -- What an obstacle encased in ice or a bubble becomes (0x08011788: an ice block or the ice cube; EXE4's
+        -- encasing is ColdMan's, chips/coldman).
+        encased = ice_cube.replace,
     },
     sprites = {
         -- The Full Synchro aura (actor object 0x5E, 0x080CD1A8: 14-16, EXE5's and EXE6's numbers too).

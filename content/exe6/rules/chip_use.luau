@@ -13,4 +13,6 @@ return {
     beat_spares_dark = false,
     -- A dimming's start hides the chip window on its starter's console only (`object_timefreezeBegin`).
     dimming_hides_every_window = false,
+    -- A charged Null chip runs the alternative A-charge routine, the attack's chip cleared (`sub_800FB54`).
+    charged_null_alt_routine = true,
 }

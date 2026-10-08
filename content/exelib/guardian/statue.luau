@@ -1,6 +1,6 @@
 --!strict
--- The Guardian statue, as EXE5 and EXE6 share it (EXE6's attack object #0x7D, `sub_80D4C84`; EXE5's #0x7D, 0x080D5EB4;
--- EXE6's docs/engine/dimming-chip-effects.md §5): a field obstacle that stands for 6000 ticks. Broken by an attack
+-- The Guardian statue, as the three games share it (EXE6's attack object #0x7D, `sub_80D4C84`; EXE5's #0x7D, 0x080D5EB4;
+-- EXE4's 0x080DCDA8; EXE6's docs/engine/dimming-chip-effects.md §5): a field obstacle that stands for 6000 ticks. Broken by an attack
 -- from one side only, it takes the other side's part: in a dimming of its own (the look's strike, which the other
 -- player can't cut in on) it strikes every panel the attacker's navi stands on. Broken otherwise (by a body, by hits
 -- from both sides, by its time running out) it just crumbles. The Guardian chip places one (with the user's side);
@@ -10,6 +10,11 @@
 -- 0x080D5F12), sounds, effects, collision types, its strike's dimming, and how it leaves when removed (EXE6's
 -- `sub_80D4EFC`: absorbed, blinking out or a puff; EXE5's 0x080D6124, which neither absorbs nor blinks obstacles
 -- out: a puff for any removal).
+--
+-- EXE4's (0x080DD024 and on) is the older code, a look too: no NameID; it reads no removal as it goes
+-- (`reads_no_removal`) and releases no tracking (`untracked`); broken with any hit flags it goes on to strike back,
+-- the side picked there (`strikes_on_any_hit`; no side, a puff); it crumbles without a sound (no `crumble` sound);
+-- striking, it keeps its collision on its panel (`keeps_region_striking`); its own obstacle rows (`actions`).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
@@ -41,9 +46,9 @@ export type Look = {
     -- The kind's id.
     id: string,
     sprite: SpriteAsset,
-    identity: Identity,
+    identity: Identity?,
     hp: number,
-    sounds: { place: Sound, crumble: Sound, strike: Sound },
+    sounds: { place: Sound, crumble: Sound?, strike: Sound },
     -- The flash it arrives in, 16 pixels up, and the burst on each panel it strikes.
     arrival: Effect,
     burst: Effect,
@@ -62,6 +67,12 @@ export type Look = {
     effects: { puff: Effect },
     -- The game's rising bubble kind (objects/rising_bubble).
     bubble: Kind,
+    -- EXE4's older code (above).
+    reads_no_removal: boolean?,
+    untracked: boolean?,
+    strikes_on_any_hit: boolean?,
+    keeps_region_striking: boolean?,
+    actions: { [number]: (Object) -> () }?,
 }
 
 export type Statue = {
@@ -127,7 +138,9 @@ function statue.make(look: Look): Statue
     local function crumble(me: Object)
         puff(me)
         rising_bubble.spawn(look.bubble, me.pos, 0)
-        battle.play_sound(look.sounds.crumble)
+        if look.sounds.crumble then
+            battle.play_sound(look.sounds.crumble)
+        end
         leave(me)
     end
 
@@ -135,9 +148,11 @@ function statue.make(look: Look): Statue
     -- instead.
     local function destroyed(me: Object)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
-        obstacle.release_tracking(me)
+        if not look.untracked then
+            obstacle.release_tracking(me)
+        end
         obstacle.unregister(me)
-        local how = obstacle.removal(me)
+        local how = if look.reads_no_removal then "broken" else obstacle.removal(me)
         if absorbed and how == "absorbed" then
             obstacle.fly_to_absorber(me, absorbed)
             leave(me)
@@ -147,7 +162,9 @@ function statue.make(look: Look): Statue
             if blink == "blinking" then
                 return
             elseif blink == "done" then
-                battle.play_sound(look.sounds.crumble)
+                if look.sounds.crumble then
+                    battle.play_sound(look.sounds.crumble)
+                end
                 leave(me)
                 return
             end
@@ -160,7 +177,7 @@ function statue.make(look: Look): Statue
         if me.hp == 0 and not s.quiet then
             local hits = me.collision.hit_flags
             s.attackers = hits
-            if hits ~= 0 and avenging_side(hits) then
+            if hits ~= 0 and (look.strikes_on_any_hit or avenging_side(hits)) then
                 me.action, me.phase, me.phase_init = obstacle.action_byte(me, STRIKE_BACK), 0, 0
                 return
             end
@@ -194,9 +211,11 @@ function statue.make(look: Look): Statue
             return
         end
         me.prevent_anim = 0
-        me.collision:set_region(nil)
         local s = me.state :: State
         local side = if battle.over() then nil else avenging_side(s.attackers)
+        if not side or not look.keeps_region_striking then
+            me.collision:set_region(nil)
+        end
         if not side then
             puff(me)
             me.visible = false
@@ -288,6 +307,14 @@ function statue.make(look: Look): Statue
         [STANDING] = standing,
         [STRIKE_BACK] = strike_back,
     }
+    if look.actions then
+        for a = 3, 7 do
+            actions[a] = nil
+        end
+        for a, f in look.actions do
+            actions[a] = f
+        end
+    end
 
     -- `sub_80D4D34`: hits (a push keeps the damage), the lifetime, the reaction (a crushing touch destroys it, its
     -- HP as it is), its action.
@@ -321,7 +348,9 @@ function statue.make(look: Look): Statue
         me:set_coordinates_from_panel()
         me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
         me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-        me.identity = look.identity
+        if look.identity then
+            me.identity = look.identity
+        end
         me.hp, me.max_hp = look.hp, look.hp
         me.timer = LIFETIME
         me.timer2 = APPEAR_TICKS

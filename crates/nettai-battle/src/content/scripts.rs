@@ -432,7 +432,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         anti_navi_sparkle = { dy = 0, z = 16 },
         mixed_modifiers = false,
         beat_spares_dark = false,
-        dimming_hides_every_window = false,"#,
+        dimming_hides_every_window = false,
+        charged_null_alt_routine = true,"#,
             ),
             (
                 "custom_screen",
@@ -564,6 +565,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         hp_drain = { periods = row(8, 30), stops_while_paused = true },
         custom_drain = { periods = "stat", status = 5 },
         form_tick = false,
+        form_keeps_back_special = false,
         flash_hides_on_clear = true,
         missing_collision_status = 7,
         reactions = "flash_timer_first",
@@ -674,7 +676,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 118, "every field of every section");
+        assert_eq!(fields, 120, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

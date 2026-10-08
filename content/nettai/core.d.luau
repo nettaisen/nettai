@@ -524,8 +524,8 @@ declare extern type Object with
     buffered_move: number
     chip_lockout: number
     back_special_cooldown: number
-    -- The weapons the navi's buttons run (nil: none; the buster's and the
-    -- charged shot's writable).
+    -- The weapons the navi's buttons run (nil: none; writable: EXE4's
+    -- ProtoSoul's status reset sets its B+Left special's, 0x0800E12C).
     buster_weapon: Weapon?
     charge_shot_weapon: Weapon?
     back_special_weapon: Weapon?
@@ -1702,6 +1702,11 @@ declare obstacle: {
     remove: (obj: Object) -> (),
     vanish: (obj: Object) -> (),
     absorb: (obj: Object, absorber: Object) -> (),
+    -- EXE4's 0x0800B44C (ColdMan's): encase it in ice or in a bubble; at
+    -- its next reaction it flickers 60 ticks, then the role `hooks.encased`
+    -- puts an ice block or the bubble in its place.
+    encase_in_ice: (obj: Object) -> (),
+    encase_in_bubble: (obj: Object) -> (),
     -- `sub_80EFD74`: `absorber` pulls in every registered field object
     -- (but NameID 0xDA and those already leaving); each flies to its
     -- side's navi as an absorbed obstacle.
@@ -2350,7 +2355,7 @@ export type NaviDef = {
     charged_chips: { family: ChipFamily, damaging: boolean, when: ((side: number) -> boolean)?, plain: boolean? }?,
     -- What a chip it charged gains (damage 0xFF: its damage again), where
     -- its form states no `charged_bonus`: a form's comes first.
-    charged_bonus: { damage: number?, paralyzes: boolean? }?,
+    charged_bonus: { damage: number?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles (`sub_8012AFA`).
     charge_doubles: ChipMatch?,
     -- Its A charge builds up the next Fire chip's damage, up to a limit: a
@@ -2533,8 +2538,8 @@ export type FormDef = {
     -- `element_sword` trait too; `plain`: only those that are neither
     -- dimming nor dark chips (EXE5's souls).
     charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
-    -- What a charged chip gains in it.
-    charged_bonus: { damage: number?, paralyzes: boolean? }?,
+    -- What a charged chip gains in it (`doubles`: the damage word's doubling).
+    charged_bonus: { damage: number?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
     -- the base HP.
     charge_doubles: ChipMatch?,
