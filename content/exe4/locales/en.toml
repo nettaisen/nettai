@@ -274,6 +274,8 @@ language = "en"
 "panlsht1" = { name = "PanlSht1", description = "Lifts\npanel and\nthrows it" }
 "panlsht2" = { name = "PanlSht2", description = "Lifts\npanel and\nthrows it" }
 "panlsht3" = { name = "PanlSht3", description = "Lifts\npanel and\nthrows it" }
+"slogauge" = { name = "SloGauge", description = "CustGauge\nTemporary\nslow-down" }
+"fstgauge" = { name = "FstGauge", description = "CustGauge\nTemporary\nspeed-up" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

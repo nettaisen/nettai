@@ -868,6 +868,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   console sees it) breaks the panel under it if free (0x08009BAC) with 0x1C6, rises 2 pixels a tick to 16 up, waits,
   then flies 10 pixels a tick (0xBF), an attack at navis with spark 6, until it hits or leaves the field. The lab's
   chips/ (12) replay every frame; PanlSht2's hit and PanlSht3's side1 are pixel-exact.
+- **SloGauge, FstGauge** (the dimming chips' variant 9, `chips/slogauge`, `chips/fstgauge`, lib/gauge_speed): EXE6's
+  controller (effect #0x1C, 0x080E3F0C: @exelib/gauge_speed/controller) with EXE4's warning sound (0x79, 0x08008424 at
+  the gauge): the gauge's rate (0x10, 0x40) and the user's side's slow or fast timer (0x1E0), never the other side's
+  (EXE4 has no own-gauges mode), the warning on both consoles (the user's alone only under event flag 0x1187, which no
+  netbattle sets), 70 ticks. The lab's chips/ (8) and status/slow-gauge and fast-gauge replay every frame; both hits
+  are pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
