@@ -2517,6 +2517,8 @@ export type FormDef = {
     -- the base HP.
     charge_doubles: ChipMatch?,
     chip_heals: ChipMatch?,
+    -- The families whose damaging chips, not dimming chips, paralyze when used uncharged.
+    paralyzing_chips: { ChipFamily }?,
     -- Its A charge builds up the next Fire chip's damage, up to this much.
     fire_charge: number?,
     -- What its status reset gives the navi, and what a NaviCust change
