@@ -133,9 +133,9 @@ export type ShockWaveVariant = { anim: number, ticks: number, panel: PanelType?,
 
 -- A hockey puck (chips/airhocky/puck, a row of the original's
 -- `byte_80C9818`): the steps it lasts (0: no limit), how it bounces (1:
--- off its own side too once across, 0: not), the ticks per step, and
--- whether it leaves an afterimage trail.
-export type HockeyPuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+-- off its own side too once across, 0: not), the ticks per step, and the
+-- tint of its afterimage trail if it leaves one.
+export type HockeyPuckVariant = { steps: number, own_side: number, ticks: number, trail: number? }
 
 -- How an iron shell slides (chips/ironshl/shell): its palette and speed
 -- (16.16 a tick), how many times it bumps at the far column, and its

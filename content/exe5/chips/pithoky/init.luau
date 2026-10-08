@@ -31,7 +31,7 @@ local chip: Chip = {
     action = flick.action {
         kind = puck.kind,
         -- The row 3 of 0x080CA3A4: 18 steps, with a trail.
-        puck = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = true },
+        puck = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = 0x8318 },
         down = true,
     },
     auto_battle = { class = "to_front" },
