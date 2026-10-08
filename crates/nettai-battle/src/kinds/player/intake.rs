@@ -188,7 +188,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
             set_barrier_hp16(c, 0);
             c.barrier_saved_hmf = c.hit_mod_final;
         }
-        crate::content::BarrierWind::TakesAway if !regrowing && c.acc.raw_elements & 0x20 != 0 => {
+        crate::content::BarrierWind::TakesAway if !regrowing && c.acc.raw_hit_flags & 0x20 != 0 => {
             // Gone at once (EXE4's 0x08012E1E); the rest of the tick goes on
             // by the type it had.
             c.barrier = 0;
