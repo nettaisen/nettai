@@ -33,6 +33,8 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# The AirHocs' puck (0x080D2B08).
+"airhoc/puck" = { pool = "attack", index = 0x2E }
 # The GunSols' sun beam (0x080E7216).
 "gunsol/beam" = { pool = "effect", index = 0x48 }
 # The FlmLines' flame (0x080D00B8).
