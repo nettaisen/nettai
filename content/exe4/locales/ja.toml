@@ -176,6 +176,8 @@ language = "ja"
 "magbolt1" = { name = "マグボルト1", description = "あいてを目の前の\nマスにすいつけて\n電気ショック!" }
 "magbolt2" = { name = "マグボルト2", description = "あいてを目の前の\nマスにすいつけて\n電気ショック!" }
 "magbolt3" = { name = "マグボルト3", description = "あいてを目の前の\nマスにすいつけて\n電気ショック!" }
+"invis" = { name = "インビジブル", description = "少しの間とうめいに\nなって ほとんどの\n攻撃にあたらない" }
+"popup" = { name = "ユカシタ", description = "地中にもぐり\n攻撃のときだけ\nすがたをあらわす" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

@@ -204,3 +204,10 @@
 "beat" = { pool = "actor", index = 0x4C }
 "tango" = { pool = "actor", index = 0x4D }
 "tango/heal" = { pool = "attack", index = 0x9F }
+# Invis's controller (0x080E8A68) and PopUp's (0x080E6470): their positions the spawners' registers. PopUp's glow (actor
+# 0x5D, 0x080CCF5C: one object in the original, its action by its parameter; here each user's own kind) and the hole
+# over a navi under the ground (0x080E64FC), which the navi's tail keeps.
+"invis/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
+"popup/controller" = { pool = "effect", index = 0x3D, scratch_position = true }
+"popup/glow" = { pool = "actor", index = 0x5D }
+"underground-hole" = { pool = "effect", index = 0x3E }
