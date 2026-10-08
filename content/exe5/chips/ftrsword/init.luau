@@ -7,6 +7,9 @@
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
+-- Its slash over three panels (effect 0x2E).
+local LINE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 3, palette = 0 }
+
 local chip: Chip = {
     codes = { "E", "L", "S", "*" },
     element = "null",
@@ -23,7 +26,7 @@ local chip: Chip = {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.line, collision = swords.slashes_navis, hit_mod = 3 },
-        effect = swords.effects.line,
+        effect = LINE_SLASH,
         sound = swords.swing,
     },
 }

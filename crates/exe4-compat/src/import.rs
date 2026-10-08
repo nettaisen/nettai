@@ -89,9 +89,11 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
         }
         Err(e) => notes.push(format!("the save's patch cards are left out: {e}")),
     }
-    // What the save brings to the stats: the base HP, the Regular memory.
+    // What the save brings to the stats: the base HP, the Regular memory,
+    // fighting in the sun (his block's +0x29, which the overworld writes).
     state(side, "hp", &[Fact::Value(Value::Int(save.base_max_hp() as i64))]);
     state(side, "reg_up", &[Fact::Value(Value::Int(save.regular_memory() as i64))]);
+    state(side, "sun", &[Fact::Value(Value::Bool(save.navi_stats()[0x29] != 0))]);
     // Double Soul (event flag 0x14) and the souls it has (EXE4's rules/souls):
     // its version's whose flags are set (`Version::soul_flag`, 0x08020018's
     // table), by the forms' numbers (records.toml's), in their order.

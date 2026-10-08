@@ -10,7 +10,7 @@ local status = require("../../rules/status")
 
 local skully = {}
 
--- A chip's skulls: their palette (Param1 by 2), how many (Param2), the ticks before each calls the next (Param3).
+-- A chip's skulls: their palette (twice its Param1), how many (Param2), the ticks before each calls the next (Param3).
 export type Skulls = { palette: number, count: number, every: number }
 
 export type State = {
@@ -102,7 +102,7 @@ local function init(me: Object)
     me:setup_collision(collision.attack, collision.hits_navis, 3)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
-    sprite.palette = s.skulls.palette * 2
+    sprite.palette = s.skulls.palette
     me.collision.status_base = status.confuse_480
     me.collision:present()
     s.left = int.u8(s.left - 1)

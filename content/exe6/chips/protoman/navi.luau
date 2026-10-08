@@ -9,6 +9,9 @@ local collision = require("../../rules/collision")
 local common = require("@exelib/protoman/navi")
 local parts = require("../../lib/swords/parts")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local protoman = {}
 
 -- A game's ProtoMan's look.
@@ -24,16 +27,16 @@ protoman.look = common.look
 protoman.exe6 = protoman.look {
     sprite = asset.sprite("protoman"),
     palette = 0,
-    sword = parts.blades.sword,
+    sword = parts.blade,
     sword_anim = 0xB,
-    slash = parts.effects.wide,
+    slash = WIDE_SLASH,
     spawner_address = 0x080C2A4D,
 }
 
 local made = common.make {
     id = "protoman/navi",
     appear_sound = asset.sound("appear"),
-    swing_sound = parts.sounds.swing,
+    swing_sound = parts.swing,
     attachment = attachment.kind,
     target = collision.hits_navis,
     self_type = collision.slash,

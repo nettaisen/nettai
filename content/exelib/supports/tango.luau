@@ -29,8 +29,8 @@ local function enemy_direction(me: Object): number
 end
 
 -- `sub_80C390E` (EXE5's 0x080C28E6): in front of her navi, up high (and a
--- pixel down the field).
-local function place(me: Object)
+-- pixel down the field, but where the look says not: EXE4's 0x080CAB88).
+local function place(me: Object, nudge: boolean)
     local navi = battle.player(me.alliance)
     if not navi then
         -- The game reads the missing navi's panel through a null pointer.
@@ -39,7 +39,8 @@ local function place(me: Object)
     me.panel_x, me.panel_y = navi.panel_x, navi.panel_y
     me:set_coordinates_from_panel()
     local p = me.pos
-    me.pos = Vec3.new(int.i32(p.x + enemy_direction(me) * FRONT), int.i32(p.y + 0x1_0000), START_Z)
+    local y = if nudge then int.i32(p.y + 0x1_0000) else p.y
+    me.pos = Vec3.new(int.i32(p.x + enemy_direction(me) * FRONT), y, START_Z)
 end
 
 -- A wait's tick (`ldrh`, `sub`, `strh`, `bge`): false once it counts past
@@ -150,7 +151,7 @@ function tango.make(look: TangoLook): SupportActor
         sprite:set_animation(0)
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         me.visible = true
-        place(me)
+        place(me, look.pixel_nudge ~= false)
         me.timer = 0x28
         battle.play_sound(look.arrive_sound)
         me:set_lifecycle("update")

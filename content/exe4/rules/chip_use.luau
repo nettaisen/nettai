@@ -8,4 +8,6 @@ return {
     leave_on_use = true,
     anti_navi_sparkle = { dy = 0, z = 16 },
     mixed_modifiers = false,
+    -- Beat lets a dark Mega or Giga chip go (0x0800C86C tests its flag 0x20).
+    beat_spares_dark = true,
 }

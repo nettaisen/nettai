@@ -14,6 +14,9 @@ local sparks = require("../../lib/sparks")
 local gregar_beast = require("../../navis/megaman/forms/gregar_beast")["gregar-beast"]
 local parts = require("../../lib/swords/parts")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local gregar = {}
 
 local SPRITE = asset.sprite("gregar-beast")
@@ -126,7 +129,7 @@ local function claw(me: Object)
         if beast.take_panel(me, CLAW, false) then
             me.anim = ANIM_CLAW
             battle.play_sound(SOUND_CLAW)
-            attachment.attach(me, parts.blades.sword, "held", { anim = 0xC, while_dimmed = true })
+            attachment.attach(me, parts.blade, "held", { anim = 0xC, while_dimmed = true })
         end
         return
     end
@@ -136,7 +139,7 @@ local function claw(me: Object)
     local t = me.timer - 1
     me.timer = t
     if t == CLAW_AT then
-        effect_ahead(me, parts.effects.wide)
+        effect_ahead(me, WIDE_SLASH)
         beast.hit(me, HITS.claw)
         return
     end

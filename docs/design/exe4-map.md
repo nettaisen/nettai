@@ -179,6 +179,7 @@ in brackets, one to three calls each):
 | +0x24 | 0 | the soul (patch card 0x24: a battle starts in it, 1 on) [+0x2C] |
 | +0x27 | 0 | MegaMan's color (patch card 0x27) |
 | +0x28 | 0 | All Guard (patch card 0x28) |
+| +0x29 | 0 | fighting in the sun (the overworld sets it by the map, 0x0802A770; the reset keeps it; GunSol reads it) |
 | +0x2A | 1 | ? |
 | +0x30, +0x32 | 100 | HP and max HP (MegaMan's from the save's 0x2150 and 0x2152) [+0x40, +0x42] |
 | +0x34 | 100 | the base max HP (the save's 0x21CA, before the NaviCust's and the patch cards') |
@@ -195,8 +196,10 @@ BustPack's weapon level (0 to 2, copied to the AI data's +8 at the init, 0x0800D
 confused 720 ticks as the round starts, 0x0800D8B0; else its high nibble, in the keys' bits, is held when no direction
 is, 0x0800B4DA); +0x15 the encounter bug; +0x16 SneakRun; +0x17's bits 1 to 4 OilBody, Fish, Battery, Jungle; +0x19
 Collect (bit 1) and the result bug (1); +0x1C Humor; +0x1D BugStop; +0x1E SoulClen (read by the light/dark value's
-update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x29, +0x2B) is used and unread yet: the step that
-ports what reads it names it.
+update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x2B) is used and unread yet: the step that ports
+what reads it names it. +0x29 is fighting in the sun (the rules' `sun`, as EXE5's +0x22): 1 while the map the
+overworld is on is one of 0x0802A7AC's (0x0802A770), which the save's block keeps; GunSol hits harder and shines
+brighter in it.
 
 ### 3.4 RAM
 
@@ -664,6 +667,21 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   EXE4's look says: the other side's navi's panels only, then that side's mood to 1, and bursts (objects/panel_bursts)
   over that side's area alone. AntiNavi, AntiDmg, AntiSwrd and AntiRecv (4 to 7) set only the record (their springs:
   see §18 item 90).
+- **Guard1 to Guard3** (action 0x25's variants 0 to 2, `chips/guard`): EXE4's guard (lib/guard) with a shock wave for
+  its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
+  gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
+  (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **GunSol1 to GunSol3, GunSolEX** (action 0x58, `chips/gunsol`: EXE4's own, EXE5's GunDelSol grew from it): the gun
+  out, 6 ticks later (A held or not) the sun beam (effect 0x48, @exelib/gundels/beam, whose EXE4 spawn watches the
+  gun's slot without filling it and takes only its owner's side: `watches`), then a drain hit a tick on the column two
+  ahead (GunSolEX's and the one past it) while A is held (a navi in auto battle needn't) for 60, 90 or 120 ticks, 2
+  damage (4 in the sun: NaviStats +0x29, the rules' `sun`), the light filling those columns' holes (the Hole chip's,
+  type 11, turned normal: no recording yet, the Hole chip being group F's). The lab's chips/0x020-gunsol1/held and
+  held-sun, chips/0x0db-gunsolex/held-sun (the sun by a patch of 0x0802A7A0) match and draw as mGBA's.
+- **FlmLine1 to FlmLine3** (action 0x22, `chips/flmline`: EXE4's own): the navi holds the burner (attachment row
+  0x0C) and raises flames (attack 0x19, 0x080CFF80) on the column two panels ahead, each burning the chip's 40 ticks
+  (its parameters' second byte) between 3 rising and 3 dying down. The action's variant 1 (a cross of five,
+  0x080D00F8) has no chip.
 - **HeatBrth, Blizzard, ElecShok and WoodPwdr** (action 0x33, `chips/breath`: EXE4's own): the navi holds the nozzle
   (attachment rows 0x18 to 0x1B, the original's 0x17 and the attack's element) and breathes the breath (attack 0x36,
   0x080D3A7C: unseen, 55 ticks) on the panel ahead, then 15 ticks later on the column beyond, a hit of the chip's
@@ -686,7 +704,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
   #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
   by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
-  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle).
+  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle). NumberMan (actor #0x0F), his face
+  (actor #0x5C) and his die (attack #5) are EXE5's (@exelib/numbrman), EXE4's differences their specs': the face, with
+  the fight on, follows him from its first update (its action 8; its action 4, a random battle's intro, is never
+  reached); the die states its own 40 HP and hit modifier 3, places itself on its panel, has no markers and no face 9,
+  and multiplies its damage's whole halfword by its face. The die's other throwers, the NumberMan boss's (0x080EC1E4,
+  0x080F3336), aren't ported.
+  SparkMan (actor #0x10) and his sparks (attack #0x22, which zigzag up and down each column) are EXE4's own; his
+  flash is the engine's palette flash (effect #0x0A, compat's `engine/palette-flash`) and a blinding hit of no damage
+  on the other side's navi (region 0x85 or 0x84, blindness 0x30).
 
 **For the next steps:**
 
@@ -931,7 +957,10 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   shows banner 4, "ENEMY DELETED" (the banner block's +1 from frame 1057), the loser's banner 8, "MEGAMAN DELETED"
   (`flow/buster-duel-bluemoon`, frame 1056): event flag 0x1187 isn't a netbattle's. The flow states `never` (a new
   choice of `navi_win_banner`, EXE6's and EXE5's unchanged).
-- The palette flash before the fades: EXE4's fade slots (§15 effects).
+- The palette flash before the fades: EXE4's fade slots (§15 effects). SparkMan's flash under his dimming (the lab's
+  chips/0x10d-sparkman, frames 506 to 524) shows the field's panels white darkened a quarter, as the frontend draws
+  them, but the background a flat (18, 9, 18) where the frontend whitens it too; and a blinded console hides the
+  other side's navi's HP number (chips/0x10d-sparkman/side1, frames 653 to 754), which the frontend still draws.
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
   first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
@@ -1539,13 +1568,27 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x6E) is the roles' `sounds.guard`. HubBatc has its definition. The lab's navicust/shield, reflect and hubbatc
     match, sounds too. **Done** (group B): AntiMagc (routine 0x27, guards' `anti_magic`: its stance, action 0x72 at
     0x080EE9EE, makes AntiDmg its side's defensive chip for 13 ticks, 0x08022FDE with chip 0x91, and a catch hands over
-    to the trap's counter, 0x0800C780); the lab's stance/antimagc-* match and draw as mGBA's. Open: the
-    Guard chips' variants 0 to 2 of the guard counter with a shock wave (0x080CFD2A, its row 6): with the Guard chips.
-    EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
+    to the trap's counter, 0x0800C780); the lab's stance/antimagc-* match and draw as mGBA's. **Done** (group B): the
+    Guard chips' variants 0 to 2 of the guard counter with a shock wave (chips/guard: 0x080CFD2A, its row 6; each user of
+    lib/guard states its own counter). EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
     is never turned aside while paused in a netbattle (nothing hits then).
-54. **Rush, Beat and Tango's battle controller.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF); the
-    controller that runs them in battle (0x0800C7D8, 0x0800C838, 0x0800C8C0: the reads and writes of +0x18) is open, so
-    a recording with a support stops at its setup.
+54. **Done: Rush, Beat and Tango in battle.** The supports compile (+0x18 = 1, 2, 4; the support bug 0xFF), which
+    exe4-compat maps to the stats' supports as EXE6's +0x0D. Their triggers are EXE6's (the engine's): Tango at a
+    quarter of the navi's HP (0x0800C7D8, in the idle after the reactive chips: EXE6's `sub_8010660`), Beat then Rush as
+    the opponent uses a chip (0x0800C838, 0x0800C8C0: `sub_80106C0`, `sub_8010740`), each once, in a battle of type 0x46
+    or more; EXE4's Beat lets a dark chip go (0x0800C86C tests the record's flag 0x20: the rules'
+    `chip_use.beat_spares_dark`). Their controller (effect object #0x74, 0x080EA2BC), spawned by 0x080EA3D6 with a
+    dimming no one can cut in on, is @exelib/supports/controller with EXE4's warp (0x080E2D26, by its side); Rush (actor
+    #0x4B, 0x080CA4C4), Beat (#0x4C, 0x080CA76C), Tango (#0x4D, 0x080CA9B4) and Tango's heal (attack #0x9F, 0x080E0CD4)
+    are EXE6's code (@exelib/supports) in EXE4's looks (content/exe4/lib/supports), but for: Rush and Tango add no pixel
+    where EXE6's do (0x080CA60C, 0x080CAB88), Rush's appearance panel reads its table's forbidden flags two bytes in
+    (0x080CA70A: side 0's 0x1, side 1's 0x00200001), the effect rows one further on (21, 22: EXE4's table has a row
+    more), and the heal's 100-HP barrier is EXE4's type 2 (its old visual ending first, 0x080E264A). The chips the
+    telops name, 0x17F to 0x181 (chips/supports), are dimming chips of the variant 0x42, the same spawner, which no
+    folder holds. The lab's navicust/beat-takes, beat-once, beat-spares-dark and tango-heals (and navicust/rush, beat,
+    tango and bug-rush, where none comes) replay every frame and compare every fight frame; rush-eats-invis and
+    rush-eats-popup wait for Invis and PopUp (0x085, 0x086, the two chips Rush cancels), and
+    modcards/074-triple-supporter for its patch card.
 55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
     bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
     RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
@@ -1564,12 +1607,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
-    `WEAPONS`; the 28 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    `WEAPONS`; the 29 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
     the routines of chips still to port (0x37 CopyDmg, 0x38 WideSht1, 0x42 Hole, 0x43 WideSht2, 0x44 SandRing, 0x4C
-    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn, 0x62 Guard1),
+    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).

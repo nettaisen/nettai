@@ -9,8 +9,8 @@ local meteor = require("./meteor")
 local caller = {}
 
 export type State = {
-    -- The chip's level (its Param1) and how many meteors (its Param2: the objects taken, 3 more at its start).
-    level: number,
+    -- How many meteors (its Param2: the objects taken, 3 more at its start). (Its Param1, the chip's level, nothing
+    -- reads.)
     count: number,
     -- The meteors called (+6).
     called: number,
@@ -145,7 +145,6 @@ caller.kind = new.kind {
     id = "cosmoman/caller",
     pool = "effect",
     state = {
-        level = "u8",
         count = "u8",
         called = "u8",
         target_count = "u8",
@@ -175,9 +174,9 @@ caller.kind = new.kind {
     end,
 }
 
--- 0x080EA306: CosmoMan's caller over (x, y) for `cosmoman`, with his element, level, damage word and the field
--- objects he took.
-function caller.spawn(cosmoman: Object, x: number, y: number, level: number, taken: { Identity? }, count: number): Object?
+-- 0x080EA306: CosmoMan's caller over (x, y) for `cosmoman`, with his element, damage word and the field objects he
+-- took.
+function caller.spawn(cosmoman: Object, x: number, y: number, taken: { Identity? }, count: number): Object?
     local o = battle.spawn(caller.kind, Vec3.zero)
     if o then
         o.panel_x, o.panel_y = x, y
@@ -185,7 +184,6 @@ function caller.spawn(cosmoman: Object, x: number, y: number, level: number, tak
         o.related1 = cosmoman
         o:set_damage_word(bit32.bor(cosmoman.damage, bit32.lshift(cosmoman.stamina, 16)))
         local s = o.state :: State
-        s.level = level
         s.count = count
         for i = 1, count do
             s.taken[i] = taken[i]

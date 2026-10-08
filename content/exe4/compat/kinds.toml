@@ -10,6 +10,7 @@
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
+"engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
@@ -33,6 +34,10 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# The GunSols' sun beam (0x080E7216).
+"gunsol/beam" = { pool = "effect", index = 0x48 }
+# The FlmLines' flame (0x080D00B8).
+"flmline/flame" = { pool = "attack", index = 0x19 }
 # The breath chips' breath (0x080D3B42): one object in the original, its rows by the chip's parameter; here each
 # chip's own kind.
 "heatbrth/breath" = { pool = "attack", index = 0x36 }
@@ -56,6 +61,8 @@
 "boulder" = { pool = "attack", index = 0x6E }
 "rock/debris" = { pool = "effect", index = 0x38 }
 "guard-shield" = { pool = "attack", index = 0x2B }
+# The Guard chips' shock wave (0x080CFD2A).
+"guard/wave" = { pool = "attack", index = 0x16 }
 # The cracks' crack (CrakOut and its kin, action 0x21: 0x080CFEFC).
 "crack" = { pool = "attack", index = 0x18 }
 # AreaGrab's and PanlGrab's grab shot (0x080CF108) and their dimming controller (action 0x0C's variant 0, 0x080E206C).
@@ -105,6 +112,21 @@
 "topmn-ds/controller" = { pool = "effect", index = 0x0B, scratch_position = true }
 "topman/navi" = { pool = "actor", index = 0x0E }
 "topman/top" = { pool = "attack", index = 0x29 }
+# NumberMan's chips (action 0x0C's variant 0x02, 0x080E2FC8): each chip's controller (the content's own; the
+# original's one object, effect #0x0D, 0x080E2EC0), NumberMan, his face and his die.
+"numbrman/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
+"numbmn-sp/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
+"numbmn-ds/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
+"numbrman/navi" = { pool = "actor", index = 0x0F }
+"numbrman/face" = { pool = "actor", index = 0x5C }
+"numbrman/dice" = { pool = "attack", index = 0x05 }
+# SparkMan's chips (action 0x0C's variant 0x03, 0x080E309A): each chip's controller (the content's own; the
+# original's one object, effect #0x0E, 0x080E2FEC), SparkMan and his sparks.
+"sparkman/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
+"sprkmn-sp/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
+"sprkmn-ds/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
+"sparkman/navi" = { pool = "actor", index = 0x10 }
+"sparkman/spark" = { pool = "attack", index = 0x22 }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the
@@ -159,3 +181,10 @@
 "junksoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
 "aquasoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
 "woodsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+# The NaviCust supports (0x0800C7D8, 0x0800C838, 0x0800C8C0): their controller (0x080EA2BC), Rush, Beat and Tango
+# (0x080CA4C4, 0x080CA76C, 0x080CA9B4) and Tango's heal (0x080E0CD4).
+"support/controller" = { pool = "effect", index = 0x74 }
+"rush" = { pool = "actor", index = 0x4B }
+"beat" = { pool = "actor", index = 0x4C }
+"tango" = { pool = "actor", index = 0x4D }
+"tango/heal" = { pool = "attack", index = 0x9F }
