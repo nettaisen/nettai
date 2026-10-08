@@ -6,7 +6,8 @@
 -- its side's (above, below, behind, ahead), each going on that way to the next such panel every 20 ticks (the
 -- record's third parameter) and lasting 25; 30 ticks after the shocks it blinks for 30 and goes. It is its side's
 -- field object of class 1, with 1 HP: evicted (its HP 0) it leaves a puff and goes; anything its collision meets
--- ends it at once. Its palette is its level's (the record's first parameter, 4 palettes apart).
+-- ends it at once. Its palette is its chip's (the original's by its level, the record's first parameter, 4 palettes
+-- apart).
 --
 -- In the operation battle's mode (never in a netbattle) it marks its panel as it comes and as it lands (EXE5's effect
 -- object 0x83: lib/navi_chips/marker).
@@ -19,13 +20,15 @@ local sparks = require("../../lib/sparks")
 local voltz = {}
 
 export type State = {
-    -- Its Param word (the record's parameters): the level (byte 0) and the shocks' ticks (byte 2).
-    params: number,
+    -- Its chip's palette, and the shocks' ticks (the record's third parameter).
+    palette: number,
+    shock_ticks: number,
 }
 
 export type ShockState = {
-    -- Its Param word: the sensor's, with the way it goes (byte 1: 0 up, 1 down, 2 back, 3 ahead).
-    params: number,
+    -- The way it goes (its Param word's byte 1: 0 up, 1 down, 2 back, 3 ahead), and its ticks (the sensor's).
+    way: number,
+    ticks: number,
 }
 
 -- 0x080D8732: sprite 04-17 with a ground shadow (`sub_8011504`'s 0x01000417), animation 0; a thrown body (row 0x0A)
@@ -107,13 +110,14 @@ end
 
 local shock_kind: Kind
 
--- 0x080D8B82: a shock on (x, y) of `owner`'s side, of `element`, with Param word `params` and the damage word
+-- 0x080D8B82: a shock on (x, y) of `owner`'s side, of `element`, going `way` every `ticks`, with the damage word
 -- `damage`. (It spawns at the registers' values, which its init replaces: the row, the element and `z`.)
-local function spawn_shock(owner: Object, x: number, y: number, element: number, z: number, params: number,
-    damage: number): Object?
+local function spawn_shock(owner: Object, x: number, y: number, element: number, z: number, way: number,
+    ticks: number, damage: number): Object?
     local o = battle.spawn(shock_kind, Vec3.new(y, element, z))
     if o then
-        (o.state :: ShockState).params = params
+        local s = o.state :: ShockState
+        s.way, s.ticks = way, ticks
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)
@@ -124,7 +128,7 @@ end
 
 -- 0x080D8B98: the next panel its way, if it isn't its side's.
 local function next_panel(me: Object): (number?, number?)
-    local way = WAYS[bit32.band(bit32.rshift((me.state :: ShockState).params, 8), 0xFF)]
+    local way = WAYS[(me.state :: ShockState).way]
     if not way then
         error("Voltz's shock goes past its ways (0x080D8BE0)")
     end
@@ -148,7 +152,8 @@ local function shock_tick(me: Object)
         local x, y = next_panel(me)
         if x and y then
             -- (The spawner's r3: the panel lookup's row less 1.)
-            spawn_shock(me, x, y, me.element, y - 1, (me.state :: ShockState).params, damage_word(me))
+            local s = me.state :: ShockState
+            spawn_shock(me, x, y, me.element, y - 1, s.way, s.ticks, damage_word(me))
         end
     end
     local life = me.timer2 - 1
@@ -171,7 +176,7 @@ local function shock_init(me: Object)
         return
     end
     me.visible = true
-    local ticks = bit32.band(bit32.rshift((me.state :: ShockState).params, 16), 0xFF)
+    local ticks = (me.state :: ShockState).ticks
     me.timer = ticks
     me.timer2 = ticks + SHOCK_EXTRA
     me:set_lifecycle("update")
@@ -181,7 +186,7 @@ end
 shock_kind = new.kind {
     id = "voltz/shock",
     pool = "attack",
-    state = { params = "u32" },
+    state = { way = "u8", ticks = "u8" },
     -- 0x080D8AF0.
     update = function(me: Object)
         local l = me.lifecycle
@@ -244,12 +249,13 @@ end
 
 -- 0x080D88E4: a shock on each panel beside it that isn't its side's, in the ways' order, each going its way.
 local function shock_around(me: Object)
-    local params = (me.state :: State).params
+    local s = me.state :: State
     for i = 0, 3 do
         local way = WAYS[i]
         local x, y = me.panel_x + way[1] * me.facing, me.panel_y + way[2]
         if other_sides(me, x, y) then
-            spawn_shock(me, x, y, me.element, params, int.u32(bit32.lshift(i, 8) + params), damage_word(me))
+            -- (The spawner's r3: the sensor's Param word, which the shock's init replaces.)
+            spawn_shock(me, x, y, me.element, 0, i, s.shock_ticks, damage_word(me))
         end
     end
 end
@@ -309,7 +315,7 @@ local function tick(me: Object)
 end
 
 -- 0x080D870C: on its panel (off the field it goes at once), 160 pixels up, its sprite and collision (its region
--- off), name, level's palette, 1 HP and its element's spark; the sound and the operation battle's marker.
+-- off), name, its chip's palette, 1 HP and its element's spark; the sound and the operation battle's marker.
 local function init(me: Object)
     if not field.valid(me.panel_x, me.panel_y) then
         obstacle.release_tracking(me)
@@ -327,7 +333,7 @@ local function init(me: Object)
         return
     end
     me.identity = IDENTITY
-    me.sprite.palette = bit32.band((me.state :: State).params, 0xFF) * 4
+    me.sprite.palette = (me.state :: State).palette
     me.collision:set_region(nil)
     me.visible = true
     me.hp, me.max_hp = HP, HP
@@ -342,7 +348,7 @@ end
 voltz.kind = new.kind {
     id = "voltz/sensor",
     pool = "attack",
-    state = { params = "u32" },
+    state = { palette = "u8", shock_ticks = "u8" },
     -- 0x080D86E8.
     update = function(me: Object)
         local l = me.lifecycle
@@ -366,10 +372,12 @@ voltz.kind = new.kind {
 -- 0x080D88B0: the sensor on (x, y) of `user`'s side, of `element`, with the record's parameters and the damage word;
 -- its side's field object of class 1. (It spawns at the registers' values, which its init replaces: the row, the
 -- element and the user's Z.)
-local function spawn(user: Object, x: number, y: number, spec: InstantChipSpec, params: number): Object?
+local function spawn(user: Object, x: number, y: number, spec: InstantChipSpec, palette: number,
+    shock_ticks: number): Object?
     local o = battle.spawn(voltz.kind, Vec3.new(y, spec.element, spec.z))
     if o then
-        (o.state :: State).params = params
+        local s = o.state :: State
+        s.palette, s.shock_ticks = palette, shock_ticks
         o.panel_x, o.panel_y = x, y
         o.element = spec.element
         o:set_damage_word(spec.damage)
@@ -379,12 +387,11 @@ local function spawn(user: Object, x: number, y: number, spec: InstantChipSpec, 
     return o
 end
 
--- The chips' `instant` hook (0x080D88CE), with the record's parameters (its level, 0, the shocks' ticks): the sensor
--- three panels ahead of the user.
-function voltz.instant(level: number, shock_ticks: number): (user: Object, spec: InstantChipSpec) -> ()
-    local params = bit32.bor(level, bit32.lshift(shock_ticks, 16))
+-- The chips' `instant` hook (0x080D88CE): the sensor three panels ahead of the user, in its chip's `palette`, its
+-- shocks going on every `shock_ticks`.
+function voltz.instant(palette: number, shock_ticks: number): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, spec: InstantChipSpec)
-        spawn(user, spec.panel_x + 3 * user.facing, spec.panel_y, spec, params)
+        spawn(user, spec.panel_x + 3 * user.facing, spec.panel_y, spec, palette, shock_ticks)
     end
 end
 

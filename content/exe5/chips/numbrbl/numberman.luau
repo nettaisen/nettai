@@ -14,14 +14,14 @@ local numberman = {}
 export type State = {
     -- The controller waiting for him (+0x54: its `busy`).
     controller: Object?,
-    -- His level (Param0): his palette's row, and the balls less three.
-    level: number,
+    -- The balls he sets down (his chip's: the original's his level, Param0, and three).
+    balls: number,
 }
 
 local SPRITE = asset.sprite("numberman")
 local SOUND_APPEAR = asset.sound("appear")
--- His palette: navi 9's count (0x0801D737: 1) by the level's row (0x0800DAE8), the level his first parameter.
-local PALETTE_ROWS = { [0] = 0, 0, 0, 2, 3, 0 }
+-- His palette (NumbrBl's: navi 9's count, 0x0801D737: 1, by the row of 0x0800DAE8 of the chip's level, 2).
+local PALETTE = 0
 local ANIM_APPEAR, ANIM_STAND, ANIM_LEAVE, ANIM_THROW = 3, 0, 4, 0x10
 -- The balls sit 16 pixels up and wait 10 ticks (plus one) before rolling.
 local BALL_Z, BALL_WAIT = 0x10_0000, 0xA
@@ -78,7 +78,7 @@ local function stand(me: Object)
     next_action(me, 8)
 end
 
--- Action 8 (0x080C2108), by its phase: 9 ticks, the balls counted (his first parameter and three); a ball every 24
+-- Action 8 (0x080C2108), by its phase: 9 ticks, the balls counted (his chip's); a ball every 24
 -- ticks (the throw's animation restarting with each); then 31 ticks standing, and the leave.
 local function throws(me: Object)
     local phase = me.phase
@@ -86,7 +86,7 @@ local function throws(me: Object)
         -- 0x080C2128.
         if me.phase_init == 0 then
             me.timer = 8
-            me.timer2 = (me.state :: State).level + 3
+            me.timer2 = (me.state :: State).balls
             me.phase_init = 4
         end
         local t = me.timer - 1
@@ -154,14 +154,14 @@ end
 
 local ACTIONS: { [number]: (Object) -> () } = { [0] = appear, [4] = stand, [8] = throws, [0xC] = leave }
 
--- 0x080C203C: his sprite (with its shadow) and his palette by the level, facing his side's way; on his panel, on the
+-- 0x080C203C: his sprite (with its shadow) and his palette, facing his side's way; on his panel, on the
 -- ground. (Its animation byte is left 0xFF, the sprite's animation with it; his first action sets it.)
 local function init(me: Object)
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite.shadow = "ground"
     me.anim = 0xFF
-    sprite.palette = PALETTE_ROWS[(me.state :: State).level] or 0
+    sprite.palette = PALETTE
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_coordinates_from_panel()
     local p = me.pos
@@ -172,7 +172,7 @@ end
 numberman.kind = new.kind {
     id = "numbrbl/numberman",
     pool = "actor",
-    state = { controller = "object", level = "u8" },
+    state = { controller = "object", balls = "u8" },
     -- 0x080C2018: by state, then the sprite (stepping while dimmed).
     update = function(me: Object)
         local l = me.lifecycle
@@ -193,8 +193,8 @@ numberman.kind = new.kind {
 }
 
 -- 0x080C21EC: NumberMan on (x, y) for `controller` (his side and facing its), with its element and the damage word
--- `damage`, his level (and the balls less three) `level`; he holds the controller's `busy` and sets it.
-function numberman.spawn(controller: Object, x: number, y: number, damage: number, level: number): Object?
+-- `damage`, setting `balls` balls down; he holds the controller's `busy` and sets it.
+function numberman.spawn(controller: Object, x: number, y: number, damage: number, balls: number): Object?
     local o = battle.spawn(numberman.kind, Vec3.new(y, controller.element, controller.alliance))
     if o then
         o.panel_x, o.panel_y = x, y
@@ -203,7 +203,7 @@ function numberman.spawn(controller: Object, x: number, y: number, damage: numbe
         o.alliance, o.flip = controller.alliance, controller.flip
         o:set_damage_word(damage)
         local s = o.state :: State
-        s.controller, s.level = controller, level
+        s.controller, s.balls = controller, balls
         local cs = controller.state :: any
         cs.busy = true
     end

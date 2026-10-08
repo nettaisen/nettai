@@ -23,9 +23,10 @@ local trajectory = require("../../lib/trajectory")
 local boiler = {}
 
 export type State = {
-    -- Its level (Param1: 0, 2, 3 for LilBolr1-3): its palette and the
-    -- damage its body deals.
-    level: number,
+    -- Its palette and the damage its body deals (its chip's: the original's
+    -- by its level, Param1, three palettes a level and `dword_80D7748`).
+    palette: number,
+    body_damage: number,
     -- The panel it aims at (Param3, Param4).
     target_x: number,
     target_y: number,
@@ -54,9 +55,7 @@ local MAX_HP, LIFETIME = 4000, 0xB4
 local MIN_HP = 3001
 -- Thrown at 0x2C000 a tick along the ground, falling 0x2800 a tick.
 local SPEED, GRAVITY = 0x2C000, -0x2800
--- Its body's damage by level (`dword_80D7748`), its counter byte, its hit
--- modifier.
-local BODY_DAMAGE: { [number]: number } = { [0] = 50, [1] = 50, [2] = 70, [3] = 90 }
+-- Its body's counter byte, its hit modifier.
 local COUNTER, HIT_MOD = 0x1E, 3
 local SOUND_LAND, SOUND_HIT_BOMB = asset.sound("land"), asset.sound("hit-bomb-1")
 local SOUND_ERUPT, SOUND_STEAM = asset.sound("boiler-erupt"), asset.sound("boiler-steam")
@@ -358,7 +357,7 @@ local function init(me: Object)
     sprite:set_animation(0)
     sprite.shadow = "ground"
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    sprite.palette = 3 * s.level
+    sprite.palette = s.palette
     me.identity = IDENTITY
     local x, y = s.target_x, s.target_y
     me.future_panel_x, me.future_panel_y = x, y
@@ -393,11 +392,7 @@ local function init(me: Object)
         return
     end
     me:setup_collision(collision.neutral_object, collision.everything, HIT_MOD)
-    local body = BODY_DAMAGE[s.level]
-    if body == nil then
-        error(string.format("LilBoiler level %d reads past dword_80D7748", s.level))
-    end
-    me.collision.self_damage = body
+    me.collision.self_damage = s.body_damage
     me.collision.counter_byte = COUNTER
     me.collision:set_region(nil)
     me.collision:set_hit_effect(sparks.breaking)
@@ -411,7 +406,8 @@ boiler.kind = new.kind {
     id = "lilbolr/boiler",
     pool = "attack",
     state = {
-        level = "u8",
+        palette = "u8",
+        body_damage = "u16",
         target_x = "u8",
         target_y = "u8",
         angle = "u8",
@@ -433,8 +429,9 @@ boiler.kind = new.kind {
     end,
 }
 
--- `sub_80D7A96`: a thrower for `throw.action` that throws a LilBoiler of
--- `level` at the panel three ahead of the user (the original keeps it as a
+-- `sub_80D7A96`: a thrower for `throw.action` that throws a LilBoiler in
+-- `palette`, its body dealing `body_damage`, at the panel three ahead of
+-- the user (the original keeps it as a
 -- halfword from the user's panel). It registers it as one of its user's
 -- side's field objects (`sub_80D7A78`: the "side" is the user's alliance
 -- and flip halfword, which the spawner has just copied to the boiler; the
@@ -442,14 +439,14 @@ boiler.kind = new.kind {
 -- user's would land far past the registry
 -- (`setFieldBattleObject_800F614` at BattleState+0xA8 + 12 x 0x100): no
 -- player is flipped, and the port refuses it.
-function boiler.thrower(level: number): Thrower
+function boiler.thrower(palette: number, body_damage: number): Thrower
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
             local xy = int.u16(user.panel_x + user.panel_y * 0x100 + 3 * user.facing)
             local o = battle.spawn(boiler.kind, pos)
             if o then
                 local s = o.state :: State
-                s.level = level
+                s.palette, s.body_damage = palette, body_damage
                 s.target_x = bit32.band(xy, 0xFF)
                 s.target_y = bit32.rshift(xy, 8)
                 o:set_damage_word(damage)
