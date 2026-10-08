@@ -812,6 +812,17 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its ticks held while its owner is paralyzed, dragged or sliding; EXE6's #0x7C is another object), which AquaMan's
   controller (0x080BB4E8) and 0x080D4010 spawn too. The engine's objects tell whether they have a collision record
   (`has_collision`), which that hold reads.
+  GutsMan (actor #0x14) and his quake (attack #0x1C, 0x080D055C) are EXE4's own: his hammer strikes the panel ahead
+  (a heavy hit, modifier 1) and sets off the quake there, which cracks the solid panels ahead (six at random; the SP's
+  and the DS's all) and 30 ticks later drops rocks on two of the other side's free panels and on its navi's. The rocks
+  are EXE6's falling rock and its chips (EXE4's attack #0x1D and effect #9, the same code but for their constants),
+  now @exelib/rock/falling and falling_chip (EXE4's objects/falling_rock: 160 pixels up, 1/16 pixel a tick faster, an
+  attack, modifier 3; EXE6's 104, 1/8, a thrown breaking attack, modifier 1), which actor #0x29 (0x080BFCC8) drops
+  too. The controller gives GutsMan B's charge at the ask as his Param2, which he never reads. Action 0x44 (a navi's
+  hammer, 0x080F050A, which no netbattle starts) spawns the quake with a Param1 of its own; given 0 it cracks Param2
+  of the other side's panels and drops its rocks around that side's navi or 0x0800C456's target, by its owner's
+  flags 0xA000 (0x080D05FE, 0x080D06BE, 0x080D0740): it waits on action 0x44. With fewer than six solid panels ahead,
+  GutsMan's quake reads stale stack bytes as the rest of its six (0x080D06AC): the port cracks only those it found.
 
 **For the next steps:**
 
