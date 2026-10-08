@@ -42,10 +42,27 @@ function stand_in.spawn(kind: Kind, controller: Object, user: Object, damage: nu
     return o
 end
 
+-- What a stand-in wears of its user, which step even while paused: EXE6's
+-- the parts its user's identity wears (`sub_8010DF6`, `stand_in.parts`);
+-- EXE5's a player user's overlay (0x0800F0EC, `sub_8011420`'s counterpart:
+-- its soul's put-on, NumberSoul's layer; `stand_in.overlay`).
+export type Wear = (me: Object, user: Object) -> ()
+
+function stand_in.parts(me: Object, user: Object)
+    me:add_parts_of(user, false, true)
+end
+
+function stand_in.overlay(me: Object, user: Object)
+    if user.actor_type == "player" then
+        me:add_overlay_of(user)
+    end
+end
+
 -- `sub_80BAF74` and its copies: drawn as the user (its sprite, with a
--- shadow, from animation 0; its palette and parts, which step even while
--- paused), where the user is; the user vanishes, its status visuals kept.
-function stand_in.init(me: Object): Object
+-- shadow, from animation 0; its palette and what it wears, `wear`: none,
+-- EXE6's parts), where the user is; the user vanishes, its status visuals
+-- kept.
+function stand_in.init(me: Object, wear: Wear?): Object
     local user = me.related1
     if not user then
         error("a dimming chip's stand-in has no user (its init reads through a null pointer)")
@@ -60,7 +77,7 @@ function stand_in.init(me: Object): Object
     -- sub_801002C: the user's navi palette.
     sprite.palette = user.sprite.palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    me:add_parts_of(user, false, true)
+    ;(wear or stand_in.parts)(me, user)
     dimming.hide_user_sparing(user)
     return user
 end

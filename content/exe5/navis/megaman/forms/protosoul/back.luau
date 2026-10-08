@@ -22,6 +22,7 @@ local REFLECT = guard.action {
     counter = guard.reflect,
 }
 local CHAOS_REFLECT = guard.action {
+    id = "protosoul/back/chaos-action",
     ticks = TICKS,
     -- Row 9 of 0x080CA1F0.
     look = guard.look { sprite = REFLECTOR, anim = 10, fade_anim = 11, fade_ticks = 0xE, palette = 0 },
