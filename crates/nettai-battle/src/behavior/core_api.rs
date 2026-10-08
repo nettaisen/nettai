@@ -1680,6 +1680,7 @@ impl CoreApi for Battle {
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::ChipsHeld => i(ob.chips_held as i64),
+            ObjectField::HasCollision => Value::Bool(ob.collision.is_some()),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
             ObjectField::Related1 => ob.related[0].into(),
