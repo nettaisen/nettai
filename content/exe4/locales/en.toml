@@ -209,6 +209,9 @@ language = "en"
 "geddon3" = { name = "Geddon3", description = "Turns all\npanels to\nswamp" }
 "wind" = { name = "Wind", description = "WindBox\nblows at\nenmy area" }
 "fan" = { name = "Fan", description = "VacuumFan\npulls\nenemies" }
+"circgun1" = { name = "CircGun1", description = "Stop site\nw/ Button\nand attck" }
+"circgun2" = { name = "CircGun2", description = "Stop site\nw/ Button\nand attck" }
+"circgun3" = { name = "CircGun3", description = "Stop site\nw/ Button\nand attck" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

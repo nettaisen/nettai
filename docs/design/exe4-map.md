@@ -719,6 +719,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   content each chip states its own (`breath.make`), each its own kind mapped to attack 0x36. WoodPwdr's hits confuse
   (hit modifier 1, status 0x20); ElecShok's highlight the panels they hit. A parameter of 4 and on would leave a trail
   (0x080D3C10): no chip has one.
+- **CircGun1 to CircGun3** (the dimming chips' variant 0x33, `chips/circgun`): @exelib/circgun (EXE6's code) with
+  EXE4's look: the sight SearchMan's scope's sheet (10-22), its sounds (0x128, 0x12F, 0xBB), the flash effect row 0x27,
+  four thrown shots each (the chip's parameter is its period: 6, 4, 2); the gun going back along a row turns on a
+  column with any of the user's side's panels (0x080DE7AA, `turns_on_own_column`); the controller (effect #0x5E)
+  sets the gun whatever the far column holds and takes the user's side alone (`always_sets_gun`, `side_only`). The
+  lab's chips/ (15) replay every frame; CircGun1's hit and CircGun3's back-column are pixel-exact.
 - **Wind, Fan** (the dimming chips' variant 0x0F, `chips/wind`): @exelib/wind's controller (effect #0x25, 0x080E4AD4,
   its spawn taking the user's side alone: `side_only`) and fan (attack #0x48, 0x080D6488) with EXE4's look: sheet
   0c-21 (`fan`), rising with 0x121; 100 HP (0x080D6480's rows, EXE5's 40); no NameID (no identity); its leaving an
