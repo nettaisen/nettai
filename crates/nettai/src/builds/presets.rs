@@ -312,14 +312,38 @@ mod tests {
         }
         assert!(step(&four, "exe4", &mut side, "karma", 1));
         assert_eq!((number(&four, &side, "karma"), number(&four, &side, "hp")), (Some(460), Some(997)));
-        assert_eq!(version(&four, "exe4", &side), "", "a new build states no version");
-        // Its version's preset: Red Sun's six souls, then Blue Moon's.
-        assert!(step(&four, "exe4", &mut side, "version", 1));
+    }
+
+    /// EXE4's version, by its souls (the content has no version): a new
+    /// build's (every soul, the rules' default) is Red Sun's six, the app's
+    /// version Red Sun; a step goes to Blue Moon's; the row is titled the
+    /// version.
+    #[test]
+    fn exe4s_version_by_its_souls() {
+        let four = nettai_match::testing::exe4_content();
+        let mut side = Side::fresh(&four, "exe4").unwrap();
+        settle(&four, "exe4", &mut side, None);
         let red = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"].map(String::from).to_vec();
-        assert_eq!((side.version(&four), forms(&four, &side, "souls")), (Some("redsun"), red));
-        assert!(step(&four, "exe4", &mut side, "version", 1));
+        assert_eq!((forms(&four, &side, "souls"), version(&four, "exe4", &side)), (red, "redsun".to_string()));
+        assert!(step(&four, "exe4", &mut side, "souls", 1));
         let blue = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"].map(String::from).to_vec();
-        assert_eq!((side.version(&four), forms(&four, &side, "souls")), (Some("bluemoon"), blue));
+        assert_eq!((forms(&four, &side, "souls"), version(&four, "exe4", &side)), (blue, "bluemoon".to_string()));
+        assert_eq!(side.version(&four), None, "the content's rules take no version");
+        assert_eq!(title("exe4", "souls"), "version");
+    }
+
+    /// Each EXE4 version's six souls are those its save can have
+    /// (exe4-compat's soul flags, by compat's numbers of the forms).
+    #[test]
+    fn exe4s_versions_are_the_games() {
+        let compat = exe4_compat::Compat::exe4();
+        for version in [exe4_compat::Version::RedSun, exe4_compat::Version::BlueMoon] {
+            let preset = of("exe4", "souls").unwrap().iter().find(|p| p.choice == version.name()).unwrap();
+            let mut numbers: Vec<u8> = preset.set["souls"].as_array().unwrap().iter().map(|v| compat.form_number(v.as_str().unwrap()).unwrap()).collect();
+            numbers.sort();
+            let theirs: Vec<u8> = (1..=12).filter(|&n| version.soul_flag(n).is_some()).collect();
+            assert_eq!(numbers, theirs, "{}", version.name());
+        }
     }
 
     /// EXE6's version: a new build states none (none is assumed) and is on

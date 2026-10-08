@@ -1,5 +1,5 @@
 --!strict
--- MetalSoul (soul 9, Blue Moon's): EXE4's Double Soul with MetalMan, for a metal chip given up (0x08020008[8]).
+-- MetalSoul (soul 9): EXE4's Double Soul with MetalMan, for a metal chip given up (0x08020008[8]).
 -- MegaMan's sprite in it is 00-09, his face picture 13 (0x08014B78), MetalMan's image metalman (08-09). (What the souls
 -- share: forms/soul.)
 
@@ -9,7 +9,6 @@ local soul = require("./soul")
 local form: FormDef = {
     soul = { family = "metal", turns = 3 },
     chip = chip,
-    version = "bluemoon",
     change = chip.action,
     revert = soul.revert,
     image = soul.image(asset.sprite("metalman")),
