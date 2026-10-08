@@ -408,3 +408,7 @@
 "numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
 "numbrbl/numberman" = { pool = "actor", index = 0x45 }
 "numbrbl/ball" = { pool = "attack", index = 0x91 }
+# BugFix's controller (0x080E6388; its position the dimming handler's registers) and its glow (actor 0x5D, 0x080CCF5C,
+# its first row's).
+"bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
+"bugfix/glow" = { pool = "actor", index = 0x5D }
