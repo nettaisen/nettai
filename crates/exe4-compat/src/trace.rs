@@ -703,18 +703,15 @@ impl Round {
             player.set_fact(content, "navicust_programs", &programs)?;
             // And its patch cards (rules/patch_cards).
             player.set_fact(content, "patch_cards", &cards[side])?;
-            // Its version, and Double Soul (rules/souls): the recordings'
-            // saves (Tango's) have it (event flag 0x14) and their version's
-            // six souls (Red Sun's flags 0x17 to 0x1C, Blue Moon's 0x1D to
-            // 0x22), the forms MegaMan lists for the version.
-            let version = self.setup.game_versions[side].as_str();
-            player.set_fact(content, "version", &[Fact::Name(version)])?;
-            let souls: Vec<Fact> = content
-                .navi(stats.navi)
-                .forms
-                .as_ref()
-                .map_or(&[][..], |f| f.listed(version))
-                .iter()
+            // Double Soul and its souls (rules/souls): the recordings' saves
+            // (Tango's) have it (event flag 0x14) and every soul of their
+            // version (`Version::soul_flag`: Red Sun's 1 to 6, Blue Moon's 7
+            // to 12, by the forms' numbers, records.toml's), those the
+            // content has.
+            let version = d.versions[side];
+            let souls: Vec<Fact> = (1..=12u8)
+                .filter(|&n| version.soul_flag(n).is_some())
+                .filter_map(|n| compat.form(n).and_then(|key| content.defs.form_by_key(key)))
                 .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
                 .collect();
             player.set_fact(content, "souls", &souls)?;
