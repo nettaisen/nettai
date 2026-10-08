@@ -42,9 +42,10 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     let mut charge = 0;
     if requested & request::CHARGED_CHIP != 0 {
         // The form's A-charge routine decides what the charged chip does;
-        // for the Null family the attack's chip id is cleared.
+        // for the Null family the attack's chip id is cleared (where the
+        // rules' `chip_use.charged_null_alt_routine` says).
         let chip = hand_entry(b, r, 0).chip;
-        let null = super::null_family(b, chip);
+        let null = b.game_rules().chip_use.charged_null_alt_routine && super::null_family(b, chip);
         let routine = if null {
             ai_mut(b, r).attack.chip = None;
             ai(b, r).alt_a_charge

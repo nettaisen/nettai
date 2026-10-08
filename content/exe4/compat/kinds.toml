@@ -365,6 +365,24 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# BugCurse's controller (0x080E81C4; its position the dimming handler's registers) and its curse (0x080DD39C).
+"bugcurse/controller" = { pool = "effect", index = 0x56, scratch_position = true }
+"bugcurse/curse" = { pool = "attack", index = 0x80 }
+# Snake's controller (0x080E5B50; its position the dimming handler's registers), its nest (0x080D7DB8) and its snakes
+# (0x080D80E4).
+"snake/controller" = { pool = "effect", index = 0x32, scratch_position = true }
+"snake/nest" = { pool = "attack", index = 0x53 }
+"snake/snake" = { pool = "attack", index = 0x54 }
+# Jealousy's controller (0x080E5EF4; its position the dimming handler's registers).
+"jealousy/controller" = { pool = "effect", index = 0x36, scratch_position = true }
+# Guardian's controller (0x080E7ED0; its position the dimming handler's registers), its statue (0x080DCDA8) and its
+# strike's dimming (0x080E7F84; its position the spawner's registers).
+"guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
+"guardian/statue" = { pool = "attack", index = 0x7D }
+"guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
+# Anubis's controller (0x080E5BF4; its position the dimming handler's registers) and its statue (0x080D82F8).
+"anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
+"anubis/statue" = { pool = "attack", index = 0x55 }
 # Mine's controller (0x080E4F5C; its position the dimming handler's registers) and its mine (0x080D6ED4).
 "mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
 "mine/land-mine" = { pool = "attack", index = 0x4C }
@@ -414,3 +432,7 @@
 "numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
 "numbrbl/numberman" = { pool = "actor", index = 0x45 }
 "numbrbl/ball" = { pool = "attack", index = 0x91 }
+# BugFix's controller (0x080E6388; its position the dimming handler's registers) and its glow (actor 0x5D, 0x080CCF5C,
+# its first row's).
+"bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
+"bugfix/glow" = { pool = "actor", index = 0x5D }
