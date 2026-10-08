@@ -69,6 +69,7 @@ return {
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },
     overlay_restart = "reload",
     stance_counter = "at_once",
+    trap_counter = "at_once",
     -- A deleted player's object stays in its slot, as EXE6's.
     dead_player = "kept",
     -- An attack's end hands its lockout on, as EXE6's (0x0800F2D0).

@@ -91,6 +91,7 @@ const BEAST_OUT_BUTTON: &str = "beast_out";
 const LAYOUT: CustomLayout = CustomLayout {
     column_cells: 0x89,
     turn_limit: 0x8D,
+    turn_limit_palette: 9,
     name: 0x9B,
     art: 0xAB,
     code: 0xD5,

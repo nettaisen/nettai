@@ -825,8 +825,9 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
   - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
     "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
-    the holding banner's hold (0x08014AA8) until the banner is gone (0x08014ABE: the pack's `layout.judge_from_hold`).
-    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 130).
+    the holding banner's hold (0x08014AA8) until the judge lets the banner go (0x080163B6: the banner slides out and
+    the numbers' state 8, 0x0801544C, clears them; the pack's `layout.judge_from_hold`). The HUD knows the judge's
+    banner by its role. The lab's timer/win, loss and draw (both consoles) compare every frame of it.
   - Not in a netbattle: 7 and 19, the turn timer's seconds over "CUSTOM" (0x08016362 from the fight's timer
     0x08008066, and its blinking from 0x080169DA, for battle kind 0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
     code); 16, 17 and 22, the gauge in three colors, its sprite and the column marker of controller 2 (0x08016842
@@ -1274,16 +1275,22 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.3 Flow, stages and the link
 
-16. **No time limit, no double KO** (the lab's first batch): nothing ends a netbattle's stand-off, and when both navis
-    are deleted on the same tick side 1's shot resolves first and side 1 survives. The engine's link battle has the
-    judge's ruling (round result 7) and a draw. Shape: flow rules `time_limit: false` and the KO order as data.
-    Placeholder: the engine's. Read since (group A): a netbattle has a time limit from its 15th turn, as EXE6's. The
-    fight's timer runs only in a battle of type 0x46 and on whose BattleState +8 (the custom screens so far) is 15 or
-    more (0x08007E4E); it counts the fighting machine's +0x0A down, and under 60 sets BattleState +0x0B (0x08008066),
-    which the round's result reads as the time-out, 7 (0x080079D6), the fighting machine's state 0x14: TIME UP for 60
-    ticks (0x08007378), then the judge (0x0800739E, 0x08021F94: the numbers rolled on RNG2, its banner 0x28 and the
-    HUD's element 0x200 with both damages, 0x080163C8 and 0x080152EA). The lab's flow/no-time-limit stands three
-    minutes in its first turn, which this doesn't reach. The judge's banner is the judge's layout in the pack.
+16. **The time limit: done; no double KO: open** (the lab's first batch: when both navis are deleted on the same tick
+    side 1's shot resolves first and side 1 survives; shape: the KO order as data). **Done: the turn timer and the
+    judge** (the lab's timer/win, loss and draw, each on a Red Sun and a Blue Moon console: single battles, battle type
+    0x47, played to the 15th custom screen; every frame replays and every frame compares). EXE4's is EXE6's machine: the
+    fight's timer runs (0x08007E4E) where event flag 0x1187 is clear (the main subsystem's, not a netbattle's), the
+    battle type (BattleState +0x0F) is 0x46 or more and BattleState +8, the custom screens so far, is 15 or more; the
+    fight's start (0x08007064) sets the fighting machine's +0x0A to 659 with banner 0x10 ("FINAL TURN"); it counts down
+    (0x08008066) and under 60 sets BattleState +0x0B, the round's result 7 (0x080079D6), the fighting machine's state
+    0x14: TIME UP for 60 ticks (0x08007378), then the judge (0x0800739E: 0x08021F54 and 0x08021F94, EXE6's
+    `sub_802CB38` and `sub_802CB78`, the same code; its banner 0x28 with the HUD's task 9). What was EXE4's own: from the
+    15th screen the screen's send (0x0801E1B4, EXE6's `sub_8027D78`) returns before emptying the gauge (0x080159B0), so
+    EXE4's gauge, which empties there, stays full through the last turns (`restart_gauge` now returns in the last
+    turns, as both games' routines do); the judge's numbers show only while its banner holds (its release, 0x080163B6,
+    slides the banner out and clears them); "FINAL TURN" is drawn in palette 14 (0x0801EE9C's map; the custom layout's
+    `turn_limit_palette`). The traces' setup gives a single battle no set (exe4-compat: battle type 0x48 to 0x4A is a
+    triple battle's, 0x08007464).
 17. **The fight-live test.** The fight runs while the fighting machine's first byte is 4 and BattleState +3 is 4; for
     one tick as the custom screen closes the machine still reads 4. Pause sets fight[0] to 0x18. To compare with the
     engine's fight states in step 5.
@@ -1522,8 +1529,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     charged shot's projectile; Reflect's routine sets the B+Left cooldown as it starts (`reactions.attack_end_lockout`)
     and a turned-aside hit marks the guard byte with 1 (`reactions.hit_test.guard_marks_direction`); the guard's sound
     (0x6E) is the roles' `sounds.guard`. HubBatc has its definition. The lab's navicust/shield, reflect and hubbatc
-    match, sounds too. Open: AntiMagc (routine 0x27: its stance, action 0x72 at 0x080EE9EE, arms the AntiDmg chip's
-    trap for 13 ticks, `sub_802CE8A` with chip 0x91, and its catch is AntiDmg's counter): with the AntiDmg chip. The
+    match, sounds too. **Done** (group B): AntiMagc (routine 0x27, guards' `anti_magic`: its stance, action 0x72 at
+    0x080EE9EE, makes AntiDmg its side's defensive chip for 13 ticks, 0x08022FDE with chip 0x91, and a catch hands over
+    to the trap's counter, 0x0800C780); the lab's stance/antimagc-* match and draw as mGBA's. Open: the
     Guard chips' variants 0 to 2 of the guard counter with a shock wave (0x080CFD2A, its row 6): with the Guard chips.
     EXE4's guard spark (object_spawnHiteffect, 0x0800B0F6) doesn't stop while paused, where the engine's does: a guard
     is never turned aside while paused in a netbattle (nothing hits then).
@@ -1632,17 +1640,20 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 77. **The chips' own looks out of the shared libraries** (the brief's no-lookup-tables rule): lib/cannon's `arms`,
     lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants`: a maker each, every chip
     stating its own. Queued.
-90. **The Anti chips' springs** (group B). The traps are set (chips/anti); what springs them:
-    - AntiNavi (0x08008F80, EXE5's `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the
-      navi chips', with no block of chip numbers) wants the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle
-      0x0800815C: effect row 0x48, sound 0x10D);
-    - AntiDmg and AntiSwrd: EXE4's intake test (0x08023048) is its own: AntiDmg catches a hit of any damage (EXE5's and
-      EXE6's of 10 or more), AntiSwrd any sword hit (flag 0x2000, without EXE6's 0x20000 exclusion), no heat trap, no
-      BodyGrd; the counters are actions 0x38 (AntiDmg's, a shuriken: attack 0x5C) and its AntiSwrd counterpart;
-    - AntiRecv: the role `kinds.anti_recovery`.
+90. **Done: the Anti chips' springs** (group B, chips/anti). AntiNavi springs as EXE5's (0x08008F80, EXE5's
+    `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the navi chips', with no block of
+    chip numbers): the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle 0x0800815C: effect row 0x48, sound
+    0x10D). AntiDmg's and AntiSwrd's catch (0x08023048) is EXE5's, not EXE6's (`status.intake.anti_traps`: AntiDmg
+    any damage, AntiSwrd any sword hit), and its counter runs from the next tick (0x0800C780, a stance's catch and a
+    trap's alike: `reactions.trap_counter`). AntiDmg's counter (action 0x38, @exelib/antidmg/counter) keeps the navi's
+    move, throws at a random one of the other player navi's panels whatever the variant, and dives BodyGrd's shuriken
+    (attack 0x5C, @exelib/bodygrd/shuriken); AntiSwrd's (action 0x39, @exelib/antiswrd/counter, plain as EXE5's) holds
+    EXE4's own blade and throws booms (attack 0x58, objects/sonic_boom) all of hit modifier 1. AntiRecv's
+    counterattack (effect 0x2C, @exelib/antirecv/controller) takes no mood (the role `kinds.anti_recovery`). AntiWood's
+    spring waits on WoodPwdr (the lab's chips/0x08f-antiwood/sprung), AntiMagc on its stance (weapon routine 0x27).
     A telop doesn't take the other player's used-chip name off the screen in EXE4 (item 71: the user's telop goes on
     the banner block, the name stays on the second; EXE6's `sub_801BED6(0x10000)` clears it): the lab's
-    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine.
+    chips/0x08e-antielec/sprung shows Thunder's name 12 more frames (604 to 615) than the engine (group A's).
 110. **Done: status timers through a pause** (group C, from B's NaviCust replays). EXE4's status timers (0x0800AE58,
     EXE6's `sub_800E730`: paralysis +0x10 and the rest) have no pause test, where EXE6's and EXE5's (0x0800CB50)
     return while paused: a navi's run before it takes control (it runs paused until then, item 42's
@@ -1662,10 +1673,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     - a dimming chip's telop: the user's on the banner block (0x08016454), the other player's on the second block in
       state 0 (0x08008C40), both sliding and squashing as banners do. The renderer draws them from Hud.layout.telop;
       the engine's telop for EXE4 comes with the first dimming chip;
-    - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
-      seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
-      item 16 reads EXE4's. With it, the damage judge: its numbers' values (0x0801642C, 0x08016408) and a recording
-      to compare;
+    - **Done** (§18 item 16): the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A,
+      counted by 0x08008066, its seconds over "CUSTOM" (0x08016362, draw 7), the gauge not drawn; the damage judge's
+      numbers (0x0801642C, 0x08016408) while its banner holds. The lab's timer/ recordings compare every frame;
     - the warning marker (0x0800843E: a 16x16 sprite at tile 0x360, its second frame at bit 3 of the frame counter, in
       palette 13; 0x08008424 also sounds 0x79 every 16 frames), with the chips that show it: the gauge chips'
       effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
