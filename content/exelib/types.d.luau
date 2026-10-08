@@ -740,9 +740,12 @@ export type CopyDamageSpec = {
 }
 
 -- A game's CopyDmg mark (@exelib/copydmg/mark): its kind's id, sprite and
--- animation, its hit's sound and types; EXE5's reloads its animation at its
--- init and hits its panel each tick it marks in the own-gauges mode
--- (the hit's spark and types).
+-- animation, its hit's sound and types; how long it marks a navi and how it
+-- sits over it ("attach_point": at the navi's attach point 0x1B, shown as the
+-- navi is, EXE6's and EXE5's; "position": at the navi's position, shown from
+-- the mark on, EXE4's); EXE5's and EXE4's reload its animation at its init;
+-- EXE5's hits its panel each tick it marks in the own-gauges mode (the hit's
+-- spark and types).
 export type CopyDamageMarkLook = {
     id: string,
     sprite: SpriteAsset,
@@ -750,8 +753,30 @@ export type CopyDamageMarkLook = {
     sound: Sound,
     is: CollisionType,
     hits: CollisionType,
+    ticks: number,
+    over_navi: "attach_point" | "position",
     reload_anim: boolean,
     own_gauges_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
+}
+
+-- A VarSwrd-like chip's action (@exelib/varswrd/action): its sequences by the
+-- navi's direction flip, as joypad words with A held, each ending in 0; what
+-- they give, in order, and what the countdown or A let go gives.
+export type VarSwordSpec = {
+    id: string?,
+    sequences: { [number]: { { number } } },
+    picks: { Chip },
+    sword: Chip,
+}
+
+-- A game's part of VarSwrd's action: the pick's sound, whether the navi
+-- waits while A is up (in the souls that do), and a navi in auto battle's
+-- pick (the side's sword pick: one past the picks a Sword; nil: none, or not
+-- in auto battle).
+export type VarSwordGame = {
+    sound: Sound,
+    waits: (me: Object) -> boolean,
+    auto_pick: ((me: Object) -> number?)?,
 }
 
 -- A CopyDmg mark made for a game (@exelib/copydmg/mark).
@@ -770,7 +795,8 @@ export type FanVariant = {
     pulls: boolean,
     wait: number,
     hp: number,
-    identity: Identity,
+    -- Its NameID's identity (none: EXE4's init writes no NameID, 0x080D64A8).
+    identity: Identity?,
     absorbed: AbsorbedLook?,
 }
 
@@ -783,8 +809,8 @@ export type FanLook = {
     appear_sound: Sound,
     blow_sound: Sound,
     break_sound: Sound,
-    -- Removed (a puff 12 pixels up); broken (an explosion).
-    puff: Effect,
+    -- Removed (a puff 12 pixels up; none where no removal puffs); broken (an explosion).
+    puff: Effect?,
     explosion: Effect,
     -- What it is and what reaches it: its side's obstacles' (the other side's attacks, objects and bodies, and
     -- neutral objects).
@@ -799,6 +825,11 @@ export type FanLook = {
     -- EXE5's Fan's gust (0x080CE96C) starts on the far column alone, none when another obstacle stands there; EXE6's
     -- tries the panels toward the fan.
     far_column_only: boolean?,
+    -- Whatever removes it, it leaves as when broken: its sound and its explosion (EXE4's 0x080D664C).
+    removal_explodes: boolean?,
+    -- The column its gust starts on in `row` (0: none), the game's own where it differs from EXE6's and EXE5's
+    -- (EXE4's 0x080D6688).
+    column: ((me: Object, row: number, pulls: boolean) -> number)?,
 }
 
 export type Fan = {
@@ -815,6 +846,8 @@ export type WindControllerLook = {
     id: string,
     spawn_fan: (owner: Object, variant: FanVariant, x: number, y: number, damage: number) -> Object?,
     position: ((user: Object, spec: DimmingChipSpec) -> Vec3)?,
+    -- Its spawn copies the user's side alone, not its facing (EXE4's, 0x080E4B60).
+    side_only: boolean?,
 }
 
 export type WindController = {
@@ -1188,7 +1221,8 @@ export type Barrier = {
 -- aren't the library's (60, `byte_80D4140`; EXE6's `instrument`): EXE5's
 -- 100 and its own pack's; `absorbed` is `instrument.instrument`'s.
 export type Instrument = {
-    identity: Identity,
+    -- Its NameID's identity (none: EXE4's init writes no NameID, 0x080DC35C).
+    identity: Identity?,
     palette: number,
     play_ticks: number,
     pause_ticks: number,
@@ -1379,6 +1413,17 @@ export type CircGunLook = {
     -- The hit's spark (element 0's).
     spark: Spark,
     on_floor: boolean?,
+    -- Going back along a row it turns on a column with any of the user's side's panels (EXE4's, 0x080DE7AA), where
+    -- EXE6's and EXE5's turn before a column with none of the other side's.
+    turns_on_own_column: boolean?,
+}
+
+-- A game's CircGun controller's differences: its spawn takes the user's side alone, not its facing (EXE4's,
+-- 0x080E8B84); it sets the gun whatever the far column holds (EXE4's 0x080E8B40, where EXE6's and EXE5's end at once
+-- with none of the other side's panels there).
+export type CircGunControllerLook = {
+    side_only: boolean?,
+    always_sets_gun: boolean?,
 }
 
 -- How a game's bomb looks and sounds, and how it leaves.
@@ -1473,9 +1518,11 @@ export type InstrumentLook = {
     body: { is: CollisionType, hits: CollisionType },
     absorbed: AbsorbedLook?,
     removal_puffs: boolean?,
-    -- Broken, its explosion; removed, its puff.
+    -- Whatever removes it, it leaves as when broken: its sound and its explosion (EXE4's 0x080DC58C).
+    removal_explodes: boolean?,
+    -- Broken, its explosion; removed, its puff (none where no removal puffs).
     explosion: Effect,
-    puff: Effect,
+    puff: Effect?,
 }
 
 -- A game's Tango's heal (@exelib/supports/heal): its kind's key, sprite and sound, the sparkle as it lands, the game's
@@ -1703,9 +1750,9 @@ export type NaviChipController = {
 -- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the
 -- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), Param4's flags: it paralyzes (bit 2: hit
 -- modifier 1, its hit back 12 ticks after one), its self type is the look's `attack_480` (bit 3: row 0x25, EXE4's
--- ElemDark's), and the panel type it leaves (the panel type the high nibble names; none, or as its state holds it
--- "none", leaves none). (Bit 0, which runs it while dimmed, no spawner sets.) Its palette (EXE5's +0x0D, EXE4's
--- +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
+-- ElemDark's), it runs while dimmed (bit 0: EXE4's FireMan's), and the panel type it leaves (the panel type the high
+-- nibble names; none, or as its state holds it "none", leaves none). Its palette (EXE5's +0x0D, EXE4's +0x0E), it has
+-- hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
 export type ElemFlameState = {
     count: number,
     spread: boolean,
@@ -1713,6 +1760,7 @@ export type ElemFlameState = {
     offset: number,
     paralyzes: boolean,
     attack_480: boolean,
+    while_dimmed: boolean,
     leaves: PanelType?,
     palette: number,
     hit: boolean,

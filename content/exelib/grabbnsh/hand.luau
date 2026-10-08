@@ -5,6 +5,8 @@
 -- (`hand.make_kind`: its sprite, sounds and collision types). It drops from
 -- 192 pixels up onto an enemy navi's panel in 24 ticks, hits it, and goes
 -- once its grab animation is over. Only a round's first hand makes sounds.
+-- EXE4's (#0x46, 0x080D5FF8) drops from 256 pixels and hits with hit
+-- modifier 0x0B: its look's `height` and `hit_mod`.
 
 local regions = require("../regions")
 
@@ -18,7 +20,8 @@ export type State = {
 
 -- A game's hand: its kind's key, its sprite, the sounds of its fall and
 -- its landing, and its hit's collision types (`dword_80CCD20`: an attack
--- that pierces invisibility, EXE6's row 0x19, hitting navis).
+-- that pierces invisibility, EXE6's row 0x19, hitting navis); the height it
+-- drops from (16.16; none: 192 pixels) and its hit's modifier (none: 0x4B).
 export type Look = {
     id: string,
     sprite: SpriteAsset,
@@ -26,6 +29,8 @@ export type Look = {
     land_sound: Sound,
     target: CollisionType,
     self_type: CollisionType,
+    height: number?,
+    hit_mod: number?,
 }
 
 local HEIGHT, FALL_SPEED = 0xC0_0000, 0x8_0000
@@ -56,7 +61,7 @@ local function fall(me: Object, look: Look)
         self_type = look.self_type,
         damage = me.damage,
         stamina = me.stamina,
-        hit_mod = HIT_MOD,
+        hit_mod = look.hit_mod or HIT_MOD,
     })
     -- (sub_80C53A6 lets it resolve while dimmed; the hand's own attempt
     -- at that writes to the BIOS.)
@@ -103,7 +108,7 @@ local function init(me: Object, look: Look)
     me.anim, me.anim_loaded = 0, 0xFF
     me.vel = Vec3.new(me.vel.x, me.vel.y, FALL_SPEED)
     local x, y = field.center(me.panel_x, me.panel_y)
-    me.pos = Vec3.new(x, y, HEIGHT)
+    me.pos = Vec3.new(x, y, look.height or HEIGHT)
     if (me.state :: State).first then
         battle.play_sound(look.fall_sound)
     end

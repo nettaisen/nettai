@@ -47,6 +47,8 @@ return {
     load_sets_part_palette = true,
     -- A sprite updated through the dimming (`object_updateSpriteTimestop`) steps on the tick it loads a new animation.
     dimmed_update_steps_on_load = true,
+    -- An immobilized navi blinks black (`sub_801690A`).
+    immobilized_blinks = true,
     -- Its obstacles' action tables have the actors' frozen and bubbled entries at 6 and 7: a kind's own actions
     -- from 8.
     obstacle_actions = "own_from_8",

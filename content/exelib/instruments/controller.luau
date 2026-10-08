@@ -21,8 +21,13 @@ local WAIT = 0x3C
 local SOLID, OCCUPIED = 0x10, 0x0F88_0080
 
 -- A game's controller (kind `id`) setting instruments of
--- `instrument_kind`: its chips' hook of an instrument.
-function instruments.make(id: string, instrument_kind: Kind): (Instrument) -> (user: Object, spec: DimmingChipSpec) -> Object?
+-- `instrument_kind`: its chips' hook of an instrument. `side_only`: its
+-- spawn copies the user's side alone, not its facing (EXE4's, 0x080E73B8).
+function instruments.make(
+    id: string,
+    instrument_kind: Kind,
+    side_only: boolean?
+): (Instrument) -> (user: Object, spec: DimmingChipSpec) -> Object?
     -- `sub_80E5E44`.
     local function effect(me: Object)
         if me.phase_init == 0 then
@@ -51,7 +56,7 @@ function instruments.make(id: string, instrument_kind: Kind): (Instrument) -> (u
     -- `sub_80E5EA8`: a chip's `dimming` hook, for its instrument.
     local function hook(i: Instrument): (user: Object, spec: DimmingChipSpec) -> Object?
         return function(user: Object, spec: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, spec)
+            local o = dimming_chips.spawn(kind, user, spec, side_only)
             if o then
                 local s = o.state :: State
                 s.instrument = i

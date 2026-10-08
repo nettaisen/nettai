@@ -186,6 +186,46 @@ language = "en"
 "propbom3" = { name = "PropBom3", description = "Rushing\ncauses an\nexplosion" }
 "tornado" = { name = "Tornado", description = "Creates 8\nwhirlwind\nahead" }
 "static" = { name = "Static", description = "A static\nblast 2sq\nahead" }
+"burnman" = { name = "BurnMan", description = "3-direct\nburnr fry\n2 ahead!" }
+"burnmn-sp" = { name = "BurnMnSP", description = "3-direct\nburnr fry\n2 ahead!" }
+"burnmn-ds" = { name = "BurnMnDS", description = "3-direct\nburnr fry\n2 ahead!" }
+"grabrvng" = { name = "GrabRvng", description = "Retaliate\nstolen\npanels!" }
+"grabbnsh" = { name = "GrabBnsh", description = "Retaliate\nstolen\npanels!" }
+"custswrd" = { name = "CustSwrd", description = "Cust\nGauge=\nAtk Str" }
+"muramasa" = { name = "Muramasa", description = "EvilChip!\nPower=\nHP lost" }
+"slasher" = { name = "Slasher", description = "Cut while\nA Button\nis held!" }
+"suprvulc" = { name = "SuprVulc", description = "12-shot\nvulcan\ncannon" }
+"hole" = { name = "Hole", description = "Appears\nHole\nin front" }
+"pnlretrn" = { name = "PnlRetrn", description = "Fix your\narea's\npanels" }
+"holypanl" = { name = "HolyPanl", description = "Creates a\nHolyPanl\nin front" }
+"snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
+"drkline" = { name = "DrkLine", description = "Turns all\nrows into\nHoles" }
+"barrier" = { name = "Barrier", description = "Nullifies\n10 HP of\ndamage" }
+"barr100" = { name = "Barr100", description = "Nullifies\n100 HP of\ndamage" }
+"barr200" = { name = "Barr200", description = "Nullifies\n200 HP of\ndamage" }
+"lifeaura" = { name = "LifeAura", description = "Repels\nall attck\nunder 200" }
+"blakbarr" = { name = "BlakBarr", description = "A dark\nbarrier\nregenrate" }
+"fanfare" = { name = "Fanfare", description = "Take no\ndmg for a\nwhile" }
+"discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
+"timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
+"silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
+"gutsman" = { name = "GutsMan", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-sp" = { name = "GutsMnSP", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-ds" = { name = "GutsMnDS", description = "GutsHammr\ndestroys\nenmy area" }
+"copydmg" = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
+"windrack" = { name = "WindRack", description = "Blow enmy\nin front!\nRange: 3" }
+"bighamr1" = { name = "BigHamr1", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr2" = { name = "BigHamr2", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr3" = { name = "BigHamr3", description = "Hammr atk\nsmashes\nin front!" }
+"godhammr" = { name = "GodHammr", description = "Places a\nstone\nstatue" }
+"geddon1" = { name = "Geddon1", description = "Cracks\nall panel\non screen" }
+"geddon2" = { name = "Geddon2", description = "Breaks\nall empty\npanels" }
+"geddon3" = { name = "Geddon3", description = "Turns all\npanels to\nswamp" }
+"wind" = { name = "Wind", description = "WindBox\nblows at\nenmy area" }
+"fan" = { name = "Fan", description = "VacuumFan\npulls\nenemies" }
+"circgun1" = { name = "CircGun1", description = "Stop site\nw/ Button\nand attck" }
+"circgun2" = { name = "CircGun2", description = "Stop site\nw/ Button\nand attck" }
+"circgun3" = { name = "CircGun3", description = "Stop site\nw/ Button\nand attck" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
