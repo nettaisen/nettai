@@ -25,6 +25,10 @@
 "north-wind/streak" = { pool = "effect", index = 0x3A }
 # SearchSoul's reveal (0x080E6D74), spawned at the status reset's registers.
 "searchsoul/reveal" = { pool = "effect", index = 0x44, scratch_position = true }
+# FireSoul's flames (attack 9, 0x080CE49C) and its grass (effect 0x12, 0x080E33E8), whose panel and position are the
+# status reset's registers (code addresses of the reset's, each ROM its own).
+"firesoul/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+"firesoul/grass" = { pool = "effect", index = 0x12, scratch_position = true, scratch_panel = true }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }

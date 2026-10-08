@@ -223,6 +223,10 @@ pub struct KindEntry {
     /// address of the change's, another on each console's ROM).
     #[serde(default)]
     pub scratch_with_owner: bool,
+    /// Its panel is register garbage too, never set (FireSoul's grass: the
+    /// status reset's code addresses).
+    #[serde(default)]
+    pub scratch_panel: bool,
 }
 
 /// Where a ROM other than Red Sun's US one has what compat names by that
