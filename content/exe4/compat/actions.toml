@@ -44,6 +44,11 @@
 "flmline1/action" = 0x22
 "flmline2/action" = 0x22
 "flmline3/action" = 0x22
+# The GunSols' (the chips' action 0x58, 0x080EDE0E).
+"gunsol1/action" = 0x58
+"gunsol2/action" = 0x58
+"gunsol3/action" = 0x58
+"gunsolex/action" = 0x58
 # The breath chips' (the chips' action 0x33, 0x080ED412).
 "heatbrth/action" = 0x33
 "blizzard/action" = 0x33

@@ -179,6 +179,7 @@ in brackets, one to three calls each):
 | +0x24 | 0 | the soul (patch card 0x24: a battle starts in it, 1 on) [+0x2C] |
 | +0x27 | 0 | MegaMan's color (patch card 0x27) |
 | +0x28 | 0 | All Guard (patch card 0x28) |
+| +0x29 | 0 | fighting in the sun (the overworld sets it by the map, 0x0802A770; the reset keeps it; GunSol reads it) |
 | +0x2A | 1 | ? |
 | +0x30, +0x32 | 100 | HP and max HP (MegaMan's from the save's 0x2150 and 0x2152) [+0x40, +0x42] |
 | +0x34 | 100 | the base max HP (the save's 0x21CA, before the NaviCust's and the patch cards') |
@@ -195,8 +196,10 @@ BustPack's weapon level (0 to 2, copied to the AI data's +8 at the init, 0x0800D
 confused 720 ticks as the round starts, 0x0800D8B0; else its high nibble, in the keys' bits, is held when no direction
 is, 0x0800B4DA); +0x15 the encounter bug; +0x16 SneakRun; +0x17's bits 1 to 4 OilBody, Fish, Battery, Jungle; +0x19
 Collect (bit 1) and the result bug (1); +0x1C Humor; +0x1D BugStop; +0x1E SoulClen (read by the light/dark value's
-update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x29, +0x2B) is used and unread yet: the step that
-ports what reads it names it.
+update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x2B) is used and unread yet: the step that ports
+what reads it names it. +0x29 is fighting in the sun (the rules' `sun`, as EXE5's +0x22): 1 while the map the
+overworld is on is one of 0x0802A7AC's (0x0802A770), which the save's block keeps; GunSol hits harder and shines
+brighter in it.
 
 ### 3.4 RAM
 
@@ -668,6 +671,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **GunSol1 to GunSol3, GunSolEX** (action 0x58, `chips/gunsol`: EXE4's own, EXE5's GunDelSol grew from it): the gun
+  out, 6 ticks later (A held or not) the sun beam (effect 0x48, @exelib/gundels/beam, whose EXE4 spawn watches the
+  gun's slot without filling it and takes only its owner's side: `watches`), then a drain hit a tick on the column two
+  ahead (GunSolEX's and the one past it) while A is held (a navi in auto battle needn't) for 60, 90 or 120 ticks, 2
+  damage (4 in the sun: NaviStats +0x29, the rules' `sun`), the light filling those columns' holes (the Hole chip's,
+  type 11, turned normal: no recording yet, the Hole chip being group F's). The lab's chips/0x020-gunsol1/held and
+  held-sun, chips/0x0db-gunsolex/held-sun (the sun by a patch of 0x0802A7A0) match and draw as mGBA's.
 - **FlmLine1 to FlmLine3** (action 0x22, `chips/flmline`: EXE4's own): the navi holds the burner (attachment row
   0x0C) and raises flames (attack 0x19, 0x080CFF80) on the column two panels ahead, each burning the chip's 40 ticks
   (its parameters' second byte) between 3 rising and 3 dying down. The action's variant 1 (a cross of five,
