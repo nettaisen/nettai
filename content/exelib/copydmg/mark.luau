@@ -1,18 +1,24 @@
 --!strict
--- CopyDmg's mark (attack object #0x28 in both games: EXE6's `sub_80C8FFC`,
--- EXE5's 0x080C9A6C), made for a game's look (`mark.make`): an unseen probe
--- that steps a panel a tick along its row until it hits something. If that
--- was a navi (a player on the panel, found in the other side's actor
--- list), it marks the navi for 180 ticks: the navi's side's damage-carry
--- record makes it take, each tick, the damage its side took the tick
--- before on top of its own (the intake's `sub_802CE10`). The mark shows
--- over the navi (at its attach point 0x1B) as long as the navi is drawn,
--- and goes when its time is up or the record is no longer its. A probe
--- that hits nothing, or leaves the field, or finds time up, just goes.
+-- CopyDmg's mark (attack object #0x28 in all three games: EXE6's
+-- `sub_80C8FFC`, EXE5's 0x080C9A6C, EXE4's 0x080D1C24), made for a game's
+-- look (`mark.make`): an unseen probe that steps a panel a tick along its
+-- row until it hits something. If that was a navi (a player on the panel,
+-- found in the other side's actor list), it marks the navi for its game's
+-- time: the navi's side's damage-carry record makes it take, each tick, the
+-- damage its side took the tick before on top of its own (the intake's
+-- `sub_802CE10`). It goes when its time is up or the record is no longer
+-- its. A probe that hits nothing, or leaves the field, or finds time up,
+-- just goes.
+--
+-- How the mark sits over the navi is its game's (`over_navi`): EXE6's and
+-- EXE5's at the navi's attach point 0x1B, shown as long as the navi is
+-- drawn, for 180 ticks; EXE4's at the navi's position, shown from the mark
+-- on, for 90 ticks (and, under event flag 0x1187, which no netbattle sets,
+-- a hit of 50 on its panel as it marks: 0x080D1D06).
 --
 -- EXE5's also hits its panel for 50 each tick it marks, in the own-gauges
--- mode (battle flag 0x40, EXE5's operation battle: 0x080C9B90), and reloads
--- its animation at its init.
+-- mode (battle flag 0x40, EXE5's operation battle: 0x080C9B90); EXE5's and
+-- EXE4's reload its animation at its init.
 --
 -- Four states: init, flying (update), marking (destroy) and gone
 -- (finish).
@@ -21,8 +27,6 @@ local regions = require("@exelib/regions")
 
 local mark = {}
 
--- How long a navi stays marked.
-local MARK_TICKS = 0xB4
 -- The attach point the mark sits at, on the marked navi.
 local MARK_POINT = 0x1B
 -- A panel with a player navi on it (either side's player bit).
@@ -84,7 +88,13 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
             if mark_navi(me) then
                 me.anim = look.anim
                 me.anim_loaded = 0xFF
-                me.timer = MARK_TICKS
+                if look.over_navi == "position" then
+                    me.visible = true
+                end
+                me.timer = look.ticks
+                if look.over_navi == "position" then
+                    me.pos = (me.related1 :: Object).pos
+                end
                 me:set_lifecycle("destroy")
                 return
             end
@@ -103,24 +113,31 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
         c:present()
     end
 
-    -- `sub_80C90DC` (EXE5's 0x080C9B50): over the marked navi while the
-    -- record is the probe's, for its time (EXE5's hitting its panel each
-    -- tick in the own-gauges mode); then the record forgets it
-    -- (`sub_802CDE6`) and it goes.
+    -- `sub_80C90DC` (EXE5's 0x080C9B50, EXE4's 0x080D1D40): over the
+    -- marked navi while the record is the probe's, for its time (EXE5's
+    -- hitting its panel each tick in the own-gauges mode); then the record
+    -- forgets it (`sub_802CDE6`) and it goes.
     local function marking(me: Object)
         local target = me.related1 :: Object
-        me:copy_visibility(target)
+        local at_attach_point = look.over_navi == "attach_point"
+        if at_attach_point then
+            me:copy_visibility(target)
+        end
         local side = carry_side(me)
         local rec = battle.damage_carry(side)
         if rec.source == me and rec.target ~= nil then
-            -- The attach point as the navi's table has it (the API's
-            -- faces the navi's way), mirrored the probe's way. (For
-            -- NameIDs 0xCD to 0xFF the game would read another table; only
-            -- navis get marked.)
-            local ax, ay = target:attach_point(MARK_POINT)
-            ax *= target.facing
-            local dx = int.mul32(ax * 0x10000, -me.facing)
-            me.pos = target.pos + Vec3.new(dx, 0, ay * 0x10000)
+            if at_attach_point then
+                -- The attach point as the navi's table has it (the API's
+                -- faces the navi's way), mirrored the probe's way. (For
+                -- NameIDs 0xCD to 0xFF the game would read another table;
+                -- only navis get marked.)
+                local ax, ay = target:attach_point(MARK_POINT)
+                ax *= target.facing
+                local dx = int.mul32(ax * 0x10000, -me.facing)
+                me.pos = target.pos + Vec3.new(dx, 0, ay * 0x10000)
+            else
+                me.pos = target.pos
+            end
             local hit = look.own_gauges_hit
             if hit and battle.own_gauges() then
                 battle.hitbox(me, {
@@ -151,7 +168,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
         vanish(me)
     end
 
-    -- `sub_80C9024` (EXE5's 0x080C9A94).
+    -- `sub_80C9024` (EXE5's 0x080C9A94, EXE4's 0x080D1C4C).
     local function init(me: Object)
         local sprite = me.sprite
         sprite:load(look.sprite)
@@ -177,7 +194,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
     local kind = new.kind {
         id = look.id,
         pool = "attack",
-        -- `sub_80C8FFC` (EXE5's 0x080C9A6C).
+        -- `sub_80C8FFC` (EXE5's 0x080C9A6C, EXE4's 0x080D1C24).
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -197,10 +214,10 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
         end,
     }
 
-    -- `sub_80C9184` (EXE5's 0x080C9C14): a probe on (x, y) for `owner`, with
-    -- the damage word `damage`. It goes at the end of the update list
-    -- (`sub_8003374`). Its position is the spawner's registers (the panel
-    -- Y, the element and 0) until its init places it.
+    -- `sub_80C9184` (EXE5's 0x080C9C14, EXE4's 0x080D1DB4): a probe on
+    -- (x, y) for `owner`, with the damage word `damage`. It goes at the end
+    -- of the update list (`sub_8003374`). Its position is the spawner's
+    -- registers (the panel Y, the element and 0) until its init places it.
     local function spawn(owner: Object, x: number, y: number, element: number, damage: number): Object?
         local o = battle.spawn_at_end(kind, Vec3.new(y, element, 0))
         if o then

@@ -22,6 +22,7 @@ return merge {
     require("@self/bubbler"),
     require("@self/burnman"),
     require("@self/cannon"),
+    require("@self/copydmg"),
     require("@self/counter"),
     require("@self/crakout"),
     require("@self/custswrd"),
@@ -93,6 +94,7 @@ return merge {
     require("@self/vulcan"),
     require("@self/whitweb"),
     require("@self/widesht"),
+    require("@self/windrack"),
     -- A navi chip's chips, with its navi.
     require("./navis/megaman/forms/aquasoul/chip"),
     require("./navis/megaman/forms/firesoul/chip"),
