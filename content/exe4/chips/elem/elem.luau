@@ -96,6 +96,7 @@ function elem.action(spec: ElemSpec): Action
                 offset = OFFSET,
                 paralyzes = raged,
                 attack_480 = spec.attack_480 == true,
+                while_dimmed = false,
                 leaves = leaves,
                 palette = spec.palette,
                 hit = false,

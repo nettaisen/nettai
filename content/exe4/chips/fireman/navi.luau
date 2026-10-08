@@ -44,7 +44,7 @@ local FLAME = flame_common.make_kind {
 }
 -- His flames (0x080B9400: Param1 5, Param2 0x50, Param3 0xF0, Param4 1, its high nibble 8 with his command): five
 -- along his row, each 80 ticks, 16 pixels back from its panel's center, running while dimmed; fire, 34 pixels up.
-local FLAMES, FLAME_TICKS, FLAME_OFFSET, FLAME_FLAGS = 5, 0x50, -16, 1
+local FLAMES, FLAME_TICKS, FLAME_OFFSET = 5, 0x50, -16
 local FIRE, FLAME_Z = 1, 0x22_0000
 
 -- His command (0x080B9298's one sequence, 0x080B94A8): each key held alone, while dimmed, in turn.
@@ -129,7 +129,9 @@ local function attack(me: Object)
             spread = false,
             ticks = FLAME_TICKS,
             offset = FLAME_OFFSET,
-            flags = FLAME_FLAGS,
+            paralyzes = false,
+            attack_480 = false,
+            while_dimmed = true,
             leaves = if s.commanded then "lava" else nil,
             palette = 0,
             hit = false,
