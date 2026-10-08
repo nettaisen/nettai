@@ -370,11 +370,10 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
-    fn cycle(&self, period: u8) -> u8 {
-        match period {
-            20 => self.round.cycle20,
-            180 => self.round.cycle180,
-            _ => panic!("battle.cycle({period}): the battle counts 20 and 180"),
+    fn cycle(&self, which: u8) -> u8 {
+        match which {
+            1 | 2 => self.round.cycles[which as usize - 1],
+            _ => panic!("battle.cycle({which}): the battle has counts 1 and 2"),
         }
     }
 
