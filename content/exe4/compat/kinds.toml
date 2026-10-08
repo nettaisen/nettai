@@ -368,6 +368,10 @@
 # BugCurse's controller (0x080E81C4; its position the dimming handler's registers) and its curse (0x080DD39C).
 "bugcurse/controller" = { pool = "effect", index = 0x56, scratch_position = true }
 "bugcurse/curse" = { pool = "attack", index = 0x80 }
+# LifeSync's controller (0x080E8784; its position the dimming handler's registers) and its marker (0x080E8C78; its
+# position the spawner's registers, which its init replaces).
+"lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }
+"lifesync/marker" = { pool = "effect", index = 0x60, scratch_position = true }
 # Snake's controller (0x080E5B50; its position the dimming handler's registers), its nest (0x080D7DB8) and its snakes
 # (0x080D80E4).
 "snake/controller" = { pool = "effect", index = 0x32, scratch_position = true }

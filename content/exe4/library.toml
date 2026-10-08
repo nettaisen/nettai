@@ -316,6 +316,7 @@ standard = [
     "antinavi",
     "antirecv",
     "copydmg",
+    "lifesync",
     "atk-10",
     "navi-20",
 ]
