@@ -709,6 +709,26 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   content each chip states its own (`breath.make`), each its own kind mapped to attack 0x36. WoodPwdr's hits confuse
   (hit modifier 1, status 0x20); ElecShok's highlight the panels they hit. A parameter of 4 and on would leave a trail
   (0x080D3C10): no chip has one.
+- **Silence, Fanfare, Discord, Timpani** (the dimming chips' variant 0x24, `chips/silence` and on): the instruments'
+  controller (effect #0x4A, 0x080E7310) and instrument (attack #0x78, 0x080DC33C), @exelib/instruments (EXE6's code,
+  as EXE5's) with EXE4's look (lib/instruments): the sheet 04-08, its sounds (0xB0 appearing, 0x70 leaving), no NameID
+  (no identity), its leaving (0x080DC58C) an explosion whatever removes it (`removal_explodes`), and both spawns
+  taking the spawner's side alone (`side_only`). Each chip states its row (0x080DC32C: palette 0, 2, 4, 6; Fanfare's
+  50 HP, the others' 100, 0x080DC3EC), its tune (0x12A to 0x12D) and its effect: Fanfare's makes its side's navi alone
+  invulnerable for 4 ticks (0x080DC5C4; EXE5's and EXE6's every combatant), Discord, Timpani and Silence EXE6's
+  (confusion, immobilization, blindness, each 4 ticks). An immobilized navi doesn't blink black in EXE4 (its tail has
+  no `sub_801690A`): `effects.immobilized_blinks` (EXE6, EXE5 true; EXE4 false). The lab's chips/ (16),
+  status/confusion, fanfare, paralysis-timpani and silence replay every frame; the hit recordings' fight frames are
+  pixel-exact.
+- **Barrier, Barr100, Barr200, LifeAura, BlakBarr** (the dimming chips' variant 0x15, `chips/barrier`): the barrier
+  chips' controller (effect #0x2F, 0x080E5740: @exelib/barriers/controller, EXE6's code; EXE4's lib/barriers) raising
+  the chip's barrier type (its first parameter by 0x080E57D0: 1, 2, 3, 6 and 4) with its visual. Type 4 (BlakBarr's,
+  150 HP; its visual's sheet 0c-44, `black-barrier`) is EXE4's own in the tick (0x08012E44): worn down, it stays with
+  no HP, lets hits through, never times out and is back with 150 HP 180 ticks later (not while dimmed), wind leaving
+  it be meanwhile: the barrier behavior `regrowing`, its numbers the rules' (`status.intake.barrier.regrowing`;
+  EXE6 and EXE5 state none). The lab's chips/ (20, BlakBarr's over 3000 frames), status/barrier, barrier100,
+  barrier200, lifeaura and navicust/firstbarrier replay every frame; the hit recordings' fight frames are
+  pixel-exact (BlakBarr's through its regrowths, but for the custom screens' known shift).
 - **Hole, PnlRetrn, HolyPanl, Snctuary, DrkLine** (the dimming chips' variant 0x0B, `chips/hole` and on): the panel
   chips' controller (effect #0x20, 0x080E4584: @exelib/panel_chips/controller, EXE6's code, its spawn taking the
   user's side alone: `side_only`, EXE4's lib/panel_chips) with EXE4's panel changer (objects/panel_changer), each
@@ -1619,7 +1639,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     hit flag does it): **done**, `status.intake.barrier` (`stops_while_paused`, `wind`: EXE6 and EXE5 `true`, `pops`;
     EXE4 `false`, `takes_away`). Its types (0x080185E0: HP, threshold, timer, as halfwords): 1 10 HP, 2 100, 3 200, 4
     150 regrowing 180 ticks after it breaks, 5 1 HP, 6 a 200 threshold for 3000 ticks, 7 a 300 threshold for 3000
-    ticks; types 4 and 7 (and a threshold over 255) wait on the chips that raise them. **Done:** FstBarr: EXE4's
+    ticks; type 4 is BlakBarr's (done: the barrier chips), type 7 (and a threshold over 255) waits on a chip that
+    raises it. **Done:** FstBarr: EXE4's
     barriers (content/exe4/lib/barriers: types 1, 2, 3 and 6, the patch cards' auras' too) and their visual (effect 7,
     content/exe4/objects/barrier_visual: EXE6's but no blown action and no sound going down, its sprite updated paused
     or not, running while paused until the fight starts, placed by per-navi offsets), raised by the roles' hook

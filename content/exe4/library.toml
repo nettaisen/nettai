@@ -225,6 +225,10 @@ standard = [
     "mokorus1",
     "mokorus2",
     "mokorus3",
+    "fanfare",
+    "discord",
+    "timpani",
+    "silence",
     "guard1",
     "guard2",
     "guard3",
@@ -247,6 +251,9 @@ standard = [
     "hole",
     "invis",
     "popup",
+    "barrier",
+    "barr100",
+    "barr200",
     "antifire",
     "antiwatr",
     "antielec",
@@ -260,6 +267,7 @@ standard = [
 ]
 mega = [
     "fullcust",
+    "lifeaura",
     "snctuary",
     "atk-30",
     "elemdark",
@@ -296,6 +304,7 @@ mega = [
     "sprkmn-ds",
 ]
 giga = [
+    "blakbarr",
     "deltaray",
 ]
 secret = [
