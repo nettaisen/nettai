@@ -37,6 +37,7 @@ return merge {
     require("@self/geyser"),
     require("@self/greenwd"),
     require("@self/guard"),
+    require("@self/gunsol"),
     require("@self/heatshot"),
     require("@self/invalid"),
     require("@self/junkman"),
