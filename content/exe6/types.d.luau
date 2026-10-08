@@ -210,12 +210,15 @@ export type RollingLogSpec = {
     log: RollingLog,
 }
 
--- DolThdr (chips/dolthdr, action 0x3E): the thunder's ticks, and whether
--- the navi holds the buster arm rather than the doll (no chip does).
+-- DolThdr (chips/dolthdr, action 0x3E): the thunder's ticks, and what the
+-- navi holds out, in which animation (the original's third parameter picks
+-- it: DolThdr's doll; ElecCross's charged shot's buster arm, animation
+-- 0x19).
 export type DollThunderSpec = {
     id: string?,
     ticks: number,
-    holds_arm: boolean?,
+    held: AttachmentLook,
+    held_anim: number?,
 }
 
 -- WindRack (chips/windrack, action 0x3F): the rack the navi swings.
