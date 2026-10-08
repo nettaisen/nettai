@@ -22,6 +22,9 @@ return {
             { dx = 0, dy = 1, panels = 1 },
             { dx = 0, dy = 0, panels = 0 },
         },
+        -- An obstacle's intake that keeps the push's damage takes the end of its moves as a navi's (0x0801335A: its
+        -- panel's `move_end`, ice's push).
+        obstacle_move_end = true,
     },
     -- The hit test (0x08012AFC): no FloatShoe test, no body under a sea (EXE4 has none), a guard breaks to types with
     -- 0x1002 (0x08012B8C) and turns aside what lacks 0x0C004000 (the engine's 0x0C005000, which a type with 0x1000
