@@ -251,6 +251,13 @@ pub struct EffectsRules {
     /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
     /// of the second block that shows without sliding, 33).
     pub used_chip_ticks: u8,
+    /// A dimming chip's telop, as it starts, ends the used chips' names on
+    /// every console (EXE6's `sub_800BA8A` and `sub_800BBA8`:
+    /// `sub_801BED6(0x10000)`, `sub_801DACC(0x10000)`; EXE5's 0x0800A0FC
+    /// and 0x0800A218). EXE4's (0x08008CF6, 0x08008DE0) lays the telop on
+    /// the banner block and leaves the second block's name be, beside it.
+    /// Presentation: the HUD's (`Battle::used_chip_for`).
+    pub telop_ends_used_chips: bool,
     /// Each console's emotion window checks its navi's NaviCust bugs and
     /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
     /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
