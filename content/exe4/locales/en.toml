@@ -223,6 +223,8 @@ language = "en"
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 "blkbomb" = { name = "BlkBomb", description = "Firebomb\nhits 3rd\nsq ahead!" }
 "bugbomb" = { name = "BugBomb", description = "Throws a\nbug-bomb\n3sq ahead" }
+"vdoll" = { name = "VDoll", description = "Throws\nVDoll\nahead" }
+"curse" = { name = "Curse", description = "" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

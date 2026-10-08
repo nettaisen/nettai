@@ -2,7 +2,8 @@
 -- EXE4's rocks (attack object #0x59, 0x080D89D8): the shared rock (@exelib/rock, EXE6's and EXE5's code) in EXE4's
 -- look: its init (0x080D89F8) writes no NameID and doesn't force its animation's load; the panel it appears on breaks it
 -- only for a body or a blocker on it (0x0F800000); its action table (0x080D8ABC, 7 rows: row 1, 0x0801013A, also stops
--- it running while paused; row 3, 0x08010276, does nothing; row 5 the slide, 0x0801143C; row 6 its standing); and it
+-- it running while paused; row 3, 0x08010276, does nothing; row 5 the slide, 0x0801143C; row 6 its standing); a touch
+-- destroys it with its HP as it is (0x08013F3E); and it
 -- leaves (0x080D8B28) releasing no tracking, by its HP alone: left, a puff (effect 21) 12 pixels up; none, two chunks
 -- of debris and dust (effect 2) 16 up and its variant's break sound. EXE4's sheet (10-02), debris and effects
 -- (lib/rock) and collision types (rows 14 and 15). Its rows (0x080D89C0, 6 bytes: the standing animation, a byte
@@ -55,6 +56,8 @@ local made = common.make {
         }
     end,
     leaves_by_hp = true,
+    -- 0x08013F3E: a touch destroys it, its HP as it is.
+    crush = "destroys",
 }
 
 rock.kind = made.kind
