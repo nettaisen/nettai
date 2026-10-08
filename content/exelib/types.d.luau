@@ -329,9 +329,9 @@ export type Trap = {
 }
 
 -- A hockey puck's variant (@exelib/airhocky/puck: a row of EXE6's `byte_80C9818`, EXE5's 0x080CA3A4): the steps it
--- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and whether it
--- leaves a trail.
-export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+-- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and the tint of
+-- its trail if it leaves one (PitHocky's).
+export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: number? }
 
 -- How a gust blows (@exelib/gust/gust, the original's first parameter): `pulls` turns it back toward its side, a
 -- weaker push; `unseen` hides it and lets it blow through any panel.
@@ -350,7 +350,7 @@ export type GustLook = {
 }
 
 -- A game's hockey puck: its sprite (the trail's too), its sound and the bounce's, what it is and reaches, its hits'
--- spark, the effect it bursts in, and its trail's tint.
+-- spark, and the effect it bursts in.
 export type PuckLook = {
     sprite: SpriteAsset,
     sound: Sound,
@@ -359,7 +359,6 @@ export type PuckLook = {
     hits: CollisionType,
     spark: Spark,
     burst: Effect,
-    trail_tint: number?,
 }
 
 -- A game's magnet field (@exelib/magbolt/magnet): its key, what it is and hits, its spark by its element, the paralysis
@@ -1346,9 +1345,9 @@ export type ElemTrapLook = {
 -- and its collision types.
 export type FireHitFistLook = { sprite: SpriteAsset, sound: Sound, spark: Spark, target: CollisionType, self_type: CollisionType }
 
--- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
--- together), the panels it rolls out and its spinning rounds.
-export type YoyoSpec = { great: boolean?, panels: number, rounds: number }
+-- How a yoyo flies (EXE6's chips/yoyo/yoyo): the panels it rolls out and
+-- its spinning rounds.
+export type YoyoSpec = { panels: number, rounds: number }
 
 -- A Reflector's shield's look (chips/rflectr/shield, a row of the
 -- original's `byte_80C9664`): the sprite, its animation while up, the
@@ -1923,3 +1922,26 @@ export type ShadeMan = { kind: Kind, summoned: (o: Object, controller: Object, p
 -- What BugFix's glow (@exelib/bugfix/glow) does first, its spawner's (`glow.start`): its first action, which sets
 -- action 4 when it is done.
 export type BugFixGlowStart = { run: (me: Object) -> () }
+
+-- A chip's flames of the hook (@exelib/flmhook/fire's `variant`; the original's Param2 picks EXE6's rows: FlmHook's
+-- 0, BigHook's 1): the swing's high byte (Param2: the game reads Param1 and Param2 as one halfword, so EXE6's big
+-- ones turn hundreds of times further, wrapping); four bytes per facing (right, left), the start angle (high byte)
+-- by swing and then the lifetime by swing; how fast the angle turns; EXE6's afterimages (every few ticks, their
+-- shader, how long they last; none: EXE5's leave none); EXE6's palette (a big one's 1); and whether it runs while
+-- dimmed (EXE6's big ones, EXE5's).
+export type FlameHookVariant = {
+    swing_high: number,
+    arcs: { number },
+    turn: number,
+    trail: { every: number, shader: number, ticks: number }?,
+    palette: number,
+    while_dimmed: boolean,
+}
+
+-- What a chip's hook swings (@exelib/flmhook/hook's `flames`): its flames' columns (the first's, the second's: FlmHook's
+-- ahead of its user, BigHook's fixed), their variant and hit spark.
+export type FlameHookFlames = {
+    columns: (me: Object) -> (number, number),
+    variant: FlameHookVariant,
+    spark: Spark,
+}
