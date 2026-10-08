@@ -190,6 +190,13 @@
 "windman/swirl" = { pool = "actor", index = 0x5C }
 "windman/tornado" = { pool = "attack", index = 0x6B }
 "windman/sand" = { pool = "attack", index = 0x6C }
+# VideoMan's chips (action 0x0C's variant 0x34, 0x080E8C56): each chip's controller (the content's own; the original's
+# one object, effect #0x5F, 0x080E8BA8), VideoMan and his tapes.
+"videoman/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
+"videmn-sp/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
+"videmn-ds/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
+"videoman/navi" = { pool = "actor", index = 0x3E }
+"videoman/tape" = { pool = "attack", index = 0x5D }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
 # original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
 "shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }

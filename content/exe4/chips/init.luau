@@ -105,6 +105,7 @@ return merge {
     require("@self/tornado"),
     require("@self/twnfng"),
     require("@self/varswrd"),
+    require("@self/videoman"),
     require("@self/vulcan"),
     require("@self/whitweb"),
     require("@self/widesht"),
