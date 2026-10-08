@@ -473,12 +473,11 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
 
--- BassAnly's dark ball (@exelib/bassanly/shot): its level (0 to 3: its
--- speeds), its slant (-1 up, 1 down), and how it homes.
+-- BassAnly's dark ball (@exelib/bassanly/shot): its slant (-1 up, 1
+-- down), and how it homes.
 export type DarkBallHoming = "none" | "diagonal" | "seeking"
 
 export type DarkBall = {
-    level: number,
     slant: number,
     homing: DarkBallHoming,
 }
