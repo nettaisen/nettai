@@ -260,3 +260,23 @@
 # spawner's registers).
 "instrument" = { pool = "attack", index = 0x78 }
 "instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
+# The hammer chips' controller (0x080E4B88; its position the spawner's registers) and their hammer (0x080D68CC): one
+# object each in the original; here each chip's own kinds.
+"bighamr1/controller" = { pool = "effect", index = 0x26, scratch_position = true }
+"bighamr2/controller" = { pool = "effect", index = 0x26, scratch_position = true }
+"bighamr3/controller" = { pool = "effect", index = 0x26, scratch_position = true }
+"godhammr/controller" = { pool = "effect", index = 0x26, scratch_position = true }
+"bighamr1/hammer" = { pool = "attack", index = 0x4A }
+"bighamr2/hammer" = { pool = "attack", index = 0x4A }
+"bighamr3/hammer" = { pool = "attack", index = 0x4A }
+"godhammr/hammer" = { pool = "attack", index = 0x4A }
+# Geddon's controller (0x080E400C) and its quake (0x080E40E4): their positions the spawners' registers.
+"geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
+"geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }
+# Wind's and Fan's controller (0x080E4AD4; its position the spawner's registers) and their fan (0x080D6488).
+"wind/controller" = { pool = "effect", index = 0x25, scratch_position = true }
+"wind/fan" = { pool = "attack", index = 0x48 }
+# CircGun's controller (0x080E8AFC; its position the spawner's registers), gun (0x080DE610) and shots (0x080DE888).
+"circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
+"circgun/gun" = { pool = "attack", index = 0x89 }
+"circgun/shot" = { pool = "attack", index = 0x8A }
