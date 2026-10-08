@@ -18,7 +18,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
-    action = drill.action(true),
+    action = drill.action { ticks = 60, arm_palette = 1, bugs = 0x1FA },
     auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 

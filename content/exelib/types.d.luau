@@ -290,10 +290,11 @@ export type RapidBusterLook = {
 -- navi absorbed (none: the game throws none), and the spread's muzzle flash (none: the shot's; EXE5's own, its
 -- attachment row 0x39).
 export type MegaManBusterLook = MegaManShotLook & {
-    throw_sound: Sound,
-    throw: ((me: Object) -> ())?,
     spread_flash: AttachmentLook?,
 }
+
+-- A buster setup's throw (@exelib/megaman/buster's `throw`): what flies instead of the shot (its sound, then it).
+export type MegaManBusterThrow = { run: (me: Object) -> () }
 
 -- What a spreader fires (@exelib/spreadr/action): its gun (EXE6's attachment rows 0x15 and 0x2F, by `dword_80ECC54`),
 -- the bullet's height (16.16, by `dword_80ECC5C`), and the bullet; its own bullet kind and shot sound (none: the
@@ -1447,16 +1448,14 @@ export type MeteorLook = {
 }
 
 -- How a game's drill is: its hit's spark, what the first and second are
--- and hit, what Param3 means ("light", EXE6's; or the bug a dark one's hit
--- carries, EXE5's), and whether its spawn keeps the user's element and the
--- second takes the first's running while dimmed (EXE6's do; EXE5's
--- 0x080D41C8 and 0x080D4100 don't).
+-- and hit, and whether its spawn keeps the user's element and the second
+-- takes the first's running while dimmed (EXE6's do; EXE5's 0x080D41C8 and
+-- 0x080D4100 don't).
 export type DrillLook = {
     spark: Spark,
     first: CollisionType,
     second: CollisionType,
     hits: CollisionType,
-    param3: "light" | { bug: number, bug_arg: number },
     keeps_element: boolean,
 }
 
@@ -1697,16 +1696,18 @@ export type NaviChipController = {
 }
 
 -- An element flame's state (@exelib/elemrage/flame): its count left (Param1, its low seven bits), the spread to the
--- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), its flags (Param4's low nibble: 1 runs while
--- dimmed; 4 paralyzes, hit modifier 1, its hit back 12 ticks after one; 8 its self type row 0x25) and the panel type
--- it leaves (the panel type Param4's high nibble names; none, or as its state holds it "none", leaves none); its
--- palette (EXE5's +0x0D, EXE4's +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
+-- rows beside (Param1's bit 7), its time (Param2), its X offset (Param3), Param4's flags: it paralyzes (bit 2: hit
+-- modifier 1, its hit back 12 ticks after one), its self type is the look's `attack_480` (bit 3: row 0x25, EXE4's
+-- ElemDark's), and the panel type it leaves (the panel type the high nibble names; none, or as its state holds it
+-- "none", leaves none). (Bit 0, which runs it while dimmed, no spawner sets.) Its palette (EXE5's +0x0D, EXE4's
+-- +0x0E), it has hit (+0x0C) and it has sent the next ones (EXE5's +0x60).
 export type ElemFlameState = {
     count: number,
     spread: boolean,
     ticks: number,
     offset: number,
-    flags: number,
+    paralyzes: boolean,
+    attack_480: boolean,
     leaves: PanelType?,
     palette: number,
     hit: boolean,
@@ -1728,7 +1729,7 @@ export type ElemFlameLook = {
 }
 
 -- A game's element flame kind and its spawn: a flame on (x, y) with its state, the element, height and damage word,
--- of `owner`'s side and facing, of no owner; running while dimmed with Param4's bit 0.
+-- of `owner`'s side and facing, of no owner.
 export type ElemFlame = {
     kind: Kind,
     spawn: (owner: Object, x: number, y: number, element: number, z: number, s: ElemFlameState, damage: number) -> Object?,
@@ -1918,3 +1919,7 @@ export type ShadeManSpec = {
 
 -- A game's ShadeMan kind, and what makes one just spawned his chip's: the controller he reports to, his palette.
 export type ShadeMan = { kind: Kind, summoned: (o: Object, controller: Object, palette: number) -> () }
+
+-- What BugFix's glow (@exelib/bugfix/glow) does first, its spawner's (`glow.start`): its first action, which sets
+-- action 4 when it is done.
+export type BugFixGlowStart = { run: (me: Object) -> () }
