@@ -712,6 +712,22 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
+-- A game's BugCurse (@exelib/bugcurse): its controller's and curse's kind ids, the curse's sheet and sound, what keeps
+-- it off the enemy navi, its bugs (code | argument << 8, one a tick), and EXE5's operation battle (the mode's test and
+-- its bugs).
+export type BugCurseLook = {
+    controller_id: string,
+    curse_id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    untouched: { StatusFlag },
+    bugs: { number },
+    operation_battle: (() -> boolean)?,
+    operation_bugs: { number }?,
+    is: CollisionType,
+    hits: CollisionType,
+}
+
 -- A game's Jealousy (@exelib/jealousy/controller): its controller kind's id; how many chips the other side holds
 -- (the controller asking); its hits' self type, target and spark; and EXE5's operation battle (the mode's test and the
 -- warning's sound).
