@@ -240,6 +240,7 @@ fn custom() -> CustomScreen {
         layout: CustomLayout {
             column_cells: 0x89,
             turn_limit: 0x8D,
+            turn_limit_palette: 9,
             name: 0x59,
             art: 0x69,
             code: 0xD5,

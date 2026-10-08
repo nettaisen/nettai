@@ -647,8 +647,9 @@ impl Round {
                 .ok_or_else(|| format!("EXE4's pack has no background {number:#04x}"))?,
         );
         // (EXE4's records have no effects word: the stage's own, with what a
-        // link battle's match adds, as a match sets a round up.)
-        let effects = content.stage(stage).effects | LINK_BATTLE_EFFECTS;
+        // link battle's match adds, as a match sets a round up; a single
+        // battle is no set.)
+        let effects = content.stage(stage).effects | LINK_BATTLE_EFFECTS & !if triple_battle(bs[0x0F]) { 0 } else { SET };
         let settings = nettai_battle::BattleSettings { stage, background, effects };
         if content.defs.rules().is_none() {
             return Err("the content has no rules (EXE4's)".into());
@@ -760,8 +761,17 @@ const LINK_DELAY: u8 = 4;
 /// 0's OK on 276, its bit received cleared on 281).
 const SCREEN_BIT_CLEARED: u32 = 1;
 /// The effects a link battle's match type adds to its stage's (as
-/// nettai-match's `MATCH_EFFECTS`).
+/// nettai-match's `MATCH_EFFECTS`: a triple battle's).
 const LINK_BATTLE_EFFECTS: u32 = 0x600;
+/// The set's bit of them, which a single battle hasn't.
+const SET: u32 = nettai_battle::setup::effects::SET;
+
+/// Whether the battle state's battle type (+0x0F) is a set's: a triple
+/// battle's 0x48, or 0x49 or 0x4A (the intro, 0x08007464, counts the round
+/// on in them; a single battle's 0x47 takes the settings record's).
+fn triple_battle(battle_type: u8) -> bool {
+    matches!(battle_type, 0x48..=0x4A)
+}
 
 /// A battle folder by EXE4's chips' handles.
 fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)>; 30], regular_pending: bool) -> Result<BattleFolder, String> {

@@ -598,14 +598,18 @@ impl Battle {
         }
     }
 
-    /// `sub_8027D78`: the gauge starts over (and runs, unless it is the
-    /// 15th screen or later).
+    /// `sub_8027D78` (EXE4's 0x0801E1B4): the gauge starts over and runs,
+    /// unless it is the 15th screen or later, where the routine returns
+    /// before its `sub_801DF92` (0x080159B0): the gauge keeps its value and
+    /// its full flag (EXE4's, which empties it here, keeps it full through
+    /// the last turns; EXE6's and EXE5's emptied it as the screen opened).
     pub(crate) fn restart_gauge(&mut self) {
+        if self.late_turns() {
+            return;
+        }
         self.gauge.value = 0;
         self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
-        if !self.late_turns() {
-            self.gauge.enabled = true;
-        }
+        self.gauge.enabled = true;
     }
 }
 
