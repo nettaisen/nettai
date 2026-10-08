@@ -1,21 +1,14 @@
 --!strict
 -- Rubble from Django's sun's landing (EXE5's effect object #0x84, 0x080EA000; EXE5's own): a piece that drops from
 -- where it is spawned, puffing as it starts, falling faster each tick (half a pixel more), then lying blinking for
--- 20 ticks.
+-- 20 ticks. (Its Param1 picks its look: Django's 0, animation 0 and the puff effect 2; the second, animation 1 and
+-- effect 1, no spawner asks for.)
 
 local rubble = {}
 
-export type State = {
-    -- Its Param1: the second look (animation 1, the puff's effect 1); Django's are 0.
-    second: boolean,
-}
-
 local SPRITE = asset.sprite("django-rubble")
--- The puffs it starts with: effects 2 and 1 (the small puff's animations 1 and 0).
-local PUFFS = {
-    [false] = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
-    [true] = new.effect { sprite = asset.sprite("small-puff"), anim = 0, palette = 0 },
-}
+-- The puff it starts with: effect 2 (the small puff's animation 1).
+local PUFF = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
 local GRAVITY = 0x8000
 
 -- Phase 0 (0x080EA074): falling; on the ground, 20 ticks.
@@ -53,16 +46,15 @@ local function tick(me: Object)
     end
 end
 
--- 0x080EA024: its look (animation 0 or 1, loaded with the sprite update), its shadow, and a puff where it is.
+-- 0x080EA024: its look (animation 0, loaded with the sprite update), its shadow, and a puff where it is.
 local function init(me: Object)
-    local s = me.state :: State
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite.shadow = "ground"
-    me.anim, me.anim_loaded = if s.second then 1 else 0, 0xFF
+    me.anim, me.anim_loaded = 0, 0xFF
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
-    battle.effect(me.pos, PUFFS[s.second], 0, 0, 0)
+    battle.effect(me.pos, PUFF, 0, 0, 0)
     me:set_lifecycle("update")
     tick(me)
 end
@@ -70,7 +62,6 @@ end
 rubble.kind = new.kind {
     id = "django/rubble",
     pool = "effect",
-    state = { second = "bool" },
     -- 0x080EA000.
     update = function(me: Object)
         local l = me.lifecycle
@@ -86,11 +77,10 @@ rubble.kind = new.kind {
 }
 
 -- 0x080EA0CA: a piece of `owner`'s at `pos`.
-function rubble.spawn(owner: Object, pos: Vec3, second: boolean): Object?
+function rubble.spawn(owner: Object, pos: Vec3): Object?
     local o = battle.spawn(rubble.kind, pos)
     if o then
         o.alliance, o.flip = owner.alliance, owner.flip
-        ;(o.state :: State).second = second
     end
     return o
 end

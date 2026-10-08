@@ -12,8 +12,7 @@ local yoyo = require("./yoyo/yoyo")
 local recipe_varswrd = require("./varswrd").varswrd
 local recipe_yoyo = require("./yoyo").yoyo
 
-local LEADER = yoyo.spec { mode = 1, panels = 4, rounds = 5 }
-local FOLLOWER = yoyo.spec { mode = 2, panels = 4, rounds = 5 }
+local SPEC = yoyo.spec { panels = 4, rounds = 5 }
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -38,7 +37,7 @@ local chip: Chip = {
         arm = yoyo.arm,
         attachment = attachment.kind,
         throw = function(me: Object, x: number, y: number, z: number, damage: number): Object?
-            return controller.spawn(me, x, y, z, damage, LEADER, FOLLOWER)
+            return controller.spawn(me, x, y, z, damage, SPEC)
         end,
     },
     auto_battle = { class = "into_reach", range = "all_ahead" },
