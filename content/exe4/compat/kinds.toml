@@ -37,6 +37,8 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# SandRing's ring (0x080DAFBC).
+"sandring/ring" = { pool = "attack", index = 0x6D }
 # CopyDmg's mark (0x080D1C24).
 "copydmg/mark" = { pool = "attack", index = 0x28 }
 # Tornado's and Static's tornado (0x080D3130).

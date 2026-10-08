@@ -651,7 +651,14 @@ export type ZSaverLook = {
     id: string?,
     swing_sound: Sound,
     command_sound: Sound,
-    attachment: Kind,
+    -- The blade's attachment kind in the overlay slot (EXE6's, EXE5's), or
+    -- how the navi holds it in its related slot instead (EXE4's `hold`).
+    attachment: Kind?,
+    hold: ((me: Object, blade: AttachmentLook, anim: number) -> ())?,
+    -- Each swing refreshes a form's overlay; the recovery clears the moving
+    -- flag and lets go of the overlay (EXE6's, EXE5's; not EXE4's).
+    refreshes_form_overlay: boolean,
+    recovery_clears_moving: boolean,
     blade: AttachmentLook,
     blade_anim: (me: Object) -> number,
     is: CollisionType,
