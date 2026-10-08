@@ -44,6 +44,10 @@
 "flmline1/action" = 0x22
 "flmline2/action" = 0x22
 "flmline3/action" = 0x22
+# The WideShts' (the chips' action 0x31, 0x080ED25C).
+"widesht1/action" = 0x31
+"widesht2/action" = 0x31
+"widesht3/action" = 0x31
 # The AirHocs' (the chips' action 0x27, 0x080ECEAE).
 "airhoc1/action" = 0x27
 "airhoc2/action" = 0x27
