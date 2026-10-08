@@ -192,8 +192,9 @@ pub struct EffectsRules {
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,
     /// Where that flash sits among the palette transforms a frame
-    /// applies, which a dimming's fade is one of. Presentation: the
-    /// renderer's (`Fade::Flash`); the simulation reads none of it.
+    /// applies, which a dimming's fade and a background's palette shift
+    /// are among. Presentation: the renderer's (`Stage::new`'s `flashed`);
+    /// the simulation reads none of it.
     pub palette_flash_order: PaletteFlashOrder,
     /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
     /// spawner) run while the battle is paused: EXE6's spawners set their
@@ -541,6 +542,10 @@ pub enum PaletteFlashOrder {
     /// two-layer one 9 and 10, 0x080E10D0), so a dimming darkens the white
     /// it put there with the rest: a flash under a dimming is white a
     /// quarter down (Blinder's, Colonel's, OmegaRkt's, LeadRaid's).
+    /// EXE4's takes slot 0 (0x080E2A34; its two-layer one 0 and 1,
+    /// 0x080E2AAC), before a background's palette shift too (slot 3,
+    /// darksoul's: SparkMan's flash shows its white shifted); EXE5's
+    /// backgrounds shift no palettes.
     BeforeFades,
     /// After the first record's: EXE6's takes slot 20 (`sub_80E10C0`; its
     /// two-layer one 20 and 21, `sub_80E114C`), so its white stands over a
