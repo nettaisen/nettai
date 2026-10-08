@@ -1309,6 +1309,10 @@ declare battle: {
     -- every console's emotion window, which then flickers (and draws its
     -- console's RNG1) for NaviCust bugs only.
     clear_emotion_window_glitch: () -> (),
+    -- EXE5's SearchSoul's status reset (0x08011C0C-0x08011C36): `side`'s
+    -- console's chip-icon table gets the opponent's navi (presentation: its
+    -- icons show over it; a status reset takes it out again).
+    show_opponent_chip_icons: (side: number) -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),

@@ -2962,6 +2962,10 @@ impl CoreApi for Battle {
         Battle::clear_emotion_window_glitch(self);
     }
 
+    fn show_opponent_chip_icons(&mut self, side: u8) {
+        self.chip_hud[side as usize & 1].opponent = true;
+    }
+
     fn navi_left(&mut self, controller: ObjectRef) {
         kinds::navi_left(self, controller);
     }

@@ -2156,6 +2156,10 @@ pub trait CoreApi {
     /// from every console's emotion window, which then flickers (and
     /// draws its console's RNG1) for NaviCust bugs only.
     fn clear_emotion_window_glitch(&mut self);
+    /// EXE5's SearchSoul's status reset (0x08011C0C-0x08011C36): `side`'s
+    /// console's chip-icon table gets the opponent's navi (presentation:
+    /// its icons show over it; a status reset takes it out again).
+    fn show_opponent_chip_icons(&mut self, side: u8);
     /// What controller `controller` brought is done: its kind's
     /// `navi_left`.
     fn navi_left(&mut self, controller: ObjectRef);

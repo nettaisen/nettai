@@ -93,6 +93,11 @@ pub struct Telop {
 pub struct ChipHud {
     pub icons: bool,
     pub window: bool,
+    /// The console's chip-icon table has the opponent's navi too (EXE5's
+    /// SearchSoul's status reset adds it in a link battle, 0x08011C0C; any
+    /// status reset takes it out again, 0x08011B20's part, EXE6's
+    /// `sub_80144C0`'s).
+    pub opponent: bool,
 }
 
 /// The HUD parts a chip's effect hides while it plays (`sub_801DACC`, and

@@ -570,10 +570,13 @@ pub fn draw<'a>(
     if !state.was_over {
         // In a netbattle the other player's navi has no icons: its entry is
         // taken out as it is set up (`sub_80172F0`), and again whenever the
-        // local navi's status is reset (`sub_80144C0`).
+        // local navi's status is reset (`sub_80144C0`), unless its form's
+        // reset puts it back (EXE5's SearchSoul, 0x08011C0C: the chip HUD's
+        // `opponent`).
         let link = b.setup.settings.effects & nettai_battle::setup::effects::LINK != 0;
+        let shows_opponent = b.chip_hud_for(local).opponent;
         for side in 0..2u8 {
-            if let Some(r) = b.player(side).filter(|_| side == local || !link) {
+            if let Some(r) = b.player(side).filter(|_| side == local || !link || shows_opponent) {
                 icon_parts(b, packs, r, &view, list, problems);
             }
         }
@@ -1017,8 +1020,18 @@ fn icon_parts<'a>(
     let hand = &b.hands[o.alliance as usize];
     let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten() else { return };
     // A chip's icon is its game's pack's image under the chip's key, in
-    // that HUD's icon palette.
-    let Some((tiles, icon_palette)) = crate::lookups::chip_icon(packs, &b.content, chip, problems) else { return };
+    // that HUD's icon palette; the other player's in a link battle outside
+    // battle mode 1, the hidden chip's (EXE5's 0x08018B48: its entries of
+    // the remote navi).
+    let link = b.setup.settings.effects & nettai_battle::setup::effects::LINK != 0;
+    let hidden = link && o.alliance != b.setup.local_side && b.round.mode_copy != 1;
+    let (tiles, icon_palette) = if hidden {
+        let hud = &packs.game(&b.content).hud;
+        (&hud.hidden_icon, &hud.icon_palette)
+    } else {
+        let Some(icon) = crate::lookups::chip_icon(packs, &b.content, chip, problems) else { return };
+        icon
+    };
     let p = project_hud((o.pos.x, o.pos.y, o.pos.z), view);
     if !on_screen(p) {
         return;
@@ -1042,7 +1055,7 @@ fn icon_parts<'a>(
     let count = o.chips_held.min(6) as i32;
     // (The other version's chip's icon is its own ROM's: the stack's reach
     // is a known difference.)
-    if crate::lookups::other_versions_icon(packs, b, chip) {
+    if !hidden && crate::lookups::other_versions_icon(packs, b, chip) {
         let back = 2 * (count - 1);
         let x = if a * f > 0 { x0 - back } else { x0 };
         problems.known(x, y0 - back, 16 + back, 16 + back, crate::lookups::OTHER_VERSIONS_ART);
