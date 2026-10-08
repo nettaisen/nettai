@@ -1605,6 +1605,8 @@ export type NaviCustProgramSpec = {
     exclusive: string?,
     anywhere: boolean?,
     effects: { NaviCustEffect }?,
+    -- EXE5's HubBatc: its own bug counts once more (0x0813F5A8).
+    counts_own_bug: boolean?,
 }
 export type NaviCustProgram = NaviCustProgramSpec
 

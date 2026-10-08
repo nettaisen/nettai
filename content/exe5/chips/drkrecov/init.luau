@@ -5,6 +5,12 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local heal = require("@exelib/recov/heal")
+local dark_costs = require("../lib/dark_costs")
+
+-- Its cost: the HP drain at 7.
+local DARK_COST = dark_costs.cost(function(stats: Navi)
+    stats.hp_drain = 7
+end)
 
 local chip: Chip = {
     codes = { "H", "*" },
@@ -19,6 +25,8 @@ local chip: Chip = {
     flags = { "dark" },
     slot_in_limit = 1,
     action = heal.action { hp = 1000, mood = 0 },
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = DARK_COST,
     auto_battle = { class = "at_once" },
 }
 

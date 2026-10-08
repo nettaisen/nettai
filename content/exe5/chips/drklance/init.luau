@@ -7,6 +7,7 @@ local collision = require("../rules/collision")
 local exe5_lance = require("./lance/lance")
 local lance = require("@exelib/lance")
 local sparks = require("../lib/sparks")
+local dark_costs = require("../lib/dark_costs")
 
 -- Its hit (0x080CF904's row 1): EXE5's row 0x25 against attacks, hit modifier 0x10, the wood spark, with bug 0x16
 -- (argument 2).
@@ -18,6 +19,11 @@ local HIT = lance.hit {
     bug = 0x16,
     bug_arg = 2,
 }
+
+-- Its cost: the hit status bug (2).
+local DARK_COST = dark_costs.cost(function(stats: Navi)
+    stats.hit_status = 2
+end)
 
 local chip: Chip = {
     codes = { "W" },
@@ -32,6 +38,8 @@ local chip: Chip = {
     flags = { "has_damage", "dark", "variable_damage" },
     slot_in_limit = 1,
     instant = lance.instant_of(exe5_lance.kind, 1, HIT),
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = DARK_COST,
     auto_battle = { class = "at_once" },
 }
 

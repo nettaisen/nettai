@@ -218,6 +218,13 @@ local rules: Rules = {
             -- place for it, its positioning class, and for the classes that read one its reach list (./auto_battle/data's,
             -- by name) or its spot test. A chip without it the AI can't play (its class past the table: the original
             -- crashes).
+            -- A dark chip's cost to its user (./light_dark, 0x0802C934's entry: a routine of 0x0802C974's,
+            -- lib/dark_costs), a capsule's mix into the chip it goes into (navis/megaman/forms/meddysoul/capsules,
+            -- 0x08023824: the hand's modifier bits), and a chip past the chip pack's list (./folder: its last chip
+            -- 0x13A; the BatCans).
+            dark_cost = "record:exe5-dark-cost",
+            capsule_mix = "u8",
+            past_the_pack = "bool",
             auto_battle = {
                 class = {
                     "into_reach", "to_front", "spot_test", "landing_ahead", "behind_target", "three_ahead_near_enemy",
@@ -251,8 +258,9 @@ local rules: Rules = {
             steps_behind = "bool",
             var_sword_waits = "bool",
             emerge_shake = "bool",
-            -- A soul's Chaos Unison: the weapon its charge fires, and its own row of the cycle (./souls/chaos_charge).
-            chaos = { weapon = "weapon", cycle = "u8" },
+            -- A soul's Chaos Unison: the weapon its charge fires, and its own cycle (./souls/chaos_charge: the period,
+            -- then the windows' bounds; none, the chaos level's row).
+            chaos = { weapon = "weapon", cycle = "u8[4]" },
         },
     },
     -- Its own actions, which reach its state: a soul's change and revert (./souls), Dark MegaMan's leave
