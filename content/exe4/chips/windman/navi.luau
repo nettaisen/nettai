@@ -1,7 +1,7 @@
 --!strict
 -- WindMan, the navi of EXE4's WindMan chips (EXE4's actor object #0x34, 0x080C3DA8: EXE4's own, on EXE6's navi
 -- template), and each chip's controller, which brings him (effect object #0x46, 0x080E6E68: lib/navi_chips' long
--- course with a wait of 61 ticks). He appears with the plume on his head (EXE4's actor #0x5C, @exelib/numbrman/face's
+-- course with a wait of 61 ticks). He appears with the swirl on his head (EXE4's actor #0x5C, @exelib/numbrman/face's
 -- object, its sprite row 2) and stands 20 ticks; then, three times, 11 ticks and a blow (animation 16, 16 ticks)
 -- that sends a tornado (./tornado) from the panel ahead 5 ticks in; 11 ticks on, he goes.
 
@@ -15,19 +15,19 @@ type State = {
     controller: Object?,
     -- His chip's palette.
     palette: number,
-    -- The plume on his head (+0x60).
-    plume: Object?,
+    -- The swirl on his head (+0x60).
+    swirl: Object?,
 }
 
 local SPRITE = asset.sprite("windman")
 local SOUND_APPEAR = asset.sound("appear")
 
--- The plume on his head (actor #0x5C's sprite row 2, 10-28; its Param2 1: with the fight on, it follows him from its
+-- The swirl on his head (actor #0x5C's sprite row 2, 10-28; its Param2 1: with the fight on, it follows him from its
 -- first update). (Row 2's follow sets its animation 1 while the object at its owner's +0x64 has Param1 0: WindMan
 -- never sets one, so it stays at 0, as rows 0 and 1 keep theirs.)
-local PLUME = require("@exelib/numbrman/face").make {
-    id = "windman/plume",
-    sprite = asset.sprite("windman-plume"),
+local SWIRL = require("@exelib/numbrman/face").make {
+    id = "windman/swirl",
+    sprite = asset.sprite("windman-swirl"),
     follows_in_fight = true,
 }
 
@@ -101,16 +101,16 @@ local function attack(me: Object)
     end
 end
 
--- Action 0xC (0x080C3F60): animation 4; 4 ticks; then his plume goes, the controller moves on, and he goes.
+-- Action 0xC (0x080C3F60): animation 4; 4 ticks; then his swirl goes, the controller moves on, and he goes.
 local function leave(me: Object)
     if me.phase_init == 0 then
         me.anim = 4
     end
     if countdown(me, 3, true) then
         local s = me.state :: State
-        local plume = s.plume
-        if plume then
-            plume:set_lifecycle("destroy")
+        local swirl = s.swirl
+        if swirl then
+            swirl:set_lifecycle("destroy")
         end
         if s.controller then
             navi_chip.navi_left(s.controller :: Object)
@@ -123,7 +123,7 @@ end
 local ACTIONS: { [number]: (Object) -> () } = { [APPEAR] = appear, [STAND] = stand, [ATTACK] = attack, [LEAVE] = leave }
 
 -- 0x080C3DCC: his sprite (08-03) with his shadow, his chip's palette, facing his side's way, on his panel, on the
--- ground; the plume on his head. (The original stores 0xFF in his animation where it meant its copy, and loads that
+-- ground; the swirl on his head. (The original stores 0xFF in his animation where it meant its copy, and loads that
 -- animation: nothing until his first action sets one.)
 local function init(me: Object)
     local s = me.state :: State
@@ -137,14 +137,14 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
-    s.plume = PLUME.spawn(me)
+    s.swirl = SWIRL.spawn(me)
     me:set_lifecycle("update")
 end
 
 windman.kind = new.kind {
     id = "windman/navi",
     pool = "actor",
-    state = { controller = "object", palette = "u8", plume = "object" },
+    state = { controller = "object", palette = "u8", swirl = "object" },
     -- 0x080C3DA8: by his state, then his sprite, while dimmed too.
     update = function(me: Object)
         local l = me.lifecycle

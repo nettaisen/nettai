@@ -10,8 +10,8 @@
 -- reads 0, and ends at once unseen.
 --
 -- Its third parameter is 1 from a stage (0x080E6932), whose wind waits on its side's registered one and leaves the
--- registry alone; the navis' AI wind (0x080E68F8, from callers not ported) has 0, registers itself as its side's wind,
--- and its end clears that.
+-- registry alone; a navi's (0x080E68F8: WindSoul's status reset's) has 0, registers itself as its side's wind, and its
+-- end clears that.
 
 local gust = require("./gust")
 local panels = require("@exelib/panels")
@@ -154,5 +154,24 @@ wind.kind = new.kind {
         return o
     end,
 }
+
+-- 0x080E68F8: a navi's wind (WindSoul's, 0x0800E108): none while its side's wind is an obstacle's (a Fan's); else of
+-- the navi's side, its first parameter 1 (it pulls, seen), not running while dimmed (its header flag 0x10 cleared),
+-- registered as its side's wind, a navi's. (Its position is the spawner's registers.)
+function wind.navi(navi: Object): Object?
+    local held, source = battle.wind(navi.alliance)
+    if held ~= nil and source == "obstacle" then
+        return nil
+    end
+    local o = battle.spawn(wind.kind, Vec3.zero)
+    if not o then
+        return nil
+    end
+    o.alliance = navi.alliance
+    o.run_while_dimmed = false
+    state(o).pulls = true
+    battle.set_wind(o, navi.alliance, "navi")
+    return o
+end
 
 return wind

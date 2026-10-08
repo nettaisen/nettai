@@ -1,12 +1,12 @@
 --!strict
 -- NumberMan's face, as EXE5 and EXE4 share it (actor object #0x5C: EXE5's 0x080C412E, EXE4's 0x080CCC9C; their own,
 -- the same code but for its start; NumberMan's, its spawner's Param0 0 and Param2 1, and EXE4's AquaMan's spout and
--- WindMan's plume, Param0 1 and 2 (its sprite rows 1 and 2) and Param2 1): a second sprite on him, following his
+-- WindMan's swirl, Param0 1 and 2 (its sprite rows 1 and 2) and Param2 1): a second sprite on him, following his
 -- position, visibility, color shader, alpha and palette. Once it follows, it is drawn while he stands (his animation
 -- 0), restarting its animation each time he comes back to it, and hidden otherwise. He lets it go when he leaves.
 -- (Param0 2 and 3 follow by 0x080CCEF4 (0x080CCEBC's table): the same, but setting its animation each tick, 1 while
 -- the object at the word its +0x60 points at has Param1 0, else 0; WindMan points it at his +0x64, which he never
--- sets, so his plume's stays 0, as rows 0 and 1 keep theirs.)
+-- sets, so his swirl's stays 0, as rows 0 and 1 keep theirs.)
 --
 -- Its start: EXE5's waits for every navi to be in, running while paused till then, and moves on to its follow (its
 -- action 4) at its next update. EXE4's (0x080CCD0A) waits so only with the fight off; with the fight on, as a navi

@@ -1033,8 +1033,9 @@ fn reset_abilities(b: &mut Battle, r: ObjectRef) {
     clear_invulnerable(b, r);
     // sub_80E5410: the linked object's state word becomes 8 (it frees
     // itself at its next update) and its first extra variable 0, and the
-    // link goes. (No kind is known to link itself here, so the extra
-    // variable, which would be that kind's own state, has no field.)
+    // link goes. (EXE4's WindSoul's wind links itself here; its first
+    // extra variable, its gusts' slots, its own end empties as it runs, the
+    // first of what reads them: so that variable has no field.)
     if let Some(o) = ai_mut(b, r).reset_linked_object.take() {
         crate::kinds::common::set_progress(b, o, crate::kinds::common::Progress::DESTROY);
     }

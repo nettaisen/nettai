@@ -651,7 +651,14 @@ export type ZSaverLook = {
     id: string?,
     swing_sound: Sound,
     command_sound: Sound,
-    attachment: Kind,
+    -- The blade's attachment kind in the overlay slot (EXE6's, EXE5's), or
+    -- how the navi holds it in its related slot instead (EXE4's `hold`).
+    attachment: Kind?,
+    hold: ((me: Object, blade: AttachmentLook, anim: number) -> ())?,
+    -- Each swing refreshes a form's overlay; the recovery clears the moving
+    -- flag and lets go of the overlay (EXE6's, EXE5's; not EXE4's).
+    refreshes_form_overlay: boolean,
+    recovery_clears_moving: boolean,
     blade: AttachmentLook,
     blade_anim: (me: Object) -> number,
     is: CollisionType,
@@ -1739,7 +1746,9 @@ export type NaviChip = {
 -- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
 -- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
 -- after the navi), the controller's state, and what a game's `make` hands back.
-export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
+-- A navi chip controller's step: a wait (the user warping out or back in as it starts, a sound then: EXE4's GutPnch's
+-- warp back, 0x080E91BC), or the navi.
+export type NaviChipStep = { wait: number, warp: ("out" | "in")?, sound: Sound? } | "navi"
 export type NaviChipShortCourse = { out: number, after: number }
 export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean }
 export type NaviChipController = {
