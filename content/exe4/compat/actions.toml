@@ -56,6 +56,10 @@
 "magbolt1/action" = 0x59
 "magbolt2/action" = 0x59
 "magbolt3/action" = 0x59
+# CopyDmg's (the chips' action 0x2B, 0x080ED1D2).
+"copydmg/action" = 0x2B
+# WindRack's (the chips' action 0x32, 0x080ED330).
+"windrack/action" = 0x32
 # Slasher's (the chips' action 0x35, 0x080ED572).
 "slasher/action" = 0x35
 # The TwnFngs' (the chips' action 0x34, 0x080ED4C6).

@@ -210,6 +210,7 @@ standard = [
     "longblde",
     "custswrd",
     "slasher",
+    "windrack",
     "airhoc1",
     "airhoc2",
     "airhoc3",
@@ -268,6 +269,7 @@ standard = [
     "antiswrd",
     "antinavi",
     "antirecv",
+    "copydmg",
     "atk-10",
     "navi-20",
 ]

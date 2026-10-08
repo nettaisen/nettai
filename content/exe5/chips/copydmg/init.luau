@@ -20,6 +20,8 @@ local mark = common_mark.make {
     sound = asset.sound("mark"),
     is = collision.attack,
     hits = collision.hits_navis,
+    ticks = 180,
+    over_navi = "attach_point",
     reload_anim = true,
     own_gauges_hit = { spark = sparks.plain, is = collision.attack, hits = collision.hits_navis },
 }
