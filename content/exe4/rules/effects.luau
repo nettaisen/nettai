@@ -99,7 +99,7 @@ return {
     -- is a type set like any other (0x080EB264).
     panel_trail = "always",
     -- The status visual (effect 6, 0x080E22C8) sits at its navi's identity's `status_mark` from its position (the actor
-    -- record's +6 toward the enemy side and +7 up, 0x08011878), shown anywhere.
+    -- record's +6 toward the enemy side and +7 up, 0x08011878), shown anywhere; a weakness hit's mark too (0x080133E8).
     status_visual = { place = "status_mark" },
     -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
     -- not in update order: of two parts in one depth bucket the higher slot's is in front.

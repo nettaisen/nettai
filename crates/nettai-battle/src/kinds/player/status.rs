@@ -260,10 +260,23 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
 
 // ---- Damage ---------------------------------------------------------------------
 
-/// Spawn the weakness / bug "!" marker (`sub_80E8124`, effect #0x6B) at
-/// the navi's attach point 5.
+/// Spawn the weakness / bug "!" marker (`sub_80E8124`, effect #0x6B)
+/// where the status visual sits (the rule `effects.status_visual.place`):
+/// the navi's attach point 5 (EXE6's, EXE5's), or its identity's
+/// `status_mark`, x toward the enemy (EXE4's 0x080133E8: its actor
+/// record's +6 and +7 by the navi's enemy direction).
 fn spawn_marker(b: &mut Battle, r: ObjectRef, mark: crate::kinds::hit_marker::Mark) {
-    let (dx, dy) = attach_point(b, r, 5);
+    let (dx, dy) = match b.game_rules().effects.status_visual.place {
+        crate::content::StatusVisualPlace::AttachPoint => attach_point(b, r, 5),
+        crate::content::StatusVisualPlace::StatusMark => {
+            let o = b.objects.get(r);
+            let Some((x, z)) = b.content.identity(o.identity).status_mark else {
+                panic!("identity {:?} has no `status_mark`, where its hit marker sits (0x080133E8)", b.content.identity(o.identity).key)
+            };
+            let toward = if o.alliance == 0 { 1 } else { -1 };
+            (x as i32 * toward, z as i32)
+        }
+    };
     let offset = Vec3 { x: dx << 16, y: 0, z: dy << 16 };
     crate::kinds::hit_marker::spawn(b, r, offset, mark);
 }
