@@ -1068,6 +1068,23 @@ pub struct BarrierTick {
     pub stops_while_paused: bool,
     /// What wind does to it.
     pub wind: BarrierWind,
+    /// A `regrowing` barrier (EXE4's type 4): worn down, it stays up with
+    /// no HP, letting hits through, and after this many ticks (counted
+    /// while not dimmed) it is back with this much HP; wind leaves it be
+    /// meanwhile, and it never times out (EXE4's 0x08012E44: 180 ticks,
+    /// 150 HP). None in a game that has none.
+    #[serde(default)]
+    pub regrowing: Option<BarrierRegrowth>,
+}
+
+/// How a regrowing barrier comes back (`BarrierTick::regrowing`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BarrierRegrowth {
+    /// The ticks it is down.
+    pub after: u16,
+    /// Its HP when back.
+    pub hp: u8,
 }
 
 /// What wind (the raw elements' 0x20) does to a barrier.
