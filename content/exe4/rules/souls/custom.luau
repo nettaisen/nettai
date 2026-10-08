@@ -24,14 +24,14 @@ type State = {
 }
 
 -- What the player's save brings (rules/init.luau declares it): Double Soul (event flag 0x14) and the souls the save
--- has (the version's soul flags, 0x08020018's by soul).
+-- has (its soul flags, 0x08020018's by soul).
 type Setup = {
     double_soul: boolean,
     souls: { FormDef? },
 }
 
--- The setup's souls' places (./init's `form[6]`).
-local SOUL_PLACES = 6
+-- The setup's souls' places (./init's `form[12]`).
+local SOUL_PLACES = 12
 -- The soul's choice's fades' speed (`SetScreenFade(m, 32)`).
 local FADE_SPEED = 32
 -- A on the button with a soul on offer: OK's sound (0x080207EC[0]).

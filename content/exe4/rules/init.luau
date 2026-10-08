@@ -67,22 +67,34 @@ local rules: Rules = {
         -- How long the save took to delete each SP navi (./sp_chips: a battle's copy at 0x02037C80), by its SP chip,
         -- in frames; one not stated, deleted in no time.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 22),
-        -- The game's version: the souls it can have (./souls). No default: a side states it, or the round doesn't
-        -- start. The versions come in the original's order (Red Sun, then Blue Moon), which tools go by.
-        version = { "redsun", "bluemoon" },
-        -- The souls the save has (./souls/custom), of its version's six (a save's soul flags, 0x08020018's by soul:
-        -- Red Sun's event flags 0x17 to 0x1C, Blue Moon's 0x1D to 0x22), which a boundary writes as the list of them;
-        -- the engine's form list. A side that leaves them out has none. And Double Soul (event flag 0x14): without it
-        -- the custom screen has no UNITE button.
-        souls = schema.role("form_list", "form[6]"),
+        -- The souls the save has (./souls/custom), which the UNITE button may offer: a save's are its version's that
+        -- it has (the soul flags, 0x08020018's by soul: a boundary's, which writes them as the list of them; the
+        -- app's presets name each version's six). And Double Soul (event flag 0x14): without it the custom screen has
+        -- no UNITE button.
+        souls = "form[12]",
         double_soul = "bool",
     },
     -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
-    -- the starting mood 0x99); Double Soul (a finished game's save).
+    -- the starting mood 0x99); Double Soul and every soul (by id: a form's module reads ./souls, so this names them
+    -- rather than reads theirs).
     setup_defaults = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
         karma = 500,
+        souls = {
+            "rollsoul",
+            "gutssoul",
+            "windsoul",
+            "searchsoul",
+            "firesoul",
+            "thundersoul",
+            "protosoul",
+            "numbersoul",
+            "metalsoul",
+            "junksoul",
+            "aquasoul",
+            "woodsoul",
+        },
         double_soul = true,
     },
     state = state,

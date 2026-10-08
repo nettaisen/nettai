@@ -138,6 +138,10 @@ language = "ja"
 "antidmg" = { name = "カワリミ", description = "てきにワナをはる\n攻撃にあたると\nしゅりけん攻撃!" }
 "antiswrd" = { name = "シラハドリ", description = "てきにワナをはる\nソード攻撃をうけ\nながしてはんげき!" }
 "antirecv" = { name = "バッドメディスン", description = "てきにワナをはる\nてきのリカバリーが\nぎゃくにダメージに" }
+"heatbrth" = { name = "ヒートブレス", description = "ほうしゃじょうに\nかえん攻撃!\nパネルをマグマに" }
+"blizzard" = { name = "ブリザード", description = "ほうしゃじょうに\nふぶき攻撃!\nパネルをこおりに" }
+"elecshok" = { name = "エレキショック", description = "ほうしゃじょうに\nほうでん攻撃!\nパネルをヒビに" }
+"woodpwdr" = { name = "ウッディパウダー", description = "ほうしゃじょうに\nほうし攻撃!\nパネルをくさむらに" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
@@ -258,6 +262,10 @@ language = "ja"
 "048-weapon-change" = { name = "ウェポンチェンジ" }
 "049-buster-attack-15" = { name = "バスター攻撃力15" }
 "050-gigafolder1" = { name = "ギガフォルダ1" }
+"053-charge-shot-switch" = { name = "チャージ武器を変更" }
+"054-charge-shot-switch" = { name = "チャージ武器を変更" }
+"055-charge-shot-switch" = { name = "チャージ武器を変更" }
+"056-charge-shot-switch" = { name = "チャージ武器を変更" }
 "058-charge-shot-switch" = { name = "チャージ武器を変更" }
 "059-megaman-color-change" = { name = "ロックマンカラーを変更" }
 "060-megaman-color-change" = { name = "ロックマンカラーを変更" }
