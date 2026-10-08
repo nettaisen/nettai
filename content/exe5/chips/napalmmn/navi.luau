@@ -12,8 +12,8 @@ local navi_chips = require("@exelib/navi_chips/navi")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's 0x0800DA8A: navi 4's count, 3, by 0x0800DAE8's row, by the chip's level).
+    palette: number,
 }
 
 local napalmman = {}
@@ -29,8 +29,6 @@ local CANNON = new.identity {
         body = { sprite = asset.sprite("napalm-cannon"), anims = 23, behind = { { 20, 22 } } },
     },
 }
--- By the level (0x0800DA8A: navi 4's count, 3, by 0x0800DAE8's row): SP's 6, DS's 9.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 6, 9 }
 -- His bomb: how far ahead it lands (columns), and where it starts (16.16, ahead and up).
 local REACH = 4
 local MUZZLE_X, MUZZLE_Z = 0x8_0000, 0x38_0000
@@ -157,7 +155,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = attack, [8] = sink }
 
--- 0x080BB130: his sprite (animation 3, his shadow), shown, his palette by the level, facing his side's way; his
+-- 0x080BB130: his sprite (animation 3, his shadow), shown, his chip's palette, facing his side's way; his
 -- cannon on; on his panel, on the ground; a sound.
 local function init(me: Object)
     local s = me.state :: State
@@ -167,7 +165,7 @@ local function init(me: Object)
     me.visible = true
     me.anim, me.anim_loaded = 3, 3
     sprite:set_animation(3)
-    sprite.palette = PALETTES[s.level] or 0
+    sprite.palette = s.palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:add_parts(CANNON, 1)
     me:set_coordinates_from_panel()
@@ -180,7 +178,7 @@ end
 napalmman.kind = new.kind {
     id = "napalmmn/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8" },
+    state = { controller = "object", palette = "u8" },
     -- 0x080BB10C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -199,8 +197,8 @@ napalmman.kind = new.kind {
     end,
 }
 
--- 0x080BB324: NapalmMan for `user`, reporting to `controller` (the summon table's entry 7), of a chip of `level`.
-function napalmman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BB324: NapalmMan for `user`, reporting to `controller` (the summon table's entry 7), in his chip's `palette`.
+function napalmman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(napalmman.kind, user, spec)
         if not o then
@@ -208,14 +206,10 @@ function napalmman.summon_at(level: number): (user: Object, controller: Object, 
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- NapalmMan's (his Param1 0), NapalmManSP's (3), NapalmManDS's (4).
-napalmman.summon = napalmman.summon_at(0)
-napalmman.summon_sp = napalmman.summon_at(3)
-napalmman.summon_dark = napalmman.summon_at(4)
 
 return napalmman

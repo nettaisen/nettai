@@ -18,6 +18,11 @@ local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
+-- The layers' sprites (./layer's rows, 0x080C32C0): NumberMan's face on his image (row 0), MegaMan's in NumberSoul
+-- (row 1).
+local NUMBERMAN_FACE = asset.sprite("numberman-face")
+local NUMBERSOUL_FACE = asset.sprite("numbersoul-face")
+
 
 local form: FormDef = {
     soul = { family = "plus" },
@@ -28,7 +33,7 @@ local form: FormDef = {
     image = soul_image.look {
         sprite = asset.sprite("numberman"),
         put_on = function(image: Object)
-            image.related2 = layer.spawn(image, layer.numberman_face)
+            image.related2 = layer.spawn(image, NUMBERMAN_FACE)
         end,
         take_off = function(image: Object)
             layer.take_off(image.related2)
@@ -52,7 +57,7 @@ local form: FormDef = {
     -- His put-on and take-off routines (0x0800F038's and 0x0800F09C's row 9): his layer, in his second related slot
     -- (0x0800F07C); taken off (0x0800F0DE).
     put_on = function(navi: Object)
-        navi.related2 = layer.spawn(navi, layer.numbersoul_face)
+        navi.related2 = layer.spawn(navi, NUMBERSOUL_FACE)
     end,
     take_off = function(navi: Object)
         layer.take_off(navi.related2)

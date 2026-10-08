@@ -19,8 +19,9 @@ local bomb = require("./bomb")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's by the chip's level, its Param1: 0x0800DA8A, navi 2's count, 1, by
+    -- 0x0800DAE8's row).
+    palette: number,
     -- L and R were held as he took off (+5): the bombing run.
     run: boolean,
     -- The bombs left to drop on his run (+6).
@@ -49,8 +50,6 @@ local PROPELLER = new.identity {
         },
     },
 }
--- By the level (0x0800DA8A: navi 2's count, 1, by 0x0800DAE8's row): SP's 2, DS's 3.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 2, 3 }
 -- An enemy panel, by side (the panel flag 0x20, set or clear: 0x080BACEC, 0x080BAEE4).
 local ENEMY_AREA = { [0] = 0x20, 0 }
 -- A panel holding an enemy navi's body, by side (0x080BAD74).
@@ -279,13 +278,13 @@ local ACTIONS = {
     [0x18] = leave,
 }
 
--- 0x080BAAA4: on his panel, on the ground; his sprite (animation 0, his shadow), his palette by the level, facing
+-- 0x080BAAA4: on his panel, on the ground; his sprite (animation 0, his shadow), his chip's palette, facing
 -- his side's way; his propeller on (its sprite stepping even while paused, but Airforce's). Airforce's flight
 -- starts at the take-off.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
     local s = me.state :: State
-    me.sprite.palette = PALETTES[s.level] or 0
+    me.sprite.palette = s.palette
     me:add_parts(PROPELLER, if s.airforce then 0 else 1)
     s.run, s.bombs = false, 0
     me:set_lifecycle("update")
@@ -297,7 +296,7 @@ end
 gyroman.kind = new.kind {
     id = "gyroman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8", run = "bool", bombs = "u8", airforce = "bool" },
+    state = { controller = "object", palette = "u8", run = "bool", bombs = "u8", airforce = "bool" },
     -- 0x080BAA80.
     update = function(me: Object)
         local l = me.lifecycle
@@ -319,8 +318,8 @@ gyroman.kind = new.kind {
     end,
 }
 
--- 0x080BAE60: GyroMan for `user`, reporting to `controller` (the summon table's entry 6), of a chip of `level`.
-function gyroman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BAE60: GyroMan for `user`, reporting to `controller` (the summon table's entry 6), in his chip's `palette`.
+function gyroman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(gyroman.kind, user, spec)
         if not o then
@@ -328,20 +327,20 @@ function gyroman.summon_at(level: number): (user: Object, controller: Object, sp
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
 -- 0x080BAE8A: GyroMan the navi's flight for `user` (himself), along row `y` from column `x`, with the element and
--- the damage word: the same object with its fourth parameter 1, its first his user's (a player's: 0), and no
--- controller.
+-- the damage word: the same object with its fourth parameter 1, its first his user's (a player's: 0, palette 0),
+-- and no controller.
 function gyroman.fly(user: Object, x: number, y: number, element: number, damage: number): Object?
     local o = battle.spawn(gyroman.kind, Vec3.new(y, element, 0))
     if o then
         local s = o.state :: State
         s.airforce = true
-        s.level = 0
+        s.palette = 0
         o.panel_x, o.panel_y = x, y
         o.element = element
         o.related1 = user
@@ -351,9 +350,5 @@ function gyroman.fly(user: Object, x: number, y: number, element: number, damage
     return o
 end
 
--- GyroMan's (his Param1 0), GyroManSP's (3), GyroManDS's (4).
-gyroman.summon = gyroman.summon_at(0)
-gyroman.summon_sp = gyroman.summon_at(3)
-gyroman.summon_dark = gyroman.summon_at(4)
 
 return gyroman

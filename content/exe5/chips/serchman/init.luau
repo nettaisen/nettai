@@ -23,7 +23,7 @@ local serchman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "serchman/controller",
-        summon = navi.summon,
+        summon = navi.summon { palette = 0, sweep = 6 },
     },
     auto_battle = { class = "at_once" },
 }
@@ -47,7 +47,7 @@ local serchmn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "serchmn-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon { palette = 2, sweep = 4 },
     },
     auto_battle = { class = "at_once" },
 }
@@ -70,7 +70,7 @@ local serchmn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "serchmn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon { palette = 3, sweep = 4 },
     },
     auto_battle = { class = "at_once" },
 }

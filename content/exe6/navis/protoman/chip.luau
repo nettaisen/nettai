@@ -6,6 +6,9 @@ local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")
 local slash = require("../../lib/swords/slash")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local chip: Chip = {
     codes = { "B" },
     element = "null",
@@ -20,10 +23,10 @@ local chip: Chip = {
     slot_in_limit = 1,
     action = slash.action {
         id = "stepswrd-protoman/action",
-        blade = parts.blades.sword,
+        blade = parts.blade,
         hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 3 },
-        effect = parts.effects.wide,
-        sound = parts.sounds.swing,
+        effect = WIDE_SLASH,
+        sound = parts.swing,
         step = true,
     },
 }

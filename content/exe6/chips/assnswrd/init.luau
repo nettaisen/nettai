@@ -11,7 +11,7 @@ local chip: Chip = {
     rarity = 2, mb = 50, damage = 240, hit_param = 30, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = strike.action { blade = parts.blades.sword, finds = "either", effect_palette = 9 },
+    action = strike.action { blade = parts.blade, finds = "either", effect_palette = 9 },
 }
 
 return { assnswrd = chip }

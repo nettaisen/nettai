@@ -21,11 +21,18 @@ local panels = require("../panels")
 local regions = require("../regions")
 local slot = require("../slot")
 
--- What a chip summons her with (the chips' first parameter picks them): her whip's rounds of three hits (1; 3 for
--- the parameter 5, which no chip has) and her palette (EXE6's Roll3's, EXE5's RollDS's is 1); EXE5's: the parameter
--- (the chip's level: 0, 3 for SP, 4 for DS), which its additions read, and what her ribbon's palette adds (RollDS's
--- 1); EXE4's: what her heart adds to her side's mood (its spec's `heart_dropped` reads it).
-export type Summon = { rounds: number, palette: number, level: number?, ribbon_palette: number?, mood: number? }
+-- What a chip summons her with (what the original reads by the chips' first parameter, their level): her whip's
+-- rounds of three hits (1; 3 for the parameter 5, which no chip has) and her palette (EXE6's Roll3's, EXE5's RollDS's
+-- is 1); EXE5's: what her ribbon's palette adds (RollDS's 1) and the panel change she makes as she appears (RollSP's,
+-- its spec's `appeared` reads it); EXE5's and EXE4's: what her heart adds to her side's mood (its spec's
+-- `heart_dropped` reads it).
+export type Summon = {
+    rounds: number,
+    palette: number,
+    ribbon_palette: number?,
+    appear_change: PanelChange?,
+    mood: number?,
+}
 
 export type Spec = {
     -- The kind's id.
@@ -102,10 +109,10 @@ export type State = {
     controller: Object?,
     -- Her ribbon (ExtraVars[3], the attachment's slot).
     held: Object?,
-    -- EXE5's: her chip's level (Param1) and what her ribbon's palette adds.
-    level: number,
+    -- EXE5's: what her ribbon's palette adds, and the panel change she makes as she appears (her chip's).
     ribbon_palette: number,
-    -- EXE4's: what her heart adds to her side's mood (her chip's).
+    appear_change: PanelChange?,
+    -- EXE5's and EXE4's: what her heart adds to her side's mood (her chip's).
     mood: number,
 }
 
@@ -578,8 +585,8 @@ function roll.make(spec: Spec): Roll
             palette = "u8",
             target_x = "u8",
             target_y = "u8",
-            level = "u8",
             ribbon_palette = "u8",
+            appear_change = "record:panel-change",
             mood = "u8",
         },
         -- `sub_80C07BC`.
@@ -620,8 +627,8 @@ function roll.make(spec: Spec): Roll
             s.controller = controller
             s.whip_rounds = args.rounds
             s.palette = args.palette
-            s.level = args.level or 0
             s.ribbon_palette = args.ribbon_palette or 0
+            s.appear_change = args.appear_change
             s.mood = args.mood or 0
             return o
         end

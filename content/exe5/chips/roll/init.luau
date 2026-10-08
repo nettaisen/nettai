@@ -4,6 +4,18 @@
 
 local navi = require("@self/navi")
 local navi_chips = require("../lib/navi_chips/chip")
+local panel_changer = require("../objects/panel_changer")
+
+-- RollSP's change as Roll appears: its side's holy panels Normal (EXE5's `byte_80E272C` row 14, 0x080E2A04: all
+-- panels, flickering, 30 ticks, no tick sound).
+local HOLY_TO_NORMAL = panel_changer.change {
+    panel = "normal",
+    panels = "all",
+    flicker = true,
+    ticks = 0x1E,
+    sides = { [0] = { require = 0x2000, forbid = 0x8020 }, [1] = { require = 0x2020, forbid = 0x8000 } },
+    change_sound = asset.sound("panel-change"),
+}
 
 -- Roll (EXE5 chip 0x0dd): Roll whips the enemy navi ahead and heals her user with a heart (./navi).
 local roll: Chip = {
@@ -22,7 +34,7 @@ local roll: Chip = {
     -- (AntiRecv springs on her heal; she brings her user back herself.)
     navi = navi_chips.make {
         id = "roll/controller",
-        summon = navi.summon { rounds = 1, palette = 0, level = 0 },
+        summon = navi.summon { rounds = 1, palette = 0, mood = 50 },
         course = navi_chips.USER_RETURNED,
         heals = true,
     },
@@ -47,7 +59,7 @@ local roll_sp: Chip = {
     -- (AntiRecv springs on her heal; she brings her user back herself.)
     navi = navi_chips.make {
         id = "roll-sp/controller",
-        summon = navi.summon { rounds = 1, palette = 0, level = 3 },
+        summon = navi.summon { rounds = 1, palette = 0, mood = 50, appear_change = HOLY_TO_NORMAL },
         course = navi_chips.USER_RETURNED,
         heals = true,
     },
@@ -72,7 +84,7 @@ local roll_ds: Chip = {
     -- (AntiRecv springs on her heal; she brings her user back herself.)
     navi = navi_chips.make {
         id = "roll-ds/controller",
-        summon = navi.summon { rounds = 1, palette = 1, level = 4, ribbon_palette = 1 },
+        summon = navi.summon { rounds = 1, palette = 1, mood = 50, ribbon_palette = 1 },
         course = navi_chips.USER_RETURNED,
         heals = true,
     },

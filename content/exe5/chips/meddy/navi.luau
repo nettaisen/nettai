@@ -14,8 +14,8 @@ local panels = require("@exelib/panels")
 export type State = {
     -- The controller waiting for her (the flag it gave her, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 4 for DS), which picks her palette.
-    level: number,
+    -- Her chip's palette (the original's 0x0800DA8A: navi 6's count, 2, by 0x0800DAE8's row, by the chip's level).
+    palette: number,
     -- The enemy navi's panel her last capsule went beside (+0x60, +0x64), and her last capsule's panel (+0x68,
     -- +0x6C), which the next pick reserves.
     enemy_x: number,
@@ -29,8 +29,6 @@ local meddy = {}
 local SPRITE = asset.sprite("meddy")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_THROW = asset.sound("minibomb-throw")
--- By the level (0x0800DA8A: navi 6's count, 2, by 0x0800DAE8's row): DS's 6 (SP's level is 0).
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
 local SOLID = 0x10
 -- When she throws (ticks left of her windup).
 local THROW = 0x84
@@ -210,7 +208,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = windup, [0xC] = leave }
 
--- 0x080BBAC4: on her panel, a pixel up and nearer; her sprite (animation 0, her shadow), her palette by the level,
+-- 0x080BBAC4: on her panel, a pixel up and nearer; her sprite (animation 0, her shadow), her chip's palette,
 -- facing her side's way.
 local function init(me: Object)
     me:set_coordinates_from_panel()
@@ -221,7 +219,7 @@ local function init(me: Object)
     sprite.shadow = "ground"
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
-    sprite.palette = PALETTES[(me.state :: State).level] or 0
+    sprite.palette = (me.state :: State).palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_lifecycle("update")
 end
@@ -231,7 +229,7 @@ meddy.kind = new.kind {
     pool = "actor",
     state = {
         controller = "object",
-        level = "u8",
+        palette = "u8",
         enemy_x = "u8",
         enemy_y = "u8",
         pick_x = "u8",
@@ -255,8 +253,8 @@ meddy.kind = new.kind {
     end,
 }
 
--- 0x080BBC5C: Meddy for `user`, reporting to `controller` (the summon table's entry 18), of a chip of `level`.
-function meddy.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BBC5C: Meddy for `user`, reporting to `controller` (the summon table's entry 18), in her chip's `palette`.
+function meddy.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(meddy.kind, user, spec)
         if not o then
@@ -264,14 +262,10 @@ function meddy.summon_at(level: number): (user: Object, controller: Object, spec
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- Meddy's and MeddySP's (their Param1s 0), MeddyDS's (4).
-meddy.summon = meddy.summon_at(0)
-meddy.summon_sp = meddy.summon_at(0)
-meddy.summon_dark = meddy.summon_at(4)
 
 return meddy

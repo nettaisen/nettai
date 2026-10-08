@@ -11,12 +11,13 @@ local collision = require("../../rules/collision")
 local magnet = require("./magnet")
 local navi_chips = require("@exelib/navi_chips/navi")
 local regions = require("@exelib/regions")
+local statuses = require("../../rules/status")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x60).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 4 for DS), which picks the magnets' palette.
-    level: number,
+    -- His chip's palette, the magnets' (the original's by the chip's level, its Param1).
+    palette: number,
     -- His target's column (+7: 0 for none), and the panel past it the second magnet comes from (+6).
     target_x: number,
     mirror_x: number,
@@ -55,6 +56,14 @@ local function find_target(me: Object): number
     end
 end
 
+-- The chips' (variant 0): hit modifier 1, immobilizing for 60 ticks; it waits for MagnetMan, and runs while dimmed.
+local MAGNET = magnet.variant {
+    hit_mod = 1,
+    status = statuses.immobilize_60,
+    waits_for_navi = true,
+    runs_while_dimmed = true,
+}
+
 -- A magnet of pole `pole` from column `x`.
 local function send(me: Object, x: number, pole: number)
     local s = me.state :: State
@@ -62,7 +71,8 @@ local function send(me: Object, x: number, pole: number)
         pole = pole,
         paired = s.paired,
         target_x = s.target_x,
-        level = s.level,
+        variant = MAGNET,
+        palette = s.palette,
         damage = damage_word(me),
     })
 end
@@ -149,7 +159,7 @@ end
 magnetman.kind = new.kind {
     id = "magnetmn/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8", target_x = "u8", mirror_x = "u8", paired = "bool" },
+    state = { controller = "object", palette = "u8", target_x = "u8", mirror_x = "u8", paired = "bool" },
     -- 0x080BAF2C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -168,8 +178,8 @@ magnetman.kind = new.kind {
     end,
 }
 
--- 0x080BB0BA: MagnetMan for `user`, reporting to `controller` (the summon table's entry 8), of a chip of `level`.
-function magnetman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BB0BA: MagnetMan for `user`, reporting to `controller` (the summon table's entry 8), in his chip's `palette`.
+function magnetman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         -- (His Z is the address the controller called him through, which nothing of his overwrites.)
         -- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
@@ -179,14 +189,9 @@ function magnetman.summon_at(level: number): (user: Object, controller: Object, 
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
-
--- MagnetMan's and MagnetManSP's (their Param1s 0), MagnetManDS's (4).
-magnetman.summon = magnetman.summon_at(0)
-magnetman.summon_sp = magnetman.summon_at(0)
-magnetman.summon_dark = magnetman.summon_at(4)
 
 return magnetman
