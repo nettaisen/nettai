@@ -220,6 +220,7 @@ language = "ja"
 "sprsonic" = { name = "スーパーソニック", description = "" }
 "dbldream" = { name = "ダブルドリーム", description = "" }
 "sandring" = { name = "サンドリング", description = "あたるとアリジゴク\nを発生させる\nリングを前方へ!" }
+"z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

@@ -671,6 +671,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **Z Saver** (action 0x70, `chips/z-saver`: @exelib/zsaver/action, which EXE5's grew from, in EXE4's look): the
+  blade in the related slot as EXE4's own attachment (lib/swords' `blade_anim`: ProtoSoul's 13, 0x080EE820), let go of
+  at each swing's end; no form overlay refreshed, no moving flag or overlay cleared in the recovery; the command's
+  window shut once A isn't held (EXE5's too); no step (EXE5's Katanas' step is EXE5's own).
 - **SandRing** (action 0x47, `chips/sandring`: EXE4's own, with its ring, attack 0x6D): a ring 26 pixels up, 10
   pixels a tick, hit modifier 1, its element's spark, the spreader's sound; its hit turns the panel to sand (type 10,
   the pitfall). The action's and the ring's other parameters (0 to 2: a held ring, three speeds, status effects 0x10

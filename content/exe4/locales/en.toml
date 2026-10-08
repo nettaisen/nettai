@@ -220,6 +220,7 @@ language = "en"
 "sprsonic" = { name = "SprSonic", description = "" }
 "dbldream" = { name = "DblDream", description = "" }
 "sandring" = { name = "SandRing", description = "Opens a\npitfall\ntrap" }
+"z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
