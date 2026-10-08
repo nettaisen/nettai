@@ -230,6 +230,13 @@
 "woodmn-ds/controller" = { pool = "effect", index = 0x70, scratch_position = true }
 "woodman/navi" = { pool = "actor", index = 0x49 }
 "woodman/tower" = { pool = "attack", index = 0x07 }
+# LaserMan's chips (action 0x0C's variant 0x43, 0x080EA4A6): each chip's controller (the content's own; the original's
+# one object, effect #0x75, 0x080EA3F8), LaserMan and his laser.
+"laserman/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"lasrmn-sp/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"lasrmn-ds/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"laserman/navi" = { pool = "actor", index = 0x4E }
+"laserman/laser" = { pool = "attack", index = 0xA0 }
 # NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
 # objects/north_wind's.
 "nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
