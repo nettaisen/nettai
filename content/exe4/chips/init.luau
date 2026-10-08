@@ -44,6 +44,7 @@ return merge {
     require("@self/junkman"),
     require("@self/lance"),
     require("@self/ligtnin"),
+    require("@self/magbolt"),
     require("@self/metalman"),
     require("@self/meteors"),
     require("@self/minibomb"),
