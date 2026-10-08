@@ -3,9 +3,15 @@
 -- the column of three, three in a row); pressing B and Left together
 -- (within three ticks) in the twelve ticks after the third slash's hit
 -- gives a fourth, which throws a piercing sonic boom (EXE6's action 0x5B,
--- `sub_80EFEE0`, docs/engine/shot-chips.md §13; EXE5's 0x34, 0x080EE02A).
--- Left is the raw key, "back" for either side. Made for a game's look
--- (`zsaver.make`).
+-- `sub_80EFEE0`, docs/engine/shot-chips.md §13; EXE5's 0x34, 0x080EE02A;
+-- EXE4's 0x70, 0x080EE774, which EXE5's grew from). Left is the raw key,
+-- "back" for either side. Made for a game's look (`zsaver.make`).
+--
+-- EXE6's and EXE5's hold the blade in the overlay slot (an attachment of the
+-- look's kind), put it away as the next swing starts, refresh a form's
+-- overlay as each swing starts, and clear the moving flag and let go of the
+-- overlay in the recovery; EXE4's holds it in the related slot (its `hold`),
+-- lets go of it at each swing's end, and does neither of the others.
 --
 -- EXE5's adds the Katanas' step (EXE5's lib/stepsword): a soul's charged Z
 -- Saver steps first (phase 0, marking its holder moving) and back after
@@ -123,17 +129,26 @@ function zsaver.make(look: ZSaverLook): Action
             battle.play_sound(look.command_sound)
         end
         if me.step_init == 0 then
-            local held = me.overlay
-            if held then
-                held:set_lifecycle("destroy")
+            local hold = look.hold
+            if hold == nil then
+                local held = me.overlay
+                if held then
+                    held:set_lifecycle("destroy")
+                end
             end
             me:set_animation(ANIM_SWING)
-            me:refresh_form_overlay()
+            if look.refreshes_form_overlay then
+                me:refresh_form_overlay()
+            end
             me:open_counter_window()
             battle.play_sound(look.swing_sound)
-            -- `sub_80EBB34`'s blade (row 3 for subtype 0), into the overlay
-            -- slot.
-            attachment.attach(look.attachment, me, look.blade, "overlay", { anim = look.blade_anim(me) })
+            if hold then
+                hold(me, look.blade, look.blade_anim(me))
+            else
+                -- `sub_80EBB34`'s blade (row 3 for subtype 0), into the
+                -- overlay slot.
+                attachment.attach(look.attachment :: Kind, me, look.blade, "overlay", { anim = look.blade_anim(me) })
+            end
             s.timer = SWING_TICKS
             me.step_init = 4
         end
@@ -185,6 +200,9 @@ function zsaver.make(look: ZSaverLook): Action
         local index = bit32.band(me.attack_count + 1, 0xFFFF)
         me.attack_count = index
         if index < s.slashes then
+            if look.hold then
+                me.related1 = nil
+            end
             me.step_init = 0
         elseif step_sword and me.charged ~= 0 then
             me.step, me.step_init = STEP_BACK, 0
@@ -193,11 +211,13 @@ function zsaver.make(look: ZSaverLook): Action
         end
     end
 
-    -- `sub_80F0068` (EXE5's 0x080EE330): no longer moving; 6 ticks, then the
-    -- sword goes and back to idle.
+    -- `sub_80F0068` (EXE5's 0x080EE330, EXE4's 0x080EE918): no longer
+    -- moving (not EXE4's); 6 ticks, then the sword goes and back to idle.
     local function recover(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_status("moving", false)
+            if look.recovery_clears_moving then
+                me:set_status("moving", false)
+            end
             s.timer = RECOVER_TICKS
             me.step_init = 4
         end
@@ -205,7 +225,9 @@ function zsaver.make(look: ZSaverLook): Action
         s.timer = t
         if t < 0 then
             me.related1 = nil
-            me.overlay = nil
+            if look.recovery_clears_moving then
+                me.overlay = nil
+            end
             me:exit_attack()
         end
     end
@@ -225,7 +247,7 @@ function zsaver.make(look: ZSaverLook): Action
     return new.action {
         id = look.id,
         state = state,
-        -- `sub_80EFEE0` (EXE5's 0x080EE02A).
+        -- `sub_80EFEE0` (EXE5's 0x080EE02A, EXE4's 0x080EE774).
         update = function(me: Object, s: State)
             local step = me.step
             if step_sword and step == 0 then
