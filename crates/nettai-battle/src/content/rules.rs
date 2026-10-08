@@ -230,6 +230,10 @@ pub struct EffectsRules {
     /// from the next tick (its `object_updateSprite`, 0x080143FC, steps as
     /// EXE6's does).
     pub dimmed_update_steps_on_load: bool,
+    /// An immobilized navi blinks black (its tail's `sub_801690A`, EXE5's
+    /// 0x08013768: shader 0xFFFF two ticks of the battle time in four);
+    /// EXE4's tail (0x08013BEC) has no such step. Presentation.
+    pub immobilized_blinks: bool,
     /// How the game's obstacles number their action tables.
     pub obstacle_actions: ObstacleActions,
     /// The Full Synchro aura where games differ.
@@ -1068,6 +1072,23 @@ pub struct BarrierTick {
     pub stops_while_paused: bool,
     /// What wind does to it.
     pub wind: BarrierWind,
+    /// A `regrowing` barrier (EXE4's type 4): worn down, it stays up with
+    /// no HP, letting hits through, and after this many ticks (counted
+    /// while not dimmed) it is back with this much HP; wind leaves it be
+    /// meanwhile, and it never times out (EXE4's 0x08012E44: 180 ticks,
+    /// 150 HP). None in a game that has none.
+    #[serde(default)]
+    pub regrowing: Option<BarrierRegrowth>,
+}
+
+/// How a regrowing barrier comes back (`BarrierTick::regrowing`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BarrierRegrowth {
+    /// The ticks it is down.
+    pub after: u16,
+    /// Its HP when back.
+    pub hp: u8,
 }
 
 /// What wind (the raw elements' 0x20) does to a barrier.

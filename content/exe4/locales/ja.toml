@@ -195,6 +195,20 @@ language = "ja"
 "muramasa" = { name = "ムラマサブレード", description = "あんこくチップ!\nへっているHP分が\n攻撃力になる" }
 "slasher" = { name = "イアイフォーム", description = "Aボタンをおして\nいる間に入ってくる\nてきをきる!" }
 "suprvulc" = { name = "スーパーバルカン", description = "きょういの\n12れんしゃ\nバルカンほう!" }
+"hole" = { name = "ダークホール", description = "目の前のマスに\nダークホールを\nしゅつげんさせる!" }
+"pnlretrn" = { name = "パネルリターン", description = "自分のエリアの\nパネルをノーマルに\nもどす!" }
+"holypanl" = { name = "ホーリーパネル", description = "目の前のパネルを\nダメージはんげんの\nホーリーパネルに!" }
+"snctuary" = { name = "サンクチュアリ", description = "自分のエリアの\nすべてのマスを\nホーリーパネルに!" }
+"drkline" = { name = "ダークライン", description = "自分のいるれつを\nすべてダークホール\nにしてしまう!" }
+"barrier" = { name = "バリア", description = "バリアをはり\n10HPぶんの\nダメージをむこうか" }
+"barr100" = { name = "バリア100", description = "バリアをはり\n100HPぶんの\nダメージをむこうか" }
+"barr200" = { name = "バリア200", description = "バリアをはり\n200HPぶんの\nダメージをむこうか" }
+"lifeaura" = { name = "ドリームオーラ", description = "攻撃力が200より\nひくい攻撃を\nむこうかするオーラ" }
+"blakbarr" = { name = "ブラックバリア", description = "やぶれてもふっかつ\nするやみのバリア!" }
+"fanfare" = { name = "オウエンカ", description = "ララパッパをおく\nえんそうちゅう\n自分がむてきに!" }
+"discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
+"timpani" = { name = "ティンパニー", description = "ララボーンをおく\nえんそうちゅう\nじしんであしどめ!" }
+"silence" = { name = "サイレンス", description = "ララミュートをおく\nえんそうちゅう\nあいてはもうもくに" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
