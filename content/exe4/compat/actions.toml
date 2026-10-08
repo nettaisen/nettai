@@ -131,6 +131,8 @@
 "megaman/taunt/action" = 0x2A
 # The charged shot.
 "megaman/charged-shot/action" = 0x24
+# The souls' charged shots: RollSoul's arrow (weapon routine 0x22's action 0x1B, 0x080EC574).
+"rollsoul/charged-shot/action" = 0x1B
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
