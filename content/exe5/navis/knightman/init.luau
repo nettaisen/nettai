@@ -21,10 +21,12 @@
 -- 0x1A4, has no code): the operation battle's KnightMan's, which nettai doesn't build. So are the glow and the
 -- dropped guard his actions start with there (the attack's variant 0).
 
-local body_overlays = require("../lib/body_overlays")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
 local kcrusher = require("@self/chip").kcrusher
+
+-- KnightMan's ball and chain (the body overlays' row 1, 0x0800EE7A): in front.
+local BALL: BodyPart = { sprite = asset.sprite("knightman-ball"), anims = 20 }
 
 local navi: NaviDef = {
     sprite = asset.sprite("knightman"),
@@ -54,7 +56,7 @@ local navi: NaviDef = {
         ai_index = 11,
         -- The Full Synchro aura's animation: its owner's AI index (the aura's start, 0x080C4608).
         aura_anim = 11,
-        parts = { body = body_overlays.knightman },
+        parts = { body = BALL },
         overlay_hooks = { "death", "refresh", "lets_go" },
         attach_points = {
             { 0, 16 },
