@@ -2148,7 +2148,8 @@ export type WeaponSpec = {
 export type Weapon = WeaponSpec
 
 -- A chip: its record, and exactly one use.
--- A chip's damage by formula: the opponent's HP; the custom gauge's; the HP
+-- A chip's damage by formula: the opponent's HP; the custom gauge's (a full
+-- gauge's `full`: EXE4's 0, none EXE6's and EXE5's 10); the HP
 -- the user has lost (at most `cap`: EXE6's 500 when none); the last two
 -- digits of the user's HP; half the opponent's max HP; a link navi's own
 -- chip's, by its buster's attack level; by a count of the user's side
@@ -2160,7 +2161,7 @@ export type Weapon = WeaponSpec
 -- time, rules/sp_chips.)
 export type DamageFormula =
     { formula: "opponent_hp" }
-    | { formula: "gauge" }
+    | { formula: "gauge", full: number? }
     | { formula: "gauge_level", base: number }
     | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }
