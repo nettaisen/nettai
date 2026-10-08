@@ -10,6 +10,8 @@
 
 local element_pillar = require("../../../../objects/element_pillar")
 local regions = require("@exelib/regions")
+local sparks = require("../../../../lib/sparks")
+local statuses = require("../../../../rules/status")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -26,9 +28,17 @@ local WIND_UP, STRIKE = 0x0, 0x4
 -- Elec (the attack's element) and the hits' counter byte.
 local ELEC, HIT_PARAM = 3, 0x8A
 
--- The pillars: lightning, 90 ticks, 9 once the navi stops, on the panel in
--- front and the two columns past it.
-local PILLARS: ElementPillar = { lightning = true, ticks = 0x5A, after = 9 }
+-- The pillars: lightning (the pillar's first parameter 1: hit modifier 1,
+-- the elec spark, paralysis, its panel cracked), 90 ticks, 9 once the navi
+-- stops, on the panel in front and the two columns past it.
+local LIGHTNING = element_pillar.look {
+    sprite = asset.sprite("element-pillar-lightning"),
+    hit_mod = 1,
+    spark = sparks.elec,
+    status = statuses.paralyze_150,
+    cracks = true,
+}
+local PILLARS: ElementPillar = { look = LIGHTNING, ticks = 0x5A, after = 9 }
 local REGION = regions.deep_fan
 local TICKS = 0x5A
 

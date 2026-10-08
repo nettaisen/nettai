@@ -5,7 +5,7 @@
 -- - the action's start: no 10-tick wait outside the operation battle (0x080EF4B8; with it, 10 ticks and effect
 --   object 0x83 on the panel ahead, which isn't ported: never in a netbattle), so the arm and drills come at once;
 -- - the arm: EXE5's attachment row 0x2F (0C-1E, EXE6's row 0x20), DarkDril's (subtype 1) with 1 added to its palette;
---   and DarkDril drills for 60 ticks (0x080EF526) where DrilArm's record says 24;
+--   and DarkDril drills for 60 ticks (0x080EF526) where DrilArm's record says 24 (each chip's `Spec`);
 -- - the drills (0x080D41C8, 0x080D4100): they keep no element (0) and the second doesn't take the first's running
 --   while dimmed; Param3 is DarkDril's, whose hit carries the bug 0xFA (argument 1), where EXE6's makes a light one;
 -- - EXE5's spark and collision types.
@@ -28,7 +28,6 @@ local KIND, spawn = drill.make_kind("drill", {
     first = collision.breaking,
     second = collision.second_drill,
     hits = collision.hits_navis,
-    param3 = { bug = 0xFA, bug_arg = 1 },
     keeps_element = false,
 })
 exe5_drill.kind = KIND
@@ -40,21 +39,21 @@ local SOUND = asset.sound("drilarm")
 local WAIT, DRILL, DRAW_BACK = 0x0, 0x4, 0x8
 -- The drills' height.
 local HEIGHT = 0x10_0000
--- DrilArm's ticks (its record's Param2), DarkDril's.
-local TICKS, DARK_TICKS = 0x18, 60
+-- A drill chip's action: how long its drills hit (DrilArm's record's Param2, 24; DarkDril's 60), the palette its arm
+-- adds (DarkDril's 1) and the bug its drills' hits carry (DarkDril's 0xFA, argument 1: the collision's bug word).
+export type Spec = { ticks: number, arm_palette: number?, bugs: number? }
 
--- The action of a drill chip (DarkDril's with `dark`).
-function exe5_drill.action(dark: boolean): Action
+function exe5_drill.action(spec: Spec): Action
+    local ticks, arm_palette = spec.ticks, spec.arm_palette or 0
     -- 0x080EF4EA: the arm and the drills; draw back when the time is up.
     local function grind(me: Object, s: State)
         if me.step_init == 0 then
             me:set_status("using_action", true)
             me:set_animation(0x0A)
-            attachment.attach(me, ARM, "overlay", { anim = ARM_DRILLING, palette_add = if dark then 1 else 0 })
-            local ticks = if dark then DARK_TICKS else TICKS
+            attachment.attach(me, ARM, "overlay", { anim = ARM_DRILLING, palette_add = arm_palette })
             -- The damage word (the hit parameter in its high half), plus the Atk+ bonus.
             local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-            spawn(me, me.attack_element, HEIGHT, damage, { ticks = ticks, light = dark })
+            spawn(me, me.attack_element, HEIGHT, damage, { ticks = ticks, bugs = spec.bugs })
             me:open_counter_window()
             s.timer = ticks + 0x0A
             battle.play_sound(SOUND)

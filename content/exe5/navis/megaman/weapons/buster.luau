@@ -36,7 +36,6 @@ local buster = {
         attachment = attachment.kind,
         shot_sound = asset.sound("buster-shot"),
         plain = variants.plain,
-        throw_sound = asset.sound("junk-shot"),
         spread_flash = attachment.look { sprite = asset.sprite("spread-flash"), palette = 0, attach_point = 0 },
     },
 }
@@ -63,13 +62,13 @@ function exe5.setup(navi: Object): Action
     if bit32.band(battle.rng_positive(), 4) ~= 0 then
         program = stats.buster_shot or variants.plain
     end
-    local mode = "shot"
+    local spread = false
     -- MegaMan (navi 0, NaviStats +0x29) in his base form (+0x2C 0) in Hub Style (+0x4C): the spread.
     if stats.navi.id == MEGAMAN and stats.form.base and stats.hub_style ~= 0 then
-        program, mode = variants.hub, "spread"
+        program, spread = variants.hub, true
     end
-    local s = navi:action_state(buster.shot) :: { mode: string, projectile: ProjectileVariant? }
-    s.mode = mode
+    local s = navi:action_state(buster.shot) :: { spread: boolean, throw: MegaManBusterThrow?, projectile: ProjectileVariant? }
+    s.spread, s.throw = spread, nil
     s.projectile = program
     return buster.shot
 end

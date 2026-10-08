@@ -9,6 +9,7 @@
 
 local element_pillar = require("../../../../objects/element_pillar")
 local regions = require("@exelib/regions")
+local sparks = require("../../../../lib/sparks")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -28,9 +29,16 @@ local WIND_UP, BURN = 0x0, 0x4
 -- Fire (the attack's element) and the hits' counter byte.
 local FIRE, HIT_PARAM = 1, 0x8A
 
--- The pillars: flames, 90 ticks, 4 once the navi stops, on the panel in
--- front and the two columns past it.
-local PILLARS: ElementPillar = { ticks = 0x5A, after = 4 }
+-- The pillars: flames (the pillar's first parameter 0: hit modifier 3, the
+-- fire spark), 90 ticks, 4 once the navi stops, on the panel in front and
+-- the two columns past it.
+local FLAMES = element_pillar.look {
+    sprite = asset.sprite("element-pillar-flames"),
+    hit_mod = 3,
+    spark = sparks.fire,
+    cracks = false,
+}
+local PILLARS: ElementPillar = { look = FLAMES, ticks = 0x5A, after = 4 }
 local REGION = regions.deep_fan
 local TICKS = 0x5A
 

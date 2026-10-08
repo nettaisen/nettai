@@ -1,15 +1,17 @@
 --!strict
 -- An iron shell (the original's attack object #0x34, `sub_80CA6B8`):
--- IronShl's and ParaShl's. It slides from its panel to the opponent's back
--- column (four panels for ParaShl's), hitting what it meets; after a hit
--- its region is off until it reaches another panel. There it stops for 8
--- ticks (16 for ParaShl's) with its region back on, its bumps' times; then
--- an IronShl's flies up and away, a ParaShl's turns and slides back. It
--- bursts off solid ground.
+-- IronShl's and ParaShl's, each its chip's variant (`shell.variant`; the
+-- original's third parameter picks). It slides from its panel to the
+-- opponent's back column (four panels for ParaShl's), hitting what it
+-- meets; after a hit its region is off until it reaches another panel.
+-- There it stops for 8 ticks (16 for ParaShl's) with its region back on,
+-- its bumps' times; then it does what its variant says (an IronShl's flies
+-- up and away, a ParaShl's turns and slides back). It bursts off solid
+-- ground.
 --
 -- It hits with modifier 3 (knocking back) while between the side columns,
--- 1 (not) when thrown onto a side column, and from when it reaches the
--- opponent's back column, where it no longer pushes.
+-- 1 (not) when thrown onto a side column (or never, ParaShl's), and from
+-- when it reaches the opponent's back column, where it no longer pushes.
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
@@ -21,14 +23,18 @@ local shell = {}
 -- How a shell slides (`IronShell`, types.d.luau).
 export type Spec = IronShell
 
+function shell.variant(v: IronShellVariant): IronShellVariant
+    return new.record("ironshl-shell-variant", v)
+end
+
 export type State = {
     -- Its palette and speed (the original's first parameter picks them
-    -- from `byte_80CA7A0`), its bumps (the second), and whether it is
-    -- ParaShl's (the third).
+    -- from `byte_80CA7A0`), its bumps (the second), and its chip's variant
+    -- (the third).
     palette: number,
     speed: number,
     bumps: number,
-    para: boolean,
+    variant: IronShellVariant,
     -- The panel (x | y << 8) it last hit on (ExtraVars+0).
     hit_panel: number,
     -- Its hit modifier dropped at the far column (ExtraVars+4).
@@ -39,8 +45,6 @@ local SPRITE, ANIM = asset.sprite("iron-shell"), 3
 local SOUND = asset.sound("iron-shell")
 -- A panel's width, 16.16.
 local PANEL_WIDTH = 0x28_0000
--- The rise as it flies off, 16.16 per tick.
-local FLY_UP = 0x4_0000
 -- The hit modifiers.
 local PUSHES, STILL = 3, 1
 local SOLID = 0x10
@@ -82,12 +86,12 @@ local function slide(me: Object)
         return
     end
     me:set_coordinates_from_panel()
-    me.timer = if s.para then 0x10 else 8
+    me.timer = s.variant.stop
     me:set_action(BUMP)
 end
 
 -- `sub_80CA88E`: stand, the region back on each 8 ticks, its bumps'
--- times; then fly off (IronShl) or turn back (ParaShl).
+-- times; then as its variant says (IronShl's fly off, ParaShl's turn back).
 local function bump(me: Object)
     local t = me.timer - 1
     me.timer = t
@@ -102,15 +106,7 @@ local function bump(me: Object)
         me.timer = 8
         return
     end
-    if s.para then
-        local v = me.vel
-        me.vel = Vec3.new(-v.x, v.y, v.z)
-        me.flip = bit32.bxor(me.flip, 1)
-        me.sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    else
-        local v = me.vel
-        me.vel = Vec3.new(v.x, v.y, FLY_UP)
-    end
+    s.variant.done(me)
     me:reset_collision_types(collision.breaking, collision.hits_navis, PUSHES)
     me:set_action(FLY)
 end
@@ -194,7 +190,7 @@ local function init(me: Object)
     local ok = field.valid(x, y) and bit32.btest(field.flags(x, y), SOLID)
     if ok then
         -- It knocks back only thrown onto a middle column.
-        local hit_mod = if s.para or x == 1 or x >= 6 then STILL else PUSHES
+        local hit_mod = if not s.variant.pushes or x == 1 or x >= 6 then STILL else PUSHES
         ok = setup(me, hit_mod)
     end
     if not ok then
@@ -208,7 +204,7 @@ local function init(me: Object)
     local v = me.vel
     me.vel = Vec3.new(me.facing * s.speed, v.y, v.z)
     me.collision:set_hit_effect(sparks.breaking)
-    local panels = if s.para then 4 else math.abs(far_column(me) - x)
+    local panels = s.variant.panels or math.abs(far_column(me) - x)
     me.timer = int.tdiv(PANEL_WIDTH * panels, s.speed) + 1
     me.collision:present()
     battle.play_sound(SOUND)
@@ -223,7 +219,7 @@ shell.kind = new.kind {
         palette = "u8",
         speed = "i32",
         bumps = "u8",
-        para = "bool",
+        variant = "record:ironshl-shell-variant",
         hit_panel = "u32",
         softened = "bool",
     },
@@ -247,7 +243,7 @@ function shell.spawn(owner: Object, x: number, y: number, element: number, damag
     local o = battle.spawn(shell.kind, Vec3.new(y, element, 0))
     if o then
         local s = o.state :: State
-        s.palette, s.speed, s.bumps, s.para = spec.palette, spec.speed, spec.bumps, spec.para or false
+        s.palette, s.speed, s.bumps, s.variant = spec.palette, spec.speed, spec.bumps, spec.variant
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)

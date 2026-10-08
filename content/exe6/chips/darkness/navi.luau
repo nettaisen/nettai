@@ -11,6 +11,7 @@ local megaman = require("../../navis/megaman").megaman
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local element_pillar = require("../../objects/element_pillar")
+local sparks = require("../../lib/sparks")
 local navi_chips = require("../../lib/navi_chips/navi")
 local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")
@@ -67,6 +68,14 @@ local AURA = attachment.look { sprite = asset.sprite("dark-aura"), palette = 0, 
 -- panels from his, dx toward the front); they last 0x5A ticks and 8 per
 -- wave still to come, then 8 once he is done.
 local FLAME_ELEMENT, FLAME_Z, FLAME_TICKS = 1, 0x6_0000, 0x5A
+-- Their look: flames (the pillar's first parameter 4: hit modifier 3, the
+-- fire spark).
+local FLAME_LOOK = element_pillar.look {
+    sprite = asset.sprite("element-pillar-flames"),
+    hit_mod = 3,
+    spark = sparks.fire,
+    cracks = false,
+}
 local FLAME_PANELS = {
     [0] = { { 1, 0 } },
     [1] = { { 2, -1 }, { 2, 0 }, { 2, 1 } },
@@ -180,7 +189,13 @@ end
 -- `sub_80BFD02(wave)`: the wave's dark flames (they run while dimmed).
 local function dark_flames(me: Object, wave: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local flames: ElementPillar = { ticks = (2 - wave) * 8 + FLAME_TICKS, after = 8, back = wave, owner_state = FLAMES }
+    local flames: ElementPillar = {
+        look = FLAME_LOOK,
+        ticks = (2 - wave) * 8 + FLAME_TICKS,
+        after = 8,
+        back = wave,
+        owner_state = FLAMES,
+    }
     for _, d in FLAME_PANELS[wave] do
         local x, y = me.panel_x + d[1] * me.facing, me.panel_y + d[2]
         local pillar = element_pillar.spawn(me, x, y, FLAME_ELEMENT, flames, damage, FLAME_Z)
