@@ -265,6 +265,12 @@ language = "en"
 "metlger1" = { name = "MetlGer1", description = "Gear\ncrushes\nenmy area" }
 "metlger2" = { name = "MetlGer2", description = "Gear\ncrushes\nenmy area" }
 "metlger3" = { name = "MetlGer3", description = "Gear\ncrushes\nenmy area" }
+"woodman" = { name = "WoodMan", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-sp" = { name = "WoodMnSP", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-ds" = { name = "WoodMnDS", description = "WoodTowr\npierce in\nenmy area" }
+"laserman" = { name = "LaserMan", description = "A laser\npierces\n1 thru!" }
+"lasrmn-sp" = { name = "LasrMnSP", description = "A laser\npierces\n1 thru!" }
+"lasrmn-ds" = { name = "LasrMnDS", description = "A laser\npierces\n1 thru!" }
 "boybomb1" = { name = "BoyBomb1", description = "Places\nBoyBom in\nyour area" }
 "boybomb2" = { name = "BoyBomb2", description = "Places\nBoyBom in\nyour area" }
 "boybomb3" = { name = "BoyBomb3", description = "Places\nBoyBom in\nyour area" }
@@ -373,6 +379,7 @@ language = "en"
 "017-custom2" = { name = "Custom2" }
 "018-megafolder2" = { name = "MegaFolder2" }
 "019-buster-attack-10" = { name = "Buster Attack 10" }
+"020-charge-shot-switch" = { name = "Charge Shot Switch" }
 "021-charge-shot-switch" = { name = "Charge Shot Switch" }
 "022-charge-shot-switch" = { name = "Charge Shot Switch" }
 "023-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -392,6 +399,7 @@ language = "en"
 "037-max-hp-up" = { name = "Max HP Up" }
 "038-max-hp-up" = { name = "Max HP Up" }
 "039-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"040-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "041-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "043-buster-patch" = { name = "Buster Patch" }
