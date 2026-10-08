@@ -703,6 +703,16 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
+-- A game's Blinder (@exelib/blinder/controller): its controller kind's id, its sound, and the blinding hit's self
+-- type, target and status.
+export type BlinderLook = {
+    id: string,
+    sound: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+    status: Status,
+}
+
 -- A game's BoyBomb bomb (@exelib/boybomb/bomb): its kind's id, sprite and NameID (none: none); its body's collision
 -- types and its blast's (and the blast's effect, laid over the 3x3, and sound); the effect and sound as it comes, and
 -- its breaking's; the effect when a chip removed it (none: it reads no removal and always breaks); what may not be on
@@ -1371,7 +1381,7 @@ export type CountdownVariant = {
     appear_anim: number,
     idle_anim: number,
     hp: number,
-    identity: Identity,
+    identity: Identity?,
     class: number,
     collision: { is: CollisionType, hits: CollisionType },
     strong_shake: boolean?,
@@ -1537,6 +1547,13 @@ export type CountdownLook = {
     explosion: Effect,
     puff: Effect,
     bursts: Kind,
+    -- EXE4's older code: it releases no tracking as it goes; it blows up even once the battle is over; it reads no
+    -- removal as it goes (broken, a puff; blown up, nothing); its own obstacle rows (1, 3 to 7, by the framework's
+    -- numbers) in place of the shared ones and the blink-away.
+    untracked: boolean?,
+    blasts_after_battle: boolean?,
+    reads_no_removal: boolean?,
+    actions: { [number]: (Object) -> () }?,
 }
 
 -- A lance's hit: what it is and hits, its spark, hit modifier and bug.
