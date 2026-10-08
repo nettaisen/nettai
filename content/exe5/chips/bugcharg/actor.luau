@@ -172,7 +172,7 @@ end
 
 -- 0x080C3A64: drawn as the user (stand_in.init), at its animation 16; its first update.
 local function init(me: Object)
-    stand_in.init(me)
+    stand_in.init(me, stand_in.overlay)
     me.anim = 0x10
     me:set_lifecycle("update")
     tick(me)
