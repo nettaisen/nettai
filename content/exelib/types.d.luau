@@ -323,9 +323,9 @@ export type Trap = {
 }
 
 -- A hockey puck's variant (@exelib/airhocky/puck: a row of EXE6's `byte_80C9818`, EXE5's 0x080CA3A4): the steps it
--- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and whether it
--- leaves a trail.
-export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+-- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and the tint of
+-- its trail if it leaves one (PitHocky's).
+export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: number? }
 
 -- How a gust blows (@exelib/gust/gust, the original's first parameter): `pulls` turns it back toward its side, a
 -- weaker push; `unseen` hides it and lets it blow through any panel.
@@ -344,7 +344,7 @@ export type GustLook = {
 }
 
 -- A game's hockey puck: its sprite (the trail's too), its sound and the bounce's, what it is and reaches, its hits'
--- spark, the effect it bursts in, and its trail's tint.
+-- spark, and the effect it bursts in.
 export type PuckLook = {
     sprite: SpriteAsset,
     sound: Sound,
@@ -353,7 +353,6 @@ export type PuckLook = {
     hits: CollisionType,
     spark: Spark,
     burst: Effect,
-    trail_tint: number,
 }
 
 -- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, and whether it
