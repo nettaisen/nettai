@@ -156,6 +156,16 @@
 "shadmn-ds/controller" = { pool = "effect", index = 0x15, scratch_position = true }
 "shademan/navi" = { pool = "actor", index = 0x19 }
 "shademan/crush" = { pool = "attack", index = 0x34 }
+# BurnMan's chips (action 0x0C's variant 0x08, 0x080E3B96): each chip's controller (the content's own; the original's
+# one object, effect #0x18, 0x080E3AE8), BurnMan, his pillars, his flame and their lingering hits (attack #0x7C,
+# 0x080DCC5C: the content's own kind of objects/lingering_hit).
+"burnman/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"burnmn-sp/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"burnmn-ds/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"burnman/navi" = { pool = "actor", index = 0x23 }
+"burnman/pillar" = { pool = "attack", index = 0x3A, scratch_position = true }
+"burnman/flame" = { pool = "attack", index = 0x37 }
+"burnman/hit" = { pool = "attack", index = 0x7C, scratch_position = true }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the

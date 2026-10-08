@@ -19,6 +19,7 @@ return merge {
     require("@self/boomer"),
     require("@self/breath"),
     require("@self/bubbler"),
+    require("@self/burnman"),
     require("@self/cannon"),
     require("@self/counter"),
     require("@self/crakout"),
