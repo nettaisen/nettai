@@ -34,6 +34,7 @@ return merge {
     require("@self/burnman"),
     require("@self/cannon"),
     require("@self/circgun"),
+    require("@self/coldman"),
     require("@self/copydmg"),
     require("@self/counter"),
     require("@self/crakout"),
