@@ -8,6 +8,12 @@
 "engine/dimming-chip" = 0x0C
 # The buster's shot (0x080EB316).
 "megaman/buster/shot" = 0x08
+# The buster patches' shots (weapon routines 0x34, 0x35, 0x5A, 0x68, 0x69: action 8 with other projectile rows).
+"megaman/crack-buster/shot" = 0x08
+"megaman/poison-buster/shot" = 0x08
+"megaman/blind-buster/shot" = 0x08
+"megaman/grass-buster/shot" = 0x08
+"megaman/ice-buster/shot" = 0x08
 # The vulcans' (the chips' action 0x1F, 0x080EC842).
 "drkvulcn/action" = 0x1F
 "vulcan1/action" = 0x1F
@@ -30,6 +36,9 @@
 "binder3/action" = 0x09
 "darkbomb/action" = 0x09
 "geyser/action" = 0x09
+"blkbomb/action" = 0x09
+"bugbomb/action" = 0x09
+"vdoll/action" = 0x09
 "energbom/action" = 0x09
 "megenbom/action" = 0x09
 "minibomb/action" = 0x09
@@ -58,8 +67,19 @@
 "magbolt3/action" = 0x59
 # CopyDmg's (the chips' action 0x2B, 0x080ED1D2).
 "copydmg/action" = 0x2B
+# Z Saver's (the chips' action 0x70, 0x080EE774).
+"z-saver/action" = 0x70
+# SandRing's (the chips' action 0x47, 0x080EDC5A).
+"sandring/action" = 0x47
 # WindRack's (the chips' action 0x32, 0x080ED330).
 "windrack/action" = 0x32
+# VarSwrd's and NeoVari's (the chips' actions 0x36, 0x080ED6BE, and 0x5A, 0x080EE1A2).
+"varswrd/action" = 0x36
+"neovari/action" = 0x5A
+# SonicBom's and SprSonic's (the chips' action 0x37, 0x080ED7E6).
+"sonicbom/action" = 0x37
+"sprsonic/action" = 0x37
+"curse/action" = 0x37
 # Slasher's (the chips' action 0x35, 0x080ED572).
 "slasher/action" = 0x35
 # The TwnFngs' (the chips' action 0x34, 0x080ED4C6).
@@ -97,6 +117,10 @@
 "longblde/action" = 0x0A
 "custswrd/action" = 0x0A
 "muramasa/action" = 0x0A
+"lifesrd/action" = 0x0A
+"ftrsword/action" = 0x0A
+"crosswrd/action" = 0x0A
+"dbldream/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
 "hicannon/action" = 0x0B
@@ -161,6 +185,10 @@
 "drkrecov/action" = 0x1D
 # The taunt (weapon routine 0x21's action 0x2A, 0x080ED0FE).
 "megaman/taunt/action" = 0x2A
+# The weapon bug's rock cube (weapon routine 0x1F's action 0x73, 0x080EEA56) and bubble (routine 0x20's action 0x29,
+# 0x080ED02A).
+"megaman/rock-cube/action" = 0x73
+"megaman/bubble/action" = 0x29
 # The charged shot.
 "megaman/charged-shot/action" = 0x24
 # The souls' charged shots: RollSoul's arrow (weapon routine 0x22's action 0x1B, 0x080EC574).
@@ -169,6 +197,10 @@
 # 0x10, 0x080EBDC0), which request 0x20 starts.
 "gutssoul/charged-shot/action" = 0x12
 "gutssoul/machine-gun" = 0x10
+# WindSoul's AirShot on B (weapon routine 0x6B's action 0x23, AirShot's, its variant 1's recovery).
+"windsoul/buster/action" = 0x23
+# SearchSoul's scope (weapon routine 0x0A's action 0x3E, 0x080EDB5C).
+"searchsoul/charged-shot/action" = 0x3E
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25

@@ -2,10 +2,12 @@
 -- WindSoul (EXE4 chip 0x163, its record at 0x0801d4f0), no folder's: Double Soul's chip of soul 3, which OK puts
 -- first in the hand for it (0x0801F0A0: the UNITE button's `hand_chip`, rules/souls/custom). With it next in the hand
 -- MegaMan changes into the soul as the fight runs: its use is the soul's change (its action 0x0D: rules/souls/change),
--- whose end takes the hand on past it (0x080EBC92).
+-- whose end takes the hand on past it (0x080EBC92). WindSoul's blows a north wind as it starts (0x080EBADE, with no
+-- holder: objects/north_wind), which strips the field's barriers 100 ticks on.
 -- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
 local change = require("../../../../rules/souls/change")
+local north_wind = require("../../../../objects/north_wind")
 
 local windsoul: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -22,6 +24,9 @@ local windsoul: Chip = {
     traits = { "no_icon_when_next" },
     action = change.make {
         id = "windsoul",
+        prepare = function(navi: Object)
+            north_wind.blow(navi, nil)
+        end,
     },
 }
 
