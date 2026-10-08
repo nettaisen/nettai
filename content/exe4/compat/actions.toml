@@ -55,6 +55,8 @@
 "magbolt1/action" = 0x59
 "magbolt2/action" = 0x59
 "magbolt3/action" = 0x59
+# Slasher's (the chips' action 0x35, 0x080ED572).
+"slasher/action" = 0x35
 # The TwnFngs' (the chips' action 0x34, 0x080ED4C6).
 "twnfng1/action" = 0x34
 "twnfng2/action" = 0x34
