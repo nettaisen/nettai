@@ -372,6 +372,9 @@ giga = [
     "deltaray",
 ]
 secret = [
+    "rollaro1",
+    "rollaro2",
+    "rollaro3",
     "gutpnch1",
     "gutpnch2",
     "gutpnch3",
@@ -390,6 +393,9 @@ secret = [
     "numbrbl1",
     "numbrbl2",
     "numbrbl3",
+    "metlger1",
+    "metlger2",
+    "metlger3",
     "aquaup1",
     "aquaup2",
     "aquaup3",

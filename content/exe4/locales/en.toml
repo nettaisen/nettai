@@ -259,6 +259,12 @@ language = "en"
 "nrthwind" = { name = "NrthWind", description = "Wind blws\noff aura,\nbarriers" }
 "vdoll" = { name = "VDoll", description = "Throws\nVDoll\nahead" }
 "curse" = { name = "Curse", description = "" }
+"rollaro1" = { name = "RollAro1", description = "RollArrow\ndestroys\nchips" }
+"rollaro2" = { name = "RollAro2", description = "RollArrow\ndestroys\nchips" }
+"rollaro3" = { name = "RollAro3", description = "RollArrow\ndestroys\nchips" }
+"metlger1" = { name = "MetlGer1", description = "Gear\ncrushes\nenmy area" }
+"metlger2" = { name = "MetlGer2", description = "Gear\ncrushes\nenmy area" }
+"metlger3" = { name = "MetlGer3", description = "Gear\ncrushes\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
