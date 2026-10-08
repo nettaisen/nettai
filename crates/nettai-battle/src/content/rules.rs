@@ -786,7 +786,8 @@ pub enum DeadPlayer {
     Freed,
 }
 
-/// When the counter a stance's caught hit starts (`sub_80105F2`) runs.
+/// When the counter a stance's caught hit starts (`sub_80105F2`), or a
+/// trap's (`sub_801056A`), runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StanceCounter {
@@ -1590,6 +1591,10 @@ pub struct Rules {
     pub overlay_restart: OverlayRestart,
     /// When a stance's counter runs (the reactions section's).
     pub stance_counter: StanceCounter,
+    /// When a trap's counter runs (the reactions section's): EXE6's and
+    /// EXE5's `sub_801056A` runs its first step at once; EXE4's 0x0800C780,
+    /// a stance's catch and a trap's alike, sets its action alone.
+    pub trap_counter: StanceCounter,
     /// What a deleted player's object does (the reactions section's).
     pub dead_player: DeadPlayer,
     /// What an attack's end hands its lockout on to (the reactions

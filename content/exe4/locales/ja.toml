@@ -175,6 +175,7 @@ language = "ja"
 
 [navicust_programs]
 "airshoes" = { name = "エアシューズ", description = "パネルのないマスでも\nいどうできる!" }
+"antimagc" = { name = "カワリミマジック", description = "B+左のコマンドで\n攻撃をうけたふりして\nしゅりけんをなげる!" }
 "attack-1" = { name = "アタック+1", description = "ロックバスターの\n攻撃力が1アップ!" }
 "attckmax" = { name = "アタックMAX", description = "ロックバスターの\n攻撃力がMAXに!" }
 "battery" = { name = "バッテリーモード", description = "バッテリーじょうたい\nで電気属性ウイルスが\nよってくるようになる" }

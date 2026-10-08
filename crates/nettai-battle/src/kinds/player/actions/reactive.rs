@@ -55,7 +55,7 @@ fn drop_everything(b: &mut Battle, r: ObjectRef) {
 /// `sub_801056A(requests, 0, 0)`: a trap chip caught a hit: the counter
 /// takes the side's defensive-chip record's chip, damage and bonus
 /// (`sub_802CE78`) and variant 0, and its action starts and runs its first
-/// step now.
+/// step now, or from the next tick by the navi's rules (EXE4's 0x0800C780).
 pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     let requests = ai(b, r).requests;
     drop_everything(b, r);
@@ -75,7 +75,9 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     if let Some(chip) = rec.chip {
         b.show_used_chip(side as u8, chip, rec.damage as u16, rec.bonus);
     }
-    super::dispatch(b, r, action);
+    if b.game_rules().trap_counter == crate::content::StanceCounter::AtOnce {
+        super::dispatch(b, r, action);
+    }
 }
 
 /// `sub_80105F2(requests, lockout, variant, damage)`: the AntiDmg
