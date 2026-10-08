@@ -259,6 +259,9 @@ language = "en"
 "nrthwind" = { name = "NrthWind", description = "Wind blws\noff aura,\nbarriers" }
 "vdoll" = { name = "VDoll", description = "Throws\nVDoll\nahead" }
 "curse" = { name = "Curse", description = "" }
+"woodman" = { name = "WoodMan", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-sp" = { name = "WoodMnSP", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-ds" = { name = "WoodMnDS", description = "WoodTowr\npierce in\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

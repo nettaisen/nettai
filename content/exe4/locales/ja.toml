@@ -259,6 +259,9 @@ language = "ja"
 "nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
 "vdoll" = { name = "ワラニンギョウ", description = "おそろしいノロイの\nワラニンギョウを\n3マス前方になげる" }
 "curse" = { name = "ノロイ", description = "" }
+"woodman" = { name = "ウッドマン", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"woodmn-sp" = { name = "ウッドマンSP", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"woodmn-ds" = { name = "ウッドマンDS", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
