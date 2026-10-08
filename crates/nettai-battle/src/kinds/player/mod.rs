@@ -900,8 +900,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F378`: the post-init hook by actor type and AI index. For
 /// players (`off_80EAA04`; EXE5's 0x080EB2A8) it is the navi's
-/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`)
-/// and EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
+/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`),
+/// EXE5's MegaMan's (0x080F04EE: in a soul, the status reset again) and
+/// EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
 /// (`off_81092D0`, `off_80F2668`) belong to their AI.
 fn post_init_hook(b: &mut Battle, r: ObjectRef) {
     match ai(b, r).actor_type {
