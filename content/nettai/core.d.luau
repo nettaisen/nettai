@@ -1278,6 +1278,10 @@ declare battle: {
     linked: (side: number) -> LinkedChip,
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
+    -- `sub_801EB18`: the other player's console names `chip` as used by
+    -- `side` again, with its damage and bonus (presentation only: EXE4's
+    -- Slasher as it slashes).
+    show_used_chip: (side: number, chip: Chip, damage: number, bonus: number) -> (),
     -- `sub_800ABC6`: the trap's mark over `o`'s panel (the role
     -- `effects.trap_mark`, facing the local side's way, where the chip-use
     -- rules' `anti_navi_sparkle` puts it from the panel's center), with its
@@ -2153,7 +2157,8 @@ export type WeaponSpec = {
 export type Weapon = WeaponSpec
 
 -- A chip: its record, and exactly one use.
--- A chip's damage by formula: the opponent's HP; the custom gauge's; the HP
+-- A chip's damage by formula: the opponent's HP; the custom gauge's (a full
+-- gauge's `full`: EXE4's 0, none EXE6's and EXE5's 10); the HP
 -- the user has lost (at most `cap`: EXE6's 500 when none); the last two
 -- digits of the user's HP; half the opponent's max HP; a link navi's own
 -- chip's, by its buster's attack level; by a count of the user's side
@@ -2165,7 +2170,7 @@ export type Weapon = WeaponSpec
 -- time, rules/sp_chips.)
 export type DamageFormula =
     { formula: "opponent_hp" }
-    | { formula: "gauge" }
+    | { formula: "gauge", full: number? }
     | { formula: "gauge_level", base: number }
     | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }

@@ -671,6 +671,23 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **SuprVulc** (the vulcans' variant 3, `chips/suprvulc`): 12 shots of bullet row 16 (the Vulcans' hit in palette 1).
+- **Slasher** (action 0x35, `chips/slasher`: EXE4's own, EXE5's action 0x29 grew from it): while A is held it waits for
+  an enemy navi on its side's area, then slashes that column (the region word 0x0705FF04, 16 pixels up), naming
+  Slasher to the other player again as it slashes (0x080164B4: `battle.show_used_chip`, new); no invulnerability, no
+  stun strike. In chips/0x038-slasher/side1 the original doesn't name Slasher as side 1 uses it (frames 384 to 415),
+  where the engine's chip use does (its `show_used_chip` at a chip's start): which EXE4 code names a used chip, and
+  why not this one, is the HUD's to read (group A's; item 71).
+- **CustSwrd and Muramasa** (the swords' variants 7 and 8, `chips/custswrd`, `chips/muramasa`): their slashes by the
+  variants' rows (region 0x11 and region 2, effect rows 0x41 and 0x4A), their damage formulas 45 (the gauge's, a full
+  gauge giving 0 where EXE6's and EXE5's give 10: the formula's `full`) and 46 (the HP lost, at most 999). The lab's
+  chips/0x036-custswrd/full-gauge matches.
+- **GrabRvng and GrabBnsh** (the dimming chips' variant 0x0D, `chips/grabbnsh`): @exelib/grabbnsh's controller (effect
+  0x22) and hand (attack 0x46) with EXE4's look (the hand from 256 pixels, a thrown break of hit modifier 0x0B) and its
+  own taking back (0x080E4836: it counts the panels of the user's home columns the other side holds, each flashing,
+  and returns none), the wait after the strikes 90 ticks set as they end. The lab's 10 recordings match; in
+  chips/0x076-grabrvng/stolen and 0x077-grabbnsh/stolen the used chip's name at the bottom left goes at frame 385 in
+  the original, while the engine shows it through the dimming's end (532): the HUD's (group A's).
 - **Tornado and Static** (action 0x28, `chips/tornado`: EXE4's own action and tornado, attack 0x31, 0x080D2FDC: a
   pitfall under it doubles its re-arms and turns normal as it ends, where EXE5's and EXE6's take a panel's look):
   Tornado's one two panels ahead; Static's spread by the navi's kinds of NaviCust bug (0x08043014: the rules'

@@ -189,6 +189,12 @@ language = "en"
 "burnman" = { name = "BurnMan", description = "3-direct\nburnr fry\n2 ahead!" }
 "burnmn-sp" = { name = "BurnMnSP", description = "3-direct\nburnr fry\n2 ahead!" }
 "burnmn-ds" = { name = "BurnMnDS", description = "3-direct\nburnr fry\n2 ahead!" }
+"grabrvng" = { name = "GrabRvng", description = "Retaliate\nstolen\npanels!" }
+"grabbnsh" = { name = "GrabBnsh", description = "Retaliate\nstolen\npanels!" }
+"custswrd" = { name = "CustSwrd", description = "Cust\nGauge=\nAtk Str" }
+"muramasa" = { name = "Muramasa", description = "EvilChip!\nPower=\nHP lost" }
+"slasher" = { name = "Slasher", description = "Cut while\nA Button\nis held!" }
+"suprvulc" = { name = "SuprVulc", description = "12-shot\nvulcan\ncannon" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

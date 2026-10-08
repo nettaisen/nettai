@@ -2031,6 +2031,13 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.clear_linked(side)))
     });
+    lib_fn!(lua, t, "show_used_chip", |_, (side, chip, damage, bonus): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let chip = bound(|b| chip_arg(b, &chip, "battle.show_used_chip's chip"))?
+            .ok_or_else(|| mlua::Error::runtime("battle.show_used_chip: a chip, not nil"))?;
+        let (damage, bonus) = (u16_arg(damage, "damage")?, u16_arg(bonus, "bonus")?);
+        with(|api, _| Ok(api.show_used_chip(side, chip, damage, bonus)))
+    });
     lib_fn!(lua, t, "trap_mark", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.trap_mark(o.0))));
     lib_fn!(lua, t, "clear_bugs", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
