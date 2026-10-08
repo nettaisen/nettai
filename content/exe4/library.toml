@@ -289,6 +289,7 @@ standard = [
     "repair",
     "panlgrab",
     "areagrab",
+    "metagel",
     "grabbnsh",
     "grabrvng",
     "pnlretrn",

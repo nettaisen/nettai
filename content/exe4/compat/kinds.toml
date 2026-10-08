@@ -412,3 +412,7 @@
 # its first row's).
 "bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
 "bugfix/glow" = { pool = "actor", index = 0x5D }
+# MetaGel's controller (0x080E4618; its position the dimming handler's registers) and its gel (0x080D5DF4; its position
+# the spawner's registers until its first update).
+"metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
+"metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }

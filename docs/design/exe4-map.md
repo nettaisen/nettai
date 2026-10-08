@@ -957,6 +957,14 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   stepping on) through the form's `put_on`, so FireSoul's and NumberSoul's (item 74) come with their overlays. The
   lab's chips/0x085-invis and chips/0x086-popup (hit, miss, adjacent, side1) replay every frame; the hit recordings'
   fight frames, the glow and the hole among them, are pixel-exact.
+- **MetaGel** (the dimming chips' variant 0x0C, `chips/metagel`, group B): EXE5's controller and gel, now
+  @exelib/metagel (makers each game states its look for), in EXE4's: the controller (effect #0x21, 0x080E4618) drops
+  each row's gel on the other side's panel nearest the user's (0x0800A1AE with 0x080E4708's flags, `nearest_other`;
+  EXE5's past the user's area, 0x0800BA34); the gel (attack #0x45, 0x080D5DF4) with EXE4's sounds (0x115 dropped,
+  0xCA landing) and the puff of effect row 0x15 takes its panel unless that is the other side's back column
+  (0x080D5F0C; EXE5's where the other side may lose it, 0x0800BBCC). The lab's chips/0x05f-metagel (hit, miss,
+  adjacent, side1; back-column: after two AreaGrabs, the gels on the back column taking nothing) replay every frame
+  with the same sounds, pixel-exact; EXE5's MetaGel recordings still match.
 - **BugFix** (the dimming chips' variant 0x1D, `chips/bugfix`, group B): EXE5's and EXE6's controller (effect #0x3B,
   0x080E6388: @exelib/bugfix/controller, each game stating its glow and its fix) with EXE4's glow (objects/glow, its
   first row: BugFix's flashes, 0x080CD058, the three games' alike but for the sound, 0x15C; then 30 ticks,
