@@ -58,7 +58,9 @@ local function fire(me: Object, s: State)
         me.panel_y,
         me.attack_element,
         if beast then BEAST_Z else 0,
-        if beast then erase_ray.rays.beast else erase_ray.rays.cross,
+        -- EraseCross's ray lasts 70 ticks at most; its Beast form's appears
+        -- further ahead and lasts until the navi leaves this action.
+        if beast then { ahead = 0x46_0000 } else { ahead = 0x3C_0000, ticks = 70 },
         damage
     )
     battle.play_sound(SOUND)

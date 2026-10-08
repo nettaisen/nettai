@@ -80,12 +80,11 @@ end
 -- `sub_80CA2D4`.
 local function init(me: Object, s: State, look: BoomerangLook)
     local v = s.variant
-    local tomahawk = v.tomahawk == true
     local sprite = me.sprite
-    sprite:load(v.sprite or (if tomahawk then look.tomahawk_sprite else look.sprite))
-    sprite.shadow = if tomahawk then "with_sprite" else "ground"
+    sprite:load(v.sprite or look.sprite)
+    sprite.shadow = v.shadow or "ground"
     me.visible = true
-    local anim = if tomahawk and me.panel_y ~= 1 then 1 else 0
+    local anim = if me.panel_y ~= 1 then v.off_row_1_anim or 0 else 0
     me.anim, me.anim_loaded = anim, anim
     sprite:set_animation(anim)
     local vel = me.vel

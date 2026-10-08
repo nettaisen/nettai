@@ -15,10 +15,16 @@
 -- bombs at a target his attack is given) is his attack in an auto battle, which no weapon or chip starts: it comes
 -- with the gate navis' operation battle.
 
-local body_overlays = require("../lib/body_overlays")
 local buster = require("@self/buster")
 local charged_chips = require("./megaman/weapons/charged_chip")
 local napalm = require("@self/chip").napalm
+
+-- NapalmMan's cannon (the body overlays' row 4, 0x0800EE8A): behind him in his animations 20 to 22.
+local CANNON: BodyPart = {
+    sprite = asset.sprite("napalm-cannon"),
+    anims = 23,
+    behind = { { 20, 22 } },
+}
 
 local navi: NaviDef = {
     sprite = asset.sprite("napalmman"),
@@ -56,7 +62,7 @@ local navi: NaviDef = {
         ai_index = 4,
         -- The Full Synchro aura's animation: its owner's AI index (the aura's start, 0x080C4608).
         aura_anim = 4,
-        parts = { body = body_overlays.napalmman },
+        parts = { body = CANNON },
         overlay_hooks = { "death", "refresh" },
         attach_points = {
             { -4, 16 },

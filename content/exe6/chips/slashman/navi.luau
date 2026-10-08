@@ -15,6 +15,10 @@ local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 local wave = require("./wave")
 
+-- The navi chip's sword wave (the original's Param1 1): it winds up longer,
+-- flies faster, acts while dimmed and steers.
+local WAVE = wave.variant { wind_up = 0x28, swing = 0xF, speed = 0xC_0000, steers = true, while_dimmed = true }
+
 local slashman = {}
 
 -- What a chip summons him with: his waves' damage (the chips' first
@@ -142,7 +146,7 @@ local function waves(me: Object, x: number)
     for y = 1, 3 do
         if field.check(x, y, w[1], w[2]) then
             -- r3 (his damage's flag bits) becomes its Z.
-            wave.spawn(user, x, y, 0, wave.chip, damage, bit32.band(me.damage, 0xF000))
+            wave.spawn(user, x, y, 0, WAVE, damage, bit32.band(me.damage, 0xF000))
         end
     end
 end

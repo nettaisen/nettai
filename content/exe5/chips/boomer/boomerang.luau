@@ -9,7 +9,6 @@ local sparks = require("../../lib/sparks")
 return common.make_kind {
     id = "boomer/boomerang",
     sprite = asset.sprite("boomerang"),
-    tomahawk_sprite = asset.sprite("boomerang"),
     sound = asset.sound("boomerang"),
     is = collision.attack,
     hits = collision.hits_navis,
