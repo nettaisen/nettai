@@ -257,6 +257,8 @@ language = "ja"
 "kendmn-sp" = { name = "ケンドーマンSP", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
 "kendmn-ds" = { name = "ケンドーマンDS", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
 "nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
+"vdoll" = { name = "ワラニンギョウ", description = "おそろしいノロイの\nワラニンギョウを\n3マス前方になげる" }
+"curse" = { name = "ノロイ", description = "" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
@@ -346,6 +348,8 @@ language = "ja"
 "009-max-hp-up" = { name = "マックスHPを強化" }
 "010-max-hp-up" = { name = "マックスHPを強化" }
 "011-first-barrier-100" = { name = "ファーストバリア100" }
+"012-buster-patch" = { name = "バスターを改造" }
+"013-buster-patch" = { name = "バスターを改造" }
 "014-panel-change" = { name = "パネルチェンジ" }
 "015-panel-change" = { name = "パネルチェンジ" }
 "016-panel-change" = { name = "パネルチェンジ" }
@@ -373,6 +377,8 @@ language = "ja"
 "039-b-left-ability-activation" = { name = "B+左で技発動" }
 "041-b-left-ability-activation" = { name = "B+左で技発動" }
 "042-b-left-ability-activation" = { name = "B+左で技発動" }
+"043-buster-patch" = { name = "バスターを改造" }
+"044-buster-patch" = { name = "バスターを改造" }
 "045-default-full-synchro" = { name = "デフォルトフルシンクロ" }
 "046-first-barrier200" = { name = "ファーストバリア200" }
 "047-weapon-change" = { name = "ウェポンチェンジ" }
@@ -426,6 +432,7 @@ language = "ja"
 "099-max-hp-up" = { name = "マックスHPを強化" }
 "100-max-hp-up" = { name = "マックスHPを強化" }
 "101-max-hp-up" = { name = "マックスHPを強化" }
+"102-buster-patch" = { name = "バスターを改造" }
 "103-fullcustom-charge-1-2" = { name = "チャージフルカスタム1/2" }
 "104-fullcustom-charge-2-2" = { name = "チャージフルカスタム2/2" }
 "105-panel-change" = { name = "パネルチェンジ" }
