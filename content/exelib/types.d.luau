@@ -1846,3 +1846,7 @@ export type NumberMan = { kind: Kind, summoned: (o: Object, controller: Object, 
 -- A Geddon chip's quake's change (@exelib/geddon/quake's `change`): what it does to a panel, whether it changed, and
 -- what shows over a panel that did.
 export type GeddonChange = { apply: (x: number, y: number) -> boolean, show: (at: Vec3) -> () }
+
+-- What BugFix's glow (@exelib/bugfix/glow) does first, its spawner's (`glow.start`): its first action, which sets
+-- action 4 when it is done.
+export type BugFixGlowStart = { run: (me: Object) -> () }
