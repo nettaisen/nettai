@@ -119,6 +119,7 @@ return merge {
     require("@self/wind"),
     require("@self/windman"),
     require("@self/windrack"),
+    require("@self/woodman"),
     require("@self/z-saver"),
     -- A navi chip's chips, with its navi.
     require("./navis/megaman/forms/aquasoul/chip"),
