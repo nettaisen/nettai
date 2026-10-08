@@ -34,6 +34,8 @@ end
 export type State = {
     -- The soul (Param1, its number in the original), by its form.
     soul: FormDef,
+    -- What its look puts on and holds (EXE4's +0x60: its part, an attachment; `slot`'s "held").
+    held: Object?,
 }
 
 export type Spec = {
@@ -193,7 +195,7 @@ function image.make(spec: Spec): Image
     local kind = new.kind {
         id = spec.id,
         pool = spec.pool,
-        state = { soul = "form" },
+        state = { soul = "form", held = "object" },
         -- EXE5's 0x080C0394, EXE4's 0x080E361C
         update = function(me: Object)
             local l = me.lifecycle

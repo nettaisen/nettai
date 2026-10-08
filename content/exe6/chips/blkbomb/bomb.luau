@@ -80,6 +80,10 @@ end
 black_bomb.kind = common.make_kind("blkbomb/bomb", {
     destroyed = destroyed,
     identity = IDENTITY,
+    tracked = true,
+    set_off_empties_hp = true,
+    bursts_as_freed = true,
+    crush = "breaks",
     sprite = SPRITE,
     spark = HIT_SPARK,
     is = collision.neutral_object,

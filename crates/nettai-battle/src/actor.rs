@@ -291,13 +291,6 @@ pub struct ActorData {
     pub charge_counter: u16,
     pub charge_level: u8,
     pub charge_source: u8,
-    /// The B charge's level (as `charge_level`) as the navi last asked for
-    /// an attack: EXE4's decode copies its two charge levels at each ask
-    /// (AIData +0x14 and +0x15: 0x0800BE48, 0x0800BE8E, 0x0800BF10), and
-    /// its chips read B's (the dimming chips' variants 5 and 7, 0x080E328A
-    /// and 0x080E39FA: full or not); nothing reads A's. Kept until the
-    /// next ask; EXE6's and EXE5's decodes keep none.
-    pub b_charge_at_ask: u8,
     /// EXE4's rapid presses (AIData +0x12, the count, and +0x11, the
     /// ticks left for the next): a form's `rapid_presses` asks for the
     /// forced charged shot at its count (GutsSoul's, 0x0800BE50); the shot
@@ -361,9 +354,10 @@ pub struct ActorData {
     /// AIData+0x4C: consecutive ticks spent flinching or paralyzed
     /// (`sub_80143FC`); 120 of them make MegaMan angry (`sub_80142DC`).
     pub stun_ticks: u32,
-    /// AIData+0x50: an object tied to the navi that the full status reset
-    /// ends (`sub_801390C` → `sub_80E5410`: state 8, first extra var
-    /// cleared). Which object stores itself here was not found.
+    /// AIData+0x50 (EXE4's +0x5C): an object tied to the navi that the full
+    /// status reset ends (`sub_801390C` → `sub_80E5410`: state 8, first
+    /// extra var cleared): EXE4's WindSoul's wind (0x0800E10C), which its
+    /// form's reset sets.
     pub reset_linked_object: Option<ObjectRef>,
     /// The navi object's ExtraVars+0x10 and +0x18 in battle mode 9, for
     /// DustMan (AI index 10): the attack #0xD2 and actor #0x28 his
