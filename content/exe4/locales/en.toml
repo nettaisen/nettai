@@ -226,6 +226,14 @@ language = "en"
 "circgun1" = { name = "CircGun1", description = "Stop site\nw/ Button\nand attck" }
 "circgun2" = { name = "CircGun2", description = "Stop site\nw/ Button\nand attck" }
 "circgun3" = { name = "CircGun3", description = "Stop site\nw/ Button\nand attck" }
+"varswrd" = { name = "VarSwrd", description = "A magical\nshifting\nsword" }
+"neovari" = { name = "NeoVari", description = "A magical\nshifting\nsword" }
+"lifesrd" = { name = "LifeSrd", description = "Big sword\n2 long\n3 wide!" }
+"ftrsword" = { name = "FtrSword", description = "" }
+"sonicbom" = { name = "SonicBom", description = "" }
+"crosswrd" = { name = "CrosSwrd", description = "" }
+"sprsonic" = { name = "SprSonic", description = "" }
+"dbldream" = { name = "DblDream", description = "" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
