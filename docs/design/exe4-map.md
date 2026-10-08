@@ -671,6 +671,9 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **WindRack** (action 0x32, `chips/windrack`: EXE4's own, EXE5's action 0x26 grew from it): the rack (attachment
+  row 0x17, by the navi's number) and the swirl (effect row 0x40, turned to its side), a null-element pushing hit on
+  the column ahead for 10 ticks with hit modifier 9 (EXE5's 0x49); no gusts (EXE6's), no arm to drop.
 - **CopyDmg** (action 0x2B, `chips/copydmg`: EXE4's own action, EXE5's 0x24 grew from it; its mark attack 0x28 is
   @exelib/copydmg/mark in EXE4's look): animation 0x12, no arm, the damage word without the Atk+ bonus; the mark
   marks the first navi it hits for 90 ticks, shown at the navi's position (`over_navi = "position"`; EXE5's and
