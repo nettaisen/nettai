@@ -1877,20 +1877,33 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
     shows 1 for those ticks and no more (`chips/0x004-airshot/hit`, `side1`: frame 431). The rule
     `status.idle_stands` (EXE4 true; EXE6, EXE5 false).
-62. **The sprite tile copy queue's 96 and the tile cap** (low priority: netbattles rarely reach them). A sprite whose
-    frame's tiles change (the sprite draw, IWRAM 0x03005C00) reserves its VRAM tiles (0x03005FD4: past 0x2FF tiles,
-    0x2CF in mode 8, the sprite isn't drawn: its flag 0x10) and queues one copy (0x0800087C) on a queue of 96 entries
-    (0x0200D120, its count 0x0200B134), which the main loop drains after the VBlank wait (0x08000808, called at
-    0x080002C8). A copy past the 96th is dropped, not deferred, and the sprite's last uploaded frame (its +0x24)
-    advances anyway, so it shows stale tiles until its frame changes again. nettai's renderer models neither (it draws
-    each frame's tiles as they are); EXE5's and EXE6's counterparts to check when someone takes it. (What the towers'
-    frame compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
-    display, tearing, which is left.) Open, last (group C, 2026-10-07): no recording reaches either cap. 96 copies on
-    one tick takes 96 sprites changing frames together, past the 128 hardware parts the renderer already caps; 767
-    tiles some 25 large sprites at once, where the lab's busiest fights (two navis and a field of bursts) reach about
-    200. The packs carry each frame's tile count (a tileset's `tiles`); the port: the renderer keeps each sprite's
-    last uploaded tileset, draws a frame's layout with it when the copy was dropped, and leaves out a sprite past the
-    cap, by each game's numbers.
+62. **The sprite draw's caps: tiles, palette slots and the transfer queue's 96** (low priority: netbattles rarely
+    reach them). The sprite draw (IWRAM 0x03005C00; EXE4's IWRAM code is the boot's copy of ROM 0x08212700 to
+    0x03005800, gba.py's `iwram`) runs in draw order and has three caps the renderer models none of (it draws each
+    frame's tiles and palette as they are):
+    - **Tiles.** A sprite reserves VRAM tiles for its frame each frame (0x03005D80, 0x03005DA0), a frame some sprite
+      already reserved this frame shared through a cache (count 0x02009E64, entries 0x0200AE50, both cleared by
+      0x080029E0; the allocator's halfword at 0x02010B90 reset to 1 by 0x0800294C). Past the cap (0x03005FD4: the
+      halfword less 0x30 plus the frame's tiles against 0x32F, 0x2FF in mode 8: the byte at [sl]'s first word) the
+      sprite is flagged 0x10 and not drawn, its last uploaded frame (+0x24) cleared. Its tile index (+8) changing
+      clears +0x24 too, so the frame is copied again. EXE5's and EXE6's do the same against a variable cap (the
+      halfword at 0x0200A948+2, 0x020098A8+2).
+    - **Palette slots** (0x03005CE0): a sprite with its own palette (+6) shares the slot of a sprite with the same
+      32 bytes or takes a new one (count 0x02010B80): 12 at most, 10 in mode 8 (0x03006010), past which it is
+      flagged 0x10 and not drawn (a count already at 15 would give it slot 15, drawn).
+    - **The transfer queue** (0x0800087C, 96 entries at 0x0200D120, count 0x0200B134; drained after the VBlank wait,
+      0x08000808 at 0x080002C8): a sprite whose frame differs from its last uploaded one (+0x24) queues its tiles'
+      copy there, and +0x24 advances whether or not the copy was queued. The queue is the game's one graphics
+      transfer queue (bn6f's QueueEightWordAlignedGFXTransfer), with some 150 callers besides the sprite draw (the
+      HUD, text, icons, backgrounds), so its 96 is a budget for every transfer of the frame. A dropped copy leaves the
+      tiles VRAM held at the sprite's tile index, which may be another sprite's (the index moves when an earlier
+      sprite's count changes) until its frame changes again.
+    Open (group C, 2026-10-07): no recording reaches any of them; the lab's busiest fights (two navis and a field of
+    bursts) reserve about 200 tiles and a few palettes. A port: the tile and palette caps as per-frame budgets
+    in the renderer's draw order, by each game's numbers (stateless); the queue needs a model of sprite VRAM and of
+    every transfer the game queues. Frame compares need a scenario built to reach a cap. (What the towers' frame
+    compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
+    display, tearing, which is left.)
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords); a GigaCan's afterimages add the soul's part by soul (0x08018068, lib/cannon). Wire
