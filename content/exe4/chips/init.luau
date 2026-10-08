@@ -10,6 +10,7 @@ return merge {
     require("@self/airhoc"),
     require("@self/airshot"),
     require("@self/anti"),
+    require("@self/anubis"),
     require("@self/aquaman"),
     require("@self/aquaup"),
     require("@self/areagrab"),

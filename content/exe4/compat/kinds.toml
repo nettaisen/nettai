@@ -360,6 +360,9 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# Anubis's controller (0x080E5BF4; its position the dimming handler's registers) and its statue (0x080D82F8).
+"anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
+"anubis/statue" = { pool = "attack", index = 0x55 }
 # Mine's controller (0x080E4F5C; its position the dimming handler's registers) and its mine (0x080D6ED4).
 "mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
 "mine/land-mine" = { pool = "attack", index = 0x4C }
