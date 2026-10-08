@@ -64,6 +64,7 @@ return merge {
     require("@self/topman"),
     require("@self/vulcan"),
     require("@self/whitweb"),
+    require("@self/widesht"),
     -- A navi chip's chips, with its navi.
     require("./navis/megaman/forms/aquasoul/chip"),
     require("./navis/megaman/forms/firesoul/chip"),
