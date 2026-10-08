@@ -416,3 +416,6 @@
 # the spawner's registers until its first update).
 "metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
 "metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
+# Magnum's controller (0x080E57F8; its position the dimming handler's registers) and its gunner (0x080D756C).
+"magnum/controller" = { pool = "effect", index = 0x30, scratch_position = true }
+"magnum/gunner" = { pool = "attack", index = 0x50 }
