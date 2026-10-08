@@ -209,7 +209,9 @@ standard = [
     "wideblde",
     "longblde",
     "custswrd",
+    "varswrd",
     "slasher",
+    "windrack",
     "airhoc1",
     "airhoc2",
     "airhoc3",
@@ -268,11 +270,13 @@ standard = [
     "antiswrd",
     "antinavi",
     "antirecv",
+    "copydmg",
     "atk-10",
     "navi-20",
 ]
 mega = [
     "suprvulc",
+    "neovari",
     "fullcust",
     "lifeaura",
     "snctuary",
@@ -283,9 +287,6 @@ mega = [
     "roll",
     "roll-sp",
     "roll-ds",
-    "gutsman",
-    "gutsmn-sp",
-    "gutsmn-ds",
     "serchman",
     "srchmn-sp",
     "srchmn-ds",
@@ -344,4 +345,7 @@ secret = [
     "greenwd2",
     "greenwd3",
     "gunsolex",
+]
+program_advance = [
+    "lifesrd",
 ]

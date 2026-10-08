@@ -671,6 +671,28 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **VarSwrd and NeoVari** (actions 0x36 and 0x5A, `chips/varswrd`, `chips/neovari`: @exelib/varswrd/action, which
+  EXE5's grew from): EXE4's part is the pick's sound (0x10B), ProtoSoul's wait while A is up (NaviStats +0x24 7, the
+  form's id) and no auto battle's pick (NaviStats +0x26, the story's navis'); EXE4 has no flip, so one set of
+  sequences. The match (0x0800D486) also tests, as a step matches, the word at the sequence's next step and picks at
+  once at 0, which no step of the two tables reaches (each test reads a step before or after it). Their picks past
+  the library are chips of their own (gen_content.py's USED_CHIPS: FtrSword, SonicBom, CrosSwrd, SprSonic, DblDream;
+  LifeSrd a Program Advance's, without its recipes): the swords' variants 9, 10, 11 and 5 (lib/swords), and SonicBom's
+  and SprSonic's action 0x37 (`chips/sonicbom/action`: EXE4's own, EXE5's 0x2B grew from it; a charged one steps two
+  panels ahead, without afterimages; ProtoSoul's blade 13). The chips/0x037-varswrd and 0x0d9-neovari `cmd-*`
+  scenarios enter each sequence.
+- **WindRack** (action 0x32, `chips/windrack`: EXE4's own, EXE5's action 0x26 grew from it): the rack (attachment
+  row 0x17, by the navi's number) and the swirl (effect row 0x40, turned to its side), a null-element pushing hit on
+  the column ahead for 10 ticks with hit modifier 9 (EXE5's 0x49); no gusts (EXE6's), no arm to drop.
+- **CopyDmg** (action 0x2B, `chips/copydmg`: EXE4's own action, EXE5's 0x24 grew from it; its mark attack 0x28 is
+  @exelib/copydmg/mark in EXE4's look): animation 0x12, no arm, the damage word without the Atk+ bonus; the mark
+  marks the first navi it hits for 90 ticks, shown at the navi's position (`over_navi = "position"`; EXE5's and
+  EXE6's 180 at the attach point 0x1B, shown as the navi is). The carry record (0x0203C050, two of 12 bytes by the
+  marked side) and its routines (0x08022246 each tick, 0x08022258 in the intake's final damage, 0x0802222E,
+  0x08022278) are EXE5's and EXE6's: the engine's `damage_carry`. Only a navi's intake (0x0800AC3A) records a
+  side's damage, so only another navi of the marked side feeds the carry (none in the recordings). Under event flag
+  0x1187, which no netbattle sets, the mark also hits its panel for 50 as it marks (0x080D1D06): unreachable, so no
+  look field (the shared mark's comment names it).
 - **SuprVulc** (the vulcans' variant 3, `chips/suprvulc`): 12 shots of bullet row 16 (the Vulcans' hit in palette 1).
 - **Slasher** (action 0x35, `chips/slasher`: EXE4's own, EXE5's action 0x29 grew from it): while A is held it waits for
   an enemy navi on its side's area, then slashes that column (the region word 0x0705FF04, 16 pixels up), naming
@@ -736,6 +758,35 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   content each chip states its own (`breath.make`), each its own kind mapped to attack 0x36. WoodPwdr's hits confuse
   (hit modifier 1, status 0x20); ElecShok's highlight the panels they hit. A parameter of 4 and on would leave a trail
   (0x080D3C10): no chip has one.
+- **CircGun1 to CircGun3** (the dimming chips' variant 0x33, `chips/circgun`): @exelib/circgun (EXE6's code) with
+  EXE4's look: the sight SearchMan's scope's sheet (10-22), its sounds (0x128, 0x12F, 0xBB), the flash effect row 0x27,
+  four thrown shots each (the chip's parameter is its period: 6, 4, 2); the gun going back along a row turns on a
+  column with any of the user's side's panels (0x080DE7AA, `turns_on_own_column`); the controller (effect #0x5E)
+  sets the gun whatever the far column holds and takes the user's side alone (`always_sets_gun`, `side_only`). The
+  lab's chips/ (15) replay every frame; CircGun1's hit and CircGun3's back-column are pixel-exact.
+- **Wind, Fan** (the dimming chips' variant 0x0F, `chips/wind`): @exelib/wind's controller (effect #0x25, 0x080E4AD4,
+  its spawn taking the user's side alone: `side_only`) and fan (attack #0x48, 0x080D6488) with EXE4's look: sheet
+  0c-21 (`fan`), rising with 0x121; 100 HP (0x080D6480's rows, EXE5's 40); no NameID (no identity); its leaving an
+  explosion whatever removes it (`removal_explodes`); its gust EXE4's (objects/gust, untracked: the fan gives its ROM
+  row for the gust's slot) on EXE4's own column (0x080D6688, the look's `column`): the enemy's front column of the
+  row, none when an obstacle stands there; Fan's from there to the far edge or the panel before an obstacle. The
+  lab's chips/ (8), drag/ and ice/ wind and fan recordings and every stage replay every frame; the hit recordings are
+  pixel-exact.
+- **Geddon1 to Geddon3** (the dimming chips' variant 0x0A, `chips/geddon`): EXE5's Geddon on @exelib/geddon: the
+  controller (effect #0x1D, 0x080E400C) holding no panel, the quake (effect #0x1E, 0x080E40E4: EXE6's code) with
+  EXE4's look (a puff, effect row 2, with 0x95; a rising bubble with 0x124), each chip its change (crack, break,
+  poison). The lab's chips/ (12), panels/geddon1 and geddon2 and status/poison-geddon3 replay every frame; the hit
+  recordings are pixel-exact.
+- **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
+  (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
+  100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
+  hammer waits 10 ticks, winds up 24 (BigHamr's blinking), swings (0x122) and lands 5 ticks later on the panel
+  ahead, then goes 60 ticks on, in an explosion whatever ends it. Each chip states its look (`hammer.make`: palette,
+  standing animation, blinking) and its landing: BigHamr's cracks two of the other side's solid panels at random on a
+  solid panel and hits the panel ahead (breaking); GodHammr's quakes every solid panel (collision type 0x26) on a
+  solid panel, else hits the panel ahead; a solid panel shakes the camera (by 1, 2, 3; GodHammr's 3) with 0xA2. The
+  lab's chips/ (19) and hits/guard-bighamr replay every frame; the hit recordings (and BigHamr1's two-ahead,
+  GodHammr's miss) are pixel-exact.
 - **Silence, Fanfare, Discord, Timpani** (the dimming chips' variant 0x24, `chips/silence` and on): the instruments'
   controller (effect #0x4A, 0x080E7310) and instrument (attack #0x78, 0x080DC33C), @exelib/instruments (EXE6's code,
   as EXE5's) with EXE4's look (lib/instruments): the sheet 04-08, its sounds (0xB0 appearing, 0x70 leaving), no NameID

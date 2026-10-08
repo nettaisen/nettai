@@ -740,9 +740,12 @@ export type CopyDamageSpec = {
 }
 
 -- A game's CopyDmg mark (@exelib/copydmg/mark): its kind's id, sprite and
--- animation, its hit's sound and types; EXE5's reloads its animation at its
--- init and hits its panel each tick it marks in the own-gauges mode
--- (the hit's spark and types).
+-- animation, its hit's sound and types; how long it marks a navi and how it
+-- sits over it ("attach_point": at the navi's attach point 0x1B, shown as the
+-- navi is, EXE6's and EXE5's; "position": at the navi's position, shown from
+-- the mark on, EXE4's); EXE5's and EXE4's reload its animation at its init;
+-- EXE5's hits its panel each tick it marks in the own-gauges mode (the hit's
+-- spark and types).
 export type CopyDamageMarkLook = {
     id: string,
     sprite: SpriteAsset,
@@ -750,8 +753,30 @@ export type CopyDamageMarkLook = {
     sound: Sound,
     is: CollisionType,
     hits: CollisionType,
+    ticks: number,
+    over_navi: "attach_point" | "position",
     reload_anim: boolean,
     own_gauges_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
+}
+
+-- A VarSwrd-like chip's action (@exelib/varswrd/action): its sequences by the
+-- navi's direction flip, as joypad words with A held, each ending in 0; what
+-- they give, in order, and what the countdown or A let go gives.
+export type VarSwordSpec = {
+    id: string?,
+    sequences: { [number]: { { number } } },
+    picks: { Chip },
+    sword: Chip,
+}
+
+-- A game's part of VarSwrd's action: the pick's sound, whether the navi
+-- waits while A is up (in the souls that do), and a navi in auto battle's
+-- pick (the side's sword pick: one past the picks a Sword; nil: none, or not
+-- in auto battle).
+export type VarSwordGame = {
+    sound: Sound,
+    waits: (me: Object) -> boolean,
+    auto_pick: ((me: Object) -> number?)?,
 }
 
 -- A CopyDmg mark made for a game (@exelib/copydmg/mark).
@@ -770,7 +795,8 @@ export type FanVariant = {
     pulls: boolean,
     wait: number,
     hp: number,
-    identity: Identity,
+    -- Its NameID's identity (none: EXE4's init writes no NameID, 0x080D64A8).
+    identity: Identity?,
     absorbed: AbsorbedLook?,
 }
 
@@ -783,8 +809,8 @@ export type FanLook = {
     appear_sound: Sound,
     blow_sound: Sound,
     break_sound: Sound,
-    -- Removed (a puff 12 pixels up); broken (an explosion).
-    puff: Effect,
+    -- Removed (a puff 12 pixels up; none where no removal puffs); broken (an explosion).
+    puff: Effect?,
     explosion: Effect,
     -- What it is and what reaches it: its side's obstacles' (the other side's attacks, objects and bodies, and
     -- neutral objects).
@@ -799,6 +825,11 @@ export type FanLook = {
     -- EXE5's Fan's gust (0x080CE96C) starts on the far column alone, none when another obstacle stands there; EXE6's
     -- tries the panels toward the fan.
     far_column_only: boolean?,
+    -- Whatever removes it, it leaves as when broken: its sound and its explosion (EXE4's 0x080D664C).
+    removal_explodes: boolean?,
+    -- The column its gust starts on in `row` (0: none), the game's own where it differs from EXE6's and EXE5's
+    -- (EXE4's 0x080D6688).
+    column: ((me: Object, row: number, pulls: boolean) -> number)?,
 }
 
 export type Fan = {
@@ -815,6 +846,8 @@ export type WindControllerLook = {
     id: string,
     spawn_fan: (owner: Object, variant: FanVariant, x: number, y: number, damage: number) -> Object?,
     position: ((user: Object, spec: DimmingChipSpec) -> Vec3)?,
+    -- Its spawn copies the user's side alone, not its facing (EXE4's, 0x080E4B60).
+    side_only: boolean?,
 }
 
 export type WindController = {
@@ -860,6 +893,10 @@ export type ProjectileVariant = {
     hit_panel: PanelHit?,
     bursts: boolean?,
     climbs: boolean?,
+    -- EXE6's: as the buster-shot program (its rows from 0x1E on) or the charged-shot program (rows 9 and 0x23), it
+    -- comes on 1 draw in 8, not 1 in 2.
+    rare_buster_shot: boolean?,
+    rare_charged_shot: boolean?,
 }
 
 -- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
@@ -1376,6 +1413,17 @@ export type CircGunLook = {
     -- The hit's spark (element 0's).
     spark: Spark,
     on_floor: boolean?,
+    -- Going back along a row it turns on a column with any of the user's side's panels (EXE4's, 0x080DE7AA), where
+    -- EXE6's and EXE5's turn before a column with none of the other side's.
+    turns_on_own_column: boolean?,
+}
+
+-- A game's CircGun controller's differences: its spawn takes the user's side alone, not its facing (EXE4's,
+-- 0x080E8B84); it sets the gun whatever the far column holds (EXE4's 0x080E8B40, where EXE6's and EXE5's end at once
+-- with none of the other side's panels there).
+export type CircGunControllerLook = {
+    side_only: boolean?,
+    always_sets_gun: boolean?,
 }
 
 -- How a game's bomb looks and sounds, and how it leaves.
@@ -1604,6 +1652,8 @@ export type NaviCustProgramSpec = {
     exclusive: string?,
     anywhere: boolean?,
     effects: { NaviCustEffect }?,
+    -- EXE5's HubBatc: its own bug counts once more (0x0813F5A8).
+    counts_own_bug: boolean?,
 }
 export type NaviCustProgram = NaviCustProgramSpec
 

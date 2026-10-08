@@ -149,7 +149,11 @@ export type Exe5FormFields = {
     var_sword_waits: boolean?,
     emerge_shake: boolean?,
     -- Its Chaos Unison (rules/souls/chaos_charge): the weapon its charge
-    -- fires, and its own row of the charge's cycle (MeddySoul's; none: the
-    -- chaos level's, at most 2).
-    chaos: { weapon: Weapon, cycle: number? }?,
+    -- fires, and its own cycle (MeddySoul's: the period, then the windows'
+    -- bounds; none: the chaos level's row, at most 2).
+    chaos: { weapon: Weapon, cycle: { number }? }?,
 }
+
+-- What a dark chip's use costs its user (rules/light_dark, its chip's
+-- `dark_cost`: lib/dark_costs): the stats it sets.
+export type DarkCost = { apply: (stats: Navi) -> () }

@@ -212,6 +212,28 @@ language = "ja"
 "gutsman" = { name = "ガッツマン", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
 "gutsmn-sp" = { name = "ガッツマンSP", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
 "gutsmn-ds" = { name = "ガッツマンDS", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
+"copydmg" = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
+"windrack" = { name = "フウジンラケット", description = "目の前のてきを\n風でふきとばす!\nはんいはたて3マス" }
+"bighamr1" = { name = "ビッグハンマー1", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
+"bighamr2" = { name = "ビッグハンマー2", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
+"bighamr3" = { name = "ビッグハンマー3", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
+"godhammr" = { name = "ゴッドハンマー", description = "てきみかたとわず\n攻撃するせきぞうを\n目の前のマスにおく" }
+"geddon1" = { name = "デスマッチ1", description = "パネルのあるマスが\nすべてヒビに!" }
+"geddon2" = { name = "デスマッチ2", description = "あいているマスが\nすべてこわれる!" }
+"geddon3" = { name = "デスマッチ3", description = "パネルのあるマスが\nすべてどくぬまに!" }
+"wind" = { name = "トップウ", description = "ウインドボックスを\nおき てきエリアに\n風をふかせる" }
+"fan" = { name = "スイコミ", description = "バキュームファンを\nおき 風でてきを\nすいよせる" }
+"circgun1" = { name = "サークルガン1", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"circgun2" = { name = "サークルガン2", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"circgun3" = { name = "サークルガン3", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"varswrd" = { name = "バリアブルソード", description = "へんげんじざいの\nテクニカルソード" }
+"neovari" = { name = "ネオバリアブル", description = "へんげんじざいの\nテクニカルソード\nじょうきゅうへん" }
+"lifesrd" = { name = "ドリームソード", description = "よこ2たて3の\nきょだいソードで\nてきをぶったぎる!" }
+"ftrsword" = { name = "ファイターソード", description = "" }
+"sonicbom" = { name = "ソニックブーム", description = "" }
+"crosswrd" = { name = "クロスソード", description = "" }
+"sprsonic" = { name = "スーパーソニック", description = "" }
+"dbldream" = { name = "ダブルドリーム", description = "" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

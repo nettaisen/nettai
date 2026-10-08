@@ -8,6 +8,7 @@
 local collision = require("../rules/collision")
 local falling_meteor = require("@exelib/meteors/falling_meteor")
 local meteors = require("./meteors/meteors")
+local dark_costs = require("../lib/dark_costs")
 
 -- Its shower: 10 meteors and 2 more for each of the first three reactions its side's navi took (side stat 3), one
 -- every 10 ticks, on the navi picked's own panel, each hitting as EXE5's row 0x2B with the bug 0x19 (argument 1),
@@ -47,6 +48,8 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     instant = meteors.instant(SHOWER, 0),
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.custom_drain,
     auto_battle = { class = "at_once" },
 }
 
