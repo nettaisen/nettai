@@ -1,12 +1,13 @@
 --!strict
--- NumbrBl's dimming controller (effect object #0x69 in both games: EXE6's
+-- NumbrBl's dimming controller (effect object #0x69 in the three games: EXE6's
 -- `sub_80E7F38`, docs/engine/dimming-chip-effects.md §15; EXE5's
--- 0x080E82DC), made with a game's effect (`controller.make`). It runs a
--- navi chip's phases, not the dimming chips' (an AntiNavi check, which a
--- chip that isn't a navi chip passes straight on, and the navi telop, which
--- skips the effect only when the user was deleted), with an effect that
--- sends NumberMan out and waits until he is done: EXE6's draws him as the
--- user, EXE5's warps the user out and the real NumberMan in.
+-- 0x080E82DC; EXE4's 0x080E9838), made with a game's effect
+-- (`controller.make`). It runs a navi chip's phases, not the dimming chips'
+-- (an AntiNavi check, which a chip that isn't a navi chip passes straight
+-- on, and the navi telop, which skips the effect only when the user was
+-- deleted), with an effect that sends NumberMan out and waits until he is
+-- done: EXE6's draws him as the user; EXE5's and EXE4's warp the user out
+-- and the real NumberMan in (`controller.warping`).
 --
 -- NumbrBl's `dimming` hook is `controller.hook(kind, balls)`.
 
@@ -70,6 +71,69 @@ function controller.make(id: string, effect: (me: Object) -> ()): Kind
             end
         end,
     }
+end
+
+local WARP_TICKS = 0x1E
+
+-- EXE5's effect (0x080E8324; EXE4's 0x080E9754, the same with its own warp), by its phase: the user warps out
+-- (`warp`, 30 ticks); NumberMan on the controller's panel (`bring`, with the damage plus the bonus and the chip's
+-- balls) until he is done; 30 ticks; the user warps back in (30 ticks); then the undim.
+function controller.warping(
+    warp: (me: Object, out: boolean) -> (),
+    bring: (me: Object, damage: number, balls: number) -> ()
+): (me: Object) -> ()
+    -- 30 ticks from the phase's first, then phase `next`.
+    local function wait(me: Object, next: number)
+        local t = me.timer - 1
+        me.timer = t
+        if t < 0 then
+            me.phase, me.phase_init = next, 0
+        end
+    end
+
+    return function(me: Object)
+        local s = me.state :: State
+        local phase = me.phase
+        if phase == 0 then
+            -- EXE5's 0x080E8348: the warp out.
+            if me.phase_init == 0 then
+                warp(me, true)
+                me.timer = WARP_TICKS
+                me.phase_init = 4
+            end
+            wait(me, 4)
+        elseif phase == 4 then
+            -- EXE5's 0x080E836E: NumberMan, with the chip's balls; once he is done, on.
+            if me.phase_init == 0 then
+                bring(me, dimming_chips.damage_plus(me, s.bonus), s.balls)
+                me.phase_init = 4
+            end
+            if not s.busy then
+                me.phase, me.phase_init = 8, 0
+            end
+        elseif phase == 8 then
+            -- EXE5's 0x080E839E: 30 ticks.
+            if me.phase_init == 0 then
+                me.timer = WARP_TICKS
+                me.phase_init = 4
+            end
+            wait(me, 0xC)
+        elseif phase == 0xC then
+            -- EXE5's 0x080E83BC: the warp back in; 30 ticks, then the undim.
+            if me.phase_init == 0 then
+                warp(me, false)
+                me.timer = WARP_TICKS
+                me.phase_init = 4
+            end
+            local t = me.timer - 1
+            me.timer = t
+            if t < 0 then
+                me:set_action(UNDIM)
+            end
+        else
+            error(string.format("NumbrBl's controller: phase %#x of its effect reads past its table", phase))
+        end
+    end
 end
 
 -- `sub_80E7FBA` (EXE5's 0x080E83E6): NumbrBl's `dimming` hook, a controller
