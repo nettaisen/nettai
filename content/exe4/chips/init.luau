@@ -18,6 +18,7 @@ return merge {
     require("@self/ball"),
     require("@self/barrier"),
     require("@self/bass"),
+    require("@self/bassanly"),
     require("@self/bighamr"),
     require("@self/binder"),
     require("@self/blkbomb"),
