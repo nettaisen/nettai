@@ -879,6 +879,29 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (EXE4 has no own-gauges mode), the warning on both consoles (the user's alone only under event flag 0x1187, which no
   netbattle sets), 70 ticks. The lab's chips/ (8) and status/slow-gauge and fast-gauge replay every frame; both hits
   are pixel-exact.
+- **TimeBomb** (the dimming chips' variant 0x11, `chips/timebomb`): EXE6's controller (effect #0x27, 0x080E4C3C:
+  @exelib/timebom/controller) with EXE4's placement (0x080E4DE4): the other side's front column from the user's back
+  edge (0x080E4D94, the first column with a solid panel of that side), a random row of it whose panel is free (any of
+  its solid ones when none is), the bomb there when it may stand (no body), else a puff (effect row 2) 16 up. With no
+  solid panel of that side's at all (its navi's own panel rules it out in a battle) the original takes 0x00010010 for
+  a table's address and loads its panel filter from open bus: the opcode at the load plus 4 in both halves, require
+  0x24002400 and forbid 0x26002600 (0x080E4DFE, 0x080E4E00), which no panel meets, so its search (0x080E4E68) writes
+  nothing through the stale r7 and draws no RNG: no bomb, no puff. The bomb (attack #0x4B, 0x080D6BF8) is EXE6's code's elder,
+  @exelib/timebom/countdown in EXE4's look: no NameID; sheet 0c-23, 0xB0, 0xE3 and 0xE4 ticking, 0xBC for the blast
+  over the other side's area (its bursts EXE4's), even once the battle is over (`blasts_after_battle`); no tracking
+  (`untracked`); no removal read as it goes, a puff (0x70, effect row 0) when broken (`reads_no_removal`); EXE4's
+  obstacle rows. Its first parameter picks TimeBomb's bomb (0, 50 HP) or TimeBom+'s (1, 300 HP, a stronger shake);
+  TimeBom+ (chip 0x15A, a Program Advance) has no content yet. The lab's chips/ (4) replay every frame; the hit is
+  pixel-exact.
+- **Blinder** (the dimming chips' variant 0x0E, `chips/blinder`): EXE6's leftover controller (effect #0x23,
+  0x080E48EC: @exelib/blinder/controller, which EXE5's Blinder now shares) with SparkMan's flash's sound (0xBA): the
+  user flashes, then a screen flash and the blinding hit over the other side's area (row 0x34, blindness for 480
+  ticks). The lab's chips/ (4) and status/ blindness replay every frame; the hit is pixel-exact.
+- **Mine** (the dimming chips' variant 0x12, `chips/mine`): EXE6's Mine (@exelib/mine: controller #0x29, 0x080E4F5C;
+  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID, sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
+  0x47 (14-13), collision rows 0x33 and 0x2A. Its init frees it without leaving its side's field-object slots when no
+  collision record is left (0x080D6F5C); the shared code leaves them (a collision pool run dry, which no recording
+  reaches). The lab's chips/ (5) replay every frame; the hit is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
@@ -1050,6 +1073,17 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   spark; its hitbox runs while dimmed as the shot does) with the vulcan's sound. His controller (effect #0x76) runs the
   short course. The lab's chips/0x12d-bass (4) replay every frame and are pixel-exact but for the custom screens'
   known shift (the Giga chip is dug over turns); EXE6's Bass traces (49) and EXE5's (4) still match.
+  BassAnly (actor #0x50, 0x080CB0FC) is EXE6's and EXE5's (@exelib/bassanly/navi) with EXE4's parts: Bass's sheet,
+  his cloak's animation offset 0x0E, EXE5's animations, no arm but a glow in his hands as it is up (effect row 0x58:
+  the sheet's animation 32, its timer 26: the maker's `glow`), the hole sound (0x105) for it, his smoke (row 0x13).
+  His init leaves Z alone (EXE6's and EXE5's clear it): the spawner's register, 0. He throws level 2 (0x080CB304),
+  EXE4's fastest: its dark ball (attack #0x73, 0x080DB7E8) is EXE6's and EXE5's (@exelib/bassanly/shot) on Bass's
+  sheet (animations 33 and 34, the maker's `anim`), its speeds level 2's (0x080DBB40, 0x080DBB64: the same as their
+  level 3's, EXE4's table has three rows), its push 0x20 ticks (0x1C and twice the level) and its diagonal steps 8
+  (12 less twice the level; EXE6's and EXE5's 10 less: the maker's `push_ticks` and `step_ticks`). His controller
+  (effect #0x77, 0x080EA598) runs the short course. The lab's chips/0x132-bassanly (4) replay every frame, sound the
+  same and are pixel-exact but for the custom screens' known shift; EXE6's BassAnly recordings (21) and EXE5's (4)
+  still match.
 
 **For the next steps:**
 

@@ -270,9 +270,10 @@ local rules: Rules = {
             steps_behind = "bool",
             var_sword_waits = "bool",
             emerge_shake = "bool",
-            -- A soul's Chaos Unison: the weapon its charge fires, and its own cycle (./souls/chaos_charge: the period,
-            -- then the windows' bounds; none, the chaos level's row).
-            chaos = { weapon = "weapon", cycle = "u8[4]" },
+            -- A soul's Chaos Unison: the weapon its charge fires, its own cycle (./souls/chaos_charge: the period,
+            -- then the windows' bounds; none, the chaos level's row), and the blade its swords hold while the charge
+            -- is armed (../lib/swords' `held_blade`; none, the swords' own).
+            chaos = { weapon = "weapon", cycle = "u8[4]", blade = "record:attachment-look" },
         },
     },
     -- Its own actions, which reach its state: a soul's change and revert (./souls), Dark MegaMan's leave

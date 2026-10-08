@@ -21,6 +21,8 @@ return {
         refreshes_form_overlay = true,
         recovery_clears_moving = true,
         blade = swords.blade,
+        -- The held blade (lib/swords; 0x080EE192 and 0x080EE1FE call 0x080EC082).
+        held_blade = swords.held_blade,
         blade_anim = swords.blade_anim,
         is = swords.slashes_navis.is,
         hits = swords.slashes_navis.hits,
