@@ -361,9 +361,10 @@ pub struct ActorData {
     /// AIData+0x4C: consecutive ticks spent flinching or paralyzed
     /// (`sub_80143FC`); 120 of them make MegaMan angry (`sub_80142DC`).
     pub stun_ticks: u32,
-    /// AIData+0x50: an object tied to the navi that the full status reset
-    /// ends (`sub_801390C` → `sub_80E5410`: state 8, first extra var
-    /// cleared). Which object stores itself here was not found.
+    /// AIData+0x50 (EXE4's +0x5C): an object tied to the navi that the full
+    /// status reset ends (`sub_801390C` → `sub_80E5410`: state 8, first
+    /// extra var cleared): EXE4's WindSoul's wind (0x0800E10C), which its
+    /// form's reset sets.
     pub reset_linked_object: Option<ObjectRef>,
     /// The navi object's ExtraVars+0x10 and +0x18 in battle mode 9, for
     /// DustMan (AI index 10): the attack #0xD2 and actor #0x28 his

@@ -306,6 +306,9 @@ named_fields! {
         TargetMarker = "target_marker", Object, rw;
         /// The charge glow.
         ChargeGlow = "charge_glow", Object, rw;
+        /// AIData+0x50 (EXE4's +0x5C): an object tied to the navi that the
+        /// full status reset ends (`sub_801390C`): EXE4's WindSoul's wind.
+        ResetLinkedObject = "reset_linked_object", Object, rw;
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura", Object, rw;
         /// The charge: 0 none, 1 charging, 2 full; its source (0 none, 1

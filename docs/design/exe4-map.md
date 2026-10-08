@@ -1907,13 +1907,69 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     known shift; the change exact, its HUD too (the chip name through it, the soul chip's icon left out, the emotion
     window's soul face and its turns), to the charged shots. The revert is checked by state only once the charged
     shots let turns recordings run to it (item 74).
-74. **The souls' abilities** (with item 25's weapons and item 48's buttons): each soul's status routine (0x0800E0A0 by
-    soul, from the status reset), its charged shot and B+Left, its chip charges (0x0800BC78), the image's parts
-    (0x080E36AC: WindMan's 0x34, FireMan's 0x12, NumberMan's 0x14, AquaMan's 0x13), WindSoul's change object (0x5A,
-    0x080D8C94), FireSoul's and NumberSoul's overlays (0x08018068; PopUp's glow, objects/glow, puts its copy on
-    through the form's `put_on` and must have it step on, its Param3 1: 0x0800B812), NumberSoul's hand of ten
-    (0x0801DC92). The lab's
-    souls/<soul>/hit and side1 recordings, and fire, aqua, wind's unison (their changes' first differences).
+74. **The souls' abilities** (group A; with item 25's weapons and item 48's buttons). Every read of the soul
+    (NaviStats +0x24: the 49 calls of the byte getters 0x0800D7CA and 0x0800D772 with 0x24) and every table by soul,
+    one line an ability; each gets a lab scenario of its own (`gen_exe4.SOUL_ABILITIES`, souls/<soul>/<ability>) and a
+    frame comparison. *done* is ported with its recording matched, *ported* without its own recording yet, *open* to
+    port.
+   - **Every soul.** Its weapons, 0x080184F0's row (0x0800BD48: AIData +0x0D the B routine, +0x0E the A charge, +0x0F
+     the charged shot) *done*; its turns, 0x080180A8 (0x0800BA3C), and the revert at their end (0x0800B658) *done*;
+     MegaMan's sprite, his entry plus the soul (0x0800B90A, 0x0801079C) *done*; the emotion 4 (0x0800F49C), no anger
+     (0x0800C560) and no Full Synchro aura (0x0800D98A) *done*; the palette 0 (0x0800BFFE) *done*; the status reset's
+     routine by soul (0x0800E05C, table 0x0800E0A0), its element by soul (0x0800C93C, table 0x0800C964: Fire fire,
+     Thunder elec, Aqua aqua, Wood wood, the rest null) *open*; the overlay by soul (0x0800B7E8, table 0x08018068: Fire
+     0x10, Number 0x110; `effects.form_overlay`; PopUp's glow, objects/glow, puts its copy on through the form's
+     `put_on` and must have it step on, its Param3 1: 0x0800B812) *open*; the image's part (0x080E3674, table
+     0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
+     *done* for WindMan, *open* for the rest; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
+     `charged_chips`) *open*; a charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage
+     itself, item 28) *open*; MegaMan's look by soul in what copies it (the
+     image 0x080E2C44, the swords' and cannons' afterimages 0x080EB548, 0x080EB5FA, 0x080EB874, the GigaCan's part
+     0x080EB93A, the objects 0x080CB4B0, 0x080CC648, 0x080CC750, 0x080CC960, 0x080CCAF0, 0x080CCF7C, 0x080D7590,
+     0x080DD7BC, 0x080EA744) *open*: each with the chip that spawns it.
+   - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
+     that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
+     (souls/roll/heal).
+   - **GutsSoul (2).** GutsMan's fist charged (0x24, 0x0800CF62) *done* (souls/guts/hit); six B presses within 10
+     ticks of each other ask for the machine gun (0x0800BE50, action 0x10) *done* (souls/guts/rapid); the status
+     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *ported*.
+   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94) *done* (souls/wind/hit); the
+     status reset (0x0800E0F4): air and float shoes (flag1 0x30), a floating navi's body (row 0x10), its wind
+     (0x080E68F8, held at AIData +0x5C), 10 more on each damaging Wind chip (0x0800E208) *ported*; the image's part (row
+     0x34) *done* (souls/wind/hit); B's AirShot (0x6B, 0x0800D3E8) *open*; WindRack charged (0x09, 0x0800D204) *open*.
+   - **SearchSoul (4).** The status reset's effect 0x44 (0x080E6E4C, 0x080E6D74): a mark (effect row 0x52) over each
+     enemy navi with flag 0x206, then after 10 ticks a hitbox (0x2C05FF80) *open*; charged 0x0A (0x0800CDC4) *open*.
+   - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
+     panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle row and four more panels turn grass, blinking
+     10 ticks) *open*; a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged
+     use is a 150 flame in its place (0x0800B76C, 0x0800D638: action 25, hit 0xA8, params 0x1E05) *open*; the flame
+     charged (0x0C, 0x0800CCAE: 50, hit 0x9E, params 0x1E03, action 25) *open*; lava heals it 50 and turns normal,
+     with the heal's sparkle and sound (0x0801313E, 0x080131B8) *open*.
+   - **ThunderSoul (6).** Elec (0x0800C964) *open*; an uncharged damaging Null or Elec chip that isn't a dimming chip
+     paralyzes (0x0800C4C4: the damage's 0x4000) *open*; charged 0x58 (0x0800D298) *open*.
+   - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0) *open*; a sword chip that
+     isn't a dimming chip charges on A (0x0F) and doubles charged (0x0800C47A) *open*; WideSwrd charged (0x3E,
+     0x0800D148) *open*; the swords' blade 13 (0x080EB628, 0x080EB6AC, 0x080ED89C, 0x080EE822) and their hit modifiers
+     from 0x080EB7FE (0x080EB6E8, item 70) *open*; VarSwrd's and NeoVari's command window waits out its ticks without
+     A held (0x080ED776, 0x080EE240) *ported* (chips/varswrd's `waits`).
+   - **NumberSoul (8).** Its overlay 0x110 and image part 0x14 *open*; the status reset's 10 more on each damaging
+     Null chip (0x0800E194) *open*; charged 0x11 (0x0800CE08) *open*; the hand of ten (0x0801DC92) *open*.
+   - **MetalSoul (9).** B's routine 0x0B (0x0800CDE2) *open*; a damaging Metal or Null chip that isn't a dimming chip
+     charges on A (0x0D) and doubles charged (0x0800C47A) *open*; charged 0x13 (0x0800CE28) *open*.
+   - **JunkSoul (10).** No shadow (0x0801079C and the look copies) *open*; the status reset's hitbox on his panel
+     (0x0800E146: params 0x1705FF85 or 0x1705FF84 by side, 0x2100) *open*; charged 0x61 (0x0800CE4C) *open*.
+   - **AquaSoul (11).** Aqua (0x0800C964) *open*; its image part 0x13 *open*; an aqua chip that isn't a dimming chip
+     charges on A (0x15) and doubles charged (0x0800C47A) *open*; charged 0x23 (0x0800CF42) *open*.
+   - **WoodSoul (12).** Wood (0x0800C964) *open*; the status reset's merge (0x0800E294: a Wood chip takes the damage
+     and bonuses of a damaging Null chip after it, which leaves the hand) *open*; grass heals 1 (0x08012FD6) *open*;
+     a hit's status doesn't take (0x08013904 skips 0x08013470: `status_immune`) *open*; charged 0x57 (0x0800D270)
+     *open*.
+   - **The dark soul (15).** A worn-out MegaMan (emotion 5) at 0 HP, once a battle, holds at 1 HP and asks for it
+     (0x0800EBC8, 0x08013AB8: request 0x1000, then 0x0800B8CA: soul 15); its status reset (0x0800E17E: the mood 0,
+     flag1 0x08000000, 0x0800EAC6); 960 ticks (0x0800B93C, 0x08018088) counted down to the revert (0x0800B6A4) with
+     the tail's shader its last 90 (0x0800BB18, item 39); its collision (0x0800C43C: +0x18 3, flag1 2); no buster,
+     B+Left or charge (0x0800BBB2, 0x0800BE28); its chip use (0x080EEC78: 0x0800E4F8), no hand advance after the change
+     (0x080EBC8E), GunSol without A held (0x080EDF12) *open*.
 75. **Done: DS chips' code and damage on the custom screen** (group A; F's frame comparisons, chips/0x0df-rollds and
     the other DS chips, frames 269 to 283). The DS scenarios' MegaMan is dark, so the screen offers dark chips and the
     cursor starts on one: the hover (0x0801E478) darkens the screen, its window fade (0x0801E520's second slot)
