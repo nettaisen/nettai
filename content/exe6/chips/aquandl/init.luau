@@ -19,7 +19,7 @@ local chips: { [string]: Chip } = {
         rarity = 1, mb = 35, damage = 60, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = action.action { palette = 1 },
+        action = action.action { palette = 4 },
     },
     aquandl3 = {
         codes = { "A", "L", "U" },
@@ -33,7 +33,7 @@ local chips: { [string]: Chip } = {
         lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
-        action = action.action { id = "aquandl3/action", palette = 2 },
+        action = action.action { id = "aquandl3/action", palette = 8 },
     },
 }
 

@@ -38,7 +38,7 @@ local dblpoint: Chip = {
     flags = { "dimming", "library" },
     extra_flags = { 128 },
     slot_in_limit = 1,
-    dimming = colorpt.hook { palette = 1, bonus = 20 },
+    dimming = colorpt.hook { palette = 4, bonus = 20 },
     auto_battle = { class = "when_area_whole" },
 }
 
