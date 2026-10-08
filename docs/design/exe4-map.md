@@ -2167,7 +2167,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      `put_on` and must have it step on, its Param3 1: 0x0800B812) *open*; the image's part (0x080E3674, table
      0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
      *done* for WindMan, *open* for the rest; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
-     `charged_chips`; the A routine forms/soul's `chip_charge`) *done* for Fire and Proto, *open* for the rest; a
+     `charged_chips`; the A routine forms/soul's `chip_charge`; any charged chip used with its charge, Null or not,
+     0x0800B72C: the rule `chip_use.charged_null_alt_routine`) *done* for Fire, Proto and Metal, *open* for Aqua; a
      charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage itself, item 28; the
      form's `charged_bonus.doubles`) *done* (souls/proto/chip); MegaMan's look by soul in what copies it (the image
      0x080E2C44, the swords' and cannons' afterimages 0x080EB548, 0x080EB5FA, 0x080EB874, the GigaCan's part
@@ -2224,8 +2225,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      Z Saver, a Sword chip it charges, reads no charge (0x080EE774).
    - **NumberSoul (8).** Its overlay 0x110 and image part 0x14 *open*; the status reset's 10 more on each damaging
      Null chip (0x0800E194) *open*; charged 0x11 (0x0800CE08) *open*; the hand of ten (0x0801DC92) *open*.
-   - **MetalSoul (9).** B's routine 0x0B (0x0800CDE2) *open*; a damaging Metal or Null chip that isn't a dimming chip
-     charges on A (0x0D) and doubles charged (0x0800C47A) *open*; charged 0x13 (0x0800CE28) *open*.
+   - **MetalSoul (9).** B's routine 0x0B (0x0800CDE2: the buster's shot, action 8, its projectile row 5: breaking,
+     the breaking spark) *done* (souls/metal/buster: through side 1's Guard); a damaging Metal or Null chip that isn't
+     a dimming chip charges on A (0x0D: 70 ticks a level, 90 the last) and doubles charged (0x0800C47A) *done*
+     (souls/metal/chip, a Cannon; metal-chip, a CannBall); its fist charged (0x13, 0x0800CE28: 150, hit 0xA8; action
+     0x14, 0x080EC0A4: a breaking hit on the panel ahead, hit modifier 0x23, and on a solid panel a burst, effect row 6,
+     a shake and sound 0xA2) *done* (souls/metal/fist; fist-broken, the panel ahead broken: the hit alone). Its status
+     reset runs nothing of its own (0x0800E0A0's row 9).
    - **JunkSoul (10).** No shadow (0x0801079C and the look copies) *open*; the status reset's hitbox on his panel
      (0x0800E146: params 0x1705FF85 or 0x1705FF84 by side, 0x2100) *open*; charged 0x61 (0x0800CE4C) *open*.
    - **AquaSoul (11).** Aqua (0x0800C964) *open*; its image part 0x13 *open*; an aqua chip that isn't a dimming chip
