@@ -239,6 +239,11 @@
 "lasrmn-ds/controller" = { pool = "effect", index = 0x75, scratch_position = true }
 "laserman/navi" = { pool = "actor", index = 0x4E }
 "laserman/laser" = { pool = "attack", index = 0xA0 }
+# Bass's chip (action 0x0C's variant 0x44, 0x080EA576): its controller (effect #0x76, 0x080EA4C8), Bass (@exelib/bass)
+# and his shots.
+"bass/controller" = { pool = "effect", index = 0x76, scratch_position = true }
+"bass/navi" = { pool = "actor", index = 0x4F }
+"bass/shot" = { pool = "attack", index = 0x72 }
 # NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
 # objects/north_wind's.
 "nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
