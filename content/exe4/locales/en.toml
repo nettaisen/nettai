@@ -245,6 +245,9 @@ language = "en"
 "windman" = { name = "WindMan", description = "Whirlwind\nthat spin\nacrss 3sq" }
 "windmn-sp" = { name = "WindMnSP", description = "Whirlwind\nthat spin\nacrss 3sq" }
 "windmn-ds" = { name = "WindMnDS", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"videoman" = { name = "VideoMan", description = "Attack\ntape slam\n2.5 in" }
+"videmn-sp" = { name = "VideMnSP", description = "Attack\ntape slam\n2.5 in" }
+"videmn-ds" = { name = "VideMnDS", description = "Attack\ntape slam\n2.5 in" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

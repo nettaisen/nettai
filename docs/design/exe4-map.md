@@ -915,6 +915,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the panel to normal, and from then on sand on each panel it enters (a hit 11 ticks later). The swirl on his head is
   actor #0x5C's row 2 (10-28, the one his soul image holds). The lab's chips/0x0e3-windman/sand (the typeA stage's pitfalls) replays every frame and is
   pixel-exact, as the other twelve recordings are.
+  VideoMan (actor #0x3E) and his tapes (attack #0x5D, 0x080D90C8) are EXE4's own; his controller (effect #0x5F) runs
+  the short course. As his swing ends a tape covers the square two panels ahead of him (three back for side 1: a
+  square spreads to the right) and a row up, unless he is on the top row; 45 ticks into it another covers the square
+  in his row, unless he is on the bottom row. A tape (sheet 08-17, 20 pixels right, 46 down and 24 up of its panel)
+  winds in and three times, 15 ticks apart, hits its four panels (no element, modifier 3, at its height). The tapes'
+  Param3 0 course is actor #0x2F's (EXE4's other VideoMan, 0x080C2FC8), which no netbattle spawns. The lab's
+  chips/0x116-videoman/top-row (no upper tape) and the twelve recordings replay every frame and are pixel-exact.
 
 **For the next steps:**
 
