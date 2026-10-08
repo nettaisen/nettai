@@ -147,6 +147,9 @@ local roles: RolesSpec = {
         -- routine spawns none for the immobilized).
         confusion = asset.sprite("confusion"),
         blindness = asset.sprite("blindness"),
+        -- The mark over a navi a weakness hit damaged (effect 0x6B, 0x080E9900: 14-07, its animation 0 whatever the
+        -- spawn's).
+        hit_marker = asset.sprite("hit-marker"),
     },
     music = {
         link_battle = asset.sound("netbattle"),
