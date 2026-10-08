@@ -142,6 +142,9 @@ language = "en"
 "blizzard" = { name = "Blizzard", description = "Snowstorm\nattack!\nIce Panel" }
 "elecshok" = { name = "ElecShok", description = "Cracker\nElectric\nblast" }
 "woodpwdr" = { name = "WoodPwdr", description = "Changes\npanels\nto grass" }
+"rush" = { name = "Rush", description = "" }
+"beat" = { name = "Beat", description = "" }
+"tango" = { name = "Tango", description = "" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

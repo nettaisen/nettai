@@ -10,4 +10,6 @@ return {
     leave_on_use = true,
     anti_navi_sparkle = { dy = 0, z = 16 },
     mixed_modifiers = true,
+    -- Beat takes any Mega or Giga chip, dark or not.
+    beat_spares_dark = false,
 }
