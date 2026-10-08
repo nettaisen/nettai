@@ -14,6 +14,7 @@ local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
 local deletion = require("./deletion")
 local invalid = require("../chips/invalid").invalid
+local machine_gun = require("../navis/megaman/forms/gutssoul/machine_gun")
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
@@ -54,6 +55,9 @@ local roles: RolesSpec = {
         anti_damage_counter = anti_damage.action,
         -- AntiSwrd's counter (action 0x39, 0x080EDA68), which its trap's catch starts.
         anti_sword_counter = anti_sword.action,
+        -- What request 0x20 starts from idle (action 0x10, 0x080EEBEA): GutsSoul's machine gun, which its rapid
+        -- presses ask for.
+        forced_charged_shot = machine_gun.action,
     },
     kinds = {
         -- The glow a navi's charge brings (effect object 5, 0x080E215C; the navi's tail spawns it, 0x0800BD88).

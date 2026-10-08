@@ -400,6 +400,11 @@ pub struct FormData {
     /// 0x08010392).
     #[serde(default)]
     pub front_guard: Option<u16>,
+    /// B presses that ask for the forced charged shot (the role
+    /// `actions.forced_charged_shot`), each within the window of the last
+    /// (EXE4's GutsSoul: six, 10 ticks; 0x0800BE50).
+    #[serde(default)]
+    pub rapid_presses: Option<RapidPresses>,
     #[serde(default)]
     pub traits: FormTraits,
     /// (This and what follows are read from the definition by handle, not
@@ -426,6 +431,15 @@ pub struct FormData {
     /// Its identity (the base form has none of its own: the navi's).
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
+}
+
+/// A form's rapid presses (`FormData::rapid_presses`): how many B presses
+/// ask, and the ticks each may follow the last in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RapidPresses {
+    pub presses: u8,
+    pub window: u8,
 }
 
 /// A form's priming (EXE5's GyroSoul: AIData +0x0D): the use of a chip it

@@ -344,6 +344,29 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
         let full = source == 2 && level == 2;
         ai_mut(b, r).requests |= if full { request::CHARGED_SHOT } else { request::BUSTER };
     }
+    // (0x0800BE50: a form's rapid presses, GutsSoul's. A press counts and
+    // opens the window; the window running out drops the count; at the
+    // count the forced charged shot is asked for every tick until it starts,
+    // the window set to the count.)
+    if let Some(rapid) = form_of(b, r).rapid_presses
+        && f0 & request::FORCED_CHARGED_SHOT == 0
+    {
+        let a = ai_mut(b, r);
+        if pressed & keys::B != 0 {
+            a.rapid_presses = a.rapid_presses.wrapping_add(1);
+            a.rapid_window = rapid.window;
+        }
+        if a.rapid_window != 0 {
+            a.rapid_window -= 1;
+            if a.rapid_window == 0 {
+                a.rapid_presses = 0;
+            }
+        }
+        if a.rapid_presses >= rapid.presses {
+            a.rapid_window = a.rapid_presses;
+            a.requests |= request::FORCED_CHARGED_SHOT;
+        }
+    }
     // (0x0800BE96: the B+Left special, its weapon's.)
     let a = ai(b, r);
     if a.back_special.is_some() && a.back_special_cooldown == 0 {
