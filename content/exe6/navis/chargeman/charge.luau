@@ -61,8 +61,8 @@ local function aim(me: Object, s: State)
     s.timer = int.tdiv(math.abs(EDGE[me.alliance] - me.panel_x) * PANEL_WIDTH, SPEED)
 end
 
--- `sub_80F14BC`: a car from the panel he left (his own, with no wait and
--- no action to watch), at his speed; two at most. (Its Z until its init,
+-- `sub_80F14BC`: a car from the panel he left (his own: hit modifier 1, no
+-- wait, no action to watch), at his speed; two at most. (Its Z until its init,
 -- whose fraction it keeps, is its spawner's register: the speed.)
 local function add_car(me: Object, s: State)
     local n = s.cars
@@ -74,7 +74,7 @@ local function add_car(me: Object, s: State)
         me.future_panel_x,
         me.future_panel_y,
         0,
-        { place = n, wait = 0 },
+        { hit_mod = 1, place = n, wait = 0 },
         link.damage_word(me),
         SPEED,
         SPEED
