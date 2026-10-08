@@ -252,6 +252,7 @@ language = "ja"
 "videoman" = { name = "ビデオマン", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 "videmn-sp" = { name = "ビデオマンSP", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 "videmn-ds" = { name = "ビデオマンDS", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"bugbomb" = { name = "バグボム", description = "あいてをバグらせる\nバグボムを3マス前\nになげつける" }
 "kendoman" = { name = "ケンドーマン", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
 "kendmn-sp" = { name = "ケンドーマンSP", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
 "kendmn-ds" = { name = "ケンドーマンDS", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
@@ -370,6 +371,7 @@ language = "ja"
 "037-max-hp-up" = { name = "マックスHPを強化" }
 "038-max-hp-up" = { name = "マックスHPを強化" }
 "039-b-left-ability-activation" = { name = "B+左で技発動" }
+"041-b-left-ability-activation" = { name = "B+左で技発動" }
 "042-b-left-ability-activation" = { name = "B+左で技発動" }
 "045-default-full-synchro" = { name = "デフォルトフルシンクロ" }
 "046-first-barrier200" = { name = "ファーストバリア200" }
@@ -429,6 +431,7 @@ language = "ja"
 "105-panel-change" = { name = "パネルチェンジ" }
 "106-weapon-change" = { name = "ウェポンチェンジ" }
 "107-weapon-change" = { name = "ウェポンチェンジ" }
+"108-weapon-change" = { name = "ウェポンチェンジ" }
 "109-megafolder3" = { name = "メガフォルダ3" }
 "110-custom3" = { name = "カスタム3" }
 "111-gigafolder1" = { name = "ギガフォルダ1" }
@@ -438,6 +441,7 @@ language = "ja"
 "115-charge-shot-switch" = { name = "チャージ武器を変更" }
 "116-charge-shot-switch" = { name = "チャージ武器を変更" }
 "117-charge-shot-switch" = { name = "チャージ武器を変更" }
+"118-charge-shot-switch" = { name = "チャージ武器を変更" }
 "119-charge-shot-switch" = { name = "チャージ武器を変更" }
 "120-charge-shot-switch" = { name = "チャージ武器を変更" }
 "133-weapon-change" = { name = "ウェポンチェンジ" }
