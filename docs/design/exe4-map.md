@@ -957,6 +957,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   stepping on) through the form's `put_on`, so FireSoul's and NumberSoul's (item 74) come with their overlays. The
   lab's chips/0x085-invis and chips/0x086-popup (hit, miss, adjacent, side1) replay every frame; the hit recordings'
   fight frames, the glow and the hole among them, are pixel-exact.
+- **Magnum** (the dimming chips' variant 0x16, `chips/magnum`, group B): EXE5's controller and gunner, now
+  @exelib/magnum, in EXE4's look: the controller (effect #0x30, 0x080E57F8, the same code) sends out EXE4's gunner,
+  an attack object (#0x50, 0x080D756C; EXE5's actor #2) drawn as the user and wearing nothing, its sounds 0x128 (a
+  step of the sight), 0xC0, 0xBC and 0x95, firing in animation 0x10, its sight effect row 0x49 (10-22), and its sight
+  stepping to the next column if that has an enemy panel, else from the field's start to the first that has one, and
+  off the field with none (0x080D776E: `gunner.next_or_wrap`; EXE5's sweeps on round from where it is). A press of A
+  is read from the side's joypad record (0x0800BFF4), its navi's (EXE5's from the user's). The lab's chips/0x05e-magnum
+  (hit, miss, adjacent, side1; fire-early: A a second into the aim) replay every frame with the same sounds,
+  pixel-exact; EXE5's Magnum recordings still match.
 - **MetaGel** (the dimming chips' variant 0x0C, `chips/metagel`, group B): EXE5's controller and gel, now
   @exelib/metagel (makers each game states its look for), in EXE4's: the controller (effect #0x21, 0x080E4618) drops
   each row's gel on the other side's panel nearest the user's (0x0800A1AE with 0x080E4708's flags, `nearest_other`;

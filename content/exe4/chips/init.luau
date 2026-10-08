@@ -79,6 +79,7 @@ return merge {
     require("@self/lifesrd"),
     require("@self/ligtnin"),
     require("@self/magbolt"),
+    require("@self/magnum"),
     require("@self/metagel"),
     require("@self/metalman"),
     require("@self/meteors"),
