@@ -39,6 +39,10 @@ local BOARD: { string } = board.boards[1]
 -- What a program's handler and a bug's routine work on besides the stats: the HP programs' sum, BugStop.
 export type Work = { hp: number, bug_stop: boolean }
 
+-- What a side keeps of its NaviCust through the round: its bugs' counts by kind as the compile left them (the battle's
+-- copy, 0x0203F6E0, side 1's 0x0203F6F0), which a hit's bug code 0xFF raises (`raise_bug`).
+type State = { bug_counts: { [string]: number } }
+
 local function filled(rows: { string }, x: number, y: number): boolean
     return string.sub(rows[y + 1], x + 1, x + 1) == "#"
 end
@@ -335,6 +339,26 @@ local function run(side: number)
         end,
     })
     bugs()
+    local kept = (rules.state() :: State).bug_counts
+    for _, bug in programs.BUGS do
+        kept[bug] = math.min(counts[bug] or 0, 0xFF)
+    end
+end
+
+-- 0x0804770C, then 0x08042AE0: side `side`'s bug `bug` one count more, and every bug of the side's at its count's level
+-- (1 to 3) again, on the battle's stats. (Their routines for the battle write its stats, but HubBatc's, which writes
+-- the game state's maximum HP, which no battle reads.)
+local function raise_bug(side: number, bug: string)
+    local kept = (rules.state() :: State).bug_counts
+    kept[bug] = int.u8(kept[bug] + 1)
+    local stats = battle.navi(side)
+    local work: Work = { hp = 0, bug_stop = false }
+    for _, b in programs.BUGS do
+        local level = math.min(kept[b], 3)
+        if level > 0 and b ~= "hub" then
+            BUG_WORK[b](stats, level, work)
+        end
+    end
 end
 
 -- `validate`'s part: each program in one of its colors, turned 0 to 3 quarters, every cell it covers on the board, over
@@ -383,4 +407,19 @@ end
 return {
     run = run,
     validate = validate,
+    raise_bug = raise_bug,
+    -- The side's state (./init.luau gathers it).
+    state = {
+        bug_counts = {
+            move = "u8",
+            hp = "u8",
+            custom = "u8",
+            panel = "u8",
+            encounter = "u8",
+            buster = "u8",
+            support = "u8",
+            result = "u8",
+            hub = "u8",
+        },
+    } :: StateSchema,
 }
