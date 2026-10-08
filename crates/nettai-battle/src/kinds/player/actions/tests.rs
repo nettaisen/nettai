@@ -1381,14 +1381,17 @@ fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     assert_eq!((act(&b, p0), o.panel), (IDLE, PanelPos { x: 2, y: 2 }));
 
     // The test blades run StepSwrd's and WideSwrd's actions, whose slashes
-    // say: the wide slash, after a dash for the step sword's.
+    // say: the wide slash, after a dash for the step sword's. (Each sword
+    // states its own charged slash, so WideSwrd's is a record of its own.)
     let (mut b, p0, _) = fight();
     use_charged_chip(&mut b, p0, Some("megaman/slash-a-charge"), testing::chip_handle(testing::STEP_BLADE));
     assert_eq!(runs(&b, p0), "slashcross/charge/action");
     assert_eq!(charged_slash(&b, p0), (wide, true));
     let (mut b, p0, _) = fight();
     use_charged_chip(&mut b, p0, Some("megaman/slash-a-charge"), testing::chip_handle(testing::BLADE));
-    assert_eq!(charged_slash(&b, p0), (wide, false));
+    let (plain, dash) = charged_slash(&b, p0);
+    assert!(!dash && plain != wide);
+    assert_eq!(slash_lockon(&b, plain), "widesht");
 }
 
 #[test]
