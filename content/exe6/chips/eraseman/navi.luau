@@ -197,7 +197,7 @@ local function slash(me: Object)
         local s = me.state :: State
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
         each_panel(me, function(x, y)
-            beam.spawn(me, x, y, me.element, { aim = s.aim, ticks = SLASH_TICKS, navis = false }, damage)
+            beam.spawn(me, x, y, me.element, { aim = s.aim, ticks = SLASH_TICKS, while_dimmed = true, tied = false }, damage)
         end)
         battle.play_sound(SOUND_SLASH)
         me.timer = SLASH_TICKS

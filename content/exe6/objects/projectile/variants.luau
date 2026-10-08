@@ -7,7 +7,9 @@
 -- name: the buster shot's and the charged shot's programs (NaviStats+0x4D
 -- and +0x4F), each the variant a shot is on a lucky draw. Each has a key
 -- (`shot/...`), which a setup's stats name it by (compat records.toml,
--- `projectile_variants`).
+-- `projectile_variants`). As a program, a variant comes on 1 draw in 8
+-- where it says so (`rare_buster_shot`: the buster's rows from 0x1E on;
+-- `rare_charged_shot`: the charged shot's rows 9 and 0x23), else on 1 in 2.
 
 local projectile = require("../projectile")
 local collision = require("../../rules/collision")
@@ -73,6 +75,7 @@ variants.chip_destruction = v {
     hit_mod = 0,
     element = "null",
     spark = sparks.chip_destruction,
+    rare_charged_shot = true,
 }
 -- Shots with a status: confusion, blindness, paralysis.
 variants.confusing = v { id = "shot/confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.confuse_480 }
@@ -86,16 +89,48 @@ variants.erasing = v { id = "shot/erasing", collision = SHOT, hit_mod = 0, eleme
 variants.charged_confusing = v { id = "shot/charged-confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.confuse_480 }
 variants.charged_paralyzing = v { id = "shot/charged-paralyzing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.paralyze_90 }
 variants.charged_blinding = v { id = "shot/charged-blinding", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.blind_480 }
-variants.charged_bubbling = v { id = "shot/charged-bubbling", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.bubble_150 }
-variants.charged_freezing = v { id = "shot/charged-freezing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.freeze_150 }
+variants.charged_bubbling = v {
+    id = "shot/charged-bubbling",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    status = statuses.bubble_150,
+    rare_buster_shot = true,
+}
+variants.charged_freezing = v {
+    id = "shot/charged-freezing",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    status = statuses.freeze_150,
+    rare_buster_shot = true,
+}
 -- Charged shots that change the panel they hit on: cracked, broken,
 -- volcano, poison, grass, ice.
 variants.charged_cracking = v { id = "shot/charged-cracking", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "crack" } }
 variants.charged_panel_breaking = v { id = "shot/charged-panel-breaking", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "break" } }
 variants.charged_volcano = v { id = "shot/charged-volcano", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("volcano") }
 variants.charged_poisoning = v { id = "shot/charged-poisoning", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("poison") }
-variants.charged_grass = v { id = "shot/charged-grass", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("grass") }
-variants.charged_ice = v { id = "shot/charged-ice", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("ice") }
+variants.charged_grass = v {
+    id = "shot/charged-grass",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    hit_panel = panel("grass"),
+    rare_buster_shot = true,
+}
+variants.charged_ice = v {
+    id = "shot/charged-ice",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    hit_panel = panel("ice"),
+    rare_buster_shot = true,
+}
 -- Charged shots that lay a road: the way the shot flies for the left
 -- side's shots and the other way for the right side's (the routine's own
 -- values, 0xC and 0xB, for side 1), and the reverse.
@@ -106,6 +141,7 @@ variants.charged_road = v {
     element = "null",
     spark = sparks.charged,
     hit_panel = { effect = "set_type", left_side = "road_left", right_side = "road_right" },
+    rare_buster_shot = true,
 }
 variants.charged_road_back = v {
     id = "shot/charged-road-back",
@@ -114,6 +150,7 @@ variants.charged_road_back = v {
     element = "null",
     spark = sparks.charged,
     hit_panel = { effect = "set_type", left_side = "road_right", right_side = "road_left" },
+    rare_buster_shot = true,
 }
 -- A charged shot of the attack type 0xA0.
 variants.charged_attack_a0 = v {
@@ -128,14 +165,44 @@ variants.charged_attack_a0 = v {
 -- (0xF4).
 variants.charged_uninstalling = v { id = "shot/charged-uninstalling", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0xFB }
 variants.charged_hp_bug = v { id = "shot/charged-hp-bug", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0x18, bug_arg = 1 }
-variants.charged_hp_bug_marked = v { id = "shot/charged-hp-bug-marked", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0xF4 }
+variants.charged_hp_bug_marked = v {
+    id = "shot/charged-hp-bug-marked",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    bug = 0xF4,
+    rare_buster_shot = true,
+    rare_charged_shot = true,
+}
 -- A charged shot that flinches.
 variants.charged_flinching = v { id = "shot/charged-flinching", collision = SHOT, hit_mod = 1, element = "null", spark = sparks.charged }
 -- Shots that move what they hit: a panel away (hit modifier 0x61), six
 -- panels away (0x49), and a charged one six panels toward the shooter
 -- (0x45).
-variants.pushing = v { id = "shot/pushing", collision = SHOT, hit_mod = 0x61, element = "null", spark = sparks.plain }
-variants.shoving = v { id = "shot/shoving", collision = SHOT, hit_mod = 0x49, element = "null", spark = sparks.plain }
-variants.charged_pulling = v { id = "shot/charged-pulling", collision = SHOT, hit_mod = 0x45, element = "null", spark = sparks.charged }
+variants.pushing = v {
+    id = "shot/pushing",
+    collision = SHOT,
+    hit_mod = 0x61,
+    element = "null",
+    spark = sparks.plain,
+    rare_buster_shot = true,
+}
+variants.shoving = v {
+    id = "shot/shoving",
+    collision = SHOT,
+    hit_mod = 0x49,
+    element = "null",
+    spark = sparks.plain,
+    rare_buster_shot = true,
+}
+variants.charged_pulling = v {
+    id = "shot/charged-pulling",
+    collision = SHOT,
+    hit_mod = 0x45,
+    element = "null",
+    spark = sparks.charged,
+    rare_buster_shot = true,
+}
 
 return variants

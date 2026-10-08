@@ -37,6 +37,8 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# CopyDmg's mark (0x080D1C24).
+"copydmg/mark" = { pool = "attack", index = 0x28 }
 # Tornado's and Static's tornado (0x080D3130).
 "tornado/tornado" = { pool = "attack", index = 0x31 }
 # The PropBoms' propeller bomb (0x080DED30).
@@ -47,6 +49,10 @@
 "twnfng/fang" = { pool = "attack", index = 0x51 }
 # The WideShts' wave (0x080D4ADA).
 "widesht/wave" = { pool = "attack", index = 0x3B }
+# GrabRvng's and GrabBnsh's dimming controller (0x080E4814: its position the spawner's registers) and hand
+# (0x080D60FA).
+"grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
+"grabbnsh/hand" = { pool = "attack", index = 0x46 }
 # The AirHocs' puck (0x080D2B08).
 "airhoc/puck" = { pool = "attack", index = 0x2E }
 # The GunSols' sun beam (0x080E7216).
@@ -149,6 +155,16 @@
 "firemn-ds/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
 "fireman/navi" = { pool = "actor", index = 0x12 }
 "fireman/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+# GutsMan's chips (action 0x0C's variant 0x05, 0x080E3304): each chip's controller (the content's own; the original's
+# one object, effect #0x10, 0x080E3200), GutsMan, his quake, and its falling rocks and their chips (attack #0x1D,
+# 0x080D08BC, and effect #9, 0x080E2914: the content's own kinds of objects/falling_rock).
+"gutsman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gutsmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gutsmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gutsman/navi" = { pool = "actor", index = 0x14 }
+"gutsman/quake" = { pool = "attack", index = 0x1C, scratch_position = true }
+"gutsman/rock" = { pool = "attack", index = 0x1D }
+"gutsman/rock-chip" = { pool = "effect", index = 0x09 }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
 # original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
 "shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }
@@ -156,6 +172,16 @@
 "shadmn-ds/controller" = { pool = "effect", index = 0x15, scratch_position = true }
 "shademan/navi" = { pool = "actor", index = 0x19 }
 "shademan/crush" = { pool = "attack", index = 0x34 }
+# BurnMan's chips (action 0x0C's variant 0x08, 0x080E3B96): each chip's controller (the content's own; the original's
+# one object, effect #0x18, 0x080E3AE8), BurnMan, his pillars, his flame and their lingering hits (attack #0x7C,
+# 0x080DCC5C: the content's own kind of objects/lingering_hit).
+"burnman/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"burnmn-sp/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"burnmn-ds/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"burnman/navi" = { pool = "actor", index = 0x23 }
+"burnman/pillar" = { pool = "attack", index = 0x3A, scratch_position = true }
+"burnman/flame" = { pool = "attack", index = 0x37 }
+"burnman/hit" = { pool = "attack", index = 0x7C, scratch_position = true }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the

@@ -186,6 +186,15 @@ language = "en"
 "propbom3" = { name = "PropBom3", description = "Rushing\ncauses an\nexplosion" }
 "tornado" = { name = "Tornado", description = "Creates 8\nwhirlwind\nahead" }
 "static" = { name = "Static", description = "A static\nblast 2sq\nahead" }
+"burnman" = { name = "BurnMan", description = "3-direct\nburnr fry\n2 ahead!" }
+"burnmn-sp" = { name = "BurnMnSP", description = "3-direct\nburnr fry\n2 ahead!" }
+"burnmn-ds" = { name = "BurnMnDS", description = "3-direct\nburnr fry\n2 ahead!" }
+"grabrvng" = { name = "GrabRvng", description = "Retaliate\nstolen\npanels!" }
+"grabbnsh" = { name = "GrabBnsh", description = "Retaliate\nstolen\npanels!" }
+"custswrd" = { name = "CustSwrd", description = "Cust\nGauge=\nAtk Str" }
+"muramasa" = { name = "Muramasa", description = "EvilChip!\nPower=\nHP lost" }
+"slasher" = { name = "Slasher", description = "Cut while\nA Button\nis held!" }
+"suprvulc" = { name = "SuprVulc", description = "12-shot\nvulcan\ncannon" }
 "hole" = { name = "Hole", description = "Appears\nHole\nin front" }
 "pnlretrn" = { name = "PnlRetrn", description = "Fix your\narea's\npanels" }
 "holypanl" = { name = "HolyPanl", description = "Creates a\nHolyPanl\nin front" }
@@ -200,6 +209,11 @@ language = "en"
 "discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
 "timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
 "silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
+"gutsman" = { name = "GutsMan", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-sp" = { name = "GutsMnSP", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-ds" = { name = "GutsMnDS", description = "GutsHammr\ndestroys\nenmy area" }
+"copydmg" = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
+"windrack" = { name = "WindRack", description = "Blow enmy\nin front!\nRange: 3" }
 "bighamr1" = { name = "BigHamr1", description = "Hammr atk\nsmashes\nin front!" }
 "bighamr2" = { name = "BigHamr2", description = "Hammr atk\nsmashes\nin front!" }
 "bighamr3" = { name = "BigHamr3", description = "Hammr atk\nsmashes\nin front!" }
@@ -212,6 +226,14 @@ language = "en"
 "circgun1" = { name = "CircGun1", description = "Stop site\nw/ Button\nand attck" }
 "circgun2" = { name = "CircGun2", description = "Stop site\nw/ Button\nand attck" }
 "circgun3" = { name = "CircGun3", description = "Stop site\nw/ Button\nand attck" }
+"varswrd" = { name = "VarSwrd", description = "A magical\nshifting\nsword" }
+"neovari" = { name = "NeoVari", description = "A magical\nshifting\nsword" }
+"lifesrd" = { name = "LifeSrd", description = "Big sword\n2 long\n3 wide!" }
+"ftrsword" = { name = "FtrSword", description = "" }
+"sonicbom" = { name = "SonicBom", description = "" }
+"crosswrd" = { name = "CrosSwrd", description = "" }
+"sprsonic" = { name = "SprSonic", description = "" }
+"dbldream" = { name = "DblDream", description = "" }
 "gutpnch1" = { name = "GutPnch1", description = "Launches\nGutPunch\nahead" }
 "gutpnch2" = { name = "GutPnch2", description = "Launches\nGutStrgt\nahead" }
 "gutpnch3" = { name = "GutPnch3", description = "Launches\nGutImpct\nahead" }

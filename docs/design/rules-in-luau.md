@@ -1886,7 +1886,8 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 ### S7a, systems' extensions and the chip's EXE6 fields (2026-10-03)
 
 - **`extends`** (§7.5): a system declares fields its game's definitions may carry, by registry (`chip`, `form`,
-  `navi`). Each field is typed with a state type name, a list of variants, or a table of such fields.
+  `navi`). Each field is typed with a state type name, a list of variants, a list holding a list of variants (a
+  list of those names: EXE5's VarSwrd and NeoVari swings), or a table of such fields.
   - The define phase checks each of the game's definitions that carries one: the type, an integer's range, a
     variant's name, a table's fields. A field has one owner among a game's systems.
   - The engine reads none of it. Luau reads it on the definition, as before; tools read it through
