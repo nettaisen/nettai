@@ -179,6 +179,7 @@ in brackets, one to three calls each):
 | +0x24 | 0 | the soul (patch card 0x24: a battle starts in it, 1 on) [+0x2C] |
 | +0x27 | 0 | MegaMan's color (patch card 0x27) |
 | +0x28 | 0 | All Guard (patch card 0x28) |
+| +0x29 | 0 | fighting in the sun (the overworld sets it by the map, 0x0802A770; the reset keeps it; GunSol reads it) |
 | +0x2A | 1 | ? |
 | +0x30, +0x32 | 100 | HP and max HP (MegaMan's from the save's 0x2150 and 0x2152) [+0x40, +0x42] |
 | +0x34 | 100 | the base max HP (the save's 0x21CA, before the NaviCust's and the patch cards') |
@@ -195,8 +196,10 @@ BustPack's weapon level (0 to 2, copied to the AI data's +8 at the init, 0x0800D
 confused 720 ticks as the round starts, 0x0800D8B0; else its high nibble, in the keys' bits, is held when no direction
 is, 0x0800B4DA); +0x15 the encounter bug; +0x16 SneakRun; +0x17's bits 1 to 4 OilBody, Fish, Battery, Jungle; +0x19
 Collect (bit 1) and the result bug (1); +0x1C Humor; +0x1D BugStop; +0x1E SoulClen (read by the light/dark value's
-update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x29, +0x2B) is used and unread yet: the step that
-ports what reads it names it.
+update at a round's end, 0x0800F5BC). The rest (+0x22, +0x26, +0x2B) is used and unread yet: the step that ports
+what reads it names it. +0x29 is fighting in the sun (the rules' `sun`, as EXE5's +0x22): 1 while the map the
+overworld is on is one of 0x0802A7AC's (0x0802A770), which the save's block keeps; GunSol hits harder and shines
+brighter in it.
 
 ### 3.4 RAM
 

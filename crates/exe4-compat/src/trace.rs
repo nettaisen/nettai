@@ -691,6 +691,8 @@ impl Round {
             // What the save brings to the stats (EXE4's rules/save): the base
             // HP, which the rules write into the HP.
             player.set_fact(content, "hp", &[Fact::Value(Value::Int(d.navi_stats[side].max_base_hp as i64))])?;
+            // And fighting in the sun (+0x29), which the reset keeps.
+            player.set_fact(content, "sun", &[Fact::Value(Value::Bool(d.navi_stats[side].sun))])?;
             // MegaMan's light/dark value (EXE4's rules/light_dark: the
             // starting mood).
             player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
@@ -819,6 +821,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.set_game_stat(content, "full_synchro_start", Value::Bool(s.full_synchro))?;
     stats.set_game_stat(content, "color", Value::Int(s.color as i64))?;
     stats.set_game_stat(content, "all_guard", Value::Bool(s.all_guard))?;
+    stats.set_game_stat(content, "sun", Value::Bool(s.sun))?;
     stats.attack = s.attack;
     stats.rapid = s.rapid;
     stats.charge = s.charge;
@@ -926,7 +929,7 @@ fn compiled_bytes(v: [u8; 20], max_hp: u16) -> String {
 }
 
 /// A side's stats as EXE4's reload starts from them (0x08036CC0: the navi's
-/// fresh stats, keeping the mood and the light/dark value), with the save's
+/// fresh stats, keeping the mood, the sun and the light/dark value), with the save's
 /// HP and what the battle's start writes after the PET (the move lag's
 /// column, +0x25): what the rules compile a NaviCust over
 /// (rules/navicust), so that the round's stats are the compile's.
@@ -935,6 +938,7 @@ pub fn reset(content: &Content, compat: &Compat, s: &NaviStats) -> Result<Engine
     let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
     let mut stats = EngineNaviStats::fresh(navi, content).ok_or_else(|| format!("{navi_key} has no fresh stats"))?;
     stats.mood = s.mood;
+    stats.set_game_stat(content, "sun", Value::Bool(s.sun))?;
     stats.navi_variant = s.move_lag_column;
     stats.max_base_hp = s.max_base_hp;
     stats.hp = s.hp;
