@@ -20,8 +20,10 @@ local NAVI_NUMBER = 0
 -- The afterimages' color shader and lifetime.
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8318, 0x1E
 
--- 0x080EB8BE: a GigaCan's afterimages: the navi in its animation 9 (with its shadow), then its cannon where the navi
--- stands. (Then, in a soul, the soul's part by 0x08018068: the souls' to wire, docs/design/exe4-map.md §18 item 70.)
+-- 0x080EB8BE: a GigaCan's afterimages (action 0x0B's variants 4 to 6: chips 0x143 to 0x145, which no EXE4 content
+-- defines yet): the navi in its animation 9, its shadow hidden (0x080E5020's r7 byte 2, 1: KendoMan's afterimages'
+-- frames show it), then its cannon where the navi stands. (Then, in a soul, the soul's part by 0x08018068: the
+-- souls' to wire, docs/design/exe4-map.md §18 item 70.)
 local function afterimages(me: Object, spec: CannonSpec, flip: number)
     -- (Of the navi's sprite in its form, 0x0800B90A.)
     battle.afterimage(me, me.pos, {
@@ -30,7 +32,7 @@ local function afterimages(me: Object, spec: CannonSpec, flip: number)
         flip = flip,
         lifetime = AFTERIMAGE_TICKS,
         color_shader = AFTERIMAGE_SHADER,
-        shadow = "ground",
+        shadow = "hidden",
     })
     battle.afterimage(me, me.pos, {
         sprite = spec.arm.sprite,

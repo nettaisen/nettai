@@ -454,6 +454,10 @@ declare extern type Object with
     -- The Atk+ / cross bonus.
     extra: number
     special_source: number
+    -- The attack parameters' fourth byte (+0x0F): the telop of the dimming
+    -- chip it uses hidden from its user too (`sub_800BBA8`). Loading a chip
+    -- clears it.
+    telop_hidden: boolean
     -- Which set_attack kind started it (read-only).
     attack_kind: number
     -- 1 while the action runs inside the side's wrapper (the role
@@ -507,9 +511,6 @@ declare extern type Object with
     charge_level: number
     charge_source: number
     charge_counter: number
-    -- The B charge's level (0 none, 1 charging, 2 full) as the navi last asked for an attack, kept until its next
-    -- ask (EXE4's AIData +0x15); 0 in a game whose decode keeps none (read-only).
-    b_charge_at_ask: number
     -- Writable: EXE4's rapid presses (AIData +0x12, +0x11), the B presses
     -- counted toward a form's `rapid_presses` and the ticks left for the
     -- next (the forced charged shot clears both as it ends).
@@ -589,6 +590,13 @@ declare extern type Object with
     -- record's first byte (the dimming chips' stand-ins): the parts step
     -- even while paused.
     function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
+    -- `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'): what
+    -- `owner`'s navi wears, put on this object as on an image of it: a navi
+    -- that changes form its form's `put_on` (EXE5's NumberSoul's layer, the
+    -- base form's Hub Style shade), else the parts its form's identity
+    -- wears; any other navi its identity's parts. Their sprites step even
+    -- while paused.
+    function add_overlay_of(self, owner: Object): ()
     -- `sub_8011044` with `owner`'s identity: take them off.
     function remove_parts_of(self, owner: Object): ()
 
@@ -1308,6 +1316,10 @@ declare battle: {
     -- every console's emotion window, which then flickers (and draws its
     -- console's RNG1) for NaviCust bugs only.
     clear_emotion_window_glitch: () -> (),
+    -- EXE5's SearchSoul's status reset (0x08011C0C-0x08011C36): `side`'s
+    -- console's chip-icon table gets the opponent's navi (presentation: its
+    -- icons show over it; a status reset takes it out again).
+    show_opponent_chip_icons: (side: number) -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),
@@ -1716,6 +1728,9 @@ declare obstacle: {
     arm_conversion: (side: number, melee: number, ranged: number) -> (),
     -- 0x080CAC30: disarm side `side`; its words stay.
     disarm_conversion: (side: number) -> (),
+    -- 0x080CABF8 alone: side `side`'s soldiers' damage words become these,
+    -- armed or not (EXE5's BusterUp in ColonelSoul, 0x08011C50).
+    set_conversion_words: (side: number, melee: number, ranged: number) -> (),
     -- Whether side `side` is armed, and its words (0x080CAC06,
     -- 0x080CAC12): what its soldiers strike with as they read them.
     conversion: (side: number) -> (boolean, number, number),

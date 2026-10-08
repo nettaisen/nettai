@@ -64,6 +64,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = new.action {
+    id = "toadsoul/charge/action",
     state = { timer = "u16", target = "object" },
     -- 0x080EF5A2
     update = function(me: Object, s: State)

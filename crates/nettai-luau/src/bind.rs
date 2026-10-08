@@ -409,6 +409,10 @@ impl UserData for Object {
                 with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false), stepping.unwrap_or(false))))
             },
         );
+        methods.add_method("add_overlay_of", |_, this, owner: mlua::UserDataRef<Object>| {
+            let owner = owner.0;
+            with(|api, _| Ok(api.add_overlay_of(this.0, owner)))
+        });
         methods.add_method("remove_parts_of", |_, this, owner: mlua::UserDataRef<Object>| {
             let owner = owner.0;
             with(|api, _| Ok(api.remove_parts_of(this.0, owner)))
@@ -2051,6 +2055,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.clear_bugs(side)))
     });
     lib_fn!(lua, t, "clear_emotion_window_glitch", |_, ()| with(|api, _| Ok(api.clear_emotion_window_glitch())));
+    lib_fn!(lua, t, "show_opponent_chip_icons", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.show_opponent_chip_icons(side)))
+    });
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
     lib_fn!(lua, t, "drain_custom_gauge", |_, n: LuaValue| {
         let n = u16_arg(n, "gauge")?;
@@ -2641,6 +2649,11 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "disarm_conversion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.obstacle_disarm_conversion(side)))
+    });
+    lib_fn!(lua, t, "set_conversion_words", |_, (side, melee, ranged): (LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let (melee, ranged) = (int(&melee, "melee word")? as u32, int(&ranged, "ranged word")? as u32);
+        with(|api, _| Ok(api.obstacle_set_conversion_words(side, melee, ranged)))
     });
     lib_fn!(lua, t, "conversion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;

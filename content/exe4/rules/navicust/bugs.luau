@@ -7,7 +7,8 @@
 --
 -- The codes EXE4's objects set: ShadeMan's crush, 0x0D (the move bug, its argument a direction drawn at his init);
 -- RedSun's stripping hits (attack 0x87, 0x080DE284's words), 1 to 7 and 0x0A; attack 0x41's (0x080D5880's words,
--- through effect 0x1B), those and 0x0C and 0x12; weapon routine 0x5C's hit (0x080F29C6), 0x0E; BugBomb's (attack
+-- through effect 0x1B), and LaserMan's laser (attack 0xA0, 0x080E0F4C's lists, LasrMnSP's and LasrMnDS's aimed),
+-- those and 0x0C and 0x12; weapon routine 0x5C's hit (0x080F29C6), 0x0E; BugBomb's (attack
 -- 0x77, 0x080DC134: kinds 1, 2, 3, 4, 6, 8) and BugCurse's (attack 0x80, 0x080DD494: kinds 2, 3, 4, 6), 0xFF. The
 -- original takes any other code to the NaviStats byte it numbers too; no object sets one.
 
@@ -15,8 +16,8 @@ local navicust = require("./init")
 
 local bugs = {}
 
--- The NaviCust bugs by the number a code 0xFF's argument gives (0x08042B18's rows: 8, the weapon's, and 11, which does
--- nothing, are no program's here), as their names.
+-- The NaviCust bugs by the number a code 0xFF's argument gives (0x08042B18's rows: 11, which does nothing, is no
+-- program's here), as their names.
 local function bug_named(kind: number): string?
     if kind == 1 then
         return "move"
@@ -32,6 +33,8 @@ local function bug_named(kind: number): string?
         return "buster"
     elseif kind == 7 then
         return "support"
+    elseif kind == 8 then
+        return "weapon"
     elseif kind == 9 then
         return "result"
     elseif kind == 10 then
@@ -52,10 +55,6 @@ function bugs.navi_bug(side: number, navi: Object): ("edited" | "spared")?
         local bug = bug_named(arg)
         if bug then
             navicust.raise_bug(side, bug)
-        elseif arg == 8 then
-            -- (Its levels set the charged shot to weapon routines 0x1F, 0x20 and 0x21, of which the content has 0x21,
-            -- DrkCanon's taunt, alone.)
-            error("a hit's bug raises the NaviCust's weapon bug (8): its weapon routines 0x1F and 0x20 aren't content")
         elseif arg ~= 11 then
             error(string.format("a hit's bug raises NaviCust bug %d, which reads past 0x08042B18's table", arg))
         end

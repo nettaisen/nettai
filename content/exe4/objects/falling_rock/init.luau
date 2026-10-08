@@ -20,8 +20,8 @@ export type FallingRock = {
     spawn: (owner: Object, x: number, y: number, element: number, damage: number) -> Object?,
 }
 
--- The rock's sheet (the original's 10-0E, as EXE5's Django's rubble's).
-local SPRITE = asset.sprite("django-rubble")
+-- The rock's sheet (10-0E).
+local SPRITE = asset.sprite("falling-rock")
 
 -- A user's falling rock: its kind (`id`) and its chips' (`id`'s "-chip").
 function falling_rock.make(id: string): FallingRock

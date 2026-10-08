@@ -900,8 +900,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F378`: the post-init hook by actor type and AI index. For
 /// players (`off_80EAA04`; EXE5's 0x080EB2A8) it is the navi's
-/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`)
-/// and EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
+/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`),
+/// EXE5's MegaMan's (0x080F04EE: in a soul, the status reset again) and
+/// EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
 /// (`off_81092D0`, `off_80F2668`) belong to their AI.
 fn post_init_hook(b: &mut Battle, r: ObjectRef) {
     match ai(b, r).actor_type {
@@ -1109,7 +1110,9 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     // has none to disarm.
     b.obstacle_conversion[side & 1].armed = false;
     ai_mut(b, r).status &= !0x20;
-    // (Netbattle, local player: removes the opponent's HUD entry.)
+    // (Netbattle, local player: removes the opponent's HUD entry: its chip
+    // icons, which EXE5's SearchSoul's reset below puts back.)
+    b.chip_hud[side & 1].opponent = false;
     // EXE5's 0x08011B74: a form's priming is spent (EXE6 never primes).
     ai_mut(b, r).primed = false;
     let hm = body_hit_modifier(b);
