@@ -671,6 +671,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **SuprVulc** (the vulcans' variant 3, `chips/suprvulc`): 12 shots of bullet row 16 (the Vulcans' hit in palette 1).
 - **Slasher** (action 0x35, `chips/slasher`: EXE4's own, EXE5's action 0x29 grew from it): while A is held it waits for
   an enemy navi on its side's area, then slashes that column (the region word 0x0705FF04, 16 pixels up), naming
   Slasher to the other player again as it slashes (0x080164B4: `battle.show_used_chip`, new); no invulnerability, no

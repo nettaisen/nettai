@@ -186,6 +186,7 @@ language = "ja"
 "custswrd" = { name = "カスタムソード", description = "カスタムゲージが\nマンタンにちかい\nほど攻撃力アップ!" }
 "muramasa" = { name = "ムラマサブレード", description = "あんこくチップ!\nへっているHP分が\n攻撃力になる" }
 "slasher" = { name = "イアイフォーム", description = "Aボタンをおして\nいる間に入ってくる\nてきをきる!" }
+"suprvulc" = { name = "スーパーバルカン", description = "きょういの\n12れんしゃ\nバルカンほう!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

@@ -13,6 +13,7 @@
 "vulcan1/action" = 0x1F
 "vulcan2/action" = 0x1F
 "vulcan3/action" = 0x1F
+"suprvulc/action" = 0x1F
 # The spreaders' (the chips' action 0x1E, 0x080EC760).
 "drkspred/action" = 0x1E
 "spreader/action" = 0x1E

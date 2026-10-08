@@ -260,6 +260,7 @@ standard = [
     "navi-20",
 ]
 mega = [
+    "suprvulc",
     "fullcust",
     "atk-30",
     "muramasa",

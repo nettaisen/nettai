@@ -68,6 +68,7 @@ return merge {
     require("@self/sparkman"),
     require("@self/spreader"),
     require("@self/supports"),
+    require("@self/suprvulc"),
     require("@self/sword"),
     require("@self/thunder"),
     require("@self/thunman"),
