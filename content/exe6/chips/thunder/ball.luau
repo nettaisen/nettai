@@ -11,9 +11,9 @@ local ball = {}
 -- A thunder ball kind (`id`) of `look`.
 ball.make_kind = common.make_kind
 
--- EXE6's look: one sprite, its animations small and big (fast, or
--- DarkThnd's 12 panels; +1 bursting); an attack hitting navis with
--- modifier 1 and the elec spark; its sound, DarkThnd's own.
+-- EXE6's look: one sprite, its animations small and big (+1 bursting); an
+-- attack hitting navis with modifier 1 and the elec spark; its sound
+-- (DarkThnd's its own).
 local SPRITE = asset.sprite("thunder-ball")
 local EXE6: ThunderBallLook = {
     sprite = SPRITE,
@@ -25,7 +25,6 @@ local EXE6: ThunderBallLook = {
     hit_mod = 1,
     spark = sparks.elec,
     sound = asset.sound("erase-man-2"),
-    dark_sound = asset.sound("elec-man"),
 }
 
 ball.kind = common.make_kind("thunder/ball", EXE6)
