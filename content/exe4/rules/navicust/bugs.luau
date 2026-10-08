@@ -7,7 +7,8 @@
 --
 -- The codes EXE4's objects set: ShadeMan's crush, 0x0D (the move bug, its argument a direction drawn at his init);
 -- RedSun's stripping hits (attack 0x87, 0x080DE284's words), 1 to 7 and 0x0A; attack 0x41's (0x080D5880's words,
--- through effect 0x1B), those and 0x0C and 0x12; weapon routine 0x5C's hit (0x080F29C6), 0x0E; BugBomb's (attack
+-- through effect 0x1B), and LaserMan's laser (attack 0xA0, 0x080E0F4C's lists, LasrMnSP's and LasrMnDS's aimed),
+-- those and 0x0C and 0x12; weapon routine 0x5C's hit (0x080F29C6), 0x0E; BugBomb's (attack
 -- 0x77, 0x080DC134: kinds 1, 2, 3, 4, 6, 8) and BugCurse's (attack 0x80, 0x080DD494: kinds 2, 3, 4, 6), 0xFF. The
 -- original takes any other code to the NaviStats byte it numbers too; no object sets one.
 

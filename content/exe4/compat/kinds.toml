@@ -10,6 +10,7 @@
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
+"engine/hit-marker" = { pool = "effect", index = 0x6B }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
 # The afterimage (effect #0x28, 0x080E503C: EXE6's `sub_80E33FA` object): KendoMan's dash's and rush's.
@@ -26,6 +27,12 @@
 "north-wind/streak" = { pool = "effect", index = 0x3A }
 # SearchSoul's reveal (0x080E6D74), spawned at the status reset's registers.
 "searchsoul/reveal" = { pool = "effect", index = 0x44, scratch_position = true }
+# FireSoul's flames (attack 9, 0x080CE49C) and its grass (effect 0x12, 0x080E33E8), whose panel and position are the
+# status reset's registers (code addresses of the reset's, each ROM its own).
+"firesoul/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+"firesoul/grass" = { pool = "effect", index = 0x12, scratch_position = true, scratch_panel = true }
+# ThunderSoul's elec shot (attack 0x6D, 0x080DAFBC: objects/row_shot's row 0).
+"thundersoul/charged-shot/shot" = { pool = "attack", index = 0x6D }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
@@ -225,6 +232,13 @@
 "woodmn-ds/controller" = { pool = "effect", index = 0x70, scratch_position = true }
 "woodman/navi" = { pool = "actor", index = 0x49 }
 "woodman/tower" = { pool = "attack", index = 0x07 }
+# LaserMan's chips (action 0x0C's variant 0x43, 0x080EA4A6): each chip's controller (the content's own; the original's
+# one object, effect #0x75, 0x080EA3F8), LaserMan and his laser.
+"laserman/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"lasrmn-sp/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"lasrmn-ds/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"laserman/navi" = { pool = "actor", index = 0x4E }
+"laserman/laser" = { pool = "attack", index = 0xA0 }
 # NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
 # objects/north_wind's.
 "nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
