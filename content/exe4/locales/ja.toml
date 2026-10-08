@@ -245,6 +245,12 @@ language = "ja"
 "numbrbl1" = { name = "ナンバーボール1", description = "3れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
 "numbrbl2" = { name = "ナンバーボール2", description = "4れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
 "numbrbl3" = { name = "ナンバーボール3", description = "5れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
+"rollaro1" = { name = "ロールアロー1", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"rollaro2" = { name = "ロールアロー2", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"rollaro3" = { name = "ロールアロー3", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"metlger1" = { name = "メタルギア1", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"metlger2" = { name = "メタルギア2", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"metlger3" = { name = "メタルギア3", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
