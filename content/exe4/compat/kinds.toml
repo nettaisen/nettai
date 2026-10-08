@@ -29,6 +29,8 @@
 # status reset's registers (code addresses of the reset's, each ROM its own).
 "firesoul/flame" = { pool = "attack", index = 0x09, scratch_position = true }
 "firesoul/grass" = { pool = "effect", index = 0x12, scratch_position = true, scratch_panel = true }
+# ThunderSoul's elec shot (attack 0x6D, 0x080DAFBC: objects/row_shot's row 0).
+"thundersoul/charged-shot/shot" = { pool = "attack", index = 0x6D }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
