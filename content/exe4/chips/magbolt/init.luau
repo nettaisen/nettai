@@ -29,7 +29,7 @@ local FIELD = common.make {
 }
 
 local MAGNET = attachment.look { sprite = asset.sprite("mag-bolt"), palette = 0 }
-local PULL_SOUND, HUM = asset.sound("magnet-pull"), asset.sound("magnet-hum")
+local PULL_SOUND, HUM = asset.sound("magnet-pull"), asset.sound("spark-charge")
 
 -- The navi's number: what it holds animates by it (NaviStats +0x23, MegaMan's 0).
 local NAVI_NUMBER = 0
