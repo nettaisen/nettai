@@ -30,8 +30,8 @@ local ANIM_RAISE, ANIM_FIRE = 18, 19
 -- The shot's ticks, the tick left at which the bomb flies, and the wait after (AIAttackVars +0x18).
 local FIRE_TICKS, FIRE_AT, WAIT_TICKS = 32, 11, 70
 local COUNTER_TICKS = 16
--- The bomb's variant (AIAttackVars +0x0D), and where it starts from his position (16.16).
-local VARIANT = 1
+-- The bomb's fall (16.16 a tick: its variant's, AIAttackVars +0x0D, 1), and where it starts from his position (16.16).
+local GRAVITY = -0xA000
 local MUZZLE_X, MUZZLE_Z = 0x8_0000, 0x38_0000
 local SOUND = asset.sound("cannon")
 
@@ -61,7 +61,7 @@ local action = new.action {
                 local p = me.pos
                 local from = Vec3.new(int.i32(p.x + panels.side_direction(me.alliance) * MUZZLE_X), p.y, int.i32(p.z + MUZZLE_Z))
                 bomb.lob(me, from, {
-                    variant = VARIANT,
+                    gravity = GRAVITY,
                     target_x = s.target_x,
                     target_y = s.target_y,
                     damage = int.u32(me.attack_damage + me.hit_param * 0x10000),
