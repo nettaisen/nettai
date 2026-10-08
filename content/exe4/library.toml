@@ -229,6 +229,10 @@ standard = [
     "mokorus1",
     "mokorus2",
     "mokorus3",
+    "fanfare",
+    "discord",
+    "timpani",
+    "silence",
     "guard1",
     "guard2",
     "guard3",
@@ -248,8 +252,14 @@ standard = [
     "areagrab",
     "grabbnsh",
     "grabrvng",
+    "pnlretrn",
+    "holypanl",
+    "hole",
     "invis",
     "popup",
+    "barrier",
+    "barr100",
+    "barr200",
     "antifire",
     "antiwatr",
     "antielec",
@@ -264,9 +274,12 @@ standard = [
 mega = [
     "suprvulc",
     "fullcust",
+    "lifeaura",
+    "snctuary",
     "atk-30",
     "muramasa",
     "elemdark",
+    "drkline",
     "roll",
     "roll-sp",
     "roll-ds",
@@ -305,6 +318,7 @@ mega = [
     "shadmn-ds",
 ]
 giga = [
+    "blakbarr",
     "deltaray",
 ]
 secret = [
