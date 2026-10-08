@@ -411,11 +411,26 @@ and damage word; f2 |= 0x1000 (ice) or 0x2000 (bubble).
   `hooks.encased` (objects/encased_bubble: the rock's ice block, or the
   bubble, kind `encased-bubble`). Class 0xFF is a content error there; the
   bubble's Z with side 1's wind set (an address) is 0.
+- EXE4 (0x080116EA, its ice cube 0x080E13FC) is the same but for its
+  flag2 bits (0x2000 ice, 0x4000 the bubble: `f2 & 0x6000`), its flicker
+  (effect row 0x6E, the rock sheet's ice block), its ice block (rock row
+  3: animation 2, 100 HP), and in step 0 a call for attack object #0x81
+  (`+2 == 0x93 && +1 == 0x81`: 0x080DD73C, its own ending; EXE4's
+  whirlwind, EXE6's `sub_80D5718`, spawned by effect code at 0x080E8454:
+  not ported, so nothing reaches the call yet; whoever ports it adds it). Its ice cube pushes on its final
+  modifier's bits 0xFC, bursts with sound 0xA3 into dust (effect row 2) and
+  goes off solid ground in a puff (row 21). EXE4's ColdMan (0x080CC2E4)
+  is what encases (`obstacle.encase_in_ice`, `encase_in_bubble`), and
+  forms ice cubes of his own (look 0). The cube's code is shared,
+  @exelib/ice_cube (content/exelib/ice_cube.luau).
 
 ### 4.6 Requests from chips
 
 `sub_800F884` f2 |= 0x8000 (removed); `sub_800F898` also 0x40000
-(blink out); `sub_800F8B0` also 0x100000 << absorber's side. DustCross's
+(blink out); `sub_800F8B0` also 0x100000 << absorber's side. EXE4's
+0x0800B44C (ColdMan's) sets f2 0x2000 (encased in ice) or 0x4000 (in a
+bubble), EXE6's 0x1000 and 0x2000 (`obstacle.encase_in_ice`,
+`encase_in_bubble`); EXE6 has no caller. DustCross's
 B+Back (weapon routine 0x2A, player action 0x58 `sub_80EFCB4`: the pack's
 `navis/megaman/weapons/absorb`) calls `sub_80EFD74` on its 10th tick
 (`obstacle.absorb_all`): for all eight registry slots, skip empty,

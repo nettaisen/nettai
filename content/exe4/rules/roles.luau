@@ -13,6 +13,7 @@ local barriers = require("../lib/barriers")
 local charge_glow = require("../objects/charge_glow")
 local collision = require("./collision")
 local deletion = require("./deletion")
+local ice_cube = require("../objects/ice_cube")
 local invalid = require("../chips/invalid").invalid
 local machine_gun = require("../navis/megaman/forms/gutssoul/machine_gun")
 local regions = require("@exelib/regions")
@@ -121,6 +122,9 @@ local roles: RolesSpec = {
         recovery = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
         -- A sprung trap's mark (0x0800815C: effect row 0x48, 14-05's animation 7): AntiNavi's over the turned chip.
         trap_mark = new.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 },
+        -- What an obstacle encased in ice or a bubble flickers with (0x08011764: effect row 0x6E, the rock sheet's
+        -- ice block, 10-02's animation 2).
+        encased = new.effect { sprite = asset.sprite("rock"), anim = 2, palette = 0 },
     },
     hooks = {
         -- The first barrier (the navi's init, 0x0800D892: NaviStats +0x21, FstBarr's and the patch cards' aura): the
@@ -139,6 +143,9 @@ local roles: RolesSpec = {
                 navi:set_status("guard", true)
             end
         end,
+        -- What an obstacle encased in ice or a bubble becomes (0x08011788: an ice block or the ice cube; EXE4's
+        -- encasing is ColdMan's, chips/coldman).
+        encased = ice_cube.replace,
     },
     sprites = {
         -- The Full Synchro aura (actor object 0x5E, 0x080CD1A8: 14-16, EXE5's and EXE6's numbers too).

@@ -293,6 +293,10 @@ language = "ja"
 "jealousy" = { name = "ジェラシー", description = "チップをもつてきに\n枚数におうじた\nダメージをあたえる" }
 "snake" = { name = "カモンスネーク", description = "自分のエリアの\nあなマスから\nこヘビがとんでいく" }
 "bugcurse" = { name = "カースオブバグ", description = "あんこくチップ!\nてきのナビをひどい\nバグじょうたいに!" }
+"bugfix" = { name = "バグシュウセイ", description = "ナビに発生している\nバグをしゅうせいし\nとりのぞく" }
+"coldman" = { name = "コールドマン", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
+"coldmn-sp" = { name = "コールドマンSP", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
+"coldmn-ds" = { name = "コールドマンDS", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
 "lifesync" = { name = "ライフシンクロ", description = "2マス前のてきに\nカーソル!てきの\nHPをおなじにする" }
 
 [navis]
