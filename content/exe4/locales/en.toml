@@ -237,6 +237,9 @@ language = "en"
 "aquaman" = { name = "AquaMan", description = "Water Gun\nsprays\n2sq ahead" }
 "aquamn-sp" = { name = "AquaMnSP", description = "Water Gun\nsprays\n2sq ahead" }
 "aquamn-ds" = { name = "AquaMnDS", description = "Water Gun\nsprays\n2sq ahead" }
+"windman" = { name = "WindMan", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"windmn-sp" = { name = "WindMnSP", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"windmn-ds" = { name = "WindMnDS", description = "Whirlwind\nthat spin\nacrss 3sq" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
