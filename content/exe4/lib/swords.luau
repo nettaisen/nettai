@@ -52,12 +52,16 @@ local STEPS: SlashSteps = {
     end,
 }
 
+-- The blade's animation as a sword holds it (the slash's 0x080EB628, SonicBom's 0x080ED8A0, Z Saver's 0x080EE820): in
+-- ProtoSoul (NaviStats +0x24 7) 13, else the navi's number.
+function swords.blade_anim(me: Object): number
+    return if in_protosoul(me) then PROTOSOUL_BLADE else NAVI_NUMBER
+end
+
 local GAME: SlashGame = {
     steps = STEPS,
-    -- 0x080EB624: the blade by the navi's number, ProtoSoul's its own.
-    blade_anim = function(me: Object): number
-        return if in_protosoul(me) then PROTOSOUL_BLADE else NAVI_NUMBER
-    end,
+    -- 0x080EB624.
+    blade_anim = swords.blade_anim,
     -- 0x080EB590, 0x080EB676: the afterimages of the navi, of its sprite in its form (0x0800B90A).
     navi_afterimage = function(me: Object): SpriteAsset
         return battle.navi(me.alliance).form.sprite

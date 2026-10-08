@@ -166,7 +166,7 @@ mod tests {
             (1, Some(Stated::Number(1)), Some(Stated::Number(3)), Some(Stated::Variant(Some("blue".into()))))
         );
         let Some(Stated::List(cards)) = get("patch_cards") else { panic!("{:?}", get("patch_cards")) };
-        assert_eq!(cards.len(), 1, "{cards:?}");
+        assert_eq!(cards.len(), 2, "{cards:?}");
         let form = |key: &str| Stated::Def(Registry::Form, Some(content.form_by_key(key).0));
         assert_eq!(get("version"), None, "the content has no version");
         assert_eq!(
@@ -180,7 +180,6 @@ mod tests {
             notes,
             [
                 "the save's folder holds chip numbers exe4 has no chip for (0x1ff): their entries are left empty",
-                "the save's patch cards 12 are left out: their effects aren't ported yet",
             ]
         );
     }

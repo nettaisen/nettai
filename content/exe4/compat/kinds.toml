@@ -14,6 +14,8 @@
 "engine/afterimage" = { pool = "effect", index = 0x28 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
+# The afterimage (effect #0x28, 0x080E503C: EXE6's `sub_80E33FA` object): KendoMan's dash's and rush's.
+"engine/afterimage" = { pool = "effect", index = 0x28 }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
@@ -30,8 +32,6 @@
 # status reset's registers (code addresses of the reset's, each ROM its own).
 "firesoul/flame" = { pool = "attack", index = 0x09, scratch_position = true }
 "firesoul/grass" = { pool = "effect", index = 0x12, scratch_position = true, scratch_panel = true }
-# ThunderSoul's elec shot (attack 0x6D, 0x080DAFBC: objects/row_shot's row 0).
-"thundersoul/charged-shot/shot" = { pool = "attack", index = 0x6D }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
@@ -51,6 +51,8 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# The rings (0x080DAFBC): SandRing's, the zap ring's, ThunderSoul's charged shot's.
+"ring" = { pool = "attack", index = 0x6D }
 # CopyDmg's mark (0x080D1C24).
 "copydmg/mark" = { pool = "attack", index = 0x28 }
 # Tornado's and Static's tornado (0x080D3130).
@@ -81,6 +83,15 @@
 "elecshok/breath" = { pool = "attack", index = 0x36 }
 # Geyser's bomb (0x080D5B44) and its water (0x080D5C30: its position the registers, which its look states).
 "geyser/bomb" = { pool = "attack", index = 0x42 }
+# The rocks (0x080D89D8): the weapon bug's rock cube, RockCube's, an ice block.
+"rock" = { pool = "attack", index = 0x59 }
+# VDoll's doll (0x080DC7AC) and its curse (0x080E77E8: its position the spawner's registers).
+"vdoll/doll" = { pool = "attack", index = 0x7A }
+"vdoll/curse" = { pool = "effect", index = 0x4E, scratch_position = true }
+# BugBomb's bug bomb (0x080DC048).
+"bugbomb/bomb" = { pool = "attack", index = 0x77 }
+# BlkBomb's black bomb (0x080D6120).
+"blkbomb/bomb" = { pool = "attack", index = 0x47 }
 "geyser/water" = { pool = "attack", index = 0x43 }
 # The Binders' binder (0x080D2748).
 "binder/binder" = { pool = "attack", index = 0x2D }
@@ -170,7 +181,7 @@
 "fireman/navi" = { pool = "actor", index = 0x12 }
 "fireman/flame" = { pool = "attack", index = 0x09, scratch_position = true }
 # GutsMan's chips (action 0x0C's variant 0x05, 0x080E3304): each chip's controller (the content's own; the original's
-# one object, effect #0x10, 0x080E3200), GutsMan, his quake, and its falling rocks and their chips (attack #0x1D,
+# one object, effect #0x10, 0x080E31E8), GutsMan, his quake, and its falling rocks and their chips (attack #0x1D,
 # 0x080D08BC, and effect #9, 0x080E2914: the content's own kinds of objects/falling_rock).
 "gutsman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
 "gutsmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
@@ -179,6 +190,62 @@
 "gutsman/quake" = { pool = "attack", index = 0x1C, scratch_position = true }
 "gutsman/rock" = { pool = "attack", index = 0x1D }
 "gutsman/rock-chip" = { pool = "effect", index = 0x09 }
+# AquaMan's chips (action 0x0C's variant 0x07, 0x080E3A74): each chip's controller (the content's own; the original's
+# one object, effect #0x16, 0x080E3958), AquaMan, the spout on his head (actor #0x5C, NumberMan's face's object, its
+# sprite row 1: his own kind of @exelib/numbrman/face) and his water gun.
+"aquaman/controller" = { pool = "effect", index = 0x16, scratch_position = true }
+"aquamn-sp/controller" = { pool = "effect", index = 0x16, scratch_position = true }
+"aquamn-ds/controller" = { pool = "effect", index = 0x16, scratch_position = true }
+"aquaman/navi" = { pool = "actor", index = 0x1A }
+"aquaman/spout" = { pool = "actor", index = 0x5C }
+"aquaman/water-gun" = { pool = "attack", index = 0x33 }
+# WindMan's chips (action 0x0C's variant 0x21, 0x080E6F70): each chip's controller (the content's own; the original's
+# one object, effect #0x46, 0x080E6E68), WindMan, the swirl on his head (actor #0x5C, NumberMan's face's object, its
+# sprite row 2: his own kind of @exelib/numbrman/face), his tornadoes and their sand.
+"windman/controller" = { pool = "effect", index = 0x46, scratch_position = true }
+"windmn-sp/controller" = { pool = "effect", index = 0x46, scratch_position = true }
+"windmn-ds/controller" = { pool = "effect", index = 0x46, scratch_position = true }
+"windman/navi" = { pool = "actor", index = 0x34 }
+"windman/swirl" = { pool = "actor", index = 0x5C }
+"windman/tornado" = { pool = "attack", index = 0x6B }
+"windman/sand" = { pool = "attack", index = 0x6C }
+# VideoMan's chips (action 0x0C's variant 0x34, 0x080E8C56): each chip's controller (the content's own; the original's
+# one object, effect #0x5F, 0x080E8BA8), VideoMan and his tapes.
+"videoman/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
+"videmn-sp/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
+"videmn-ds/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
+"videoman/navi" = { pool = "actor", index = 0x3E }
+"videoman/tape" = { pool = "attack", index = 0x5D }
+# KendoMan's chips (action 0x0C's variant 0x37, 0x080E94AA): each chip's controller (the content's own; the original's
+# one object, effect #0x66, 0x080E9430), KendoMan and his rush's hit (attack #0x7C, 0x080DCC5C: his own kind of
+# objects/lingering_hit). His sword is the shared attachment.
+"kendoman/controller" = { pool = "effect", index = 0x66, scratch_position = true }
+"kendmn-sp/controller" = { pool = "effect", index = 0x66, scratch_position = true }
+"kendmn-ds/controller" = { pool = "effect", index = 0x66, scratch_position = true }
+"kendoman/navi" = { pool = "actor", index = 0x43 }
+"kendoman/rush-hit" = { pool = "attack", index = 0x7C, scratch_position = true }
+# WoodMan's chips (action 0x0C's variant 0x3F, 0x080E9E8A): each chip's controller (the content's own; the original's
+# one object, effect #0x70, 0x080E9DDC), WoodMan and his wood towers.
+"woodman/controller" = { pool = "effect", index = 0x70, scratch_position = true }
+"woodmn-sp/controller" = { pool = "effect", index = 0x70, scratch_position = true }
+"woodmn-ds/controller" = { pool = "effect", index = 0x70, scratch_position = true }
+"woodman/navi" = { pool = "actor", index = 0x49 }
+"woodman/tower" = { pool = "attack", index = 0x07 }
+# LaserMan's chips (action 0x0C's variant 0x43, 0x080EA4A6): each chip's controller (the content's own; the original's
+# one object, effect #0x75, 0x080EA3F8), LaserMan and his laser.
+"laserman/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"lasrmn-sp/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"lasrmn-ds/controller" = { pool = "effect", index = 0x75, scratch_position = true }
+"laserman/navi" = { pool = "actor", index = 0x4E }
+"laserman/laser" = { pool = "attack", index = 0xA0 }
+# Bass's chip (action 0x0C's variant 0x44, 0x080EA576): its controller (effect #0x76, 0x080EA4C8), Bass (@exelib/bass)
+# and his shots.
+"bass/controller" = { pool = "effect", index = 0x76, scratch_position = true }
+"bass/navi" = { pool = "actor", index = 0x4F }
+"bass/shot" = { pool = "attack", index = 0x72 }
+# NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
+# objects/north_wind's.
+"nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
 # original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
 "shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }
@@ -294,3 +361,38 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# SloGauge's and FstGauge's controller (0x080E3F0C; its position the dimming handler's registers).
+"gauge-speed" = { pool = "effect", index = 0x1C, scratch_position = true }
+# PanlSht's controller (0x080E79B8; its position the dimming handler's registers), each chip's own kind, and its
+# panels (0x080DCAA4).
+"panlsht1/controller" = { pool = "effect", index = 0x4F, scratch_position = true }
+"panlsht2/controller" = { pool = "effect", index = 0x4F, scratch_position = true }
+"panlsht3/controller" = { pool = "effect", index = 0x4F, scratch_position = true }
+"panlsht/panel" = { pool = "attack", index = 0x7B }
+# HawkCut's controller (0x080E95E0; its position the spawner's registers), each chip's own kind, and its ProtoMan
+# (0x080C8A28; spawned at the controller's registers).
+"hawkcut1/controller" = { pool = "effect", index = 0x68, scratch_position = true }
+"hawkcut2/controller" = { pool = "effect", index = 0x68, scratch_position = true }
+"hawkcut3/controller" = { pool = "effect", index = 0x68, scratch_position = true }
+"hawkcut/protoman" = { pool = "actor", index = 0x44 }
+# BoyBomb's controller (0x080E94CC; its position the dimming handler's registers) and its bomb (0x080D4F40).
+"boybomb/controller" = { pool = "effect", index = 0x67, scratch_position = true }
+"boybomb/bomb" = { pool = "attack", index = 0x3E }
+# MetlGer's controller (0x080E7244; its position the spawner's registers); its gear is the stages' (`gear`).
+"metlger/controller" = { pool = "effect", index = 0x49, scratch_position = true }
+# RollAro's controller (0x080E8FA0; its position the spawner's registers), each chip's own kind, and its Roll
+# (0x080C8120; spawned at the controller's panel and side).
+"rollaro1/controller" = { pool = "effect", index = 0x63, scratch_position = true }
+"rollaro2/controller" = { pool = "effect", index = 0x63, scratch_position = true }
+"rollaro3/controller" = { pool = "effect", index = 0x63, scratch_position = true }
+"rollaro/roll" = { pool = "actor", index = 0x41 }
+# GutPnch's controller (0x080E90CC; its position the spawner's registers), each chip's own kind, and its GutsMan
+# (0x080C83F8; spawned at the controller's registers).
+"gutpnch1/controller" = { pool = "effect", index = 0x64, scratch_position = true }
+"gutpnch2/controller" = { pool = "effect", index = 0x64, scratch_position = true }
+"gutpnch3/controller" = { pool = "effect", index = 0x64, scratch_position = true }
+"gutpnch/guts" = { pool = "actor", index = 0x42 }
+# NumbrBl's controller (0x080E9838; its position the spawner's registers), its NumberMan and his balls.
+"numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
+"numbrbl/numberman" = { pool = "actor", index = 0x45 }
+"numbrbl/ball" = { pool = "attack", index = 0x91 }
