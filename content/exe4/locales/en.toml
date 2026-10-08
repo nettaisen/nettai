@@ -265,6 +265,9 @@ language = "en"
 "metlger1" = { name = "MetlGer1", description = "Gear\ncrushes\nenmy area" }
 "metlger2" = { name = "MetlGer2", description = "Gear\ncrushes\nenmy area" }
 "metlger3" = { name = "MetlGer3", description = "Gear\ncrushes\nenmy area" }
+"woodman" = { name = "WoodMan", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-sp" = { name = "WoodMnSP", description = "WoodTowr\npierce to\nenmy area" }
+"woodmn-ds" = { name = "WoodMnDS", description = "WoodTowr\npierce in\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
