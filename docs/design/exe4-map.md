@@ -328,6 +328,15 @@ from the ROM and its code, read routine by routine):
   is one `*` doesn't stand for (`special_codes`). **OK's hand** (0x0801F034): no Program Advance record, no Regular
   mark on it, the entries past the selection cleared, a modifier's mark kept (`program_advances`,
   `modifier_passes_regular`). The hand is the custom level, uncapped (rules/custom: `hand_size`, 0x0801DC8E).
+- **Program Advances** (0x0801F390): the recipe table is the pointer list at 0x080212B0, 37 recipes, each a count, a
+  kind (0: a code run of one chip, else a sequence of chips whatever their codes), the result (chips 0x140 to 0x15D)
+  and its chips; each start in the selection in turn, the recipes in the table's order. The content states each in
+  its chip (`program_advances`, `order` the table's index). The code run's test (0x0801F46A) walks on from the first
+  chip (a `*` first takes the second's code less one) where EXE6's walks back from the last; the two differ only for
+  Y**, Z** and *Z*, which no EXE4 code-run chip's codes reach (none has Y or Z), so the engine's test serves. The
+  animation is the screen's own state 0x10 (0x0801E608: its first tick runs its first step, 0x0801E8AC goes on to
+  the send; `program_advances.in_screen_state`); its steps are EXE6's but for the fade out split in two
+  (0x0801E640, 0x0801E68C), which takes the same ticks.
 - **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
   (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
 - **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
@@ -712,7 +721,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   sequences. The match (0x0800D486) also tests, as a step matches, the word at the sequence's next step and picks at
   once at 0, which no step of the two tables reaches (each test reads a step before or after it). Their picks past
   the library are chips of their own (gen_content.py's USED_CHIPS: FtrSword, SonicBom, CrosSwrd, SprSonic, DblDream;
-  LifeSrd a Program Advance's, without its recipes): the swords' variants 9, 10, 11 and 5 (lib/swords), and SonicBom's
+  LifeSrd a Program Advance's): the swords' variants 9, 10, 11 and 5 (lib/swords), and SonicBom's
   and SprSonic's action 0x37 (`chips/sonicbom/action`: EXE4's own, EXE5's 0x2B grew from it; a charged one steps two
   panels ahead, without afterimages; ProtoSoul's blade 13). The chips/0x037-varswrd and 0x0d9-neovari `cmd-*`
   scenarios enter each sequence.

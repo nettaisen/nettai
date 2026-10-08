@@ -891,7 +891,14 @@ impl Screen {
                 self.look.frame = SLIDE_STEP * tick as u32;
                 self.look.draw_emblem(self.look.frame);
                 self.phase = match tick {
-                    10 if self.program_advance.is_some() => Phase::ProgramAdvance { anim: Default::default() },
+                    // (The animation's first tick only starts it, or, as the
+                    // screen's own state, runs its first step: the rules'
+                    // `in_screen_state`.)
+                    10 if self.program_advance.is_some() => {
+                        let own = view.library.layout().program_advances.in_screen_state;
+                        let state = if own { AnimationState::Running } else { AnimationState::Starting };
+                        Phase::ProgramAdvance { anim: ProgramAdvanceAnimation { state, ..Default::default() } }
+                    }
                     10 => Phase::Sending { started: false },
                     _ => Phase::Closing { tick },
                 };
@@ -909,7 +916,14 @@ impl Screen {
                     }
                     AnimationState::Running => {
                         self.animate_program_advance(&mut anim, pa, view);
-                        Phase::ProgramAdvance { anim }
+                        // (As the screen's own state, its last step goes on
+                        // to the send at once: EXE4's 0x0801E8AC.)
+                        let own = view.library.layout().program_advances.in_screen_state;
+                        if own && anim.state == AnimationState::Done {
+                            Phase::Sending { started: false }
+                        } else {
+                            Phase::ProgramAdvance { anim }
+                        }
                     }
                     // sub_802B766: done; on to sending (state 0x14).
                     AnimationState::Done => Phase::Sending { started: false },
