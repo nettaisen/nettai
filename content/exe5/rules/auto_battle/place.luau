@@ -53,7 +53,7 @@ end
 -- What the AI reads of the chip's record: its own `auto_battle` (the rules' extension). None: the AI can't play it
 -- (its positioning class is past the table at 0x08029B68: the original jumps wherever the memory after it says, and
 -- crashes).
-type AutoBattle = { class: string, range: string? }
+type AutoBattle = { class: string, range: string?, swings: { string }?, element_trap: boolean? }
 local function record(chip: Chip): AutoBattle
     local r = (chip :: any).auto_battle :: AutoBattle?
     if r == nil then
@@ -387,21 +387,20 @@ local function gauge_reach(navi: Object, s: State)
     settle(navi, s)
 end
 
--- VarSwrd's and NeoVari's swings' reach lists by the side's pick (0x0802A3C8: VarSwrd's six from byte 0, NeoVari's
--- four from byte 6: 8, 3, 7, 10, 22, 6 and 15, 22, 10, 6).
-local VARSWRD_SWINGS: { string } =
-    { "two_in_row", "three_in_row", "column_ahead", "two_columns_ahead", "all_ahead", "one_ahead" }
-local NEOVARI_SWINGS: { string } = { "x_one_ahead", "all_ahead", "two_columns_ahead", "one_ahead" }
-
--- `sword_swing`'s chip: NeoVari (chip 0xD9, which 0x0802A342 and 0x0802A360 test), or any other (VarSwrd's row).
-local function neovari(chip: Chip): boolean
-    return chip.id == "neovari"
+-- A `sword_swing` chip's swings' reach lists by the side's pick (its `auto_battle.swings`: 0x0802A3C8, VarSwrd's six
+-- from byte 0, NeoVari's four from byte 6, which 0x0802A342 and 0x0802A360 pick by the chip, 0xD9).
+local function swings_of(chip: Chip): { string }
+    local swings = record(chip).swings
+    if swings == nil then
+        error(string.format("%s's positioning class sword_swing reads its swings, and it names none", chip.id :: string))
+    end
+    return swings
 end
 
 -- 0x0802A330 (`sword_swing`, class 8, VarSwrd's and NeoVari's): the side's sword pick (`sub_802E070` +0x12, which the
--- sword reads) drawn at random among the chip's swings (six; NeoVari's four).
+-- sword reads) drawn at random among the chip's swings (VarSwrd's six; NeoVari's four).
 local function swing_pick(navi: Object, s: State)
-    local n = if neovari(chip_of(s)) then 4 else 6
+    local n = #swings_of(chip_of(s))
     battle.set_sword_pick(navi.alliance, battle.rng_positive() % n)
     s.place_step = 4
     s.place_step_init = 0
@@ -411,7 +410,7 @@ end
 -- place if a hit would land, else a step anywhere; else a step to a panel from which it reaches (the third step
 -- next: in place), or the next target and a step anywhere.
 local function swing_reach(navi: Object, s: State)
-    local swings = if neovari(chip_of(s)) then NEOVARI_SWINGS else VARSWRD_SWINGS
+    local swings = swings_of(chip_of(s))
     local range: string? = swings[battle.sword_pick(navi.alliance) + 1]
     if range == nil then
         error(string.format("the side's sword pick %d is past its chip's swings (0x0802A3C8)", battle.sword_pick(navi.alliance)))
@@ -640,19 +639,15 @@ local function own_panel_ahead(navi: Object, s: State)
     go(navi, s, 4, x, y :: number)
 end
 
--- The element traps (chips 0x8C to 0x8F), which `when_trap_free` may set over one another.
-local ELEMENT_TRAPS: { [string]: boolean } = {
-    ["antifire"] = true,
-    ["antiwatr"] = true,
-    ["antielec"] = true,
-    ["antiwood"] = true,
-}
-
 -- 0x0802A9B4 (`when_trap_free`, class 23, the traps): the navi's side holds no defensive chip (`sub_802CE78`), or an
--- element trap.
+-- element trap (chips 0x8C to 0x8F: their `auto_battle.element_trap`), which they may set over one another.
 local function trap_free(navi: Object): boolean
     local held = battle.linked(navi.alliance).chip
-    return held == nil or ELEMENT_TRAPS[held.id :: string] == true
+    if held == nil then
+        return true
+    end
+    local r = (held :: any).auto_battle :: AutoBattle?
+    return r ~= nil and r.element_trap == true
 end
 
 -- 0x0802A9F4, 0x0802AA34, 0x0802AA74 (`when_any_sea`, `when_any_lava`, `when_any_hole`; classes 24 to 26): either side

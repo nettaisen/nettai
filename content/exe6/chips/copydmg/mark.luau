@@ -15,6 +15,8 @@ return common.make {
     sound = asset.sound("mark"),
     is = collision.attack,
     hits = collision.hits_navis,
+    ticks = 180,
+    over_navi = "attach_point",
     reload_anim = false,
     own_gauges_hit = nil,
 }

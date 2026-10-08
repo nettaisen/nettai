@@ -212,6 +212,28 @@ language = "en"
 "gutsman" = { name = "GutsMan", description = "GutsHammr\ndestroys\nenmy area" }
 "gutsmn-sp" = { name = "GutsMnSP", description = "GutsHammr\ndestroys\nenmy area" }
 "gutsmn-ds" = { name = "GutsMnDS", description = "GutsHammr\ndestroys\nenmy area" }
+"copydmg" = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
+"windrack" = { name = "WindRack", description = "Blow enmy\nin front!\nRange: 3" }
+"bighamr1" = { name = "BigHamr1", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr2" = { name = "BigHamr2", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr3" = { name = "BigHamr3", description = "Hammr atk\nsmashes\nin front!" }
+"godhammr" = { name = "GodHammr", description = "Places a\nstone\nstatue" }
+"geddon1" = { name = "Geddon1", description = "Cracks\nall panel\non screen" }
+"geddon2" = { name = "Geddon2", description = "Breaks\nall empty\npanels" }
+"geddon3" = { name = "Geddon3", description = "Turns all\npanels to\nswamp" }
+"wind" = { name = "Wind", description = "WindBox\nblows at\nenmy area" }
+"fan" = { name = "Fan", description = "VacuumFan\npulls\nenemies" }
+"circgun1" = { name = "CircGun1", description = "Stop site\nw/ Button\nand attck" }
+"circgun2" = { name = "CircGun2", description = "Stop site\nw/ Button\nand attck" }
+"circgun3" = { name = "CircGun3", description = "Stop site\nw/ Button\nand attck" }
+"varswrd" = { name = "VarSwrd", description = "A magical\nshifting\nsword" }
+"neovari" = { name = "NeoVari", description = "A magical\nshifting\nsword" }
+"lifesrd" = { name = "LifeSrd", description = "Big sword\n2 long\n3 wide!" }
+"ftrsword" = { name = "FtrSword", description = "" }
+"sonicbom" = { name = "SonicBom", description = "" }
+"crosswrd" = { name = "CrosSwrd", description = "" }
+"sprsonic" = { name = "SprSonic", description = "" }
+"dbldream" = { name = "DblDream", description = "" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
