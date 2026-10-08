@@ -271,6 +271,12 @@ language = "ja"
 "laserman" = { name = "レーザーマン", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
 "lasrmn-sp" = { name = "レーザーマンSP", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
 "lasrmn-ds" = { name = "レーザーマンDS", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
+"boybomb1" = { name = "ボーイズボム1", description = "自分のエリアないに\nボーイズボム!\nおすとてきエリアへ" }
+"boybomb2" = { name = "ボーイズボム2", description = "自分のエリアないに\nボーイズボム!\nおすとてきエリアへ" }
+"boybomb3" = { name = "ボーイズボム3", description = "自分のエリアないに\nボーイズボム!\nおすとてきエリアへ" }
+"hawkcut1" = { name = "ハヤブサギリ1", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
+"hawkcut2" = { name = "ハヤブサギリ2", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
+"hawkcut3" = { name = "ハヤブサギリ3", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
