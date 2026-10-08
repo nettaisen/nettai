@@ -271,6 +271,12 @@ language = "en"
 "laserman" = { name = "LaserMan", description = "A laser\npierces\n1 thru!" }
 "lasrmn-sp" = { name = "LasrMnSP", description = "A laser\npierces\n1 thru!" }
 "lasrmn-ds" = { name = "LasrMnDS", description = "A laser\npierces\n1 thru!" }
+"boybomb1" = { name = "BoyBomb1", description = "Places\nBoyBom in\nyour area" }
+"boybomb2" = { name = "BoyBomb2", description = "Places\nBoyBom in\nyour area" }
+"boybomb3" = { name = "BoyBomb3", description = "Places\nBoyBom in\nyour area" }
+"hawkcut1" = { name = "HawkCut1", description = "Cut twice\nonce wide\nonce long" }
+"hawkcut2" = { name = "HawkCut2", description = "Cut twice\nonce wide\nonce long" }
+"hawkcut3" = { name = "HawkCut3", description = "Cut twice\nonce wide\nonce long" }
 "bass" = { name = "Bass", description = "Buster\nrake half\nenmy area" }
 
 [navis]
