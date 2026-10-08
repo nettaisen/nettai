@@ -2770,11 +2770,13 @@ impl CoreApi for Battle {
         // The barrier byte the rules' barrier code (`sub_801A802`) tells
         // the behaviors apart by: a plain barrier as the game's type 1
         // (types 1..7, 9 and 0xB..0xF behave alike), a bubble as type 8, a
-        // regenerating one as type 0xA.
+        // regenerating one as type 0xA, a regrowing one as EXE4's type 4
+        // (0x08012DF8).
         c.barrier = match spec.behavior {
             0 => 1,
             1 => 8,
-            _ => 0xA,
+            2 => 0xA,
+            _ => 4,
         };
         c.barrier_weak = spec.weak_element;
         c.barrier_hp = spec.hp;

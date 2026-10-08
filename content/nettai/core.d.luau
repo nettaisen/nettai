@@ -1085,8 +1085,9 @@ export type FormOverlaySpec = {
 export type BarrierState = "none" | "up" | "popped"
 -- How a barrier behaves once raised (`sub_801A802`): worn down and timed
 -- out; back with 1 HP 240 ticks after it is worn down, and broken by elec
--- (BblWrap's bubble); or regenerating up to 200 HP.
-export type BarrierBehavior = "plain" | "bubble" | "regenerating"
+-- (BblWrap's bubble); regenerating up to 200 HP; or back whole a while after it is worn down, as the rules' barrier
+-- tick says (`status.intake.barrier.regrowing`: EXE4's BlakBarr).
+export type BarrierBehavior = "plain" | "bubble" | "regenerating" | "regrowing"
 -- `sub_801A7CC`'s row (`me:raise_barrier`): its HP, the damage a hit must
 -- reach to wear it, its timer (0xFFFF: none) and the element that breaks
 -- it (an element byte; 0: none).

@@ -96,8 +96,10 @@ pub const GAUGE_SPEEDS: [&str; 3] = ["normal", "fast", "slow"];
 /// How a barrier behaves once raised (`sub_801A802` by the barrier byte):
 /// worn down and timed out (`plain`: Barrier, Barr100, Barr200, LifeAur,
 /// the auras), back with 1 HP 240 ticks after it is worn down and broken
-/// by elec (`bubble`: BblWrap), or regenerating up to 200 HP (`regenerating`).
-pub const BARRIER_BEHAVIORS: [&str; 3] = ["plain", "bubble", "regenerating"];
+/// by elec (`bubble`: BblWrap), regenerating up to 200 HP (`regenerating`),
+/// or back whole a while after it is worn down, as the rules' barrier tick
+/// says (`regrowing`: EXE4's type 4, BlakBarr's).
+pub const BARRIER_BEHAVIORS: [&str; 4] = ["plain", "bubble", "regenerating", "regrowing"];
 
 /// `sub_801A7CC`'s row: what a barrier sets in the collision data.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
