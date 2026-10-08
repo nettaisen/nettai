@@ -209,6 +209,7 @@ standard = [
     "wideblde",
     "longblde",
     "custswrd",
+    "varswrd",
     "slasher",
     "windrack",
     "airhoc1",
@@ -275,6 +276,7 @@ standard = [
 ]
 mega = [
     "suprvulc",
+    "neovari",
     "fullcust",
     "lifeaura",
     "snctuary",
@@ -343,4 +345,7 @@ secret = [
     "greenwd2",
     "greenwd3",
     "gunsolex",
+]
+program_advance = [
+    "lifesrd",
 ]

@@ -60,6 +60,12 @@
 "copydmg/action" = 0x2B
 # WindRack's (the chips' action 0x32, 0x080ED330).
 "windrack/action" = 0x32
+# VarSwrd's and NeoVari's (the chips' actions 0x36, 0x080ED6BE, and 0x5A, 0x080EE1A2).
+"varswrd/action" = 0x36
+"neovari/action" = 0x5A
+# SonicBom's and SprSonic's (the chips' action 0x37, 0x080ED7E6).
+"sonicbom/action" = 0x37
+"sprsonic/action" = 0x37
 # Slasher's (the chips' action 0x35, 0x080ED572).
 "slasher/action" = 0x35
 # The TwnFngs' (the chips' action 0x34, 0x080ED4C6).
@@ -97,6 +103,10 @@
 "longblde/action" = 0x0A
 "custswrd/action" = 0x0A
 "muramasa/action" = 0x0A
+"lifesrd/action" = 0x0A
+"ftrsword/action" = 0x0A
+"crosswrd/action" = 0x0A
+"dbldream/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
 "hicannon/action" = 0x0B
