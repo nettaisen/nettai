@@ -900,8 +900,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F378`: the post-init hook by actor type and AI index. For
 /// players (`off_80EAA04`; EXE5's 0x080EB2A8) it is the navi's
-/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`)
-/// and EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
+/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`),
+/// EXE5's MegaMan's (0x080F04EE: in a soul, the status reset again) and
+/// EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
 /// (`off_81092D0`, `off_80F2668`) belong to their AI.
 fn post_init_hook(b: &mut Battle, r: ObjectRef) {
     match ai(b, r).actor_type {
@@ -1033,8 +1034,9 @@ fn reset_abilities(b: &mut Battle, r: ObjectRef) {
     clear_invulnerable(b, r);
     // sub_80E5410: the linked object's state word becomes 8 (it frees
     // itself at its next update) and its first extra variable 0, and the
-    // link goes. (No kind is known to link itself here, so the extra
-    // variable, which would be that kind's own state, has no field.)
+    // link goes. (EXE4's WindSoul's wind links itself here; its first
+    // extra variable, its gusts' slots, its own end empties as it runs, the
+    // first of what reads them: so that variable has no field.)
     if let Some(o) = ai_mut(b, r).reset_linked_object.take() {
         crate::kinds::common::set_progress(b, o, crate::kinds::common::Progress::DESTROY);
     }

@@ -1,9 +1,9 @@
 # EXE4's asset names, written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs:
 # a battle sprite whose archive is a named EXE5 or EXE6 sprite's takes its name; a sprite or sound EXE4's
 # code uses where EXE5's or EXE6's same code uses a named one takes that name (gen_content.py's
-# `asset_names`); one named for the EXE4 code that uses it says where (BY_USE). The extractor writes each asset
-# under its name here, the rest under a number (`sprite-cc-ii`, `sound-nnn`, `background-nn`), which it lists in
-# its extraction.txt and content may not use.
+# `asset_names`); one named for the EXE4 code that uses it says where (BY_USE, over those names). The
+# extractor writes each asset under its name here, the rest under a number (`sprite-cc-ii`, `sound-nnn`,
+# `background-nn`), which it lists in its extraction.txt and content may not use.
 
 # Sprites: "cc-ii", the category's byte offset in the sprite list (0x0802793C) and the index.
 [sprites]
@@ -20,6 +20,7 @@ metalsoul = "00-09"  # MegaMan's sprite in soul 9 (0x0800B90A: his entry plus th
 junksoul = "00-0a"  # MegaMan's sprite in soul 10 (0x0800B90A: his entry plus the soul)
 aquasoul = "00-0b"  # MegaMan's sprite in soul 11 (0x0800B90A: his entry plus the soul)
 woodsoul = "00-0c"  # MegaMan's sprite in soul 12 (0x0800B90A: his entry plus the soul)
+big-hammer = "04-04"  # BigHamr's and GodHammr's hammer: attack 0x4A's init (0x080D68F0)
 instrument = "04-08"
 binder = "04-0a"  # the Binders' binder: attack 0x2D's init (0x080D2594)
 side-bamboo = "04-0c"  # SidBmbo's bamboo: attack 0x44's init (0x080D5C7C)
@@ -37,11 +38,12 @@ metalman = "08-09"  # navi 9's sprite (0x0800B90A: 0x08017F98's entry 9; its win
 junkman = "08-0a"  # navi 10's sprite (0x0800B90A: 0x08017F98's entry 10; its win banner by 0x08008524)
 aquaman = "08-0b"  # navi 11's sprite (0x0800B90A: 0x08017F98's entry 11; its win banner by 0x08008524)
 woodman = "08-0c"  # navi 12's sprite (0x0800B90A: 0x08017F98's entry 12; its win banner by 0x08008524)
-normalnavi = "08-0d"  # navi 13's sprite (0x0800B90A: 0x08017F98's entry 13; its win banner by 0x08008524)
+kendoman = "08-0d"  # KendoMan: his init (0x080C8640), his afterimages (0x080C20DC), his sword (attachment row 0x2D, 0x080CD524); navi 13's sprite in 0x08017F98, whose win banner is NormalNavi's
 shademan = "08-10"  # ShadeMan: his init (0x080BADC2), his crush's (attack 0x34's, 0x080D3774)
 topman = "08-12"  # TopMan: his init (0x080B8572), his tops' (attack 0x29's, 0x080D1E14)
 sparkman = "08-13"  # SparkMan: his init (0x080B8A12), his sparks' (attack 0x22's, 0x080D1128)
 burnman = "08-15"  # BurnMan: his init (0x080BE1BA), his pillars' and flame's (attacks 0x3A and 0x37: 0x080D471C, 0x080D3F28)
+videoman = "08-17"  # VideoMan: his init (0x080C773E), his tapes' (attack 0x5D's, 0x080D911A)
 sword = "0c-00"  # the blade a sword holds: attachment row 3 (0x080CD524), action 0x0A (0x080EB646)
 cannon = "0c-01"  # the Cannon held: attachment row 0 (0x080CD524), action 0x0B's variant 0 (0x080EB894)
 bomb = "0c-02"
@@ -70,6 +72,7 @@ vulcan = "0c-1d"  # the vulcans' gun: attachment rows 13 and 49 (0x080CD524), ac
 flame-line-burner = "0c-1e"  # the FlmLines' burner: attachment row 0x0C (0x080CD524), action 0x22 (0x080ECAF6)
 taunt = "0c-1f"  # the taunt's mark: attachment row 21 (0x080CD524), action 0x2A (0x080ED150)
 bubble = "0c-20"  # the bubble MegaMan holds: attachment row 0x16 (0x080CD524), action 0x29 (0x080ED09C)
+fan = "0c-21"  # Wind's and Fan's fan: attack 0x48's init (0x080D64B2)
 black-bomb = "0c-24"
 geyser = "0c-25"
 meta-gel = "0c-26"
@@ -109,7 +112,9 @@ numberman-face = "10-06"  # NumberMan's face: actor 0x5C's sprite row 0 (0x080CC
 fireman-flame = "10-08"  # the flame on FireMan's head: his form overlay (actor 0x57, 0x080B9302)
 rock-debris = "10-09"
 flame-line = "10-0a"  # the FlmLines' flame: attack 0x19's init (0x080CFFAE)
-django-rubble = "10-0e"
+aquaman-spout = "10-0c"  # the spout on AquaMan's head: actor 0x5C's sprite row 1 (0x080CCC94)
+falling-rock = "10-0e"  # a falling rock: attack 0x1D's init (0x080D090C), its chips' (effect 9's, 0x080E2944); EXE5's Django's rubble's archive
+water-gun = "10-10"  # AquaMan's water gun: attack 0x33's init (0x080D3494)
 thunder-ball = "10-11"
 hockey-puck = "10-12"
 boomerang = "10-14"
@@ -122,10 +127,13 @@ wide-wave = "10-1d"  # the WideShts' wave: attack 0x3B's init (0x080D4950), EXE5
 satellite-beam = "10-1f"
 satellite-flare = "10-21"
 search-scope = "10-22"  # SearchMan's scope: effect #0x43's init (0x080E6B66)
+scope-mark = "10-23"  # SearchSoul's scope's mark on what it finds: effect row 0x52 (0x080E1698), its reveal (0x080E6DFE) and its charged shot (0x080EDBAC)
 seek-bomb = "10-24"  # the SeekBoms' bomb: attack 0x8D's init (0x080DED8C)
 heart = "10-26"
 twin-fang = "10-27"  # the TwnFngs' fang: attack 0x51's init (0x080D79E6)
+windman-swirl = "10-28"  # the swirl WindMan's soul image holds: attachment row 0x34 (0x080CD524), 0x080E36AC's for WindMan (0x080E3682); the one on WindMan's head: actor 0x5C's sprite row 2 (0x080CCC94)
 prop-bomb = "10-2b"  # the PropBoms' bomb: attack 0x8C's init (0x080DEBA0)
+windman-tornado = "10-2f"  # WindMan's tornadoes: attack 0x6B's init (0x080DAC90)
 boulder = "10-31"  # the stages' boulder: attack object #0x6E's init (0x080DB114), the actor lists' entry type 3
 flag = "10-32"  # the flag stages' flag: attack object #0x9C's init (0x080E06D4), the actor lists' entry type 7
 gear = "10-33"  # the gear stages' gear: attack object #0x76's init (0x080DBDBC), the actor lists' entry type 5
@@ -185,10 +193,11 @@ custom-ok = 0x080  # OK on the custom screen (0x0802063E)
 gauge-full = 0x081  # the custom gauge full as it fills (0x080147F4), or filled at once (0x080159D0)
 low-hp = 0x082  # the HP box's alarm, every 45 ticks the console's navi is at a quarter of its HP or less (0x0801475E)
 shade-call = 0x087  # ShadeMan calling out (0x080BAEC8)
+kendo-draw = 0x088  # KendoMan drawing his sword: actor 0x43's action 0xC (0x080C88F8)
 shock-wave = 0x08b  # the Guard chips' shock wave: attack 0x16's init (0x080CFC6C), EXE5's shock wave's (0xA6)
 cannon = 0x08c  # the cannon's shot: action 0x0B (0x080EB968)
 spreader = 0x08d  # a spreader's shot (action 0x1E, 0x080EC7DE) and its bullet's burst, bullet rows 0 to 3 and 15 (0x080CF3DC); SandRing's ring setting off (attack 0x6D's row 3, 0x080DAFB0)
-sword-swing = 0x08e  # a sword's swing: action 0x0A (0x080EB612)
+sword-swing = 0x08e  # a sword's swing: action 0x0A (0x080EB612); KendoMan vanishing: actor 0x43's action 8 (0x080C87EE)
 minibomb-throw = 0x090  # a bomb's throw: action 0x09 (0x080EB452)
 grab-shot-2 = 0x093  # a grab shot falling: attack 0xF's init (0x080CF02C), EXE5's grab shot's
 grab-shot = 0x094  # a grab shot landing (attack 0xF, 0x080CF0EA), EXE5's grab shot's
@@ -197,9 +206,11 @@ program-advance = 0x097  # the Program Advance animation's Program Advance (0x08
 heal = 0x09a  # HP recovered: the heal (0x0800ABCA)
 flame-line = 0x09d  # a FlmLine's flame rising: attack 0x19's init (0x080CFFF8)
 bubble-burst = 0x09f  # a Bubbler's bullet's burst: bullet rows 4 to 7 and 13 (0x080CF3DC)
-tops = 0x0a0  # TopMan's tops appearing: attack 0x29's init (0x080D1E7A)
-metal-punch = 0x0a2  # MetalMan's punch breaking a panel (0x080C80E2); BlkBomb's bomb landing (attack 0x47, 0x080D62CE)
-fist-swing = 0x0a4  # a punch swinging its fist: action 0x12 (0x080EBFB4), GutsSoul's
+tops = 0x0a0  # TopMan's tops appearing: attack 0x29's init (0x080D1E7A); AquaMan's water gun's: attack 0x33 (0x080D352C)
+water-gun = 0x0a1  # AquaMan's water gun spraying: attack 0x33 (0x080D361C)
+metal-punch = 0x0a2  # MetalMan's punch breaking a panel (0x080C80E2); GutsMan's quake: attack 0x1C (0x080D0596); a hammer landing on a solid panel (attack 0x4A, 0x080D6ABC); BlkBomb's bomb landing (attack 0x47, 0x080D62CE)
+falling-rock = 0x0a3  # a falling rock breaking: attack 0x1D (0x080D0A14), EXE6's falling rock's (0xD9)
+fist-swing = 0x0a4  # a punch swinging its fist: action 0x12 (0x080EBFB4), GutsSoul's; GutsMan's punch as GutPnch brings him: actor 0x42 (0x080C8532)
 set-down = 0x0a6  # Beat swooping in: actor 0x4C (0x080CA80E); a TwnFng's fangs: attack 0x51's init (0x080D7A54)
 machine-gun = 0x0a7  # GutsSoul's machine gun, each shot: action 0x10 (0x080EBE34)
 roar = 0x0a8  # the Elem chips' roar: action 0x60 (0x080EE394), EXE5's ElemRage's; HeatBrth's breath every 8 ticks (attack 0x36, 0x080D3E7E)
@@ -220,7 +231,7 @@ spark-flash = 0x0ba  # SparkMan's blinding flash (0x080B8B2E)
 vulcan = 0x0bb  # a vulcan's shot: action 0x1F (0x080EC916)
 heat-burst = 0x0bc  # a HeatShot's bullet's burst: bullet rows 8 to 11 (0x080CF3DC)
 energy-burst = 0x0bd  # an energy burst: attack 0x11's init (0x080CF34C), EnergBom's and MegEnBom's, EXE5's energy burst's
-counter-strike = 0x0be  # the Counters' strike: attack 0x17's init (0x080CFD96)
+counter-strike = 0x0be  # the Counters' strike: attack 0x17's init (0x080CFD96); KendoMan's dash: actor 0x43's action 4 (0x080C8728)
 wood-strike = 0x0bf  # the Anti chips' wood counterattack: effect 0x2B (0x080E5310's row 4)
 hockey-puck = 0x0c0  # an AirHoc's puck flicked: attack 0x2E's init (0x080D282A), EXE5's puck's (0xB4)
 shield = 0x0c1  # a guard's shield going up (attack 0x2B's init, 0x080D227C)
@@ -247,9 +258,10 @@ dimming-sparkle = 0x10d  # a sparkle on a sprung trap's target: 0x0800815C (effe
 breath = 0x11f  # a breath chip's breath coming out: attack 0x36's init (0x080D3AB6)
 geyser = 0x120  # a geyser rising: Geyser's (attack 0x42, 0x080D5A80; EXE5's) and AquaUp's aqua tower (attack 0x92's row 0, 0x080DF674)
 wind = 0x121  # a wind starting to blow: effect 0x41's init (0x080E6846), the wind stages' (records 88 to 95)
+hammer-swing = 0x122  # a hammer swinging down: attack 0x4A (0x080D6A6E)
 panel-poison = 0x124  # a panel turned to poison (0x08009D68: 0x08009D8C)
 barrier = 0x125  # a barrier's visual coming up, and back up (effect 7: 0x080E2496, 0x080E25E4)
-tornado = 0x126  # a tornado rising: attack 0x31's init (0x080D3092)
+tornado = 0x126  # a tornado rising: attack 0x31's init (0x080D3092); WindMan's tornado's: attack 0x6B's init (0x080DACEC)
 windrack = 0x127  # WindRack's swing: action 0x32 (0x080ED364)
 scope-move = 0x128  # SearchMan's scope moving a panel (0x080E6C08)
 soul-change = 0x129  # a soul's change starting, with its flash: action 0x0D's first step (0x080EBAC2); AntiSwrd's counter starting: action 0x39 (0x080EDA92)
@@ -269,6 +281,7 @@ roll-warp = 0x145  # Roll warping out and away (0x080C16B2)
 justice-one = 0x146  # a meteor falling: attack 0x56 (0x080D86CE), EXE5's meteor's (0xC4)
 gear = 0x149  # the gear stages' gear starting to roll (0x080DBF66)
 rage-roar = 0x14c  # the Elem chips' roar on their panel: action 0x60 (0x080EE390), EXE5's ElemRage's
+tape = 0x14f  # VideoMan's tape winding in: attack 0x5D's init (0x080D916A) and action 4 (0x080D91CC)
 soul-image = 0x157  # a soul's navi coming in as the change's image: effect 0x13 (0x080E369E)
 soul-unite = 0x158  # the change's second flash, as MegaMan unites with the soul: action 0x0D's step 4 (0x080EBB36)
 soul-revert = 0x159  # the revert out of a soul: action 0x11 (0x080EBEBC)

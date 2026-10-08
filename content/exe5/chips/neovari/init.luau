@@ -41,7 +41,7 @@ local chip: Chip = {
         picks = { crosswrd, sprsonic, dbldream },
         sword = sword,
     },
-    auto_battle = { class = "sword_swing" },
+    auto_battle = { class = "sword_swing", swings = { "x_one_ahead", "all_ahead", "two_columns_ahead", "one_ahead" } },
 }
 
 return { neovari = chip }

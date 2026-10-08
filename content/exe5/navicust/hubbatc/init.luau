@@ -17,6 +17,8 @@ local program: NaviCustProgram = {
         ".......",
     },
     bug = "hub",
+    -- Its own bug counts once more (0x0813F5A8, the compile's `extra`).
+    counts_own_bug = true,
     effects = { programs.outside("hub-batch"), programs.super_armor(), programs.custom(1), programs.mega_folder(1), programs.first_barrier(barriers.barrier_10), programs.back_special(guards.shield), programs.float_shoes(), programs.air_shoes(), programs.undershirt() },
 }
 

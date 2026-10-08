@@ -47,21 +47,6 @@ local buster = {}
 -- The height a thrown obstacle flies at, 16.16.
 local THROW_Z = 0x0C_0000
 
--- The buster-shot programs that come on 1 draw in 8 (the others on 1 in
--- 2): the original's rows from 0x1E on.
-local RARE: { [ProjectileVariant]: boolean } = {
-    [variants.pushing] = true,
-    [variants.shoving] = true,
-    [variants.charged_pulling] = true,
-    [variants.charged_bubbling] = true,
-    [variants.charged_road] = true,
-    [variants.charged_hp_bug_marked] = true,
-    [variants.charged_road_back] = true,
-    [variants.charged_grass] = true,
-    [variants.charged_freezing] = true,
-    [variants.charged_ice] = true,
-}
-
 -- `sub_8013D5E`: what this shot is (@exelib/megaman/buster).
 buster.pick = common.pick
 
@@ -80,10 +65,11 @@ function buster.setup(navi: Object): Action
     navi.hit_param = 0
     navi.attack_lockout = 0
     -- The buster-shot program (a projectile variant the navi's stats
-    -- name), on a lucky draw.
+    -- name), on a lucky draw: 1 in 8 for one that says it is rare (the
+    -- original's rows from 0x1E on), else 1 in 2.
     local program = battle.navi(navi.alliance).buster_shot
     if program then
-        local mask = if RARE[program] then 7 else 1
+        local mask = if program.rare_buster_shot then 7 else 1
         if bit32.band(battle.rng_positive(), mask) ~= 0 then
             program = nil
         end

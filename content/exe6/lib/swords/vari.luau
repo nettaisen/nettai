@@ -21,9 +21,6 @@ type State = VariSwordState
 type Spec = VariSwordSpec
 
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
-local slashcross = require("../../navis/megaman/forms/slashcross").slashcross
-local slashcross_beast = require("../../navis/megaman/forms/slashcross_beast")["slashcross-beast"]
-local protoman = require("../../navis/protoman").protoman
 local kind = require("../../rules/forms/kind")
 
 local vari = {}
@@ -37,13 +34,17 @@ local COUNTDOWN = 0x30
 -- The phases, on the attack's step.
 local START, PICK = 0, 4
 local SOUND = asset.sound("ok-8b")
--- The forms that wait while A is up: SlashCross and its Beast (the Beast
--- Overs pick at random, and the Beast forms give the pick's Beast
--- lock-on).
-local WAITING_FORMS: { FormDef } = { slashcross, slashcross_beast }
--- The navi that waits while A is up and never gets the charged sword or
--- the lock-on.
-local WAITING_NAVI: NaviDef = protoman
+-- A form that waits while A is up (its `var_sword_waits`: SlashCross and
+-- its Beast; the Beast Overs pick at random, and the Beast forms give the
+-- pick's Beast lock-on).
+local function form_waits(stats: Navi): boolean
+    return ((stats.form :: any) :: Exe6FormFields).var_sword_waits == true
+end
+-- A navi that waits while A is up and never gets the charged sword or the
+-- lock-on (its `var_sword_plain`: ProtoMan).
+local function navi_plain(stats: Navi): boolean
+    return ((stats.navi :: any) :: Exe6NaviFields).var_sword_plain == true
+end
 -- The joypad bits, as the game's JoypadHeld word has them.
 local KEYS: { { key: Key, bit: number } } = {
     { key = "a", bit = 0x001 },
@@ -113,7 +114,7 @@ local function become(me: Object, spec: Spec, i: number)
         return
     end
     local stats = battle.navi(me.alliance)
-    if stats.navi == WAITING_NAVI then
+    if navi_plain(stats) then
         return
     end
     if chip ~= spec.no_charged and me.charged ~= 0 then
@@ -139,7 +140,7 @@ local function pick(me: Object, s: State, spec: Spec)
     end
     local held = held_word(me)
     if not bit32.btest(held, 0x001) then
-        if stats.navi == WAITING_NAVI or table.find(WAITING_FORMS, stats.form) then
+        if navi_plain(stats) or form_waits(stats) then
             return
         end
         return become(me, spec, 0)

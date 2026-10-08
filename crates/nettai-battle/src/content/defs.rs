@@ -232,6 +232,10 @@ pub struct FormDef {
     /// `tick(navi)`: the form's own part of the per-form tick (EXE5's
     /// MegaMan's, 0x080F04CE: GyroSoul's propeller by the priming).
     pub tick: Option<FnId>,
+    /// `chip_used(navi)`: what a chip's use from idle does besides in it,
+    /// as the hand moves on past the chip (its attack's chip): EXE4's
+    /// RollSoul's heal (0x080EED04).
+    pub chip_used: Option<FnId>,
 }
 
 /// A stage (the root's `stages`).
@@ -276,7 +280,8 @@ pub struct Extension {
 }
 
 /// An extension field's type: a state field's (`"u8"`, `"chip"`, a list of
-/// variants), or a table of such fields.
+/// variants, a list holding a list of variants: a list of those names), or a
+/// table of such fields.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtensionType {
     Value(nettai_content_api::FieldType),
@@ -293,6 +298,13 @@ impl ExtensionType {
                 .filter(|ty| unknown_collection(ty, collections).is_none())
                 .map(ExtensionType::Value)
                 .ok_or_else(|| format!("{at}: no type is named {name:?}")),
+            // A list holding a list of variants: a list of those names.
+            Data::List(items) if items.len() == 1 && matches!(&items[0], Data::List(_)) => {
+                let ExtensionType::Value(elem) = ExtensionType::read(&items[0], at, collections)? else {
+                    unreachable!("a list of variants reads as a value's type")
+                };
+                Ok(ExtensionType::Value(FieldType::Array(Box::new(elem), nettai_content_api::MAX_ARRAY as u8)))
+            }
             Data::List(variants) if !variants.is_empty() => {
                 let names = variants
                     .iter()
@@ -306,7 +318,7 @@ impl ExtensionType {
                     .map(|(k, v)| Ok((k.to_string(), ExtensionType::read(v, &format!("{at}.{k}"), collections)?)))
                     .collect::<Result<_, String>>()?,
             )),
-            _ => Err(format!("{at}: a type name, a list of variants or a table of fields")),
+            _ => Err(format!("{at}: a type name, a list of variants, a list holding one, or a table of fields")),
         }
     }
 
@@ -1534,8 +1546,9 @@ impl Defs {
             }
         };
         let mut navis = Vec::new();
+        let extended = extended_fields(&definitions, Registry::Navi);
         for d in definitions.of(Registry::Navi) {
-            let mut record = super::navis::read_navi(d, &reader)?;
+            let mut record = super::navis::read_navi(d, &reader, &extended.iter().map(String::as_str).collect::<Vec<_>>())?;
             record.weapons = read_weapons(d)?;
             record.fresh = super::navis::read_fresh(d, |key| {
                 definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16))
@@ -1650,7 +1663,8 @@ impl Defs {
                 })
             };
             let (reset, put_on, take_off, tick) = (hook("reset")?, hook("put_on")?, hook("take_off")?, hook("tick")?);
-            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off, tick });
+            let chip_used = hook("chip_used")?;
+            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off, tick, chip_used });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {

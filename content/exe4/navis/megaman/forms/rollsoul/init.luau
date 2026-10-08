@@ -18,6 +18,18 @@ local form: FormDef = {
     buster_bonus = 0,
     -- Its row of 0x080184F0: the buster on B, no A charge, Roll's arrow charged (routine 0x22, ./charge).
     weapons = { buster = soul.buster, charge_shot = charge.weapon },
+    -- 0x080EED04: a chip used from idle that isn't a recovery chip heals a tenth of his maximum HP (rounded down; none
+    -- when that is 0), with the heal's sparkle (effect row 7) and sound (0x9A), as the hand moves on past it.
+    chip_used = function(navi: Object)
+        local used = navi.attack_chip
+        if used ~= nil and used.family == "recovery" then
+            return
+        end
+        local amount = navi.max_hp // 10
+        if amount ~= 0 then
+            navi:heal(amount, false)
+        end
+    end,
     palette = 0,
     mugshot = { normal = asset.mugshot("rollsoul") },
 }

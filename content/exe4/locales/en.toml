@@ -209,8 +209,23 @@ language = "en"
 "discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
 "timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
 "silence" = { name = "Silence", description = "MuteAnt\nto blind\nenemy" }
+"gutsman" = { name = "GutsMan", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-sp" = { name = "GutsMnSP", description = "GutsHammr\ndestroys\nenmy area" }
+"gutsmn-ds" = { name = "GutsMnDS", description = "GutsHammr\ndestroys\nenmy area" }
 "copydmg" = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
 "windrack" = { name = "WindRack", description = "Blow enmy\nin front!\nRange: 3" }
+"bighamr1" = { name = "BigHamr1", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr2" = { name = "BigHamr2", description = "Hammr atk\nsmashes\nin front!" }
+"bighamr3" = { name = "BigHamr3", description = "Hammr atk\nsmashes\nin front!" }
+"godhammr" = { name = "GodHammr", description = "Places a\nstone\nstatue" }
+"geddon1" = { name = "Geddon1", description = "Cracks\nall panel\non screen" }
+"geddon2" = { name = "Geddon2", description = "Breaks\nall empty\npanels" }
+"geddon3" = { name = "Geddon3", description = "Turns all\npanels to\nswamp" }
+"wind" = { name = "Wind", description = "WindBox\nblows at\nenmy area" }
+"fan" = { name = "Fan", description = "VacuumFan\npulls\nenemies" }
+"circgun1" = { name = "CircGun1", description = "Stop site\nw/ Button\nand attck" }
+"circgun2" = { name = "CircGun2", description = "Stop site\nw/ Button\nand attck" }
+"circgun3" = { name = "CircGun3", description = "Stop site\nw/ Button\nand attck" }
 "varswrd" = { name = "VarSwrd", description = "A magical\nshifting\nsword" }
 "neovari" = { name = "NeoVari", description = "A magical\nshifting\nsword" }
 "lifesrd" = { name = "LifeSrd", description = "Big sword\n2 long\n3 wide!" }
@@ -219,10 +234,29 @@ language = "en"
 "crosswrd" = { name = "CrosSwrd", description = "" }
 "sprsonic" = { name = "SprSonic", description = "" }
 "dbldream" = { name = "DblDream", description = "" }
+"aquaman" = { name = "AquaMan", description = "Water Gun\nsprays\n2sq ahead" }
+"aquamn-sp" = { name = "AquaMnSP", description = "Water Gun\nsprays\n2sq ahead" }
+"aquamn-ds" = { name = "AquaMnDS", description = "Water Gun\nsprays\n2sq ahead" }
 "sandring" = { name = "SandRing", description = "Opens a\npitfall\ntrap" }
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
+"gutpnch1" = { name = "GutPnch1", description = "Launches\nGutPunch\nahead" }
+"gutpnch2" = { name = "GutPnch2", description = "Launches\nGutStrgt\nahead" }
+"gutpnch3" = { name = "GutPnch3", description = "Launches\nGutImpct\nahead" }
+"windman" = { name = "WindMan", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"windmn-sp" = { name = "WindMnSP", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"windmn-ds" = { name = "WindMnDS", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"numbrbl1" = { name = "NumbrBl1", description = "3-shot\nball atk\nreduce HP" }
+"numbrbl2" = { name = "NumbrBl2", description = "4-shot\nball atk\nreduce HP" }
+"numbrbl3" = { name = "NumbrBl3", description = "5-shot\nball atk\nreduce HP" }
 "blkbomb" = { name = "BlkBomb", description = "Firebomb\nhits 3rd\nsq ahead!" }
+"videoman" = { name = "VideoMan", description = "Attack\ntape slam\n2.5 in" }
+"videmn-sp" = { name = "VideMnSP", description = "Attack\ntape slam\n2.5 in" }
+"videmn-ds" = { name = "VideMnDS", description = "Attack\ntape slam\n2.5 in" }
 "bugbomb" = { name = "BugBomb", description = "Throws a\nbug-bomb\n3sq ahead" }
+"kendoman" = { name = "KendoMan", description = "Attck hit\nan enemy\nin front" }
+"kendmn-sp" = { name = "KendMnSP", description = "Attck hit\nan enemy\nin front" }
+"kendmn-ds" = { name = "KendMnDS", description = "Attck hit\nan enemy\nin front" }
+"nrthwind" = { name = "NrthWind", description = "Wind blws\noff aura,\nbarriers" }
 "vdoll" = { name = "VDoll", description = "Throws\nVDoll\nahead" }
 "curse" = { name = "Curse", description = "" }
 

@@ -78,15 +78,28 @@ local function vertical(me: Object, s: State, place: (Object) -> ())
 end
 
 -- `sub_80D66E2`: along the row; turn back to the columns going back into a
--- column with none of the other side's panels, off the field, or before a
+-- column with none of the other side's panels (`own_column`: going back on a
+-- column with any of the user's side's, EXE4's), off the field, or before a
 -- column wholly the user's side's.
-local function horizontal(me: Object, s: State, place: (Object) -> ())
+local function horizontal(me: Object, s: State, place: (Object) -> (), own_column: boolean)
     if not step_due(me, s) then
         return
     end
     local v = me.vel
     local x = me.panel_x + v.x
-    local turn = v.x ~= me.facing and foreign_panels(x, me.alliance) == 0
+    local turn
+    if own_column then
+        local rule = OWN_PANELS[me.alliance]
+        local own = 0
+        for y = 1, 3 do
+            if field.check(me.panel_x, y, rule[1], rule[2]) then
+                own += 1
+            end
+        end
+        turn = v.x ~= me.facing and own ~= 0
+    else
+        turn = v.x ~= me.facing and foreign_panels(x, me.alliance) == 0
+    end
     if not turn then
         if not field.valid(x, me.panel_y) then
             turn = true
@@ -138,7 +151,7 @@ function gun.make_kind(id: string, look: CircGunLook, shot_kind: Kind): Kind
         if me.phase == 0 then
             vertical(me, s, place)
         elseif me.phase == 4 then
-            horizontal(me, s, place)
+            horizontal(me, s, place, look.turns_on_own_column == true)
         else
             error(string.format("CircGun's gun: phase %#x reads past off_80D668C", me.phase))
         end

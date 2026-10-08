@@ -663,7 +663,7 @@ pub struct ChargedBonus {
 pub struct FormEffects(pub u16);
 
 impl FormEffects {
-    /// The statuses end (not in battle mode 1).
+    /// The statuses end (not in the first turn: the turn counter 1).
     pub const CLEAR_STATUSES: u16 = 0x001;
     pub const SUPER_ARMOR: u16 = 0x002;
     pub const AIR_SHOES: u16 = 0x004;
@@ -825,11 +825,14 @@ impl<'de> Deserialize<'de> for AttachPoint {
     }
 }
 
-/// A navi definition's record: what it gives by value. (What it names by
-/// handle is read with the registries: `Defs::build`.)
+/// A navi definition's record: what it gives by value, past `extended`:
+/// the fields its game's rules extend navis with (theirs to check,
+/// `SystemDef::extends`). (What it names by handle is read with the
+/// registries: `Defs::build`.)
 pub(crate) fn read_navi(
     d: &nettai_content_api::Definition,
     r: &super::reader::SpecReader,
+    extended: &[&str],
 ) -> Result<NaviData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     let err = |m: String| super::reader::err(d, m);
@@ -846,14 +849,12 @@ pub(crate) fn read_navi(
         }
     }
     let d = &d;
-    let mut o = super::reader::fields(
-        d,
-        r,
-        &[
-            "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "switch_hp", "levels", "story", "forms", "tick",
-            "idle", "post_init", "fire_charge",
-        ],
-    )?;
+    let own = [
+        "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "switch_hp", "levels", "story", "forms", "tick", "idle",
+        "post_init", "fire_charge",
+    ];
+    let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
+    let mut o = super::reader::fields(d, r, &skip)?;
     let banners = d.spec.field("banners");
     for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
         let b = r.json(banners.field(which), &format!("navi {}.banners.{which}", d.key)).map_err(err)?;
@@ -888,6 +889,7 @@ pub(crate) fn read_form(
         "put_on",
         "take_off",
         "tick",
+        "chip_used",
     ];
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
     let o = super::reader::fields(d, r, &skip)?;
