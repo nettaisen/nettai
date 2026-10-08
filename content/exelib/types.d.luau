@@ -711,6 +711,19 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
+-- A game's Jealousy (@exelib/jealousy/controller): its controller kind's id; how many chips the other side holds
+-- (the controller asking); its hits' self type, target and spark; and EXE5's operation battle (the mode's test and the
+-- warning's sound).
+export type JealousyLook = {
+    id: string,
+    count: (controller: Object) -> number,
+    is: CollisionType,
+    hits: CollisionType,
+    spark: Spark,
+    operation_battle: (() -> boolean)?,
+    warning: Sound?,
+}
+
 -- A game's Blinder (@exelib/blinder/controller): its controller kind's id, its sound, and the blinding hit's self
 -- type, target and status.
 export type BlinderLook = {
@@ -1279,7 +1292,7 @@ export type AnubisVariant = {
     period: number,
     hp: number,
     lifetime: number,
-    identity: Identity,
+    identity: Identity?,
 }
 
 -- A panel change (objects/panel_changer, a row of the original's

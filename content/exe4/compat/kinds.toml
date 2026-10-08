@@ -365,6 +365,16 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# Jealousy's controller (0x080E5EF4; its position the dimming handler's registers).
+"jealousy/controller" = { pool = "effect", index = 0x36, scratch_position = true }
+# Guardian's controller (0x080E7ED0; its position the dimming handler's registers), its statue (0x080DCDA8) and its
+# strike's dimming (0x080E7F84; its position the spawner's registers).
+"guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
+"guardian/statue" = { pool = "attack", index = 0x7D }
+"guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
+# Anubis's controller (0x080E5BF4; its position the dimming handler's registers) and its statue (0x080D82F8).
+"anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
+"anubis/statue" = { pool = "attack", index = 0x55 }
 # Mine's controller (0x080E4F5C; its position the dimming handler's registers) and its mine (0x080D6ED4).
 "mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
 "mine/land-mine" = { pool = "attack", index = 0x4C }

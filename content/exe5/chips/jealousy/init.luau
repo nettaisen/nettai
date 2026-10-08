@@ -1,7 +1,7 @@
 --!strict
 -- Jealousy (EXE5 chip 0x0d4): a cut-in chip whose effect hits every panel the opponent's side stands on once for
 -- each chip the opponent holds, 10 ticks apart (./controller: EXE5's effect object #0x36, EXE6's code that no EXE6 chip
--- uses).
+-- uses, @exelib/jealousy/controller).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local controller = require("@self/controller")
