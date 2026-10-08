@@ -14,10 +14,16 @@
 -- Airforce G (./chip).
 
 local airforce = require("@self/chip").airforce
-local body_overlays = require("../lib/body_overlays")
 local buster = require("@self/buster")
 local charge = require("@self/charge")
 local hover = require("@self/hover")
+
+-- GyroMan's propeller (the body overlays' row 0, 0x0800EE4E): behind him in his animations 0 to 5, 7, 16 and 17.
+local PROPELLER: BodyPart = {
+    sprite = asset.sprite("gyro-propeller"),
+    anims = 22,
+    behind = { { 0, 5 }, { 7, 7 }, { 16, 17 } },
+}
 
 local navi: NaviDef = {
     sprite = asset.sprite("gyroman"),
@@ -53,7 +59,7 @@ local navi: NaviDef = {
         ai_index = 2,
         -- The Full Synchro aura's animation: its owner's AI index (the aura's start, 0x080C4608).
         aura_anim = 2,
-        parts = { body = body_overlays.gyroman },
+        parts = { body = PROPELLER },
         overlay_hooks = { "death", "refresh", "flinch_checked" },
         attach_points = {
             { 0, 16 },
