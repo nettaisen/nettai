@@ -23,7 +23,7 @@ local shademan: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "shademan/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
@@ -46,7 +46,7 @@ local shademn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "shademn-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
@@ -68,7 +68,7 @@ local shademn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "shademn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(6),
     },
     auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }

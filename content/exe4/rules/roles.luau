@@ -17,11 +17,17 @@ local invalid = require("../chips/invalid").invalid
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
+local support_chips = require("../chips/supports")
+local supports = require("../lib/supports/controller")
 
 local roles: RolesSpec = {
     chips = {
         -- What a pick the custom screen refuses counts as (EXE4's chip 0x184, past the named ones: chips/invalid).
         invalid = invalid,
+        -- The chips the NaviCust supports' telops name (EXE4's 0x17F to 0x181: chips/supports).
+        rush = support_chips.rush,
+        beat = support_chips.beat,
+        tango = support_chips.tango,
     },
     statuses = {
         -- What a damage word's paralysis bit makes its hits carry (0x08012860: status byte 0x12); a counter hit's
@@ -54,6 +60,8 @@ local roles: RolesSpec = {
         charge_glow = charge_glow.kind,
         -- AntiRecv's counterattack (effect object 0x2C, 0x080E538C), which a recovery springs (0x080E5436).
         anti_recovery = anti_recovery.kind,
+        -- The NaviCust supports' controller (Rush's, Beat's and Tango's: effect object 0x74, lib/supports).
+        support = supports.kind,
     },
     sounds = {
         appear = asset.sound("appear"),
@@ -109,7 +117,7 @@ local roles: RolesSpec = {
         first_barrier = function(navi: Object)
             local barrier = battle.navi(navi.alliance).first_barrier
             if barrier then
-                barriers.raise(navi, barrier)
+                barriers.raise(navi, barrier, true)
             end
         end,
         -- All Guard (0x0800D8E4: NaviStats +0x28 at 1, the rules' stat `all_guard`): as the navi's abilities reset

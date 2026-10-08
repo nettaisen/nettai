@@ -691,6 +691,8 @@ impl Round {
             // What the save brings to the stats (EXE4's rules/save): the base
             // HP, which the rules write into the HP.
             player.set_fact(content, "hp", &[Fact::Value(Value::Int(d.navi_stats[side].max_base_hp as i64))])?;
+            // And fighting in the sun (+0x29), which the reset keeps.
+            player.set_fact(content, "sun", &[Fact::Value(Value::Bool(d.navi_stats[side].sun))])?;
             // MegaMan's light/dark value (EXE4's rules/light_dark: the
             // starting mood).
             player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
@@ -788,10 +790,8 @@ fn battle_folder(content: &Content, compat: &Compat, entries: &[Option<(u16, u8)
 /// mood, the buster's levels and blank count, the weapons by compat
 /// (records.toml), the bugs' drains, the custom level and chip limits, the
 /// move lag's column (the engine's navi variant), the soul (the form), the
-/// aura, the HP, and the rules' stats (the weapon level, the move bug, the
-/// Full Synchro at the start, MegaMan's color, All Guard). A block that
-/// holds what the port can't say yet (the supports: patch cards to come) is
-/// an error, which `Round::needs` lists.
+/// aura, the HP, the supports, and the rules' stats (the weapon level, the
+/// move bug, the Full Synchro at the start, MegaMan's color, All Guard).
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
@@ -806,9 +806,13 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         None => None,
         Some(k) => Some(content.defs.record(&k).ok_or_else(|| format!("the content has no aura {k}"))?),
     };
-    if s.supports != 0 {
-        return Err("supports (+0x18): not ported yet (docs/design/exe4-map.md §18)".to_string());
-    }
+    // The supports (+0x18): 0xFF the support bug, else a bit each (Rush 1,
+    // Beat 2, Tango 4), as EXE6's +0x0D.
+    stats.support = (s.supports != 0xFF).then(|| nettai_battle::setup::Supports {
+        rush: s.supports & 1 != 0,
+        beat: s.supports & 2 != 0,
+        tango: s.supports & 4 != 0,
+    });
     stats.mood = s.mood;
     stats.super_armor = s.super_armor;
     stats.float_shoes = s.float_shoes;
@@ -819,6 +823,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.set_game_stat(content, "full_synchro_start", Value::Bool(s.full_synchro))?;
     stats.set_game_stat(content, "color", Value::Int(s.color as i64))?;
     stats.set_game_stat(content, "all_guard", Value::Bool(s.all_guard))?;
+    stats.set_game_stat(content, "sun", Value::Bool(s.sun))?;
     stats.attack = s.attack;
     stats.rapid = s.rapid;
     stats.charge = s.charge;
@@ -926,7 +931,7 @@ fn compiled_bytes(v: [u8; 20], max_hp: u16) -> String {
 }
 
 /// A side's stats as EXE4's reload starts from them (0x08036CC0: the navi's
-/// fresh stats, keeping the mood and the light/dark value), with the save's
+/// fresh stats, keeping the mood, the sun and the light/dark value), with the save's
 /// HP and what the battle's start writes after the PET (the move lag's
 /// column, +0x25): what the rules compile a NaviCust over
 /// (rules/navicust), so that the round's stats are the compile's.
@@ -935,6 +940,7 @@ pub fn reset(content: &Content, compat: &Compat, s: &NaviStats) -> Result<Engine
     let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
     let mut stats = EngineNaviStats::fresh(navi, content).ok_or_else(|| format!("{navi_key} has no fresh stats"))?;
     stats.mood = s.mood;
+    stats.set_game_stat(content, "sun", Value::Bool(s.sun))?;
     stats.navi_variant = s.move_lag_column;
     stats.max_base_hp = s.max_base_hp;
     stats.hp = s.hp;

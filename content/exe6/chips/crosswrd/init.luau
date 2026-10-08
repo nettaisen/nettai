@@ -7,6 +7,18 @@ local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
 
+-- CrosSwrd's X.
+local CROSS_SLASH = new.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 }
+
+-- Its charged slash in SlashCross: its X, and the plain sword's wave unseen under it.
+local CHARGED = slashes.slash {
+    wave = slashes.wave { region = regions.x, sprite = asset.sprite("cross-slash"), anim = 0, animates = true },
+    hidden_wave = slashes.wave { region = regions.single, sprite = asset.sprite("sword-slash"), anim = 2 },
+    blade = parts.blade,
+    sound = parts.swing,
+    lockon = lockon.thunder,
+}
+
 local chip: Chip = {
     codes = { "E", "L", "S", "*" },
     element = "null", family = "sword", class = "special",
@@ -16,12 +28,12 @@ local chip: Chip = {
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.crosswrd },
     action = slash.action {
-        blade = parts.blades.sword,
+        blade = parts.blade,
         hit = { region = regions.x, collision = parts.slashes_navis, hit_mod = 3 },
-        effect = parts.effects.cross,
-        sound = parts.sounds.swing,
+        effect = CROSS_SLASH,
+        sound = parts.swing,
         second_hit = slash.CROSS_HIT,
-        charged = slashes.cross,
+        charged = CHARGED,
     },
 }
 

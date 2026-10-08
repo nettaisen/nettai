@@ -24,7 +24,7 @@ local chips: { [string]: Chip } = {
         flags = { "dimming", "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
         beast = { rush = false, lockon = lockon.cannon },
-        dimming = controller.hook(1),
+        dimming = controller.hook(3),
     },
     sumnblk3 = {
         codes = { "W", "Y", "Z" },
@@ -33,7 +33,7 @@ local chips: { [string]: Chip } = {
         flags = { "dimming", "has_damage", "standard_library", "library" },
         slot_in_limit = 3,
         beast = { rush = false, lockon = lockon.cannon },
-        dimming = controller.hook(2),
+        dimming = controller.hook(6),
     },
 }
 

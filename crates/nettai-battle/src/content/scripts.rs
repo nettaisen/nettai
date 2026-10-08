@@ -430,7 +430,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 r#"
         leave_on_use = true,
         anti_navi_sparkle = { dy = 0, z = 16 },
-        mixed_modifiers = false,"#,
+        mixed_modifiers = false,
+        beat_spares_dark = false,"#,
             ),
             (
                 "custom_screen",

@@ -37,7 +37,7 @@ local airspin2: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = action.action { whirlwind = top.sender(1, 3) },
+    action = action.action { whirlwind = top.sender(4, 3) },
     auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
@@ -55,7 +55,7 @@ local airspin3: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = action.action { whirlwind = top.sender(2, 4) },
+    action = action.action { whirlwind = top.sender(8, 4) },
     auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 

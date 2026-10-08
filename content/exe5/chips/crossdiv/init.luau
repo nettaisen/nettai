@@ -1,10 +1,19 @@
 --!strict
 -- CrossDiv (EXE5 chip 0x135): Colonel cuts in and divides the screen with an X on the first enemy navi ahead
--- (../colonel/navi, his Param3 1).
+-- (../colonel/navi, his Param3 1: its strike below).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("./colonel/navi")
 local navi_chips = require("../lib/navi_chips/chip")
+
+-- Its strike: both his slashes, falling then rising (an X), with a 40-tick flash; no command.
+local CROSS_DIVIDE = navi.strike {
+    land = function(me: Object)
+        navi.slash(me, 1)
+        navi.slash(me, 2)
+    end,
+    flash = 0x28,
+}
 
 local chip: Chip = {
     codes = { "C" },
@@ -21,7 +30,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     navi = navi_chips.make {
         id = "crossdiv/controller",
-        summon = navi.summon_cross,
+        summon = navi.summon { palette = 0, sword_palette = 0, strike = CROSS_DIVIDE },
     },
     auto_battle = { class = "at_once" },
 }
