@@ -1,8 +1,8 @@
 --!strict
--- What EXE6's swords share (docs/design/content-model-v2.md §5.2): their
--- blades, the slashes drawn over the panels they hit, their swings'
--- sounds, and the blade the user holds while it swings (the shared parts,
--- @exelib/swords/parts, with EXE6's attachment).
+-- What EXE6's swords share (docs/design/content-model-v2.md §5.2): the
+-- plain blade, their swings' sounds, and the blade the user holds while it
+-- swings (the shared parts, @exelib/swords/parts, with EXE6's attachment).
+-- Each sword states the slash drawn over the panels it hits.
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
@@ -14,43 +14,14 @@ local parts = {}
 -- What a sword's hit is and hits: a slash that reaches navis.
 parts.slashes_navis = { is = collision.slash, hits = collision.hits_navis }
 
--- The blades (the original's attachment rows 3, 0x19 to 0x1C).
-parts.blades = {
-    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
-    fire = attachment.look { sprite = asset.sprite("fire-sword"), palette = 0 },
-    aqua = attachment.look { sprite = asset.sprite("aqua-sword"), palette = 0 },
-    elec = attachment.look { sprite = asset.sprite("elec-sword"), palette = 0 },
-    bamboo = attachment.look { sprite = asset.sprite("sword"), palette = 2 },
-}
+-- The plain blade the navi holds (the original's attachment row 3), which most swords hold. (The elemental swords'
+-- and BambSwrd's are their own: rows 0x19 to 0x1C.)
+parts.blade = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
 
--- The slashes (effects 0x16 to 0x1C, 0x25, 0x2D, 0x5F).
-local SLASH, BIG = asset.sprite("sword-slash"), asset.sprite("big-slash")
-parts.effects = {
-    -- Sword's, over the panel ahead.
-    slash = new.effect { sprite = SLASH, anim = 2, palette = 0 },
-    -- Over a column: WideSwrd's, StepSwrd's, the elemental and machine
-    -- swords' (in their colors).
-    wide = new.effect { sprite = SLASH, anim = 0, palette = 0 },
-    -- Over two panels: LongSwrd's.
-    long = new.effect { sprite = SLASH, anim = 1, palette = 0 },
-    wide_blade = new.effect { sprite = SLASH, anim = 0, palette = 5 },
-    long_blade = new.effect { sprite = SLASH, anim = 1, palette = 5 },
-    -- Over three panels: FtrSword's.
-    line = new.effect { sprite = SLASH, anim = 3, palette = 0 },
-    muramasa = new.effect { sprite = SLASH, anim = 1, palette = 6 },
-    -- LifeSrd's and DblDream's; DrkSword's, dark.
-    big = new.effect { sprite = BIG, anim = 0, palette = 0 },
-    dark = new.effect { sprite = BIG, anim = 0, palette = 2 },
-    -- CrosSwrd's X.
-    cross = new.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 },
-}
-
--- The swings: most swords', and the big swords' (LifeSrd, DrkSword,
--- DblDream).
-parts.sounds = {
-    swing = asset.sound("sword-swing"),
-    big_swing = asset.sound("big-sword-swing"),
-}
+-- The swings' sounds: most swords', and the big swords' (LifeSrd, DrkSword, DblDream). (The slashes over the panels
+-- each sword hits are its own.)
+parts.swing = asset.sound("sword-swing")
+parts.big_swing = asset.sound("big-sword-swing")
 
 -- MegaMan's base AI's blade, by side `side`'s form: 0, or a Beast form's
 -- (0xC for Gregar's, 0xD for Falzar's). (CrosOver's MegaMan, whose user may
