@@ -18,7 +18,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming" },
     slot_in_limit = 1,
-    dimming = bugfix.liberation("stepswd"),
+    dimming = bugfix.liberation,
     auto_battle = { class = "at_once" },
 }
 

@@ -178,6 +178,14 @@ language = "en"
 "magbolt3" = { name = "MagBolt3", description = "Shocks an\nenemy\nahead" }
 "invis" = { name = "Invis", description = "Invisible\nfor a\nwhile" }
 "popup" = { name = "PopUp", description = "Attacks\nfrm under\nground" }
+"shademan" = { name = "ShadeMan", description = "CrshNoise\nattck all\ndirection" }
+"shadmn-sp" = { name = "ShadMnSP", description = "CrshNoise\nattck all\ndirection" }
+"shadmn-ds" = { name = "ShadMnDS", description = "CrshNoise\nattck all\ndirection" }
+"propbom1" = { name = "PropBom1", description = "Rushing\ncauses an\nexplosion" }
+"propbom2" = { name = "PropBom2", description = "Rushing\ncauses an\nexplosion" }
+"propbom3" = { name = "PropBom3", description = "Rushing\ncauses an\nexplosion" }
+"tornado" = { name = "Tornado", description = "Creates 8\nwhirlwind\nahead" }
+"static" = { name = "Static", description = "A static\nblast 2sq\nahead" }
 "hole" = { name = "Hole", description = "Appears\nHole\nin front" }
 "pnlretrn" = { name = "PnlRetrn", description = "Fix your\narea's\npanels" }
 "holypanl" = { name = "HolyPanl", description = "Creates a\nHolyPanl\nin front" }

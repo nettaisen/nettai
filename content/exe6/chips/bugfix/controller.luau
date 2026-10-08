@@ -12,7 +12,12 @@ local glow = require("./glow")
 
 local bugfix = {}
 
-local made = common.make { id = "bugfix/controller", glow = glow.spawn, beast_out = true }
+local made = common.make {
+    id = "bugfix/controller",
+    glow = glow.spawn,
+    flash = asset.sound("bugfix-flash"),
+    beast_out = true,
+}
 bugfix.kind = made.kind
 
 -- `sub_80E49A2`: the chip's `dimming` hook.

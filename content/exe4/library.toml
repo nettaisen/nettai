@@ -193,6 +193,8 @@ standard = [
     "magbolt1",
     "magbolt2",
     "magbolt3",
+    "tornado",
+    "static",
     "minibomb",
     "energbom",
     "megenbom",
@@ -302,12 +304,18 @@ mega = [
     "sparkman",
     "sprkmn-sp",
     "sprkmn-ds",
+    "shademan",
+    "shadmn-sp",
+    "shadmn-ds",
 ]
 giga = [
     "blakbarr",
     "deltaray",
 ]
 secret = [
+    "propbom1",
+    "propbom2",
+    "propbom3",
     "seekbom1",
     "seekbom2",
     "seekbom3",
