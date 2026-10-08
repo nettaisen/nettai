@@ -286,6 +286,7 @@ language = "ja"
 "timebomb" = { name = "カウントボム", description = "てきエリアにじげん\nばくだんをセットし\nエリア中にばくはつ" }
 "blinder" = { name = "ブラインド", description = "きょうりょくな光で\nあいてをもうもく\nじょうたいにする!" }
 "mine" = { name = "ステルスマイン", description = "てきエリアのどこか\nに見えないじらいを\nセットする!" }
+"anubis" = { name = "ポイズンアヌビス", description = "あんこくチップ!\nどくを発生させる\nアヌビスぞうをおく" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
