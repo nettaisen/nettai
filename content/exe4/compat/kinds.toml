@@ -360,6 +360,8 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# Jealousy's controller (0x080E5EF4; its position the dimming handler's registers).
+"jealousy/controller" = { pool = "effect", index = 0x36, scratch_position = true }
 # Guardian's controller (0x080E7ED0; its position the dimming handler's registers), its statue (0x080DCDA8) and its
 # strike's dimming (0x080E7F84; its position the spawner's registers).
 "guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
