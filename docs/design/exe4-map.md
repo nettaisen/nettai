@@ -2088,8 +2088,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      sparkle and sound (0x0801313E, 0x080131B8: rules/panels) *done* (souls/fire/lava, lava-barrier).
    - **ThunderSoul (6).** Elec (0x0800C964) *done* (souls/thunder/weakness: Lance's wood); an uncharged damaging Null
      or Elec chip that isn't a dimming chip paralyzes (0x0800C4C4: the damage's 0x4000; the form's `paralyzing_chips`)
-     *done* (souls/thunder/paralyze); the row shot charged (0x58, 0x0800D298: 20, elec, hit 0x8A; action 0x47 and
-     attack 0x6D, objects/row_shot's row 0: the hand, 0c-36, and the elec shot, 0c-37, paralyzing 90 ticks) *done*
+     *done* (souls/thunder/paralyze); the zap ring charged (0x58, 0x0800D298: 20, elec, hit 0x8A; the ring throw,
+     action 0x47, lib/rings, and the ring, attack 0x6D, objects/ring, its row 0: held as 0c-36, the ring 0c-37,
+     paralyzing 90 ticks; SandRing's and weapon routine 0x04's the same throw and ring) *done*
      (souls/thunder/unison, side1). The image against the HP number (SearchSoul's below) shows in
      souls/thunder/side1 too, frames 494 to 532, ThunderMan's blinking image.
    - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0) *open*; a sword chip that
