@@ -748,6 +748,35 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   content each chip states its own (`breath.make`), each its own kind mapped to attack 0x36. WoodPwdr's hits confuse
   (hit modifier 1, status 0x20); ElecShok's highlight the panels they hit. A parameter of 4 and on would leave a trail
   (0x080D3C10): no chip has one.
+- **CircGun1 to CircGun3** (the dimming chips' variant 0x33, `chips/circgun`): @exelib/circgun (EXE6's code) with
+  EXE4's look: the sight SearchMan's scope's sheet (10-22), its sounds (0x128, 0x12F, 0xBB), the flash effect row 0x27,
+  four thrown shots each (the chip's parameter is its period: 6, 4, 2); the gun going back along a row turns on a
+  column with any of the user's side's panels (0x080DE7AA, `turns_on_own_column`); the controller (effect #0x5E)
+  sets the gun whatever the far column holds and takes the user's side alone (`always_sets_gun`, `side_only`). The
+  lab's chips/ (15) replay every frame; CircGun1's hit and CircGun3's back-column are pixel-exact.
+- **Wind, Fan** (the dimming chips' variant 0x0F, `chips/wind`): @exelib/wind's controller (effect #0x25, 0x080E4AD4,
+  its spawn taking the user's side alone: `side_only`) and fan (attack #0x48, 0x080D6488) with EXE4's look: sheet
+  0c-21 (`fan`), rising with 0x121; 100 HP (0x080D6480's rows, EXE5's 40); no NameID (no identity); its leaving an
+  explosion whatever removes it (`removal_explodes`); its gust EXE4's (objects/gust, untracked: the fan gives its ROM
+  row for the gust's slot) on EXE4's own column (0x080D6688, the look's `column`): the enemy's front column of the
+  row, none when an obstacle stands there; Fan's from there to the far edge or the panel before an obstacle. The
+  lab's chips/ (8), drag/ and ice/ wind and fan recordings and every stage replay every frame; the hit recordings are
+  pixel-exact.
+- **Geddon1 to Geddon3** (the dimming chips' variant 0x0A, `chips/geddon`): EXE5's Geddon on @exelib/geddon: the
+  controller (effect #0x1D, 0x080E400C) holding no panel, the quake (effect #0x1E, 0x080E40E4: EXE6's code) with
+  EXE4's look (a puff, effect row 2, with 0x95; a rising bubble with 0x124), each chip its change (crack, break,
+  poison). The lab's chips/ (12), panels/geddon1 and geddon2 and status/poison-geddon3 replay every frame; the hit
+  recordings are pixel-exact.
+- **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
+  (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
+  100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
+  hammer waits 10 ticks, winds up 24 (BigHamr's blinking), swings (0x122) and lands 5 ticks later on the panel
+  ahead, then goes 60 ticks on, in an explosion whatever ends it. Each chip states its look (`hammer.make`: palette,
+  standing animation, blinking) and its landing: BigHamr's cracks two of the other side's solid panels at random on a
+  solid panel and hits the panel ahead (breaking); GodHammr's quakes every solid panel (collision type 0x26) on a
+  solid panel, else hits the panel ahead; a solid panel shakes the camera (by 1, 2, 3; GodHammr's 3) with 0xA2. The
+  lab's chips/ (19) and hits/guard-bighamr replay every frame; the hit recordings (and BigHamr1's two-ahead,
+  GodHammr's miss) are pixel-exact.
 - **Silence, Fanfare, Discord, Timpani** (the dimming chips' variant 0x24, `chips/silence` and on): the instruments'
   controller (effect #0x4A, 0x080E7310) and instrument (attack #0x78, 0x080DC33C), @exelib/instruments (EXE6's code,
   as EXE5's) with EXE4's look (lib/instruments): the sheet 04-08, its sounds (0xB0 appearing, 0x70 leaving), no NameID
