@@ -71,6 +71,7 @@
 "z-saver/action" = 0x70
 # SandRing's (the chips' action 0x47, 0x080EDC5A).
 "sandring/action" = 0x47
+"megaman/zap-ring/action" = 0x47
 # WindRack's (the chips' action 0x32, 0x080ED330).
 "windrack/action" = 0x32
 # VarSwrd's and NeoVari's (the chips' actions 0x36, 0x080ED6BE, and 0x5A, 0x080EE1A2).

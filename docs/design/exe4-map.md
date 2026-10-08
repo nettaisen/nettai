@@ -697,10 +697,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   blade in the related slot as EXE4's own attachment (lib/swords' `blade_anim`: ProtoSoul's 13, 0x080EE820), let go of
   at each swing's end; no form overlay refreshed, no moving flag or overlay cleared in the recovery; the command's
   window shut once A isn't held (EXE5's too); no step (EXE5's Katanas' step is EXE5's own).
-- **SandRing** (action 0x47, `chips/sandring`: EXE4's own, with its ring, attack 0x6D): a ring 26 pixels up, 10
-  pixels a tick, hit modifier 1, its element's spark, the spreader's sound; its hit turns the panel to sand (type 10,
-  the pitfall). The action's and the ring's other parameters (0 to 2: a held ring, three speeds, status effects 0x10
-  to 0x12) no chip or weapon routine passes, so they are comments; weapon routine 0x44 loads SandRing (card 82).
+- **SandRing** (action 0x47, `chips/sandring`: the ring throw, lib/rings, EXE4's own, and its ring, attack 0x6D,
+  objects/ring, each user stating its ring): a ring 26 pixels up, 10 pixels a tick, hit modifier 1, its element's
+  spark, the spreader's sound; its hit turns the panel to sand (type 10, the pitfall). Weapon routine 0x44 loads
+  SandRing (card 82). The throw's other parameter is the zap ring's (weapon routine 0x04, card 81: row 0, held in
+  animation 13 as 0c-36, the ring 0c-37 paralyzing for 90 ticks, hit modifier 0, sound 0x91); rows 1 and 2 (14 and 18
+  pixels a tick, paralysis 120 and 150) no routine passes.
 - **VarSwrd and NeoVari** (actions 0x36 and 0x5A, `chips/varswrd`, `chips/neovari`: @exelib/varswrd/action, which
   EXE5's grew from): EXE4's part is the pick's sound (0x10B), ProtoSoul's wait while A is up (NaviStats +0x24 7, the
   form's id) and no auto battle's pick (NaviStats +0x26, the story's navis'); EXE4 has no flip, so one set of
@@ -1928,7 +1930,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Guard's too: item 60). Waiting:
     the routines of chips (all in: 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind
     and 0x55 PnlRetrn, cards 41, 51, 57, 70, 71, 79, 82, 115 and 118 matching),
-    the routines that load no chip (0x04: others' own actions; 0x20, the bubble, is in: card 108; 0x28, GutsSoul's
+    the routines that load no chip (all in: 0x04, the zap ring, card 81, navis/megaman/weapons/zap_ring, the ring
+    throw by the weapon level's damage; 0x20, the bubble, card 108; 0x28, GutsSoul's
     machine gun with no attack variable set, is in: card 20, navis/megaman/weapons/machine_gun; 0x31, one of the eight
     Anti chips at random with its telop hidden from its user too (AIAttackVars +0x0F: the attack's `telop_hidden`), is
     in: card 40; the
