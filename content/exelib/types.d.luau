@@ -24,6 +24,8 @@ export type SonicBoomLook = {
 -- its lib/swords/slash).
 export type SlashGame = {
     blade_anim: ((Object) -> number)?,
+    -- The hit modifier its hits take, by its holder and the chip's (none: the chip's; EXE4's ProtoSoul's, 0x080EB7FE).
+    hit_mod: ((me: Object, chip_hit_mod: number) -> number)?,
     stays: ((side: number) -> boolean)?,
     -- The game's step (EXE5's by the attack's charge: lib/swords); none: EXE6's, by the chip's `step`.
     steps: SlashSteps?,

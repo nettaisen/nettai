@@ -193,7 +193,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
             self_type = h.collision.is,
             damage = bit32.band(word, 0xFFFF),
             stamina = bit32.rshift(word, 16),
-            hit_mod = h.hit_mod,
+            hit_mod = if rules.hit_mod then rules.hit_mod(me, h.hit_mod) else h.hit_mod,
             status = h.status,
             bug = h.bug or 0,
             bug_arg = h.bug_arg or 0,
