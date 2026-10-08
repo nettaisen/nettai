@@ -287,6 +287,9 @@ mega = [
     "sparkman",
     "sprkmn-sp",
     "sprkmn-ds",
+    "shademan",
+    "shadmn-sp",
+    "shadmn-ds",
 ]
 giga = [
     "deltaray",

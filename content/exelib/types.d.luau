@@ -1875,3 +1875,46 @@ export type NumberMan = { kind: Kind, summoned: (o: Object, controller: Object, 
 -- A Geddon chip's quake's change (@exelib/geddon/quake's `change`): what it does to a panel, whether it changed, and
 -- what shows over a panel that did.
 export type GeddonChange = { apply: (x: number, y: number) -> boolean, show: (at: Vec3) -> () }
+
+-- What ShadeMan's crush carries (@exelib/shademan): his figure's palette, its hits' hit modifier and status, and a
+-- NaviCust bug's code and argument (none: 0).
+export type ShadeManHit = { palette: number, hit_mod: number, status: Status?, bug: number?, bug_arg: number? }
+
+-- A game's ShadeMan's crush (@exelib/shademan/crush): its kind's key, its sprite and sound, its hits' collision types
+-- (what they are and what they hit), where its figure stands from its panel's center (`place`), the ticks left when
+-- its second hit comes, and whether it highlights the panels it reaches each tick (EXE5's).
+export type ShadeManCrushSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    attack: CollisionType,
+    hits: CollisionType,
+    place: (me: Object) -> (),
+    second_at: number,
+    highlights: boolean,
+}
+
+-- A game's ShadeMan's crush kind, and its spawn by ShadeMan on (x, y) carrying `given`.
+export type ShadeManCrush = { kind: Kind, spawn: (shademan: Object, x: number, y: number, given: ShadeManHit) -> Object? }
+
+-- A game's ShadeMan (@exelib/shademan/navi): his kind's key, his sprite, his animations as he appears and as he calls
+-- out, his sounds (and EXE5's as a command is in), his crush, his commands (each its steps, a step any of its keys,
+-- and what it gives the crush) in the order they are read, what the crush carries without one (drawn as he appears),
+-- whether he bows before he goes (EXE5's), and EXE4's puff as he goes.
+export type ShadeManSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    appear_anim: number,
+    call_anim: number,
+    appear: Sound,
+    call: Sound,
+    command_sound: Sound?,
+    crush: ShadeManCrush,
+    commands: { { steps: { { Key } }, hit: ShadeManHit } },
+    uncommanded: () -> ShadeManHit,
+    bows: boolean,
+    puff: Effect?,
+}
+
+-- A game's ShadeMan kind, and what makes one just spawned his chip's: the controller he reports to, his palette.
+export type ShadeMan = { kind: Kind, summoned: (o: Object, controller: Object, palette: number) -> () }
