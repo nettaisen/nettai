@@ -3,6 +3,7 @@
 -- sprite in it is 00-01, his face picture 5 (0x08014B78), Roll's image roll (08-01). (What the souls share:
 -- forms/soul.)
 
+local charge = require("@self/charge")
 local chip = require("@self/chip").rollsoul
 local soul = require("./soul")
 
@@ -15,7 +16,8 @@ local form: FormDef = {
     sprite = asset.sprite("rollsoul"),
     element = "null",
     buster_bonus = 0,
-    weapons = soul.weapons,
+    -- Its row of 0x080184F0: the buster on B, no A charge, Roll's arrow charged (routine 0x22, ./charge).
+    weapons = { buster = soul.buster, charge_shot = charge.weapon },
     palette = 0,
     mugshot = { normal = asset.mugshot("rollsoul") },
 }
