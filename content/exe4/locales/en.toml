@@ -176,6 +176,8 @@ language = "en"
 "magbolt1" = { name = "MagBolt1", description = "Shocks an\nenemy\nahead" }
 "magbolt2" = { name = "MagBolt2", description = "Shocks an\nenemy\nahead" }
 "magbolt3" = { name = "MagBolt3", description = "Shocks an\nenemy\nahead" }
+"invis" = { name = "Invis", description = "Invisible\nfor a\nwhile" }
+"popup" = { name = "PopUp", description = "Attacks\nfrm under\nground" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
