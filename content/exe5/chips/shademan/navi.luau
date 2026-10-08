@@ -17,8 +17,8 @@ type Effect = "none" | "paralyze" | "confuse"
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x78).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's by the chip's level: DS's 4 gives 6).
+    palette: number,
     -- The commands' progress (+0x60, +0x68: the step and the ticks left for the next) and what was put in
     -- (+0x70).
     steps: { number },
@@ -131,7 +131,7 @@ local function act(me: Object)
     action(me)
 end
 
--- 0x080BD11A: appearing (animation 3) on his panel with his shadow, his palette by the level; 30 ticks to put in a
+-- 0x080BD11A: appearing (animation 3) on his panel with his shadow, his chip's palette; 30 ticks to put in a
 -- command.
 local function init(me: Object)
     local s = me.state :: State
@@ -141,7 +141,7 @@ local function init(me: Object)
     me.visible = true
     me.anim, me.anim_loaded = 3, 3
     sprite:set_animation(3)
-    sprite.palette = if s.level == 4 then 6 else 0
+    sprite.palette = s.palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_coordinates_from_panel()
     local p = me.pos
@@ -161,7 +161,7 @@ shademan.kind = new.kind {
     pool = "actor",
     state = {
         controller = "object",
-        level = "u8",
+        palette = "u8",
         steps = "u8[2]",
         ticks = "u8[2]",
         effect = { "none", "paralyze", "confuse" },
@@ -185,8 +185,8 @@ shademan.kind = new.kind {
     end,
 }
 
--- 0x080BD288: ShadeMan for `user`, reporting to `controller` (the summon table's entry 1), of a chip of `level`.
-function shademan.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BD288: ShadeMan for `user`, reporting to `controller` (the summon table's entry 1), in his chip's `palette`.
+function shademan.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(shademan.kind, user, spec)
         if not o then
@@ -194,14 +194,10 @@ function shademan.summon_at(level: number): (user: Object, controller: Object, s
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- ShadeMan's, ShadeMnSP's and ShadeMnDS's (their Param1s 0, 3 and 4).
-shademan.summon = shademan.summon_at(0)
-shademan.summon_sp = shademan.summon_at(3)
-shademan.summon_dark = shademan.summon_at(4)
 
 return shademan

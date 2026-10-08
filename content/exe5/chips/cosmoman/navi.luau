@@ -10,8 +10,8 @@ local caller = require("./caller")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's 0x080BDA20 by the chip's level).
+    palette: number,
     -- The field objects he took (+0x60, their looks), and how many (+5).
     taken: { Identity? },
     count: number,
@@ -22,17 +22,15 @@ local cosmoman = {}
 local SPRITE = asset.sprite("cosmoman")
 local SOUND_APPEAR = asset.sound("appear")
 
--- By the level (0x080BDA20): the dark palette for DS's 4.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 0xB }
 -- Where his caller goes, by his side (0x080BDB24): the enemy area's middle panel.
 local CALLER_PANELS: { [number]: { number } } = { [0] = { 5, 2 }, { 2, 2 } }
 local SOLID = 0x10
 
--- 0x080BD9D0: on his panel, on the ground, his palette by the level, flipped by his side alone.
+-- 0x080BD9D0: on his panel, on the ground, his chip's palette, flipped by his side alone.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
     local s = me.state :: State
-    me.sprite.palette = PALETTES[s.level] or 0
+    me.sprite.palette = s.palette
     me.sprite:set_flip(me.alliance)
     me:set_lifecycle("update")
 end
@@ -107,7 +105,7 @@ local function launch(me: Object)
     if me.phase_init == 0 then
         local s = me.state :: State
         local at = CALLER_PANELS[me.alliance]
-        caller.spawn(me, at[1], at[2], s.level, s.taken, s.count)
+        caller.spawn(me, at[1], at[2], s.taken, s.count)
     end
     if countdown(me, 0x3C, true) then
         me:set_action(0xC)
@@ -136,7 +134,7 @@ local ACTIONS = { [0] = appear, [4] = gather, [8] = launch, [0xC] = wait, [0x10]
 cosmoman.kind = new.kind {
     id = "cosmoman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8", taken = "identity[8]", count = "u8" },
+    state = { controller = "object", palette = "u8", taken = "identity[8]", count = "u8" },
     -- 0x080BD9AC.
     update = function(me: Object)
         local l = me.lifecycle
@@ -160,8 +158,8 @@ cosmoman.kind = new.kind {
     end,
 }
 
--- 0x080BDB76: CosmoMan for `user`, reporting to `controller` (the summon table's entry 16), of a chip of `level`.
-function cosmoman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BDB76: CosmoMan for `user`, reporting to `controller` (the summon table's entry 16), in his chip's `palette`.
+function cosmoman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(cosmoman.kind, user, spec)
         if not o then
@@ -169,13 +167,10 @@ function cosmoman.summon_at(level: number): (user: Object, controller: Object, s
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- CosmoMan's and CosmoMnSP's (levels 0); CosmoMnDS's (4).
-cosmoman.summon = cosmoman.summon_at(0)
-cosmoman.summon_dark = cosmoman.summon_at(4)
 
 return cosmoman
