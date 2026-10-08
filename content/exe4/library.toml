@@ -121,6 +121,8 @@ patch_cards = [
     "071-b-left-ability-activation",
     "072-b-left-ability-activation",
     "073-b-left-ability-activation",
+    "074-triple-supporter-1-2",
+    "075-triple-supporter-2-2",
     "076-all-guard-1-2",
     "077-all-guard-2-2",
     "078-first-life-aura",
