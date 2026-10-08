@@ -13,6 +13,8 @@
 "009-max-hp-up" = 9
 "010-max-hp-up" = 10
 "011-first-barrier-100" = 11
+"012-buster-patch" = 12
+"013-buster-patch" = 13
 "014-panel-change" = 14
 "015-panel-change" = 15
 "016-panel-change" = 16
@@ -40,6 +42,8 @@
 "039-b-left-ability-activation" = 39
 "041-b-left-ability-activation" = 41
 "042-b-left-ability-activation" = 42
+"043-buster-patch" = 43
+"044-buster-patch" = 44
 "045-default-full-synchro" = 45
 "046-first-barrier200" = 46
 "047-weapon-change" = 47
@@ -93,6 +97,7 @@
 "099-max-hp-up" = 99
 "100-max-hp-up" = 100
 "101-max-hp-up" = 101
+"102-buster-patch" = 102
 "103-fullcustom-charge-1-2" = 103
 "104-fullcustom-charge-2-2" = 104
 "105-panel-change" = 105
