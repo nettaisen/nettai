@@ -1460,7 +1460,8 @@ export type TangoHeal = {
 }
 
 -- A game's Tango (@exelib/supports/tango): her kind's key and sprite, her arrival's, landing's and throw's sounds, the
--- sparkle she appears in (effect 0x15), the puff she goes in (effect 0x14), and her heal.
+-- sparkle she appears in (effect 0x15), the puff she goes in (effect 0x14), and her heal; `pixel_nudge` false: she
+-- starts on her navi's row, not a pixel down the field (EXE4's).
 export type TangoLook = {
     id: string,
     sprite: SpriteAsset,
@@ -1470,6 +1471,7 @@ export type TangoLook = {
     arrive: Effect,
     puff: Effect,
     heal: TangoHeal,
+    pixel_nudge: boolean?,
 }
 
 -- A game's Beat (@exelib/supports/beat): his kind's key and sprite, his swoop's and snatch's sounds.
@@ -1501,7 +1503,14 @@ export type RushLook = {
     status: Status,
     spared: Chip?,
     lost_target: "unbalances" | "skips",
+    -- What his navi's panel must be for him to appear there, by side (nil: EXE6's `byte_80C34A8`); `pixel_nudge`
+    -- false: he comes up under the opponent without EXE6's pixel down and up (EXE4's).
+    stand: RushStand?,
+    pixel_nudge: boolean?,
 }
+
+-- Where Rush may appear by side: the panel flags required and forbidden.
+export type RushStand = { [number]: { require: number, forbid: number } }
 
 -- Rush made for a game (@exelib/supports/rush): sent by the supports' controller, eating `eaten`.
 export type Rush = {
@@ -1509,12 +1518,14 @@ export type Rush = {
     spawn: (controller: Object, eaten: Chip?) -> Object?,
 }
 
--- A game's supports' controller (@exelib/supports/controller): its kind's key, and the supports it sends.
+-- A game's supports' controller (@exelib/supports/controller): its kind's key, the supports it sends, and the game's
+-- warp of the host, given the controller (nil: the navi warp, `navi_chip.warp`).
 export type SupportsLook = {
     id: string,
     rush: Rush,
     beat: SupportActor,
     tango: SupportActor,
+    warp: ((controller: Object, out: boolean) -> ())?,
 }
 
 -- A patch card (BN4's, EXE5's and EXE6's Modification Cards, 改造カード;

@@ -69,10 +69,14 @@ barriers.life_aura = barrier {
     sound = SOUND,
 }
 
--- 0x08012DCE and the visual (0x080E2622): `b` on `navi`, and its visual. (FstBarr's, at the navi's init, the one
--- caller so far: the navi has no visual yet.)
-function barriers.raise(navi: Object, b: Barrier)
+-- 0x08012DCE and the visual (0x080E2622): `b` on `navi`; its old visual, if it has one, ends first (0x080E264A) unless
+-- `keep_old` (FstBarr's, at the navi's init, which reads none: the navi has no visual yet); a new one comes.
+function barriers.raise(navi: Object, b: Barrier, keep_old: boolean?)
     common_visual.raise_barrier(navi, b)
+    local old = navi.barrier_visual
+    if old and not keep_old then
+        common_visual.finish(old)
+    end
     barrier_visual.spawn(navi, b)
 end
 
