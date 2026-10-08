@@ -1,9 +1,10 @@
 --!strict
 -- IronShl's and ParaShl's throw (the original's action 0x2C,
--- `sub_80ED25C`): the navi throws an iron shell (shell.luau) onto the panel
--- ahead on the third tick; it slides to the far column, bumps there and
--- flies off. ParaShl throws three instead, down its own back column,
--- which slide across and back. 32 ticks in all.
+-- `sub_80ED25C`): the navi throws iron shells (shell.luau) on the third
+-- tick, where the shells' variant says: IronShl's one onto the panel ahead,
+-- which slides to the far column, bumps there and flies off; ParaShl's
+-- three down its own back column, which slide across and back. 32 ticks in
+-- all.
 
 local shell = require("./shell")
 
@@ -39,15 +40,9 @@ function throw.action(spec: { id: string, shell: IronShell }): Action
             -- the Atk+ bonus.
             local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
             local element = me.attack_element
-            if spec.shell.para then
-                -- Down the navi's own back column.
-                local x = me.alliance * 5 + 1
-                for y = 1, 3 do
-                    shell.spawn(me, x, y, element, damage, spec.shell)
-                end
-            else
-                shell.spawn(me, me.panel_x + me.facing, me.panel_y, element, damage, spec.shell)
-            end
+            spec.shell.variant.throw(me, function(x: number, y: number)
+                shell.spawn(me, x, y, element, damage, spec.shell)
+            end)
         end
         local t = s.timer - 1
         s.timer = t

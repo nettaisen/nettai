@@ -36,13 +36,14 @@ function flame.make_kind(look: Look): ElemFlame
                 s.count -= 1
                 local x, y = me.panel_x + me.facing, me.panel_y
                 local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-                local function next_flame(flags: number, spread: boolean): State
+                local function next_flame(paralyzes: boolean, spread: boolean): State
                     return {
                         count = s.count,
                         spread = spread,
                         ticks = s.ticks,
                         offset = s.offset,
-                        flags = flags,
+                        paralyzes = paralyzes,
+                        attack_480 = s.attack_480,
                         leaves = s.leaves,
                         palette = s.palette,
                         hit = false,
@@ -50,14 +51,14 @@ function flame.make_kind(look: Look): ElemFlame
                     }
                 end
                 -- (EXE4's keeps Param1's bit 7 on the next one; EXE5's sends it without.)
-                local o = spawn_flame(me, x, y, me.element, me.pos.z, next_flame(s.flags, s.spread and not look.spreads), damage)
+                local o = spawn_flame(me, x, y, me.element, me.pos.z, next_flame(s.paralyzes, s.spread and not look.spreads), damage)
                 if o then
                     o.related1 = me.related1
                 end
                 if s.spread and look.spreads then
-                    -- (The ones beside, above then below, without Param4's bit 2; the high nibble kept.)
+                    -- (The ones beside, above then below, without Param4's bit 2: not paralyzing; the rest kept.)
                     for _, dy in { -1, 1 } do
-                        local q = spawn_flame(me, x, y + dy, me.element, me.pos.z, next_flame(bit32.band(s.flags, bit32.bnot(4)), false), damage)
+                        local q = spawn_flame(me, x, y + dy, me.element, me.pos.z, next_flame(false, false), damage)
                         if q then
                             q.related1 = me.related1
                         end
@@ -103,7 +104,7 @@ function flame.make_kind(look: Look): ElemFlame
         elseif me.action ~= 4 then
             error(string.format("%s: action %#x reads past its table", look.id, me.action))
         end
-        if bit32.btest(s.flags, 4) and s.hit then
+        if s.paralyzes and s.hit then
             me.timer2 = int.u16(me.timer2 + 1)
             if me.timer2 == 12 then
                 c:set_region(regions.single)
@@ -140,8 +141,8 @@ function flame.make_kind(look: Look): ElemFlame
             me:free()
             return
         end
-        local hit_mod = if bit32.btest(s.flags, 4) then 1 else 3
-        local is = if bit32.btest(s.flags, 8) then look.attack_480 else look.attack
+        local hit_mod = if s.paralyzes then 1 else 3
+        local is = if s.attack_480 then look.attack_480 else look.attack
         me:setup_collision(is, look.hits, hit_mod)
         me.collision:set_hit_effect(look.spark(me.element))
         me.collision:set_region(nil)
@@ -162,7 +163,8 @@ function flame.make_kind(look: Look): ElemFlame
             spread = "bool",
             ticks = "u8",
             offset = "i8",
-            flags = "u8",
+            paralyzes = "bool",
+            attack_480 = "bool",
             leaves = leaves,
             palette = "u8",
             hit = "bool",
@@ -184,7 +186,7 @@ function flame.make_kind(look: Look): ElemFlame
                 return
             end
             local s = me.state :: State
-            if s.flags ~= 0 or s.leaves ~= NONE then
+            if s.paralyzes or s.attack_480 or s.leaves ~= NONE then
                 me:update_sprite_while_dimmed()
             else
                 me:update_sprite()
@@ -204,11 +206,9 @@ function flame.make_kind(look: Look): ElemFlame
         o.alliance, o.flip = owner.alliance, owner.flip
         o.related1 = nil
         local t = o.state :: State
-        t.count, t.spread, t.ticks, t.offset, t.flags, t.palette = s.count, s.spread, s.ticks, s.offset, s.flags, s.palette
+        t.count, t.spread, t.ticks, t.offset, t.palette = s.count, s.spread, s.ticks, s.offset, s.palette
+        t.paralyzes, t.attack_480 = s.paralyzes, s.attack_480
         t.leaves = s.leaves or NONE
-        if bit32.btest(s.flags, 1) then
-            o.run_while_dimmed = true
-        end
         return o
     end
 

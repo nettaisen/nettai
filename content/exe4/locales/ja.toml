@@ -178,6 +178,14 @@ language = "ja"
 "magbolt3" = { name = "マグボルト3", description = "あいてを目の前の\nマスにすいつけて\n電気ショック!" }
 "invis" = { name = "インビジブル", description = "少しの間とうめいに\nなって ほとんどの\n攻撃にあたらない" }
 "popup" = { name = "ユカシタ", description = "地中にもぐり\n攻撃のときだけ\nすがたをあらわす" }
+"shademan" = { name = "シェードマン", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"shadmn-sp" = { name = "シェードマンSP", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"shadmn-ds" = { name = "シェードマンDS", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"propbom1" = { name = "プロペラボム1", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"propbom2" = { name = "プロペラボム2", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"propbom3" = { name = "プロペラボム3", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"tornado" = { name = "トルネード", description = "2マス前方に\n8ヒットのたつまき\nを発生させる!" }
+"static" = { name = "ノイズストーム", description = "2マス前にノイズの\nアラシ!バグがある\nとパワーアップする" }
 "hole" = { name = "ダークホール", description = "目の前のマスに\nダークホールを\nしゅつげんさせる!" }
 "pnlretrn" = { name = "パネルリターン", description = "自分のエリアの\nパネルをノーマルに\nもどす!" }
 "holypanl" = { name = "ホーリーパネル", description = "目の前のパネルを\nダメージはんげんの\nホーリーパネルに!" }

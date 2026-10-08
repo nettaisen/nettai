@@ -9,6 +9,7 @@
 
 local dash_hit = require("../../dash_hit")
 local regions = require("@exelib/regions")
+local sparks = require("../../../../lib/sparks")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -44,6 +45,9 @@ local OFF_FIELD_X = 0xB4_0000
 local HIT_Z, EFFECT_Z = 0x18_0000, 0x10_0000
 
 local SOUND = asset.sound("iron-shell")
+-- Its hit: harder (hit modifier 3), with a fire spark; it reports in the
+-- marker word and ends after its first hit.
+local HIT = dash_hit.variant { hit_mod = 3, spark = sparks.fire, reports = true }
 
 -- The puff where it stops, and the dust it lands in.
 local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
@@ -87,7 +91,7 @@ local function wind_up(me: Object, s: State)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
     me:reserve_panel(me.panel_x, me.panel_y)
     local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
-    dash_hit.spawn(me, me.attack_element, damage, 0, true, HIT_Z)
+    dash_hit.spawn(me, me.attack_element, damage, 0, HIT, HIT_Z)
     me.collision.self_damage = 0
     -- sub_8019F86(0)
     me.collision.hit_mod_base = 0

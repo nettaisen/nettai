@@ -44,7 +44,7 @@ local function bolts(me: Object)
     local damage = link.damage_word(me)
     local r3 = 0
     for i = #found, 1, -1 do
-        local bolt = thunder.spawn(me, panels.x(found[i]), panels.y(found[i]), me.attack_element, {}, damage, bit32.band(r3, 0xFFFF))
+        local bolt = thunder.spawn(me, panels.x(found[i]), panels.y(found[i]), me.attack_element, { cracks = true }, damage, bit32.band(r3, 0xFFFF))
         r3 = if bolt then bit32.bor(me.alliance, bit32.lshift(me.flip, 8)) else me.attack_element
     end
 end
