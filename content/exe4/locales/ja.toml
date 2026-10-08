@@ -186,6 +186,9 @@ language = "ja"
 "propbom3" = { name = "プロペラボム3", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
 "tornado" = { name = "トルネード", description = "2マス前方に\n8ヒットのたつまき\nを発生させる!" }
 "static" = { name = "ノイズストーム", description = "2マス前にノイズの\nアラシ!バグがある\nとパワーアップする" }
+"burnman" = { name = "バーナーマン", description = "2マス前方めがけて\n3方からバーナーで\nしゅうちゅう攻撃" }
+"burnmn-sp" = { name = "バーナーマンSP", description = "2マス前方めがけて\n3方からバーナーで\nしゅうちゅう攻撃" }
+"burnmn-ds" = { name = "バーナーマンDS", description = "2マス前方めがけて\n3方からバーナーで\nしゅうちゅう攻撃" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

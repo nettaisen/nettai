@@ -762,6 +762,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   his commands give the crush 0x1207 and 0x2208, and without one it carries a move bug (code 0x0D) in a direction he
   draws as he appears (rules/navicust/bugs takes it); he goes without the bow, in a puff; his figure stands 8 pixels
   left and 12 up and strikes again with 40 ticks left, highlighting nothing.
+  BurnMan (actor #0x23), his pillars (attack #0x3A) and his flame (attack #0x37) are EXE4's own; their hits linger on
+  their panels as attack #0x7C (0x080DCC5C, objects/lingering_hit: a region set off its owner's panel, following it,
+  its ticks held while its owner is paralyzed, dragged or sliding; EXE6's #0x7C is another object), which AquaMan's
+  controller (0x080BB4E8) and 0x080D4010 spawn too. The engine's objects tell whether they have a collision record
+  (`has_collision`), which that hold reads.
 
 **For the next steps:**
 
