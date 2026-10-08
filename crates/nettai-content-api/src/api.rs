@@ -306,6 +306,9 @@ named_fields! {
         TargetMarker = "target_marker", Object, rw;
         /// The charge glow.
         ChargeGlow = "charge_glow", Object, rw;
+        /// AIData+0x50 (EXE4's +0x5C): an object tied to the navi that the
+        /// full status reset ends (`sub_801390C`): EXE4's WindSoul's wind.
+        ResetLinkedObject = "reset_linked_object", Object, rw;
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura", Object, rw;
         /// The charge: 0 none, 1 charging, 2 full; its source (0 none, 1
@@ -2267,6 +2270,10 @@ pub trait CoreApi {
     fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32);
     /// 0x080CAC30: disarm side `side`; its words stay.
     fn obstacle_disarm_conversion(&mut self, side: u8);
+    /// 0x080CABF8 alone: side `side`'s soldiers' damage words (the sword
+    /// soldier's and the gun soldier's) become these, armed or not (EXE5's
+    /// BusterUp in ColonelSoul, 0x08011C50).
+    fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32);
     /// Whether side `side` is armed, and its words (0x080CAC06,
     /// 0x080CAC12): what its soldiers strike with as they read them.
     fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32);

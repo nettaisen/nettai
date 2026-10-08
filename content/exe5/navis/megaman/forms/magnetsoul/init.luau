@@ -28,6 +28,8 @@ local form: FormDef = {
     -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
     -- routine 0x35 (0x0800FA66): DarkThnd (chip 0xC1), the charge table's row 0x35.
     chaos = { weapon = chaos.weapon(darkthnd, { 40, 60, 90, 120, 150, 70 }) },
+    -- A magnet panel doesn't slide him (0x08017216: soul 5).
+    traits = { "stands_on_magnet" },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,

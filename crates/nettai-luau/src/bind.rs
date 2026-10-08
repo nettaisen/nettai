@@ -2635,6 +2635,11 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.obstacle_disarm_conversion(side)))
     });
+    lib_fn!(lua, t, "set_conversion_words", |_, (side, melee, ranged): (LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let (melee, ranged) = (int(&melee, "melee word")? as u32, int(&ranged, "ranged word")? as u32);
+        with(|api, _| Ok(api.obstacle_set_conversion_words(side, melee, ranged)))
+    });
     lib_fn!(lua, t, "conversion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.obstacle_conversion(side)))

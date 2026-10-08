@@ -9,7 +9,7 @@ local common = require("@exelib/varswrd/action")
 local action = {}
 
 local GAME: VarSwordGame = {
-    sound = asset.sound("sword-pick"),
+    sound = asset.sound("sword-command"),
     waits = function(me: Object): boolean
         return battle.navi(me.alliance).form.id == "protosoul"
     end,

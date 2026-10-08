@@ -509,6 +509,9 @@ declare extern type Object with
     -- next (the forced charged shot clears both as it ends).
     rapid_presses: number
     rapid_window: number
+    -- Writable: an object tied to the navi that the full status reset ends
+    -- (AIData+0x50, EXE4's +0x5C: WindSoul's wind).
+    reset_linked_object: Object?
     -- Writable: a buffered auto-step's direction, the chip lockout, the
     -- B+Back special's cooldown.
     buffered_move: number
@@ -1707,6 +1710,9 @@ declare obstacle: {
     arm_conversion: (side: number, melee: number, ranged: number) -> (),
     -- 0x080CAC30: disarm side `side`; its words stay.
     disarm_conversion: (side: number) -> (),
+    -- 0x080CABF8 alone: side `side`'s soldiers' damage words become these,
+    -- armed or not (EXE5's BusterUp in ColonelSoul, 0x08011C50).
+    set_conversion_words: (side: number, melee: number, ranged: number) -> (),
     -- Whether side `side` is armed, and its words (0x080CAC06,
     -- 0x080CAC12): what its soldiers strike with as they read them.
     conversion: (side: number) -> (boolean, number, number),

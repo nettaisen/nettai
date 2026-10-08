@@ -58,6 +58,10 @@
 "magbolt3/action" = 0x59
 # CopyDmg's (the chips' action 0x2B, 0x080ED1D2).
 "copydmg/action" = 0x2B
+# Z Saver's (the chips' action 0x70, 0x080EE774).
+"z-saver/action" = 0x70
+# SandRing's (the chips' action 0x47, 0x080EDC5A).
+"sandring/action" = 0x47
 # WindRack's (the chips' action 0x32, 0x080ED330).
 "windrack/action" = 0x32
 # VarSwrd's and NeoVari's (the chips' actions 0x36, 0x080ED6BE, and 0x5A, 0x080EE1A2).
@@ -179,6 +183,8 @@
 # 0x10, 0x080EBDC0), which request 0x20 starts.
 "gutssoul/charged-shot/action" = 0x12
 "gutssoul/machine-gun" = 0x10
+# WindSoul's AirShot on B (weapon routine 0x6B's action 0x23, AirShot's, its variant 1's recovery).
+"windsoul/buster/action" = 0x23
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25

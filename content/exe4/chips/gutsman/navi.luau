@@ -1,6 +1,6 @@
 --!strict
 -- GutsMan, the navi of EXE4's GutsMan chips (EXE4's actor object #0x14, 0x080B999C: EXE4's own, on EXE6's navi
--- template), and each chip's controller, which brings him (effect object #0x10, 0x080E3200: lib/navi_chips' long
+-- template), and each chip's controller, which brings him (effect object #0x10, 0x080E31E8: lib/navi_chips' long
 -- course). He appears and, off a panel that isn't solid, goes at once; stands 20 ticks; then swings his hammer (90
 -- ticks): 20 ticks in it strikes the panel ahead (a heavy hit) and sets off his quake there (./quake), which cracks
 -- the panels ahead and drops rocks on the other side.
