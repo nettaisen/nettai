@@ -82,6 +82,7 @@ return merge {
     require("@self/recov"),
     require("@self/repair"),
     require("@self/roll"),
+    require("@self/sandring"),
     require("@self/seekbom"),
     require("@self/serchman"),
     require("@self/shademan"),
@@ -108,6 +109,7 @@ return merge {
     require("@self/widesht"),
     require("@self/wind"),
     require("@self/windrack"),
+    require("@self/z-saver"),
     -- A navi chip's chips, with its navi.
     require("./navis/megaman/forms/aquasoul/chip"),
     require("./navis/megaman/forms/firesoul/chip"),
