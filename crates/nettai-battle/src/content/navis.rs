@@ -663,7 +663,7 @@ pub struct ChargedBonus {
 pub struct FormEffects(pub u16);
 
 impl FormEffects {
-    /// The statuses end (not in battle mode 1).
+    /// The statuses end (not in the first turn: the turn counter 1).
     pub const CLEAR_STATUSES: u16 = 0x001;
     pub const SUPER_ARMOR: u16 = 0x002;
     pub const AIR_SHOES: u16 = 0x004;
