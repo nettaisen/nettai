@@ -1726,13 +1726,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (its one setter, 0x080069BE, gives the story's navis 1; a netbattle's NaviStats are MegaMan's, the link record's,
     whose +0x26 his console never sets), so no setup can say it and the engine keeps no field for it (the minimal
     fields rule). Port it with a setup that can.
-50. **Done: the levels at the ask.** The decode copies the charge levels to AIData +0x14 and +0x15 as it asks for an
-    attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after the decode and the
-    charge: 0, 1 charging, 3 full). B's (+0x15) is read by the dimming chips' variants 5 and 7 (GutsMan's 0x080E328A,
-    AquaMan's 0x080E39FA: full, 3, picks the strong version); nothing reads A's (+0x14). The engine keeps B's as the
-    actor field `b_charge_at_ask` (the engine's levels: 0 none, 1 charging, 2 full), set at the buster's and the chip's
-    asks (soul 2's six-press ask, 0x0800BE8E, keeps it too: item 48's); a controller reads it off the side's navi
-    (`battle.player(side).b_charge_at_ask == 2`, as 0x0800BFF4 takes the AI data by side).
+50. **Closed: the levels at the ask, kept by nothing.** The decode copies the charge levels to AIData +0x14 and +0x15
+    as it asks for an attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after
+    the decode and the charge: 0, 1 charging, 3 full). Nothing reads A's (+0x14). B's (+0x15) is read by the dimming
+    chips' variants 5 and 7 alone: GutsMan's controller (0x080E328A) and AquaMan's (0x080E39FA) take it off the side's
+    AI data (0x0800BFF4) and hand their navi `full << 8 | Param1` (r4: 1 in the high byte when B was full, 3) as his
+    Param1 and Param2; neither navi ever reads Param2 (his level is Param1 alone), and nothing else in EXE4 reads
+    +0x15. So the engine keeps no field for it (the minimal fields rule): the copies and the controllers' read are
+    stores nothing observes. (An engine field for it, `b_charge_at_ask`, came and went in this port.)
 51. **A player's deletion.** EXE4's (action 2, 0x08010850) is its own, not EXE6's `sub_80173F4`: the hurt animation
     as it starts (EXE6's with the explosions); the alive count alone (0x080079C6), never the alive lists; no chip count,
     charge glow link or tracking let go; its second related and barrier byte at the start, AIData +0x60 with the
