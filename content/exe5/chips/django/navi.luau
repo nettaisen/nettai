@@ -195,7 +195,7 @@ local function land(me: Object)
     local tx, ty = me.future_panel_x, me.future_panel_y
     for _, d in RUBBLE_AT do
         local x, y = field.center(tx + d[1], ty + d[2])
-        rubble.spawn(me, Vec3.new(x, y, (24 * ty + 40) * 0x1_0000), false)
+        rubble.spawn(me, Vec3.new(x, y, (24 * ty + 40) * 0x1_0000))
     end
 end
 
