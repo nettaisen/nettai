@@ -487,8 +487,11 @@ bytes) and the 5x5 grid at 0x4540 (T). **Patch cards** (改造カード): 134 by
 (0x464C on, 0x4653 off, T; the reload reads a seventh, 0x4652), whose effects set NaviStats bytes by number (§3.3),
 their handlers the table at 0x08041E8C, their bugs counted with the NaviCust's (0x080476E0) or cleared (0x080476EC).
 A card's slot is the save's: the reload runs the card in each slot, the last first (0x08035164), with no table of
-which slot a card belongs in (the ROMs hold none; Tango's lists say the printed cards'), and the pairs' halves test
-the other's slot (0x08042504).
+which slot a card belongs in (the ROMs hold none; Tango's lists say the printed cards'). A pair's half tests a set slot
+for the other half: Triple Supporter's 74 reads slot 2 for 75 and 75 reads slot 1 for 74 (0x080424F4, 0x0804251C); All
+Guard's 76 reads slot 3 and 77 slot 2 (0x0804249C, 0x080424C8); Charge FullCustom's 103 reads slot 4 and 104 slot 3
+(0x08042758, 0x08042780). So the halves work in those two slots, the first half before the second, and do nothing
+elsewhere.
 
 **The reload** (0x08035130; as ported: content/exe4/rules/navicust): the analysis (0x08047344) counts each program's
 bug by where it is (the command line, the third row, right to left: a plus part on it; off it, a program), by its
@@ -1957,7 +1960,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     folder holds. The lab's navicust/beat-takes, beat-once, beat-spares-dark and tango-heals (and navicust/rush, beat,
     tango and bug-rush, where none comes) and rush-eats-invis and rush-eats-popup (Invis and PopUp, 0x085 and 0x086,
     the two chips Rush cancels: their records' +0x16 bit 0x02, `extra_flags`) replay every frame and compare every
-    fight frame; modcards/074-triple-supporter waits for its patch card.
+    fight frame. Triple Supporter (patch cards 74 and 75, item 56: +0x18 = 7) brings all three: the lab's
+    modcards/074-triple-supporter-comes (Beat takes FullCust, Rush eats Invis, then Tango heals, all in one battle)
+    replays every frame, sounds the same, and its fight frames compare at the known shift.
 55. **The emotion window's bug flicker.** EXE6's (`sub_801CC94`) and EXE5's (0x08019780) emotion window flicker a
     bugged navi's face at their checks, an RNG1 draw each; EXE4 has no such check (the lab's navicust/bug-* recordings'
     RNG1 never moves in the fight). **Done:** `effects.bug_flicker` (EXE6, EXE5: true; EXE4: false).
@@ -1969,9 +1974,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     slot), exe4-compat's numbers (compat/patch-cards.toml), a recording's slots and a save's into the setup; the lab's
     modcards/ recordings whose cards are ported compile as recorded (exe4_navicust) and replay. The cards that wait,
     each with what it waits on (a save holding one says so and leaves it out): the B button's, B charge's and B+Left's
-    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58); the pairs, each half applying when the
-    other sits in its slot (0x08042504): Triple Supporter (74, 75: +0x18 = 7, item 54); All Guard (76, 77: +0x28, item
-    60) and Charge FullCustom (103, 104: the charged shot FullCustom, item 57) are in.
+    chips (item 57; card 106's B button is Reflect, ported); the souls (item 58). The pairs, each half applying when the
+    other sits in the slot its handler reads (§8), are in: Triple Supporter (74, 75: +0x18 = 7, Rush, Beat and Tango,
+    `cards.all_supports`, item 54), All Guard (76, 77: +0x28, item 60) and Charge FullCustom (103, 104: the charged
+    shot FullCustom, item 57). The lab's modcards/074, 076 and 103-fullcustom-charge-pair have each pair in its slots
+    (1 and 2, 2 and 3, 3 and 4, with card 1 switched off in the slots before) and match every frame. (modcards/074 and
+    076 were first recorded in slots 0 and 1, where neither half does anything.) modcards/103 and 104 each have one
+    half alone, which does nothing.
 57. **The ~50 patch cards that set B, B charge or B+Left to a chip** (+0x09, +0x0A, +0x0C = a weapon routine past the
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
@@ -1979,7 +1988,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `WEAPONS`; the 32 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
-    Guard's too: item 60). Waiting:
+    Guard's too: item 60). **Done**, all but the souls' cards (item 58):
     the routines of chips (all in: 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind
     and 0x55 PnlRetrn, cards 41, 51, 57, 70, 71, 79, 82, 115 and 118 matching),
     the routines that load no chip (all in: 0x04, the zap ring, card 81, navis/megaman/weapons/zap_ring, the ring
@@ -1990,7 +1999,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster patches 0x34, 0x35, 0x5A, 0x68 and 0x69, navis/megaman/weapons/buster_patches, are in: cards 12, 13, 43, 44
     and 102, the buster's shot with projectile rows 7, 8, 0x0B, 0x0D and 0x0E: cracking, poison, blinding (row 0x0B's
     status 0x32, 0x080CD3BC; row 0x0A's 0x22 no routine fires), grass and ice) and Triple Supporter's pair (item
-    54).
+    54: in, `cards.all_supports`).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
@@ -2009,7 +2018,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     from the start, so it turns aside every hit that doesn't break guards, 0x08012B84): **done**, the rules' stat
     `all_guard`, which the pair's half writes (`cards.pair`, item 57) and the role hook `abilities_reset` reads: the
     engine's `sub_801390C` (EXE4's 0x0800D8C2, the init's and a form change's) takes the guard down, the hook raises it
-    again; the lab's modcards/076.
+    again; the lab's modcards/076, with the halves in slots 2 and 3 (§8).
 61. **Done: the idle stands the navi** (from AirShot's replays). MegaMan's idle (0x080EEB38) puts animation 0 on each
     tick past its first phase (0x080EEB7C: 0x080EEBAC), the 10 ticks after a reaction's end; EXE6's (`sub_80F0354`)
     and EXE5's (0x080F0254) leave the pose. A drag that keeps its pose (`status.drag`'s `keeps_pose`, 0x08010C16)
