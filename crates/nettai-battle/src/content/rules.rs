@@ -204,6 +204,9 @@ pub struct EffectsRules {
     /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
     /// its lab records without it) don't.
     pub overlays_run_while_paused: bool,
+    /// How a form overlay (actor object #0x57, `kinds::form_overlay`)
+    /// starts and follows its owner.
+    pub form_overlay: FormOverlayRules,
     /// An afterimage that copies its owner (`sub_80E32D8` with no sprite of
     /// its own) takes the owner's NameID and wears what that record's init
     /// hook puts on, taken off as it goes: EXE6's. EXE5's afterimage
@@ -550,6 +553,45 @@ pub enum PaletteFlashOrder {
     /// two-layer one 20 and 21, `sub_80E114C`), so its white stands over a
     /// dimming (Colonel's, DeltaRay's, CrossDiv's, the navi advances').
     AfterFades,
+}
+
+/// How a form overlay (actor object #0x57: EXE6's `sub_80C4530`, EXE5's
+/// 0x080C379C, EXE4's 0x080CC3D8) starts, and what it takes from its owner
+/// each tick besides its position, visibility, color shader, white flash
+/// and mosaic.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FormOverlayRules {
+    /// How it starts following its owner.
+    pub start: OverlayStart,
+    /// Each tick it restarts its sprite on its owner's animation (plus its
+    /// offset) when that changed (EXE6's `sub_80C458C`); else it only
+    /// records the animation, which its sprite's update loads.
+    pub reloads_animation: bool,
+    /// Each tick it takes its palette again (EXE6's `sub_80C46CC`); else it
+    /// keeps the one its init took.
+    pub palette_each_tick: bool,
+    /// Each tick it takes its owner's facing (EXE6's `sub_80C458C`); else
+    /// it keeps the one its init took, its own side's.
+    pub facing_each_tick: bool,
+    /// While it waits for the navis it steps its sprite as it would
+    /// following (EXE4's 0x080CC4D4); else its sprite holds.
+    pub waiting_steps: bool,
+}
+
+/// How a form overlay starts following its owner.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayStart {
+    /// It waits (its action 0) until every navi is in, then follows (its
+    /// action 4), stepping its sprite at once (EXE6's `sub_80C461C`).
+    AfterNavisIn,
+    /// With the fight on, it follows (its action 8) from its first update.
+    /// Otherwise it runs while paused and waits (its action 0) until every
+    /// navi is in, then stops running while paused and follows. (EXE4's
+    /// 0x080CC440, whose action 4, a random battle's intro, comes instead of
+    /// the wait in a random battle, which no link battle is.)
+    AtOnceInFight,
 }
 
 /// How `sub_801A082` (an object's damage, hit modifier and collision types

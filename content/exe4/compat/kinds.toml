@@ -11,6 +11,7 @@
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
+"engine/form-overlay" = { pool = "actor", index = 0x57 }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
@@ -127,6 +128,13 @@
 "sprkmn-ds/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
 "sparkman/navi" = { pool = "actor", index = 0x10 }
 "sparkman/spark" = { pool = "attack", index = 0x22 }
+# FireMan's chips (action 0x0C's variant 0x04, 0x080E31C4): each chip's controller (the content's own; the original's
+# one object, effect #0x0F, 0x080E30BC), FireMan and his flames (the Elem chips' flame, 0x080CE2D8: his own kind).
+"fireman/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
+"firemn-sp/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
+"firemn-ds/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
+"fireman/navi" = { pool = "actor", index = 0x12 }
+"fireman/flame" = { pool = "attack", index = 0x09, scratch_position = true }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the
