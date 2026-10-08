@@ -21,9 +21,12 @@ local statuses = require("./status")
 local support_chips = require("../chips/supports")
 local supports = require("../lib/supports/controller")
 local underground_hole = require("../objects/underground_hole")
+local zeroed = require("../chips/zeroed").zeroed
 
 local roles: RolesSpec = {
     chips = {
+        -- What a zeroed chip field reads (EXE4's chip 0: chips/zeroed).
+        zeroed = zeroed,
         -- What a pick the custom screen refuses counts as (EXE4's chip 0x184, past the named ones: chips/invalid).
         invalid = invalid,
         -- The chips the NaviCust supports' telops name (EXE4's 0x17F to 0x181: chips/supports).

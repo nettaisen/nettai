@@ -109,6 +109,7 @@
 "dbldream/action" = 0x0A
 # The cannons' (the chips' action 0x0B, 0x080EB854).
 "cannon/action" = 0x0B
+"zeroed/action" = 0x0B
 "hicannon/action" = 0x0B
 "m-cannon/action" = 0x0B
 "drkcanon/action" = 0x0B
