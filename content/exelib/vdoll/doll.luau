@@ -39,6 +39,8 @@ export type DollLook = {
     trajectory: Trajectory,
     curse: { spawn: (doll: Object, damage: number) -> Object?, telop: DimmingTelop },
     tracked: boolean?,
+    -- How a touch crushes it (none: "breaks"; EXE4's 0x08013F3E "destroys", its HP as it is).
+    crush: ObstacleCrush?,
     actions: ((fly: (Object) -> (), destroyed: (Object) -> (), set_down: (Object) -> ()) -> { [number]: (Object) -> () })?,
     exe5_leaving: DollExe5Leaving?,
     exe4_leaving: DollExe5Leaving?,
@@ -350,7 +352,7 @@ function doll.make(look: DollLook): Doll
             s.damage_taken = taken
             c:set_region(nil)
         end
-        local a = obstacle.react(me, "breaks")
+        local a = obstacle.react(me, look.crush or "breaks")
         if a then
             local action = ACTIONS[a]
             if not action then
