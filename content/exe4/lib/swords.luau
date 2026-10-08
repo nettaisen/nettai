@@ -15,8 +15,8 @@ local slash = require("@exelib/swords/slash")
 
 local swords = {}
 
--- The navi's number: what it holds animates by it (NaviStats +0x23, MegaMan's 0).
-local NAVI_NUMBER = 0
+-- The navi's number: what it holds animates by it (NaviStats +0x23, MegaMan's 0); ProtoSoul's blade.
+local NAVI_NUMBER, PROTOSOUL_BLADE = 0, 13
 
 -- The blade a navi holds (attachment row 3, 0x080CD524: 0c-00 in palette 0).
 swords.blade = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
@@ -24,6 +24,16 @@ swords.blade = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
 -- The swings' sounds (0x080EB612).
 swords.swing = asset.sound("sword-swing")
 swords.big_swing = asset.sound("big-sword-swing")
+
+-- The blade's animation as the chips' own sword actions hold it (SonicBom's 0x080ED8A0, Z Saver's 0x080EE820): in
+-- ProtoSoul (NaviStats +0x24 7) 13, else the navi's number. (The swords' slash tests the same, 0x080EB628: item 70 wires
+-- it there with ProtoSoul's hit modifiers.)
+function swords.blade_anim(me: Object): number
+    if battle.navi(me.alliance).form.id == "protosoul" then
+        return PROTOSOUL_BLADE
+    end
+    return NAVI_NUMBER
+end
 
 local GAME: SlashGame = {
     -- 0x080EB624: the blade by the navi's number.

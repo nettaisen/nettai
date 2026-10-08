@@ -6,8 +6,8 @@
 -- SprSonic's 1 and yes). 22 ticks, then 6, and back to idle without the blade. A charged one (AIAttackVars +4) first
 -- steps two panels ahead (on the field, nobody on it; not while it can't move: 0x0800AD2A), throws a boom of hit
 -- modifier 1 and steps back once its swing's animation ends; with nowhere to step it doesn't swing (animation 4, its
--- load not forced, then the step back). EXE5's but: no afterimages, no step behind the enemy, no arm to drop. In
--- ProtoSoul (NaviStats +0x24 7) the blade is its animation 13, else the navi's number (+0x23). Each chip makes its own
+-- load not forced, then the step back). EXE5's but: no afterimages, no step behind the enemy, no arm to drop. The
+-- blade's animation is ProtoSoul's 13 or the navi's number (lib/swords' `blade_anim`). Each chip makes its own
 -- (`action.make`).
 
 local attachment = require("../../objects/attachment")
@@ -30,8 +30,6 @@ local SWING_TICKS, THROW_AT, RECOVER_TICKS = 0x15, 0x0C, 5
 local CHARGED_HIT_MOD = 1
 -- The panel the step goes to: on the field (every panel type's flag 0x10000), with no body on it.
 local PANEL_EXISTS, BODIES = 0x10000, 0x0F800000
--- The navi's number: the blade animates by it (NaviStats +0x23, MegaMan's 0); ProtoSoul's blade (0x080ED8A0).
-local NAVI_NUMBER, PROTOSOUL_BLADE = 0, 13
 
 local function set_step(me: Object, step: number)
     me.step, me.step_init = step, 0
@@ -62,8 +60,7 @@ local function swing(me: Object, s: State, hit_mod: number, pierces: boolean)
         me:set_animation(ANIM_SWING)
         me:open_counter_window()
         battle.play_sound(swords.swing)
-        local anim = if battle.navi(me.alliance).form.id == "protosoul" then PROTOSOUL_BLADE else NAVI_NUMBER
-        attachment.attach(me, swords.blade, "related", anim)
+        attachment.attach(me, swords.blade, "related", swords.blade_anim(me))
         me:set_status("using_action", true)
         s.timer = SWING_TICKS
         me.step_init = 4
