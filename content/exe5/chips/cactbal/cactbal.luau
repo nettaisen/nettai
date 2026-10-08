@@ -34,7 +34,7 @@ local FIRST, HOP, BACK = 0, 4, 8
 export type State = {
     -- Hops after the first (+0x60).
     hops: number,
-    -- Its palette parameter (its first parameter: the chip's).
+    -- Its palette (its chip's: twice the chip's first parameter).
     palette: number,
 }
 
@@ -159,8 +159,8 @@ local function tick(me: Object)
     c:present()
 end
 
--- 0x080D1AAC: on the panel under it, its look and collision, the spark of its element, its palette (the chip's first
--- parameter, times 2); the throw's sound; the first update at once.
+-- 0x080D1AAC: on the panel under it, its look and collision, the spark of its element, its palette (its chip's: the
+-- chip's first parameter, times 2); the throw's sound; the first update at once.
 local function init(me: Object)
     me:set_panel_from_coordinates()
     local sprite = me.sprite
@@ -177,7 +177,7 @@ local function init(me: Object)
     me.visible = true
     me.collision:set_hit_effect(sparks.of_element(me.element))
     ;(me.state :: State).hops = 0
-    sprite.palette = (me.state :: State).palette * 2
+    sprite.palette = (me.state :: State).palette
     battle.play_sound(THROW_SOUND)
     me.lifecycle = "update"
     tick(me)
@@ -227,7 +227,7 @@ local THROW, RECOVER = 0x0, 0x4
 local THROW_ANIM = 0x0E
 local THROW_TICKS, THROW_AT, RECOVER_TICKS = 10, 9, 5
 
--- The action of a chip whose ball is in `palette` (the chip's first parameter).
+-- The action of a chip whose ball is in `palette` (twice the chip's first parameter).
 function cactbal.action(palette: number): Action
     -- 0x080EF110: the arm raised; on the count's 9 the ball; then the recovery.
     local function throwing(me: Object, s: ActionState)

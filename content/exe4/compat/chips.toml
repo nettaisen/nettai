@@ -300,4 +300,7 @@
 "junksoul" = { id = 0x16a }
 "aquasoul" = { id = 0x16b }
 "woodsoul" = { id = 0x16c }
+"rush" = { id = 0x17f }
+"beat" = { id = 0x180 }
+"tango" = { id = 0x181 }
 "invalid" = { id = 0x184 }

@@ -52,6 +52,17 @@ end
 
 -- A game's supports' controller, of `look`.
 function controller.make(look: SupportsLook): Kind
+    -- The host warps out or back in: the game's warp (EXE4's, its side's
+    -- navi: 0x080E2D26), else the navi warp (`sub_80E1332`).
+    local function warp(me: Object, out: boolean)
+        local w = look.warp
+        if w then
+            w(me, out)
+        else
+            navi_chip.warp(me.related1 :: Object, out)
+        end
+    end
+
     -- The support's spawner (`off_80E90A4`, EXE5's 0x080E9010, by the first
     -- parameter).
     local function send(me: Object, s: State)
@@ -76,7 +87,7 @@ function controller.make(look: SupportsLook): Kind
                     next_phase(me, 4)
                     return
                 end
-                navi_chip.warp(me.related1 :: Object, true)
+                warp(me, true)
                 me.timer = WAIT
                 me.phase_init = 4
             end
@@ -106,7 +117,7 @@ function controller.make(look: SupportsLook): Kind
             -- sub_80E90CE: the host warps back in; then the undim.
             if me.phase_init == 0 then
                 if s.support ~= "tango" then
-                    navi_chip.warp(me.related1 :: Object, false)
+                    warp(me, false)
                 end
                 me.timer = WAIT
                 me.phase_init = 4

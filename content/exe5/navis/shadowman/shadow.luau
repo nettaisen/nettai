@@ -20,6 +20,9 @@ local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 
+-- The slash over two panels (effect 0x17).
+local LONG_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 0 }
+
 local shadow = {}
 
 export type State = {
@@ -126,7 +129,7 @@ local function swing(me: Object, s: State)
             hit_mod = HIT_MOD,
         })
         local cx, cy = field.center(x, y)
-        battle.effect(Vec3.new(cx, cy, EFFECT_Z), swords.effects.long, bit32.bxor(me.alliance, me.flip))
+        battle.effect(Vec3.new(cx, cy, EFFECT_Z), LONG_SLASH, bit32.bxor(me.alliance, me.flip))
     end
     local t = me.timer - 1
     me.timer = int.u16(t)

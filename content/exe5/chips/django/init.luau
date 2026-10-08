@@ -24,7 +24,8 @@ local django: Chip = {
     -- as the last navi chip.)
     navi = navi_chips.make {
         id = "django/controller",
-        summon = navi.summon,
+        -- His bug: 0xFD with 0x11.
+        summon = navi.summon { palette = 0, bug = 0xFD, bug_arg = 0x11 },
         navi_block = true,
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
@@ -50,7 +51,7 @@ local django_sp: Chip = {
     -- as the last navi chip.)
     navi = navi_chips.make {
         id = "django-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon { palette = 0, bug = 0xFD, bug_arg = 0x11 },
         navi_block = true,
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
@@ -76,7 +77,8 @@ local django_ds: Chip = {
     -- as the last navi chip.)
     navi = navi_chips.make {
         id = "django-ds/controller",
-        summon = navi.summon_dark,
+        -- Dark: his palette 3 and bug 0xFC.
+        summon = navi.summon { palette = 3, bug = 0xFC, bug_arg = 0 },
         navi_block = true,
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },

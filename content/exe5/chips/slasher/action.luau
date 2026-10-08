@@ -20,6 +20,9 @@ local regions = require("@exelib/regions")
 local roles = require("../../rules/roles")
 local swords = require("../../lib/swords")
 
+-- The slash over a column (effect 0x16).
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local slasher = {}
 
 export type State = {
@@ -117,7 +120,7 @@ slasher.action = new.action {
                     hit_mod = 3,
                 })
                 local cx, cy = field.center(s.target_x, ROW)
-                battle.effect(Vec3.new(cx, cy, 0x10_0000), swords.effects.wide, bit32.bxor(me.alliance, me.flip), 0)
+                battle.effect(Vec3.new(cx, cy, 0x10_0000), WIDE_SLASH, bit32.bxor(me.alliance, me.flip), 0)
             end
             local t = s.timer - 1
             s.timer = t

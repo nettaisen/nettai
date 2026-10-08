@@ -19,10 +19,5 @@ local searchman = common.make {
     shot = shot,
 }
 
-return {
-    kind = searchman.kind,
-    -- SearchMan's, SerchMnSP's and SerchMnDS's (their Param1s 0, 3 and 4): the summon table's entry 2.
-    summon = searchman.summon { palette = 0, sweep = 6 },
-    summon_sp = searchman.summon { palette = 2, sweep = 4 },
-    summon_dark = searchman.summon { palette = 3, sweep = 4 },
-}
+-- The summon table's entry 2: SearchMan of a chip's palette and sweep (`summon { palette = ..., sweep = ... }`).
+return { kind = searchman.kind, summon = searchman.summon }

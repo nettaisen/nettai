@@ -36,7 +36,7 @@ local cactbal2: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = cactbal.action(1),
+    action = cactbal.action(2),
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -54,7 +54,7 @@ local cactbal3: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = cactbal.action(2),
+    action = cactbal.action(4),
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 

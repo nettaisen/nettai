@@ -1220,6 +1220,7 @@ export type CountdownVariant = {
 
 -- ColorPt's and DblPoint's points (chips/colorpt): their palette (four a
 -- step) and the Atk+ bonus each brings (the chips' parameters).
+-- (Its palette: the chip's, four times the original's first parameter.)
 export type ColorPoint = { palette: number, bonus: number }
 
 -- A tornado's look and rhythm (chips/tornado/tornado, a row of the
@@ -1460,7 +1461,8 @@ export type TangoHeal = {
 }
 
 -- A game's Tango (@exelib/supports/tango): her kind's key and sprite, her arrival's, landing's and throw's sounds, the
--- sparkle she appears in (effect 0x15), the puff she goes in (effect 0x14), and her heal.
+-- sparkle she appears in (effect 0x15), the puff she goes in (effect 0x14), and her heal; `pixel_nudge` false: she
+-- starts on her navi's row, not a pixel down the field (EXE4's).
 export type TangoLook = {
     id: string,
     sprite: SpriteAsset,
@@ -1470,6 +1472,7 @@ export type TangoLook = {
     arrive: Effect,
     puff: Effect,
     heal: TangoHeal,
+    pixel_nudge: boolean?,
 }
 
 -- A game's Beat (@exelib/supports/beat): his kind's key and sprite, his swoop's and snatch's sounds.
@@ -1501,7 +1504,14 @@ export type RushLook = {
     status: Status,
     spared: Chip?,
     lost_target: "unbalances" | "skips",
+    -- What his navi's panel must be for him to appear there, by side (nil: EXE6's `byte_80C34A8`); `pixel_nudge`
+    -- false: he comes up under the opponent without EXE6's pixel down and up (EXE4's).
+    stand: RushStand?,
+    pixel_nudge: boolean?,
 }
+
+-- Where Rush may appear by side: the panel flags required and forbidden.
+export type RushStand = { [number]: { require: number, forbid: number } }
 
 -- Rush made for a game (@exelib/supports/rush): sent by the supports' controller, eating `eaten`.
 export type Rush = {
@@ -1509,12 +1519,14 @@ export type Rush = {
     spawn: (controller: Object, eaten: Chip?) -> Object?,
 }
 
--- A game's supports' controller (@exelib/supports/controller): its kind's key, and the supports it sends.
+-- A game's supports' controller (@exelib/supports/controller): its kind's key, the supports it sends, and the game's
+-- warp of the host, given the controller (nil: the navi warp, `navi_chip.warp`).
 export type SupportsLook = {
     id: string,
     rush: Rush,
     beat: SupportActor,
     tango: SupportActor,
+    warp: ((controller: Object, out: boolean) -> ())?,
 }
 
 -- A patch card (BN4's, EXE5's and EXE6's Modification Cards, 改造カード;
@@ -1723,6 +1735,27 @@ export type Cannonball = { kind: Kind, thrower: () -> Thrower }
 -- 0x080D5AA4 reads the spawn's +0x64; none: EXE5's, which stores it and never reads it), and its water's height: the
 -- register the geyser's update leaves for the water's spawn, the battle state's address (the battle-over test's r3:
 -- EXE5's 0x02034A90, EXE4's 0x02035810), at which the water's hits land and their sparks show, far above the field.
+-- The Guard chips' shock wave's variant (@exelib/guard/wave, a row of the game's table): its animation, its ticks on a
+-- panel, and what it does to the panels it passes.
+export type GuardWaveVariant = { anim: number, ticks: number, panel: ("cracked" | "broken" | "poison")? }
+
+-- A game's Guard shock wave (@exelib/guard/wave): its key, sheet and sound; what a plain one is, what a marking one
+-- is, and what they hit; whether a segment keeps its sender (its flip and the sender as its owner); whether its first
+-- tick of spreading notes the panel ahead (the phase byte).
+export type GuardWaveLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    attack: CollisionType,
+    thrown: CollisionType,
+    hits: CollisionType,
+    owned: boolean,
+    notes_ahead: boolean,
+}
+
+-- A game's Guard shock wave's spawn: a segment of `owner`'s on (x, y), of a variant, with the damage word.
+export type GuardWaveSpawn = (owner: Object, x: number, y: number, variant: GuardWaveVariant, damage: number) -> Object?
+
 export type GeyserLook = {
     id: string,
     water_id: string,
@@ -1740,3 +1773,71 @@ export type GeyserLook = {
 
 -- A game's Geyser kinds (the bomb and its water), and a thrower of the bomb at the panel three ahead of the user.
 export type GeyserBomb = { kind: Kind, water: Kind, thrower: () -> Thrower }
+
+-- A game's NumberMan's face (@exelib/numbrman/face): its kind's key, its sprite, and EXE4's start (0x080CCD0A: with
+-- the fight on it follows from its first update, its follow its action 8; none: EXE5's, which waits for every navi to
+-- be in first).
+export type NumberManFaceSpec = { id: string, sprite: SpriteAsset, follows_in_fight: boolean? }
+
+-- A game's NumberMan's face kind, and its spawn on its owner.
+export type NumberManFace = { kind: Kind, spawn: (owner: Object) -> Object? }
+
+-- A die's throw (@exelib/numbrman/dice): its face (1 to 6, or EXE5's 9), its target panel, whether it is NumberMan's
+-- (an attack at navis running while dimmed: its Param1), its HP, its hits' status and hit modifier, its damage word,
+-- and the object waiting on it (its state's `busy`, set until it goes).
+export type DieThrow = {
+    face: number,
+    target_x: number,
+    target_y: number,
+    dimmed: boolean,
+    hp: number,
+    status: Status?,
+    hit_mod: number,
+    damage: number,
+    holder: Object?,
+}
+
+-- A game's die (@exelib/numbrman/dice): its kind's key and sprite; the explosion it bursts and blows up in, the puff
+-- it goes in off solid ground and the one as the battle ends; EXE5's face 9's explosion (its palette 1, effect row
+-- 0x24; none: EXE4's, whose faces are 1 to 6); its sounds as it blows up, bounces and bursts; its collision types
+-- (NumberMan's: what it is and what it hits; the others': its body and what hits it); EXE5's markers over its target
+-- (lib/navi_chips/marker; none: EXE4's, which has none); whether its burst keeps the damage's top bit apart (EXE5's
+-- 0x080C51F2; none: EXE4's, the halfword's product whole); whether its init places it on its panel (EXE4's
+-- 0x080CDA4A).
+export type DiceSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    explosion: Effect,
+    puff: Effect,
+    gone: Effect,
+    nine: { explosion: Effect }?,
+    blow_up: Sound,
+    bounce: Sound,
+    burst: Sound,
+    attack: CollisionType,
+    hits_navis: CollisionType,
+    body: CollisionType,
+    hit_by: CollisionType,
+    marker: ((owner: Object, x: number, y: number, ticks: number, style: number, flip: boolean) -> Object?)?,
+    keeps_top_bit: boolean?,
+    places_itself: boolean?,
+}
+
+-- A game's die kind, and its spawn by `owner` at `pos`.
+export type Dice = { kind: Kind, spawn: (owner: Object, pos: Vec3, throw: DieThrow) -> Object? }
+
+-- A game's NumberMan (@exelib/numbrman/navi): his kind's key, his sprite, his appearance's and throw's sounds, his face
+-- and his die, and what his throw gives the die (EXE5's 0x080BB4C2 word 0x30014: 20 HP, no status, hit modifier 3;
+-- EXE4's die states its own, 0x080CDA44: 40 HP, hit modifier 3).
+export type NumberManSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    appear: Sound,
+    throw: Sound,
+    face: NumberManFace,
+    dice: Dice,
+    die: { hp: number, status: Status?, hit_mod: number },
+}
+
+-- A game's NumberMan kind, and what makes one just spawned his chip's: the controller he reports to, his palette.
+export type NumberMan = { kind: Kind, summoned: (o: Object, controller: Object, palette: number) -> () }
