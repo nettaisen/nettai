@@ -467,6 +467,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         palette_flash = "mode_runs_through_pause",
         palette_flash_order = "after_fades",
         overlays_run_while_paused = true,
+        form_overlay = { start = "after_navis_in", reloads_animation = true, palette_each_tick = true, facing_each_tick = true, waiting_steps = false },
         afterimages_wear_overlays = true,
         load_sets_part_palette = true,
         dimmed_update_steps_on_load = true,
@@ -670,7 +671,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 114, "every field of every section");
+        assert_eq!(fields, 115, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

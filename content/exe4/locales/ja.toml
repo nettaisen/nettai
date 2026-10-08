@@ -161,6 +161,9 @@ language = "ja"
 "gunsol2" = { name = "ガンデルソル2", description = "ボタンをおしつづけ\nると2マス前方の\nたて3マスに日の光" }
 "gunsol3" = { name = "ガンデルソル3", description = "ボタンをおしつづけ\nると2マス前方の\nたて3マスに日の光" }
 "gunsolex" = { name = "ガンデルソルEX", description = "さらにこうはんいに\nたいようこうせんを\nしょうしゃする!" }
+"fireman" = { name = "ファイアマン", description = "前方のよこ1れつに\nかんつうする炎!\nファイアアーム!" }
+"firemn-sp" = { name = "ファイアマンSP", description = "前方のよこ1れつに\nかんつうする炎!\nファイアアーム!" }
+"firemn-ds" = { name = "ファイアマンDS", description = "前方のよこ1れつに\nかんつうする炎!\nファイアアーム!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
