@@ -1441,12 +1441,16 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
     b.hands[side].charge_bonus[i] += 1;
 }
 
-/// `sub_80107D4`: chip lockout and special cooldowns (not while dimmed).
+/// `sub_80107D4` (EXE5's 0x0800E53A): chip lockout and special cooldowns,
+/// and the DarkPlus tint fading (not while dimmed).
 fn tick_cooldowns(b: &mut Battle, r: ObjectRef) {
     if b.is_dimmed() {
         return;
     }
     let a = ai_mut(b, r);
+    // EXE5's 0x0800E54C (one of four halfword timers from AIData+0x3C):
+    // the tint fades a tick at a time (EXE6's navis never have one).
+    a.plus_tint = a.plus_tint.saturating_sub(1);
     a.lockout = a.lockout.saturating_sub(1);
     a.back_special_cooldown = a.back_special_cooldown.saturating_sub(1);
     // The per-side gauge timers count down here too (+0x2E, the per-player

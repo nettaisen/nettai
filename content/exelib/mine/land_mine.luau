@@ -1,6 +1,7 @@
 --!strict
--- The mine the Mine chip lays, as EXE5 and EXE6 share it (EXE6's attack
--- object #0x4C, `sub_80CDD44`; EXE5's #0x4C): each game makes its own kind
+-- The mine the Mine chip lays, as the three games share it (EXE6's attack
+-- object #0x4C, `sub_80CDD44`; EXE5's #0x4C; EXE4's 0x080D6ED4): each game
+-- makes its own kind
 -- (`land_mine.make_kind`: its identity, sprite, sounds, blast and
 -- collision types). A field object that hops among the enemy's free panels
 -- in a shuffled order for two seconds, then hides where it stopped, armed:
@@ -28,12 +29,12 @@ export type State = {
 local land_mine = {}
 
 -- A game's mine: its kind's key, its identity (a field object nothing
--- absorbs, swallows or leaves as junk, with no look), its sprite, its
+-- absorbs, swallows or leaves as junk, with no look; EXE4's none), its sprite, its
 -- hop's sound, its blast (EXE6's effect 0x47) and the blast's sound, and its
 -- collision types (what it is, and what it hits).
 export type Look = {
     id: string,
-    identity: Identity,
+    identity: Identity?,
     sprite: SpriteAsset,
     hop_sound: Sound,
     blast: Effect,
@@ -191,7 +192,9 @@ local function init(me: Object, look: Look)
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
     -- (sub_8002EAC sets a drawing flag of the sprite's.)
-    me.identity = look.identity
+    if look.identity then
+        me.identity = look.identity
+    end
     me.timer = LIFETIME
     me.timer2 = HOPS
     local s = me.state :: State

@@ -7,7 +7,8 @@
 -- Its mode (its first parameter) picks its side and what it is: 0 (a stage's, 0x080068C0) rolls on its panel's side
 -- for the other side; 1 (a lifetime, a field object of its side's registry) on the side it isn't; 2 (an actor's,
 -- 0x080C7C74, with a slot its spawner watches) is another kind of body (collision rows 55 and 20). Effect #0x49
--- (0x080E7244) passes its own first parameter. Only the stages' spawner is ported.
+-- (0x080E7244, MetlGer's) passes its own first parameter, 1. The stages' spawner and MetlGer's (`gear.spawn`) are
+-- ported; the actor's (0x080C7C74) has no user yet.
 
 local collision = require("../rules/collision")
 
@@ -232,5 +233,27 @@ gear.kind = new.kind {
         return o
     end,
 }
+
+-- 0x080DC006: a gear on (x, y) of `alliance`'s, of `element` and the damage word, in `mode` (its first parameter),
+-- running while the battle is paused or dimmed; a lifetime gear (mode 1) one of its side's field objects (class 1).
+-- (Its position is the spawner's registers until its init places it: the row, the element and the side. MetlGer's
+-- controller watches no slot: its +0x60 stays empty.)
+function gear.spawn(x: number, y: number, element: number, alliance: number, mode: number, damage: number): Object?
+    local o = battle.spawn(gear.kind, Vec3.new(y, element, alliance))
+    if not o then
+        return nil
+    end
+    o.panel_x, o.panel_y = x, y
+    o.element = element
+    o.alliance = alliance
+    o:set_damage_word(damage)
+    o.run_while_paused = true
+    o.run_while_dimmed = true
+    state(o).mode = mode
+    if mode == 1 then
+        obstacle.register(o, alliance, 1)
+    end
+    return o
+end
 
 return gear

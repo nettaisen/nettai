@@ -363,6 +363,10 @@ pub struct FormData {
     /// (`sub_800E2FC`'s caller: not dimming chips).
     #[serde(default)]
     pub chip_heals: Option<ChipMatch>,
+    /// The families whose damaging chips, not dimming chips, paralyze
+    /// when used uncharged (EXE4's 0x0800C4C4).
+    #[serde(default)]
+    pub paralyzing_chips: Vec<ChipFamily>,
     /// Its A charge builds up the next Fire chip's damage, up to this
     /// much (`sub_80F0608`).
     #[serde(default)]
