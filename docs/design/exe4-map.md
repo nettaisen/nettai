@@ -2064,12 +2064,15 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      the spiraling image, the engine behind it; the RAM's sprite list (0x03002000 at that tick) has the image's parts
      (80 to 84) at priority 0 before the number's 32x16 (85, priority 1), which mGBA's rule (priority, then index)
      would put behind the image: what the hardware takes is to find.
-   - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
-     panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle row and four more panels turn grass, blinking
-     10 ticks) *open*; a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged
-     use is a 150 flame in its place (0x0800B76C, 0x0800D638: action 25, hit 0xA8, params 0x1E05) *open*; the flame
-     charged (0x0C, 0x0800CCAE: 50, hit 0x9E, params 0x1E03, action 25) *open*; lava heals it 50 and turns normal,
-     with the heal's sparkle and sound (0x0801313E, 0x080131B8) *open*.
+   - **FireSoul (5).** Fire (0x0800C964) *done* (souls/fire/weakness: aqua on it, the weakness mark at its status
+     mark, 0x080133E8); its overlay 0x10 (10-00: forms/soul's `overlay`) and image part 0x12 (10-08) *done*
+     (souls/fire/hit, unison); the status reset's panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle
+     row and four more panels turn grass, blinking 10 ticks; its modes 0 to 2 have no spawner) *done* (souls/fire/hit);
+     a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged use is a 150
+     flame in its place (0x0800B76C, 0x0800D638: action 0x19, hit 0xA8, five panels, the attack's chip 0: chips/zeroed)
+     *done* (souls/fire/chip); the flame charged (0x0C, 0x0800CCAE: 50, hit 0x9E, three panels, action 0x19) *done*
+     (souls/fire/unison); lava heals it 50, as raw fire damage (a barrier takes it), and turns normal, with the heal's
+     sparkle and sound (0x0801313E, 0x080131B8: rules/panels) *done* (souls/fire/lava, lava-barrier).
    - **ThunderSoul (6).** Elec (0x0800C964) *open*; an uncharged damaging Null or Elec chip that isn't a dimming chip
      paralyzes (0x0800C4C4: the damage's 0x4000) *open*; charged 0x58 (0x0800D298) *open*.
    - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0) *open*; a sword chip that
