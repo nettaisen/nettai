@@ -15,6 +15,7 @@
 local antiswrd = require("@exelib/antiswrd/counter")
 local attachment = require("../objects/attachment")
 local collision = require("../rules/collision")
+local parts = require("@exelib/swords/parts")
 local slash = require("@exelib/swords/slash")
 local sonic_boom = require("@exelib/swords/sonic_boom")
 local stepsword = require("./stepsword")
@@ -44,6 +45,25 @@ local SLASH = asset.sprite("sword-slash")
 -- The blade the swords hold (the attachment table's row 3) and the swings' sounds, which they share. (Each sword
 -- states the slash drawn over the panels it hits.)
 swords.blade = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
+
+-- 0x080EC082: the blade a sword's holder takes (the attachment row): the swords' (row 3), but MegaMan's (a player of
+-- AI index 0) while a Chaos Unison charge is armed (AIData+0x12, the rules' own B charge: rules/souls/chaos_charge)
+-- takes his soul's Chaos Unison blade where it states one (`chaos.blade`: ProtoSoul's row 10, ColonelSoul's 0x32).
+function swords.held_blade(me: Object): AttachmentLook
+    if me.actor_type == "player" and me.ai_index == 0 and me.b_charge_time ~= nil then
+        local chaos = (battle.navi(me.alliance).form :: any).chaos
+        if chaos ~= nil and chaos.blade ~= nil then
+            return chaos.blade :: AttachmentLook
+        end
+    end
+    return swords.blade
+end
+
+-- How a sword's holder takes its blade in the related slot (EXE5's slash, 0x080EBE1C): the held blade, in the
+-- blade's palette (@exelib/swords/parts, as EXE6's).
+local function hold_in_related(me: Object, _blade: AttachmentLook, anim: number)
+    parts.hold(attachment.kind, me, swords.held_blade(me), parts.blade_palette(me), anim)
+end
 swords.slashes_navis = { is = collision.slash, hits = collision.hits_navis }
 swords.swing = asset.sound("sword-swing")
 swords.big_swing = asset.sound("big-sword-swing")
@@ -69,14 +89,18 @@ local STEPS: SlashSteps = {
 
 -- A chip's slash (@exelib/swords/slash), its blade EXE5's attachment, its step EXE5's.
 function swords.slash(spec: SlashSpec): Action
-    return slash.action(spec, attachment.kind, { steps = STEPS })
+    return slash.action(spec, attachment.kind, { steps = STEPS, hold = hold_in_related })
 end
 
 -- AntiSwrd's counter (the original's navi action 0x48: @exelib/antiswrd/counter) with EXE5's blade and booms; its
--- sounds EXE6's. The rules start it by role (`actions.anti_sword_counter`, rules/roles.luau).
+-- sounds EXE6's. The rules start it by role (`actions.anti_sword_counter`, rules/roles.luau). It holds the held blade
+-- in EXE5's blade animation (EXE5's action 0x2D, 0x080EDB26 and 0x080EDB2C: 0x080EC082 and 0x080EC038).
 swords.anti_sword_counter = antiswrd.action_with {
     id = "antiswrd/counter",
     blade = swords.blade,
+    hold = function(me: Object, _blade: AttachmentLook)
+        parts.hold(attachment.kind, me, swords.held_blade(me), 0, swords.blade_anim(me))
+    end,
     boom = swords.sonic_boom,
     start_sound = asset.sound("log-in"),
     swing_sound = asset.sound("sword-swing"),

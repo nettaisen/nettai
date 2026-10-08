@@ -8,7 +8,8 @@
 -- Attck+10 and Attck+30 are `instant = plus.attack` (+0x10 0, +0x11 0: none goes to the next chip); Navi+20 is
 -- `plus.navi` (+0x10 1: the side's Navi+ bonus); DarkPlus is `plus.dark`
 -- (+0x11 1): its damage becomes the Atk+ bonus of the hand's next chip if that does damage, the navi takes its tint
--- (AIData+0x3C 24, which nothing counts down: its status shader goes to its first green, 0x080136B8) and the bonus
+-- (AIData+0x3C 24, counted down each tick but while dimmed, 0x0800E54C: its status shader runs through the greens by its
+-- low bits, 0x080136B8) and the bonus
 -- sound plays; else the sparkle.
 
 local rising_bubble = require("../objects/rising_bubble")

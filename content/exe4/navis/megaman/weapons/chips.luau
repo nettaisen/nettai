@@ -8,6 +8,7 @@
 -- The rest wait on their chips (docs/design/exe4-map.md §18 item 57).
 
 local airshot = require("../../../chips/airshot").airshot
+local anti_chips = require("../../../chips/anti")
 local ball = require("../../../chips/ball").ball
 local breath_chips = require("../../../chips/breath")
 local bubbler = require("../../../chips/bubbler").bubbler
@@ -22,6 +23,7 @@ local heatshot = require("../../../chips/heatshot").heatshot
 local hole = require("../../../chips/hole").hole
 local lance = require("../../../chips/lance").lance
 local minibomb = require("../../../chips/minibomb").minibomb
+local nrthwind = require("../../../chips/nrthwind").nrthwind
 local pnlretrn = require("../../../chips/pnlretrn").pnlretrn
 local recov_chips = require("../../../chips/recov")
 local repair = require("../../../chips/repair").repair
@@ -58,6 +60,29 @@ chips.bubbler = fires("megaman/bubbler", bubbler, { 60, 60, 60, 60, 60, 120 }) -
 chips.thunder1 = fires("megaman/thunder1", thunder_chips.thunder1, { 120, 120, 120, 120, 120, 60 }) -- 0x2D
 chips.sword = fires("megaman/sword", sword_chips.sword, SIXTY) -- 0x2E
 chips.spreader = fires("megaman/spreader", spreader, SIXTY) -- 0x2F
+-- 0x0800D074 (routine 0x31, card 40's B+Left): one of the eight Anti chips (0x0800D094: 0x8C to 0x93) at random (an
+-- RNG2 draw), loaded as the attack; then its parameters' fourth byte (AIAttackVars +0x0F) 1: the trap's telop
+-- shows "????" to its user too.
+local ANTI_CHIPS: { Chip } = {
+    anti_chips.antifire,
+    anti_chips.antiwatr,
+    anti_chips.antielec,
+    anti_chips.antiwood,
+    anti_chips.antinavi,
+    anti_chips.antidmg,
+    anti_chips.antiswrd,
+    anti_chips.antirecv,
+}
+chips.anti_chip = new.weapon {
+    id = "megaman/anti-chip",
+    charge_ticks = SIXTY,
+    setup = function(navi: Object): Chip
+        local chip = ANTI_CHIPS[battle.rng_positive() % #ANTI_CHIPS + 1]
+        navi:load_chip_attack(chip)
+        navi.telop_hidden = true
+        return chip
+    end,
+} -- 0x31
 chips.crakout = fires("megaman/crakout", crakout_chips.crakout, SIXTY) -- 0x36
 chips.copydmg = fires("megaman/copydmg", copydmg, { 60, 60, 60, 60, 60, 120 }) -- 0x37
 chips.widesht1 = fires("megaman/widesht1", widesht_chips.widesht1, { 120, 120, 120, 120, 120, 60 }) -- 0x38
@@ -81,6 +106,7 @@ chips.ball = fires("megaman/ball", ball, SIXTY) -- 0x50
 chips.bugbomb = fires("megaman/bugbomb", bugbomb, SIXTY) -- 0x51
 chips.wideblde = fires("megaman/wideblde", sword_chips.wideblde, SIXTY) -- 0x52
 chips.longblde = fires("megaman/longblde", sword_chips.longblde, SIXTY) -- 0x53
+chips.nrthwind = fires("megaman/nrthwind", nrthwind, SIXTY) -- 0x54
 chips.pnlretrn = fires("megaman/pnlretrn", pnlretrn, SIXTY) -- 0x55
 chips.blizzard = fires("megaman/blizzard", breath_chips.blizzard, SIXTY) -- 0x5B
 chips.heatbrth = fires("megaman/heatbrth", breath_chips.heatbrth, SIXTY) -- 0x5C

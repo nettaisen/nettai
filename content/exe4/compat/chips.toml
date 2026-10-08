@@ -4,6 +4,7 @@
 # folder can hold (Tango's legal chips) and the dark chips the custom screen offers (0x0801DF38's lists), the
 # keys from the US names.
 
+"zeroed" = { id = 0x000 }
 "cannon" = { id = 0x001 }
 "hicannon" = { id = 0x002 }
 "m-cannon" = { id = 0x003 }

@@ -896,6 +896,13 @@ pub struct PushReading {
     pub shift: Option<PushShift>,
     /// An obstacle's rows, turned toward the pusher's side.
     pub obstacle_rows: Vec<SlideVector>,
+    /// An obstacle's intake that keeps a push's damage takes the end of
+    /// its moves as a navi's does: MOVE_COMPLETE consumed, then the panel
+    /// under it has its say (its type's `move_end`: EXE4's 0x0801393E
+    /// calls 0x0801335A, its ice's push). EXE6's `sub_801AD12` and EXE5's
+    /// don't.
+    #[serde(default)]
+    pub obstacle_move_end: bool,
 }
 
 /// Which hit modifier a push reads (`PushReading::reads`).
@@ -1255,11 +1262,13 @@ pub enum HitMood {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StatusVisualRules {
-    /// Where it sits on the navi.
+    /// Where it sits on the navi, and the hit marker with it.
     pub place: StatusVisualPlace,
 }
 
-/// Where the status visual sits.
+/// Where the status visual sits, and the hit marker (`sub_80E8124`'s
+/// offset: EXE6's and EXE5's attach point 5, EXE4's actor record's +6 and
+/// +7, 0x080133E8).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatusVisualPlace {
