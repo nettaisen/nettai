@@ -6,6 +6,9 @@
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
+-- The slash over a column (effect 0x16).
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local chip: Chip = {
     codes = { "K", "S", "Z" },
     element = "null",
@@ -22,7 +25,7 @@ local chip: Chip = {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.wide, collision = swords.slashes_navis, hit_mod = 3 },
-        effect = swords.effects.wide,
+        effect = WIDE_SLASH,
         sound = swords.swing,
     },
     auto_battle = { class = "into_reach", range = "column_ahead" },

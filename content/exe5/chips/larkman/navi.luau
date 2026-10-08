@@ -2,43 +2,24 @@
 -- LarkMan, the navi of the LarkMan chips (EXE5's actor object #0x1E, 0x080BDBFC; EXE5's own), brought by their navi
 -- chip controller. He appears, stands, rises out of sight and sends his swoop (./swoop) round the field; when it
 -- has had its time, he goes, and the controller moves on. While he is there, his user holding B and pressing up,
--- right and down in turn (each within a second of the first) powers the swoop (0x080BDDF4). WildBird's LarkMan (the
--- summon table's entry 23, 0x080BDDCA: his Param4 1) sends the swoop's variant 6 instead, and takes no command.
+-- right and down in turn (each within a second of the first) powers the swoop (0x080BDDF4), if it is one that takes
+-- the command. Each chip states his palette and his swoop's variant (`larkman.summon`): the LarkMan chips' variant 5,
+-- WildBird's 6 (the summon table's entry 23, 0x080BDDCA: his Param4 1), which takes no command.
 
 local navi_chips = require("@exelib/navi_chips/navi")
 local swoop = require("./swoop")
 
--- His swoop's variants: the navi chip's (5), and WildBird's (6): faster, a longer turn of its own, no command.
-local SWOOP = swoop.variant {
-    speed_x = 0x8_0000,
-    speed_y = 0x4_CCCC,
-    turn_step = 0xD_AC50,
-    shorter = 1,
-    longer = 0,
-    wild_turn = false,
-    commanded = true,
-}
-local WILD_SWOOP = swoop.variant {
-    speed_x = 0xC_0000,
-    speed_y = 0x7_3333,
-    turn_step = 0x14_8278,
-    shorter = 0,
-    longer = 25,
-    wild_turn = true,
-    commanded = false,
-}
-
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's by the chip's level, its Param1: 0x080BDC7C, LarkMnDS's 4 the dark one).
+    palette: number,
     -- The command: the steps entered (+0x60), the ticks left to finish it (+0x64), and done (+5).
     command_steps: number,
     command_ticks: number,
     commanded: boolean,
-    -- WildBird's (Param4 1).
-    wild: boolean,
+    -- His chip's swoop.
+    swoop: LarkSwoopVariant,
 }
 
 local larkman = {}
@@ -47,24 +28,22 @@ local SPRITE = asset.sprite("larkman")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_COMMAND = asset.sound("ok-8b")
 
--- By the level (0x080BDC7C): the dark palette for DS's 4.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 4 }
 -- The command's directions in turn, held with B (0x080BDE54).
 local COMMAND: { Key } = { "up", "right", "down" }
 
--- 0x080BDC20: on his panel, on the ground, his palette by the level.
+-- 0x080BDC20: on his panel, on the ground, in his chip's palette.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
     local s = me.state :: State
-    me.sprite.palette = PALETTES[s.level] or 0
+    me.sprite.palette = s.palette
     s.commanded = false
     s.command_steps, s.command_ticks = 0, 0
     me:set_lifecycle("update")
 end
 
--- 0x080BDDF4: the command, read from his user's held buttons (none for WildBird's).
+-- 0x080BDDF4: the command, read from his user's held buttons (none for a swoop that takes none: WildBird's).
 local function command(me: Object, s: State)
-    if s.wild or s.commanded then
+    if not s.swoop.commanded or s.commanded then
         return
     end
     if s.command_steps ~= 0 then
@@ -155,7 +134,7 @@ local function attack(me: Object)
     local left = me.timer - 1
     me.timer = left
     if left == 0x50 then
-        swoop.spawn(me, s.level, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), if s.wild then WILD_SWOOP else SWOOP)
+        swoop.spawn(me, s.palette, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), s.swoop)
     elseif left <= 0 then
         local controller = s.controller
         if controller then
@@ -172,11 +151,11 @@ larkman.kind = new.kind {
     pool = "actor",
     state = {
         controller = "object",
-        level = "u8",
+        palette = "u8",
         command_steps = "u32",
         command_ticks = "i32",
         commanded = "bool",
-        wild = "bool",
+        swoop = "record:larkman-swoop-variant",
     },
     -- 0x080BDBFC.
     update = function(me: Object)
@@ -196,9 +175,12 @@ larkman.kind = new.kind {
     end,
 }
 
--- 0x080BDDA0: LarkMan for `user`, reporting to `controller` (the summon table's entry 17), of a chip of `level`;
--- 0x080BDDCA, `wild`: WildBird's (entry 23).
-function larkman.summon_at(level: number, wild: boolean?): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- What a chip's LarkMan is: his palette and his swoop's variant.
+export type Summon = { palette: number, swoop: LarkSwoopVariant }
+
+-- 0x080BDDA0: LarkMan for `user`, reporting to `controller` (the summon table's entry 17; WildBird's 23, 0x080BDDCA),
+-- as his chip's `summon` says.
+function larkman.summon(summon: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(larkman.kind, user, spec)
         if not o then
@@ -206,16 +188,10 @@ function larkman.summon_at(level: number, wild: boolean?): (user: Object, contro
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
-        s.wild = wild == true
+        s.palette = summon.palette
+        s.swoop = summon.swoop
         return o
     end
 end
-
--- LarkMan's and LarkMnSP's (levels 0); LarkMnDS's (4).
-larkman.summon = larkman.summon_at(0)
-larkman.summon_dark = larkman.summon_at(4)
--- WildBird's.
-larkman.summon_wild = larkman.summon_at(0, true)
 
 return larkman

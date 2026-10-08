@@ -82,14 +82,14 @@ local function send(me: Object, s: State)
     me.collision:set_region(nil)
     local element = me.attack_element
     local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-    -- (The magnets keep the navi object's own parameter word as their chip's level: a player's is 0.)
+    -- (The magnets keep the navi object's own parameter word as their chip's level: a player's is 0, palette 0.)
     local function magnet_at(column: number, pole: number): Object?
         return magnet.spawn(me, column, y, element, {
             pole = pole,
             paired = s.mirror_x ~= 0,
             target_x = s.target_x,
             variant = VARIANT,
-            level = 0,
+            palette = 0,
             damage = damage,
         })
     end

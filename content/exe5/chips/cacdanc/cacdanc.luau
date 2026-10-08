@@ -155,7 +155,7 @@ local function tick(me: Object)
 end
 
 -- 0x080DC630: over its panel, 160 pixels up; its look and collision, the spark of its element, its palette (its first
--- parameter, the chip's, times 2); the first update at once.
+-- parameter, the chip's, times 2: its chip's); the first update at once.
 local function init(me: Object)
     me:set_coordinates_from_panel()
     local p = me.pos
@@ -173,13 +173,13 @@ local function init(me: Object)
     me.visible = true
     me.collision:set_hit_effect(sparks.of_element(me.element))
     me.collision:set_region(nil)
-    sprite.palette = (me.state :: CactusState).palette * 2
+    sprite.palette = (me.state :: CactusState).palette
     me.lifecycle = "update"
     tick(me)
 end
 
 export type CactusState = {
-    -- Its palette parameter (its first parameter: the chip's).
+    -- Its palette (its chip's: twice the chip's first parameter).
     palette: number,
 }
 
@@ -219,7 +219,7 @@ local DANCER = new.identity {
 local DROPS, EVERY = 12, 15
 
 export type DancerState = {
-    -- The chip's first parameter, the cactuses' palette.
+    -- The cactuses' palette (its chip's: twice the chip's first parameter).
     palette: number,
 }
 

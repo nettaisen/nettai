@@ -1220,6 +1220,7 @@ export type CountdownVariant = {
 
 -- ColorPt's and DblPoint's points (chips/colorpt): their palette (four a
 -- step) and the Atk+ bonus each brings (the chips' parameters).
+-- (Its palette: the chip's, four times the original's first parameter.)
 export type ColorPoint = { palette: number, bonus: number }
 
 -- A tornado's look and rhythm (chips/tornado/tornado, a row of the

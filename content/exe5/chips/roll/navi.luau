@@ -3,11 +3,12 @@
 -- but for her sprite, her ribbon, EXE5's attachment row 6, 0c-0f, and these) with her heart (./heart), and EXE5's
 -- additions:
 --
--- - RollSP's, as she appears (0x080C0794): outside the operation battle, a panel changer on her panel turning
---   her side's holy panels Normal (EXE5's change 14: all panels, flickering, 30 ticks, no tick sound).
+-- - Her chip's panel change, as she appears (0x080C0794): outside the operation battle, a panel changer on her panel
+--   (RollSP's turns her side's holy panels Normal, ../roll).
 -- - Her target in the operation battle (0x080C0CA4): the panel in front of the enemy her side tracks, from her
 --   side, if it holds no body or object; none otherwise.
--- - As her heart drops (0x080C0B66): her side's navi's mood rises by 50 (0 for a level 5, which no chip has).
+-- - As her heart drops (0x080C0B66): her side's navi's mood rises by her chip's amount (the original's by the chip's
+--   level, 0x080C0B90: 50 for every chip's).
 --
 -- Her palette and her ribbon's are RollDS's 1 (her level 4).
 
@@ -19,27 +20,14 @@ local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 local operation_battle = require("../../lib/operation_battle")
 
--- The SP's change: its side's holy panels Normal (EXE5's `byte_80E272C` row 14, 0x080E2A04).
-local HOLY_TO_NORMAL = panel_changer.change {
-    panel = "normal",
-    panels = "all",
-    flicker = true,
-    ticks = 0x1E,
-    sides = { [0] = { require = 0x2000, forbid = 0x8020 }, [1] = { require = 0x2020, forbid = 0x8000 } },
-    change_sound = asset.sound("panel-change"),
-}
-
--- What her level's heart adds to the mood (0x080C0B90).
-local MOOD: { [number]: number } = { [0] = 50, 50, 50, 50, 50, 0 }
-
 -- What a panel in front of the tracked enemy must be free of (0x080C0CE4): the bodies and objects of a side.
 local OCCUPIED = { [0] = 0x0780_0000, 0x0B80_0000 }
 
--- 0x080C0794: RollSP's change, outside the operation battle.
+-- 0x080C0794: her chip's change (RollSP's), outside the operation battle.
 local function appeared(me: Object)
-    local s = me.state :: any
-    if s.level == 3 and not operation_battle() then
-        panel_changer.spawn(me, me.panel_x, me.panel_y, HOLY_TO_NORMAL, nil)
+    local change = (me.state :: any).appear_change :: PanelChange?
+    if change and not operation_battle() then
+        panel_changer.spawn(me, me.panel_x, me.panel_y, change, nil)
     end
 end
 
@@ -56,14 +44,9 @@ local function tracked_target(me: Object): (number, number)
     return 0, 0
 end
 
--- 0x080C0B66: her side's navi's mood rises by her level's amount.
+-- 0x080C0B66: her side's navi's mood rises by her chip's amount.
 local function heart_dropped(me: Object)
-    local level = (me.state :: any).level :: number
-    local n = MOOD[level]
-    if n == nil then
-        error(string.format("Roll's level %d reads past her mood table (0x080C0B90)", level))
-    end
-    battle.gain_mood(me.alliance, n)
+    battle.gain_mood(me.alliance, (me.state :: any).mood :: number)
 end
 
 return common.make {

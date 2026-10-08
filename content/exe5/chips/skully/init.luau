@@ -36,7 +36,7 @@ local skully2: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action(skully.skulls(1)),
+    action = skully.action(skully.skulls(2)),
     auto_battle = { class = "to_front" },
 }
 
@@ -54,7 +54,7 @@ local skully3: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action(skully.skulls(2)),
+    action = skully.action(skully.skulls(4)),
     auto_battle = { class = "to_front" },
 }
 
