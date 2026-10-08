@@ -12,6 +12,7 @@
 "megaman/buster" = [0]
 "megaman/charged-shot" = [1]
 "megaman/taunt" = [0x21]
+"megaman/zap-ring" = [0x04]
 "megaman/machine-gun" = [0x28]
 "megaman/crack-buster" = [0x34]
 "megaman/poison-buster" = [0x35]
