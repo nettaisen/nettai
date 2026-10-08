@@ -314,6 +314,8 @@ language = "en"
 "009-max-hp-up" = { name = "Max HP Up" }
 "010-max-hp-up" = { name = "Max HP Up" }
 "011-first-barrier-100" = { name = "First Barrier 100" }
+"012-buster-patch" = { name = "Buster Patch" }
+"013-buster-patch" = { name = "Buster Patch" }
 "014-panel-change" = { name = "Panel Change" }
 "015-panel-change" = { name = "Panel Change" }
 "016-panel-change" = { name = "Panel Change" }
@@ -341,6 +343,8 @@ language = "en"
 "039-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "041-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"043-buster-patch" = { name = "Buster Patch" }
+"044-buster-patch" = { name = "Buster Patch" }
 "045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
 "047-weapon-change" = { name = "Weapon Change" }
@@ -394,6 +398,7 @@ language = "en"
 "099-max-hp-up" = { name = "Max HP Up" }
 "100-max-hp-up" = { name = "Max HP Up" }
 "101-max-hp-up" = { name = "Max HP Up" }
+"102-buster-patch" = { name = "Buster Patch" }
 "103-fullcustom-charge-1-2" = { name = "FullCustom Charge 1/2" }
 "104-fullcustom-charge-2-2" = { name = "FullCustom Charge 2/2" }
 "105-panel-change" = { name = "Panel Change" }

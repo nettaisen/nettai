@@ -8,6 +8,12 @@
 "engine/dimming-chip" = 0x0C
 # The buster's shot (0x080EB316).
 "megaman/buster/shot" = 0x08
+# The buster patches' shots (weapon routines 0x34, 0x35, 0x5A, 0x68, 0x69: action 8 with other projectile rows).
+"megaman/crack-buster/shot" = 0x08
+"megaman/poison-buster/shot" = 0x08
+"megaman/blind-buster/shot" = 0x08
+"megaman/grass-buster/shot" = 0x08
+"megaman/ice-buster/shot" = 0x08
 # The vulcans' (the chips' action 0x1F, 0x080EC842).
 "drkvulcn/action" = 0x1F
 "vulcan1/action" = 0x1F
