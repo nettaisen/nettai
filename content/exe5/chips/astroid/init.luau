@@ -2,7 +2,23 @@
 -- Astroid1, Astroid2 and Astroid3: the astroid series (each chip's own comment above its definition).
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local collision = require("../rules/collision")
+local falling_meteor = require("@exelib/meteors/falling_meteor")
 local meteors = require("./meteors/meteors")
+
+-- Their shower: a meteor every 20 ticks, on the navi picked or beside it, each cracking its panel (the meteor's
+-- row 3).
+local SHOWER = meteors.variant {
+    period = 20,
+    row = falling_meteor.row {
+        is = collision.thrown,
+        hits = collision.hits_navis,
+        hit_mod = 3,
+        shake = 1,
+        panel = "crack",
+    },
+    aim = meteors.aim,
+}
 
 -- Astroid1 (EXE5 chip 0x068): a shower of 6 Fire meteors, one every 20 ticks on one of the enemy navis' panels or
 -- beside it, each cracking its panel (chips/meteors: instant chip effect 17, its second parameter 6).
@@ -18,7 +34,7 @@ local astroid1: Chip = {
     lockout = 60,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    instant = meteors.instant(false, 6),
+    instant = meteors.instant(SHOWER, 6),
     auto_battle = { class = "at_once" },
 }
 
@@ -36,7 +52,7 @@ local astroid2: Chip = {
     lockout = 60,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    instant = meteors.instant(false, 8),
+    instant = meteors.instant(SHOWER, 8),
     auto_battle = { class = "at_once" },
 }
 
@@ -54,7 +70,7 @@ local astroid3: Chip = {
     lockout = 60,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    instant = meteors.instant(false, 10),
+    instant = meteors.instant(SHOWER, 10),
     auto_battle = { class = "at_once" },
 }
 

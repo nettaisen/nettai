@@ -10,16 +10,15 @@
 local collision = require("../../rules/collision")
 
 export type State = {
-    -- Which way it sits from the magnet (+0x40: 1 or -1).
+    -- Which way it sits from the magnet (+0x40: 1 or -1), and how far ahead of what it follows (pixels).
     dir: number,
-    -- Its first parameter: 1 a magnet's, 0 a navi's.
-    variant: number,
+    ahead: number,
+    -- It follows a navi through its attack, not a magnet until it crashes (its first parameter 0, not 1).
+    follows_navi: boolean,
 }
 
 local pull = {}
 
--- How far ahead of the magnet it sits, and of a navi (pixels).
-local AHEAD, NAVI_AHEAD = 0x14, 0x28
 -- The action of a navi no player controls that a navi's pull follows it through, and the attack step that ends it.
 local NAVI_ACTION, NAVI_DONE = 0x0B, 0x18
 
@@ -41,7 +40,7 @@ local function tick(me: Object)
     if me.run_while_dimmed or not battle.dimmed() then
         local s = me.state :: State
         local magnet = me.related2 :: Object
-        if s.variant == 0 then
+        if s.follows_navi then
             -- 0x080D2C60: a navi's: gone once its attack's step reads 0x18 or its action isn't 0xB. (A player's
             -- action byte is its own action's number, 8 for MagnetMan's NSTackle: never 0xB.)
             if magnet.step == NAVI_DONE or magnet.actor_type == "player" or magnet.action ~= NAVI_ACTION then
@@ -55,8 +54,7 @@ local function tick(me: Object)
         local leader = me.related1 :: Object
         local p, lp = me.pos, leader.pos
         local y = bit32.bor(bit32.band(lp.y, 0xFFFF0000), bit32.band(p.y, 0xFFFF))
-        local ahead = if s.variant == 0 then NAVI_AHEAD else AHEAD
-        local hi = int.u16(s.dir * ahead + bit32.rshift(lp.x, 16))
+        local hi = int.u16(s.dir * s.ahead + bit32.rshift(lp.x, 16))
         local x = bit32.bor(bit32.lshift(hi, 16), bit32.band(p.x, 0xFFFF))
         me.pos = Vec3.new(int.i32(x), int.i32(y), p.z)
         me:set_panel_from_coordinates()
@@ -81,7 +79,7 @@ end
 pull.kind = new.kind {
     id = "magnetmn/pull",
     pool = "attack",
-    state = { dir = "i8", variant = "u8" },
+    state = { dir = "i8", ahead = "u8", follows_navi = "bool" },
     -- 0x080D2BE8.
     update = function(me: Object)
         local l = me.lifecycle
@@ -100,13 +98,13 @@ pull.kind = new.kind {
     end,
 }
 
--- 0x080D2CBA with variant 1: a pull of `magnet`'s side on (x, y) with `element`, `dir` of it, running while paused
--- and dimmed. (Its position is the spawner's registers, which its init overwrites.)
+-- 0x080D2CBA with variant 1: a pull of `magnet`'s side on (x, y) with `element`, `dir` of it, 20 pixels ahead,
+-- running while paused and dimmed. (Its position is the spawner's registers, which its init overwrites.)
 function pull.spawn(magnet: Object, x: number, y: number, element: number, dir: number): Object?
     local o = battle.spawn(pull.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.dir, s.variant = dir, 1
+        s.dir, s.ahead, s.follows_navi = dir, 0x14, false
         o.panel_x, o.panel_y = int.u8(x), y
         o.element = element
         o.alliance = magnet.alliance
@@ -117,12 +115,13 @@ function pull.spawn(magnet: Object, x: number, y: number, element: number, dir: 
     return o
 end
 
--- 0x080D2CBA with variant 0: a pull of `navi`'s side on (x, y) with `element`, `dir` of the navi, which it follows.
+-- 0x080D2CBA with variant 0: a pull of `navi`'s side on (x, y) with `element`, `dir` of the navi, which it follows,
+-- 40 pixels ahead.
 function pull.spawn_for_navi(navi: Object, x: number, y: number, element: number, dir: number): Object?
     local o = battle.spawn(pull.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.dir, s.variant = dir, 0
+        s.dir, s.ahead, s.follows_navi = dir, 0x28, true
         o.panel_x, o.panel_y = int.u8(x), y
         o.element = element
         o.alliance = navi.alliance

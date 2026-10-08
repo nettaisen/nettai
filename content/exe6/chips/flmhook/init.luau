@@ -6,6 +6,25 @@ local firehit_chips = require("./firehit")
 local hook = require("@self/hook")
 local sparks = require("../lib/sparks")
 
+-- Its hook's flames (the flames' Param2 0, `off_80DE88C`'s and the others'
+-- first rows): from the columns one and two ahead of its user; their arcs,
+-- a turn of 0x380 a tick, an afterimage every 4 ticks (shader 0x83E0, 14
+-- ticks), palette 0, still while dimmed; the fire spark.
+local FLAMES = hook.flames {
+    columns = function(me: Object): (number, number)
+        return me.panel_x + me.facing, me.panel_x + 2 * me.facing
+    end,
+    variant = hook.fire {
+        swing_high = 0,
+        arcs = { 0x16, 0xF5, 0x1E, 0x1E, 0x6A, 0x8B, 0x1E, 0x1E },
+        turn = 0x380,
+        trail = { every = 4, shader = 0x83E0, ticks = 0xE },
+        palette = 0,
+        while_dimmed = false,
+    },
+    spark = sparks.fire,
+}
+
 local flmhook1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
@@ -19,7 +38,7 @@ local flmhook1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
     program_advances = { { order = 20, code_run = { chip = firehit_chips.firehit1, count = 3 } } },
-    instant = hook.instant { big = false, spark = sparks.fire },
+    instant = hook.instant(FLAMES),
 }
 
 local flmhook2: Chip = {
@@ -35,7 +54,7 @@ local flmhook2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
     program_advances = { { order = 21, code_run = { chip = firehit_chips.firehit2, count = 3 } } },
-    instant = hook.instant { big = false, spark = sparks.fire },
+    instant = hook.instant(FLAMES),
 }
 
 local flmhook3: Chip = {
@@ -51,7 +70,7 @@ local flmhook3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
     program_advances = { { order = 22, code_run = { chip = firehit_chips.firehit3, count = 3 } } },
-    instant = hook.instant { big = false, spark = sparks.fire },
+    instant = hook.instant(FLAMES),
 }
 
 return { flmhook1 = flmhook1, flmhook2 = flmhook2, flmhook3 = flmhook3 }

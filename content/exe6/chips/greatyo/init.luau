@@ -4,7 +4,8 @@
 -- four panels, spin for five rounds and move together.
 
 local throw = require("./yoyo/throw")
-local yoyo = require("./yoyo").yoyo
+local yoyo = require("./yoyo/yoyo")
+local yoyo_chip = require("./yoyo").yoyo
 
 local chip: Chip = {
     codes = { "A", "B", "C", "*" },
@@ -18,8 +19,8 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
-    program_advances = { { order = 27, code_run = { chip = yoyo, count = 3 } } },
-    action = throw.action { id = "greatyo/action", yoyo = { great = true, panels = 4, rounds = 5 } },
+    program_advances = { { order = 27, code_run = { chip = yoyo_chip, count = 3 } } },
+    action = throw.action { id = "greatyo/action", throw = yoyo.three { panels = 4, rounds = 5 } },
 }
 
 return { greatyo = chip }

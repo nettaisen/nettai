@@ -26,13 +26,12 @@ local yoyo = {}
 -- navi's first related object, or one of its GreatYo controller's.
 export type YoyoSlot = "related" | "middle" | "below" | "above"
 
--- How a yoyo flies (`YoyoSpec`, types.d.luau): GreatYo's (which move
--- together, the original's second parameter), the panels it rolls out
--- (the third) and its spinning rounds (the fourth).
+-- How a yoyo flies (`YoyoSpec`, types.d.luau): the panels it rolls out
+-- (the original's third parameter) and its spinning rounds (the fourth).
+-- (Its second, GreatYo's, is whether a controller holds it: its slot.)
 export type Spec = YoyoSpec
 
 export type State = {
-    great: boolean,
     panels: number,
     rounds: number,
     -- Panels or rounds left (ExtraVars+0).
@@ -47,7 +46,6 @@ export type State = {
 
 -- The controller's state.
 export type ControllerState = {
-    great: boolean,
     panels: number,
     rounds: number,
     -- The yoyos it holds (ExtraVars+0, +4 and +8); the yoyos clear these
@@ -64,6 +62,12 @@ local HIT_MOD = 1
 local SPEED, ROUND = 0x5_0000, 8
 -- The actions: out, spinning, back.
 local OUT, SPIN, BACK = 0, 4, 8
+
+-- A GreatYo's yoyo (the original's second parameter): one its controller
+-- holds, which moves with the other two.
+local function great(s: State): boolean
+    return s.slot ~= "related"
+end
 
 -- The controller that holds a GreatYo's yoyo (its first related object).
 local function controller(me: Object): Object?
@@ -129,7 +133,7 @@ end
 -- Out of panels (or a GreatYo's hit): spin, with the panels to roll back.
 local function turn(me: Object, s: State)
     local back = s.panels - s.left
-    if s.great then
+    if great(s) then
         all_spin(me, back)
     else
         s.back = back
@@ -145,7 +149,7 @@ local function out(me: Object, s: State)
         me.timer = ROUND
         s.left = s.panels
         me.phase, me.phase_init = 4, 0
-        if s.great and s.hit ~= 0 then
+        if great(s) and s.hit ~= 0 then
             s.back = s.panels - s.left
             me:set_action(SPIN)
             all_spin(me, 0)
@@ -161,7 +165,7 @@ local function out(me: Object, s: State)
         me:set_coordinates_from_panel()
         local left = s.left - 1
         s.left = left
-        if left <= 0 or (s.great and s.hit ~= 0) then
+        if left <= 0 or (great(s) and s.hit ~= 0) then
             turn(me, s)
             return
         end
@@ -342,7 +346,6 @@ yoyo.kind = new.kind {
     id = "yoyo/yoyo",
     pool = "attack",
     state = {
-        great = "bool",
         panels = "u8",
         rounds = "u8",
         left = "i32",
@@ -380,7 +383,7 @@ function yoyo.spawn(
     local o = battle.spawn(yoyo.kind, Vec3.new(y, element, z))
     if o then
         local s = o.state :: State
-        s.great, s.panels, s.rounds = spec.great or false, spec.panels, spec.rounds
+        s.panels, s.rounds = spec.panels, spec.rounds
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)
@@ -397,7 +400,7 @@ end
 local function send(me: Object, y: number, slot: "middle" | "below" | "above"): Object?
     local c = me.state :: ControllerState
     local damage = me.damage + me.stamina * 0x10000
-    local spec: YoyoSpec = { great = c.great, panels = c.panels, rounds = c.rounds }
+    local spec: YoyoSpec = { panels = c.panels, rounds = c.rounds }
     return yoyo.spawn(me, me.panel_x, y, me.element, me.pos.z, damage, spec, slot)
 end
 
@@ -424,7 +427,6 @@ yoyo.controller = new.kind {
     id = "yoyo/great-yoyo",
     pool = "effect",
     state = {
-        great = "bool",
         panels = "u8",
         rounds = "u8",
         middle = "object",
@@ -463,7 +465,7 @@ function yoyo.spawn_controller(
     local o = battle.spawn(yoyo.controller, Vec3.new(y, element, z))
     if o then
         local s = o.state :: ControllerState
-        s.great, s.panels, s.rounds = spec.great or false, spec.panels, spec.rounds
+        s.panels, s.rounds = spec.panels, spec.rounds
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)
@@ -471,6 +473,22 @@ function yoyo.spawn_controller(
         o.related1 = owner
     end
     return o
+end
+
+-- A throw (./throw) of one yoyo flying as `spec` says, held in its navi's
+-- first related object: YoYo's.
+function yoyo.one(spec: Spec): (me: Object, x: number, y: number, z: number, damage: number) -> Object?
+    return function(me: Object, x: number, y: number, z: number, damage: number): Object?
+        return yoyo.spawn(me, x, y, 0, z, damage, spec, "related")
+    end
+end
+
+-- A throw of the controller, its three yoyos flying as `spec` says:
+-- GreatYo's.
+function yoyo.three(spec: Spec): (me: Object, x: number, y: number, z: number, damage: number) -> Object?
+    return function(me: Object, x: number, y: number, z: number, damage: number): Object?
+        return yoyo.spawn_controller(me, x, y, 0, z, damage, spec)
+    end
 end
 
 return yoyo
