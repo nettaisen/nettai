@@ -283,6 +283,10 @@ language = "en"
 "slogauge" = { name = "SloGauge", description = "CustGauge\nTemporary\nslow-down" }
 "fstgauge" = { name = "FstGauge", description = "CustGauge\nTemporary\nspeed-up" }
 "bass" = { name = "Bass", description = "Buster\nrake half\nenmy area" }
+"timebomb" = { name = "TimeBomb", description = "An area-\nwide time\nbomb" }
+"blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
+"mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
+"bassanly" = { name = "BassAnly", description = "A ring\nthat hits\n4 times" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
