@@ -161,6 +161,9 @@ language = "en"
 "twnfng1" = { name = "TwnFng1", description = "Launch 2\nfangs up\nand down" }
 "twnfng2" = { name = "TwnFng2", description = "Launch 2\nfangs up\nand down" }
 "twnfng3" = { name = "TwnFng3", description = "Launch 2\nfangs up\nand down" }
+"magbolt1" = { name = "MagBolt1", description = "Shocks an\nenemy\nahead" }
+"magbolt2" = { name = "MagBolt2", description = "Shocks an\nenemy\nahead" }
+"magbolt3" = { name = "MagBolt3", description = "Shocks an\nenemy\nahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

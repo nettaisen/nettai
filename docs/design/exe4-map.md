@@ -671,6 +671,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **MagBolt1 to MagBolt3** (action 0x59, `chips/magbolt`: EXE4's own action, which EXE5's MagnetSoul's charged shot
+  grew from): the magnet held (attachment rows 0x23 to 0x25), its field (attack 0x75: EXE5's MagnetSoul's, now
+  @exelib/magbolt/magnet, whose EXE4 spawn only watches the magnet's slot: `watches`) on the panel ahead for 30 ticks,
+  and a pull (region 8, hit modifier 4) on the six panels ahead each tick. The field's leave on a hit, the battle's end
+  or an emptied slot is a byte store (the lifecycle alone), its time's end a word store (from its first phase): EXE5's
+  too, which its port had as a word store throughout.
 - **TwnFng1 to TwnFng3** (action 0x34, `chips/twnfng`: EXE4's own): two fangs (attack 0x51, 0x080D79B8) from the
   navi's panel, a row down and a row up (24 pixels in 6 ticks, hit modifier 1, the plain spark), then forward 10
   pixels a tick as attacks of hit modifier 3 (their second parameter 0; the setup's types again, 0x08012ED0, whose
