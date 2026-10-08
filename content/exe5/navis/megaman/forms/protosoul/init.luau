@@ -7,6 +7,7 @@
 -- action 0x1F, as the Reflect program's).
 
 local attach_points = require("@self/attach_points")
+local attachment = require("../../../objects/attachment")
 local back = require("@self/back")
 local buster = require("../weapons/buster")
 local chaos = require("@self/chaos")
@@ -25,8 +26,10 @@ local form: FormDef = {
     sprite = asset.sprite("protosoul"),
     element = "null",
     buster_bonus = 0,
-    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires.
-    chaos = { weapon = chaos.weapon },
+    -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires,
+    -- and the blade its swords hold while the charge is armed (lib/swords, 0x080EC082: attachment row 10, the swords'
+    -- in palette 5).
+    chaos = { weapon = chaos.weapon, blade = attachment.look { sprite = asset.sprite("sword"), palette = 5 } },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
