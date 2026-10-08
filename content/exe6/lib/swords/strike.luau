@@ -9,6 +9,9 @@ local collision = require("../../rules/collision")
 local parts = require("./parts")
 local regions = require("@exelib/regions")
 
+-- The slash over a column.
+local WIDE_SLASH = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
+
 local strike = {}
 
 export type State = {
@@ -56,7 +59,7 @@ function strike.action(spec: StrikeSpec): Action
         -- The slash, flipped by the user's side (not its facing), in the
         -- sword's colors.
         local cx, cy = field.center(x, y)
-        battle.effect(Vec3.new(cx, cy, 0x10 * 0x10000), parts.effects.wide, me.alliance, spec.effect_palette)
+        battle.effect(Vec3.new(cx, cy, 0x10 * 0x10000), WIDE_SLASH, me.alliance, spec.effect_palette)
     end
 
     -- `sub_80EEB68`: hold the blade and swing; the slashes land on the 10th
@@ -65,7 +68,7 @@ function strike.action(spec: StrikeSpec): Action
         if me.step_init == 0 then
             me:open_counter_window()
             me:set_animation(5)
-            battle.play_sound(parts.sounds.swing)
+            battle.play_sound(parts.swing)
             parts.hold(me, spec.blade, 0)
             me:set_status("using_action", true)
             s.timer = 0x15

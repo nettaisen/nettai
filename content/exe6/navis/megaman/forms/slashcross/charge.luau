@@ -13,11 +13,14 @@
 --
 -- What the slash is comes with its `ChargedSlash` (./slashes), which the
 -- action keeps in its state: the charged shot's own, or the one the
--- charged chip's sword names (`slash_charge.of_action`). (The original
+-- charged chip's sword states (`slash_charge.of_action`; a chip that
+-- states none, the plain sword's, `slash_charge.plain`). (The original
 -- keeps the charged chip's subtype in the attack's variant and its first
 -- parameter, and reads each part of the slash from a table by it.)
 
+local lockon = require("../../../../rules/lockon")
 local parts = require("../../../../lib/swords/parts")
+local regions = require("@exelib/regions")
 local slashes = require("./slashes")
 local sword_wave = require("./sword_wave")
 local weapon = require("../../../../lib/weapon")
@@ -63,15 +66,38 @@ function slash_charge.begin(navi: Object, slash: ChargedSlash, dash: boolean): A
     return slash_charge.action
 end
 
+-- The plain sword's slash (the original's row 0, what a chip without a
+-- subtype reads): over the panel ahead.
+slash_charge.plain = slashes.slash {
+    wave = slashes.wave { region = regions.single, sprite = asset.sprite("sword-slash"), anim = 2 },
+    blade = parts.blade,
+    sound = parts.swing,
+    lockon = lockon.thunder,
+}
+
 -- The charged slash of a sword whose action is `action` (a slash of
 -- lib/swords, or MoonBld's swing: what its spec names as `charged`, with
 -- a step sword's dash). An action that names none slashes as the plain
 -- sword (the original's row 0, what a chip without a subtype reads).
 function slash_charge.of_action(navi: Object, action: Action): Action
     local spec = action.args :: { charged: ChargedSlash?, step: boolean? }?
-    local slash = (spec and spec.charged) or slashes.sword
+    local slash = (spec and spec.charged) or slash_charge.plain
     return slash_charge.begin(navi, slash, spec ~= nil and spec.step == true)
 end
+
+-- The charged shot's own slash: a short wave over a column (its sprite
+-- also steps after each update), no blade.
+local OWN = slashes.slash {
+    wave = slashes.wave {
+        region = regions.wide,
+        sprite = asset.sprite("charged-slash"),
+        anim = 0,
+        reach = 1,
+        steps = true,
+    },
+    sound = parts.swing,
+    lockon = lockon.widesht,
+}
 
 -- `sub_8011CD6`: 60 damage and 20 more per point of buster Attack (up to
 -- 5), a Sword attack: the charge's own slash, no dash.
@@ -80,7 +106,7 @@ local function setup(navi: Object): Action
     navi.hit_param = HIT_PARAM
     navi.attack_element = SWORD
     navi.extra = 0
-    return slash_charge.begin(navi, slashes.charge, false)
+    return slash_charge.begin(navi, OWN, false)
 end
 
 local function moving_or_sliding(me: Object): boolean
