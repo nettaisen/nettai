@@ -47,6 +47,8 @@ const MAP_CELLS: u32 = 15 * 20;
 const LAYOUT: CustomLayout = CustomLayout {
     column_cells: 0x43,
     turn_limit: 0x70,
+    // (0x0801EE6C's map at 0x0801EE9C: palette 14.)
+    turn_limit_palette: 14,
     name: 0x9C,
     art: 0xAC,
     code: 0xD6,
