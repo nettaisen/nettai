@@ -170,6 +170,9 @@ standard = [
     "flmline1",
     "flmline2",
     "flmline3",
+    "gunsol1",
+    "gunsol2",
+    "gunsol3",
     "blizzard",
     "heatbrth",
     "elecshok",
@@ -280,4 +283,5 @@ secret = [
     "greenwd1",
     "greenwd2",
     "greenwd3",
+    "gunsolex",
 ]
