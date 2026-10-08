@@ -473,8 +473,12 @@ export type EraseBeam = {
     aim: number,
     -- How long it stands.
     ticks: number,
-    -- A navi's own segment (EDeletBm's).
-    navis: boolean,
+    -- It acts and steps its sprite while the battle is dimmed (the EraseMan
+    -- chips'), or stands still then (a navi's own, EDeletBm's); and it goes
+    -- once its owner is out of the action that slashed it (EDeletBm's).
+    -- (The original's third parameter, a navi's own, gives both.)
+    while_dimmed: boolean,
+    tied: boolean,
 }
 
 -- How a dust storm blows (lib/instant/dust_storm, the original's Param2 and
