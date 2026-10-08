@@ -14,8 +14,8 @@ local statuses = require("../../rules/status")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's by the chip's level: DS's 4 gives 3).
+    palette: number,
 }
 
 local knightman = {}
@@ -198,7 +198,7 @@ local function init(me: Object)
     for _ = 1, 5 do
         sprite:step()
     end
-    sprite.palette = if (me.state :: State).level == 4 then 3 else 0
+    sprite.palette = (me.state :: State).palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:add_parts(CHAIN, 1)
     me:set_coordinates_from_panel()
@@ -210,7 +210,7 @@ end
 knightman.kind = new.kind {
     id = "knightmn/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8" },
+    state = { controller = "object", palette = "u8" },
     -- 0x080B9C28.
     update = function(me: Object)
         local l = me.lifecycle
@@ -229,8 +229,8 @@ knightman.kind = new.kind {
     end,
 }
 
--- 0x080B9E64: KnightMan for `user`, reporting to `controller` (the summon table's entry 5), of a chip of `level`.
-function knightman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080B9E64: KnightMan for `user`, reporting to `controller` (the summon table's entry 5), in his chip's `palette`.
+function knightman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(knightman.kind, user, spec)
         if not o then
@@ -238,14 +238,10 @@ function knightman.summon_at(level: number): (user: Object, controller: Object, 
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
--- KnightMan's (his Param1 0), KnightManSP's (3), KnightManDS's (4).
-knightman.summon = knightman.summon_at(0)
-knightman.summon_sp = knightman.summon_at(3)
-knightman.summon_dark = knightman.summon_at(4)
 
 return knightman

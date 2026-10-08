@@ -15,8 +15,8 @@ local regions = require("@exelib/regions")
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
-    -- The chip's level (its Param1: 0, 3 for SP, 4 for DS), which picks his palette.
-    level: number,
+    -- His chip's palette (the original's 0x0800DA8A: navi 10's count, 2, by 0x0800DAE8's row, by the chip's level).
+    palette: number,
 }
 
 local tmhwkman = {}
@@ -26,8 +26,6 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_SWING = asset.sound("tomahawk-man")
 -- The earth his tomahawk splashes (the effect table's row 0x45).
 local EARTH = new.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
--- By the level (0x0800DA8A: navi 10's count, 2, by 0x0800DAE8's row): SP's 4, DS's 6.
-local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
 local SOLID = 0x10
 -- When his tomahawk lands (ticks left of his swing).
 local STRIKE = 0x32
@@ -133,17 +131,17 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = raise, [0xC] = swing, [0x10] = leave }
 
--- 0x080BBEF4: on his panel, on the ground, his palette by the level.
+-- 0x080BBEF4: on his panel, on the ground, his chip's palette.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
-    me.sprite.palette = PALETTES[(me.state :: State).level] or 0
+    me.sprite.palette = (me.state :: State).palette
     me:set_lifecycle("update")
 end
 
 tmhwkman.kind = new.kind {
     id = "tmhwkman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8" },
+    state = { controller = "object", palette = "u8" },
     -- 0x080BBED0.
     update = function(me: Object)
         local l = me.lifecycle
@@ -162,9 +160,9 @@ tmhwkman.kind = new.kind {
     end,
 }
 
--- 0x080BC0B0: TomahawkMan for `user`, reporting to `controller` (the summon table's entry 12), of a chip of
--- `level`.
-function tmhwkman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BC0B0: TomahawkMan for `user`, reporting to `controller` (the summon table's entry 12), in his chip's
+-- `palette`.
+function tmhwkman.summon(palette: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(tmhwkman.kind, user, spec)
         if not o then
@@ -172,13 +170,10 @@ function tmhwkman.summon_at(level: number): (user: Object, controller: Object, s
         end
         local s = o.state :: State
         s.controller = controller
-        s.level = level
+        s.palette = palette
         return o
     end
 end
 
-tmhwkman.summon = tmhwkman.summon_at(0)
-tmhwkman.summon_sp = tmhwkman.summon_at(3)
-tmhwkman.summon_dark = tmhwkman.summon_at(4)
 
 return tmhwkman

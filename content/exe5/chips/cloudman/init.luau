@@ -23,7 +23,7 @@ local cloudman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "cloudman/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "when_free_ahead_of_enemies" },
 }
@@ -47,7 +47,7 @@ local cloudmn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "cloudmn-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "when_free_ahead_of_enemies" },
 }
@@ -69,7 +69,7 @@ local cloudmn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "cloudmn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(6),
     },
     auto_battle = { class = "when_free_ahead_of_enemies" },
 }
