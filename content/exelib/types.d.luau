@@ -352,12 +352,12 @@ export type PuckLook = {
     hits: CollisionType,
     spark: Spark,
     burst: Effect,
-    trail_tint: number,
+    trail_tint: number?,
 }
 
--- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, and whether it
--- goes down the field.
-export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean }
+-- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, whether it goes down
+-- the field, and the navi's animation as it flicks (none: EXE6's and EXE5's 0x0C).
+export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean, anim: number? }
 
 -- A sun beam's look (@exelib/gundels/beam): its sprite and palette.
 export type SunBeamLook = { sprite: SpriteAsset, palette: number }
