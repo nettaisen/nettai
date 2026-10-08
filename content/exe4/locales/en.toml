@@ -234,6 +234,9 @@ language = "en"
 "crosswrd" = { name = "CrosSwrd", description = "" }
 "sprsonic" = { name = "SprSonic", description = "" }
 "dbldream" = { name = "DblDream", description = "" }
+"aquaman" = { name = "AquaMan", description = "Water Gun\nsprays\n2sq ahead" }
+"aquamn-sp" = { name = "AquaMnSP", description = "Water Gun\nsprays\n2sq ahead" }
+"aquamn-ds" = { name = "AquaMnDS", description = "Water Gun\nsprays\n2sq ahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
