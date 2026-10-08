@@ -287,6 +287,8 @@ standard = [
     "geddon1",
     "geddon2",
     "geddon3",
+    "slogauge",
+    "fstgauge",
     "nrthwind",
     "holypanl",
     "hole",

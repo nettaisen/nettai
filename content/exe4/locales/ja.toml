@@ -274,6 +274,8 @@ language = "ja"
 "panlsht1" = { name = "パネルシュート1", description = "目の前のパネルを\nうきあがらせて\n前方にとばして攻撃" }
 "panlsht2" = { name = "パネルシュート2", description = "前後のパネルを\nうきあがらせて\n前方にとばして攻撃" }
 "panlsht3" = { name = "パネルシュート3", description = "上下左右のパネルを\nうきあがらせて\n前方にとばして攻撃" }
+"slogauge" = { name = "ヘビーゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがおちる" }
+"fstgauge" = { name = "クイックゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがあがる" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
