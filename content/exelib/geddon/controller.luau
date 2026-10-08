@@ -5,14 +5,14 @@
 -- occupied); EXE5's doesn't (0x080E275C: no `object_reservePanel` or `object_removePanelReserve`).
 --
 -- Each game makes its own kind (`controller.make`) with its quake's spawn; a chip's `dimming` hook is the made
--- controller's `hook(change)`.
+-- controller's `hook(change)`, its quake's change its own (`quake.change`, @exelib/geddon/quake).
 
 local dimming_chips = require("@exelib/dimming")
 
 local controller = {}
 
--- What the quake does to the panels (its rows, by the chip's first parameter).
-export type Change = "crack" | "break" | "poison"
+-- What the quake does to the panels (the chip's, @exelib/geddon/quake).
+type Change = GeddonChange
 
 export type State = {
     change: Change,
@@ -64,7 +64,7 @@ function controller.make(spec: Spec): Controller
     local kind = new.kind {
         id = spec.id,
         pool = "effect",
-        state = { change = { "crack", "break", "poison" }, busy = "bool" },
+        state = { change = "record:geddon-change", busy = "bool" },
         -- EXE6's `sub_80E24E4`.
         update = dimming_chips.phases { name = spec.name, effect = effect },
     }
