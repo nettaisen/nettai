@@ -1271,7 +1271,7 @@ export type AnubisVariant = {
     period: number,
     hp: number,
     lifetime: number,
-    identity: Identity,
+    identity: Identity?,
 }
 
 -- A panel change (objects/panel_changer, a row of the original's
