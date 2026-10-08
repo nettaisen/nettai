@@ -1,5 +1,5 @@
 --!strict
--- SearchSoul (soul 4, Red Sun's): EXE4's Double Soul with SearchMan, for an invisible chip given up (0x08020008[3]).
+-- SearchSoul (soul 4): EXE4's Double Soul with SearchMan, for an invisible chip given up (0x08020008[3]).
 -- MegaMan's sprite in it is 00-04, his face picture 8 (0x08014B78), SearchMan's image searchman (08-04). (What the
 -- souls share: forms/soul.)
 
@@ -9,7 +9,6 @@ local soul = require("./soul")
 local form: FormDef = {
     soul = { family = "invisible", turns = 3 },
     chip = chip,
-    version = "redsun",
     change = chip.action,
     revert = soul.revert,
     image = soul.image(asset.sprite("searchman")),

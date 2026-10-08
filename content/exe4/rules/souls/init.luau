@@ -16,7 +16,7 @@ local turns = require("@self/turns")
 local souls = {}
 
 -- What the rules list of Double Soul's: its actions, which reach the rules' state (./turns): the revert, and each
--- soul's change (its chip's use, ./change's maker), gathered from MegaMan's souls (his forms, by version); and its part
+-- soul's change (its chip's use, ./change's maker), gathered from MegaMan's souls (his form list); and its part
 -- of the custom screen.
 local actions: { Action } = { revert.action }
 local forms: { [string]: any } = megaman.forms or {}
