@@ -7,12 +7,13 @@
 -- (`sub_80E90FE`; the role `kinds.support`) and starts a dimming no one can cut in on (`sub_800BF16`).
 --
 -- The controller dims the screen, shows the telop (the support's chip record, which the game keeps at +0x30), then:
--- Rush's and Beat's host warps out for 31 ticks (Tango's doesn't), the support comes and the controller waits for it
--- to go, waits 31 ticks, the host warps back in (not Tango's), 31 ticks, and the screen undims. See
--- docs/engine/chips.md §2.10.
+-- the host warps out for 31 ticks if the support says so (Rush's and Beat's; Tango's doesn't), the support comes and
+-- the controller waits for it to go, waits 31 ticks, the host warps back in (the same), 31 ticks, and the screen
+-- undims. See docs/engine/chips.md §2.10.
 --
--- The rules set its state as it spawns it: which support (the original's first parameter), the chip Rush eats (its
--- third and fourth) and the telop's chip. Related object 1 is the host.
+-- The rules set its state as it spawns it: which support (the original's first parameter: the engine's pick at run
+-- time, the look's support of that name), the chip Rush eats (its third and fourth) and the telop's chip. Related
+-- object 1 is the host.
 
 local dimming_chips = require("../dimming")
 
@@ -63,17 +64,11 @@ function controller.make(look: SupportsLook): Kind
         end
     end
 
-    -- The support's spawner (`off_80E90A4`, EXE5's 0x080E9010, by the first
-    -- parameter).
-    local function send(me: Object, s: State)
+    -- The support the rules sent, by its name (`off_80E90A4`'s spawners,
+    -- EXE5's 0x080E9010, by the first parameter).
+    local function sent(s: State): SupportActor
         local support = s.support
-        if support == "rush" then
-            look.rush.spawn(me, s.eaten)
-        elseif support == "beat" then
-            look.beat.spawn(me)
-        else
-            look.tango.spawn(me)
-        end
+        return if support == "rush" then look.rush elseif support == "beat" then look.beat else look.tango
     end
 
     -- `sub_80E9024` (action 8; EXE5's 0x080E8F94), by phase.
@@ -81,9 +76,9 @@ function controller.make(look: SupportsLook): Kind
         local s = me.state :: State
         local p = me.phase
         if p == 0 then
-            -- sub_80E9048: the host warps out (not Tango's).
+            -- sub_80E9048: the host warps out (if the support says so).
             if me.phase_init == 0 then
-                if s.support == "tango" then
+                if not sent(s).warps then
                     next_phase(me, 4)
                     return
                 end
@@ -98,7 +93,7 @@ function controller.make(look: SupportsLook): Kind
             -- sub_80E9074: the support comes; the controller waits for it to
             -- go (a support that couldn't come never was out).
             if me.phase_init == 0 then
-                send(me, s)
+                sent(s).spawn(me, s.eaten)
                 me.phase_init = 4
             end
             if not s.out then
@@ -114,9 +109,9 @@ function controller.make(look: SupportsLook): Kind
                 next_phase(me, 0xC)
             end
         elseif p == 0xC then
-            -- sub_80E90CE: the host warps back in; then the undim.
+            -- sub_80E90CE: the host warps back in (the same); then the undim.
             if me.phase_init == 0 then
-                if s.support ~= "tango" then
+                if sent(s).warps then
                     warp(me, false)
                 end
                 me.timer = WAIT

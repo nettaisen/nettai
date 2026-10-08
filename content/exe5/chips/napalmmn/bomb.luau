@@ -1,11 +1,11 @@
 --!strict
 -- A napalm bomb (EXE5's attack object #0x3A, 0x080CC490; EXE6's `sub_80CB284` is the same, though no EXE6 content
--- throws it): lobbed at a panel, fire, it lands there in 45 ticks, falling by its variant's gravity (variant 2's
--- lighter), its target marked in the operation battle (lib/navi_chips/marker). Off a solid panel it goes in a
+-- throws it): lobbed at a panel, fire, it lands there in 45 ticks, falling by its thrower's gravity (the original's
+-- by its variant: NapalmSoul's variant 2 lighter), its target marked in the operation battle (lib/navi_chips/marker). Off a solid panel it goes in a
 -- puff. On one it hits its panel for 5 ticks (thrown, hitting navis, hit modifier 3, no spark), with a sound; when
 -- nothing stands there, its fire spreads over the eight panels around too (a one-tick hit region) and burns on
--- them in an order the console's own RNG (RNG1) shuffles, half at once and half as it goes. Variant 0, unless told
--- quiet, lights the 3x3 around its target as it flies.
+-- them in an order the console's own RNG (RNG1) shuffles, half at once and half as it goes. One whose thrower says so
+-- (the original's variant 0 unless told quiet: no thrower's) lights the 3x3 around its target as it flies.
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
@@ -15,9 +15,9 @@ local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
 
 export type State = {
-    -- Its variant (its first parameter: 0, 1 or 2) and its second (nonzero: it doesn't light its target).
-    variant: number,
-    quiet: number,
+    -- Its fall (16.16 a tick), and whether it lights its target (its thrower's).
+    gravity: number,
+    lights: boolean,
     -- The panel it lands on (its third and fourth parameters).
     target_x: number,
     target_y: number,
@@ -33,17 +33,12 @@ local SOUND_LOB = asset.sound("cannon")
 local SOUND_LAND = asset.sound("target-move")
 -- The fire on a panel (the effect table's row 0x4B: sprite 10-19).
 local FIRE = new.effect { sprite = asset.sprite("napalm-fire"), anim = 0, palette = 0 }
--- Its flight's ticks, and its gravity by the variant (16.16 a tick).
+-- Its flight's ticks.
 local FLIGHT = 0x2D
-local GRAVITY, LIGHT_GRAVITY = -0xA000, -0x4000
 -- A panel something stands on (as one word).
 local TAKEN = 0x0F80_0000
 -- How long it hits.
 local BURST = 4
-
-local function gravity(me: Object): number
-    return if (me.state :: State).variant == 2 then LIGHT_GRAVITY else GRAVITY
-end
 
 -- `sub_8000CA6` with RNG1: shuffle the first `n` panels with `n` swaps of two picked at random. Every console does
 -- it with its own RNG; the simulation follows the local side's, and the other's draws alike.
@@ -89,7 +84,7 @@ local function fly(me: Object)
     if me.phase_init == 0 then
         me.timer = FLIGHT
         local x, y = field.center(s.target_x, s.target_y)
-        me.vel = trajectory.in_ticks(me.pos, x, y, 0, FLIGHT, gravity(me))
+        me.vel = trajectory.in_ticks(me.pos, x, y, 0, FLIGHT, s.gravity)
         me.phase_init = 4
     end
     if me.timer == 0x1E then
@@ -102,10 +97,10 @@ local function fly(me: Object)
     if left >= 0 then
         local p, v = me.pos, me.vel
         me.pos = Vec3.new(int.i32(p.x + v.x), int.i32(p.y + v.y), int.i32(p.z + v.z))
-        me.vel = Vec3.new(v.x, v.y, int.i32(v.z + gravity(me)))
+        me.vel = Vec3.new(v.x, v.y, int.i32(v.z + s.gravity))
         me:set_panel_from_coordinates()
         me:update_collision_panels()
-        if s.variant == 0 and s.quiet == 0 and bit32.band(me.timer, 4) ~= 0 then
+        if s.lights and bit32.band(me.timer, 4) ~= 0 then
             panels.highlight_region(s.target_x, s.target_y, regions.square, me.facing)
         end
         return
@@ -227,8 +222,8 @@ bomb.kind = new.kind {
     id = "napalmmn/bomb",
     pool = "attack",
     state = {
-        variant = "u8",
-        quiet = "u8",
+        gravity = "i32",
+        lights = "bool",
         target_x = "u8",
         target_y = "u8",
         burning = "u8[8]",
@@ -253,9 +248,10 @@ bomb.kind = new.kind {
 }
 
 export type Lob = {
-    -- Its variant, and whether it keeps its target unlit.
-    variant: number,
-    quiet: boolean?,
+    -- Its fall (16.16 a tick: the original's by its variant, -0xA000; NapalmSoul's variant 2 -0x4000), and whether
+    -- it lights its target as it flies (the original's variant 0 unless quiet).
+    gravity: number,
+    lights: boolean?,
     -- The panel it lands on.
     target_x: number,
     target_y: number,
@@ -276,8 +272,8 @@ function bomb.lob(owner: Object, pos: Vec3, lob: Lob): Object?
         return nil
     end
     local s = o.state :: State
-    s.variant = lob.variant
-    s.quiet = if lob.quiet then 1 else 0
+    s.gravity = lob.gravity
+    s.lights = lob.lights == true
     s.target_x, s.target_y = lob.target_x, lob.target_y
     o.alliance, o.flip = owner.alliance, owner.flip
     o.element = 1
