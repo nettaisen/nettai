@@ -336,6 +336,15 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# HawkCut's controller (0x080E95E0; its position the spawner's registers), each chip's own kind, and its ProtoMan
+# (0x080C8A28; spawned at the controller's registers).
+"hawkcut1/controller" = { pool = "effect", index = 0x68, scratch_position = true }
+"hawkcut2/controller" = { pool = "effect", index = 0x68, scratch_position = true }
+"hawkcut3/controller" = { pool = "effect", index = 0x68, scratch_position = true }
+"hawkcut/protoman" = { pool = "actor", index = 0x44 }
+# BoyBomb's controller (0x080E94CC; its position the dimming handler's registers) and its bomb (0x080D4F40).
+"boybomb/controller" = { pool = "effect", index = 0x67, scratch_position = true }
+"boybomb/bomb" = { pool = "attack", index = 0x3E }
 # MetlGer's controller (0x080E7244; its position the spawner's registers); its gear is the stages' (`gear`).
 "metlger/controller" = { pool = "effect", index = 0x49, scratch_position = true }
 # RollAro's controller (0x080E8FA0; its position the spawner's registers), each chip's own kind, and its Roll
