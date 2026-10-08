@@ -204,6 +204,9 @@ language = "en"
 "bighamr2" = { name = "BigHamr2", description = "Hammr atk\nsmashes\nin front!" }
 "bighamr3" = { name = "BigHamr3", description = "Hammr atk\nsmashes\nin front!" }
 "godhammr" = { name = "GodHammr", description = "Places a\nstone\nstatue" }
+"geddon1" = { name = "Geddon1", description = "Cracks\nall panel\non screen" }
+"geddon2" = { name = "Geddon2", description = "Breaks\nall empty\npanels" }
+"geddon3" = { name = "Geddon3", description = "Turns all\npanels to\nswamp" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
