@@ -1723,6 +1723,27 @@ export type Cannonball = { kind: Kind, thrower: () -> Thrower }
 -- 0x080D5AA4 reads the spawn's +0x64; none: EXE5's, which stores it and never reads it), and its water's height: the
 -- register the geyser's update leaves for the water's spawn, the battle state's address (the battle-over test's r3:
 -- EXE5's 0x02034A90, EXE4's 0x02035810), at which the water's hits land and their sparks show, far above the field.
+-- The Guard chips' shock wave's variant (@exelib/guard/wave, a row of the game's table): its animation, its ticks on a
+-- panel, and what it does to the panels it passes.
+export type GuardWaveVariant = { anim: number, ticks: number, panel: ("cracked" | "broken" | "poison")? }
+
+-- A game's Guard shock wave (@exelib/guard/wave): its key, sheet and sound; what a plain one is, what a marking one
+-- is, and what they hit; whether a segment keeps its sender (its flip and the sender as its owner); whether its first
+-- tick of spreading notes the panel ahead (the phase byte).
+export type GuardWaveLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    attack: CollisionType,
+    thrown: CollisionType,
+    hits: CollisionType,
+    owned: boolean,
+    notes_ahead: boolean,
+}
+
+-- A game's Guard shock wave's spawn: a segment of `owner`'s on (x, y), of a variant, with the damage word.
+export type GuardWaveSpawn = (owner: Object, x: number, y: number, variant: GuardWaveVariant, damage: number) -> Object?
+
 export type GeyserLook = {
     id: string,
     water_id: string,
