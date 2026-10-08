@@ -38,7 +38,7 @@ local voltz2: Chip = {
     lockout = 20,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    instant = voltz.instant(1, 20),
+    instant = voltz.instant(4, 20),
     auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
@@ -57,7 +57,7 @@ local voltz3: Chip = {
     lockout = 20,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    instant = voltz.instant(2, 20),
+    instant = voltz.instant(8, 20),
     auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 

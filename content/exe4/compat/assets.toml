@@ -98,6 +98,7 @@ rock = "10-02"
 shock-wave = "10-04"  # the Guard chips' shock wave: attack 0x16's init (0x080CFBFE, its rows' first byte), EXE5's shock wave's
 number-ball = "10-05"
 numberman-face = "10-06"  # NumberMan's face: actor 0x5C's sprite row 0 (0x080CCC94)
+fireman-flame = "10-08"  # the flame on FireMan's head: his form overlay (actor 0x57, 0x080B9302)
 rock-debris = "10-09"
 flame-line = "10-0a"  # the FlmLines' flame: attack 0x19's init (0x080CFFAE)
 django-rubble = "10-0e"

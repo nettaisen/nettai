@@ -198,7 +198,8 @@ function tango.make(look: TangoLook): SupportActor
         return o
     end
 
-    return { kind = kind, spawn = spawn }
+    -- Her host stays while she comes (the controller's first phase skips the warp out, its fourth the warp in).
+    return { kind = kind, spawn = spawn, warps = false }
 end
 
 return tango

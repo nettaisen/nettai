@@ -4,7 +4,10 @@
 -- §18): it falls from high up behind its panel onto it, hits it with a
 -- burst, cracks it and shakes the camera, then bounces back up and goes.
 -- EXE5's falls without a sound, and goes when the battle ends. Each game
--- makes its kind (`fist.make`: its kind and its spawn).
+-- makes its kind (`fist.make`: its kind and its spawn). It falls fast (its
+-- Param2 4, what MetrKnuk's spawner sets; the original's slow fall, Param2
+-- 0, which cracks a panel not yet cracked only on an even draw, no spawner
+-- leaves).
 
 local regions = require("../regions")
 
@@ -25,42 +28,29 @@ export type Look = {
     ends_with_battle: boolean,
 }
 
-export type State = {
-    -- The fast fall (Param2 4, what MetrKnuk's spawner sets) or the slow
-    -- one (Param2 0, which no spawner leaves).
-    fast: boolean,
-}
-
 -- Where it starts: 134 pixels behind its panel's center, 16 down, at the
 -- spawner's height.
 local BEHIND, DOWN = 0x86_0000, 0x10_0000
--- By Param2 (0, 4): the fall's first speed, the speed forward and the
--- gravity (EXE6's `byte_80DBD8C`, `byte_80DBD98`, `byte_80DBE44`).
-local FALL: { slow: number, fast: number } = { slow = 0x6_0000, fast = 0xE_0000 }
-local FORWARD: { slow: number, fast: number } = { slow = 0xA_0000, fast = 0x11_8000 }
-local GRAVITY: { slow: number, fast: number } = { slow = 0x7800, fast = 0xD200 }
+-- The fast fall's first speed, its speed forward and its gravity (EXE6's
+-- `byte_80DBD8C`, `byte_80DBD98`, `byte_80DBE44`: Param2 4's rows).
+local FALL, FORWARD, GRAVITY = 0xE_0000, 0x11_8000, 0xD200
 -- Its hit (`sub_80DBEBA`, 0x15050001): on its panel, hit modifier 3.
 local HIT_MOD = 3
 -- The bounce: 7 ticks, moving back for the last 4.
 local BOUNCE, BOUNCE_MOVES = 7, 4
-local CRACKED, SOLID = 0x40, 0x10
+local SOLID = 0x10
 
 -- A game's fist kind, and its spawn.
 function fist.make(look: Look): {
     kind: Kind,
     spawn: (spawner: Object, x: number, y: number, element: number, z: number, damage: number) -> Object?,
 }
-    local function row(me: Object, t: { slow: number, fast: number }): number
-        return if (me.state :: State).fast then t.fast else t.slow
-    end
-
     -- `sub_80DBDBC`: forward and down; on landing a burst (jittered), the hit,
-    -- the panel cracked (the slow one cracks a panel not yet cracked only on
-    -- an even draw), and on a solid panel the camera shaken.
+    -- the panel cracked, and on a solid panel the camera shaken.
     local function fall(me: Object)
         local p = me.pos
         local x = p.x + me.vel.x
-        local vz = me.vel.z + row(me, GRAVITY)
+        local vz = me.vel.z + GRAVITY
         me.vel = Vec3.new(me.vel.x, me.vel.y, vz)
         local z = int.i32(p.z - vz)
         if z >= 0 then
@@ -89,11 +79,7 @@ function fist.make(look: Look): {
             h.run_while_dimmed = me.run_while_dimmed
         end
         local flags = field.flags(px, py)
-        if (me.state :: State).fast
-            or (not bit32.btest(flags, CRACKED) and not bit32.btest(battle.rng_positive(), 1))
-        then
-            field.crack(px, py)
-        end
+        field.crack(px, py)
         if bit32.btest(flags, SOLID) then
             battle.shake_camera(1, 5)
         end
@@ -125,7 +111,7 @@ function fist.make(look: Look): {
         me:set_coordinates_from_panel()
         local p = me.pos
         me.pos = Vec3.new(p.x - me.facing * BEHIND, p.y + DOWN, p.z)
-        me.vel = Vec3.new(me.facing * row(me, FORWARD), me.vel.y, row(me, FALL))
+        me.vel = Vec3.new(me.facing * FORWARD, me.vel.y, FALL)
         local sprite = me.sprite
         sprite:load(look.sprite)
         sprite.shadow = "with_sprite"
@@ -144,7 +130,6 @@ function fist.make(look: Look): {
     local kind = new.kind {
         id = look.id,
         pool = "attack",
-        state = { fast = "bool" },
         -- `sub_80DBCEC`.
         update = function(me: Object)
             local l = me.lifecycle
@@ -183,7 +168,6 @@ function fist.make(look: Look): {
             o.alliance, o.flip = spawner.alliance, spawner.flip
             o.related1 = spawner
             o.run_while_dimmed = true
-            (o.state :: State).fast = true
         end
         return o
     end
