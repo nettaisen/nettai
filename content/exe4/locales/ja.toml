@@ -173,6 +173,9 @@ language = "ja"
 "magbolt1" = { name = "マグボルト1", description = "あいてを目の前の\nマスにすいつけて\n電気ショック!" }
 "magbolt2" = { name = "マグボルト2", description = "あいてを目の前の\nマスにすいつけて\n電気ショック!" }
 "magbolt3" = { name = "マグボルト3", description = "あいてを目の前の\nマスにすいつけて\n電気ショック!" }
+"propbom1" = { name = "プロペラボム1", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"propbom2" = { name = "プロペラボム2", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
+"propbom3" = { name = "プロペラボム3", description = "前方へとんでいき\n画面はしにきえると\n大ばくはつをおこす" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
