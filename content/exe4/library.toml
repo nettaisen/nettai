@@ -242,6 +242,8 @@ standard = [
     "repair",
     "panlgrab",
     "areagrab",
+    "invis",
+    "popup",
     "antifire",
     "antiwatr",
     "antielec",
