@@ -945,6 +945,13 @@ impl UserData for Collision {
             }
             with(|api, _| Ok(api.add_damage(this.0, element, amount, raw)))
         });
+        methods.add_method("add_raw_damage", |_, this, (element, amount): (LuaValue, LuaValue)| {
+            let (element, amount) = (u8_arg(element, "element")?, u16_arg(amount, "amount")?);
+            if element > 5 {
+                return Err(mlua::Error::runtime(format!("add_raw_damage: element {element} (0 to 4, 5 the sixth slot)")));
+            }
+            with(|api, _| Ok(api.add_raw_damage(this.0, element, amount)))
+        });
         methods.add_method("add_mood_damage", |_, this, amount: LuaValue| {
             let amount = u16_arg(amount, "amount")?;
             with(|api, _| Ok(api.add_mood_damage(this.0, amount)))
