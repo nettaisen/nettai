@@ -19,6 +19,7 @@ return merge {
     require("@self/barrier"),
     require("@self/bighamr"),
     require("@self/binder"),
+    require("@self/blkbomb"),
     require("@self/boomer"),
     require("@self/breath"),
     require("@self/bubbler"),
