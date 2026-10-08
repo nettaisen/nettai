@@ -211,3 +211,6 @@
 "popup/controller" = { pool = "effect", index = 0x3D, scratch_position = true }
 "popup/glow" = { pool = "actor", index = 0x5D }
 "underground-hole" = { pool = "effect", index = 0x3E }
+# The panel chips' controller (Hole, PnlRetrn, HolyPanl, Snctuary, DrkLine: 0x080E4584; its position the spawner's
+# registers).
+"panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }

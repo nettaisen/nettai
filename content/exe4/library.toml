@@ -242,6 +242,9 @@ standard = [
     "repair",
     "panlgrab",
     "areagrab",
+    "pnlretrn",
+    "holypanl",
+    "hole",
     "invis",
     "popup",
     "antifire",
@@ -257,8 +260,10 @@ standard = [
 ]
 mega = [
     "fullcust",
+    "snctuary",
     "atk-30",
     "elemdark",
+    "drkline",
     "roll",
     "roll-sp",
     "roll-ds",
