@@ -45,6 +45,10 @@
 "twnfng/fang" = { pool = "attack", index = 0x51 }
 # The WideShts' wave (0x080D4ADA).
 "widesht/wave" = { pool = "attack", index = 0x3B }
+# GrabRvng's and GrabBnsh's dimming controller (0x080E4814: its position the spawner's registers) and hand
+# (0x080D60FA).
+"grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
+"grabbnsh/hand" = { pool = "attack", index = 0x46 }
 # The AirHocs' puck (0x080D2B08).
 "airhoc/puck" = { pool = "attack", index = 0x2E }
 # The GunSols' sun beam (0x080E7216).
