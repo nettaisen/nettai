@@ -1900,11 +1900,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      (souls/roll/heal).
    - **GutsSoul (2).** GutsMan's fist charged (0x24, 0x0800CF62) *done* (souls/guts/hit); six B presses within 10
      ticks of each other ask for the machine gun (0x0800BE50, action 0x10) *done* (souls/guts/rapid); the status
-     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *ported*.
-   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94) *done* (souls/wind/hit); the
-     status reset (0x0800E0F4): air and float shoes (flag1 0x30), a floating navi's body (row 0x10), its wind
-     (0x080E68F8, held at AIData +0x5C), 10 more on each damaging Wind chip (0x0800E208) *ported*; the image's part (row
-     0x34) *done* (souls/wind/hit); B's AirShot (0x6B, 0x0800D3E8) *open*; WindRack charged (0x09, 0x0800D204) *open*.
+     reset's 30 more on each damaging Null and Break chip of the hand (0x0800E1CA) *done* (souls/guts/bonus).
+   - **WindSoul (3).** The change's north wind (0x080EBAD2, attack 0x5A at 0x080D8C94), which takes a barrier away
+     (wind: the raw hit flags' 0x20, 0x08012E0C) *done* (souls/wind/barrier); the status reset (0x0800E0F4): float
+     and air shoes (flag1 0x20, 0x10) *done* (souls/wind/cracked, broken), a floating navi's body (row 0x10), its wind
+     (0x080E68F8, held at AIData +0x5C; none beside a Fan's) *done* (souls/wind/wind, fan), 10 more on each damaging
+     Wind chip (0x0800E208) *done* (souls/wind/chips); the image's part (row 0x34) *done* (souls/wind/hit); B's AirShot
+     (0x6B, 0x0800D3E8: variant 1, a 30-tick recovery) and WindRack charged (0x09, 0x0800D204) *done* (souls/wind/side1,
+     unison).
    - **SearchSoul (4).** The status reset's effect 0x44 (0x080E6E4C, 0x080E6D74): a mark (effect row 0x52) over each
      enemy navi with flag 0x206, then after 10 ticks a hitbox (0x2C05FF80) *open*; charged 0x0A (0x0800CDC4) *open*.
    - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
