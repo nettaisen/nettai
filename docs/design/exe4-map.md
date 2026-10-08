@@ -1908,8 +1908,16 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      Wind chip (0x0800E208) *done* (souls/wind/chips); the image's part (row 0x34) *done* (souls/wind/hit); B's AirShot
      (0x6B, 0x0800D3E8: variant 1, a 30-tick recovery) and WindRack charged (0x09, 0x0800D204) *done* (souls/wind/side1,
      unison).
-   - **SearchSoul (4).** The status reset's effect 0x44 (0x080E6E4C, 0x080E6D74): a mark (effect row 0x52) over each
-     enemy navi with flag 0x206, then after 10 ticks a hitbox (0x2C05FF80) *open*; charged 0x0A (0x0800CDC4) *open*.
+   - **SearchSoul (4).** The status reset's reveal (effect 0x44: 0x080E6E4C, 0x080E6D74): the scope's mark (effect
+     row 0x52, 10-23) over the other side's navi when invisible, submerged or flashing (flag1 0x206; a netbattle's
+     one slot, `sub_800A832` 70 and on), then on its next update a hit over the field for no damage through
+     invisibility (0x2C05FF80: row 0x2C at navis), running while dimmed (0x080CD81E) *done* (souls/search/reveal);
+     its scope charged (0x0A, 0x0800CDC4; action 0x3E, 0x080EDB5C: 0x0800FB3C's find, five shots, the first through
+     invisibility, row 0x19, the rest row 0x0A, the last flinching) *done* (souls/search/scope, unison, side1).
+     Presentation, open: in souls/search/side1 (frames 491 to 498) mGBA draws the opponent's HP number in front of
+     the spiraling image, the engine behind it; the RAM's sprite list (0x03002000 at that tick) has the image's parts
+     (80 to 84) at priority 0 before the number's 32x16 (85, priority 1), which mGBA's rule (priority, then index)
+     would put behind the image: what the hardware takes is to find.
    - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
      panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle row and four more panels turn grass, blinking
      10 ticks) *open*; a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged
