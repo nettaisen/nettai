@@ -295,6 +295,14 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# MetlGer's controller (0x080E7244; its position the spawner's registers); its gear is the stages' (`gear`).
+"metlger/controller" = { pool = "effect", index = 0x49, scratch_position = true }
+# RollAro's controller (0x080E8FA0; its position the spawner's registers), each chip's own kind, and its Roll
+# (0x080C8120; spawned at the controller's panel and side).
+"rollaro1/controller" = { pool = "effect", index = 0x63, scratch_position = true }
+"rollaro2/controller" = { pool = "effect", index = 0x63, scratch_position = true }
+"rollaro3/controller" = { pool = "effect", index = 0x63, scratch_position = true }
+"rollaro/roll" = { pool = "actor", index = 0x41 }
 # GutPnch's controller (0x080E90CC; its position the spawner's registers), each chip's own kind, and its GutsMan
 # (0x080C83F8; spawned at the controller's registers).
 "gutpnch1/controller" = { pool = "effect", index = 0x64, scratch_position = true }
