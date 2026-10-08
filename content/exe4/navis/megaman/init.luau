@@ -42,11 +42,25 @@ local navi: NaviDef = {
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His forms (he is MegaMan: the rules ask whether a navi has them where the original asks whether it is
-    -- MegaMan), and so his faces are his forms' (forms/base's `mugshot`): the souls Double Soul gives, by version, in
-    -- their numbers' order (rules/souls: Red Sun's 1 to 6, Blue Moon's 7 to 12; a side's `souls` are its version's).
+    -- MegaMan), and so his faces are his forms' (forms/base's `mugshot`): the souls Double Soul gives, in their
+    -- numbers' order (rules/souls; a side's `souls` are those it has).
     forms = {
-        redsun = { form_list = { rollsoul, gutssoul, windsoul, searchsoul, firesoul, thundersoul } },
-        bluemoon = { form_list = { protosoul, numbersoul, metalsoul, junksoul, aquasoul, woodsoul } },
+        souls = {
+            form_list = {
+                rollsoul,
+                gutssoul,
+                windsoul,
+                searchsoul,
+                firesoul,
+                thundersoul,
+                protosoul,
+                numbersoul,
+                metalsoul,
+                junksoul,
+                aquasoul,
+                woodsoul,
+            },
+        },
     },
     identity = new.identity {
         class = "player",

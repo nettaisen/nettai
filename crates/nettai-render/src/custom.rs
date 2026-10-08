@@ -403,11 +403,9 @@ fn offered_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
 
 /// An offer's icon among its button's: the offered form's place in the
 /// side's navi's form list that holds it, from 1 (the list is in the icons'
-/// order: EXE5's souls, the original's soul numbers; a navi's lists by
-/// version as one list in the versions' order, EXE4's souls: Red Sun's six,
-/// then Blue Moon's), and the form's alternate (`offer_chaos`) the one after
-/// the list's; 0, the empty icon, for no form or one none of the navi's
-/// lists holds.
+/// order: EXE5's and EXE4's souls, the original's soul numbers), and the
+/// form's alternate (`offer_chaos`) the one after the list's; 0, the empty
+/// icon, for no form or one none of the navi's lists holds.
 fn offer_icon(b: &Battle, side: u8, offer: nettai_battle::rules::Offer) -> usize {
     match form_place(b, side, offer.form) {
         Some((_, len)) if offer.alternate => len + 1,
@@ -418,27 +416,10 @@ fn offer_icon(b: &Battle, side: u8, offer: nettai_battle::rules::Offer) -> usize
 
 /// Where `form` is among side `side`'s navi's forms: its place in the
 /// first of the navi's form lists that holds it (from 0), and the list's
-/// length; where every list is a version's (EXE4's souls), its place in
-/// them all, one after another in the versions' order, and their lengths'
-/// sum.
+/// length.
 fn form_place(b: &Battle, side: u8, form: Option<FormHandle>) -> Option<(usize, usize)> {
     let navi = b.stats[side as usize & 1].navi;
-    let forms = b.content.navi(navi).forms.as_ref()?;
-    let form = form?;
-    let versions = b.content.defs.versions();
-    if !forms.lists.is_empty() && forms.lists.iter().all(|(name, _)| versions.contains(name)) {
-        let total = forms.lists.iter().map(|(_, l)| l.len()).sum();
-        let mut before = 0;
-        for version in versions {
-            let listed = forms.listed(version);
-            if let Some(place) = listed.iter().position(|&f| f == form) {
-                return Some((before + place, total));
-            }
-            before += listed.len();
-        }
-        return None;
-    }
-    let (place, list) = forms.holding(form)?;
+    let (place, list) = b.content.navi(navi).forms.as_ref()?.holding(form?)?;
     Some((place, list.len()))
 }
 
