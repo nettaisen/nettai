@@ -122,9 +122,11 @@ pub enum KindRole {
     /// #0xD2, `sub_80DFD74`) and an actor object (#0x28, `sub_80C02A6`).
     Mode9Attack,
     Mode9Actor,
-    /// The ripple over a body under the sea's surface (EXE5's effect object
-    /// #0x3E, 0x080E4B64), which the navi's status tick keeps
-    /// (0x0800DEB2): the engine gives it the body as its first related.
+    /// The mark over a body that is under (effect object #0x3E: EXE5's
+    /// ripple over a body under its sea's surface, 0x080E4B64; EXE4's hole
+    /// over a navi under the ground, 0x080E64FC), which the navi's tail
+    /// keeps (`sub_801012C`): the engine gives it the body as its first
+    /// related.
     DiveRipple,
     /// The charge glow a navi's charge brings, where the rules say a charge
     /// brings its own (`effects.charge_glow = with_charge`: EXE4's effect
