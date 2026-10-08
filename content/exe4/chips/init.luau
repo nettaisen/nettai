@@ -55,6 +55,7 @@ return merge {
     require("@self/greenwd"),
     require("@self/guard"),
     require("@self/gunsol"),
+    require("@self/gutpnch"),
     require("@self/gutsman"),
     require("@self/heatshot"),
     require("@self/hole"),

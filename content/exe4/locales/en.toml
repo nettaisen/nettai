@@ -239,6 +239,9 @@ language = "en"
 "aquamn-ds" = { name = "AquaMnDS", description = "Water Gun\nsprays\n2sq ahead" }
 "sandring" = { name = "SandRing", description = "Opens a\npitfall\ntrap" }
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
+"gutpnch1" = { name = "GutPnch1", description = "Launches\nGutPunch\nahead" }
+"gutpnch2" = { name = "GutPnch2", description = "Launches\nGutStrgt\nahead" }
+"gutpnch3" = { name = "GutPnch3", description = "Launches\nGutImpct\nahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
