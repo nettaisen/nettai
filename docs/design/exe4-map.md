@@ -678,7 +678,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
   #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
   by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
-  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle).
+  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle). NumberMan (actor #0x0F), his face
+  (actor #0x5C) and his die (attack #5) are EXE5's (@exelib/numbrman), EXE4's differences their specs': the face, with
+  the fight on, follows him from its first update (its action 8; its action 4, a random battle's intro, is never
+  reached); the die states its own 40 HP and hit modifier 3, places itself on its panel, has no markers and no face 9,
+  and multiplies its damage's whole halfword by its face. The die's other throwers, the NumberMan boss's (0x080EC1E4,
+  0x080F3336), aren't ported.
 
 **For the next steps:**
 
