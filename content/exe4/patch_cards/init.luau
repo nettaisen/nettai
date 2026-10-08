@@ -47,6 +47,7 @@ return merge {
     require("@self/042_b_left_ability_activation"),
     require("@self/045_default_full_synchro"),
     require("@self/046_first_barrier200"),
+    require("@self/047_weapon_change"),
     require("@self/048_weapon_change"),
     require("@self/049_buster_attack_15"),
     require("@self/050_gigafolder1"),

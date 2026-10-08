@@ -420,10 +420,12 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     }
 }
 
-/// `sub_80106C0`, then `sub_8010740`: the opponent's NaviCust support
-/// turns the chip back, once: Beat (stat 0x0D bit 1) a Mega or Giga
-/// chip, Rush (bit 0) a chip flagged for him. (The game reads the chip's
-/// record with the id as it is, flag bits and all.)
+/// `sub_80106C0`, then `sub_8010740` (EXE4's 0x0800C838 and 0x0800C8C0):
+/// the opponent's NaviCust support turns the chip back, once: Beat (stat
+/// 0x0D bit 1) a Mega or Giga chip (but a dark one where the rules spare
+/// it: `chip_use.beat_spares_dark`), Rush (bit 0) a chip flagged for him.
+/// (The game reads the chip's record with the id as it is, flag bits and
+/// all.)
 fn intercepted(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
     intercepted_by(b, r, chip, true)
 }
@@ -444,8 +446,9 @@ fn intercepted_by(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, beat: 
     // The attack's chip; none reads as the pack's chip 0.
     let record = b.chip_field(chip).clone();
     let other = b.objects.get(r).alliance ^ 1;
+    let spared = b.game_rules().chip_use.beat_spares_dark && record.flags.0 & crate::content::ChipFlags::DARK != 0;
     let support = match b.stats[other as usize].support {
-        Some(opp) if beat && opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) => {
+        Some(opp) if beat && opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) && !spared => {
             b.stats[other as usize].support = Some(crate::setup::Supports { beat: false, ..opp });
             Support::Beat
         }
