@@ -243,15 +243,15 @@ pub(crate) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
 }
 
 /// What a form's routine of `sub_8014536` or `sub_801469C` does, in the
-/// order the original's routines do it: the statuses end
-/// (`sub_80145C2`); the flags (`SetObjectAirshoeFlag`,
+/// order the original's routines do it: the statuses end, but not in the
+/// first turn (`sub_80145C2`, `sub_801462A`, `sub_801472A`, `sub_8014776`); the flags (`SetObjectAirshoeFlag`,
 /// `SetObjectSuperArmorFlag`, AirShoe and FloatShoe of `sub_8014606`, the
 /// untouchable flag 0x08000000 with the shoes of `sub_8014674`); the floating body; the lock-on marker;
 /// invulnerable for good and the controllers' state cleared
 /// (`sub_8014650`: `controller_fresh`, which EXE6's rules read).
 fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
     if effects.has(FormEffects::CLEAR_STATUSES) {
-        clear_statuses_unless_mode1(b, r);
+        clear_statuses_after_first_turn(b, r);
     }
     let mut flags1 = 0;
     for (effect, flag) in [
@@ -289,9 +289,11 @@ fn spawn_target_marker(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A264` unless the battle mode is 1.
-fn clear_statuses_unless_mode1(b: &mut Battle, r: ObjectRef) {
-    if super::battle_mode(b) != 1 {
+/// `sub_801A264` unless the turn counter (BattleState+0x07, the custom
+/// screens opened so far) is 1: a form taken at the first custom screen, or
+/// a NaviCust edit in its turn, leaves the statuses be.
+fn clear_statuses_after_first_turn(b: &mut Battle, r: ObjectRef) {
+    if b.round.turn != 1 {
         super::clear_statuses(b, r);
     }
 }
