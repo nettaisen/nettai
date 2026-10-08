@@ -175,6 +175,7 @@ language = "en"
 
 [navicust_programs]
 "airshoes" = { name = "AirShoes", description = "Walk even\nif no\npanels!" }
+"antimagc" = { name = "AntiMagc", description = "When hit,\nB + Left\nhurl star" }
 "attack-1" = { name = "Attack+1", description = "MegBuster\nAttack+1!" }
 "attckmax" = { name = "AttckMAX", description = "MegBuster\nAttckMAX!" }
 "battery" = { name = "Battery", description = "Attracts\nElec\nviruses!" }

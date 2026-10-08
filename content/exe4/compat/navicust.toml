@@ -4,6 +4,7 @@
 
 [programs]
 "airshoes" = 12
+"antimagc" = 10
 "attack-1" = 34
 "attckmax" = 37
 "battery" = 17
@@ -46,6 +47,7 @@
 # Each program's colored variants (a part id's low bits), in the order of its definition's colors.
 [variants]
 "airshoes" = [0]
+"antimagc" = [3]
 "attack-1" = [0, 1, 2]
 "attckmax" = [0, 1, 2]
 "battery" = [3]
