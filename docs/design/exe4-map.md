@@ -826,6 +826,20 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   explosion (effect row 0) and 0xC8. Each chip states its balls (its first parameter and three: 3, 4, 5). Damage is
   formula 49 (power 1049, 0x0801963E): the last two digits of the user's HP (`hp_last_digits`). The lab's chips/ (15)
   replay every frame; NumbrBl3's hit is pixel-exact.
+- **RollAro1 to RollAro3** (the dimming chips' variant 0x35, `chips/rollaro`: EXE4's own): a controller (effect
+  #0x63, 0x080E8FA0) run as the navi chips' on the long course (lib/navi_chips), bringing Roll (actor #0x41,
+  0x080C8120, sheet 08-01 in palette 0): she fades in with a sparkle (effect row 0x2E) and 0xB0, flickering; 15 ticks
+  on she draws her bow (animation 7), 10 ticks on shoots the flying shot's row 15 (RollSoul's arrow at 7 pixels a
+  tick, running while dimmed, 0x132) from 8 pixels ahead, a pixel up, 36 high; 6 and 30 ticks on she leaves
+  (animation 4) and rises 15 pixels a tick, sparkling every 5, until 160 pixels up, her end letting the controller
+  go on. Her spawner keeps neither her element nor a related object, her height her side. The lab's chips/ (12)
+  replay every frame; RollAro1's hit and side1 are pixel-exact.
+- **MetlGer1 to MetlGer3** (the dimming chips' variant 0x22, `chips/metlger`: EXE4's own): a controller (effect
+  #0x49, 0x080E7244, the usual dimming phases, its spawn taking the user's side alone) sets the stages' gear
+  (objects/gear, attack #0x76) in its mode 1 (`gear.spawn`, 0x080DC006: rolling on the other side for 1800 ticks, one
+  of its side's field objects) on the other side's solid, free panel of the user's row nearest that side's far edge
+  (0x0800A1AE), with the chip's damage and no telop bonus, and 0xA0; then 60 ticks. The lab's chips/ (12) and
+  stages/type5 replay every frame; MetlGer1's hit is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The

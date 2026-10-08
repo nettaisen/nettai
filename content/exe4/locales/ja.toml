@@ -259,6 +259,12 @@ language = "ja"
 "nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
 "vdoll" = { name = "ワラニンギョウ", description = "おそろしいノロイの\nワラニンギョウを\n3マス前方になげる" }
 "curse" = { name = "ノロイ", description = "" }
+"rollaro1" = { name = "ロールアロー1", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"rollaro2" = { name = "ロールアロー2", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"rollaro3" = { name = "ロールアロー3", description = "ロールアローを\n前方へはなつ!\nチップはかい攻撃!" }
+"metlger1" = { name = "メタルギア1", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"metlger2" = { name = "メタルギア2", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
+"metlger3" = { name = "メタルギア3", description = "前方のあいてエリア\n左はしのマスに\nはぐるまが発生!" }
 "woodman" = { name = "ウッドマン", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
 "woodmn-sp" = { name = "ウッドマンSP", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
 "woodmn-ds" = { name = "ウッドマンDS", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
