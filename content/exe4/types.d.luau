@@ -17,6 +17,31 @@ export type BreathState = {
     count: number,
 }
 
+-- A flying shot's variant (objects/flying_shot: one of the 16-byte rows at 0x080CE5B0, which each user defines where
+-- it fires it).
+export type FlyingShotVariant = {
+    -- Its collision (the row's first three bytes: what it is, what it hits, the hit modifier).
+    is: CollisionType,
+    hits: CollisionType,
+    hit_mod: number,
+    -- Its element byte.
+    element: number,
+    -- Its hit spark (0xFF: none).
+    spark: Spark?,
+    sprite: SpriteAsset,
+    anim: number,
+    -- It casts a shadow on the ground (else its first part is drawn with the sprite).
+    shadow: boolean,
+    -- It lights the panels it covers (its second parameter).
+    highlight: boolean,
+    -- The panel centers it passes before it ends (its third parameter).
+    range: number,
+    -- 16.16 a tick, forward.
+    speed: number,
+    -- What shows at the panel's center as its range runs out (row 5's: effect row 0x56).
+    end_effect: Effect?,
+}
+
 -- The NaviCust's bug counts (rules/navicust's), which a card raises or clears.
 export type PatchCardCounts = {
     add: (bug: string, n: number) -> (),
