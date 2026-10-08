@@ -304,6 +304,12 @@ pub struct ProgramAdvanceRules {
     /// taken out, are cleared (EXE4's 0x0801F438: no chip, no damage); else
     /// they keep what they held (EXE6's).
     pub clears_past_end: bool,
+    /// The animation is the screen's own state (EXE4's 0x10, 0x0801E608):
+    /// its first tick runs its first step and its last step goes on to the
+    /// send (0x0801E8AC); else it runs in a state of its own, whose first
+    /// tick only starts it and whose end takes a tick more (EXE6's
+    /// `sub_802B734`: `sub_802B75C`, `sub_802B766`).
+    pub in_screen_state: bool,
 }
 
 /// Until when a player's console says its custom screen is open.
@@ -366,7 +372,12 @@ impl Default for CustomScreenLayout {
             run_message_at_key: false,
             invalid_picks: InvalidPicks::Picked,
             special_codes: SpecialCodes::Apart,
-            program_advances: ProgramAdvanceRules { once_a_round: true, keeps_regular: true, clears_past_end: false },
+            program_advances: ProgramAdvanceRules {
+                once_a_round: true,
+                keeps_regular: true,
+                clears_past_end: false,
+                in_screen_state: false,
+            },
             modifier_passes_regular: false,
             status_until: StatusUntil::Closing,
             hover: HoverRules {
