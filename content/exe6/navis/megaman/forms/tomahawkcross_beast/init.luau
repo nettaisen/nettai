@@ -10,6 +10,8 @@ local forms = require("../../../rules/forms")
 
 local form: FormDef = {
     kind = "cross_beast",
+    -- The Falzar Beast buster's shots' palette (`byte_80EC784`).
+    beast_shot_palette = 2,
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
     version = "falzar",
