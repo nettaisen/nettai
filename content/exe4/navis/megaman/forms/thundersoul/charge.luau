@@ -1,24 +1,29 @@
 --!strict
 -- ThunderSoul's charged shot (`thundersoul/charged-shot`): weapon routine 0x58 (0x0800D298: 20 damage, elec, variant 3,
--- counter byte 0x8A, every other attack variable 0, its parameters 0) and the row shot it starts (action 0x47:
--- objects/row_shot, its row 0): the navi raises its hand (attachment row 0x1D, 0c-36) and an elec shot runs along its
--- row, 10 pixels a tick, paralyzing what it hits for 90 ticks (status 0x10).
+-- counter byte 0x8A, every other attack variable 0, its parameters 0) and the ring throw it starts (action 0x47:
+-- lib/rings, holding the ring, attachment row 0x1D, 0c-36, in animation 13), of ring row 0 (objects/ring: the ring
+-- 0c-37 along its row, 10 pixels a tick, paralyzing what it hits for 90 ticks, status 0x10; hit modifier 0; sound
+-- 0x91): the zap ring's (navis/megaman/weapons/zap_ring).
 
 local attachment = require("../../../../objects/attachment")
-local row_shot = require("../../../../objects/row_shot")
+local ring = require("../../../../objects/ring")
+local rings = require("../../../../lib/rings")
 local statuses = require("../../../../rules/status")
 
 local charge = {}
 
-charge.action = row_shot.make {
-    id = "thundersoul/charged-shot",
-    speed = 10,
-    status = statuses.paralyze_90,
-    sound = asset.sound("zap-ring"),
-    sprite = asset.sprite("zap-ring"),
-    hit_mod = 0,
+charge.action = rings.action {
+    id = "thundersoul/charged-shot/action",
     anim = 13,
-    hand = attachment.look { sprite = asset.sprite("zap-ring-arm"), palette = 0 },
+    held = attachment.look { sprite = asset.sprite("zap-ring-arm"), palette = 0 },
+    ring = ring.variant {
+        sprite = asset.sprite("zap-ring"),
+        speed = 10,
+        status = statuses.paralyze_90,
+        sound = asset.sound("zap-ring"),
+        hit_mod = 0,
+        sand = nil,
+    },
 }
 
 -- 0x0800D298.
