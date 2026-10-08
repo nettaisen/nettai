@@ -256,6 +256,9 @@ mega = [
     "topman",
     "topmn-sp",
     "topmn-ds",
+    "sparkman",
+    "sprkmn-sp",
+    "sprkmn-ds",
 ]
 giga = [
     "deltaray",

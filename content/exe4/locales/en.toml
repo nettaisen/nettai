@@ -145,6 +145,9 @@ language = "en"
 "blizzard" = { name = "Blizzard", description = "Snowstorm\nattack!\nIce Panel" }
 "elecshok" = { name = "ElecShok", description = "Cracker\nElectric\nblast" }
 "woodpwdr" = { name = "WoodPwdr", description = "Changes\npanels\nto grass" }
+"sparkman" = { name = "SparkMan", description = "SparkWave\nblinds\nenemy!" }
+"sprkmn-sp" = { name = "SprkMnSP", description = "SparkWave\nblinds\nenemy!" }
+"sprkmn-ds" = { name = "SprkMnDS", description = "SparkWave\nblinds\nenemy!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
