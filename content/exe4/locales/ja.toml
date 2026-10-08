@@ -158,6 +158,9 @@ language = "ja"
 "widesht1" = { name = "ワイドショット1", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
 "widesht2" = { name = "ワイドショット2", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
 "widesht3" = { name = "ワイドショット3", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
+"twnfng1" = { name = "ツインファング1", description = "自分の上下のれつに\n2本のキバを\nハッシャする!" }
+"twnfng2" = { name = "ツインファング2", description = "自分の上下のれつに\n2本のキバを\nハッシャする!" }
+"twnfng3" = { name = "ツインファング3", description = "自分の上下のれつに\n2本のキバを\nハッシャする!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
