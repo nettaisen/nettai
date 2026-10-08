@@ -143,15 +143,26 @@ fn tint(c: u16) -> u16 {
 /// whether tinted.
 type Shown<'f> = (PackId, &'f [MapEntry], bool);
 
+/// How many palettes, from background palette 0, a palette flash fills
+/// with white (`sub_80E10C0`, EXE4's 0x080E2A34: the stage's nine).
+const FLASH_PALETTES: usize = 9;
+
 impl<'a> Stage<'a> {
     /// The field of the arena's game (`arena`, its root) and the fields it
     /// borrows from, of `packs`, behind `background` (none: the backdrop).
-    pub fn new(packs: &Packs<'a>, c: &Content, background: Option<&'a Background>, clock: StageClock) -> Stage<'a> {
+    /// `flashed`: a palette flash that comes before the fades fills the
+    /// stage's palettes with white this frame, in the palette transforms'
+    /// first slot: after the palettes' own frames, before the background's
+    /// palette shifts (EXE4's 0x0800258C runs its slots in order: the
+    /// flash's 0, a background's shift 3, the dimming's 18), so a shifted
+    /// palette shows the shifted white.
+    pub fn new(packs: &Packs<'a>, c: &Content, background: Option<&'a Background>, clock: StageClock, flashed: bool) -> Stage<'a> {
         let art = FieldArt::of(c, packs);
         let assets = packs.bundle(art.arena);
         let mut palettes = field_palettes(&assets.field, clock);
         let mut tile_anims = Vec::new();
         let mut scroll = (0, 0);
+        let mut shifts = Vec::new();
         if let Some(bg) = background {
             if let Some(p) = bg.palette {
                 palettes[0] = p;
@@ -165,7 +176,6 @@ impl<'a> Stage<'a> {
                 Some(s) => s.offset(if s.from_battle { clock.field } else { n }),
                 None => (counter(bg.scroll.0), counter(bg.scroll.1)),
             };
-            let mut shifts = Vec::new();
             for anim in &bg.anims {
                 let Some(frame) = anim_frame(anim, n) else { continue };
                 let fr = &anim.frames[frame];
@@ -184,10 +194,15 @@ impl<'a> Stage<'a> {
                     AnimTarget::Nothing => {}
                 }
             }
-            for (first, count, darken, by) in shifts {
-                for slot in palettes.iter_mut().skip(first as usize).take(count as usize) {
-                    *slot = slot.map(|c| nettai_assets::shift_color(c, by, darken));
-                }
+        }
+        if flashed {
+            for slot in palettes.iter_mut().take(FLASH_PALETTES) {
+                *slot = [0x7FFF; 16];
+            }
+        }
+        for (first, count, darken, by) in shifts {
+            for slot in palettes.iter_mut().skip(first as usize).take(count as usize) {
+                *slot = slot.map(|c| nettai_assets::shift_color(c, by, darken));
             }
         }
         Stage { assets, background, palettes, tile_anims, scroll, art }
@@ -487,7 +502,7 @@ mod tests {
         assert_eq!((art.panel(testing::panel("sea")), art.panel(testing::panel("lava"))), (Art::Tint, Art::Tint));
         assert_eq!((art.highlight(1), art.highlight(2)), (Art::Field(pack), Art::Tint));
 
-        let stage = Stage::new(&packs, c, None, StageClock::default());
+        let stage = Stage::new(&packs, c, None, StageClock::default(), false);
         let mut layer = Layer::new(2, 2);
         let view = crate::objects::View { camera: (0, 0, 0), mirror: false, fade: Default::default() };
         let mut problems = Problems::default();
@@ -500,6 +515,34 @@ mod tests {
         assert_ne!(tint(RED), RED);
         assert_eq!(at(&layer, 100, 84), RED, "a normal panel");
         assert_eq!(at(&layer, 20, 108), tint(RED), "highlight 2, tinted");
+    }
+
+    /// A flash before the fades fills the stage's nine palettes with white
+    /// before a background's palette shift: the shifted palette shows the
+    /// shifted white (EXE4's darksoul under SparkMan's flash), the others
+    /// white, those past them as they are; without it, the shift is of the
+    /// background's own colors.
+    #[test]
+    fn a_flash_before_the_fades_fills_before_the_background_shifts() {
+        let b = battle(["normal", "normal", "normal"]);
+        let c = &b.content;
+        let a = Bundle { field: field(&["normal"], 0, [RED, 0]), ..Bundle::default() };
+        let packs = Packs::one(&a);
+        let shift = 0x2268;
+        let frame = GfxAnimFrame { shift, delay: 1, ..Default::default() };
+        let bg = Background {
+            palette: Some([0x1234; 16]),
+            anims: vec![GfxAnim { target: AnimTarget::PaletteShift { first: 0, count: 1, darken: true }, frames: vec![frame], repeat_from: None }],
+            ..Background::default()
+        };
+        let flashed = Stage::new(&packs, c, Some(&bg), StageClock::default(), true);
+        assert_eq!(flashed.palettes[0], [nettai_assets::shift_color(0x7FFF, shift, true); 16]);
+        assert_eq!(flashed.palettes[0][0], 23 | 12 << 5 | 23 << 10, "white less (8, 19, 8)");
+        assert!(flashed.palettes[1..9].iter().all(|p| *p == [0x7FFF; 16]));
+        assert_eq!(flashed.palettes[9], [0; 16]);
+        let plain = Stage::new(&packs, c, Some(&bg), StageClock::default(), false);
+        assert_eq!(plain.palettes[0][0], nettai_assets::shift_color(0x1234, shift, true));
+        assert_eq!(plain.palettes[1][1], RED);
     }
 
     #[test]
