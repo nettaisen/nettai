@@ -21,6 +21,7 @@ return merge {
     require("@self/boomer"),
     require("@self/breath"),
     require("@self/bubbler"),
+    require("@self/bugbomb"),
     require("@self/burnman"),
     require("@self/cannon"),
     require("@self/copydmg"),

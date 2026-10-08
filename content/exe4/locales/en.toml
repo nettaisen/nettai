@@ -222,6 +222,7 @@ language = "en"
 "sandring" = { name = "SandRing", description = "Opens a\npitfall\ntrap" }
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 "blkbomb" = { name = "BlkBomb", description = "Firebomb\nhits 3rd\nsq ahead!" }
+"bugbomb" = { name = "BugBomb", description = "Throws a\nbug-bomb\n3sq ahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -336,6 +337,7 @@ language = "en"
 "037-max-hp-up" = { name = "Max HP Up" }
 "038-max-hp-up" = { name = "Max HP Up" }
 "039-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"041-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "045-default-full-synchro" = { name = "Default Full Synchro" }
 "046-first-barrier200" = { name = "First Barrier200" }
@@ -395,6 +397,7 @@ language = "en"
 "105-panel-change" = { name = "Panel Change" }
 "106-weapon-change" = { name = "Weapon Change" }
 "107-weapon-change" = { name = "Weapon Change" }
+"108-weapon-change" = { name = "Weapon Change" }
 "109-megafolder3" = { name = "MegaFolder3" }
 "110-custom3" = { name = "Custom3" }
 "111-gigafolder1" = { name = "GigaFolder1" }
@@ -404,6 +407,7 @@ language = "en"
 "115-charge-shot-switch" = { name = "Charge Shot Switch" }
 "116-charge-shot-switch" = { name = "Charge Shot Switch" }
 "117-charge-shot-switch" = { name = "Charge Shot Switch" }
+"118-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
 "133-weapon-change" = { name = "Weapon Change" }

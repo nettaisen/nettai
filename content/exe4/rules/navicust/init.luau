@@ -149,6 +149,11 @@ local function apply(stats: Navi, e: NaviCustEffect, work: Work)
     end
 end
 
+-- The weapon bug's charged shots by its level (+0x0A = 0x1F, 0x20, 0x21: the rock cube, the bubble, the taunt).
+local bug_shots = require("../navis/megaman/weapons/bug_shots")
+local taunt = require("../navis/megaman/weapons/taunt").weapon
+local BUG_WEAPONS: { Weapon } = { bug_shots.rock_cube, bug_shots.bubble, taunt }
+
 -- Each bug at its level, 1 to 3 (0x08042B18's routines).
 local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
     move = function(stats, level)
@@ -171,6 +176,9 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
     end,
     support = function(stats, _level)
         stats.rush, stats.beat, stats.tango, stats.support_bug = false, false, false, true
+    end,
+    weapon = function(stats, level)
+        stats.charge_shot_weapon = BUG_WEAPONS[level]
     end,
     result = function(stats, _level)
         stats.result_bug = true
@@ -407,8 +415,6 @@ end
 -- The bytes of the navi's stats that hold a kind of bug, and the values that are one (0x08043070, 0x0804304C).
 local MOVE_BUGS, HP_DRAINS, CUSTOM_DRAINS = { 0x20, 0x10, 0xFF }, { 0x0A, 6, 3 }, { 6, 4, 3 }
 local PANEL_BUGS, BLANKS = { 3, 4 }, { 4, 8, 0x0A }
--- The weapon bug's charged shots (+0x0A = 0x1F, 0x20, 0x21: of them the content has the taunt alone).
-local taunt = require("../navis/megaman/weapons/taunt").weapon
 
 -- 0x08043014: how many kinds of bug side `side`'s navi has, of EXE4's nine (the move, HP and custom drains, the
 -- panel trail, the encounter, the buster's blanks, the support, the charged weapon, the result), each by its byte's
@@ -418,6 +424,7 @@ local function bug_kinds(side: number): number
     local function of(v: number, values: { number }): boolean
         return table.find(values, v) ~= nil
     end
+    local charged = s.charge_shot_weapon
     local kinds = {
         of(s.move_bug, MOVE_BUGS),
         of(s.hp_drain, HP_DRAINS),
@@ -426,7 +433,7 @@ local function bug_kinds(side: number): number
         s.encounter_bug,
         of(s.buster_blanks, BLANKS),
         s.support_bug,
-        s.charge_shot_weapon == taunt,
+        charged ~= nil and table.find(BUG_WEAPONS, charged) ~= nil,
         s.result_bug,
     }
     local n = 0
@@ -452,6 +459,7 @@ return {
             encounter = "u8",
             buster = "u8",
             support = "u8",
+            weapon = "u8",
             result = "u8",
             hub = "u8",
         },
