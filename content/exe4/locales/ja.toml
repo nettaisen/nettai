@@ -253,6 +253,10 @@ language = "ja"
 "videmn-sp" = { name = "ビデオマンSP", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 "videmn-ds" = { name = "ビデオマンDS", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 "bugbomb" = { name = "バグボム", description = "あいてをバグらせる\nバグボムを3マス前\nになげつける" }
+"kendoman" = { name = "ケンドーマン", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"kendmn-sp" = { name = "ケンドーマンSP", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"kendmn-ds" = { name = "ケンドーマンDS", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
