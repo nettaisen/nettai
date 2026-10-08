@@ -1,15 +1,16 @@
 --!strict
--- Bass, the navi of the Bass chips, as EXE6 and EXE5 share him (the original's actor object #0x4F: EXE6's
--- `sub_80C3970`, EXE5's 0x080C2948, the same code but for the parts each game passes), brought by the navi chip
--- controller. He appears on his user's panel with his cape (a form overlay), rises for 100 ticks, raises his arm,
+-- Bass, the navi of the Bass chips, as EXE6, EXE5 and EXE4 share him (the original's actor object #0x4F: EXE6's
+-- `sub_80C3970`, EXE5's 0x080C2948, EXE4's 0x080CADC0, the same code but for the parts each game passes), brought by
+-- the navi chip controller. He appears on his user's panel with his cape (a form overlay), rises for 100 ticks, raises his arm,
 -- then fires 24 volleys of two shots, 8 ticks apart, at the columns ahead holding the other side's panels: each
 -- shot at a panel with an enemy navi five times in eight (else, or if there is none, any panel of those columns),
 -- none at a panel shot in the last 22 ticks. Then he leaves, and the controller moves on. See
 -- docs/engine/chips.md §3.6.33.
 --
 -- Each game makes its own kind (`bass.make`): his sprite, his cape's animation offset, his wind-up's and volleys'
--- animations, how he ends (EXE6: 12 ticks, his arm down, 30 more; EXE5: his last volley's animation, then gone when
--- it ends), his shot (the game's panel strike) and its flash, and the smoke he leaves in.
+-- animations, how he ends (EXE6: 12 ticks, his arm down, 30 more; EXE5 and EXE4: his last volley's animation, then
+-- gone when it ends), his shot (the game's panel strike) and its flash (and how far it jitters), and the smoke he
+-- leaves in.
 
 local panels = require("../panels")
 
@@ -37,9 +38,11 @@ export type Spec = {
     -- (EXE5's 0x080C2AD6).
     ending: "timed" | "animation",
     last_anim: number?,
-    -- A shot on (x, y) with his damage word (the game's panel strike), and its flash at his hand.
+    -- A shot on (x, y) with his damage word (the game's panel strike), and its flash at his hand, jittered by the mask
+    -- `flash_jitter` (EXE6's and EXE5's 0xF when none; EXE4's 0x080CB0EA 0x1F).
     shoot: (me: Object, x: number, y: number, damage: number) -> (),
     flash: Effect,
+    flash_jitter: number?,
     -- What he leaves in (effect 0x12), and his appearing's sound.
     smoke: Effect,
     appear: Sound,
@@ -157,7 +160,7 @@ function bass.make(spec: Spec): Bass
         spec.shoot(me, x, y, damage_word(me))
         -- sub_80C3CA0: the flash 20 pixels ahead of him and 34 up, jittered.
         local p = me.pos
-        local pos = battle.jitter(0xF, Vec3.new(p.x + me.facing * 0x14_0000, p.y, p.z + 0x22_0000))
+        local pos = battle.jitter(spec.flash_jitter or 0xF, Vec3.new(p.x + me.facing * 0x14_0000, p.y, p.z + 0x22_0000))
         battle.effect(pos, spec.flash, bit32.bxor(me.alliance, me.flip))
     end
 
