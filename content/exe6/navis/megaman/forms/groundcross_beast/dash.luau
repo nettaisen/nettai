@@ -8,7 +8,12 @@
 
 local dash_hit = require("../../dash_hit")
 local regions = require("@exelib/regions")
+local sparks = require("../../../../lib/sparks")
 local weapon = require("../../../../lib/weapon")
+
+-- Its hits: hit modifier 1, the plain spark; each hits again on the next
+-- panel.
+local HIT = dash_hit.variant { hit_mod = 1, spark = sparks.plain, reports = false }
 
 export type State = {
     -- AIAttackVars+0x10: ticks of the phase, then of acceleration.
@@ -83,10 +88,10 @@ local function wind_up(me: Object, s: State)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
     me:reserve_panel(me.panel_x, me.panel_y)
     local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
-    dash_hit.spawn(me, me.attack_element, damage, 0, false, HIT_Z)
+    dash_hit.spawn(me, me.attack_element, damage, 0, HIT, HIT_Z)
     -- (The second's height is what the first spawn left in its register:
     -- the attack's element byte, a fraction of a pixel.)
-    dash_hit.spawn(me, me.attack_element, damage, 1, false, me.attack_element)
+    dash_hit.spawn(me, me.attack_element, damage, 1, HIT, me.attack_element)
     me.step = DASH
     me.step_init = 0
 end
