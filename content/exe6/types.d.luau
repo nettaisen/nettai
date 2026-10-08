@@ -100,14 +100,20 @@ export type FlashBombVariant = {
 -- ---- The field objects (chips/rockcube/rock, objects/boulder) ---------------
 
 -- What an element pillar is spawned with (objects/element_pillar; the
--- original's four parameters): lightning (it paralyzes and cracks its
--- panel) rather than flames; how long it stands; the ticks it is left once
--- its owner's action is over; `back`: it stands 8 pixels ahead of its
--- panel's center, less 7 for each step back; `owner_state`: its owner is no
--- navi, and it lasts through that action of the owner's own (by default
--- the navi action its owner runs as it sends the pillar).
+-- original's four parameters): its look (`element_pillar.look`: flames or
+-- lightning, the first parameter's pick); how long it stands; the ticks it
+-- is left once its owner's action is over; `back`: it stands 8 pixels
+-- ahead of its panel's center, less 7 for each step back; `owner_state`:
+-- its owner is no navi, and it lasts through that action of the owner's
+-- own (by default the navi action its owner runs as it sends the pillar).
+-- An element pillar's look (objects/element_pillar's `look`): its sprite,
+-- its hit's modifier, spark and status, and whether it cracks its panel
+-- (the flames': 3, fire, none, no; the lightning's: 1, elec, paralysis,
+-- yes).
+export type ElementPillarLook = { sprite: SpriteAsset, hit_mod: number, spark: Spark, status: Status?, cracks: boolean }
+
 export type ElementPillar = {
-    lightning: boolean?,
+    look: ElementPillarLook,
     ticks: number,
     after: number,
     back: number?,
