@@ -38,12 +38,31 @@
 "megaman/ball" = [0x50]
 "megaman/wideblde" = [0x52]
 "megaman/longblde" = [0x53]
+"megaman/blizzard" = [0x5B]
+"megaman/heatbrth" = [0x5C]
+"megaman/woodpwdr" = [0x5D]
 "megaman/repair" = [0x5E]
 "megaman/airshot" = [0x5F]
+"megaman/elecshok" = [0x60]
 
-# MegaMan's forms by soul number (NaviStats +0x24: 0 his base form; the souls, to port, from 1).
+# MegaMan's forms by soul number (NaviStats +0x24: 0 his base form; 1 to 12 his souls, in the order of the navis he
+# unites with, the soul chips' 0x161 to 0x16C: Red Sun's 1 to 6, Blue Moon's 7 to 12). The original numbers a soul
+# everywhere (its sprite 00-0n, its chip, its bit of the round's souls given, the save's soul flags by version); the
+# content names a soul by its form's id, and what reads a recording or a save finds the form here.
 [forms]
 "base" = 0
+"rollsoul" = 1
+"gutssoul" = 2
+"windsoul" = 3
+"searchsoul" = 4
+"firesoul" = 5
+"thundersoul" = 6
+"protosoul" = 7
+"numbersoul" = 8
+"metalsoul" = 9
+"junksoul" = 10
+"aquasoul" = 11
+"woodsoul" = 12
 
 # The auras a battle starts with by number (NaviStats +0x21: FstBarr's 1; patch card 0x21's 2 Barrier100, 3 Barrier200,
 # 6 LifeAura; 0 none), those the content has (content/exe4/lib/barriers).
