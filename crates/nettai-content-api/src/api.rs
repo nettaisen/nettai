@@ -206,6 +206,8 @@ named_fields! {
         Related2 = "related2", Object, rw;
         /// The slot is in use.
         Active = "active", Bool, ro;
+        /// It has a collision record (its CollisionData pointer is set).
+        HasCollision = "has_collision", Bool, ro;
         /// Drawn this frame.
         Visible = "visible", Bool, rw;
         /// Keeps updating while the battle is paused.

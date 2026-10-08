@@ -186,6 +186,9 @@ language = "en"
 "propbom3" = { name = "PropBom3", description = "Rushing\ncauses an\nexplosion" }
 "tornado" = { name = "Tornado", description = "Creates 8\nwhirlwind\nahead" }
 "static" = { name = "Static", description = "A static\nblast 2sq\nahead" }
+"burnman" = { name = "BurnMan", description = "3-direct\nburnr fry\n2 ahead!" }
+"burnmn-sp" = { name = "BurnMnSP", description = "3-direct\nburnr fry\n2 ahead!" }
+"burnmn-ds" = { name = "BurnMnDS", description = "3-direct\nburnr fry\n2 ahead!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

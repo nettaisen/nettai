@@ -41,6 +41,7 @@ normalnavi = "08-0d"  # navi 13's sprite (0x0800B90A: 0x08017F98's entry 13; its
 shademan = "08-10"  # ShadeMan: his init (0x080BADC2), his crush's (attack 0x34's, 0x080D3774)
 topman = "08-12"  # TopMan: his init (0x080B8572), his tops' (attack 0x29's, 0x080D1E14)
 sparkman = "08-13"  # SparkMan: his init (0x080B8A12), his sparks' (attack 0x22's, 0x080D1128)
+burnman = "08-15"  # BurnMan: his init (0x080BE1BA), his pillars' and flame's (attacks 0x3A and 0x37: 0x080D471C, 0x080D3F28)
 sword = "0c-00"  # the blade a sword holds: attachment row 3 (0x080CD524), action 0x0A (0x080EB646)
 cannon = "0c-01"  # the Cannon held: attachment row 0 (0x080CD524), action 0x0B's variant 0 (0x080EB894)
 bomb = "0c-02"

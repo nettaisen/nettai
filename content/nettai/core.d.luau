@@ -404,6 +404,8 @@ declare extern type Object with
     related2: Object?
     -- The slot is in use (read-only).
     active: boolean
+    -- It has a collision record (read-only): `collision`'s fields and methods need one.
+    has_collision: boolean
     -- Drawn (for every viewer, when set; read: the local side's console's).
     -- What a console's rule hides per viewer is `hide_from_blind`, and an
     -- attachment follows its owner with `copy_visibility`.

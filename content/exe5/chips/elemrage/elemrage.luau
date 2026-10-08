@@ -97,6 +97,7 @@ function elemrage.action(count: number, ticks: number): Action
                 offset = int.i8(dx),
                 paralyzes = s.raged,
                 attack_480 = false,
+                while_dimmed = false,
                 palette = s.palette,
                 hit = false,
                 sent = false,
