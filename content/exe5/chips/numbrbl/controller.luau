@@ -34,7 +34,7 @@ local function effect(me: Object)
         end
         wait(me, 4)
     elseif phase == 4 then
-        -- 0x080E836E: NumberMan, the chip's first parameter his level; once he is done, on.
+        -- 0x080E836E: NumberMan, with the chip's balls; once he is done, on.
         if me.phase_init == 0 then
             numberman.spawn(me, me.panel_x, me.panel_y, dimming_chips.damage_plus(me, s.bonus), s.balls)
             me.phase_init = 4
@@ -68,9 +68,9 @@ end
 
 controller.kind = common.make("numbrbl/controller", effect)
 
--- 0x080E83E6: NumbrBl's `dimming` hook, NumberMan of level `level`.
-function controller.hook(level: number): (user: Object, spec: DimmingChipSpec) -> Object?
-    return common.hook(controller.kind, level)
+-- 0x080E83E6: NumbrBl's `dimming` hook, NumberMan setting `balls` balls down.
+function controller.hook(balls: number): (user: Object, spec: DimmingChipSpec) -> Object?
+    return common.hook(controller.kind, balls)
 end
 
 return controller

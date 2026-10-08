@@ -19,9 +19,9 @@ local THROW_ANIM, RECOVER_ANIM = 18, 19
 -- The glow's sprite (its parameters 0x141D: 14-1D, animation 0, no shadow).
 local FLASH = asset.sprite("napalmsoul-flash")
 local THROW_AT, THROW_TICKS, RECOVER_TICKS = 10, 21, 10
--- The bomb leaves 10 pixels ahead of him and 48 up, of variant 2.
+-- The bomb leaves 10 pixels ahead of him and 48 up, falling lighter (16.16 a tick: its variant's, 2).
 local AHEAD, UP = 10 * 0x1_0000, 48 * 0x1_0000
-local VARIANT = 2
+local GRAVITY = -0x4000
 -- An enemy's body, by side (0x080126D0).
 local ENEMY_BODY = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 -- The rows a column is searched in, by his row (0x080126D8).
@@ -63,7 +63,7 @@ local function throw(me: Object, s: State)
         local x, y = target(me)
         local p = me.pos
         bomb.lob(me, Vec3.new(int.i32(p.x + me.facing * AHEAD), p.y, int.i32(p.z + UP)), {
-            variant = VARIANT,
+            gravity = GRAVITY,
             target_x = x,
             target_y = y,
             damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra),

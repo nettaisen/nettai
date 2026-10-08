@@ -1,8 +1,8 @@
 --!strict
 -- EXE5's thunder ball (attack object 0x2A, EXE6's number; 0x080C9FA0, EXE6's `sub_80C940C`): the shared ball
--- (@exelib/thunder/ball, EXE6's code) with EXE5's look: EXE5's ball sprite (10-11, a fast or 12-panel ball's 0c-53),
--- animation 0, collision type row 0x0A (a 12-panel ball's, DarkThnd's, row 0x2B) with hit modifier 0 (EXE6's an
--- attack with 1), hitting navis, and its sound for every ball. Thunder's and DarkThnd's, whose shot
+-- (@exelib/thunder/ball, EXE6's code) with EXE5's look: EXE5's ball sprite (10-11, a big ball's 0c-53), animation 0,
+-- collision type row 0x0A (DarkThnd's its own) with hit modifier 0 (EXE6's an attack with 1), hitting navis, and its
+-- sound for every ball. Thunder's and DarkThnd's, whose shot
 -- (@exelib/thunder/shoot, action 0x1F) raises EXE5's buster arm: `thunder.shoot { ... }`.
 
 local ball = require("@exelib/thunder/ball")
@@ -19,7 +19,6 @@ thunder.kind = ball.make_kind("thunder/ball", {
     big_sprite = asset.sprite("big-thunder-ball"),
     big_anim = 0,
     is = collision.thrown,
-    dark_is = collision.collision_2b,
     target = collision.hits_navis,
     hit_mod = 0,
     spark = sparks.elec,

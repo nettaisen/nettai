@@ -33,6 +33,7 @@ return merge {
     require("@self/drkvulcn"),
     require("@self/elem"),
     require("@self/energbom"),
+    require("@self/fireman"),
     require("@self/flmline"),
     require("@self/fullcust"),
     require("@self/geyser"),

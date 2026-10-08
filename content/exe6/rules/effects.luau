@@ -30,6 +30,15 @@ return {
     -- Its afterimages (`sub_80E33FA`) and form overlays (`sub_80C4530`'s spawner) run while the battle is paused
     -- (their header flag 0x04).
     overlays_run_while_paused = true,
+    -- A form overlay (`sub_80C4530`) waits for every navi to be in, then follows (`sub_80C461C`); each tick it
+    -- restarts its sprite on its owner's animation, and takes its palette and its owner's facing (`sub_80C458C`).
+    form_overlay = {
+        start = "after_navis_in",
+        reloads_animation = true,
+        palette_each_tick = true,
+        facing_each_tick = true,
+        waiting_steps = false,
+    },
     -- An afterimage that copies its owner (`sub_80E32D8`) takes its NameID and wears what that record's init hook
     -- puts on (a Cross's or a Beast's overlay), taken off as it goes.
     afterimages_wear_overlays = true,
@@ -75,6 +84,8 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second (`sub_801EB18`).
     used_chip_ticks = 0x3C,
+    -- A dimming chip's telop ends those names as it starts (`sub_800BA8A`, `sub_800BBA8`: `sub_801BED6(0x10000)`).
+    telop_ends_used_chips = true,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (`sub_801CC94`).
     bug_flicker = true,
     -- A step leaves its NaviCust panel trail at a chance of its level in 8, an RNG2 draw (`sub_8013CC4`).
