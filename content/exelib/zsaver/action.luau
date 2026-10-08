@@ -145,9 +145,10 @@ function zsaver.make(look: ZSaverLook): Action
             if hold then
                 hold(me, look.blade, look.blade_anim(me))
             else
-                -- `sub_80EBB34`'s blade (row 3 for subtype 0), into the
-                -- overlay slot.
-                attachment.attach(look.attachment :: Kind, me, look.blade, "overlay", { anim = look.blade_anim(me) })
+                -- `sub_80EBB34`'s blade (row 3 for subtype 0; by its holder
+                -- where the game's look says), into the overlay slot.
+                local blade = if look.held_blade then look.held_blade(me) else look.blade
+                attachment.attach(look.attachment :: Kind, me, blade, "overlay", { anim = look.blade_anim(me) })
             end
             s.timer = SWING_TICKS
             me.step_init = 4

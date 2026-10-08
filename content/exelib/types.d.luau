@@ -664,6 +664,9 @@ export type ZSaverLook = {
     refreshes_form_overlay: boolean,
     recovery_clears_moving: boolean,
     blade: AttachmentLook,
+    -- The blade by its holder in the overlay slot (EXE5's 0x080EC082: a
+    -- soul's Chaos Unison blade); none: `blade`.
+    held_blade: ((me: Object) -> AttachmentLook)?,
     blade_anim: (me: Object) -> number,
     is: CollisionType,
     hits: CollisionType,
