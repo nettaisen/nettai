@@ -209,6 +209,9 @@ language = "ja"
 "geddon3" = { name = "デスマッチ3", description = "パネルのあるマスが\nすべてどくぬまに!" }
 "wind" = { name = "トップウ", description = "ウインドボックスを\nおき てきエリアに\n風をふかせる" }
 "fan" = { name = "スイコミ", description = "バキュームファンを\nおき 風でてきを\nすいよせる" }
+"circgun1" = { name = "サークルガン1", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"circgun2" = { name = "サークルガン2", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"circgun3" = { name = "サークルガン3", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

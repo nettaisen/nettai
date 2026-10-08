@@ -22,6 +22,7 @@ return merge {
     require("@self/breath"),
     require("@self/bubbler"),
     require("@self/cannon"),
+    require("@self/circgun"),
     require("@self/counter"),
     require("@self/crakout"),
     require("@self/darkbomb"),
