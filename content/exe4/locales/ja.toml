@@ -237,6 +237,9 @@ language = "ja"
 "aquaman" = { name = "アクアマン", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
 "aquamn-sp" = { name = "アクアマンSP", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
 "aquamn-ds" = { name = "アクアマンDS", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
+"windman" = { name = "ウインドマン", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-sp" = { name = "ウインドマンSP", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-ds" = { name = "ウインドマンDS", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
