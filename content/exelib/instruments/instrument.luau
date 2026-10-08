@@ -140,18 +140,28 @@ function instrument.make_kind(id: string, look: InstrumentLook): Kind
         end
     end
 
+    -- The puff a removal leaves.
+    local function puff(me: Object)
+        local effect = look.puff
+        if not effect then
+            error(string.format("%s's instrument is removed, and its look has no puff", id))
+        end
+        local p = me.pos
+        battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effect)
+    end
+
     -- `sub_80D42E8`: leaving: a chip's removal (absorbed, blinking out, or a
-    -- puff), else broken (an explosion and its sound).
+    -- puff), else broken (an explosion and its sound). (EXE4's, 0x080DC58C,
+    -- always as broken: `removal_explodes`.)
     local function destroyed(me: Object)
-        local how = obstacle.removal(me)
+        local how = if look.removal_explodes then "broken" else obstacle.removal(me)
         if how == "broken" then
             battle.play_sound(look.sounds.broken)
             local p = me.pos
             battle.effect(Vec3.new(p.x, p.y, p.z + 0x14_0000), look.explosion)
         elseif look.removal_puffs then
             -- (EXE5's 0x080D53D4: removed any way, a puff.)
-            local p = me.pos
-            battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.puff)
+            puff(me)
         elseif how == "absorbed" then
             obstacle.fly_to_absorber(me, (me.state :: State).instrument.absorbed or look.absorbed :: AbsorbedLook)
         else
@@ -159,8 +169,7 @@ function instrument.make_kind(id: string, look: InstrumentLook): Kind
             if blink == "blinking" then
                 return
             elseif blink == "no" then
-                local p = me.pos
-                battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.puff)
+                puff(me)
             end
         end
         finish(me)

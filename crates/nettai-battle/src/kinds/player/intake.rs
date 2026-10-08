@@ -179,7 +179,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     if barrier == 0 {
         return;
     }
-    let regrowing = matches!(barrier, 8 | 0xA) && barrier_hp16(c) == 0;
+    let regrowing = matches!(barrier, 4 | 8 | 0xA) && barrier_hp16(c) == 0;
     match rule.wind {
         crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & 0x20 != 0 || c.acc.raw_hit_flags & 0xA20 != 0) => {
             // Popped (wind): absorbs everything until its visual clears it.
@@ -197,6 +197,24 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
         _ => {}
     }
     match barrier {
+        // The rules' regrowing barrier (EXE4's type 4, 0x08012E44): no time
+        // out; worn down, back whole after the rules' ticks (not while
+        // dimmed), letting hits through meanwhile.
+        4 => {
+            if barrier_hp16(c) == 0 {
+                if dimmed {
+                    return;
+                }
+                let Some(regrowth) = rule.regrowing else {
+                    panic!("content error: a regrowing barrier, and the rules' barrier tick has no `regrowing`")
+                };
+                c.barrier_timer = c.barrier_timer.wrapping_add(1);
+                if c.barrier_timer >= regrowth.after {
+                    set_barrier_hp16(c, regrowth.hp as u16);
+                }
+                return;
+            }
+        }
         8 => {
             if barrier_hp16(c) == 0 {
                 // Regrows after 240 ticks (not while dimmed, frozen or bubbled).
@@ -269,7 +287,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
         let left = c.barrier_hp as i32 - sum as i32;
         c.barrier_hp = left as u8;
         if left <= 0 {
-            if !matches!(barrier, 8 | 0xA) && c.barrier != 0x10 {
+            if !matches!(barrier, 4 | 8 | 0xA) && c.barrier != 0x10 {
                 c.barrier = 0;
             }
             c.barrier_timer = 0;

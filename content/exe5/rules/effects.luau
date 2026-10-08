@@ -52,6 +52,8 @@ return {
     -- A sprite updated through the dimming (its `object_updateSpriteTimestop`) steps on the tick it loads a new
     -- animation, as EXE6's.
     dimmed_update_steps_on_load = true,
+    -- An immobilized navi blinks black (0x08013768, EXE6's `sub_801690A`).
+    immobilized_blinks = true,
     -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (EXE6's from 8).
     obstacle_actions = "own_from_6",
     -- Its Full Synchro aura (actor object 0x5E, 0x080C45E0) keeps the animation it started with (0x080C4648), steps
