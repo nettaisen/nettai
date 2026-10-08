@@ -888,6 +888,7 @@ pub(crate) fn read_form(
         "put_on",
         "take_off",
         "tick",
+        "chip_used",
     ];
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
     let o = super::reader::fields(d, r, &skip)?;

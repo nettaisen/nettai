@@ -2549,6 +2549,9 @@ export type FormDef = {
     -- Its own part of the per-form tick (EXE5's MegaMan's, 0x080F04CE:
     -- GyroSoul's propeller by the priming), each tick.
     tick: ((navi: Object) -> ())?,
+    -- What a chip's use from idle does besides in it, as the hand moves on past the chip (`navi.attack_chip`): EXE4's
+    -- RollSoul's heal (0x080EED04).
+    chip_used: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
