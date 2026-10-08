@@ -671,6 +671,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **AirHoc1 to AirHoc3** (action 0x27, `chips/airhoc`): @exelib/airhocky's flick (EXE5's action 0x21 but for the navi's
+  animation, 0x10: the spec's `anim`) and puck (attack 0x2E, EXE5's code) with EXE4's sounds and burst, each chip's
+  row of 0x080D2768 (6, 10, 14 steps). Row 9's trail has no chip (a game's puck look states a trail tint only if it
+  has one).
 - **GunSol1 to GunSol3, GunSolEX** (action 0x58, `chips/gunsol`: EXE4's own, EXE5's GunDelSol grew from it): the gun
   out, 6 ticks later (A held or not) the sun beam (effect 0x48, @exelib/gundels/beam, whose EXE4 spawn watches the
   gun's slot without filling it and takes only its owner's side: `watches`), then a drain hit a tick on the column two

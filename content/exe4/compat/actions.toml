@@ -44,6 +44,10 @@
 "flmline1/action" = 0x22
 "flmline2/action" = 0x22
 "flmline3/action" = 0x22
+# The AirHocs' (the chips' action 0x27, 0x080ECEAE).
+"airhoc1/action" = 0x27
+"airhoc2/action" = 0x27
+"airhoc3/action" = 0x27
 # The GunSols' (the chips' action 0x58, 0x080EDE0E).
 "gunsol1/action" = 0x58
 "gunsol2/action" = 0x58
