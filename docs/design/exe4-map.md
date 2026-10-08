@@ -671,6 +671,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **WideSht1 to WideSht3** (action 0x31, `chips/widesht`: EXE4's own action, the wave @exelib/widesht/wave's): the
+  shooter (attachment row 0x1C) raised, a wave (attack 0x3B, EXE6's code but for what EXE4's has none of: trails, bugs,
+  palettes, its spawner's hit modifier) of the chip's speed from the panel ahead; weapon routines 0x38, 0x43, 0x4C
+  and patch cards 52, 80, 113.
 - **AirHoc1 to AirHoc3** (action 0x27, `chips/airhoc`): @exelib/airhocky's flick (EXE5's action 0x21 but for the navi's
   animation, 0x10: the spec's `anim`) and puck (attack 0x2E, EXE5's code) with EXE4's sounds and burst, each chip's
   row of 0x080D2768 (6, 10, 14 steps). Row 9's trail has no chip (a game's puck look states a trail tint only if it
@@ -1586,12 +1590,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     buster's): each waits on its chip as a weapon routine; the chips' work picks them up. **Partly done:** a routine
     that loads a chip (0x0800D406 with its id, EXE5's 0x0800FE78) is navis/megaman/weapons/chips's weapon of the chip
     (`navi:load_chip_attack`, the charge table's row), compat/records.toml's `[weapons]` number and gen_patch_cards.py's
-    `WEAPONS`; the 29 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
+    `WEAPONS`; the 32 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
-    the routines of chips still to port (0x37 CopyDmg, 0x38 WideSht1, 0x42 Hole, 0x43 WideSht2, 0x44 SandRing, 0x4C
-    WideSht3, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind, 0x55 PnlRetrn),
+    the routines of chips still to port (0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51 BugBomb, 0x54
+    NrthWind, 0x55 PnlRetrn),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
