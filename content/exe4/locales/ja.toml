@@ -209,6 +209,7 @@ language = "ja"
 "discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
 "timpani" = { name = "ティンパニー", description = "ララボーンをおく\nえんそうちゅう\nじしんであしどめ!" }
 "silence" = { name = "サイレンス", description = "ララミュートをおく\nえんそうちゅう\nあいてはもうもくに" }
+"copydmg" = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
