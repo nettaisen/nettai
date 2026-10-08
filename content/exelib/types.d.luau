@@ -147,7 +147,8 @@ export type VulcanSpec = {
 -- (EXE6's and EXE5's 0xA and 0xD; EXE4's 13 and 17).
 export type VulcanLook = {
     sound: Sound,
-    arm: AttachmentLook,
+    -- The gun a chip that names none holds (none: every chip names its own, EXE4's).
+    arm: AttachmentLook?,
     hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
     slot: Slot,
     bullet_kind: Kind,

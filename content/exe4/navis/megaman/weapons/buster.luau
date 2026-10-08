@@ -11,8 +11,10 @@
 -- recovery short (0x0800AD2A, 0x0800B4B0, 0x0800C9BA) as the engine's.
 
 local attachment = require("../../../objects/attachment")
+local collision = require("../../../rules/collision")
 local projectile = require("../../../lib/projectile")
-local variants = require("../../../objects/projectile/variants")
+local shot = require("../../../objects/projectile")
+local sparks = require("../../../lib/sparks")
 
 local buster = {}
 
@@ -20,6 +22,14 @@ local buster = {}
 local SHOOT, RECOVER = 0x0, 0x4
 -- The shot's height, 16.16.
 local SHOT_Z = 0x18_0000
+-- Its shot (projectile row 0: action 8, 0x080EB380, its attack parameter's 0).
+local SHOT = shot.variant {
+    id = "megaman/buster/shot",
+    collision = { is = collision.attack, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.plain,
+}
 -- The flash's animation: NaviStats +0x23, the navi's number (MegaMan's 0, the one navi EXE4's netbattles have).
 local NAVI_NUMBER = 0
 -- Its sounds: the shot (0x6A) and a blank's click (0x1C0).
@@ -42,7 +52,7 @@ local function shoot(me: Object, s: State)
         if bit32.band(battle.rng(), 0xF) + 1 > blanks then
             battle.play_sound(SHOT_SOUND)
             local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
-            me.attack_count = projectile.fire(me, { variant = variants.plain, damage = damage, z = SHOT_Z })
+            me.attack_count = projectile.fire(me, { variant = SHOT, damage = damage, z = SHOT_Z })
             attachment.attach(me, attachment.muzzle_flash, "related", NAVI_NUMBER)
         else
             battle.play_sound(BLANK_SOUND)
