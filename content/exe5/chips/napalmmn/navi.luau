@@ -93,7 +93,7 @@ local function fire(me: Object)
         local tx = math.clamp(me.panel_x + me.facing * REACH, 0, 7)
         local p = me.pos
         napalm_bomb.lob(me, Vec3.new(int.i32(p.x + me.facing * MUZZLE_X), p.y, int.i32(p.z + MUZZLE_Z)), {
-            variant = 1,
+            gravity = -0xA000,
             target_x = tx,
             target_y = me.panel_y,
             damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16)),
