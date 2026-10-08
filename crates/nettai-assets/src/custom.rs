@@ -110,6 +110,9 @@ pub struct CustomLayout {
     /// The picked-chip column's cells and the late turns' block.
     pub column_cells: u16,
     pub turn_limit: u16,
+    /// The late turns' block's palette ("FINAL TURN": EXE6's and EXE5's 9,
+    /// `sub_8029D34`'s map; EXE4's 14, 0x0801EE9C's).
+    pub turn_limit_palette: u8,
     /// The chip window's name (8 cells of 2 tiles), picture (7x6), code
     /// (1x2), element icon (2x2) and damage (3 cells): the patch list's
     /// first runs.
