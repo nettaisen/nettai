@@ -23,7 +23,7 @@ local cosmoman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "cosmoman/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "at_once" },
 }
@@ -47,7 +47,7 @@ local cosmomn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "cosmomn-sp/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "at_once" },
 }
@@ -69,7 +69,7 @@ local cosmomn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "cosmomn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(0xb),
     },
     auto_battle = { class = "at_once" },
 }

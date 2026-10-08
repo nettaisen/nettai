@@ -23,7 +23,7 @@ local tmhwkman: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "tmhwkman/controller",
-        summon = navi.summon,
+        summon = navi.summon(0),
     },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
@@ -48,7 +48,7 @@ local tmhwkmn_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "tmhwkmn-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon(4),
     },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
@@ -71,7 +71,7 @@ local tmhwkmn_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "tmhwkmn-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon(6),
     },
     auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
