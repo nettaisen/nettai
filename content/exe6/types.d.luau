@@ -138,9 +138,23 @@ export type ShockWaveVariant = { anim: number, ticks: number, panel: PanelType?,
 export type HockeyPuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
 
 -- How an iron shell slides (chips/ironshl/shell): its palette and speed
--- (16.16 a tick), how many times it bumps at the far column, and whether
--- it is ParaShl's (four panels, then back).
-export type IronShell = { palette: number, speed: number, bumps: number, para: boolean? }
+-- (16.16 a tick), how many times it bumps at the far column, and its
+-- chip's variant.
+export type IronShell = { palette: number, speed: number, bumps: number, variant: IronShellVariant }
+
+-- A chip's iron shells (chips/ironshl/shell's `variant`; the original's
+-- third parameter, IronShl's or ParaShl's): where its throw puts them
+-- (`throw`, given the spawn of one on a panel), the ticks one stops at the
+-- end, how many panels it slides (none: to the opponent's back column),
+-- whether it knocks back thrown onto a middle column, and what it does
+-- once its bumps are done.
+export type IronShellVariant = {
+    throw: (me: Object, place: (x: number, y: number) -> ()) -> (),
+    stop: number,
+    panels: number?,
+    pushes: boolean,
+    done: (me: Object) -> (),
+}
 
 -- What a flame burns like (lib/burner/flame): its ticks, the panels it
 -- spreads forward, whether its first spread takes three rows (`wide`),
