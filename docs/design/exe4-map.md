@@ -1649,10 +1649,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     choosing state (0x0801E40E), so its OK at 288 stops the ramp a step short, where the engine's screen chooses on
     until the replay feeds the OK and takes that step. Verify's sound comparison counts such a step as the shift's
     (`Compared::shifted`, the held-back frames' `Shift`).
-76. **A telop leaves the other player's used-chip name** (B's, item 90; chips/0x08e-antielec/sprung: mGBA shows
-    "Thunder 140" until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block
-    (0x08016454) and leaves the second block alone; EXE6's clears the name at every telop's start
-    (`sub_801BED6(0x10000)`, the engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
+76. **Done: a telop leaves the other player's used-chip name** (group A; B's, item 90; chips/0x08e-antielec/sprung:
+    mGBA shows "Thunder 140" until frame 615 beside the AntiElec telop). EXE4's dimming telop starts (0x08008CF6,
+    0x08008DE0) take the banner block (0x08016454) and leave the second block alone; EXE6's (`sub_800BA8A`,
+    `sub_800BBA8`) and EXE5's (0x0800A0FC, 0x0800A218) end the names as the telop starts (`sub_801BED6(0x10000)`,
+    `sub_801DACC(0x10000)`). The rule `effects.telop_ends_used_chips`: EXE4's false. AntiElec's sprung recording
+    matches every frame but the late OK's known shift.
 77. **Done: the chips' own looks out of the shared libraries** (group A; the brief's no-lookup-tables rule):
     lib/cannon's `arms`, lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants` are
     gone: a maker each, every chip stating its own.
