@@ -72,6 +72,7 @@ return merge {
     require("@self/holypanl"),
     require("@self/invalid"),
     require("@self/invis"),
+    require("@self/jealousy"),
     require("@self/junkman"),
     require("@self/kendoman"),
     require("@self/lance"),

@@ -913,6 +913,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   send it on to strike back, the side picked there (0x080DCF00: none, a puff); striking it keeps its collision on its
   panel (`keeps_region_striking`); EXE4's obstacle rows. EXE4 has no stage statues (its spawner, 0x080DD082, has no
   owner-less branch). The lab's chips/ (5, punish among them) replay every frame; punish is pixel-exact.
+- **Jealousy** (the dimming chips' variant 0x1A, `chips/jealousy`): EXE6's leftover controller (effect #0x36,
+  0x080E5EF4: @exelib/jealousy/controller, which EXE5's Jealousy now shares): once for each chip the other side holds,
+  every 10 ticks, a hit (row 0x1A, the heavy spark) on every panel that side stands on; then 90 ticks. EXE4 counts the
+  other side's local navi when that side is the console's (`battle_networkInvert`, BattleState +0x44), else the most
+  any of its listed actors holds (+0x48 on: a navi its hand from the cursor, another actor 1 for a chip at +0x2A); in
+  a netbattle each is the other side's navi. No operation battle. The lab's chips/ (5) replay every frame; the hit is
+  pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
