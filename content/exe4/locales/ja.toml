@@ -219,6 +219,7 @@ language = "ja"
 "crosswrd" = { name = "クロスソード", description = "" }
 "sprsonic" = { name = "スーパーソニック", description = "" }
 "dbldream" = { name = "ダブルドリーム", description = "" }
+"sandring" = { name = "サンドリング", description = "あたるとアリジゴク\nを発生させる\nリングを前方へ!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
@@ -367,6 +368,7 @@ language = "ja"
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }
 "079-charge-shot-switch" = { name = "チャージ武器を変更" }
 "080-charge-shot-switch" = { name = "チャージ武器を変更" }
+"082-charge-shot-switch" = { name = "チャージ武器を変更" }
 "083-charge-shot-switch" = { name = "チャージ武器を変更" }
 "084-charge-shot-switch" = { name = "チャージ武器を変更" }
 "085-charge-shot-switch" = { name = "チャージ武器を変更" }
