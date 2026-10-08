@@ -316,11 +316,6 @@ named_fields! {
         ChargeLevel = "charge_level", U8, ro;
         ChargeSource = "charge_source", U8, ro;
         ChargeCounter = "charge_counter", U8, ro;
-        /// The B charge's level (0 none, 1 charging, 2 full) as the navi
-        /// last asked for an attack, kept until its next ask (EXE4's
-        /// AIData +0x15, which its decode copies at each ask: 0x0800BE48,
-        /// 0x0800BF10); 0 in a game whose decode keeps none.
-        BChargeAtAsk = "b_charge_at_ask", U8, ro;
         /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
         /// counted toward a form's `rapid_presses`, and the ticks left for
         /// the next (the forced charged shot clears both as it ends).
@@ -2275,6 +2270,10 @@ pub trait CoreApi {
     fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32);
     /// 0x080CAC30: disarm side `side`; its words stay.
     fn obstacle_disarm_conversion(&mut self, side: u8);
+    /// 0x080CABF8 alone: side `side`'s soldiers' damage words (the sword
+    /// soldier's and the gun soldier's) become these, armed or not (EXE5's
+    /// BusterUp in ColonelSoul, 0x08011C50).
+    fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32);
     /// Whether side `side` is armed, and its words (0x080CAC06,
     /// 0x080CAC12): what its soldiers strike with as they read them.
     fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32);

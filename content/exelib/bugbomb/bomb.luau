@@ -1,9 +1,11 @@
 --!strict
 -- A BugBomb (EXE6's attack object #0xA5, `sub_80D9D4C`; EXE5's #0x77, 0x080D4E54, the same code but for its
--- look and its bugs). Lobbed at the panel three ahead, it sits there
--- with 40 HP for a second and then bursts over the 3x3 around it, giving what it hits a NaviCust bug its target's
--- side doesn't have yet, picked at random by its game (`look.pick_bug`). Breaking it or a crushing hit first ends
--- it in an explosion; landing in a hole, in a puff of smoke.
+-- look and its bugs; EXE4's #0x77, 0x080DC048, which EXE5's grew from). Lobbed at the panel three ahead, it sits
+-- there with 40 HP for a second and then bursts over the 3x3 around it, giving what it hits a NaviCust bug picked
+-- at random by its game (`look.pick_bug`: EXE6's and EXE5's one its target's side doesn't have yet). Breaking it
+-- first ends it in an explosion; so does a crushing hit, in EXE6's and EXE5's (EXE4's sets it bursting at once
+-- as it sits, `look.crushing_hit`); landing in a hole, in a puff of smoke. Its burst hits as an attack reaching
+-- navis (EXE6's, EXE5's), or with the types it sits with (EXE4's: `burst_is` and `burst_hits` none).
 --
 -- Each game makes its kind with `bomb.make_kind(id, look)` (EXE6's chips/bugbomb, EXE5's chips/bugbomb).
 
@@ -89,19 +91,25 @@ local function fly(me: Object, look: Look, s: State)
     me.lifecycle = "destroy"
 end
 
--- `sub_80D9F2C`: sit; then burst.
+-- `sub_80D9F2C` (EXE4's 0x080DC238): sit; then burst (EXE4's at once on a crushing hit).
 local function sit(me: Object, look: Look)
-    if me.phase_init == 0 then
-        me.timer = SIT_TICKS
-        me.phase_init = 4
-    end
-    local t = me.timer - 1
-    me.timer = t
-    if t >= 0 then
-        return
+    local crushed = look.crushing_hit == "bursts" and bit32.btest(me.collision.hit_flags, CRUSHED)
+    if not crushed then
+        if me.phase_init == 0 then
+            me.timer = SIT_TICKS
+            me.phase_init = 4
+        end
+        local t = me.timer - 1
+        me.timer = t
+        if t >= 0 then
+            return
+        end
     end
     me.collision:set_region(regions.ring)
-    me:reset_collision_types(look.burst_is, look.burst_hits, 0)
+    local burst_is, burst_hits = look.burst_is, look.burst_hits
+    if burst_is and burst_hits then
+        me:reset_collision_types(burst_is, burst_hits, 0)
+    end
     battle.region_effects(me.panel_x, me.panel_y, regions.square, me.alliance, look.burst, 0)
     battle.shake_camera(1, 0xF)
     battle.play_sound(look.burst_sound)
@@ -110,15 +118,16 @@ local function sit(me: Object, look: Look)
     me.phase, me.phase_init = 0, 0
 end
 
--- `sub_80D9E24`: resolve last tick's hits; broken or crushed, it ends in an explosion; with the battle, quietly;
--- while dimmed it stands.
+-- `sub_80D9E24` (EXE4's 0x080DC13A): resolve last tick's hits; broken (or EXE6's and EXE5's crushed), it ends in an
+-- explosion; with the battle, quietly; while dimmed it stands.
 local function tick(me: Object, look: Look)
     me.collision:remove()
     if battle.over() then
         finish(me)
         return
     end
-    if me:take_damage(0) < 0 or bit32.btest(me.collision.hit_flags, CRUSHED) then
+    local crushed = look.crushing_hit == "explodes" and bit32.btest(me.collision.hit_flags, CRUSHED)
+    if me:take_damage(0) < 0 or crushed then
         battle.effect(me.pos, look.crushed)
         battle.play_sound(look.crushed_sound)
         finish(me)
