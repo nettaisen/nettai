@@ -209,6 +209,9 @@
 "kendmn-ds/controller" = { pool = "effect", index = 0x66, scratch_position = true }
 "kendoman/navi" = { pool = "actor", index = 0x43 }
 "kendoman/rush-hit" = { pool = "attack", index = 0x7C, scratch_position = true }
+# NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
+# objects/north_wind's.
+"nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
 # ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
 # original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
 "shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }
