@@ -876,6 +876,27 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (EXE4 has no own-gauges mode), the warning on both consoles (the user's alone only under event flag 0x1187, which no
   netbattle sets), 70 ticks. The lab's chips/ (8) and status/slow-gauge and fast-gauge replay every frame; both hits
   are pixel-exact.
+- **TimeBomb** (the dimming chips' variant 0x11, `chips/timebomb`): EXE6's controller (effect #0x27, 0x080E4C3C:
+  @exelib/timebom/controller) with EXE4's placement (0x080E4DE4): the other side's front column from the user's back
+  edge (0x080E4D94, the first column with a solid panel of that side), a random row of it whose panel is free (any of
+  its solid ones when none is), the bomb there when it may stand (no body), else a puff (effect row 2) 16 up. With no
+  solid panel on that side the original reads its filter from open bus (0x00010010 taken for a table's address) and
+  fills a list through a stale r7: an error here. The bomb (attack #0x4B, 0x080D6BF8) is EXE6's code's elder,
+  @exelib/timebom/countdown in EXE4's look: no NameID; sheet 0c-23, 0xB0, 0xE3 and 0xE4 ticking, 0xBC for the blast
+  over the other side's area (its bursts EXE4's), even once the battle is over (`blasts_after_battle`); no tracking
+  (`untracked`); no removal read as it goes, a puff (0x70, effect row 0) when broken (`reads_no_removal`); EXE4's
+  obstacle rows. Its first parameter picks TimeBomb's bomb (0, 50 HP) or TimeBom+'s (1, 300 HP, a stronger shake);
+  TimeBom+ (chip 0x15A, a Program Advance) has no content yet. The lab's chips/ (4) replay every frame; the hit is
+  pixel-exact.
+- **Blinder** (the dimming chips' variant 0x0E, `chips/blinder`): EXE6's leftover controller (effect #0x23,
+  0x080E48EC: @exelib/blinder/controller, which EXE5's Blinder now shares) with SparkMan's flash's sound (0xBA): the
+  user flashes, then a screen flash and the blinding hit over the other side's area (row 0x34, blindness for 480
+  ticks). The lab's chips/ (4) and status/ blindness replay every frame; the hit is pixel-exact.
+- **Mine** (the dimming chips' variant 0x12, `chips/mine`): EXE6's Mine (@exelib/mine: controller #0x29, 0x080E4F5C;
+  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID, sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
+  0x47 (14-13), collision rows 0x33 and 0x2A. Its init frees it without leaving its side's field-object slots when no
+  collision record is left (0x080D6F5C); the shared code leaves them (a collision pool run dry, which no recording
+  reaches). The lab's chips/ (5) replay every frame; the hit is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
