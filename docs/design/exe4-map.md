@@ -671,6 +671,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **SandRing** (action 0x47, `chips/sandring`: EXE4's own, with its ring, attack 0x6D): a ring 26 pixels up, 10
+  pixels a tick, hit modifier 1, its element's spark, the spreader's sound; its hit turns the panel to sand (type 10,
+  the pitfall). The action's and the ring's other parameters (0 to 2: a held ring, three speeds, status effects 0x10
+  to 0x12) no chip or weapon routine passes, so they are comments; weapon routine 0x44 loads SandRing (card 82).
 - **VarSwrd and NeoVari** (actions 0x36 and 0x5A, `chips/varswrd`, `chips/neovari`: @exelib/varswrd/action, which
   EXE5's grew from): EXE4's part is the pick's sound (0x10B), ProtoSoul's wait while A is up (NaviStats +0x24 7, the
   form's id) and no auto battle's pick (NaviStats +0x26, the story's navis'); EXE4 has no flip, so one set of
@@ -1766,8 +1770,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
     Guard's too: item 60). Waiting:
-    the routines of chips still to port (0x44 SandRing, 0x51 BugBomb, 0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x4E
-    WindRack and 0x55 PnlRetrn are in, cards 51, 57, 70, 79 and 115 matching),
+    the routines of chips still to port (0x51 BugBomb, 0x54 NrthWind; 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E
+    WindRack and 0x55 PnlRetrn are in, cards 51, 57, 70, 79, 82 and 115 matching),
     the routines that load no chip (0x04, 0x20, 0x28, 0x31, 0x34, 0x35, 0x5A, 0x68, 0x69: the buster patches' and
     others' own actions) and Triple Supporter's pair (item 54).
 58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
