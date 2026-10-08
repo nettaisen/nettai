@@ -13,20 +13,16 @@ lance.make_kind = common.make_kind
 lance.spawn_kind = common.spawn_kind
 lance.instant_of = common.instant_of
 
--- EXE6's: the hit (`dword_80D25C8`): one panel, the wood spark, an attack
--- against attacks, hit modifier 0x51.
 lance.kind = common.make_kind("lance/lance", {
     sprite = asset.sprite("lance"),
     sound = asset.sound("sword-swing"),
-    hits = { [0] = { is = collision.attack, hits = collision.attack, spark = sparks.wood, hit_mod = 0x51 } },
 })
 
--- EXE6's lance.
-function lance.spawn(owner: Object, x: number, y: number, element: number, z: number, palette: number, damage: number): Object?
-    return common.spawn_kind(lance.kind, owner, x, y, element, z, palette, damage)
-end
+-- Lance's hit (`dword_80D25C8`'s row 0): one panel, the wood spark, an
+-- attack against attacks, hit modifier 0x51.
+local HIT = common.hit { is = collision.attack, hits = collision.attack, spark = sparks.wood, hit_mod = 0x51 }
 
--- EXE6's Lance's: Param1 0.
-lance.instant = common.instant_of(lance.kind, 0)
+-- Lance's: Param1 0.
+lance.instant = common.instant_of(lance.kind, 0, HIT)
 
 return lance

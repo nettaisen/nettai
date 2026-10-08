@@ -502,12 +502,11 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
 
--- BassAnly's dark ball (@exelib/bassanly/shot): its level (0 to 3: its
--- speeds), its slant (-1 up, 1 down), and how it homes.
+-- BassAnly's dark ball (@exelib/bassanly/shot): its slant (-1 up, 1
+-- down), and how it homes.
 export type DarkBallHoming = "none" | "diagonal" | "seeking"
 
 export type DarkBall = {
-    level: number,
     slant: number,
     homing: DarkBallHoming,
 }
@@ -1276,29 +1275,34 @@ export type TornadoLook = {
 -- inflict (0: none) and its ticks.
 export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: number }
 
--- A thunder ball (chips/thunder/ball): fast or not, the panels it drifts
--- (12 makes DarkThnd's look and sound), the status its hits inflict and
--- their bug (none by default).
-export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug: number? }
+-- A thunder ball (chips/thunder/ball): fast or not, the panels it drifts,
+-- the status its hits inflict and their bug (none by default).
+export type ThunderBall = {
+    fast: boolean?,
+    panels: number,
+    status: Status?,
+    bug: number?,
+    -- Its chip's: big (DarkThnd's; a fast one is anyway), and its collision
+    -- type and sound where they aren't the look's.
+    big: boolean?,
+    is: CollisionType?,
+    sound: Sound?,
+}
 
 -- A game's thunder ball (chips/thunder/ball, `make_kind`): its sprite and
--- animation small and big (fast, or DarkThnd's 12 panels; none: a game
--- whose ball is never big, EXE4's), its collision type (a 12-panel one's,
--- if another), hit modifier and spark, its sound (a 12-panel one's, if
--- another), and its own search for its target (none: `sub_80C95EC`'s,
--- EXE6's and EXE5's).
+-- animation small and big (none: a game whose ball is never big, EXE4's),
+-- its collision type, hit modifier and spark, its sound, and its own search
+-- for its target (none: `sub_80C95EC`'s, EXE6's and EXE5's).
 export type ThunderBallLook = {
     sprite: SpriteAsset,
     small_anim: number,
     big_sprite: SpriteAsset?,
     big_anim: number?,
     is: CollisionType,
-    dark_is: CollisionType?,
     target: CollisionType,
     hit_mod: number,
     spark: Spark,
     sound: Sound,
-    dark_sound: Sound?,
     find_target: ((me: Object) -> (number, number))?,
 }
 
@@ -1400,10 +1404,10 @@ export type LanceHit = {
     bug_arg: number?,
 }
 
--- How a game's lance looks and hits: its sprite, its sound, and either its
--- hit on its seventh tick by its palette (Param1: EXE6's, EXE5's `hits`) or
--- an attack the whole time it shows (EXE4's `attack`).
-export type LanceLook = { sprite: SpriteAsset, sound: Sound, hits: { [number]: LanceHit }?, attack: LanceAttack? }
+-- How a game's lance looks: its sprite, its sound, and an attack the whole
+-- time it shows (EXE4's `attack`; none: the chip's hit on its seventh tick,
+-- EXE6's and EXE5's).
+export type LanceLook = { sprite: SpriteAsset, sound: Sound, attack: LanceAttack? }
 
 -- A lance that is an attack the whole time it shows (EXE4's, 0x080D73F8):
 -- its collision registration from its init, what it is and hits and its
@@ -1512,10 +1516,13 @@ export type BeatLook = {
     snatch_sound: Sound,
 }
 
--- A support made for a game (@exelib/supports/beat, tango): sent by the supports' controller, whose `out` flag it sets.
+-- A support made for a game (@exelib/supports/rush, beat, tango): sent by the supports' controller, whose `out` flag
+-- it sets (Rush eating the chip the controller carries); and whether its host warps out while it comes and back in
+-- after (Rush's and Beat's do, Tango's doesn't).
 export type SupportActor = {
     kind: Kind,
-    spawn: (controller: Object) -> Object?,
+    spawn: (controller: Object, eaten: Chip?) -> Object?,
+    warps: boolean,
 }
 
 -- A game's Rush (@exelib/supports/rush): his kind's key and sprite, his appearance's and bite's sounds, the dust he
@@ -1542,17 +1549,11 @@ export type RushLook = {
 -- Where Rush may appear by side: the panel flags required and forbidden.
 export type RushStand = { [number]: { require: number, forbid: number } }
 
--- Rush made for a game (@exelib/supports/rush): sent by the supports' controller, eating `eaten`.
-export type Rush = {
-    kind: Kind,
-    spawn: (controller: Object, eaten: Chip?) -> Object?,
-}
-
 -- A game's supports' controller (@exelib/supports/controller): its kind's key, the supports it sends, and the game's
 -- warp of the host, given the controller (nil: the navi warp, `navi_chip.warp`).
 export type SupportsLook = {
     id: string,
-    rush: Rush,
+    rush: SupportActor,
     beat: SupportActor,
     tango: SupportActor,
     warp: ((controller: Object, out: boolean) -> ())?,
@@ -1870,3 +1871,7 @@ export type NumberManSpec = {
 
 -- A game's NumberMan kind, and what makes one just spawned his chip's: the controller he reports to, his palette.
 export type NumberMan = { kind: Kind, summoned: (o: Object, controller: Object, palette: number) -> () }
+
+-- A Geddon chip's quake's change (@exelib/geddon/quake's `change`): what it does to a panel, whether it changed, and
+-- what shows over a panel that did.
+export type GeddonChange = { apply: (x: number, y: number) -> boolean, show: (at: Vec3) -> () }

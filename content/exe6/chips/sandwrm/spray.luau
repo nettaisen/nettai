@@ -1,16 +1,16 @@
 --!strict
 -- Sand thrown up by SandWrm's worm (the original's attack object #0xCC,
 -- `sub_80DEE60`): hidden until its delay has run, it arcs (22 pixels high)
--- over one panel toward the worm's user, then goes. Its level is the
--- worm's (its palette and arc length), its look one of two (its
--- animations from 9 or from 5, `dword_80DEEE4`: the worm says which).
+-- over one panel toward the worm's user, then goes. Its palette is the
+-- worm's, its look one of two (its animations from 9 or from 5,
+-- `dword_80DEEE4`: the worm says which).
 
 local trajectory = require("../../lib/trajectory")
 
 local spray = {}
 
 export type State = {
-    level: number,
+    palette: number,
     -- Its look's first animation.
     first_anim: number,
     -- ExtraVars: the panel it lands on, the last animation set, its ticks
@@ -26,9 +26,9 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("sand-worm")
--- The arc's length by level (`byte_80DEA50`), and its height
--- (`dword_80DF0A0`, in units of the sine table).
-local LENGTH = { [0] = 0x10, 0x10, 0x10 }
+-- The arc's length (`byte_80DEA50`, the same for every level), and its
+-- height (`dword_80DF0A0`, in units of the sine table).
+local LENGTH = 0x10
 local HEIGHT = 0x16
 
 -- The actions.
@@ -39,10 +39,7 @@ local function aim(me: Object, s: State)
     me.flip = 1
     s.target_x = me.panel_x + me.facing
     s.target_y = me.panel_y
-    local n = LENGTH[s.level]
-    if n == nil then
-        error(string.format("sand level %d reads past byte_80DEA50", s.level))
-    end
+    local n = LENGTH
     -- sub_8114F6A
     local tx, ty = field.center(s.target_x, s.target_y)
     local p = me.pos
@@ -131,7 +128,7 @@ local function init(me: Object)
     local a = s.first_anim
     me.anim, me.anim_loaded = a, a
     sprite:set_animation(a)
-    sprite.palette = s.level
+    sprite.palette = s.palette
     aim(me, s)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_lifecycle("update")
@@ -142,7 +139,7 @@ spray.kind = new.kind {
     id = "sandwrm/spray",
     pool = "attack",
     state = {
-        level = "u8",
+        palette = "u8",
         first_anim = "u8",
         target_x = "u8",
         target_y = "u8",
@@ -166,16 +163,16 @@ spray.kind = new.kind {
     end,
 }
 
--- `sub_80DEFD6`: sand from `worm` (of `level`) on its panel, of the look
+-- `sub_80DEFD6`: sand from `worm` (in its `palette`) on its panel, of the look
 -- whose first animation is `first_anim`, after `delay` ticks. (It spawns
 -- at the registers' values: the worm's Y and the delay.)
-function spray.spawn(worm: Object, level: number, first_anim: number, delay: number): Object?
+function spray.spawn(worm: Object, palette: number, first_anim: number, delay: number): Object?
     local o = battle.spawn(spray.kind, Vec3.new(worm.panel_y, delay, 0))
     if o then
         o.related1 = worm
         o.panel_x, o.panel_y = worm.panel_x, worm.panel_y
         local s = o.state :: State
-        s.level, s.first_anim, s.ticks = level, first_anim, delay
+        s.palette, s.first_anim, s.ticks = palette, first_anim, delay
         o.alliance, o.flip = worm.alliance, worm.flip
         local p = worm.pos
         o.pos = Vec3.new(p.x, p.y - 1, p.z)

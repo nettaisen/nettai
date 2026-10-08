@@ -26,7 +26,12 @@ local chip: Chip = {
     slot_in_limit = 1,
     dark_substitute = thunder,
     hp_bug = 1,
-    action = shoot.action { id = "darkthnd/action", ball = { panels = 0x0C, status = PARALYZE } },
+    -- Its ball (12 panels, the original's DarkThnd's): big, with its own
+    -- sound.
+    action = shoot.action {
+        id = "darkthnd/action",
+        ball = { panels = 0x0C, status = PARALYZE, big = true, sound = asset.sound("elec-man") },
+    },
 }
 
 return { darkthnd = chip }

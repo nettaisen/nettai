@@ -25,6 +25,6 @@ return common.make {
     smoke = effects.smoke,
     -- His shots: the fastest, seeking enemy navis along the slant.
     shoot = function(owner: Object, x: number, y: number, slant: number, damage: number): Object?
-        return shot.spawn(owner, x, y, 0, { level = 3, slant = slant, homing = "seeking" }, damage, 0)
+        return shot.spawn(owner, x, y, 0, { slant = slant, homing = "seeking" }, damage, 0)
     end,
 }
