@@ -564,7 +564,13 @@ fn charged_bonus(b: &Battle, r: ObjectRef, charge: u8) -> u16 {
     }
     let form = form_of(b, r).charged_bonus;
     let bonus = if form == Default::default() { navi_of(b, r).charged_bonus.unwrap_or_default() } else { form };
-    if bonus.paralyzes { damage_flags::PARALYZE } else { bonus.damage }
+    if bonus.paralyzes {
+        damage_flags::PARALYZE
+    } else if bonus.doubles {
+        damage_flags::DOUBLE
+    } else {
+        bonus.damage
+    }
 }
 
 /// Whether a chip is one a navi's or a form's rule is about.
