@@ -1208,6 +1208,10 @@ impl CoreApi for Battle {
         chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
     }
 
+    fn fold_hand_chip(&mut self, side: u8, i: u8) {
+        self.hands[side as usize & 1].fold_next(i as usize);
+    }
+
     fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle> {
         self.hands[side as usize & 1].ids.get(i as usize).copied().flatten()
     }

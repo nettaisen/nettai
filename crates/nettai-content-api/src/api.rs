@@ -1488,6 +1488,11 @@ pub trait CoreApi {
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
+    /// The chip after `i` of a side's hand folds into the chip at `i` (its
+    /// damage, Atk+ bonus and charge bonus added) and leaves the hand, the
+    /// chips after it moving up one (EXE4's WoodSoul's status reset,
+    /// 0x0800E294).
+    fn fold_hand_chip(&mut self, side: u8, i: u8);
     /// The chip at `i` of a side's hand, if any (the hand from its first
     /// chip, used ones too).
     fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle>;

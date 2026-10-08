@@ -88,6 +88,39 @@ impl ChipHand {
         panic!("dropping the link navis' chips reads past the hand (sub_80108FC)");
     }
 
+    /// EXE4's 0x0800E294 (WoodSoul's status reset): the chip after `i`
+    /// folds into the chip at `i`, its damage, Atk+ bonus and charge bonus
+    /// added (wrapping), and leaves the hand: the entries after it move up
+    /// one, through the first empty one (0x0800E2F0). (The original steps
+    /// its halfword pointer through the turn and modifier bytes too, moving
+    /// them at twice the index; only the local console's chip records read
+    /// those, 0x0800EC68, so each entry's own move here.)
+    pub fn fold_next(&mut self, i: usize) {
+        let j = i + 1;
+        assert!(self.ids.get(j).is_some_and(|c| c.is_some()), "folding into hand entry {i}: no chip after it (0x0800E294)");
+        self.damage[i] = self.damage[i].wrapping_add(self.damage[j]);
+        self.attack_bonus[i] = self.attack_bonus[i].wrapping_add(self.attack_bonus[j]);
+        self.charge_bonus[i] = self.charge_bonus[i].wrapping_add(self.charge_bonus[j]);
+        let mut k = j;
+        loop {
+            let next = k + 1;
+            if next >= self.ids.len() {
+                panic!("folding the hand reads past it (0x0800E2F0)");
+            }
+            self.ids[k] = self.ids[next];
+            self.damage[k] = self.damage[next];
+            self.attack_bonus[k] = self.attack_bonus[next];
+            self.charge_bonus[k] = self.charge_bonus[next];
+            self.selection[k] = self.selection[next];
+            self.turn[k] = self.turn[next];
+            self.modifiers[k] = self.modifiers[next];
+            if self.ids[k].is_none() {
+                return;
+            }
+            k = next;
+        }
+    }
+
     /// Chips left, counting from the cursor.
     pub fn remaining(&self) -> u8 {
         self.ids.iter().skip(self.cursor as usize).take_while(|id| id.is_some()).count() as u8
