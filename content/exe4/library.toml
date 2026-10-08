@@ -255,6 +255,7 @@ standard = [
     "circgun1",
     "circgun2",
     "circgun3",
+    "snake",
     "bighamr1",
     "bighamr2",
     "bighamr3",
