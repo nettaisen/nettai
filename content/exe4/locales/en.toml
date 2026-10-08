@@ -152,6 +152,9 @@ language = "en"
 "gunsol2" = { name = "GunSol2", description = "Sunshine\nappear w/\nButton" }
 "gunsol3" = { name = "GunSol3", description = "Sunshine\nappear w/\nButton" }
 "gunsolex" = { name = "GunSolEX", description = "Fires a\nspread\nsunbeam" }
+"airhoc1" = { name = "AirHoc1", description = "Ricochet\nattack to\nright" }
+"airhoc2" = { name = "AirHoc2", description = "Ricochet\nattack to\nright" }
+"airhoc3" = { name = "AirHoc3", description = "Ricochet\nattack to\nright" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
