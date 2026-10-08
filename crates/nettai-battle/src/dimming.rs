@@ -165,8 +165,12 @@ fn out_of_the_way(state: DimmingState) -> bool {
 /// its side started it.
 pub fn begin(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
-    // Its side's console hides the chip window (sub_801DACC(0x40)).
+    // Its side's console hides the chip window (sub_801DACC(0x40)), or
+    // every console, where the game's rules say (EXE4's).
     b.chip_hud[side as usize & 1].window = false;
+    if b.game_rules().chip_use.dimming_hides_every_window {
+        b.chip_hud[(side as usize & 1) ^ 1].window = false;
+    }
     if b.dimming[side as usize].initiator == side {
         b.set_flags(battle_flags::DIMMED);
     }
