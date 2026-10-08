@@ -993,6 +993,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   within five ticks of each other while dimmed in his leap's last 4 ticks or his landing (0x080C9A94), raises a second
   set. The lab's chips/0x0fe-woodman/command (the second set) and the twelve recordings replay every frame and are
   pixel-exact.
+  LaserMan (actor #0x4E, 0x080CABE4) and his laser (attack #0xA0, 0x080E0E0C) are EXE4's own; his controller (effect
+  #0x75) runs the short course. He charges 31 ticks and fires the laser from the panel ahead; it strikes its row of
+  six (region 8, a piercing hit, no spark) every 6 ticks, ten times, as its course lists (0x080E0F4C): its damage
+  (0xFD, modifier 3), a NaviCust bug and no damage (any other word: code and argument, the navi_bug hook), or nothing
+  (0xFF). LaserMan's course is the hit alone; LasrMnSP's and LasrMnDS's take the direction their side's navi holds
+  while dimmed as he charges (up, down, right, left: the first held): up the attack, rapid and charge bugs (5 to 7),
+  down super armor, FloatShoes, AirShoes, Undershirt (1 to 4) and the back special weapon (0x0C, 0xFF), right the
+  charged shot (0x0A, 1), left the custom level less one but not below 2 (0x12, 0xFE's word), each then the hit. The
+  lab's chips/0x111-lasrmnsp/aim-up, aim-down, aim-right and aim-left and the twelve recordings replay every frame and
+  are pixel-exact.
 
 **For the next steps:**
 
