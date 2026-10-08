@@ -270,13 +270,19 @@ impl Renderer {
             _ if transform != Fade::None => transform,
             _ => custom_hud,
         };
+        // (The custom screen's fades of palettes 0-13 and 9-13 leave the
+        // HUD's 14 and 15: the flash's and the transformation's reach them.)
+        let hud_past_ranged = match flash {
+            Some(1) => Fade::White(16),
+            _ => transform,
+        };
         let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         // (The chatbox's palette is past every ranged fade's palettes: a
         // dimming's 0-8, the custom screen's 0-13 and 9-13, the two-layer
         // flash's 0-14. The fades of every palette reach it: the
         // transformation's, and the custom screen's white.)
         let dialogue = if transform != Fade::None { transform } else { crate::custom::sprite_fade(b).unwrap_or_default() };
-        let fades = Fades { stage, hud, dialogue, sprites, screen: screen_fade(b) };
+        let fades = Fades { stage, hud, hud_past_ranged, dialogue, sprites, screen: screen_fade(b) };
         let layers = [&self.dialogue, &self.names, &self.hud, &self.field, &self.background];
         let (pixels, depth) = compose::compose_with_depth(backdrop, &layers, &parts, fades);
         // Each item's depth and fades: its layer's (the HUD layer's moved
@@ -291,7 +297,7 @@ impl Renderer {
                     Plane::Hud => {
                         item.rect = item.rect.offset(-jx, -jy);
                         item.clip = item.clip.offset(-jx, -jy);
-                        (compose::layer_depth(&self.hud), fades.hud)
+                        (compose::layer_depth(&self.hud), if item.past_ranged { fades.hud_past_ranged } else { fades.hud })
                     }
                     Plane::Bg0 => (compose::layer_depth(&self.names), fades.hud),
                     Plane::Sprite(tag) => {
