@@ -703,6 +703,25 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
+-- A game's NumbrBl NumberMan (@exelib/numbrbl/numberman): his kind's id, sprite and palette, his appearing sound, his
+-- throwing animation, his balls, and whether his init loads his standing animation (EXE4's) or leaves his animation
+-- byte 0xFF (EXE5's).
+export type NumbrBlNumberManLook = {
+    id: string,
+    sprite: SpriteAsset,
+    palette: number,
+    appear: Sound,
+    throw_anim: number,
+    ball: NumberBall,
+    loads_standing: boolean?,
+}
+
+-- NumbrBl's NumberMan made for a game (@exelib/numbrbl/numberman): his kind, and his spawn for a controller.
+export type NumbrBlNumberMan = {
+    kind: Kind,
+    spawn: (controller: Object, x: number, y: number, damage: number, balls: number) -> Object?,
+}
+
 -- A patch card's effect (@exelib/patch_cards/effects' constructors make them; a game's rules/patch_cards applies
 -- them, @exelib/patch_cards/apply): its kind, and the kind's fields.
 export type PatchCardEffect = {
@@ -838,7 +857,8 @@ export type FanVariant = {
     pulls: boolean,
     wait: number,
     hp: number,
-    identity: Identity,
+    -- Its NameID's identity (none: EXE4's init writes no NameID, 0x080D64A8).
+    identity: Identity?,
     absorbed: AbsorbedLook?,
 }
 
@@ -851,8 +871,8 @@ export type FanLook = {
     appear_sound: Sound,
     blow_sound: Sound,
     break_sound: Sound,
-    -- Removed (a puff 12 pixels up); broken (an explosion).
-    puff: Effect,
+    -- Removed (a puff 12 pixels up; none where no removal puffs); broken (an explosion).
+    puff: Effect?,
     explosion: Effect,
     -- What it is and what reaches it: its side's obstacles' (the other side's attacks, objects and bodies, and
     -- neutral objects).
@@ -867,6 +887,11 @@ export type FanLook = {
     -- EXE5's Fan's gust (0x080CE96C) starts on the far column alone, none when another obstacle stands there; EXE6's
     -- tries the panels toward the fan.
     far_column_only: boolean?,
+    -- Whatever removes it, it leaves as when broken: its sound and its explosion (EXE4's 0x080D664C).
+    removal_explodes: boolean?,
+    -- The column its gust starts on in `row` (0: none), the game's own where it differs from EXE6's and EXE5's
+    -- (EXE4's 0x080D6688).
+    column: ((me: Object, row: number, pulls: boolean) -> number)?,
 }
 
 export type Fan = {
@@ -883,6 +908,8 @@ export type WindControllerLook = {
     id: string,
     spawn_fan: (owner: Object, variant: FanVariant, x: number, y: number, damage: number) -> Object?,
     position: ((user: Object, spec: DimmingChipSpec) -> Vec3)?,
+    -- Its spawn copies the user's side alone, not its facing (EXE4's, 0x080E4B60).
+    side_only: boolean?,
 }
 
 export type WindController = {
@@ -928,6 +955,10 @@ export type ProjectileVariant = {
     hit_panel: PanelHit?,
     bursts: boolean?,
     climbs: boolean?,
+    -- EXE6's: as the buster-shot program (its rows from 0x1E on) or the charged-shot program (rows 9 and 0x23), it
+    -- comes on 1 draw in 8, not 1 in 2.
+    rare_buster_shot: boolean?,
+    rare_charged_shot: boolean?,
 }
 
 -- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
@@ -1445,6 +1476,17 @@ export type CircGunLook = {
     -- The hit's spark (element 0's).
     spark: Spark,
     on_floor: boolean?,
+    -- Going back along a row it turns on a column with any of the user's side's panels (EXE4's, 0x080DE7AA), where
+    -- EXE6's and EXE5's turn before a column with none of the other side's.
+    turns_on_own_column: boolean?,
+}
+
+-- A game's CircGun controller's differences: its spawn takes the user's side alone, not its facing (EXE4's,
+-- 0x080E8B84); it sets the gun whatever the far column holds (EXE4's 0x080E8B40, where EXE6's and EXE5's end at once
+-- with none of the other side's panels there).
+export type CircGunControllerLook = {
+    side_only: boolean?,
+    always_sets_gun: boolean?,
 }
 
 -- How a game's bomb looks and sounds, and how it leaves.
@@ -1673,6 +1715,8 @@ export type NaviCustProgramSpec = {
     exclusive: string?,
     anywhere: boolean?,
     effects: { NaviCustEffect }?,
+    -- EXE5's HubBatc: its own bug counts once more (0x0813F5A8).
+    counts_own_bug: boolean?,
 }
 export type NaviCustProgram = NaviCustProgramSpec
 
@@ -1758,7 +1802,9 @@ export type NaviChip = {
 -- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
 -- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
 -- after the navi), the controller's state, and what a game's `make` hands back.
-export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
+-- A navi chip controller's step: a wait (the user warping out or back in as it starts, a sound then: EXE4's GutPnch's
+-- warp back, 0x080E91BC), or the navi.
+export type NaviChipStep = { wait: number, warp: ("out" | "in")?, sound: Sound? } | "navi"
 export type NaviChipShortCourse = { out: number, after: number }
 export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean }
 export type NaviChipController = {

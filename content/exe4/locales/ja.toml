@@ -209,8 +209,23 @@ language = "ja"
 "discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
 "timpani" = { name = "ティンパニー", description = "ララボーンをおく\nえんそうちゅう\nじしんであしどめ!" }
 "silence" = { name = "サイレンス", description = "ララミュートをおく\nえんそうちゅう\nあいてはもうもくに" }
+"gutsman" = { name = "ガッツマン", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
+"gutsmn-sp" = { name = "ガッツマンSP", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
+"gutsmn-ds" = { name = "ガッツマンDS", description = "ガッツハンマー!\nあいてエリアに\nヒビとガレキ攻撃!" }
 "copydmg" = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
 "windrack" = { name = "フウジンラケット", description = "目の前のてきを\n風でふきとばす!\nはんいはたて3マス" }
+"bighamr1" = { name = "ビッグハンマー1", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
+"bighamr2" = { name = "ビッグハンマー2", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
+"bighamr3" = { name = "ビッグハンマー3", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
+"godhammr" = { name = "ゴッドハンマー", description = "てきみかたとわず\n攻撃するせきぞうを\n目の前のマスにおく" }
+"geddon1" = { name = "デスマッチ1", description = "パネルのあるマスが\nすべてヒビに!" }
+"geddon2" = { name = "デスマッチ2", description = "あいているマスが\nすべてこわれる!" }
+"geddon3" = { name = "デスマッチ3", description = "パネルのあるマスが\nすべてどくぬまに!" }
+"wind" = { name = "トップウ", description = "ウインドボックスを\nおき てきエリアに\n風をふかせる" }
+"fan" = { name = "スイコミ", description = "バキュームファンを\nおき 風でてきを\nすいよせる" }
+"circgun1" = { name = "サークルガン1", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"circgun2" = { name = "サークルガン2", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"circgun3" = { name = "サークルガン3", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
 "varswrd" = { name = "バリアブルソード", description = "へんげんじざいの\nテクニカルソード" }
 "neovari" = { name = "ネオバリアブル", description = "へんげんじざいの\nテクニカルソード\nじょうきゅうへん" }
 "lifesrd" = { name = "ドリームソード", description = "よこ2たて3の\nきょだいソードで\nてきをぶったぎる!" }
@@ -219,10 +234,29 @@ language = "ja"
 "crosswrd" = { name = "クロスソード", description = "" }
 "sprsonic" = { name = "スーパーソニック", description = "" }
 "dbldream" = { name = "ダブルドリーム", description = "" }
+"aquaman" = { name = "アクアマン", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
+"aquamn-sp" = { name = "アクアマンSP", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
+"aquamn-ds" = { name = "アクアマンDS", description = "スイドウカンをおき\nその2マス前方まで\nほうすい攻撃!" }
 "sandring" = { name = "サンドリング", description = "あたるとアリジゴク\nを発生させる\nリングを前方へ!" }
 "z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
+"gutpnch1" = { name = "ガッツパンチ1", description = "目の前のマスに\nガッツパンチ!" }
+"gutpnch2" = { name = "ガッツパンチ2", description = "目の前のマスに\nガッツストレート!" }
+"gutpnch3" = { name = "ガッツパンチ3", description = "目の前のマスに\nガッツインパクト!" }
+"windman" = { name = "ウインドマン", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-sp" = { name = "ウインドマンSP", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"windmn-ds" = { name = "ウインドマンDS", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"numbrbl1" = { name = "ナンバーボール1", description = "3れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
+"numbrbl2" = { name = "ナンバーボール2", description = "4れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
+"numbrbl3" = { name = "ナンバーボール3", description = "5れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
 "blkbomb" = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
+"videoman" = { name = "ビデオマン", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"videmn-sp" = { name = "ビデオマンSP", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
+"videmn-ds" = { name = "ビデオマンDS", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 "bugbomb" = { name = "バグボム", description = "あいてをバグらせる\nバグボムを3マス前\nになげつける" }
+"kendoman" = { name = "ケンドーマン", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"kendmn-sp" = { name = "ケンドーマンSP", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"kendmn-ds" = { name = "ケンドーマンDS", description = "前方のてきに\nつっこみ 前後から\nケンドー3だん攻撃" }
+"nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
 "vdoll" = { name = "ワラニンギョウ", description = "おそろしいノロイの\nワラニンギョウを\n3マス前方になげる" }
 "curse" = { name = "ノロイ", description = "" }
 

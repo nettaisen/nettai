@@ -17,6 +17,7 @@ local drksonic = require("../../../chips/drksonic").drksonic
 local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
+local soldiers = require("@self/soldiers")
 
 -- Colonel's cape on the soul's image (the body overlays' row 3, 0x0800EE5E): in front.
 local CAPE: BodyPart = { sprite = asset.sprite("colonel-cape"), anims = 41 }
@@ -40,12 +41,11 @@ local form: FormDef = {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
     },
-    -- 0x08011C44: the damage words (0x08011C50: 40 and 10 more per point of buster Attack plus one for the sword's
-    -- soldier, 10 and 2 more for the gun's, each paralyzing with counter byte 0x94; 0x080CABF8), then the side armed
-    -- (0x080CAC1E: the battle state's +0x5C bit 0x10 or 0x20). A status reset disarms it again (the engine's).
+    -- 0x08011C44: the damage words (0x08011C50: ./soldiers), then the side armed (0x080CAC1E: the battle state's +0x5C
+    -- bit 0x10 or 0x20). A status reset disarms it again (the engine's).
     reset = function(navi: Object)
-        local level = battle.navi(navi.alliance).attack + 1
-        obstacle.arm_conversion(navi.alliance, 40 + 10 * level + 0x0094_4000, 10 + 2 * level + 0x0094_4000)
+        local melee, ranged = soldiers.words(navi)
+        obstacle.arm_conversion(navi.alliance, melee, ranged)
     end,
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's

@@ -15,7 +15,8 @@
 --   (or EXE5's navi 23). Used, it breaks a soul (0x08010070: the weakness request, 0x080122C8), marks its side
 --   (statistic 2 set to 1), leaves the navi's mood at 0 and ends his
 --   anger, and costs him what the chip's entry of 0x0802C934 sets (a NaviCust bug of the battle: 0x0802C974's
---   routines; in the operation battle the HP drain one level more instead), the light/dark check following.
+--   routines, the chip's `dark_cost`; in the operation battle the HP drain one level more instead), the light/dark
+--   check following.
 -- - **The starting mood** (MegaMan's start, 0x08010EC8, where EXE6's `sub_8013892` sets 0x80): by the value
 --   (0x0801283A): under 470 0 (a dark MegaMan's, his face the fifth: 0x0801AF64), under 500 64, from 1000 190, else
 --   the value / 20 + 103 (500: 0x80). A battle that holds the value (battle effect 0x20000) holds it at 500 from his
@@ -38,44 +39,6 @@
 local invalid = require("../chips/invalid").invalid
 local megaman = require("../navis/megaman").megaman
 local operation_battle = require("../lib/operation_battle")
-
--- A navi's stats as the costs write them.
-type Stats = Navi
-
--- The dark chips' costs (0x0802C974, by chip: EXE5's chips 0xBB to 0xC6), the stats each sets.
-local function custom_damage(stats: Stats)
-    stats.custom_damage = bit32.band(stats.custom_damage + 100, 0xFFFF)
-end
-local function buster_blanks(stats: Stats)
-    stats.buster_blanks = 4
-end
-local function step_bug(stats: Stats)
-    stats.step_bug = 1
-end
-local function custom_drain(stats: Stats)
-    stats.custom_drain = math.min(stats.custom_drain + 2, 7)
-end
-local COSTS: { [string]: (stats: Stats) -> () } = {
-    ["darkcirc"] = custom_damage,
-    ["drksword"] = buster_blanks,
-    ["darkinvs"] = step_bug,
-    ["darkplus"] = step_bug,
-    ["drklance"] = function(stats: Stats)
-        stats.hit_status = 2
-    end,
-    ["darkwide"] = buster_blanks,
-    ["darkthnd"] = custom_drain,
-    ["drkrecov"] = function(stats: Stats)
-        stats.hp_drain = 7
-    end,
-    ["darkmetr"] = custom_drain,
-    ["darkdril"] = function(stats: Stats)
-        stats.panel_trail = 4
-        stats.panel_trail_level = 4
-    end,
-    ["darktorn"] = custom_damage,
-    ["drksonic"] = step_bug,
-}
 
 -- The side statistic a dark chip's use sets.
 local DARK_CHIP_USED = 2
@@ -241,9 +204,9 @@ local function offer_dark_chip(side: number)
     custom.swap_folder(side, custom.hand_size(side) + 1, taken)
 end
 
--- 0x0802C934: the chip's cost, if it has one.
+-- 0x0802C934: the chip's cost, if it has one (its `dark_cost`).
 local function cost(side: number, chip: Chip)
-    local f = COSTS[chip.id :: string]
+    local f = (chip :: any).dark_cost :: DarkCost?
     if not f then
         return
     end
@@ -252,7 +215,7 @@ local function cost(side: number, chip: Chip)
         stats.hp_drain = math.min(stats.hp_drain + 1, 7)
         return
     end
-    f(stats)
+    f.apply(stats)
 end
 
 -- The hit flag that a high value turns a bug away for (0x0801103E).

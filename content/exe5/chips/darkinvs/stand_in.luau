@@ -67,7 +67,7 @@ local function init(me: Object)
         me:free()
         return
     end
-    stand_in.init(me)
+    stand_in.init(me, stand_in.overlay)
     me:set_lifecycle("update")
     tick(me)
 end

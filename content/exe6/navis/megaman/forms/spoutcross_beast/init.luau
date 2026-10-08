@@ -10,6 +10,8 @@ local forms = require("../../../rules/forms")
 
 local form: FormDef = {
     kind = "cross_beast",
+    -- The Falzar Beast buster's shots' palette (`byte_80EC784`).
+    beast_shot_palette = 1,
     -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
     -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
     traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time" },

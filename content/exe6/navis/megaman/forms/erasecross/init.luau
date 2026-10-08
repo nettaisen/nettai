@@ -11,6 +11,8 @@ local forms = require("../../../rules/forms")
 
 local form: FormDef = {
     kind = "cross",
+    -- Its charged shot fires its own beam (./charge; any other form the Beast form's).
+    plain_erase_beam = true,
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
     version = "gregar",
