@@ -438,6 +438,8 @@ language = "en"
 "071-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
 "073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"074-triple-supporter-1-2" = { name = "Triple Supporter 1/2" }
+"075-triple-supporter-2-2" = { name = "Triple Supporter 2/2" }
 "076-all-guard-1-2" = { name = "All Guard 1/2" }
 "077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
