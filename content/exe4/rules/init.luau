@@ -37,6 +37,9 @@ local rules: Rules = {
         -- All Guard (+0x28: the pair of patch cards 76 and 77, ./patch_cards; the reset clears it), which raises the
         -- navi's guard whenever its abilities are reset (./roles' `abilities_reset`, 0x0800D8E4).
         all_guard = "bool",
+        -- Fighting in the sun (+0x29: the overworld sets it by the map, 0x0802A770, and the reset keeps it: ./save),
+        -- which GunSol reads.
+        sun = "bool",
     },
     -- What a player brings (nettai-match from a match's side, exe4-compat from a recording): a side's facts.
     setup = {
@@ -46,9 +49,11 @@ local rules: Rules = {
         -- entry of it (from 0), dealt first.
         folder = schema.list({ chip = "chip", code = "code" }, 30),
         regular_chip = "u8?",
-        -- What the save brings to the navi's stats (./save): MegaMan's HP and the Regular memory.
+        -- What the save brings to the navi's stats (./save): MegaMan's HP, the Regular memory and fighting in the sun
+        -- (NaviStats +0x29).
         hp = "u16",
         reg_up = "u8",
+        sun = "bool",
         -- MegaMan's light/dark value (NaviStats +0x36): ./light_dark.
         karma = "u16",
         -- Their NaviCust (./navicust): the programs placed on its 5x5 board (the engine's 7x7 grid's middle) in its
@@ -74,12 +79,14 @@ local rules: Rules = {
         souls = "form[12]",
         double_soul = "bool",
     },
-    -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
+    -- A setup that says nothing: what every save brings at its highest (the sun too); the default block's light/dark
+    -- value (500:
     -- the starting mood 0x99); Double Soul and every soul (by id: a form's module reads ./souls, so this names them
     -- rather than reads theirs).
     setup_defaults = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
+        sun = true,
         karma = 500,
         souls = {
             "rollsoul",
