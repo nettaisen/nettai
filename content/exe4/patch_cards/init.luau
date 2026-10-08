@@ -86,6 +86,7 @@ return merge {
     require("@self/078_first_life_aura"),
     require("@self/079_charge_shot_switch"),
     require("@self/080_charge_shot_switch"),
+    require("@self/081_charge_shot_switch"),
     require("@self/082_charge_shot_switch"),
     require("@self/083_charge_shot_switch"),
     require("@self/084_charge_shot_switch"),

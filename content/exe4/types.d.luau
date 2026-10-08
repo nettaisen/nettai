@@ -7,6 +7,18 @@
 -- programs and the cards add.
 export type PatchCardWork = { hp: number }
 
+-- A ring (objects/ring, attack object 0x6D: one of the 3-byte rows at 0x080DAFB0, which each thrower states): its
+-- sheet, its speed in pixels a tick, its hits' status (none: none), its sound as it sets off, its hit modifier, and
+-- the panel type its hit leaves (SandRing's sand; none: none).
+export type RingVariant = {
+    sprite: SpriteAsset,
+    speed: number,
+    status: Status?,
+    sound: Sound,
+    hit_mod: number,
+    sand: PanelType?,
+}
+
 -- A breath chip's breath (chips/breath, attack object 0x36): its own panel was hit (+0x60), and the column's three
 -- ahead (+0x64, +0x68, +0x6C: level, up, down); its sound's count (+0x22).
 export type BreathState = {
