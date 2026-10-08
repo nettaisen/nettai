@@ -9,6 +9,7 @@
 
 local arm_change = require("@self/arm_change")
 local attach_points = require("@self/attach_points")
+local attachment = require("../../../objects/attachment")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
@@ -34,8 +35,12 @@ local form: FormDef = {
     element = "null",
     buster_bonus = 0,
     -- Its Chaos Unison (rules/souls/chaos_charge): the weapon an armed charge released in the cycle's window fires:
-    -- routine 0x3A (0x0800FA98): DrkSonic (chip 0xC6), the charge table's row 0x3A.
-    chaos = { weapon = chaos.weapon(drksonic, { 40, 60, 90, 120, 150, 60 }) },
+    -- routine 0x3A (0x0800FA98): DrkSonic (chip 0xC6), the charge table's row 0x3A; and the blade its swords hold while
+    -- the charge is armed (lib/swords, 0x080EC082: attachment row 0x32, the swords' in palette 6).
+    chaos = {
+        weapon = chaos.weapon(drksonic, { 40, 60, 90, 120, 150, 60 }),
+        blade = attachment.look { sprite = asset.sprite("sword"), palette = 6 },
+    },
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
