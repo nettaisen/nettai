@@ -3,8 +3,9 @@
 //! the NaviCust's programs as placed, what the save brings to the stats (the
 //! base HP and the Regular memory), and from MegaMan's NaviStats block his
 //! light/dark value, the patch cards switched on (a card whose effects
-//! aren't ported yet, docs/design/exe4-map.md §18, said and left out), its
-//! version, and Double Soul and the souls it has. The import is the compat
+//! aren't ported yet, docs/design/exe4-map.md §18, said and left out), and
+//! Double Soul and the souls it has (its version's, by their flags: the
+//! content has no version). The import is the compat
 //! boundary's: a save is the original's bytes, and a side its game's facts
 //! (nettai's build creator picks the game's import: `builds::import`).
 
@@ -18,10 +19,6 @@ use nettai_match::{Folder, Side, ids};
 
 /// Double Soul's event flag (0x0801E0B4).
 const DOUBLE_SOUL: u16 = 0x14;
-/// Each version's first soul's event flag, its others' following in its
-/// souls' order (0x08020018's tables by version: Red Sun's 0x17 to 0x1C,
-/// Blue Moon's 0x1D to 0x22).
-const SOUL_FLAGS: [u16; 2] = [0x17, 0x1D];
 
 /// The EXE4 save in `file` (a .sav's bytes, or a raw save image as Tango's
 /// netplay templates hold), or why it is none. (A raw image says neither its
@@ -95,19 +92,14 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
     // What the save brings to the stats: the base HP, the Regular memory.
     state(side, "hp", &[Fact::Value(Value::Int(save.base_max_hp() as i64))]);
     state(side, "reg_up", &[Fact::Value(Value::Int(save.regular_memory() as i64))]);
-    // Its version; Double Soul (event flag 0x14) and the souls it has (EXE4's
-    // rules/souls): of the forms MegaMan lists for the version, in order,
-    // those whose flags are set (0x0801FFD4's table: Red Sun's souls'
-    // 0x17 to 0x1C, Blue Moon's 0x1D to 0x22).
-    let version = save.version.name();
-    state(side, "version", &[Fact::Name(version)]);
+    // Double Soul (event flag 0x14) and the souls it has (EXE4's rules/souls):
+    // its version's whose flags are set (`Version::soul_flag`, 0x08020018's
+    // table), by the forms' numbers (records.toml's), in their order.
     state(side, "double_soul", &[Fact::Value(Value::Bool(save.event_flag(DOUBLE_SOUL)))]);
-    let navi = side.navi(content);
-    let listed = content.navi(navi).forms.as_ref().map_or(&[][..], |f| f.listed(version));
-    let first = SOUL_FLAGS[save.version as usize];
-    let souls: Vec<Fact> = (listed.iter().enumerate())
-        .filter(|&(k, _)| save.event_flag(first + k as u16))
-        .map(|(_, f)| Fact::Value(Value::Def(Registry::Form, f.0)))
+    let souls: Vec<Fact> = (1..=12u8)
+        .filter(|&n| save.version.soul_flag(n).is_some_and(|f| save.event_flag(f)))
+        .filter_map(|n| compat.form(n).and_then(|key| content.defs.form_by_key(key)))
+        .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
         .collect();
     state(side, "souls", &souls);
     notes.extend(left_out);
@@ -174,12 +166,12 @@ mod tests {
         let Some(Stated::List(cards)) = get("patch_cards") else { panic!("{:?}", get("patch_cards")) };
         assert_eq!(cards.len(), 1, "{cards:?}");
         let form = |key: &str| Stated::Def(Registry::Form, Some(content.form_by_key(key).0));
+        assert_eq!(get("version"), None, "the content has no version");
         assert_eq!(
-            (get("version"), get("double_soul"), get("souls")),
+            (get("double_soul"), get("souls")),
             (
-                Some(Stated::Variant(Some("redsun".into()))),
                 Some(Stated::Flag(true)),
-                Some(Stated::List([form("rollsoul"), form("windsoul")].into_iter().chain(std::iter::repeat_n(Stated::Def(Registry::Form, None), 4)).collect()))
+                Some(Stated::List([form("rollsoul"), form("windsoul")].into_iter().chain(std::iter::repeat_n(Stated::Def(Registry::Form, None), 10)).collect()))
             )
         );
         assert_eq!(

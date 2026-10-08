@@ -65,6 +65,17 @@ impl Version {
             _ => None,
         }
     }
+
+    /// The event flag of soul `number` (1 to 12) in this version's save, if
+    /// it can have it (0x08020018, the UNITE button's table by version: Red
+    /// Sun's souls 1 to 6 flags 0x17 to 0x1C, Blue Moon's 7 to 12 flags 0x1D
+    /// to 0x22; the other version's 0xFF, never offered).
+    pub fn soul_flag(self, number: u8) -> Option<u16> {
+        match (self, number) {
+            (Version::RedSun, 1..=6) | (Version::BlueMoon, 7..=12) => Some(0x16 + number as u16),
+            _ => None,
+        }
+    }
 }
 
 /// EXE4's object pools: how many slots each has (exe4-map.md §3.1: 8 actors,
