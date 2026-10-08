@@ -1,16 +1,18 @@
 --!strict
--- BassAnly, the navi of the BassAnly chip, as EXE6 and EXE5 share him (EXE6's
--- actor object #0x50, `sub_80C3CE8`; EXE5's #0x50, 0x080C2C9C), brought by
--- its navi chip controller. He appears (with his cloak, a form overlay) on
+-- BassAnly, the navi of the BassAnly chip, as EXE6, EXE5 and EXE4 share him
+-- (EXE6's actor object #0x50, `sub_80C3CE8`; EXE5's #0x50, 0x080C2C9C;
+-- EXE4's #0x50, 0x080CB0FC), brought by its navi chip controller. He appears (with his cloak, a form overlay) on
 -- his user's panel, waits 51 ticks, raises his arm, and fires four dark
 -- balls in turn, up and down the slant, that home in on enemy navis
 -- (./shot). Then he goes in a burst, and the controller moves on. He goes
 -- at once if his panel is off the field. EXE5's code is EXE6's with other
 -- animations, an arm on him (an attachment) while he takes aim, and his
--- firing animation moving on to its loop. See docs/engine/chips.md §3.6.35.
+-- firing animation moving on to its loop. EXE4's is EXE5's without the arm,
+-- with a glow in his hands as his arm is up instead (its Z, which EXE6's and
+-- EXE5's init clear, is the spawner's 0). See docs/engine/chips.md §3.6.35.
 --
 -- Each game makes his kind (`bassanly.make`: his sprite, cloak, sounds,
--- animations, arm, burst and dark ball).
+-- animations, arm or effect, burst and dark ball).
 
 -- A game's BassAnly.
 export type Spec = {
@@ -28,6 +30,9 @@ export type Spec = {
         look: AttachmentLook,
         anim: number,
     }?,
+    -- EXE4's glow in his hands as his arm is up (effect row 0x58,
+    -- 0x080CB236), turned his side's way, and its ticks.
+    glow: { effect: Effect, ticks: number }?,
     -- The burst of smoke as he goes (effect 0x12).
     smoke: Effect,
     -- A dark ball from (x, y), up (-1) or down (1) the slant, with the
@@ -66,7 +71,7 @@ function bassanly.make(spec: Spec): { kind: Kind, summon: (user: Object, control
     end
 
     -- `sub_80C3E00`: raising his arm until its last frame ends; then his
-    -- stance (EXE5's arm on him), 31 ticks.
+    -- stance (EXE5's arm on him; EXE4's glow), 31 ticks.
     local function raise(me: Object)
         if me.phase_init == 0 then
             me.phase_init = 1
@@ -81,6 +86,13 @@ function bassanly.make(spec: Spec): { kind: Kind, summon: (user: Object, control
             arm.attach(me, arm.look, "held", { anim = arm.anim, while_dimmed = true })
         end
         battle.play_sound(spec.sounds.raise)
+        local glow = spec.glow
+        if glow then
+            local fx = battle.effect(me.pos, glow.effect, bit32.bxor(me.alliance, me.flip))
+            if fx then
+                fx.timer = glow.ticks
+            end
+        end
         me.timer = 0x1E
         me.phase, me.phase_init = 4, 0
     end

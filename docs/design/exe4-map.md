@@ -1047,6 +1047,17 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   spark; its hitbox runs while dimmed as the shot does) with the vulcan's sound. His controller (effect #0x76) runs the
   short course. The lab's chips/0x12d-bass (4) replay every frame and are pixel-exact but for the custom screens'
   known shift (the Giga chip is dug over turns); EXE6's Bass traces (49) and EXE5's (4) still match.
+  BassAnly (actor #0x50, 0x080CB0FC) is EXE6's and EXE5's (@exelib/bassanly/navi) with EXE4's parts: Bass's sheet,
+  his cloak's animation offset 0x0E, EXE5's animations, no arm but a glow in his hands as it is up (effect row 0x58:
+  the sheet's animation 32, its timer 26: the maker's `glow`), the hole sound (0x105) for it, his smoke (row 0x13).
+  His init leaves Z alone (EXE6's and EXE5's clear it): the spawner's register, 0. He throws level 2 (0x080CB304),
+  EXE4's fastest: its dark ball (attack #0x73, 0x080DB7E8) is EXE6's and EXE5's (@exelib/bassanly/shot) on Bass's
+  sheet (animations 33 and 34, the maker's `anim`), its speeds level 2's (0x080DBB40, 0x080DBB64: the same as their
+  level 3's, EXE4's table has three rows), its push 0x20 ticks (0x1C and twice the level) and its diagonal steps 8
+  (12 less twice the level; EXE6's and EXE5's 10 less: the maker's `push_ticks` and `step_ticks`). His controller
+  (effect #0x77, 0x080EA598) runs the short course. The lab's chips/0x132-bassanly (4) replay every frame, sound the
+  same and are pixel-exact but for the custom screens' known shift; EXE6's BassAnly recordings (21) and EXE5's (4)
+  still match.
 
 **For the next steps:**
 
