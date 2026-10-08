@@ -157,6 +157,10 @@ language = "en"
 "flmline1" = { name = "FlmLine1", description = "Firebeam\n2sq ahead\n3sq long!" }
 "flmline2" = { name = "FlmLine2", description = "Firebeam\n2sq ahead\n3sq long!" }
 "flmline3" = { name = "FlmLine3", description = "Firebeam\n2sq ahead\n3sq long!" }
+"gunsol1" = { name = "GunSol1", description = "Sunshine\nappear w/\nButton" }
+"gunsol2" = { name = "GunSol2", description = "Sunshine\nappear w/\nButton" }
+"gunsol3" = { name = "GunSol3", description = "Sunshine\nappear w/\nButton" }
+"gunsolex" = { name = "GunSolEX", description = "Fires a\nspread\nsunbeam" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

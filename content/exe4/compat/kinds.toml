@@ -35,6 +35,8 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# The GunSols' sun beam (0x080E7216).
+"gunsol/beam" = { pool = "effect", index = 0x48 }
 # The FlmLines' flame (0x080D00B8).
 "flmline/flame" = { pool = "attack", index = 0x19 }
 # The breath chips' breath (0x080D3B42): one object in the original, its rows by the chip's parameter; here each
