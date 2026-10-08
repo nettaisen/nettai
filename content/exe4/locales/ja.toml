@@ -268,6 +268,9 @@ language = "ja"
 "woodman" = { name = "ウッドマン", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
 "woodmn-sp" = { name = "ウッドマンSP", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
 "woodmn-ds" = { name = "ウッドマンDS", description = "あいてエリアないに\nランダムにつきだす\nウッディタワー!" }
+"laserman" = { name = "レーザーマン", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
+"lasrmn-sp" = { name = "レーザーマンSP", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
+"lasrmn-ds" = { name = "レーザーマンDS", description = "よこ1れつかんつう\nするパワーダウン\nレーザー!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

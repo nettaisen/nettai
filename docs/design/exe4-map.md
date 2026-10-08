@@ -995,6 +995,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   within five ticks of each other while dimmed in his leap's last 4 ticks or his landing (0x080C9A94), raises a second
   set. The lab's chips/0x0fe-woodman/command (the second set) and the twelve recordings replay every frame and are
   pixel-exact.
+  LaserMan (actor #0x4E, 0x080CABE4) and his laser (attack #0xA0, 0x080E0E0C) are EXE4's own; his controller (effect
+  #0x75) runs the short course. He charges 31 ticks and fires the laser from the panel ahead; it strikes its row of
+  six (region 8, a piercing hit, no spark) every 6 ticks, ten times, as its course lists (0x080E0F4C): its damage
+  (0xFD, modifier 3), a NaviCust bug and no damage (any other word: code and argument, the navi_bug hook), or nothing
+  (0xFF). LaserMan's course is the hit alone; LasrMnSP's and LasrMnDS's take the direction their side's navi holds
+  while dimmed as he charges (up, down, right, left: the first held): up the attack, rapid and charge bugs (5 to 7),
+  down super armor, FloatShoes, AirShoes, Undershirt (1 to 4) and the back special weapon (0x0C, 0xFF), right the
+  charged shot (0x0A, 1), left the custom level less one but not below 2 (0x12, 0xFE's word), each then the hit. The
+  lab's chips/0x111-lasrmnsp/aim-up, aim-down, aim-right and aim-left and the twelve recordings replay every frame and
+  are pixel-exact.
 
 **For the next steps:**
 
@@ -2067,14 +2077,21 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      the spiraling image, the engine behind it; the RAM's sprite list (0x03002000 at that tick) has the image's parts
      (80 to 84) at priority 0 before the number's 32x16 (85, priority 1), which mGBA's rule (priority, then index)
      would put behind the image: what the hardware takes is to find.
-   - **FireSoul (5).** Fire (0x0800C964) *open*; its overlay 0x10 and image part 0x12 *open*; the status reset's
-     panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle row and four more panels turn grass, blinking
-     10 ticks) *open*; a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged
-     use is a 150 flame in its place (0x0800B76C, 0x0800D638: action 25, hit 0xA8, params 0x1E05) *open*; the flame
-     charged (0x0C, 0x0800CCAE: 50, hit 0x9E, params 0x1E03, action 25) *open*; lava heals it 50 and turns normal,
-     with the heal's sparkle and sound (0x0801313E, 0x080131B8) *open*.
-   - **ThunderSoul (6).** Elec (0x0800C964) *open*; an uncharged damaging Null or Elec chip that isn't a dimming chip
-     paralyzes (0x0800C4C4: the damage's 0x4000) *open*; charged 0x58 (0x0800D298) *open*.
+   - **FireSoul (5).** Fire (0x0800C964) *done* (souls/fire/weakness: aqua on it, the weakness mark at its status
+     mark, 0x080133E8); its overlay 0x10 (10-00: forms/soul's `overlay`) and image part 0x12 (10-08) *done*
+     (souls/fire/hit, unison); the status reset's panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle
+     row and four more panels turn grass, blinking 10 ticks; its modes 0 to 2 have no spawner) *done* (souls/fire/hit);
+     a fire chip charges on A (0x0800BC78; the A routine 0x66 has charge times alone) and its charged use is a 150
+     flame in its place (0x0800B76C, 0x0800D638: action 0x19, hit 0xA8, five panels, the attack's chip 0: chips/zeroed)
+     *done* (souls/fire/chip); the flame charged (0x0C, 0x0800CCAE: 50, hit 0x9E, three panels, action 0x19) *done*
+     (souls/fire/unison); lava heals it 50, as raw fire damage (a barrier takes it), and turns normal, with the heal's
+     sparkle and sound (0x0801313E, 0x080131B8: rules/panels) *done* (souls/fire/lava, lava-barrier).
+   - **ThunderSoul (6).** Elec (0x0800C964) *done* (souls/thunder/weakness: Lance's wood); an uncharged damaging Null
+     or Elec chip that isn't a dimming chip paralyzes (0x0800C4C4: the damage's 0x4000; the form's `paralyzing_chips`)
+     *done* (souls/thunder/paralyze); the row shot charged (0x58, 0x0800D298: 20, elec, hit 0x8A; action 0x47 and
+     attack 0x6D, objects/row_shot's row 0: the hand, 0c-36, and the elec shot, 0c-37, paralyzing 90 ticks) *done*
+     (souls/thunder/unison, side1). The image against the HP number (SearchSoul's below) shows in
+     souls/thunder/side1 too, frames 494 to 532, ThunderMan's blinking image.
    - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0) *open*; a sword chip that
      isn't a dimming chip charges on A (0x0F) and doubles charged (0x0800C47A) *open*; WideSwrd charged (0x3E,
      0x0800D148) *open*; the swords' blade 13 (0x080EB628, 0x080EB6AC, 0x080ED89C, 0x080EE822) and their hit modifiers
