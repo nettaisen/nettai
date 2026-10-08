@@ -344,6 +344,9 @@ declare extern type Collision with
     -- Add to the damage taken this window in an element (0 to 4, 5 the
     -- sixth slot), and to the raw damage barriers and traps see where `raw`.
     function add_damage(self, element: number, amount: number, raw: boolean): ()
+    -- Add to the raw damage alone (what barriers and traps see) this window
+    -- in an element.
+    function add_raw_damage(self, element: number, amount: number): ()
     -- Add to the mood damage taken this window.
     function add_mood_damage(self, amount: number): ()
     -- Set hit modifier bits this window, both sides' too.

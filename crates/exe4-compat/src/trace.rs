@@ -1041,6 +1041,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
         .in_order()
         .map(|o| b.objects.get(o).related[0].and_then(entry_of).is_some_and(|k| k.scratch_position))
         .collect();
+    let panel_garbage = |i: usize| entries.get(i).copied().flatten().is_some_and(|k| k.scratch_panel);
     let skip = |i: usize, flags: u8| -> (bool, bool) {
         let Some(Some(k)) = entries.get(i) else { return (false, false) };
         let garbage = k.scratch_position
@@ -1087,7 +1088,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
                 ("action", action),
                 ("phase", format!("{:#04x}", x.phase)),
                 ("phase init", format!("{:#04x}", x.phase_init)),
-                ("panel", format!("{:?}", [x.panel.x, x.panel.y])),
+                ("panel", if panel_garbage(i) { "-".to_string() } else { format!("{:?}", [x.panel.x, x.panel.y]) }),
                 ("side", x.alliance.to_string()),
                 ("element", format!("{:#04x}", x.element)),
                 ("hp", format!("{}/{}", x.hp, x.max_hp)),
@@ -1115,7 +1116,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
                 ("action", format!("{:#04x}", o.state[1])),
                 ("phase", format!("{:#04x}", o.state[2])),
                 ("phase init", format!("{:#04x}", o.state[3])),
-                ("panel", format!("{:?}", o.panel)),
+                ("panel", if panel_garbage(i) { "-".to_string() } else { format!("{:?}", o.panel) }),
                 ("side", o.alliance.to_string()),
                 ("element", format!("{:#04x}", o.flip)),
                 ("hp", format!("{}/{}", o.hp, o.max_hp)),
