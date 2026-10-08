@@ -44,6 +44,22 @@
 "flmline1/action" = 0x22
 "flmline2/action" = 0x22
 "flmline3/action" = 0x22
+# The MagBolts' (the chips' action 0x59, 0x080EE012).
+"magbolt1/action" = 0x59
+"magbolt2/action" = 0x59
+"magbolt3/action" = 0x59
+# The TwnFngs' (the chips' action 0x34, 0x080ED4C6).
+"twnfng1/action" = 0x34
+"twnfng2/action" = 0x34
+"twnfng3/action" = 0x34
+# The WideShts' (the chips' action 0x31, 0x080ED25C).
+"widesht1/action" = 0x31
+"widesht2/action" = 0x31
+"widesht3/action" = 0x31
+# The AirHocs' (the chips' action 0x27, 0x080ECEAE).
+"airhoc1/action" = 0x27
+"airhoc2/action" = 0x27
+"airhoc3/action" = 0x27
 # The GunSols' (the chips' action 0x58, 0x080EDE0E).
 "gunsol1/action" = 0x58
 "gunsol2/action" = 0x58

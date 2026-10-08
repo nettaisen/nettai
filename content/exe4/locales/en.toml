@@ -164,6 +164,18 @@ language = "en"
 "fireman" = { name = "FireMan", description = "Fire burn\nto front\nside" }
 "firemn-sp" = { name = "FireMnSP", description = "Fire burn\nto front\nside" }
 "firemn-ds" = { name = "FireMnDS", description = "Fire burn\nto front\nside" }
+"airhoc1" = { name = "AirHoc1", description = "Ricochet\nattack to\nright" }
+"airhoc2" = { name = "AirHoc2", description = "Ricochet\nattack to\nright" }
+"airhoc3" = { name = "AirHoc3", description = "Ricochet\nattack to\nright" }
+"widesht1" = { name = "WideSht1", description = "Fires 3sq\nshotgun\nblast!" }
+"widesht2" = { name = "WideSht2", description = "Fires 3sq\nshotgun\nblast!" }
+"widesht3" = { name = "WideSht3", description = "Fires 3sq\nshotgun\nblast!" }
+"twnfng1" = { name = "TwnFng1", description = "Launch 2\nfangs up\nand down" }
+"twnfng2" = { name = "TwnFng2", description = "Launch 2\nfangs up\nand down" }
+"twnfng3" = { name = "TwnFng3", description = "Launch 2\nfangs up\nand down" }
+"magbolt1" = { name = "MagBolt1", description = "Shocks an\nenemy\nahead" }
+"magbolt2" = { name = "MagBolt2", description = "Shocks an\nenemy\nahead" }
+"magbolt3" = { name = "MagBolt3", description = "Shocks an\nenemy\nahead" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -285,6 +297,7 @@ language = "en"
 "048-weapon-change" = { name = "Weapon Change" }
 "049-buster-attack-15" = { name = "Buster Attack 15" }
 "050-gigafolder1" = { name = "GigaFolder1" }
+"052-charge-shot-switch" = { name = "Charge Shot Switch" }
 "053-charge-shot-switch" = { name = "Charge Shot Switch" }
 "054-charge-shot-switch" = { name = "Charge Shot Switch" }
 "055-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -306,6 +319,7 @@ language = "en"
 "076-all-guard-1-2" = { name = "All Guard 1/2" }
 "077-all-guard-2-2" = { name = "All Guard 2/2" }
 "078-first-life-aura" = { name = "First Life Aura" }
+"080-charge-shot-switch" = { name = "Charge Shot Switch" }
 "083-charge-shot-switch" = { name = "Charge Shot Switch" }
 "084-charge-shot-switch" = { name = "Charge Shot Switch" }
 "085-charge-shot-switch" = { name = "Charge Shot Switch" }
@@ -334,6 +348,7 @@ language = "en"
 "110-custom3" = { name = "Custom3" }
 "111-gigafolder1" = { name = "GigaFolder1" }
 "112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
+"113-charge-shot-switch" = { name = "Charge Shot Switch" }
 "114-charge-shot-switch" = { name = "Charge Shot Switch" }
 "116-charge-shot-switch" = { name = "Charge Shot Switch" }
 "117-charge-shot-switch" = { name = "Charge Shot Switch" }
