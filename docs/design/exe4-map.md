@@ -1652,8 +1652,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
     status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
-    1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
-    harness question (raised with the coordinator), not the engine's.
+    1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way (the
+    sound comparison counts those as the shift's: item 75). A harness question (raised with the coordinator), not
+    the engine's.
 73. **Done: Double Soul** (group A; §5's Double Soul part, §6): the UNITE button, its offer and the soul's choice,
     OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's souls and
     Double Soul (no version in the content: exe4-compat maps a recording's version and a save's event flags to the
@@ -1669,18 +1670,25 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x080E36AC: WindMan's 0x34, FireMan's 0x12, NumberMan's 0x14, AquaMan's 0x13), WindSoul's change object (0x5A,
     0x080D8C94), FireSoul's and NumberSoul's overlays (0x08018068), NumberSoul's hand of ten (0x0801DC92). The lab's
     souls/<soul>/hit and side1 recordings, and fire, aqua, wind's unison (their changes' first differences).
-75. **DS chips' code and damage on the custom screen** (F's frame comparisons, chips/0x0df-rollds and the other DS
-    chips, frames 269 to 283): the engine draws the chip window's code and damage dimmed (#d6ce29, #b5b5b5,
-    #d6d6d6 where mGBA has #fff729, #ded6d6, #ffffff), Roll and RollSP's not. Not the dark flag (the DS chips have
-    none) nor the frame palette (EXE4's pack has one). B saw ElemDark's screen duck the music as the dark chip hover
-    does (chips/0x0d5-elemdark, frame 290): likely the same cause. To find.
+75. **Done: DS chips' code and damage on the custom screen** (group A; F's frame comparisons, chips/0x0df-rollds and
+    the other DS chips, frames 269 to 283). The DS scenarios' MegaMan is dark, so the screen offers dark chips and the
+    cursor starts on one: the hover (0x0801E478) darkens the screen, its window fade (0x0801E520's second slot)
+    palettes 9 to 13. The chip window draws a chip's code and damage in palette 14, past that range; the frontend
+    faded the whole HUD layer. Now a HUD pixel drawn in background palette 14 or 15 takes only the fades of every
+    palette (the flash's, the transformation's: `Fades::hud_past_ranged`), the text layer's items alike. The DS
+    chips' and ElemDark's recordings match every frame but the late OK's known shift.
+    The music's duck at frame 290 that only the engine made (F's sound lab, every DS chip recording and ElemDark's:
+    players 0x1F and 9 at 0xC0 and 0x60) is the replay's shift (item 72): the original's hover runs only in the
+    choosing state (0x0801E40E), so its OK at 288 stops the ramp a step short, where the engine's screen chooses on
+    until the replay feeds the OK and takes that step. Verify's sound comparison counts such a step as the shift's
+    (`Compared::shifted`, the held-back frames' `Shift`).
 76. **A telop leaves the other player's used-chip name** (B's, item 90; chips/0x08e-antielec/sprung: mGBA shows
     "Thunder 140" until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block
     (0x08016454) and leaves the second block alone; EXE6's clears the name at every telop's start
     (`sub_801BED6(0x10000)`, the engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
-77. **The chips' own looks out of the shared libraries** (the brief's no-lookup-tables rule): lib/cannon's `arms`,
-    lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants`: a maker each, every chip
-    stating its own. Queued.
+77. **Done: the chips' own looks out of the shared libraries** (group A; the brief's no-lookup-tables rule):
+    lib/cannon's `arms`, lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants` are
+    gone: a maker each, every chip stating its own.
 90. **Done: the Anti chips' springs** (group B, chips/anti). AntiNavi springs as EXE5's (0x08008F80, EXE5's
     `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the navi chips', with no block of
     chip numbers): the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle 0x0800815C: effect row 0x48, sound

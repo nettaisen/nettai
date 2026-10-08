@@ -110,6 +110,9 @@ pub struct TextItem {
     /// The fades that reach it: its layer's or the sprites', then the
     /// screen's.
     pub fades: [Fade; 2],
+    /// Drawn on the HUD layer in background palette 14 or 15, past the
+    /// custom screen's ranged fades (`Layer::past_ranged`).
+    pub past_ranged: bool,
     /// The banners' squash and stretch: the original's texture rows step
     /// by `n / 256` a screen row about the box's middle, and the box's rows
     /// cut it.
@@ -131,6 +134,7 @@ impl TextItem {
             face,
             shadow,
             fades: [Fade::None; 2],
+            past_ranged: false,
             vscale: None,
             shown: None,
         }
