@@ -145,6 +145,9 @@ language = "ja"
 "blizzard" = { name = "ブリザード", description = "ほうしゃじょうに\nふぶき攻撃!\nパネルをこおりに" }
 "elecshok" = { name = "エレキショック", description = "ほうしゃじょうに\nほうでん攻撃!\nパネルをヒビに" }
 "woodpwdr" = { name = "ウッディパウダー", description = "ほうしゃじょうに\nほうし攻撃!\nパネルをくさむらに" }
+"sparkman" = { name = "スパークマン", description = "前方すべてに\nスパークウェーブ!\nあいてをもうもくに" }
+"sprkmn-sp" = { name = "スパークマンSP", description = "前方すべてに\nスパークウェーブ!\nあいてをもうもくに" }
+"sprkmn-ds" = { name = "スパークマンDS", description = "前方すべてに\nスパークウェーブ!\nあいてをもうもくに" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
