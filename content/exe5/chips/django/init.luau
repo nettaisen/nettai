@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local navi_chips = require("../lib/navi_chips/chip")
 
 -- Django (EXE5 chip 0x116): Django cuts in, shuts the first enemy navi ahead in his row in his coffin and purifies it
 -- under his sun (./navi): a hit a tick for the chip's damage in ticks.
@@ -21,8 +22,11 @@ local django: Chip = {
     megaman = "light",
     -- (In the navi chips' block though the US record lacks the `navi` flag: AntiNavi turns it back, and it is kept
     -- as the last navi chip.)
-    traits = { "navi_slot" },
-    navi = navi.summon,
+    navi = navi_chips.make {
+        id = "django/controller",
+        summon = navi.summon,
+        navi_block = true,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -44,8 +48,11 @@ local django_sp: Chip = {
     megaman = "light",
     -- (In the navi chips' block though the US record lacks the `navi` flag: AntiNavi turns it back, and it is kept
     -- as the last navi chip.)
-    traits = { "navi_slot" },
-    navi = navi.summon_sp,
+    navi = navi_chips.make {
+        id = "django-sp/controller",
+        summon = navi.summon_sp,
+        navi_block = true,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
@@ -67,8 +74,11 @@ local django_ds: Chip = {
     megaman = "dark",
     -- (In the navi chips' block though the US record lacks the `navi` flag: AntiNavi turns it back, and it is kept
     -- as the last navi chip.)
-    traits = { "navi_slot" },
-    navi = navi.summon_dark,
+    navi = navi_chips.make {
+        id = "django-ds/controller",
+        summon = navi.summon_dark,
+        navi_block = true,
+    },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 

@@ -8,13 +8,23 @@
 -- writes AIData +0x3A) and the move that cuts the recovery short as the engine's.
 
 local attachment = require("../../../objects/attachment")
+local collision = require("../../../rules/collision")
 local projectile = require("../../../lib/projectile")
-local variants = require("../../../objects/projectile/variants")
+local shot = require("../../../objects/projectile")
+local sparks = require("../../../lib/sparks")
 
 local charged_shot = {}
 
 local SHOOT, RECOVER = 0x0, 0x4
 local SHOT_Z = 0x18_0000
+-- Its shot (projectile row 6: action 0x24, 0x080ECC7E).
+local SHOT = shot.variant {
+    id = "megaman/charged-shot/shot",
+    collision = { is = collision.attack, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+}
 -- The flash's animation: NaviStats +0x23, the navi's number (MegaMan's 0).
 local NAVI_NUMBER = 0
 -- Its sound: the buster's shot (0x6A).
@@ -32,7 +42,7 @@ local function shoot(me: Object, s: State)
     end
     if s.timer == 1 then
         battle.play_sound(SHOT_SOUND)
-        me.attack_count = projectile.fire(me, { variant = variants.charged, damage = me.attack_damage, z = SHOT_Z })
+        me.attack_count = projectile.fire(me, { variant = SHOT, damage = me.attack_damage, z = SHOT_Z })
         attachment.attach(me, attachment.muzzle_flash, "related", NAVI_NUMBER)
     end
     s.timer += 1

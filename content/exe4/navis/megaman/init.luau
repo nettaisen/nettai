@@ -8,11 +8,22 @@
 -- identity: a player (the actor table 0x08003A24's kind 0).
 --
 -- Not yet (docs/design/exe4-map.md §18): his element and its weakness, the buster's own bonus (EXE4's buster is Attack
--- + 1 whatever the navi), his souls (the soul's sprite and weapons, 0x080184F0) and the rest of his identity (actor
--- record, AI index, aura).
+-- + 1 whatever the navi), what each soul does (§18 item 74) and the rest of his identity (actor record, AI index, aura).
 
 local buster = require("@self/weapons/buster")
 local charged_shot = require("@self/weapons/charged_shot")
+local aquasoul = require("@self/forms/aquasoul").aquasoul
+local firesoul = require("@self/forms/firesoul").firesoul
+local gutssoul = require("@self/forms/gutssoul").gutssoul
+local junksoul = require("@self/forms/junksoul").junksoul
+local metalsoul = require("@self/forms/metalsoul").metalsoul
+local numbersoul = require("@self/forms/numbersoul").numbersoul
+local protosoul = require("@self/forms/protosoul").protosoul
+local rollsoul = require("@self/forms/rollsoul").rollsoul
+local searchsoul = require("@self/forms/searchsoul").searchsoul
+local thundersoul = require("@self/forms/thundersoul").thundersoul
+local windsoul = require("@self/forms/windsoul").windsoul
+local woodsoul = require("@self/forms/woodsoul").woodsoul
 
 local navi: NaviDef = {
     sprite = asset.sprite("megaman"),
@@ -31,9 +42,12 @@ local navi: NaviDef = {
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His forms (he is MegaMan: the rules ask whether a navi has them where the original asks whether it is
-    -- MegaMan), and so his faces are his forms' (forms/base's `mugshot`): the souls Double Soul gives (0x080184F0 by
-    -- soul), not yet ported (docs/design/exe4-map.md §18 item 25).
-    forms = { souls = { form_list = {} } },
+    -- MegaMan), and so his faces are his forms' (forms/base's `mugshot`): the souls Double Soul gives, by version, in
+    -- their numbers' order (rules/souls: Red Sun's 1 to 6, Blue Moon's 7 to 12; a side's `souls` are its version's).
+    forms = {
+        redsun = { form_list = { rollsoul, gutssoul, windsoul, searchsoul, firesoul, thundersoul } },
+        bluemoon = { form_list = { protosoul, numbersoul, metalsoul, junksoul, aquasoul, woodsoul } },
+    },
     identity = new.identity {
         class = "player",
         version = 0,

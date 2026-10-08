@@ -5,9 +5,13 @@
 -- confusion (rules/dark_chips).
 -- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
 
+local attachment = require("../objects/attachment")
 local bullet = require("../objects/bullet")
 local regions = require("@exelib/regions")
 local vulcan = require("./vulcan/vulcan")
+
+-- The dark gun (attachment row 49: 0c-1d in palette 3).
+local GUN = attachment.look { sprite = asset.sprite("vulcan"), palette = 3 }
 
 -- Bullet row 14: the panel found and the one behind it, modifier 1, its dark hit (effect row 0x6A: the Vulcans' hit in
 -- palette 2) shown once at the bullet.
@@ -31,7 +35,7 @@ local drkvulcn: Chip = {
     flags = { "has_damage", "dark" },
     action = vulcan.action {
         id = "drkvulcn/action",
-        gun = vulcan.guns.dark,
+        gun = GUN,
         shots = 24,
         shot = SHOT,
     },

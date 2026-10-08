@@ -10,6 +10,10 @@ local link = require("../../lib/link_chips")
 local wave = require("../../chips/slashman/wave")
 local weapon = require("../../lib/weapon")
 
+-- His own sword wave (the original's Param1 0): it hits its panel as it
+-- starts to wind up and 10 ticks later.
+local WAVE = wave.variant { wind_up = 0x14, swing = 0xA, speed = 0x6_0000, hits_early = true }
+
 export type State = { timer: number }
 
 local charge = {}
@@ -50,7 +54,7 @@ local function waves(me: Object, r3: number)
     for _, d in PANELS do
         local x, y = me.panel_x + d[1] * me.facing, me.panel_y + d[2]
         if field.valid(x, y) then
-            local o = wave.spawn(me, x, y, me.attack_element, wave.plain, damage, bit32.band(r3, 0xFFFF))
+            local o = wave.spawn(me, x, y, me.attack_element, WAVE, damage, bit32.band(r3, 0xFFFF))
             r3 = if o then bit32.bor(me.alliance, bit32.lshift(me.flip, 8)) else me.attack_element
         end
     end

@@ -4,8 +4,26 @@
 -- blanks (rules/light_dark).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
-local wave = require("./widesht/variants")
+local attachment = require("../objects/attachment")
+local collision = require("../rules/collision")
 local widesht = require("./widesht/wave")
+
+-- Its wave (kind 9, which EXE6's table has and no EXE6 chip fires): it goes through, trails afterimages of its own
+-- sprite (animation 1: 0x080CC9A6's word 0x11D10, EXE6's rock cubes 0x10010) and carries bug 0x14 with argument 2, as
+-- EXE5's row 0x25 in palette 1 (0x080CC82E).
+local WAVE = widesht.variant {
+    speed = 0x7_0000,
+    pierces = true,
+    holds = false,
+    trails = true,
+    collision = collision.attack_480,
+    bug = 0x214,
+    palette = 1,
+    sprite = asset.sprite("wide-wave"),
+    trail_sprite = asset.sprite("wide-wave"),
+}
+-- Its shooter (the action's subtype 2's, 0x080ECFDE: the attachment table's row 0x37, the wide shooter in palette 3).
+local SHOOTER = attachment.look { sprite = asset.sprite("wide-shooter"), palette = 3, attach_point = 12 }
 
 local chip: Chip = {
     codes = { "T" },
@@ -19,7 +37,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
-    action = widesht.action { wave = wave.dark, waves = 1, z = 0, shooter = widesht.dark_shooter },
+    action = widesht.action { wave = WAVE, waves = 1, z = 0, shooter = SHOOTER },
     auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 

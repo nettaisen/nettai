@@ -28,6 +28,18 @@ language = "ja"
 "drkspred" = { name = "ダークスプレッド", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
 "drkstage" = { name = "ダークステージ", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
 "drkrecov" = { name = "ダークリカバリー", description = "オノレノヨクボウガ\nウミダシタアクマノ\nダークチップ・・・" }
+"rollsoul" = { name = "ロールソウル", description = "ロールソウル" }
+"gutssoul" = { name = "ガッツソウル", description = "ガッツソウル" }
+"windsoul" = { name = "ウインドソウル", description = "ウインドソウル" }
+"srchsoul" = { name = "サーチソウル", description = "サーチソウル" }
+"firesoul" = { name = "ファイアソウル", description = "ファイアソウル" }
+"thunsoul" = { name = "サンダーソウル", description = "サンダーソウル" }
+"protsoul" = { name = "ブルースソウル", description = "ブルースソウル" }
+"numsoul" = { name = "ナンバーソウル", description = "ナンバーソウル" }
+"metlsoul" = { name = "メタルソウル", description = "メタルソウル" }
+"junksoul" = { name = "ジャンクソウル", description = "ジャンクソウル" }
+"aquasoul" = { name = "アクアソウル", description = "アクアソウル" }
+"woodsoul" = { name = "ウッドソウル", description = "ウッドソウル" }
 "panlgrab" = { name = "パネルスチール", description = "前方のてきエリアの\n1マスを 自分の\nエリアにぬりかえる" }
 "areagrab" = { name = "エリアスチール", description = "てきエリアの左はし\nたて1れつを自分の\nエリアにぬりかえる" }
 "sword" = { name = "ソード", description = "目の前のてきを\nきりつける!\n攻撃はんいは1マス" }
@@ -115,6 +127,9 @@ language = "ja"
 "thunder1" = { name = "サンダーボール1", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 "thunder2" = { name = "サンダーボール2", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 "thunder3" = { name = "サンダーボール3", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"topman" = { name = "タップマン", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
+"topmn-sp" = { name = "タップマンSP", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
+"topmn-ds" = { name = "タップマンDS", description = "3マス前方にななめ\n四方からベーゴマと\nグリグリタップ攻撃" }
 "antifire" = { name = "カキゲンキン", description = "てきにワナをはる\n炎の攻撃をだすと\n自分がダメージ!" }
 "antiwatr" = { name = "ダイコウズイ", description = "てきにワナをはる\n水の攻撃をだすと\n自分がダメージ!" }
 "antielec" = { name = "ヒライシン", description = "てきにワナをはる\n電気の攻撃をだすと\n自分がダメージ!" }

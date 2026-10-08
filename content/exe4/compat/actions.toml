@@ -125,3 +125,18 @@
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
+# Double Soul's (rules/souls): each soul's change, its chip's use (action 0x0D, 0x080EBA44), and the revert out of a
+# soul (action 0x11, 0x080EBE90).
+"rollsoul/change" = 0x0D
+"gutssoul/change" = 0x0D
+"windsoul/change" = 0x0D
+"srchsoul/change" = 0x0D
+"firesoul/change" = 0x0D
+"thunsoul/change" = 0x0D
+"protsoul/change" = 0x0D
+"numsoul/change" = 0x0D
+"metlsoul/change" = 0x0D
+"junksoul/change" = 0x0D
+"aquasoul/change" = 0x0D
+"woodsoul/change" = 0x0D
+"souls/revert" = 0x11

@@ -340,8 +340,8 @@ pub fn hud(
             hud_priority: HUD_PRIORITY,
             message: MESSAGE_AT,
             // (The damage judge's numbers, task 9 from 0x080163C8: from its
-            // holding banner's hold, 0x08014AA8, until the banner is gone,
-            // 0x08014ABE.)
+            // holding banner's hold, 0x08014AA8, until the judge's release,
+            // 0x080163B6, slides the banner out and clears them.)
             judge_from_hold: true,
             chatbox_text: CHATBOX_TEXT,
             // (A description shows in the message box: its arrow's place.)

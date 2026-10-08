@@ -1,9 +1,8 @@
 --!strict
 -- EXE4's rules, their one definition (docs/design/rules-in-luau.md §2.5): what a player brings, the hooks the framework
--- calls, its rule sections and its roles. The port is under way (docs/design/exe4-map.md): so far a netbattle of
--- MegaMan with his buster and charged shot; a section's value the engine can't say EXE4's way yet is the nearest it can,
--- each one an entry of exe4-map.md §18, which lists what is still to port (the NaviCust, the patch cards, the souls, the
--- custom screen's own states, the chips).
+-- calls, the custom screen's buttons and windows, EXE4's fields on its definitions, its rule sections and its roles.
+-- The port is under way (docs/design/exe4-map.md): a section's value the engine can't say EXE4's way yet is the nearest
+-- it can, each one an entry of exe4-map.md §18, which lists what is still to port.
 
 local dark_chips = require("@self/dark_chips")
 local folder = require("@self/folder")
@@ -13,6 +12,14 @@ local patch_cards = require("@self/patch_cards")
 local navicust = require("@self/navicust")
 local save = require("@self/save")
 local souls = require("@self/souls")
+
+-- What a side keeps through a round: the dark chips' (./dark_chips) and Double Soul's (./souls).
+local state: StateSchema = {}
+for _, part in { dark_chips.state, souls.state } do
+    for name, field in part do
+        state[name] = field
+    end
+end
 
 local rules: Rules = {
     -- EXE4's own stats (NaviStats bytes the engine's stats don't hold): BustPack's weapon level (+0x0B, which the
@@ -60,24 +67,64 @@ local rules: Rules = {
         -- How long the save took to delete each SP navi (./sp_chips: a battle's copy at 0x02037C80), by its SP chip,
         -- in frames; one not stated, deleted in no time.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 22),
+        -- The game's version: the souls it can have (./souls). No default: a side states it, or the round doesn't
+        -- start. The versions come in the original's order (Red Sun, then Blue Moon), which tools go by.
+        version = { "redsun", "bluemoon" },
+        -- The souls the save has (./souls/custom), of its version's six (a save's soul flags, 0x08020018's by soul:
+        -- Red Sun's event flags 0x17 to 0x1C, Blue Moon's 0x1D to 0x22), which a boundary writes as the list of them;
+        -- the engine's form list. A side that leaves them out has none. And Double Soul (event flag 0x14): without it
+        -- the custom screen has no UNITE button.
+        souls = schema.role("form_list", "form[6]"),
+        double_soul = "bool",
     },
     -- A setup that says nothing: what every save brings at its highest; the default block's light/dark value (500:
-    -- the starting mood 0x99).
+    -- the starting mood 0x99); Double Soul (a finished game's save).
     setup_defaults = {
         hp = save.MAX_HP,
         reg_up = save.MAX_REG_UP,
         karma = 500,
+        double_soul = true,
     },
-    -- What a side keeps through a round: the dark chips' (./dark_chips).
-    state = dark_chips.state,
+    state = state,
+    -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of.
+    -- An SP navi chip's damage by its deletion-time step (./sp_chips).
+    -- What a soul's form says for Double Soul (./souls; a soul is named by its form's id, the original's number for it,
+    -- NaviStats +0x24, is compat's): the family of the chips given up for it (0x08020008's table) and its turns
+    -- (0x080180A8's: 3 every one), its chip (which OK puts in the hand for it, its use the soul's change:
+    -- ./souls/change), and its navi's image at the change (./souls/image, a `SoulImage`).
+    extends = {
+        chip = {
+            sp = "u16[11]",
+        },
+        form = {
+            soul = {
+                family = {
+                    "recovery", "break", "wind", "invisible", "fire", "elec", "sword", "plus", "metal", "summon",
+                    "aqua", "wood",
+                },
+                turns = "u8",
+            },
+            chip = "chip",
+            image = "record:soul-image",
+        },
+    },
+    -- Its own actions, which reach its state: the souls' changes and the revert (./souls).
+    actions = souls.actions,
+    -- The custom screen's buttons and windows: Double Soul's (./souls/custom).
+    buttons = souls.custom.buttons,
+    windows = souls.custom.windows,
     -- The custom screen's: the hand's size (./souls/custom); the dark chips' offer as it deals and what is sent of them
-    -- (./dark_chips).
+    -- (./dark_chips); Double Soul's offer as the screen opens and the soul given at OK (./souls/custom).
     custom = {
         hand_size = souls.custom.hand_size,
+        open = souls.custom.open,
         deal = dark_chips.deal,
         chip_picked = dark_chips.chip_picked,
         chip_taken_back = dark_chips.chip_taken_back,
-        confirmed = dark_chips.confirmed,
+        confirmed = function(side: number)
+            dark_chips.confirmed(side)
+            souls.custom.confirmed(side)
+        end,
     },
     hooks = {
         -- What the save brings to the navi's stats (./save), then the NaviCust and the patch cards compiled into them
@@ -89,9 +136,15 @@ local rules: Rules = {
         -- As each hand is installed, its dark chips' costs (./dark_chips).
         custom_result = dark_chips.custom_result,
         -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, the holy panel a
-        -- dark one clears and the hole a navi that isn't dark closes.
+        -- dark one clears and the hole a navi that isn't dark closes; then Double Soul's change or revert asked for
+        -- (./souls, 0x0800B658).
         starting_mood = light_dark.starting_mood,
-        navi_intake = light_dark.navi_intake,
+        navi_intake = function(side: number, navi: Object)
+            light_dark.navi_intake(side, navi)
+            souls.navi_intake(side, navi)
+        end,
+        -- A soul's turns, counted as a custom screen is asked for (./souls).
+        custom_requested = souls.custom_requested,
         -- Light and dark MegaMan (./light_dark): his palette.
         navi_palette = light_dark.navi_palette,
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
@@ -108,13 +161,6 @@ local rules: Rules = {
         end,
         -- What rules a folder a tool asks of breaks (./folder).
         folder_check = folder.check,
-    },
-    -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of:
-    -- an SP navi chip's damage by its deletion-time step (./sp_chips).
-    extends = {
-        chip = {
-            sp = "u16[11]",
-        },
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),
