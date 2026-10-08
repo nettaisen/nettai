@@ -41,6 +41,7 @@ return merge {
     require("@self/fireman"),
     require("@self/flmline"),
     require("@self/fullcust"),
+    require("@self/geddon"),
     require("@self/geyser"),
     require("@self/greenwd"),
     require("@self/guard"),
