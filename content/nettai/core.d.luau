@@ -1273,6 +1273,10 @@ declare battle: {
     linked: (side: number) -> LinkedChip,
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
+    -- `sub_801EB18`: the other player's console names `chip` as used by
+    -- `side` again, with its damage and bonus (presentation only: EXE4's
+    -- Slasher as it slashes).
+    show_used_chip: (side: number, chip: Chip, damage: number, bonus: number) -> (),
     -- `sub_800ABC6`: the trap's mark over `o`'s panel (the role
     -- `effects.trap_mark`, facing the local side's way, where the chip-use
     -- rules' `anti_navi_sparkle` puts it from the panel's center), with its

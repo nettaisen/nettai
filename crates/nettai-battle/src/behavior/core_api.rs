@@ -1214,6 +1214,10 @@ impl CoreApi for Battle {
         Battle::clear_linked(self, side & 1);
     }
 
+    fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
+        Battle::show_used_chip(self, side & 1, chip, damage, bonus);
+    }
+
     fn fill_custom_gauge(&mut self) {
         self.gauge.value = crate::hud::CustomGauge::FULL;
     }
