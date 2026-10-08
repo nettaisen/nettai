@@ -786,6 +786,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   ticks) and goes by a byte store (his action stays). On a hole he leaves at once. The lab's chips/ (12),
   drag/gutpunch, drag/gutpunch-edge, hits/guard-gutpnch and ice/gutpunch replay every frame; GutPnch1's hit is
   pixel-exact.
+- **NumbrBl1 to NumbrBl3** (the dimming chips' variant 0x3A, `chips/numbrbl`): EXE5's NumbrBl. The controller
+  (effect #0x69, 0x080E9838) is @exelib/numbrbl/controller with EXE5's effect (0x080E9754, `controller.warping`, now
+  shared) and EXE4's warp (lib/navi_chips): the user warps out (30 ticks), NumberMan comes, 30 ticks, the user warps
+  back in (30). NumberMan (actor #0x45, 0x080C8CC4) is @exelib/numbrbl/numberman (EXE5's code, now shared) with
+  EXE4's look: sheet 08-08 in palette 0, appearing with 0xB0, throwing in his animation 7, and his init loading his
+  standing animation (`loads_standing`; EXE5's leaves the byte 0xFF). His balls (attack #0x91, 0x080DF4E4) are
+  @exelib/numbrbl/ball with EXE5's numbers (30 ticks sitting with 0xAA, parts 2 to 21 hidden) and EXE4's sheet 10-05,
+  explosion (effect row 0) and 0xC8. Each chip states its balls (its first parameter and three: 3, 4, 5). Damage is
+  formula 49 (power 1049, 0x0801963E): the last two digits of the user's HP (`hp_last_digits`). The lab's chips/ (15)
+  replay every frame; NumbrBl3's hit is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
