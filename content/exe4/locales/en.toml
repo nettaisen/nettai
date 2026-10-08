@@ -277,6 +277,11 @@ language = "en"
 "hawkcut1" = { name = "HawkCut1", description = "Cut twice\nonce wide\nonce long" }
 "hawkcut2" = { name = "HawkCut2", description = "Cut twice\nonce wide\nonce long" }
 "hawkcut3" = { name = "HawkCut3", description = "Cut twice\nonce wide\nonce long" }
+"panlsht1" = { name = "PanlSht1", description = "Lifts\npanel and\nthrows it" }
+"panlsht2" = { name = "PanlSht2", description = "Lifts\npanel and\nthrows it" }
+"panlsht3" = { name = "PanlSht3", description = "Lifts\npanel and\nthrows it" }
+"slogauge" = { name = "SloGauge", description = "CustGauge\nTemporary\nslow-down" }
+"fstgauge" = { name = "FstGauge", description = "CustGauge\nTemporary\nspeed-up" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
