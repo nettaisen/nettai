@@ -206,6 +206,7 @@ standard = [
     "energbom",
     "megenbom",
     "ball",
+    "blkbomb",
     "geyser",
     "binder1",
     "binder2",
