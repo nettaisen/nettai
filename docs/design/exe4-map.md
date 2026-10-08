@@ -1886,22 +1886,29 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
       0x080029E0; the allocator's halfword at 0x02010B90 reset to 1 by 0x0800294C). Past the cap (0x03005FD4: the
       halfword less 0x30 plus the frame's tiles against 0x32F, 0x2FF in mode 8: the byte at [sl]'s first word) the
       sprite is flagged 0x10 and not drawn, its last uploaded frame (+0x24) cleared. Its tile index (+8) changing
-      clears +0x24 too, so the frame is copied again. EXE5's and EXE6's do the same against a variable cap (the
-      halfword at 0x0200A948+2, 0x020098A8+2).
+      clears +0x24 too, so the frame is copied again. EXE5's (IWRAM 0x0300656C, its code ROM 0x081C7A00 to
+      0x03005C00) and EXE6's (0x03006404, ROM 0x081D6000 to 0x03005B00) do the same against a variable cap, the
+      halfword at 0x0200A948+2 and 0x020098A8+2.
     - **Palette slots** (0x03005CE0): a sprite with its own palette (+6) shares the slot of a sprite with the same
       32 bytes or takes a new one (count 0x02010B80): 12 at most, 10 in mode 8 (0x03006010), past which it is
-      flagged 0x10 and not drawn (a count already at 15 would give it slot 15, drawn).
+      flagged 0x10 and not drawn (a count already at 15 would give it slot 15, drawn). EXE5's (0x030062AE,
+      0x03006590) and EXE6's (0x03006146, 0x03006428) read their limit from the byte at 0x0200A948 and 0x020098A8.
+      Their presets set both caps (and the byte at +1): EXE5's 0x08002730 (12, 0x32F), 0x08002740 (10, 0x2FF),
+      0x08002750 (8, 0x2FF); EXE6's 0x080027D4 (10, 0x2FF), 0x080027E4 (8, 0x2FF), 0x080027F4 (16, 0x2FF). Which a
+      battle sets is the port's to read (EXE4's: mode 8's 10 and 0x2FF, else 12 and 0x32F).
     - **The transfer queue** (0x0800087C, 96 entries at 0x0200D120, count 0x0200B134; drained after the VBlank wait,
       0x08000808 at 0x080002C8): a sprite whose frame differs from its last uploaded one (+0x24) queues its tiles'
       copy there, and +0x24 advances whether or not the copy was queued. The queue is the game's one graphics
       transfer queue (bn6f's QueueEightWordAlignedGFXTransfer), with some 150 callers besides the sprite draw (the
-      HUD, text, icons, backgrounds), so its 96 is a budget for every transfer of the frame. A dropped copy leaves the
+      HUD, text, icons, backgrounds), so its 96 is a budget for every transfer of the frame. EXE5's (0x080009E8,
+      count 0x0200B8AC) and EXE6's (0x08000AC8, count 0x0200AC1C) hold 96 too. A dropped copy leaves the
       tiles VRAM held at the sprite's tile index, which may be another sprite's (the index moves when an earlier
       sprite's count changes) until its frame changes again.
     Open (group C, 2026-10-07): no recording reaches any of them; the lab's busiest fights (two navis and a field of
-    bursts) reserve about 200 tiles and a few palettes. A port: the tile and palette caps as per-frame budgets
-    in the renderer's draw order, by each game's numbers (stateless); the queue needs a model of sprite VRAM and of
-    every transfer the game queues. Frame compares need a scenario built to reach a cap. (What the towers' frame
+    bursts) reserve about 200 tiles and a few palettes. To port (group C, after its chips): the tile and palette caps
+    as per-frame budgets in the renderer's draw order, each game's numbers in its rules, frame-compared with a
+    scenario built to reach them. The queue stays open: it needs a model of sprite VRAM and of every transfer the
+    game queues. (What the towers' frame
     compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
     display, tearing, which is left.)
 
