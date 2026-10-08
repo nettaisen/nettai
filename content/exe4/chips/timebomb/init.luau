@@ -105,7 +105,7 @@ local function rows_of(x: number, need: number, forbid: number): { number }
 end
 
 -- 0x080E4CC8: the other side's front column, and a random row of it whose panel has nothing on it (any of its solid
--- panels when none has); nil when the other side has no solid panel.
+-- panels when none has); nil when the other side has no solid panel at all.
 local function target(me: Object): (number?, number?)
     local side = me.alliance
     local need, forbid = other_side(side, 0)
@@ -128,9 +128,13 @@ end
 local function place(me: Object)
     local x, y = target(me)
     if not (x and y) then
-        -- (0x080E4DF2: with no solid panel on the other side the original reads its panel filter from open bus,
-        -- 0x00010010 taken for a table's address, and fills a list through the caller's stale r7.)
-        error("TimeBomb's placement found no solid panel of the other side (0x080E4DF2 reads open bus)")
+        -- 0x080E4DF2, with no solid panel of the other side's at all (which the other side's navi's own panel rules
+        -- out in a battle): the original takes the literal 0x00010010 for a table's address and loads its panel
+        -- filter from there, unmapped memory: open bus, which on the GBA (and mGBA) is the Thumb opcode at the load's
+        -- address plus 4 in both halves: the require word 0x24002400 (0x080E4DFE's `movs r4, #0`), the forbid word
+        -- 0x26002600 (0x080E4E00's `movs r6, #0`). The require word's bits are all forbidden ones, so its search
+        -- (0x080E4E68) matches no panel, writes nothing through the stale r7 and draws no RNG: no bomb, no puff.
+        return
     end
     if field.check(x, y, STANDS, BODIES) then
         local s = me.state :: { bonus: number, variant: CountdownVariant }
