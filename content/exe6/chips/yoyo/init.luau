@@ -2,8 +2,9 @@
 -- YoYo: a yoyo thrown from the panel ahead that rolls out two panels,
 -- spins there for two rounds and rolls back (throw.luau).
 
-local throw = require("@self/throw")
 local lockon = require("../rules/lockon")
+local throw = require("@self/throw")
+local yoyo = require("@self/yoyo")
 
 local chip: Chip = {
     codes = { "L", "M", "N", "*" },
@@ -18,7 +19,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.yoyo },
     slot_in_limit = 3,
-    action = throw.action { id = "yoyo/action", yoyo = { panels = 2, rounds = 2 } },
+    action = throw.action { id = "yoyo/action", throw = yoyo.one { panels = 2, rounds = 2 } },
 }
 
 return { yoyo = chip }
