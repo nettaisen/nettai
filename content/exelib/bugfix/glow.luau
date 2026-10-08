@@ -7,9 +7,10 @@
 -- (The second row, `sub_80C49E4`, which leaves the navi submerged for 480 ticks after 31 white, nothing spawns.)
 --
 -- When it is done it clears its spawner's `busy` flag. Each game makes its own kind (`glow.make`) with its look: how
--- its start (EXE6's `sub_80C4848`, EXE5's 0x080C4308) places the copy and takes the navi's parts: EXE6's a pixel lower
--- down the field and higher, the parts stepping on (its overlay's Param3 and flags 0x14); EXE5's a pixel up the field
--- and lower, a player navi's parts by its NaviStats (0x0800F0EC, `sub_8011420` with r2 1).
+-- its start (EXE6's `sub_80C4848`, EXE5's 0x080C4308) places the copy and what it wears of the navi: EXE6's a pixel
+-- lower down the field and higher, the parts stepping on (its overlay's Param3 and flags 0x14); EXE5's a pixel up the
+-- field and lower, a player navi's overlay by its NaviStats (0x0800F0EC, `sub_8011420` with r2 1: its soul's put-on,
+-- NumberSoul's layer).
 
 local glow = {}
 
@@ -31,9 +32,9 @@ export type Look = {
     id: string,
     -- Pixels down the field and up its copy sits from the navi (EXE6's 1, EXE5's -1).
     offset: number,
-    -- EXE5's: the parts are a player navi's alone, stepping even while paused (`add_parts_of`'s `paused_stepping`);
-    -- EXE6's: any holder's, stepping on (its `keep_stepping`).
-    exe5_parts: boolean,
+    -- What the copy wears of the navi: EXE6's its parts, stepping on (`add_parts_of`'s `keep_stepping`); EXE5's a
+    -- player navi's overlay (`add_overlay_of`).
+    wear: (me: Object, navi: Object) -> (),
 }
 
 export type Glow = {
@@ -125,11 +126,7 @@ function glow.make(look: Look): Glow
         -- sub_801002C: the navi's palette (the one it wears).
         sprite.palette = navi.sprite.palette
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-        if not look.exe5_parts then
-            me:add_parts_of(navi, true)
-        elseif navi.actor_type == "player" then
-            me:add_parts_of(navi, false, true)
-        end
+        look.wear(me, navi)
         me.anim, me.anim_loaded = 0, 0xFF
         me:set_lifecycle("update")
         tick(me)
