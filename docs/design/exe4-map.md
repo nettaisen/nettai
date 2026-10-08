@@ -671,6 +671,13 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **VDoll** (the throw's variant 8, `chips/vdoll`: @exelib/vdoll/doll, attack 0x7A, and @exelib/vdoll/curse, effect
+  0x4E, both of which EXE5's grew from, in EXE4's look): the doll writes no NameID, turns its landing panel to its hole
+  (type 11) with the holes' sound, has EXE4's 7-row action table, no tracking, a touch destroying it with its HP as it
+  is (0x08013F3E, as EXE4's rock); its leaving (0x080DC974) holds while dimmed before its other tests, checks no
+  damage taken and no removal, and curses with effect row 0x2B and sound 0x141. The curse is EXE5's code (its
+  telop EXE4's Curse, chip 0x174, a USED_CHIPS chip on SonicBom's action), EXE4's warning sound (0x79) and its
+  staying sparkles. chips/0x067-vdoll/curse hurts a doll on an empty panel with a buster shot.
 - **BugBomb** (the throw's variant 7, `chips/bugbomb`: @exelib/bugbomb/bomb, attack 0x77, which EXE5's grew from, in
   EXE4's look): one of six NaviCust bugs at random (0x080DC134: 1, 2, 3, 4, 6, 8, RNG2), whatever its target has,
   raised by code 0xFF; a crushing hit as it sits bursts it at once (0x080DC23A) where EXE5's explodes it; its burst
