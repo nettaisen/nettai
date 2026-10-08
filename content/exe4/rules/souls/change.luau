@@ -12,9 +12,9 @@
 --   0x10000, which EXE4 keeps on a navi changing form), the dark soul's flag cleared (AIData +0x44's 0x1000: no dark
 --   soul in a netbattle's code ported), the screen fading out (0x44 at 16), onto his future panel, the flash (effect
 --   row 3, 16 pixels up) and its sound (0x129), no longer moving (flag 0x40) nor asked to revert (+0x44's 0x40), the
---   soul's own spawn (WindSoul's wind, 0x080D8C94: the souls' abilities, docs/design/exe4-map.md §18 item 74), the
---   emotion window hidden (HUD task 20), his collision region gone; then once the fade is done the HP box and the
---   gauge hidden too (tasks 0 and 1).
+--   soul's own part (its change's `prepare`: WindSoul's north wind, 0x080EBAD2 for AIData +0x10 3), the emotion
+--   window hidden (HUD task 20), his collision region gone; then once the fade is done the HP box and the gauge hidden
+--   too (tasks 0 and 1).
 -- - 4 (0x080EBB14): the soul's image (./image) and 60 ticks; at 10 the second flash and its sound (0x158), and the
 --   soul's screen flash (JunkSoul's, 0x080EBB50: 0x080E2B38).
 -- - 8 (0x080EBB6C): white; first: MegaMan in the soul (NaviStats +0x24: his sprite in it, 0x0800B90A, his form; he
@@ -63,6 +63,8 @@ export type Spec = {
     shake: boolean?,
     -- The screen flashes with the image's second flash (0x080EBB50: JunkSoul's).
     flash: boolean?,
+    -- What else the first step does, as it starts (WindSoul's north wind).
+    prepare: ((navi: Object) -> ())?,
 }
 
 local function set_step(me: Object, step: number)
@@ -76,7 +78,7 @@ local function flash(me: Object)
 end
 
 -- 0x080EBA70
-local function prepare(me: Object, soul: FormDef)
+local function prepare(me: Object, soul: FormDef, spec: Spec)
     battle.set_dimmed(true)
     me.sprite.white = true
     if me.step_init == 0 then
@@ -88,6 +90,9 @@ local function prepare(me: Object, soul: FormDef)
         battle.play_sound(CHANGE_SOUND)
         me:set_status("moving", false)
         me:set_request("revert_form", false)
+        if spec.prepare then
+            spec.prepare(me)
+        end
         battle.show_hud({ "emotion_window" }, false)
         me.collision:set_region(nil)
         me.step_init = 4
@@ -192,7 +197,7 @@ function change.make(spec: Spec): Action
             end
             local step = me.step
             if step == PREPARE then
-                prepare(me, soul)
+                prepare(me, soul, spec)
             elseif step == IMAGE then
                 show_image(me, s, soul, spec, spawn_image)
             elseif step == EMERGE then
