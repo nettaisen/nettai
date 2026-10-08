@@ -1534,8 +1534,9 @@ impl Defs {
             }
         };
         let mut navis = Vec::new();
+        let extended = extended_fields(&definitions, Registry::Navi);
         for d in definitions.of(Registry::Navi) {
-            let mut record = super::navis::read_navi(d, &reader)?;
+            let mut record = super::navis::read_navi(d, &reader, &extended.iter().map(String::as_str).collect::<Vec<_>>())?;
             record.weapons = read_weapons(d)?;
             record.fresh = super::navis::read_fresh(d, |key| {
                 definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16))
