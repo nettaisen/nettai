@@ -291,6 +291,12 @@ pub struct ActorData {
     pub charge_counter: u16,
     pub charge_level: u8,
     pub charge_source: u8,
+    /// EXE4's rapid presses (AIData +0x12, the count, and +0x11, the
+    /// ticks left for the next): a form's `rapid_presses` asks for the
+    /// forced charged shot at its count (GutsSoul's, 0x0800BE50); the shot
+    /// clears both as it ends (action 0x10, 0x080EBE84).
+    pub rapid_presses: u8,
+    pub rapid_window: u8,
     pub total_damage_taken: u16,
     pub pad: Pad,
     /// Mirror of `pad` maintained while dimmed.
