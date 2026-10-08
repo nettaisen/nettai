@@ -1000,6 +1000,21 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   stepping on) through the form's `put_on`, so FireSoul's and NumberSoul's (item 74) come with their overlays. The
   lab's chips/0x085-invis and chips/0x086-popup (hit, miss, adjacent, side1) replay every frame; the hit recordings'
   fight frames, the glow and the hole among them, are pixel-exact.
+- **BugFix** (the dimming chips' variant 0x1D, `chips/bugfix`, group B): EXE5's and EXE6's controller (effect #0x3B,
+  0x080E6388: @exelib/bugfix/controller, each game stating its glow and its fix) with EXE4's glow (objects/glow, its
+  first row: BugFix's flashes, 0x080CD058, the three games' alike but for the sound, 0x15C; then 30 ticks,
+  0x080CD0A6) and EXE4's own fix (0x080E641E, rules/navicust's `fix_bugs`): the move bug (+0x0D), the buster's
+  blanks (+0x08), the HP and custom drains (+0x0E, +0x0F) and the panel trail (+0x1B = 0xFF, a patch card's too) go,
+  and the charged shot is the battle's first again (+0x0A from the battle's start copy of the stats, 0x0203BCC0 +
+  0x40 a side, 0x0800D81E; written with the battle's at its init, 0x080087A8: a NaviCust weapon bug stays, a raised
+  one or DrkCanon's taunt goes: the rules' state `start_charge_shot`, kept as the round's stats are made); the bugs'
+  counts stay. No Beast Out and no emotion window glitch to clear (EXE4's window has no bug flicker). The lab's
+  chips/0x0ce-bugfix (hit, miss, adjacent, side1; bugs: the buster's, HP, move and panel trail's; weapon-bug:
+  BugBomb's raised weapon bug, the rock cube, then BugFix and a plain charged shot) replay every frame with the same
+  sounds; the fight frames, the glow among them, are pixel-exact but for the custom screens' known shift and, in
+  bugs, frame 868: a cracked panel broken by a step off it shows its break a frame early, as in panels/cracked-step-off
+  (frame 384), which the panels' drawing has. (The custom drain's fix has no replay: that bug meets the replay's known
+  deviation at the first custom screen.)
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -1127,6 +1142,24 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (effect #0x77, 0x080EA598) runs the short course. The lab's chips/0x132-bassanly (4) replay every frame, sound the
   same and are pixel-exact but for the custom screens' known shift; EXE6's BassAnly recordings (21) and EXE5's (4)
   still match.
+  ColdMan (actor #0x56, 0x080CC04C) is EXE4's own (no counterpart in EXE5 or EXE6); his controller (effect #0x7B,
+  0x080EAA88) runs the short course. 11 ticks after he appears (gone off solid ground) he looks over the field-object
+  registry's six side slots (0x080CC2E4), leaving out the kinds 0x0800B3E8 leaves (the poltergeist's
+  `obstacle.throwable`: attack objects #0x4C and #0x8C, effect object #0x6E; PropBom's bomb, #0x8C, is ported with no
+  identity, so both take it: its identity should state `throwable = false`). An obstacle with his own panel or free
+  solid ground behind it (as he faces) takes his side and damage word and is encased in a bubble; any other is encased
+  in ice (0x0800B44C: flag2 0x4000 or 0x2000, the engine's `obstacle.encase_in_bubble` and `encase_in_ice`). Some
+  found, the place sound and his stops sorted (0x080CC388: the farthest toward his enemy visited first, top row first
+  in a column); 60 ticks later (1 with none) he visits each (vanishing and appearing 3 ticks each) and punches what is
+  ahead: by then the ice cube its encasing became (attack #0xA3: EXE6's encased bubble, now @exelib/ice_cube for
+  both). Last, on his own panel, he forms a cube on the free solid panel ahead (gone if there is none) and 15 ticks
+  later punches it. His punch is a hit of 1 (aqua, no spark, at navis, hit modifier 0x21: the push) on the panel
+  ahead, resolving while dimmed. The encasing's end is the role `hooks.encased` (objects/ice_cube: EXE4's ice block,
+  rock row 3, or the cube, formed) and its flicker the role `effects.encased` (row 0x6E). The lab's
+  chips/0x10a-coldman (with `obstacle`: the opponent's BigHamr1 hammer turned and punched into it; `ice`: on the
+  holes-columns stage, the hole behind the opponent's hammer leaves it an ice block), 0x10b-coldmnsp and
+  0x10c-coldmnds (14) replay every frame and sound the same; their fights are pixel-exact but for one frame of `ice`
+  (440: the user's chip label goes a frame late as the opponent, just moved, uses BigHamr1: the HUD's, not ColdMan's).
 
 **For the next steps:**
 
@@ -2172,13 +2205,15 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      MegaMan's sprite, his entry plus the soul (0x0800B90A, 0x0801079C) *done*; the emotion 4 (0x0800F49C), no anger
      (0x0800C560) and no Full Synchro aura (0x0800D98A) *done*; the palette 0 (0x0800BFFE) *done*; the status reset's
      routine by soul (0x0800E05C, table 0x0800E0A0), its element by soul (0x0800C93C, table 0x0800C964: Fire fire,
-     Thunder elec, Aqua aqua, Wood wood, the rest null) *open*; the overlay by soul (0x0800B7E8, table 0x08018068: Fire
+     Thunder elec, Aqua aqua, Wood wood, the rest null) *done* for Fire, Thunder and Aqua, *open* for Wood; the
+     overlay by soul (0x0800B7E8, table 0x08018068: Fire
      0x10, Number 0x110; `effects.form_overlay`; PopUp's glow, objects/glow, puts its copy on through the form's
-     `put_on` and must have it step on, its Param3 1: 0x0800B812) *open*; the image's part (0x080E3674, table
+     `put_on` and must have it step on, its Param3 1: 0x0800B812) *done* for Fire, *open* for Number; the image's
+     part (0x080E3674, table
      0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
-     *done* for WindMan, *open* for the rest; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
+     *done* for WindMan, FireMan and AquaMan, *open* for NumberMan; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
      `charged_chips`; the A routine forms/soul's `chip_charge`; any charged chip used with its charge, Null or not,
-     0x0800B72C: the rule `chip_use.charged_null_alt_routine`) *done* for Fire, Proto and Metal, *open* for Aqua; a
+     0x0800B72C: the rule `chip_use.charged_null_alt_routine`) *done* (Fire, Proto, Metal, Aqua); a
      charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage itself, item 28; the
      form's `charged_bonus.doubles`) *done* (souls/proto/chip); MegaMan's look by soul in what copies it (the image
      0x080E2C44, the swords' and cannons' afterimages 0x080EB548, 0x080EB5FA, 0x080EB874, the GigaCan's part
@@ -2244,8 +2279,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      reset runs nothing of its own (0x0800E0A0's row 9).
    - **JunkSoul (10).** No shadow (0x0801079C and the look copies) *open*; the status reset's hitbox on his panel
      (0x0800E146: params 0x1705FF85 or 0x1705FF84 by side, 0x2100) *open*; charged 0x61 (0x0800CE4C) *open*.
-   - **AquaSoul (11).** Aqua (0x0800C964) *open*; its image part 0x13 *open*; an aqua chip that isn't a dimming chip
-     charges on A (0x15) and doubles charged (0x0800C47A) *open*; charged 0x23 (0x0800CF42) *open*.
+   - **AquaSoul (11).** Aqua (0x0800C964) *done* (souls/aqua/weakness: Thunder1's elec on it); its image part 0x13
+     (10-0c) *done* (souls/aqua/hit, unison); an aqua chip that isn't a dimming chip (every one deals damage) charges
+     on A (0x15: 20 ticks a level, 60 the last) and doubles charged (0x0800C47A) *done* (souls/aqua/chip, a Bubbler);
+     Bubbler's spreader charged (0x23, 0x0800CF42: 20 aqua, hit 0x94, action 0x1E's variant 2, bullet row 0x0D: the
+     burst on the first thing found and the panel behind, hit modifier 3) *done* (souls/aqua/unison, side1). Its status
+     reset runs nothing of its own (0x0800E0A0's row 11).
    - **WoodSoul (12).** Wood (0x0800C964) *open*; the status reset's merge (0x0800E294: a Wood chip takes the damage
      and bonuses of a damaging Null chip after it, which leaves the hand) *open*; grass heals 1 (0x08012FD6) *open*;
      a hit's status doesn't take (0x08013904 skips 0x08013470: `status_immune`) *open*; charged 0x57 (0x0800D270)

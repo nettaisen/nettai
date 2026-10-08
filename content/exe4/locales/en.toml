@@ -293,6 +293,10 @@ language = "en"
 "jealousy" = { name = "Jealousy", description = "More chip\nmean more\ndamage" }
 "snake" = { name = "Snake", description = "Snake\nfrom hole\nin area" }
 "bugcurse" = { name = "BugCurse", description = "EvilChip!\nMake enmy\nbuggy!" }
+"bugfix" = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
+"coldman" = { name = "ColdMan", description = "Ices over\nall and\nslides!" }
+"coldmn-sp" = { name = "ColdMnSP", description = "Ices over\nall and\nslides!" }
+"coldmn-ds" = { name = "ColdMnDS", description = "Ices over\nall and\nslides!" }
 "lifesync" = { name = "LifeSync", description = "Makes\nenmy's HP\nsame" }
 
 [navis]
