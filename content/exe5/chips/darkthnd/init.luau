@@ -7,6 +7,7 @@
 local collision = require("../rules/collision")
 local statuses = require("../rules/status")
 local thunder = require("./thunder/ball")
+local dark_costs = require("../lib/dark_costs")
 
 local chip: Chip = {
     codes = { "M" },
@@ -24,6 +25,8 @@ local chip: Chip = {
         -- Its ball (12 panels, the original's DarkThnd's): big, of EXE5's row 0x2B.
         ball = { panels = 0x0C, status = statuses.paralyze_90, bug = 0x19, big = true, is = collision.collision_2b },
     },
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.custom_drain,
     auto_battle = { class = "to_front" },
 }
 
