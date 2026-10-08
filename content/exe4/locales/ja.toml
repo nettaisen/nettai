@@ -293,6 +293,7 @@ language = "ja"
 "jealousy" = { name = "ジェラシー", description = "チップをもつてきに\n枚数におうじた\nダメージをあたえる" }
 "snake" = { name = "カモンスネーク", description = "自分のエリアの\nあなマスから\nこヘビがとんでいく" }
 "bugcurse" = { name = "カースオブバグ", description = "あんこくチップ!\nてきのナビをひどい\nバグじょうたいに!" }
+"bugfix" = { name = "バグシュウセイ", description = "ナビに発生している\nバグをしゅうせいし\nとりのぞく" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

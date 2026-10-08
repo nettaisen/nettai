@@ -293,6 +293,7 @@ language = "en"
 "jealousy" = { name = "Jealousy", description = "More chip\nmean more\ndamage" }
 "snake" = { name = "Snake", description = "Snake\nfrom hole\nin area" }
 "bugcurse" = { name = "BugCurse", description = "EvilChip!\nMake enmy\nbuggy!" }
+"bugfix" = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
