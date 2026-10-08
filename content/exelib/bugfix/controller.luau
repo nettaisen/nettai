@@ -6,9 +6,10 @@
 -- the Beast Out counter again unless the navi has one (`sub_8014446` / `sub_801443C`); EXE5 has no Beast Out. (EXE5's
 -- fix, 0x080E49DA, leaves NaviStats +0x63 alone, the hand's shrink turn: a bug EXE5 hasn't, which stays 0.)
 --
--- Each game makes its own kind (`controller.make`) with its glow and whether it has Beast Out.
+-- Each game makes its own kind (`controller.make`) with its glow, its flash's sound and whether it has Beast Out.
 
 local dimming_chips = require("@exelib/dimming")
+local glow = require("@exelib/bugfix/glow")
 
 local controller = {}
 
@@ -21,7 +22,9 @@ export type Look = {
     -- The kind's id.
     id: string,
     -- The game's glow's spawn (@exelib/bugfix/glow).
-    glow: (spawner: Object, variant: "bug_fix" | "log_in", holder: Object) -> Object?,
+    glow: (spawner: Object, start: BugFixGlowStart, holder: Object) -> Object?,
+    -- A flash of the glow.
+    flash: Sound,
     -- EXE6's: the Beast Out counter is spent again.
     beast_out: boolean,
 }
@@ -35,13 +38,40 @@ export type Controller = {
 -- What the effect's first tick sets the timer to (nothing counts it).
 local TIMER = 0x3C
 
+-- The glow's flashes' ticks, and the first flash's.
+local FLASH_TICKS, FIRST_FLASH = 0x78, 2
+
 function controller.make(look: Look): Controller
+    -- The glow's start (`off_80C4930`'s first row, `sub_80C4958`): the navi
+    -- vanishes; then a flash whenever Timer2 runs out, Timer2 starting again
+    -- at a quarter of the ticks so far; at 120 ticks, on.
+    local flashes = glow.start(function(me: Object)
+        me.sprite.white = false
+        if me.phase_init == 0 then
+            glow.hide_navi(me)
+            me.timer = 0
+            me.timer2 = FIRST_FLASH
+            me.phase_init = 4
+        end
+        local t2 = me.timer2 - 1
+        me.timer2 = t2
+        if t2 < 0 then
+            me.timer2 = bit32.rshift(me.timer, 2)
+            me.sprite.white = true
+            battle.play_sound(look.flash)
+        end
+        local t = me.timer + 1
+        me.timer = t
+        if t >= FLASH_TICKS then
+            me:set_action(4)
+        end
+    end)
+
     -- `sub_80E4954`.
     local function effect(me: Object)
         if me.phase_init == 0 then
             -- sub_80C4AEC
-            -- (The glow's variant, `off_80C4930`'s first.)
-            look.glow(me, "bug_fix", me)
+            look.glow(me, flashes, me)
             -- sub_80E49C4
             local user = me.related1
             if not user then
