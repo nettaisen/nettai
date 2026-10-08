@@ -161,6 +161,10 @@
 "megaman/charged-shot/action" = 0x24
 # The souls' charged shots: RollSoul's arrow (weapon routine 0x22's action 0x1B, 0x080EC574).
 "rollsoul/charged-shot/action" = 0x1B
+# GutsSoul's fist (weapon routine 0x24's action 0x12, 0x080EBF6A: EXE4's punch, lib/punch), and its machine gun (action
+# 0x10, 0x080EBDC0), which request 0x20 starts.
+"gutssoul/charged-shot/action" = 0x12
+"gutssoul/machine-gun" = 0x10
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
