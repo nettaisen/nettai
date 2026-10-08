@@ -34,8 +34,9 @@ export type State = {
     timer: number,
     -- What it fires (the original's attack variant 0, 1 or 2): the shot,
     -- the spread (two more shots a row up and down), or the obstacle the
-    -- navi absorbed.
-    mode: "shot" | "spread" | "throw",
+    -- navi absorbed (`THROW`).
+    spread: boolean,
+    throw: MegaManBusterThrow?,
     -- The projectile (the original's first attack parameter, a row of the
     -- projectile's table), which a throw doesn't read.
     projectile: ProjectileVariant?,
@@ -88,16 +89,8 @@ function buster.setup(navi: Object): Action
         end
     end
     local s = navi:action_state(buster.shot) :: State
-    s.mode = "shot"
+    s.spread, s.throw = false, nil
     s.projectile = program or variants.plain
-    return buster.shot
-end
-
--- The shot as a throw of the obstacle the navi absorbed: what
--- `throw_absorbed`'s setups start instead of a shot.
-function buster.throw(navi: Object): Action
-    local s = navi:action_state(buster.shot) :: State
-    s.mode = "throw"
     return buster.shot
 end
 
@@ -116,10 +109,14 @@ local THROWN = flying_shot.variant {
     obstacle = true,
 }
 
--- `sub_80EB450`'s throw: the last obstacle absorbed (what the throw's
--- setup took from the absorbed list into the attack: the original's marker
--- word) flies from the panel in front (`sub_80C6248`).
-local function throw(me: Object)
+local THROW_SOUND = asset.sound("junk-shot")
+
+-- `sub_80EB450`'s throw (the original's attack variant 2): the junk shot's
+-- sound besides the shot's, and the last obstacle absorbed (what the
+-- throw's setup took from the absorbed list into the attack: the
+-- original's marker word) flies from the panel in front (`sub_80C6248`).
+local THROW = common.throw(function(me: Object)
+    battle.play_sound(THROW_SOUND)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     flying_shot.launch(me, Vec3.new(x, y, THROW_Z), {
         variant = THROWN,
@@ -127,10 +124,9 @@ local function throw(me: Object)
         obstacle = me.thrown_look,
         obstacle_anim = me.thrown_anim,
     })
-end
+end)
 
--- The shot; a thrown obstacle (`throw_absorbed`'s) is one too. (The
--- sounds: the shot, and a throw's besides, the junk shot's.)
+-- The shot; a thrown obstacle (`throw_absorbed`'s) is one too.
 buster.shot = common.shot_action {
     id = "megaman/buster/shot",
     buster = lib,
@@ -138,9 +134,15 @@ buster.shot = common.shot_action {
     attachment = attachment.kind,
     shot_sound = asset.sound("buster-shot"),
     plain = variants.plain,
-    throw_sound = asset.sound("junk-shot"),
-    throw = throw,
 }
+
+-- The shot as a throw of the obstacle the navi absorbed: what
+-- `throw_absorbed`'s setups start instead of a shot.
+function buster.throw(navi: Object): Action
+    local s = navi:action_state(buster.shot) :: State
+    s.spread, s.throw = false, THROW
+    return buster.shot
+end
 
 buster.weapon = new.weapon {
     id = "megaman/buster",

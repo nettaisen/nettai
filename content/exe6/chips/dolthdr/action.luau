@@ -1,13 +1,13 @@
 --!strict
 -- DolThdr's action (the original's 0x3E, `sub_80EE0BC`): the navi holds
--- out its doll (or the buster arm, animation 0x19, when its chip says so:
--- the original's third parameter), and 10 ticks later the doll (attack
+-- out what its user says (DolThdr's doll; ElecCross's charged shot's buster
+-- arm, animation 0x19: the original's third parameter), and 10 ticks later
+-- the doll (attack
 -- object #0x82, ./doll) strikes thunder along the row ahead, held for the
 -- thunder's ticks (the original's second parameter); then the navi puts
 -- it away over 7 ticks.
 
 local attachment = require("../../objects/attachment")
-local buster = require("../../lib/buster")
 local doll = require("./doll")
 
 local action = {}
@@ -27,10 +27,6 @@ local RAISE, STRIKE, LOWER = 0x0, 0x4, 0x8
 
 local ANIM_RAISE = 0x0A
 local SOUND = asset.sound("beast-over")
--- What the navi holds: the doll (the original's attachment row 0x29), or
--- the buster arm (`dword_80EE29C`: row 6, animation 0x19).
-local DOLL = attachment.look { sprite = asset.sprite("thunder-doll-hand"), palette = 0, attach_point = 0x0E }
-local ARM_ANIM = 0x19
 local RAISE_TICKS, HOLD_TICKS, LOWER_TICKS = 0x0A, 0x0F, 6
 
 -- The held attachment's animation steps. Without one (its pool was full)
@@ -48,11 +44,7 @@ function action.action(spec: DollThunderSpec): Action
     local function raise(me: Object, s: State)
         me:set_animation(ANIM_RAISE)
         me:open_counter_window()
-        if spec.holds_arm then
-            attachment.attach(me, buster.arm, "overlay", { anim = ARM_ANIM })
-        else
-            attachment.attach(me, DOLL, "overlay")
-        end
+        attachment.attach(me, spec.held, "overlay", { anim = spec.held_anim })
         me:set_status("using_action", true)
         s.timer = RAISE_TICKS
         me.step = STRIKE

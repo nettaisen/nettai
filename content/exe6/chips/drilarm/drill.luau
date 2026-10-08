@@ -21,7 +21,6 @@ local exe6_kind, exe6_spawn = common.make_kind("drilarm/drill", {
     first = collision.breaking,
     second = collision.second_drill,
     hits = collision.hits_navis,
-    param3 = "light",
     keeps_element = true,
 })
 drill.kind = exe6_kind
