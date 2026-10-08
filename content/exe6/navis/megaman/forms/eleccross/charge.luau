@@ -6,15 +6,17 @@
 -- Attack (up to 5). It leaves the variant, the charge and the lockout as
 -- they were.
 
+local buster = require("../../../../lib/buster")
 local dolthdr = require("../../../../chips/dolthdr/action")
 local weapon = require("../../../../lib/weapon")
 
 local charge = {}
 
 -- DolThdr's action with its parameters (the word 0x10F00): the thunder's
--- 15 ticks, and the buster arm held up rather than the doll. (Its compat
--- key maps it to 0x3E.)
-local THUNDER = dolthdr.action { id = "eleccross/charge/thunder", ticks = 0x0F, holds_arm = true }
+-- 15 ticks, and the buster arm held up rather than the doll
+-- (`dword_80EE29C`: attachment row 6, animation 0x19). (Its compat key
+-- maps it to 0x3E.)
+local THUNDER = dolthdr.action { id = "eleccross/charge/thunder", ticks = 0x0F, held = buster.arm, held_anim = 0x19 }
 
 -- The attack's element (Elec) and hit parameter.
 local ELEC, HIT_PARAM = 3, 0x94
