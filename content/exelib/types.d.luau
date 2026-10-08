@@ -1709,7 +1709,9 @@ export type NaviChip = {
 -- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
 -- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and
 -- after the navi), the controller's state, and what a game's `make` hands back.
-export type NaviChipStep = { wait: number, warp: ("out" | "in")? } | "navi"
+-- A navi chip controller's step: a wait (the user warping out or back in as it starts, a sound then: EXE4's GutPnch's
+-- warp back, 0x080E91BC), or the navi.
+export type NaviChipStep = { wait: number, warp: ("out" | "in")?, sound: Sound? } | "navi"
 export type NaviChipShortCourse = { out: number, after: number }
 export type NaviChipControllerState = { chip: Chip?, bonus: number, busy: boolean }
 export type NaviChipController = {
