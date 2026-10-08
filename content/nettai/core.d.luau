@@ -1420,6 +1420,10 @@ declare battle: {
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
+    -- The chip after i of a side's hand folds into the chip at i (its
+    -- damage, Atk+ bonus and charge bonus added) and leaves the hand, the
+    -- chips after it moving up one (EXE4's WoodSoul's status reset).
+    fold_hand_chip: (side: number, i: number) -> (),
     -- The chip at i of a side's hand (from its first chip, used ones too),
     -- if any.
     hand_chip: (side: number, i: number) -> Chip?,
