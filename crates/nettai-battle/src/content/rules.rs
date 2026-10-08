@@ -196,8 +196,9 @@ pub struct EffectsRules {
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,
     /// Where that flash sits among the palette transforms a frame
-    /// applies, which a dimming's fade is one of. Presentation: the
-    /// renderer's (`Fade::Flash`); the simulation reads none of it.
+    /// applies, which a dimming's fade and a background's palette shift
+    /// are among. Presentation: the renderer's (`Stage::new`'s `flashed`);
+    /// the simulation reads none of it.
     pub palette_flash_order: PaletteFlashOrder,
     /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
     /// spawner) run while the battle is paused: EXE6's spawners set their
@@ -257,6 +258,13 @@ pub struct EffectsRules {
     /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
     /// of the second block that shows without sliding, 33).
     pub used_chip_ticks: u8,
+    /// A dimming chip's telop, as it starts, ends the used chips' names on
+    /// every console (EXE6's `sub_800BA8A` and `sub_800BBA8`:
+    /// `sub_801BED6(0x10000)`, `sub_801DACC(0x10000)`; EXE5's 0x0800A0FC
+    /// and 0x0800A218). EXE4's (0x08008CF6, 0x08008DE0) lays the telop on
+    /// the banner block and leaves the second block's name be, beside it.
+    /// Presentation: the HUD's (`Battle::used_chip_for`).
+    pub telop_ends_used_chips: bool,
     /// Each console's emotion window checks its navi's NaviCust bugs and
     /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
     /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
@@ -548,6 +556,10 @@ pub enum PaletteFlashOrder {
     /// two-layer one 9 and 10, 0x080E10D0), so a dimming darkens the white
     /// it put there with the rest: a flash under a dimming is white a
     /// quarter down (Blinder's, Colonel's, OmegaRkt's, LeadRaid's).
+    /// EXE4's takes slot 0 (0x080E2A34; its two-layer one 0 and 1,
+    /// 0x080E2AAC), before a background's palette shift too (slot 3,
+    /// darksoul's: SparkMan's flash shows its white shifted); EXE5's
+    /// backgrounds shift no palettes.
     BeforeFades,
     /// After the first record's: EXE6's takes slot 20 (`sub_80E10C0`; its
     /// two-layer one 20 and 21, `sub_80E114C`), so its white stands over a

@@ -266,8 +266,11 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     if b.start_telop_banner(banner) {
         b.banner.telop = Some(telop);
     }
-    // sub_801BED6(0x10000): a used chip's name makes way.
-    b.used_chips = [None; 2];
+    // sub_801BED6(0x10000): a used chip's name makes way, where the game's
+    // does.
+    if b.game_rules().effects.telop_ends_used_chips {
+        b.used_chips = [None; 2];
+    }
 }
 
 /// A telop for a controller whose effect may already run (`sub_800BA8A`,
