@@ -44,6 +44,7 @@ function flame.make_kind(look: Look): ElemFlame
                         offset = s.offset,
                         paralyzes = paralyzes,
                         attack_480 = s.attack_480,
+                        while_dimmed = s.while_dimmed,
                         leaves = s.leaves,
                         palette = s.palette,
                         hit = false,
@@ -165,6 +166,7 @@ function flame.make_kind(look: Look): ElemFlame
             offset = "i8",
             paralyzes = "bool",
             attack_480 = "bool",
+            while_dimmed = "bool",
             leaves = leaves,
             palette = "u8",
             hit = "bool",
@@ -186,7 +188,7 @@ function flame.make_kind(look: Look): ElemFlame
                 return
             end
             local s = me.state :: State
-            if s.paralyzes or s.attack_480 or s.leaves ~= NONE then
+            if s.while_dimmed or s.paralyzes or s.attack_480 or s.leaves ~= NONE then
                 me:update_sprite_while_dimmed()
             else
                 me:update_sprite()
@@ -207,8 +209,11 @@ function flame.make_kind(look: Look): ElemFlame
         o.related1 = nil
         local t = o.state :: State
         t.count, t.spread, t.ticks, t.offset, t.palette = s.count, s.spread, s.ticks, s.offset, s.palette
-        t.paralyzes, t.attack_480 = s.paralyzes, s.attack_480
+        t.paralyzes, t.attack_480, t.while_dimmed = s.paralyzes, s.attack_480, s.while_dimmed
         t.leaves = s.leaves or NONE
+        if s.while_dimmed then
+            o.run_while_dimmed = true
+        end
         return o
     end
 

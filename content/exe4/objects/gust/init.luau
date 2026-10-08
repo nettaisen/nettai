@@ -31,19 +31,20 @@ gust.kind = common.make_kind("gust", {
 -- 0x080D68AC: a gust on (x, y) for side `alliance`, blowing as `how` says, with the damage word `damage`, tracked by
 -- `holder.state.gusts[slot]`. The spawner sets its slot with a word store (`str`), which the ARM aligns down to the
 -- slots' first byte: whichever slot it names, the first becomes 1 and the second 0 (a gust in the second slot finds it
--- 0 at its first update and ends unseen).
+-- 0 at its first update and ends unseen). Without a holder: Wind's and Fan's fan gives its row record (in ROM:
+-- 0x080D662A) for the slot, which the store doesn't change and whose read is never 0, as untracked.
 function gust.spawn(
     x: number,
     y: number,
     alliance: number,
     how: GustHow,
     damage: number,
-    holder: Object,
+    holder: Object?,
     slot: number
 ): Object?
     local o = common.spawn(gust.kind, x, y, alliance, 0, how, damage, nil, 0)
-    if not o then
-        return nil
+    if not o or not holder then
+        return o
     end
     local s = o.state :: { holder: Object?, slot: number }
     s.holder, s.slot = holder, slot

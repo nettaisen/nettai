@@ -1185,6 +1185,12 @@ impl CoreApi for Battle {
         }
     }
 
+    fn add_hand_charge_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].charge_bonus.get_mut(i as usize) {
+            *b = b.wrapping_add(n);
+        }
+    }
+
     fn hand_left(&self, side: u8) -> u8 {
         let h = &self.hands[side as usize & 1];
         h.ids.iter().skip(h.cursor as usize).take_while(|c| c.is_some()).count() as u8
@@ -1212,6 +1218,10 @@ impl CoreApi for Battle {
 
     fn clear_linked(&mut self, side: u8) {
         Battle::clear_linked(self, side & 1);
+    }
+
+    fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
+        Battle::show_used_chip(self, side & 1, chip, damage, bonus);
     }
 
     fn fill_custom_gauge(&mut self) {
@@ -1680,6 +1690,7 @@ impl CoreApi for Battle {
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::ChipsHeld => i(ob.chips_held as i64),
+            ObjectField::HasCollision => Value::Bool(ob.collision.is_some()),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
             ObjectField::Related1 => ob.related[0].into(),
@@ -2005,6 +2016,8 @@ impl CoreApi for Battle {
             ActorField::ChargeSource => i(a.charge_source as i64),
             ActorField::ChargeCounter => i(a.charge_counter as i64),
             ActorField::BChargeAtAsk => i(a.b_charge_at_ask as i64),
+            ActorField::RapidPresses => i(a.rapid_presses as i64),
+            ActorField::RapidWindow => i(a.rapid_window as i64),
             ActorField::BufferedMove => i(a.buffered_move as i64),
             ActorField::ChipLockout => i(a.lockout as i64),
             ActorField::BackSpecialCooldown => i(a.back_special_cooldown as i64),
@@ -2088,6 +2101,8 @@ impl CoreApi for Battle {
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
+            (ActorField::RapidPresses, FieldValue::U8(x)) => a.rapid_presses = x,
+            (ActorField::RapidWindow, FieldValue::U8(x)) => a.rapid_window = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
             (ActorField::BusterWeapon, FieldValue::Ref(_)) => a.buster = weapon,
@@ -2770,11 +2785,13 @@ impl CoreApi for Battle {
         // The barrier byte the rules' barrier code (`sub_801A802`) tells
         // the behaviors apart by: a plain barrier as the game's type 1
         // (types 1..7, 9 and 0xB..0xF behave alike), a bubble as type 8, a
-        // regenerating one as type 0xA.
+        // regenerating one as type 0xA, a regrowing one as EXE4's type 4
+        // (0x08012DF8).
         c.barrier = match spec.behavior {
             0 => 1,
             1 => 8,
-            _ => 0xA,
+            2 => 0xA,
+            _ => 4,
         };
         c.barrier_weak = spec.weak_element;
         c.barrier_hp = spec.hp;
