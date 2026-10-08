@@ -5,8 +5,9 @@
 -- of a sand hole (hole.luau) and arcs 22 pixels high over its panel (and
 -- the navi) toward the user, into a second hole, throwing sand
 -- (spray.luau). It hits what it passes; the holes close 20 ticks after it
--- leaves and after it lands. It stands still while dimmed. Its level (the
--- chip's: 0 to 2) is its palette.
+-- leaves and after it lands. It stands still while dimmed. Its palette is
+-- its chip's (the original's level, the chip's parameter: 0 to 2; the
+-- original's other tables by the level hold the same for every chip).
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
@@ -17,13 +18,13 @@ local spray = require("./spray")
 local worm = {}
 
 export type State = {
-    -- ExtraVars: the panel it lands on, its level, the last animation
+    -- ExtraVars: the panel it lands on, its palette, the last animation
     -- set, ticks into the arc, the arc's length, the angle's step and the
     -- angle (high byte: the sine table's index), the arc's length again,
     -- the panel it last hit from, its holes and their timers.
     target_x: number,
     target_y: number,
-    level: number,
+    palette: number,
     last_anim: number,
     ticks: number,
     length: number,
@@ -46,14 +47,14 @@ local REQUIRE = 0x10000
 local FORBID = { [0] = 0x05800000, [1] = 0x0A800000 }
 -- Its collision: a thrown attack that hits navis, hit modifier 3.
 local HIT_MOD = 3
--- By level: the arc's length (`byte_80DEA50`) and the holes' timers
--- (`byte_80DEA70`); the same for all three.
-local LENGTH: { [number]: number } = { [0] = 0x10, 0x10, 0x10 }
-local HOLE_TICKS: { [number]: { number } } = { [0] = { 0x14, 0x14 }, { 0x14, 0x14 }, { 0x14, 0x14 } }
+-- The arc's length (`byte_80DEA50`) and the holes' timers (`byte_80DEA70`),
+-- the same for every level.
+local LENGTH = 0x10
+local START_HOLE_TICKS, END_HOLE_TICKS = 0x14, 0x14
 -- The sand it throws (`byte_80DEDD8`, its looks: their first animations,
 -- `dword_80DEEE4`'s, 9 for look 0 and 5 for look 1; the fourth's Param3
--- 1, which nothing reads; `byte_80DEA58`: delays, the same for all three
--- levels).
+-- 1, which nothing reads; `byte_80DEA58`: delays, the same for every
+-- level).
 local SPRAYS = {
     { first_anim = 9, delay = 0x06 },
     { first_anim = 9, delay = 0x0B },
@@ -69,30 +70,20 @@ local HIT = 0xFF800000
 -- The actions.
 local EMERGE, ARC, DIVE = 0, 4, 8
 
--- A by-level table's entry.
-local function by_level<T>(t: { [number]: T }, s: State, what: string): T
-    local v = t[s.level]
-    if v == nil then
-        error(string.format("sand worm level %d reads past %s", s.level, what))
-    end
-    return v
-end
-
 -- `sub_80DED80`: the sand, from where it is.
 local function throw_sand(me: Object, s: State)
     for _, sand in SPRAYS do
-        spray.spawn(me, s.level, sand.first_anim, sand.delay)
+        spray.spawn(me, s.palette, sand.first_anim, sand.delay)
     end
 end
 
 -- `sub_80DECBC`: turned toward the user; the arc to the panel behind.
 local function aim(me: Object, s: State)
-    local holes = by_level(HOLE_TICKS, s, "byte_80DEA70")
-    s.start_timer, s.end_timer = holes[1], holes[2]
+    s.start_timer, s.end_timer = START_HOLE_TICKS, END_HOLE_TICKS
     me.flip = 1
     s.target_x = me.panel_x + me.facing
     s.target_y = me.panel_y
-    s.duration = by_level(LENGTH, s, "byte_80DEA50")
+    s.duration = LENGTH
     -- sub_8114F6A
     local n = s.duration
     local tx, ty = field.center(s.target_x, s.target_y)
@@ -117,7 +108,7 @@ local function init(me: Object)
     me.visible = true
     me.anim, me.anim_loaded = 1, 1
     sprite:set_animation(1)
-    sprite.palette = s.level
+    sprite.palette = s.palette
     me:set_coordinates_from_panel()
     if not me:create_collision() then
         me:free()
@@ -247,7 +238,7 @@ worm.kind = new.kind {
     state = {
         target_x = "u8",
         target_y = "u8",
-        level = "u8",
+        palette = "u8",
         last_anim = "u8",
         ticks = "u16",
         length = "u16",
@@ -277,10 +268,18 @@ worm.kind = new.kind {
     end,
 }
 
--- `sub_80DEC84`: a worm of `owner`'s of level `level` on (x, y), with the
+-- `sub_80DEC84`: a worm of `owner`'s in `palette` on (x, y), with the
 -- damage word `damage`. (It spawns at the registers' values, which its
 -- init replaces but for Z.)
-function worm.spawn(owner: Object, x: number, y: number, element: number, z: number, level: number, damage: number): Object?
+function worm.spawn(
+    owner: Object,
+    x: number,
+    y: number,
+    element: number,
+    z: number,
+    palette: number,
+    damage: number
+): Object?
     local o = battle.spawn(worm.kind, Vec3.new(y, element, z))
     if o then
         o.related1 = owner
@@ -289,7 +288,7 @@ function worm.spawn(owner: Object, x: number, y: number, element: number, z: num
         o:set_damage_word(damage)
         o.alliance, o.flip = owner.alliance, owner.flip
         local s = o.state :: State
-        s.level = level
+        s.palette = palette
         s.last_x, s.last_y = x, y
         s.start_hole, s.end_hole = nil, nil
     end
@@ -297,15 +296,15 @@ function worm.spawn(owner: Object, x: number, y: number, element: number, z: num
 end
 
 -- `sub_80DEDE0`, instant chip effect 12: an `instant` hook that sends worms
--- of `level` behind each of the other side's navis still in, where it can.
-function worm.instant(level: number): (user: Object, spec: InstantChipSpec) -> ()
+-- in `palette` behind each of the other side's navis still in, where it can.
+function worm.instant(palette: number): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, spec: InstantChipSpec)
         local side = user.alliance
         for _, target in battle.alive_actors(bit32.bxor(side, 1)) do
             local x = user.facing + target.panel_x
             local y = target.panel_y
             if field.check(x, y, REQUIRE, FORBID[side]) then
-                worm.spawn(user, x, y, spec.element, spec.z, level, spec.damage)
+                worm.spawn(user, x, y, spec.element, spec.z, palette, spec.damage)
             end
         end
     end
