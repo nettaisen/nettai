@@ -24,7 +24,7 @@ local colonel: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "colonel/controller",
-        summon = navi.summon,
+        summon = navi.summon { palette = 0, sword_palette = 0, strike = navi.screen_divide },
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
@@ -49,7 +49,7 @@ local colonel_sp: Chip = {
     megaman = "light",
     navi = navi_chips.make {
         id = "colonel-sp/controller",
-        summon = navi.summon_sp,
+        summon = navi.summon { palette = 0, sword_palette = 0, strike = navi.screen_divide },
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
@@ -72,7 +72,7 @@ local colonel_ds: Chip = {
     megaman = "dark",
     navi = navi_chips.make {
         id = "colonel-ds/controller",
-        summon = navi.summon_dark,
+        summon = navi.summon { palette = 6, sword_palette = 6, strike = navi.screen_divide },
     },
     auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
