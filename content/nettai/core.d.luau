@@ -404,6 +404,8 @@ declare extern type Object with
     related2: Object?
     -- The slot is in use (read-only).
     active: boolean
+    -- It has a collision record (read-only): `collision`'s fields and methods need one.
+    has_collision: boolean
     -- Drawn (for every viewer, when set; read: the local side's console's).
     -- What a console's rule hides per viewer is `hide_from_blind`, and an
     -- attachment follows its owner with `copy_visibility`.
@@ -502,6 +504,9 @@ declare extern type Object with
     charge_level: number
     charge_source: number
     charge_counter: number
+    -- The B charge's level (0 none, 1 charging, 2 full) as the navi last asked for an attack, kept until its next
+    -- ask (EXE4's AIData +0x15); 0 in a game whose decode keeps none (read-only).
+    b_charge_at_ask: number
     -- Writable: EXE4's rapid presses (AIData +0x12, +0x11), the B presses
     -- counted toward a form's `rapid_presses` and the ticks left for the
     -- next (the forced charged shot clears both as it ends).
@@ -1090,8 +1095,9 @@ export type FormOverlaySpec = {
 export type BarrierState = "none" | "up" | "popped"
 -- How a barrier behaves once raised (`sub_801A802`): worn down and timed
 -- out; back with 1 HP 240 ticks after it is worn down, and broken by elec
--- (BblWrap's bubble); or regenerating up to 200 HP.
-export type BarrierBehavior = "plain" | "bubble" | "regenerating"
+-- (BblWrap's bubble); regenerating up to 200 HP; or back whole a while after it is worn down, as the rules' barrier
+-- tick says (`status.intake.barrier.regrowing`: EXE4's BlakBarr).
+export type BarrierBehavior = "plain" | "bubble" | "regenerating" | "regrowing"
 -- `sub_801A7CC`'s row (`me:raise_barrier`): its HP, the damage a hit must
 -- reach to wear it, its timer (0xFFFF: none) and the element that breaks
 -- it (an element byte; 0: none).
@@ -1281,6 +1287,10 @@ declare battle: {
     linked: (side: number) -> LinkedChip,
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
+    -- `sub_801EB18`: the other player's console names `chip` as used by
+    -- `side` again, with its damage and bonus (presentation only: EXE4's
+    -- Slasher as it slashes).
+    show_used_chip: (side: number, chip: Chip, damage: number, bonus: number) -> (),
     -- `sub_800ABC6`: the trap's mark over `o`'s panel (the role
     -- `effects.trap_mark`, facing the local side's way, where the chip-use
     -- rules' `anti_navi_sparkle` puts it from the panel's center), with its
@@ -2160,7 +2170,8 @@ export type WeaponSpec = {
 export type Weapon = WeaponSpec
 
 -- A chip: its record, and exactly one use.
--- A chip's damage by formula: the opponent's HP; the custom gauge's; the HP
+-- A chip's damage by formula: the opponent's HP; the custom gauge's (a full
+-- gauge's `full`: EXE4's 0, none EXE6's and EXE5's 10); the HP
 -- the user has lost (at most `cap`: EXE6's 500 when none); the last two
 -- digits of the user's HP; half the opponent's max HP; a link navi's own
 -- chip's, by its buster's attack level; by a count of the user's side
@@ -2172,7 +2183,7 @@ export type Weapon = WeaponSpec
 -- time, rules/sp_chips.)
 export type DamageFormula =
     { formula: "opponent_hp" }
-    | { formula: "gauge" }
+    | { formula: "gauge", full: number? }
     | { formula: "gauge_level", base: number }
     | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }

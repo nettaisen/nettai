@@ -218,6 +218,13 @@ local rules: Rules = {
             -- place for it, its positioning class, and for the classes that read one its reach list (./auto_battle/data's,
             -- by name) or its spot test. A chip without it the AI can't play (its class past the table: the original
             -- crashes).
+            -- A dark chip's cost to its user (./light_dark, 0x0802C934's entry: a routine of 0x0802C974's,
+            -- lib/dark_costs), a capsule's mix into the chip it goes into (navis/megaman/forms/meddysoul/capsules,
+            -- 0x08023824: the hand's modifier bits), and a chip past the chip pack's list (./folder: its last chip
+            -- 0x13A; the BatCans).
+            dark_cost = "record:exe5-dark-cost",
+            capsule_mix = "u8",
+            past_the_pack = "bool",
             auto_battle = {
                 class = {
                     "into_reach", "to_front", "spot_test", "landing_ahead", "behind_target", "three_ahead_near_enemy",
@@ -234,6 +241,18 @@ local rules: Rules = {
                     "cross_three_ahead", "around", "columns_three_to_five", "ring_three_ahead", "all_ahead",
                     "target_at_back_or_edge", "behind_target_up_open",
                 },
+                -- A `sword_swing` chip's swings' reach lists, by the side's sword pick (0x0802A3C8: VarSwrd's six
+                -- from its byte 0, NeoVari's four from byte 6), and an element trap, which a `when_trap_free` chip
+                -- may set over (0x0802A9B4: chips 0x8C to 0x8F).
+                swings = {
+                    {
+                        "ahead_then_column", "two_ahead", "column_two_ahead", "three_in_row", "three_ahead", "one_ahead",
+                        "column_ahead", "two_in_row", "column_three_ahead", "two_columns_ahead", "columns_two_to_four",
+                        "column_ahead_and_two", "columns_two_and_three", "x_one_ahead", "ahead_in_row",
+                        "cross_three_ahead", "around", "columns_three_to_five", "ring_three_ahead", "all_ahead",
+                    },
+                },
+                element_trap = "bool",
             },
         },
         form = {
@@ -251,8 +270,9 @@ local rules: Rules = {
             steps_behind = "bool",
             var_sword_waits = "bool",
             emerge_shake = "bool",
-            -- A soul's Chaos Unison: the weapon its charge fires, and its own row of the cycle (./souls/chaos_charge).
-            chaos = { weapon = "weapon", cycle = "u8" },
+            -- A soul's Chaos Unison: the weapon its charge fires, and its own cycle (./souls/chaos_charge: the period,
+            -- then the windows' bounds; none, the chaos level's row).
+            chaos = { weapon = "weapon", cycle = "u8[4]" },
         },
     },
     -- Its own actions, which reach its state: a soul's change and revert (./souls), Dark MegaMan's leave

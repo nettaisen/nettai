@@ -34,8 +34,9 @@ export type State = {
     timer: number,
     -- What it fires (the original's attack variant 0, 1 or 2): the shot,
     -- the spread (two more shots a row up and down), or the obstacle the
-    -- navi absorbed.
-    mode: "shot" | "spread" | "throw",
+    -- navi absorbed (`THROW`).
+    spread: boolean,
+    throw: MegaManBusterThrow?,
     -- The projectile (the original's first attack parameter, a row of the
     -- projectile's table), which a throw doesn't read.
     projectile: ProjectileVariant?,
@@ -45,21 +46,6 @@ local buster = {}
 
 -- The height a thrown obstacle flies at, 16.16.
 local THROW_Z = 0x0C_0000
-
--- The buster-shot programs that come on 1 draw in 8 (the others on 1 in
--- 2): the original's rows from 0x1E on.
-local RARE: { [ProjectileVariant]: boolean } = {
-    [variants.pushing] = true,
-    [variants.shoving] = true,
-    [variants.charged_pulling] = true,
-    [variants.charged_bubbling] = true,
-    [variants.charged_road] = true,
-    [variants.charged_hp_bug_marked] = true,
-    [variants.charged_road_back] = true,
-    [variants.charged_grass] = true,
-    [variants.charged_freezing] = true,
-    [variants.charged_ice] = true,
-}
 
 -- `sub_8013D5E`: what this shot is (@exelib/megaman/buster).
 buster.pick = common.pick
@@ -79,25 +65,18 @@ function buster.setup(navi: Object): Action
     navi.hit_param = 0
     navi.attack_lockout = 0
     -- The buster-shot program (a projectile variant the navi's stats
-    -- name), on a lucky draw.
+    -- name), on a lucky draw: 1 in 8 for one that says it is rare (the
+    -- original's rows from 0x1E on), else 1 in 2.
     local program = battle.navi(navi.alliance).buster_shot
     if program then
-        local mask = if RARE[program] then 7 else 1
+        local mask = if program.rare_buster_shot then 7 else 1
         if bit32.band(battle.rng_positive(), mask) ~= 0 then
             program = nil
         end
     end
     local s = navi:action_state(buster.shot) :: State
-    s.mode = "shot"
+    s.spread, s.throw = false, nil
     s.projectile = program or variants.plain
-    return buster.shot
-end
-
--- The shot as a throw of the obstacle the navi absorbed: what
--- `throw_absorbed`'s setups start instead of a shot.
-function buster.throw(navi: Object): Action
-    local s = navi:action_state(buster.shot) :: State
-    s.mode = "throw"
     return buster.shot
 end
 
@@ -116,10 +95,14 @@ local THROWN = flying_shot.variant {
     obstacle = true,
 }
 
--- `sub_80EB450`'s throw: the last obstacle absorbed (what the throw's
--- setup took from the absorbed list into the attack: the original's marker
--- word) flies from the panel in front (`sub_80C6248`).
-local function throw(me: Object)
+local THROW_SOUND = asset.sound("junk-shot")
+
+-- `sub_80EB450`'s throw (the original's attack variant 2): the junk shot's
+-- sound besides the shot's, and the last obstacle absorbed (what the
+-- throw's setup took from the absorbed list into the attack: the
+-- original's marker word) flies from the panel in front (`sub_80C6248`).
+local THROW = common.throw(function(me: Object)
+    battle.play_sound(THROW_SOUND)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     flying_shot.launch(me, Vec3.new(x, y, THROW_Z), {
         variant = THROWN,
@@ -127,10 +110,9 @@ local function throw(me: Object)
         obstacle = me.thrown_look,
         obstacle_anim = me.thrown_anim,
     })
-end
+end)
 
--- The shot; a thrown obstacle (`throw_absorbed`'s) is one too. (The
--- sounds: the shot, and a throw's besides, the junk shot's.)
+-- The shot; a thrown obstacle (`throw_absorbed`'s) is one too.
 buster.shot = common.shot_action {
     id = "megaman/buster/shot",
     buster = lib,
@@ -138,9 +120,15 @@ buster.shot = common.shot_action {
     attachment = attachment.kind,
     shot_sound = asset.sound("buster-shot"),
     plain = variants.plain,
-    throw_sound = asset.sound("junk-shot"),
-    throw = throw,
 }
+
+-- The shot as a throw of the obstacle the navi absorbed: what
+-- `throw_absorbed`'s setups start instead of a shot.
+function buster.throw(navi: Object): Action
+    local s = navi:action_state(buster.shot) :: State
+    s.spread, s.throw = false, THROW
+    return buster.shot
+end
 
 buster.weapon = new.weapon {
     id = "megaman/buster",

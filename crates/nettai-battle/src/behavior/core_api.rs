@@ -1220,6 +1220,10 @@ impl CoreApi for Battle {
         Battle::clear_linked(self, side & 1);
     }
 
+    fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
+        Battle::show_used_chip(self, side & 1, chip, damage, bonus);
+    }
+
     fn fill_custom_gauge(&mut self) {
         self.gauge.value = crate::hud::CustomGauge::FULL;
     }
@@ -1686,6 +1690,7 @@ impl CoreApi for Battle {
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::ChipsHeld => i(ob.chips_held as i64),
+            ObjectField::HasCollision => Value::Bool(ob.collision.is_some()),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
             ObjectField::Related1 => ob.related[0].into(),
@@ -2011,6 +2016,7 @@ impl CoreApi for Battle {
             ActorField::ChargeLevel => i(a.charge_level as i64),
             ActorField::ChargeSource => i(a.charge_source as i64),
             ActorField::ChargeCounter => i(a.charge_counter as i64),
+            ActorField::BChargeAtAsk => i(a.b_charge_at_ask as i64),
             ActorField::RapidPresses => i(a.rapid_presses as i64),
             ActorField::RapidWindow => i(a.rapid_window as i64),
             ActorField::BufferedMove => i(a.buffered_move as i64),
@@ -2781,11 +2787,13 @@ impl CoreApi for Battle {
         // The barrier byte the rules' barrier code (`sub_801A802`) tells
         // the behaviors apart by: a plain barrier as the game's type 1
         // (types 1..7, 9 and 0xB..0xF behave alike), a bubble as type 8, a
-        // regenerating one as type 0xA.
+        // regenerating one as type 0xA, a regrowing one as EXE4's type 4
+        // (0x08012DF8).
         c.barrier = match spec.behavior {
             0 => 1,
             1 => 8,
-            _ => 0xA,
+            2 => 0xA,
+            _ => 4,
         };
         c.barrier_weak = spec.weak_element;
         c.barrier_hp = spec.hp;

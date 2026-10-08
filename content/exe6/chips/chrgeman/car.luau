@@ -4,9 +4,11 @@
 -- its speed to its side's far edge, hitting each new panel it reaches; it
 -- explodes where the floor ends, and when its owner leaves the action it
 -- is tied to (if any) or the battle is over. Each car sits its place + 1
--- pixels higher and further back than the one before, so they stack. The
--- navi chip's acts, steps its sprite and hits while dimmed; another waits
--- a dimming out. What it is spawned with is a `ChargeCar` (types.d.luau).
+-- pixels higher and further back than the one before, so they stack. One
+-- that runs while dimmed (the navi chip's) acts, steps its sprite and hits
+-- while dimmed; another waits a dimming out. What it is spawned with is a
+-- `ChargeCar` (types.d.luau): the original's Param1, the navi chip's, gives
+-- the dimming, the wait and the harder hit, which its spawners state.
 -- See docs/engine/chips.md §3.6.17.
 
 local collision = require("../../rules/collision")
@@ -19,10 +21,12 @@ local car = {}
 export type State = {
     -- Its speed forward, 16.16 (ExtraVars[0]).
     speed: number,
-    -- It waits before it rolls, and acts while the battle is dimmed
-    -- (Param1 set: the navi chip's).
+    -- It acts while the battle is dimmed, and its hit's modifier (Param1
+    -- set: the navi chip's, 3).
     while_dimmed: boolean,
-    -- Its place in the train (Param2) and the ticks it waits (Param3).
+    hit_mod: number,
+    -- Its place in the train (Param2) and the ticks it waits (Param3; 0:
+    -- it rolls at once).
     place: number,
     wait: number,
     -- The action of its owner's it is tied to (Param4; 0xFF: none).
@@ -34,8 +38,6 @@ local SPRITE = asset.sprite("charge-car")
 -- The floor it needs (`byte_80DB004`, both rows alike): require, forbid.
 local FLOOR = { 0x10, 0 }
 
--- Its hit's modifier (`dword_80DB0B4`): plain, and the navi chip's.
-local HIT_MOD, CHIP_HIT_MOD = 1, 3
 -- No owner's action to watch.
 local UNTIED = 0xFF
 
@@ -47,7 +49,7 @@ end
 
 -- `sub_80DAEC4`: on its panel, raised and set back by its place in the
 -- train (`sub_80DB0BC`: halfword stores over Z's and Y's whole parts);
--- one that isn't the navi chip's skips the wait.
+-- one with no wait skips it.
 local function init(me: Object)
     local s = me.state :: State
     me:set_coordinates_from_panel()
@@ -67,7 +69,7 @@ local function init(me: Object)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:update_visibility()
     me.lifecycle = "update"
-    me:set_action(if s.while_dimmed then 0 else 4)
+    me:set_action(if s.wait ~= 0 then 0 else 4)
 end
 
 -- `sub_80DAF74`: its wait.
@@ -84,10 +86,11 @@ local function wait(me: Object)
     end
 end
 
--- `sub_80DB078`: the hit on its panel (the navi chip's: running while
--- dimmed, `sub_80C53A6`).
+-- `sub_80DB078`: the hit on its panel, its modifier its spawner's
+-- (`dword_80DB0B4`); one running while dimmed runs while dimmed too
+-- (`sub_80C53A6`).
 local function hit(me: Object)
-    local chip = (me.state :: State).while_dimmed
+    local s = me.state :: State
     local box = battle.hitbox(me, {
         panel_x = me.panel_x,
         panel_y = me.panel_y,
@@ -99,9 +102,9 @@ local function hit(me: Object)
         self_type = collision.breaking,
         damage = me.damage,
         stamina = me.stamina,
-        hit_mod = if chip then CHIP_HIT_MOD else HIT_MOD,
+        hit_mod = s.hit_mod,
     })
-    if box and chip then
+    if box and s.while_dimmed then
         box.run_while_dimmed = true
     end
 end
@@ -148,8 +151,8 @@ end
 local ACTIONS = { [0] = wait, [4] = roll }
 
 -- `sub_80DAF2A`: gone (exploding) once the battle is over or its owner
--- leaves the action it is tied to; outside a dimming unless it is the
--- navi chip's.
+-- leaves the action it is tied to; outside a dimming unless it runs while
+-- dimmed.
 local function tick(me: Object)
     if battle.over() then
         explode(me)
@@ -180,6 +183,7 @@ car.kind = new.kind {
     state = {
         speed = "u32",
         while_dimmed = "bool",
+        hit_mod = "u8",
         place = "u8",
         wait = "u8",
         owner_action = "u8",
@@ -224,6 +228,7 @@ function car.spawn(
         local s = o.state :: State
         s.speed = speed
         s.while_dimmed = what.while_dimmed == true
+        s.hit_mod = what.hit_mod
         s.place = what.place
         s.wait = what.wait
         s.owner_action = what.owner_action or UNTIED

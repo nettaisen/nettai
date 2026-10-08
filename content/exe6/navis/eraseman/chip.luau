@@ -19,7 +19,7 @@ local SOUND = asset.sound("erase-man-2")
 
 -- The beams: aimed straight, 60 ticks, his own (they go when his action
 -- does, and stand still while dimmed); five at most.
-local BEAM: EraseBeam = { aim = 1, ticks = 0x3C, navis = true }
+local BEAM: EraseBeam = { aim = 1, ticks = 0x3C, while_dimmed = false, tied = true }
 local MAX_BEAMS = 5
 
 -- `sub_80F1074`: the scythe raised; 9 ticks after the entry.

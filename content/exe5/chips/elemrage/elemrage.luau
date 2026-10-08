@@ -72,8 +72,8 @@ local RESTORE = panel_changer.change {
 local ANIM, ARM_ANIM, ATTACH_POINT = 10, 1, 20
 local LAST_TICK, RECOVER_TICKS = 30, 5
 
--- ElemRage's action: its flames' count, time and flags (the record's parameters).
-function elemrage.action(count: number, ticks: number, flags: number): Action
+-- ElemRage's action: its flames' count and time (the record's parameters; its flags, the third, 0).
+function elemrage.action(count: number, ticks: number): Action
     -- 0x080EFCEC: the rage by the panel; the flame out; the claw raised; the roar every 16 ticks; on after the 31st.
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
@@ -81,11 +81,8 @@ function elemrage.action(count: number, ticks: number, flags: number): Action
             local rage = (p and RAGES[p.kind]) or NONE
             me.attack_element = rage.element
             s.palette = rage.palette
-            local spread, flame_flags = false, flags
             s.raged = rage.element ~= 0
             if s.raged then
-                flame_flags = bit32.bor(flame_flags, 4)
-                spread = true
                 panel_changer.spawn(me, me.panel_x, me.panel_y, RESTORE, nil)
             end
             -- (The damage word takes the Atk+ bonus, AIAttackVars+8.)
@@ -95,10 +92,12 @@ function elemrage.action(count: number, ticks: number, flags: number): Action
             local dx = fx * me.facing
             spawn_flame(me, me.panel_x + me.facing, me.panel_y, me.attack_element, int.shl(dz, 16), {
                 count = count,
-                spread = spread,
+                spread = s.raged,
                 ticks = ticks,
                 offset = int.i8(dx),
-                flags = flame_flags,
+                paralyzes = s.raged,
+                attack_480 = false,
+                while_dimmed = false,
                 palette = s.palette,
                 hit = false,
                 sent = false,

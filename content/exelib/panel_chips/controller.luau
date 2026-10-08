@@ -2,8 +2,9 @@
 -- The panel chips' dimming controller, as EXE5 and EXE6 share it (EXE6's
 -- effect object #0x20, `sub_80E2AE8`; EXE5's #0x20;
 -- docs/engine/dimming-chips.md §4.1): PnlRetrn, HolyPanl, Snctuary,
--- ComingRd and GoingRd. Each game makes its own (`panel_chips.make`: its
--- kind and its panel changer's). The usual dimming phases
+-- ComingRd and GoingRd (EXE4's #0x20, 0x080E4584: its Hole and DrkLine
+-- too). Each game makes its own (`panel_chips.make`: its kind and its
+-- panel changer's). The usual dimming phases
 -- (@exelib/dimming), with an effect (`sub_80E2B2C`) that hands the chip's
 -- panel change to a panel changer (@exelib/panel_changer) on the user's
 -- panel, and waits until it is done.
@@ -22,8 +23,9 @@ export type State = {
     busy: boolean,
 }
 
--- A game's controller: its kind's key, and its panel changer's kind.
-export type Spec = { id: string, changer: Kind }
+-- A game's controller: its kind's key, and its panel changer's kind; `side_only`: its spawn copies the user's side
+-- alone, not its facing (EXE4's, 0x080E45F6).
+export type Spec = { id: string, changer: Kind, side_only: boolean? }
 
 export type PanelChips = {
     kind: Kind,
@@ -55,7 +57,7 @@ function panel_chips.make(spec: Spec): PanelChips
 
     local function hook(change: PanelChange): (user: Object, spec: DimmingChipSpec) -> Object?
         return function(user: Object, chip: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, chip)
+            local o = dimming_chips.spawn(kind, user, chip, spec.side_only)
             if o then
                 (o.state :: State).change = change
             end

@@ -1033,15 +1033,17 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// EXE5's 0x0800DEB2, in an arena with a panel that submerges: a body under
-/// a surface (flags 0x80000004) is hidden, a ripple over it (the role
-/// `kinds.dive_ripple`, EXE5's effect object #0x3E, kept in its collision's
-/// link); out of it, the ripple ends.
+/// `sub_801012C` (EXE5's 0x0800DEB2, EXE4's 0x0800C0A6): a body that is
+/// under (submerged, flag 4; and in a game that counts a bubbled body as
+/// submerged, `hit_test.bubbled_as_submerged`, under its sea's surface:
+/// EXE5's flags 0x80000004) is hidden, a mark over it (the role
+/// `kinds.dive_ripple`: EXE5's ripple, EXE4's hole, effect object #0x3E,
+/// kept in its collision's link); out of it, the mark ends. (Only EXE5's
+/// sea and EXE4's PopUp put a player under: EXE6's timed submerged state
+/// has no starter, `timer::SUBMERGED`.)
 fn dive_ripple(b: &mut Battle, r: ObjectRef) {
-    if !arena_submerges(b) {
-        return;
-    }
-    if flag1(b, r) & (f1::BUBBLED | f1::SUBMERGED) != 0 {
+    let under = if b.game_rules().hit_test.bubbled_as_submerged { f1::BUBBLED | f1::SUBMERGED } else { f1::SUBMERGED };
+    if flag1(b, r) & under != 0 {
         b.objects.get_mut(r).set_visible(false);
         if coll(b, r).links[link::RIPPLE].is_some() {
             return;
@@ -1149,7 +1151,8 @@ const PLUS_TINT: [u8; 8] = [0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1E];
 /// `loc_801B142`: `sprite_zeroColorShader`, then `sub_80143E4`,
 /// `sub_801690A`, `sub_8016860`, `sub_80168C8`, `sub_80168F0`, the later
 /// ones over the earlier): red while angry, a black blink while
-/// immobilized, a green glow while invulnerable (red in battle mode 1), a
+/// immobilized (where the rules' `effects.immobilized_blinks` say), a
+/// green glow while invulnerable (red in battle mode 1), a
 /// yellow blink while paralyzed, pale blue while frozen. The blinks are two
 /// ticks of the battle time on and two off.
 fn status_shader(b: &mut Battle, r: ObjectRef) {
@@ -1160,7 +1163,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).anger != 0 {
         shader = 0x000F;
     }
-    if f & f1::IMMOBILIZED != 0 {
+    if f & f1::IMMOBILIZED != 0 && b.game_rules().effects.immobilized_blinks {
         shader = blink(0xFFFF);
     }
     let action = navi_action(b, r);

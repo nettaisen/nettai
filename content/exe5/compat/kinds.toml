@@ -166,6 +166,7 @@
 "numberman/trap" = { pool = "attack", index = 0xC3 }
 "numberman/press" = { pool = "attack", index = 0x8C }
 "gyroman/navi" = { pool = "actor", index = 0x0C }
+"gyroman/airforce" = { pool = "actor", index = 0x0C }
 "napalmmn/navi" = { pool = "actor", index = 0x0E }
 "magnetman/missile" = { pool = "attack", index = 0x63 }
 "magnetmn/navi" = { pool = "actor", index = 0x0D }

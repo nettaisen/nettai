@@ -14,7 +14,7 @@ local puck = {}
 
 -- A puck's variant (a row of `byte_80C9818`, which its chip defines): the
 -- steps it lasts (0: no limit), how it bounces (1: off its own side too,
--- once across), the ticks per step, and whether it leaves a trail.
+-- once across), the ticks per step, and its trail's tint if it leaves one.
 export type Variant = PuckVariant
 
 puck.variant = common.variant
@@ -27,8 +27,6 @@ puck.kind = common.make_kind("airhocky/puck", {
     hits = collision.hits_navis,
     spark = sparks.breaking,
     burst = effects.puff,
-    -- PitHocky's trail, tinted.
-    trail_tint = 0x8318,
 })
 
 -- `sub_80C9BA4`: a puck of `variant` for `owner` on (x, y) at height `z`,

@@ -111,6 +111,23 @@ local function navi_chip(key: string, n: number, damage: number, summon: NaviChi
     return chip(key, n, all)
 end
 
+-- FlmHook's flames (chips/flmhook): from the columns one and two ahead, the
+-- small ones, the fire spark.
+local FLAME_HOOK_FLAMES = hook.flames {
+    columns = function(me: Object): (number, number)
+        return me.panel_x + me.facing, me.panel_x + 2 * me.facing
+    end,
+    variant = hook.fire {
+        swing_high = 0,
+        arcs = { 0x16, 0xF5, 0x1E, 0x1E, 0x6A, 0x8B, 0x1E, 0x1E },
+        turn = 0x380,
+        trail = { every = 4, shader = 0x83E0, ticks = 0xE },
+        palette = 0,
+        while_dimmed = false,
+    },
+    spark = sparks.fire,
+}
+
 -- An instant chip whose effect spawns an object.
 local function spawning(key: string, n: number, instant: (user: Object, spec: InstantChipSpec) -> ()): Chip
     return chip(key, n, {
@@ -181,7 +198,7 @@ local chips: { [string]: Chip } = {
     -- A plus chip used on its own.
     ["test/plus"] = chip("plus", 0x41, { family = "plus", damage = 10, instant = plus.attack }),
     ["test/fist"] = spawning("fist", 0x46, fist.instant(3)),
-    ["test/flame-hook"] = spawning("flame-hook", 0x48, hook.instant { big = false, spark = sparks.fire }),
+    ["test/flame-hook"] = spawning("flame-hook", 0x48, hook.instant(FLAME_HOOK_FLAMES)),
     ["test/heatpres"] = link_chip("heatpres", 0x50, heatpres),
     ["test/delecswd"] = link_chip("delecswd", 0x51, delecswd),
     ["test/rslash"] = link_chip("rslash", 0x52, rslash),

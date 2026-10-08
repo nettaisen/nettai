@@ -96,8 +96,10 @@ pub const GAUGE_SPEEDS: [&str; 3] = ["normal", "fast", "slow"];
 /// How a barrier behaves once raised (`sub_801A802` by the barrier byte):
 /// worn down and timed out (`plain`: Barrier, Barr100, Barr200, LifeAur,
 /// the auras), back with 1 HP 240 ticks after it is worn down and broken
-/// by elec (`bubble`: BblWrap), or regenerating up to 200 HP (`regenerating`).
-pub const BARRIER_BEHAVIORS: [&str; 3] = ["plain", "bubble", "regenerating"];
+/// by elec (`bubble`: BblWrap), regenerating up to 200 HP (`regenerating`),
+/// or back whole a while after it is worn down, as the rules' barrier tick
+/// says (`regrowing`: EXE4's type 4, BlakBarr's).
+pub const BARRIER_BEHAVIORS: [&str; 4] = ["plain", "bubble", "regenerating", "regrowing"];
 
 /// `sub_801A7CC`'s row: what a barrier sets in the collision data.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -206,6 +208,8 @@ named_fields! {
         Related2 = "related2", Object, rw;
         /// The slot is in use.
         Active = "active", Bool, ro;
+        /// It has a collision record (its CollisionData pointer is set).
+        HasCollision = "has_collision", Bool, ro;
         /// Drawn this frame.
         Visible = "visible", Bool, rw;
         /// Keeps updating while the battle is paused.
@@ -312,6 +316,11 @@ named_fields! {
         ChargeLevel = "charge_level", U8, ro;
         ChargeSource = "charge_source", U8, ro;
         ChargeCounter = "charge_counter", U8, ro;
+        /// The B charge's level (0 none, 1 charging, 2 full) as the navi
+        /// last asked for an attack, kept until its next ask (EXE4's
+        /// AIData +0x15, which its decode copies at each ask: 0x0800BE48,
+        /// 0x0800BF10); 0 in a game whose decode keeps none.
+        BChargeAtAsk = "b_charge_at_ask", U8, ro;
         /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
         /// counted toward a form's `rapid_presses`, and the ticks left for
         /// the next (the forced charged shot clears both as it ends).
@@ -1488,6 +1497,10 @@ pub trait CoreApi {
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
     /// `sub_802CEA6`: clear it, telling its object to end.
     fn clear_linked(&mut self, side: u8);
+    /// `sub_801EB18` (EXE4's 0x080164B4): the other player's console names
+    /// `chip` as used by `side` again, with its damage and bonus (the
+    /// rules' `effects.used_chip_ticks`): presentation only.
+    fn show_used_chip(&mut self, side: u8, chip: crate::ChipHandle, damage: u16, bonus: u16);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
     /// `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0

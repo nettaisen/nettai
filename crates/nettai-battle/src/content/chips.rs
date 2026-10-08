@@ -252,8 +252,13 @@ pub enum Trap {
 pub enum DamageFormula {
     /// The opponent's HP, at most 500 (`sub_8010A90`; formula 0).
     OpponentHp,
-    /// By how full the custom gauge is (`sub_8010B78`; formula 19).
-    Gauge,
+    /// By how full the custom gauge is (`sub_8010B78`; formula 19); a full
+    /// gauge gives `full`: EXE6's and EXE5's 10 when none, EXE4's 0 (its
+    /// formula 45, 0x0801955A).
+    Gauge {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        full: Option<u16>,
+    },
     /// The HP its user has lost, at most `cap`: EXE6's 500 (`sub_8010BD0`;
     /// formula 20) when none, EXE5's 999 (its formula 46, 0x0800EA78).
     HpLost {
