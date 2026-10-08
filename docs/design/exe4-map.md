@@ -712,7 +712,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   0x080F3336), aren't ported.
   SparkMan (actor #0x10) and his sparks (attack #0x22, which zigzag up and down each column) are EXE4's own; his
   flash is the engine's palette flash (effect #0x0A, compat's `engine/palette-flash`) and a blinding hit of no damage
-  on the other side's navi (region 0x85 or 0x84, blindness 0x30).
+  on the other side's navi (region 0x85 or 0x84, blindness 0x30). FireMan (actor #0x12) wears the flame on his head as
+  the engine's form overlay (actor #0x57, `effects.form_overlay`) and breathes the Elem chips' flame (attack #9,
+  @exelib/elemrage/flame, his own kind); his command (Down, then Right, each held alone through the dimmed record,
+  0x080B94A8) makes the flames leave lava, which no recording has used yet.
 
 **For the next steps:**
 
