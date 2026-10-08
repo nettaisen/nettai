@@ -22,7 +22,12 @@ local FLASH, LOG_IN_SOUND = asset.sound("bugfix-flash"), asset.sound("log-in")
 bugfix.glow = common_glow.make {
     id = "bugfix/glow",
     offset = -1,
-    exe5_parts = true,
+    -- A player navi's overlay (0x0800F0EC: its soul's put-on, NumberSoul's layer).
+    wear = function(me: Object, navi: Object)
+        if navi.actor_type == "player" then
+            me:add_overlay_of(navi)
+        end
+    end,
 }
 
 bugfix.controller = controller.make { id = "bugfix/controller", glow = bugfix.glow.spawn, flash = FLASH, beast_out = false }
