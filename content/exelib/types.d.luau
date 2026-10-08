@@ -1184,7 +1184,8 @@ export type Barrier = {
 -- aren't the library's (60, `byte_80D4140`; EXE6's `instrument`): EXE5's
 -- 100 and its own pack's; `absorbed` is `instrument.instrument`'s.
 export type Instrument = {
-    identity: Identity,
+    -- Its NameID's identity (none: EXE4's init writes no NameID, 0x080DC35C).
+    identity: Identity?,
     palette: number,
     play_ticks: number,
     pause_ticks: number,
@@ -1471,9 +1472,11 @@ export type InstrumentLook = {
     body: { is: CollisionType, hits: CollisionType },
     absorbed: AbsorbedLook?,
     removal_puffs: boolean?,
-    -- Broken, its explosion; removed, its puff.
+    -- Whatever removes it, it leaves as when broken: its sound and its explosion (EXE4's 0x080DC58C).
+    removal_explodes: boolean?,
+    -- Broken, its explosion; removed, its puff (none where no removal puffs).
     explosion: Effect,
-    puff: Effect,
+    puff: Effect?,
 }
 
 -- A game's Tango's heal (@exelib/supports/heal): its kind's key, sprite and sound, the sparkle as it lands, the game's
