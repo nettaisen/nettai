@@ -671,6 +671,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   its counter (attack 0x16, 0x080CFBB0): EXE5's shock wave, now @exelib/guard/wave, with EXE4's look; EXE4's spawn
   gives a segment only its sender's side (no flip, no owner: `owned`), and its spread leaves the phase byte alone
   (EXE5's notes the panel ahead for the operation battle: `notes_ahead`). EXE4's rows never mark a panel.
+- **TwnFng1 to TwnFng3** (action 0x34, `chips/twnfng`: EXE4's own): two fangs (attack 0x51, 0x080D79B8) from the
+  navi's panel, a row down and a row up (24 pixels in 6 ticks, hit modifier 1, the plain spark), then forward 10
+  pixels a tick as attacks of hit modifier 3 (their second parameter 0; the setup's types again, 0x08012ED0, whose
+  target write misses its record: the rules' `retype`), gone at a hit or off the screen. The action's variant would
+  send more pairs (seven for each), 10 ticks apart: no chip has one.
 - **WideSht1 to WideSht3** (action 0x31, `chips/widesht`: EXE4's own action, the wave @exelib/widesht/wave's): the
   shooter (attachment row 0x1C) raised, a wave (attack 0x3B, EXE6's code but for what EXE4's has none of: trails, bugs,
   palettes, its spawner's hit modifier) of the chip's speed from the panel ahead; weapon routines 0x38, 0x43, 0x4C

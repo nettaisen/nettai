@@ -158,6 +158,9 @@ language = "en"
 "widesht1" = { name = "WideSht1", description = "Fires 3sq\nshotgun\nblast!" }
 "widesht2" = { name = "WideSht2", description = "Fires 3sq\nshotgun\nblast!" }
 "widesht3" = { name = "WideSht3", description = "Fires 3sq\nshotgun\nblast!" }
+"twnfng1" = { name = "TwnFng1", description = "Launch 2\nfangs up\nand down" }
+"twnfng2" = { name = "TwnFng2", description = "Launch 2\nfangs up\nand down" }
+"twnfng3" = { name = "TwnFng3", description = "Launch 2\nfangs up\nand down" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

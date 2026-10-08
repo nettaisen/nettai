@@ -62,6 +62,7 @@ return merge {
     require("@self/thunder"),
     require("@self/thunman"),
     require("@self/topman"),
+    require("@self/twnfng"),
     require("@self/vulcan"),
     require("@self/whitweb"),
     require("@self/widesht"),
