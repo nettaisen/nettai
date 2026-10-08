@@ -78,6 +78,7 @@ return merge {
     require("@self/068_b_left_ability_activation"),
     require("@self/069_b_left_ability_activation"),
     require("@self/070_b_left_ability_activation"),
+    require("@self/071_b_left_ability_activation"),
     require("@self/072_b_left_ability_activation"),
     require("@self/073_b_left_ability_activation"),
     require("@self/076_all_guard_1_2"),
