@@ -244,3 +244,6 @@
 "bighamr2/hammer" = { pool = "attack", index = 0x4A }
 "bighamr3/hammer" = { pool = "attack", index = 0x4A }
 "godhammr/hammer" = { pool = "attack", index = 0x4A }
+# Geddon's controller (0x080E400C) and its quake (0x080E40E4): their positions the spawners' registers.
+"geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
+"geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }

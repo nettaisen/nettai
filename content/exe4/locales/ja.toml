@@ -204,6 +204,9 @@ language = "ja"
 "bighamr2" = { name = "ビッグハンマー2", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
 "bighamr3" = { name = "ビッグハンマー3", description = "目の前にハンマーを\nふりおろすせきぞう\nをおく!" }
 "godhammr" = { name = "ゴッドハンマー", description = "てきみかたとわず\n攻撃するせきぞうを\n目の前のマスにおく" }
+"geddon1" = { name = "デスマッチ1", description = "パネルのあるマスが\nすべてヒビに!" }
+"geddon2" = { name = "デスマッチ2", description = "あいているマスが\nすべてこわれる!" }
+"geddon3" = { name = "デスマッチ3", description = "パネルのあるマスが\nすべてどくぬまに!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
