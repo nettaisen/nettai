@@ -873,7 +873,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   hammer, 0x080F050A, which no netbattle starts) spawns the quake with a Param1 of its own; given 0 it cracks Param2
   of the other side's panels and drops its rocks around that side's navi or 0x0800C456's target, by its owner's
   flags 0xA000 (0x080D05FE, 0x080D06BE, 0x080D0740): it waits on action 0x44. With fewer than six solid panels ahead,
-  GutsMan's quake reads stale stack bytes as the rest of its six (0x080D06AC): the port cracks only those it found.
+  GutsMan's quake reads the rest of its six off the stack past its list (0x080D06AC): what its crash's sound left
+  there, the sound queue's (0x0800073C) saved r7, the object loop's node of the quake itself (0x0203C070 + 0xD8 by its
+  slot: its low byte, then 0xC0 to 0xDA, 0x03, 0x02), and its return address's low bytes (0xAB, 0x05). As panels
+  (x the low three bits, y the high nibble) the five it can reach are all off the field (y 12 or 13, 0, 0, 10, 0; the
+  low byte only with no panel listed, when it cracks none), and a crack off the field does nothing: the port cracks
+  only those it found, which is the same. (Only an interrupt in the few instructions between the sound's return and
+  the list, whose handler runs on this stack in system mode as EXE6's does, could leave other bytes there; the
+  engine has no interrupts.) The lab's chips/0x0e0-gutsman/few-panels (the quake finding five) replays every
+  frame and its fight frames are pixel-exact.
 
 **For the next steps:**
 
