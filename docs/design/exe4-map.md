@@ -906,6 +906,15 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   NumberMan's face's object (actor #0x5C) with its sprite row 1 (10-0C), his own kind of @exelib/numbrman/face. His
   controller, like GutsMan's, gives him B's charge at the ask as his Param2, which he never reads: no EXE4 object
   reads `b_charge_at_ask` (item 50's), as no other code reads the AI data's +0x15.
+  WindMan (actor #0x34), his tornadoes (attack #0x6B, 0x080DAC54) and their sand (attack #0x6C, 0x080DAF54) are
+  EXE4's own; his controller (effect #0x46) waits 61 ticks after him, not 31. He blows three tornadoes; each goes
+  from the panel ahead a row down (on the bottom row at once on), two panels ahead, back up its column to the field's
+  edge, then back toward his side, a hit (collision row 0x20, modifier 3) on each panel it enters, till it leaves
+  the screen or, seven panels entered, four ticks into the next. Reaching a row's or a column's center it moves on in
+  the same tick (0x080DAE2E, 0x080DAE8E). On a pitfall (type 10, SandRing's sand) it picks up the sand: palette 1,
+  the panel to normal, and from then on sand on each panel it enters (a hit 11 ticks later). The swirl on his head is
+  actor #0x5C's row 2 (10-28, the one his soul image holds). The lab's chips/0x0e3-windman/sand (the typeA stage's pitfalls) replays every frame and is
+  pixel-exact, as the other twelve recordings are.
 
 **For the next steps:**
 

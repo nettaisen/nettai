@@ -109,6 +109,7 @@ return merge {
     require("@self/whitweb"),
     require("@self/widesht"),
     require("@self/wind"),
+    require("@self/windman"),
     require("@self/windrack"),
     require("@self/z-saver"),
     -- A navi chip's chips, with its navi.
