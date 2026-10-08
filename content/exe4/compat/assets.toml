@@ -127,6 +127,7 @@ wide-wave = "10-1d"  # the WideShts' wave: attack 0x3B's init (0x080D4950), EXE5
 satellite-beam = "10-1f"
 satellite-flare = "10-21"
 search-scope = "10-22"  # SearchMan's scope: effect #0x43's init (0x080E6B66)
+scope-mark = "10-23"  # SearchSoul's scope's mark on what it finds: effect row 0x52 (0x080E1698), its reveal (0x080E6DFE) and its charged shot (0x080EDBAC)
 seek-bomb = "10-24"  # the SeekBoms' bomb: attack 0x8D's init (0x080DED8C)
 heart = "10-26"
 twin-fang = "10-27"  # the TwnFngs' fang: attack 0x51's init (0x080D79E6)
