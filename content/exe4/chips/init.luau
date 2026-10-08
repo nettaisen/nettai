@@ -85,6 +85,7 @@ return merge {
     require("@self/numbrbl"),
     require("@self/numbrman"),
     require("@self/panlgrab"),
+    require("@self/panlsht"),
     require("@self/pnlretrn"),
     require("@self/popup"),
     require("@self/propbom"),
