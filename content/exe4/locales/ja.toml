@@ -245,6 +245,10 @@ language = "ja"
 "windman" = { name = "ウインドマン", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
 "windmn-sp" = { name = "ウインドマンSP", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
 "windmn-ds" = { name = "ウインドマンDS", description = "3マス四方に\nかいてんする\nたつまきを発生!" }
+"numbrbl1" = { name = "ナンバーボール1", description = "3れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
+"numbrbl2" = { name = "ナンバーボール2", description = "4れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
+"numbrbl3" = { name = "ナンバーボール3", description = "5れんしゃのボール\n攻撃力はそのときの\nHPの下2ケタ!" }
+"blkbomb" = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
 "videoman" = { name = "ビデオマン", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 "videmn-sp" = { name = "ビデオマンSP", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
 "videmn-ds" = { name = "ビデオマンDS", description = "2マスはん前方に\nテープのしんが!\nまきこみテープ攻撃" }
