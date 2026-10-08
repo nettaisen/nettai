@@ -56,6 +56,7 @@ return merge {
     require("@self/sword"),
     require("@self/thunder"),
     require("@self/thunman"),
+    require("@self/topman"),
     require("@self/vulcan"),
     require("@self/whitweb"),
     -- A navi chip's chips, with its navi.

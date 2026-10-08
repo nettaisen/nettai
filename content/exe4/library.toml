@@ -15,6 +15,7 @@ navicust_programs = [
     "fstbarr",
     "shield",
     "reflect",
+    "antimagc",
     "flotshoe",
     "airshoes",
     "undersht",
@@ -241,6 +242,9 @@ mega = [
     "junkman",
     "junkmn-sp",
     "junkmn-ds",
+    "topman",
+    "topmn-sp",
+    "topmn-ds",
 ]
 giga = [
     "deltaray",

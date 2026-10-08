@@ -14,6 +14,7 @@
 "megaman/taunt" = [0x21]
 "megaman/shield" = [0x25]
 "megaman/reflect" = [0x26]
+"megaman/anti-magic" = [0x27]
 # The patch cards' chips (navis/megaman/weapons/chips).
 "megaman/cannon" = [0x29]
 "megaman/minibomb" = [0x2A]

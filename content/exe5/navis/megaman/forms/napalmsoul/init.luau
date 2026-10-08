@@ -8,7 +8,6 @@
 -- with the A charge not full (0x0800D0A6).
 
 local attach_points = require("@self/attach_points")
-local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
@@ -19,12 +18,20 @@ local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
+-- NapalmMan's cannon on the soul's image (the body overlays' row 4, 0x0800EE8A): behind him in his animations 20 to 22.
+local CANNON: BodyPart = {
+    sprite = asset.sprite("napalm-cannon"),
+    anims = 23,
+    behind = { { 20, 22 } },
+}
+
 local form: FormDef = {
     soul = { family = "fire" },
     change = soul_change.action,
     revert = soul_revert.action,
-    -- NapalmMan's image as MegaMan unites with him (rules/souls/image), with his cannon (0x0800EDBC's routine for the soul).
-    image = soul_image.wearing(asset.sprite("napalmman"), body_overlays.napalmman),
+    -- NapalmMan's image as MegaMan unites with him (rules/souls/image), with his cannon (0x0800EDBC's routine for the
+    -- soul).
+    image = soul_image.wearing(asset.sprite("napalmman"), CANNON),
     sprite = asset.sprite("napalmsoul"),
     element = "fire",
     buster_bonus = 0,

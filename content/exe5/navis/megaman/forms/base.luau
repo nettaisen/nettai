@@ -3,12 +3,19 @@
 -- soul (NaviStats +0x2C 0), his sprite by his soul (0x0800DA58[0]). His weapons in it are his navi's, from his stats.
 -- In Hub Style (NaviStats +0x4C, patch card 111's) he wears its shade.
 
-local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local charged_shot = require("../weapons/charged_shot")
 
 -- Hub Style's shade (the body overlay's row 5), as an identity wears it.
-local HUB = new.identity { class = "navi", parts = { body = body_overlays.hub } }
+-- Hub Style's shade (the body overlays' row 5, 0c-58), which MegaMan's base form puts on in Hub Style (NaviStats +0x4C,
+-- 0x0800EE1C): in front. Its depth table is 16 bytes long; past it his animations read on into the tables' pointers and
+-- the sprite table (none 0: in front) and the code after them (its first byte 0: behind, his animation 52).
+local HUB_SHADE: BodyPart = {
+    sprite = asset.sprite("hub-shade"),
+    anims = 53,
+    behind = { { 52, 52 } },
+}
+local HUB = new.identity { class = "navi", parts = { body = HUB_SHADE } }
 
 -- 0x0800EE1C (the base form's put-on routine, 0x0800F038's row 0, and MegaMan's actor record's init hook, 0x0800ED90's
 -- row 11, as his init ends): in his base form (+0x2C 0, read again) in Hub Style, what he wore down and the shade on
