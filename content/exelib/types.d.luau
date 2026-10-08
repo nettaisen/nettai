@@ -1385,6 +1385,17 @@ export type CircGunLook = {
     -- The hit's spark (element 0's).
     spark: Spark,
     on_floor: boolean?,
+    -- Going back along a row it turns on a column with any of the user's side's panels (EXE4's, 0x080DE7AA), where
+    -- EXE6's and EXE5's turn before a column with none of the other side's.
+    turns_on_own_column: boolean?,
+}
+
+-- A game's CircGun controller's differences: its spawn takes the user's side alone, not its facing (EXE4's,
+-- 0x080E8B84); it sets the gun whatever the far column holds (EXE4's 0x080E8B40, where EXE6's and EXE5's end at once
+-- with none of the other side's panels there).
+export type CircGunControllerLook = {
+    side_only: boolean?,
+    always_sets_gun: boolean?,
 }
 
 -- How a game's bomb looks and sounds, and how it leaves.
