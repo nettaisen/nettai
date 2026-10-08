@@ -44,6 +44,7 @@
 "megaman/repair" = [0x5E]
 "megaman/airshot" = [0x5F]
 "megaman/elecshok" = [0x60]
+"megaman/guard1" = [0x62]
 
 # MegaMan's forms by soul number (NaviStats +0x24: 0 his base form; the souls, to port, from 1).
 [forms]
