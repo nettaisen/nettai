@@ -230,6 +230,10 @@ pub struct EffectsRules {
     /// from the next tick (its `object_updateSprite`, 0x080143FC, steps as
     /// EXE6's does).
     pub dimmed_update_steps_on_load: bool,
+    /// An immobilized navi blinks black (its tail's `sub_801690A`, EXE5's
+    /// 0x08013768: shader 0xFFFF two ticks of the battle time in four);
+    /// EXE4's tail (0x08013BEC) has no such step. Presentation.
+    pub immobilized_blinks: bool,
     /// How the game's obstacles number their action tables.
     pub obstacle_actions: ObstacleActions,
     /// The Full Synchro aura where games differ.

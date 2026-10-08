@@ -1151,7 +1151,8 @@ const PLUS_TINT: [u8; 8] = [0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1E];
 /// `loc_801B142`: `sprite_zeroColorShader`, then `sub_80143E4`,
 /// `sub_801690A`, `sub_8016860`, `sub_80168C8`, `sub_80168F0`, the later
 /// ones over the earlier): red while angry, a black blink while
-/// immobilized, a green glow while invulnerable (red in battle mode 1), a
+/// immobilized (where the rules' `effects.immobilized_blinks` say), a
+/// green glow while invulnerable (red in battle mode 1), a
 /// yellow blink while paralyzed, pale blue while frozen. The blinks are two
 /// ticks of the battle time on and two off.
 fn status_shader(b: &mut Battle, r: ObjectRef) {
@@ -1162,7 +1163,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).anger != 0 {
         shader = 0x000F;
     }
-    if f & f1::IMMOBILIZED != 0 {
+    if f & f1::IMMOBILIZED != 0 && b.game_rules().effects.immobilized_blinks {
         shader = blink(0xFFFF);
     }
     let action = navi_action(b, r);
