@@ -759,6 +759,26 @@ export type CopyDamageMarkLook = {
     own_gauges_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
 }
 
+-- A VarSwrd-like chip's action (@exelib/varswrd/action): its sequences by the
+-- navi's direction flip, as joypad words with A held, each ending in 0; what
+-- they give, in order, and what the countdown or A let go gives.
+export type VarSwordSpec = {
+    id: string?,
+    sequences: { [number]: { { number } } },
+    picks: { Chip },
+    sword: Chip,
+}
+
+-- A game's part of VarSwrd's action: the pick's sound, whether the navi
+-- waits while A is up (in the souls that do), and a navi in auto battle's
+-- pick (the side's sword pick: one past the picks a Sword; nil: none, or not
+-- in auto battle).
+export type VarSwordGame = {
+    sound: Sound,
+    waits: (me: Object) -> boolean,
+    auto_pick: ((me: Object) -> number?)?,
+}
+
 -- A CopyDmg mark made for a game (@exelib/copydmg/mark).
 export type CopyDamageMark = {
     kind: Kind,
