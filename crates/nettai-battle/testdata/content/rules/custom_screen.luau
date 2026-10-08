@@ -41,7 +41,7 @@ return {
     special_codes = "apart",
     -- Each Program Advance forms once a round (`sub_8029652`), it is the Regular chip if a part was (`sub_80292CC`),
     -- and what lies past the selection's end keeps what it held.
-    program_advances = { once_a_round = true, keeps_regular = true, clears_past_end = false },
+    program_advances = { once_a_round = true, keeps_regular = true, clears_past_end = false, in_screen_state = false },
     -- A modifier's Regular chip mark goes with it as it folds into the chip before (`sub_8029224`).
     modifier_passes_regular = false,
     -- The console says its custom screen is open until the window starts sliding out (`sub_8026BF4`).
