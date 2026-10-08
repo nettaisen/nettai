@@ -2,19 +2,24 @@
 -- EXE4's barriers (FstBarr's, the patch cards' auras at the start, the barrier chips'): by EXE4's barrier types, the
 -- rows of 0x080185E0 (HP, threshold, timer) and of its visual's looks, 0x080E23D8 (sprite, animation, palette, the
 -- parts MegaMan's hides), raised by 0x08012DCE with EXE4's visual (../objects/barrier_visual: effect object 7). The
--- barrier's tick is the rules' (`status.intake.barrier`). Types 4 (150 HP, regrowing 180 ticks after it breaks),
--- 5 (1 HP) and 7 (a threshold of 300 for 3000 ticks) wait on the chips that raise them (docs/design/exe4-map.md §18
--- item 53). The visual sits on its navi by EXE4's own offsets, not an attach point: a look's `attach_point` is
--- unread.
+-- barrier's tick is the rules' (`status.intake.barrier`, its `regrowing` type 4's). Types 5 (1 HP) and 7 (a threshold
+-- of 300 for 3000 ticks) wait on the chips that raise them (docs/design/exe4-map.md §18 item 53). The visual sits on
+-- its navi by EXE4's own offsets, not an attach point: a look's `attach_point` is unread.
 --
--- The sheets are EXE6's numbers (0c-3d, 0c-07).
+-- The barrier chips' dimming controller (the dimming chips' variant 0x15: effect object #0x2F, 0x080E5740, its effect
+-- 0x080E5784) is EXE6's code (@exelib/barriers/controller): the chip's barrier (its type by its first parameter,
+-- 0x080E57D0) and its visual on the user, then 61 ticks; its spawn (0x080E57D8) takes the user's side alone, not its
+-- panel or facing.
+--
+-- The sheets are EXE6's numbers (0c-3d, 0c-07); type 4's is EXE4's own (0c-44).
 
 local barrier_visual = require("../objects/barrier_visual")
+local common_controller = require("@exelib/barriers/controller")
 local common_visual = require("@exelib/barriers/visual")
 
 local barriers = {}
 
-local SPRITE, AURA = asset.sprite("barrier"), asset.sprite("aura")
+local SPRITE, AURA, BLACK = asset.sprite("barrier"), asset.sprite("aura"), asset.sprite("black-barrier")
 -- The visual's rising sound (0x080E2496), going back up too (0x080E25E4).
 local SOUND = asset.sound("barrier")
 local NO_TIMER = 0xFFFF
@@ -58,6 +63,17 @@ barriers.barrier_200 = barrier {
     sound = SOUND,
 }
 
+-- Type 4: 150 HP, back whole 180 ticks after it is worn down (the rules' `regrowing`): BlakBarr's.
+barriers.black_barrier = barrier {
+    id = "barrier/black",
+    behavior = "regrowing",
+    hp = 150,
+    threshold = 0,
+    timer = NO_TIMER,
+    look = { sprite = BLACK, anim = 0, palette = 0, attach_point = 0, hidden_parts = 0 },
+    sound = SOUND,
+}
+
 -- Type 6: an aura that stops every hit of less than 200 for 3000 ticks.
 barriers.life_aura = barrier {
     id = "barrier/life-aura",
@@ -79,5 +95,13 @@ function barriers.raise(navi: Object, b: Barrier, keep_old: boolean?)
     end
     barrier_visual.spawn(navi, b)
 end
+
+-- The barrier chips' controller: a chip's `dimming` hook is `barriers.controller.hook(barrier)`.
+barriers.controller = common_controller.make {
+    id = "barriers/controller",
+    raise = function(navi: Object, b: Barrier)
+        barriers.raise(navi, b)
+    end,
+}
 
 return barriers

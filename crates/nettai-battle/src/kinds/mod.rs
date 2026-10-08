@@ -284,7 +284,7 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
                 panic!("chip {:?}'s damage by count has no counts", b.content.defs.chip(id).key)
             })
         }
-        F::Gauge => gauge_damage(b, side),
+        F::Gauge { full } => gauge_damage_or(b, side, full.unwrap_or(10)),
         F::HpLost { cap } => damage_taken(b, side, cap.unwrap_or(500)),
         F::HpLastDigits => hp_last_digits(b, side),
         F::HalfOpponentMaxHp => half_opponent_max_hp(b, side),
@@ -325,6 +325,11 @@ fn opponent_hp(b: &Battle, side: u8) -> u16 {
 /// half, to 128 by seven eighths, to 255 short of full; a full gauge (or
 /// more) gives 10.
 pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
+    gauge_damage_or(b, side, 10)
+}
+
+/// [`gauge_damage`] with `full` for a full gauge (EXE4's formula 45 gives 0).
+fn gauge_damage_or(b: &Battle, side: u8, full: u16) -> u16 {
     let gauge = if b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0 {
         b.sides[side as usize & 1].gauge as u32 + 0x1500
     } else {
@@ -332,7 +337,7 @@ pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
     };
     let g = gauge >> 7;
     if g >= 0x80 {
-        10
+        full
     } else if g <= 0x40 {
         (0x16 * g / 0x40 + 0xA) as u16
     } else if g <= 0x70 {

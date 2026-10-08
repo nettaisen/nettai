@@ -36,6 +36,7 @@ local function fire(me: Object, s: State)
             offset = int.i8(dx),
             paralyzes = false,
             attack_480 = false,
+            while_dimmed = false,
             palette = 0,
             hit = false,
             sent = false,

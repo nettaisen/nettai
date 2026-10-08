@@ -232,6 +232,10 @@ pub struct FormDef {
     /// `tick(navi)`: the form's own part of the per-form tick (EXE5's
     /// MegaMan's, 0x080F04CE: GyroSoul's propeller by the priming).
     pub tick: Option<FnId>,
+    /// `chip_used(navi)`: what a chip's use from idle does besides in it,
+    /// as the hand moves on past the chip (its attack's chip): EXE4's
+    /// RollSoul's heal (0x080EED04).
+    pub chip_used: Option<FnId>,
 }
 
 /// A stage (the root's `stages`).
@@ -1659,7 +1663,8 @@ impl Defs {
                 })
             };
             let (reset, put_on, take_off, tick) = (hook("reset")?, hook("put_on")?, hook("take_off")?, hook("tick")?);
-            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off, tick });
+            let chip_used = hook("chip_used")?;
+            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off, tick, chip_used });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {
