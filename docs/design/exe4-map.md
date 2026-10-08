@@ -880,8 +880,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   @exelib/timebom/controller) with EXE4's placement (0x080E4DE4): the other side's front column from the user's back
   edge (0x080E4D94, the first column with a solid panel of that side), a random row of it whose panel is free (any of
   its solid ones when none is), the bomb there when it may stand (no body), else a puff (effect row 2) 16 up. With no
-  solid panel on that side the original reads its filter from open bus (0x00010010 taken for a table's address) and
-  fills a list through a stale r7: an error here. The bomb (attack #0x4B, 0x080D6BF8) is EXE6's code's elder,
+  solid panel of that side's at all (its navi's own panel rules it out in a battle) the original takes 0x00010010 for
+  a table's address and loads its panel filter from open bus: the opcode at the load plus 4 in both halves, require
+  0x24002400 and forbid 0x26002600 (0x080E4DFE, 0x080E4E00), which no panel meets, so its search (0x080E4E68) writes
+  nothing through the stale r7 and draws no RNG: no bomb, no puff. The bomb (attack #0x4B, 0x080D6BF8) is EXE6's code's elder,
   @exelib/timebom/countdown in EXE4's look: no NameID; sheet 0c-23, 0xB0, 0xE3 and 0xE4 ticking, 0xBC for the blast
   over the other side's area (its bursts EXE4's), even once the battle is over (`blasts_after_battle`); no tracking
   (`untracked`); no removal read as it goes, a puff (0x70, effect row 0) when broken (`reads_no_removal`); EXE4's
