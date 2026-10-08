@@ -10,4 +10,7 @@ return {
     mixed_modifiers = false,
     -- Beat lets a dark Mega or Giga chip go (0x0800C86C tests its flag 0x20).
     beat_spares_dark = true,
+    -- A dimming's start hides the chip window (HUD task 0x10) on every console, whoever started it (0x08008BD8: no
+    -- check of the starter's side); the idle shows it again after.
+    dimming_hides_every_window = true,
 }
