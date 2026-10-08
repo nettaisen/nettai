@@ -5,6 +5,7 @@
 -- heavy spark: 0x080CFDB8's 0x04050601), then 38 ticks and gone.
 
 local collision = require("../../rules/collision")
+local navi_list = require("../../lib/navi_list")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
@@ -84,27 +85,15 @@ function strike.spawn(owner: Object, x: number, y: number, element: number, dama
     end
 end
 
--- BattleState +0x44's list by its index (0x080CFE20): the local console's navi, the other's, and none past them in a
--- netbattle.
-local function listed(i: number): Object?
-    local here = battle.local_side()
-    if i == 0 then
-        return battle.player(here)
-    elseif i == 1 then
-        return battle.player(bit32.bxor(here, 1))
-    end
-    return nil
-end
-
--- 0x080CFE02, the spawners' variant 0: from the other side's place in the local console's list (BattleState +0x44, the
--- local side +0x0D), three entries for a user of side 0 and one for side 1, a strike on each navi whose counter window
+-- 0x080CFE02, the spawners' variant 0: from the other side's place in the local console's list (lib/navi_list, the
+-- local side BattleState +0x0D), three entries for a user of side 0 and one for side 1, a strike on each navi whose counter window
 -- is open. (So on side 1's console a side-0 user's entries are side 1's navi, its own and none. A navi always has its
 -- collision, whose absence would end the search.)
 function strike.spawner(user: Object, element: number, damage: number)
     local count = if user.alliance == 0 then 3 else 1
     local i = bit32.bxor(bit32.bxor(user.alliance, 1), battle.local_side())
     for _ = 1, count do
-        local o = listed(i)
+        local o = navi_list.at(i)
         if o and o.collision.counter_timer ~= 0 then
             strike.spawn(user, o.panel_x, o.panel_y, element, damage)
         end
