@@ -120,8 +120,14 @@ export type Trajectory = {
 }
 
 -- A game's wide wave (@exelib/widesht/wave): its kind's key, its sprite and sound, its afterimages' sprite (a
--- variant's own overrides both), and what it hits.
-export type WideWaveLook = { id: string, sprite: SpriteAsset, sound: Sound, trail_sprite: SpriteAsset, target: CollisionType }
+-- variant's own overrides both; a game with no trailing variant, EXE4, states none), and what it hits.
+export type WideWaveLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    trail_sprite: SpriteAsset?,
+    target: CollisionType,
+}
 
 -- A game's wide shots (@exelib/widesht/action): its wide shooter (a spec's own overrides it), its attachment kind and
 -- its wave's kind.
@@ -355,9 +361,32 @@ export type PuckLook = {
     burst: Effect,
 }
 
--- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, and whether it
--- goes down the field.
-export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean }
+-- A game's magnet field (@exelib/magbolt/magnet): its key, what it is and hits, its spark by its element, the paralysis
+-- it carries when its parameter says, and whether it only watches its owner's first related object (EXE4's) rather
+-- than being stored there (EXE5's).
+export type MagnetLook = {
+    id: string,
+    attack: CollisionType,
+    hits: CollisionType,
+    spark_of: (element: number) -> Spark,
+    paralysis: Status,
+    watches: boolean,
+}
+
+-- A game's magnet field's spawn: `owner`'s, at (dx, dy) from his panel, of an element and a damage word, paralyzing or
+-- not.
+export type MagnetSpawn = (
+    owner: Object,
+    dx: number,
+    dy: number,
+    element: number,
+    paralyzes: boolean,
+    damage: number
+) -> Object?
+
+-- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, whether it goes down
+-- the field, and the navi's animation as it flicks (none: EXE6's and EXE5's 0x0C).
+export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean, anim: number? }
 
 -- A sun beam's look (@exelib/gundels/beam): its sprite and palette.
 export type SunBeamLook = { sprite: SpriteAsset, palette: number }
@@ -1846,6 +1875,49 @@ export type NumberMan = { kind: Kind, summoned: (o: Object, controller: Object, 
 -- A Geddon chip's quake's change (@exelib/geddon/quake's `change`): what it does to a panel, whether it changed, and
 -- what shows over a panel that did.
 export type GeddonChange = { apply: (x: number, y: number) -> boolean, show: (at: Vec3) -> () }
+
+-- What ShadeMan's crush carries (@exelib/shademan): his figure's palette, its hits' hit modifier and status, and a
+-- NaviCust bug's code and argument (none: 0).
+export type ShadeManHit = { palette: number, hit_mod: number, status: Status?, bug: number?, bug_arg: number? }
+
+-- A game's ShadeMan's crush (@exelib/shademan/crush): its kind's key, its sprite and sound, its hits' collision types
+-- (what they are and what they hit), where its figure stands from its panel's center (`place`), the ticks left when
+-- its second hit comes, and whether it highlights the panels it reaches each tick (EXE5's).
+export type ShadeManCrushSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    attack: CollisionType,
+    hits: CollisionType,
+    place: (me: Object) -> (),
+    second_at: number,
+    highlights: boolean,
+}
+
+-- A game's ShadeMan's crush kind, and its spawn by ShadeMan on (x, y) carrying `given`.
+export type ShadeManCrush = { kind: Kind, spawn: (shademan: Object, x: number, y: number, given: ShadeManHit) -> Object? }
+
+-- A game's ShadeMan (@exelib/shademan/navi): his kind's key, his sprite, his animations as he appears and as he calls
+-- out, his sounds (and EXE5's as a command is in), his crush, his commands (each its steps, a step any of its keys,
+-- and what it gives the crush) in the order they are read, what the crush carries without one (drawn as he appears),
+-- whether he bows before he goes (EXE5's), and EXE4's puff as he goes.
+export type ShadeManSpec = {
+    id: string,
+    sprite: SpriteAsset,
+    appear_anim: number,
+    call_anim: number,
+    appear: Sound,
+    call: Sound,
+    command_sound: Sound?,
+    crush: ShadeManCrush,
+    commands: { { steps: { { Key } }, hit: ShadeManHit } },
+    uncommanded: () -> ShadeManHit,
+    bows: boolean,
+    puff: Effect?,
+}
+
+-- A game's ShadeMan kind, and what makes one just spawned his chip's: the controller he reports to, his palette.
+export type ShadeMan = { kind: Kind, summoned: (o: Object, controller: Object, palette: number) -> () }
 
 -- What BugFix's glow (@exelib/bugfix/glow) does first, its spawner's (`glow.start`): its first action, which sets
 -- action 4 when it is done.

@@ -502,6 +502,9 @@ declare extern type Object with
     charge_level: number
     charge_source: number
     charge_counter: number
+    -- The B charge's level (0 none, 1 charging, 2 full) as the navi last asked for an attack, kept until its next
+    -- ask (EXE4's AIData +0x15); 0 in a game whose decode keeps none (read-only).
+    b_charge_at_ask: number
     -- Writable: a buffered auto-step's direction, the chip lockout, the
     -- B+Back special's cooldown.
     buffered_move: number

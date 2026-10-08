@@ -824,6 +824,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     stats.set_game_stat(content, "color", Value::Int(s.color as i64))?;
     stats.set_game_stat(content, "all_guard", Value::Bool(s.all_guard))?;
     stats.set_game_stat(content, "sun", Value::Bool(s.sun))?;
+    stats.set_game_stat(content, "encounter_bug", Value::Bool(s.encounter_bug))?;
+    stats.set_game_stat(content, "result_bug", Value::Bool(s.result_bug))?;
     stats.attack = s.attack;
     stats.rapid = s.rapid;
     stats.charge = s.charge;

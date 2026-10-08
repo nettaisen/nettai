@@ -1033,15 +1033,17 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// EXE5's 0x0800DEB2, in an arena with a panel that submerges: a body under
-/// a surface (flags 0x80000004) is hidden, a ripple over it (the role
-/// `kinds.dive_ripple`, EXE5's effect object #0x3E, kept in its collision's
-/// link); out of it, the ripple ends.
+/// `sub_801012C` (EXE5's 0x0800DEB2, EXE4's 0x0800C0A6): a body that is
+/// under (submerged, flag 4; and in a game that counts a bubbled body as
+/// submerged, `hit_test.bubbled_as_submerged`, under its sea's surface:
+/// EXE5's flags 0x80000004) is hidden, a mark over it (the role
+/// `kinds.dive_ripple`: EXE5's ripple, EXE4's hole, effect object #0x3E,
+/// kept in its collision's link); out of it, the mark ends. (Only EXE5's
+/// sea and EXE4's PopUp put a player under: EXE6's timed submerged state
+/// has no starter, `timer::SUBMERGED`.)
 fn dive_ripple(b: &mut Battle, r: ObjectRef) {
-    if !arena_submerges(b) {
-        return;
-    }
-    if flag1(b, r) & (f1::BUBBLED | f1::SUBMERGED) != 0 {
+    let under = if b.game_rules().hit_test.bubbled_as_submerged { f1::BUBBLED | f1::SUBMERGED } else { f1::SUBMERGED };
+    if flag1(b, r) & under != 0 {
         b.objects.get_mut(r).set_visible(false);
         if coll(b, r).links[link::RIPPLE].is_some() {
             return;
@@ -1241,8 +1243,9 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
     if f & (f1::FLASHING | f1::INVISIBLE) != 0 && bit != b.game_rules().flash_hides_on_clear {
         b.objects.get_mut(r).set_visible(false);
     }
-    // On its own side's console: HUD markers only. On the other's, hidden
-    // while that console's navi is blind.
+    // On its own side's console: the HUD's HP numbers, which it shows and
+    // ends while blind (the frontend's, `nettai_render::hud`), and markers.
+    // On the other's, hidden while that console's navi is blind.
     let alliance = b.objects.get(r).alliance;
     let hidden = [0u8, 1].map(|viewer| {
         viewer != alliance & 1

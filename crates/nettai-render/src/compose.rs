@@ -152,11 +152,6 @@ pub enum Fade {
     Black(u8),
     /// Towards white by n/16.
     White(u8),
-    /// White, then towards black by n/16: a palette flash's white under a
-    /// fade that comes after it among the palette transforms, which
-    /// darkens what the flash put in the palettes (EXE5's flash under a
-    /// dimming: `effects.palette_flash_order`).
-    Flash(u8),
 }
 
 /// Screen-wide fades. The original fades palettes: `stage` is a fade of the
@@ -438,7 +433,6 @@ pub fn apply_fade(c: u16, fade: Fade) -> u16 {
             let n = n.min(16) as u16;
             pack(ch.map(|v| v + (((31 - v) * n) >> 4)))
         }
-        Fade::Flash(n) => apply_fade(0x7FFF, Fade::Black(n)),
     }
 }
 
@@ -554,20 +548,6 @@ mod tests {
         assert_eq!(out[3 * WIDTH + 3], 0x001F);
         assert_eq!(out[4 * WIDTH], 0);
         assert_eq!(out[4], 0);
-    }
-
-    /// A flash's white under a fade: white at none, a quarter down under a
-    /// dimming (24 a channel), black under a full one, whatever the color.
-    #[test]
-    fn a_flash_under_a_fade_is_white_darkened() {
-        let gray = |v: u16| v | v << 5 | v << 10;
-        for c in [0, 0x7FFF, 0x1234] {
-            assert_eq!(apply_fade(c, Fade::Flash(0)), gray(31));
-            assert_eq!(apply_fade(c, Fade::Flash(4)), gray(24));
-            assert_eq!(apply_fade(c, Fade::Flash(16)), gray(0));
-        }
-        // (As white under the fade itself.)
-        assert_eq!(apply_fade(0, Fade::Flash(4)), apply_fade(apply_fade(0, Fade::White(16)), Fade::Black(4)));
     }
 
     /// `blend`'s weights at the edges of BLDALPHA's five bits, as the

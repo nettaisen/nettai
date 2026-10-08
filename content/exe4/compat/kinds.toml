@@ -11,10 +11,13 @@
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06, scratch_position = true }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
+"engine/form-overlay" = { pool = "actor", index = 0x57 }
 "charge-glow" = { pool = "effect", index = 0x05 }
 "barrier-visual" = { pool = "effect", index = 0x07 }
 "projectile" = { pool = "attack", index = 0x00 }
 "attachment" = { pool = "attack", index = 0x02 }
+# The flying shot (0x080CE6E0): RollSoul's arrow.
+"flying-shot" = { pool = "attack", index = 0x0B }
 "bomb" = { pool = "attack", index = 0x08 }
 # EnergBom's and MegEnBom's energy burst (0x080CF3B8).
 "energbom/burst" = { pool = "attack", index = 0x11 }
@@ -34,6 +37,18 @@
 "thunder/ball" = { pool = "attack", index = 0x2A }
 # Ball's cannonball (0x080D3A3C).
 "ball/ball" = { pool = "attack", index = 0x35 }
+# Tornado's and Static's tornado (0x080D3130).
+"tornado/tornado" = { pool = "attack", index = 0x31 }
+# The PropBoms' propeller bomb (0x080DED30).
+"propbom/bomb" = { pool = "attack", index = 0x8C }
+# The MagBolts' magnet field (0x080DBD72).
+"magbolt/magnet" = { pool = "attack", index = 0x75 }
+# The TwnFngs' fang (0x080D7B3A).
+"twnfng/fang" = { pool = "attack", index = 0x51 }
+# The WideShts' wave (0x080D4ADA).
+"widesht/wave" = { pool = "attack", index = 0x3B }
+# The AirHocs' puck (0x080D2B08).
+"airhoc/puck" = { pool = "attack", index = 0x2E }
 # The GunSols' sun beam (0x080E7216).
 "gunsol/beam" = { pool = "effect", index = 0x48 }
 # The FlmLines' flame (0x080D00B8).
@@ -127,6 +142,20 @@
 "sprkmn-ds/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
 "sparkman/navi" = { pool = "actor", index = 0x10 }
 "sparkman/spark" = { pool = "attack", index = 0x22 }
+# FireMan's chips (action 0x0C's variant 0x04, 0x080E31C4): each chip's controller (the content's own; the original's
+# one object, effect #0x0F, 0x080E30BC), FireMan and his flames (the Elem chips' flame, 0x080CE2D8: his own kind).
+"fireman/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
+"firemn-sp/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
+"firemn-ds/controller" = { pool = "effect", index = 0x0F, scratch_position = true }
+"fireman/navi" = { pool = "actor", index = 0x12 }
+"fireman/flame" = { pool = "attack", index = 0x09, scratch_position = true }
+# ShadeMan's chips (action 0x0C's variant 0x06, 0x080E3936): each chip's controller (the content's own; the
+# original's one object, effect #0x15, 0x080E3888), ShadeMan and his crush.
+"shademan/controller" = { pool = "effect", index = 0x15, scratch_position = true }
+"shadmn-sp/controller" = { pool = "effect", index = 0x15, scratch_position = true }
+"shadmn-ds/controller" = { pool = "effect", index = 0x15, scratch_position = true }
+"shademan/navi" = { pool = "actor", index = 0x19 }
+"shademan/crush" = { pool = "attack", index = 0x34 }
 # SerchMan's, ThunMan's, ProtoMan's, DeltaRay's, MetalMan's and JunkMan's chips (action 0x0C's variants 0x20, 0x23,
 # 0x2F, 0x32, 0x3C and 0x40): each chip's controller is the content's own, but the original's is one object for all of
 # them, effect #0x42 (0x080E6A18, one spawner 0x080E6B22, its navi by the chip's third parameter, his palette and the
@@ -188,3 +217,10 @@
 "beat" = { pool = "actor", index = 0x4C }
 "tango" = { pool = "actor", index = 0x4D }
 "tango/heal" = { pool = "attack", index = 0x9F }
+# Invis's controller (0x080E8A68) and PopUp's (0x080E6470): their positions the spawners' registers. PopUp's glow (actor
+# 0x5D, 0x080CCF5C: one object in the original, its action by its parameter; here each user's own kind) and the hole
+# over a navi under the ground (0x080E64FC), which the navi's tail keeps.
+"invis/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
+"popup/controller" = { pool = "effect", index = 0x3D, scratch_position = true }
+"popup/glow" = { pool = "actor", index = 0x5D }
+"underground-hole" = { pool = "effect", index = 0x3E }
