@@ -396,6 +396,12 @@
 "mine/land-mine" = { pool = "attack", index = 0x4C }
 # Blinder's controller (0x080E48EC; its position the dimming handler's registers).
 "blinder/controller" = { pool = "effect", index = 0x23, scratch_position = true }
+# RockCube's controller (0x080E60AC; its position the dimming handler's registers).
+"rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
+# ColorPt's and DblPoint's controller (0x080E7BF0; its position the dimming handler's registers) and their points
+# (0x080E7CE0; their height's fraction the spawner's registers).
+"colorpt/controller" = { pool = "effect", index = 0x50, scratch_position = true }
+"colorpt/point" = { pool = "effect", index = 0x51, scratch_z_fraction = true }
 # TimeBomb's controller (0x080E4C3C; its position the dimming handler's registers) and its bomb (0x080D6BF8).
 "timebomb/controller" = { pool = "effect", index = 0x27, scratch_position = true }
 "timebomb/countdown" = { pool = "attack", index = 0x4B }

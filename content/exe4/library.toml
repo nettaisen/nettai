@@ -266,6 +266,7 @@ standard = [
     "boybomb3",
     "timebomb",
     "mine",
+    "rockcube",
     "wind",
     "fan",
     "fanfare",
@@ -318,6 +319,7 @@ standard = [
     "copydmg",
     "atk-10",
     "navi-20",
+    "colorpt",
 ]
 mega = [
     "suprvulc",
@@ -330,6 +332,7 @@ mega = [
     "lifeaura",
     "snctuary",
     "atk-30",
+    "dblpoint",
     "muramasa",
     "anubis",
     "elemdark",
