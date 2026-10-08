@@ -7,6 +7,7 @@ local merge = require("@exelib/merge")
 
 return merge {
     -- Chips: a module defining one, or a series module defining several.
+    require("@self/airhoc"),
     require("@self/airshot"),
     require("@self/anti"),
     require("@self/aquaup"),
@@ -32,6 +33,7 @@ return merge {
     require("@self/drkvulcn"),
     require("@self/elem"),
     require("@self/energbom"),
+    require("@self/fireman"),
     require("@self/flmline"),
     require("@self/fullcust"),
     require("@self/geyser"),
@@ -43,6 +45,7 @@ return merge {
     require("@self/junkman"),
     require("@self/lance"),
     require("@self/ligtnin"),
+    require("@self/magbolt"),
     require("@self/metalman"),
     require("@self/meteors"),
     require("@self/minibomb"),
@@ -64,8 +67,10 @@ return merge {
     require("@self/thunder"),
     require("@self/thunman"),
     require("@self/topman"),
+    require("@self/twnfng"),
     require("@self/vulcan"),
     require("@self/whitweb"),
+    require("@self/widesht"),
     -- A navi chip's chips, with its navi.
     require("./navis/megaman/forms/aquasoul/chip"),
     require("./navis/megaman/forms/firesoul/chip"),

@@ -7,17 +7,25 @@
 -- ticks; EXE4's is an attack the whole time it shows instead (its look's
 -- `attack`). Its sprite never animates. A lance spawned with Param1 set
 -- (none of EXE6's chips) takes the second palette. Each game's lance is a
--- kind of its look (`lance.make_kind`: its sprite, sound, and its hit by
--- Param1, EXE5's DrkLance; or its attack, EXE4's).
+-- kind of its look (`lance.make_kind`: its sprite and sound, or its attack,
+-- EXE4's); each chip states its palette and its hit (`lance.hit`: what the
+-- original reads by its Param1, EXE5's DrkLance's its own).
 
 local regions = require("./regions")
 
 local lance = {}
 
 export type State = {
-    -- Its palette (0, or 1 with Param1 set).
+    -- Its palette (0, or 1 with Param1 set), and its chip's hit (none: an
+    -- attack the whole time, EXE4's).
     palette: number,
+    hit: LanceHit?,
 }
+
+-- A chip's lance's hit.
+function lance.hit(h: LanceHit): LanceHit
+    return new.record("lance-hit", h)
+end
 
 
 -- How far past its panel it appears, in pixels, and how fast it slides
@@ -39,10 +47,9 @@ function lance.make_kind(id: string, look: LanceLook): Kind
         if look.attack then
             me:update_collision_panels()
         elseif me.timer == 2 then
-            local palette = (me.state :: State).palette
-            local hit = (look.hits :: { [number]: LanceHit })[palette]
+            local hit = (me.state :: State).hit
             if not hit then
-                error(string.format("a lance of Param1 %d has no hit", palette))
+                error("a lance with no hit of its chip's (sub_80D2514 reads its Param1's row)")
             end
             battle.hitbox(me, {
                 panel_x = me.panel_x,
@@ -153,7 +160,7 @@ function lance.make_kind(id: string, look: LanceLook): Kind
     return new.kind {
         id = id,
         pool = "attack",
-        state = { palette = "u8" },
+        state = { palette = "u8", hit = "record:lance-hit" },
         -- `sub_80D2460`; an attack's panel highlighted while its region
         -- stands (EXE4's 0x080D73D4).
         update = function(me: Object)
@@ -179,6 +186,7 @@ end
 -- palette `palette`, with the damage word `damage`. (It spawns at the
 -- registers' values, which its init replaces but for Z.) `side_only`: the
 -- owner's side alone, not its facing nor itself (EXE4's 0x080D7522).
+-- `hit`: its chip's (none: EXE4's, an attack the whole time).
 function lance.spawn_kind(
     kind: Kind,
     owner: Object,
@@ -188,7 +196,8 @@ function lance.spawn_kind(
     z: number,
     palette: number,
     damage: number,
-    side_only: boolean?
+    side_only: boolean?,
+    hit: LanceHit?
 ): Object?
     local o = battle.spawn(kind, Vec3.new(y, element, z))
     if o then
@@ -200,7 +209,8 @@ function lance.spawn_kind(
             o.flip = owner.flip
             o.related1 = owner
         end
-        (o.state :: State).palette = palette
+        local st = o.state :: State
+        st.palette, st.hit = palette, hit
     end
     return o
 end
@@ -209,19 +219,28 @@ end
 -- rows 1 to 3, at height `z`; the column by the user's side and facing, or
 -- its side alone with `side_only` (EXE4's 0x080D7540, action 0x20's
 -- variant 6).
-function lance.thrust(kind: Kind, user: Object, element: number, z: number, palette: number, damage: number, side_only: boolean?)
+function lance.thrust(
+    kind: Kind,
+    user: Object,
+    element: number,
+    z: number,
+    palette: number,
+    damage: number,
+    side_only: boolean?,
+    hit: LanceHit?
+)
     local facing = if side_only then user.alliance else bit32.bxor(user.alliance, user.flip)
     local x = 6 - facing * 5
     for y = 1, 3 do
-        lance.spawn_kind(kind, user, x, y, element, z, palette, damage, side_only)
+        lance.spawn_kind(kind, user, x, y, element, z, palette, damage, side_only, hit)
     end
 end
 
 -- Instant chip effect 4 (EXE6's, EXE5's): `lance.thrust` at the user's
--- height.
-function lance.instant_of(kind: Kind, palette: number): (user: Object, spec: InstantChipSpec) -> ()
+-- height, the chip's lances in `palette` with its `hit`.
+function lance.instant_of(kind: Kind, palette: number, hit: LanceHit): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, spec: InstantChipSpec)
-        lance.thrust(kind, user, spec.element, spec.z, palette, spec.damage)
+        lance.thrust(kind, user, spec.element, spec.z, palette, spec.damage, false, hit)
     end
 end
 

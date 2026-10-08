@@ -7,7 +7,9 @@
 -- it goes straight ahead. It hits with its status (Thunder's paralysis)
 -- and bug, for its panels, then bursts. It goes when it hits a body, a
 -- neutral object or an attack, leaves the field, or the battle ends. A
--- ball of 12 panels (DarkThnd's) is big and sounds otherwise.
+-- fast ball is big; so is one its chip says is (DarkThnd's), with its
+-- chip's collision type and sound where they differ from the look's (the
+-- original's for a ball of 12 panels).
 --
 -- Its first related slot can hold an object whose header it sets (to 1
 -- when it comes, 0 when it goes); Thunder gives none.
@@ -23,7 +25,9 @@ local ball = {}
 
 -- What a ball is spawned with (the original's four parameters): fast
 -- (Param1 2), the panels it drifts (Param2), the status its hits inflict
--- (Param3, 0: none) and their bug (Param4, 0: none; its argument is 1).
+-- (Param3, 0: none) and their bug (Param4, 0: none; its argument is 1);
+-- and its chip's: whether it is big, its collision type and its sound
+-- (none: the look's).
 export type Spec = ThunderBall
 
 export type State = {
@@ -32,10 +36,11 @@ export type State = {
     panels: number,
     status: Status?,
     bug: number,
+    big: boolean,
+    is: CollisionType?,
+    sound: Sound?,
 }
 
--- The panel count that makes DarkThnd's.
-local DARK_PANELS = 0x0C
 -- Hits that end it: bodies, neutral objects, attacks.
 local ENDING = 0xFF800000
 -- The enemy bodies it looks for, by its side.
@@ -155,9 +160,8 @@ end
 -- `sub_80C940C`.
 local function init(me: Object, look: ThunderBallLook)
     local s = me.state :: State
-    local dark = s.panels == DARK_PANELS
     -- (A look with no big ball loads its one sprite whatever it is: EXE4's.)
-    local big = (s.fast or dark) and look.big_sprite ~= nil
+    local big = (s.fast or s.big) and look.big_sprite ~= nil
     local sprite = me.sprite
     sprite:load(if big then look.big_sprite :: SpriteAsset else look.sprite)
     sprite.shadow = "with_sprite"
@@ -173,7 +177,7 @@ local function init(me: Object, look: ThunderBallLook)
         me:free()
         return
     end
-    me:setup_collision(if dark then look.dark_is or look.is else look.is, look.target, look.hit_mod)
+    me:setup_collision(s.is or look.is, look.target, look.hit_mod)
     local c = me.collision
     c:set_region(regions.single)
     c:set_hit_effect(look.spark)
@@ -186,7 +190,7 @@ local function init(me: Object, look: ThunderBallLook)
     end
     c:present()
     aim(me, look)
-    battle.play_sound(if dark then look.dark_sound or look.sound else look.sound)
+    battle.play_sound(s.sound or look.sound)
     me:set_lifecycle("update")
     tick(me, look)
 end
@@ -203,7 +207,15 @@ function ball.make_kind(id: string, look: ThunderBallLook): Kind
     return new.kind {
         id = id,
         pool = "attack",
-        state = { fast = "bool", panels = "u8", status = "status", bug = "u8" },
+        state = {
+            fast = "bool",
+            panels = "u8",
+            status = "status",
+            bug = "u8",
+            big = "bool",
+            is = "collision",
+            sound = "sound",
+        },
         -- `sub_80C93CC`.
         update = function(me: Object)
             local l = me.lifecycle
@@ -230,6 +242,7 @@ function ball.spawn(kind: Kind, owner: Object, x: number, y: number, element: nu
     if o then
         local s = o.state :: State
         s.fast, s.panels, s.status, s.bug = spec.fast or false, spec.panels, spec.status, spec.bug or 0
+        s.big, s.is, s.sound = spec.big or false, spec.is, spec.sound
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)
