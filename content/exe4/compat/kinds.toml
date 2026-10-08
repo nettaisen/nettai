@@ -336,6 +336,12 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# PanlSht's controller (0x080E79B8; its position the dimming handler's registers), each chip's own kind, and its
+# panels (0x080DCAA4).
+"panlsht1/controller" = { pool = "effect", index = 0x4F, scratch_position = true }
+"panlsht2/controller" = { pool = "effect", index = 0x4F, scratch_position = true }
+"panlsht3/controller" = { pool = "effect", index = 0x4F, scratch_position = true }
+"panlsht/panel" = { pool = "attack", index = 0x7B }
 # HawkCut's controller (0x080E95E0; its position the spawner's registers), each chip's own kind, and its ProtoMan
 # (0x080C8A28; spawned at the controller's registers).
 "hawkcut1/controller" = { pool = "effect", index = 0x68, scratch_position = true }

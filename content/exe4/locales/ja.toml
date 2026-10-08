@@ -271,6 +271,9 @@ language = "ja"
 "hawkcut1" = { name = "ハヤブサギリ1", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
 "hawkcut2" = { name = "ハヤブサギリ2", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
 "hawkcut3" = { name = "ハヤブサギリ3", description = "ワイドとロングに\nすばやく2回\nきりつける!" }
+"panlsht1" = { name = "パネルシュート1", description = "目の前のパネルを\nうきあがらせて\n前方にとばして攻撃" }
+"panlsht2" = { name = "パネルシュート2", description = "前後のパネルを\nうきあがらせて\n前方にとばして攻撃" }
+"panlsht3" = { name = "パネルシュート3", description = "上下左右のパネルを\nうきあがらせて\n前方にとばして攻撃" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
