@@ -43,7 +43,7 @@ function controller.make(look: WindControllerLook): WindController
 
     local function hook(variant: FanVariant): (user: Object, spec: DimmingChipSpec) -> Object?
         return function(user: Object, spec: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, spec)
+            local o = dimming_chips.spawn(kind, user, spec, look.side_only)
             if o then
                 if look.position then
                     o.pos = look.position(user, spec)

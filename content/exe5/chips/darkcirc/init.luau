@@ -7,6 +7,7 @@
 
 local circgun = require("./circgun/circgun")
 local collision = require("../rules/collision")
+local dark_costs = require("../lib/dark_costs")
 
 local chip: Chip = {
     codes = { "R" },
@@ -29,6 +30,8 @@ local chip: Chip = {
         bug = 0x54,
         bug_arg = 0x32,
     }),
+    -- What its use costs its user (rules/light_dark).
+    dark_cost = dark_costs.custom_damage,
     auto_battle = { class = "at_once" },
 }
 

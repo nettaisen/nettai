@@ -9,6 +9,9 @@ local charge = require("@self/charge")
 local protoman = require("@self/chip")["stepswrd-protoman"]
 
 local navi: NaviDef = {
+    -- VarSwrd's sword stays plain for him: he waits for its sequence while A is up and gets neither the charged sword
+    -- nor the Beast lock-on (lib/swords/vari).
+    var_sword_plain = true,
     sprite = asset.sprite("protoman"),
     element = "null",
     buster_bonus = 1,
