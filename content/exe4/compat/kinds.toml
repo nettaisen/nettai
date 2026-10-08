@@ -214,3 +214,10 @@
 # The panel chips' controller (Hole, PnlRetrn, HolyPanl, Snctuary, DrkLine: 0x080E4584; its position the spawner's
 # registers).
 "panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
+# The barrier chips' controller (Barrier, Barr100, Barr200, LifeAura, BlakBarr: 0x080E5740; its position the spawner's
+# registers).
+"barriers/controller" = { pool = "effect", index = 0x2F, scratch_position = true }
+# The instruments (Fanfare, Discord, Timpani, Silence: 0x080DC33C) and their controller (0x080E7310; its position the
+# spawner's registers).
+"instrument" = { pool = "attack", index = 0x78 }
+"instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
