@@ -286,6 +286,7 @@ language = "en"
 "timebomb" = { name = "TimeBomb", description = "An area-\nwide time\nbomb" }
 "blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
 "mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
+"bassanly" = { name = "BassAnly", description = "A ring\nthat hits\n4 times" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
