@@ -5,18 +5,19 @@
 -- going it is gone. A hit breaks it (one HP); the side whose attack, object or body broke it gets its gift on one of
 -- its alive navis at random (0x080D82BA): RedFrut1's 300 HP back (AntiRecv turning it) and 50 more mood, RedFrut2's
 -- invulnerability for 420 ticks, RedFrut3's Full Synchro (0x080D813C: a player's navi out of the operation battle
--- whose emotion is one of the first four, a mood of 0 left as it is). A hit by both sides at once, or by neither's,
--- gives nothing. Its params are the chip's (+0x10: the gift and its palette, +0x11: its hops).
+-- whose emotion is one of the first four, a mood of 0 left as it is): each chip's own (./init). A hit by both sides at
+-- once, or by neither's, gives nothing. Its params are the chip's (+0x10: the gift, which picks the original's routine
+-- of 0x080D810C, and its palette; +0x11: its hops).
 
 local collision = require("../../rules/collision")
 local panels = require("@exelib/panels")
-local operation_battle = require("../../lib/operation_battle")
 
 local fruit = {}
 
 export type State = {
-    -- Param1: the gift (0 RedFrut1's, 1 RedFrut2's, 2 RedFrut3's), its palette too.
-    gift: number,
+    -- Its chip's gift and palette (Param1 in the original, the gift's number).
+    gift: Gift,
+    palette: number,
     -- Param2: the hops left (a byte: below 0 it is 0xFF).
     hops: number,
     -- +0x60: the side that broke it (0xFF: none).
@@ -54,8 +55,6 @@ local HIDDEN_PARTS = { [0] = 0x1F000000, 0x2F000000, 0x37000000, 0x3B000000, 0x3
 -- What broke it, by side (0x080D828C): side 0's attacks, objects and bodies; side 1's.
 local SIDE_0, SIDE_1 = 0xAA000000, 0x55000000
 local NONE = 0xFF
--- The gifts.
-local HEAL, MOOD, INVULNERABLE_TICKS = 300, 50, 0x1A4
 
 -- The actions (0x080D8008).
 local COME, SHOW, GO = 0, 4, 8
@@ -237,44 +236,12 @@ local function tick(me: Object)
     c:present()
 end
 
--- 0x080D8118: RedFrut1's: 300 HP back (AntiRecv turns it), and the mood up 50 (0x080127E8: to 254 at most, a mood
--- of 0 left as it is).
-local function heal(navi: Object)
-    navi:heal(HEAL, true)
-    local stats = battle.navi(navi.alliance)
-    local mood = stats.mood
-    if mood ~= 0 then
-        stats.mood = math.min(mood + MOOD, 0xFE)
-    end
-end
+-- A chip's gift: what it gives the navi its breaker's side gets it on.
+export type Gift = { give: (navi: Object) -> () }
 
--- 0x080D8130: RedFrut2's: invulnerable for 420 ticks (`object_setInvulnerableTime`).
-local function shield(navi: Object)
-    navi:set_status_timer("invulnerable", INVULNERABLE_TICKS)
-    navi:set_status("invulnerable", true)
+function fruit.gift(give: (navi: Object) -> ()): Gift
+    return new.record("redfrut-gift", { give = give })
 end
-
--- 0x080D813C: RedFrut3's: a player's navi, out of the operation battle, whose emotion (0x0801270C) is one of the
--- first four, to Full Synchro (0x080127D6: a mood of 0 left as it is).
-local function synchro(navi: Object)
-    if navi.actor_type ~= "player" or operation_battle() then
-        return
-    end
-    local stats = battle.navi(navi.alliance)
-    -- EXE5's emotion (exe5-map.md §15.10): in battle mode 1 Full Synchro (2) or normal (0); else a soul's 4 first (the
-    -- engine's emotion says normal for it), then anger's 3, a mood of 0's 5 (worn out), and 0 to 2 by the mood.
-    if battle.mode() ~= 1 and not stats.form.base then
-        return
-    end
-    if battle.emotion(navi.alliance) == "worn_out" then
-        return
-    end
-    if stats.mood ~= 0 then
-        stats.mood = 0xFF
-    end
-end
-
-local GIFTS = { [0] = heal, [1] = shield, [2] = synchro }
 
 -- 0x080D82BA: one of the side's alive navis at random (one RNG2 draw when it has any).
 local function navi_of(side: number): Object?
@@ -302,16 +269,12 @@ local function leave(me: Object)
         if not navi then
             return
         end
-        local gift = GIFTS[s.gift]
-        if not gift then
-            error(string.format("RedFrut's gift %d reads past its table (0x080D810C)", s.gift))
-        end
-        gift(navi)
+        s.gift.give(navi)
     end
     me:destroy()
 end
 
--- 0x080D7F50: on its panel on the ground, then its sprite, collision and name; its palette the gift's.
+-- 0x080D7F50: on its panel on the ground, then its sprite, collision and name; its chip's palette.
 local function init(me: Object)
     local s = state(me)
     me:set_coordinates_from_panel()
@@ -332,7 +295,7 @@ local function init(me: Object)
     me.visible = true
     me.identity = IDENTITY
     me.hp, me.max_hp = HP, HP
-    sprite.palette = s.gift
+    sprite.palette = s.palette
     sprite:set_flip(0)
     -- (sub_8002EAC: a drawing flag of the sprite's.)
     me.collision:present()
@@ -344,7 +307,7 @@ end
 fruit.kind = new.kind {
     id = "redfrut/fruit",
     pool = "attack",
-    state = { gift = "u8", hops = "u8", breaker = "u8" },
+    state = { gift = "record:redfrut-gift", palette = "u8", hops = "u8", breaker = "u8" },
     -- 0x080D7F2C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -367,11 +330,11 @@ fruit.kind = new.kind {
 
 -- 0x080D8162: the fruit on (x, y), the user's side and flip, running while dimmed, a field object of the user's side.
 -- (It spawns at the registers' values, which its init replaces.)
-local function spawn(user: Object, x: number, y: number, gift: number, hops: number)
+local function spawn(user: Object, x: number, y: number, spec: Fruit)
     local o = battle.spawn(fruit.kind, Vec3.new(y, 0, 0))
     if o then
         local s = o.state :: State
-        s.gift, s.hops = gift, hops
+        s.gift, s.palette, s.hops = spec.gift, spec.palette, spec.hops
         o.panel_x, o.panel_y = x, y
         o.alliance, o.flip = user.alliance, user.flip
         o.run_while_dimmed = true
@@ -379,9 +342,12 @@ local function spawn(user: Object, x: number, y: number, gift: number, hops: num
     end
 end
 
--- The chips' `instant` hook (0x080D818C), with the chip's params: the fruit on a random free panel but the back
+-- A chip's fruit: its gift, its palette and how many times it hops.
+export type Fruit = { gift: Gift, palette: number, hops: number }
+
+-- The chips' `instant` hook (0x080D818C), with the chip's fruit: the fruit on a random free panel but the back
 -- columns and the user's own (0x080D821C: `object_getPanelsFiltered`, bottom right first), if there is one.
-function fruit.instant(gift: number, hops: number): (user: Object, spec: InstantChipSpec) -> ()
+function fruit.instant(spec: Fruit): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, _spec: InstantChipSpec)
         local ux, uy = user.panel_x, user.panel_y
         user:reserve_panel(ux, uy)
@@ -389,7 +355,7 @@ function fruit.instant(gift: number, hops: number): (user: Object, spec: Instant
             return panels.filtered(SOLID, OCCUPIED)
         end)
         if x ~= 0 then
-            spawn(user, x, y, gift, hops)
+            spawn(user, x, y, spec)
         end
         user:unreserve_panel(ux, uy)
     end

@@ -33,6 +33,16 @@ return {
     palette_flash_order = "before_fades",
     -- Its afterimages (0x080E35F4) and form overlays don't run while paused (no header flag 0x04).
     overlays_run_while_paused = false,
+    -- A form overlay (0x080C379C) waits for every navi to be in, then follows (0x080C3868), and each tick takes its
+    -- owner's facing (0x080C3842), as EXE6's. Its tick (0x080C37FA) restarts no sprite and takes no palette (its init
+    -- takes its owner's, 0x080C37D0); these state the engine's run of EXE5's overlays so far, EXE6's.
+    form_overlay = {
+        start = "after_navis_in",
+        reloads_animation = true,
+        palette_each_tick = true,
+        facing_each_tick = true,
+        waiting_steps = false,
+    },
     -- Its afterimage (0x080E3550) is a sprite alone: its spawners give it the owner's battle sprite (0x0800DA72) and it
     -- takes no NameID, so an afterimage of a navi that wears something (KnightMan's ball, NumberMan's face) wears none.
     afterimages_wear_overlays = false,
@@ -75,6 +85,8 @@ return {
     chip_icons = "attach_point",
     -- The other player's console names a chip a player used for a second, as EXE6's.
     used_chip_ticks = 0x3C,
+    -- A dimming chip's telop ends those names as it starts (0x0800A0FC, 0x0800A218: EXE6's `sub_801BED6(0x10000)`).
+    telop_ends_used_chips = true,
     -- The emotion window flickers a bugged navi's face at its checks, an RNG1 draw each (0x08019780, EXE6's).
     bug_flicker = true,
     -- A step leaves its NaviCust panel trail at a chance of its level in 8, an RNG2 draw, as EXE6's.

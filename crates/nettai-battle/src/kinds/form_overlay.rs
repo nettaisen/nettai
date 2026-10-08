@@ -5,7 +5,7 @@
 //! update order. See docs/engine/objects-and-player.md §A.7.
 
 use crate::battle::Battle;
-use crate::content::SpriteId;
+use crate::content::{OverlayStart, SpriteId};
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, Vec3, flags, state};
 
@@ -160,8 +160,49 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // undoing the step above (which keeps the overlay in step with its
     // owner).
     o.anim_loaded = (sum >> 8) as u8;
+    let rules = b.game_rules().effects.form_overlay;
+    if !rules.facing_each_tick {
+        // (Its own side's facing, once: it keeps no flip of its own.)
+        let o = b.objects.get(r);
+        let (alliance, flip) = (o.alliance, o.flip);
+        b.objects.sprite_mut(r).look.set_flip(alliance ^ flip);
+    }
     set_progress(b, r, Progress::UPDATE);
+    if rules.start == OverlayStart::AtOnceInFight {
+        // With the fight on it follows at once; else it waits, running
+        // while paused until the navis are in.
+        let fighting = b.round.flags & crate::battle::battle_flags::FIGHTING != 0;
+        let o = b.objects.get_mut(r);
+        o.flags &= !flags::RUN_WHILE_PAUSED;
+        if fighting {
+            o.action = follow_action(rules.start);
+        } else {
+            o.flags |= flags::RUN_WHILE_PAUSED;
+        }
+    }
     tick(b, r);
+}
+
+/// The action that follows the owner once it has started.
+fn follow_action(start: OverlayStart) -> u8 {
+    match start {
+        OverlayStart::AfterNavisIn => 4,
+        // (Action 4 is a random battle's intro.)
+        OverlayStart::AtOnceInFight => 8,
+    }
+}
+
+/// Step the sprite as `stepping` says (`sub_80C464C`'s end).
+fn step(b: &mut Battle, r: ObjectRef, stepping: Stepping) {
+    match stepping {
+        Stepping::Normal => {
+            if !b.is_dimmed() {
+                common::update_sprite(b, r);
+            }
+        }
+        Stepping::WhileDimmed => common::update_sprite_while_dimmed(b, r),
+        Stepping::Always => common::step_sprite(b, r),
+    }
 }
 
 /// `sub_80C458C`: follow the owner, then (once the navis are in) step
@@ -170,6 +211,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
     let v = vars(b, r).clone();
     let Vars { nudged, anim_offset, stepping, holds_while_stunned, .. } = v;
+    let rules = b.game_rules().effects.form_overlay;
     let palette = palette(b, r, &v);
     let (owner_anim, owner_pos, owner_flip) = {
         let o = b.objects.get(owner);
@@ -178,7 +220,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let owner_shown = [0u8, 1].map(|v| b.visible_to(owner, v));
     let anim = owner_anim.wrapping_add(anim_offset);
     b.objects.get_mut(r).anim = anim;
-    if anim != b.objects.get(r).anim_loaded {
+    if rules.reloads_animation && anim != b.objects.get(r).anim_loaded {
         // Restarts every tick until the sprite step below records it.
         b.objects.sprite_mut(r).set_animation(anim, &b.content);
     }
@@ -186,27 +228,36 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     b.set_visible_by_viewer(r, owner_shown);
     let o = b.objects.get_mut(r);
     o.pos = Vec3 { x: owner_pos.x, y: owner_pos.y.wrapping_sub(nudge), z: owner_pos.z.wrapping_sub(nudge) };
-    o.flip = owner_flip;
+    if rules.facing_each_tick {
+        o.flip = owner_flip;
+    }
     let alliance = o.alliance;
     // The owner's color shader, white flash and mosaic, and its facing.
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
-    look.palette = palette;
+    if rules.palette_each_tick {
+        look.palette = palette;
+    }
     look.color_shader = owner_look.color_shader;
     look.white = owner_look.white;
     look.mosaic = owner_look.mosaic;
-    look.set_flip(alliance ^ owner_flip);
+    if rules.facing_each_tick {
+        look.set_flip(alliance ^ owner_flip);
+    }
     let o = b.objects.get_mut(r);
     if o.action == 0 {
         // Wait for every navi to be in.
         if b.round.intro_bits & 0x02 == 0 {
+            if rules.waiting_steps {
+                step(b, r, stepping);
+            }
             return;
         }
         let o = b.objects.get_mut(r);
-        if stepping == Stepping::Normal {
+        if stepping == Stepping::Normal || rules.start == OverlayStart::AtOnceInFight {
             o.flags &= !flags::RUN_WHILE_PAUSED;
         }
-        o.action = 4;
+        o.action = follow_action(rules.start);
         o.phase = 0;
         o.phase_init = 0;
     }
@@ -217,13 +268,5 @@ fn tick(b: &mut Battle, r: ObjectRef) {
             return;
         }
     }
-    match stepping {
-        Stepping::Normal => {
-            if !b.is_dimmed() {
-                common::update_sprite(b, r);
-            }
-        }
-        Stepping::WhileDimmed => common::update_sprite_while_dimmed(b, r),
-        Stepping::Always => common::step_sprite(b, r),
-    }
+    step(b, r, stepping);
 }

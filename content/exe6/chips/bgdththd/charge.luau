@@ -22,7 +22,8 @@ local BUG_DAMAGE, PLAIN_DAMAGE = 0xC8, 0x28
 -- fast ball of 12 panels that paralyzes.
 bgdththd.action = shoot.action {
     id = "bgdththd/charge/action",
-    ball = { fast = true, panels = 0x0C, status = statuses.paralyze_90 },
+    -- (12 panels, the original's DarkThnd's: its sound.)
+    ball = { fast = true, panels = 0x0C, status = statuses.paralyze_90, sound = asset.sound("elec-man") },
 }
 
 -- `sub_8011E78`. (Without a bug frag the parameter bytes are 1, 5, 0x10:
