@@ -1,6 +1,7 @@
 --!strict
 -- GunDelSol's sun beam (EXE6's effect object #0x48, `sub_80E5C2C`; EXE5's the same number and code, 0x080E5BD0, but
--- for the dimming test below): the light shining on the target column (EXE6's CrosOver's Django shines it too).
+-- for the dimming test below; EXE4's GunSol's, 0x080E7134, EXE5's but for its spawn, below): the light shining on the
+-- target column (EXE6's CrosOver's Django shines it too).
 -- Visual only, but it takes an effect slot and a place in the update order. It follows its owner at a fixed
 -- offset and ends itself once the owner's slot is cleared.
 --
@@ -8,6 +9,10 @@
 -- spawner's; its hum is its game's (`beam.make_kind(id, look)`: EXE6's chips/gundels/beam, EXE5's
 -- objects/gundels). EXE5's hides it whenever the battle is dimmed (0x080E5C44): EXE6's third parameter, which shows
 -- it then too (CrosOver's), EXE5's has not, and its spawns never set it.
+--
+-- EXE4's spawn (0x080E7216) gives it only its owner's side (EXE4's objects have no flip byte) and doesn't store it
+-- in the slot it watches, which is its owner's other object's (GunSol's gun's: the beam is the attack's own,
+-- AIAttackVars +0x1C): `watches`.
 
 local slot = require("../slot")
 
@@ -106,21 +111,35 @@ function beam.make_kind(id: string, hum: Sound): Kind
 end
 
 -- `sub_80E5D12`: a beam of `kind` and `look` at `offset` from `owner`, stored in `which`; shown while dimmed too
--- when `while_dimmed`. It starts at the offset itself (its spawner's registers) until its init places it.
-function beam.spawn(kind: Kind, owner: Object, look: Look, offset: Vec3, which: Slot, while_dimmed: boolean?): Object?
+-- when `while_dimmed`. It starts at the offset itself (its spawner's registers) until its init places it. One that
+-- `watches` `which` (EXE4's, 0x080E7216) isn't stored there and takes its owner's side alone.
+function beam.spawn(
+    kind: Kind,
+    owner: Object,
+    look: Look,
+    offset: Vec3,
+    which: Slot,
+    while_dimmed: boolean?,
+    watches: boolean?
+): Object?
     local o = battle.spawn(kind, offset)
     if not o then
         return nil
     end
     o.related1 = owner
-    o.alliance, o.flip = owner.alliance, owner.flip
+    o.alliance = owner.alliance
+    if not watches then
+        o.flip = owner.flip
+    end
     local s = o.state :: State
     s.slot = which
     s.offset = offset
     s.sprite = look.sprite
     s.palette = look.palette
     s.while_dimmed = while_dimmed == true
-    slot.fill(owner, which, o)
+    if not watches then
+        slot.fill(owner, which, o)
+    end
     return o
 end
 
