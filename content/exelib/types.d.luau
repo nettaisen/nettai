@@ -1487,10 +1487,13 @@ export type BeatLook = {
     snatch_sound: Sound,
 }
 
--- A support made for a game (@exelib/supports/beat, tango): sent by the supports' controller, whose `out` flag it sets.
+-- A support made for a game (@exelib/supports/rush, beat, tango): sent by the supports' controller, whose `out` flag
+-- it sets (Rush eating the chip the controller carries); and whether its host warps out while it comes and back in
+-- after (Rush's and Beat's do, Tango's doesn't).
 export type SupportActor = {
     kind: Kind,
-    spawn: (controller: Object) -> Object?,
+    spawn: (controller: Object, eaten: Chip?) -> Object?,
+    warps: boolean,
 }
 
 -- A game's Rush (@exelib/supports/rush): his kind's key and sprite, his appearance's and bite's sounds, the dust he
@@ -1517,17 +1520,11 @@ export type RushLook = {
 -- Where Rush may appear by side: the panel flags required and forbidden.
 export type RushStand = { [number]: { require: number, forbid: number } }
 
--- Rush made for a game (@exelib/supports/rush): sent by the supports' controller, eating `eaten`.
-export type Rush = {
-    kind: Kind,
-    spawn: (controller: Object, eaten: Chip?) -> Object?,
-}
-
 -- A game's supports' controller (@exelib/supports/controller): its kind's key, the supports it sends, and the game's
 -- warp of the host, given the controller (nil: the navi warp, `navi_chip.warp`).
 export type SupportsLook = {
     id: string,
-    rush: Rush,
+    rush: SupportActor,
     beat: SupportActor,
     tango: SupportActor,
     warp: ((controller: Object, out: boolean) -> ())?,
