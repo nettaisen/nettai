@@ -1850,3 +1850,26 @@ export type GeddonChange = { apply: (x: number, y: number) -> boolean, show: (at
 -- What BugFix's glow (@exelib/bugfix/glow) does first, its spawner's (`glow.start`): its first action, which sets
 -- action 4 when it is done.
 export type BugFixGlowStart = { run: (me: Object) -> () }
+
+-- A chip's flames of the hook (@exelib/flmhook/fire's `variant`; the original's Param2 picks EXE6's rows: FlmHook's
+-- 0, BigHook's 1): the swing's high byte (Param2: the game reads Param1 and Param2 as one halfword, so EXE6's big
+-- ones turn hundreds of times further, wrapping); four bytes per facing (right, left), the start angle (high byte)
+-- by swing and then the lifetime by swing; how fast the angle turns; EXE6's afterimages (every few ticks, their
+-- shader, how long they last; none: EXE5's leave none); EXE6's palette (a big one's 1); and whether it runs while
+-- dimmed (EXE6's big ones, EXE5's).
+export type FlameHookVariant = {
+    swing_high: number,
+    arcs: { number },
+    turn: number,
+    trail: { every: number, shader: number, ticks: number }?,
+    palette: number,
+    while_dimmed: boolean,
+}
+
+-- What a chip's hook swings (@exelib/flmhook/hook's `flames`): its flames' columns (the first's, the second's: FlmHook's
+-- ahead of its user, BigHook's fixed), their variant and hit spark.
+export type FlameHookFlames = {
+    columns: (me: Object) -> (number, number),
+    variant: FlameHookVariant,
+    spark: Spark,
+}

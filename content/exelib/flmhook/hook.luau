@@ -7,20 +7,22 @@
 -- instant effect (EXE6's `sub_80EA11C`, instant chip effect 14); the BigHook
 -- Giga chip brings it as its navi, its flames the big ones from fixed
 -- columns, and the controller waits for it. Each game makes its kind
--- (`hook.make`: its id, its flames' columns, its flames, and whether it
--- keeps its user's element). See docs/engine/chips.md §3.6.35.
+-- (`hook.make`: its id, its flames, and whether it keeps its user's
+-- element); each chip states what its hook swings (`hook.flames`). See
+-- docs/engine/chips.md §3.6.35.
 
 local hook = {}
 
--- What a chip's hook swings: big flames (from fixed columns), and their
--- hit spark.
-export type Flames = { big: boolean, spark: Spark }
+-- What a chip's hook swings (`FlameHookFlames`).
+export type Flames = FlameHookFlames
+
+function hook.flames(f: Flames): Flames
+    return new.record("flmhook-flames", f)
+end
 
 -- A game's hook.
 export type Spec = {
     id: string,
-    -- The columns of its flames (the first's, the second's).
-    columns: (me: Object, big: boolean) -> (number, number),
     -- A flame of swing `swing` from (x, y): the game's.
     flame: (owner: Object, x: number, y: number, element: number, damage: number, swing: number, flames: Flames) -> Object?,
     -- EXE6's keeps its user's element (EXE5's spawner leaves it 0).
@@ -28,8 +30,7 @@ export type Spec = {
 }
 
 export type State = {
-    big: boolean,
-    spark: Spark?,
+    flames: Flames,
     -- The controller waiting for BigHook's (EXE6's ExtraVars[1], EXE5's
     -- +0x64).
     controller: Object?,
@@ -54,7 +55,7 @@ function hook.make(spec: Spec): {
     local function flame(me: Object, x: number, row: number, swing: number)
         local s = me.state :: State
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        spec.flame(me, x, row, me.element, damage, swing, { big = s.big, spark = s.spark :: Spark })
+        spec.flame(me, x, row, me.element, damage, swing, s.flames)
     end
 
     -- Wait out the phase, then the next.
@@ -70,7 +71,7 @@ function hook.make(spec: Spec): {
     -- `sub_80EA05C`: the first flame.
     local function first(me: Object)
         if me.phase_init == 0 then
-            local x = spec.columns(me, (me.state :: State).big)
+            local x = (me.state :: State).flames.columns(me)
             flame(me, x, FIRST_ROW, 0)
             me.timer = SWING_TICKS
             me.phase_init = 4
@@ -81,7 +82,7 @@ function hook.make(spec: Spec): {
     -- `sub_80EA0A0`: the second.
     local function second(me: Object)
         if me.phase_init == 0 then
-            local _, x = spec.columns(me, (me.state :: State).big)
+            local _, x = (me.state :: State).flames.columns(me)
             flame(me, x, SECOND_ROW, 1)
             me.timer = SWING_TICKS
             me.phase_init = 4
@@ -119,7 +120,7 @@ function hook.make(spec: Spec): {
     local kind = new.kind {
         id = spec.id,
         pool = "effect",
-        state = { big = "bool", spark = "spark", controller = "object" },
+        state = { flames = "record:flmhook-flames", controller = "object" },
         -- `sub_80EA010`.
         update = function(me: Object)
             local l = me.lifecycle
@@ -142,7 +143,7 @@ function hook.make(spec: Spec): {
     }
 
     -- `sub_80EA11C`: a hook of `user`'s on its panel (its position the
-    -- registers', `pos`); a big one's controller waits for it. (The game also
+    -- registers', `pos`); a summoned one's controller waits for it. (The game also
     -- keeps the panel in the header's two spare bytes, which nothing reads.)
     local function spawn(
         user: Object,
@@ -164,16 +165,14 @@ function hook.make(spec: Spec): {
             o:set_damage_word(damage)
             o.related1 = user
             local s = o.state :: State
-            s.big, s.spark = flames.big, flames.spark
-            if flames.big then
-                s.controller = controller
-            end
+            s.flames = flames
+            s.controller = controller
         end
         return o
     end
 
-    -- FlmHook's instant effect (`off_80EC3F0[14]`): the hook with `flames`.
-    -- (A big one's flag write goes through a ROM pointer here: nothing.)
+    -- FlmHook's instant effect (`off_80EC3F0[14]`): the hook with `flames`,
+    -- no controller waiting for it.
     local function instant(flames: Flames): (user: Object, spec: InstantChipSpec) -> ()
         return function(user: Object, ispec: InstantChipSpec)
             local pos = Vec3.new(ispec.panel_y, ispec.element, ispec.z)
