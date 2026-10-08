@@ -311,3 +311,7 @@
 "gutpnch2/controller" = { pool = "effect", index = 0x64, scratch_position = true }
 "gutpnch3/controller" = { pool = "effect", index = 0x64, scratch_position = true }
 "gutpnch/guts" = { pool = "actor", index = 0x42 }
+# NumbrBl's controller (0x080E9838; its position the spawner's registers), its NumberMan and his balls.
+"numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
+"numbrbl/numberman" = { pool = "actor", index = 0x45 }
+"numbrbl/ball" = { pool = "attack", index = 0x91 }

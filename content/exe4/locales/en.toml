@@ -245,6 +245,9 @@ language = "en"
 "windman" = { name = "WindMan", description = "Whirlwind\nthat spin\nacrss 3sq" }
 "windmn-sp" = { name = "WindMnSP", description = "Whirlwind\nthat spin\nacrss 3sq" }
 "windmn-ds" = { name = "WindMnDS", description = "Whirlwind\nthat spin\nacrss 3sq" }
+"numbrbl1" = { name = "NumbrBl1", description = "3-shot\nball atk\nreduce HP" }
+"numbrbl2" = { name = "NumbrBl2", description = "4-shot\nball atk\nreduce HP" }
+"numbrbl3" = { name = "NumbrBl3", description = "5-shot\nball atk\nreduce HP" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
