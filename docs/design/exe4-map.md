@@ -905,6 +905,14 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   it goes, `reads_no_removal`) and releases no tracking (`untracked`); EXE4's obstacle rows (`actions`); its drain row
   0x31. The variants' table (0x080D82E8) has a second row (animation 1, every tick, 300 HP), no EXE4 chip's. The lab's
   chips/ (4) and status/poison-anubis replay every frame; the hit is pixel-exact.
+- **Guardian** (the dimming chips' variant 0x28, `chips/guardian`): EXE6's code (@exelib/guardian: controller #0x52,
+  0x080E7ED0; statue #0x7D, 0x080DCDA8; its strike's dimming #0x53, 0x080E7F84, naming Punisher, chip 0x175,
+  `chips/punisher`: Curse's sonic boom) in EXE4's look and older ways: sheet 0c-35, 10 HP, no NameID; the arrival's
+  flash (row 0x16), 0xA0 standing; the strike row 0x17 at the navis' panels with lightning (row 0x61) and 0x143; puffs
+  row 0x15; it crumbles without a sound; its end reads no removal and releases no tracking (0x080DD024); any hit flags
+  send it on to strike back, the side picked there (0x080DCF00: none, a puff); striking it keeps its collision on its
+  panel (`keeps_region_striking`); EXE4's obstacle rows. EXE4 has no stage statues (its spawner, 0x080DD082, has no
+  owner-less branch). The lab's chips/ (5, punish among them) replay every frame; punish is pixel-exact.
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
