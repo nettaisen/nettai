@@ -248,6 +248,7 @@ language = "en"
 "numbrbl1" = { name = "NumbrBl1", description = "3-shot\nball atk\nreduce HP" }
 "numbrbl2" = { name = "NumbrBl2", description = "4-shot\nball atk\nreduce HP" }
 "numbrbl3" = { name = "NumbrBl3", description = "5-shot\nball atk\nreduce HP" }
+"blkbomb" = { name = "BlkBomb", description = "Firebomb\nhits 3rd\nsq ahead!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
