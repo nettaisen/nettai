@@ -8,6 +8,12 @@
 "engine/dimming-chip" = 0x0C
 # The buster's shot (0x080EB316).
 "megaman/buster/shot" = 0x08
+# The buster patches' shots (weapon routines 0x34, 0x35, 0x5A, 0x68, 0x69: action 8 with other projectile rows).
+"megaman/crack-buster/shot" = 0x08
+"megaman/poison-buster/shot" = 0x08
+"megaman/blind-buster/shot" = 0x08
+"megaman/grass-buster/shot" = 0x08
+"megaman/ice-buster/shot" = 0x08
 # The vulcans' (the chips' action 0x1F, 0x080EC842).
 "drkvulcn/action" = 0x1F
 "vulcan1/action" = 0x1F
@@ -32,6 +38,7 @@
 "geyser/action" = 0x09
 "blkbomb/action" = 0x09
 "bugbomb/action" = 0x09
+"vdoll/action" = 0x09
 "energbom/action" = 0x09
 "megenbom/action" = 0x09
 "minibomb/action" = 0x09
@@ -72,6 +79,7 @@
 # SonicBom's and SprSonic's (the chips' action 0x37, 0x080ED7E6).
 "sonicbom/action" = 0x37
 "sprsonic/action" = 0x37
+"curse/action" = 0x37
 # Slasher's (the chips' action 0x35, 0x080ED572).
 "slasher/action" = 0x35
 # The TwnFngs' (the chips' action 0x34, 0x080ED4C6).
