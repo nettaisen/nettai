@@ -241,6 +241,18 @@ local rules: Rules = {
                     "cross_three_ahead", "around", "columns_three_to_five", "ring_three_ahead", "all_ahead",
                     "target_at_back_or_edge", "behind_target_up_open",
                 },
+                -- A `sword_swing` chip's swings' reach lists, by the side's sword pick (0x0802A3C8: VarSwrd's six
+                -- from its byte 0, NeoVari's four from byte 6), and an element trap, which a `when_trap_free` chip
+                -- may set over (0x0802A9B4: chips 0x8C to 0x8F).
+                swings = {
+                    {
+                        "ahead_then_column", "two_ahead", "column_two_ahead", "three_in_row", "three_ahead", "one_ahead",
+                        "column_ahead", "two_in_row", "column_three_ahead", "two_columns_ahead", "columns_two_to_four",
+                        "column_ahead_and_two", "columns_two_and_three", "x_one_ahead", "ahead_in_row",
+                        "cross_three_ahead", "around", "columns_three_to_five", "ring_three_ahead", "all_ahead",
+                    },
+                },
+                element_trap = "bool",
             },
         },
         form = {
