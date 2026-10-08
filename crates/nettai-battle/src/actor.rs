@@ -174,6 +174,12 @@ pub struct AttackVars {
     pub charged: u8,
     /// Input lockout to apply when the attack ends.
     pub lockout: u8,
+    /// +0x0F, the attack parameters' fourth byte, which a dimming chip's
+    /// controller takes with them: its telop is hidden from its user too
+    /// (`sub_800BBA8`, `TelopHidden::FromBoth`). Loading a chip clears it
+    /// (no dimming chip's record sets it); EXE4's weapon routine 0x31 sets
+    /// it after loading its Anti chip.
+    pub telop_hidden: bool,
     pub extra: u16,
     pub damage: u16,
     /// Counter/stagger strength for the attack's hitbox.
