@@ -99,7 +99,7 @@ slasher.action = new.action {
                 me:set_animation(5)
                 me:open_counter_window()
                 battle.play_sound(swords.swing)
-                attachment.attach(me, swords.blade, "related", { anim = swords.blade_anim(me) })
+                attachment.attach(me, swords.held_blade(me), "related", { anim = swords.blade_anim(me) })
                 me:set_status("using_action", true)
                 s.timer = 0x15
                 me.step_init = 4
