@@ -87,8 +87,9 @@ return {
     cursor_after_leaving = true,
     -- The frame (the cursor's blink) counts after what the choosing draws (`sub_8026CCC`).
     frame_counts_first = false,
-    -- The description and L's message are the screen's own states (`sub_8026E4C`: only the emblem).
-    description_in_choosing = false,
+    -- The description, L's message and the rules' windows are the screen's own states (the first two `sub_8026E4C`:
+    -- only the emblem).
+    states_in_choosing = false,
     -- The chatbox's end clears the text's buffers only (`chatbox_8045F60`): the text goes with the box's first step.
     chatbox_end_clears_tiles = false,
     -- The interpreter goes on after a character (`chatbox_interpreteAndDrawDialogChar`): its delay counts down on its own tick.

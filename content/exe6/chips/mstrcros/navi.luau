@@ -527,7 +527,7 @@ local function beam(me: Object)
     if me.phase_init == 0 then
         me.anim = 0xF
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        local ray = erase_ray.spawn(me, me.panel_x + me.facing, me.panel_y, me.element, 0, erase_ray.rays.held, damage)
+        local ray = erase_ray.spawn(me, me.panel_x + me.facing, me.panel_y, me.element, 0, { ahead = 0x3C_0000, held = true }, damage)
         if ray then
             ray.run_while_dimmed = true
         end

@@ -23,7 +23,7 @@ pub enum NaviAction {
     /// One of the rules' own states or actions: `"entry"`,
     /// `"take_control"`, `"deletion"`, `"flinch"`, `"paralysis"`, `"drag"`,
     /// `"freeze"`, `"bubble"`, `"idle"`, `"move"`, `"dimming_chip"`,
-    /// `"navi_chip"`, `"instant_chip"`, `"form_change"`.
+    /// `"hand_off_chip"`, `"instant_chip"`, `"form_change"`.
     Engine(&'static str),
 }
 
@@ -881,10 +881,6 @@ named_flags! {
         ShowTelop = "show_telop",
         /// `sub_800BBA8`: a hidden chip's telop (the trap chips).
         ShowHiddenTelop = "show_hidden_telop",
-        /// `sub_800BDB2`: a navi chip's AntiNavi check.
-        CheckAntiNavi = "check_anti_navi",
-        /// `sub_800BA8A`: a navi chip's telop.
-        ShowNaviTelop = "show_navi_telop",
         /// `object_undimScreen`: brighten the screen, then end.
         UndimScreen = "undim_screen",
         /// The Gregar and Falzar chips' controllers' first action, in
@@ -2067,10 +2063,32 @@ pub trait CoreApi {
 
     // ---- Services ------------------------------------------------------------
 
-    /// Run a step of the dimming service for the controller `o`; `chip`
-    /// is the chip the controller shows (AntiNavi's steps read it; none:
-    /// the zeroed chip field's).
-    fn dimming(&mut self, o: ObjectRef, step: DimmingStep, chip: Option<crate::ChipHandle>);
+    /// Run a step of the dimming service for the controller `o`.
+    fn dimming(&mut self, o: ObjectRef, step: DimmingStep);
+    /// A telop for controller `o` whose effect may already run
+    /// (`sub_800BA8A`'s): its first tick starts it, naming `chip` unless the
+    /// controller's names one (none: the zeroed chip field's), once the other
+    /// side isn't mid-dimming (a record already running stays so); once the
+    /// banner is done and no cut-in holds the side, the side's dimming runs:
+    /// true. What follows is the caller's.
+    fn dimming_telop_running(&mut self, o: ObjectRef, chip: Option<crate::ChipHandle>) -> bool;
+    /// The navi that used `side`'s dimming chip (the record's +0xC; none
+    /// once the dimming changed sides).
+    fn dimming_user(&self, side: u8) -> Option<ObjectRef>;
+    /// `side`'s dimming runs its effect from now (the record's state 4).
+    fn dimming_run(&mut self, side: u8);
+    /// A telop for `side` naming `chip` without damage, and its sound.
+    fn dimming_chip_telop(&mut self, side: u8, chip: Option<crate::ChipHandle>);
+    /// The telop's banner is done.
+    fn dimming_telop_done(&self) -> bool;
+    /// The dimming changes sides (`sub_800BE2C`'s): controller `o`'s side's
+    /// dimming is over, and `o` takes the other side, which owns, runs and
+    /// started it (its own controller is told to end).
+    fn dimming_turn(&mut self, o: ObjectRef);
+    /// `sub_800ABC6`: the trap's mark over `o`'s panel (the role
+    /// `effects.trap_mark` facing the local side's way, where the chip-use
+    /// rules' `anti_navi_sparkle` puts it), with its sound: its height.
+    fn trap_mark(&mut self, o: ObjectRef) -> i32;
     /// `sub_800BF16`: `side` starts a dimming with `controller` (None: its
     /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     /// in on it. For controllers that aren't a chip's (a trap springing).
@@ -2108,22 +2126,20 @@ pub trait CoreApi {
     /// from every console's emotion window, which then flickers (and
     /// draws its console's RNG1) for NaviCust bugs only.
     fn clear_emotion_window_glitch(&mut self);
-    /// A navi chip's navi is done: its controller moves on.
-    fn navi_chip_left(&mut self, controller: ObjectRef);
-    /// The last navi chip used, of either side (`byte_203C960`, EXE5's
-    /// 0x0203C430): the chip, and the element and the damage word, bonus
-    /// included, its navi came with; none since the battle started.
-    fn last_navi_chip(&self) -> Option<(ChipHandle, u8, u32)>;
+    /// What controller `controller` brought is done: its kind's
+    /// `navi_left`.
+    fn navi_left(&mut self, controller: ObjectRef);
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
     /// navi warp, actor 0x2D).
     fn navi_warp(&mut self, user: ObjectRef, out: bool);
-    /// A navi chip's use springs the other side's armed AntiRecv (EXE4's
-    /// Roll chips' spawner, 0x080E5554): the trap's mark over `user`
+    /// A chip's use springs the other side's armed AntiRecv (EXE6's
+    /// `loc_80E1968`, EXE4's 0x080E5554): the trap's mark over `user`
     /// (`sub_800ABC6`), the other side's defensive-chip record spent
     /// (`sub_802CEA6`), and AntiRecv's counterattack (the role
     /// `kinds.anti_recovery`, `sub_80E37D2`) against `user` with the damage
-    /// word `damage`: the counterattack, none when the pool is full.
-    fn navi_spring_anti_recovery(&mut self, user: ObjectRef, damage: u32) -> Option<ObjectRef>;
+    /// word `damage`; `names_trap`: its telop names the record's chip. The
+    /// counterattack, none when the pool is full.
+    fn spring_anti_recovery(&mut self, user: ObjectRef, damage: u32, names_trap: bool) -> Option<ObjectRef>;
 
     // ---- Obstacles (the obstacle framework) -------------------------------
 

@@ -26,7 +26,81 @@
 "widesht/wave" = { pool = "attack", index = 0x3B }
 "boomer/boomerang" = { pool = "attack", index = 0x32 }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
-"engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
+# The navi chips' controllers (each chip's own; the original's one effect object #0x10 for them all), written by
+# bn6battle-verify's tools/content/navi_chip_kinds.py from the chips' ids: run it, rather than editing the section.
+# begin: the navi chips' controllers (tools/content/navi_chip_kinds.py writes these)
+"bass/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"bassanly/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"bighook/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"bignoise/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"blizman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"blizman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"blizman-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"chaoslrd/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"cloudman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"cloudmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"cloudmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"colonel/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"colonel-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"colonel-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"cosmoman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"cosmomn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"cosmomn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"crossdiv/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"csmopris/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"deltaray/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"django/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"django-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"django-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"football/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gridman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gridman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gridman-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gyroman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gyroman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"gyroman-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"knightmn/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"knigtmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"knigtmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"larkman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"larkman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"larkman-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"leadraid/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"magnetmn/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"magntmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"magntmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"meddy/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"meddy-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"meddy-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"napalmmn/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"naplmmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"naplmmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"numbrman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"numbrmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"numbrmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"protoman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"protomn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"protomn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"roll/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"roll-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"roll-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"serchman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"serchmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"serchmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"shademan/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"shademn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"shademn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"shadoman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"shadomn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"shadomn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tmhwkman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tmhwkmn-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"tmhwkmn-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"toadman/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"toadman-sp/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"toadman-ds/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+"wildbird/controller" = { pool = "effect", index = 0x10, scratch_position = true }
+# end: the navi chips' controllers
 "engine/full-synchro-aura" = { pool = "actor", index = 0x5E }
 "projectile" = { pool = "attack", index = 0x00 }
 "bomb" = { pool = "attack", index = 0x08 }
@@ -233,7 +307,7 @@
 "cactbal/ball" = { pool = "attack", index = 0x5E }
 "elcreel/reel" = { pool = "attack", index = 0xA4 }
 "rflectr/shield" = { pool = "attack", index = 0x2B }
-"shock-wave" = { pool = "attack", index = 0x16 }
+"guard/wave" = { pool = "attack", index = 0x16 }
 "crsshld/cross" = { pool = "attack", index = 0xA8 }
 "wavepit/wave" = { pool = "attack", index = 0xA5 }
 "woodnos/wave" = { pool = "attack", index = 0xA6 }

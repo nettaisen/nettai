@@ -6,8 +6,15 @@ local recipe_attck_10 = require("./attck-10")["attck-10"]
 local recipe_cannon = require("./cannon").cannon
 local recipe_hicannon = require("./cannon").hicannon
 local recipe_m_cannon = require("./cannon")["m-cannon"]
+local attachment = require("../objects/attachment")
 local shooter = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
+
+-- Their cannons (the arm's rows 0 to 2 of 0x080EC2AC: the attachment table's, 0c-01 in palettes 0, 1 and 2, the
+-- Cannons'), at the navi's attach point 7.
+local GIGACAN1_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 0, attach_point = 7 }
+local GIGACAN2_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 1, attach_point = 7 }
+local GIGACAN3_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 2, attach_point = 7 }
 
 -- GigaCan1 (EXE5 chip 0x140): the Program Advance of three Cannons of one code (or Attck+10 and two of them): EXE6's
 -- cannon (@exelib/cannon, action 0x14 with subtype 4: the arm's row 0 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
@@ -33,7 +40,7 @@ local gigacan1: Chip = {
         { order = 36, code_run = { chip = recipe_cannon, count = 3 } },
     },
     action = shooter.action {
-        arm = shooter.arms.cannon,
+        arm = GIGACAN1_ARM,
         shot = variants.gigacan,
         afterimages = true,
     },
@@ -64,7 +71,7 @@ local gigacan2: Chip = {
         { order = 37, code_run = { chip = recipe_hicannon, count = 3 } },
     },
     action = shooter.action {
-        arm = shooter.arms.hicannon,
+        arm = GIGACAN2_ARM,
         shot = variants.gigacan,
         afterimages = true,
     },
@@ -95,7 +102,7 @@ local gigacan3: Chip = {
         { order = 38, code_run = { chip = recipe_m_cannon, count = 3 } },
     },
     action = shooter.action {
-        arm = shooter.arms.m_cannon,
+        arm = GIGACAN3_ARM,
         shot = variants.gigacan,
         afterimages = true,
     },

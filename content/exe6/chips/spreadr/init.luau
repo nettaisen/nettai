@@ -4,6 +4,7 @@
 -- the same action with its water cannon: navis/megaman/forms/
 -- spoutcross/charge.)
 
+local attachment = require("../objects/attachment")
 local bullet = require("../objects/bullet")
 local effects = require("../lib/effects")
 local spreader = require("@self/action")
@@ -13,10 +14,12 @@ local regions = require("@exelib/regions")
 -- 16 pixels up (`dword_80ECC5C`'s rows 0, 1 and 3).
 local HIGH = 0x10_0000
 -- The bullet (its row 3): a flash over the 3x3 around the panel found.
+-- Their gun, at the navi's attach point 11.
+local GUN = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 }
 local BULLET = bullet.variant { region = regions.square, hit_mod = 0, effect = effects.flash, sound = asset.sound("h-burst") }
 
 local function spreadr(id: string): Action
-    return spreader.action { id = id, gun = spreader.guns.spreader, z = HIGH, bullet = BULLET }
+    return spreader.action { id = id, gun = GUN, z = HIGH, bullet = BULLET }
 end
 
 local spreadr1: Chip = {

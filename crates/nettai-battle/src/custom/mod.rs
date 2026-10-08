@@ -186,6 +186,9 @@ pub trait Extras {
     fn opened(&mut self, screen: &mut Screen);
     /// `custom.confirmed(side)`: OK built the hand.
     fn confirmed(&mut self, screen: &mut Screen, folder: &mut BattleFolder);
+    /// A picked button's `hand_chip(side)` at OK: the chip it puts in the
+    /// hand in its place, if any (EXE4's soul).
+    fn button_hand_chip(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<ChipHandle>;
     /// `custom.chip_picked(side, chip)` and `custom.chip_taken_back(side,
     /// chip)`: a chip of the hand picked, or its pick taken back.
     fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle);
@@ -232,6 +235,10 @@ impl Extras for NoExtras {
     fn opened(&mut self, _: &mut Screen) {}
 
     fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
+
+    fn button_hand_chip(&mut self, _: &Screen, _: crate::content::ButtonHandle) -> Option<ChipHandle> {
+        None
+    }
 
     fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
 
@@ -382,8 +389,14 @@ impl Side {
             .selection()
             .iter()
             .filter_map(|&slot| {
-                let chip = screen.chip_in(slot, folder)?;
-                let regular = matches!(screen.slots[slot as usize].kind, SlotKind::Chip { regular: true, .. });
+                let kind = screen.slots[slot as usize].kind;
+                // (A picked button that puts a chip in the hand, in code A:
+                // EXE4's soul, its chip 0x160 + the soul, 0x0801F0A0.)
+                let chip = match kind {
+                    SlotKind::Button { button, .. } => FolderChip::new(extras.button_hand_chip(screen, button)?, crate::content::ChipCode(0)),
+                    _ => screen.chip_in(slot, folder)?,
+                };
+                let regular = matches!(kind, SlotKind::Chip { regular: true, .. });
                 Some(Pick { chip: screen::checked(chip, &view), regular, marks: screen.slots[slot as usize].marks })
             })
             .collect();
@@ -585,14 +598,18 @@ impl Battle {
         }
     }
 
-    /// `sub_8027D78`: the gauge starts over (and runs, unless it is the
-    /// 15th screen or later).
+    /// `sub_8027D78` (EXE4's 0x0801E1B4): the gauge starts over and runs,
+    /// unless it is the 15th screen or later, where the routine returns
+    /// before its `sub_801DF92` (0x080159B0): the gauge keeps its value and
+    /// its full flag (EXE4's, which empties it here, keeps it full through
+    /// the last turns; EXE6's and EXE5's emptied it as the screen opened).
     pub(crate) fn restart_gauge(&mut self) {
+        if self.late_turns() {
+            return;
+        }
         self.gauge.value = 0;
         self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
-        if !self.late_turns() {
-            self.gauge.enabled = true;
-        }
+        self.gauge.enabled = true;
     }
 }
 
@@ -735,6 +752,16 @@ impl Extras for SideExtras<'_> {
     fn confirmed(&mut self, screen: &mut Screen, folder: &mut BattleFolder) {
         let side = self.side;
         self.with_screen(screen, Some(folder), |b| b.rules_call_custom(side, nettai_content_api::RulesHook::CustomConfirmed));
+    }
+
+    fn button_hand_chip(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<ChipHandle> {
+        self.b.content.defs.button(button).hand_chip?;
+        let mut screen = *screen;
+        let side = self.side;
+        match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonHandChip)) {
+            nettai_content_api::Value::Def(nettai_content_api::Registry::Chip, id) => Some(ChipHandle(id)),
+            _ => None,
+        }
     }
 
     fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle) {

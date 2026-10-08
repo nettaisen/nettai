@@ -12,18 +12,9 @@ local boomerang = {}
 -- A boomerang variant.
 boomerang.variant = common.variant
 
--- TomahawkCross Beast's tomahawk (the original's row 4).
-boomerang.tomahawk = new.record("boomerang-variant", {
-    speed = 0x8_0000,
-    turn_speed = 314573,
-    grass = false,
-    tomahawk = true,
-} :: BoomerangVariant)
-
 boomerang.kind = common.make_kind {
     id = "boomer/boomerang",
     sprite = asset.sprite("boomerang"),
-    tomahawk_sprite = asset.sprite("boomerang-tomahawk"),
     sound = asset.sound("boomerang"),
     is = collision.attack,
     hits = collision.hits_navis,

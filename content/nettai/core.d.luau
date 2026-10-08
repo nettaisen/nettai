@@ -791,7 +791,7 @@ declare extern type Object with
     function set_attack(self, action: Action, kind: number): ()
     -- What the navi runs: an action definition, or one of the rules' own
     -- ("entry", "take_control", "deletion", "flinch", "paralysis", "drag",
-    -- "freeze", "bubble", "idle", "move", "dimming_chip", "navi_chip",
+    -- "freeze", "bubble", "idle", "move", "dimming_chip", "hand_off_chip",
     -- "instant_chip", "form_change", "cross_special").
     function navi_action(self): Action | string
     -- `loc_80126EA`: `chip` as the navi's attack (its record's damage, hit
@@ -1106,15 +1106,6 @@ export type DimmingChipSpec = {
     bonus: number,
 }
 
--- What a navi chip's navi is spawned with.
-export type NaviChipSpec = {
-    panel_x: number,
-    panel_y: number,
-    element: number,
-    -- The damage word, bonus included.
-    damage: number,
-}
-
 -- What an instant chip's effect runs with (`sub_80EC39C`'s registers).
 export type InstantChipSpec = {
     -- The user's panel and Z (16.16).
@@ -1132,7 +1123,7 @@ declare battle: {
     -- dimmed stand still.
     dimmed: () -> boolean,
     -- Battle flag 4 alone, with none of a dimming's machinery (EXE5's chaos
-    -- failure).
+    -- failure, EXE4's soul change).
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
@@ -1282,6 +1273,11 @@ declare battle: {
     linked: (side: number) -> LinkedChip,
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
+    -- `sub_800ABC6`: the trap's mark over `o`'s panel (the role
+    -- `effects.trap_mark`, facing the local side's way, where the chip-use
+    -- rules' `anti_navi_sparkle` puts it from the panel's center), with its
+    -- sound (the role `sounds.cut_in`): its height.
+    trap_mark: (o: Object) -> number,
     -- `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed (the stats
     -- processing, the panel trail's level, the buster's blanks, the on-hit
     -- status, the custom damage, the emotion, the drains, the battle-start
@@ -1478,11 +1474,29 @@ declare dimming: {
     show_telop: (controller: Object) -> (),
     -- `sub_800BBA8`: a hidden chip's telop.
     show_hidden_telop: (controller: Object) -> (),
-    -- A navi chip's: `sub_800BDB2` (AntiNavi) and `sub_800BA8A` (its
-    -- telop), for the chip the controller shows (nil: a zeroed chip
-    -- field's, the roles' `zeroed` chip).
-    check_anti_navi: (controller: Object, chip: Chip?) -> (),
-    show_navi_telop: (controller: Object, chip: Chip?) -> (),
+    -- A telop for a controller whose effect may already run
+    -- (`sub_800BA8A`'s): its first tick starts it, naming `chip` unless the
+    -- controller's telop names one (nil: a zeroed chip field's, the roles'
+    -- `zeroed` chip), once the other side isn't mid-dimming (a record
+    -- already running stays so); once the banner is done and no cut-in
+    -- holds the side, the side's dimming runs: true. What follows (the next
+    -- action, or another) is the caller's.
+    telop_running: (controller: Object, chip: Chip?) -> boolean,
+    -- The navi that used `side`'s dimming chip (the record's +0xC; nil once
+    -- the dimming changed sides).
+    user: (side: number) -> Object?,
+    -- `side`'s dimming runs its effect from now (the record's state 4).
+    run: (side: number) -> (),
+    -- A telop for `side` naming `chip` (nil: the zeroed chip's) without
+    -- damage, and its sound; a used chip's name makes way.
+    chip_telop: (side: number, chip: Chip?) -> (),
+    -- The telop's banner is done.
+    telop_done: () -> boolean,
+    -- The dimming changes sides (`sub_800BE2C`'s): `controller`'s side's
+    -- dimming is over (its user stays recorded), and `controller` takes the
+    -- other side, which now owns, runs and started the dimming (its own
+    -- controller, if any, is told to end).
+    turn: (controller: Object) -> (),
     -- `object_undimScreen`.
     undim_screen: (controller: Object) -> (),
     -- The Gregar and Falzar chips' controllers' first action in place of
@@ -1514,29 +1528,21 @@ declare dimming: {
     show_actor: (o: Object) -> (),
 }
 
--- The last navi chip used (`navi_chip.last`): the chip (whose `navi` hook
--- brings its navi), and the element and the damage word, bonus included,
--- its navi came with.
-export type LastNaviChip = { chip: Chip, element: number, damage: number }
-
 declare navi_chip: {
-    -- The navi is done: its controller moves on (an object of a content
-    -- kind that brought the navi itself: its kind's `navi_left`).
+    -- What a controller brought is done: the controller's kind's
+    -- `navi_left`.
     navi_left: (controller: Object) -> (),
-    -- The last navi chip used, of either side, this battle (`byte_203C960`,
-    -- EXE5's 0x0203C430: the navi chip controller keeps the chips of the navi
-    -- chips' block, as their navis come), or nil. EXE5's DethPhnx brings its
-    -- navi again.
-    last: () -> LastNaviChip?,
-    -- `sub_80E1332`: the user warps out (`out`) or back in.
+    -- `sub_80E1332`: the user warps out (`out`) or back in (the navi warp,
+    -- the engine's actor #0x2D).
     warp: (user: Object, out: boolean) -> (),
-    -- A navi chip's use springs the other side's armed AntiRecv (EXE4's Roll
-    -- chips' spawner, 0x080E5554): the trap's mark over `user`, the other
-    -- side's defensive-chip record spent, and AntiRecv's counterattack (the
-    -- role `kinds.anti_recovery`) against `user` with the damage word
-    -- `damage`, its telop the record's chip: the counterattack (nil: the pool
-    -- is full). The caller starts its dimming.
-    spring_anti_recovery: (user: Object, damage: number) -> Object?,
+    -- A chip's use springs the other side's armed AntiRecv (EXE6's
+    -- `loc_80E1968`, Roll's chips; EXE4's 0x080E5554): the trap's mark over
+    -- `user`, the other side's defensive-chip record spent, and AntiRecv's
+    -- counterattack (the role `kinds.anti_recovery`) against `user` with the
+    -- damage word `damage`; `names_trap`: its telop names the record's chip
+    -- (AntiRecv; else none, the caller's telop then). The counterattack (nil:
+    -- the pool is full); its dimming is the caller's to register.
+    spring_anti_recovery: (user: Object, damage: number, names_trap: boolean?) -> Object?,
 }
 
 -- What a stage places a field object with (the original's spawner for
@@ -1550,9 +1556,6 @@ export type PlaceSpec = {
     -- Which of the kind's variants the stage names (a record of the
     -- kind's: one of chips/rockcube/rock's `variants`).
     variant: any?,
-    -- The entry's raw argument (0 unless the stage gives one), for a
-    -- spawner that only leaves it in a register.
-    argument: number,
     -- The HP the entry gives it, if it states one.
     hp: number?,
 }
@@ -1844,6 +1847,10 @@ export type ButtonSpec = {
     -- As the screen lays it out: the chip it shows, if any (EXE5's capsules:
     -- the chip window shows the chip for it, and R describes it).
     chip: ((side: number) -> Chip?)?,
+    -- At OK while it is picked: the chip it puts in the hand in its place, in
+    -- code A, if any (EXE4's soul button: the soul's chip, which changes the
+    -- navi as the turn starts).
+    hand_chip: ((side: number) -> Chip?)?,
 }
 -- A custom-screen window of the rules (§4.4): its update, each tick it is up
 -- (`custom.window_tick` counts them from 1): whether it stays up.
@@ -2197,15 +2204,11 @@ export type ChipSpec = {
     -- chain leaves it out), "aura_bonus" (it hits harder while the user's
     -- barrier holds), "no_cut_in" (the other side can't cut in on its
     -- dimming), "element_sword" (a link navi's own chip's family bonus
-    -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
-    -- `navi` flag), "not_navi_slot" (AntiNavi lets it through and it isn't
-    -- kept as the last navi chip, though it has the `navi` flag: past the
-    -- navi chips' block), "heals" (AntiRecv springs on it), "user_stays" (a
-    -- navi chip whose user isn't warped off the field), "navi_returns_user"
-    -- (a navi chip whose navi brings the user back itself), "goes_with_any"
-    -- (it goes with any selection on the custom screen, and leaves the
-    -- selection's rules alone: EXE6's BeastOut chip), "hides_damage_as_a"
-    -- (the custom screen shows its damage as "???" on a copy of code A).
+    -- counts it), "goes_with_any" (it goes with any selection on the custom
+    -- screen, and leaves the selection's rules alone: EXE6's BeastOut chip),
+    -- "hides_damage_as_a" (the custom screen shows its damage as "???" on a
+    -- copy of code A), "no_icon_when_next" (next in the hand it shows no icon
+    -- over its user: EXE4's souls' chips).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
@@ -2216,7 +2219,11 @@ export type ChipSpec = {
     -- Its use: exactly one of these.
     action: Action?,
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
-    navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
+    -- A chip handed off to its controller (the user goes back to idle at
+    -- once): the controller's spawner, as a cut-in chip's `dimming`, or a
+    -- table with it as its `hook` (and whatever else the content keeps of
+    -- the chip's controller: EXE6's and EXE5's navi chips', @exelib/navi_chips).
+    navi: (((user: Object, spec: DimmingChipSpec) -> Object?) | { hook: (user: Object, spec: DimmingChipSpec) -> Object? })?,
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
     -- What the chip itself does to the attack as a navi's use of it is
     -- prepared (the attack's variables are loaded: the navi's `charged`,
@@ -2539,14 +2546,13 @@ export type FormDef = {
 }
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's
--- variants, its side, its HP or a raw argument where the kind takes one.
+-- variants, its side or its HP where the kind takes one.
 export type StageActor = {
     place: "navi" | Kind,
     side: number?,
     x: number,
     y: number,
     variant: any?,
-    argument: number?,
     hp: number?,
 }
 -- A stage (§3.7): its panels, three rows of six panel types (`"normal

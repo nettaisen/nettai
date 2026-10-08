@@ -495,10 +495,6 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Per side: its dimming (`byte_203CF00`).
     pub dimming: [crate::dimming::DimmingRecord; 2],
-    /// The last navi chip used, of either side (`byte_203C960`, EXE5's
-    /// 0x0203C430; cleared as the battle starts, `sub_800B75A`): EXE5's
-    /// DethPhnx brings its navi again; nothing in EXE6 reads it.
-    pub last_navi_chip: Option<crate::kinds::navi_chip::LastNaviChip>,
     /// Per side: the player's rules, its rules and its systems' state
     /// (docs/design/rules-in-luau.md).
     pub rules: [crate::rules::SideRules; 2],
@@ -789,7 +785,6 @@ impl Battle {
             navi_hit_counts: [[0; 4]; 2],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),
-            last_navi_chip: None,
             rules,
             sound: [Vec::new(), Vec::new()],
             outcome: None,
@@ -1301,7 +1296,7 @@ impl Battle {
             if let Place::Kind(kind) = entry.place {
                 let hook = content.defs.kind(kind).place.expect("a stage places kinds with a `place` (checked at load)");
                 let panel = PanelPos { x: entry.x, y: entry.y };
-                let spec = PlaceSpec { panel, side: entry.side, variant: entry.variant, argument: entry.argument, hp: entry.hp };
+                let spec = PlaceSpec { panel, side: entry.side, variant: entry.variant, hp: entry.hp };
                 crate::behavior::call_hook(self, hook, HookCall::Place { spec });
                 continue;
             }
@@ -1663,6 +1658,11 @@ impl Battle {
         // (No sequencer, EXE4's: the turn starts, and its banner on the same
         // tick, 0x08007064.)
         if !self.game_rules().flow.sequencer_at_turn_start {
+            // (The turn's requests are the navis' to read all the same: a
+            // form change the rules ask for as the fight runs targets its
+            // side's, EXE4's soul given at OK, whose chip OK put first in
+            // the hand: 0x0800B924's chip less 0x160.)
+            self.turn_transforms = self.transform_requests;
             for side in 0..2u8 {
                 if self.player(side).is_some() {
                     self.notify_side(side, RulesHook::TurnStarted);

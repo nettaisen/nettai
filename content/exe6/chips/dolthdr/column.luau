@@ -10,8 +10,6 @@
 -- related object) and leaves it when it goes.
 
 local collision = require("../../rules/collision")
-local regions = require("@exelib/regions")
-local sparks = require("../../lib/sparks")
 
 local thunder_column = {}
 
@@ -40,30 +38,11 @@ export type Owner = { columns: { Object? } }
 -- The height it stands at (its spawner's Z register).
 local HEIGHT = 0x10_0000
 
+-- A column's variant (a row of `byte_80D6914`, its user's: DolThdr's plain
+-- hit, EraseCross's pull).
 function thunder_column.variant(v: Variant): Variant
     return new.record("thunder-column-variant", v)
 end
-
--- `byte_80D6914`'s rows: a plain hit (0, DolThdr's) and a pull (1,
--- EraseCross's).
-thunder_column.plain = thunder_column.variant {
-    collision = { is = collision.attack, hits = collision.hits_navis },
-    spark = sparks.elec,
-    region = regions.single,
-    hit_mod = 3,
-    status = nil,
-    bug = 0,
-    bug_arg = 0,
-}
-thunder_column.pull = thunder_column.variant {
-    collision = { is = collision.piercing, hits = collision.hits_navis },
-    spark = sparks.plain,
-    region = regions.single,
-    hit_mod = 3,
-    status = nil,
-    bug = 0,
-    bug_arg = 0,
-}
 
 -- Its place in its owner's list: `me` there, or empty.
 local function register(me: Object, o: Object?)

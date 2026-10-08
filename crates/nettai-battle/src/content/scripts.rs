@@ -452,7 +452,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         fades_clear_at_ok = true,
         cursor_after_leaving = false,
         frame_counts_first = true,
-        description_in_choosing = true,
+        states_in_choosing = true,
         chatbox_end_clears_tiles = true,
         chatbox_character_ends_tick = true,"#,
             ),
@@ -550,7 +550,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         trap_counter = "at_once",
         dead_player = "kept",
         attack_end_lockout = "by_kind",
-        request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 } },"#,
+        request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 } },
+        status_end = { flags = { "paralyzed", "blind", "immobilized", "confused" }, requests = 0x8068, timers = { "paralyze", 0x2, "blind", "immobilize" } },"#,
             ),
             (
                 "status",
@@ -644,6 +645,10 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
         assert_eq!((f.stats, f.mode9_a), (Default::default(), None), "none stated: none of the game's own, no weapon");
         assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType(2)), None), "its own numbers, no others");
+        // A status end's flags and timers by name or number (EXE4's: four
+        // of each).
+        let end = r.status_end;
+        assert_eq!((end.flags.0, end.requests, end.timers.0), (0xE800, 0x8068, 0b1111));
         // What it may leave out reads as nothing, for every game.
         assert!(r.holding_banners.is_empty());
         assert!(r.sine.is_empty() && r.buster_recovery.is_empty());

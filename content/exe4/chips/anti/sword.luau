@@ -19,7 +19,7 @@ sword.action = common.action_with {
     id = "antiswrd/counter",
     blade = swords.blade,
     boom = sonic_boom.kind,
-    start_sound = asset.sound("anti-sword"),
+    start_sound = asset.sound("soul-change"),
     swing_sound = swords.swing,
     hold = function(me: Object, blade: AttachmentLook)
         attachment.attach(me, blade, "related", NAVI_NUMBER)

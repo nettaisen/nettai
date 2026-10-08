@@ -5,6 +5,7 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local csmopris = require("@self/csmopris")
+local navi_chips = require("../lib/navi_chips/chip")
 local recipe_astroid3 = require("./astroid").astroid3
 local recipe_cosmomn_ds = require("./cosmoman")["cosmomn-ds"]
 local recipe_cosmomn_sp = require("./cosmoman")["cosmomn-sp"]
@@ -28,7 +29,10 @@ local chip: Chip = {
         { order = 26, sequence = { recipe_astroid3, recipe_astroid3, recipe_cosmomn_sp } },
         { order = 27, sequence = { recipe_astroid3, recipe_astroid3, recipe_cosmomn_ds } },
     },
-    navi = csmopris.summon,
+    navi = navi_chips.make {
+        id = "csmopris/controller",
+        summon = csmopris.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 

@@ -17,7 +17,8 @@ local chip: Chip = {
     lockout = 20,
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 3,
-    instant = wavepit.instant(wavepit.pits.mudwave),
+    -- Its pit (row 2 of 0x080DAFA0): a hole (no standable flag 0x10), which stays; the wave in palette 2.
+    instant = wavepit.instant { require = 0, forbid = 0x10, mends = false, palette = 2 },
     auto_battle = { class = "when_any_hole" },
 }
 

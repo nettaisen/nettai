@@ -9,6 +9,7 @@
 local cannon_chips = require("./cannon")
 local cube = require("./rockcube/cube")
 local poltergeist = require("./poltrgst/poltergeist")
+local rock = require("../objects/rock")
 local supports = require("../lib/supports/dimming")
 
 -- YelCapsl (EXE5 chip 0x17c): the chip it is mixed into confuses (the hand's modifier 0x04). Its record's use is
@@ -59,7 +60,7 @@ local whicapsl: Chip = {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
-    dimming = cube.ice,
+    dimming = cube.places { variant = rock.variants.ice },
 }
 
 -- PrpCapsl (EXE5 chip 0x17f): the chip it is mixed into gives the HP bug (the hand's modifier 0x20). Its record's use

@@ -147,7 +147,8 @@ export type VulcanSpec = {
 -- (EXE6's and EXE5's 0xA and 0xD; EXE4's 13 and 17).
 export type VulcanLook = {
     sound: Sound,
-    arm: AttachmentLook,
+    -- The gun a chip that names none holds (none: every chip names its own, EXE4's).
+    arm: AttachmentLook?,
     hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
     slot: Slot,
     bullet_kind: Kind,
@@ -155,8 +156,9 @@ export type VulcanLook = {
     fire_anim: number,
 }
 
--- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
--- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
+-- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at its
+-- level (the chip's `level`, capped at 3: Static's the navi's kinds of NaviCust bug, DarkTorn's its side's statistic 3;
+-- `panels` by level, { dx, dy } from the panel two ahead, dx toward the navi's front; `tornadoes`, by level, over
 -- `tornado`: tornadoes that differ by level, EXE5's Static's); and the fan it holds, with an addition to its palette.
 export type TornadoBlow = {
     -- The action's key when no chip definition holds it.
@@ -167,7 +169,7 @@ export type TornadoBlow = {
     tornado_kind: Kind?,
     single: TornadoSpec?,
     spread: {
-        by: "bug_kinds" | "side_stat",
+        level: (me: Object) -> number,
         panels: { [number]: { { number } } },
         tornado: TornadoSpec,
         tornadoes: { [number]: TornadoSpec }?,
@@ -195,12 +197,11 @@ export type MeteorMarkerLook = {
     shrink: number,
 }
 
--- A game's boomerang (@exelib/boomer/boomerang): its kind's key, its sprites (the tomahawk's too) and sound, what it
--- is (where a variant doesn't say) and hits, and its spark (where a variant doesn't say).
+-- A game's boomerang (@exelib/boomer/boomerang): its kind's key, its sprite and sound, what it is (where a variant
+-- doesn't say) and hits, and its spark (where a variant doesn't say).
 export type BoomerangLook = {
     id: string,
     sprite: SpriteAsset,
-    tomahawk_sprite: SpriteAsset,
     sound: Sound,
     is: CollisionType,
     hits: CollisionType,
@@ -208,15 +209,17 @@ export type BoomerangLook = {
 }
 
 -- A boomerang's variant: 16.16 pixels a tick along a row and along the
--- column, whether it turns the other side's panels it crosses to grass,
--- and whether it is the tomahawk (its own sprite and shadow, and its
--- second animation off row 1); its sprite, collision type and spark where
--- a game's kind's aren't its (EXE5's Boomer).
+-- column, whether it turns the other side's panels it crosses to grass;
+-- its sprite, collision type and spark where a game's kind's aren't its
+-- (EXE5's Boomer, EXE6's TomahawkCross Beast's tomahawk); its shadow (none:
+-- on the ground; the tomahawk's its sprite's own part) and its animation
+-- off row 1 (none: 0; the tomahawk's 1).
 export type BoomerangVariant = {
     speed: number,
     turn_speed: number,
     grass: boolean,
-    tomahawk: boolean?,
+    shadow: Shadow?,
+    off_row_1_anim: number?,
     sprite: SpriteAsset?,
     is: CollisionType?,
     spark: Spark?,
@@ -1616,6 +1619,29 @@ export type LockonDef = {
     prefers_middle_row: boolean?,
 }
 export type Lockon = LockonDef
+
+-- What a navi chip's navi is spawned with (@exelib/navi_chips/chip: the registers `sub_80E1880` passes to
+-- `off_802CD5C[subtype]`): the controller's panel and element, and the damage word with the bonus.
+export type NaviChipSpec = {
+    panel_x: number,
+    panel_y: number,
+    element: number,
+    damage: number,
+}
+
+-- An EXE6 or EXE5 navi chip's navi (@exelib/navi_chips/chip): for `user`, reporting to `controller`, as `spec` says.
+export type NaviChipSummon = (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+
+-- What an EXE6 or EXE5 navi chip's `navi` is (@exelib/navi_chips/chip): its controller's spawner (`hook`), its
+-- navi's summon and its course, which EXE5's DethPhnx reads, and the rest of its spec.
+export type NaviChip = {
+    kind: Kind,
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+    summon: NaviChipSummon,
+    course: { NaviChipStep },
+    navi_block: boolean?,
+    heals: boolean?,
+}
 
 -- The navi chip controllers a dimming spawner makes (@exelib/navi_chips/controller): a step of a course by phase (a
 -- wait, the user warping as it starts; or the navi, waited on), EXE4's short course (the waits after the warp out and

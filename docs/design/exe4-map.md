@@ -336,9 +336,10 @@ from the ROM and its code, read routine by routine):
   (`cursor_after_leaving`, 0x0801E412). The choosing tick draws the last turns' block and counts its frame before
   its keys (`frame_counts_first`, 0x0801E3DA, 0x0801E3DE): the cursor blinks a frame further on than EXE6's, and the
   Regular chip's frame tests the counted frame for 1 (0x0801EF12), the same tick as EXE6's test for 0. R's
-  description and L's message are states of the choosing (`description_in_choosing`: the selection's 0x18 and 0x1C):
-  their ticks draw the last turns' block and count the frame, and the tick one sees its chatbox closed goes back to
-  the state it came from and draws its cursor (0x08020A0A, 0x0801E412).
+  description, L's message and the rules' windows are states of the choosing (`states_in_choosing`: the selection's
+  0x18, 0x1C and 0x10): their ticks draw the last turns' block and count the frame, a window's sprites after its step
+  (the soul's choice's icon from the tick it loads, 0x08020DE2), and the tick one goes back draws the state it goes
+  back to, its cursor (0x08020A0A, 0x0802095E, 0x0801E412).
 - **L's message**: MegaMan's (the archive 0x08749294's entry 3, its words in both locales), EXE6's script shape, its
   portrait `megaman-portrait` (F4 00 40: the mugshot table 0x08028038's 0x40); a character ends the tick's printing
   (`chatbox_character_ends_tick`, 0x0804E1B2: a character every third tick, where EXE6's interpreter goes on and
@@ -349,8 +350,27 @@ from the ROM and its code, read routine by routine):
   0x81; the hide, the description's close, L's message and the pause play none (optional roles).
 
 Checked against the chip lab's custom/ recordings (every one whose chips the content has matches every frame and
-every sound call; with exe4-compat's harness comparing the gauge as the recording console holds it). Not yet: the
-Double Soul button and its window (the selection's states 0xC and 0x10).
+every sound call; with exe4-compat's harness comparing the gauge as the recording console holds it).
+
+**Double Soul's part** (group A, rules/souls/custom; §6 and item 73):
+
+- **The UNITE button** in slot 11 under OK (the selection's state 0xC, its keys 0x08020728), the screen's +0x0C: on the
+  screen as it opens (0x0801E0B4) with Double Soul (event flag 0x14: the setup's `double_soul`) unless the navi is
+  worried or worn out (emotions 1 and 5), else its place shows the window (the look's `hidden`) and OK's DOWN goes
+  nowhere. Its look (0x0801FF14): lit while the last pick offers a soul, gray while it doesn't and once one is given.
+- **The offer** (0x0801FF84, the screen's +0x0D, after each pick and take-back): asked only before a soul is given and
+  while the navi's soul turns count (AIData +0x18 not 0xFF); the last pick, not the Regular chip, of a family a soul
+  of MegaMan's is for (0x08020008: the soul's form's `soul.family`), a soul the save has (its version's flag,
+  0x08020018: the setup's `souls`) and not given this round (0x0203BF88, which the battle's start zeroes).
+- **A on it** (0x0801F8BC): with a soul on offer OK's sound (0x80) and the soul's choice; else refused (0x69). **The
+  soul's choice** (the selection's state 0x10, 0x08020814, the window `double_soul`, EXE5's soul window's steps): the
+  soul's chip's icon (chip 0x160 + the soul, 0x0802084E) flies up over the picks (16 ticks, then 8 up 2 pixels a
+  tick), the flash (fades 0x34 and 0x30 with sound 0x79), the whitening (fade 4), then white the soul takes the given
+  chip's place first in the picks, the button is picked, the screen clears (fade 0, sound 0x97); each step after the
+  flash waits for its fade. Taking the soul back (B with it last) puts the chip back (0x0801F8FC).
+- **OK** (0x0801F034): the given chip leaves the folder (an offered dark chip counts sent: rules/dark_chips), the soul's
+  chip goes first in the hand (the button's `hand_chip`: the form's `chip`, code A), the soul is given this round
+  (0x0801F1FE) and is the turn's form (`custom.set_form`).
 
 **The dark chips** (group A; rules/dark_chips, the chips' own modules):
 
@@ -385,8 +405,33 @@ and drkrecov match through the chip's use and the next turn and stop at the scre
 
 EXE5's and EXE6's turn-start transformation sequencer (`sub_801483C`, `sub_80148CC`, `sub_8014944`, `sub_8014A00`,
 the transform records' copy `sub_80147E4`) and the transform record's writer (`sub_8015952`) have no counterpart in
-EXE4 in either map. So Double Soul's change is EXE4's own path: the engine's turn-start sequencer (the rules'
-transformations) can carry it, but its order of events is to read from EXE4's code, not to assume from EXE5's.
+EXE4 in either map. So Double Soul's change is EXE4's own path.
+
+**As ported** (group A, rules/souls; item 73). A soul is a form of MegaMan's, his lists by version (`redsun`, `bluemoon`:
+the setup's `version` and its `souls`, the engine's form list); each soul's folder holds its form and its chip
+(navis/megaman/forms/<soul>/chip: chips 0x161 to 0x16C), whose use is the soul's own change (rules/souls/change's
+maker; compat names them all action 0x0D, their images all effect 0x13).
+
+- **The ask** (0x0800B658, each tick of the intake but a dimmed one: the rules' `navi_intake`): held (flag 0x10000)
+  nothing; a chip of the special family (15) next in the hand asks for the change (the engine's form change request;
+  its soul, 0x0800B924's chip less 0x160, is the turn's form, which OK gave); in a soul whose turns are over the revert
+  (+0x44's 0x40).
+- **The change** (action 0x0D, 0x080EBA44), as the fight runs: the status routine starts it (0x08013B14) the first
+  unpaused tick after the turn's banner, and runs it whatever else while it holds the navi (0x08013AFC: the engine's
+  unpaused form change, a game whose flow has no `sequencer_at_turn_start`). It dims the battle itself; its steps
+  are in rules/souls/change: the flash and sound 0x129, the fade 0x44 and the HUD hidden, the image (./image, 60
+  ticks, its second flash and sound 0x158 at 10), MegaMan in the soul (sprite 00-01 + the soul, the form; the chip
+  icons over him stay by his navi, 0x0800B9C0), the fade 0x40 and the HUD back, the status reset (the soul's turns:
+  its form's `soul.turns`, 3 every one; the emotion window counts down the turns left, 0x08016A20), 20 ticks, the
+  lockout 2 its start set (0x08013B1C) handed on, the hand on past the soul's chip.
+- **The turns** (AIData +0x18, ./turns): each custom screen asked for counts one (0x0800BA20); at 3 the intake asks
+  for the revert, which his idle starts (0x080EEBB4: the engine's idle, the form's `revert`): **the revert** (action
+  0x11, 0x080EBE90), one tick: sound 0x159, the flash, his base form, the status reset.
+- **The statuses' end** the change runs (0x08013218) clears EXE4's four statuses (the reactions' `status_end`), not the
+  flag 0x10000 that holds him.
+
+What each soul does besides (its status routine 0x0800E0A0, its charged shot, B+Left, the image's parts, WindSoul's
+change object, FireSoul's and NumberSoul's overlays) is item 74.
 
 ## 7. Emotions
 
@@ -786,8 +831,9 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   - 20 and 21 **the emotion window** (0x0801585C, 0x0801588C): drawn (§14 above).
   - 9 **the damage judge's numbers** (0x080152C4, its state at 0x02037BD0, started with banner 0x28 by 0x080163C8):
     "VS" at column 14 of row 5, the numbers ending at column 12 and from column 17, EXE6's places. They show from
-    the holding banner's hold (0x08014AA8) until the banner is gone (0x08014ABE: the pack's `layout.judge_from_hold`).
-    The HUD knows the judge's banner by its role. Unverified: no recording reaches a judge (§18 item 130).
+    the holding banner's hold (0x08014AA8) until the judge lets the banner go (0x080163B6: the banner slides out and
+    the numbers' state 8, 0x0801544C, clears them; the pack's `layout.judge_from_hold`). The HUD knows the judge's
+    banner by its role. The lab's timer/win, loss and draw (both consoles) compare every frame of it.
   - Not in a netbattle: 7 and 19, the turn timer's seconds over "CUSTOM" (0x08016362 from the fight's timer
     0x08008066, and its blinking from 0x080169DA, for battle kind 0x44); 11 and 18 the enemies' names; 14 the icons over viruses (the list 0x0203BE40, 0x080167C0, from the virus
     code); 16, 17 and 22, the gauge in three colors, its sprite and the column marker of controller 2 (0x08016842
@@ -822,7 +868,7 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
   text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
   zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
-  on the tick the screen sees the box closed (`description_in_choosing`).
+  on the tick the screen sees the box closed (`states_in_choosing`).
 - **content/exe4** is a game pack with these compat tables and no rules yet: the app lists EXE4, which doesn't
   load until its rules come (the sections every game's rules have: link_pick, flow, panels, reactions, pools, effects,
   status, chip_use, fresh_stats).
@@ -1235,16 +1281,22 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
 
 ### 18.3 Flow, stages and the link
 
-16. **No time limit, no double KO** (the lab's first batch): nothing ends a netbattle's stand-off, and when both navis
-    are deleted on the same tick side 1's shot resolves first and side 1 survives. The engine's link battle has the
-    judge's ruling (round result 7) and a draw. Shape: flow rules `time_limit: false` and the KO order as data.
-    Placeholder: the engine's. Read since (group A): a netbattle has a time limit from its 15th turn, as EXE6's. The
-    fight's timer runs only in a battle of type 0x46 and on whose BattleState +8 (the custom screens so far) is 15 or
-    more (0x08007E4E); it counts the fighting machine's +0x0A down, and under 60 sets BattleState +0x0B (0x08008066),
-    which the round's result reads as the time-out, 7 (0x080079D6), the fighting machine's state 0x14: TIME UP for 60
-    ticks (0x08007378), then the judge (0x0800739E, 0x08021F94: the numbers rolled on RNG2, its banner 0x28 and the
-    HUD's element 0x200 with both damages, 0x080163C8 and 0x080152EA). The lab's flow/no-time-limit stands three
-    minutes in its first turn, which this doesn't reach. The judge's banner is the judge's layout in the pack.
+16. **The time limit: done; no double KO: open** (the lab's first batch: when both navis are deleted on the same tick
+    side 1's shot resolves first and side 1 survives; shape: the KO order as data). **Done: the turn timer and the
+    judge** (the lab's timer/win, loss and draw, each on a Red Sun and a Blue Moon console: single battles, battle type
+    0x47, played to the 15th custom screen; every frame replays and every frame compares). EXE4's is EXE6's machine: the
+    fight's timer runs (0x08007E4E) where event flag 0x1187 is clear (the main subsystem's, not a netbattle's), the
+    battle type (BattleState +0x0F) is 0x46 or more and BattleState +8, the custom screens so far, is 15 or more; the
+    fight's start (0x08007064) sets the fighting machine's +0x0A to 659 with banner 0x10 ("FINAL TURN"); it counts down
+    (0x08008066) and under 60 sets BattleState +0x0B, the round's result 7 (0x080079D6), the fighting machine's state
+    0x14: TIME UP for 60 ticks (0x08007378), then the judge (0x0800739E: 0x08021F54 and 0x08021F94, EXE6's
+    `sub_802CB38` and `sub_802CB78`, the same code; its banner 0x28 with the HUD's task 9). What was EXE4's own: from the
+    15th screen the screen's send (0x0801E1B4, EXE6's `sub_8027D78`) returns before emptying the gauge (0x080159B0), so
+    EXE4's gauge, which empties there, stays full through the last turns (`restart_gauge` now returns in the last
+    turns, as both games' routines do); the judge's numbers show only while its banner holds (its release, 0x080163B6,
+    slides the banner out and clears them); "FINAL TURN" is drawn in palette 14 (0x0801EE9C's map; the custom layout's
+    `turn_limit_palette`). The traces' setup gives a single battle no set (exe4-compat: battle type 0x48 to 0x4A is a
+    triple battle's, 0x08007464).
 17. **The fight-live test.** The fight runs while the fighting machine's first byte is 4 and BattleState +3 is 4; for
     one tick as the custom screen closes the machine still reads 4. Pause sets fight[0] to 0x18. To compare with the
     engine's fight states in step 5.
@@ -1567,6 +1619,32 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
     1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way. A
     harness question (raised with the coordinator), not the engine's.
+73. **Done: Double Soul** (group A; §5's Double Soul part, §6): the UNITE button, its offer and the soul's choice,
+    OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's version,
+    souls and Double Soul (exe4-compat from a recording's version and a save's event flags; the app's version preset).
+    Checked: the lab's souls/roll, guts and proto (unison, side1, turns) match every state through the change, and
+    stop at the souls' charged shots (item 74); souls/refused's refusal. Frame comparisons (souls/roll, guts and proto
+    unison, souls/refused): the UNITE button, the soul's choice and every custom screen frame exact but the late OK's
+    known shift; the change exact, its HUD too (the chip name through it, the soul chip's icon left out, the emotion
+    window's soul face and its turns), to the charged shots. The revert is checked by state only once the charged
+    shots let turns recordings run to it (item 74).
+74. **The souls' abilities** (with item 25's weapons and item 48's buttons): each soul's status routine (0x0800E0A0 by
+    soul, from the status reset), its charged shot and B+Left, its chip charges (0x0800BC78), the image's parts
+    (0x080E36AC: WindMan's 0x34, FireMan's 0x12, NumberMan's 0x14, AquaMan's 0x13), WindSoul's change object (0x5A,
+    0x080D8C94), FireSoul's and NumberSoul's overlays (0x08018068), NumberSoul's hand of ten (0x0801DC92). The lab's
+    souls/<soul>/hit and side1 recordings, and fire, aqua, wind's unison (their changes' first differences).
+75. **DS chips' code and damage on the custom screen** (F's frame comparisons, chips/0x0df-rollds and the other DS
+    chips, frames 269 to 283): the engine draws the chip window's code and damage dimmed (#d6ce29, #b5b5b5,
+    #d6d6d6 where mGBA has #fff729, #ded6d6, #ffffff), Roll and RollSP's not. Not the dark flag (the DS chips have
+    none) nor the frame palette (EXE4's pack has one). B saw ElemDark's screen duck the music as the dark chip hover
+    does (chips/0x0d5-elemdark, frame 290): likely the same cause. To find.
+76. **A telop leaves the other player's used-chip name** (B's, item 90; chips/0x08e-antielec/sprung: mGBA shows
+    "Thunder 140" until frame 615 beside the AntiElec telop, ours drops it at 604). EXE4's telop takes the banner block
+    (0x08016454) and leaves the second block alone; EXE6's clears the name at every telop's start
+    (`sub_801BED6(0x10000)`, the engine's `start_telop`). A rule, EXE6's and EXE5's as now. Queued.
+77. **The chips' own looks out of the shared libraries** (the brief's no-lookup-tables rule): lib/cannon's `arms`,
+    lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants`: a maker each, every chip
+    stating its own. Queued.
 90. **Done: the Anti chips' springs** (group B, chips/anti). AntiNavi springs as EXE5's (0x08008F80, EXE5's
     `sub_800BDD0` but for its test: EXE4 springs on any chip whose step reaches it, the navi chips', with no block of
     chip numbers): the roles `effects.trap_mark` and `sounds.cut_in` (the sparkle 0x0800815C: effect row 0x48, sound
@@ -1602,10 +1680,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     - a dimming chip's telop: the user's on the banner block (0x08016454), the other player's on the second block in
       state 0 (0x08008C40), both sliding and squashing as banners do. The renderer draws them from Hud.layout.telop;
       the engine's telop for EXE4 comes with the first dimming chip;
-    - the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A, counted by 0x08008066; its
-      seconds over "CUSTOM" (0x08016362, draw 7); the gauge not drawn. The engine's timer length is EXE6's until §18
-      item 16 reads EXE4's. With it, the damage judge: its numbers' values (0x0801642C, 0x08016408) and a recording
-      to compare;
+    - **Done** (§18 item 16): the turn timer from the 15th turn of a link battle (0x08007E4E): the fight's +0x0A,
+      counted by 0x08008066, its seconds over "CUSTOM" (0x08016362, draw 7), the gauge not drawn; the damage judge's
+      numbers (0x0801642C, 0x08016408) while its banner holds. The lab's timer/ recordings compare every frame;
     - the warning marker (0x0800843E: a 16x16 sprite at tile 0x360, its second frame at bit 3 of the frame counter, in
       palette 13; 0x08008424 also sounds 0x79 every 16 frames), with the chips that show it: the gauge chips'
       effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.

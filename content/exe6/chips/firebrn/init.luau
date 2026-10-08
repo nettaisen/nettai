@@ -3,13 +3,15 @@
 -- panel ahead, burning 30 ticks and spreading two panels forward, cracking
 -- the panels it leaves. The three differ only in their damage.
 
+local attachment = require("../objects/attachment")
 local burn = require("../lib/burner/burn")
 local lockon = require("../rules/lockon")
 
 local function fire_burn(id: string): Action
     return burn.action {
         id = id,
-        burner = burn.burners.fire,
+        -- The burner (the original's attachment row 0x16).
+        burner = attachment.look { sprite = asset.sprite("burner"), palette = 0, attach_point = 0x14 },
         flame = { ticks = 30, spread = 2, cracks = true },
     }
 end

@@ -158,7 +158,7 @@ export type Spec = {
     short: NaviChipShortCourse?,
 }
 
--- A navi's controller kind and the `dimming` hook of its chips.
+-- A chip's controller kind and its `dimming` hook.
 function navi_chips.controller(spec: Spec): NaviChipController
     return common.make {
         id = spec.id,
@@ -166,7 +166,10 @@ function navi_chips.controller(spec: Spec): NaviChipController
         spawn = spec.spawn,
         steps = spec.steps,
         short = spec.short,
-        warp = navi_chips.warp,
+        -- The user's side's navi warps (0x080E2D26).
+        warp = function(c: Object, out: boolean)
+            navi_chips.warp(c.alliance, out)
+        end,
     }
 end
 

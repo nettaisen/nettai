@@ -60,6 +60,13 @@ return {
         flinch = { "anti_sword_triggered", "mode9_a" },
         drag = { "anti_sword_triggered", "mode9_a" },
     },
+    -- What a navi's statuses' end clears (`sub_801A264`): the six statuses' flags (0x8001E800), the requests 0x300E8
+    -- and the six timers.
+    status_end = {
+        flags = { "paralyzed", "blind", "immobilized", "confused", "frozen", "bubbled" },
+        requests = 0x300E8,
+        timers = { "paralyze", "confuse", "blind", "immobilize", "freeze", "bubble" },
+    },
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },

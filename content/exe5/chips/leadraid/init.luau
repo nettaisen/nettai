@@ -6,6 +6,7 @@
 -- its name, description and picture palette are the save's (exe5-map.md §6.4), the palette here from Tango's netplay
 -- saves, as a gift chip's in EXE6.
 
+local navi_chips = require("../lib/navi_chips/chip")
 local protoman = require("@self/protoman")
 
 local chip: Chip = {
@@ -21,7 +22,10 @@ local chip: Chip = {
     flags = { "dimming", "has_damage" },
     slot_in_limit = 1,
     art_palette = { 0x0000, 0x67DE, 0x5AF8, 0x35CF, 0x2507, 0x5E05, 0x4120, 0x28A5, 0x32DF, 0x25DA, 0x14DC, 0x0031, 0x352A, 0x14A5, 0x3F4D, 0x2E66 },
-    navi = protoman.summon,
+    navi = navi_chips.make {
+        id = "leadraid/controller",
+        summon = protoman.summon,
+    },
     auto_battle = { class = "at_once" },
 }
 

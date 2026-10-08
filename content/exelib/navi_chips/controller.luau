@@ -1,9 +1,9 @@
 --!strict
--- The navi chip controllers a game's dimming spawner makes (EXE4's navi chips: the dimming chips' action 0x0C, its
--- navi variants, each navi's effect object, 0x080E2B54 and its copies; EXE5's Phoenix and DethPhnx, its effect objects
--- #0x0D and #0x15): a navi chip's controller (EXE6's `sub_80E17E8`, the engine's) that its game runs as a dimming
--- chip's, with its own effect. Its actions: the dim, AntiNavi's check, the chip's name as a navi chip's
--- (`sub_800BA8A`), the effect, the undim. The effect is the game's course:
+-- The navi chip controllers (EXE6's and EXE5's navi chips, action 0x1B and 0x41: their one effect object #0x10,
+-- `sub_80E17E8`; EXE4's navi chips, the dimming chips' action 0x0C, its navi variants: each navi's effect object,
+-- 0x080E2B54 and its copies; EXE5's Phoenix and DethPhnx, its effect objects #0x0D and #0x15): a navi chip's
+-- controller, run as a dimming chip's, with its own effect. Its actions: the dim; AntiNavi's check (`sub_800BDB2`);
+-- the chip's name (`sub_800BA8A`); the effect; the undim. The effect is the game's course:
 --
 -- - by phase (0, 4, 8, 0xC, ...), steps: a wait (counted from the step's first tick until it falls below 0: one tick
 --   more than it says), the user warping out or back in as it starts; or the navi, which the step waits on. Then the
@@ -13,6 +13,12 @@
 -- - EXE4's short course (TopMan's 0x080E2B9C and its copies), counted in the phase's init byte: the user warps out;
 --   a wait; the navi, which it waits on, then a second wait from the navi's leaving; then the undim, the user warping
 --   back in as it starts.
+--
+-- AntiNavi (the other side's defensive chip, a trap) turns a chip of the navi chips' block around: a sparkle on the
+-- controller's panel, 31 ticks, AntiNavi's telop, and the chip changes sides, its navi coming for AntiNavi's user
+-- (docs/engine/dimming-chips.md §2). The block is the original's chips 0xDD to 0x118, which the content tells by the
+-- chip's `navi` flag, or the spec's `navi_block` where it differs. A game may keep the chips of the block as their
+-- navis come (EXE5's last navi chip used, `keep`).
 --
 -- Each chip makes its own controller, with its own navi (`spawn`: what differs between a navi's chips, its palette and
 -- the like, is the chip's), and its `dimming` hook is that controller's `hook`; the navi tells the controller it is
@@ -40,8 +46,14 @@ export type Spec = {
     -- The effect's course: steps by phase, or EXE4's short one.
     steps: { Step }?,
     short: Short?,
-    -- How a side's navi warps out (`out`) or back in (EXE4's 0x080E2D26): where a course warps.
-    warp: ((side: number, out: boolean) -> ())?,
+    -- How the controller's user warps out (`out`) or back in (EXE4's 0x080E2D26 by its side; EXE6's and EXE5's actor
+    -- #0x2D for the user, `sub_80E1332`): where a course warps.
+    warp: ((controller: Object, out: boolean) -> ())?,
+    -- Whether the chip is in the navi chips' block (AntiNavi turns it back; a game keeps it): nil, by its `navi` flag.
+    navi_block: boolean?,
+    -- What the game keeps of a chip of the block as its navi comes (`sub_80E1880`: EXE5's last navi chip used): the
+    -- chip, the element and the damage word, bonus included, the navi came with.
+    keep: ((chip: Chip?, element: number, damage: number) -> ())?,
 }
 
 -- What `make` hands back (`NaviChipController`): the kind and the chip's `dimming` hook.
@@ -55,11 +67,103 @@ function controller.done(me: Object)
     (me.state :: State).busy = false
 end
 
+-- How long the sparkle shows before AntiNavi's telop, in ticks after the first (`sub_800BE0C`).
+local ANTI_NAVI_WAIT = 0x1E
+
+-- The other side's defensive chip is AntiNavi.
+local function anti_navi_waits(side: number): boolean
+    local trap = battle.linked(bit32.bxor(side, 1)).chip
+    return trap ~= nil and trap.trap == "anti_navi"
+end
+
 -- Count the timer down: true once it fell below 0.
 local function ran_out(me: Object): boolean
     local left = me.timer - 1
     me.timer = int.u16(left)
     return left < 0
+end
+
+-- The chip is in the navi chips' block (AntiNavi turns it back; a game keeps it): `navi_block`, else its `navi` flag.
+function controller.in_block(chip: Chip?, navi_block: boolean?): boolean
+    if navi_block ~= nil then
+        return navi_block
+    end
+    return chip ~= nil and table.find(chip.flags or {}, "navi") ~= nil
+end
+
+-- `sub_800BDB2` (`off_800BDC4` by phase), a navi chip controller's action after the dim: on to the next action (the
+-- name), unless the other side's AntiNavi turns a chip of the block (`in_block`) around: the side's dimming runs its
+-- effect from now; the trap's mark over the controller's panel; 31 ticks after the first (`sub_800BE0C`); AntiNavi's
+-- telop as its user's side sees it, without damage; then the chip changes sides (the side's dimming is over, the
+-- controller takes the other side, which owns, runs and started the dimming, with AntiNavi's user as the chip's user,
+-- on its panel), AntiNavi is spent, and the name follows, the other side's (`sub_800BE2C`).
+function controller.anti_navi(me: Object, in_block: boolean)
+    local side = me.alliance
+    local p = me.phase
+    if p == 0 then
+        -- sub_800BDD0
+        if not (in_block and anti_navi_waits(side)) then
+            me:set_action(me.action + 4)
+            return
+        end
+        dimming.run(side)
+        battle.trap_mark(me)
+        me.phase, me.phase_init = 4, 0
+    elseif p == 4 then
+        if me.phase_init == 0 then
+            me.timer = ANTI_NAVI_WAIT
+            me.phase_init = 4
+            return
+        end
+        if ran_out(me) then
+            me.phase, me.phase_init = 8, 0
+        end
+    elseif p == 8 then
+        if me.phase_init == 0 then
+            -- (AntiNavi: the chip its user's record holds.)
+            local other = bit32.bxor(side, 1)
+            dimming.chip_telop(other, battle.linked(other).chip)
+            me.phase_init = 4
+            return
+        end
+        if not dimming.telop_done() then
+            return
+        end
+        dimming.turn(me)
+        local taker = me.alliance
+        -- sub_802CE78: AntiNavi's record's user.
+        local owner = battle.linked(taker).owner
+        if owner then
+            me.panel_x, me.panel_y = owner.panel_x, owner.panel_y
+            me.related1 = owner
+        end
+        -- sub_802CEA6
+        battle.clear_linked(taker)
+        me:set_action(me.action + 4)
+    else
+        error(string.format("a navi chip controller's phase %#x reads past sub_800BDB2's table (off_800BDC4)", p))
+    end
+end
+
+-- `sub_800BA8A`, the action after AntiNavi's: the chip's name; once the side's dimming runs, the next action (the
+-- effect), unless the user was deleted (then the one after, the undim: after AntiNavi turned the chip around the
+-- record has no user, and the game reads its HP through the null pointer, from the BIOS, whose open-bus value is never
+-- 0), or the other side's AntiNavi turns a chip of the block around again (back to `sub_800BDB2`).
+function controller.name(me: Object, chip: Chip?, in_block: boolean)
+    if not dimming.telop_running(me, chip) then
+        return
+    end
+    local user = dimming.user(me.alliance)
+    if user and user.hp == 0 then
+        -- (dword_200F3B8[side] = 1: never read.)
+        me:set_action(me.action + 8)
+        return
+    end
+    if in_block and anti_navi_waits(me.alliance) then
+        me:set_action(me.action - 4)
+        return
+    end
+    me:set_action(me.action + 4)
 end
 
 function controller.make(spec: Spec): Controller
@@ -68,14 +172,18 @@ function controller.make(spec: Spec): Controller
         if not w then
             error(string.format("%s's controller warps its user, but its game names no warp", spec.name))
         end
-        w(me.alliance, out)
+        w(me, out)
     end
 
-    -- The navi, with the damage plus the bonus.
+    -- The navi, with the damage plus the bonus; a chip of the block kept, if the game keeps it.
     local function bring(me: Object)
         local s = me.state :: State
-        if spec.spawn(me, me.related1 :: Object, dimming_chips.damage_plus(me, s.bonus)) then
+        local damage = dimming_chips.damage_plus(me, s.bonus)
+        if spec.spawn(me, me.related1 :: Object, damage) then
             s.busy = true
+        end
+        if spec.keep and controller.in_block(s.chip, spec.navi_block) then
+            spec.keep(s.chip, me.element, damage)
         end
     end
 
@@ -164,9 +272,9 @@ function controller.make(spec: Spec): Controller
                 if a == DIM then
                     dimming.dim_screen(me)
                 elseif a == ANTI_NAVI then
-                    dimming.check_anti_navi(me, chip)
+                    controller.anti_navi(me, controller.in_block(chip, spec.navi_block))
                 elseif a == NAME then
-                    dimming.show_navi_telop(me, chip)
+                    controller.name(me, chip, controller.in_block(chip, spec.navi_block))
                 elseif a == EFFECT then
                     effect(me)
                 elseif a == UNDIM then
