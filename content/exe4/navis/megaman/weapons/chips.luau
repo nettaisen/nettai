@@ -12,19 +12,23 @@ local ball = require("../../../chips/ball").ball
 local breath_chips = require("../../../chips/breath")
 local bubbler = require("../../../chips/bubbler").bubbler
 local cannon = require("../../../chips/cannon").cannon
+local copydmg = require("../../../chips/copydmg").copydmg
 local crakout_chips = require("../../../chips/crakout")
 local energbom_chips = require("../../../chips/energbom")
 local fullcust = require("../../../chips/fullcust").fullcust
 local guard_chips = require("../../../chips/guard")
 local heatshot = require("../../../chips/heatshot").heatshot
+local hole = require("../../../chips/hole").hole
 local lance = require("../../../chips/lance").lance
 local minibomb = require("../../../chips/minibomb").minibomb
+local pnlretrn = require("../../../chips/pnlretrn").pnlretrn
 local recov_chips = require("../../../chips/recov")
 local repair = require("../../../chips/repair").repair
 local spreader = require("../../../chips/spreader").spreader
 local sword_chips = require("../../../chips/sword")
 local thunder_chips = require("../../../chips/thunder")
 local widesht_chips = require("../../../chips/widesht")
+local windrack = require("../../../chips/windrack").windrack
 
 local chips = {}
 
@@ -41,8 +45,8 @@ local function fires(id: string, chip: Chip, ticks: { number }): Weapon
 end
 
 -- Rows 0x29 to 0x62 of the charge table: 60 ticks at every Charge, but the Thunders' and WideShts' 120, 150 and 180,
--- FullCust's 90, and the Charge 5 of Bubbler, EnergBom, FullCust, ElecShok and Guard1 (rows 0x2D's, 0x46's, 0x4C's, 0x61's and 0x63's
--- first entries).
+-- FullCust's 90, and the Charge 5 of Bubbler, CopyDmg, Hole, EnergBom, FullCust, ElecShok and Guard1 (rows 0x2D's,
+-- 0x38's, 0x43's, 0x46's, 0x4C's, 0x61's and 0x63's first entries).
 local SIXTY: { number } = { 60, 60, 60, 60, 60, 60 }
 
 chips.cannon = fires("megaman/cannon", cannon, SIXTY) -- 0x29
@@ -53,12 +57,14 @@ chips.thunder1 = fires("megaman/thunder1", thunder_chips.thunder1, { 120, 120, 1
 chips.sword = fires("megaman/sword", sword_chips.sword, SIXTY) -- 0x2E
 chips.spreader = fires("megaman/spreader", spreader, SIXTY) -- 0x2F
 chips.crakout = fires("megaman/crakout", crakout_chips.crakout, SIXTY) -- 0x36
+chips.copydmg = fires("megaman/copydmg", copydmg, { 60, 60, 60, 60, 60, 120 }) -- 0x37
 chips.widesht1 = fires("megaman/widesht1", widesht_chips.widesht1, { 120, 120, 120, 120, 120, 60 }) -- 0x38
 chips.thunder2 = fires("megaman/thunder2", thunder_chips.thunder2, { 150, 150, 150, 150, 150, 60 }) -- 0x3A
 chips.dublcrak = fires("megaman/dublcrak", crakout_chips.dublcrak, SIXTY) -- 0x3C
 chips.wideswrd = fires("megaman/wideswrd", sword_chips.wideswrd, SIXTY) -- 0x3E
 chips.recov10 = fires("megaman/recov10", recov_chips.recov10, SIXTY) -- 0x40
 chips.lance = fires("megaman/lance", lance, SIXTY) -- 0x41
+chips.hole = fires("megaman/hole", hole, { 60, 60, 60, 60, 60, 150 }) -- 0x42
 chips.widesht2 = fires("megaman/widesht2", widesht_chips.widesht2, { 150, 150, 150, 150, 150, 60 }) -- 0x43
 chips.energbom = fires("megaman/energbom", energbom_chips.energbom, { 60, 60, 60, 60, 60, 180 }) -- 0x45
 chips.thunder3 = fires("megaman/thunder3", thunder_chips.thunder3, { 180, 180, 180, 180, 180, 60 }) -- 0x46
@@ -66,10 +72,12 @@ chips.tripcrak = fires("megaman/tripcrak", crakout_chips.tripcrak, SIXTY) -- 0x4
 chips.longswrd = fires("megaman/longswrd", sword_chips.longswrd, SIXTY) -- 0x49
 chips.fullcust = fires("megaman/fullcust", fullcust, { 90, 90, 90, 90, 90, 180 }) -- 0x4B
 chips.widesht3 = fires("megaman/widesht3", widesht_chips.widesht3, { 180, 180, 180, 180, 180, 60 }) -- 0x4C
+chips.windrack = fires("megaman/windrack", windrack, SIXTY) -- 0x4E
 chips.megenbom = fires("megaman/megenbom", energbom_chips.megenbom, SIXTY) -- 0x4F
 chips.ball = fires("megaman/ball", ball, SIXTY) -- 0x50
 chips.wideblde = fires("megaman/wideblde", sword_chips.wideblde, SIXTY) -- 0x52
 chips.longblde = fires("megaman/longblde", sword_chips.longblde, SIXTY) -- 0x53
+chips.pnlretrn = fires("megaman/pnlretrn", pnlretrn, SIXTY) -- 0x55
 chips.blizzard = fires("megaman/blizzard", breath_chips.blizzard, SIXTY) -- 0x5B
 chips.heatbrth = fires("megaman/heatbrth", breath_chips.heatbrth, SIXTY) -- 0x5C
 chips.woodpwdr = fires("megaman/woodpwdr", breath_chips.woodpwdr, SIXTY) -- 0x5D
