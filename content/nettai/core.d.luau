@@ -451,6 +451,10 @@ declare extern type Object with
     -- The Atk+ / cross bonus.
     extra: number
     special_source: number
+    -- The attack parameters' fourth byte (+0x0F): the telop of the dimming
+    -- chip it uses hidden from its user too (`sub_800BBA8`). Loading a chip
+    -- clears it.
+    telop_hidden: boolean
     -- Which set_attack kind started it (read-only).
     attack_kind: number
     -- 1 while the action runs inside the side's wrapper (the role

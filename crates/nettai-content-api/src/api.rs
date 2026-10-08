@@ -257,6 +257,9 @@ named_fields! {
         AttackLockout = "attack_lockout", U8, rw;
         /// The Atk+ / cross bonus.
         Extra = "extra", U16, rw;
+        /// The attack parameters' fourth byte (+0x0F): a dimming chip's
+        /// telop hidden from its user too.
+        TelopHidden = "telop_hidden", Bool, rw;
         SpecialSource = "special_source", U8, rw;
         /// Which `set_attack` kind started the action (0..5).
         AttackKind = "attack_kind", U8, ro;
