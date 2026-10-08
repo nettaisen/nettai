@@ -2328,7 +2328,7 @@ export type NaviDef = {
     charged_chips: { family: ChipFamily, damaging: boolean, when: ((side: number) -> boolean)?, plain: boolean? }?,
     -- What a chip it charged gains (damage 0xFF: its damage again), where
     -- its form states no `charged_bonus`: a form's comes first.
-    charged_bonus: { damage: number?, paralyzes: boolean? }?,
+    charged_bonus: { damage: number?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles (`sub_8012AFA`).
     charge_doubles: ChipMatch?,
     -- Its A charge builds up the next Fire chip's damage, up to a limit: a
@@ -2511,8 +2511,8 @@ export type FormDef = {
     -- `element_sword` trait too; `plain`: only those that are neither
     -- dimming nor dark chips (EXE5's souls).
     charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
-    -- What a charged chip gains in it.
-    charged_bonus: { damage: number?, paralyzes: boolean? }?,
+    -- What a charged chip gains in it (`doubles`: the damage word's doubling).
+    charged_bonus: { damage: number?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
     -- the base HP.
     charge_doubles: ChipMatch?,
