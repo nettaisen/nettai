@@ -276,6 +276,41 @@ fn direct_links_say_what_went_wrong() {
     assert_eq!(e.kind, ErrorKind::CantConnect, "{e}");
 }
 
+/// What a player's program says last, as it leaves, is still taken: one
+/// side sends a few datagrams and drops its link at once, and the other,
+/// which sees the connection close in the same moment, takes them before it
+/// says it is down. (A player who leaves a lobby or a match says so in
+/// their last datagrams.) Directly and in a room.
+#[test]
+fn what_came_before_a_drop_is_still_taken() {
+    let (_server, url) = server();
+    for mut sides in [direct(config()), room(&url, config()).0] {
+        connected(&mut sides);
+        let [mut stays, mut leaves] = sides;
+        while stays.link.recv().unwrap().is_some() {}
+        for _ in 0..3 {
+            leaves.link.send(b"leaving").unwrap();
+        }
+        drop(leaves);
+        // (Time for the datagrams and the close to arrive, all before the
+        // one that stays looks again.)
+        std::thread::sleep(Duration::from_millis(300));
+        let mut last = Vec::new();
+        let start = Instant::now();
+        while stays.link.down_for().is_none() {
+            assert!(start.elapsed() < Duration::from_secs(10), "the connection closed");
+            while let Some(d) = stays.link.recv().unwrap() {
+                last.push(d.to_vec());
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        while let Some(d) = stays.link.recv().unwrap() {
+            last.push(d.to_vec());
+        }
+        assert!(last.iter().any(|d| d == b"leaving"), "what the other said as it left is lost: {} datagrams taken", last.len());
+    }
+}
+
 /// One side's network goes for `length`: both see it down (by silence, or
 /// the connection's state), and it comes back after it, a new connection
 /// (the next generation), the datagrams going again.
