@@ -9,7 +9,7 @@ use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud};
-use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
+use crate::textlayer::{Align, Plane, Rect, TextItem, TextMode, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
 use nettai_battle::Battle;
@@ -161,6 +161,8 @@ pub struct SharedGlyphs {
     banner: Vec<(usize, usize)>,
     /// The right-hand telop's name glyphs drawn from `tiles`.
     right: Vec<(usize, usize)>,
+    /// A telop's '×' and '2' drawn from `tiles` (their first tiles there).
+    signs: Option<[usize; 2]>,
     /// The palette the banner shows, and the telops', where not their own.
     banner_palette: Option<Palette>,
     telop_palette: Option<Palette>,
@@ -181,6 +183,18 @@ impl SharedGlyphs {
     /// a banner or "PAUSE" loaded it last).
     fn telop_style<'a>(&self, style: TelopStyle<'a>) -> TelopStyle<'a> {
         TelopStyle { palette: self.telop_palette.unwrap_or(style.palette), ..style }
+    }
+
+    /// Draw a telop's '×' and '2' (its parts `at` and `at + 1`) from the
+    /// made-up tiles.
+    fn patch_signs<'a>(&'a self, group: &mut [SpritePart<'a>], at: Option<usize>) {
+        if let (Some(at), Some(made)) = (at, self.signs) {
+            for (k, first) in made.into_iter().enumerate() {
+                if let Some(part) = group.get_mut(at + k) {
+                    (part.tiles, part.first_tile) = (&self.tiles, first);
+                }
+            }
+        }
     }
 
     /// Draw a group's glyphs from the made-up tiles: glyph `k` of `made` is
@@ -253,6 +267,21 @@ pub fn shared_glyphs<'a>(
             let (Some(top), Some(bottom)) = (in_banner(tiles[0]), in_banner(tiles[1])) else { continue };
             let first = out.push([(&layout.glyphs, banner_tile(top)), (&layout.glyphs, banner_tile(bottom))]);
             out.right.push((k, first));
+        }
+    }
+    // A telop's '×' and '2' (either place's: one 16x16 sprite at `signs`,
+    // the '×' its left column, 0x08015522) where a banner loaded over them.
+    // (The font mode's telops keep their glyphs: their names are the text
+    // layer's.)
+    let telop_shown = b.used_chip_for(local).is_some() || b.telop_for(local).is_some();
+    if telop_shown
+        && text.mode == TextMode::Original
+        && let Load::Banner(id) = s.signs
+        && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
+    {
+        let column = |c: u16| Some([in_banner(t.signs + c)?, in_banner(t.signs + c + 2)?].map(banner_tile));
+        if let (Some(times), Some(two)) = (column(0), column(1)) {
+            out.signs = Some([times, two].map(|[top, bottom]| out.push([(&layout.glyphs, top), (&layout.glyphs, bottom)])));
         }
     }
     // The banner's glyphs where a telop loaded over them.
@@ -893,11 +922,12 @@ pub fn draw<'a>(
                 };
                 let style = style.map(|s| shared.telop_style(s));
                 let named = style.map(|style| telop_parts(b, style, telop, &mut group, text, problems));
-                let (name, cells) = named.unwrap_or_default();
+                let laid = named.unwrap_or_default();
                 if telop.remote {
-                    shared.patch(&mut group, &shared.right, 0, cells);
+                    shared.patch(&mut group, &shared.right, 0, laid.glyphs);
                 }
-                (NAME_BUCKET, name)
+                shared.patch_signs(&mut group, laid.signs);
+                (NAME_BUCKET, laid.name)
             }
             (None, Some(id)) => {
                 if let Some((h, layout, number)) = crate::lookups::banner(packs, &b.content, id, problems) {
@@ -933,9 +963,10 @@ pub fn draw<'a>(
             },
         };
         if let Some(style) = style.map(|s| shared.telop_style(s)) {
-            let (name, cells) = used_chip_parts(b, style, used, &mut group, text, problems);
-            shared.patch(&mut group, &shared.right, 0, cells);
-            insert_named(list, text, NAME_BUCKET, group, name);
+            let laid = used_chip_parts(b, style, used, &mut group, text, problems);
+            shared.patch(&mut group, &shared.right, 0, laid.glyphs);
+            shared.patch_signs(&mut group, laid.signs);
+            insert_named(list, text, NAME_BUCKET, group, laid.name);
         }
     }
     // "PAUSE" in the middle while a player holds the battle (`sub_801C9E4`:
@@ -1472,7 +1503,7 @@ fn telop_parts<'a>(
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
     problems: &mut Problems,
-) -> (Option<TextItem>, usize) {
+) -> Laid {
     let hud = style.hud;
     let name = match telop.name {
         TelopName::Chip(chip) => {
@@ -1500,7 +1531,7 @@ fn used_chip_parts<'a>(
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
     problems: &mut Problems,
-) -> (Option<TextItem>, usize) {
+) -> Laid {
     let words = text.strings.chip_name(&b.content, used.chip);
     let name = (words, name_glyphs(b, style.hud, words, used.chip, problems));
     name_parts(style, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
@@ -1514,9 +1545,8 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 /// numbers (damage, bonus, doubled) as `sub_801E95C` lays them out from a
 /// telop's place (`style`): centered as fifteen glyphs are; the other
 /// player's (`remote`) moves over for the "x2". In the font mode the name
-/// is a text item in the cells its glyphs take, returned, and blank parts
-/// stand in for the glyphs. Also returned: how many of the parts, from the
-/// first, are the name's glyphs (none in the font mode).
+/// is a text item in the cells its glyphs take, returned (`Laid`), and
+/// blank parts stand in for the glyphs.
 #[allow(clippy::too_many_arguments)]
 fn name_parts<'a>(
     style: TelopStyle<'a>,
@@ -1526,7 +1556,7 @@ fn name_parts<'a>(
     vscale: Option<i32>,
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
-) -> (Option<TextItem>, usize) {
+) -> Laid {
     let hud = style.hud;
     // Glyph d of the damage digits, '+' before a bonus.
     let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| style.digit + (c - b'0') as usize).collect() };
@@ -1559,11 +1589,23 @@ fn name_parts<'a>(
         out.push(glyph(style.numbers, g, pal, x, y, 0, vscale));
         x += 8;
     }
+    let signs = doubled.then_some(out.len());
     if doubled {
         out.push(glyph(style.numbers, style.times, pal, x, y, 0, vscale));
         out.push(glyph(style.numbers, style.times + 1, pal, x + 8, y, 0, vscale));
     }
-    (item, glyphs)
+    Laid { name: item, glyphs, signs }
+}
+
+/// A telop as `name_parts` laid it out: the text layer's item for its name
+/// (the font mode's), how many of its parts, from the first, are the
+/// name's glyphs (none in the font mode), and where among them the '×' of
+/// a doubled chip is (the '2' after it).
+#[derive(Default)]
+struct Laid {
+    name: Option<TextItem>,
+    glyphs: usize,
+    signs: Option<usize>,
 }
 
 /// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`; EXE6's from
@@ -1719,7 +1761,7 @@ mod tests {
         let text = TextSink::new(crate::textlayer::TextMode::Font, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems).0.unwrap();
+        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems).name.unwrap();
         // The same parts where the original's go (so the sprite limit
         // counts the same), the name's blank; the item in the name's cells.
         let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
@@ -1731,7 +1773,7 @@ mod tests {
         assert_eq!((item.face, item.shadow), (hud.hp_palettes[0][1], Some(hud.hp_palettes[0][2])));
         // In the original mode there is none.
         let mut parts = Vec::new();
-        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems).0.is_none());
+        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems).name.is_none());
     }
 
     #[test]
