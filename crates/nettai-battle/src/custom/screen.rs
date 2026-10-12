@@ -1389,9 +1389,11 @@ impl Screen {
     pub(crate) fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
         let chip = self.chip_in(self.cursor, folder).map(|c| checked(c, view));
         let here = self.slots[self.cursor as usize];
+        let uses = self.cursor_button_slot().map_or(0, |s| self.slots[s as usize].uses_left);
         let w = &mut self.look.chip_window;
         w.slot = self.cursor;
         w.picks = self.selected;
+        w.uses = uses;
         if chip.is_some() {
             w.last_chip = chip;
         }

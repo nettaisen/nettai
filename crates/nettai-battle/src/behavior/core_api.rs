@@ -979,6 +979,23 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn custom_button_uses(&self, side: u8, button: &str) -> ApiResult<u8> {
+        use crate::custom::screen::SlotKind;
+        let h = self.own_button(button)?;
+        let screen = self.custom_screen(side)?;
+        let slot = screen.slots.iter().find(|s| matches!(s.kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right));
+        Ok(slot.ok_or_else(|| ApiError::Other(format!("custom.button_uses: {button:?} isn't on the screen")))?.uses_left)
+    }
+
+    fn custom_set_button_uses(&mut self, side: u8, button: &str, uses: u8) -> ApiResult<()> {
+        use crate::custom::screen::SlotKind;
+        let h = self.own_button(button)?;
+        let screen = self.custom_screen_mut(side)?;
+        let slot = screen.slots.iter_mut().find(|s| matches!(s.kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right));
+        slot.ok_or_else(|| ApiError::Other(format!("custom.set_button_uses: {button:?} isn't on the screen")))?.uses_left = uses;
+        Ok(())
+    }
+
     fn custom_update_availability(&mut self, side: u8) -> ApiResult<()> {
         self.with_custom_screen(side, |screen, view, folder, _, extras| screen.update_availability(view, folder, extras))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
@@ -1103,6 +1120,11 @@ impl CoreApi for Battle {
         // (Drawn after the tick's count where the choosing counts first.)
         let counted = self.content.rules().custom_screen.frame_counts_first;
         self.custom_screen_mut(side)?.look.draw_regular(folder.regular_pending, counted);
+        Ok(())
+    }
+
+    fn custom_draw_cursor(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.draw_cursor();
         Ok(())
     }
 

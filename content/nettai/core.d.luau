@@ -3130,6 +3130,11 @@ declare custom: {
     set_face: (side: number, form: FormDef?) -> (),
     pick_first: (side: number, icon: Chip?) -> (),
     set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
+    -- The uses one of the rules' buttons has left on this screen (its `uses`
+    -- as the screen opened), read and written: for a button whose rules
+    -- count them.
+    button_uses: (side: number, button: string) -> number,
+    set_button_uses: (side: number, button: string, uses: number) -> (),
     update_availability: (side: number) -> (),
     draw_emblem: (side: number, x: number) -> (),
     -- `by`: the rules' button or window whose pick holds the form.
@@ -3153,11 +3158,13 @@ declare custom: {
     repeated: (side: number, key: Key) -> boolean,
     -- The screen's drawing, for a window: the window's sprites (the
     -- emblem, the Regular chip's frame, the last turns' block), the Regular
-    -- chip's frame alone, the icon of the chip a button holds over that
+    -- chip's frame alone, the screen's cursor where it is, the icon of the
+    -- chip a button holds over that
     -- button (`hold_last_pick`), the Cross window's cursor, the chip window
     -- showing the slot under the cursor, and the window's Cross tab.
     draw_window: (side: number) -> (),
     draw_regular: (side: number) -> (),
+    draw_cursor: (side: number) -> (),
     draw_held: (side: number) -> (),
     draw_form_list_cursor: (side: number) -> (),
     show_chip_window: (side: number) -> (),
