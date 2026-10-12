@@ -13,7 +13,7 @@
 //! entry place.
 
 use nettai_battle::content::{ChipClass, ChipCode, Content};
-use nettai_content_api::{ChipHandle, Data, Registry};
+use nettai_content_api::{ChipHandle, Data, EntryHandle, Registry};
 
 /// How much of something there is against the most there may be (a folder's
 /// Mega chips against the navi's limit, a chip's MB against a memory).
@@ -92,6 +92,11 @@ pub enum Wrong {
     OffBoard,
     /// A piece over the piece at entry `other` (from 0).
     Overlap { other: usize },
+    /// An entry of a list whose entries go in slots sits in slot `slot`
+    /// (from 0) and belongs in slot `own` (EXE4's patch card out of its
+    /// catalog slot: [`crate::build::Slots`] names the slots). A build's
+    /// alone: a match's checks leave it be.
+    Slot { entry: EntryHandle, slot: u32, own: u32 },
     /// Anything else no save holds.
     Invalid,
 
@@ -110,6 +115,10 @@ impl Wrong {
         let count = || Some(Count { used: number("used")?.try_into().ok()?, limit: number("limit")?.try_into().ok()? });
         let chip = || match data.field("chip") {
             Data::Ref(Registry::Chip, key) => content.defs.chip_by_key(key),
+            _ => None,
+        };
+        let entry = || match data.field("def") {
+            Data::Ref(Registry::Entry, key) => content.defs.entries.iter().position(|e| e.key == *key).map(|i| EntryHandle(i as u16)),
             _ => None,
         };
         let typed = || -> Option<Wrong> {
@@ -139,6 +148,7 @@ impl Wrong {
                 "budget" => Wrong::Budget(count()?),
                 "off_board" => Wrong::OffBoard,
                 "overlap" => Wrong::Overlap { other: usize::try_from(number("other")?).ok()?.checked_sub(1)? },
+                "slot" => Wrong::Slot { entry: entry()?, slot: number("value")?.try_into().ok()?, own: number("own")?.try_into().ok()? },
                 _ => return None,
             })
         };
@@ -147,7 +157,7 @@ impl Wrong {
 
     /// The kinds of the rules' problems this crate types (what a game's
     /// rules may name a problem: core.d.luau's `SetupProblem`).
-    pub const RULES_KINDS: [&'static str; 22] = [
+    pub const RULES_KINDS: [&'static str; 23] = [
         "folder_size",
         "chip_not_allowed",
         "chip_of_another_version",
@@ -169,6 +179,7 @@ impl Wrong {
         "budget",
         "off_board",
         "overlap",
+        "slot",
         "invalid",
     ];
 }
@@ -192,6 +203,8 @@ mod tests {
             ("least", Data::Int(0)),
             ("most", Data::Int(3)),
             ("other", Data::Int(2)),
+            ("def", Data::Ref(Registry::Entry, content.defs.entries[0].key.clone())),
+            ("own", Data::Int(4)),
         ]);
         let count = Count { used: 6, limit: 5 };
         for kind in Wrong::RULES_KINDS {
@@ -204,6 +217,7 @@ mod tests {
         assert_eq!(Wrong::of_rules(&content, "range", &whole), Wrong::Range { value: 9, least: 0, most: 3 });
         assert_eq!(Wrong::of_rules(&content, "overlap", &whole), Wrong::Overlap { other: 1 });
         assert_eq!(Wrong::of_rules(&content, "budget", &whole), Wrong::Budget(count));
+        assert_eq!(Wrong::of_rules(&content, "slot", &whole), Wrong::Slot { entry: EntryHandle(0), slot: 9, own: 4 });
         assert_eq!((count.free(), Count { used: 56, limit: 80 }.free()), (0, 24));
         // Without its numbers, or of no kind this crate knows: invalid.
         assert_eq!(Wrong::of_rules(&content, "copies", &Data::Nil), Wrong::Invalid);

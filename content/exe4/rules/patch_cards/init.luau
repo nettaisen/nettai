@@ -72,6 +72,29 @@ function patch_cards.validate(side: number, problem: (p: SetupProblem) -> ())
     end
 end
 
+-- `build_check`'s part: a build's cards each in the slot it belongs in (its definition's `slot`, the printed card's:
+-- ./cards' `SLOT_0A` to `SLOT_0F`). The reload holds no card to a slot (the ROMs have no table of them: it runs
+-- whatever card each of the save's seven slots holds, so `validate` leaves a card anywhere in them be, as a recording
+-- may have it). But a scanned card goes into its own slot, so a save made by play has each card there, and a build
+-- is held to that, as Tango's rules hold one: a card in another slot, the seventh among them, is said, with the slot
+-- it is in and its own.
+function patch_cards.build_check(side: number, problem: (p: SetupProblem) -> ())
+    for i, c in rules.setup_of(side).patch_cards :: { { card: SlottedPatchCard, slot: number } } do
+        local own = c.card.slot
+        if c.slot < patch_cards.SLOTS and c.slot ~= own then
+            problem({
+                kind = "slot",
+                field = "patch_cards",
+                entry = i,
+                def = c.card,
+                value = c.slot,
+                own = own,
+                text = string.format("patch card %d (%s): in slot %d, and it belongs in slot %d", i, battle.name(c.card), c.slot, own),
+            })
+        end
+    end
+end
+
 -- The kinds of effect that change a number a tool shows beside the navi's others, or a bug's count: a card with any
 -- other kind of effect gives the navi an ability.
 local NUMBERS: { [string]: boolean } = {

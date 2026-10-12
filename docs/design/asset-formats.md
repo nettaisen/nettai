@@ -506,21 +506,22 @@ own, read at the addresses the same code points at there (exe6-extract's
 - **What the US release cut** (docs/engine/jp-differences.md §4.4, §4.5):
   six sprites the US ROMs fill with a placeholder archive (`count`,
   `django`, `otenko`, `falzar-summon`, `gregar-summon`, `blocking-banner`),
-  from the Japanese Falzar ROM (every sheet is the Japanese ROM's where
-  there is one: besides the six, the flames HeatMan wears differ in one
-  animation), and the pictures of fifteen chips the US ROMs
+  from the Japanese Falzar ROM (every other sheet is a US ROM's where one
+  is given: the flames HeatMan wears differ in one animation between the
+  releases), and the pictures of fifteen chips the US ROMs
   give a placeholder picture (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3,
   DblBeast, Gregar, Falzar, and BatCan1 to BatCan4, which the US release
   kept), from the Japanese Falzar ROM but Gregar's,
   from the Japanese Gregar ROM (a Japanese console shows its own beast in
   both chips; the pack has each chip's own). Every other chip's icon and
-  picture are its version's Japanese ROM's too, where there is one: they
-  are the US ROMs' but for one pixel of the Falzar ROMs' BassAnly icon and
-  two of the Gregar ROMs' Beast Out picture
-  (docs/engine/jp-differences.md §4.4). The pack keeps no region: a
-  pack has one picture of each thing, the Japanese games' where the
-  releases differ, and what a console of the other region shows there is
-  the verification's to know (docs/frontend.md §5).
+  picture are its version's US ROM's where there is one: the Japanese
+  ROMs' differ in one pixel of the Falzar ROMs' BassAnly icon and two of
+  the Gregar ROMs' Beast Out picture (docs/engine/jp-differences.md §4.4). The pack keeps no region: a
+  pack has one picture of each thing, the US games' where both releases
+  have their own and the Japanese games' where the US release has none
+  (a pack of no US ROM has the Japanese games' throughout), and what a
+  console of the other region shows there is the verification's to know
+  (docs/frontend.md §5).
   Three of the pictures' palettes are EWRAM in the original, which a link
   gift (an e-Reader card's) fills and the save keeps: DblBeast's, the
   card's, is also orphaned in the Japanese ROMs, and the pack has it; the
