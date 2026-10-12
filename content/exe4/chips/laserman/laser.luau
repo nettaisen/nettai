@@ -9,7 +9,8 @@
 -- 0, ahead: the hit; 1, up: the attack, rapid and charge bugs (5 to 7), then the hit; 2, down: super armor, FloatShoes,
 -- AirShoes and Undershirt off (1 to 4), the back special weapon gone (0x0C, 0xFF), then the hit; 3, right: the charged
 -- shot the navi's own (0x0A, 1), then the hit; 4, left: the custom level one less (0x12, but not below 2), then the
--- hit. (Course 5, two steps a strike, no spawner gives.)
+-- hit; 5, PrixPowr's LaserMan's (chips/prixpowr): the hit, its list course 0's, taken two steps a strike (0x080E0EFC),
+-- so over in five strikes' time, in the aimed courses' palette and the left course's color shader.
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
@@ -27,8 +28,11 @@ local COURSES: { [number]: { number } } = {
     [2] = { 0x01, 0x02, 0x03, 0x04, 0xFF0C, HIT },
     [3] = { 0x10A, HIT },
     [4] = { CUSTOM_DOWN, HIT },
+    [5] = { HIT },
 }
-local SHADERS: { [number]: number } = { [0] = 0, [1] = 0xB060, [2] = 0xA80A, [3] = 0, [4] = 0xB9C0 }
+local SHADERS: { [number]: number } = { [0] = 0, [1] = 0xB060, [2] = 0xA80A, [3] = 0, [4] = 0xB9C0, [5] = 0xB9C0 }
+-- Course 5 counts two steps a strike.
+local SHORT = 5
 -- Its strikes, and their period.
 local STRIKES, PERIOD = 10, 6
 local FIRING, ENDING = 0x0, 0x4
@@ -67,8 +71,8 @@ local function strike(me: Object, word: number)
     end
 end
 
--- Action 0 (0x080E0ED0): as animation 17 ends, animation 18 and 6 ticks; then each 6 ticks its course's next strike;
--- after the tenth, animation 19 and on to its end.
+-- Action 0 (0x080E0ED0): as animation 17 ends, animation 18 and 6 ticks; then each 6 ticks its course's next strike
+-- (course 5's every other one); after the tenth, animation 19 and on to its end.
 local function firing(me: Object)
     if me.anim == 17 then
         if not bit32.btest(me.sprite.frame_flags, 0x80) then
@@ -88,8 +92,9 @@ local function firing(me: Object)
         me:set_action(ENDING)
         return
     end
-    me.timer2 = int.u16(i + 1)
-    local word = COURSES[(me.state :: State).course][i + 1] or NONE
+    local course = (me.state :: State).course
+    me.timer2 = int.u16(i + if course == SHORT then 2 else 1)
+    local word = COURSES[course][i + 1] or NONE
     if word ~= NONE then
         if word == CUSTOM_DOWN then
             local level = battle.navi(bit32.bxor(me.alliance, 1)).custom_level

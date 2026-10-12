@@ -2196,3 +2196,9 @@ export type SunMeteor = {
     shake: boolean,
     panel: "none" | "crack" | "break",
 }
+
+-- Where a thrower's fists go (@exelib/metrknuk/targets: MetrKnuk's, EXE4's Duo's): the panels an enemy stands on (by
+-- the thrower's side, the flags a panel must have and must not), and whether, with no enemy standing, the enemy's
+-- area stands in (EXE6's).
+export type FistTargetTest = { [number]: { require: number, forbid: number } }
+export type FistTargets = { body: FistTargetTest, area_fallback: boolean }
