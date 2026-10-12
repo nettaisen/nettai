@@ -212,6 +212,22 @@ pub struct CustomScreenLayout {
     /// else the interpreter goes on, and that delay counts down on the
     /// character's own tick (EXE6's and EXE5's). Presentation.
     pub chatbox_character_ends_tick: bool,
+    /// What the chip window shows for the damage of a chip whose flags
+    /// have `damage_shown_variable`. Presentation.
+    pub variable_damage_shows: VariableDamageShows,
+}
+
+/// What the chip window shows for the damage of a chip whose flags have
+/// `damage_shown_variable` (`ChipFlags::DAMAGE_SHOWN_VARIABLE`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VariableDamageShows {
+    /// Its damage as it stands, as a chip of `has_damage` shows (EXE6's
+    /// `sub_80284E2`, EXE5's 0x080243C0: either flag draws the number).
+    Damage,
+    /// "???", whatever the chip and its code (EXE4's 0x0801FCE2: the flag
+    /// alone decides; its CustSwrd and Muramasa).
+    QuestionMarks,
 }
 
 /// The cursor's hover over a dark chip (EXE6's `sub_802A2B0`, EXE4's
@@ -395,6 +411,7 @@ impl Default for CustomScreenLayout {
             states_in_choosing: false,
             chatbox_end_clears_tiles: false,
             chatbox_character_ends_tick: false,
+            variable_damage_shows: VariableDamageShows::Damage,
         }
     }
 }
