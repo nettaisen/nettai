@@ -305,6 +305,7 @@ language = "ja"
 "gigacan3" = { name = "ギガキャノン3", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
 "heatsprd" = { name = "ヒートスプレッド", description = "まわり1マスに\nばくえんがひろがる\nこうはんい攻撃!" }
 "bubsprd" = { name = "バブルスプレッド", description = "まわり1マスに\nあわがひろがる\nこうはんい攻撃!" }
+"blakwing" = { name = "ブラックウイング", description = "あんこくチップ!\nてきエリアはしから\nくろいツバサ攻撃!" }
 "suprspr1" = { name = "スーパーワイド1", description = "3れんしゃの\nワイドショット!\nてきをかんつうする" }
 "suprspr2" = { name = "スーパーワイド2", description = "3れんしゃの\nワイドショット!\nてきをかんつうする" }
 "suprspr3" = { name = "スーパーワイド3", description = "3れんしゃの\nワイドショット!\nてきをかんつうする" }
@@ -320,6 +321,13 @@ language = "ja"
 "magshok1" = { name = "マグショック1", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
 "magshok2" = { name = "マグショック2", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
 "magshok3" = { name = "マグショック3", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
+"lifesync" = { name = "ライフシンクロ", description = "2マス前のてきに\nカーソル!てきの\nHPをおなじにする" }
+"signlred" = { name = "シグナルレッド", description = "あかいあいだは\nあいてがチップを\nつかえなくなる!" }
+"metagel" = { name = "スチールゼリー", description = "てきエリア左はしに\nパネルをぬりかえる\nゼリー攻撃!" }
+"magnum" = { name = "マグナム", description = "カーソルをとめて\nパネルをはかいする\nマグナムをハッシャ" }
+"bugcharg" = { name = "バグチャージ", description = "あんこくチップ!\nターンがすすむほど\nつよくなる!" }
+"shotstar" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
+"bugchain" = { name = "バグチェーン", description = "自分に発生している\nバグをあいてにも\nうつしてしまう!" }
 "pitrng1" = { name = "ヘルブーメラン1", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "pitrng2" = { name = "ヘルブーメラン2", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "pitrng3" = { name = "ヘルブーメラン3", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
@@ -328,6 +336,7 @@ language = "ja"
 "poisphar" = { name = "ポイズンファラオ", description = "てきエリアにどくを\n発生させる\nファラオぞうをおく" }
 "bodygrd" = { name = "ボディガード", description = "ウラのあんさつしゃ\nをやとい てきを\nはいじょしてもらう" }
 "pdriver" = { name = "パイルドライバー", description = "目の前に たいよう\nジェネレーター!\n日の光でやきつくす" }
+"poltrgst" = { name = "ポルターガイスト", description = "" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
