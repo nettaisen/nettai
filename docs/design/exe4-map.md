@@ -1487,8 +1487,8 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
     0x08750E80 (the pack's `layout.telop`). A navi's chip use names the chip on the other console as a banner that
     never slides (0x0800C7A8, state 3): `effects.used_chip_ticks` 33.
   - 6 **the messages** (0x08015FE8; 60 ticks, update 6): "COUNTER HIT!" (text line 14) from column 8 of row 2, 14
-    glyphs wide (the pack's `layout.message`). A message also stops "????" (draw 10) until a custom screen starts it
-    again (0x0801E1D6); EXE6's comes back when the message goes. Not ported: no defensive chip is ported yet.
+    glyphs wide (the pack's `layout.message`). A message hides "????" (draw 10) while it shows, and its end shows it
+    again unless the battle is over (0x08015CAA), as EXE6's (`sub_801E1A4`): §18 item 130.
   - 10 **"????"** for a defensive chip, at columns 6 and 26 (0x08015266): EXE6's.
   - 12 **"PAUSE"** at (100, 64), a row lower than EXE6's (the pack's `layout.pause`).
   - 13 **"BUSY..."** at column 22, row 4 (0x08015624): on a console whose screen has sent its result, also while the
@@ -2414,7 +2414,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `tools/exe4/completeness.py`): every entry of the chip table, the weapon routines, the player's actions, the
     dimming variants, the three object tables, the link stages' entry types, the NaviCust handlers and bugs, the
     patch cards and the HUD's draw tasks, against content. What a netbattle reaches and content lacks (main at
-    c4bef02ee): DarkNeo; the dark soul (item 74); "????" staying off after a message (item 130). To decide: the two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
+    c4bef02ee): DarkNeo; the dark soul (item 74); "????" after a message (item 130: not as the audit read it). To decide: the two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
     ROM; their names and images are the card's). Everything else missing is the story's enemies, the other navis,
     subsystem 0x0E's battle (item 49), or named by nothing. Run the tool again as content grows.
 64. **Done: the chip window's "???"** (group B; found by the Program Advances' pa/0x15c-bodygrd/sequence7, whose
@@ -2500,7 +2500,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (AntiNavi's: 0x08009006 waits on the trap's side's block). `Battle::telops_for` gives a console its two (each
     console lays its own player's on the banner block; the simulation is its local side's console's). The digest
     hashes that a block shows a telop and how long each used chip's name still shows (a controller waits on them).
-    AntiNavi's telop (0x08008FD4) ends no used chip's name (`dimming::chip_telop` by `used_chips_end_early`).
+    AntiNavi's telop (0x08008FD4) ends no used chip's name (`dimming::chip_telop`), in any game (below).
     exe4-compat compares the three tasks on every frame: the banner's (0x20), the console's own telop's (0x100) and
     the second block's (0x8000: over the whole lab the engine's used chips' names and the other player's telops match
     it, once Slasher was fixed: below). The telop plays no sound (the role `sounds.telop` is optional).
@@ -2535,8 +2535,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (the dimming's protocol shows one side's telop at a time: a cut-in's telop waits for the first one's end), a
     used chip's name in the place of its player's telop (a navi uses no chip while its side's telop shows), and the
     flow waiting on a banner while the console's own telop shows.
-    **Not EXE4's, noted:** EXE6's AntiNavi telop (`sub_800BE2C`) has no call that ends the used chips' names
-    (`sub_801BED6(0x10000)`), where the engine's `chip_telop` ends them (kept for EXE6 and EXE5 as it was).
+    **EXE6's and EXE5's AntiNavi telop** (`sub_800BE2C`; EXE5's 0x0800A44C) has no call that ends the used chips'
+    names (`sub_801BED6(0x10000)`), where the engine's `chip_telop` ended them: fixed for every game. Recorded (the
+    EXE6 lab's chips/0x0ba-antinavi/over-used-chip, EXE5's chips/0x090-antinavi/over-used-chip: the trap's side
+    uses a Cannon and the other side a navi chip within a few ticks): the Cannon stays named over AntiNavi's telop
+    for the rest of its second (7 frames in EXE6, where the frontend showed the telop alone; 8 in EXE5); both are
+    pixel-exact now (1217 fight frames each).
 72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
     status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
@@ -2804,9 +2808,37 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
 130. **HUD pieces that wait on content** (group E). Port each with what reaches it:
     - a soul chip (0x160 to 0x16F) as the next chip shows no icon of its own, and the stack starts at the second
       (0x08015000), with Double Soul's chips;
-    - a message stops "????" until the next custom screen starts it (0x08015FE8 stops draw bit 10; the message's
-      end, 0x08014A4C, stops only the message; 0x0801E1D6 starts it again), with the defensive chips. **Open**: the
-      defensive chips are ported, and the renderer shows "????" again when the message goes (EXE6's rule);
+    - **Done: "????" and the messages** (group F). The audit's reading doesn't hold: a message (0x08015FE8, the
+      show routine of draw 6) hides "????" (draw 10), and its end shows it again: the update's end (0x08014A4C)
+      hides the message through its hide routine (0x08015CAA), which shows draw 10 unless the battle is over, as
+      EXE6's `sub_801E1A4` does. emotions/counter-trap (side 0 holds AntiNavi and counters side 1; `-bluemoon` the
+      other console, the "????" at the right edge): the "????" is back the frame after the message's 60 ticks, as
+      the frontend drew it. What the frontend had wrong, in every game (the same routines in EXE6 and EXE5: their
+      labs' flow/trap-ko, trap-hit, trap-counter, trap-judge and counter-time-up are pixel-exact with these: 3499
+      fight frames and 922 around the time-up and the judge in EXE6, 3481 and 902 in EXE5; EXE6's message reads
+      "    1   R HIT!", its line being 17 glyphs with "COUNTER" a glyph further right):
+      - **a result hides "????"** with the gauge (the WIN, LOSE and DRAW states' first tick: 0x080071A6, 0x0800725C,
+        0x080072FA with mask 0x33449A; EXE6's 0xE4C53); the damage judge before it hides nothing. The frontend drew
+        it to the round's end (flow/ko-trap and -bluemoon: 117 frames; timer/trap: through the judge, off at the
+        draw);
+      - **a message that ends once the battle is over leaves "????" hidden** (0x08015CAA returns before it shows
+        draw 10): `Battle::hud_hidden.defensive_marks`, until a custom screen opens. timer/counter-time-up: a
+        counter hit half a second before TIME UP, no "????" through the judge;
+      - **the "????" keeps its plain colors** while the HP box, the chip's name and the text lines turn with the HP
+        (its map entries are laid once from a table); the frontend turned it too (flow/hit-trap: 45 frames; the
+        loser's console in flow/ko-trap-bluemoon);
+      - **the timer's text and a message's share their tiles**: both are rendered into one line (0x08016362 and
+        0x080162CC to 0x06009580; EXE6's `sub_801E398` and `sub_801E270` to 0x6009560), the timer's eight glyphs
+        over the message's first eight, the timer's every tick the fight runs from the 15th turn (0x08008094) and
+        the message's as it starts, later in its tick. On a message's first frame the timer's row reads " COUNTER";
+        from the next the message reads "    1    HIT!", then "TIME UP! HIT!" (timer/counter-time-up: 58 frames
+        differed). The original's tiles: the font mode's lines stay whole.
+      The message's kinds (the HUD block's +0x1A): 0 the combo's lines (0x0801628C, virus battles), 1 "COUNTER
+      HIT!" (0x080162CC, which leaves a kind 0 showing), 2 "LEFT n" at column 11 (0x0801630E from 0x080229B8 and
+      0x08022A36: a chip's uses left in the own-gauges mode, battle flag 0x40; no netbattle), which leaves "????"
+      alone. Frame comparisons: the five short recordings' fight frames (3353) and the two timer recordings'
+      windows around TIME UP and the judge (922) are pixel-exact; timer/win and timer/loss-bluemoon (991 frames
+      each around the judge) and nine other banner, message and defensive-chip recordings as before;
     - a dimming chip's telop: the user's on the banner block (0x08016454), the other player's on the second block in
       state 0 (0x08008C40), both sliding and squashing as banners do. The renderer draws them from Hud.layout.telop;
       the engine's telop for EXE4 comes with the first dimming chip;
