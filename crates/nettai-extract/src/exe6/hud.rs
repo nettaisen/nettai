@@ -362,7 +362,7 @@ fn chatbox(src: Source) -> nettai_assets::Chatbox {
 fn chip_icons(roms: &Roms, names: &AssetNames) -> Vec<ChipIcon> {
     (0..CHIP_COUNT)
         .map(|id| {
-            let src = crate::exe6::gregar::chip_source(roms, id);
+            let src = crate::exe6::gregar::icon_source(roms, id);
             let rom = src.rom;
             let icon = if rom.is_present() {
                 let p = u32at(rom, src.at(CHIPS) + 0x2c * id + 0x20);
