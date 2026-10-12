@@ -3,8 +3,11 @@
 //! setup schema (`layout`), edited through the facts' own writer (`edit`,
 //! `grid`, `auto`; a fact stated as one of a few presets, `presets`), read
 //! from a save (`import`), with the pictures of what it holds (`pictures`).
-//! This is the logic alone; the Builds screen that uses it is
-//! `crate::screens::builds` (docs/app.md §5).
+//! This is the old creator's logic, kept for the Builds screen
+//! (`crate::screens::builds`) to take what it reuses of (docs/app.md §8).
+//! The game's builds data (its versions, a new build, a build's problems
+//! and overview) is nettai-match's `build` now; `presets`, `layout` and
+//! builds.toml are what that replaces.
 
 // (The Builds screen isn't built yet: what it will call isn't called.)
 #![allow(dead_code)]

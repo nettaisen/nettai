@@ -1,10 +1,10 @@
 //! The main menu (docs/design/app-ui.md §6): PLAY, TRAINING, BUILDS, REPLAYS, Settings, Exit, and the demo reel.
 //!
 //! The reel is a battle of the selected game playing itself: the player's latest replays of the game, one after
-//! another; with none, a set between the game's two versions, each side pressing by itself. It is silent (the
-//! title music plays over the menu) and takes no keys.
+//! another; with none, a set between new builds of the game's first two versions (`nettai_match::build`: each
+//! with the folder a new save starts with), each side pressing by itself. It is silent (the title music plays
+//! over the menu) and takes no keys.
 
-use crate::builds::presets;
 use crate::games::{Names, Ready};
 use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
@@ -124,21 +124,33 @@ impl Menu {
             caption(shell, game, ready, sides);
             return Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: false });
         }
-        // No replay: the game's two versions, one a side. (The sides are a picked match's until a new build
-        // has the game's new-save folder to give: docs/app.md §5.)
+        // No replay: a new build of each of the game's first two versions, on a picked match's arenas.
         let seed = if shell.still { 7 } else { clock_seed() };
-        let mut m = nettai_match::pick::live(content, game, seed, None).map_err(|why| crate::errors::log("making the reel's match", &why)).ok()?;
-        if let Some(versions) = presets::version_fact(game).and_then(|fact| presets::of(game, &fact)) {
-            for (side, version) in m.sides.iter_mut().zip(versions) {
-                presets::take(content, game, side, version);
-            }
-        }
+        let m = starter_match(content, game, seed).map_err(|why| crate::errors::log("making the reel's match", &why)).ok()?;
         caption(shell, game, ready, [&m.sides[0], &m.sides[1]]);
         let set = nettai_match::Set::of(content, &m, seed);
         let opponent = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst };
         let driver = LivePlayer::against(set, opponent, seed as u64);
         Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: true })
     }
+}
+
+/// A match between new builds of `game`'s first two versions (of its one version twice, where it has one), its
+/// arenas picked from `seed`.
+pub fn starter_match(content: &std::sync::Arc<nettai_battle::Content>, game: &str, seed: u32) -> Result<nettai_match::Match, String> {
+    let builds = nettai_match::build::Builds::of(content, game)?;
+    let mut m = nettai_match::pick::live(content, game, seed, None)?;
+    for (i, side) in m.sides.iter_mut().enumerate() {
+        *side = builds.new_build(content, &builds.versions[i % builds.versions.len()].id)?;
+    }
+    Ok(m)
+}
+
+/// A side's version as a tag says it: its id in the game's builds data, in capitals. (How a version is worded
+/// for a player is the Builds screen's to say; until it does, a tag is the id.)
+pub fn version_tag(content: &nettai_battle::Content, game: &str, side: &nettai_match::Side) -> String {
+    let id = nettai_match::build::Builds::of(content, game).ok().and_then(|b| b.version_of(content, side).map(str::to_string));
+    id.unwrap_or_default().replace(['-', '_'], " ").to_uppercase()
 }
 
 /// Who is fighting, under the reel: each side's navi and its version's tag.
@@ -149,9 +161,9 @@ fn caption(shell: &Shell, game: &str, ready: &Ready, sides: [&nettai_match::Side
     let ui = shell.ui();
     let view = ui.global::<MenuView>();
     view.set_left_navi(names.navi(sides[0].navi(content)).into());
-    view.set_left_version(presets::version(content, game, sides[0]).to_uppercase().into());
+    view.set_left_version(version_tag(content, game, sides[0]).into());
     view.set_right_navi(names.navi(sides[1].navi(content)).into());
-    view.set_right_version(presets::version(content, game, sides[1]).to_uppercase().into());
+    view.set_right_version(version_tag(content, game, sides[1]).into());
     view.set_playing(true);
 }
 
