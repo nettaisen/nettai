@@ -98,7 +98,7 @@ export global ReplaysView {
     out property <[string]> months: [@tr("Jan"), @tr("Feb"), @tr("Mar"), @tr("Apr"), @tr("May"), @tr("Jun"), @tr("Jul"), @tr("Aug"), @tr("Sep"), @tr("Oct"), @tr("Nov"), @tr("Dec")];
     out property <string> p1: @tr("P1");
     out property <string> p2: @tr("P2");
-    out property <string> delete-title: @tr("Delete this replay?");
+    out property <string> delete-title: @tr("Delete replay?");
     out property <string> delete: @tr("DELETE");
     out property <string> cancel: @tr("CANCEL");
     // What the system's save dialog calls the file.
@@ -991,6 +991,7 @@ component ViewerPage inherits Page {
             y: root.top;
             width: root.picture-width;
             height: root.picture-height;
+            ground: Theme.inset;
         }
         // (Both builds, where the match's weren't closed (`ReplaysView.builds-open`), are to be shown over the
         // picture's sides as a match shows them: the Builds screen's overview, once it is built.)

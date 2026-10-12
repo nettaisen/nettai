@@ -1,4 +1,4 @@
-//! Replays (docs/design/app-ui.md §6; docs/app.md §8): the selected game's replays, newest first, with the
+//! Replays (docs/design/app-ui.md §6; docs/app.md §15): the selected game's replays, newest first, with the
 //! selected one beside them; the viewer; and the export.
 //!
 //! The list is read off the window's thread (`crate::replays`): the folder is listed again each time the screen
@@ -151,6 +151,8 @@ pub struct Replays {
     sheet: bool,
     /// `NETTAI_REPLAY` was answered.
     started: bool,
+    /// The app is kept awake for this screen (`Shell::stay_awake`): a replay plays, or a video is being made.
+    awake: bool,
 }
 
 impl Replays {
@@ -776,6 +778,12 @@ impl Screen for Replays {
         if let Some(e) = &mut self.export {
             e.frame(shell);
         }
+        // A video being made, or a replay playing, goes on whatever covers the window and with no key pressed.
+        let busy = self.export.as_ref().is_some_and(Export::running) || self.watching.as_ref().is_some_and(Watching::playing);
+        if busy != self.awake {
+            self.awake = busy;
+            shell.stay_awake = busy;
+        }
         if !shown || shell.loading_battle() {
             return;
         }
@@ -792,5 +800,33 @@ impl Screen for Replays {
                 nettai_render::present::present(frame, text.as_mut(), buffer, width, height);
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_frontend::replay::End;
+
+    /// A length is minutes and seconds, the seconds always two digits; the viewer's has two for the minutes
+    /// too, so its box keeps its width.
+    #[test]
+    fn a_length_is_minutes_and_seconds() {
+        assert_eq!(clock(Duration::from_secs(331), false), "5:31");
+        assert_eq!(clock(Duration::from_secs(331), true), "05:31");
+        assert_eq!(clock(Duration::from_millis(59_999), false), "0:59");
+        assert_eq!(clock(Duration::from_secs(4000), true), "66:40");
+    }
+
+    /// A set's score is the recorder's: the rounds they won and lost, and how the set went for them (the
+    /// library's result is side 0's). A set that didn't end is neither won nor lost.
+    #[test]
+    fn a_score_is_the_recorders() {
+        let outcome = |rounds: &[Option<u8>], result| Outcome { ticks: 0, rounds: rounds.to_vec(), result, end: End::Set, diverged: None, stopped: None };
+        let won = outcome(&[Some(0), Some(1), Some(0)], Some(BattleResult::Won));
+        assert_eq!(score(&won, 0), (1, 2, 1));
+        assert_eq!(score(&won, 1), (2, 1, 2));
+        assert_eq!(score(&outcome(&[Some(1), None], Some(BattleResult::Drawn)), 1), (3, 1, 0));
+        assert_eq!(score(&outcome(&[Some(1)], None), 0), (0, 0, 1));
     }
 }
