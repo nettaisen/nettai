@@ -157,6 +157,9 @@ pub struct Context<'a> {
     pub random_battle: bool,
     /// A netbattle's last turns (`sub_800A97A`; presentation).
     pub late_turns: bool,
+    /// L is the screen's run key, as the original's is; not in a round whose
+    /// host took it (`HostKeys::run`).
+    pub run_key: bool,
     /// The tick: a result sent now arrives 50 ticks later (50 words, one
     /// a tick).
     pub now: u32,
@@ -274,6 +277,7 @@ impl Side {
             own_gauges: ctx.own_gauges,
             random_battle: ctx.random_battle,
             late_turns: ctx.late_turns,
+            run_key: ctx.run_key,
         }
     }
 
@@ -475,6 +479,7 @@ impl Battle {
             own_gauges: self.round.flags & battle_flags::OWN_GAUGES != 0,
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,
             late_turns: self.late_turns(),
+            run_key: !self.setup.host_keys.run,
             now: self.round.ticks,
         }
     }

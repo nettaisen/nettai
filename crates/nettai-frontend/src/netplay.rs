@@ -169,6 +169,14 @@ struct Watch {
     settled_end: Option<(u32, Battle)>,
     /// The ticks that settle, for a recording.
     record: Option<Record>,
+    /// The frames simulated so far, counted once each (a rollback
+    /// simulates a frame again).
+    seen: u32,
+    /// The viewer asked for the pause (`Battle::pause_requests`) on a frame
+    /// simulated for the first time since the player last took it: their
+    /// own buttons are never a prediction, and what the fight made of them
+    /// is the prediction's the picture shows.
+    pause_asked: bool,
 }
 
 /// What a recording takes of a round's settled ticks.
@@ -198,6 +206,8 @@ impl Watch {
             end: None,
             settled_end: None,
             record: before.map(|before| Record { before, digests: Default::default(), settled: Vec::new() }),
+            seen: 0,
+            pause_asked: false,
         }
     }
 }
@@ -214,6 +224,10 @@ impl Observer<StandInBattle> for Watch {
         let battle = game.battle();
         self.tracker.simulated(frame, battle.sound_cues_for(self.viewer));
         self.actions.extend(self.tracker.drain());
+        if frame >= self.seen {
+            self.seen = frame + 1;
+            self.pause_asked |= battle.pause_requests()[self.viewer as usize];
+        }
         let ends = self.end.is_none() && battle.round_end().is_some();
         if ends {
             self.end = Some((frame, battle.clone()));
@@ -394,6 +408,7 @@ impl<C: Channel> NetPlayer<C> {
                 shown.setup.local_side = side;
             });
             ran.advanced = true;
+            ran.pause_requests[self.side] = std::mem::take(&mut self.peer.session_mut().world_mut().observer_mut().pause_asked);
             // What settled: the ticks, for a recording; the round's end at
             // the tick it ended on, and how the set goes on from it (the
             // next round is the shared simulation's, side 0's; the result
@@ -1119,6 +1134,78 @@ mod tests {
     #[test]
     fn two_players_over_a_channel() {
         pair(900, |_| triple("exe6"), |content, s| side(content, 11 + 11 * s as u32));
+    }
+
+    /// START in a netplay fight pauses neither peer's battle, and is said
+    /// to the host of the player who pressed it alone, once a press, on the
+    /// frame that first simulates the press's tick (the one after the
+    /// press was taken), however often a rollback simulates that tick
+    /// again (the other player moves about, so every prediction of them
+    /// fails). The other peer is told nothing, and the settled states agree
+    /// throughout.
+    #[test]
+    fn start_in_a_netplay_fight_is_said_once_to_its_own_player() {
+        use nettai_battle::battle::{fight, mode};
+        use nettai_battle::input::keys;
+        const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        let content = exe6_test_content();
+        let mine = [0, 1].map(|s| side(&content, 11 + 11 * s as u32));
+        let (mut shuttle, hands) = Shuttle::new();
+        let mut hands = hands.into_iter().enumerate();
+        let mut players = agreed(&content, &triple("exe6"), mine).map(|a| {
+            let (side, hand) = hands.next().unwrap();
+            let mut player = NetPlayer::new(hand, side, a.set, no_delay());
+            let shown = player.start();
+            (player, shown)
+        });
+        let mut masher = Masher::new(5);
+        // By side: the START presses a frame took, and the frames that said
+        // the player asked for the pause; and side 1's presses taken and
+        // not yet said.
+        let (mut pressed, mut said, mut owed) = ([0u32; 2], [0u32; 2], 0u32);
+        let mut settled: [std::collections::HashMap<u32, u64>; 2] = Default::default();
+        let start = Instant::now();
+        for frame in 1..=2410u32 {
+            shuttle.carry(frame);
+            for side in 0..2 {
+                let (player, shown) = &mut players[side];
+                let fighting = shown.round.mode == mode::FIGHTING && shown.fight.state == fight::FIGHTING;
+                let keys = match (shown.round.mode == mode::CUSTOM, side) {
+                    (true, _) => crate::driver::bot_buttons(shown, side, frame),
+                    // Side 0 moves about; side 1 presses START now and then.
+                    (false, 0) => masher.buttons() & MOVES,
+                    (false, _) if fighting && frame % 40 == 0 => keys::START,
+                    (false, _) => 0,
+                };
+                let ran = player.run_frame(keys, shown).unwrap().unwrap();
+                // (A frame simulates the tick of the input the frame before
+                // took: the press is said then.)
+                assert!(!ran.pause_requests[1 - side], "side {side}, frame {frame}: told of the other player's START");
+                if ran.pause_requests[side] {
+                    assert!(side == 1 && owed == 1, "side {side}, frame {frame}: said with {owed} presses taken");
+                    owed -= 1;
+                    said[side] += 1;
+                }
+                if ran.advanced && keys & keys::START != 0 && fighting {
+                    pressed[side] += 1;
+                    owed += 1;
+                }
+                assert_ne!(shown.fight.state, fight::PAUSE, "side {side}, frame {frame}");
+                if ran.advanced {
+                    let (tick, digest) = player.settled();
+                    settled[side].insert(tick, digest);
+                }
+            }
+            let next = start + Duration::from_millis(2) * frame;
+            std::thread::sleep(next.saturating_duration_since(Instant::now()));
+        }
+        assert!(pressed[1] >= 10, "{} presses in the fight", pressed[1]);
+        assert_eq!((said, owed), ([0, pressed[1]], 0));
+        let rollbacks = players[1].0.stats().0.rollbacks;
+        assert!(rollbacks > 20, "{rollbacks} rollbacks");
+        let common = settled[0].iter().filter(|(tick, digest)| settled[1].get(tick).is_some_and(|d| d == *digest)).count();
+        let differing = settled[0].iter().filter(|(tick, digest)| settled[1].get(tick).is_some_and(|d| d != *digest)).count();
+        assert!(differing == 0 && common > 1000, "{common} settled ticks alike, {differing} differing");
     }
 
     /// What one player of [`set_pair`] saw: the result, each new round's

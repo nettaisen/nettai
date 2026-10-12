@@ -8,7 +8,7 @@ import { Slant, Label, Hints, Hint, Button, OptionRow, Versus, Input } from "wid
 import { Strip, Band, GameState, GameCard } from "shell.slint";
 
 // What the opponent does, as the window words it (the order of
-// `nettai_frontend::driver::Opponent::ALL`).
+// the app's `OPPONENTS`).
 export global TrainingText {
     pure public function opponent(i: int) -> string {
         if i == 1 {
