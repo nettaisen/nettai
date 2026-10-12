@@ -1013,7 +1013,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   taking the spawner's side alone (`side_only`). Each chip states its row (0x080DC32C: palette 0, 2, 4, 6; Fanfare's
   50 HP, the others' 100, 0x080DC3EC), its tune (0x12A to 0x12D) and its effect: Fanfare's makes its side's navi alone
   invulnerable for 4 ticks (0x080DC5C4; EXE5's and EXE6's every combatant), Discord, Timpani and Silence EXE6's
-  (confusion, immobilization, blindness, each 4 ticks). An immobilized navi doesn't blink black in EXE4 (its tail has
+  (confusion, immobilization, blindness, each 4 ticks), but Discord's hit covers the other side's whole area
+  (0x080DC5FC: regions 0x82 and 0x81, as EXE5's, 0x080D547C; EXE6's the other navi's panel, 0x85 and 0x84), so
+  another obstacle standing there takes it too (the lab's sprites/palette-slots: Fanfare's instrument's status word
+  0x80005000 every third tick of Discord's playing). An immobilized navi doesn't blink black in EXE4 (its tail has
   no `sub_801690A`): `effects.immobilized_blinks` (EXE6, EXE5 true; EXE4 false). The lab's chips/ (16),
   status/confusion, fanfare, paralysis-timpani and silence replay every frame; the hit recordings' fight frames are
   pixel-exact.
