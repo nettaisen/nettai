@@ -140,7 +140,19 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
                 EventResult::Propagate
             }
-            WindowEvent::CursorMoved { .. } | WindowEvent::MouseInput { .. } | WindowEvent::MouseWheel { .. } | WindowEvent::Touch(_) => {
+            // A finger: the on-screen pad's if it is on one of its buttons (each finger by itself, where Slint
+            // follows one pointer), else Slint's, as a pointer.
+            WindowEvent::Touch(touch) => {
+                let Ok(mut app) = state.try_borrow_mut() else { return EventResult::Propagate };
+                if app.touched(touch.id, touch.phase, touch.location.x, touch.location.y) {
+                    EventResult::PreventDefault
+                } else if app.pointer() {
+                    EventResult::Propagate
+                } else {
+                    EventResult::PreventDefault
+                }
+            }
+            WindowEvent::CursorMoved { .. } | WindowEvent::MouseInput { .. } | WindowEvent::MouseWheel { .. } => {
                 let taken = state.try_borrow_mut().map_or(true, |mut app| app.pointer());
                 if taken { EventResult::Propagate } else { EventResult::PreventDefault }
             }
@@ -292,4 +304,6 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     nav.on_edit_done(move |_, _, text| tell(&a, NavInput::EditDone(text.into())));
     let a = app.clone();
     ui.global::<nettai_ui::Shell>().on_touch(move |bit, down| tell(&a, NavInput::Touch(bit, down)));
+    let a = app.clone();
+    ui.global::<nettai_ui::Shell>().on_pad_key(move |bit, x, y, w, h| tell(&a, NavInput::PadKey(bit, Rect { x, y, w, h })));
 }

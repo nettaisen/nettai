@@ -507,6 +507,9 @@ pub struct Apu {
     step_timer: u32,
     /// SOUNDCNT_H's PSG level (0: 25%, 1: 50%, 2: 100%).
     psg_level: u8,
+    /// The host's level for each channel (256: as the hardware plays it), which is its player's
+    /// ([`crate::Driver::set_level`]).
+    levels: [u16; 4],
 }
 
 impl Default for Apu {
@@ -521,6 +524,7 @@ impl Default for Apu {
             step: 0,
             step_timer: SEQUENCER_CYCLES,
             psg_level: 2,
+            levels: [256; 4],
         }
     }
 }
@@ -722,6 +726,11 @@ impl Apu {
         }
     }
 
+    /// The host's level for each of the four channels (256: as the hardware plays it).
+    pub fn set_levels(&mut self, levels: [u16; 4]) {
+        self.levels = levels;
+    }
+
     /// The PSG's contribution to the DAC now, (left, right), in DAC units
     /// (the 10-bit DAC centered on 0).
     pub fn sample(&self) -> (i32, i32) {
@@ -733,8 +742,11 @@ impl Apu {
             self.wave.sample as i32,
             self.noise.sample as i32,
         ];
+        // (Each channel at the host's level, in 256ths, which the last shift takes out: at 256 the sums are
+        // the hardware's.)
         let (mut left, mut right) = (0, 0);
         for (i, &o) in out.iter().enumerate() {
+            let o = o * self.levels[i] as i32;
             if nr51 & (0x10 << i) != 0 {
                 left += o;
             }
@@ -744,7 +756,7 @@ impl Apu {
         }
         // Eight steps per level times the master volume, then SOUNDCNT_H's
         // share (100%: a quarter of that).
-        let shift = 4 - self.psg_level.min(2) as i32;
+        let shift = 4 - self.psg_level.min(2) as i32 + 8;
         let left = (left * 8 * (1 + ((nr50 >> 4) & 7) as i32)) >> shift;
         let right = (right * 8 * (1 + (nr50 & 7) as i32)) >> shift;
         (left, right)
