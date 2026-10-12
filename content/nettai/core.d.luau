@@ -2502,7 +2502,10 @@ export type FormEffect =
 --   doubles_null: its damaging Null chips deal double, outside battle mode
 --     1 (Beast Over);
 --   mood_palette: its palette, and its buster arm's, follow the mood
---     (Gregar and Falzar Beast).
+--     (Gregar and Falzar Beast);
+--   ignores_b: the B button asks for nothing (no buster, rapid presses or
+--     B+Left special) and no charge counts, under the per-button controls
+--     (EXE4's dark soul).
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -2514,6 +2517,7 @@ export type FormTrait =
     | "alt_charge_time"
     | "doubles_null"
     | "mood_palette"
+    | "ignores_b"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
