@@ -151,6 +151,8 @@ local slasher: Chip = {
     hit_param = 40,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    -- Its use isn't named to the other player (0x080EECF6 leaves chip 0x38 out): its slash names it.
+    traits = { "not_named_on_use" },
 }
 
 return { slasher = slasher }

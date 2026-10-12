@@ -441,7 +441,7 @@ every sound call; with exe4-compat's harness comparing the gauge as the recordin
   chips/recov/recov 0x1D (@exelib/recov/heal), chips/lance/lance (@exelib/lance) on lib/spawners 0x20 (EXE4's own,
   emap: absent; lib/plus its variant 4), and the dimming action 0x0C with DrkStage's controller, effect #0x6A, and
   the panel changer, effect #0x1F (@exelib/panel_changer). The records are tools/exe4/gen_content.py's. DrkStage
-  is EXE4's first dimming chip: its telop runs on the banner with no banner of its own (item 71).
+  is EXE4's first dimming chip: its telop has no banner of its own (item 71).
 
 Checked: the lab's dark/offer, hover-long, hover-hide, hover-describe, hover-then-ok-fast, with-folder-chip, side1,
 bluemoon, drksword, darkbomb, drkvulcn, drkspred, drkstage, drkcanon and drkcanon-taunt match every frame; drklance
@@ -2434,13 +2434,62 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
     the lab's souls/fire, number and guts/gigacan (three afterimages, three, two) replay every frame and are
     pixel-exact in the fight.
-71. **The telops' two blocks.** EXE4 lays the user's telop on the banner block (0x08016454, HUD task 0x100) and the
-    other player's on the second block (0x080164B4, task 0x8000), each in the banners' steps; the engine runs both on
-    its one banner, with no banner of their own (the roles leave `telop` and `telop_remote` unfilled; the HUD draws
-    the telop in its own look), which is the same while no other banner shows.
-    What differs: a banner on the banner block and the other player's telop at once, and a telop that starts while
-    one shows (0x08016454 restarts it; the engine's start fails). exe4-compat compares a telop by its own task bit.
-    The telop plays no sound (the role `sounds.telop` is optional).
+71. **Done: the telops' two blocks** (group F). EXE4's telop is no banner (the roles leave `telop` and `telop_remote`
+    unfilled; 0x0801650C lays the chip's name on a block, in the banners' steps, and the HUD draws it in its own
+    look). The rules' `effects.telops` says how a game's telops share the HUD with its banners: `"banners"` (EXE6's
+    `sub_801E792` with banners 0x4C and 0x50, EXE5's 0x0801B02E: a telop is a banner of the one block; none starts
+    while a banner or a telop shows, and its controller waits for whatever shows there, `sub_801E754`) or `"apart"`
+    (EXE4's):
+    - **the console's own player's telop** lays on the banner block under a task of its own (0x08016454, the HUD's
+      task 0x100): not while a banner or the judge's tallies show (0x0801627C: tasks 0x20 and 0x200), and in the place
+      of a telop that does. Its controller waits for it alone (0x08016440): it goes on at once where the telop
+      didn't start. No banner starts while it shows (0x0801617E reads 0x0801627C too), and the flow's wait for a
+      banner doesn't see it (0x08016148 reads task 0x20 alone: `Battle::banner_status`);
+    - **the other player's telop** lays on the second block (0x080164B4, task 0x8000; `Battle::remote_telop`), beside
+      whatever the banner block shows, in the place of what the second block shows: a telop, or the name of the chip
+      that player just used (0x080164B4's state 3, `Battle::used_chips`), which takes a telop's place the same way.
+      Its controller waits for the second block (0x080164A4), a telop or a name.
+    The engine's `dimming::show` and `shows`; `dimming.telop_done(side)` takes the side whose telop it waits for
+    (AntiNavi's: 0x08009006 waits on the trap's side's block). `Battle::telops_for` gives a console its two (each
+    console lays its own player's on the banner block; the simulation is its local side's console's). The digest
+    hashes that a block shows a telop and how long each used chip's name still shows (a controller waits on them).
+    AntiNavi's telop (0x08008FD4) ends no used chip's name (`dimming::chip_telop` by `used_chips_end_early`).
+    exe4-compat compares the three tasks on every frame: the banner's (0x20), the console's own telop's (0x100) and
+    the second block's (0x8000: over the whole lab the engine's used chips' names and the other player's telops match
+    it, once Slasher was fixed: below). The telop plays no sound (the role `sounds.telop` is optional).
+    **What reaches the differences** (the lab's telops/, 9 recordings, all matched):
+    - a telop in the place of the other player's used chip's name (`after-used-chip`: Repair, a one-frame action
+      with no lockout, then ColdMan two frames later), and the name beside the console's own telop
+      (`beside-used-chip`);
+    - a banner and a telop at once takes a dimming chip used on the last tick before TIME UP (a tick earlier the
+      dimming holds the timer; a tick later the navis take no keys): the judge's banner comes 63 ticks after TIME UP,
+      4 ticks before the telop is gone. `time-up`: under the console's own telop the judge's banner doesn't start (no
+      "HIT DAMAGE JUDGE" on that console; the judge's timers run all the same). `time-up-side1`: beside the other
+      player's telop it does (frame 9892 was the engine's first difference before: banner ours 0 theirs 1).
+      `time-up-doubled-side1`: the same with the telop's "×2" (Full Synchro). `time-up-both`: both sides' chips on
+      that tick: side 1's runs first, side 0's navi standing in its chip's first tick until that dimming ends; then
+      side 0's telop doesn't start under the judge's banner and its controller spends one tick on its name.
+      `time-up-both-bluemoon`, the same battle on side 1's console: no banner
+      started there, side 0's telop shows on the second block and its controller waits 48 ticks: the original's two
+      consoles run the chip's effect 48 ticks apart (after the battle is decided). `time-up-anti-navi`: AntiNavi's
+      telop on the second block, the judge's banner starting beside it (36 ticks together), then the turned chip's
+      telop starting on the second block while the banner holds; `time-up-anti-navi-side1`: both the console's own, no
+      banner.
+    Frame comparisons: `after-used-chip` 457 of 457 fight frames and `beside-used-chip` 459 of 459 pixel-exact; of
+    the seven long ones the frames around the telops and the judge (trace frames 9800 to 10120, or 9960 to 10270
+    with AntiNavi; 2217 frames) all pixel-exact but one frame of `time-up-doubled-side1` (9973: a piece of the
+    broken ice cube, effect #0x38, flying off the bottom of the screen with its ground at row 159 is drawn by the
+    frontend and not by the original; the next frame, at 162, by neither: **open**, the renderer's, none of the
+    telops').
+    **Found by the second block's check:** the idle's naming of a used chip leaves chip 0x38, Slasher, out
+    (0x080EECF6): its slash names it (0x080ED642). The chip's trait `not_named_on_use`
+    (chips/0x038-slasher/side1: the engine named it at its use too).
+    **Unreached, ported from the code** (the engine crate's tests): a telop in the place of the console's own telop
+    (the dimming's protocol shows one side's telop at a time: a cut-in's telop waits for the first one's end), a
+    used chip's name in the place of its player's telop (a navi uses no chip while its side's telop shows), and the
+    flow waiting on a banner while the console's own telop shows.
+    **Not EXE4's, noted:** EXE6's AntiNavi telop (`sub_800BE2C`) has no call that ends the used chips' names
+    (`sub_801BED6(0x10000)`), where the engine's `chip_telop` ends them (kept for EXE6 and EXE5 as it was).
 72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
     status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
@@ -2732,13 +2781,16 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     player's used chip shows (a deletion, a flag's break) turns its first two glyphs into the banner's glyphs 16 to
     19's bottom halves and its colors into the banner's (stages/lava-middle-close/flag-break-bluemoon, frames 3241 to
     3250); a pause turns its colors (flag-pause). The pack's `layout.telop.tiles`; the renderer follows the loads
-    (`hud::SharedLoads`) and makes the glyphs up (`hud::shared_glyphs`), the other way round too (a telop that
-    starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). A doubled chip's
-    "×2" is one 16x16 sprite at 0x380 for either place (0x08015522 adds no 36: emotions/counter-side1 shows the other
-    player's "Cannon 40×2"), so a banner's load turns it into the tops of the banner's glyphs 16 to 19, the '×' the
-    left column: stages/lava-middle-close/flag-break-synchro-bluemoon (a counter hit on the last turn, then the flag
-    broken by the doubled Cannon) compares it, frames 3793 to 3802. (A navi's deletion banner starts after the name
-    has run out; a flag's break is the case that shows it.)
+    (`hud::SharedLoads`) and makes the glyphs up (`hud::shared_glyphs`), the other way round too: a telop that
+    starts while a banner shows, the turned chip's telop under the judge's banner (telops/time-up-anti-navi, frames
+    10074 to 10121: pixel-exact; item 71). A doubled chip's "×2" is one 16x16 sprite at 0x380 for either place
+    (0x08015522 adds no 36: emotions/counter-side1 shows the other player's "Cannon 40×2"), so a banner's load turns
+    it into the tops of the banner's glyphs 16 to 19, the '×' the left column:
+    stages/lava-middle-close/flag-break-synchro-bluemoon (a counter hit on the last turn, then the flag broken by the
+    doubled Cannon) compares it, frames 3793 to 3802, and so does the judge's banner starting beside the other
+    player's "ColdMan 100×2" (telops/time-up-doubled-side1, frames 9894 to 9897: pixel-exact); a telop's name under a
+    banner's load the same way (telops/time-up-side1, 9888 to 9891; telops/time-up-anti-navi, 10036 to 10071). (A
+    navi's deletion banner starts after a used chip's name has run out.)
 
 ### 18.8 The chips (group F)
 

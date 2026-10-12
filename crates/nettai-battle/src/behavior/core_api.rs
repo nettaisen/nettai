@@ -2942,8 +2942,8 @@ impl CoreApi for Battle {
         crate::dimming::chip_telop(self, side, chip);
     }
 
-    fn dimming_telop_done(&self) -> bool {
-        crate::dimming::telop_done(self)
+    fn dimming_telop_done(&self, side: u8) -> bool {
+        crate::dimming::telop_done(self, side)
     }
 
     fn dimming_turn(&mut self, o: ObjectRef) {
