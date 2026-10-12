@@ -337,6 +337,41 @@ from the ROM and its code, read routine by routine):
   animation is the screen's own state 0x10 (0x0801E608: its first tick runs its first step, 0x0801E8AC goes on to
   the send; `program_advances.in_screen_state`); its steps are EXE6's but for the fade out split in two
   (0x0801E640, 0x0801E68C), which takes the same ticks.
+- **The Program Advance chips** (0x140 to 0x15D, all 30 in the content, each on its base chip's maker; the base
+  chips' actions are modules beside them for it: widesht/action, flmline/action, twnfng/action, magbolt/action,
+  timebomb/bomb, anubis/anubis). LifeSrd (the swords' action; both recipes). HeatSprd and BubSprd (the spreaders'
+  action 0x1E, bullet rows 0x0B and 7). GigaCan1 to 3 (the cannons' action 0x0B's variants 4 to 6, projectile row 12,
+  the navi's afterimages and, in a soul that wears something, a third of that: item 70). SuprSpr1 to 3 (WideSht's
+  action 0x31, three piercing waves). FlmCros1 to 3 (FlmLine's action 0x22, a cross of five flames, 0x080D00F8).
+  PitRng1 to 3 (the spawners' action 0x20's variant
+  0x0D, 0x080E9A36: a thrower, effect #0x6C, 0x080E999C, throws three of Boomer's boomerangs 16 ticks apart along
+  rows 3, 1 and 3, each turning a column further, each a strong one). BstFang1 to 3 (TwnFng's action 0x34, eight
+  pairs of weak fangs). PitHoky1 to 3 (AirHoc's flick, puck row 9, the one with a trail). MagShok1 to 3 (MagBolt's
+  action 0x59 over three rows, paralyzing, pulling the whole other side). TimeBom+ (TimeBomb's controller with bomb
+  1). H-Burst (action 0x71, 0x080EE93A, and its shot, attack #0x9E, 0x080E0B46: @exelib/h_burst with EXE4's look,
+  the navi's animation 14, the gun in the related slot, bursts with no status; five bursts, 0x080E0B44). PoisPhar
+  (Anubis's controller, statue row 1 of 0x080D82E8). BodyGrd (the dimming chips' variant 0x3D, 0x080E9ABC:
+  @exelib/bodygrd's controller, effect #0x6D, and striker, #0x6E, which the poltergeist and ColdMan leave by kind:
+  its identity's `throwable = false`). P.Driver (variant 0x3E, 0x080E9CD4: @exelib/piledrvr, its controller effect
+  #0x6F, its pile attack #0x99 and beam #0x9A; EXE5's PileDrvr kept the code, but its second pile beams at no one
+  when the first saw no one, 0x080E89AC, where EXE4's beams regardless, 0x080E9DC6: `second_alone`; the pile's and
+  the beam's inits load animation 0xFF, the register's leftover, before the update loads the one asked for, so with
+  EXE4's dimmed update loading alone each shows a tick with no palette offset). DarkNeo (variant 0x46, 0x080EA722:
+  its controller, effect #0x78, 0x080EA668, runs the navi chips' short course with the user back at once, 0x080EA744,
+  for its own Bass, actor #0x51, 0x080CB320: he rises as the Bass chip's does, turns his panel to the Hole chip's
+  hole, leaves there his user's image, attack #0xA1, 0x080E1028, which wears what its navi's form wears and fires
+  nine waves, attack #0xA2, 0x080E128C, from the bug charger; flies to the middle of the field in six ticks
+  (0x080C4A44's curve) with four ghosts behind, effect #0x47, 0x080E6F94; and blasts the two columns ahead, region
+  0x11, unless a body is in his way). The lab's pa/ (33: every recipe, the eight sequences recorded with the
+  generator's table start fixed from 0x080212D0 to 0x080212B0) replay every frame with the same sounds; one
+  scenario of each chip family is frame-compared (verify tools/frontend-compare/exe4.txt), every fight frame exact.
+  Not recorded: P.Driver's second pile beaming alone (it needs an enemy body behind the first pile). Three things
+  the frame compares found beyond the chips: a plain flinch ends no freeze or bubble, so a navi keeps the height a
+  shake while dimmed left it (0x08010960; P.Driver's beams hit through the dimming); DarkNeo's far ghosts and a
+  wave's afterimage go undrawn for four frames as Bass flies over the image's last waves, the sprite draw's 10
+  palettes taken (item 62's `effects.sprite_budget`, which those frames check a second time); and, left as it
+  is, the custom screen shows Muramasa's damage as 0 where the original shows ??? (BodyGrd's recipe:
+  pa/0x15c-bodygrd/sequence7, frames 4237 to 4246).
 - **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
   (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
 - **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
@@ -901,8 +936,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   over the other side's area (its bursts EXE4's), even once the battle is over (`blasts_after_battle`); no tracking
   (`untracked`); no removal read as it goes, a puff (0x70, effect row 0) when broken (`reads_no_removal`); EXE4's
   obstacle rows. Its first parameter picks TimeBomb's bomb (0, 50 HP) or TimeBom+'s (1, 300 HP, a stronger shake);
-  TimeBom+ (chip 0x15A, a Program Advance) has no content yet. The lab's chips/ (4) replay every frame; the hit is
-  pixel-exact.
+  TimeBom+ (chip 0x15A, a Program Advance: chips/timebom) states its own; the controller, the bomb's kind and its
+  body are chips/timebomb/bomb's for both. The lab's chips/ (4) replay every frame; the hit is pixel-exact.
 - **Blinder** (the dimming chips' variant 0x0E, `chips/blinder`): EXE6's leftover controller (effect #0x23,
   0x080E48EC: @exelib/blinder/controller, which EXE5's Blinder now shares) with SparkMan's flash's sound (0xBA): the
   user flashes, then a screen flash and the blinding hit over the other side's area (row 0x34, blindness for 480
@@ -2365,7 +2400,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
-    (0x08018068, lib/cannon) *open*. Wire them with the souls (item 25).
+    (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
+    the lab's souls/fire, number and guts/gigacan (three afterimages, three, two) replay every frame and are
+    pixel-exact in the fight.
 71. **The telops' two blocks.** EXE4 lays the user's telop on the banner block (0x08016454, HUD task 0x100) and the
     other player's on the second block (0x080164B4, task 0x8000), each in the banners' steps; the engine runs both on
     its one banner, with no banner of their own (the roles leave `telop` and `telop_remote` unfilled; the HUD draws
