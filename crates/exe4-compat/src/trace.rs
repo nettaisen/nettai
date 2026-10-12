@@ -797,6 +797,8 @@ impl Round {
             later_stages: vec![nettai_battle::Stage { stage, background }; 2],
             // (EXE4 has no low-HP music: nothing reads the latch.)
             low_hp_music_latched: false,
+            // (A console's battle: it pauses itself, and L is its run key.)
+            host_keys: nettai_battle::setup::HostKeys::NONE,
             players: [p0?, p1?],
         })
     }
