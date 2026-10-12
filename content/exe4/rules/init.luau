@@ -125,7 +125,9 @@ local rules: Rules = {
     -- What a soul's form says for Double Soul (./souls; a soul is named by its form's id, the original's number for it,
     -- NaviStats +0x24, is compat's): the family of the chips given up for it (0x08020008's table) and its turns
     -- (0x080180A8's: 3 every one), its chip (which OK puts in the hand for it, its use the soul's change:
-    -- ./souls/change), and its navi's image at the change (./souls/image, a `SoulImage`).
+    -- ./souls/change), and its navi's image at the change (./souls/image, a `SoulImage`). And what it wears, if
+    -- anything (0x08018068 by the soul: FireSoul's flames and NumberSoul's overlay), for what shows that beside the
+    -- form's own `put_on`: a GigaCan's afterimages (lib/cannon).
     extends = {
         chip = {
             sp = "u16[11]",
@@ -140,6 +142,7 @@ local rules: Rules = {
             },
             chip = "chip",
             image = "record:soul-image",
+            wears = "sprite",
             hand = "record:soul-hand",
         },
     },
