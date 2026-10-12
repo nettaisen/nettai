@@ -955,6 +955,86 @@ mod tests {
         assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], [Stands::Failed(Reason::OpponentLeft), Stands::Failed(Reason::Left)]);
     }
 
+    /// The player who is back in the lobby first leaves the other what it
+    /// needs to end the match. The host's frames reach the joiner ten frames
+    /// late, so the host's set is over while the joiner still lacks the
+    /// host's last inputs; the host's player is dropped then and its lobby
+    /// reopened, and everything the host had sent that was on its way is
+    /// lost, with all it says for the next 150 ms. The host's lobby says
+    /// its player's last frame again with its own messages, every 100 ms:
+    /// the joiner's player has the inputs from it, and its set ends too,
+    /// lost as the host's was won. Then the joiner comes back, and
+    /// the two are in the lobby. (In memory: the two lobbies' datagrams
+    /// handed across by the test.)
+    #[test]
+    fn the_player_back_in_the_lobby_first_leaves_the_other_its_last_frames() {
+        use crate::driver::short_set;
+        use crate::lobby::{Status, testing};
+        const LATE: u32 = 10;
+        let content = exe6_test_content();
+        let m = short_set::of(&content, "exe6", 7);
+        let single = Settings::new("exe6", 1);
+        let mut lobbies = testing::pair(&content, [single.clone(), single], m.sides.clone());
+        testing::run(&mut lobbies, Instant::now(), 20, &mut |_, _| {});
+        testing::load(&mut lobbies, Instant::now());
+        let mut players = [0, 1].map(|i| {
+            let Status::Start(a) = lobbies[i].poll(Instant::now()) else { panic!("started") };
+            let (side, set) = (a.side, a.set.clone());
+            let mut player = NetPlayer::new(lobbies[i].channel().expect("the match's channel"), side, set, no_delay());
+            let shown = player.start();
+            Some((player, shown))
+        });
+        // The host's datagrams on their way to the joiner, with the frame
+        // each arrives on.
+        let mut on_the_way: VecDeque<(u32, Vec<u8>)> = VecDeque::new();
+        let (mut host_back, mut results) = (None::<(u32, Instant)>, [None, None]);
+        for frame in 1u32.. {
+            assert!(frame < 30_000, "the joiner's set doesn't end: the host back in the lobby at frame {host_back:?}");
+            let now = Instant::now();
+            for side in 0..2 {
+                let Some((player, shown)) = &mut players[side] else { continue };
+                let keys = if side == 0 { short_set::shooter(shown, side, frame) } else { crate::driver::bot_buttons(shown, side, frame) };
+                player.run_frame(keys, shown).unwrap().unwrap();
+                results[side] = player.result();
+            }
+            // The host's set is over, the joiner's isn't: the host goes back
+            // to the lobby, and what it had sent that hasn't arrived is lost.
+            if host_back.is_none() && results[0].is_some() {
+                assert_eq!(results, [Some(BattleResult::Won), None], "the joiner hasn't the host's last inputs yet");
+                players[0] = None;
+                assert!(lobbies[0].reopen());
+                on_the_way.clear();
+                host_back = Some((frame, now));
+            }
+            let _ = lobbies[0].poll(now);
+            let said = lobbies[0].outgoing();
+            // (And what it says in the lobby's first 150 ms.)
+            if host_back.is_none_or(|(_, at)| now.duration_since(at) >= Duration::from_millis(150)) {
+                on_the_way.extend(said.into_iter().map(|d| (frame + LATE, d)));
+            }
+            let _ = lobbies[1].poll(now);
+            for d in lobbies[1].outgoing() {
+                lobbies[0].receive(now, &d);
+            }
+            while on_the_way.front().is_some_and(|(at, _)| *at <= frame) {
+                lobbies[1].receive(now, &on_the_way.pop_front().unwrap().1);
+            }
+            if results[1].is_some() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(host_back.is_some());
+        assert_eq!(results, [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+        assert!(matches!(lobbies[0].poll(Instant::now()), Status::Pending) && matches!(lobbies[1].poll(Instant::now()), Status::Playing));
+        assert!(lobbies[1].their_reopened());
+        // The joiner comes back too.
+        players[1] = None;
+        assert!(lobbies[1].reopen());
+        testing::run(&mut lobbies, Instant::now(), 4, &mut |_, _| {});
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(Instant::now()), Status::Pending) && !l.ready() && !l.their_ready()));
+    }
+
     /// Two matches in a row over one link, as "play again" goes: no new
     /// invite, the same room. The first match (a single battle: the host's
     /// navi shoots, the joiner's has 1 HP) is played to its end on both. The

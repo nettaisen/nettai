@@ -2045,7 +2045,12 @@ mod tests {
         for _ in 0..3 {
             now += RESEND;
             joiner.send(b"the joiner's frame").unwrap();
-            run(&mut lobbies, now, 1, &mut |_, _| {});
+            // (The joiner's peer says, with its player's frames, that it has
+            // loaded, every RESEND through the match: it is heard on the
+            // link even when its host ticks no player, its result shown.)
+            let mut heard = 0;
+            run(&mut lobbies, now, 1, &mut |from, d| heard += (from == 1 && d[0] == Kind::Loading as u8) as u32);
+            assert_eq!(heard, 1);
             assert!(matches!(lobbies[0].poll(now), Status::Pending) && matches!(lobbies[1].poll(now), Status::Playing));
             assert!(!lobbies[0].their_ready() && !lobbies[0].their_reopened() && lobbies[1].their_reopened());
             let mut again = 0;
