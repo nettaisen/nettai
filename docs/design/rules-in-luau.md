@@ -3384,7 +3384,7 @@ the default chips for an empty save for the game". No screen is in this step.
   - a chip a save can collect is one its library lists (the record's library flag), a version's own, or one whose
     definition says `collectible` (the chips the Japanese games gave out, an e-Reader card's, and in EXE5 the six
     Giga chips of Team Colonel's library: each version's ROM gives the library flag to its own Giga chips, and the
-    content keeps one record of each chip). That leaves out EXE6's four arm chips and SyncTrgr and EXE5's ten soul
+    content keeps one record of each chip). That leaves out EXE6's four arm chips and SyncTrgr and EXE5's ten soul mode
     chips, which a folder held before this step;
   - a version's own Giga chips: EXE6's chips say their `version`, and the rule reads the side's; EXE5's and EXE4's
     rules have no version, so their setups take `giga_chips`, the Giga chips the save can have (as its souls: a
