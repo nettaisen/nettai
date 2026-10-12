@@ -795,23 +795,18 @@ pub fn draw<'a>(
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        let shown = b.chip_hud_for(local);
-        // (Where the game's close doesn't start the window, the place a
-        // close that does would show the name in, until the navi's first
-        // decision: marked where the caller asks.)
-        const AT_CLOSE: &str = "chip-window-at-close";
-        let marked = !shown.window && shown.from_close && problems.wants(AT_CLOSE);
-        if (shown.window || marked)
+        if b.chip_hud_for(local).window
             && o.chips_held != 0
             && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
             let bonus = nettai_battle::kinds::player::next_chip_bonus(b, r);
             let doubled = nettai_battle::kinds::player::next_chip_doubles(b, r);
-            if shown.window {
-                draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
-            } else {
-                let end = chip_name_cells(b, text, hud, hand, chip, (bonus, doubled), problems);
-                problems.mark([0, 18 * 8, 8 * end, 20 * 8], AT_CLOSE.to_string());
+            let end = draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
+            // (Shown by the screen's close, before the navi's first
+            // decision, where the caller asks.)
+            const AT_CLOSE: &str = "chip-window-at-close";
+            if b.chip_hud_for(local).from_close && problems.wants(AT_CLOSE) {
+                problems.mark([0, 18 * 8, end, 20 * 8], AT_CLOSE.to_string());
             }
         }
     }
@@ -1054,32 +1049,6 @@ fn name_glyphs(b: &Battle, hud: &Hud, name: &str, chip: ChipHandle, problems: &m
 /// Whether a chip's damage shows after its name.
 fn shows_damage(b: &Battle, chip: ChipHandle) -> bool {
     b.content.chip(chip).flags.0 & ChipFlags::HAS_DAMAGE != 0
-}
-
-/// The cells the next chip's name and damage take from the left
-/// (`draw_chip_name`'s, in the original's glyphs).
-fn chip_name_cells(
-    b: &Battle,
-    text: &TextSink,
-    hud: &Hud,
-    hand: &nettai_battle::hand::ChipHand,
-    chip: ChipHandle,
-    (bonus, doubled): (u16, bool),
-    problems: &mut Problems,
-) -> i32 {
-    let words = text.strings.chip_name(&b.content, chip);
-    let mut cells = name_glyphs(b, hud, words, chip, problems).len();
-    if shows_damage(b, chip) {
-        let digits = |v: u16| v.to_string().len();
-        cells += digits(hand.damage.get(hand.cursor as usize).copied().unwrap_or(0));
-        if bonus != 0 {
-            cells += 1 + digits(bonus);
-        }
-        if doubled {
-            cells += 2;
-        }
-    }
-    cells as i32
 }
 
 #[allow(clippy::too_many_arguments)]

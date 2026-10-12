@@ -34,9 +34,6 @@ return {
     first_choosing_tick_reads_keys = true,
     -- L's no-running message starts on the tick after the key, with its sound (`sub_8026E98`, `sub_8026EC8`).
     run_message_at_key = false,
-    -- The screen's close starts the chip icons alone: the chip window waits for the navi's first decision
-    -- (`sub_8026DC4`).
-    close_shows_chip_window = false,
     -- A chip that counts as the invalid chip is picked as it (`sub_8028CCC`), and the selection counts each chip as
     -- checked (`sub_8028E4C`, `getChipID_802A54E`).
     invalid_picks = "picked",
