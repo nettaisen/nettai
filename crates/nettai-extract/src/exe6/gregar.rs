@@ -61,17 +61,27 @@ pub fn chip_version(id: u32) -> Option<Version> {
     }
 }
 
+/// The Falzar chip, whose icon the Falzar ROMs alone have: the Gregar
+/// ROMs' record has a placeholder that reads "13A". (The Gregar chip's
+/// icon is in all four.)
+const FALZAR_CHIP: u32 = 0x139;
+
 /// The ROM chip `id`'s record is read from: one of its own version, the
 /// US ROM before the Japanese one (the pack has the US games' art where
 /// the releases differ; the Japanese ROMs' pictures of the chips the US
 /// ROMs have none of are `jp::CHIP_PICTURES`). A chip of both is the same
-/// in every ROM but for two records, which each version's ROMs have their
-/// own of (the BeastOut chip's picture, which is the version's Beast Out
-/// button's, and the Falzar chip's icon): the pack has the Falzar ROMs',
-/// its base version's, so a Falzar ROM is read where one is given.
+/// in every ROM but for the BeastOut chip's picture, which is the
+/// version's Beast Out button's: the pack has the Falzar ROMs', its base
+/// version's, so a Falzar ROM is read where one is given.
 pub fn chip_source<'a>(roms: &Roms<'a>, id: u32) -> Source<'a> {
     match chip_version(id) {
         Some(version) => roms.of(version),
         None => roms.preferring(Version::Falzar),
     }
+}
+
+/// The ROM chip `id`'s icon is read from: its record's (`chip_source`),
+/// but the Falzar chip's, which is a Falzar ROM's alone.
+pub fn icon_source<'a>(roms: &Roms<'a>, id: u32) -> Source<'a> {
+    if id == FALZAR_CHIP { roms.of(Version::Falzar) } else { chip_source(roms, id) }
 }
