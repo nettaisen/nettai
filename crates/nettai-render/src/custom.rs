@@ -1617,8 +1617,8 @@ fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Probl
 
 fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
     SpritePart {
-        x: 2,
-        y: 100,
+        x: (a.layout.regular.0 & 0x1FF) as u16,
+        y: (a.layout.regular.1 & 0xFF) as u8,
         width: 32,
         height: 32,
         tiles: &a.regular,
@@ -1719,6 +1719,14 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
+    // Where the screen's states are the choosing's, its tick queues the
+    // Regular chip's frame before the state's own sprites (EXE4's
+    // 0x0801E3FC, then 0x0801E41E: the cursor is over the frame); else
+    // after the cursor (EXE6's `sub_8026CCC`).
+    let regular_first = b.content.rules().custom_screen.states_in_choosing;
+    if drawn.regular && regular_first {
+        queue.push(regular_part(&v, a));
+    }
     // The offered form's flying icon (EXE5's soul choice's: its state 9's
     // routines draw it before the screen's others).
     if window_view(b, screen) == Some(WindowView::OfferFlight)
@@ -1743,7 +1751,7 @@ pub fn draw<'a>(
         }
         queue.push(part);
     }
-    if drawn.regular {
+    if drawn.regular && !regular_first {
         queue.push(regular_part(&v, a));
     }
     if drawn.held {
