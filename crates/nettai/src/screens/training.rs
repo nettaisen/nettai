@@ -70,12 +70,14 @@ impl Screen for Training {
         // `NETTAI_TRAINING=<game>`: straight into a training battle of it, once it is ready.
         if !self.started
             && let Ok(game) = std::env::var("NETTAI_TRAINING")
-            && shell.game() == Some(game.as_str())
-            && shell.ready().is_some()
         {
-            self.started = true;
-            shell.go(ScreenId::Training);
-            start_development_battle(shell, crate::screens::menu::clock_seed());
+            if shell.game() != Some(game.as_str()) {
+                shell.select_game(&game);
+            } else if shell.ready().is_some() {
+                self.started = true;
+                shell.go(ScreenId::Training);
+                start_development_battle(shell, crate::screens::menu::clock_seed());
+            }
         }
     }
 }

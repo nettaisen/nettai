@@ -3258,6 +3258,8 @@ dependencies = [
  "nettai-rtc",
  "nettai-ui",
  "nettai-video",
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
  "png 0.17.16",
  "rfd",
  "serde",

@@ -28,7 +28,7 @@ export component MenuOverlay inherits Rectangle {
     arrive := Tween { }
 
     Rectangle {
-        background: root.side ? @linear-gradient(90deg, Theme.shade 0%, Theme.shade 46%, transparent 74%) : Theme.shade;
+        background: root.side && !Theme.phone ? @linear-gradient(90deg, Theme.shade 0%, Theme.shade 46%, transparent 74%) : Theme.shade;
         opacity: arrive.t;
         TouchArea { }
     }
@@ -156,7 +156,6 @@ component TouchPad inherits Rectangle {
     Button {
         x: 0;
         y: 0;
-        width: 96px;
         nav: "pad.menu";
         text: @tr("MENU");
     }

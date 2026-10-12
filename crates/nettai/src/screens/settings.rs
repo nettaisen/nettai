@@ -11,8 +11,9 @@ use nettai_ui::{PadBinding, PadButton, SettingsView};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
 
-/// Each group's first control: where the list at the left jumps to.
-const GROUPS: [&str; 6] = ["set.name", "set.picture", "set.music", "set.delay", "set.key", "set.folder"];
+/// Each group's first control, and the room over it for what the group has above it (its title; in Controls the
+/// columns' heads, in About the version's row): where the list at the left jumps to.
+const GROUPS: [(&str, f32); 6] = [("set.name", 40.0), ("set.picture", 40.0), ("set.music", 40.0), ("set.delay", 40.0), ("set.key", 68.0), ("set.folder", 92.0)];
 
 /// The picture sizes offered besides the largest that fits: 1 to 8 times 240 by 160.
 const SIZES: u32 = 8;
@@ -137,7 +138,7 @@ impl Screen for Settings {
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         match id {
-            "group" => shell.nav.focus(GROUPS[index.clamp(0, 5) as usize], 0),
+            "group" => shell.nav.focus(GROUPS[index.clamp(0, 5) as usize].0, 0),
             "set.language" => {
                 let options: Vec<String> = crate::lang::LANGUAGES.iter().map(|(_, name)| name.to_string()).collect();
                 let chosen = crate::lang::LANGUAGES.iter().position(|(code, _)| *code == shell.lang).unwrap_or(0);
@@ -221,7 +222,8 @@ impl Screen for Settings {
         if id == "group" {
             // The list's row under the cursor: its group comes to the page's top.
             view.set_group(index);
-            shell.nav.reveal_at_top(&ui, GROUPS[index.clamp(0, 5) as usize], 0, 40.0);
+            let (first, room) = GROUPS[index.clamp(0, 5) as usize];
+            shell.nav.reveal_at_top(&ui, first, 0, room);
         } else if let Some(group) = group_of(id) {
             view.set_group(group);
         }

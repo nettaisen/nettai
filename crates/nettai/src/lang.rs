@@ -1,4 +1,4 @@
-//! The languages (docs/app.md §4): the app's own strings come from the catalogs bundled into the UI (nettai-ui's
+//! The languages (docs/app.md §3): the app's own strings come from the catalogs bundled into the UI (nettai-ui's
 //! `build.rs`: Slint's `@tr`), and the content's names from its strings tables (its locales), in the same
 //! language. The language shown at first is the settings', else the system's if it is bundled, else English;
 //! Settings changes it while the app runs.

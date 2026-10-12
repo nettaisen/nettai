@@ -1,358 +1,328 @@
-# The app (`nettai`)
+# The app (`nettai` and `nettai-ui`)
 
-**Status (2026-10-06): a prototype.** The user asked for a game UI on desktop, the web and mobile, with no
-webviews, and chose Slint ("it should be very polished though"). `crates/nettai` is that app. It runs on the
-desktop (built and measured on macOS). §6 records what the web build needs and §7 what mobile would take.
+**Status (2026-10-12): the redesigned app's foundation.** The user asked for the app's UI to be rethought and
+redesigned entirely, in Slint, and approved a design: [design/app-ui.md](design/app-ui.md) is that design (what
+the user asked for, every decision, the look, the rules every screen follows, each screen). This document is the
+app as it is built: how the battle is hosted in a Slint window (§1, §5), how the app is put together and how a
+screen is added or filled in (§2), and the parts every screen shares (§3, §9 to §14).
+
+What exists: the design system, focus and navigation, the keyboard, mouse, touch and gamepads, scaling and the
+upright-phone switch, the languages, the errors and the log, Loading, the main menu with its reel and the title
+music, Settings, the two cards before a battle, and the battle's host with its menu overlay. Play, Training,
+Builds and Replays are registered and reachable, each with its header and Back and an empty body: each is one
+Slint file and one Rust module, to be filled in without editing a shared file (§2).
 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
-the command line with no window, for frames, audits and checks (docs/tools.md). nettai-demo, the first desktop
-host, is retired (§10). nettai wraps the battle in the screens a player sees, in Tango's shape (the user: "you
-should mirror how the tango ui does it in a lot of ways so it's more familiar"; §2):
-
-- the first run's welcome: your name, the language and the games found, with a battle playing itself beside them;
-- a top bar of tabs: PLAY, TRAINING and REPLAYS; BUILDS and SETTINGS, the occasional ones, at its right;
-- PLAY, online play, as Tango's Play tab: the selector strip (the game and your build), the build's sheet, both
-  players' cards, and the band at the foot that makes the link and is then the room (§4);
-- TRAINING, you against the computer, offline, in the same shape: the strip, the match, your opponent's build,
-  what it does and how long the set is, a preview of who fights in which arenas, FIGHT in its band;
-- the battle;
-- the replays, filtered by game: every set played is recorded;
-- the builds: a player's sides, game by game, made in the build creator (§8);
-- the settings, in a section sidebar, kept between runs (§9).
-
-Every screen is navigated alike by the keyboard, a gamepad, the mouse and touch. The app's own strings are in
-catalogs, one for each language; the content's names come from its locales.
+the command line with no window, for frames, audits and checks (docs/tools.md).
 
     NETTAI_PACKS=<packs> cargo run --release -p nettai
 
 The packs are found as nettai-tool finds them (`$NETTAI_PACKS`, else `data`, each pack by the game it says;
-written by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`). What the player makes is kept in
-the app's data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
-`$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are
-in `builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), match files are
-listed from `matches/` (`$NETTAI_MATCHES`), and the settings are `settings.toml` (`$NETTAI_SETTINGS`). For
-netplay, `$NETTAI_SIGNAL` names the signaling server (§4). Some variables are for development:
+written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`). What the player makes is kept in the app's
+data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
+`$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are in
+`builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), the settings are
+`settings.toml` (`$NETTAI_SETTINGS`) and the log is `nettai.log` (`$NETTAI_LOG`). For netplay, `$NETTAI_SIGNAL`
+names the signaling server (§4). Some variables are for development:
 
 | Variable | What it does |
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
-| `NETTAI_TRAINING=<game>` | Starts straight into a random training set of the game, against the stand-in. |
-| `NETTAI_NETPLAY=<game>:<make\|join>:<CODE>`, `<game>:host:`, `<game>:direct:<HOST:PORT>` | Starts straight into that room (or direct link), ready. |
-| `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5. |
+| `NETTAI_TRAINING=<game>` | Starts straight into a training battle of the game: new builds of its first two versions, the other a dummy that stands still. |
+| `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle and on the main menu. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
-| `NETTAI_RENDERER=femtovg\|software` | Picks Slint's renderer. |
-| `NETTAI_TOUR=<folder>` | Walks every screen in each language, at a desktop's size and at a phone's, and writes each to a PNG (`NETTAI_TOUR_LANGS=en,ja,pseudo` picks the languages; `NETTAI_TOUR_ONLY=builds` walks the builds, the strip's build and Play's band (a direct link, hosting) alone, of `NETTAI_TOUR_GAME=<game>`). The backdrop holds still, and some shots come in pairs a state apart (`play`, `play-focus`; `training`, `training-focus`; `settings`, `settings-focus`; `replays`, `replays-filtered`) for a comparison of what moved. Nothing it changes is kept in the settings. |
+| `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe. |
 
 ## 1. The battle in a Slint window
 
 **The clock is the window's rendering.** The rendering notifier's `BeforeRendering` runs the app's frame
-(`App::frame`) before Slint draws the frame:
+(`App::frame`, shell.rs) before Slint draws the frame:
 
-1. It polls the gamepad and steps the wipe between screens.
-2. It runs the battle's ticks due, with the buttons held.
-3. If a tick ran, or the space changed, it presents a new picture, which that same frame draws.
-4. It queues the sound.
+1. It fits the layout to the window (§9), reads the gamepads, follows the games as they load, and gives each
+   screen its frame (`Screen::frame`: a link's datagrams are fed here).
+2. It makes a battle ready, a few steps a frame, while the two cards show; or runs the battle's ticks due, with
+   the buttons held.
+3. If a tick ran, or the picture's room changed, it presents a new picture, which that same frame draws.
+4. It gives each screen the frame's end (`Screen::frame_end`: what the ticks made to send goes out), queues the
+   sound, and keeps the one focus (§11).
 
 `AfterRendering` notes that the frame was drawn and asks for the next one, so the app runs at the display's rate:
-120 frames a second on this Mac's display. This is nettai-demo's lesson ("the widget is the clock") carried over:
-a frame shows the picture presented for it, not the previous frame's.
+120 frames a second on this Mac's display. A frame shows the picture presented for it, not the previous frame's.
 
-Slint on Apple's systems draws its frames from a display link with no window event before them. Its Skia
-renderer on Metal never calls `BeforeRendering`, so the clock needs femtovg, on OpenGL here and WebGL on the web.
+**The app keeps its time while something runs** (`awake.rs`). macOS gives an app that isn't in front, or whose
+window is covered, the lowest priority and delays its timers (App Nap); on a busy machine it then gets no time at
+all. The screenshot pass found it: covered by another window while builds loaded the machine (load average 170),
+it stopped mid-walk, in the middle of a frame, and never went on. So while a battle is loading or running, while
+a screen says it has something that must go on (`Shell::stay_awake`: a link to another player), and during the
+screenshot pass, the app holds a Foundation activity (user-initiated, latency-critical, the display kept on: a
+player on a pad presses no key). It was checked by the system's list of them (`pmset -g assertions` names the
+app's, "a battle is running", during a training battle), not by covering the window under load again. Not
+checked either: whether a hidden or minimized window is still drawn. If it isn't, a battle in one doesn't tick,
+the clock being the drawing. Windows and Linux have nothing held.
 
-**The picture is one texture, written in place** (`gl.rs`), nettai-demo's other lesson. When femtovg's
-`RenderingSetup` hands over its OpenGL, the app makes one texture there, the picture's size, and shows it as a
-borrowed texture (`BorrowedOpenGLTextureBuilder`), set as the `picture` property once. Each new picture is
-written into it with `glTexSubImage2D`, and nothing is allocated for it:
+Slint on Apple's systems draws its frames from a display link with no window event before them. Its Skia renderer
+on Metal never calls `BeforeRendering`, so the clock needs femtovg, on OpenGL here and WebGL on the web; the app
+asks for it by name and is built with no other renderer (§14).
+
+**The picture is one texture, written in place** (`gl.rs`). When femtovg's `RenderingSetup` hands over its OpenGL,
+the app makes one texture there, the picture's size, and shows it as a borrowed texture
+(`BorrowedOpenGLTextureBuilder`), set as the UI's `Shell.picture` once. Each new picture is written into it with
+`glTexSubImage2D`, and nothing is allocated for it:
 
 - The presented buffer goes as it is. Its 0x00RRGGBB pixels are B, G, R and an unused byte in memory, which
   OpenGL takes as BGRA, so only the unused byte is made opaque.
 - The texture is made again only when the picture's size changes.
 
-Without that OpenGL (the software renderer, the web, or `NETTAI_NO_TEXTURE`), each picture is a new
-`SharedPixelBuffer` image. That was the first prototype's only way, and it was the lag the user saw (§5).
+Without that OpenGL (`NETTAI_NO_TEXTURE`, the web), each picture is a new `SharedPixelBuffer` image. That was the
+first prototype's only way, and it was the lag the user saw (§5).
 
-**Its size** is the frame's largest whole multiple that fits the space, counted in display pixels
-(`stage::fit`). It is presented at the window's density (the scale over the display's factor, rounded up), or at
-the display's density with `NETTAI_PHYSICAL_PIXELS`, and drawn with `image-rendering: pixelated` at exactly
-`240 × scale` display pixels.
+There is one texture and it holds one picture: the battle's, the main menu's reel's, or a replay's viewer's. Each
+is a `Surface` (`stage.rs`: the buffer something presents itself into, how it fits, whether it is out of date),
+and the one last shown is the one in the texture; another shown after it presents its own picture anew.
 
-The density need not divide the scale. Each display pixel samples the presented pixel its center falls in, and
-that pixel always belongs to the right frame pixel, so every frame pixel is the same square
+**Where the picture goes** is a `Picture` in the screen's Slint (shell.slint): a box that says where it is and
+how large (`Shell.picture-room-*`). The app draws the picture in the box's middle, at the frame's largest whole
+multiple that fits, counted in the display's pixels (`stage::fit`, held to the settings' picture size), and moved
+onto the display's pixels: the layout is scaled by a fraction (§9), so the box's corner needn't fall on one, and
+a picture drawn across them wouldn't show each of the game's pixels as one square. The box keeps its size
+whatever the multiple, so nothing beside it moves. In a battle the box is the window; on the main menu it is the
+reel's 720 by 480.
+
+It is presented at the window's density (the scale over the display's factor, rounded up), or at the display's
+density with `NETTAI_PHYSICAL_PIXELS`, and drawn with `image-rendering: pixelated` at exactly `240 × scale`
+display pixels. The density need not divide the scale. Each display pixel samples the presented pixel its center
+falls in, and that pixel always belongs to the right frame pixel, so every frame pixel is the same square
 (`stage::tests::every_frame_pixel_is_a_square_at_any_density`). Only the text layer, drawn at the density, is
 scaled by a fraction.
 
-At 1280x800 points on a Retina display, a 9x picture is presented at 5x: 1200x800 pixels, presented and
-written into the texture in 2.4 to 2.9 ms. Before this, odd scales were presented at the display's density, which
-cost 6.4 ms a picture and held the app to 60 frames a second.
+At 1280x800 points on a Retina display, the battle's picture is 10x (2400 by 1600 of the display's pixels),
+presented at 5x: 1200x800 pixels, presented and written into the texture in about 3.5 ms in a dev build (§5).
+Presented at the display's density, a picture cost the first app 6.4 ms and held it to 60 frames a second.
 
-**The keys** come from winit's window events through Slint's winit hook (`on_winit_window_event`), before Slint's
-focus handling sees them. They are read by physical key (Z and X sit where they are whatever the layout) and
-timestamped as they arrive. While the battle has the keys, they don't reach the menus. The map is nettai-demo's:
+Nothing else is drawn under a battle that fills the window: the ground and its hexagons are left out (they cost
+1.4 ms a frame there: §5).
+
+**The keys** come from winit's window events through Slint's winit hook (`on_winit_window_event`), before Slint
+sees them. They are read by physical key (Z and X sit where they are whatever the layout) and timestamped as they
+arrive. While the battle has the keys, they don't reach the menus. The battle's buttons are the player's bindings
+(Settings' Controls, kept in the settings; `input::Bindings`). The defaults:
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
-- Esc pauses (Tab does nothing in the battle: in the menus it is the next item, Shift+Tab the one before);
-- in a replay, Space pauses, `-` and `=` change the speed, and `.` steps a frame;
-- in training, R (or F5) starts over: the same set again from its first round.
+- Esc opens nettai's menu;
+- in training, R (or F5) starts the set over, unless the player bound it to a button.
 
-**The gamepad** is read through gilrs and polled each frame:
+**The gamepads** are read through [gamepad-facade](https://github.com/tangobattle/gamepad-facade) (SDL3's
+gamepads behind a small API; the user's choice) and polled each frame (`input::Pad`). Every pad plays the one
+player:
 
-- the south button is A, the west (or east) button B, the shoulders L and R, and Start and Select are theirs;
-- the D-pad and the left stick move;
-- the Mode (Guide) button pauses, and in training the north button (Y, △) starts over.
+- the buttons are bound as the keys are; the defaults are the south button A, the west button B, the shoulders L
+  and R, Start and Back;
+- the left stick moves whatever is bound;
+- the Guide button opens nettai's menu, and in training the north button starts over.
 
-In the menus the same presses navigate, and the key hints switch to the pad's buttons once it is used.
+In the menus the same presses navigate (§11), and the key hints switch to the pad's buttons once it is used.
 
-**The sound** is nettai-audio's `Output`. The menus' sounds are the loaded game's own custom screen sounds,
-through its rules' sound roles (`custom_cursor`, `custom_pick`, `custom_back`, `refused`): the app names no sound
-of a pack. A second `BattleAudio` plays them:
+**START never pauses the game.** In a fight the library reports START and doesn't act on it
+(`Player::take_pause_requests`: docs/frontend.md §2), and what it opens is nettai's menu (`Shell::open_menu`):
+the battle's owner's own, the training menu or the match menu (§2). A battle that can stop is paused under the
+menu; an online match keeps running, as the menu says.
 
-- While a battle runs, it is ticked with the battle's ticks and its samples are added to the battle's, sample
-  for sample, so the device gets one stream at the battle's rate.
-- With no battle running, it runs on its own clock at the same rate.
+**The sound** is nettai-audio's `Output`, fed one stream at the battle's rate (`sound.rs`):
 
-At first it ran on its own clock throughout, and its samples went to the device beside the battle's, at twice the
-rate the device plays. The queue then sat at `Output`'s cap of 200 ms: every sound was late by that much, and
-dropped samples skipped (§5).
+- The menus' sounds are the selected game's own custom screen sounds, through its rules' sound roles
+  (`custom_cursor`, `custom_pick`, `custom_back`, `refused`): the app names no sound of a pack. Every move of the
+  cursor, confirm, back and refusal has one.
+- The title music is the selected game's too: the sound its pack names `title-screen`, on a driver of its own. It
+  plays across the menu screens, fades in, fades out as a battle starts, and crossfades with the next game's as
+  the game changes. A pack that names no such sound has none (see "What is missing" below).
+- While a battle runs, both are ticked with the battle's ticks and their samples added to the battle's, sample
+  for sample; with no battle running they run on their own clock at the same rate. (At first the menus' sound ran
+  on its own clock throughout, beside the battle's, at twice the rate the device plays. The queue then sat at
+  `Output`'s cap of 200 ms: every sound was late by that much, and dropped samples skipped: §5.)
+- Settings' Music is the title music's level, and Sound effects the level of the menus' sounds and of the
+  battle's whole sound. The battle's own music isn't apart from its effects: the game's driver mixes them, and the
+  library gives a host one stream.
 
-**Loading** a game (`game::load`) runs on a thread of its own. The app starts loading every game with a pack at
-once, and the result comes back through Slint's event loop. Replays are played out on threads too, to show who
-won and whether each plays back as it was played.
+**A game is ready in two stretches**, and the loading screen's bar covers both (`games.rs`; docs/frontend.md §9):
 
-## 2. The screens
+1. Everything read from disk (the content, the pack's graphics and sound, the text's font, and the strings and
+   lettering of the language shown) is read on a thread of the game's own, a part at a time (the library's
+   `game::Loading`), so the window stays live. This is four fifths of the bar.
+2. The content's Luau runtime is loaded on the window's thread, the one that runs the battles and checks the
+   builds (`preload::runtime`): about a second with the window still. It is done the moment the selected game's
+   parts are in, two frames after the bar has shown them, and never later: a link nobody polls for three seconds
+   reads as dropped, so it must be over before any lobby exists.
 
-The visual direction is "cyber arena", built from Slint's shapes alone (no standard widgets):
+The game last used loads before the menu appears. The others' parts are read behind the menu; a game takes its
+runtime when the player steps to it, behind the bar again. Another language's graphics are loaded on a thread too
+(`Games::load_language`) when the language changes, never on the window's thread where they are first asked for;
+the screens and the main menu's reel are shown again in the language when they arrive.
 
-- **Backdrop:** night blues behind the net's grid, which drifts.
-- **Shapes:** slanted panels and bars (`Slant`, a path).
-- **Color:** cyan for player one and focus, magenta for player two and the versus, gold for the main action and
-  wins.
-- **Type:** Murecho throughout, with its black weight for display.
-- **Motion:** focus bars slide out; a battle comes and goes behind a diagonal wipe in the players' colors (a tab
-  is shown at once).
+**Before a battle** the two cards show while the match is made ready (`battle.rs`, the library's
+`preload::Preload`): the round's first battle, its first picture at the size it will be shown, the sound's
+drivers, and each side's navi, forms and chips. Once a game is loaded this is a few milliseconds, so the bars
+fill at once; they show the truth, and the cards stay up half a second so they can be read. A battle made ready
+loads no runtime and reads nothing while it plays, and the app holds itself to that: when a battle ends it asks
+the library what was loaded late (`Player::late`) and writes any runtime or read to the log.
 
-**Tango's shape.** Tango (tango/src: `app/view.rs`, `tabs/`, `ui/`) has no title or menu screen: a top bar over a
-body, PLAY and REPLAYS as labeled tabs at its left and PATCHES and SETTINGS as icon tabs at its right; a welcome on
-the first run until a nickname is set; a Play tab that is one view in bands (the loadout strip of game, save and
-patch pickers with the save's actions, the save's viewer filling the body, and a bottom band of the link code and
-FIGHT that becomes the lobby once a connection starts, the save still shown above it); Replays as filters, a list
-and a detail; Settings as a section sidebar and its pane; one control height and one pane gap throughout. nettai
-follows it, its own look kept:
+**What is missing.** EXE4's and EXE5's packs name no `title-screen` sound (only EXE6's content names it), so
+those two have no title music until their content does. And the app looks the sound up by that asset name, where
+the menus' sounds go through the rules' sound roles: a role for it would be the content's to add.
 
-| Tango | nettai |
+## 2. The shell and the screens
+
+Two crates. **nettai-ui** is the Slint alone: `ui/` compiled by `slint-build`, the fonts and the translations
+bundled. **nettai** is everything else. They are apart so that an edit to the app's Rust never compiles the UI
+again, and so that the UI can be built without optimization (§14).
+
+    crates/nettai-ui/ui/theme.slint       the colors, the type, the metrics, the durations (§10)
+                        motion.slint      what every animation is made of
+                        nav.slint         a focusable control; what a control tells the app (§11)
+                        widgets.slint     the components
+                        shell.slint       the header, the footer, a page, the ground, the cursor, dialogs
+                        app.slint         the window: the one screen shown, what opens over it
+                        screens/<name>.slint
+               lang/<code>/<part>.po      the translations (§3)
+    crates/nettai/src/main.rs             the window, its clock, its events
+                      shell.rs            `Shell` (what a screen is handed) and `App` (who carries what happens)
+                      nav.rs input.rs     the focus; the keys and the pads
+                      battle.rs stage.rs gl.rs sound.rs games.rs      the battle's host (§1)
+                      awake.rs                                          the app's time kept (§1)
+                      settings.rs lang.rs paths.rs errors.rs tour.rs  §9, §3, §12, §13
+                      lobby.rs netplay.rs replays.rs arenas.rs builds/  kept for the screens to come (§4, §8)
+                      screens/<name>.rs
+
+**A screen is one Slint file and one Rust module.** Menu and Settings are built; Play, Training, Builds and
+Replays are their headers. `ui/screens/play.slint` holds:
+
+- `PlayView`, a global: the screen's data, which its Rust module sets (and may read back). A struct or an enum
+  one of its properties uses reaches Rust by that use; nothing is added to app.slint for it.
+- `PlayScreen`, a component that `inherits Page` (shell.slint): the header with its title and where Back goes,
+  the footer's key hints, and the screen's own parts in the body.
+- `PlayOverlay`: what the screen opens over itself (its dialogs, on a phone its sheets), over the whole window.
+- For Training and Play, the menu over their battle (`TrainingMenu`, `MatchMenu`, each a `MenuOverlay`).
+
+`src/screens/play.rs` holds a struct that implements `Screen` (screens/mod.rs). A screen never handles keys and
+wires no callbacks. Its controls have names (`nav: "ready"`, and `nav-index` where there are several), and
+whatever the player used, a key, a pad or a click, arrives as one of a few calls with the name:
+
+| `Screen` | When |
 |---|---|
-| top bar: Play, Replays; Patches, Settings | top bar: PLAY, TRAINING, REPLAYS; BUILDS, SETTINGS (`shell.slint`'s `TopBar`) |
-| welcome (nickname, language, ROMs) | welcome (your name, language, the games found; the demo battle beside them) |
-| loadout strip: family, save, patch | selector strip: GAME, YOUR BUILD, EDIT or NEW BUILD (`Strip`), Play's and Training's alike |
-| the save's viewer | the build's sheet: its name and version, its folder in its 30 places, what a round starts it with, the rest it states (`SheetView`) |
-| link code and FIGHT, then the lobby band | the link (ROOM or DIRECT, its code or address) and FIGHT, then the room (its code, READY, LEAVE) (`Band`) |
-| the lobby dot on Play | the room stays open on other tabs; PLAY carries a dot |
-| Replays: filters, list, detail | REPLAYS: the game filter, the list, the detail pane |
-| Settings: sidebar and pane | SETTINGS: GENERAL, GRAPHICS, AUDIO, CONTROLS, ABOUT |
-| save management | BUILDS (the list, the creator); the strip's EDIT and NEW BUILD |
+| `show` | The screen is shown, or something it shows changed under it (the selected game, the language, the window turned upright): set the view from the state. The one method a screen must write. |
+| `hide` | Another screen is shown in its place. |
+| `activate(id, index)` | Enter, a click or a tap on a control. |
+| `step(id, index, by)` | Left or Right on a stepper, a select or a switch, or a click on its arrow. |
+| `choose(id, index, choice)` | A choice made outright: one side of a switch clicked, a slider set, a row of a select's list. |
+| `edit(id, index, text, done)` | A field's text as it is typed, then as it is left. The screen keeps what it wants of it and sets its view's property, which the field then shows. |
+| `focused(id, index)` | The focus moved to a control (a list's row: the overview beside it follows). |
+| `key`, `button` | A key or a pad's button the screen may want for itself, before the menus read it (a key being bound; R in training). |
+| `action` | Previous and next (the shoulders, the keys bound to L and R), delete, the pad's north button. The shell changes the game with the first two unless the screen takes them. |
+| `back` | Esc or Back: true if the screen went back within itself; false and the shell goes to the menu. |
+| `answered(tag, choice)` | A dialog the screen asked was answered. |
+| `dropped(path)` | A file was dropped on the window. |
+| `battle(event)` | A battle the screen started began, ended (with its result) or stopped (with its reason); or the replay it asked for is ready to watch. |
+| `frame`, `frame_end` | Every frame, shown or not: before the battle's ticks, and after them. |
 
-Each screen keeps its own cursor and takes navigation actions (`NavAction`: up, down, left, right, confirm, back,
-previous, next) from the window's keys, the gamepad, or a click or tap, which focuses and activates. Up from a
-tab's first row, or back, gives the keys to the top bar, where left and right go through the tabs (each shown at
-once) and down or confirm gives them back; while the bar has them, the tab shows no focus.
+**What a screen asks of the shell** (`Shell`, shell.rs):
 
-**Nothing moves by itself.** The user found the app's layout thrashing; each element keeps its size whatever it
-shows:
+- *Navigation:* `go(screen)`; `refresh()` to be shown again; `nav.focus(id, index)`; `nav.enter(view, main)` for
+  a view of its own that replaces the rest (a lobby, an editor's tab: the focus is remembered by the view's
+  name, and the screen calls it again in `show`); `nav.open(prefix, key)` and `nav.close(prefix)` around a dialog
+  of its own, whose controls' names begin with the prefix (while it is open the keys reach nothing else).
+- *The selected game:* `game()`, `ready()` (the game loaded: its content, graphics and sound), `lock_game(true)`
+  where the game can't change (the name stays in the header without its arrows), `select_game`, `step_game`.
+- *Dialogs:* `ask(Dialog)` for a question (a title, a message, buttons; the answer comes to `answered`);
+  `pick(id, index, options, chosen)` to open a select's choices as a list; and for a dialog with controls of its
+  own, a `DialogFrame` in the screen's overlay.
+- *Errors:* `fail(UserError)` for a failure that ends what the player was doing, `fail_with` for one with the
+  screen's own button; `UserError::line` for a field's reserved line (§12).
+- *A battle:* `start_battle(BattleStart)`: who owns it, which menu Start opens, the set and what plays it, the
+  two cards, whether it fills the window, and for an online match a `gate` that is told this side's fraction
+  each frame and answers the other side's (the lobby's `set_loading` and `their_loading`: the battle starts when
+  both are 1). Then `open_menu`, `close_menu`, `end_battle`, and `battle` for the player itself
+  (`battle.stage.player`: the dummy's choices, a restart). The shell owns no link and no lobby, and decides
+  nothing when a battle ends: the owner is told the result or the reason and says what is next.
+- *A replay:* `start_battle` with `Play::Watch(replay, side)` makes its viewer ready behind the same cards and
+  hands it over (`BattleEvent::Watching`); the screen shows it in a `Picture` of its own with
+  `show_surface(surface, present)` and plays its sound with `play_samples`.
+- *The rest:* `settings` (and `settings.remembered`, a map for what a screen remembers by its own keys, so it
+  adds no field) with `save_settings()`; `set_name`; `lang`; `sound.play(Cue)`; `copy(text)`;
+  `choose_file`, `choose_save`; `recorder` for an offline set's replay; `fly` (§10); `stay_awake`, set while
+  the screen has a link open (§1).
 
-- an option's value has a column of its own (`OptionRow::value-width`), so its arrows stay put whatever it says;
-- a note, a problem or a hint keeps its line when it says nothing (option rows, the creator's fact rows, the
-  creator's problem and pick hint lines, the training preview's problem line, the screens' headings);
-- the creator's entry marks (REG, TAG), tails (a code, an MB) and problem marks have columns;
-- the battle's net line has a fixed column between the navis (and a fixed, right-aligned one at the top right),
-  and a replay's transport (the round, the clock, the speed, the console) has columns, so its bar keeps its
-  length;
-- the ready mark has one width, READY or NOT READY; the link's line and the problem's lines are always there;
-- a pane is always there, empty or not (the replays' detail; the training preview fills its place; its versus and
-  "choose a game" are as tall); the sheet holds its 30 places and its stat rows before a game has loaded;
-- focus and hover change color and outline alone, never size; an animation moves a bar over, never the layout.
-
-The tour checks it: its pairs of shots, compared, differ only in colors where the focus went.
-
-- **Text fields** are Slint's `TextInput`, so the desktop's IME composes into them (winit's IME events; Slint
-  shows the preedit). Up, down and Esc still leave a field: the window's `FocusScope` captures them while one
-  is being edited.
-- **Responsive layout:** the window sets `Theme.compact` (small) and `Theme.portrait` (held upright) as its size
-  changes. Layouts follow these imperatively-set values, never the window's own size, so they don't size the
-  window.
-- **On a phone held upright:** the battle draws an on-screen pad under the picture; the strip is two rows (the
-  game and its action, the build); Play and Training put their band at the foot, Training shows the versus
-  without arenas, and the settings' sections run across the top.
-
-The screens:
-
-- **Welcome**, the first run's (no name yet): your name, the language, each game found (ready, loading, or what
-  it needs), CONTINUE. The demo battle beside it is a random set of a loaded game, with the stand-in's custom
-  screen pressed on both sides and the left navi fighting. A name is needed to go on; after it, the app opens on
-  Play.
-- **The selection** (Play's and Training's strip, the app's as Tango's loadout is): the game (the first ready
-  until one is chosen) and the build (none of yours: a random side, or a match file's; else one of yours of the
-  game). EDIT opens it in the creator, NEW BUILD makes one; the creator goes back to the tab it was opened from.
-- **Play** is online play (the user: "play should be online play and the single player play should be some kind of
-  training mode instead under training"): the tab the app opens on, §4.
-- **Training** is you against the computer, offline, every set recorded as any other. The match is a random one
-  (from a seed; confirm for another) or a match file of the matches folder. YOUR BUILD (the strip's) puts one of
-  your builds of the game in place of your side, and OPPONENT one in place of the other side (a build that can't
-  play says why). IT DOES is what the opponent does, its buttons alone, as a
-  player's are (four mixes of `nettai_frontend::driver::Opponent`'s two choices, what it does in the fight and
-  what it does on its custom screen, which the redesigned training menu sets apart and while the set runs:
-  docs/frontend.md §2; recorded with the set):
-  - **Stand-in**: stands still; its custom screen picks the first chip it can and presses OK.
-  - **Dummy**: stands still and picks no chip.
-  - **Mover**: moves about the field at random (seeded), never attacks; its custom screen is the stand-in's.
-  - **Masher**: moves, shoots, charges and uses its chips at random (seeded); its custom screen is the
-    stand-in's.
-
-  ROUNDS is the match's (a triple battle's three, or the file's) or ENDLESS: 99 rounds, the most a set has (`MAX_ROUNDS`),
-  which the game decides at 50 wins; its pips count the rounds won, and its preview shows the first three arenas.
-  The arenas are each round's field, played alone for 24 ticks and drawn (`arenas.rs`). In the battle, R, F5 or the
-  pad's north button (and the pause's START OVER) start the set over from its first round with the same draw,
-  recorded anew.
-
-  What training doesn't do, because it would need behavior the engine or the rules don't have: a custom gauge
-  that is always full (no setting or fact makes one; the gauge's speed is a stat the rules build), the round being
-  played started over by itself (a set's later round starts from the rounds before it, and a replay holds a set
-  from its start), and an opponent that fights as the game's own navis do (the engine has no computer navi for a
-  link battle's side).
-- **Builds** and the build creator: §8.
-- **The battle.** The pause has resume, start over and quit (the language is Settings' alone). The result has the score, the replay
-  file it was recorded to, rematch and menu. A replay has its transport, and netplay its connection line and
-  "reconnecting (N s)".
-- **Replays.** The game filter (ALL, or a game; L and R) and how many sets are recorded; newest first, each row
-  with:
-  - the date in local time;
-  - the navis, by the content's names;
-  - the round pips;
-  - the length;
-  - whether it reproduces: ✓, or the difference;
-  - watch from either console, in the detail pane beside the list.
-- **Settings**, in a section sidebar: GENERAL (your name, the language), GRAPHICS (the battle's text, crisp or the
-  game's own; the picture's density), AUDIO (the volume, the menu sounds), CONTROLS (the keys and the pad's
-  buttons), ABOUT (the version, where things are kept, the signaling server). Kept between runs (§9).
+**Filling in a screen** touches three files: `ui/screens/<name>.slint`, `src/screens/<name>.rs` and
+`lang/ja/<name>.po`. **Adding a screen** is those three and a few lines in three shared files: the `Screen` enum
+(shell.slint); its import, its view's export and its two `if`s (app.slint); its module, `ScreenId` and `all()`
+(screens/mod.rs). Its steps in the screenshot pass go in `tour::walk` (§13).
 
 ## 3. Languages
 
-**Every string of the app's own goes through Slint's `@tr`**, with a context where one word means two things
-(`"tab" => "PLAY"`, `"link" => "ROOM"`) and plurals where a count shows (`"{n} round" | "{n} rounds" % n`).
+**Every string of the app's own goes through Slint's `@tr`**, written in English, with a context where one word
+means two things. A string Rust needs (a dialog's button, a card's role) is a property or a function of the
+screen's view in the same catalog (`out property <string> you: @tr("YOU");`). No string from a library's error is
+ever shown (§12).
 
-The few strings the Rust side shows are functions of a global in the same catalog (`Strings`: "Random", "Stand-in").
-Numbers, times and dates are formatted by the catalog's patterns (`format.slint`): a translation orders and words
-them its own way (`{1}/{2}/{0} {3}:{4}` in English, `{0}年{1}月{2}日 {3}:{4}` in Japanese). Words the library
-reports (why a game can't load, why a replay doesn't play) are its own English, shown under a translated heading.
+**A language is a folder**, `crates/nettai-ui/lang/<code>/`, of gettext catalogs: one file for each part of the
+app (`shell.po` for what every screen shares, then one a screen), so two screens' translators don't meet in one
+file. `build.rs` merges a language's files into the one catalog Slint bundles into the binary, and says at build
+time which strings a language has no translation for and which of its translations no string asks for any more.
+Each language names itself: its translation of `msgctxt "language"` / `msgid "English"`, which Settings lists.
 
-**The catalogs** are gettext files: `crates/nettai/lang/nettai.pot` (the template) and one
-`lang/<language>/LC_MESSAGES/nettai.po` for each language. `build.rs` bundles every catalog it finds there into
-the binary (`slint_build`'s bundled translations), so the web and mobile need no files beside it.
+It also makes a **pseudo-locale**, `pseudo`: every `@tr` string found in the .slint files, lengthened (each
+vowel doubled, the whole bracketed: about 40% longer) and its letters accented. A layout that can't take a longer
+text shows it, and so does a string that doesn't go through `@tr`. It is made from the sources, so no string is
+missing from it, and no template has to be kept in step. It is in the language list and in the screenshot pass.
 
-It also makes a **pseudo-locale**, `pseudo`, from the template: every string lengthened (each vowel doubled, the
-whole bracketed) and its letters accented. A layout that can't take a longer text shows it, and so does a string
-that doesn't go through the catalog. It is in the language list and in the tour.
+The first language is the settings', else the system's (`sys-locale`, by its primary subtag), else English;
+`$NETTAI_LANG` overrides it. Settings changes it while the app runs: the app's strings switch at once
+(`slint::select_bundled_translation`), and the content's names and the battle's own drawing switch once each
+game's graphics in the language are loaded, on a thread (§1). A language the content has no table for shows the
+content's own names.
 
-Each catalog names its own language: its translation of `"language" => "English"`. Settings lists the languages
-by those names. The first language is the system's (`sys-locale`, by its primary subtag), else English;
-`$NETTAI_LANG` overrides it. Settings changes it while the app runs:
+**Adding a language** is adding its folder: copy `lang/ja/` to `lang/<code>/`, translate each `msgstr`, and
+build; the build lists what is left. `msgfmt --check -o /dev/null` validates a file.
 
-- the app's strings switch with `slint::select_bundled_translation`;
-- the content's names switch through its locales (`Game::graphics(lang)`, kept once loaded): the navis and chips
-  in the preview, the replays and the battle's banners;
-- the battle's own drawing switches too (`Player::set_language`).
+**Typography.** Headings, buttons and labels are Chakra Petch, which has Latin alone; a language set in another
+script (`lang::cjk`: Chinese, Japanese, Korean) has them in Murecho, with the labels' tracking nearly none.
+Murecho covers Latin and Japanese. For a script it lacks, Slint falls back to the system's fonts on the desktop;
+the web has none and a phone's may lack one, so such a language needs its font bundled (imported in theme.slint
+beside the others).
 
-A language the content has no table for shows the content's own names. A background shows its locales' name (the
-preview's arenas: `Names::background`, its area's as the game's menus name it, docs/frontend.md §1); a stage has no
-display name in the content, so it is shown by its name in it.
+## 4. Netplay
 
-**Adding a language** is adding its catalog. With gettext's tools and Slint's extractor
-(`cargo install slint-tr-extractor`):
+The Play screen isn't built. What is there for it:
 
-    cd crates/nettai
-    slint-tr-extractor --no-default-translation-context --package-name nettai -o lang/nettai.pot ui/*.slint
-    mkdir -p lang/fr/LC_MESSAGES
-    msginit --no-translator -l fr -i lang/nettai.pot -o lang/fr/LC_MESSAGES/nettai.po   # a new language
-    msgmerge -U lang/ja/LC_MESSAGES/nettai.po lang/nettai.pot                              # a language after the UI changes
-
-Translate the `msgstr`s, including `msgctxt "language"` / `msgid "English"` (the language's own name), and
-build. The extractor runs without a default context, as the build compiles (`DefaultTranslationContext::None`).
-`msgfmt --check -o /dev/null` validates a catalog. If the content has the language too, add its table
-(`content/<game>/locales/<language>.toml`).
-
-**Typography.** Tracked capitals (labels, buttons) are spaced for Latin and nearly solid for scripts set without
-spaces (`lang::tracking`: Chinese, Japanese, Korean). Murecho covers Latin and Japanese (kana and kanji). For a
-script it lacks, Slint falls back to the system's fonts on the desktop. The web has no system fonts, and a phone's
-may lack one, so such a language needs its font bundled: import a Noto face for the script in `theme.slint`
-beside Murecho, and fontique falls back to it by coverage.
-
-## 4. Netplay (Play)
-
-Play is Tango's Play tab: the strip's game and build are what this player brings, the sheet shows it, both
-players' cards face each other beside it, and the band at the foot makes the link when FIGHT is pressed
-(`lobby.rs`):
-
-- **A room** of nettai-rtc's signaling server: its code typed (six letters and digits) joins it; none asks the
-  server for a new room, whose code the server picks (none of its letters read as another; it is shown in large
-  type in the band once the server has said it, and a click copies it).
-- **Direct**: an address typed (`host:port`) is joined (`Link::join`); none hosts on UDP port 47474
-  (`Link::host`), and the band shows the address to give the other player (this machine's on its network; a
-  click copies it). No signaling server is needed.
-
-Once linked, the band is the room's: its code (or the address), READY and LEAVE. The room stays open while
-another tab is shown (the bar marks PLAY with a dot), and the match starts on whichever tab when both are ready.
-
-In a room, the first in it hosts. The library's lobby and handshake run over the link (`netplay::Agreeing`, the
-datagrams of `nettai_frontend::lobby`):
-
-1. Each player's lobby holds the match's settings, a triple battle with its places left to the seed (the
-   settings are the match's since protocol version 6: a joiner takes the host's; this app never changes them),
-   and their side: the build they chose (§8), else a random side of the game.
-2. Each player's name goes with their lobby state: it is shown on the other's card and kept in the replay's
-   names, never taken for who they are; its control characters are dropped and it is cut to 16 characters
-   (`lobby::player_name`). Nothing of a build goes with it: protocol version 5 said each build's name, version and
-   navi, and version 6 says none (a build is its player's own until the handshake's Reveal, and its name is never
-   sent). So the other player's card has their name and whether they are ready, and your own card alone has a
-   build. Changing the build while linked clears your ready, and the side revealed is the one brought at
-   agreement.
-3. Readiness is each player's toggle, and each sees the other's.
-4. Once both are ready, the match is agreed; this app loads nothing ahead of its battle, so it says at once that
-   it has loaded, and when the other has too the battle is a `NetPlayer` over the link (`netplay::Framed`: the
-   link as the library's `Channel`, frames told from the lobby's datagrams by their first byte, as nettai-demo's
-   connection did). It is recorded, with both names.
-
-The battle shows the connection's figures (ping, input delay, rollbacks) and "reconnecting (N s)" while the link
-is down (`NetStatus::reconnecting`). Netplay can't pause: the pause's panel says so and holds no buttons.
+- **The link** (`lobby.rs`, `LobbyState`): made in a room of nettai-rtc's signaling server (a code typed, or a
+  new room, whose code the server picks) or directly (an address, or this machine hosting on UDP port 47474).
+  It is the session alone: it shows nothing and reads no screen.
+- **The agreeing** over it (`netplay.rs`: `Agreeing`, and `Framed`, the link taken for one match's channel) is
+  the first app's way, kept compiling against the library. The library's `Lobby` now lives for as long as the
+  two players stay together and carries their matches' frames (docs/frontend.md §2, "After a match"): the host
+  runs one loop from the link opening until it is dropped, whatever is on screen, and the match's channel is
+  `lobby.channel()`. `Screen::frame` and `Screen::frame_end` are that loop's two halves for the Play screen: feed
+  every datagram to the lobby; then, after the battle's ticks, poll it and send what it has to send.
+- **What a player is told** when it goes wrong: each layer's error is a kind and a detail, and
+  `UserError::of_link`, `of_lobby` and `of_stop` give the kind's sentence and write the detail to the log (§12).
+- **The connection's quality** in a match: the battle's host shows the library's four bars and the round trip
+  in a corner, and "Reconnecting N s" while the link is down.
+- **The input delay**: Settings keeps the player's (Online, 4 by default, 0 to 10: the library's range), for the
+  lobby to start with (`NetOptions::input_delay`).
 
 The signaling server isn't deployed. Run it locally:
 
     cd signaling && npx wrangler dev        # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
 
-Without `$NETTAI_SIGNAL` the lobby says there is none (a direct link still works). Two windows on one machine
-meet with `NETTAI_NETPLAY=exe6:make:` (its band shows the code the server gave the room) and
-`NETTAI_NETPLAY=exe6:join:CODE` with that code, or directly with `NETTAI_NETPLAY=exe6:host:` and
-`NETTAI_NETPLAY=exe6:direct:127.0.0.1:47474`.
-
-A room's link finds its way through NATs with nettai-rtc's default STUN server (`stun:stun.l.google.com:19302`)
-and checks the certificates its descriptions name; a direct link authenticates nobody, as plain UDP doesn't. Over
-the Internet, the host forwards UDP port 47474 on its router to its machine, and the other player joins the
-router's public address. What the library does when the link drops, and what the handshake checks, is
-docs/frontend.md §2's.
-
-What's missing: playing again without a new room (this app takes the link for one match's channel, where the
-library's lobby carries its matches and goes on after each, `Lobby::channel` and `Lobby::reopen`); the input delay
-can't be set on the screen (the library's `Player::set_input_delay`; a match plays
-at the library's default, 4 ticks), nor the rounds or closed builds (`Lobby::set_rounds`,
-`Lobby::set_closed_builds`); what goes wrong is shown as the library's detail, where it is meant for a log (each
-error has a kind to word instead); and no TURN server can be given, so two players whose NATs need a relay can't meet (nettai-rtc's `Config` takes
-one, an `IceServer` with its credentials, in its `ice_servers`; Cloudflare's TURN service hands out short-lived
-credentials from its API).
+A room's link finds its way through NATs with nettai-rtc's default STUN server and checks the certificates its
+descriptions name; a direct link authenticates nobody, as plain UDP doesn't. Over the Internet, a direct host
+forwards UDP port 47474 on its router to its machine. No TURN server can be given, so two players whose NATs
+need a relay can't meet (nettai-rtc's `Config` takes one in its `ice_servers`).
 
 ## 5. Latency and smoothness
 
-Measured as nettai-demo measured (docs/frontend.md §7, its lessons). `NETTAI_KEY_PROBE` presses the right arrow every 300 to
-400 ms, through the event loop as a key's event arrives, at no particular point between frames.
+Measured as nettai-demo measured (docs/frontend.md §7, its lessons). `NETTAI_KEY_PROBE` presses the right arrow
+every 300 to 400 ms, through the event loop as a key's event arrives, at no particular point between frames.
 `NETTAI_PLAY_STATS` prints, every two seconds:
 
 - frames a second, and the frame time's median, 95th and 99th percentiles and worst ("long": over half again the
@@ -360,10 +330,16 @@ Measured as nettai-demo measured (docs/frontend.md §7, its lessons). `NETTAI_KE
 - ticks a second (the original's 59.73);
 - each picture's cost (presented and written), and how long after it the frame was drawn;
 - for each press, the time to the tick that saw it and to that tick's picture drawn;
-- the most sound queued for the device (the sound's latency).
+- the most sound queued for the device (the sound's latency);
+- each second, how much of its level the title music is at, its samples' peak, and the whole stream's (what no
+  screenshot shows: on EXE6's main menu the music is at 1.00 with a peak of 0.76 to 0.88 and the stream 0.8 of
+  that, the Music setting's 80; in a battle the music is at 0.00 and the stream is the battle's).
 
-All figures are from this Mac (120 Hz display), with a 1280x800-point window (a 9x picture presented at 5x),
-while other builds loaded the machine (load average 12 to 56). Each is the range over 2-second windows.
+The figures below are the first app's, of 2026-10-06, on this Mac (120 Hz display), with a 1280x800-point window
+(a 9x picture presented at 5x), while other builds loaded the machine (load average 12 to 56). Each is the range
+over 2-second windows. The redesigned app hosts the battle the same way (the same clock, texture and key path;
+`stage.rs` and `gl.rs` are as they were but for the picture's state now being a `Surface`), and its own figures
+are at this section's end.
 
 **The user found the first prototype laggy.** There were three causes:
 
@@ -412,17 +388,40 @@ a random moment waits 8.4 ms on average (8.1 ms measured) before a tick sees it.
 
 The means vary from window to window with where the presses fall between ticks: four or five presses a window.
 
+**The redesigned app** (2026-10-12, the same Mac and window, `NETTAI_TRAINING=exe6` with both variables):
+
+| nettai, `dev` | In a training battle | On the main menu, its reel playing |
+|---|---|---|
+| frames a second | 119.9 to 120.1 | 120.0 |
+| frame time p95 / p99 | 8.37 to 8.59 / 8.44 to 12.48 ms | 8.38 to 8.58 / 8.41 to 11.78 ms |
+| long frames in 2 s | 0 to 2 | 0 to 1 |
+| ticks a second | 59.5 to 60.0 | 59.3 to 60.0 |
+| a picture (presented, written), then to the frame drawn | 3.45 to 4.13 ms (1200x800), then 0.28 to 0.31 ms | 1.5 to 1.6 ms (720x480) |
+| key to its picture drawn (mean) | 9.0 to 15.2 ms (12.4) | |
+| sound queued | 57 to 58 ms | |
+
+Each is the range over fifteen 2-second windows, with motion on, while other agents' builds loaded the machine
+(load average 82 to 105 on its ten cores). The release profile wasn't measured.
+
+Measuring found two things, both the ground's hexagons, a path stroked across the whole window:
+
+- **They were drawn under the battle,** which covers them: a frame was drawn 1.6 to 1.8 ms after its picture, not
+  0.3, and 2 to 12 frames in 2 seconds missed their refresh. The ground isn't drawn under a battle that fills
+  the window (app.slint).
+- **They were stroked anew each frame on the menus,** since they drift: the main menu ran at 107 to 119 frames a
+  second, with up to 24 long frames in 2 seconds (on a machine less loaded than for the table: 26 to 53). They
+  are drawn once into a layer (`cache-rendering-hint`), and the layer is what moves; with it a frame costs 0.2 ms
+  more than with no ground at all.
+
 ## 6. The web
 
-What was tried, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI SDK 34
+What was tried with the first app, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI SDK 34
 (crates/nettai-luau/README.md; fetched from https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-34,
 `wasi-sdk-34.0-arm64-macos.tar.gz` on an Apple machine, and `WASI_SDK_PATH` set to where it is unpacked):
 
 - **The engine type-checks.** With the SDK and `-Zbuild-std=std,panic_unwind`, nettai-frontend type-checks for
   the target, and with it nettai-battle, nettai-luau, nettai-content, nettai-render, nettai-match,
-  nettai-netplay, nettai-replay and nettai-audio. So do nettai-rtc, nettai-extract's library and gilrs.
-  - nettai-luau had stopped building there: three places took mlua's integer as `i64`, and it is `i32` on wasm32.
-    That is fixed on this branch.
+  nettai-netplay, nettai-replay and nettai-audio. So do nettai-rtc and nettai-extract's library.
 - **The app doesn't build yet; winit's web backend is the blocker.** Luau's errors are C++ exceptions, so the
   target is built with `panic=unwind` (`.cargo/config.toml`). Under `panic=unwind` with its `std` feature,
   wasm-bindgen requires every `Closure` to be `UnwindSafe`, and winit 0.30's web backend (Slint's) has closures
@@ -433,30 +432,23 @@ What was tried, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI 
     - run Luau out of the UI's module, which the battle's synchronous calls into Luau rule out.
 - **What it needs once it builds:**
   - **Time and threads.** `std::time::Instant` panics on this target, so the app's clock must use `web-time`
-    (nettai-rtc does already). `std::thread::spawn` panics too: loading a game and playing out replays must run in
-    steps on the event loop, or in a worker.
+    (nettai-rtc does already). `std::thread::spawn` panics too: a game's parts and a language's graphics must be
+    read in steps on the event loop (the library's `game::Loading` steps), or in a worker.
   - **Files.** The content (Luau modules) must be embedded or fetched; nettai-luau already takes modules from the
     host (`Pack::new`/`Pack::of`), but nettai-content's loaders read paths. The packs can't be served (they come
     from the user's ROMs). The user brings them: a dropped pack folder kept in IndexedDB, or their ROMs extracted
     in the browser (nettai-extract's library builds for wasm32, and `extract` works in memory). Replays go to
     IndexedDB, with download and upload.
   - **Sound.** cpal's `wasm-bindgen` feature (WebAudio), started on the first click as browsers require.
+  - **Gamepads.** gamepad-facade's web backend is the browser's Gamepad API; the app's side is the same.
   - **Netplay** is nettai-rtc's web backend (the browser's `RTCPeerConnection`).
   - **Rendering.** Slint's femtovg on WebGL2, which calls the rendering notifier, so the clock carries over.
-- **IME on the web.** Slint's canvas can't host the browser's IME, so the two name fields (the player's name, the
-  room code) get a small HTML `<input>` laid over the canvas, used only while one is edited:
-  1. The field's `edit()` calls the host (a `callback edit-text(rect, text)`) with its rectangle in window
-     coordinates and its text. On the web, the host places an absolutely positioned `<input>` over the canvas
-     there, in Murecho at the field's size, with its border and background transparent, so the Slint field
-     stays the one that's seen. It sets the input's value and focuses it.
-  2. The browser's IME composes in the input. Its `input` and `compositionend` events hand the value back
-     (`ui.set_name`), and the Slint field shows it; the preedit is the input's own, drawn by the browser over the
-     field.
-  3. Enter, Tab, Esc, the arrows up and down, and blur end it: the input is hidden, the canvas refocused, and the
-     same navigation action given to the screen.
-  - On the desktop the host's `edit-text` does nothing and the Slint field takes the keys as now. The
-    prototype's fields have the hooks this needs (`Field::edit`, `leave`, `Input.editing`); the overlay itself
-    isn't built.
+- **IME on the web.** Slint's canvas can't host the browser's IME, so a text field gets a small HTML `<input>`
+  laid over the canvas while it is edited: the field's edit (§11) hands the host its rectangle and its text; the
+  host places an absolutely positioned `<input>` there, in the field's face and size, its border and background
+  transparent, so the Slint field stays the one that's seen; its `input` and `compositionend` events hand the
+  value back; Enter, Tab, Esc, the arrows up and down, and blur end it. On the desktop nothing is laid over and
+  the Slint field takes the keys. The overlay isn't built.
 
 ## 7. Android and iOS
 
@@ -468,6 +460,8 @@ Not built. What it would take:
   - The femtovg renderer runs on Android (GLES), and the clock carries over. iOS renders with Skia on Metal,
     which doesn't call the rendering notifier (§1): the clock would move to a display link of the app's own
     or a timer.
+- **The layout** is there: a window taller than wide is the phone's (§9), with the main menu and Settings laid
+  out for it, and the battle's pad drawn under the picture.
 - **The engine:** Luau's C++ builds with the platforms' clang (`cc`); nothing in the engine is
   platform-specific.
 - **Files:**
@@ -477,20 +471,19 @@ Not built. What it would take:
   - Replays in the app's storage, shared with the system's share sheet.
 - **Sound:** cpal plays through AAudio/Oboe on Android and CoreAudio on iOS.
 - **Input:**
-  - Touch is the on-screen pad, already drawn when the window is upright. It needs multi-touch: Slint's
-    `TouchArea` follows one pointer, so the pad would take the window's touch events itself.
-  - Gamepads: gilrs has no Android or iOS backend. On Android winit delivers a pad's buttons as key events (the
-    keycodes need mapping); on iOS it would take GameController.framework.
+  - Touch is the on-screen pad (`TouchPad`, battle.slint). It needs multi-touch: Slint's `TouchArea` follows one
+    pointer, so two buttons can't be held at once until the pad takes the window's touch events itself.
+  - Gamepads: gamepad-facade's native backend is SDL3, which has both platforms' controllers.
 - **Text:** the system IME works through winit on Android and iOS.
 - **Netplay:** nettai-rtc's native backend (the `rtc` crate over UDP) runs on both.
 - **Lifecycle:** suspend and resume. Netplay can't tick in the background, so a suspended match is a dropped
   link, which reconnects within its 30 s or ends.
 
-## 8. Builds and the build creator
+## 8. Builds
 
-A **build** is a player's side of one game, named and kept: a TOML file of its own, `builds/<game>/<name>.toml`
-in the data folder. It names its game and the build, then states the side under `[side]` as a match file states
-one (`nettai_match::file::side_toml`, read back by `resolve_side`: the same names, by the creator or by hand):
+The Builds screen isn't built. A **build** is a player's side of one game, named and kept: a TOML file of its
+own, `builds/<game>/<name>.toml` in the data folder. It names its game and the build, then states the side under
+`[side]` as a match file states one (`nettai_match::file::side_toml`, read back by `resolve_side`):
 
     game = "exe6"
     name = "Falzar heat"
@@ -500,126 +493,294 @@ one (`nettai_match::file::side_toml`, read back by `resolve_side`: the same name
     version = "falzar"
     folder = [ ... ]
 
-The **Builds** tab lists a game's builds (L and R go through the games), each with its navi's face, its version,
-its folder's count and whether it can play (or what the rules say first), above NEW BUILD and FROM A SAVE….
-**Navis.** A build is MegaMan's (the game's navi that changes form, `nettai_match::first_navi`) unless its player
-chooses another: a new build is his, and another navi is a format of its own (the user: navis are "a non-standard
-format that is supported but not major"), supported but never first. No screen leads with the navi: the sheet,
-the lobby's cards, the builds' cards and Training's versus lead with the build's name and version, and mark a
-navi other than the game's own (`builds::view::odd_navi`; `NaviMark`, gold, NAVI · its name), nothing for
-MegaMan. A save can also be
-dropped on the window. Builds are chosen in the selector strip, Play's and Training's (its EDIT opens the chosen
-one in the creator, its NEW BUILD makes one), as Tango's saves are in its loadout strip.
+What a build screen asks of the game is nettai-match's `build` (docs/frontend.md §6): the game's versions in the
+order every list shows them and a new build of one (`Builds`, read from the game's own data,
+content/<game>/rules/builds: the folder a new save starts with), a build checked, with its problems typed
+(`Checked`, `nettai_match::Wrong`), its overview, and the chips' rows and sorts. The main menu's reel and the
+development battle already make their sides with `Builds::new_build`.
 
-**The creator** (`crate::builds`) lays a build out from its game's rules' setup schema alone (`builds::layout`;
-the rules declare no views), a tab for each kind of fact:
+`crates/nettai/src/builds/` is the first app's creator's logic without its screens, kept for the Builds screen to
+take what it reuses: the files (`store`), a save's import through each game's compat crate (`import`), the
+NaviCust's grid (`grid`), the patch cards' lines (`cards`), EXE5's auto battle data (`auto`), the library's order
+(`order`) and the pictures of chips, forms and navis (`pictures`). `presets`, `layout` and
+`crates/nettai/builds.toml` are what nettai-match's `build` replaces; nothing new is built on them.
 
-- **BUILD:** the build's name; each fact of one value: a flag, a number, an enum's variants (Beast Out, bug
-  frags), or a fact's presets (EXE6's version, EXE5's team and its light or dark MegaMan, with the face the round
-  starts him with: below); then the navi (by its face; another than MegaMan is a format of its own), FROM A
-  SAVE…, DUPLICATE and DELETE (confirmed twice). Beside them, the build's name and version (another navi marked),
-  what the round starts its navi with (HP, the buster, the custom screen, the Mega and Giga limits, the Regular
-  memory, the abilities and the NaviCust's bugs) and every problem the rules see.
-- **FOLDER** (the engine's folder facts): its 30 entries with their codes and the Regular and tag marks; the
-  counts against the limits the round's stats give; a chip's picture as the chip window shows it. The browser
-  offers the chips the side's rules let a folder hold (`folders::pool`), in the library's order, by class and
-  searched; a chip's code puts it in the entry, and the next entry is chosen.
-- **A few definitions** (a `form[n]` list a preset doesn't set): a checklist of faces, of what `facts::offered`
-  offers, up to the list's room, with NONE, DEFAULT and ITS VERSION'S OWN. EXE6's Crosses and EXE5's souls are no
-  checklist: their version's or team's preset sets them whole (below).
-- **The placement grid** (the NaviCust: `builds::grid`, chosen by its data's names and shape): the board by its
-  size, its frame and its command line, the pieces in their colors and plus marks, outlined where the rules say
-  something of one. A piece is taken from the list in one of its colors and held over the board, lit where it
-  fits and red where it doesn't. Keys and the pad: arrows move it, L and R turn it, C (Y) compresses it, Enter (A)
-  puts it down, Esc (B) puts it back; Enter on a placed piece picks it up, Delete (X) takes it off. The mouse
-  holds it under the pointer: a click puts it down or picks one up, the wheel turns it, a right click turns a
-  placed piece or takes off the one held.
-- **A list of definitions** (the patch cards): its entries in order, each with its card's Parameter and Ability
-  lines and its bugs (`builds::cards`, the strings' `patch_card_effects`), the MB in all; added from the
-  collection's browser, moved and taken out.
-- **The auto battle data** (EXE5's, `builds::auto`): its 42 places in the game's lists, each a chip, a program
-  advance, a 0 or empty; the browser offers what the game writes in the place's list, or any class. FROM A SAVE…
-  takes a save's places alone.
-- A list of `{ <definition>, frames }` is a time each (`mm:ss.cc`), and any other list is shown as it stands; no
-  game's setup has one a player states now.
+## 9. Settings, scaling and the phone
 
-Every edit is saved at once and the build checked again: nettai-match's `check::problems`, the build on both
-sides of a match of its game, each problem beside its field and entry (a tab with problems is marked). (The
-redesigned build screens, docs/design/app-ui.md, ask nettai-match's `build` instead: a build checked with its
-problems typed, the folder's view, the overview, and the game's versions and new build from the game's own data,
-content/<game>/rules/builds. This section's creator and `crates/nettai/builds.toml` go with the old screens.)
+**The settings** are `settings.toml` in the data folder (`settings.rs`), written as each changes and read as the
+app starts: the player's name (their account's on this machine until they choose one), the language, the game
+last used, the picture's size (the largest that fits, or at most 1 to 8 times), full screen, Reduce motion (as
+the system asks until the player says), the battle's text (sharp or original), the levels of the music and the
+sound effects, the input delay (4), the keys and the pad's buttons bound (those that differ from the defaults),
+and what screens remember by their own keys (`remembered`). A setting the file leaves out is the app's default.
 
-**What a build never states.** Every build in the app plays at the most its game allows, and states only what a
-player chooses. The facts kept at the rules' defaults (`layout::at_defaults`) are those of the engine's level and
-base HP roles, and the ones the app lists by game in `crates/nettai/builds.toml`: what a save brings to the
-navi's stats (HP, the Regular memory, the sun, the level), the SP navi times, EXE5's auto battle records and its
-Chaos Unison (always on: the user, "chaos unison should always be enabled in a build"). The creator neither shows
-nor edits them. A navi that must have a level has its last. A build made new, read from a file or made from a save
-is set to them (`layout::as_built`), and a place of the auto battle data that pointed at a record is emptied; a
-save's import says which facts were set to the defaults.
+The Settings screen is one scrolling page with a list at its left that jumps to a group: General, Video, Audio,
+Online, Controls, About. In Controls, Enter on a key's or a pad button's box asks for the next key or button; one
+bound to another action swaps with it, so every action keeps one.
 
-**Presets** (`builds::presets`, the same file's `presets`): a fact a build states only as one of a few presets,
-each of which sets several facts together. EXE5's are its light and dark MegaMan, as Tango's EXE5 save templates
-have them, the only two (the user: "there's only 2 karma save presets in bn5, and they also end up setting
-megaman's base hp"): LIGHT, the light/dark value 1000 and the base HP 1000, and DARK, 0 and 997. The value's row
-steps between them and shows the face the round starts MegaMan with (`screen::Face`: the round's first tick, the
-dark one's his dark face); the base HP is no row of its own. A team navi's base HP stays the rules' default (its
-HP is its story's: `edit::without_forms`). A build whose value is another (made new, read from a file, made from
-a save) takes the preset on its side of the game's line, 470 (content/exe5/rules/light_dark's `LIGHT_CHIPS`): a
-new build's 500 is light's, and a save's import says which it took ("karma 100 is dark's: the dark preset (hp 997,
-karma 0)"). EXE4's are its light and dark MegaMan too, as Tango's EXE4 templates have them: 1000 and 1000, or 460
-and 997, on the game's line of 500 (content/exe4/rules/light_dark's `DARK_AT_MOST`, 499).
+**Scaling.** Every length in the UI is in units of the 1280 by 800 reference window, and the app sets the
+window's scale so that one of Slint's `px` is one unit (`Shell::fit_window`): a unit is a 1280th of the window's
+width or an 800th of its height, whichever is less. So a .slint file multiplies by no scale, text is drawn at the
+display's resolution at any size, and only the battle's picture is counted in the display's own pixels (§1).
 
-The **version** is a preset too (the user: "for save files in nettai, you should have them choose between gregar
-and falzar/team colonel vs team protoman and it should fix the crosses/souls to be for the right game instead of
-allowing players to toggle them and mix and match"). EXE6's VERSION row is GREGAR or FALZAR, each with MegaMan's
-five Crosses of that version (`{ forms_of = "gregar" }`: his form list of that name in the content); EXE5's TEAM
-row is TEAM PROTOMAN or TEAM COLONEL, each with that version's six souls (EXE5's rules have no version, so its
-souls are its team: named in builds.toml, held to exe5-compat's soul flags by a test). Neither list is a row or a
-tab of its own, and the row's note names the forms it gives. A link navi has no Crosses (MegaMan's lists); an
-EXE5 team navi keeps its team's souls stated (they are MegaMan's, which it never uses), so its build keeps a team. A build read from a
-file takes its version's preset (EXE6's by its version, EXE5's the team its souls share the most with), and a
-mixed list is that version's whole set again; a save's version names its own (an EXE5 save's team, from its
-version, whatever souls it holds), and its import says so ("souls none is protoman's: the protoman preset
-(giga_chips: 7, souls: 6)": a team's preset sets its Giga chips with its souls, since the folder holds no other
-team's). An EXE6 build states no version until its player chooses one (EXE6's rules assume none: its round doesn't
-start without one). The sheet, the strip and the cards show the version by the preset's name. EXE4's setup states
-no version yet; its Red Sun and Blue Moon would be one more such entry (`[[presets.exe4.version]]`).
+**The phone.** A window less than four fifths as wide as it is tall is an upright phone's: a unit is a 390th of
+its width, and `Theme.phone` is set, which the theme's metrics and the screens read (the margins 16, the header
+56 with a smaller title, no footer and no key hints; the main menu in one column under the reel; Settings without
+its list, a label on two lines where it needs them and each note under its control; a select's choices as a sheet
+from the bottom; a menu's buttons one over the other; the battle's pad under the picture). Held sideways, a phone
+has the desktop's layout.
 
-**From a save** (`builds::import`): each game's compat crate reads its own saves (`exe6_compat::import`,
-`exe5_compat::import`); a save of another game is refused.
+## 10. The design system
 
-## 9. Settings
+docs/design/app-ui.md §4 is the look; this is where it lives.
 
-`settings.toml` in the data folder keeps the language, the volume, the menu sounds, the battle's text, the
-picture's density and the player's name, written as each changes and read as the app starts
-(`crate::settings`). A run with no name kept is a first run: it opens on the welcome. `$NETTAI_LANG` still names
-the first language; the tour keeps nothing.
+**The theme** (theme.slint): every color, the three faces (Chakra Petch 500, 600 and 700, M PLUS 1 Code and
+Murecho, all under the SIL Open Font License, each with its license beside it in `fonts/`), the metrics, and the
+durations. A screen uses these and writes no color, size or duration of its own.
 
-## 10. Retiring nettai-demo
+**The components** (widgets.slint, shell.slint):
 
-What nettai-demo does, and where each part goes:
-
-| nettai-demo | Goes to |
+| Component | What it is |
 |---|---|
-| Live play against the stand-in, `--match` files, `--record` | nettai: Training (match files, builds) |
-| Netplay (rooms, `--host`/`--join`) | nettai: Play, the lobby (rooms, direct links) |
-| Replays (`--replay`, watching) | nettai: Replays |
-| The match editor (iced) | nettai: the build creator (a match file is two sides; Training opens match files) |
-| `--headless` frames (`--png-scale`, `--keys`, `--objects`, `--mark`), headless `--replay` | nettai-tools |
-| The trace replay of the original's recordings (the compat `trace` feature) | nettai-tools |
-| `--audit`, `--audit-content` | nettai-tools |
-| `--show-folders`, `--save-match`, setup dumps | nettai-tools |
+| `Cut`, `PanelBack`, `Panel` | The rectangle with one line and its bottom right corner cut (9 on a button, 12 on a panel, 18 on a dialog or a menu); a panel's back with the cyan accent, or a player's color; a panel with something in it |
+| `Button` | Default, the main action (amber), ghost, unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
+| `Field` | A text field (§11) |
+| `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`) |
+| `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked` |
+| `Seg` | One of two |
+| `Slider` | A level, with its number in a box of its own |
+| `TabBar` | A row of tabs, the chosen one's underline sliding |
+| `Row`, `RowBack`, `Marker`, `RowTouch`, `ListView` | A list row (44); a row's own back; the mark of the chosen row, which slides; a row's clicks; a list of any length, of which only the rows in view exist |
+| `MenuItem`, `OptionRow` | A menu's item; a label and a value between arrows |
+| `ScrollPage` | A page that scrolls its controls into view |
+| `Label`, `Note`, `Message`, `Value`, `Mono`, `Heading`, `Pill`, `GroupTitle`, `Rule` | The text styles; a reserved line for a message; a tag; a group's title over its line |
+| `Bar`, `Bars` | A progress bar; the connection's four bars |
+| `Page`, `Header`, `Footer`, `Hint` | A menu screen; its header (Back, the title, the game) and footer (key hints, one status) |
+| `Picture` | Where the battle's picture goes (§1) |
+| `DialogFrame`, `MenuOverlay` | A dialog of a screen's own; a menu over the battle |
+| `Backdrop`, `Cursor` | The ground with its hexagons; the bracket cursor |
 
-nettai-tools is a small CLI crate (binary `nettai-tool`, no window toolkit; docs/tools.md) holding nettai-demo's
-headless modules as they were (`headless`, `trace`, `content_audit`, `sound_lookups`), with the same flags, so
-verify's scripts (lab-compare.sh, lab-batch.sh, identity.sh, compare.sh, play-headless.sh, embed-against.sh,
-audit-against.sh, and the merge checks) switched from `nettai-demo …` to `nettai-tool …` (built with
-`-p nettai-tools`) mechanically. Its frames, marks and audits are nettai-demo's, byte for byte. Without frames,
-`--match FILE` says the setup (`--show-folders`, `--save-match`) and `--replay FILE` plays the replay to its end
-and says whether it reproduces. A trace is rendered or audited: the user wanted no trace viewer ("i don't think you
-really need a trace viewer").
+**The rules** (docs/design/app-ui.md §5) are built into them: a value has a box of a set width and is cut with an
+ellipsis; a line for a message is there when empty; digits are M PLUS 1 Code's, one width; the cursor is drawn
+over the layout; a field's text is clipped at its padding.
 
-The order was: the build creator; nettai-tools; verify's scripts and the merge checks switched; then, on
-2026-10-06, nettai-demo deleted from the workspace with iced and what only it pulled in (`Cargo.lock`: 824
-packages, then 738), and docs/frontend.md's program sections moved here and to docs/tools.md.
+**Motion** (docs/design/app-ui.md §4, "Motion"). The theme has the one table of durations (`quick` 110 ms and
+`brisk` 150 for a control, `settle` 200 for a panel or a screen arriving, `leave` 120, `set-piece` 420, and the
+`stagger`, 30), and the components move by themselves, so a screen built from them moves without its author
+writing an animation:
+
+- the cursor glides between controls, breathes while idle and snaps inward on Enter;
+- a button's press flashes its fill and dips it 1, and the main action has a slow sheen;
+- a stepper's value slides in its box the way it was stepped; a switch's mark and a tab bar's underline slide;
+- a list's chosen mark slides to the next row, and a scroll the app asks for is smooth;
+- a panel's accent draws in; a progress bar fills under a moving highlight; a message fades in;
+- a screen's body slides and fades as it leaves, and the next one's title wipes in; a dialog grows in as its
+  shade fades in, and a failure's shakes once; a menu over the battle slides in from the left;
+- the two cards before a battle slide in from their sides, VS stamps, the hexagons rush, and the screen wipes
+  into the battle; the hexagons drift otherwise, and a soft pulse crosses them now and then.
+
+What a screen does write is *which of its parts arrive, in what order*: each part goes in an `Arrive` with its
+place in the order (the main menu's words, then what is under them, then the reel), and rises as it fades in, 30
+ms after the one before. And its own set pieces, from the same pieces (motion.slint):
+
+| Piece | What it is |
+|---|---|
+| `Tween` | A clock that runs once from 0 to 1, from its creation and each time its `seq` changes: `t` eased out, `linear` the time alone |
+| `Pulse` | A clock that falls from 1 to 0 each time its `seq` changes |
+| `Arrive` | A part of a screen arriving: rising, or from a side (`from-x`: a tab's body following its underline) |
+| `Flash` | A flash over what it covers (a slot a chip landed in, READY stamping) |
+| `Shake` | `dx` swinging to each side twice and coming to rest (a refusal): added to the `x` of what shakes |
+| `Count` | A number that ticks to its value when it changes |
+| `Shell::fly(from, to, image, text)` | Something flying over the layout from one control to another (a chip from its library row to its slot) |
+
+Four rules hold for all of it:
+
+1. *Motion never changes a size.* It moves, fades or covers what the layout has already placed. The motion probe
+   (§13) holds every control to its size at rest while things move.
+2. *It never blocks input.* The focus moves in the same call as the press, whatever is still sliding. A screen
+   that is leaving is gone the moment something is pressed, and a press that comes before the next screen's
+   controls exist is done as soon as they do (`App::act`).
+3. *It is short:* the theme's durations, and no others.
+4. *It can be turned down.* With `Theme.motion` off every clock is at its end and nothing moves by itself:
+   Settings' Reduce motion (as the system asks, until the player says: macOS's and GNOME's settings are read),
+   and the screenshot pass.
+
+Three things about how it is made. A clock reads the frame's time (`animation-tick()`) only while it runs, and
+stops when it is done, so a screen at rest evaluates nothing each frame but what moves by itself. What moves
+without stopping is drawn once and moved as a picture: the ground's hexagons are a cached layer (§5). And the
+cursor's glide is the app's (`Nav::settle`: a share of the way to the focused control each frame), not a Slint
+animation: that starts over each time its target moves, and the cursor crawled behind a screen arriving or a page
+scrolling.
+
+## 11. Focus and navigation
+
+docs/design/app-ui.md §5, rules 5 to 10. There is one focus, and the app holds it (`nav.rs`).
+
+**A control is focusable by holding a `Focusable`** (nav.slint; every control of widgets.slint does), which
+tells the app where it is in the window and takes its clicks. From those rectangles:
+
+- **The arrows** go to the neighbor in their direction: a control straight ahead (one that overlaps the focused
+  one across the direction) before a nearer one off to the side, and of two equally near the one that starts
+  where the focused one does (Settings, not Exit, under REPLAYS). On a stepper, a select, a switch or a slider,
+  Left and Right change the value instead.
+- **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
+- **Enter** activates; **Esc** goes back: out of a list, a dialog or a menu, else within the screen
+  (`Screen::back`), else to the main menu.
+- A key held repeats a move; a choice is pressed once.
+
+So no screen writes key handling, and a control added to a screen is reachable by being there. A screen opens
+with the focus on its main control (`Screen::main`) and remembers where it was; a dialog or a menu is a scope,
+and the focus goes back where it was when it closes.
+
+**The cursor** is one object, four brackets drawn over the layout 5 outside the focused control, which glides
+from control to control. It shows only while a keyboard or a pad is the last thing used; the pointer hides it.
+
+**Text fields don't trap** (rule 7): the arrows walk past a field without changing it. Enter or a typed letter
+starts editing (the letter is the edit's first); while editing, the keys are the field's own, but Esc restores
+the text it had, Enter confirms, and Up, Down or Tab confirm and move on. The field's border and caret light
+while it is edited, and its text is clipped at its padding and scrolled to keep the caret in view (rule 8). The
+edit is Slint's `TextInput`, so the desktop's IME composes into it. The screen is told each change and sets the
+text the field shows, so a name is cut to its length and a code put in capitals as they are typed.
+
+**Lists and pages** (rule 9). A `ListView` is one stop: the focus is on one of its rows, Up and Down are its
+rows' until its ends, Page Up and Down, Home and End move by a page and to the ends, and the focused row is
+scrolled into view. A `ScrollPage`'s controls are scrolled into view as the focus reaches them (its last one
+with the page's end, so a note under it shows), and those out of view are passed by when the focus comes from
+outside it. The scrollbar's room is reserved whether or not it shows.
+
+**Pads** (rule 10): the D-pad or the stick moves, the south button is Enter, the east one Esc, the shoulders the
+game before and after (or a screen's tabs), Start is Enter in a menu. The footer's hints show key caps or the
+pad's buttons, by which was last used: a face button by its place in the four, since its letter depends on the
+pad's maker.
+
+**The mouse and touch**: a click or a tap focuses and activates in one; everything tapped on a phone is at least
+44 tall.
+
+## 12. Errors and the log
+
+docs/design/app-ui.md §7. No string from a library's error is ever shown. What a player can be told is one of
+`UserError`'s kinds (`errors.rs`), each a sentence of the catalogs (the UI's `Errors`: a whole line, and a
+dialog's title and message):
+
+- a failure that ends what the player was doing is a dialog (`Shell::fail`, which shakes once);
+- a problem with one field is that field's reserved line (`UserError::line`, in a `Message`); a reason something
+  can't be done is at the end of its row, in the error red.
+
+What the code said goes to the log alone (`errors::log`: `nettai.log` in the data folder, a line a failure with
+its time and what was being done). gamepad-facade's warnings go there too.
+
+The libraries' errors are typed the same way, a kind for the player and a detail in English for the log
+(docs/design/rollback.md §4.9): `UserError::of_link` (nettai-rtc's `ErrorKind`), `of_lobby` (the lobby's
+`Reason`), `of_stop` (a match's `StopReason`), `of_replay_read` and `of_refusal` (a replay that doesn't read, or
+isn't played here) and `of_export` (nettai-video's) each write the detail and give the kind's sentence; a test
+holds every kind to one. What breaks a build's rules is nettai-match's `Wrong`, which the Builds screen words in
+its own catalog and hands to `UserError::BuildUnusable` as the reason.
+
+## 13. The screenshot pass
+
+`NETTAI_TOUR=<folder>` (`tour.rs`): the app walks its own screens, in each language bundled (English, Japanese,
+the pseudo-locale) and at a desktop's size (1280 by 800) and an upright phone's (390 by 800), and writes the
+window as each shows to a PNG. `NETTAI_TOUR_LANGS`, `NETTAI_TOUR_SIZES` and `NETTAI_TOUR_GAME` pick the
+languages, the sizes and the game. The app is held still for it: nothing moves, there is no sound device, the
+reel is stopped on one picture, the settings are the defaults and are never written, and the pointer is ignored.
+
+The pictures are for comparing with the mockups by eye. Two things the pass checks itself, writes to
+`report.txt`, and fails on (the process ends with status 1):
+
+- **Nothing shifts.** Some shots come in pairs a step apart: the focus moved to the next control (the main
+  menu, Settings), or a value changed under it (the input delay from 4 to 10, the picture's size). The two
+  pictures may differ only inside the controls the step touched and the cursor around them; a pixel that differs
+  anywhere else is something that moved.
+- **Nothing is cut.** Every label, button, heading and tab says when its text doesn't fit its box (the UI's
+  `Audit`, on for each shot), and the footer when its hints don't leave the status its room. The
+  pseudo-locale makes every string about 40% longer, so a layout sized for English alone shows up there.
+
+**The motion probe** (`NETTAI_TOUR_MOTION=1`) is the pass with things moving. A still picture can't show an
+animation, so it takes a burst of shots through each (a screen leaving and the next arriving, the cursor's
+glide, a value sliding, a press, a list opening, a page scrolling, a dialog, the cards and the wipe into a
+battle, a menu over it), each named for the milliseconds since it began. It checks and fails on two things: that
+in every shot each control is the size it has at rest, and that a press acts at once (two moves pressed in the
+same instant as a screen change land on the new screen's controls, and a direction held down a scrolling page
+moves the focus at every repeat).
+
+A screen added to the app adds its steps to `tour::walk`.
+
+## 14. Build time
+
+The user: "you should also try not make the slint build really expensive, because the current nettai binary takes
+forever to build for some reason".
+
+**Why the first app built slowly** (measured 2026-10-12, dev profile, on this ten-core Mac while other agents'
+builds loaded it: load average 170 to 360, so the wall times are several times an idle machine's and the CPU
+times are the ones to compare; sccache off):
+
+| The first app | Wall | CPU |
+|---|---|---|
+| a clean build of everything (`cargo build -p nettai`) | 27 min | 18 min |
+| of which the `nettai` binary's own unit | 10.5 min | |
+| after one line of Rust changed | 48 s | 9 s |
+| after one line of a .slint file changed | 4 min 50 s | 82 s |
+| the same .slint edit with the crate at opt-level 0 | 1 min 51 s | 15 s |
+
+`slint-build` made one Rust module of 7.4 MB (74,688 lines) from 6,939 lines of Slint, and it was part of the
+`nettai` binary's crate. Of the .slint edit's 280 s in rustc, 223 were LLVM (67 its passes, 158 thin LTO over the
+crate's units), 21 the translation to LLVM's IR, and about 25 everything before it (expansion, checking); the
+Slint compiler in the build script was 8 s, and linking 2. Three things made it so:
+
+1. **The size of what Slint generated.** The UI was built from containers (a component with others placed
+   inside it), which Slint copies into each of their users, and from 96 `if`s and 42 `for`s, each of which is a
+   component of its own with its own item tree and vtable: 4.5 of the 7.4 MB were those. A conditional with
+   nothing in it is about 35 KB of Rust.
+2. **It was optimized.** The workspace's dev profile is opt-level 1 (the battle needs it: §5), and the generated
+   module was compiled at it: five times the CPU of opt-level 0, for code whose work at run time is done by the
+   Slint library.
+3. **It was the app's own crate.** Any edit to a .slint file compiled all of it again with the app's 9,300
+   lines of Rust; any edit to the app's Rust expanded and type-checked the 7.4 MB again (the 48 s).
+
+**What the redesigned app does about each:**
+
+1. **nettai-ui is a crate of its own**, the generated module and nothing else, so an edit to the app's Rust
+   doesn't touch it, and an edit to a .slint file compiles it alone and then links.
+2. **It is built without optimization or debug info** in the dev profile (`[profile.dev.package.nettai-ui]` in
+   the workspace's Cargo.toml). The release profile optimizes it as everything else.
+3. **The components are written to stay small in the generated code**, and a screen's author keeps it so by four
+   habits (widgets.slint's and nav.slint's comments say the same):
+   - *Leaves, not containers.* A component used with nothing inside it is compiled once however often it is
+     used; one used with children inside is copied into each user. So a row's label and its control are two
+     components side by side, not one around the other (Settings' rows), and a panel's back is a leaf with the
+     panel's parts beside it.
+   - *Nothing on a component's own root that forces the copy:* `visible`, `opacity`, `clip`, a drop shadow or a
+     size in percent on the root element of a component makes Slint copy it into every user. They go on an
+     element inside it, or on the instance.
+   - *`visible`, not `if`, for a small part* shown or hidden; an `if` or a `for` only where a part is truly
+     there or not (a screen, a dialog, a list's rows). One row component under a `for`, not conditionals inside
+     the row.
+   - *A long list is a `ListView`*, whose rows exist only in view.
+4. **One renderer and no more features than are used:** femtovg alone (the clock needs it: §1), without the
+   software renderer and the accessibility backend the first app also built. No standard widgets are imported.
+   The fonts are embedded as files (5.6 MB in all, 3.9 of it M PLUS 1 Code with its Japanese), which costs the
+   linker nothing measurable.
+5. **The build script writes a file only when what it says changed** (the merged catalogs, which Slint has cargo
+   watch). Rewritten on every run, they made every build find the UI changed and compile it again: 14 seconds for
+   a build with nothing to do.
+
+**What it costs now** (measured 2026-10-12, dev profile, sccache off, load average 100 to 150):
+
+| The redesigned app | Wall | CPU |
+|---|---|---|
+| a clean build of nettai-ui and nettai, their dependencies built | 47 s | 27 s |
+| of which nettai-ui (its build script 3 s, the script's run 2.7 s, the generated module 19 s) | 25 s | |
+| of which the `nettai` binary | 20 s | |
+| nothing changed | 1.1 s | 0.3 s |
+| after one line of Rust changed | 3.4 to 3.7 s | 2.0 s |
+| after one line of a .slint file changed (a value) | 8 to 12 s | 4.9 s |
+| after a .slint edit that adds or changes components (this work's own edits, with Rust edits) | 14 to 32 s | 20 to 24 s |
+
+The generated module is 3.3 MB (27,952 lines, 102 components) from 4,274 lines of Slint with 18 `if`s and 6
+`for`s. The first app's whole clean build wasn't run again for the new one: the engine's crates, most of it, are
+the same. One dependency is new and slow: gamepad-facade's SDL3 is built from its source with cmake, about three
+and a half minutes of a clean build on the loaded machine (gilrs, which it replaces, took 23 seconds), once.
+
+**What trades against it.** Motion (§10) added 0.43 MB of generated Rust (2.76 to 3.19 MB: the clocks and the
+offsets they drive), which is in the figures above. The accessibility backend is off: a screen reader sees
+nothing of the app. And with one renderer, a machine without OpenGL can't run it.

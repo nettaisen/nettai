@@ -55,13 +55,15 @@ export component LoadingScreen inherits Rectangle {
         horizontal-alignment: right;
     }
 
-    // No game has a pack: what to do about it.
+    // No game has a pack: what to do about it. (The folder starts a line of its own, and breaks where it must.)
     Note {
-        y: root.top + 122px;
+        y: root.top + 116px;
         width: root.column;
-        height: 40px;
+        height: 88px;
+        vertical-alignment: TextVerticalAlignment.top;
+        wrap: char-wrap;
         visible: Shell.no-games;
-        text: @tr("No game data was found. Put a game's pack in {}.", Shell.packs-folder);
+        text: @tr("No game data was found. Put a game's pack in {}.", "\n" + Shell.packs-folder);
         horizontal-alignment: center;
     }
 }

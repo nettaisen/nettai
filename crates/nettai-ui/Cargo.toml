@@ -7,7 +7,7 @@ description = "The nettai app's UI: its Slint files compiled to Rust, with its f
 
 # This crate is what `slint-build` generates and nothing else, so that an edit to the app's Rust never compiles
 # it again, and so that it can be built without optimization while the rest of the workspace's dev profile is
-# optimized (the workspace's Cargo.toml; docs/app.md §8).
+# optimized (the workspace's Cargo.toml; docs/app.md §14).
 
 [dependencies]
 # Slint on winit, drawn with femtovg (OpenGL): the one renderer that tells the app when it draws, which is the
