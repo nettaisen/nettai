@@ -158,13 +158,14 @@
 "topman/navi" = { pool = "actor", index = 0x0E }
 "topman/top" = { pool = "attack", index = 0x29 }
 # NumberMan's chips (action 0x0C's variant 0x02, 0x080E2FC8): each chip's controller (the content's own; the
-# original's one object, effect #0x0D, 0x080E2EC0), NumberMan, his face and his die.
+# original's one object, effect #0x0D, 0x080E2EC0), NumberMan and his face.
 "numbrman/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
 "numbmn-sp/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
 "numbmn-ds/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
 "numbrman/navi" = { pool = "actor", index = 0x0F }
 "numbrman/face" = { pool = "actor", index = 0x5C }
-"numbrman/dice" = { pool = "attack", index = 0x05 }
+# The die (objects/dice: attack #5, 0x080CD9E8), NumberMan's and NumberSoul's charged shot's.
+"dice" = { pool = "attack", index = 0x05 }
 # SparkMan's chips (action 0x0C's variant 0x03, 0x080E309A): each chip's controller (the content's own; the
 # original's one object, effect #0x0E, 0x080E2FEC), SparkMan and his sparks.
 "sparkman/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
@@ -255,6 +256,12 @@
 "coldmn-ds/controller" = { pool = "effect", index = 0x7B, scratch_position = true }
 "coldman/navi" = { pool = "actor", index = 0x56 }
 "ice-cube" = { pool = "attack", index = 0xA3 }
+# BlakWing (action 0x0C's variant 0x29, 0x080E80CA): its controller (effect #0x54, 0x080E8014), its flock
+# (attack #0x7E, 0x080DD0AC), perches (effect #0x55, 0x080E80EC) and wings (attack #0x7F, 0x080DD254).
+"blakwing/controller" = { pool = "effect", index = 0x54, scratch_position = true }
+"blakwing/perch" = { pool = "effect", index = 0x55 }
+"blakwing/flock" = { pool = "attack", index = 0x7E, scratch_position = true }
+"blakwing/wing" = { pool = "attack", index = 0x7F }
 # NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
 # objects/north_wind's.
 "nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
@@ -376,6 +383,13 @@
 # BugCurse's controller (0x080E81C4; its position the dimming handler's registers) and its curse (0x080DD39C).
 "bugcurse/controller" = { pool = "effect", index = 0x56, scratch_position = true }
 "bugcurse/curse" = { pool = "attack", index = 0x80 }
+# SignlRed's controller (0x080E83F8; its position the dimming handler's registers) and its signal (0x080DD538).
+"signlred/controller" = { pool = "effect", index = 0x58, scratch_position = true }
+"signlred/signal" = { pool = "attack", index = 0x81 }
+# LifeSync's controller (0x080E8784; its position the dimming handler's registers) and its marker (0x080E8C78; its
+# position the spawner's registers, which its init replaces).
+"lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }
+"lifesync/marker" = { pool = "effect", index = 0x60, scratch_position = true }
 # Snake's controller (0x080E5B50; its position the dimming handler's registers), its nest (0x080D7DB8) and its snakes
 # (0x080D80E4).
 "snake/controller" = { pool = "effect", index = 0x32, scratch_position = true }
@@ -444,3 +458,24 @@
 # its first row's).
 "bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
 "bugfix/glow" = { pool = "actor", index = 0x5D }
+# MetaGel's controller (0x080E4618; its position the dimming handler's registers) and its gel (0x080D5DF4; its position
+# the spawner's registers until its first update).
+"metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
+"metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
+# Magnum's controller (0x080E57F8; its position the dimming handler's registers) and its gunner (0x080D756C).
+"magnum/controller" = { pool = "effect", index = 0x30, scratch_position = true }
+"magnum/gunner" = { pool = "attack", index = 0x50 }
+# BugCharg's controller (0x080EAB58; its position the dimming handler's registers) and its stand-in (0x080CC72C).
+"bugcharg/controller" = { pool = "effect", index = 0x7C, scratch_position = true }
+"bugcharg/actor" = { pool = "actor", index = 0x59 }
+# ShotStar's controller (0x080E5C90; its position the dimming handler's registers); its meteors are Meteors'.
+"shotstar/controller" = { pool = "effect", index = 0x34, scratch_position = true }
+# BugChain's controller (0x080E65E0; its position the dimming handler's registers) and the mark over each navi
+# (0x080E6718).
+"bugchain/controller" = { pool = "effect", index = 0x3F, scratch_position = true }
+"bugchain/mark" = { pool = "effect", index = 0x40 }
+
+# PitRng's thrower (action 0x20's variant 0x0D, 0x080E9A36), spawned at the spawner's registers.
+"pitrng/thrower" = { pool = "effect", index = 0x6C, scratch_position = true }
+# H-Burst's shot (0x080E0B46), spawned at the spawner's registers until its init places it (0x080E0CB4).
+"h-burst/burst" = { pool = "attack", index = 0x9E, scratch_position = true }
