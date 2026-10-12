@@ -863,6 +863,20 @@ pub struct CustomPick {
     pub attached: bool,
 }
 
+/// A chip in a custom screen's slot (`custom.slot`): the chip as dealt and
+/// its code's number (A 0, `*` 26; none: the code outside the alphabet), the
+/// folder place it was dealt from (0-based; none: a chip from outside the
+/// folder), whether it is the folder's Regular chip, and whether it is
+/// picked.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CustomSlot {
+    pub chip: crate::ChipHandle,
+    pub code: Option<u8>,
+    pub place: Option<u8>,
+    pub regular: bool,
+    pub picked: bool,
+}
+
 /// What a side's custom screen reads of its player (`custom.player`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CustomPlayer {
@@ -1345,12 +1359,21 @@ pub trait CoreApi {
     /// button under the cursor ("selectable", "unavailable", "selected").
     fn custom_refuse(&mut self, side: u8) -> ApiResult<()>;
     /// `custom.folder(side)`: the side's battle folder as its screen has
-    /// it, its 30 places in order (a used chip's place empty until the
-    /// screen deals); `custom.swap_folder(side, a, b)`: two of its places
-    /// swapped (0-based here); `custom.hand_size(side)`: how many chips the
-    /// screen deals (as it deals, the framework's).
-    fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<crate::ChipHandle>>>;
+    /// it, its 30 places in order, each chip with its code's number (A 0,
+    /// `*` 26; none: the code outside the alphabet), a used chip's place
+    /// empty until the screen deals; `custom.swap_folder(side, a, b)`: two
+    /// of its places swapped (0-based here); `custom.set_folder(side, place,
+    /// chip, code)`: a place written; `custom.hand_size(side)`: how many
+    /// chips the screen deals (as it deals, the framework's).
+    fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<(crate::ChipHandle, Option<u8>)>>>;
     fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()>;
+    fn custom_set_folder(&mut self, side: u8, place: u8, chip: crate::ChipHandle, code: Option<u8>) -> ApiResult<()>;
+    /// `custom.slot(side, slot)`: the chip in a slot of the screen (0 to
+    /// 11), dealt or offered; none: the slot holds no chip (it is empty, OK
+    /// or a button). `custom.picks(side)`: the picked slots, in order (a
+    /// button's slot where one is picked).
+    fn custom_slot(&self, side: u8, slot: u8) -> ApiResult<Option<CustomSlot>>;
+    fn custom_picks(&self, side: u8) -> ApiResult<Vec<u8>>;
     /// `custom.offer(side, slot, chip, code)`: as the screen deals (the
     /// rules' `deal`), a chip from outside the folder the screen shows in a
     /// slot (0 to 11) once laid out (EXE4's dark chips); `code` the code's

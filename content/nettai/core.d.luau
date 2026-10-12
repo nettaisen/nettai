@@ -3060,12 +3060,24 @@ declare new: {
 -- refusal sound; the shared machinery for the button under the cursor (the
 -- picked chips scrapped, the chips not picked dealt again); whether the
 -- last pick is a chip; the state of the button under the cursor.
+export type FolderChip = { chip: Chip, code: string? }
 declare custom: {
     -- The side's battle folder as its screen has it: its 30 places in order,
-    -- false where a used chip left one empty until the screen deals; two of
-    -- its places swapped (1 to 30); how many chips the screen deals.
-    folder: (side: number) -> { Chip | false },
+    -- each chip with its code (a letter or "*"; nil: the code outside the
+    -- alphabet), false where a used chip left one empty until the screen
+    -- deals; two of its places swapped (1 to 30); a place written; how many
+    -- chips the screen deals.
+    folder: (side: number) -> { FolderChip | false },
     swap_folder: (side: number, a: number, b: number) -> (),
+    set_folder: (side: number, place: number, chip: Chip, code: string?) -> (),
+    -- The chip in a slot of the screen (0 to 11), dealt or offered: the chip
+    -- and its code, the folder place it was dealt from (nil: a chip from
+    -- outside the folder), whether it is the folder's Regular chip, and
+    -- whether it is picked; nil where the slot holds no chip (it is empty,
+    -- OK or a button). The picked slots, in order (a button's slot where
+    -- one is picked).
+    slot: (side: number, slot: number) -> { chip: Chip, code: string?, place: number?, regular: boolean, picked: boolean }?,
+    picks: (side: number) -> { number },
     -- As the screen deals (the rules' `deal`): a chip from outside the folder
     -- the screen shows in a slot (0 to 11) once laid out, in a code (a letter,
     -- or nil: the code outside the alphabet, EXE4's dark chips').
