@@ -12,13 +12,14 @@ local patch_cards = require("@self/patch_cards")
 local navicust = require("@self/navicust")
 local navicust_bugs = require("@self/navicust/bugs")
 local save = require("@self/save")
+local sent_chips = require("@self/sent_chips")
 local souls = require("@self/souls")
 local soul_turns = require("@self/souls/turns")
 
--- What a side keeps through a round: the dark chips' (./dark_chips), Double Soul's (./souls) and its NaviCust bugs'
--- counts (./navicust).
+-- What a side keeps through a round: the dark chips' (./dark_chips), the chips sent (./sent_chips), Double Soul's
+-- (./souls) and its NaviCust bugs' counts (./navicust).
 local state: StateSchema = {}
-for _, part in { dark_chips.state, souls.state, navicust.state } do
+for _, part in { dark_chips.state, sent_chips.state, souls.state, navicust.state } do
     for name, field in part do
         state[name] = field
     end
@@ -132,24 +133,31 @@ local rules: Rules = {
             },
             chip = "chip",
             image = "record:soul-image",
-            hand = "record:soul-hand",
+            custom = "record:soul-custom",
         },
     },
     -- Its own actions, which reach its state: the souls' changes and the revert (./souls).
     actions = souls.actions,
-    -- The custom screen's buttons and windows: Double Soul's (./souls/custom).
-    buttons = souls.custom.buttons,
-    windows = souls.custom.windows,
-    -- The custom screen's: the hand's size (./souls/custom); the dark chips' offer as it deals and what is sent of them
-    -- (./dark_chips); Double Soul's offer as the screen opens and the soul given at OK (./souls/custom).
+    -- The custom screen's buttons and windows: Double Soul's, and each soul's own (./souls).
+    buttons = souls.buttons,
+    windows = souls.windows,
+    -- The custom screen's: the hand's size (./souls/custom); the dark chips' offer as it deals (./dark_chips), then
+    -- what the soul the navi is in does there (./souls/custom); what OK sends: the dark chips (./dark_chips), the
+    -- folder's chips (./sent_chips), the soul given and the soul's own part (./souls/custom); Double Soul's offer as
+    -- the screen opens.
     custom = {
         hand_size = souls.custom.hand_size,
         open = souls.custom.open,
-        deal = dark_chips.deal,
+        deal = function(side: number)
+            dark_chips.deal(side)
+            souls.custom.deal(side)
+        end,
         chip_picked = dark_chips.chip_picked,
         chip_taken_back = dark_chips.chip_taken_back,
         confirmed = function(side: number)
             dark_chips.confirmed(side)
+            sent_chips.confirmed(side)
+            souls.custom.built(side)
             souls.custom.confirmed(side)
         end,
     },
@@ -165,8 +173,10 @@ local rules: Rules = {
         round_start = function(side: number)
             soul_turns.round_start(battle.navi(side).form)
         end,
-        -- As each hand is installed, its dark chips' costs (./dark_chips).
+        -- As each hand is installed: its folder chips listed (./sent_chips), its dark chips' costs (./dark_chips), and
+        -- what the soul the navi is in does to it (./souls/custom).
         custom_result = function(side: number)
+            sent_chips.installed(side)
             dark_chips.custom_result(side)
             souls.custom.installed(side)
         end,

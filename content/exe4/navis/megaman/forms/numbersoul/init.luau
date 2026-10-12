@@ -34,7 +34,7 @@ end
 
 local form: FormDef = {
     soul = { family = "plus", turns = 3 },
-    hand = soul.hand(hand),
+    custom = soul.custom { built = hand },
     chip = chip,
     change = chip.action,
     revert = soul.revert,
