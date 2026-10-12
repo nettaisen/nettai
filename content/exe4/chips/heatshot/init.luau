@@ -33,6 +33,7 @@ local heatshot: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "behind_target" },
 }
 
 local heat_v: Chip = {
@@ -47,6 +48,7 @@ local heat_v: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_target_row" },
 }
 
 local heatside: Chip = {
@@ -61,6 +63,7 @@ local heatside: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_target_row" },
 }
 
 return { heatshot = heatshot, ["heat-v"] = heat_v, heatside = heatside }

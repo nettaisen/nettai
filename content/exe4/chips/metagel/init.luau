@@ -48,6 +48,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = CONTROLLER.hook,
+    auto_battle = { class = "into_reach", range = "ahead_then_column", answers = "area_lost" },
 }
 
 return { metagel = chip }

@@ -18,6 +18,7 @@ local grabrvng: Chip = {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
+    auto_battle = { class = "when_area_lost", answers = "area_lost" },
 }
 
 local grabbnsh: Chip = {
@@ -32,6 +33,7 @@ local grabbnsh: Chip = {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
+    auto_battle = { class = "when_area_lost", answers = "area_lost" },
 }
 
 return { grabrvng = grabrvng, grabbnsh = grabbnsh }

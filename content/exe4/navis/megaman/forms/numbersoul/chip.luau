@@ -23,6 +23,7 @@ local numsoul: Chip = {
     action = change.make {
         id = "numsoul",
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { numsoul = numsoul }
