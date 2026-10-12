@@ -127,7 +127,7 @@ component BuildOption inherits Rectangle {
     in property <string> label;
     in property <string> value;
     in property <bool> enabled: true;
-    property <length> box: Theme.phone ? 190px : 240px;
+    property <length> box: Theme.phone ? 164px : 240px;
     property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
     height: 56px;
     Rectangle {
@@ -192,44 +192,31 @@ component BuildCard inherits Rectangle {
         text: root.role;
     }
 
-    HorizontalLayout {
+    name := Value {
         x: root.pad;
         y: 30px;
-        width: parent.width - 2 * root.pad;
+        width: min(self.preferred-width, parent.width - 2 * root.pad - (Theme.phone ? 0px : tag.width + 8px));
         height: 22px;
-        spacing: 8px;
-        alignment: start;
-        Value {
-            max-width: parent.width - (Theme.phone ? 0px : tag.width + 8px);
-            text: root.build.name;
-            font-size: 16px;
-        }
-
-        tag := Pill {
-            text: Theme.phone ? "" : root.build.version;
-            tone: root.side == 1 ? Theme.p1 : Theme.p2;
-        }
+        text: root.build.name;
+        font-size: 16px;
     }
 
-    HorizontalLayout {
-        x: root.pad;
-        y: 58px;
-        width: parent.width - 2 * root.pad;
-        height: 22px;
-        spacing: 8px;
-        alignment: start;
-        low := Pill {
-            text: Theme.phone ? root.build.version : "";
-            tone: root.side == 1 ? Theme.p1 : Theme.p2;
-        }
+    tag := Pill {
+        x: Theme.phone ? root.pad : name.x + name.width + 8px;
+        y: Theme.phone ? 58px : 30px;
+        text: root.build.version;
+        tone: root.side == 1 ? Theme.p1 : Theme.p2;
+    }
 
-        Value {
-            max-width: parent.width - (Theme.phone ? low.width + 8px : 0px);
-            text: root.build.navi;
-            color: Theme.muted;
-            font-size: 12px;
-            font-weight: 400;
-        }
+    Value {
+        x: root.pad + (Theme.phone && tag.width > 0 ? tag.width + 8px : 0px);
+        y: 58px;
+        width: parent.width - self.x - root.pad;
+        height: 22px;
+        text: root.build.navi;
+        color: Theme.muted;
+        font-size: 12px;
+        font-weight: 400;
     }
 }
 
@@ -240,7 +227,7 @@ export component TrainingScreen inherits Page {
     property <length> picture-width: Theme.phone ? self.body-width : 720px;
     property <length> picture-height: self.picture-width * 2 / 3;
     property <length> picture-x: Theme.phone ? 0px : self.column + 24px + (self.body-width - self.column - 24px - self.picture-width) / 2;
-    property <length> cards-y: Theme.phone ? 204px : 0px;
+    property <length> cards-y: Theme.phone ? 212px : 0px;
     property <length> card-width: Theme.phone ? (self.body-width - 12px) / 2 : (self.picture-width - 56px) / 2;
     title: @tr("TRAINING");
     back: @tr("MENU");
@@ -257,27 +244,25 @@ export component TrainingScreen inherits Page {
     ];
     // (Each part is there whether or not the game has a build, shown and reachable by which it is: an `if`
     // apiece would be a component apiece.)
-    // With no build of the game: the one button.
+    // The column: with no build of the game the one button; else the two rows, the one line, the reserved
+    // line, and START TRAINING at its foot.
     Arrive {
-        visible: TrainingView.none;
         Button {
             x: 0;
             y: 0;
             width: Theme.phone ? root.body-width : max(240px, self.preferred-width);
+            visible: TrainingView.none;
             nav: "create";
             text: @tr("CREATE A BUILD");
             kind: ButtonKind.main;
             enabled: TrainingView.none;
         }
-    }
 
-    // The two rows, the one line, the reserved line, and START TRAINING at the column's foot.
-    Arrive {
-        visible: !TrainingView.none;
         BuildOption {
             x: 0;
             y: 0;
             width: root.column;
+            visible: !TrainingView.none;
             nav: "yours";
             label: @tr("Your build");
             value: TrainingView.yours.name;
@@ -288,6 +273,7 @@ export component TrainingScreen inherits Page {
             x: 0;
             y: 68px;
             width: root.column;
+            visible: !TrainingView.none;
             nav: "dummys";
             label: @tr("Dummy's build");
             value: TrainingView.dummys.name;
@@ -299,14 +285,15 @@ export component TrainingScreen inherits Page {
             x: 0;
             y: 140px;
             width: root.column;
-            height: 36px;
+            height: 40px;
+            visible: !TrainingView.none;
             text: @tr("Set up the dummy from the menu once you're in.");
             vertical-alignment: top;
         }
 
         Message {
             x: 0;
-            y: 182px;
+            y: 186px;
             width: root.column;
             text: TrainingView.message;
         }
@@ -315,6 +302,7 @@ export component TrainingScreen inherits Page {
             x: 0;
             y: root.body-height - 52px;
             width: root.column;
+            visible: !TrainingView.none;
             nav: "start";
             text: @tr("START TRAINING");
             kind: ButtonKind.main;
@@ -552,11 +540,10 @@ export component TrainingMenu inherits MenuOverlay {
 
 // ---- The input display ------------------------------------------------------------------------------------
 
-// A button of the input display: lit while it is held. An arrow is a path in a box of 8, in place of a text.
+// A button of the input display: lit while it is held. (In the fixed-width face, which has the arrows.)
 component InputKey inherits Rectangle {
     in property <bool> lit;
     in property <string> text;
-    in property <string> shape;
     in property <color> tone;
     width: 16px;
     height: 16px;
@@ -569,20 +556,11 @@ component InputKey inherits Rectangle {
     Text {
         text: root.text;
         color: root.lit ? Theme.inset : Theme.dim;
-        font-family: "Chakra Petch";
+        font-family: Theme.mono;
         font-size: root.width > 16px ? 9px : 11px;
         font-weight: 700;
         horizontal-alignment: center;
         vertical-alignment: center;
-    }
-
-    Path {
-        width: 8px;
-        height: 8px;
-        commands: root.shape;
-        fill: root.lit ? Theme.inset : Theme.dim;
-        viewbox-width: 8;
-        viewbox-height: 8;
     }
 }
 
@@ -606,28 +584,28 @@ component InputRow inherits Rectangle {
 
     InputKey {
         x: 9px;
-        shape: "M 1 4 L 7 0.5 L 7 7.5 Z";
+        text: "←";
         lit: root.on(5);
         tone: root.tone;
     }
 
     InputKey {
         x: 27px;
-        shape: "M 4 1 L 7.5 7 L 0.5 7 Z";
+        text: "↑";
         lit: root.on(6);
         tone: root.tone;
     }
 
     InputKey {
         x: 45px;
-        shape: "M 4 7 L 7.5 1 L 0.5 1 Z";
+        text: "↓";
         lit: root.on(7);
         tone: root.tone;
     }
 
     InputKey {
         x: 63px;
-        shape: "M 7 4 L 1 0.5 L 1 7.5 Z";
+        text: "→";
         lit: root.on(4);
         tone: root.tone;
     }
@@ -704,7 +682,3 @@ export component TrainingInputs inherits Rectangle {
         }
     }
 }
-
-// What opens over Training: its dialogs, and on a phone its sheets. It covers the whole window, over the screen
-// and under the shell's own dialogs; empty, it takes no clicks.
-export component TrainingOverlay inherits Rectangle { }
