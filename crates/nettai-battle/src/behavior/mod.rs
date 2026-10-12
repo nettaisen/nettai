@@ -278,6 +278,20 @@ pub(crate) fn module_data(b: &Battle, module: &str) -> Option<Result<nettai_cont
     loaded(b).host.module_data(module).map(|r| r.map_err(|e| format!("{module}.luau: {e}")))
 }
 
+/// For tools: what module `module` of `content` (by its name,
+/// `exe6:rules/builds`) returned as it loaded, as plain data, a function in
+/// it left out; nothing is called, and no battle is needed (the content's
+/// runtime on this thread is asked). None: no module of that name, or the
+/// content has no scripts.
+pub fn content_module_data(content: &Content, module: &str) -> Option<Result<nettai_content_api::Data, String>> {
+    let runtime = match Behaviors::for_content(content) {
+        Ok(b) => b,
+        Err(e) => return Some(Err(e.to_string())),
+    };
+    let loaded = runtime.loaded?;
+    loaded.host.module_data(module).map(|r| r.map_err(|e| format!("{module}.luau: {e}")))
+}
+
 /// Call the content function `f` for a hook.
 pub(crate) fn call_hook(b: &mut Battle, f: FnId, call: HookCall) -> Value {
     #[cfg(feature = "luau-profile")]

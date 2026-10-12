@@ -508,12 +508,13 @@ pub struct Battle {
     pub(crate) sound: [Vec<SoundCue>; 2],
     /// How the round ended, once the end state is through.
     pub(crate) outcome: Option<RoundEnd>,
-    /// A folder a tool is having checked (`Battle::check_folder`), and what
-    /// it breaks: no part of the simulation.
-    pub(crate) folder_check: Option<crate::rules::FolderCheck>,
-    /// The problems of the setup a tool asked the rules to validate, while
-    /// it is validated (`Battle::validate`).
-    pub(crate) validation: Option<Vec<crate::rules::Problem>>,
+    /// A folder a tool is asking the rules about (`Battle::check_folder`,
+    /// `Battle::folder_view`), while they answer: no part of the simulation.
+    pub(crate) folder_check: Option<nettai_content_api::api::CheckedFolder>,
+    /// What the rules answered a tool's hook (`validate`, `folder_check`,
+    /// `folder_view`, `overview`), until the tool takes it: no part of the
+    /// simulation.
+    pub(crate) tool_answer: Option<nettai_content_api::Data>,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -795,7 +796,7 @@ impl Battle {
             sound: [Vec::new(), Vec::new()],
             outcome: None,
             folder_check: None,
-            validation: None,
+            tool_answer: None,
             setup,
         };
         // The navi's stats of its game's own are of the rules' `stats`: a

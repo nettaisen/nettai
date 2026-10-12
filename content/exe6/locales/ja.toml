@@ -725,3 +725,18 @@ language = "ja"
 "super_armor" = "スーパーアーマー"
 "tango" = "タンゴサポート"
 "undershirt" = "アンダーシャツ"
+
+# The NaviCust's bugs' names (en.toml's `[bugs]` says what they are).
+[bugs]
+"buster" = "バスターバグ"
+"custom" = "カスタムバグ"
+"emotion" = "ココロバグ"
+"encounter" = "エンカウントバグ"
+"hp" = "HPバグ"
+"panel" = "パネルバグ"
+"result" = "リザルトバグ"
+"status" = "ステータスバグ"
+"status-strong" = "ステータスバグ"
+"step" = "いどうバグ"
+"support" = "サポートバグ"
+"unread" = "バグ"

@@ -102,7 +102,7 @@ function compile.check(
     expansions: number?,
     parts: { PlacedProgram },
     compiles: boolean,
-    problem: (text: string, field: string, entry: number?) -> ()
+    problem: (p: SetupProblem) -> ()
 )
     if expansions == nil then
         return
@@ -110,12 +110,23 @@ function compile.check(
     local board = game.board
     local size = board.SIZE
     if #parts > 0 and not compiles then
-        problem("a NaviCust, but the navi's stats aren't a NaviCust's (only MegaMan's compiles)", "navicust_programs", nil)
+        problem({
+            kind = "not_taken",
+            field = "navicust_programs",
+            text = "a NaviCust, but the navi's stats aren't a NaviCust's (only MegaMan's compiles)",
+        })
         return
     end
     local layout = board.boards[expansions + 1]
     if layout == nil then
-        problem(string.format("a NaviCust with %d expansions: the game's board has %d sizes", expansions, #board.boards), "navicust_expansions", nil)
+        problem({
+            kind = "range",
+            field = "navicust_expansions",
+            value = expansions,
+            least = 0,
+            most = #board.boards - 1,
+            text = string.format("a NaviCust with %d expansions: the game's board has %d sizes", expansions, #board.boards),
+        })
         return
     end
     local grid: { [number]: number } = {}
@@ -125,10 +136,18 @@ function compile.check(
         local name = battle.name(def)
         local what = string.format("navicust program %d (%s)", i, name)
         if table.find(def.colors, p.color) == nil then
-            problem(string.format("%s: a color it doesn't come in", what), "navicust_programs", i)
+            problem({ kind = "invalid", field = "navicust_programs", entry = i, text = string.format("%s: a color it doesn't come in", what) })
         end
         if p.rotation > 3 then
-            problem(string.format("%s: turned %d quarters (0 to 3)", what, p.rotation), "navicust_programs", i)
+            problem({
+                kind = "range",
+                field = "navicust_programs",
+                entry = i,
+                value = p.rotation,
+                least = 0,
+                most = 3,
+                text = string.format("%s: turned %d quarters (0 to 3)", what, p.rotation),
+            })
         end
         -- Its cells, the grid's or not.
         local s = shape(p, size)
@@ -153,13 +172,24 @@ function compile.check(
             end
         end
         if not (fits and on) then
-            problem(string.format("%s at (%d, %d): off the board", what, p.x, p.y), "navicust_programs", i)
+            problem({
+                kind = "off_board",
+                field = "navicust_programs",
+                entry = i,
+                text = string.format("%s at (%d, %d): off the board", what, p.x, p.y),
+            })
         else
             for _, c in covered do
                 local at = c[2] * size + c[1]
                 local other = grid[at]
                 if other ~= nil then
-                    problem(string.format("%s is over program %d", what, other), "navicust_programs", i)
+                    problem({
+                        kind = "overlap",
+                        field = "navicust_programs",
+                        entry = i,
+                        other = other,
+                        text = string.format("%s is over program %d", what, other),
+                    })
                     break
                 end
                 grid[at] = i
@@ -170,7 +200,12 @@ function compile.check(
         if seen == nil then
             compression[key] = p.compressed
         elseif seen ~= p.compressed then
-            problem(string.format("%s: compressed and not (a save compresses every copy of a program in one color)", what), "navicust_programs", i)
+            problem({
+                kind = "invalid",
+                field = "navicust_programs",
+                entry = i,
+                text = string.format("%s: compressed and not (a save compresses every copy of a program in one color)", what),
+            })
         end
     end
 end
@@ -258,29 +293,14 @@ local function stats_bugged(stats: Navi): boolean
         or stats.battle_start_bug ~= 0
 end
 
--- `round_setup`: `side`'s NaviCust compiled into its stats by `game`'s rules, if the setup gives one (`expansions`,
--- how far its board has been expanded, none without one; `parts`, its programs in its list's order: the game's setup's
--- `navicust_expansions` and `navicust_programs`) and the navi is MegaMan (the navi that changes form: the original
--- compiles the PET's own navi's, navi 0's). Whether it was. Without one, the stats are as a compile left them, and the
--- glitch is as their bugs say.
-function compile.run(side: number, game: NaviCustGame, expansions: number?, parts: { PlacedProgram }): boolean
-    if expansions == nil then
-        if game.glitch then
-            battle.set_emotion_window_glitch(side, stats_bugged(battle.navi(side)))
-        end
-        return false
-    end
-    local stats = battle.navi(side)
-    if stats.navi.forms == nil then
-        return false
-    end
+-- What a NaviCust comes to on `game`'s board `layout`, before anything is written (the compile's steps 1 and 3): its
+-- bugs' counts, by the bug each program brings, and the programs whose effects run, by their place in the list, in the
+-- order they do. The compile (`compile.run`) applies it; a tool's `overview` reads it (`compile.at_work`).
+type Plan = { counts: { [string]: number }, order: { number } }
+
+local function plan(game: NaviCustGame, layout: { string }, parts: { PlacedProgram }): Plan
     local board = game.board
     local size = board.SIZE
-    local layout = board.boards[expansions + 1]
-    if layout == nil then
-        -- (No board of that size: nothing compiles, and `validate` says so; a round starts from any setup.)
-        return false
-    end
     local function at(grid: { [number]: number }, x: number, y: number): number?
         return grid[y * size + x]
     end
@@ -391,13 +411,8 @@ function compile.run(side: number, game: NaviCustGame, expansions: number?, part
         end
     end
 
-    -- 3. The programs' effects (`sub_813C684`).
-    local work: Work = { hp = 0, bug_stop = false }
-    local function run(def: NaviCustProgram)
-        for _, e in def.effects or {} do
-            apply(stats, e, work)
-        end
-    end
+    -- 3. The programs whose effects run, in the order they do (`sub_813C684`).
+    local order: { number } = {}
     -- The programs on the command line, right to left: of an exclusive group, the rightmost only.
     local groups: { [number]: string } = {}
     for x = size - 1, 0, -1 do
@@ -414,20 +429,54 @@ function compile.run(side: number, game: NaviCustGame, expansions: number?, part
                 end
             end
             if not taken then
-                run(def)
+                table.insert(order, i)
             end
         end
     end
     -- The plus parts off it, in the list's order; on it, left to right.
     for i, p in parts do
         if off_plus[i] then
-            run(p.program)
+            table.insert(order, i)
         end
     end
     for x = 0, size - 1 do
         local i = line_plus[x]
         if i ~= nil then
-            run(parts[i].program)
+            table.insert(order, i)
+        end
+    end
+    return { counts = counts, order = order }
+end
+
+-- `round_setup`: `side`'s NaviCust compiled into its stats by `game`'s rules, if the setup gives one (`expansions`,
+-- how far its board has been expanded, none without one; `parts`, its programs in its list's order: the game's setup's
+-- `navicust_expansions` and `navicust_programs`) and the navi is MegaMan (the navi that changes form: the original
+-- compiles the PET's own navi's, navi 0's). Whether it was. Without one, the stats are as a compile left them, and the
+-- glitch is as their bugs say.
+function compile.run(side: number, game: NaviCustGame, expansions: number?, parts: { PlacedProgram }): boolean
+    if expansions == nil then
+        if game.glitch then
+            battle.set_emotion_window_glitch(side, stats_bugged(battle.navi(side)))
+        end
+        return false
+    end
+    local stats = battle.navi(side)
+    if stats.navi.forms == nil then
+        return false
+    end
+    local layout = game.board.boards[expansions + 1]
+    if layout == nil then
+        -- (No board of that size: nothing compiles, and `validate` says so; a round starts from any setup.)
+        return false
+    end
+    local planned = plan(game, layout, parts)
+    local counts = planned.counts
+
+    -- 3. The programs' effects (`sub_813C684`), in the plan's order.
+    local work: Work = { hp = 0, bug_stop = false }
+    for _, i in planned.order do
+        for _, e in parts[i].program.effects or {} do
+            apply(stats, e, work)
         end
     end
     stats.max_hp = stats.max_base_hp + work.hp
@@ -458,6 +507,87 @@ function compile.run(side: number, game: NaviCustGame, expansions: number?, part
     stats.max_hp = stats.max_base_hp + work.hp
     stats.hp = stats.max_hp
     return true
+end
+
+-- For a tool (a game's `overview`): of `side`'s NaviCust as `compile.run` compiles it, the programs whose effects run,
+-- in the order they do, and the bugs it brings, each by its name (one of `game.bugs`) at its count's level, 1 to 3
+-- (none where a program or the game stops them). Nothing is written.
+function compile.at_work(
+    side: number,
+    game: NaviCustGame,
+    expansions: number?,
+    parts: { PlacedProgram }
+): ({ PlacedProgram }, { { name: string, level: number } })
+    local ran: { PlacedProgram } = {}
+    local bugs: { { name: string, level: number } } = {}
+    if expansions == nil or battle.navi(side).navi.forms == nil then
+        return ran, bugs
+    end
+    local layout = game.board.boards[expansions + 1]
+    if layout == nil then
+        return ran, bugs
+    end
+    local planned = plan(game, layout, parts)
+    local stopped = false
+    for _, i in planned.order do
+        table.insert(ran, parts[i])
+        for _, e in parts[i].program.effects or {} do
+            if e.kind == "bug_stop" then
+                stopped = true
+            end
+        end
+    end
+    if game.bug_stop ~= nil then
+        local o = game.bug_stop(side)
+        if o ~= nil then
+            stopped = o
+        end
+    end
+    if not stopped then
+        for _, bug in game.bugs do
+            local level = math.min(planned.counts[bug] or 0, 3)
+            if level > 0 then
+                table.insert(bugs, { name = bug, level = level })
+            end
+        end
+    end
+    return ran, bugs
+end
+
+-- The kinds of effect that change a number a tool shows beside the navi's others (its HP, its buster's levels, its
+-- custom level, its Mega and Giga limits), and those no netbattle reads: a program with any other kind of effect
+-- gives the navi an ability.
+local NUMBERS: { [string]: boolean } = {
+    hp = true,
+    attack = true,
+    rapid = true,
+    charge = true,
+    attack_max = true,
+    rapid_max = true,
+    charge_max = true,
+    custom = true,
+    mega_folder = true,
+    giga_folder = true,
+    outside = true,
+}
+
+-- A game's `overview`'s part: of `side`'s NaviCust, into `out`, the programs at work that give the navi an ability
+-- (each as its entry) and the bugs it brings (each by its name and level).
+function compile.overview(side: number, game: NaviCustGame, expansions: number?, parts: { PlacedProgram }, out: SetupOverview)
+    local ran, bugs = compile.at_work(side, game, expansions, parts)
+    for _, p in ran do
+        for _, e in p.program.effects or {} do
+            if not NUMBERS[e.kind] then
+                local source: SetupSource = { entry = p.program }
+                table.insert(out.abilities, source)
+                break
+            end
+        end
+    end
+    for _, bug in bugs do
+        local brought: SetupBug = { name = bug.name, level = bug.level }
+        table.insert(out.bugs, brought)
+    end
 end
 
 return compile
