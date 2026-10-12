@@ -321,6 +321,8 @@ language = "ja"
 "magshok1" = { name = "マグショック1", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
 "magshok2" = { name = "マグショック2", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
 "magshok3" = { name = "マグショック3", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
+"lifesync" = { name = "ライフシンクロ", description = "2マス前のてきに\nカーソル!てきの\nHPをおなじにする" }
+"signlred" = { name = "シグナルレッド", description = "あかいあいだは\nあいてがチップを\nつかえなくなる!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

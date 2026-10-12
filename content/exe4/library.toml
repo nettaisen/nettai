@@ -317,6 +317,7 @@ standard = [
     "antinavi",
     "antirecv",
     "copydmg",
+    "lifesync",
     "atk-10",
     "navi-20",
     "colorpt",
@@ -402,6 +403,7 @@ mega = [
 giga = [
     "bass",
     "blakbarr",
+    "signlred",
     "bassanly",
     "bugcurse",
     "deltaray",

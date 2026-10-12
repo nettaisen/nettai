@@ -321,6 +321,8 @@ language = "en"
 "magshok1" = { name = "MagShok1", description = "Powerful\nmagnet\nattack!" }
 "magshok2" = { name = "MagShok2", description = "Powerful\nmagnet\nattack!" }
 "magshok3" = { name = "MagShok3", description = "Powerful\nmagnet\nattack!" }
+"lifesync" = { name = "LifeSync", description = "Makes\nenmy's HP\nsame" }
+"signlred" = { name = "SignlRed", description = "Enmy chip\nis no use\nwhile red" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
