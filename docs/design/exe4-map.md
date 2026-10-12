@@ -2402,8 +2402,10 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     shift: the flags on each of their six panels, navis in front of, behind and beside them, chip icons over a flag
     and its number, Spreader's bursts, Boomer1, MiniBombs and Meteors over the flags, a flag broken, the custom
     screen through five turns, the telops on both sides, Blinder's dimming, flash and blinding (a blind console
-    draws no numbers), AreaGrab's dimming, RollSoul's change, a pause. What it found was the HUD's own, items 132 to
-    134.
+    draws no numbers), RockCube's and AreaGrab's dimmings, RollSoul's change, a pause. What it found was the HUD's
+    own, items 132 to 134. EXE5's and EXE6's stages place no flag (EXE6 has the code, `sub_80D8C5C`, and no stage
+    that places it) and no other object with an HP number: their boulders, rocks and Guardian statues are plain
+    sprites by their ground.
 132. **Done: the other player's used chip through a pause.** EXE4's pause (0x08007176: 0x080166BC) starts "PAUSE"
     alone; EXE6's display (`sub_801E15C`) and EXE5's (0x0801AA28) end the used chips' names. The name stays and runs
     out through the pause (the HUD's tasks run paused). The rule `effects.used_chips_end_early` (with item 76's
@@ -2430,9 +2432,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). A doubled chip's
     "×2" is one 16x16 sprite at 0x380 for either place (0x08015522 adds no 36: emotions/counter-side1 shows the other
     player's "Cannon 40×2"), so a banner's load turns it into the tops of the banner's glyphs 16 to 19, the '×' the
-    left column (ported with the name's; no recording reaches it: a navi's deletion banner starts after the name has
-    run out, the flag's break is the case, and breaking a flag with a Full Synchro chip takes a counter hit on the
-    last turn).
+    left column: stages/lava-middle-close/flag-break-synchro-bluemoon (a counter hit on the last turn, then the flag
+    broken by the doubled Cannon) compares it, frames 3793 to 3802. (A navi's deletion banner starts after the name
+    has run out; a flag's break is the case that shows it.)
 
 ### 18.8 The chips (group F)
 
