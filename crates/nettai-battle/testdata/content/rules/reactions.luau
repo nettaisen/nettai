@@ -74,6 +74,8 @@ return {
     -- The counter a stance's caught hit starts runs from the next tick.
     stance_counter = "next_tick",
     trap_counter = "at_once",
+    -- The idle's entry starts a trap's counter before the navi's own idle runs.
+    idle_entry_counter = true,
     dead_player = "kept",
     attack_end_lockout = "by_kind",
     -- A move's direction: up, down, back or forward by the side.

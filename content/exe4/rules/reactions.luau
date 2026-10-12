@@ -85,6 +85,10 @@ return {
     stance_counter = "next_tick",
     -- So does a trap's (AntiDmg's and AntiSwrd's, actions 0x38 and 0x39: the same routine).
     trap_counter = "next_tick",
+    -- The idle's entry starts one for a navi in auto battle alone (0x080EB0D6: NaviStats +0x26 = 1, a story's navi,
+    -- no netbattle's); a netbattle's navi's idle starts it in its turn (0x080EEBD0), after the phase's timer, the chip
+    -- window and a revert asked for: a navi back in its idle with a trap sprung (in a dimming, say) is armed first.
+    idle_entry_counter = false,
     -- A deleted player's object lets go of its collision data, is freed and counts one actor fewer, all at once
     -- (0x0801052C); its reservations stay as they are.
     dead_player = "freed",
