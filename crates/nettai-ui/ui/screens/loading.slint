@@ -1,0 +1,60 @@
+// Loading (docs/design/app-ui.md §6): the logo and one bar while the selected game loads, as the app starts and
+// whenever the player steps to a game that isn't ready yet. The bar has one width and the percentage fixed-width
+// digits, so nothing moves as it fills.
+
+import { Theme } from "../theme.slint";
+import { Shell } from "../shell.slint";
+import { Label, Mono, Bar, Note } from "../widgets.slint";
+
+export component LoadingScreen {
+    property <length> column: min(480px, self.width - 2 * Theme.margin);
+    property <length> top: (self.height - 158px) / 2;
+    Text {
+        y: root.top;
+        height: 90px;
+        text: "nettai";
+        color: Theme.text;
+        font-family: "Chakra Petch";
+        font-size: Theme.phone ? 56px : 72px;
+        font-weight: 700;
+        letter-spacing: 2.9px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    Bar {
+        y: root.top + 122px;
+        width: root.column;
+        visible: !Shell.no-games;
+        value: Shell.loading-progress;
+    }
+
+    Label {
+        x: (parent.width - root.column) / 2;
+        y: root.top + 142px;
+        width: root.column - 56px;
+        height: 16px;
+        visible: !Shell.no-games;
+        text: @tr("LOADING {}", Shell.game);
+    }
+
+    Mono {
+        x: (parent.width + root.column) / 2 - 48px;
+        y: root.top + 142px;
+        width: 48px;
+        height: 16px;
+        visible: !Shell.no-games;
+        text: "\{round(Shell.loading-progress * 100)}%";
+        horizontal-alignment: right;
+    }
+
+    // No game has a pack: what to do about it.
+    Note {
+        y: root.top + 122px;
+        width: root.column;
+        height: 40px;
+        visible: Shell.no-games;
+        text: @tr("No game data was found. Put a game's pack in {}.", Shell.packs-folder);
+        horizontal-alignment: center;
+    }
+}

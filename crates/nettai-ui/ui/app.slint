@@ -1,0 +1,69 @@
+// The app's window (docs/app.md §2): the ground, the one screen shown, what opens over it, and the cursor.
+//
+// A screen is one file in screens/ (its component, and its view: the global its Rust module sets) and one Rust
+// module in src/screens/. This file names each screen's component and its view once, below; what a screen adds
+// to its view, and the structs it uses there, reach Rust with no edit here.
+
+import { Theme, Audit } from "theme.slint";
+import { Nav, NavKind } from "nav.slint";
+import { Shell, Screen, BattleKind, Backdrop, Cursor, DialogLayer, PickerLayer } from "shell.slint";
+import { LoadingScreen } from "screens/loading.slint";
+import { MenuScreen } from "screens/menu.slint";
+import { SettingsScreen } from "screens/settings.slint";
+import { VersusScreen } from "screens/versus.slint";
+import { BattleScreen } from "screens/battle.slint";
+import { PlayScreen, MatchMenu } from "screens/play.slint";
+import { TrainingScreen, TrainingMenu } from "screens/training.slint";
+import { BuildsScreen } from "screens/builds.slint";
+import { ReplaysScreen } from "screens/replays.slint";
+
+export { Theme, Audit, Nav, NavKind }
+export { Shell, Screen, BattleKind, DialogButton, VersusCard, PadButton, ErrorKind, Errors } from "shell.slint";
+export { ButtonKind } from "widgets.slint";
+// What each screen's Rust module sets: its view.
+export { MenuView } from "screens/menu.slint";
+export { SettingsView } from "screens/settings.slint";
+export { PlayView } from "screens/play.slint";
+export { TrainingView } from "screens/training.slint";
+export { BuildsView } from "screens/builds.slint";
+export { ReplaysView } from "screens/replays.slint";
+
+export component AppWindow inherits Window {
+    // What is shown in place of a menu screen: the bar while the game loads, the two cards before a battle,
+    // the battle.
+    property <bool> in-battle: Shell.battle != BattleKind.none && Shell.battle-full;
+    property <bool> covered: Shell.loading || Shell.versus || root.in-battle;
+    title: "nettai";
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    background: Theme.ground-bottom;
+    default-font-family: Theme.body;
+    default-font-size: 14px;
+    default-font-weight: 400;
+    Backdrop { }
+
+    if !root.covered && Shell.screen == Screen.menu: MenuScreen { }
+    if !root.covered && Shell.screen == Screen.play: PlayScreen { }
+    if !root.covered && Shell.screen == Screen.training: TrainingScreen { }
+    if !root.covered && Shell.screen == Screen.builds: BuildsScreen { }
+    if !root.covered && Shell.screen == Screen.replays: ReplaysScreen { }
+    if !root.covered && Shell.screen == Screen.settings: SettingsScreen { }
+    if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
+    if Shell.versus: VersusScreen { }
+    if root.in-battle: BattleScreen { }
+    if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu { }
+    if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu { }
+    if Shell.picker: PickerLayer { }
+    if Shell.dialog: DialogLayer { }
+    Cursor {
+        x: Nav.x - 5px;
+        y: Nav.y - 5px;
+        width: Nav.w + 10px;
+        height: Nav.h + 10px;
+        visible: Nav.shown && Nav.id != "";
+        animate x, y, width, height {
+            duration: Theme.slide;
+            easing: ease-out;
+        }
+    }
+}

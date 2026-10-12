@@ -1,0 +1,91 @@
+// The look, in one place (docs/design/app-ui.md §4): the colors, the type and the metrics every screen uses.
+//
+// Lengths are in units of the 1280 by 800 reference window. The app sets the window's scale so that one `px` in
+// these files is one unit (`scale.rs`), so nothing here multiplies by a scale.
+
+import "../fonts/chakra-petch/ChakraPetch-Medium.ttf";
+import "../fonts/chakra-petch/ChakraPetch-SemiBold.ttf";
+import "../fonts/chakra-petch/ChakraPetch-Bold.ttf";
+import "../fonts/m-plus-1-code/MPLUS1Code-VariableFont_wght.ttf";
+import "../../nettai-render/fonts/murecho/Murecho-VariableFont_wght.ttf";
+
+export global Theme {
+    // The ground, top to bottom, and the glow at its top right.
+    out property <color> ground-top: #0a1330;
+    out property <color> ground-bottom: #050916;
+    out property <color> ground-glow: #286eff47;
+    out property <color> hexagons: #62b4ff14;
+    // Surfaces.
+    out property <color> panel: #0c1836;
+    out property <color> raised: #13254d;
+    out property <color> raised-hover: #1a3266;
+    out property <color> line: #27508f;
+    out property <color> inset: #040813;
+    out property <color> bar: #03060fb8;
+    out property <color> shade: #030610cc;
+    // Text.
+    out property <color> text: #eaf3ff;
+    out property <color> muted: #8ea8d4;
+    out property <color> dim: #55698f;
+    // The cursor, the active pane's title, the chosen row's bar.
+    out property <color> cursor: #66e0ff;
+    out property <color> glow: #66e0ff66;
+    out property <color> tint: #66e0ff1a;
+    // (The cursor's color with nothing of it: what its gradients fade to.)
+    out property <color> clear: #66e0ff00;
+    // The main action.
+    out property <color> action: #ffb62e;
+    out property <color> action-ink: #1b1100;
+    // The two sides.
+    out property <color> p1: #ff5d50;
+    out property <color> p2: #4a93ff;
+    out property <color> p1-tint: #ff5d5029;
+    out property <color> p2-tint: #4a93ff2e;
+    // Good; an error, or a reason something can't be done.
+    out property <color> good: #45e0a0;
+    out property <color> bad: #ff9272;
+    // What a build holds.
+    out property <color> bug: #b497ff;
+    out property <color> mega: #6cc4ff;
+    out property <color> giga: #ff7eb6;
+    out property <color> reg: #ff5c82;
+    out property <color> tag: #7fe36c;
+    out property <color> code: #ffb62e;
+    out property <color> command-line: #0e3550;
+    out property <color> out-of-bounds: #8ea8d433;
+    out property <color> out-of-bounds-edge: #8ea8d499;
+
+    // Type. Headings, buttons and labels are Chakra Petch; a language it has no letters for (`cjk`, set by the
+    // app with the language) has them in Murecho, which is everything else's face. Codes, numbers and times are
+    // M PLUS 1 Code, whose digits are one width.
+    in property <bool> cjk;
+    out property <string> display: cjk ? "Murecho" : "Chakra Petch";
+    out property <string> body: "Murecho";
+    out property <string> mono: "M PLUS 1 Code";
+    // A label's capitals are tracked 0.18em; a script set solid nearly not.
+    out property <length> label-tracking: cjk ? 0.4px : 2px;
+    out property <length> button-tracking: cjk ? 0.3px : 1.3px;
+    out property <length> title-tracking: cjk ? 0.6px : 2.8px;
+
+    // Metrics. `phone` is the upright-phone layout (the app sets it when the window is taller than wide): one
+    // column, no footer, everything tapped at least 44 tall.
+    in property <bool> phone;
+    out property <length> margin: phone ? 16px : 32px;
+    out property <length> header: phone ? 56px : 64px;
+    out property <length> footer: phone ? 0px : 44px;
+    out property <length> control: 40px;
+    out property <length> row: 44px;
+    out property <length> chip-row: 26px;
+
+    // The screenshot pass holds everything still (`motion` off) and asks every label whether its text fits
+    // (`audit`: `Audit.clipped`).
+    in property <bool> motion: true;
+    in property <bool> audit;
+    out property <duration> slide: motion ? 110ms : 0ms;
+}
+
+// The screenshot pass's check that no label is cut: a label whose text doesn't fit says so here while
+// `Theme.audit` is on.
+export global Audit {
+    callback clipped(string);
+}

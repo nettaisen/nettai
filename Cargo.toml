@@ -20,6 +20,13 @@ rennet = { git = "https://github.com/tangobattle/rennet" }
 [profile.dev]
 opt-level = 1
 
+# The app's Slint compiled to Rust: one large module that any edit to a .slint file compiles again whole. Without
+# optimization and debug info that takes a fifth of the time (docs/app.md §8, measured), and what it does at run
+# time (setting properties, laying out) is the Slint library's, which stays optimized.
+[profile.dev.package.nettai-ui]
+opt-level = 0
+debug = false
+
 [profile.release]
 debug = 1
 

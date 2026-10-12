@@ -1,0 +1,1049 @@
+// The components every screen is built from (docs/design/app-ui.md §4 and §5).
+//
+// Two things hold for all of them. A control never sizes itself by what it shows at the moment: a value has a
+// box of a set width and is cut with an ellipsis. And a control does nothing by itself: it has a name (`nav`),
+// and a click, an arrow or an edit goes to the app with that name (nav.slint), where the screen's Rust module
+// decides.
+//
+// Build cost (docs/app.md §8): a component used with nothing inside it is compiled once, however often it is
+// used; one used with children inside it (`Panel { ... }`) is copied into each user, and every `if` or `for` is a
+// component of its own. So the pieces here are leaves, the containers hold a leaf and little else, and a part
+// shown or hidden is `visible`, not `if`.
+
+import { Theme, Audit } from "theme.slint";
+import { Nav, NavKind, Focusable } from "nav.slint";
+
+// ---- Shapes ---------------------------------------------------------------------------------------------
+
+// A rectangle with one line around it and its bottom right corner cut at 45 degrees, the line following the
+// cut: 12 on a panel, 18 on a dialog or a menu, 9 on a button.
+export component Cut inherits Path {
+    in property <length> cut: 12px;
+    in property <brush> background: Theme.panel;
+    in property <brush> line: Theme.line;
+    // (The path is drawn inside the line's half width: its box is the element's less the line.)
+    property <float> w: max(1, (self.width - 1px) / 1px);
+    property <float> h: max(1, (self.height - 1px) / 1px);
+    property <float> c: self.cut / 1px;
+    fill: root.background;
+    stroke: root.line;
+    stroke-width: 1px;
+    viewbox-width: root.w;
+    viewbox-height: root.h;
+    MoveTo {
+        x: 0;
+        y: 0;
+    }
+
+    LineTo {
+        x: root.w;
+        y: 0;
+    }
+
+    LineTo {
+        x: root.w;
+        y: root.h - root.c;
+    }
+
+    LineTo {
+        x: root.w - root.c;
+        y: root.h;
+    }
+
+    LineTo {
+        x: 0;
+        y: root.h;
+    }
+
+    Close { }
+}
+
+// The arrows of a stepper and a select, drawn (no font has to have them).
+export component ArrowLeft inherits Path {
+    width: 5px;
+    height: 8px;
+    fill: Theme.cursor;
+    commands: "M 5 0 L 0 4 L 5 8 Z";
+}
+
+export component ArrowRight inherits Path {
+    width: 5px;
+    height: 8px;
+    fill: Theme.cursor;
+    commands: "M 0 0 L 5 4 L 0 8 Z";
+}
+
+export component ArrowDown inherits Path {
+    width: 8px;
+    height: 5px;
+    fill: Theme.muted;
+    commands: "M 0 0 L 8 0 L 4 5 Z";
+}
+
+// Back's chevron.
+export component Chevron inherits Path {
+    width: 5px;
+    height: 9px;
+    stroke: Theme.muted;
+    stroke-width: 1.5px;
+    commands: "M 4.5 0.5 L 0.5 4.5 L 4.5 8.5";
+}
+
+// ---- Text -----------------------------------------------------------------------------------------------
+
+// A label: 11, capitals (the catalog's text is written so), tracked.
+export component Label inherits Text {
+    property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
+    color: Theme.muted;
+    font-family: Theme.display;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: Theme.label-tracking;
+    vertical-alignment: center;
+    overflow: elide;
+    changed over => {
+        if over {
+            Audit.clipped(self.text);
+        }
+    }
+}
+
+// A line that says what its label can't (what a setting changes, what happens next): 13, muted, wrapped.
+export component Note inherits Text {
+    property <bool> over: Theme.audit && self.preferred-height > self.height + 0.5px;
+    color: Theme.muted;
+    font-family: Theme.body;
+    font-size: 13px;
+    vertical-alignment: center;
+    wrap: word-wrap;
+    changed over => {
+        if over {
+            Audit.clipped(self.text);
+        }
+    }
+}
+
+// A reserved line for a message: 16 tall whether it says anything or not, in the error red.
+export component Message inherits Text {
+    height: 16px;
+    color: Theme.bad;
+    font-family: Theme.body;
+    font-size: 12px;
+    vertical-alignment: center;
+    overflow: elide;
+}
+
+// A name or a value the app gives (a player, a build): one line, cut with an ellipsis.
+export component Value inherits Text {
+    color: Theme.text;
+    font-family: Theme.body;
+    font-size: 14px;
+    font-weight: 600;
+    vertical-alignment: center;
+    overflow: elide;
+}
+
+// A code, a number, a time: fixed-width digits.
+export component Mono inherits Text {
+    color: Theme.text;
+    font-family: Theme.mono;
+    font-size: 13px;
+    font-weight: 700;
+    vertical-alignment: center;
+    overflow: elide;
+}
+
+// A dialog's or a menu's heading.
+export component Heading inherits Text {
+    property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
+    color: Theme.text;
+    font-family: Theme.display;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: Theme.title-tracking * 0.7;
+    vertical-alignment: center;
+    overflow: elide;
+    changed over => {
+        if over {
+            Audit.clipped(self.text);
+        }
+    }
+}
+
+// A tag: a version, TRAINING.
+export component Pill {
+    in property <string> text;
+    in property <color> tone: Theme.muted;
+    height: 22px;
+    // (No text, no tag: it takes no room.)
+    width: root.text == "" ? 0px : label.preferred-width + 16px;
+    Rectangle {
+        border-width: root.text == "" ? 0px : 1px;
+        border-color: root.tone;
+    }
+
+    label := Text {
+        text: root.text;
+        color: root.tone;
+        font-family: Theme.display;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.7px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// ---- Controls -------------------------------------------------------------------------------------------
+
+export enum ButtonKind {
+    normal,
+    // The main action: amber.
+    main,
+    // A quieter one: no fill.
+    ghost,
+}
+
+// A button, 40 tall, as wide as its text and at least 120 (give it a `width` where it should be another: its
+// text is cut to it). `enabled` off is the unavailable look, and the focus passes it by.
+export component Button {
+    in property <string> text;
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <ButtonKind> kind;
+    in property <bool> enabled: true;
+    // Its text in the error red (DELETE, LEAVE MATCH).
+    in property <bool> danger;
+    // 52 tall (START TRAINING).
+    in property <bool> big;
+    out property <bool> focused: hit.focused;
+    property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
+    height: root.big ? 52px : 40px;
+    width: max(120px, label.preferred-width + 32px);
+    property <brush> fill-main: hit.pressed ? Theme.action.darker(15%) : (hit.has-hover ? Theme.action.brighter(12%) : Theme.action);
+    property <brush> fill-ghost: hit.has-hover && root.enabled ? Theme.tint : transparent;
+    property <brush> fill-normal: hit.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
+    Cut {
+        cut: 9px;
+        background: !root.enabled || root.kind == ButtonKind.ghost ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
+        line: !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
+    }
+
+    label := Text {
+        x: 16px;
+        width: parent.width - 32px;
+        text: root.text;
+        color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : Theme.text;
+        font-family: Theme.display;
+        font-size: root.big ? 16px : 13px;
+        font-weight: root.kind == ButtonKind.main ? 700 : 600;
+        letter-spacing: Theme.button-tracking;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+        enabled: root.enabled;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.text);
+        }
+    }
+}
+
+// A value between two arrows: Left and Right change it at once. The value's box has one width
+// (`value-width`), so the arrows stay where they are whatever it says. `locked` shows the value alone, in the
+// same place (the game's name where the game can't change).
+export component Stepper {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> value;
+    in property <length> value-width: 84px;
+    // Fixed-width digits (a number).
+    in property <bool> numeric;
+    // The header's game: larger, in the display face.
+    in property <bool> title;
+    in property <bool> locked;
+    in property <bool> enabled: true;
+    out property <bool> focused: hit.focused;
+    height: 36px;
+    width: root.value-width + 72px;
+    horizontal-stretch: 0;
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+        kind: NavKind.stepper;
+        enabled: root.enabled && !root.locked;
+    }
+
+    Rectangle {
+        x: 0;
+        width: 32px;
+        visible: !root.locked;
+        border-width: 1px;
+        border-color: Theme.line;
+        background: left.pressed ? Theme.line : left.has-hover ? Theme.tint : transparent;
+        ArrowLeft { }
+
+        left := TouchArea {
+            enabled: root.enabled;
+            clicked => {
+                Nav.point(root.nav, root.nav-index);
+                Nav.step(root.nav, root.nav-index, -1);
+            }
+        }
+    }
+
+    Text {
+        x: 36px;
+        width: root.value-width;
+        text: root.value;
+        color: root.enabled ? Theme.text : Theme.dim;
+        font-family: root.numeric ? Theme.mono : root.title ? Theme.display : Theme.body;
+        font-size: root.title ? 16px : 14px;
+        font-weight: 700;
+        letter-spacing: root.title ? 0.6px : 0px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Rectangle {
+        x: root.value-width + 40px;
+        width: 32px;
+        visible: !root.locked;
+        border-width: 1px;
+        border-color: Theme.line;
+        background: right.pressed ? Theme.line : right.has-hover ? Theme.tint : transparent;
+        ArrowRight { }
+
+        right := TouchArea {
+            enabled: root.enabled;
+            clicked => {
+                Nav.point(root.nav, root.nav-index);
+                Nav.step(root.nav, root.nav-index, 1);
+            }
+        }
+    }
+}
+
+// One of two: off and on, sharp and original. Left and Right choose, Enter takes the other.
+export component Seg {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> first;
+    in property <string> second;
+    // 0 the first, 1 the second.
+    in property <int> chosen;
+    out property <bool> focused: hit.focused;
+    property <length> first-width: max(44px, a.preferred-width + 24px);
+    property <length> second-width: max(44px, b.preferred-width + 24px);
+    height: 36px;
+    width: root.first-width + root.second-width + 1px;
+    horizontal-stretch: 0;
+    Rectangle {
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+        kind: NavKind.stepper;
+    }
+
+    Rectangle {
+        x: 0;
+        width: root.first-width;
+        background: root.chosen == 0 ? Theme.tint : transparent;
+        Rectangle {
+            y: parent.height - 2px;
+            height: 2px;
+            background: root.chosen == 0 ? Theme.cursor : transparent;
+        }
+
+        a := Text {
+            text: root.first;
+            color: root.chosen == 0 ? Theme.cursor : Theme.muted;
+            font-family: Theme.display;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        TouchArea {
+            clicked => {
+                Nav.point(root.nav, root.nav-index);
+                Nav.choose(root.nav, root.nav-index, 0);
+            }
+        }
+    }
+
+    Rectangle {
+        x: root.first-width;
+        width: 1px;
+        background: Theme.line;
+    }
+
+    Rectangle {
+        x: root.first-width + 1px;
+        width: root.second-width;
+        background: root.chosen == 1 ? Theme.tint : transparent;
+        Rectangle {
+            y: parent.height - 2px;
+            height: 2px;
+            background: root.chosen == 1 ? Theme.cursor : transparent;
+        }
+
+        b := Text {
+            text: root.second;
+            color: root.chosen == 1 ? Theme.cursor : Theme.muted;
+            font-family: Theme.display;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        TouchArea {
+            clicked => {
+                Nav.point(root.nav, root.nav-index);
+                Nav.choose(root.nav, root.nav-index, 1);
+            }
+        }
+    }
+}
+
+// A level from 0 to `maximum`: Left and Right step it, a click or a drag sets it. Its number has a box of its
+// own, so the bar keeps its length.
+export component Slider {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <int> value;
+    in property <int> maximum: 100;
+    out property <bool> focused: hit.focused;
+    property <length> track: self.width - 48px;
+    property <length> filled: root.track * clamp(root.value / root.maximum, 0, 1);
+    height: 40px;
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+        kind: NavKind.stepper;
+    }
+
+    Rectangle {
+        x: 0;
+        y: 18px;
+        width: root.track;
+        height: 4px;
+        background: Theme.raised;
+    }
+
+    Rectangle {
+        x: 0;
+        y: 18px;
+        width: root.filled;
+        height: 4px;
+        background: Theme.cursor;
+        drop-shadow-blur: 8px;
+        drop-shadow-color: Theme.glow;
+    }
+
+    Rectangle {
+        x: root.filled - 4px;
+        y: 10px;
+        width: 8px;
+        height: 20px;
+        background: Theme.text;
+    }
+
+    Mono {
+        x: root.track + 12px;
+        width: 36px;
+        text: root.value;
+        horizontal-alignment: right;
+    }
+
+    drag := TouchArea {
+        x: 0;
+        width: root.track;
+        function set() {
+            Nav.choose(root.nav, root.nav-index, round(clamp(self.mouse-x / self.width, 0, 1) * root.maximum));
+        }
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.down {
+                Nav.point(root.nav, root.nav-index);
+                set();
+            }
+        }
+        moved => {
+            if self.pressed {
+                set();
+            }
+        }
+    }
+}
+
+// A box with its value and an arrow: Left and Right step through its choices, Enter opens them as a list.
+export component Select {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> value;
+    in property <bool> enabled: true;
+    out property <bool> focused: hit.focused;
+    height: 40px;
+    Rectangle {
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: hit.has-hover ? Theme.muted : Theme.line;
+    }
+
+    Value {
+        x: 12px;
+        width: parent.width - 44px;
+        text: root.value;
+        color: root.enabled ? Theme.text : Theme.dim;
+        font-weight: 400;
+    }
+
+    ArrowDown {
+        x: parent.width - 20px;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+        kind: NavKind.stepper;
+        enabled: root.enabled;
+    }
+}
+
+// A text field (rules 7 and 8). The arrows walk past it; Enter or a typed letter starts editing; while it is
+// edited Left and Right move the caret, Enter confirms, Esc restores the text it had, Up or Down confirm and
+// move on. Its text is cut at the inner padding (12) and scrolls to keep the caret in view.
+//
+// `text` is the app's: the screen's Rust module gets each change (`edit`) and sets it, so what the field holds
+// is what the app kept (a name cut to its length, a code in capitals).
+export component Field {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> text;
+    in property <string> placeholder;
+    // Its line in the error red (the reason is in the reserved line by it).
+    in property <bool> error;
+    // A code: fixed-width, larger, tracked.
+    in property <bool> code;
+    in property <bool> enabled: true;
+    out property <bool> focused: hit.focused;
+    out property <bool> editing: hit.focused && Nav.editing;
+    property <int> seq: Nav.edit-seq;
+    property <length> scroll;
+    height: 40px;
+    Rectangle {
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: root.editing ? Theme.cursor : root.error ? Theme.bad : hit.has-hover ? Theme.muted : Theme.line;
+        drop-shadow-blur: root.editing ? 10px : 0px;
+        drop-shadow-color: root.editing ? Theme.glow : transparent;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+        kind: NavKind.field;
+        enabled: root.enabled;
+    }
+
+    // What it holds, while it isn't edited.
+    Text {
+        x: 12px;
+        width: parent.width - 24px;
+        visible: !root.editing;
+        text: root.text == "" ? root.placeholder : root.text;
+        color: root.text == "" || !root.enabled ? Theme.dim : Theme.text;
+        font-family: root.code ? Theme.mono : Theme.body;
+        font-size: root.code ? 16px : 14px;
+        font-weight: root.code ? 700 : 400;
+        letter-spacing: root.code ? 1.3px : 0px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // The edit itself: clipped at the padding, moved to keep the caret in view.
+    Rectangle {
+        x: 12px;
+        width: parent.width - 24px;
+        clip: true;
+        input := TextInput {
+            x: min(0px, max(parent.width - self.width, root.scroll));
+            width: max(parent.width, self.preferred-width + 2px);
+            visible: root.editing;
+            enabled: root.editing;
+            color: Theme.text;
+            font-family: root.code ? Theme.mono : Theme.body;
+            font-size: root.code ? 16px : 14px;
+            font-weight: root.code ? 700 : 400;
+            letter-spacing: root.code ? 1.3px : 0px;
+            vertical-alignment: center;
+            single-line: true;
+            text-cursor-width: 2px;
+            selection-background-color: Theme.line;
+            selection-foreground-color: Theme.text;
+            edited => {
+                Nav.edited(root.nav, root.nav-index, self.text);
+            }
+            accepted => {
+                Nav.edit-done(root.nav, root.nav-index, self.text);
+            }
+            cursor-position-changed(at) => {
+                if at.x + root.scroll < 0px {
+                    root.scroll = -at.x;
+                } else if at.x + root.scroll > parent.width - 2px {
+                    root.scroll = parent.width - 2px - at.x;
+                }
+            }
+        }
+    }
+
+    // An edit begins: with the letter typed, or with the text as it is, all selected.
+    changed seq => {
+        if hit.focused && Nav.editing {
+            Nav.edit-began(root.nav, root.nav-index, root.text);
+            root.scroll = 0px;
+            input.text = Nav.edit-seed == "" ? root.text : Nav.edit-seed;
+            input.focus();
+            if Nav.edit-seed == "" {
+                input.select-all();
+            } else {
+                input.set-selection-offsets(100000, 100000);
+            }
+        }
+    }
+    // It ends: the keys go back to the app.
+    changed editing => {
+        if !root.editing {
+            input.clear-focus();
+        }
+    }
+    // The app kept another text than was typed (cut, or in capitals): the field holds what was kept.
+    changed text => {
+        if root.editing && input.text != root.text {
+            input.text = root.text;
+            input.set-selection-offsets(100000, 100000);
+        }
+    }
+}
+
+// ---- Rows -----------------------------------------------------------------------------------------------
+
+// What marks the chosen row of a list: a tint and a bar at its left.
+export component RowBack {
+    in property <bool> chosen;
+    in property <bool> hover;
+    Rectangle {
+        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : root.hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+    }
+
+    Rectangle {
+        x: 0;
+        width: 2px;
+        background: root.chosen ? Theme.cursor : transparent;
+    }
+}
+
+// A row's clicks, where the rows are a `ListView`'s (the list is what is focusable, not each row).
+export component RowTouch inherits TouchArea {
+    in property <string> nav;
+    in property <int> nav-index;
+    clicked => {
+        Nav.activate(nav, nav-index);
+    }
+    pointer-event(e) => {
+        if e.kind == PointerEventKind.down {
+            Nav.point(nav, nav-index);
+        }
+    }
+}
+
+// A list row of one text, 44 tall: a row of a short list, each focusable by itself (`nav-index` its place).
+export component Row {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> text;
+    in property <bool> chosen;
+    out property <bool> focused: hit.focused;
+    height: Theme.row;
+    RowBack {
+        chosen: root.chosen;
+        hover: hit.has-hover;
+    }
+
+    Value {
+        x: 12px;
+        width: parent.width - 24px;
+        text: root.text;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+    }
+}
+
+// An item of a menu: the main menu's (`big`: 72 tall, 36) and a menu overlay's (48 tall). The one the cursor or
+// the pointer is on is lit.
+export component MenuItem {
+    in property <string> text;
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <bool> big;
+    in property <bool> danger;
+    out property <bool> on: Nav.shown ? hit.focused : hit.has-hover;
+    property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
+    height: !root.big ? 48px : (Theme.phone ? 68px : 72px);
+    Rectangle {
+        background: root.on ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 100%) : transparent;
+    }
+
+    Rectangle {
+        x: 0;
+        width: 3px;
+        background: root.on ? Theme.cursor : transparent;
+    }
+
+    label := Text {
+        x: root.big && !Theme.phone ? 24px : 16px;
+        width: parent.width - self.x - 8px;
+        text: root.text;
+        color: root.danger ? Theme.bad : (root.on || !root.big ? Theme.text : Theme.muted);
+        font-family: Theme.display;
+        font-size: !root.big ? 14px : (Theme.phone ? 26px : 36px);
+        font-weight: 700;
+        letter-spacing: !root.big ? 0.9px : (Theme.cjk ? 1px : 2.9px);
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.text);
+        }
+    }
+}
+
+// A row of a menu overlay: a label and a value between arrows (the training menu's).
+export component OptionRow {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> label;
+    in property <string> value;
+    in property <length> value-width: 170px;
+    height: Theme.row;
+    Value {
+        x: 12px;
+        width: parent.width - root.value-width - 104px;
+        text: root.label;
+    }
+
+    Stepper {
+        x: parent.width - self.width - 8px;
+        nav: root.nav;
+        nav-index: root.nav-index;
+        value: root.value;
+        value-width: root.value-width;
+    }
+}
+
+// ---- Frames ---------------------------------------------------------------------------------------------
+
+// A panel's back: the cut corner, the line, and the short cyan accent at its top left. `side` gives it a
+// player's color along its top in place of the accent (1 or 2).
+export component PanelBack {
+    in property <length> cut: 12px;
+    in property <bool> accent: true;
+    in property <int> side;
+    in property <brush> background: Theme.panel;
+    Cut {
+        cut: root.cut;
+        background: root.background;
+    }
+
+    Rectangle {
+        y: 1px;
+        height: 70%;
+        visible: root.side != 0;
+        background: root.side == 1 ? @linear-gradient(180deg, Theme.p1-tint 0%, transparent 100%) : @linear-gradient(180deg, Theme.p2-tint 0%, transparent 100%);
+    }
+
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: root.side != 0 ? parent.width : 72px;
+        height: 2px;
+        visible: root.accent || root.side != 0;
+        background: root.side == 1 ? Theme.p1 : root.side == 2 ? Theme.p2 : @linear-gradient(90deg, Theme.cursor 0%, Theme.clear 100%);
+    }
+}
+
+// What a build holds sits in one of these (rule 11); the list to pick from beside it has no frame.
+export component Panel {
+    in property <length> cut: 12px;
+    in property <bool> accent: true;
+    in property <int> side;
+    PanelBack {
+        cut: root.cut;
+        accent: root.accent;
+        side: root.side;
+    }
+
+    @children
+}
+
+// A line across.
+export component Rule inherits Rectangle {
+    height: 1px;
+    background: Theme.line;
+}
+
+// A group's title over its line (a settings group, a menu's section).
+export component GroupTitle {
+    in property <string> text;
+    height: 28px;
+    Label {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: 20px;
+        text: root.text;
+    }
+
+    Rule {
+        y: parent.height - 1px;
+    }
+}
+
+// A progress bar: 4 tall, its fill lit.
+export component Bar {
+    // 0 to 1.
+    in property <float> value;
+    height: 4px;
+    Rectangle {
+        background: Theme.raised;
+    }
+
+    Rectangle {
+        x: 0;
+        width: parent.width * clamp(root.value, 0, 1);
+        background: Theme.cursor;
+        drop-shadow-blur: 8px;
+        drop-shadow-color: Theme.glow;
+        animate width {
+            duration: Theme.motion ? 160ms : 0ms;
+            easing: ease-out;
+        }
+    }
+}
+
+// The connection's four bars: how many are lit (0 to 4), green, then amber, then red as the link worsens.
+export component Bars {
+    in property <int> level: 4;
+    property <color> tone: root.level >= 3 ? Theme.good : root.level == 2 ? Theme.action : Theme.bad;
+    width: 22px;
+    height: 14px;
+    Rectangle {
+        x: 0;
+        y: 9px;
+        width: 4px;
+        height: 5px;
+        background: root.level >= 1 ? root.tone : Theme.dim;
+    }
+
+    Rectangle {
+        x: 6px;
+        y: 6px;
+        width: 4px;
+        height: 8px;
+        background: root.level >= 2 ? root.tone : Theme.dim;
+    }
+
+    Rectangle {
+        x: 12px;
+        y: 3px;
+        width: 4px;
+        height: 11px;
+        background: root.level >= 3 ? root.tone : Theme.dim;
+    }
+
+    Rectangle {
+        x: 18px;
+        y: 0;
+        width: 4px;
+        height: 14px;
+        background: root.level >= 4 ? root.tone : Theme.dim;
+    }
+}
+
+// ---- Scrolling ------------------------------------------------------------------------------------------
+
+// The scrollbar's thumb, in the 12 reserved at a scrolling thing's right whether or not it shows.
+component Thumb {
+    in property <length> view;
+    in property <length> content;
+    in property <length> scroll;
+    width: 4px;
+    Rectangle {
+        x: 0;
+        y: root.content > 0 ? parent.height * root.scroll / root.content : 0px;
+        height: root.content > 0 ? parent.height * root.view / root.content : 0px;
+        visible: root.content > root.view + 0.5px;
+        background: Theme.line;
+    }
+}
+
+// A page that scrolls (the settings). The controls it holds have its name as their prefix (`set.name` on the
+// page `set.`): the app scrolls the focused one into view, and passes by those out of view when the focus comes
+// from outside. Put what it holds inside it, `view-width` wide, and say how tall that is.
+export component ScrollPage {
+    in property <string> nav;
+    in property <length> content-height;
+    out property <length> view-width: flick.width;
+    out property <length> scroll: -flick.content-y;
+    property <int> seq: Nav.reveal-seq;
+    property <[int]> token;
+    property <length> ax: self.absolute-position.x;
+    property <length> ay: self.absolute-position.y;
+    function place() {
+        Nav.page(root.nav, root.ax, root.ay, flick.width, self.height, root.content-height, root.scroll);
+    }
+    flick := Flickable {
+        x: 0;
+        width: parent.width - 12px;
+        content-width: self.width;
+        content-height: max(self.height, root.content-height);
+        @children
+    }
+
+    Thumb {
+        x: parent.width - 4px;
+        view: root.height;
+        content: flick.content-height;
+        scroll: root.scroll;
+    }
+
+    init => {
+        token = Nav.register(root.nav, 0, NavKind.page);
+        place();
+    }
+    changed ax => {
+        place();
+    }
+    changed ay => {
+        place();
+    }
+    changed width => {
+        place();
+    }
+    changed height => {
+        place();
+    }
+    changed scroll => {
+        Nav.scrolled();
+    }
+    changed seq => {
+        if Nav.reveal-id == root.nav {
+            flick.content-y = clamp(flick.content-y - Nav.reveal-dy, min(0px, self.height - flick.content-height), 0px);
+        }
+    }
+}
+
+// A list of rows of one height (rule 9), of any length: only the rows in view exist. The list is what is
+// focused (`Nav.id` its name, `Nav.index` the row), Up and Down go through its rows, and the focused row is
+// scrolled into view. Its rows are the screen's own, laid out by what the list says:
+//
+//     list := ListView { nav: "builds"; count: View.rows.length; row-height: 52px; }
+//     // inside it:
+//     for slot in list.shown: BuildRow {
+//         property <int> at: list.first + slot;
+//         y: at * list.pitch;  width: list.row-width;  height: list.row-height;
+//         row: View.rows[at];  focused: at == list.focused-row;
+//         RowTouch { nav: list.nav; nav-index: at; }
+//     }
+export component ListView {
+    in property <string> nav;
+    in property <int> count;
+    in property <length> row-height: Theme.row;
+    in property <length> gap: 2px;
+    out property <length> pitch: root.row-height + root.gap;
+    out property <length> scroll: -flick.content-y;
+    // The first row to make, and how many.
+    out property <int> first: max(0, floor(root.scroll / root.pitch));
+    out property <int> shown: max(0, min(root.count - root.first, ceil(self.height / root.pitch) + 1));
+    out property <length> row-width: flick.width;
+    // The row the focus is on, or -1.
+    out property <int> focused-row: Nav.id == root.nav ? Nav.index : -1;
+    property <int> seq: Nav.reveal-seq;
+    property <[int]> token;
+    property <length> ax: self.absolute-position.x;
+    property <length> ay: self.absolute-position.y;
+    function place() {
+        Nav.page(root.nav, root.ax, root.ay, flick.width, self.height, flick.content-height, root.scroll);
+        Nav.list(root.nav, root.count, root.pitch, root.row-height, root.scroll, flick.width);
+    }
+    flick := Flickable {
+        x: 0;
+        width: parent.width - 12px;
+        content-width: self.width;
+        content-height: max(self.height, root.count * root.pitch - root.gap);
+        @children
+    }
+
+    Thumb {
+        x: parent.width - 4px;
+        view: root.height;
+        content: flick.content-height;
+        scroll: root.scroll;
+    }
+
+    init => {
+        token = Nav.register(root.nav, 0, NavKind.list);
+        place();
+    }
+    changed ax => {
+        place();
+    }
+    changed ay => {
+        place();
+    }
+    changed width => {
+        place();
+    }
+    changed height => {
+        place();
+    }
+    changed count => {
+        place();
+    }
+    changed scroll => {
+        place();
+        Nav.scrolled();
+    }
+    changed seq => {
+        if Nav.reveal-id == root.nav {
+            flick.content-y = clamp(flick.content-y - Nav.reveal-dy, min(0px, self.height - flick.content-height), 0px);
+        }
+    }
+}
