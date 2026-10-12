@@ -866,7 +866,7 @@ pub enum OverlayRestart {
 
 /// Requests an end clears, in a content file a list of their names: the
 /// anti-sword trigger, the mode-9 A press, the rules' own B charge's release
-/// (EXE5's Chaos Unison releases).
+/// (EXE5's Chaos Unison releases), a chip's and a charged chip's.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RequestSet(pub u32);
 
@@ -875,6 +875,8 @@ impl RequestSet {
         (crate::actor::request::ANTI_SWORD_TRIGGERED, "anti_sword_triggered"),
         (crate::actor::request::MODE9_A, "mode9_a"),
         (crate::actor::request::RULES_RELEASE, "rules_release"),
+        (crate::actor::request::CHIP, "chip"),
+        (crate::actor::request::CHARGED_CHIP, "charged_chip"),
     ];
 }
 
@@ -896,6 +898,12 @@ pub struct RequestClears {
     pub paralysis: RequestSet,
     pub flinch: RequestSet,
     pub drag: RequestSet,
+    /// What a cut-in's ask clears besides itself, whether or not the chip
+    /// cuts in (the dimmed player's routine): EXE6's (`sub_8017AB4`,
+    /// 0x08017B5E: 0x80C) and EXE5's (0x080145AC) the chip's and the charged
+    /// chip's requests, EXE4's (0x08010CB8: 0x800) nothing, so a chip asked
+    /// for before the field dimmed is still asked for after it.
+    pub cut_in: RequestSet,
 }
 
 /// Collision flags a status end clears, in a content file a list of their
@@ -1814,6 +1822,13 @@ pub struct Rules {
     /// EXE5's `sub_801056A` runs its first step at once; EXE4's 0x0800C780,
     /// a stance's catch and a trap's alike, sets its action alone.
     pub trap_counter: StanceCounter,
+    /// The idle's entry starts a trap's counter before the navi's own idle
+    /// runs (the reactions section's): EXE6's (`sub_80EA734`) and EXE5's
+    /// (0x080EAFEA). EXE4's entry (0x080EB0D6) starts one for a navi in
+    /// auto battle alone (NaviStats +0x26 = 1, a story's navi: no
+    /// netbattle's); its idle starts it in its turn (0x080EEBD0), after the
+    /// phase's timer, the chip window and a revert asked for.
+    pub idle_entry_counter: bool,
     /// What a deleted player's object does (the reactions section's).
     pub dead_player: DeadPlayer,
     /// What an attack's end hands its lockout on to (the reactions
@@ -1940,7 +1955,11 @@ pub enum PanelDrawn {
     /// breaks in that tick (0x080097C8), shows its hole a tick late (a mend,
     /// an expiry and a crumble set what they draw). A dimmed tick's update
     /// draws every panel as the type and the owner it is (0x08009A38): a
-    /// blink shows through no dimming.
+    /// blink shows through no dimming. Its drawing (0x080092AC) reads a
+    /// panel's highlight, a table too (0x02037ABE), before whether it is
+    /// visible, and draws a highlighted panel only while it is (0x0800932C):
+    /// one that isn't keeps what it last showed, where the in-panel drawing
+    /// draws any panel that isn't visible as none (`sub_800C5E0`).
     OwnTables,
 }
 
