@@ -25,6 +25,8 @@ pub struct Settings {
     /// The most the battle's picture is, in multiples of 240 by 160; 0: the largest that fits.
     pub picture_size: u32,
     pub full_screen: bool,
+    /// Motion turned down: everything is a cut. None: as the system asks.
+    pub reduce_motion: Option<bool>,
     /// The battle's text redrawn at the window's resolution (else the game's own).
     pub sharp_text: bool,
     /// 0 to 100.
@@ -48,6 +50,7 @@ impl Default for Settings {
             game: None,
             picture_size: 0,
             full_screen: false,
+            reduce_motion: None,
             sharp_text: true,
             music: 80,
             effects: 100,
@@ -61,6 +64,19 @@ impl Default for Settings {
 
 /// The most the input delay can be set to: the library's.
 pub const MAX_INPUT_DELAY: u32 = *nettai_frontend::netplay::INPUT_DELAY.end();
+
+/// Whether the system asks for less motion (its accessibility setting), where that can be asked without a
+/// library of its own: macOS's and GNOME's.
+pub fn system_reduces_motion() -> bool {
+    let said = |program: &str, args: &[&str]| std::process::Command::new(program).args(args).output().ok().map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+    if cfg!(target_os = "macos") {
+        said("defaults", &["read", "com.apple.universalaccess", "reduceMotion"]).is_some_and(|v| v == "1")
+    } else if cfg!(all(unix, not(target_os = "macos"))) {
+        said("gsettings", &["get", "org.gnome.desktop.interface", "enable-animations"]).is_some_and(|v| v == "false")
+    } else {
+        false
+    }
+}
 
 /// The name a player has before they choose one: their account's on this machine.
 fn system_name() -> String {

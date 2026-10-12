@@ -117,6 +117,8 @@ impl Shell {
             shell.set_versus_left(left.clone());
             shell.set_versus_right(right.clone());
             shell.set_versus(true);
+            // (The field's hexagons rush as a battle is entered.)
+            shell.set_rush_seq(shell.get_rush_seq() + 1);
         }
         shell.set_battle(BattleKind::None);
         shell.set_battle_menu(false);
@@ -195,6 +197,10 @@ impl Shell {
         let mut stage = Stage::new(player);
         stage.hold();
         shell.set_versus(false);
+        if start.full {
+            // (The screen wipes into the battle.)
+            shell.set_wipe_seq(shell.get_wipe_seq() + 1);
+        }
         shell.set_battle(start.kind);
         shell.set_battle_full(start.full);
         shell.set_battle_menu(false);

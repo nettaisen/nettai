@@ -376,6 +376,10 @@ pub struct Nav {
     told: Option<(Key, Rect)>,
     /// The focus was put somewhere by the app: it is scrolled into view once it is there.
     reveal_due: bool,
+    /// The screen shown is leaving: the focus waits for the next one's controls, on nothing meanwhile.
+    held: bool,
+    /// The presses of Enter on a control, counted for the UI (the control flashes, the cursor snaps in).
+    presses: i32,
 }
 
 impl Default for Nav {
@@ -402,6 +406,8 @@ impl Nav {
             pad: false,
             told: None,
             reveal_due: false,
+            held: false,
+            presses: 0,
         }
     }
 
@@ -488,6 +494,23 @@ impl Nav {
         self.wanted = None;
     }
 
+    /// While the screen shown leaves (`held`), the focus is on nothing: it goes to the next screen's control once
+    /// that exists, never to one of the screen leaving.
+    pub fn hold(&mut self, held: bool) {
+        self.held = held;
+    }
+
+    /// Whether the focus is waiting for a control that doesn't exist yet (a screen just shown).
+    pub fn waiting(&self) -> bool {
+        self.focus.is_none() && self.wanted.is_some()
+    }
+
+    /// Enter was pressed on the focused control: the UI is told, for the control's flash and the cursor's snap.
+    pub fn pressed(&mut self, ui: &AppWindow) {
+        self.presses += 1;
+        ui.global::<nettai_ui::Nav>().set_press_seq(self.presses);
+    }
+
     /// A keyboard (`pad` false) or a pad was used: the cursor shows, the hints are that device's.
     pub fn used_keys(&mut self, pad: bool) {
         self.shown = true;
@@ -530,7 +553,9 @@ impl Nav {
             let registry = self.registry.borrow();
             let scope = self.scope();
             let fits = |key: &Key| key.id.starts_with(scope) && registry.holds(key);
-            if let Some(wanted) = self.wanted.clone().filter(|k| fits(k)) {
+            if self.held {
+                Next::Fallback(None)
+            } else if let Some(wanted) = self.wanted.clone().filter(|k| fits(k)) {
                 Next::Wanted(wanted)
             } else if self.focus.as_ref().is_some_and(fits) {
                 Next::Stay

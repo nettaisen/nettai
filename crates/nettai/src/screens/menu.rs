@@ -41,6 +41,8 @@ pub struct Menu {
     replays: Vec<Replay>,
     replays_of: Option<String>,
     next: usize,
+    /// The reel's battles, counted for the UI.
+    reels: i32,
 }
 
 impl Screen for Menu {
@@ -79,9 +81,11 @@ impl Screen for Menu {
             return;
         }
         let Some((game, ready)) = shell.ready() else { return };
-        // The next battle, when there is none or the last one is over.
+        // The next battle, when there is none or the last one is over: it fades in.
         if self.reel.as_ref().is_none_or(|r| r.stage.player.stopped().is_some()) {
             self.reel = self.next_reel(shell, &game, &ready);
+            self.reels += 1;
+            shell.ui().global::<MenuView>().set_reel_seq(self.reels);
         }
         let Some(reel) = &mut self.reel else { return };
         if shell.still {

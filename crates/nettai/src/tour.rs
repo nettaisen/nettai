@@ -73,8 +73,6 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         moved: Default::default(),
         shots: Cell::new(0),
     });
-    let theme = ui.global::<Theme>();
-    theme.set_motion(false);
     let t = tour.clone();
     ui.global::<Audit>().on_clipped(move |text| {
         t.cut.borrow_mut().insert((t.tag.borrow().clone(), text.to_string()));

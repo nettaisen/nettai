@@ -5,13 +5,17 @@
 // and a click, an arrow or an edit goes to the app with that name (nav.slint), where the screen's Rust module
 // decides.
 //
-// Build cost (docs/app.md §8): a component used with nothing inside it is compiled once, however often it is
+// Build cost (docs/app.md §14): a component used with nothing inside it is compiled once, however often it is
 // used; one used with children inside it (`Panel { ... }`) is copied into each user, and every `if` or `for` is a
 // component of its own. So the pieces here are leaves, the containers hold a leaf and little else, and a part
 // shown or hidden is `visible`, not `if`.
+//
+// Motion (docs/app.md §10): each control moves by itself (a press flashes, a value slides in its box, a chosen
+// row's bar slides to the next), with the theme's durations. A screen writes no animation to get that.
 
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
+import { Tween, Pulse } from "motion.slint";
 
 // ---- Shapes ---------------------------------------------------------------------------------------------
 
@@ -123,14 +127,27 @@ export component Note inherits Text {
     }
 }
 
-// A reserved line for a message: 16 tall whether it says anything or not, in the error red.
-export component Message inherits Text {
+// A reserved line for a message: 16 tall whether it says anything or not, in the error red. What it says fades
+// in.
+export component Message inherits Rectangle {
+    in property <string> text;
+    in property <color> tone: Theme.bad;
+    in property <TextHorizontalAlignment> horizontal-alignment: left;
     height: 16px;
-    color: Theme.bad;
-    font-family: Theme.body;
-    font-size: 12px;
-    vertical-alignment: center;
-    overflow: elide;
+    Text {
+        text: root.text;
+        color: root.tone;
+        font-family: Theme.body;
+        font-size: 12px;
+        horizontal-alignment: root.horizontal-alignment;
+        vertical-alignment: center;
+        overflow: elide;
+        opacity: root.text == "" ? 0 : 1;
+        animate opacity {
+            duration: Theme.brisk;
+            easing: ease-out;
+        }
+    }
 }
 
 // A name or a value the app gives (a player, a build): one line, cut with an ellipsis.
@@ -205,7 +222,8 @@ export enum ButtonKind {
 }
 
 // A button, 40 tall, as wide as its text and at least 120 (give it a `width` where it should be another: its
-// text is cut to it). `enabled` off is the unavailable look, and the focus passes it by.
+// text is cut to it). `enabled` off is the unavailable look, and the focus passes it by. A press flashes its
+// fill and dips it 1; the main action has a slow sheen.
 export component Button inherits Rectangle {
     in property <string> text;
     in property <string> nav;
@@ -218,20 +236,57 @@ export component Button inherits Rectangle {
     in property <bool> big;
     out property <bool> focused: hit.focused;
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
+    property <brush> fill-main: hit.has-hover ? Theme.action.brighter(12%) : Theme.action;
+    property <brush> fill-ghost: hit.has-hover && root.enabled ? Theme.tint : transparent;
+    property <brush> fill-normal: hit.has-hover ? Theme.raised-hover : Theme.raised;
+    // A press: the pointer going down on it, or Enter while the cursor is on it.
+    property <int> presses;
+    property <int> key-press: Nav.press-seq;
+    property <bool> down: hit.pressed;
+    property <length> dip: press.v > 0.4 ? 1px : 0px;
+    // The main action's sheen: a band of light across it every few seconds.
+    property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
     height: root.big ? 52px : 40px;
     width: max(120px, label.preferred-width + 32px);
-    property <brush> fill-main: hit.pressed ? Theme.action.darker(15%) : (hit.has-hover ? Theme.action.brighter(12%) : Theme.action);
-    property <brush> fill-ghost: hit.has-hover && root.enabled ? Theme.tint : transparent;
-    property <brush> fill-normal: hit.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
+    press := Pulse {
+        seq: root.presses;
+    }
+
     Cut {
+        y: root.dip;
         cut: 9px;
         background: !root.enabled || root.kind == ButtonKind.ghost ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
         line: !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
     }
 
+    // (The sheen is kept off the cut corner, where it fades to nothing anyway.)
+    Rectangle {
+        x: 1px;
+        y: 1px + root.dip;
+        width: parent.width - 11px;
+        height: parent.height - 2px;
+        clip: true;
+        Rectangle {
+            x: root.sheen * (parent.width + 48px) - 48px;
+            width: 48px;
+            background: @linear-gradient(90deg, #ffffff00 0%, #ffffff 50%, #ffffff00 100%);
+            opacity: 0.32 * sin(root.sheen * 180deg);
+        }
+    }
+
+    Cut {
+        y: root.dip;
+        cut: 9px;
+        background: #ffffff;
+        line: transparent;
+        opacity: press.v * 0.38;
+    }
+
     label := Text {
         x: 16px;
+        y: root.dip;
         width: parent.width - 32px;
+        height: parent.height;
         text: root.text;
         color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : Theme.text;
         font-family: Theme.display;
@@ -254,11 +309,22 @@ export component Button inherits Rectangle {
             Audit.clipped(root.text);
         }
     }
+    changed key-press => {
+        if hit.focused {
+            root.presses += 1;
+        }
+    }
+    changed down => {
+        if root.down {
+            root.presses += 1;
+        }
+    }
 }
 
 // A value between two arrows: Left and Right change it at once. The value's box has one width
 // (`value-width`), so the arrows stay where they are whatever it says. `locked` shows the value alone, in the
-// same place (the game's name where the game can't change).
+// same place (the game's name where the game can't change). A new value slides in within the box, the way the
+// arrow pressed points, as the old one slides out.
 export component Stepper inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
@@ -271,9 +337,20 @@ export component Stepper inherits Rectangle {
     in property <bool> locked;
     in property <bool> enabled: true;
     out property <bool> focused: hit.focused;
+    // The value before this one, and the way it left.
+    property <string> last;
+    property <string> old;
+    property <int> dir: 1;
+    property <int> changes;
+    property <string> family: root.numeric ? Theme.mono : (root.title ? Theme.display : Theme.body);
     height: 36px;
     width: root.value-width + 72px;
     horizontal-stretch: 0;
+    slide := Tween {
+        seq: root.changes;
+        duration: Theme.brisk;
+    }
+
     hit := Focusable {
         nav: root.nav;
         nav-index: root.nav-index;
@@ -299,18 +376,39 @@ export component Stepper inherits Rectangle {
         }
     }
 
-    Text {
+    Rectangle {
         x: 36px;
         width: root.value-width;
-        text: root.value;
-        color: root.enabled ? Theme.text : Theme.dim;
-        font-family: root.numeric ? Theme.mono : root.title ? Theme.display : Theme.body;
-        font-size: root.title ? 16px : 14px;
-        font-weight: 700;
-        letter-spacing: root.title ? 0.6px : 0px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        overflow: elide;
+        clip: true;
+        Text {
+            x: (1 - slide.t) * root.dir * 18px;
+            width: parent.width;
+            text: root.value;
+            color: root.enabled ? Theme.text : Theme.dim;
+            font-family: root.family;
+            font-size: root.title ? 16px : 14px;
+            font-weight: 700;
+            letter-spacing: root.title ? 0.6px : 0px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+            opacity: slide.t;
+        }
+
+        Text {
+            x: -slide.t * root.dir * 18px;
+            width: parent.width;
+            text: slide.linear < 1 ? root.old : "";
+            color: root.enabled ? Theme.text : Theme.dim;
+            font-family: root.family;
+            font-size: root.title ? 16px : 14px;
+            font-weight: 700;
+            letter-spacing: root.title ? 0.6px : 0px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+            opacity: 1 - slide.t;
+        }
     }
 
     Rectangle {
@@ -330,9 +428,20 @@ export component Stepper inherits Rectangle {
             }
         }
     }
+
+    init => {
+        root.last = root.value;
+    }
+    changed value => {
+        root.old = root.last;
+        root.last = root.value;
+        root.dir = Nav.step-dir;
+        root.changes += 1;
+    }
 }
 
-// One of two: off and on, sharp and original. Left and Right choose, Enter takes the other.
+// One of two: off and on, sharp and original. Left and Right choose, Enter takes the other. The chosen half's
+// tint and underline slide across to the other.
 export component Seg inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
@@ -358,32 +467,44 @@ export component Seg inherits Rectangle {
         kind: NavKind.stepper;
     }
 
+    // What marks the chosen half.
     Rectangle {
-        x: 0;
-        width: root.first-width;
-        background: root.chosen == 0 ? Theme.tint : transparent;
+        x: root.chosen == 0 ? 0px : root.first-width + 1px;
+        width: root.chosen == 0 ? root.first-width : root.second-width;
+        background: Theme.tint;
+        animate x, width {
+            duration: Theme.brisk;
+            easing: ease-out;
+        }
         Rectangle {
             y: parent.height - 2px;
             height: 2px;
-            background: root.chosen == 0 ? Theme.cursor : transparent;
+            background: Theme.cursor;
         }
+    }
 
-        a := Text {
-            text: root.first;
-            color: root.chosen == 0 ? Theme.cursor : Theme.muted;
-            font-family: Theme.display;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
+    a := Text {
+        x: 0;
+        width: root.first-width;
+        text: root.first;
+        color: root.chosen == 0 ? Theme.cursor : Theme.muted;
+        font-family: Theme.display;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        animate color {
+            duration: Theme.brisk;
         }
+    }
 
-        TouchArea {
-            clicked => {
-                Nav.point(root.nav, root.nav-index);
-                Nav.choose(root.nav, root.nav-index, 0);
-            }
+    TouchArea {
+        x: 0;
+        width: root.first-width;
+        clicked => {
+            Nav.point(root.nav, root.nav-index);
+            Nav.choose(root.nav, root.nav-index, 0);
         }
     }
 
@@ -393,32 +514,28 @@ export component Seg inherits Rectangle {
         background: Theme.line;
     }
 
-    Rectangle {
+    b := Text {
         x: root.first-width + 1px;
         width: root.second-width;
-        background: root.chosen == 1 ? Theme.tint : transparent;
-        Rectangle {
-            y: parent.height - 2px;
-            height: 2px;
-            background: root.chosen == 1 ? Theme.cursor : transparent;
+        text: root.second;
+        color: root.chosen == 1 ? Theme.cursor : Theme.muted;
+        font-family: Theme.display;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        animate color {
+            duration: Theme.brisk;
         }
+    }
 
-        b := Text {
-            text: root.second;
-            color: root.chosen == 1 ? Theme.cursor : Theme.muted;
-            font-family: Theme.display;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-
-        TouchArea {
-            clicked => {
-                Nav.point(root.nav, root.nav-index);
-                Nav.choose(root.nav, root.nav-index, 1);
-            }
+    TouchArea {
+        x: root.first-width + 1px;
+        width: root.second-width;
+        clicked => {
+            Nav.point(root.nav, root.nav-index);
+            Nav.choose(root.nav, root.nav-index, 1);
         }
     }
 }
@@ -645,7 +762,23 @@ export component Field inherits Rectangle {
 
 // ---- Rows -----------------------------------------------------------------------------------------------
 
-// What marks the chosen row of a list: a tint and a bar at its left.
+// What marks the chosen row of a list: a tint and a bar at its left. A list shows one of these for its chosen
+// row and slides it to the next (`ListView` does, for its `chosen`; a short list of `Row`s places one itself:
+// `Marker { y: chosen * pitch; height: Theme.row; animate y { duration: Theme.quick; easing: ease-out; } }`).
+export component Marker inherits Rectangle {
+    Rectangle {
+        background: @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%);
+    }
+
+    Rectangle {
+        x: 0;
+        width: 2px;
+        background: Theme.cursor;
+    }
+}
+
+// A row's own back: lit under the pointer, and marked where the row is the chosen one and no `Marker` slides
+// over its list.
 export component RowBack inherits Rectangle {
     in property <bool> chosen;
     in property <bool> hover;
@@ -700,7 +833,7 @@ export component Row inherits Rectangle {
 }
 
 // An item of a menu: the main menu's (`big`: 72 tall, 36) and a menu overlay's (48 tall). The one the cursor or
-// the pointer is on is lit.
+// the pointer is on is lit: its bar grows and its tint sweeps in from the left.
 export component MenuItem inherits Rectangle {
     in property <string> text;
     in property <string> nav;
@@ -711,13 +844,25 @@ export component MenuItem inherits Rectangle {
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     height: !root.big ? 48px : (Theme.phone ? 68px : 72px);
     Rectangle {
-        background: root.on ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 100%) : transparent;
+        x: 0;
+        width: root.on ? parent.width : 0px;
+        background: @linear-gradient(90deg, Theme.tint 0%, Theme.clear 100%);
+        opacity: root.on ? 1 : 0;
+        animate width, opacity {
+            duration: Theme.brisk;
+            easing: ease-out;
+        }
     }
 
     Rectangle {
         x: 0;
         width: 3px;
-        background: root.on ? Theme.cursor : transparent;
+        height: root.on ? parent.height : 0px;
+        background: Theme.cursor;
+        animate height {
+            duration: Theme.quick;
+            easing: ease-out;
+        }
     }
 
     label := Text {
@@ -731,6 +876,9 @@ export component MenuItem inherits Rectangle {
         letter-spacing: !root.big ? 0.9px : (Theme.cjk ? 1px : 2.9px);
         vertical-alignment: center;
         overflow: elide;
+        animate color {
+            duration: Theme.quick;
+        }
     }
 
     hit := Focusable {
@@ -770,13 +918,119 @@ export component OptionRow inherits Rectangle {
 
 // ---- Frames ---------------------------------------------------------------------------------------------
 
-// A panel's back: the cut corner, the line, and the short cyan accent at its top left. `side` gives it a
-// player's color along its top in place of the accent (1 or 2).
+// A tab of a `TabBar`: its word, and whether it can be gone to (one that can't stays in its place, greyed).
+export struct Tab {
+    text: string,
+    enabled: bool,
+}
+
+// One tab.
+component TabItem inherits Rectangle {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <Tab> tab;
+    in property <bool> chosen;
+    property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
+    height: 40px;
+    width: label.preferred-width + 32px;
+    label := Text {
+        text: root.tab.text;
+        color: !root.tab.enabled ? Theme.dim : (root.chosen ? Theme.text : Theme.muted);
+        font-family: Theme.display;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: Theme.cjk ? 0.3px : 1px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        animate color {
+            duration: Theme.brisk;
+        }
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+        enabled: root.tab.enabled;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.tab.text);
+        }
+    }
+}
+
+// A row of tabs over what they switch (a build's editor): the chosen one's underline slides to the next. Each
+// tab is a control (`nav`, its index its place); the screen switches on `activate`, and on the shoulders.
+export component TabBar inherits Rectangle {
+    in property <string> nav;
+    in property <[Tab]> tabs;
+    in property <int> chosen;
+    // Where the chosen tab is: the underline's place.
+    property <length> under-x;
+    property <length> under-width;
+    height: 40px;
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Theme.line;
+    }
+
+    HorizontalLayout {
+        alignment: start;
+        spacing: 4px;
+        for tab[i] in root.tabs: TabItem {
+            property <int> picked: root.chosen;
+            function say() {
+                if i == root.chosen {
+                    root.under-x = self.x;
+                    root.under-width = self.width;
+                }
+            }
+            nav: root.nav;
+            nav-index: i;
+            tab: tab;
+            chosen: i == root.chosen;
+            init => {
+                say();
+            }
+            changed picked => {
+                say();
+            }
+            changed x => {
+                say();
+            }
+            changed width => {
+                say();
+            }
+        }
+    }
+
+    Rectangle {
+        x: root.under-x;
+        y: parent.height - 3px;
+        width: root.under-width;
+        height: 3px;
+        background: Theme.cursor;
+        animate x, width {
+            duration: Theme.brisk;
+            easing: ease-out;
+        }
+    }
+}
+
+// A panel's back: the cut corner, the line, and the short cyan accent at its top left, which draws from the
+// left as the panel arrives. `side` gives it a player's color along its top in place of the accent (1 or 2).
 export component PanelBack inherits Rectangle {
     in property <length> cut: 12px;
     in property <bool> accent: true;
     in property <int> side;
     in property <brush> fill: Theme.panel;
+    draw := Tween {
+        delay: 60ms;
+        duration: Theme.settle;
+    }
+
     Cut {
         cut: root.cut;
         background: root.fill;
@@ -792,7 +1046,7 @@ export component PanelBack inherits Rectangle {
     Rectangle {
         x: 0;
         y: 0;
-        width: root.side != 0 ? parent.width : 72px;
+        width: (root.side != 0 ? parent.width : 72px) * draw.t;
         height: 2px;
         visible: root.accent || root.side != 0;
         background: root.side == 1 ? Theme.p1 : root.side == 2 ? Theme.p2 : @linear-gradient(90deg, Theme.cursor 0%, Theme.clear 100%);
@@ -836,24 +1090,32 @@ export component GroupTitle inherits Rectangle {
     }
 }
 
-// A progress bar: 4 tall, its fill lit.
+// A progress bar: 4 tall, its fill lit, filling smoothly under a highlight that moves along it.
 export component Bar inherits Rectangle {
     // 0 to 1.
     in property <float> value;
+    property <float> sweep: Theme.motion && root.value < 1 ? mod(animation-tick(), 1.1s) / 1.1s : 0;
     height: 4px;
     Rectangle {
         background: Theme.raised;
     }
 
-    Rectangle {
+    fill := Rectangle {
         x: 0;
         width: parent.width * clamp(root.value, 0, 1);
         background: Theme.cursor;
         drop-shadow-blur: 8px;
         drop-shadow-color: Theme.glow;
+        clip: true;
         animate width {
-            duration: Theme.motion ? 160ms : 0ms;
+            duration: Theme.brisk;
             easing: ease-out;
+        }
+        Rectangle {
+            x: root.sweep * (parent.width + 56px) - 56px;
+            width: 56px;
+            background: @linear-gradient(90deg, #ffffff00 0%, #ffffffc0 50%, #ffffff00 100%);
+            visible: Theme.motion && root.value < 1;
         }
     }
 }
@@ -916,7 +1178,8 @@ component Thumb inherits Rectangle {
 
 // A page that scrolls (the settings). The controls it holds have its name as their prefix (`set.name` on the
 // page `set.`): the app scrolls the focused one into view, and passes by those out of view when the focus comes
-// from outside. Put what it holds inside it, `view-width` wide, and say how tall that is.
+// from outside. Put what it holds inside it, `view-width` wide, and say how tall that is. A scroll the app asks
+// for is smooth: the page is put where it goes at once, and what it holds slides there.
 export component ScrollPage inherits Rectangle {
     in property <string> nav;
     in property <length> content-height;
@@ -926,22 +1189,32 @@ export component ScrollPage inherits Rectangle {
     property <[int]> token;
     property <length> ax: self.absolute-position.x;
     property <length> ay: self.absolute-position.y;
+    property <length> slid;
+    property <int> slides;
     function place() {
         Nav.page(root.nav, root.ax, root.ay, flick.width, self.height, root.content-height, root.scroll);
     }
+    slide := Tween {
+        seq: root.slides;
+        duration: Theme.brisk;
+    }
+
     flick := Flickable {
         x: 0;
         width: parent.width - 12px;
         content-width: self.width;
         content-height: max(self.height, root.content-height);
-        @children
+        Rectangle {
+            y: root.slid * (1 - slide.t);
+            @children
+        }
     }
 
     Thumb {
         x: parent.width - 4px;
         view: root.height;
         content: flick.content-height;
-        scroll: root.scroll;
+        scroll: root.scroll - root.slid * (1 - slide.t);
     }
 
     init => {
@@ -965,21 +1238,25 @@ export component ScrollPage inherits Rectangle {
     }
     changed seq => {
         if Nav.reveal-id == root.nav {
+            root.slid = flick.content-y;
             flick.content-y = clamp(flick.content-y - Nav.reveal-dy, min(0px, self.height - flick.content-height), 0px);
+            root.slid = clamp(root.slid - flick.content-y, -self.height, self.height);
+            root.slides += 1;
         }
     }
 }
 
 // A list of rows of one height (rule 9), of any length: only the rows in view exist. The list is what is
 // focused (`Nav.id` its name, `Nav.index` the row), Up and Down go through its rows, and the focused row is
-// scrolled into view. Its rows are the screen's own, laid out by what the list says:
+// scrolled into view, smoothly. `chosen` is the row marked (the build shown beside the list): its bar and tint
+// slide to the next. Its rows are the screen's own, laid out by what the list says:
 //
-//     list := ListView { nav: "builds"; count: View.rows.length; row-height: 52px; }
+//     list := ListView { nav: "builds"; count: View.rows.length; row-height: 52px; chosen: View.chosen; }
 //     // inside it:
 //     for slot in list.shown: BuildRow {
 //         property <int> at: list.first + slot;
 //         y: at * list.pitch;  width: list.row-width;  height: list.row-height;
-//         row: View.rows[at];  focused: at == list.focused-row;
+//         row: View.rows[at];
 //         RowTouch { nav: list.nav; nav-index: at; }
 //     }
 export component ListView inherits Rectangle {
@@ -987,11 +1264,13 @@ export component ListView inherits Rectangle {
     in property <int> count;
     in property <length> row-height: Theme.row;
     in property <length> gap: 2px;
+    // The row marked, or -1.
+    in property <int> chosen: -1;
     out property <length> pitch: root.row-height + root.gap;
     out property <length> scroll: -flick.content-y;
-    // The first row to make, and how many.
-    out property <int> first: max(0, floor(root.scroll / root.pitch));
-    out property <int> shown: max(0, min(root.count - root.first, ceil(self.height / root.pitch) + 1));
+    // The first row to make, and how many: those in view, and those a slide under way passes.
+    out property <int> first: max(0, floor(min(root.scroll, root.scroll - root.slid * (1 - slide.t)) / root.pitch));
+    out property <int> shown: max(0, min(root.count - root.first, ceil((self.height + abs(root.slid * (1 - slide.t))) / root.pitch) + 1));
     out property <length> row-width: flick.width;
     // The row the focus is on, or -1.
     out property <int> focused-row: Nav.id == root.nav ? Nav.index : -1;
@@ -999,23 +1278,44 @@ export component ListView inherits Rectangle {
     property <[int]> token;
     property <length> ax: self.absolute-position.x;
     property <length> ay: self.absolute-position.y;
+    property <length> slid;
+    property <int> slides;
     function place() {
         Nav.page(root.nav, root.ax, root.ay, flick.width, self.height, flick.content-height, root.scroll);
         Nav.list(root.nav, root.count, root.pitch, root.row-height, root.scroll, flick.width);
     }
+    slide := Tween {
+        seq: root.slides;
+        duration: Theme.brisk;
+    }
+
     flick := Flickable {
         x: 0;
         width: parent.width - 12px;
         content-width: self.width;
         content-height: max(self.height, root.count * root.pitch - root.gap);
-        @children
+        Rectangle {
+            y: root.slid * (1 - slide.t);
+            Marker {
+                x: 0;
+                y: max(0, root.chosen) * root.pitch;
+                height: root.row-height;
+                visible: root.chosen >= 0 && root.chosen < root.count;
+                animate y {
+                    duration: Theme.quick;
+                    easing: ease-out;
+                }
+            }
+
+            @children
+        }
     }
 
     Thumb {
         x: parent.width - 4px;
         view: root.height;
         content: flick.content-height;
-        scroll: root.scroll;
+        scroll: root.scroll - root.slid * (1 - slide.t);
     }
 
     init => {
@@ -1043,7 +1343,10 @@ export component ListView inherits Rectangle {
     }
     changed seq => {
         if Nav.reveal-id == root.nav {
+            root.slid = flick.content-y;
             flick.content-y = clamp(flick.content-y - Nav.reveal-dy, min(0px, self.height - flick.content-height), 0px);
+            root.slid = clamp(root.slid - flick.content-y, -self.height, self.height);
+            root.slides += 1;
         }
     }
 }
