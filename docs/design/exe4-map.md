@@ -945,6 +945,20 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   uncapped (0x10E up, 0x13A down). Under event flag 0x1187 (lib/main_started, also the plus chips') the link battle
   doesn't stop it and the enemy navi there takes a hit of 50 instead (0x080E8A48): EXE5's operation battle's. The
   lab's chips/ (4) and status/lifesync replay every frame; chips/0x01c-lifesync/hit is pixel-exact.
+- **SignlRed** (Blue Moon's chip 0x131, the dimming chips' variant 0x2B, `chips/signlred`: EXE4's own): a
+  controller (#0x58, 0x080E83F8) places a signal (attack #0x81, 0x080DD538, sheet 0c-33) on the panel ahead and
+  undims 30 ticks on. The signal, a field obstacle of its side (class 1) with 100 HP and a lifetime of 2400, takes its
+  panel three ticks on if it is free solid ground (0xA0; else a puff, effect row 21, and it goes), then cycles: red
+  (animation 0) for 421 ticks with the other side's chips off, green (animation 1, 0x15C) for 51 with them on. Its
+  end (broken: an explosion, row 0, and 0x70; run out; or never standing) turns them on again (0x080DD73C). The
+  chips-enabled bits are BattleState +0x64's 0x04 and 0x08 (EXE6's intro bits at +0x5C; `sub_8001382`, `sub_800138E`;
+  the engine's `battle.set_chips_enabled`), which the navis' chip input reads (0x08007C3E, with the lockout at AIData
+  +0x3A) and the computer navis' AI (0x08007C20); exe4-compat compares them every frame. Its obstacle code is EXE4's
+  older: its own seven rows (0x080DD5F8), a crushing touch destroying it with its HP kept (0x08013F3E), no NameID, no
+  tracking. Under event flag 0x1187 (never in a netbattle) each green light and its end would also hide the other
+  side's console's HUD draw task 17 (the levels gauge's sprite, which no netbattle shows): documented, not ported. The
+  lab's chips/ (4) and status/signlred replay every frame (hit: side 1's chips off from frame 3173; side1: side 0's
+  from 1181).
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
