@@ -23,12 +23,14 @@ local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8318, 0x1E
 -- 0x080EB8BE: a GigaCan's afterimages (action 0x0B's variants 4 to 6: chips/gigacan), on the action's eighth tick:
 -- the navi in its animation 9, its shadow on the ground (0x080E5020's r7 bytes 2 and 3 both 1: the afterimage's
 -- init, 0x080E4FAA, keeps the shadow it gets; byte 2 alone, KendoMan's afterimages', takes it away again), then its
--- cannon where the navi stands (both 0: its shadow at its height). (Then, in a soul, the soul's part by 0x08018068:
--- the souls' to wire, docs/design/exe4-map.md §18 item 70.)
+-- cannon where the navi stands (both 0: its shadow at its height), then, in a soul that wears something, that in the
+-- navi's animation 9 (0x080EB92A: 0x08018068 by the soul, FireSoul's flames and NumberSoul's overlay; the form's
+-- `wears`), its shadow at its height too.
 local function afterimages(me: Object, spec: CannonSpec, flip: number)
+    local form = battle.navi(me.alliance).form
     -- (Of the navi's sprite in its form, 0x0800B90A.)
     battle.afterimage(me, me.pos, {
-        sprite = battle.navi(me.alliance).form.sprite,
+        sprite = form.sprite,
         anim = 9,
         flip = flip,
         lifetime = AFTERIMAGE_TICKS,
@@ -42,6 +44,16 @@ local function afterimages(me: Object, spec: CannonSpec, flip: number)
         lifetime = AFTERIMAGE_TICKS,
         color_shader = AFTERIMAGE_SHADER,
     })
+    local worn: SpriteAsset? = form.wears
+    if worn then
+        battle.afterimage(me, me.pos, {
+            sprite = worn,
+            anim = 9,
+            flip = flip,
+            lifetime = AFTERIMAGE_TICKS,
+            color_shader = AFTERIMAGE_SHADER,
+        })
+    end
 end
 
 local LOOK: CannonLook = {
