@@ -113,11 +113,14 @@ Cloudflare account:
     cd signaling && npx wrangler dev                            # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
 
-Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings their
-build (or a random side), and the two agree the settings in the lobby; each commits to its half of the seed and
-its side before either reveals them, and the battle's RNG comes from both halves. Both play with rollback: inputs
-go out every frame, the other player's are predicted until they arrive, and the battle is simulated again when a
-prediction was wrong. The battle shows the round trip, the present delay and the rollbacks
+One player asks the signaling server for a room, the server picks its code, and the other joins by that code.
+Both need the same engine, game and content pack (the lobby checks, and each is told what differs). Each brings
+their build (or a random side), which stays their own until the match: the lobby says nothing of it. The match's
+settings (its rounds, whether builds are closed) are both players', and the two agree them in the lobby; each
+commits to its half of the seed and its side before either reveals them, and the battle's RNG comes from both
+halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they arrive,
+and the battle is simulated again when a prediction was wrong. Each player's input delay is their own (4 ticks
+unless they say). The battle shows the round trip, the input delay and the rollbacks
 ([docs/frontend.md](docs/frontend.md) §2, [rollback.md](docs/design/rollback.md) §4). A connection that drops is
 made again, and the battle goes on where it was (it says it is reconnecting meanwhile); after 30 seconds the match
 ends. The netplay tests play netbattles between two rollback sessions over a simulated network at several
