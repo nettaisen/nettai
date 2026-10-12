@@ -340,7 +340,9 @@ the Internet, the host forwards UDP port 47474 on its router to its machine, and
 router's public address. What the library does when the link drops, and what the handshake checks, is
 docs/frontend.md §2's.
 
-What's missing: the input delay can't be set on the screen (the library's `Player::set_input_delay`; a match plays
+What's missing: playing again without a new room (this app takes the link for one match's channel, where the
+library's lobby carries its matches and goes on after each, `Lobby::channel` and `Lobby::reopen`); the input delay
+can't be set on the screen (the library's `Player::set_input_delay`; a match plays
 at the library's default, 4 ticks), nor the rounds or closed builds (`Lobby::set_rounds`,
 `Lobby::set_closed_builds`); what goes wrong is shown as the library's detail, where it is meant for a log (each
 error has a kind to word instead); and no TURN server can be given, so two players whose NATs need a relay can't meet (nettai-rtc's `Config` takes
