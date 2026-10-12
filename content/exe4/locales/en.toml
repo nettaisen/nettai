@@ -341,6 +341,7 @@ language = "en"
 "redsun" = { name = "RedSun", description = "A RedSun\nbombards\n3 ahead" }
 "bluemoon" = { name = "BlueMoon", description = "Blue moon\ndrains\n3 ahead" }
 "holydrem" = { name = "HolyDrem", description = "Holy shot\nsucks in\nHolyPanl!" }
+"duo" = { name = "Duo", description = "Fist of\nJustice:\nMetKnukl!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
