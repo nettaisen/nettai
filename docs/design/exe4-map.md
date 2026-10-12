@@ -2806,9 +2806,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
       list unfiltered, and a dark chip's class is 0, a standard chip's: JunkSoul's screen can offer a dark chip
       either side sent (which is what 0x0800D59A's test of the mark is for). The engine's `sent_chips.confirmed`
       lists the folder's picks alone. No recording has a dark chip sent beside a JunkSoul.
-    - **Group A's: a destroyed hand.** chips/0x0d4-jealousy/holding stops at frame 467 (EXE5's at 524): the
-      original empties the whole hand (every chip gone, the cursor left at 0), the engine moves the cursor on one
-      chip.
+    - **Item 136's: a destroyed hand.** With the hands compared and before that item's rule,
+      chips/0x0d4-jealousy/holding stopped at frame 467 (EXE5's at 524): the original empties the whole hand (every
+      chip gone, the cursor left at 0), the engine moved the cursor on one chip. A recording of both labs had the
+      case all along; no comparison held it.
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
