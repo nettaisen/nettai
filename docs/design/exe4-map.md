@@ -2701,7 +2701,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     0x0801002C, is a count no routine reads back, 0x0800931C's fourteen calls ask for others, and no recording
     carries the counts: that recording replays the same with the bar and without. EXE4's own count 6, added to at
     0x0800D596, has one reader, an enemy's AI at 0x080B5226 (a story battle's), and EXE6's none: exe5-map.md §6.1.
-    Nothing a netbattle shows depends on it.)
+    Nothing a netbattle shows depends on it, so the engine doesn't keep it: the original adds one to it at every
+    navi chip's use, and the engine's use adds to no count.)
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
