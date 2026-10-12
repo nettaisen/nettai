@@ -38,13 +38,17 @@ netplay needs.
 - `nettai-frontend`: plays battles for a host app to show, as a library with no window, audio device or command
   line in it: it loads a game (its content, graphics, strings and sound), and its player runs a set live or over the
   network from the buttons, by the clock or a tick at a time, and gives the host the picture (`nettai-render`'s) and
-  the sound as samples ([docs/frontend.md](docs/frontend.md) §7, with the host loop).
+  the sound as samples ([docs/frontend.md](docs/frontend.md) §7, with the host loop). A replay has a viewer that
+  seeks to any tick (§8).
+- `nettai-video`: a replay as video: a NUT stream of raw frames and PCM sound on any writer, and `ffmpeg` run as a
+  child for an MP4 of one; no encoder is linked ([docs/frontend.md](docs/frontend.md) §8, "Video").
 - `nettai`: the app (Slint, a prototype), in Tango's shape: a top bar of tabs (online play, its link through
   `nettai-rtc` in a room or directly; training against the computer; the replays; the builds and their creator;
   the settings) around the battle, navigated by keys, a gamepad or touch, in each language its catalogs have
   ([docs/app.md](docs/app.md)).
 - `nettai-tools`: `nettai-tool`, the command line with no window: headless frames (a trace's, a match file's, a
-  replay's), the content and trace audits, the replay of recorded matches, match setups and replays checked
+  replay's), a replay written as video, the content and trace audits, the replay of recorded matches, match setups
+  and replays checked
   ([docs/tools.md](docs/tools.md)).
 - `nettai-match`: match files and their sides (a build is one), everything a round needs by content key, checked;
   live play's random pick.
