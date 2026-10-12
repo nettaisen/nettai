@@ -970,7 +970,7 @@ impl Window {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
                 blank_details(self, p);
             }
-            SlotKind::Button { button, cell } => {
+            SlotKind::Button { button, .. } => {
                 if let Some(chip) = v.screen.slots[slot as usize].face {
                     // EXE5's capsules (0x08024422): the chip's name and
                     // picture alone; the frame's colors stay the last
@@ -993,10 +993,9 @@ impl Window {
                     blank_details(self, &look.details(palette));
                     if look.pack.uses_digit {
                         // 0x080245C8: the uses left (the button's first
-                        // cell's, +4), over the damage's last cell.
-                        let first = if cell == ButtonCell::Right { slot - 1 } else { slot };
-                        let uses = v.screen.slots[first as usize].uses_left as usize;
-                        self.tiles.put_part(self.layout.digits + 4, &a.digits, 2 * uses.min(9), 2);
+                        // cell's, +4) as the window was drawn, over the
+                        // damage's last cell.
+                        self.tiles.put_part(self.layout.digits + 4, &a.digits, 2 * (cw.uses as usize).min(9), 2);
                     }
                 }
             }
