@@ -479,6 +479,7 @@ impl UserData for Object {
         });
         methods.add_method("chips_enabled", |_, this, ()| with(|api, _| api.chips_enabled(this.0).map_err(api_error)));
         methods.add_method("move_lag", |_, this, ()| with(|api, _| api.move_lag(this.0).map_err(api_error)));
+        methods.add_method("hide_chip_window", |_, this, ()| with(|api, _| api.hide_chip_window(this.0).map_err(api_error)));
         methods.add_method("drop_links", |_, this, ()| with(|api, _| api.drop_links(this.0).map_err(api_error)));
         methods.add_method("drop_status_visuals", |_, this, ()| with(|api, _| api.drop_status_visuals(this.0).map_err(api_error)));
         methods.add_method("drop_chip", |_, this, ()| with(|api, _| api.drop_chip(this.0).map_err(api_error)));
@@ -657,6 +658,10 @@ impl UserData for Object {
                 Some(h) => Ok(LuaValue::Table(bound(|b| b.def_value(Registry::Form, h.0))?)),
                 None => Ok(LuaValue::Nil),
             }
+        });
+        methods.add_method("ask_form_change", |_, this, form: LuaValue| {
+            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "ask_form_change"))?);
+            with(|api, _| api.ask_form_change(this.0, form).map_err(api_error))
         });
         methods.add_method("form_change_terms", |_, this, ()| with(|api, _| Ok(api.form_change_terms(this.0))));
         methods.add_method("stop_moving", |_, this, ()| with(|api, _| api.stop_moving(this.0).map_err(api_error)));
@@ -3012,6 +3017,13 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("{} returns a byte or nil, not {v:?}", hook.name()))),
+        },
+        // A color shader (15 bits).
+        HookCall::Rules { hook: RulesHook::NaviShader, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::Integer(n) if (0..=0x7FFF).contains(n) => Ok(Value::Int(i64::from(*n))),
+            LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=32767.0).contains(n) => Ok(Value::Int(*n as i64)),
+            _ => Err(mlua::Error::runtime(format!("navi_shader returns a 15-bit color or nil, not {v:?}"))),
         },
         // A hand size.
         HookCall::Rules { hook: RulesHook::CustomHandSize, .. } => match &v {

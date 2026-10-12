@@ -1578,6 +1578,13 @@ impl CoreApi for Battle {
         Ok(kinds::player::move_lag(self, o))
     }
 
+    fn hide_chip_window(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let side = self.objects.get(o).alliance as usize & 1;
+        kinds::player::idle::hide_chip_window(self, side);
+        Ok(())
+    }
+
     fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         kinds::player::drop_links(self, o);
@@ -2213,6 +2220,8 @@ impl CoreApi for Battle {
             (ActorField::ResetLinkedObject, FieldValue::Object(r)) => a.reset_linked_object = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
+            (ActorField::ChargeLevel, FieldValue::U8(x)) => a.charge_level = x,
+            (ActorField::ChargeSource, FieldValue::U8(x)) => a.charge_source = x,
             (ActorField::RapidPresses, FieldValue::U8(x)) => a.rapid_presses = x,
             (ActorField::RapidWindow, FieldValue::U8(x)) => a.rapid_window = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
@@ -2492,6 +2501,14 @@ impl CoreApi for Battle {
 
     fn form_change_target(&self, o: ObjectRef) -> Option<nettai_content_api::FormHandle> {
         kinds::player::form_change_target(self, o)
+    }
+
+    fn ask_form_change(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let side = self.objects.get(o).alliance as usize & 1;
+        self.turn_transforms[side].form = Some(form);
+        self.actor_of_mut(o)?.requests |= crate::actor::request::FORM_CHANGE;
+        Ok(())
     }
 
     fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()> {

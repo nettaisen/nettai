@@ -80,6 +80,46 @@ pub struct Setup {
     /// (0x08085430): the game state's +0x0F (where the link pick's
     /// background goes), 0xFF none (then the settings record's +5).
     pub background: u8,
+    /// Both players' auto battle data as the link exchanged it (0xE0 bytes
+    /// each, side 0's first, hex: 0x020358B0, the blocks the send shuffled
+    /// and counted): what the consoles played. The round's setup is
+    /// `auto_battle` and `send_rng2`, which the rules' send turns into it.
+    #[serde(default)]
+    pub ai_lists: Option<[String; 2]>,
+    /// Both players' auto battle data as their saves hold it (0xE0 bytes
+    /// each, side 0's first, hex: save 0x5064, before the send), the round's
+    /// setup's `auto_battle_places`; and the RNG2 the send starts from
+    /// (0x0800F208: 84 draws, both consoles alike, then the fight's
+    /// `rng2`), the round's battle RNG, from which the rules' send
+    /// (content/exe4/rules/auto_battle/block.luau) arrives at the recorded
+    /// blocks and `rng2`. A recording from before the tracer wrote them has
+    /// neither: no data (Tango's netplay saves hold none), sent from the
+    /// RNG2 84 draws before the fight's.
+    #[serde(default)]
+    pub auto_battle: Option<[String; 2]>,
+    #[serde(default)]
+    pub send_rng2: Option<u32>,
+}
+
+/// The draws of the link's send of the auto battle data (0x0800F208: two a
+/// swap, three swaps among the block's first three places and 39 among the
+/// other 39), which both consoles make alike from the RNG2 they share before
+/// the fight starts.
+const SEND_DRAWS: u32 = 84;
+
+/// The RNG2 `draws` draws before `state`: the step `x' = (rotl(x, 1) + 1) ^
+/// 0x873CA9E5` undone.
+fn rng_back(state: u32, draws: u32) -> u32 {
+    (0..draws).fold(state, |x, _| (x ^ 0x873C_A9E5).wrapping_sub(1).rotate_right(1))
+}
+
+/// The places of an auto battle data block as a recording carries it (0xE0
+/// bytes: its first 42 halfwords).
+fn auto_battle_places(block: &[u8]) -> Result<Vec<u16>, String> {
+    if block.len() != 0xE0 {
+        return Err(format!("an auto battle data block is 0xe0 bytes, not {:#x}", block.len()));
+    }
+    Ok((0..crate::save::AUTO_BATTLE_PLACES).map(|i| u16::from_le_bytes([block[2 * i], block[2 * i + 1]])).collect())
 }
 
 /// A console's NaviCust as its save holds it, in a setup line.
@@ -730,6 +770,17 @@ impl Round {
                 .collect();
             player.set_fact(content, "souls", &souls)?;
             player.set_fact(content, "double_soul", &[Fact::Value(Value::Bool(true))])?;
+            // Its auto battle data as the save holds it (rules/auto_battle),
+            // which the rules' send shuffles as the console's did; none
+            // recorded, none.
+            if let Some(blocks) = &self.setup.auto_battle {
+                let places = auto_battle_places(&unhex(&blocks[side])?).map_err(|e| format!("side {side}'s auto battle data: {e}"))?;
+                let (facts, unstated) = crate::setup::auto_battle(&places, |n| compat.chip(n).and_then(|k| content.defs.chip_by_key(&k)));
+                if let Some(e) = unstated.first() {
+                    return Err(format!("side {side}: {e}"));
+                }
+                player.set_fact(content, "auto_battle_places", &facts)?;
+            }
             Ok(player)
         });
         let [p0, p1] = players;
@@ -737,7 +788,9 @@ impl Round {
             content: content.hash(),
             settings,
             navi_stats: [side_stats(0)?, side_stats(1)?],
-            rng: self.setup.rng2,
+            // (The RNG2 the send starts from: the rules' send draws from it
+            // and leaves the recorded `rng2`.)
+            rng: self.setup.send_rng2.unwrap_or_else(|| rng_back(self.setup.rng2, SEND_DRAWS)),
             local_side: bs[0x0D],
             score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
             // (A triple battle's: two rounds after the first.)
