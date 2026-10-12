@@ -152,6 +152,7 @@ local boybomb1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = hook,
+    auto_battle = { class = "when_front_free" },
 }
 
 -- BoyBomb2 (EXE4 chip 0x056).
@@ -167,6 +168,7 @@ local boybomb2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = hook,
+    auto_battle = { class = "when_front_free" },
 }
 
 -- BoyBomb3 (EXE4 chip 0x057).
@@ -182,6 +184,7 @@ local boybomb3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = hook,
+    auto_battle = { class = "when_front_free" },
 }
 
 return { boybomb1 = boybomb1, boybomb2 = boybomb2, boybomb3 = boybomb3 }

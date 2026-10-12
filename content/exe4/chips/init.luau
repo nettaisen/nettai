@@ -124,6 +124,7 @@ return merge {
     require("@self/poisphar"),
     require("@self/poltrgst"),
     require("@self/popup"),
+    require("@self/prixpowr"),
     require("@self/propbom"),
     require("@self/protoman"),
     require("@self/punisher"),

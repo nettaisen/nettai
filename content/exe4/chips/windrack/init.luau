@@ -109,6 +109,7 @@ local windrack: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_ahead" },
 }
 
 return { windrack = windrack }

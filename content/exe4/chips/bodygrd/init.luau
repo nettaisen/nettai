@@ -49,6 +49,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage" },
     program_advances = { { order = 7, sequence = { antis.antidmg, antis.antinavi, recipe_muramasa } } },
     dimming = CONTROLLER.hook(0),
+    auto_battle = { class = "at_once" },
 }
 
 return { bodygrd = chip }

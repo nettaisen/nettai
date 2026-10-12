@@ -16,6 +16,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = grab.area,
+    auto_battle = { class = "at_once", answers = "area_lost" },
 }
 
 return { areagrab = chip }

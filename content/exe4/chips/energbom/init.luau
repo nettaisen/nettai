@@ -34,6 +34,7 @@ local energbom: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 local megenbom: Chip = {
@@ -48,6 +49,7 @@ local megenbom: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { energbom = energbom, megenbom = megenbom }

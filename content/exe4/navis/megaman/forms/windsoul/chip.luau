@@ -28,6 +28,7 @@ local windsoul: Chip = {
             north_wind.blow(navi, nil)
         end,
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { windsoul = windsoul }

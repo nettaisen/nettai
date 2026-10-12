@@ -38,6 +38,7 @@ local chip: Chip = {
         hits = collision.hits_navis,
         spark = sparks.heavy,
     },
+    auto_battle = { class = "at_once" },
 }
 
 return { jealousy = chip }

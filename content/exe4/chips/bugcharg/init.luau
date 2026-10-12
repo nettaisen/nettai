@@ -79,6 +79,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = CONTROLLER.hook,
     megaman = "dark",
+    auto_battle = { class = "into_target_row" },
 }
 
 return { bugcharg = chip }
