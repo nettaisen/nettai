@@ -44,6 +44,11 @@ local exe6 = require("./api")
 local levels = require("./levels")
 local programs = require("@self/programs")
 
+-- What the panel bug and the buster bug write by their level: the cracked trail's steps in 8 (+0x13), and the
+-- buster's blank shots of 16 (+0x14; its charged shots, +0x15, are the level itself).
+local PANEL_STEPS: { number } = { 2, 3, 4 }
+local BLANKS: { number } = { 6, 10, 13 }
+
 -- Each bug at its level, 1 to 3 (`byte_813CC18`'s routines).
 local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     step = function(stats, _)
@@ -54,7 +59,7 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     end,
     panel = function(stats, level)
         stats.panel_trail = 3
-        stats.panel_trail_level = level + 1
+        stats.panel_trail_level = PANEL_STEPS[level]
     end,
     custom = function(stats, level)
         stats.hand_shrink_turn = 5 - level
@@ -66,7 +71,7 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
         stats.chip_drops = 1
     end,
     buster = function(stats, level)
-        stats.buster_blanks = ({ 6, 10, 13 })[level]
+        stats.buster_blanks = BLANKS[level]
         stats.buster_charged = level
     end,
     support = function(stats, _)
@@ -87,40 +92,54 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     end,
 }
 
--- EXE6's compile: its board, its bugs, and the emotion window's glitch any bug sets (flag 0x1720).
--- The bugs a patch card can bring or fix too, each with the kind of the card effect that writes the stat the bug
--- writes (../patch_cards' copy; docs/engine/patch-cards.md §2.1's effect numbers):
+-- A patch card's bug effect as a tool lists it (../patch_cards' `overview`): the bug it is, by the effect's own key
+-- in the locales (its kind, and its trail or status), which is the name the NaviCust's bug of the same stat has, and
+-- how much of it: its level, or its amount, never both.
 --
--- - `step`: +0x31, the step bug, which effect 0x83 writes (its line "MoveBug");
--- - `emotion`: +0x24, which effect 0x95 writes ("EmoBug");
--- - `panel`: the panel trail, +0x12 and +0x13, which effects 0x84 to 0x8D write, one a trail: the bug's is the cracked
---   one, 0x84's ("MoveCrak"), and 0x8D's none is what a card clears the bug with ("PanelBug", the cards' name for it);
--- - `buster`: the blank and charged shots, +0x14 and +0x15, which effect 0x8E writes ("BstBlank");
--- - `hp`: the HP drain, +0x18, which the bug raises by its level and effect 0x96 adds to or clears ("BatHPbug"). (The
---   bug sets the hit status too, +0x16 = 3, which effect 0x92 writes, "DmgHPbug", and 0x93 clears, "DmgBug": a card
---   that clears the drain leaves that part of the NaviCust's bug standing.)
--- - `status`, `status-strong`: the battle start's bug, +0x1A = 9 and 10, which effect 0x98 writes for 1 and for more
---   ("StatBug").
---
--- The others no card effect writes: `custom` shrinks the hand (+0x63; the cards' "CustDmg" and "CusHPbug" are the
--- custom screen's damage and HP drain, +0x54 and +0x19, other stats), `encounter` and `result` are +0x28 and +0x26,
--- and `support` empties the supports (+0x0D = 0xFF, where a card's Rush, Beat and Tango set its bits).
-local BUG_CARDS: { [string]: string } = {
-    step = "step_bug",
-    emotion = "emotion_bug",
-    panel = "panel_trail",
-    buster = "buster_blanks",
-    hp = "hp_drain",
-    status = "status_bug",
-    ["status-strong"] = "status_bug",
-}
+-- - The step bug, the emotion bug and a hit's status are on or off: level 1.
+-- - The battle start's bug: level 1 (+0x1A = 9, the NaviCust's `status`) or 2 (10, `status-strong`).
+-- - An HP drain, the fight's or the custom screen's: its level is the stat's own, 1 to 7, which the card adds to (so
+--   the caller adds the NaviCust's bug's level to the fight's).
+-- - The custom screen's damage: the amount, the damage itself. No level: the NaviCust brings no such bug in EXE6
+--   (EXE5's does, at 20, 40 and 80, and EXE6's cards are at 20, 40 and 50).
+-- - The blank shots: the level whose blank and charged shots the card's are (`BLANKS` and the level itself); any
+--   other, the amount: the blank shots of the buster's 16. (EXE6's cards are all 4 blanks, less than level 1's 6.)
+-- - A trail: the cracked one at a level's steps (`PANEL_STEPS`), that level; any other, and every other trail, the
+--   amount: the steps in 8 that leave it (the stat is a step's chance in 8). (EXE6's cards crack at 1 in 8, less than
+--   level 1's 2.)
+local function card_bug(e: PatchCardEffect): SetupBug
+    local kind = e.kind
+    local any = e :: any
+    if kind == "panel_trail" then
+        local steps: number = any.level
+        local level: number? = if any.trail == "crack" then table.find(PANEL_STEPS, steps) else nil
+        local name: string = "panel_trail." .. any.trail
+        return if level ~= nil then { name = name, level = level } else { name = name, amount = steps, of = 8 }
+    elseif kind == "hit_status" then
+        return { name = "hit_status." .. any.status, level = 1 }
+    elseif kind == "buster_blanks" then
+        local blanks: number = any.blanks
+        local level = table.find(BLANKS, blanks)
+        return if level ~= nil and level == any.charged
+            then { name = kind, level = level }
+            else { name = kind, amount = blanks, of = 16 }
+    elseif kind == "custom_damage" then
+        return { name = kind, amount = e.amount }
+    elseif kind == "status_bug" then
+        return { name = kind, level = math.min(e.amount or 0, 2) }
+    elseif kind == "hp_drain" or kind == "custom_hp_drain" then
+        return { name = kind, level = e.amount }
+    end
+    return { name = kind, level = 1 }
+end
 
+-- EXE6's compile: its board, its bugs, and the emotion window's glitch any bug sets (flag 0x1720).
 local EXE6: NaviCustGame = {
     name = "EXE6",
     board = board,
     bugs = programs.BUGS,
     bug_work = BUG_WORK,
-    bug_cards = BUG_CARDS,
+    bug_names = programs.BUG_NAMES,
     glitch = true,
 }
 
@@ -178,5 +197,6 @@ return {
     round_setup = run,
     validate = validate,
     overview = overview,
+    card_bug = card_bug,
     redeal = redeal,
 }

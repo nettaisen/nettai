@@ -3408,23 +3408,57 @@ the default chips for an empty save for the game". No screen is in this step.
   ROM's folder table, which its new game routine copies into the save (EXE6: US Falzar's `byte_80213AC`, copied by
   `sub_8021AB4` from `reqBBS_init_8004DF0`; the other games' addresses are in their builds modules): the four ROMs
   of a game hold the same table, so a game has one new folder for both versions.
-- **The bugs' names** are the game's strings (its locales' text table `bugs`, by the rules' name for the bug): full
-  names, written out (the user: "the bug names should be full names actually rather than from the card effects, but
-  you should derive the bug names from the card effect name"; "MoveBug maybe should be Movement Bug"). Where the
-  game's patch cards name the same bug, the name is that card effect's line spelled out ("EmoBug": Emotion Bug;
-  "BatHPbug": Battle HP Bug), and each entry of the table says which line it is from; the rest are the content's
-  own, in the same style. Which card effect is the same bug is told by the stat each writes, never by the names
-  looking alike: a game's rules/navicust states it (`BUG_CARDS`: the bug, and the kind of the card effect that
-  writes its stat, with the bytes), and nettai-match's test holds five of EXE6's pairs to the round's stats. So
-  EXE6's `custom` (the hand shrinks) is no "CustDmg", EXE5's `custom` is, and EXE4's is the "CusHPbug" the other two
-  games' cards name; EXE5's `hp` (a hit gives the HP bug) is the "DmgHPbug", not the "BatHPbug" EXE6's and EXE4's
-  are. A patch card's own lines stay as the card screen has them.
+- **The bugs' names** are the game's strings (its locales' text table `bugs`): full names, written out (the user:
+  "the bug names should be full names actually rather than from the card effects, but you should derive the bug
+  names from the card effect name"; "MoveBug maybe should be Movement Bug"), one for every bug the game has, whoever
+  brings it, the NaviCust or a patch card (the user: "custom bug and custom damage bugs are different bugs", "exe6
+  also has a custom damage bug"). A bug a patch card can bring is keyed as its effect's line is in
+  `patch_card_effects` (`step_bug`, `hit_status.confuse`, `panel_trail.grass`), and its name is that line spelled
+  out ("EmoBug": Emotion Bug; "BatHPbug": Battle HP Bug; "CustDmg": Custom Damage); each entry of the table says
+  which line it is from. The NaviCust's bug that writes the same stat is the same bug under the same name: a
+  game's rules/navicust/programs states which (`BUG_NAMES`: the bug, the names it is listed under and the kind of
+  card effect that writes each one's stat, with the bytes), told by the stat each writes and never by the names
+  looking alike, and nettai-match's test holds six of EXE6's pairs to the round's stats. The bugs no card effect
+  writes keep the rules' name for them and a name of the content's own, in the same style. So EXE6 has three custom
+  bugs: `custom` (the hand shrinks: Custom Bug, the NaviCust's alone), Custom Damage and Custom HP Bug (cards'
+  alone); EXE5's `custom` is the Custom Damage, and EXE4's is the Custom HP Bug. EXE6's `hp` is two bugs, since it
+  writes two stats that each have a card effect: the Battle HP Bug (the drain) and the Damage HP Bug (a hit gives
+  the HP bug); EXE5's `hp` is the Damage HP Bug alone. A patch card's own lines stay as the card screen has them.
+  EXE4's cards bring no bug of their own (a card raises or clears a NaviCust bug's count), so its names are the
+  NaviCust's ten.
+- **Trails and hit statuses have a name each.** A card's line names each ("MoveGras", "MoveIce", "MoveHole",
+  "MoveWatr"; "DmgConfs", "DmgBlind", "DmgHPbug"), they do different things, and the NaviCust brings one of each
+  (the cracked trail, the hit's HP bug), which keeps the name it had: so Movement Grass, Movement Ice, Movement
+  Hole, Movement Water, Damage Confusion, Damage Blindness and Damage HP Bug are bugs of their own, keyed by the
+  effect and its variant. The cracked trail is the Panel Bug, from "PanelBug", the cards' word for the bug where
+  they clear it, although a card that brings it writes "MoveCrak": the NaviCust's panel bug and DustMan's are one
+  bug, and one name. Only one trail and one hit status hold at a time, as they are one stat each.
+- **A named bug has a level, or else an amount** (`SetupBug`'s `level`, or `amount` and what it is `of`;
+  nettai-match's `build::Extent`). The NaviCust's bugs are at their count's level, 1 to 3. A card's bug is at a
+  level where what it writes is what a level of the bug writes, so that it reads as the NaviCust's would, and
+  carries the number it writes where that is no level's; each game's rules/navicust says which (`card_bug`, beside
+  the levels' numbers, which the bugs' work and it share):
+  - the step bug, the emotion bug and each hit status are on or off: level 1;
+  - the battle start's bug: level 1 or 2 (the NaviCust's `status` and `status-strong`, which a card's 1 and 2 write);
+  - an HP drain, the fight's or the custom screen's: the stat's own level, 1 to 7. The fight's adds, so the NaviCust's
+    level and a card's are one bug at the two together;
+  - the custom screen's damage: in EXE5 the level whose damage it is (20, 40, 80), else the amount, the damage
+    (EXE5's cards are at 50, 100 and 200); in EXE6, where no NaviCust bug gives it levels, always the amount (its
+    cards are at 20, 40 and 50, so EXE5's levels would name two of the three);
+  - the blank shots: the level whose blank and charged shots the card's are (EXE6: 6, 10, 13 blanks with 1, 2, 3
+    charged; EXE5: 4 and 2 at every level, so level 1), else the amount: the blank shots of the buster's 16 (all of
+    EXE6's cards are 4 of 16);
+  - a trail: the cracked one at a level's steps (EXE6: 2, 3, 4 in 8; EXE5: 2, 4, 8), that level; else, and every
+    other trail, the amount: the steps in 8 that leave it (EXE6's two cards crack at 1 in 8).
 - **A card's effect takes the NaviCust's bug's place** in the overview where it does in the stats: the cards' copy
   sets the stat a bug effect names (the last card's write holds), so the NaviCust's bug of that stat is gone,
-  whether the card's effect is the bug again (listed as the card's line) or its fix (nothing listed, and no ability
-  either); an HP drain adds instead, so one of 0 clears the NaviCust's and any other stands beside it. The cards'
-  bug effects are left out where a card's BugStop holds them back, and all of a card's where the navi isn't the one
-  the cards apply to. (EXE4 counts its cards' bugs with the NaviCust's, so its overview reads the counts.)
+  whether the card's effect is the bug again (listed once, as the card's brings it) or its fix (nothing listed,
+  and no ability either); an HP drain adds instead, so one of 0 clears the NaviCust's and any other raises its
+  level. A bug-marked effect of a bug's kind is listed as the named bug; a bug-marked effect of any other kind (an
+  ordinary effect that is a drawback: Super Armor off, a lost shield) stays its card's line (`Bug::From`); and a
+  bug slot's value that is neither bug nor fix (EXE5's holy trail) is an ability. The cards' bug effects are left
+  out where a card's BugStop holds them back, and all of a card's where the navi isn't the one the cards apply to.
+  (EXE4 counts its cards' bugs with the NaviCust's, so its overview reads the counts.)
 - **A build's choices of presets** (`rules/builds`' `choices`): a choice has an id, the presets in the order a
   screen offers them (the first a new build's), the fact that tells them apart with each preset's line (`from`),
   and the navi it is of. EXE5's and EXE4's one is MegaMan light or dark, each the light/dark value and the base HP
