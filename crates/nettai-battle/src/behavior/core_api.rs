@@ -2236,6 +2236,7 @@ impl CoreApi for Battle {
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
             (ActorField::ChargeLevel, FieldValue::U8(x)) => a.charge_level = x,
             (ActorField::ChargeSource, FieldValue::U8(x)) => a.charge_source = x,
+            (ActorField::ChargeCounter, FieldValue::U16(x)) => a.charge_counter = x,
             (ActorField::RapidPresses, FieldValue::U8(x)) => a.rapid_presses = x,
             (ActorField::RapidWindow, FieldValue::U8(x)) => a.rapid_window = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
