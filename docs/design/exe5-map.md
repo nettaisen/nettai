@@ -314,7 +314,10 @@ netplay templates 1000. Three rules read it, with two thresholds:
   0x080B50DC, which the enemy's update, 0x080B50B4, runs on its own record's +0x78: one of its versions starts a
   state once the other side has used a navi chip), which no netbattle's navi runs. So nothing a
   netbattle draws, sounds or decides depends on it, in any of the three: megaman/cut-in-dark-navi-chip replays the
-  same either way and stands as the refused cut-in with a navi chip, no more.
+  same either way and stands as the refused cut-in with a navi chip, no more. So nettai doesn't keep it: the
+  original adds one to count 6 at every navi chip's use, and the engine's use adds to nothing there (it was the
+  count's only writer, and the count had no reader in the engine or the content; the other counts are as they
+  were). The counts' sixteen bytes a side stay in the state and its digest, the seventh always 0 now.
 - **A dark MegaMan on a holy panel turns it Normal** (0x08017136, EXE5's own): when the panel under the object is
   holy (EXE5's type 9) and its side's meter is ≤ 499, the panel is set Normal (the panel setter). It runs **every
   tick**, from the object's per-tick intake update (the counterpart of EXE6's `sub_801AC6C`, 0x080178EC, and of its
