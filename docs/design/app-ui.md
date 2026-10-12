@@ -289,6 +289,14 @@ Each is in the mockups under the same name.
 - **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, YOUR BUILD, THEIR BUILD
   (not with Closed builds), CONTROLS, SETTINGS, LEAVE MATCH. "The match keeps running", and it does.
 
+### After a match
+The mockups show no screen for this; it is decided here.
+- **Online:** the result stays on the picture (who won and the rounds' score, in the game's own way), then both
+  players are back in the lobby on the same link, neither ready, with the same settings. Either can change build,
+  play again or leave. Another match with the same opponent needs no new invite code.
+- **Training** has no end: the training menu's RESTART and QUIT TO MENU are the ways out of a set.
+- **A replay** stops at its end with the transport still there.
+
 ### Settings
 One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
 Video (Picture size, Full screen, Battle text: sharp or original), Audio (Music, Sound effects), Online (Input
@@ -313,6 +321,14 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | a build breaks a rule | This build can't be used: 2 Giga chips, limit 1. |
 | the link dropped for good | Connection lost. The match has ended. |
 | a replay is from another version | This replay is from a different version and can't be played. |
+| the server needs a newer app | This version of nettai is too old for the server. Get the latest. |
+| the opponent chose another game | Your opponent is on EXE5. Pick the same game. |
+| the opponent's build breaks a rule | Your opponent's build can't be used. |
+| the opponent left the lobby or the match | Your opponent left. |
+| the opponent never answered | No answer from your opponent. |
+| a link couldn't be made | Couldn't connect to your opponent. |
+| a direct address is malformed | That isn't an address. Use host:port. |
+| the port to host on is taken | That port is already in use. |
 | a save is another game's | Not an EXE6 save. |
 | anything else | Something went wrong. Details are in the log file. |
 

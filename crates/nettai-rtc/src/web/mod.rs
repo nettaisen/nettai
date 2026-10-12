@@ -72,7 +72,7 @@ pub struct PeerConnection {
 }
 
 fn js_error(what: &str, e: JsValue) -> Error {
-    Error(format!("{what}: {}", e.as_string().unwrap_or_else(|| format!("{e:?}"))))
+    Error::internal(format!("{what}: {}", e.as_string().unwrap_or_else(|| format!("{e:?}"))))
 }
 
 impl PeerConnection {
@@ -102,7 +102,7 @@ impl PeerConnection {
             };
             match made.await {
                 Ok(sdp) => found.borrow_mut().events.push_front(PeerEvent::Description(sdp)),
-                Err(e) => found.borrow_mut().down(e.0),
+                Err(e) => found.borrow_mut().down(e.detail),
             }
         });
         Ok(c)
@@ -126,7 +126,7 @@ impl PeerConnection {
             };
             match made.await {
                 Ok(sdp) => found.borrow_mut().events.push_front(PeerEvent::Description(sdp)),
-                Err(e) => found.borrow_mut().down(e.0),
+                Err(e) => found.borrow_mut().down(e.detail),
             }
         });
         Ok(c)
@@ -204,7 +204,7 @@ impl PeerConnection {
             init.set_sdp(&answer);
             match JsFuture::from(pc.set_remote_description(&init)).await {
                 Ok(_) => remote_in(&pc, &found),
-                Err(e) => found.borrow_mut().down(js_error("can't take the answer", e).0),
+                Err(e) => found.borrow_mut().down(js_error("can't take the answer", e).detail),
             }
         });
         Ok(())

@@ -57,7 +57,7 @@
 use crate::driver::Place;
 use crate::game::{Graphics, Loaded};
 use crate::player::{Clock, MOST_SAMPLES, tick_at, time_of};
-use crate::replay::{End, Refused, Replay, ReplayPlayer};
+use crate::replay::{End, Info, Refused, Replay, ReplayPlayer};
 use crate::session::Session;
 use nettai_audio::BattleAudio;
 use nettai_battle::content::Content;
@@ -151,9 +151,11 @@ pub struct Viewer {
     other_hud: HudState,
     /// The side whose console is shown.
     view: u8,
-    /// The replay's ticks, and how its input ends.
+    /// The replay's ticks, how its input ends, and what it says of
+    /// itself.
     length: u32,
     end: End,
+    info: Info,
     /// Each round's first tick, in order (the file's marks).
     rounds: Vec<u32>,
     /// The states kept, by tick, ascending: tick 0's, every
@@ -226,6 +228,7 @@ impl Viewer {
             view,
             length: replay.ticks.len() as u32,
             end: replay.end,
+            info: replay.info.clone(),
             rounds: replay.round_starts(),
             keyframes: Vec::new(),
             frontier: None,
@@ -266,6 +269,16 @@ impl Viewer {
     /// recording stopped, or its file was cut short).
     pub fn end(&self) -> End {
         self.end
+    }
+
+    /// What the replay says of itself: when it was played, by whom (the
+    /// players' names by side), which side recorded it, what kind of match
+    /// it was, and whether its builds were closed. Where they were
+    /// (`Info::closed_builds`), the host shows neither side's build: the
+    /// viewer plays the battle, which is made of both, and tells nobody
+    /// what either brought.
+    pub fn info(&self) -> &Info {
+        &self.info
     }
 
     // ---- Where it is -------------------------------------------------------

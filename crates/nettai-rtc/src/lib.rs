@@ -19,13 +19,20 @@
 //!   offer and answer fit the same API. Nothing waits.
 //! - [`Link`]: the channel a match is played on, which keeps a connection
 //!   up: it meets the other player (in a room of the signaling server,
-//!   `signal`; or directly, at a host's address and port, natively), and
-//!   when the connection drops (its state, its data channel, or silence) it
-//!   makes a new one through the same room or to the same address, until
-//!   [`Config::reconnect_timeout`]. Its `send` and `recv` are a datagram
-//!   channel's, which nettai-frontend's `netplay::Channel` takes; while it
-//!   is down, what is sent is dropped and nothing comes ([`Link::down_for`]
-//!   says so, and for how long).
+//!   `signal`: one it asks the server to make, [`Link::create_room`], whose
+//!   code the server picks, or one it was given the code of,
+//!   [`Link::join_room`]; or directly, at a host's address and port,
+//!   natively), and when the connection drops (its state, its data channel,
+//!   or silence) it makes a new one through the same room or to the same
+//!   address, until [`Config::reconnect_timeout`]. Its `send` and `recv`
+//!   are a datagram channel's, which nettai-frontend's `netplay::Channel`
+//!   takes; while it is down, what is sent is dropped and nothing comes
+//!   ([`Link::down_for`] says so, and for how long;
+//!   [`Link::gives_up_in`], how long it has left).
+//!
+//! What goes wrong is an [`Error`]: its [`ErrorKind`] is what a player can
+//! be told, each kind in the host's own words (its catalog's), and its
+//! detail is for a log, never for the player.
 //!
 //! The signaling server is the Cloudflare Worker in `signaling/`
 //! (TypeScript, a Durable Object a room); its protocol is [`signal`], and
@@ -72,8 +79,18 @@ pub struct Config {
     /// A connection being made that isn't open this long is given up and
     /// made again.
     pub dial_timeout: Duration,
-    /// A dropped connection not back this long ends the link.
+    /// A dropped connection not back this long ends the link
+    /// ([`ErrorKind::ConnectionLost`]).
     pub reconnect_timeout: Duration,
+    /// The signaling server not answering this long, before it first lets
+    /// this player into the room, ends the link
+    /// ([`ErrorKind::ServerUnreachable`]).
+    pub server_timeout: Duration,
+    /// The other player there (in the room, or dialed directly) and no
+    /// connection to them open this long, before the first one, ends the
+    /// link ([`ErrorKind::CantConnect`]): no path between the two was
+    /// found.
+    pub connect_timeout: Duration,
     /// Offer the loopback interface's address too (two peers on one
     /// machine; it is offered anyway where there is no other).
     pub loopback: bool,
@@ -86,6 +103,8 @@ impl Default for Config {
             silence: Duration::from_secs(3),
             dial_timeout: Duration::from_secs(10),
             reconnect_timeout: Duration::from_secs(30),
+            server_timeout: Duration::from_secs(10),
+            connect_timeout: Duration::from_secs(30),
             loopback: false,
         }
     }
@@ -117,13 +136,60 @@ pub enum Role {
     Join,
 }
 
-/// What went wrong, said.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Error(pub String);
+/// What went wrong, as a player can be told it. A host says each kind in
+/// its own words (a catalog's string a kind, in the player's language); it
+/// never shows an [`Error::detail`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ErrorKind {
+    /// The signaling server can't be reached: its socket didn't open, or it
+    /// didn't answer within [`Config::server_timeout`].
+    ServerUnreachable,
+    /// The signaling server speaks another version of its protocol than
+    /// this program does: one of the two is out of date.
+    ServerVersion,
+    /// No room has that code: it is mistyped, or its room is over.
+    NoSuchRoom,
+    /// The room has two players already.
+    RoomFull,
+    /// A direct host's address doesn't name a machine (`host:port`).
+    BadAddress,
+    /// A direct host can't listen on its port (another program has it).
+    PortUnavailable,
+    /// The other player is there, and no connection to them could be made
+    /// within [`Config::connect_timeout`]: no path between the two
+    /// networks was found (or nothing answers at a direct host's address).
+    CantConnect,
+    /// The connection dropped and didn't come back within
+    /// [`Config::reconnect_timeout`].
+    ConnectionLost,
+    /// Anything else: nothing the player did or can mend. The detail says
+    /// what, for a log.
+    Internal,
+}
 
+/// What went wrong: its kind, which is what a player is told (in the
+/// host's words), and the detail, in English, for a log only.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Error {
+    pub kind: ErrorKind,
+    pub detail: String,
+}
+
+impl Error {
+    pub(crate) fn new(kind: ErrorKind, detail: impl Into<String>) -> Error {
+        Error { kind, detail: detail.into() }
+    }
+
+    /// An error that is nothing a player did or can mend.
+    pub(crate) fn internal(detail: impl Into<String>) -> Error {
+        Error::new(ErrorKind::Internal, detail)
+    }
+}
+
+/// (The detail: what a log says.)
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.detail)
     }
 }
 

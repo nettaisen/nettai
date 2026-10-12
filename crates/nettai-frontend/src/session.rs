@@ -1,6 +1,6 @@
 //! A running battle: its driver, the engine state, and why it stopped.
 
-use crate::driver::{Driver, Ran, result_text};
+use crate::driver::{Driver, Ran, Stop, StopReason, result_text};
 use crate::replay::Recorder;
 use nettai_battle::cues::CueAction;
 use nettai_battle::{Battle, BattleResult};
@@ -9,8 +9,12 @@ use nettai_match::After;
 pub struct Session {
     pub driver: Box<dyn Driver>,
     pub battle: Battle,
-    /// Why the battle stopped (engine panic, end of the trace).
+    /// Why the battle stopped (engine panic, end of the trace), in words
+    /// for a log: what a player is told is `stop_reason`.
     pub stopped: Option<String>,
+    /// Why the battle stopped, as a host can say it to its player; some
+    /// whenever `stopped` is.
+    pub stop_reason: Option<StopReason>,
     /// The driver ran out of input (a trace's round is over) or the set
     /// was played to its end, as opposed to the engine stopping.
     pub finished: bool,
@@ -51,6 +55,7 @@ impl Session {
             driver,
             battle,
             stopped: None,
+            stop_reason: None,
             finished: false,
             result: None,
             diverged: None,
@@ -81,6 +86,7 @@ impl Session {
         self.recorder = None;
         self.battle = self.driver.start();
         self.stopped = None;
+        self.stop_reason = None;
         self.finished = false;
         self.result = None;
         self.diverged = None;
@@ -137,12 +143,12 @@ impl Session {
                 }
                 return true;
             }
-            Ok(Some(Err(why))) => {
-                self.stopped = Some(why);
+            Ok(Some(Err(Stop { reason, detail }))) => {
+                self.stop(reason, detail);
                 return false;
             }
             Err(e) => {
-                self.stopped = Some(format!("engine stopped at {}: {}", self.driver.position(), panic_message(e.as_ref())));
+                self.stop(StopReason::Internal, format!("engine stopped at {}: {}", self.driver.position(), panic_message(e.as_ref())));
                 return false;
             }
         }
@@ -150,7 +156,7 @@ impl Session {
         self.new_round = false;
         self.sound = None;
         let Some(step) = self.driver.next(&self.battle, keys) else {
-            self.stopped = Some(format!("end of input at {}", self.driver.position()));
+            self.stop(StopReason::Finished, format!("end of input at {}", self.driver.position()));
             self.finished = true;
             return false;
         };
@@ -161,7 +167,7 @@ impl Session {
         self.frame = step.frame;
         self.ticks += 1;
         if let Err(e) = result {
-            self.stopped = Some(format!("engine stopped at {}: {}", self.driver.position(), panic_message(e.as_ref())));
+            self.stop(StopReason::Internal, format!("engine stopped at {}: {}", self.driver.position(), panic_message(e.as_ref())));
             return false;
         }
         self.ask_pause(self.battle.pause_requests());
@@ -195,14 +201,20 @@ impl Session {
             }
             Some(After::Over(result)) => {
                 self.result = Some(result);
-                self.stopped = Some(format!("the match is over: {}", result_text(result)));
+                self.stop(StopReason::Finished, format!("the match is over: {}", result_text(result)));
                 self.finished = true;
             }
             Some(After::Stopped(why)) => {
-                self.stopped = Some(format!("engine stopped at {}: {why}", self.driver.position()));
+                self.stop(StopReason::Internal, format!("engine stopped at {}: {why}", self.driver.position()));
             }
         }
         true
+    }
+
+    /// The battle stops: why, for the player and for a log.
+    fn stop(&mut self, reason: StopReason, detail: String) {
+        self.stop_reason = Some(reason);
+        self.stopped = Some(detail);
     }
 }
 
