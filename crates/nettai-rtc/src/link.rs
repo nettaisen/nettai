@@ -22,7 +22,11 @@
 //!   asks for every 2 seconds), or the joiner's connectivity checks
 //!   directly.
 //!
-//! While it is down, what is sent is dropped and nothing comes, and
+//! What a connection had taken before it dropped is still the link's to
+//! hand over ([`Link::recv`]): a player who leaves says so in their last
+//! datagrams, which come with the close that follows them.
+//!
+//! While it is down, what is sent is dropped and nothing new comes, and
 //! [`Link::down_for`] says how long it has been ([`Link::gives_up_in`], how
 //! long it has left); after [`Config::reconnect_timeout`] the link gives
 //! up ([`ErrorKind::ConnectionLost`]), and every call after errs the same.
@@ -96,6 +100,9 @@ pub struct Link {
     /// In a room: the other is there.
     peer: bool,
     failed: Option<Error>,
+    /// What a connection that dropped had taken and the caller hadn't: handed
+    /// over before anything a later connection brings.
+    kept: std::collections::VecDeque<Vec<u8>>,
     taken: Vec<u8>,
     #[cfg(not(target_arch = "wasm32"))]
     buf: Vec<u8>,
@@ -124,6 +131,7 @@ impl Link {
             asked: None,
             peer: false,
             failed: None,
+            kept: std::collections::VecDeque::new(),
             taken: Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
             buf: vec![0; crate::native::MAX_DATAGRAM],
@@ -269,11 +277,16 @@ impl Link {
     }
 
     /// The next datagram that came from the other player, if one has,
-    /// without waiting (it keeps the connection up, too). An error: the link
-    /// gave up, or the signaling server refused.
+    /// without waiting (it keeps the connection up, too): what a connection
+    /// that has since dropped had taken comes first. An error: the link gave
+    /// up, or the signaling server refused.
     pub fn recv(&mut self) -> Result<Option<&[u8]>, Error> {
         let now = Instant::now();
         self.step(now)?;
+        if let Some(d) = self.kept.pop_front() {
+            self.taken = d;
+            return Ok(Some(&self.taken));
+        }
         let Some(pc) = &mut self.pc else { return Ok(None) };
         match pc.next_datagram() {
             Some(d) if self.open => {
@@ -508,6 +521,7 @@ impl Link {
     }
 
     /// The connection is lost: dropped (closed), and down if it was open.
+    /// What it had taken is kept for the caller.
     fn lost(&mut self, now: Instant, why: String) {
         if self.open {
             self.down = Some((now, why));
@@ -515,6 +529,9 @@ impl Link {
             self.asked = None;
         }
         if let Some(mut pc) = self.pc.take() {
+            while let Some(d) = pc.next_datagram() {
+                self.kept.push_back(d);
+            }
             pc.close();
         }
         self.dialed = None;
