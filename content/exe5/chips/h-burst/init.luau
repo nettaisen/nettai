@@ -15,9 +15,15 @@ local recipe_spreader = require("./spreader").spreader
 
 local LOOK: HyperBurstLook = {
     spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
-    attachment = attachment.kind,
+    -- In the overlay, its animation 0.
+    hold = function(me: Object, look: AttachmentLook, which: Slot)
+        attachment.attach(me, look, which)
+    end,
+    slot = "overlay",
     sound = asset.sound("h-burst"),
     burst = burst.kind,
+    -- The navi aims in its animation 0xB.
+    anim = 0x0B,
 }
 
 local chip: Chip = {

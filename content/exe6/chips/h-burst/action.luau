@@ -15,9 +15,15 @@ action.STATE = common.STATE
 local LOOK: HyperBurstLook = {
     -- The spreader the navi holds (the original's attachment row 0x15).
     spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 0x0B },
-    attachment = attachment.kind,
+    -- In the overlay, its animation 0.
+    hold = function(me: Object, look: AttachmentLook, which: Slot)
+        attachment.attach(me, look, which)
+    end,
+    slot = "overlay",
     sound = asset.sound("h-burst"),
     burst = burst.kind,
+    -- The navi aims in its animation 0xB.
+    anim = 0x0B,
 }
 
 -- An H-Burst whose shot bursts `spec.bursts` times.

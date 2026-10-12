@@ -1,7 +1,8 @@
 --!strict
--- H-Burst's shot, as EXE5 and EXE6 share it (EXE6's attack object #0x9E,
+-- H-Burst's shot, as the games share it (EXE6's attack object #0x9E,
 -- `sub_80D8FC4`; EXE5's #0x9E, the same code but for its probe's self type,
--- where its bursts come from and its explosions' row): each game makes its
+-- where its bursts come from and its explosions' row; EXE4's #0x9E,
+-- 0x080E0B46, EXE5's but that its hits carry no status): each game makes its
 -- own kind (`burst.make_kind`, a `HyperBurstShotLook`). An unseen probe
 -- stepping a panel a tick along its row (status 0x10) until it hits
 -- something. There it bursts again and again, every 9 ticks: a hit on the
@@ -140,7 +141,10 @@ function burst.make_kind(id: string, look: HyperBurstShotLook): Kind
             return
         end
         me:setup_collision(look.probe, look.hits, 0)
-        me.collision.status_base = look.status
+        local status = look.status
+        if status then
+            me.collision.status_base = status
+        end
         me.collision:present()
         me:set_lifecycle("update")
     end
