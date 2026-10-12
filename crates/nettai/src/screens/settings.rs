@@ -140,8 +140,9 @@ impl Screen for Settings {
         match id {
             "group" => shell.nav.focus(GROUPS[index.clamp(0, 5) as usize].0, 0),
             "set.language" => {
-                let options: Vec<String> = crate::lang::LANGUAGES.iter().map(|(_, name)| name.to_string()).collect();
-                let chosen = crate::lang::LANGUAGES.iter().position(|(code, _)| *code == shell.lang).unwrap_or(0);
+                let offered = crate::lang::offered(shell.lang);
+                let options: Vec<String> = offered.iter().map(|(_, name)| name.to_string()).collect();
+                let chosen = offered.iter().position(|(code, _)| *code == shell.lang).unwrap_or(0);
                 shell.pick(id, 0, options, chosen);
             }
             "set.picture" => {
@@ -190,7 +191,7 @@ impl Screen for Settings {
     fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
         match id {
             "set.language" => {
-                if let Some((code, _)) = crate::lang::LANGUAGES.get(choice.max(0) as usize) {
+                if let Some((code, _)) = crate::lang::offered(shell.lang).get(choice.max(0) as usize) {
                     self.set_language(shell, *code);
                 }
             }
