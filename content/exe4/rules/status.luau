@@ -432,6 +432,9 @@ local status = {
         -- Its defensive chips (0x08023048): AntiDmg catches a hit of any damage (one of none passes), AntiSwrd any
         -- sword's hit (the hit flags 0x2000); no status arms a trap.
         anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
+        -- A chip-destroying hit (hit flag 0x10: 0x0801325A) takes a player's whole hand, the cursor back at its first
+        -- chip, and ends the navi's chip requests (0x08013280: an A pressed on the hit's tick uses nothing).
+        chip_destruction = { takes = "hand", ends_chip_requests = true },
         -- EXE4's emotions (0x0800F49C, in its order: the first that holds is the side's): in a soul (NaviStats +0x24,
         -- neither 0 nor 15) the soul's (its face the soul form's); angry (AIData +0x2E, anger's ticks); a mood of 0
         -- (the dark MegaMan's: worn out); Full Synchro (0xFF); a mood under 65 worried; else normal. Its setter
