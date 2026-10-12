@@ -189,6 +189,7 @@ fn bundle() -> Bundle {
                 waiting: tiles(14, 36),
                 waiting_palette: palette(57),
                 gauge_tiles: tiles(3, 37),
+                chatbox_text: Some((0x33, 0x6C)),
             },
         )],
     };
