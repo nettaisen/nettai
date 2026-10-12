@@ -305,6 +305,7 @@ language = "en"
 "gigacan3" = { name = "GigaCan3", description = "A cannon\ndriven by\nGigaPower" }
 "heatsprd" = { name = "HeatSprd", description = "Explosion\nby Wide\nattack" }
 "bubsprd" = { name = "BubSprd", description = "Bubbles\nby Wide\nattack" }
+"blakwing" = { name = "BlakWing", description = "EvilChip!\nWings\ndescend" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
