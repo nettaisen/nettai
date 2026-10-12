@@ -336,12 +336,24 @@ Frame numbers are the trace's.
 
 **Live play** (a match, docs/app.md's Training or `nettai-tool --match FILE`):
 you are the left navi; the right one is an opponent's (`driver::Opponent`,
-its buttons alone, as a player's are): by default the stand-in, which stands
-still and picks its first chip; a dummy, which picks none; a mover, which
-moves about at random; a masher, which moves, shoots and uses its chips at
-random (a mover's and a masher's presses seeded, from the set's seed in
-nettai). The match sets up the battle (§6), including its game, rounds, each
-side's navi, folder, forms, patch cards, NaviCust and stats.
+its buttons alone, as a player's are). What it does is two choices, each
+made alone and changed at any tick of the set (`Player::set_opponent`,
+`LivePlayer::set_opponent`; a training menu's two rows):
+
+- **in the fight** (`InFight`): it stands still (the default), moves around
+  at random and never attacks, or attacks at random: it moves, shoots and
+  charges, uses its chips and presses L and R (never START);
+- **on its custom screen** (`OnCustomScreen`): it picks nothing and presses
+  OK, or picks the first chip it can and presses OK (the default).
+
+Its random presses are seeded (from the set's seed in nettai) and run every
+tick of the set, taken or not: what it presses on a tick goes by the seed,
+the tick, the battle and its choices on that tick, whatever its choices
+were before, and a set started over presses the same again. It is a
+player's buttons and nothing else (a recording keeps them, so a set whose
+opponent was changed on the way replays as it was played). The match sets
+up the battle (§6), including its game, rounds, each side's navi, folder,
+forms, patch cards, NaviCust and stats.
 
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number
@@ -397,10 +409,25 @@ gives the same setup.
 
 The custom screen is the engine's (docs/engine/custom-screen.md), drawn. The
 keys are the game's (A picks, B takes back, START goes to OK, UP from the top
-row opens the Cross window, R describes, SELECT hides). The right navi's
-screen picks its first chip and presses OK. As in the original's netbattles,
-the fight gets your buttons 4 ticks late (the link). Restarting starts the
-same setup over.
+row opens the Cross window, R describes, SELECT hides), but for the two a
+match's host answers in the battle's place (`nettai_match::HOST_KEYS`, in
+every match's setup: `RoundSetup::host_keys`):
+
+- **START in the fight** pauses nothing: the game's own pause never runs.
+  The player says who pressed it (`Player::take_pause_requests`, by side),
+  for the host to open its own menu and to hold the ticks while it is up
+  where it may (`Player::set_paused`: live play and replays; a netplay match
+  runs on). It is said exactly where the original pauses (the fight running,
+  the battle not over, not dimmed: docs/engine/battle-flow.md §3.5), so
+  START on the custom screen is still the cursor's way to OK.
+- **L on the custom screen** does nothing: nobody runs from a match, and
+  the navi's message that says so isn't shown or heard
+  (docs/engine/custom-screen.md §3.5). L and R in the fight ask for the
+  custom screen as they did.
+
+A recording of the original has neither: its battle pauses itself, and its L
+opens the message. As in the original's netbattles, the fight gets your
+buttons 4 ticks late (the link). Restarting starts the same setup over.
 
 **Netplay** plays another player over the network, with rollback
 (docs/design/rollback.md §4; the frontend's side is `netplay`), on a WebRTC
@@ -468,7 +495,9 @@ server, or directly.
   input is predicted until it arrives, and the frame is simulated again when a
   prediction was wrong. A cue played on a wrong prediction is stopped or taken
   back (rollback.md §3.2). There is no pause, speed change or restart in
-  netplay.
+  netplay: START in the fight is said to the host as in any match
+  (`take_pause_requests`, the local player's alone, on the tick as it was
+  first simulated), whose menu opens over a match that keeps running.
 - **The connection's figures** (`Player::net_status`, values a host words
   itself): the ping (the round trip, in milliseconds), the loss (the share of
   the other player's datagrams that were lost), the present delay, the last
@@ -737,7 +766,8 @@ The screen's sounds are the engine's cues for its player
 battle's.
 
 **The chatbox** (`chatbox.rs`) the custom screen runs (R: a chip's or a
-Cross's description; L: the no-running message), as the original's
+Cross's description; L: the no-running message, in a recording of the
+original alone: a match's L opens none, §2), as the original's
 chatbox draws each tick: the box's map on BG0 at its opening step (row 12,
 the message box or the narrower description box); the text as the line
 buffer's three rows of six sprites at (51, 108), its lines 14 rows apart
@@ -1830,6 +1860,16 @@ renderer, the font mode's text renderer and the battle's audio:
   another player (`real_time()`: netplay). `set_present_delay(ticks)` is
   netplay's: the frame shown from the next frame on is that many ticks
   behind the player's newest input (false outside netplay).
+- `take_pause_requests()` is the host's cue for its own menu: the players
+  who pressed START in the fight since the last call, by side, each where
+  the game's own pause was (§2). The battle didn't pause; the host opens
+  its menu and, outside real time, calls `set_paused(true)` until it
+  closes. (A paused player runs no ticks and makes no sound; the picture
+  stays the last tick's.)
+- `opponent()` and `set_opponent(Opponent { in_fight, on_custom_screen })`
+  are live play's: what the other navi does, read and changed while the
+  set runs (§2); none and false for a battle whose other navi is
+  somebody's.
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
 - `play(driver)` goes on with another driver in the same picture and sound (a

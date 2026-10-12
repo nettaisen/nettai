@@ -146,7 +146,7 @@ One action per tick, in this order:
 5. START: the cursor goes to OK (it doesn't press it).
 6. SELECT: hide the window (§3.5).
 7. R on a chip: its description (§3.5).
-8. L: "no time to run away!" (§3.5).
+8. L: "no time to run away!" (§3.5); nothing in a round whose host took the run key (§3.5, "A host's run key").
 
 Cursor movement never skips grayed or picked slots. Verified on every state-4 tick of both players in both
 replays (37.5k ticks: 692 moves, 174 picks, 49 take-backs, 88 Cross windows, 40 OKs, 10 scraps…) **[dumps]**.
@@ -279,6 +279,17 @@ strings: the record's `counts`); for one without, L does nothing. Every navi of 
 missing one is a content error, which the frontend's content audit lists for each navi a side can start, in a
 game whose roles fill the message's sound (docs/frontend.md §2): EXE5's thirteen had none until 2026-10-05, and L
 opened an empty box.
+
+**A host's run key** (nettai's own: the originals have none). L is the original's key to run from a battle: with
+battle effects 0x20 the run-away check (`sub_8026F1A`, §8), and in a battle without them, a netbattle among them,
+the message above. A round whose setup gives its host the run key (`HostKeys::run`, `RoundSetup::host_keys`;
+battle-flow.md §3.5 has the pause's twin) has neither: on the choosing grid L is read as the tick's key, as it is
+for a navi without a message, and does nothing: no box, no sound (`ScreenSound::RunMessage` isn't played), no
+state 0x1C, and nothing that could end the battle. Every match nettai plays has it (`nettai_match::HOST_KEYS`: the
+user, 2026-10-12: "disable L to run in battle"); a recording of the original doesn't, and its L opens the message
+as recorded. L stays every other key it is: with R the fight's request for the custom screen and a turn
+(battle-flow.md §3.3.1), any key to a description's box and to the hidden window, and a button in the navi's own
+input record. The screen's test: `l_does_nothing_when_the_host_took_the_run_key`.
 
 **Verified** in the lab: `custom/description-arm-001-5..9` and `-09a-5..9` (Cannon, three lines, takes A from
 R+8; Recov10, two lines, from R+7), `description-invalid-4..6` (from R+6), `description-cross-7`, `-8` (a Cross's,
