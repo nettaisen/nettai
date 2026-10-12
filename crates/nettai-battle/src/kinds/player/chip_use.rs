@@ -299,8 +299,14 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     // other kind of MegaMan, 0x08010118). The navi then uses the chip they
     // give instead (EXE5's 0x185, its variant 3 and no parameters, the rest
     // of the attack as prepared: its lockout is still the refused chip's).
+    // Where the rules' `chip_use.refused_keeps_chip` says so the attack's
+    // chip stays the refused one, and only the action is the other chip's
+    // (EXE4's 0x0800D5F6).
+    let keeps = b.game_rules().chip_use.refused_keeps_chip;
     let refuse = |b: &mut Battle, instead: ChipHandle| {
-        ai_mut(b, r).attack.chip = Some(instead);
+        if !keeps {
+            ai_mut(b, r).attack.chip = Some(instead);
+        }
         charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, Some(instead)))
     };
     if let Some(instead) = b.rules_chip_cost(side, r, e.chip) {

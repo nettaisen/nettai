@@ -91,6 +91,7 @@ return {
         gauge_full = asset.sound("test-sound-gauge-full"),
         low_hp = asset.sound("test-sound-low-hp"),
         cut_in = asset.sound("test-sound-cut-in"),
+        trap_mark = asset.sound("test-sound-trap-mark"),
         telop = asset.sound("test-sound-telop"),
         buster_charge = asset.sound("test-sound-buster-charge"),
         buster_charged = asset.sound("test-sound-buster-charged"),

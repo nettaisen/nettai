@@ -56,12 +56,15 @@ pub fn chip_version(id: u32) -> Option<&'static str> {
     }
 }
 
-/// Select a chip's actual version; common chips can use any supplied ROM.
+/// The ROM a chip's record is read from, and its chip records' address
+/// there: its own version's (a chip of both: the Falzar ROMs', then the
+/// Gregar ROMs'), the Japanese ROM before the US one (the pack has the
+/// Japanese games' pictures where the releases differ, `jp`).
 pub fn chip_source<'a>(roms: &crate::exe6::Roms<'a>, id: u32) -> (&'a Rom, u32) {
     let preferred = match chip_version(id) {
-        Some("gregar") => [roms.gregar, roms.gregar_jp, roms.gregar, roms.gregar_jp],
-        Some("falzar") => [roms.falzar, roms.falzar_jp, roms.falzar, roms.falzar_jp],
-        _ => [roms.falzar, roms.gregar, roms.falzar_jp, roms.gregar_jp],
+        Some("gregar") => [roms.gregar_jp, roms.gregar, roms.gregar_jp, roms.gregar],
+        Some("falzar") => [roms.falzar_jp, roms.falzar, roms.falzar_jp, roms.falzar],
+        _ => [roms.falzar_jp, roms.falzar, roms.gregar_jp, roms.gregar],
     };
     let rom = preferred
         .into_iter()

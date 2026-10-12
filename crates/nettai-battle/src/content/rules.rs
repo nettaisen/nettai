@@ -193,6 +193,14 @@ pub struct ChipUseRules {
     /// the Beast forms'); EXE5's (0x0800D9CC) and EXE4's (0x0800B72C) use
     /// any charged chip with its charge, Null or not.
     pub charged_null_alt_routine: bool,
+    /// A use the side's rules refuse (`chip_check`, `chip_cost`) keeps the
+    /// refused chip as the attack's chip and takes only the action of the
+    /// chip given instead (EXE4's 0x0800D5F6 sets action 0x20 and its
+    /// variant 4, nothing else: the other console still shows the refused
+    /// chip's name, 0x080EECF0, and what follows the use reads its record);
+    /// else the attack's chip is the chip given (EXE5's 0x080100F6 stores
+    /// its 0x185).
+    pub refused_keeps_chip: bool,
 }
 
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and

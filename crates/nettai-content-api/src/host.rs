@@ -381,6 +381,13 @@ pub enum RulesHook {
     /// part refuses a chip its MegaMan may not use: 0x08010118). The
     /// first part that answers decides.
     ChipCheck,
+    /// `cut_in_barred(side, navi, chip)`: while dimmed, the navi asks to
+    /// cut in on the other side's dimming with its next chip, a dimming
+    /// chip (`sub_8017AB4`), before anything of the chip's use is
+    /// prepared: true bars it, the request dropped and the chip left in
+    /// the hand (EXE4's 0x08010C64 and EXE5's 0x0801452E ask whether its
+    /// MegaMan may use the chip). Any part that answers true bars it.
+    CutInBarred,
     /// `chip_cost(side, navi, chip)`: earlier in a chip use's preparation,
     /// before the hand bonus's panel is spent (EXE5's 0x08010030: a dark
     /// chip's use, which may fizzle, and the chip's cost, 0x0802C934). It
@@ -598,6 +605,7 @@ impl RulesHook {
             RulesHook::Validate => "validate",
             RulesHook::NaviIntake => "navi_intake",
             RulesHook::ChipCheck => "chip_check",
+            RulesHook::CutInBarred => "cut_in_barred",
             RulesHook::ChipCost => "chip_cost",
             RulesHook::ChipSubstitute => "chip_substitute",
             RulesHook::ChipPrepared => "chip_prepared",
@@ -637,7 +645,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 48] = [
+    pub const ALL: [RulesHook; 49] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -649,6 +657,7 @@ impl RulesHook {
         RulesHook::FolderCheck,
         RulesHook::NaviIntake,
         RulesHook::ChipCheck,
+        RulesHook::CutInBarred,
         RulesHook::ChipCost,
         RulesHook::ChipSubstitute,
         RulesHook::ChipPrepared,

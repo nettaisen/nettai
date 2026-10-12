@@ -27,6 +27,7 @@ local roll: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi_chips.anti_recovery(navi.controller { id = "roll/controller", palette = 0, mood = 50 }.hook),
+    megaman = "light",
 }
 
 local roll_sp: Chip = {
@@ -42,6 +43,7 @@ local roll_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi_chips.anti_recovery(navi.controller { id = "roll-sp/controller", palette = 4, mood = 50 }.hook),
+    megaman = "light",
 }
 
 local roll_ds: Chip = {
@@ -56,6 +58,7 @@ local roll_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi_chips.anti_recovery(navi.controller { id = "roll-ds/controller", palette = 6, mood = 0 }.hook),
+    megaman = "dark",
 }
 
 return { roll = roll, ["roll-sp"] = roll_sp, ["roll-ds"] = roll_ds }

@@ -119,8 +119,8 @@ local roles: RolesSpec = {
         guard = asset.sound("guard"),
         -- HP recovered (the heal, 0x0800ABCA: 0x9A).
         recovery = asset.sound("heal"),
-        -- A trap springs (the trap's mark, 0x0800815C: 0x10D).
-        cut_in = asset.sound("dimming-sparkle"),
+        -- A trap springs (the trap's mark, 0x0800815C: 0x10D). (A cut-in's flash plays nothing, 0x08008BB6: no `cut_in`.)
+        trap_mark = asset.sound("dimming-sparkle"),
         -- A thrown obstacle (JunkMan's, the obstacles' throw request) lifted (0x08011616: 0xFA, ColorPt's points' rise)
         -- and flying (0x08011690: 0x146, the meteors' fall).
         obstacle_lift = asset.sound("point-rise"),
@@ -129,6 +129,9 @@ local roles: RolesSpec = {
     effects = {
         -- HP recovered (the heal, 0x0800ABCA: effect row 7, 0x080E16B4).
         recovery = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
+        -- The flash where a side cut in (0x08008BB6, from the cut-in, 0x08010CB0: effect row 0x22, 14-07's animation
+        -- 0, 120 pixels up at panel (2 + 3 x the other side, 4)).
+        cut_in_flash = new.effect { sprite = asset.sprite("hit-marker"), anim = 0, palette = 0 },
         -- A sprung trap's mark (0x0800815C: effect row 0x48, 14-05's animation 7): AntiNavi's over the turned chip.
         trap_mark = new.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 },
         -- What an obstacle encased in ice or a bubble flickers with (0x08011764: effect row 0x6E, the rock sheet's
