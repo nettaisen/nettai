@@ -72,9 +72,14 @@ fn reactive_chip(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80F0354`.
 fn decide(b: &mut Battle, r: ObjectRef) {
-    // Its console's chip window follows `sub_800A772`.
+    // Its console's chip window follows `sub_800A772`: shown on its own
+    // console, hidden as the game hides it (`hide_chip_window`).
     let side = b.objects.get(r).alliance as usize & 1;
-    b.chip_hud[side].window = super::input::chips_enabled(b, r);
+    if super::input::chips_enabled(b, r) {
+        b.chip_hud[side].window = true;
+    } else {
+        hide_chip_window(b, side);
+    }
     phase_timer(b, r);
     // A controlled form (EXE6's Beast Over): the side's rules' controller
     // decides (`sub_802D322`, the berserk).
@@ -252,7 +257,20 @@ fn phase_timer(b: &mut Battle, r: ObjectRef) {
 fn leave_idle(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status &= !status::CONTROLLABLE;
     let side = b.objects.get(r).alliance as usize & 1;
-    b.chip_hud[side].window = false;
+    hide_chip_window(b, side);
+}
+
+/// `sub_801DACC(0x40)` for a navi of `side`: its console's chip window
+/// goes, or every console's where the game's rules say
+/// (`window_hides_every_console`: EXE4's, which checks no side).
+pub(crate) fn hide_chip_window(b: &mut Battle, side: usize) {
+    if b.game_rules().chip_use.window_hides_every_console {
+        for hud in &mut b.chip_hud {
+            hud.window = false;
+        }
+    } else {
+        b.chip_hud[side & 1].window = false;
+    }
 }
 
 /// `sub_802E4E4`: the specials' requests start them: the SELECT special
@@ -387,7 +405,7 @@ pub(crate) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
 fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     // loc_80F05F2: its console's chip window goes, intercepted or not.
     let side = b.objects.get(r).alliance as usize & 1;
-    b.chip_hud[side].window = false;
+    hide_chip_window(b, side);
     if intercepted(b, r, chip) {
         exit_attack_state(b, r);
         return;

@@ -10,7 +10,9 @@ return {
     mixed_modifiers = false,
     -- Beat lets a dark Mega or Giga chip go (0x0800C86C tests its flag 0x20).
     beat_spares_dark = true,
-    -- A dimming's start hides the chip window (HUD task 0x10) on every console, whoever started it (0x08008BD8: no
-    -- check of the starter's side); the idle shows it again after.
-    dimming_hides_every_window = true,
+    -- What hides a navi's chip window (HUD task 0x10) hides it on every console, whichever navi it is (no check of
+    -- the side): the idle with its chips not enabled (0x080EEB72), an attack or a chip started (0x080EEBC4 on,
+    -- 0x080EED3E), a dimming's start (0x08008BD8). The other player's attack takes the window down until the
+    -- navi's own idle shows it again (0x080EEB6C, on its own console).
+    window_hides_every_console = true,
 }
