@@ -309,6 +309,7 @@ language = "en"
 "magnum" = { name = "Magnum", description = "Cursor\ndestroys\npanel!" }
 "bugcharg" = { name = "BugCharg", description = "EvilChip!\nGets powr\nwith turn" }
 "shotstar" = { name = "ShotStar", description = "Drop many\nmeteor on\nenmy area" }
+"bugchain" = { name = "BugChain", description = "Fires\nbugs into\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
