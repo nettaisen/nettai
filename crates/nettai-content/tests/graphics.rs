@@ -168,7 +168,7 @@ fn bundle() -> Bundle {
             judge_from_hold: true,
             chatbox_text: (0x3F, 0x6D),
             chatbox_arrows: [(0xE2, 0x8D), (0xE2, 0x8D)],
-            telop: Some(TelopLook { places: [(0, 32), (120, 32)], glyphs: tiles(2 * TelopLook::GLYPHS, 58), palette: palette(59) }),
+            telop: Some(TelopLook { places: [(0, 32), (120, 32)], glyphs: tiles(2 * TelopLook::GLYPHS, 58), palette: palette(59), tiles: Some(nettai_assets::TelopTiles { banner: 0x360, names: [0x360, 0x384], signs: 0x380, pause_loads_banner_palette: true }) }),
         },
         language: "en".into(),
         // Another language's lettering: its fonts and lines, one banner of
