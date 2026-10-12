@@ -185,13 +185,14 @@ local function offer_dark_chip(side: number)
     local low = navi.hp < bit32.rshift(navi.max_hp, 2)
     local folder = custom.folder(side)
     local first, taken = nil, nil
-    for place, chip in ipairs(folder) do
+    for place, entry in ipairs(folder) do
+        local chip = if entry then entry.chip else nil
         if chip and table.find(chip.flags or {}, "dark") then
             if taken == nil then
                 first, taken = place, place
             elseif low and chip.id == DRKRECOV then
                 taken = place
-            elseif low and (folder[taken] :: Chip).id == DRKRECOV then
+            elseif low and (folder[taken] :: FolderChip).chip.id == DRKRECOV then
                 -- (Kept, without a draw.)
             elseif bit32.band(battle.console_rng_positive(side), 1) ~= 0 then
                 taken = place
