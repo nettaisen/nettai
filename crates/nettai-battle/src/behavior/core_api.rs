@@ -3118,6 +3118,8 @@ impl CoreApi for Battle {
             ObstacleRequest::Remove => kinds::obstacle::remove(self, o),
             ObstacleRequest::Vanish => kinds::obstacle::vanish(self, o),
             ObstacleRequest::Absorb => kinds::obstacle::absorb(self, o, by),
+            ObstacleRequest::EncaseInIce => kinds::obstacle::encase(self, o, true),
+            ObstacleRequest::EncaseInBubble => kinds::obstacle::encase(self, o, false),
         }
     }
 

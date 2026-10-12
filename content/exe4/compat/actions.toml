@@ -28,6 +28,8 @@
 "heatside/action" = 0x1E
 "bubbler/action" = 0x1E
 "bub-v/action" = 0x1E
+"heatsprd/action" = 0x1E
+"bubsprd/action" = 0x1E
 "bublside/action" = 0x1E
 # The throws' (the chips' action 0x09, 0x080EB3FE).
 "ball/action" = 0x09
@@ -128,6 +130,9 @@
 "hicannon/action" = 0x0B
 "m-cannon/action" = 0x0B
 "drkcanon/action" = 0x0B
+"gigacan1/action" = 0x0B
+"gigacan2/action" = 0x0B
+"gigacan3/action" = 0x0B
 # AirShot (the chips' action 0x23, 0x080ECB74).
 "airshot/action" = 0x23
 # The cracks (the chips' action 0x21, 0x080ECA14).

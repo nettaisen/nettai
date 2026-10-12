@@ -64,6 +64,12 @@ function cards.all_guard(): PatchCardEffect
     return effect { kind = "all_guard" }
 end
 
+-- Rush, Beat and Tango, all three (+0x18 = 7, the supports' bits: Triple Supporter's pair; the NaviCust's programs
+-- set one, ../navicust).
+function cards.all_supports(): PatchCardEffect
+    return effect { kind = "all_supports" }
+end
+
 -- MegaMan's color (+0x27: the rules' stat `color`, which his palette reads).
 function cards.color(n: number): PatchCardEffect
     return effect { kind = "color", amount = n }
@@ -74,10 +80,10 @@ function cards.panel_trail(panel: number): PatchCardEffect
     return effect { kind = "panel_trail", amount = panel }
 end
 
--- A pair's half (Charge FullCustom's, 103 and 104; Triple Supporter's and All Guard's): `effects` apply only while
--- the card `card` (its key), the other half, sits in slot `slot` (the slots, the toolkit's +0x70) and the stat the
--- first sets doesn't hold its value yet (0x08042758: each half's handler tests both, so of the two halves the one
--- that runs first does it all, its bugs and custom changes too).
+-- A pair's half (Triple Supporter's, 74 and 75; All Guard's, 76 and 77; Charge FullCustom's, 103 and 104): `effects`
+-- apply only while the card `card` (its key), the other half, sits in slot `slot` (the slots, the toolkit's +0x70)
+-- and the stat the first sets doesn't hold its value yet (0x08042758: each half's handler tests both, so of the two
+-- halves the one that runs first does it all, its bugs and custom changes too).
 function cards.pair(slot: number, card: string, effects: { PatchCardEffect }): PatchCardEffect
     return effect { kind = "pair", pair = { slot = slot, card = card, effects = effects } }
 end
@@ -88,6 +94,8 @@ function cards.holds(stats: Navi, e: PatchCardEffect): boolean
         return stats.charge_shot_weapon == e.weapon
     elseif e.kind == "all_guard" then
         return stats.all_guard == true
+    elseif e.kind == "all_supports" then
+        return stats.rush == true and stats.beat == true and stats.tango == true
     end
     error(string.format("patch card effect %q: no pair tests it", tostring(e.kind)))
 end
@@ -128,6 +136,8 @@ function cards.apply(stats: Navi, e: PatchCardEffect, work: PatchCardWork, count
         stats.full_synchro_start = true
     elseif k == "all_guard" then
         stats.all_guard = true
+    elseif k == "all_supports" then
+        stats.rush, stats.beat, stats.tango, stats.support_bug = true, true, true, false
     elseif k == "color" then
         stats.color = n
     elseif k == "panel_trail" then
