@@ -40,6 +40,7 @@ aquaman = "08-0b"  # navi 11's sprite (0x0800B90A: 0x08017F98's entry 11; its wi
 woodman = "08-0c"  # navi 12's sprite (0x0800B90A: 0x08017F98's entry 12; its win banner by 0x08008524)
 kendoman = "08-0d"  # KendoMan: his init (0x080C8640), his afterimages (0x080C20DC), his sword (attachment row 0x2D, 0x080CD524); navi 13's sprite in 0x08017F98, whose win banner is NormalNavi's
 coldman = "08-0e"  # ColdMan: his init (0x080CC09C)
+megaman-ds = "08-0f"  # the dark soul's image (0x080E37D8: category 8 by the soul, 15): MegaMan DS
 shademan = "08-10"  # ShadeMan: his init (0x080BADC2), his crush's (attack 0x34's, 0x080D3774)
 topman = "08-12"  # TopMan: his init (0x080B8572), his tops' (attack 0x29's, 0x080D1E14)
 sparkman = "08-13"  # SparkMan: his init (0x080B8A12), his sparks' (attack 0x22's, 0x080D1128)
