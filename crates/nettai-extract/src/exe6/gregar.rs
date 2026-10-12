@@ -16,6 +16,8 @@
 //!   either console, marked with that version (`chip_version`).
 //! - What a console shows of its own version on the custom screen (the
 //!   custom screen's versioned pictures, `custom::version_pictures`).
+//! - The Cybeasts' sprites (`SPRITES`): a ROM has its own version's and a
+//!   placeholder archive in the other's slot.
 
 use crate::exe6::{Roms, Source, Version};
 
@@ -40,6 +42,12 @@ pub const OWN_FACES: std::ops::RangeInclusive<u32> = 5..=0x16;
 /// numbers Gregar's after the Falzar ROMs' six.
 pub const OWN_NAVI_FACES: u32 = 5;
 
+/// The sprite slots (category's byte offset, index) only one version's
+/// ROMs fill, the other's holding the placeholder archive there (the one
+/// the US ROMs have in `jp::SPRITES`' slots): the Cybeasts, Gregar and
+/// Falzar. The pack has each from a ROM of its version.
+pub const SPRITES: [((u8, u8), Version); 2] = [((0x08, 0x14), Version::Gregar), ((0x08, 0x15), Version::Falzar)];
+
 /// The version chip `id` belongs to, whose ROMs alone have its picture
 /// and icon (the library flag of its record, +0x09's 0x40, is set there);
 /// none for a chip of both.
@@ -53,14 +61,17 @@ pub fn chip_version(id: u32) -> Option<Version> {
     }
 }
 
-/// The ROM chip `id`'s record is read from: one of its own version (a
-/// chip of both: any), the US ROM before the Japanese one (the pack has
-/// the US games' art where the releases differ; the Japanese ROMs'
-/// pictures of the chips the US ROMs have none of are
-/// `jp::CHIP_PICTURES`).
+/// The ROM chip `id`'s record is read from: one of its own version, the
+/// US ROM before the Japanese one (the pack has the US games' art where
+/// the releases differ; the Japanese ROMs' pictures of the chips the US
+/// ROMs have none of are `jp::CHIP_PICTURES`). A chip of both is the same
+/// in every ROM but for two records, which each version's ROMs have their
+/// own of (the BeastOut chip's picture, which is the version's Beast Out
+/// button's, and the Falzar chip's icon): the pack has the Falzar ROMs',
+/// its base version's, so a Falzar ROM is read where one is given.
 pub fn chip_source<'a>(roms: &Roms<'a>, id: u32) -> Source<'a> {
     match chip_version(id) {
         Some(version) => roms.of(version),
-        None => roms.any(),
+        None => roms.preferring(Version::Falzar),
     }
 }

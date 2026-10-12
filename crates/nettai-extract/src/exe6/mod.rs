@@ -67,6 +67,14 @@ impl<'a> Roms<'a> {
         }
     }
 
+    /// A ROM of `version` if one is there, any otherwise: for what the two
+    /// versions' ROMs have otherwise at the same place and the pack has one
+    /// of.
+    pub fn preferring(&self, version: Version) -> Source<'a> {
+        let own = self.of(version);
+        if own.is_present() { own } else { self.any() }
+    }
+
     /// The US ROM of `version`: the version's own English words.
     pub fn us_of(&self, version: Version) -> Source<'a> {
         match version {

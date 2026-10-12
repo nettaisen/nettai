@@ -64,13 +64,14 @@ fn sprites(roms: &Roms, names: &nettai_content::names::AssetNames) -> Vec<Sprite
     // for the six the US ROMs have a placeholder for (`jp::SPRITES`, the
     // Japanese ROMs' whichever this is) and the flames HeatMan wears
     // (10-19), whose throw (animation 6) has three frames of 5, 4 and 3
-    // ticks in the US ROMs and four of 3 in the Japanese ones.
+    // ticks in the US ROMs and four of 3 in the Japanese ones. And the
+    // versions' sheets are the same but for the two slots each has a
+    // placeholder in for the other's (`gregar::SPRITES`).
     let src = roms.any();
     if !src.is_present() {
         return out;
     }
     let (rom, list) = (src.rom, src.at(SPRITE_LIST));
-    let jp = roms.jp();
     let cats: Vec<u32> = (0..10).map(|i| u32at(rom, list + 4 * i)).collect();
     for (ci, &c) in cats.iter().enumerate().take(BATTLE_CATEGORIES as usize) {
         let next = cats
@@ -81,16 +82,19 @@ fn sprites(roms: &Roms, names: &nettai_content::names::AssetNames) -> Vec<Sprite
             .unwrap_or(c + 0x400);
         for idx in 0..((next - c) / 4).min(256) {
             let (category, index) = ((ci * 4) as u8, idx as u8);
-            let (source, p) = if crate::exe6::jp::SPRITES.contains(&(category, index)) {
-                if !jp.is_present() {
-                    continue;
-                }
-                let rom = jp.rom;
-                (rom, u32at(rom, u32at(rom, jp.at(SPRITE_LIST) + category as u32) + 4 * idx))
+            let slot = (category, index);
+            let own = if crate::exe6::jp::SPRITES.contains(&slot) {
+                roms.jp()
+            } else if let Some(&(_, version)) = crate::exe6::gregar::SPRITES.iter().find(|(s, _)| *s == slot) {
+                roms.of(version)
             } else {
-                (rom, u32at(rom, c + 4 * idx))
+                src
             };
-            let Some(data) = archive(source, p) else {
+            if !own.is_present() {
+                continue;
+            }
+            let p = u32at(own.rom, u32at(own.rom, own.at(SPRITE_LIST) + category as u32) + 4 * idx);
+            let Some(data) = archive(own.rom, p) else {
                 continue;
             };
             if let Some(s) = sprite_sheet(&data, category, index) {
