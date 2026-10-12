@@ -1393,7 +1393,10 @@ fn while_dimmed(b: &mut Battle, r: ObjectRef) {
         if can_cut_in(b, r) && freezes && !b.rules_cut_in_barred(side, r, chip) {
             cut_in(b, r);
         }
-        ai_mut(b, r).requests &= !(request::CUT_IN | request::CHARGED_CHIP | request::CHIP);
+        // The ask goes, with what the rules clear beside it (EXE6's and
+        // EXE5's the chip requests, EXE4's nothing: `request_clears`).
+        let clears = b.game_rules().request_clears.cut_in.0;
+        ai_mut(b, r).requests &= !(request::CUT_IN | clears);
     }
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {

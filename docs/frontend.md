@@ -547,9 +547,12 @@ chips flying) take the same priority, 1 and 0.
   sprite past the tile cap or the slots isn't drawn (a battle's: 0x2FF and
   10; docs/design/exe4-map.md §18 item 62). `--objects` lists what each
   frame took and left out;
-- order: parts go into depth buckets (ground y + 0x40) and come out
-  deepest first, most recent first, so later and lower objects are in
-  front; at most 128 parts;
+- order: parts go into depth buckets (ground y + 0x40; in a game whose
+  rules say so, `effects.sprite_depth`, further by the sprite's priority:
+  EXE4's, whose buckets so run out two rows above the screen's bottom)
+  and come out deepest first, most recent first, so later and lower
+  objects are in front; at most 128 parts; a part past the last bucket
+  isn't drawn;
 - white flash, alpha and mosaic (sampled as mGBA does);
 - an effect the game spawns without a position (the second explosion of a
   deletion: its X and Y are memory addresses, far off the screen) isn't
@@ -1047,8 +1050,8 @@ them).
   differ** (the user's: "nettai should not have any region specific code").
   The pack has the Japanese ROMs' art where the US ROMs have a placeholder
   (six sprites, fifteen chips' pictures: asset-formats.md §4) or differ
-  (a pixel or two of BassAnly's icon and Gregar's Beast Out picture;
-  EXE5's background 0x05), the content
+  (a pixel or two of BassAnly's icon and Gregar's Beast Out picture; the
+  flames HeatMan wears, in his throw; EXE5's background 0x05), the content
   draws Otenko's statue and CrosOver's gun with the Japanese games' sprites
   (0C-49, 0C-0F) where the US games draw others, and EXE6's custom screen
   starts the chip window as it closes (`HudState`), on every
@@ -1062,8 +1065,9 @@ them).
   knows a console's region or which of these it shows: the verification's
   frame comparison does (its table, consoles.tsv, by game, region and
   version), and asks the headless frontend to mark where it draws those
-  things (`--mark sprite:NAME,background:NAME,chip:KEY,button:NAME,
-  chip-icon:KEY,chip-description:KEY,chip-window-at-close`; `marks.tsv`
+  things (`--mark sprite:NAME,sprite:NAME:ANIM,background:NAME,chip:KEY,
+  button:NAME,chip-icon:KEY,chip-description:KEY,chip-window-at-close`;
+  `marks.tsv`
   beside the frames: frame, rectangle,
   what), which it counts as known on that console's recordings, with the
   table's margin around each (a sprite's 48 pixels: the US's sprite there
