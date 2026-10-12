@@ -1,0 +1,17 @@
+# Japanese: Training (ui/screens/training.slint).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ja\n"
+
+msgid "YOU"
+msgstr "あなた"
+
+msgid "DUMMY"
+msgstr "ダミー"
+
+msgid "RESUME"
+msgstr "再開"
+
+msgid "QUIT TO MENU"
+msgstr "メニューにもどる"

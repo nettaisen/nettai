@@ -132,7 +132,10 @@ pub trait Screen {
     /// A dialog this screen asked (`Shell::ask`, by its `tag`) was answered with its button `choice`.
     fn answered(&mut self, _shell: &mut Shell, _tag: &str, _choice: usize) {}
 
-    /// A battle this screen started: it began, its menu was asked for, it ended.
+    /// A file was dropped on the window while this screen showed.
+    fn dropped(&mut self, _shell: &mut Shell, _path: &std::path::Path) {}
+
+    /// A battle this screen started: it began, it ended.
     fn battle(&mut self, _shell: &mut Shell, _event: BattleEvent) {}
 
     /// Every frame, shown or not (a lobby's link is polled while another screen shows).
