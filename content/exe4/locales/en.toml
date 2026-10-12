@@ -338,6 +338,9 @@ language = "en"
 "pdriver" = { name = "P.Driver", description = "A sun\ngenerator\nfries all" }
 "poltrgst" = { name = "Poltrgst", description = "" }
 "darkneo" = { name = "DarkNeo", description = "Fuses the\npowr into\ndarkness!" }
+"redsun" = { name = "RedSun", description = "A RedSun\nbombards\n3 ahead" }
+"bluemoon" = { name = "BlueMoon", description = "Blue moon\ndrains\n3 ahead" }
+"holydrem" = { name = "HolyDrem", description = "Holy shot\nsucks in\nHolyPanl!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
@@ -536,4 +539,16 @@ language = "en"
 "118-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
+"121-roll-soul" = { name = "Roll Soul" }
+"122-guts-soul" = { name = "Guts Soul" }
+"123-wind-soul" = { name = "Wind Soul" }
+"124-search-soul" = { name = "Search Soul" }
+"125-fire-soul" = { name = "Fire Soul" }
+"126-thunder-soul" = { name = "Thunder Soul" }
+"127-proto-soul" = { name = "Proto Soul" }
+"128-number-soul" = { name = "Number Soul" }
+"129-metal-soul" = { name = "Metal Soul" }
+"130-junk-soul" = { name = "Junk Soul" }
+"131-aqua-soul" = { name = "Aqua Soul" }
+"132-wood-soul" = { name = "Wood Soul" }
 "133-weapon-change" = { name = "Weapon Change" }

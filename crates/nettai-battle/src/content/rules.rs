@@ -219,11 +219,11 @@ pub struct EffectsRules {
     /// are among. Presentation: the renderer's (`Stage::new`'s `flashed`);
     /// the simulation reads none of it.
     pub palette_flash_order: PaletteFlashOrder,
-    /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
-    /// spawner) run while the battle is paused: EXE6's spawners set their
-    /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
-    /// its lab records without it) don't.
-    pub overlays_run_while_paused: bool,
+    /// An afterimage (`sub_80E33FA`) runs while the battle is paused: EXE6's
+    /// spawner sets its header flag 0x04; EXE5's (0x080E35F4) and EXE4's
+    /// (0x080E5020) don't. (A form overlay's is its own rule,
+    /// `form_overlay.run_while_paused`.)
+    pub afterimages_run_while_paused: bool,
     /// How a form overlay (actor object #0x57, `kinds::form_overlay`)
     /// starts and follows its owner.
     pub form_overlay: FormOverlayRules,
@@ -304,6 +304,36 @@ pub struct EffectsRules {
     /// The order the objects of a pool are drawn in. Presentation: the
     /// renderer's.
     pub draw_order: DrawOrder,
+    /// What a frame's sprite draw has room for. Presentation: the
+    /// renderer's.
+    pub sprite_budget: SpriteBudgetRules,
+}
+
+/// A frame's sprite budget (the effects section's `sprite_budget`). The
+/// sprite draw hands each drawn object's sprite, in draw order, the VRAM
+/// tiles of its frame and a palette slot (EXE6's `sub_3006028`, EXE5's
+/// 0x03006190; EXE4's 0x03005C00), and a sprite the frame has no room
+/// left for isn't drawn (its flag 0x10, which the part list's builder
+/// skips, `sub_3006440`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpriteBudgetRules {
+    /// The tile cap. A frame's allocator starts at 1 (`sub_80027B4`), and
+    /// a sprite whose frame no sprite before it reserved this frame is left
+    /// out when the allocator less 0x30 plus its frame's tiles reaches the
+    /// cap (`sub_3006404`): a battle's 0x2FF (EXE6's `sub_80027D4`, EXE5's
+    /// 0x08002740; EXE4's 0x03005FD4 in mode 8, the battle's).
+    pub tiles: u16,
+    /// The palette slots. A sprite's palette shares the slot of an equal
+    /// one or takes a new one, and the sprite is left out when they are all
+    /// taken (`sub_3006428`): a battle's 10 (the same presets; EXE4's
+    /// 0x03006010 in mode 8).
+    pub palettes: u8,
+    /// The slots in battle mode 1: EXE6's and EXE5's 8 (`sub_80027E4`,
+    /// 0x08002750, picked by `GetBattleMode` at `sub_8007224`'s place);
+    /// none: the same as any battle's (EXE4's).
+    #[serde(default)]
+    pub palettes_in_battle_mode_1: Option<u8>,
 }
 
 /// The order a pool's objects are drawn in, each pool in turn (actors,
@@ -614,6 +644,12 @@ pub struct FormOverlayRules {
     /// While it waits for the navis it steps its sprite as it would
     /// following (EXE4's 0x080CC4D4); else its sprite holds.
     pub waiting_steps: bool,
+    /// Its spawner sets its header flag 0x04, so it runs while the battle
+    /// is paused from its first update: EXE6's (`sub_80C4530`'s spawner)
+    /// and EXE4's (0x080CC60C; its init then keeps the flag only outside
+    /// the fight, `start`); EXE5's, whose flags its lab records without it,
+    /// doesn't.
+    pub run_while_paused: bool,
 }
 
 /// How a form overlay starts following its owner.

@@ -468,8 +468,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         damage_word = { damage = 0x7FF, flags = { { bit = 0x4000, status = "damage_word_paralysis", hit_modifier = 0, stop = true }, { bit = 0x800, bug = 0x1118 } } },
         palette_flash = "mode_runs_through_pause",
         palette_flash_order = "after_fades",
-        overlays_run_while_paused = true,
-        form_overlay = { start = "after_navis_in", reloads_animation = true, palette_each_tick = true, facing_each_tick = true, waiting_steps = false },
+        afterimages_run_while_paused = true,
+        form_overlay = { start = "after_navis_in", reloads_animation = true, palette_each_tick = true, facing_each_tick = true, waiting_steps = false, run_while_paused = true },
         afterimages_wear_overlays = true,
         load_sets_part_palette = true,
         dimmed_update_steps_on_load = true,
@@ -488,7 +488,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         bug_flicker = true,
         panel_trail = "by_chance",
         status_visual = { place = "attach_point" },
-        draw_order = "update_list","#,
+        draw_order = "update_list",
+        sprite_budget = { tiles = 0x2FF, palettes = 10 },"#,
             ),
             (
                 "flow",
@@ -677,7 +678,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 121, "every field of every section");
+        assert_eq!(fields, 122, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

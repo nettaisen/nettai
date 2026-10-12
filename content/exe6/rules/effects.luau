@@ -27,9 +27,9 @@ return {
     -- Presentation: its flash is a palette transform in slot 20 (`sub_80E10C0`), after the fade system's first record's
     -- (slots 18 and 19: a dimming's), so its white stands over a dimming.
     palette_flash_order = "after_fades",
-    -- Its afterimages (`sub_80E33FA`) and form overlays (`sub_80C4530`'s spawner) run while the battle is paused
-    -- (their header flag 0x04).
-    overlays_run_while_paused = true,
+    -- Its afterimages (`sub_80E33FA`) run while the battle is paused (their header flag 0x04), and its form overlays
+    -- (`sub_80C4530`'s spawner: the form overlay's `run_while_paused`).
+    afterimages_run_while_paused = true,
     -- A form overlay (`sub_80C4530`) waits for every navi to be in, then follows (`sub_80C461C`); each tick it
     -- restarts its sprite on its owner's animation, and takes its palette and its owner's facing (`sub_80C458C`).
     form_overlay = {
@@ -38,6 +38,7 @@ return {
         palette_each_tick = true,
         facing_each_tick = true,
         waiting_steps = false,
+        run_while_paused = true,
     },
     -- An afterimage that copies its owner (`sub_80E32D8`) takes its NameID and wears what that record's init hook
     -- puts on (a Cross's or a Beast's overlay), taken off as it goes.
@@ -98,4 +99,9 @@ return {
     status_visual = { place = "attach_point" },
     -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
     draw_order = "update_list",
+    -- What a frame's sprite draw has room for (`sub_3006028`, each drawn object's sprite in draw order): tiles under
+    -- the cap (`sub_3006404`: the allocator, 1 as a frame starts, less 0x30 plus the frame's tiles) and a palette slot
+    -- (`sub_3006428`), a sprite past either left out. A battle sets 10 slots and 0x2FF (`sub_80027D4`), battle mode 1
+    -- 8 slots (`sub_80027E4`; `sub_8007224`'s place picks by `GetBattleMode`).
+    sprite_budget = { tiles = 0x2FF, palettes = 10, palettes_in_battle_mode_1 = 8 },
 }

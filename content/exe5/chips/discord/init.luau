@@ -9,12 +9,14 @@ local collision = require("../rules/collision")
 local effects = require("@exelib/instruments/effects")
 local exe5_instrument = require("../lib/instruments/instrument")
 local instrument = require("@exelib/instruments/instrument")
+local regions = require("@exelib/regions")
 local statuses = require("../rules/status")
 
 local SPRITE = exe5_instrument.sprite
 
--- Confusion (status 0x23: 4 ticks) on the other navi's panel, learning nothing.
-local EFFECT = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing)
+-- Confusion (status 0x23: 4 ticks) over the other side's area (0x080D547C: regions 0x82 and 0x81, where EXE6's is the
+-- other navi's panel), learning nothing.
+local EFFECT = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing, regions.other_area)
 
 local chip: Chip = {
     codes = { "B", "J", "Q", "*" },

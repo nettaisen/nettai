@@ -13,6 +13,7 @@ local navicust = require("@self/navicust")
 local navicust_bugs = require("@self/navicust/bugs")
 local save = require("@self/save")
 local souls = require("@self/souls")
+local soul_turns = require("@self/souls/turns")
 
 -- What a side keeps through a round: the dark chips' (./dark_chips), Double Soul's (./souls) and its NaviCust bugs'
 -- counts (./navicust).
@@ -62,6 +63,12 @@ local rules: Rules = {
         sun = "bool",
         -- MegaMan's light/dark value (NaviStats +0x36): ./light_dark.
         karma = "u16",
+        -- Their wins less their losses in link battles against the rival game's players, -100 to 100 (the save's
+        -- signed halfword at 0x21D6, the game state's struct the toolkit's +0x44 points at, its +0x22: the status
+        -- screen's "VS BM Battles: +100 W", 0x0803A978; such a battle's win adds 1 and its loss takes 1, 0x0803AB90),
+        -- which each side's link record carries (+0xB6), the battle keeps at 0x0203BE72 + 8 a side and RedSun's and
+        -- BlueMoon's damage reads (./sun_and_moon).
+        rival_wins = "i16",
         -- Their NaviCust (./navicust): the programs placed on its 5x5 board (the engine's 7x7 grid's middle) in its
         -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
         -- `rotation` quarters clockwise, compressed or not.
@@ -94,6 +101,8 @@ local rules: Rules = {
         reg_up = save.MAX_REG_UP,
         sun = true,
         karma = 500,
+        -- (Tango's twelve netplay saves hold 100, the most the damage counts.)
+        rival_wins = 100,
         souls = {
             "rollsoul",
             "gutssoul",
@@ -131,6 +140,7 @@ local rules: Rules = {
             },
             chip = "chip",
             image = "record:soul-image",
+            hand = "record:soul-hand",
         },
     },
     -- Its own actions, which reach its state: the souls' changes and the revert (./souls).
@@ -158,8 +168,16 @@ local rules: Rules = {
             save.round_setup(side)
             navicust.run(side)
         end,
+        -- A navi that starts the round in a soul (a soul patch card's, ./patch_cards): its turns are never counted
+        -- (./souls/turns: the navi's init, 0x08010828).
+        round_start = function(side: number)
+            soul_turns.round_start(battle.navi(side).form)
+        end,
         -- As each hand is installed, its dark chips' costs (./dark_chips).
-        custom_result = dark_chips.custom_result,
+        custom_result = function(side: number)
+            dark_chips.custom_result(side)
+            souls.custom.installed(side)
+        end,
         -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, WoodSoul's heal on
         -- grass (./souls, 0x08012FB6), the holy panel a dark one clears and the hole a navi that isn't dark closes;
         -- then Double Soul's change or revert asked for (./souls, 0x0800B658).
