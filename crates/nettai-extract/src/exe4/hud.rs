@@ -90,6 +90,19 @@ const TEXTS: u32 = 0x0874_91CC;
 /// 0x030027A0, sprite palette 11). 41 banners: EXE6's first fifteen in
 /// EXE6's places, then EXE4's navis' wins and deletions.
 pub(crate) const BANNER_COUNT: u32 = 41;
+/// The banners that aren't plain, as the US ROMs' records have them (the
+/// kind, the place, a kind-1 banner's number's place), for a HUD of
+/// placeholders (`placeholders::banners`): the turn's and the round's
+/// numbered banners, the Program Advance's two that hold, and the judge's
+/// (`JUDGE_KIND`). EXE4's telops aren't banners' (`TELOP_PLACES`).
+pub(crate) const BANNER_RECORDS: [crate::placeholders::BannerRecord; 6] = [
+    (0x0C / 4, 1, (48, 64), Some((104, 64))),
+    (0x20 / 4, 1, (68, 64), Some((140, 64))),
+    (0x24 / 4, 2, (16, 24), None),
+    (0x28 / 4, 4, (40, 16), None),
+    (0x30 / 4, 1, (40, 64), Some((112, 64))),
+    (0x34 / 4, 2, (136, 24), None),
+];
 /// "BUSY..." (7x2 tiles, `Addresses::waiting`: 0x080166F0's list,
 /// 0x08016710, to tile 0xAC, with the banners' palette as background
 /// palette 10), drawn by 0x08015624 at column 22, row 4 while the other
