@@ -239,7 +239,7 @@ export global Errors {
             return @tr("This is an {} replay. Pick {} to watch it.", detail, detail);
         }
         if kind == ErrorKind.no-ffmpeg {
-            return @tr("ffmpeg wasn't found. Install it to export video.");
+            return @tr("Video export needs ffmpeg. Install it, then try again.");
         }
         if kind == ErrorKind.cant-write-video {
             return @tr("The video's file couldn't be written. Check the folder and the space left.");
@@ -312,7 +312,7 @@ export global Errors {
             return @tr("This is an {} replay", detail);
         }
         if kind == ErrorKind.no-ffmpeg {
-            return @tr("ffmpeg wasn't found");
+            return @tr("Video export needs ffmpeg");
         }
         if kind == ErrorKind.cant-write-video {
             return @tr("The video's file couldn't be written");
@@ -384,7 +384,7 @@ export global Errors {
             return @tr("Pick {} to watch it.", detail);
         }
         if kind == ErrorKind.no-ffmpeg {
-            return @tr("Install it to export video.");
+            return @tr("Install it, then try again.");
         }
         if kind == ErrorKind.cant-write-video {
             return @tr("Check the folder and the space left.");

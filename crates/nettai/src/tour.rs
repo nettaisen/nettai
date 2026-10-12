@@ -41,6 +41,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+mod replays;
+
 /// How long a step is given to be drawn before the next: a few frames.
 const SETTLE: u64 = 260;
 
@@ -218,6 +220,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
+    // (`NETTAI_TOUR_ONLY=replays`: that screen's steps alone.)
+    if std::env::var("NETTAI_TOUR_ONLY").as_deref() == Ok("replays") {
+        return replays::walk(&mut add, lang, size);
+    }
 
     // Loading, as the app starts.
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = Some(0.62)));
@@ -241,8 +247,8 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.nav.show_cursor(false, false)));
     shot(&mut add, "menu-pointer", Pair::None);
 
-    // The four screens to be built.
-    for (name, to) in [("play", ScreenId::Play), ("training", ScreenId::Training), ("builds", ScreenId::Builds), ("replays", ScreenId::Replays)] {
+    // The screens to be built.
+    for (name, to) in [("play", ScreenId::Play), ("training", ScreenId::Training), ("builds", ScreenId::Builds)] {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
@@ -329,6 +335,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             app.go_now(ScreenId::Menu);
         }),
     );
+    replays::walk(&mut add, lang, size);
 }
 
 /// The motion probe's steps: at the desktop's size, in English.
