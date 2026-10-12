@@ -56,6 +56,16 @@ function soul.chip_charge(id: string, ticks: { number }): Weapon
     return new.weapon { id = id, charge_ticks = ticks, charged_chip = "bonus" }
 end
 
+-- What a soul does to a hand OK builds in it (the custom screen keeps the navi's soul as it opens, 0x0801DC82: its
+-- +0x0F, which the build reads, 0x0801F1B0 and 0x0801F1E2), its form's `hand`: `built(side)` on the hand as it is
+-- installed, its cursor at its first chip and no charge bonus on it yet (rules/souls/custom's `installed`). The
+-- status reset's part, at the change, is the form's `reset`.
+export type SoulHand = { built: (side: number) -> () }
+
+function soul.hand(built: (side: number) -> ()): SoulHand
+    return new.record("soul-hand", { built = built })
+end
+
 -- What a soul wears (0x0800B7E8: 0x08018068 by the soul, FireSoul's and NumberSoul's; its form's `put_on` and
 -- `take_off`): a form overlay (actor 0x57) of `sprite` in the wearer's second related slot (the original's AIData
 -- +0x48), stepping as any object; on a copy of the navi (PopUp's glow, 0x0800B812) stepping on through the dimming
