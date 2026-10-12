@@ -2068,6 +2068,11 @@ export type RulesSpec = {
         -- up, of what the rules alone know (not the simulation): what gives
         -- the navi its abilities, and its bugs.
         overview: ((side: number) -> SetupOverview?)?,
+        -- A tool asks what is wrong with side `side`'s setup as a player's
+        -- build (not the simulation), beside what `validate` says of any
+        -- setup: what a round would play and no save made by play holds.
+        -- Problems as `validate`'s. Nothing: none.
+        build_check: ((side: number) -> { SetupProblem }?)?,
         -- A tool asks what is wrong with side `side`'s setup (not the
         -- simulation), once the round is set up: each problem with its kind,
         -- its sentence, the setup field it is of and the entry of a list
@@ -2719,7 +2724,9 @@ export type Status = StatusDef
 -- - of any field: `range` (it is `value`, and may be `least` to `most`); `not_taken` (the side's navi takes none);
 --   `missing` (the side's navi must state one); `twice` (an entry there twice, or a place taken twice); `budget` (a
 --   list's entries cost `used` together, `limit` at most: the patch cards' MB); `off_board` (a piece not on its
---   board); `overlap` (a piece over the piece at entry `other`, from 1); `invalid` (anything else no save holds).
+--   board); `overlap` (a piece over the piece at entry `other`, from 1); `slot` (the entry `def`, of one of the
+--   game's collections, sits in slot `value` and belongs in slot `own`, both from 0: a build's alone, the rules'
+--   `build_check`); `invalid` (anything else no save holds).
 export type SetupProblem = {
     kind: string,
     text: string,
@@ -2733,6 +2740,8 @@ export type SetupProblem = {
     least: number?,
     most: number?,
     other: number?,
+    def: any?,
+    own: number?,
 }
 
 -- A folder a tool asks the rules of (`battle.checked_folder`); `offered`: the chips a `folder_view` is asked whether
@@ -2766,12 +2775,14 @@ export type FolderView = {
 -- What a side's setup comes to, of what the rules alone know (the rules' `overview`): what gives the navi its
 -- abilities, each the entry of one of the game's collections that does (a NaviCust program at work, a patch card) and,
 -- where the entry lists its effects, which of them (`effect`, a place in its `effects`, from 1); and the navi's bugs,
--- each by its name in the game's locales' `bugs` table and its level, or as an entry's effect (a patch card's line);
+-- each by its name in the game's locales' `bugs` table and its level, or as an entry's effect (a patch card's line;
+-- `card` is the rules' own note of the kind of card effect that writes the stat a named bug writes, which a tool
+-- reads nothing of);
 -- and each list of the setup whose entries cost against a budget (the patch cards' MB): its setup field, the field of
 -- its entries' data that is an entry's cost, what the list's entries cost together and the most they may, and
 -- whether an entry goes into it once.
 export type SetupSource = { entry: any, effect: number? }
-export type SetupBug = { name: string?, level: number?, entry: any?, effect: number? }
+export type SetupBug = { name: string?, level: number?, entry: any?, effect: number?, card: string? }
 export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean }
 export type SetupOverview = {
     abilities: { SetupSource },

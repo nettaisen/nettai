@@ -89,38 +89,84 @@ function apply.check(installed: { PatchCard }, mb: number, problem: (p: SetupPro
     end
 end
 
+-- The kinds of effect that add to the stat they write where the others set it (each game's copy: the HP drain in the
+-- fight and the custom screen's, `min(stat + n, 7)`, or 0 for an effect of 0).
+local ADDS: { [string]: boolean } = { hp_drain = true, custom_hp_drain = true }
+
+-- Whether a bug effect is its bug's fix: it writes the value that is no bug (a trail or a hit status of none; no
+-- blank and no charged shot; any other, 0).
+local function clears(e: PatchCardEffect): boolean
+    local any = e :: any
+    if e.kind == "panel_trail" then
+        return any.trail == "none"
+    elseif e.kind == "hit_status" then
+        return any.status == "none"
+    elseif e.kind == "buster_blanks" then
+        return any.blanks == 0 and any.charged == 0
+    end
+    return (e.amount or 0) == 0
+end
+
 -- A game's `overview`'s part: of the cards `installed`, into `out`, what its card screen lists under their abilities
 -- (an effect's `group`), each as its card's effect: the bugs (an effect the card shows as one), and the abilities,
 -- the rest. Of two cards' effects of one kind the later is listed, as its write is the one that holds. And the list
 -- itself: its cards' MB together against the most a list holds (`mb`), a card once.
-function apply.overview(installed: { PatchCard }, mb: number, out: SetupOverview)
+--
+-- The cards' effects are listed only where the cards apply (`applies`: the navi that changes form, as each game's
+-- `apply` has it), and their bug effects (`bug_kinds`, the game's bug slots) only where no card's BugStop holds them
+-- back (the copy's `bug_stop`). Where they are, a card's effect of a kind takes the place of the NaviCust's bug that
+-- writes the same stat (a bug of `out.bugs` with that `card` kind, which the NaviCust's part listed before): the copy
+-- sets the stat to the card's value, so the bug the NaviCust brought is gone from the stats, whether the card's
+-- effect is the bug again (listed as the card's) or its fix (nothing listed: a fix is no ability). An HP drain adds
+-- instead (`ADDS`): one of 0 clears the NaviCust's, and any other leaves it and is listed beside it.
+function apply.overview(installed: { PatchCard }, mb: number, bug_kinds: { [string]: boolean }, applies: boolean, out: SetupOverview)
     local last: { [string]: number } = {}
-    for i, c in installed do
-        local effects: { PatchCardEffect } = c.effects
-        for _, e in effects do
-            if e.group == "ability" then
-                last[e.kind] = i
-            end
-        end
-    end
+    local held: { [string]: PatchCardEffect } = {}
     local total = 0
     for i, c in installed do
         total += c.mb or 0
         local effects: { PatchCardEffect } = c.effects
+        for _, e in effects do
+            if e.group == "ability" then
+                last[e.kind] = i
+                held[e.kind] = e
+            end
+        end
+    end
+    local list: SetupList = { field = "patch_cards", cost = "mb", used = total, limit = mb, once = true }
+    table.insert(out.lists, list)
+    if not applies then
+        return
+    end
+    local stopper = held.bug_stopper
+    local stopped = stopper ~= nil and stopper.amount == 1
+    -- The NaviCust's bugs a card's effect took the place of.
+    local standing: { SetupBug } = {}
+    for _, bug in out.bugs do
+        local e: PatchCardEffect? = if bug.card ~= nil and not stopped then held[bug.card] else nil
+        local replaced = e ~= nil and (not ADDS[e.kind] or clears(e))
+        if not replaced then
+            table.insert(standing, bug)
+        end
+    end
+    table.clear(out.bugs)
+    for _, bug in standing do
+        table.insert(out.bugs, bug)
+    end
+    for i, c in installed do
+        local effects: { PatchCardEffect } = c.effects
         for at, e in effects do
-            if e.group == "ability" and last[e.kind] == i then
+            if e.group == "ability" and last[e.kind] == i and not (stopped and bug_kinds[e.kind]) then
                 if e.bug then
                     local bug: SetupBug = { entry = c, effect = at }
                     table.insert(out.bugs, bug)
-                else
+                elseif not (bug_kinds[e.kind] and clears(e)) then
                     local source: SetupSource = { entry = c, effect = at }
                     table.insert(out.abilities, source)
                 end
             end
         end
     end
-    local list: SetupList = { field = "patch_cards", cost = "mb", used = total, limit = mb, once = true }
-    table.insert(out.lists, list)
 end
 
 -- The cards of `installed` over the block (`slot`, seeded by the game; `hp` the working HP, EXE6's

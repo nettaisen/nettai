@@ -154,9 +154,11 @@ local function validate(side: number, problem: (p: SetupProblem) -> ())
     apply_cards.check(rules.setup_of(side).patch_cards, LIST_MB, problem)
 end
 
--- `overview`'s part: the cards' abilities and bugs, and their MB against the list's.
+-- `overview`'s part: the cards' abilities and bugs (MegaMan's: the cards apply to no other navi), and their MB
+-- against the list's.
 local function overview(side: number, out: SetupOverview)
-    apply_cards.overview(rules.setup_of(side).patch_cards, LIST_MB, out)
+    local applies = battle.navi(side).navi.forms ~= nil
+    apply_cards.overview(rules.setup_of(side).patch_cards, LIST_MB, BUG_KINDS, applies, out)
 end
 
 return {
