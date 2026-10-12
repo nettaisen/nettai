@@ -171,7 +171,7 @@ export component Heading inherits Text {
 }
 
 // A tag: a version, TRAINING.
-export component Pill {
+export component Pill inherits Rectangle {
     in property <string> text;
     in property <color> tone: Theme.muted;
     height: 22px;
@@ -206,7 +206,7 @@ export enum ButtonKind {
 
 // A button, 40 tall, as wide as its text and at least 120 (give it a `width` where it should be another: its
 // text is cut to it). `enabled` off is the unavailable look, and the focus passes it by.
-export component Button {
+export component Button inherits Rectangle {
     in property <string> text;
     in property <string> nav;
     in property <int> nav-index;
@@ -259,7 +259,7 @@ export component Button {
 // A value between two arrows: Left and Right change it at once. The value's box has one width
 // (`value-width`), so the arrows stay where they are whatever it says. `locked` shows the value alone, in the
 // same place (the game's name where the game can't change).
-export component Stepper {
+export component Stepper inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> value;
@@ -333,7 +333,7 @@ export component Stepper {
 }
 
 // One of two: off and on, sharp and original. Left and Right choose, Enter takes the other.
-export component Seg {
+export component Seg inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> first;
@@ -425,7 +425,7 @@ export component Seg {
 
 // A level from 0 to `maximum`: Left and Right step it, a click or a drag sets it. Its number has a box of its
 // own, so the bar keeps its length.
-export component Slider {
+export component Slider inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <int> value;
@@ -494,7 +494,7 @@ export component Slider {
 }
 
 // A box with its value and an arrow: Left and Right step through its choices, Enter opens them as a list.
-export component Select {
+export component Select inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> value;
@@ -533,7 +533,7 @@ export component Select {
 //
 // `text` is the app's: the screen's Rust module gets each change (`edit`) and sets it, so what the field holds
 // is what the app kept (a name cut to its length, a code in capitals).
-export component Field {
+export component Field inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> text;
@@ -646,7 +646,7 @@ export component Field {
 // ---- Rows -----------------------------------------------------------------------------------------------
 
 // What marks the chosen row of a list: a tint and a bar at its left.
-export component RowBack {
+export component RowBack inherits Rectangle {
     in property <bool> chosen;
     in property <bool> hover;
     Rectangle {
@@ -675,7 +675,7 @@ export component RowTouch inherits TouchArea {
 }
 
 // A list row of one text, 44 tall: a row of a short list, each focusable by itself (`nav-index` its place).
-export component Row {
+export component Row inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> text;
@@ -701,7 +701,7 @@ export component Row {
 
 // An item of a menu: the main menu's (`big`: 72 tall, 36) and a menu overlay's (48 tall). The one the cursor or
 // the pointer is on is lit.
-export component MenuItem {
+export component MenuItem inherits Rectangle {
     in property <string> text;
     in property <string> nav;
     in property <int> nav-index;
@@ -746,7 +746,7 @@ export component MenuItem {
 }
 
 // A row of a menu overlay: a label and a value between arrows (the training menu's).
-export component OptionRow {
+export component OptionRow inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> label;
@@ -772,14 +772,14 @@ export component OptionRow {
 
 // A panel's back: the cut corner, the line, and the short cyan accent at its top left. `side` gives it a
 // player's color along its top in place of the accent (1 or 2).
-export component PanelBack {
+export component PanelBack inherits Rectangle {
     in property <length> cut: 12px;
     in property <bool> accent: true;
     in property <int> side;
-    in property <brush> background: Theme.panel;
+    in property <brush> fill: Theme.panel;
     Cut {
         cut: root.cut;
-        background: root.background;
+        background: root.fill;
     }
 
     Rectangle {
@@ -800,7 +800,7 @@ export component PanelBack {
 }
 
 // What a build holds sits in one of these (rule 11); the list to pick from beside it has no frame.
-export component Panel {
+export component Panel inherits Rectangle {
     in property <length> cut: 12px;
     in property <bool> accent: true;
     in property <int> side;
@@ -820,7 +820,7 @@ export component Rule inherits Rectangle {
 }
 
 // A group's title over its line (a settings group, a menu's section).
-export component GroupTitle {
+export component GroupTitle inherits Rectangle {
     in property <string> text;
     height: 28px;
     Label {
@@ -837,7 +837,7 @@ export component GroupTitle {
 }
 
 // A progress bar: 4 tall, its fill lit.
-export component Bar {
+export component Bar inherits Rectangle {
     // 0 to 1.
     in property <float> value;
     height: 4px;
@@ -859,7 +859,7 @@ export component Bar {
 }
 
 // The connection's four bars: how many are lit (0 to 4), green, then amber, then red as the link worsens.
-export component Bars {
+export component Bars inherits Rectangle {
     in property <int> level: 4;
     property <color> tone: root.level >= 3 ? Theme.good : root.level == 2 ? Theme.action : Theme.bad;
     width: 22px;
@@ -900,7 +900,7 @@ export component Bars {
 // ---- Scrolling ------------------------------------------------------------------------------------------
 
 // The scrollbar's thumb, in the 12 reserved at a scrolling thing's right whether or not it shows.
-component Thumb {
+component Thumb inherits Rectangle {
     in property <length> view;
     in property <length> content;
     in property <length> scroll;
@@ -917,7 +917,7 @@ component Thumb {
 // A page that scrolls (the settings). The controls it holds have its name as their prefix (`set.name` on the
 // page `set.`): the app scrolls the focused one into view, and passes by those out of view when the focus comes
 // from outside. Put what it holds inside it, `view-width` wide, and say how tall that is.
-export component ScrollPage {
+export component ScrollPage inherits Rectangle {
     in property <string> nav;
     in property <length> content-height;
     out property <length> view-width: flick.width;
@@ -982,7 +982,7 @@ export component ScrollPage {
 //         row: View.rows[at];  focused: at == list.focused-row;
 //         RowTouch { nav: list.nav; nav-index: at; }
 //     }
-export component ListView {
+export component ListView inherits Rectangle {
     in property <string> nav;
     in property <int> count;
     in property <length> row-height: Theme.row;

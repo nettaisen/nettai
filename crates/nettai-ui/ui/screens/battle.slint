@@ -10,16 +10,17 @@ import { Shell, BattleKind, Picture } from "../shell.slint";
 import { Cut, Heading, Note, Mono, Bars, Button } from "../widgets.slint";
 
 // A menu over the battle: a shade, and a panel with its title, one line under it, and what is put inside it
-// (rows of `OptionRow`, `MenuItem`, `Button`, laid out in a column `content-width` wide). `side` puts the panel
-// at the left, the battle in view beside it (the training menu); else it is in the middle, as tall as
-// `content-height` asks (the match menu). Its controls' names begin with `menu.`: while it is open the keys
-// reach nothing else.
-export component MenuOverlay {
+// (rows of `OptionRow`, `MenuItem`, `Button`), in an area `inner-width` by `inner-height` that they measure
+// from (`parent` in the menu's own file is the whole window). `side` puts the panel at the left, the battle in
+// view beside it (the training menu); else it is in the middle, as tall as `content-height` asks (the match
+// menu). Its controls' names begin with `menu.`: while it is open the keys reach nothing else.
+export component MenuOverlay inherits Rectangle {
     in property <string> title;
     in property <string> note;
     in property <bool> side;
     in property <length> content-height;
-    out property <length> content-width: panel.width - 48px;
+    out property <length> inner-width: panel.width - 48px;
+    out property <length> inner-height: panel.height - 48px - root.head;
     property <length> head: root.note == "" ? 56px : 76px;
     Rectangle {
         background: root.side ? @linear-gradient(90deg, Theme.shade 0%, Theme.shade 46%, transparent 74%) : Theme.shade;
@@ -54,9 +55,9 @@ export component MenuOverlay {
 
         Note {
             x: 24px;
-            y: 62px;
+            y: 60px;
             width: parent.width - 48px;
-            height: 18px;
+            height: 22px;
             text: root.note;
             wrap: no-wrap;
             overflow: elide;
@@ -74,7 +75,7 @@ export component MenuOverlay {
 
 // The connection's quality, in a corner for the whole match: four bars and the round trip, or how long the link
 // has been down.
-component Connection {
+component Connection inherits Rectangle {
     width: 132px;
     height: 30px;
     Rectangle {
@@ -100,7 +101,7 @@ component Connection {
 }
 
 // A button of the on-screen pad: held while a finger is on it.
-component PadKey {
+component PadKey inherits Rectangle {
     in property <string> text;
     // An arrow, as a path in a box of 14, in place of a text.
     in property <string> shape;
@@ -144,7 +145,7 @@ component PadKey {
 }
 
 // The pad under the picture on a phone: the GBA's buttons where thumbs reach, and MENU.
-component TouchPad {
+component TouchPad inherits Rectangle {
     Button {
         x: 0;
         y: 0;
@@ -248,7 +249,7 @@ component TouchPad {
 
 // The battle's own part of the window: the picture, the connection's corner, the phone's pad. The menus over it
 // are put in by app.slint, each from its screen's file.
-export component BattleScreen {
+export component BattleScreen inherits Rectangle {
     property <length> picture-height: Theme.phone ? min(self.height, (self.width - 2 * Theme.margin) * 2 / 3) : self.height;
     Rectangle {
         background: Theme.phone ? transparent : #000000;

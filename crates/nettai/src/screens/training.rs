@@ -96,7 +96,7 @@ pub fn start_development_battle(shell: &mut Shell, seed: u32) {
         role,
         name: name.into(),
         build: Default::default(),
-        version: presets::version(content, &game, side).into(),
+        version: presets::version(content, &game, side).to_uppercase().into(),
         navi: names.navi(side.navi(content)).into(),
         progress: 0.0,
     };

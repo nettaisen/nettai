@@ -38,9 +38,11 @@ export global SettingsView {
 
 // A row's label and its note. The row's control is put beside it (at `SettingsScreen.control-x`, in a column
 // `control-width` wide), not inside it: a component with something inside it is copied into each user.
-component SettingLabel {
+component SettingLabel inherits Rectangle {
     in property <string> label;
     in property <string> note;
+    // The note is a path or a name the app gives, not a sentence: one line, cut where it ends.
+    in property <bool> cut;
     in property <length> row-height: 48px;
     in property <length> control-x;
     in property <length> control-width;
@@ -59,6 +61,8 @@ component SettingLabel {
         width: max(0px, parent.width - 568px);
         height: root.row-height;
         text: Theme.phone ? "" : root.note;
+        wrap: root.cut ? no-wrap : word-wrap;
+        overflow: root.cut ? elide : clip;
     }
 
     below := Note {
@@ -67,11 +71,13 @@ component SettingLabel {
         width: root.control-width;
         height: self.preferred-height;
         text: Theme.phone ? root.note : "";
+        wrap: root.cut ? no-wrap : word-wrap;
+        overflow: root.cut ? elide : clip;
     }
 }
 
 // A key's or a pad button's box in the controls: Enter, then the key to bind.
-component BindBox {
+component BindBox inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> value;
@@ -140,7 +146,7 @@ export component SettingsScreen inherits Page {
 
     page := ScrollPage {
         x: root.list-width;
-        width: parent.width - root.list-width;
+        width: root.body-width - root.list-width;
         nav: "set.";
         content-height: column.preferred-height;
         column := VerticalLayout {
@@ -403,6 +409,7 @@ export component SettingsScreen inherits Page {
                 row13 := SettingLabel {
                     label: @tr("Your files");
                     note: SettingsView.data-folder;
+                    cut: true;
                     control-x: root.control-x;
                     control-width: root.control-width;
                 }

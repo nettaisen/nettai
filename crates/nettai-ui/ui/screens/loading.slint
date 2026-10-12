@@ -6,7 +6,7 @@ import { Theme } from "../theme.slint";
 import { Shell } from "../shell.slint";
 import { Label, Mono, Bar, Note } from "../widgets.slint";
 
-export component LoadingScreen {
+export component LoadingScreen inherits Rectangle {
     property <length> column: min(480px, self.width - 2 * Theme.margin);
     property <length> top: (self.height - 158px) / 2;
     Text {
