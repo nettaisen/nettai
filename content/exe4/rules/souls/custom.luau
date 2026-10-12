@@ -21,6 +21,8 @@ type State = {
     offer: FormDef?,
     unite_step: number,
     unite_count: number,
+    -- OK sent a hand (a pick or more): it is installed as the screen closes, with what the navi's soul does to it.
+    soul_hand_sent: boolean,
 }
 
 -- What the player's save brings (rules/init.luau declares it): Double Soul (event flag 0x14) and the souls the save
@@ -207,13 +209,30 @@ end
 -- 0x0801F1FE, at OK with the soul picked: the turn's form is the soul (its turns are its own, ./turns), and the soul
 -- is given this round.
 function custom_souls.confirmed(side: number)
+    local s = rules.state() :: State
+    s.soul_hand_sent = custom.last_pick(side) ~= nil or custom.button_picked(side, "soul")
     if not custom.button_picked(side, "soul") then
         return
     end
-    local s = rules.state() :: State
     local soul = s.offer :: FormDef
     custom.set_form(side, "soul", soul)
     s.souls_used[#s.souls_used + 1] = soul
+end
+
+-- 0x0801F1B0, 0x0801F1E2, as OK builds a hand in a soul (the screen's +0x0F, the navi's soul as the screen opened,
+-- 0x0801DC82; it is the navi's still as the hand is installed): the soul's own doing to it, its form's `hand`
+-- (WoodSoul's fold on the screen's list, 0x0801F226; GutsSoul's, WindSoul's and NumberSoul's bonus stored in each
+-- slot, 0x0801F29A). A screen with nothing picked sends no hand, and the hand the navi has stays as it is.
+function custom_souls.installed(side: number)
+    local s = rules.state() :: State
+    if not s.soul_hand_sent then
+        return
+    end
+    s.soul_hand_sent = false
+    local hand = battle.navi(side).form.hand
+    if hand ~= nil then
+        hand.built(side)
+    end
 end
 
 -- The hand the screen deals as it opens (0x0801DC8E, its +0x11): ten in NumberSoul (soul 8, 0x0801DC92); else the
