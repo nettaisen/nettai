@@ -7,9 +7,9 @@
 -- - The chips a folder can hold are those a save can collect, which is what its chip pack can list (`sub_811FE7C`):
 --   the Standard, Mega and Giga chips its library lists (the record's flags 0x40), each with a code; a version's own
 --   chips (the chip's `version`); and DblBeast, which the Japanese game gave out and no library lists
---   (`collectible`). That leaves out the four arm chips and SyncTrgr (a Link Gate's, slotted in: no pack holds one),
---   the dark chips (a Beast Out navi's), the BatCans and BeastOut (after the pack's last chip, 0x13A), and the Program
---   Advances.
+--   (`collectible`). That leaves out the four arm chips, SyncTrgr and the dark chips (Standard and Mega chips with
+--   codes whose records have no library flag: no library lists them, and Tango's saves' packs hold none), the BatCans
+--   and BeastOut (after the pack's last chip, 0x13A), and the Program Advances.
 -- - A save of one version holds none of the other's own chips (the chip's `version`: five of each version's Giga
 --   chips, and Gregar and Falzar themselves, which the Japanese game gave out). Each version's ROM gives the library
 --   flag to its own five Giga chips and not to the other's (the four ROMs' chip records; the content keeps one record

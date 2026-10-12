@@ -10,8 +10,9 @@
 --   0x40), its dark chips (the library's own tab of them), and those a chip's `collectible` says: the six Giga chips
 --   Team Colonel's library lists (each version's ROM gives the library flag to its own six and not to the other's;
 --   the content keeps one record of each chip, Team ProtoMan's ROM's), and LeadRaid and ChaosLrd, which the Japanese
---   game gave out and no library lists; each with a code. That leaves out the souls' own chips (CannMode to FinalGun,
---   which a soul puts in the hand), the BatCans (after the pack's last chip, Death Phoenix) and the Program Advances.
+--   game gave out and no library lists; each with a code. That leaves out the soul modes' chips (CannMode to FinalGun:
+--   their records have no library flag, and Tango's saves' packs hold none, though the pack's own list would keep one,
+--   the record's extra flag 0x20), the BatCans (after the pack's last chip, Death Phoenix) and the Program Advances.
 -- - A save of one team holds none of the other's Giga chips: its setup's `giga_chips` are the Giga chips it can have
 --   (its version's six and ChaosLrd, which a tool's version presets name; a side that states none has every one).
 -- - Copies of one chip, in any codes: four of a Standard chip, one of a Mega or of a Giga chip, one of a dark chip
