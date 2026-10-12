@@ -158,13 +158,14 @@
 "topman/navi" = { pool = "actor", index = 0x0E }
 "topman/top" = { pool = "attack", index = 0x29 }
 # NumberMan's chips (action 0x0C's variant 0x02, 0x080E2FC8): each chip's controller (the content's own; the
-# original's one object, effect #0x0D, 0x080E2EC0), NumberMan, his face and his die.
+# original's one object, effect #0x0D, 0x080E2EC0), NumberMan and his face.
 "numbrman/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
 "numbmn-sp/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
 "numbmn-ds/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
 "numbrman/navi" = { pool = "actor", index = 0x0F }
 "numbrman/face" = { pool = "actor", index = 0x5C }
-"numbrman/dice" = { pool = "attack", index = 0x05 }
+# The die (objects/dice: attack #5, 0x080CD9E8), NumberMan's and NumberSoul's charged shot's.
+"dice" = { pool = "attack", index = 0x05 }
 # SparkMan's chips (action 0x0C's variant 0x03, 0x080E309A): each chip's controller (the content's own; the
 # original's one object, effect #0x0E, 0x080E2FEC), SparkMan and his sparks.
 "sparkman/controller" = { pool = "effect", index = 0x0E, scratch_position = true }
