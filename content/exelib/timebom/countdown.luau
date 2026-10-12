@@ -288,7 +288,7 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
             me.hp = 0
         end
         obstacle.take_hits(me, "keeps_damage")
-        local a = obstacle.react(me)
+        local a = obstacle.react(me, look.crush)
         if a then
             act(me, a)
         end
