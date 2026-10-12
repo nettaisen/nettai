@@ -370,6 +370,10 @@ impl Shell {
     /// Show `stage`'s picture in the room the screen's `Picture` has: presented if a tick ran or the room
     /// changed, or if another surface's picture was shown last.
     pub fn show(&mut self, stage: &mut Stage) {
+        // (A frame the window doesn't draw shows nothing: the picture stays out of date for the next it does.)
+        if !self.drawing {
+            return;
+        }
         let Some(fit) = self.room_fit(&mut stage.surface) else { return };
         let shown = stage.picture(fit, self.gl.as_mut());
         self.place_picture(fit, shown);
@@ -379,6 +383,9 @@ impl Shell {
     /// into the buffer it is given, when `surface` is out of date (the screen sets `surface.stale` as its
     /// picture changes) or the room changed.
     pub fn show_surface(&mut self, surface: &mut Surface, present: impl FnOnce(&mut [u32], usize, usize)) {
+        if !self.drawing {
+            return;
+        }
         let Some(fit) = self.room_fit(surface) else { return };
         let shown = surface.picture(fit, self.gl.as_mut(), present);
         self.place_picture(fit, shown);
