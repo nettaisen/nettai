@@ -1,12 +1,15 @@
 //! What two netplay peers say before a match, and how they agree it: the
-//! lobby, the handshake and the loading, without any IO of their own. The
+//! lobby, the handshake and the loading, without any IO of their own; and
+//! the same two players' way back to it after the match, for another. The
 //! host brings the datagrams (the program's: a WebRTC data channel,
 //! nettai-rtc's link): [`Lobby::receive`] takes each one that arrives from
 //! the other peer (every one, the match's frames too), [`Lobby::poll`] says
-//! where things stand and [`Lobby::outgoing`] hands over what to send.
-//! Nothing is assumed of delivery: a datagram may be lost, reordered or come
-//! twice, and each side says its part again every [`RESEND`] until the other
-//! has answered.
+//! where things stand and [`Lobby::outgoing`] hands over what to send (the
+//! match's frames too). A host runs that one loop from the moment its link
+//! is open until it is dropped, whatever its screen shows: the lobby, the
+//! loading, the match, its result. Nothing is assumed of delivery: a
+//! datagram may be lost, reordered or come twice, and each side says its
+//! part again every [`RESEND`] until the other has answered.
 //!
 //! **Nothing of a player's build crosses before the Reveal**: not its navi,
 //! not its version, not a label of any kind; and a build's name never
@@ -14,7 +17,7 @@
 //! its player before the Reveal is their name and whether they are ready.
 //!
 //! Every datagram starts with a byte that says what it is ([`Kind`]): a
-//! frame of the match's protocol (once it has started), or one of:
+//! frame of a match's protocol (once it has started; item 5), or one of:
 //!
 //! 1. **Lobby** — the compatibility fields (the protocol's version, the
 //!    engine's, the game, the content's hash, the role), so a peer that
@@ -72,15 +75,42 @@
 //!    ([`Status::Pending`] after [`Status::Loading`]), its player not
 //!    ready, and what its host had loaded is for nothing.
 //!
+//! 5. **The match, and after it** — a match's frames go between its
+//!    player and the other peer through the lobby: the host takes the
+//!    match's channel ([`Lobby::channel`], a `netplay::Channel` for a
+//!    `NetPlayer`), the lobby hands the frames that come to it and puts the
+//!    frames it sends among [`Lobby::outgoing`]'s ([`Status::Playing`]). A
+//!    frame says which match it is of, by the match's seed
+//!    ([`frame_datagram`]): one of a match that is over, come late, is
+//!    nobody's.
+//!
+//!    When the match is over, or has stopped with the link still up, the
+//!    host drops its player and the lobby goes on ([`Lobby::reopen`]): the
+//!    same two players, the same settings, nobody ready, each free to bring
+//!    another build; a new agreement is a new Hello and Reveal, with a new
+//!    nonce, so another seed. The lobby's revisions go on counting from
+//!    where they were, so what either peer said before the match, come
+//!    late, is older than what it says now and is left. Each player comes
+//!    back when their host says: one may be in the lobby while the other
+//!    still looks at the result, whose peer says nothing of its lobby
+//!    meanwhile, so its player is simply not ready yet
+//!    ([`Lobby::their_reopened`] tells the one still in the match). A peer
+//!    back in the lobby says the last frame its player sent again with its
+//!    lobby's messages, until it hears the other's lobby: the other may
+//!    still need it to end the match (the inputs it hadn't acknowledged, or
+//!    the word that the player left the match).
+//!
 //! A **Refuse** ends it: the compatibility fields, a reason and, for a log,
 //! the detail. The peer that refuses and the one that is refused each end
 //! with a [`Failure`], whose [`Reason`] is what a host tells its player, in
-//! its own words. A player who leaves the lobby says so the same way
-//! ([`Lobby::leave`]). There is no message after the Loading: the match's
-//! frames follow, and a peer answers a Reveal or a Hello that comes again,
-//! after the match is agreed, with its own Reveal ([`Agreement::answer`]).
+//! its own words. A player who leaves says so the same way
+//! ([`Lobby::leave`]), from the lobby, from a match or after one: that ends
+//! both lobbies, and the link is the host's to drop. A peer answers a
+//! Reveal or a Hello that comes again, after the match is agreed, with its
+//! own Reveal ([`Agreement::answer`]).
 
-use std::sync::Arc;
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use nettai_battle::content::{Content, ContentHash};
@@ -90,7 +120,8 @@ use nettai_netplay::rng::SplitMix64;
 use nettai_netplay::wire::{Reader, Writer};
 use sha2::{Digest, Sha256};
 
-use crate::connection::Ping;
+use crate::connection::{Ping, Reconnecting};
+use crate::netplay::Channel;
 
 /// How often a peer says its part again until the other answers.
 pub const RESEND: Duration = Duration::from_millis(100);
@@ -99,7 +130,8 @@ pub const RESEND: Duration = Duration::from_millis(100);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Kind {
-    /// A frame of the match's protocol (`nettai_netplay::protocol::Frame`).
+    /// A frame of a match's protocol (`nettai_netplay::protocol::Frame`),
+    /// after the seed of the match it is of ([`frame_datagram`]).
     Frame = 0,
     Lobby = 1,
     Hello = 2,
@@ -132,6 +164,27 @@ impl Role {
             Role::Join => 1,
         }
     }
+}
+
+/// A match's frame as the link carries it: its kind, the seed of the match
+/// it is of (four bytes, the least first), then the frame. The seed tells
+/// one match's frames from another's on the same link: the two players of
+/// a match play another without a new link ([`Lobby::reopen`]), and a frame
+/// of the one before, come late, is none of the next one's.
+pub fn frame_datagram(seed: u32, frame: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(5 + frame.len());
+    out.push(Kind::Frame as u8);
+    out.extend_from_slice(&seed.to_le_bytes());
+    out.extend_from_slice(frame);
+    out
+}
+
+/// The frame `datagram` carries, if it is a frame of the match of `seed`
+/// ([`frame_datagram`]).
+pub fn match_frame(seed: u32, datagram: &[u8]) -> Option<&[u8]> {
+    let (&kind, body) = datagram.split_first()?;
+    let (of, frame) = body.split_first_chunk::<4>()?;
+    (kind == Kind::Frame as u8 && u32::from_le_bytes(*of) == seed).then_some(frame)
 }
 
 /// The engine's version as peers compare it (the engine's crates are
@@ -434,11 +487,95 @@ pub enum Status<'a> {
     /// poll may say `Pending` again: the other player took their ready back
     /// as the match was agreed, and both are back in the lobby.)
     Loading(&'a Agreement),
-    /// Both players have loaded: the match starts now (a `NetPlayer` of the
-    /// agreement's set, on the same datagrams).
+    /// Both players have loaded: the match starts now. The host takes the
+    /// match's channel ([`Lobby::channel`]) and makes a `NetPlayer` of the
+    /// agreement's set on it; until it has, every poll says this.
     Start(&'a Agreement),
-    /// No match, and why.
+    /// The match's channel is out: the match is being played, or is over
+    /// with its result still shown. The host goes on feeding and polling
+    /// the lobby (it carries the match's frames), and when the match is
+    /// over, or has stopped with the link still up, drops the player and
+    /// calls [`Lobby::reopen`] for the lobby again.
+    Playing,
+    /// No match (or no more of them), and why.
     Failed(&'a Failure),
+}
+
+/// A match's frames between the lobby and the channel it gave the match's
+/// player.
+#[derive(Default)]
+struct Wire {
+    /// The frames that came, for the player.
+    incoming: VecDeque<Vec<u8>>,
+    /// The frames the player sent, as the link carries them, for the
+    /// lobby's host to send.
+    outgoing: Vec<Vec<u8>>,
+    /// The latest frame the player sent, as the link carries it.
+    last: Option<Vec<u8>>,
+    /// The link is down and being made again, as the host says.
+    down: Option<Reconnecting>,
+}
+
+/// The most frames kept for a player or a host that isn't taking them: the
+/// newest (a frame carries everything the ones before it did that isn't
+/// acknowledged).
+const MOST_FRAMES: usize = 64;
+
+fn lock(wire: &Mutex<Wire>) -> MutexGuard<'_, Wire> {
+    wire.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Add `frame` to `frames`, the oldest going when there are too many.
+fn keep(frames: &mut VecDeque<Vec<u8>>, frame: Vec<u8>) {
+    if frames.len() >= MOST_FRAMES {
+        frames.pop_front();
+    }
+    frames.push_back(frame);
+}
+
+/// The channel of a match a lobby started ([`Lobby::channel`]), for its
+/// `NetPlayer`: the frames the lobby was given of this match
+/// ([`Lobby::receive`]), and the player's own to the lobby's
+/// [`Lobby::outgoing`]. It has no error of its own: the link's are its
+/// host's to see, which holds the link. Once the lobby has gone on
+/// ([`Lobby::reopen`]) or is gone, nothing comes on it and what is sent on
+/// it goes nowhere.
+pub struct MatchChannel {
+    wire: Arc<Mutex<Wire>>,
+    seed: u32,
+    taken: Vec<u8>,
+}
+
+impl Channel for MatchChannel {
+    fn send(&mut self, frame: &[u8]) -> Result<(), String> {
+        // (The lobby has let go of the match: nobody takes them.)
+        if Arc::strong_count(&self.wire) == 1 {
+            return Ok(());
+        }
+        let datagram = frame_datagram(self.seed, frame);
+        let mut wire = lock(&self.wire);
+        wire.last = Some(datagram.clone());
+        if wire.outgoing.len() >= MOST_FRAMES {
+            wire.outgoing.remove(0);
+        }
+        wire.outgoing.push(datagram);
+        Ok(())
+    }
+
+    fn recv(&mut self) -> Result<Option<&[u8]>, String> {
+        let Some(frame) = lock(&self.wire).incoming.pop_front() else { return Ok(None) };
+        self.taken = frame;
+        Ok(Some(&self.taken))
+    }
+
+    fn reconnecting(&self) -> Option<Reconnecting> {
+        lock(&self.wire).down
+    }
+
+    /// (The players stay together: the lobby goes on.)
+    fn outlives_match(&self) -> bool {
+        true
+    }
 }
 
 /// The other peer's latest lobby state: its revision, the settings it holds
@@ -522,6 +659,15 @@ pub struct Lobby {
     started: bool,
     /// The other peer's lobby revision the agreed match is of.
     agreed_with: u32,
+    /// The match's frames, to and from its channel; whether the channel was
+    /// taken (the match is being played); and whether the other peer was
+    /// heard back in its lobby while this one's match was still up.
+    wire: Arc<Mutex<Wire>>,
+    playing: bool,
+    their_reopened: bool,
+    /// After a match: the last frame its player sent, said again with the
+    /// lobby's messages until the other peer is heard in its lobby.
+    tail: Option<Vec<u8>>,
     /// The round trip, timed by the lobby's own messages: the other's
     /// clock as its latest message said it, and when that came; and the
     /// ping so far.
@@ -568,6 +714,10 @@ impl Lobby {
             their_frame: false,
             started: false,
             agreed_with: 0,
+            wire: Arc::default(),
+            playing: false,
+            their_reopened: false,
+            tail: None,
             their_clock: None,
             ping: None,
             outgoing: Vec::new(),
@@ -676,18 +826,18 @@ impl Lobby {
         }
     }
 
-    /// This player leaves the lobby: the other peer is told, and both
-    /// lobbies end ([`Reason::Left`] here, [`Reason::OpponentLeft`] there).
-    /// What it says is in [`Lobby::outgoing`], to send before the link is
-    /// dropped.
+    /// This player leaves: the lobby, a match being played, or its result.
+    /// The other peer is told, and both lobbies end ([`Reason::Left`] here,
+    /// [`Reason::OpponentLeft`] there). What it says is in
+    /// [`Lobby::outgoing`], to send before the link is dropped.
     pub fn leave(&mut self) {
-        self.fail(Failure { reason: Reason::Left, detail: "this player left the lobby".into() }, true);
+        self.fail(Failure { reason: Reason::Left, detail: "this player left".into() }, true);
     }
 
     /// The lobby ends without a match, for `failure`; `refuse`: the other
     /// peer is told (a few times: datagrams get lost).
     fn fail(&mut self, failure: Failure, refuse: bool) {
-        if matches!(self.phase, Phase::Failed(_)) || self.started {
+        if matches!(self.phase, Phase::Failed(_)) {
             return;
         }
         if refuse {
@@ -778,16 +928,89 @@ impl Lobby {
         self.their_loading.filter(|(seed, ..)| *seed == a.seed).map(|(_, _, parts, loaded)| (parts, loaded))
     }
 
+    // ---- The match, and the lobby again ---------------------------------------------
+
+    /// The channel of the match that starts ([`Status::Start`]), for its
+    /// `NetPlayer`: once a match. None before a match starts, and once its
+    /// channel is out.
+    pub fn channel(&mut self) -> Option<MatchChannel> {
+        let Phase::Done(a) = &self.phase else { return None };
+        if !self.started || self.playing {
+            return None;
+        }
+        self.playing = true;
+        Some(MatchChannel { wire: self.wire.clone(), seed: a.seed, taken: Vec::new() })
+    }
+
+    /// Back to the lobby after the match this lobby started: its set is
+    /// over, or it stopped with the link still up (the other player left
+    /// the match, its player gave up on the other's silence, the engine
+    /// stopped). The host has dropped the match's player. The same two
+    /// players are in the lobby again on the same link: the settings as
+    /// they were, nobody ready, each free to bring another build
+    /// ([`Lobby::set_side`]); what they agree next is a new match, of
+    /// another seed. The match's channel is cut off. False, and nothing
+    /// changes, where no match was started.
+    ///
+    /// The other player comes back when their host says: until then they
+    /// are not ready, and this peer says its player's last frame of the
+    /// match again with its lobby's messages (the module's docs).
+    pub fn reopen(&mut self) -> bool {
+        if !(self.started && matches!(self.phase, Phase::Done(_))) {
+            return false;
+        }
+        // What the match's player said last still goes out; then the
+        // match's frames are nobody's.
+        let wire = std::mem::take(&mut self.wire);
+        {
+            let mut wire = lock(&wire);
+            self.outgoing.append(&mut wire.outgoing);
+            self.tail = if self.their_reopened { None } else { wire.last.take() };
+        }
+        self.phase = Phase::Lobby;
+        self.nonce = self.nonces.next_u64();
+        (self.started, self.playing, self.their_reopened) = (false, false, false);
+        (self.loading, self.their_loading, self.their_frame) = ((0, false), None, false);
+        (self.their_hello, self.their_reveal) = (None, None);
+        // (The other player's mark was for the match that was played.)
+        if let Some(t) = &mut self.theirs {
+            t.ready = false;
+        }
+        self.change(false);
+        true
+    }
+
+    /// Whether the other peer was heard back in its lobby while this one's
+    /// match is still up ([`Status::Playing`]): the other player is waiting
+    /// there. If this peer's match isn't over, it never will be: the other
+    /// ended it on its side (its player stopped), and the host ends it here
+    /// ([`Lobby::reopen`]).
+    pub fn their_reopened(&self) -> bool {
+        self.their_reopened
+    }
+
+    /// Say whether the host's link is down and being made again, and for
+    /// how long: the match's player then waits for it
+    /// (`netplay::Channel::reconnecting`) and says so (`NetStatus`). A host
+    /// says it every frame, from its link.
+    pub fn set_link_down(&mut self, down: Option<Reconnecting>) {
+        lock(&self.wire).down = down;
+    }
+
     // ---- The datagrams -----------------------------------------------------------
 
-    /// The datagrams to send now, in order.
+    /// The datagrams to send now, in order: the lobby's, and the frames the
+    /// match's player sent since (a host takes them after it has ticked the
+    /// player, so a frame goes out in the host's frame it was made in).
     pub fn outgoing(&mut self) -> Vec<Vec<u8>> {
-        std::mem::take(&mut self.outgoing)
+        let mut out = std::mem::take(&mut self.outgoing);
+        out.append(&mut lock(&self.wire).outgoing);
+        out
     }
 
     /// Take a datagram from the other peer, arrived at `now`: every one the
-    /// link brings, a frame of the match too (the other peer sends them
-    /// once it has started: it has loaded).
+    /// link brings, a match's frames too (the other peer sends them once it
+    /// has started: it has loaded; and they are the match's channel's).
     pub fn receive(&mut self, now: Instant, datagram: &[u8]) {
         let Some((&kind, body)) = datagram.split_first() else { return };
         if matches!(self.phase, Phase::Failed(_)) {
@@ -801,9 +1024,19 @@ impl Lobby {
             Some(Kind::Hello) => self.heard_hello(body),
             Some(Kind::Reveal) => self.heard_reveal(body),
             Some(Kind::Loading) => self.heard_loading(body),
-            Some(Kind::Frame) => self.their_frame |= matches!(self.phase, Phase::Done(_)),
+            Some(Kind::Frame) => self.heard_frame(datagram),
             None => {}
         }
+    }
+
+    /// A match's frame: the agreed match's (the other peer has started it)
+    /// goes to its channel; one of a match that is over, or that this peer
+    /// never agreed, is nobody's.
+    fn heard_frame(&mut self, datagram: &[u8]) {
+        let Phase::Done(a) = &self.phase else { return };
+        let Some(frame) = match_frame(a.seed, datagram) else { return };
+        self.their_frame = true;
+        keep(&mut lock(&self.wire).incoming, frame.to_vec());
     }
 
     /// Their compatibility fields: refused (and this lobby failed) where
@@ -856,18 +1089,31 @@ impl Lobby {
             }
         }
         // The other's lobby went on after the revision this peer agreed the
-        // match with: it never took the match for agreed (a peer that did
-        // says nothing more of its lobby). Back to the lobby with it.
-        if matches!(self.phase, Phase::Done(_)) && !self.started && revision > self.agreed_with {
-            self.phase = Phase::Lobby;
-            self.nonce = self.nonces.next_u64();
-            (self.loading, self.their_loading, self.their_frame) = ((0, false), None, false);
-            (self.their_hello, self.their_reveal) = (None, None);
-            self.change(false);
+        // match with.
+        if matches!(self.phase, Phase::Done(_)) && revision > self.agreed_with {
+            if self.started {
+                // The match was started, and the other is back in its lobby:
+                // it has ended the match on its side. This peer is in it
+                // until its host says (`reopen`).
+                self.their_reopened = true;
+            } else {
+                // It never took the match for agreed (a peer that did says
+                // nothing of its lobby until the match is over). Back to the
+                // lobby with it.
+                self.phase = Phase::Lobby;
+                self.nonce = self.nonces.next_u64();
+                (self.loading, self.their_loading, self.their_frame) = ((0, false), None, false);
+                (self.their_hello, self.their_reveal) = (None, None);
+                self.wire = Arc::default();
+                self.change(false);
+            }
         }
         if self.settled() || self.theirs.as_ref().is_some_and(|t| revision <= t.revision) {
             return;
         }
+        // (The other is in its lobby: whatever match was played, it has
+        // ended it, and needs no more of it.)
+        self.tail = None;
         let settings = match Settings::from_bytes(&self.content, settings) {
             Ok(settings) => settings,
             Err(why) => return self.fail(Failure { reason: Reason::Protocol, detail: format!("can't play: the other side's settings don't read here: {why}") }, true),
@@ -932,16 +1178,19 @@ impl Lobby {
     /// Where it stands at `now`, having said what is due (`outgoing`).
     pub fn poll(&mut self, now: Instant) -> Status<'_> {
         let start = *self.start.get_or_insert(now);
-        if !self.started && !matches!(self.phase, Phase::Failed(_)) {
+        if !matches!(self.phase, Phase::Failed(_)) {
             match self.phase {
                 Phase::Done(_) => self.load(now),
                 _ => self.step(now),
             }
+            // (While a match is up, the other's silence is its player's and
+            // the link's to judge.)
             if !self.started && !matches!(self.phase, Phase::Failed(_)) && now.duration_since(self.heard.unwrap_or(start)) >= self.timeout {
                 self.fail(Failure { reason: Reason::NoAnswer, detail: "no answer from the other side".into() }, false);
             }
         }
         match &self.phase {
+            Phase::Done(_) if self.playing => Status::Playing,
             Phase::Done(a) if self.started => Status::Start(a),
             Phase::Done(a) => Status::Loading(a),
             Phase::Failed(failure) => Status::Failed(failure),
@@ -995,9 +1244,13 @@ impl Lobby {
             return;
         }
         // What is due: the lobby state when it changed and every RESEND,
-        // with the Hello and the Reveal this peer is at.
+        // with the Hello and the Reveal this peer is at; and after a match,
+        // its player's last frame, until the other is heard in its lobby.
         if self.changed || self.sent.is_none_or(|t| now.duration_since(t) >= RESEND) {
             self.outgoing.push(self.lobby_datagram(now));
+            if let Some(tail) = &self.tail {
+                self.outgoing.push(tail.clone());
+            }
             match &self.phase {
                 Phase::Hello(c) => self.outgoing.push(c.hello.clone()),
                 Phase::Reveal(c, _) => {
@@ -1013,7 +1266,10 @@ impl Lobby {
 
     /// The match is agreed: say how far this host's loading is, when it
     /// changed and every RESEND, until both have loaded; then it starts.
-    /// Not a match the other peer's engine sets up differently.
+    /// Not a match the other peer's engine sets up differently. Through the
+    /// match it goes on saying that it has loaded: the other peer may have
+    /// missed it, and a peer whose player isn't sending frames (its host
+    /// shows the result, and ticks nothing) is still heard on the link.
     fn load(&mut self, now: Instant) {
         let Phase::Done(a) = &self.phase else { return };
         let seed = a.seed;
@@ -1202,6 +1458,7 @@ pub(crate) mod testing {
         match lobby.poll(now) {
             Status::Start(a) => a.clone(),
             Status::Failed(failure) => panic!("{}", failure.detail),
+            Status::Playing => panic!("its channel is out"),
             Status::Loading(_) => panic!("not loaded"),
             Status::Pending => panic!("not agreed"),
         }
@@ -1615,7 +1872,7 @@ mod tests {
         // that it is another version is all that is read of it.
         let mut lobby = Lobby::new(Role::Host, &content, s.clone(), side(&content, 3), 7, Duration::from_secs(10));
         let mut old = vec![Kind::Refuse as u8];
-        old.extend_from_slice(b"the other side speaks netplay protocol 6, this one 5");
+        old.extend_from_slice(b"the other side speaks netplay protocol 7, this one 5");
         lobby.receive(now, &old);
         assert_eq!(failed(&mut lobby, now).reason, Reason::DifferentVersion);
         // A build that breaks a rule (a side nothing was chosen for: its
@@ -1638,27 +1895,200 @@ mod tests {
         assert!(alone.outgoing().iter().all(|d| d[0] == Kind::Lobby as u8), "nobody is there to refuse");
     }
 
-    /// A player who leaves the lobby says so: the other's lobby ends at
-    /// once, told they left, before the match is agreed and while it loads
-    /// alike.
+    /// A player who leaves says so: the other's lobby ends at once, told
+    /// they left, before the match is agreed, while it loads, while it is
+    /// played (or its result shown: the lobby carries the match) and back
+    /// in the lobby after it, alike.
     #[test]
     fn a_player_who_leaves_says_so() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
         let s = settings(3);
-        for agreed in [false, true] {
+        for stage in ["agreeing", "loading", "playing", "in the lobby again"] {
             let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
-            if !agreed {
+            if stage == "agreeing" {
                 lobbies[0].set_ready(false);
             }
             run(&mut lobbies, now, 20, &mut |_, _| {});
-            assert_eq!(matches!(lobbies[1].poll(now), Status::Loading(_)), agreed);
+            assert_eq!(matches!(lobbies[1].poll(now), Status::Loading(_)), stage != "agreeing");
+            if stage == "playing" || stage == "in the lobby again" {
+                load(&mut lobbies, now);
+                assert!(lobbies.iter_mut().all(|l| l.channel().is_some() && matches!(l.poll(now), Status::Playing)));
+            }
+            if stage == "in the lobby again" {
+                assert!(lobbies[0].reopen() && lobbies[1].reopen());
+                run(&mut lobbies, now, 2, &mut |_, _| {});
+            }
             lobbies[1].leave();
             run(&mut lobbies, now, 1, &mut |_, _| {});
-            assert_eq!(failed(&mut lobbies[1], now).reason, Reason::Left, "agreed: {agreed}");
+            assert_eq!(failed(&mut lobbies[1], now).reason, Reason::Left, "{stage}");
             let host = failed(&mut lobbies[0], now);
-            assert_eq!((host.reason, host.detail.as_str()), (Reason::OpponentLeft, "the other side refused: this player left the lobby"), "agreed: {agreed}");
+            assert_eq!((host.reason, host.detail.as_str()), (Reason::OpponentLeft, "the other side refused: this player left"), "{stage}");
         }
+    }
+
+    /// The two players of a match play another in the same lobby. Each
+    /// takes the started match's channel, once, and the lobby carries the
+    /// match's frames, each marked with the match's seed. Back in the lobby
+    /// after it (the match's channels cut off), the settings are as they
+    /// were and nobody is ready; what a peer said before the match, come
+    /// late, is older than what it says now. One brings another build; both
+    /// ready: a new match, of another seed, with that build, and a channel
+    /// of its own.
+    #[test]
+    fn a_lobby_goes_on_after_a_match() {
+        let content = nettai_match::testing::exe6_content();
+        let now = Instant::now();
+        let s = Settings { closed_builds: true, ..settings(1) };
+        let sides = [side(&content, 3), side(&content, 4)];
+        let mut lobbies = pair(&content, [s.clone(), s.clone()], sides.clone());
+        // (There is no lobby to go back to before a match, and no channel.)
+        assert!(!lobbies[0].reopen() && lobbies[0].channel().is_none());
+        // What the host's lobby says before the match: its last word is
+        // kept, to come late.
+        let mut before = None;
+        run(&mut lobbies, now, 20, &mut |from, d| {
+            if from == 0 && d[0] == Kind::Lobby as u8 {
+                before = Some(d.clone());
+            }
+        });
+        let before = before.expect("the host's lobby spoke");
+        assert!(lobbies[0].channel().is_none() && !lobbies[0].reopen(), "not while it loads");
+        load(&mut lobbies, now);
+        let first = [0, 1].map(|i| started(&mut lobbies[i], now));
+        assert_eq!(first[0].sides, sides);
+        // The match's channel, once each; the lobby says it is played, and
+        // carries its frames, which say whose match they are.
+        let mut channels = lobbies.each_mut().map(|l| l.channel().expect("the match's channel"));
+        assert!(lobbies.iter_mut().all(|l| l.channel().is_none() && matches!(l.poll(now), Status::Playing)));
+        assert!(channels.iter().all(|c| c.outlives_match()));
+        channels[0].send(b"a frame").unwrap();
+        run(&mut lobbies, now, 1, &mut |from, d| {
+            if d[0] == Kind::Frame as u8 {
+                assert_eq!((from, match_frame(first[0].seed, d)), (0, Some(&b"a frame"[..])));
+                assert_eq!(match_frame(first[0].seed ^ 1, d), None);
+                assert_eq!(*d, frame_datagram(first[0].seed, b"a frame"));
+            }
+        });
+        assert_eq!(channels[1].recv().unwrap(), Some(&b"a frame"[..]));
+        assert_eq!(channels[1].recv().unwrap(), None);
+        assert_eq!(channels[0].recv().unwrap(), None);
+        // Back to the lobby, both: as it was, nobody ready.
+        assert!(lobbies[0].reopen() && lobbies[1].reopen());
+        assert!(!lobbies[0].reopen(), "once a match");
+        // (What the host said before the match, ready, comes only now: it
+        // is older than what it says now, and its mark isn't one.)
+        lobbies[1].receive(now, &before);
+        assert!(!lobbies[1].their_ready());
+        // (A channel of the match before says nothing more, and hears
+        // nothing.)
+        channels[0].send(b"late").unwrap();
+        lobbies[1].receive(now, &frame_datagram(first[0].seed, b"late"));
+        run(&mut lobbies, now, 4, &mut |_, d| assert!(!d.ends_with(b"late"), "a channel of the match before says nothing more"));
+        assert_eq!(channels[1].recv().unwrap(), None);
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)));
+        for l in &lobbies {
+            assert_eq!((l.settings(), l.ready(), l.their_ready(), l.their_reopened()), (&s, false, false, false));
+        }
+        // The joiner brings another build; both ready: another match.
+        let another = elecman(&content);
+        lobbies[1].set_side(another.clone());
+        for l in &mut lobbies {
+            l.set_ready(true);
+        }
+        run(&mut lobbies, now, 20, &mut |_, _| {});
+        load(&mut lobbies, now);
+        let second = [0, 1].map(|i| started(&mut lobbies[i], now));
+        assert_ne!(second[0].seed, first[0].seed, "another match, another seed");
+        assert_eq!((second[0].seed, &second[0].m), (second[1].seed, &second[1].m));
+        assert_eq!(second[0].sides, [sides[0].clone(), another]);
+        assert!(second[0].closed_builds() && second[0].settings == s);
+        // Its channel is its own: the first match's hears none of it.
+        let mut next = lobbies.each_mut().map(|l| l.channel().expect("the second match's channel"));
+        next[1].send(b"a frame of the second").unwrap();
+        run(&mut lobbies, now, 1, &mut |_, _| {});
+        assert_eq!(next[0].recv().unwrap(), Some(&b"a frame of the second"[..]));
+        assert_eq!(channels[0].recv().unwrap(), None);
+    }
+
+    /// One player is back in the lobby while the other still looks at the
+    /// result. The one in the lobby sees the other not ready, and isn't
+    /// disturbed by the match's frames the other's player goes on sending;
+    /// with its lobby's messages it says its own player's last frame again,
+    /// which the other's player has, until it hears the other's lobby. The
+    /// other's peer knows it is waited for, and takes nothing of the lobby
+    /// while its match is up; when it comes back it has the settings as
+    /// they were changed meanwhile and sees who is ready. A frame of the
+    /// match before, come late into the next match's loading, starts
+    /// nothing; one of the next match does.
+    #[test]
+    fn one_player_is_back_in_the_lobby_before_the_other() {
+        let content = nettai_match::testing::exe6_content();
+        let mut now = Instant::now();
+        let s = settings(3);
+        let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
+        run(&mut lobbies, now, 20, &mut |_, _| {});
+        load(&mut lobbies, now);
+        let first = started(&mut lobbies[0], now).seed;
+        let [mut host, mut joiner] = lobbies.each_mut().map(|l| l.channel().expect("the match's channel"));
+        // The match: frames each way. The host's player says its last, and
+        // is dropped (its set is over); the host is back in the lobby.
+        joiner.send(b"the joiner's frame").unwrap();
+        host.send(b"the host's last frame").unwrap();
+        run(&mut lobbies, now, 1, &mut |_, _| {});
+        assert_eq!((host.recv().unwrap().map(<[u8]>::to_vec), joiner.recv().unwrap().map(<[u8]>::to_vec)), (Some(b"the joiner's frame".to_vec()), Some(b"the host's last frame".to_vec())));
+        drop(host);
+        assert!(lobbies[0].reopen());
+        // The joiner's player goes on (its result is shown): its frames are
+        // none of the host's lobby's. The host says its last frame again
+        // with its lobby's messages, and the joiner's player has it.
+        for _ in 0..3 {
+            now += RESEND;
+            joiner.send(b"the joiner's frame").unwrap();
+            run(&mut lobbies, now, 1, &mut |_, _| {});
+            assert!(matches!(lobbies[0].poll(now), Status::Pending) && matches!(lobbies[1].poll(now), Status::Playing));
+            assert!(!lobbies[0].their_ready() && !lobbies[0].their_reopened() && lobbies[1].their_reopened());
+            let mut again = 0;
+            while let Some(frame) = joiner.recv().unwrap() {
+                assert_eq!(frame, b"the host's last frame");
+                again += 1;
+            }
+            assert!(again >= 1, "the host's last frame, again");
+        }
+        // The host makes it five rounds and readies, meanwhile: none of it
+        // is the joiner's lobby's while its match is up.
+        lobbies[0].set_rounds(5);
+        lobbies[0].set_ready(true);
+        run(&mut lobbies, now, 2, &mut |_, _| {});
+        assert_eq!(lobbies[1].settings(), &s, "as the match was agreed");
+        // The joiner comes back: the settings as they are now, the host
+        // ready, itself not. The host, which hears its lobby, stops saying
+        // the frame.
+        drop(joiner);
+        assert!(lobbies[1].reopen());
+        assert!(!lobbies[1].their_ready(), "the host's mark was for the match that was played");
+        run(&mut lobbies, now + RESEND, 4, &mut |_, _| {});
+        assert_eq!((lobbies[1].settings(), lobbies[1].their_ready(), lobbies[1].ready(), lobbies[0].their_ready()), (&settings(5), true, false, false));
+        now += 2 * RESEND;
+        run(&mut lobbies, now, 2, &mut |from, d| assert!(!(from == 0 && d[0] == Kind::Frame as u8), "the joiner has ended the match: it needs no more of it"));
+        // The next match is agreed; the host has loaded, and waits for the
+        // joiner. A frame of the match before isn't the joiner starting.
+        lobbies[1].set_ready(true);
+        run(&mut lobbies, now, 20, &mut |_, _| {});
+        let Status::Loading(a) = lobbies[0].poll(now) else { panic!("agreed again") };
+        let second = a.seed;
+        assert_ne!(second, first);
+        lobbies[0].set_loaded();
+        run(&mut lobbies, now, 2, &mut |_, _| {});
+        lobbies[0].receive(now, &frame_datagram(first, b"late"));
+        assert!(!lobbies[0].their_loaded() && matches!(lobbies[0].poll(now), Status::Loading(_)));
+        // A frame of this match is: the joiner has started it. The match's
+        // channel has that frame, and not the late one.
+        lobbies[0].receive(now, &frame_datagram(second, b"first"));
+        assert!(lobbies[0].their_loaded() && matches!(lobbies[0].poll(now), Status::Start(_)));
+        let mut channel = lobbies[0].channel().expect("the second match's channel");
+        assert_eq!(channel.recv().unwrap(), Some(&b"first"[..]));
+        assert_eq!(channel.recv().unwrap(), None);
     }
 
     /// Once the match is agreed each host loads, and says how far it is:
@@ -1708,11 +2138,15 @@ mod tests {
             }
         });
         assert_eq!(starts(&mut lobbies), [true, false]);
-        lobbies[1].receive(now, &[Kind::Frame as u8, 0, 0, 0]);
+        // (Not a frame of some other match's.)
+        let seed = started(&mut lobbies[0], now).seed;
+        lobbies[1].receive(now, &frame_datagram(seed ^ 1, &[0, 0, 0]));
+        assert_eq!(starts(&mut lobbies), [true, false]);
+        lobbies[1].receive(now, &frame_datagram(seed, &[0, 0, 0]));
         assert_eq!(starts(&mut lobbies), [true, true]);
         // (A frame before the match is agreed starts nothing.)
         let mut early = Lobby::new(Role::Join, &content, s, side(&content, 3), 7, Duration::from_secs(10));
-        early.receive(now, &[Kind::Frame as u8, 0, 0, 0]);
+        early.receive(now, &frame_datagram(seed, &[0, 0, 0]));
         assert!(matches!(early.poll(now), Status::Pending) && !early.their_loaded());
     }
 
@@ -1762,13 +2196,13 @@ mod tests {
             lobby.set_ready(true);
             lobby.receive(now, &said);
             let failure = failed(&mut lobby, now);
-            assert_eq!((failure.reason, failure.detail.as_str()), (Reason::DifferentVersion, "can't play: the other side speaks netplay protocol 5, this one 6"));
+            assert_eq!((failure.reason, failure.detail.as_str()), (Reason::DifferentVersion, "can't play: the other side speaks netplay protocol 5, this one 7"));
             assert!(!lobby.their_present());
             // (It is told so, three times.)
             let refusals = lobby.outgoing();
             assert!(refusals.len() == 3 && refusals.iter().all(|d| d[0] == Kind::Refuse as u8));
         }
-        assert_eq!(protocol::VERSION, 6);
+        assert_eq!(protocol::VERSION, 7);
     }
 
     /// Two programs of one protocol whose engines set the agreed match up
