@@ -8,14 +8,20 @@
 -- (@exelib/bugfix/controller), made here with EXE6's glow and Beast Out.
 
 local common = require("@exelib/bugfix/controller")
+local common_glow = require("@exelib/bugfix/glow")
 local glow = require("./glow")
 
 local bugfix = {}
 
+-- The glow's flashes (`off_80C4930`'s first row, `sub_80C4958`).
+local FLASHES = common_glow.start(common.flashes(asset.sound("bugfix-flash"), common_glow.hide_navi))
+
 local made = common.make {
     id = "bugfix/controller",
-    glow = glow.spawn,
-    flash = asset.sound("bugfix-flash"),
+    glow = function(spawner: Object, holder: Object): Object?
+        return glow.spawn(spawner, FLASHES, holder)
+    end,
+    fix = common.clear_bugs,
     beast_out = true,
 }
 bugfix.kind = made.kind

@@ -447,6 +447,15 @@ export type SnakeState = { target_x: number, target_y: number, nest: Object?, sl
 -- A nest's scan: where it is (bytes, the column stepping off the field when the scan ends).
 export type SnakeScan = { scan_x: number, scan_y: number }
 
+-- A game's Snake on the batch nest (@exelib/snake/batch): its nest's and controller's kind ids, its snake kind, and
+-- EXE4's target slip (@exelib/snake's `best_row_slip`).
+export type SnakeBatchSpec = { nest_id: string, controller_id: string, snake: Kind, best_row_slip: boolean? }
+export type SnakeBatch = {
+    hook: (user: Object, spec: DimmingChipSpec) -> Object?,
+    nest: Kind,
+    controller: Kind,
+}
+
 -- A game's tank shell (@exelib/tankcan/shell): what it is and hits, its sounds (the shot, a hit or blast), the
 -- edge blast's look and collision type, the explosions' and a hit's burst's effects.
 export type TankShellLook = {
@@ -669,6 +678,9 @@ export type ZSaverLook = {
     refreshes_form_overlay: boolean,
     recovery_clears_moving: boolean,
     blade: AttachmentLook,
+    -- The blade by its holder in the overlay slot (EXE5's 0x080EC082: a
+    -- soul's Chaos Unison blade); none: `blade`.
+    held_blade: ((me: Object) -> AttachmentLook)?,
     blade_anim: (me: Object) -> number,
     is: CollisionType,
     hits: CollisionType,
@@ -706,6 +718,45 @@ export type NumberBallLook = {
 export type NumberBall = {
     kind: Kind,
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
+}
+
+-- A game's BugCurse (@exelib/bugcurse): its controller's and curse's kind ids, the curse's sheet and sound, what keeps
+-- it off the enemy navi, its bugs (code | argument << 8, one a tick), and EXE5's operation battle (the mode's test and
+-- its bugs).
+export type BugCurseLook = {
+    controller_id: string,
+    curse_id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    untouched: { StatusFlag },
+    bugs: { number },
+    operation_battle: (() -> boolean)?,
+    operation_bugs: { number }?,
+    is: CollisionType,
+    hits: CollisionType,
+}
+
+-- A game's Jealousy (@exelib/jealousy/controller): its controller kind's id; how many chips the other side holds
+-- (the controller asking); its hits' self type, target and spark; and EXE5's operation battle (the mode's test and the
+-- warning's sound).
+export type JealousyLook = {
+    id: string,
+    count: (controller: Object) -> number,
+    is: CollisionType,
+    hits: CollisionType,
+    spark: Spark,
+    operation_battle: (() -> boolean)?,
+    warning: Sound?,
+}
+
+-- A game's Blinder (@exelib/blinder/controller): its controller kind's id, its sound, and the blinding hit's self
+-- type, target and status.
+export type BlinderLook = {
+    id: string,
+    sound: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+    status: Status,
 }
 
 -- A game's BoyBomb bomb (@exelib/boybomb/bomb): its kind's id, sprite and NameID (none: none); its body's collision
@@ -1266,7 +1317,7 @@ export type AnubisVariant = {
     period: number,
     hp: number,
     lifetime: number,
-    identity: Identity,
+    identity: Identity?,
 }
 
 -- A panel change (objects/panel_changer, a row of the original's
@@ -1376,7 +1427,7 @@ export type CountdownVariant = {
     appear_anim: number,
     idle_anim: number,
     hp: number,
-    identity: Identity,
+    identity: Identity?,
     class: number,
     collision: { is: CollisionType, hits: CollisionType },
     strong_shake: boolean?,
@@ -1542,6 +1593,13 @@ export type CountdownLook = {
     explosion: Effect,
     puff: Effect,
     bursts: Kind,
+    -- EXE4's older code: it releases no tracking as it goes; it blows up even once the battle is over; it reads no
+    -- removal as it goes (broken, a puff; blown up, nothing); its own obstacle rows (1, 3 to 7, by the framework's
+    -- numbers) in place of the shared ones and the blink-away.
+    untracked: boolean?,
+    blasts_after_battle: boolean?,
+    reads_no_removal: boolean?,
+    actions: { [number]: (Object) -> () }?,
 }
 
 -- A lance's hit: what it is and hits, its spark, hit modifier and bug.

@@ -38,8 +38,10 @@ export type Scan = SnakeScan
 -- `sub_80D2D40`: the panel a snake from (hx, hy) aims at: of the panels from the column in front of the hole
 -- forward (rows 1 to 3, until the column leaves the field) that hold a target, the first in that order, replaced by
 -- one in a nearer row, then by one in a nearer column, then (a slip: the candidate's column against the best's row)
--- by one whose column isn't past the best's row. 0xFF when none.
-function snake.target(me: Object, hx: number, hy: number): (number, number)
+-- by one whose column isn't past the best's row. 0xFF when none. EXE4's (0x080D7F70) slips once more:
+-- `best_row_slip`, the best's distance in columns from the hole reads its row (0x080D8014). (EXE4's walk goes on past
+-- the field's edge, to column 7 or -1, where no panel holds a target.)
+function snake.target(me: Object, hx: number, hy: number, best_row_slip: boolean?): (number, number)
     local mask = TARGET[me.alliance]
     local candidates: { { number } } = {}
     local x = hx + me.facing
@@ -71,7 +73,7 @@ function snake.target(me: Object, hx: number, hy: number): (number, number)
             if d > bd then
                 take = false
             elseif d == bd then
-                local e, be = math.abs(cx - hx), math.abs(bx - hx)
+                local e, be = math.abs(cx - hx), math.abs((if best_row_slip then by else bx) - hx)
                 if e > be then
                     take = false
                 elseif e == be then
@@ -89,7 +91,7 @@ end
 -- `sub_80D2CBE`: from the scan's place on (rows 1 to 3, then the next column back), the first hole; the scan
 -- resumes past it. The scan gives up once its column, plus one, passes 7 (a side 0 nest scans columns 6 to 1, then
 -- 0 and 0xFF off the field; side 1's, 1 to 6). nil when none, else the hole and its target.
-function snake.next_hole(me: Object, s: Scan): (number?, number, number, number)
+function snake.next_hole(me: Object, s: Scan, best_row_slip: boolean?): (number?, number, number, number)
     local cond = HOLE[me.alliance]
     local step = -me.facing
     local found = false
@@ -114,7 +116,7 @@ function snake.next_hole(me: Object, s: Scan): (number?, number, number, number)
     if not found then
         return nil, 0, 0, 0
     end
-    local tx, ty = snake.target(me, hx, hy)
+    local tx, ty = snake.target(me, hx, hy, best_row_slip)
     return hx, hy, tx, ty
 end
 

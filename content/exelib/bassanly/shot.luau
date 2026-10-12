@@ -1,12 +1,16 @@
 --!strict
--- BassAnly's shot, as EXE6 and EXE5 share it (EXE6's attack object #0xC1,
--- `sub_80DD34C`; EXE5's #0x73, its code EXE6's but for its sprite): a dark
--- ball that starts 24 pixels ahead, kicks back and accelerates forward
--- along a slant (up or down), its body a hit region (hit, it goes off
--- until it reaches another panel). Its speeds are BassAnly's: the original
--- reads them by its level (Param1), and BassAnly throws only level 3, twice
--- as fast as the rest (its rows 0 to 2, which nothing throws, are left
--- out). After its first stretch (16 ticks) it flies straight
+-- BassAnly's shot, as EXE6, EXE5 and EXE4 share it (EXE6's attack object
+-- #0xC1, `sub_80DD34C`; EXE5's #0x73, its code EXE6's but for its sprite;
+-- EXE4's #0x73, 0x080DB7E8): a dark ball that starts 24 pixels ahead, kicks
+-- back and accelerates forward along a slant (up or down), its body a hit
+-- region (hit, it goes off until it reaches another panel). Its speeds are
+-- BassAnly's: the original reads them by its level (Param1), and BassAnly
+-- throws only the fastest (EXE6's and EXE5's level 3, twice as fast as the
+-- rest; EXE4's level 2, whose speeds are the same: its table has no row 3),
+-- the rows nothing throws left out. Its push's ticks and its diagonal
+-- steps' come from the level too (Timer2: 0x1C and twice it; the steps: 10
+-- less twice it, EXE4's 12), each game's stated by its kind. After its
+-- first stretch (16 ticks) it flies straight
 -- ahead, turning (its homing: "diagonal" toward the enemy navi on a
 -- diagonal, "seeking" toward an enemy navi one or two panels up or down the
 -- slant ahead, picked at random) to run diagonally, a panel every few
@@ -14,8 +18,8 @@
 -- or it leaves the field. A seeking one leaves an afterimage every 6 ticks.
 -- It runs while dimmed. What it is spawned with is a `DarkBall`
 -- (types.d.luau; the original's Param1 to Param3). Each game makes its kind
--- (`shot.make_kind`: its sprite, its sound and its collision types). See
--- docs/engine/chips.md §3.6.35.
+-- (`shot.make_kind`: its sprite and animation, its sound, its collision
+-- types and its level's ticks). See docs/engine/chips.md §3.6.35.
 
 local regions = require("../regions")
 
@@ -25,9 +29,16 @@ local shot = {}
 export type Look = {
     id: string,
     sprite: SpriteAsset,
+    -- Its flying animation (EXE6's and EXE5's 0 when none; EXE4's 33), its
+    -- burst the next.
+    anim: number?,
     sound: Sound,
     self_type: CollisionType,
     target: CollisionType,
+    -- Its push's ticks (Timer2) and each diagonal step's, by its level
+    -- (EXE6's and EXE5's 0x22 and 4 when none; EXE4's 0x20 and 8).
+    push_ticks: number?,
+    step_ticks: number?,
 }
 
 export type State = {
@@ -53,7 +64,8 @@ local PUSH = 0x4000
 local SLANT = 0xC000
 
 -- Its speed up or down the slant and forward once turned (EXE6's
--- `byte_80DD6A8`, `byte_80DD6D0`: level 3's rows).
+-- `byte_80DD6A8`, `byte_80DD6D0`: level 3's rows; EXE4's 0x080DBB40 and
+-- 0x080DBB64: level 2's).
 local TURN_Y, TURN_X = 0x7_8000, 0xC_8000
 
 -- What homing 2 looks for, by side (EXE6's `off_80DD6BC`): an enemy navi's
@@ -68,15 +80,18 @@ local HIT_MASK = 0x1E80_0000
 
 -- Its hit's modifier.
 local HIT_MOD = 3
--- Its first stretch's ticks and push's (Timer2: 0x1C and twice its level),
--- and the ticks of each diagonal step (10 less twice its level).
-local FIRST_TICKS, PUSH_TICKS, STEP_TICKS = 0x10, 0x1C + 3 * 2, 0xA - 3 * 2
+-- Its first stretch's ticks.
+local FIRST_TICKS = 0x10
 
 -- Its afterimages: every 6 ticks, 12 ticks each, tinted.
 local TRAIL_EVERY, TRAIL_TICKS, TRAIL_SHADER = 6, 0xC, 0xA94A
 
 -- A game's shot kind.
 function shot.make_kind(look: Look): Kind
+    local ANIM = look.anim or 0
+    local PUSH_TICKS = look.push_ticks or 0x1C + 3 * 2
+    local STEP_TICKS = look.step_ticks or 0xA - 3 * 2
+
     -- `sub_80DD382`: 24 pixels ahead of its panel, kicking back; collision
     -- on (no hit spark).
     local function init(me: Object)
@@ -91,9 +106,9 @@ function shot.make_kind(look: Look): Kind
         sprite:load(look.sprite)
         sprite.shadow = "with_sprite"
         me.visible = true
-        me.anim = 0
-        me.anim_loaded = 0
-        sprite:set_animation(0)
+        me.anim = ANIM
+        me.anim_loaded = ANIM
+        sprite:set_animation(ANIM)
         sprite.palette = 0
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         if not me:create_collision() then
@@ -110,10 +125,11 @@ function shot.make_kind(look: Look): Kind
         me:set_lifecycle("update")
     end
 
-    -- `sub_80DD584`: its region off, bursting (animation 1).
+    -- `sub_80DD584`: its region off, bursting (the animation after its
+    -- flying one).
     local function burst(me: Object)
         me.collision:set_region(nil)
-        me.anim = 1
+        me.anim = ANIM + 1
         me:set_lifecycle("destroy")
     end
 
