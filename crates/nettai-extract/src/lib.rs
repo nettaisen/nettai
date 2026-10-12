@@ -245,24 +245,17 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
         Game::Exe6 => exe6::graphics::panel_names(),
     };
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
-    // A US ROM's bank with its version's Japanese ROM's songs where those
-    // play otherwise (`sources`: the two US ROMs, then their Japanese ones).
-    let japanese = |bank: &mut m4a::SoundBank, i: usize| -> Result<(), Error> {
-        if i < 2 && sources[i + 2].is_present() {
-            let (jp, _) = m4a::rom::extract(&sources[i + 2].0).map_err(|e| Error(format!("reading the Japanese sound: {e}")))?;
-            sound::japanese_songs(bank, &jp);
-        }
-        Ok(())
-    };
+    // (`sources`: the two US ROMs, then their Japanese ones. A US ROM's
+    // bank where there is one: EXE5's hit, song 0x6D, is louder in the
+    // Japanese ROMs, volume 127 for 112.)
     let (mut sound, missing_songs) = if let Some(i) = sources.iter().position(|r| r.is_present()) {
-        let (mut bank, failures) =
+        let (bank, failures) =
             m4a::rom::extract(&sources[i].0).map_err(|e| Error(format!("reading sound: {e}")))?;
         warnings.extend(
             failures
                 .iter()
                 .map(|(id, e)| format!("song {:#05x}: {e}; using silence", id.0)),
         );
-        japanese(&mut bank, i)?;
         (
             bank,
             failures.iter().map(|(id, _)| id.0).collect::<Vec<_>>(),
@@ -275,9 +268,8 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
     };
     let sound_versions = if game == Game::Exe5 && sources[0].is_present() && sources[1].is_present()
     {
-        let (mut colonel, failures) = m4a::rom::extract(&sources[1].0)
+        let (colonel, failures) = m4a::rom::extract(&sources[1].0)
             .map_err(|e| Error(format!("reading Colonel sound: {e}")))?;
-        japanese(&mut colonel, 1)?;
         warnings.extend(
             failures
                 .iter()

@@ -1,9 +1,10 @@
 //! The sound: the US Team ProtoMan ROM's m4a bank, with any song the US Team
 //! Colonel ROM plays otherwise at the same number as Team Colonel's version
-//! of it, and in every game the songs the Japanese ROM of a bank's version
-//! plays otherwise in the US ROM's place (`japanese_songs`). A Team Colonel song plays with voicegroups the bank has: its own
+//! of it. A Team Colonel song plays with voicegroups the bank has: its own
 //! voicegroups, with their samples, PSG waves and key maps, are matched to
-//! equal ones of Team ProtoMan's bank or added to it.
+//! equal ones of Team ProtoMan's bank or added to it. (The Japanese ROMs
+//! play one song otherwise, EXE5's hit, which is louder there:
+//! `played_otherwise` compares two banks.)
 //!
 //! The two US ROMs play every song alike (`plays_alike`), so the pack has no
 //! version's own. Eleven songs' voicegroups (0x13C to 0x142, 0x145, 0x146,
@@ -204,27 +205,6 @@ fn same_voice(
             }
             (x, y) => x == y,
         }
-}
-
-/// The Japanese ROM's songs where they play otherwise than `bank`'s (the US
-/// ROM of the same version's), put in `bank` in their place: the pack has
-/// one presentation, the Japanese games' where the releases differ (EXE5's
-/// hit, song 0x6D, is louder there: volume 127 for 112). A song keeps its
-/// voicegroup where the voices its notes play are alike, else the Japanese
-/// bank's is matched to an equal one of `bank`'s or added to it. A song
-/// only `bank` has stays.
-pub fn japanese_songs(bank: &mut SoundBank, jp: &SoundBank) {
-    let differ = played_otherwise(bank, jp);
-    let mut merge = Merge { into: bank, from: jp, groups: HashMap::new() };
-    for id in differ {
-        let Some(song) = jp.song(m4a::SongId(id)) else { continue };
-        let own = merge.into.song(m4a::SongId(id)).filter(|own| voices_alike(merge.into, own, jp, song)).map(|own| own.voicegroup);
-        let voicegroup = own.unwrap_or_else(|| merge.group(song.voicegroup));
-        if merge.into.songs.len() <= id as usize {
-            merge.into.songs.resize(id as usize + 1, None);
-        }
-        merge.into.songs[id as usize] = Some(Song { voicegroup, ..song.clone() });
-    }
 }
 
 /// The numbers of the songs bank `b` plays otherwise than bank `a`
