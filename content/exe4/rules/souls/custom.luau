@@ -216,11 +216,16 @@ function custom_souls.confirmed(side: number)
     s.souls_used[#s.souls_used + 1] = soul
 end
 
--- The hand the screen deals as it opens (0x0801DC8E, its +0x11): the navi's custom level (NaviStats +0x12, 0x0801DCAE)
--- as it is, where EXE6's caps it at 8 and takes its hand-shrink bug from it. (The soul 8's ten, 0x0801DC92, is the
--- souls' own, §18 item 74; a battle type of 64 to 67 deals five, 0x0801DC98, and no netbattle is of one.)
+-- The hand the screen deals as it opens (0x0801DC8E, its +0x11): ten in NumberSoul (soul 8, 0x0801DC92); else the
+-- navi's custom level (NaviStats +0x12, 0x0801DCAE) as it is, where EXE6's caps it at 8 and takes its hand-shrink bug
+-- from it. (A battle type of 64 to 67 deals five, 0x0801DC98, and no netbattle is of one.)
+local DEALT_TEN = "numbersoul"
 function custom_souls.hand_size(side: number): number
-    return battle.navi(side).custom_level
+    local navi = battle.navi(side)
+    if navi.form.id == DEALT_TEN then
+        return 10
+    end
+    return navi.custom_level
 end
 
 custom_souls.buttons = { soul = custom_souls.button }
