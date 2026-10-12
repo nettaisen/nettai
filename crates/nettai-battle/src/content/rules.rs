@@ -314,6 +314,9 @@ pub struct EffectsRules {
     /// The order the objects of a pool are drawn in. Presentation: the
     /// renderer's.
     pub draw_order: DrawOrder,
+    /// What a sprite part's depth bucket is counted from. Presentation:
+    /// the renderer's.
+    pub sprite_depth: SpriteDepth,
     /// What a frame's sprite draw has room for. Presentation: the
     /// renderer's.
     pub sprite_budget: SpriteBudgetRules,
@@ -358,6 +361,27 @@ pub enum DrawOrder {
     /// By slot (EXE4's 0x08003BA0, 0x08003ED4 and 0x08004180 walk each
     /// pool's slots from the first).
     Slots,
+}
+
+/// What a field sprite's part is ordered by among the field's sprites: its
+/// depth bucket in the field's layer, 0xE0 of them (the sprite draw's part
+/// list, `sub_3006440`; a part whose bucket is past the last isn't drawn,
+/// nor are its sprite's parts after it, `sub_3006920`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpriteDepth {
+    /// Its sprite's ground row on the screen, from 0x40 (EXE6's
+    /// `sub_3006440`, EXE5's): a sprite is drawn until its ground is past
+    /// the screen's bottom row.
+    Ground,
+    /// The same, further by its sprite's hardware priority (EXE4's
+    /// 0x0300602C, at 0x0300613C: the first part by the sprite's priority,
+    /// each part after it by 2: a sprite's own, or what the routine sets at
+    /// 0x0300616C for one whose priority was set; a ground shadow's bucket
+    /// in its layer the same way). The order among sprites of one priority is the same, but the
+    /// buckets run out two rows above the screen's bottom: a part whose
+    /// ground is on row 158 or lower isn't drawn.
+    GroundAndPriority,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the
