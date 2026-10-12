@@ -99,7 +99,7 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    took of the frame's budget and left out
   --mark M,...     with --headless: write where each of these is drawn, by
                    frame, to marks.tsv in --out: sprite:NAME (an object drawn
-                   with it), background:NAME, chip:KEY (its picture in the
+                   with it; sprite:NAME:ANIM, in that animation), background:NAME, chip:KEY (its picture in the
                    chip window), button:NAME (a custom screen button's
                    picture there), chip-icon:KEY (its icon: over its navi, in
                    the custom screen's slots and picked column),
