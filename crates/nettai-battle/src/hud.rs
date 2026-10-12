@@ -117,6 +117,12 @@ pub struct HudHidden {
     /// The HP box (draw task 7, `sub_801C840`: EXE5's dark MegaMan's last
     /// stand hides it). Its drawing only: its low-HP alarm sounds on.
     pub hp_box: bool,
+    /// The "????" of the sides' defensive chips (draw task 10,
+    /// `sub_801C984`). A message hides them while it shows, and its end
+    /// shows them again unless the battle is over by then (`sub_801E1A4`;
+    /// EXE4's 0x08015CAA): then they stay hidden, until a custom screen
+    /// opens.
+    pub defensive_marks: bool,
 }
 
 /// A warning marker on a console's HUD for one tick (`sub_800AE90`: a
