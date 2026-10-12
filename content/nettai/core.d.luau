@@ -656,6 +656,9 @@ declare extern type Object with
     function chips_enabled(self): boolean
     -- `sub_8010332`: the ticks a step of its ends with.
     function move_lag(self): number
+    -- `sub_801DACC(0x40)` (EXE4's 0x08015B9E(0x10)): the chip window goes, as
+    -- an attack's start from idle hides it.
+    function hide_chip_window(self): ()
     -- As a navi leaves (EXE5's 0x081042E6): its status visuals forgotten and
     -- its chips off the HUD.
     function drop_links(self): ()

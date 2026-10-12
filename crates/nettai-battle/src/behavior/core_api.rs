@@ -1578,6 +1578,13 @@ impl CoreApi for Battle {
         Ok(kinds::player::move_lag(self, o))
     }
 
+    fn hide_chip_window(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let side = self.objects.get(o).alliance as usize & 1;
+        kinds::player::idle::hide_chip_window(self, side);
+        Ok(())
+    }
+
     fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         kinds::player::drop_links(self, o);

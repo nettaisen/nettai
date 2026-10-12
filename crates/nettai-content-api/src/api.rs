@@ -1694,6 +1694,10 @@ pub trait CoreApi {
     fn chips_enabled(&self, o: ObjectRef) -> ApiResult<bool>;
     /// `sub_8010332`: the ticks a step of its ends with.
     fn move_lag(&self, o: ObjectRef) -> ApiResult<u16>;
+    /// `sub_801DACC(0x40)` (EXE4's 0x08015B9E(0x10)) for the navi: the chip
+    /// window goes, as an attack's start from idle hides it (its console's,
+    /// or every console's by the rules' `chip_use`).
+    fn hide_chip_window(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// A navi's links let go as it leaves (EXE5's 0x081042E6): its status
     /// visuals (`sub_801A5E2`) and its chips on the HUD (`sub_801DC36`).
     fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()>;
