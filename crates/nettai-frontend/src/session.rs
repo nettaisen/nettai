@@ -31,6 +31,10 @@ pub struct Session {
     /// ended round's last cues: `battle` is the next round's by then);
     /// none: the battle's own cues (`Battle::sound_cues`).
     pub sound: Option<Vec<CueAction>>,
+    /// The players who asked for the pause since the host last took the
+    /// requests, by side (`Battle::pause_requests`, of a round whose host
+    /// answers the pause; `Player::take_pause_requests`).
+    pub pause_requests: [bool; 2],
     /// The replay being written of what is played, if one is.
     pub recorder: Option<Recorder>,
 }
@@ -50,6 +54,7 @@ impl Session {
             fresh: false,
             new_round: false,
             sound: None,
+            pause_requests: [false; 2],
             recorder: None,
         }
     }
@@ -75,6 +80,7 @@ impl Session {
         self.diverged = None;
         self.frame = None;
         self.ticks = 0;
+        self.pause_requests = [false; 2];
     }
 
     /// Run one tick (one wall-clock frame of a driver that runs the battle
@@ -97,10 +103,11 @@ impl Session {
         }
         match ran {
             Ok(None) => {}
-            Ok(Some(Ok(Ran { advanced, new_round, sound }))) => {
+            Ok(Some(Ok(Ran { advanced, new_round, sound, pause_requests }))) => {
                 self.fresh = advanced;
                 self.new_round = new_round;
                 self.sound = Some(sound);
+                self.ask_pause(pause_requests);
                 if advanced {
                     self.ticks += 1;
                 }
@@ -133,6 +140,7 @@ impl Session {
             self.stopped = Some(format!("engine stopped at {}: {}", self.driver.position(), panic_message(e.as_ref())));
             return false;
         }
+        self.ask_pause(self.battle.pause_requests());
         if self.diverged.is_none() {
             let diffs = self.driver.check(&self.battle);
             if !diffs.is_empty() {
@@ -174,12 +182,31 @@ impl Session {
     }
 }
 
+impl Session {
+    /// Keep a tick's pause requests until the host takes them.
+    fn ask_pause(&mut self, asked: [bool; 2]) {
+        for (kept, asked) in self.pause_requests.iter_mut().zip(asked) {
+            *kept |= asked;
+        }
+    }
+}
+
 fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
     e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_else(|| "unknown panic".into())
 }
 
 thread_local! {
     static IN_ENGINE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Run `f`, which may stop as the engine does (a panic), as the session
+/// runs a tick: the stop is the result, and the host's quiet hook
+/// ([`quiet_engine_panics`]) keeps it off stderr.
+pub(crate) fn in_engine<R>(f: impl FnOnce() -> R) -> std::thread::Result<R> {
+    IN_ENGINE.with(|flag| flag.set(true));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+    IN_ENGINE.with(|flag| flag.set(false));
+    result
 }
 
 /// Keep engine panics off stderr (the session reports them); other panics

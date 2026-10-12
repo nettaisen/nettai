@@ -401,6 +401,8 @@ impl Round {
             score: SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
             later_stages: codec::later_stages(&unhex(&self.setup.stages), &ids),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
+            // (A console's battle: it pauses itself, and L is its run key.)
+            host_keys: nettai_battle::setup::HostKeys::NONE,
             players,
         }
     }
@@ -1132,6 +1134,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                 own_gauges: false,
                 random_battle: false,
                 late_turns: false,
+                run_key: true,
                 now: f.frame,
             }
         };
