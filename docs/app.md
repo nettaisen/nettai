@@ -534,7 +534,10 @@ the rules declare no views), a tab for each kind of fact:
   game's setup has one a player states now.
 
 Every edit is saved at once and the build checked again: nettai-match's `check::problems`, the build on both
-sides of a match of its game, each problem beside its field and entry (a tab with problems is marked).
+sides of a match of its game, each problem beside its field and entry (a tab with problems is marked). (The
+redesigned build screens, docs/design/app-ui.md, ask nettai-match's `build` instead: a build checked with its
+problems typed, the folder's view, the overview, and the game's versions and new build from the game's own data,
+content/<game>/rules/builds. This section's creator and `crates/nettai/builds.toml` go with the old screens.)
 
 **What a build never states.** Every build in the app plays at the most its game allows, and states only what a
 player chooses. The facts kept at the rules' defaults (`layout::at_defaults`) are those of the engine's level and
