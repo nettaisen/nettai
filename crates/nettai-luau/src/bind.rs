@@ -1795,12 +1795,12 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
-    lib_fn!(lua, t, "cycle", |_, period: LuaValue| {
-        let period = u8_arg(period, "period")?;
-        if !matches!(period, 20 | 180) {
-            return Err(mlua::Error::runtime(format!("battle.cycle({period}): the battle counts 20 and 180")));
+    lib_fn!(lua, t, "cycle", |_, which: LuaValue| {
+        let which = u8_arg(which, "which")?;
+        if !matches!(which, 1 | 2) {
+            return Err(mlua::Error::runtime(format!("battle.cycle({which}): the battle has counts 1 and 2")));
         }
-        with(|api, _| Ok(api.cycle(period)))
+        with(|api, _| Ok(api.cycle(which)))
     });
     lib_fn!(lua, t, "weakness", |_, (receiver, hitter): (LuaValue, LuaValue)| {
         let (receiver, hitter) = (u8_arg(receiver, "receiver")?, u8_arg(hitter, "hitter")?);
@@ -1868,6 +1868,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.shake_camera_secondary(magnitude, ticks)))
     });
     lib_fn!(lua, t, "set_shake_through_pause", |_, on: bool| with(|api, _| Ok(api.set_shake_through_pause(on))));
+    lib_fn!(lua, t, "set_chips_enabled", |_, (side, on): (LuaValue, bool)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.set_chips_enabled(side, on)))
+    });
     lib_fn!(lua, t, "burst", |_, navi: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.spawn_burst(navi.0).map(Object)))
     });
@@ -2317,6 +2321,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "hand_chip_damages", |_, (side, i): (LuaValue, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
         with(|api, _| Ok(api.hand_chip_damages(side, i)))
+    });
+    lib_fn!(lua, t, "fold_hand_chip", |_, (side, i): (LuaValue, LuaValue)| {
+        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
+        with(|api, _| Ok(api.fold_hand_chip(side, i)))
     });
     lib_fn!(lua, t, "hand_chip", |_, (side, i): (LuaValue, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);

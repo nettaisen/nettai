@@ -25,6 +25,7 @@ local meteors = {}
 -- Row 6 of 0x080D8580: thrown, hitting navis, modifier 0, the camera shaking (its fifth byte set: 0x080D8716).
 local ROW = falling_meteor.row { is = collision.thrown, hits = collision.hits_navis, hit_mod = 0, shake = 1, panel = "none" }
 
+-- (ShotStar's meteors are this kind too, of row 1: chips/shotstar.)
 local METEOR = falling_meteor.make_kind("meteor", {
     sprite = asset.sprite("meteor"),
     sounds = { fall = asset.sound("justice-one"), land = asset.sound("hit-bomb-1") },
@@ -35,6 +36,8 @@ local METEOR = falling_meteor.make_kind("meteor", {
     hit_on = "landing",
     marker_takes_side = false,
 })
+
+meteors.meteor = METEOR
 
 -- The dropper's meteors and the ticks between them (0x080EAE34, 0x080EAE4C).
 local DROPS, EVERY = 5, 20
