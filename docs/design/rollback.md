@@ -585,9 +585,10 @@ its lobby messages and refusals, and nothing after that field is read of it).
    play, having first fixed its own.)
 4. **Loading.** The match is agreed (`Status::Loading`, with the `Agreement`: the settings, the seed, both sides,
    the set and its match with every place stated, both names), and each host loads what it will draw and play of
-   it. Each peer says how far its host has got, when it changes and every 100 ms: the match's seed, a part of 255
-   and whether it is done (`Lobby::set_loading(fraction)`, `set_loaded()`), which the other host shows
-   (`their_loading()`, 0 to 1; `their_loaded()`). The match starts (`Status::Start`) once this peer has loaded and
+   it. Each peer says how far its host has got, when it changes and every 100 ms: the match's seed, the digest of
+   the match's first round at its start (below), a part of 255 and whether it is done
+   (`Lobby::set_loading(fraction)`, `set_loaded()`), which the other host shows (`their_loading()`, 0 to 1;
+   `their_loaded()`). The match starts (`Status::Start`) once this peer has loaded and
    has heard that the other has: by its loading message, or by a frame of the match, which a peer sends only once
    it has started. So neither runs a tick before both have loaded, and a peer whose last loading message is lost
    still starts, on the other's first frame. (The two start a moment apart, as they did when each started on its
@@ -598,6 +599,23 @@ its lobby messages and refusals, and nothing after that field is read of it).
    go on polling its link and its lobby while it loads,
    every frame: load on another thread, or a little a frame. A link nobody polls for 3 seconds reads as a dropped
    connection on the other side (§4.8).
+
+**Two builds of the program** must not get as far as a tick. Three things keep them from it, each ending both
+lobbies with `Reason::DifferentVersion`:
+
+- The protocol's version (`protocol::VERSION`, 6) stands for the wire's layout and for how a match is set up. It is
+  the first field of every lobby message, Hello and refusal, and a peer of another version is refused on its first
+  word. Version 6 is also the first whose rounds are set up with the keys their host answers
+  (`RoundSetup::host_keys`, §2.2): a program of version 5 sets the same match up without them, and every digest
+  of the round differs. A test gives a lobby version 5's messages, laid out as version 5 laid them, and it refuses
+  each at once.
+- The engine's version (`lobby::ENGINE`) is compared too, but it is the crates' version, which doesn't change when
+  the engine does: it tells nothing apart today.
+- So each peer also says, with its loading, the digest of the agreed match's first round at its start, as its own
+  engine sets it up, and stops on one that differs from its own. That catches what a missed version would let
+  through, where it shows in the round's setup or in the state's layout (both are in the digest), before the first
+  tick and not at the first settled tick that differs. It can't catch two engines that start alike and step
+  differently: the version is what tells those apart.
 
 **A refusal** ends a lobby: the compatibility fields, a reason (a byte) and, for a log, the detail. A peer that
 can't play with the other sends it three times and stops; the other stops on reading it. Each side ends with a
@@ -760,7 +778,7 @@ finds the other's build broken has `TheirBuild`, and the other, refused, has `Yo
 
 | `Reason` | When |
 |---|---|
-| `DifferentVersion` | The two programs differ: another netplay protocol, or another engine. (A refusal from a peer of another protocol, in whatever form that protocol has, reads as this.) |
+| `DifferentVersion` | The two programs differ: another netplay protocol, another engine, or engines that set the agreed match up differently (the digests of its start differ: §4.7). (A refusal from a peer of another protocol, in whatever form that protocol has, reads as this.) |
 | `DifferentGame { theirs }` | The other player's match is of another game, `theirs` by its id |
 | `DifferentContent` | The same game, but other content: the two players' packs differ |
 | `YourBuild` | This player's build breaks a rule of the game by the other side's checks, which refused it |

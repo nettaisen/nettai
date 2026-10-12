@@ -49,7 +49,8 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 ///   rules' setup, definitions by their handles in the content both name),
 ///   the loading that follows it, and a refusal's reason;
 /// - how the match is set up from the agreed settings, both sides and both
-///   nonces (the seed), which both peers must do alike.
+///   nonces (the seed), which both peers must do alike: what a round's
+///   setup holds is in every digest of the round.
 ///
 /// A change to any of them is a new version. Version 4 added the player's
 /// name; version 5 each build's label and navi, which version 6 took out
@@ -58,7 +59,16 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// changes them and the other adopts them: the rounds, and whether builds
 /// are closed), put the game among the compatibility fields, gave a
 /// refusal a reason beside its words, tied a Reveal to the revisions it is
-/// of, and added the loading before the first tick.
+/// of, and added the loading before the first tick. It is also the first
+/// version whose rounds are set up with the keys their host answers
+/// (`RoundSetup::host_keys`, which every match has): a program of version 5
+/// sets the same match up without them, so the two would differ from the
+/// first digest, and are refused as different versions before anything is
+/// agreed. (The engine's own version, which the lobby compares too, is the
+/// crates' and doesn't change with the engine: this number is what tells
+/// two engines apart. Where it wasn't raised and should have been, the
+/// loading's digest of the match's start tells two setups apart before the
+/// first tick.)
 ///
 /// A peer of another version is told from its first field, which every
 /// version's lobby messages and refusals start with, and nothing after it
